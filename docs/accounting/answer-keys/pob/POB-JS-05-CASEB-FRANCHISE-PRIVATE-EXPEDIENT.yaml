@@ -1,0 +1,316 @@
+schema: erev-answer-key/1
+id: POB-JS-05-CASEB-FRANCHISE-PRIVATE-EXPEDIENT
+title: "Franchise agreement, nonpublic franchisor electing the pre-opening services expedient"
+status: active
+families: [POB, ROY, REC]
+tags: []
+summary: "research 05 §13 worked example. Store opens 1 January 2026; 10-year franchise term; initial fee 50,000.00 invoiced at opening; equipment package 30,000.00 (SSP 30,000.00) delivered 10 January; royalties 6% and advertising fund contributions 2% of franchisee sales (1,200,000.00 in 2026, reported quarterly) follow the sales-based royalty exception (606-10-55-65) and are principal revenue. Case B (nonpublic, POL-190 NONPUBLIC; POL-202 ELECT_SINGLE_SERVICES_POB): pre-opening services form one POB distinct from the licence (952-606-25-2 to 25-4). SSPs: services 20,000.00, licence 45,000.00, equipment 30,000.00; the 80,000.00 of fixed consideration is allocated by relative SSP over all three POBs: 16,842.10 / 37,894.74 / 25,263.16. Services at opening; licence over 120 months. Research 05 allocated the fee only between services and licence (15,384.62 / 34,615.38) with equipment at its price, which needs the 32-37 discount exception; the discrepancy is recorded in the coverage file."
+authority:
+  codification: ["952-606-25-2", "952-606-25-3", "952-606-25-4", "606-10-55-65", "606-10-32-28", "606-10-55-60"]
+  ifrs: ["IFRS 15.B63"]
+  practice: ["PwC In depth ASU 2021-02 (franchisor practical expedient)", "BDO Blueprint pp.241, 257-258"]
+  urls: []
+derived_from: {research04: [], research05: [JS-05], chk: [], golden: [], dev: []}
+requirements: [REQ-POB-013, REQ-POB-010, REQ-REC-011, REQ-ALC-001, REQ-REF-016]
+policy_refs: [POL-190, POL-202, POL-024, POL-090]
+review: {author: answer-keys-industries, authored_on: "2026-09-12", reviewer: null, reviewed_on: null, status: pending}
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: JS-US
+      name: "Juniper Street US (Demo)"
+      functional_currency: USD
+      time_zone: America/Los_Angeles
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: "1"}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2026-12"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4000", name: "Revenue - products", account_type: REVENUE}
+    - {code: "4010", name: "Revenue - services and subscriptions", account_type: REVENUE}
+    - {code: "4020", name: "Revenue - licences and royalties", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, product: FRANCHISE-LIC-10Y, account: "4020"}
+    - {account_role: REVENUE, product: EQUIP-PACKAGE, account: "4000"}
+    - {account_role: REVENUE, product: PREOPEN-SERVICES, account: "4010"}
+  customers: [{code: CUST-JS05, name: "Harbour Row Coffee LLC (Demo)"}]
+  pob_templates:
+    - code: TPL-FRANCHISE-LIC
+      obligation_kind: LICENCE
+      distinctness: distinct
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_A
+      recognition_method: TIME_ELAPSED
+      ratable_convention: MONTHLY_EVEN
+      licence_nature: SYMBOLIC
+      start_date_rule: LICENCE_START_OR_AVAILABLE
+      policy_values: {balance.right_to_consideration: CONDITIONAL}
+    - code: TPL-GOODS
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: POINT_IN_TIME
+      over_time_criterion: NOT_APPLICABLE
+      recognition_method: POINT_IN_TIME
+      policy_values: {balance.right_to_consideration: UNCONDITIONAL}
+    - code: TPL-PREOPEN
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: POINT_IN_TIME
+      over_time_criterion: NOT_APPLICABLE
+      recognition_method: POINT_IN_TIME
+      policy_values: {balance.right_to_consideration: UNCONDITIONAL}
+  products:
+    - code: FRANCHISE-LIC-10Y
+      name: "Franchise licence, 10 years"
+      pob_template: TPL-FRANCHISE-LIC
+      revenue_category: FRANCHISE
+    - {code: EQUIP-PACKAGE, name: "Store equipment package", pob_template: TPL-GOODS, revenue_category: PRODUCTS}
+    - code: PREOPEN-SERVICES
+      name: "Pre-opening services (952-606-25-2)"
+      pob_template: TPL-PREOPEN
+      revenue_category: FRANCHISE
+      is_franchisor_preopening_service: true
+  ssp_books:
+    - code: SSP-JS-US-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2025-01-01"
+          methodology_label: "Observable standalone prices (demo study)"
+          entries:
+            - product: FRANCHISE-LIC-10Y
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges: [{point_value: "45000.00"}]
+            - product: EQUIP-PACKAGE
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges: [{point_value: "30000.00"}]
+            - product: PREOPEN-SERVICES
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges: [{point_value: "20000.00"}]
+  fx_rate_sets: []
+  rule_sets: []
+  policies:
+    tenant: {billing.posting: ERP, recognition.time_convention: MONTHLY_EVEN}
+    entities:
+      JS-US: {entity.reporting_type: NONPUBLIC, franchisor.preopening_expedient: ELECT_SINGLE_SERVICES_POB}
+    books: {}
+contracts:
+  - external_id: JS-05
+    customer: CUST-JS05
+    contracting_entity: JS-US
+    transaction_currency: USD
+    inception_date: "2026-01-01"
+    lines:
+      - {obligation_key: L0-PREOPEN, product_code: PREOPEN-SERVICES, quantity: "1", total_price: "0.00"}
+      - obligation_key: L1-LICENCE
+        product_code: FRANCHISE-LIC-10Y
+        quantity: "1"
+        total_price: "50000.00"
+        start_date: "2026-01-01"
+        end_date: "2035-12-31"
+      - {obligation_key: L2-EQUIP, product_code: EQUIP-PACKAGE, quantity: "1", total_price: "30000.00"}
+    judgements:
+      - handle: JDG-JS05-FUND
+        topic: PRINCIPAL_AGENT
+        subject_obligation_key: L1-LICENCE
+        conclusion: "Advertising fund activities are promises within the licence that the franchisor controls; contributions are principal revenue."
+        questionnaire: {obligation_key: L1-LICENCE, conclusion: PRINCIPAL}
+timeline:
+  - seq: "1"
+    kind: event
+    contract: JS-05
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: "2"
+    kind: event
+    contract: JS-05
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: "3"
+    kind: event
+    contract: JS-05
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-01-01"
+    payload: {obligation_key: L0-PREOPEN, quantity: "1", trigger: CONTROL_TRANSFER}
+  - seq: "4"
+    kind: event
+    contract: JS-05
+    event_type: BILLING_RECORDED
+    effective_date: "2026-01-01"
+    payload:
+      invoice_number: INV-JS05-FEE
+      line_external_id: INV-JS05-FEE-1
+      amount: "50000.00"
+      issue_date: "2026-01-01"
+  - seq: "5"
+    kind: event
+    contract: JS-05
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-01-10"
+    payload: {obligation_key: L2-EQUIP, quantity: "1", trigger: CONTROL_TRANSFER}
+  - seq: "6"
+    kind: event
+    contract: JS-05
+    event_type: BILLING_RECORDED
+    effective_date: "2026-01-10"
+    payload:
+      invoice_number: INV-JS05-EQUIP
+      line_external_id: INV-JS05-EQUIP-1
+      amount: "30000.00"
+      issue_date: "2026-01-10"
+      obligation_key: L2-EQUIP
+  - seq: "7"
+    kind: event
+    contract: JS-05
+    event_type: USAGE_REPORTED
+    effective_date: "2026-03-31"
+    payload:
+      obligation_key: L1-LICENCE
+      usage_period_start: "2026-01-01"
+      usage_period_end: "2026-03-31"
+      metric: FRANCHISEE_SALES
+      quantity: "300000"
+      rated_amount: "24000.00"
+      is_royalty_statement: true
+  - seq: "8"
+    kind: event
+    contract: JS-05
+    event_type: BILLING_RECORDED
+    effective_date: "2026-03-31"
+    payload:
+      invoice_number: INV-JS05-ROY-Q1
+      line_external_id: INV-JS05-ROY-Q1-1
+      amount: "24000.00"
+      issue_date: "2026-03-31"
+      obligation_key: L1-LICENCE
+  - seq: "9"
+    kind: event
+    contract: JS-05
+    event_type: USAGE_REPORTED
+    effective_date: "2026-06-30"
+    payload:
+      obligation_key: L1-LICENCE
+      usage_period_start: "2026-04-01"
+      usage_period_end: "2026-06-30"
+      metric: FRANCHISEE_SALES
+      quantity: "300000"
+      rated_amount: "24000.00"
+      is_royalty_statement: true
+  - seq: "10"
+    kind: event
+    contract: JS-05
+    event_type: BILLING_RECORDED
+    effective_date: "2026-06-30"
+    payload:
+      invoice_number: INV-JS05-ROY-Q2
+      line_external_id: INV-JS05-ROY-Q2-1
+      amount: "24000.00"
+      issue_date: "2026-06-30"
+      obligation_key: L1-LICENCE
+  - seq: "11"
+    kind: event
+    contract: JS-05
+    event_type: USAGE_REPORTED
+    effective_date: "2026-09-30"
+    payload:
+      obligation_key: L1-LICENCE
+      usage_period_start: "2026-07-01"
+      usage_period_end: "2026-09-30"
+      metric: FRANCHISEE_SALES
+      quantity: "300000"
+      rated_amount: "24000.00"
+      is_royalty_statement: true
+  - seq: "12"
+    kind: event
+    contract: JS-05
+    event_type: BILLING_RECORDED
+    effective_date: "2026-09-30"
+    payload:
+      invoice_number: INV-JS05-ROY-Q3
+      line_external_id: INV-JS05-ROY-Q3-1
+      amount: "24000.00"
+      issue_date: "2026-09-30"
+      obligation_key: L1-LICENCE
+  - seq: "13"
+    kind: event
+    contract: JS-05
+    event_type: USAGE_REPORTED
+    effective_date: "2026-12-31"
+    payload:
+      obligation_key: L1-LICENCE
+      usage_period_start: "2026-10-01"
+      usage_period_end: "2026-12-31"
+      metric: FRANCHISEE_SALES
+      quantity: "300000"
+      rated_amount: "24000.00"
+      is_royalty_statement: true
+  - seq: "14"
+    kind: event
+    contract: JS-05
+    event_type: BILLING_RECORDED
+    effective_date: "2026-12-31"
+    payload:
+      invoice_number: INV-JS05-ROY-Q4
+      line_external_id: INV-JS05-ROY-Q4-1
+      amount: "24000.00"
+      issue_date: "2026-12-31"
+      obligation_key: L1-LICENCE
+checkpoints:
+  - name: opening-month
+    after_seq: "6"
+    as_of: "2026-01-31"
+    book: ASC606
+    contracts:
+      - contract: JS-05
+        version: {transaction_price: "80000.00", revenue_cum: "42421.05", billed_cum: "80000.00"}
+        obligations:
+          - {obligation_key: L0-PREOPEN, allocated_amount: "16842.10", revenue_cum: "16842.10"}
+          - {obligation_key: L1-LICENCE, allocated_amount: "37894.74", revenue_cum: "315.79"}
+          - {obligation_key: L2-EQUIP, allocated_amount: "25263.16", revenue_cum: "25263.16"}
+        balances: [{entity: JS-US, contract_liability: "37578.95", contract_asset: "0.00", unbilled_receivable: "0.00"}]
+    subledger:
+      - period_key: FY2026-P01
+        entity: JS-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "42421.05"}
+          - {account_role: REVENUE, account: "4000", cr: "25263.16"}
+          - {account_role: REVENUE, account: "4010", cr: "16842.10"}
+          - {account_role: REVENUE, account: "4020", cr: "315.79"}
+  - name: year-1
+    after_seq: "14"
+    as_of: "2026-12-31"
+    book: ASC606
+    contracts:
+      - contract: JS-05
+        version: {transaction_price: "176000.00", revenue_cum: "141894.73", billed_cum: "176000.00"}
+        obligations:
+          - {obligation_key: L0-PREOPEN, allocated_amount: "16842.10", revenue_cum: "16842.10"}
+          - {obligation_key: L1-LICENCE, allocated_amount: "133894.74", revenue_cum: "99789.47"}
+          - {obligation_key: L2-EQUIP, allocated_amount: "25263.16", revenue_cum: "25263.16"}
+        balances: [{entity: JS-US, contract_liability: "34105.27", contract_asset: "0.00", unbilled_receivable: "0.00"}]
+    subledger:
+      - period_key: FY2026-P12
+        entity: JS-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "24315.79"}
+          - {account_role: REVENUE, account: "4020", cr: "24315.79"}

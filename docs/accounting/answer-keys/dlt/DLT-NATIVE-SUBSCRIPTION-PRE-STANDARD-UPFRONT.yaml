@@ -1,0 +1,147 @@
+# docs/accounting/answer-keys/dlt/DLT-NATIVE-SUBSCRIPTION-PRE-STANDARD-UPFRONT.yaml
+schema: "erev-answer-key/1"
+id: DLT-NATIVE-SUBSCRIPTION-PRE-STANDARD-UPFRONT
+title: "Delta posting when legacy GAAP booked the full subscription fee on invoice"
+status: active
+families: [DLT, JE]
+tags: [subscription]
+summary: >-
+  Entity US01, USD, books ASC606 and LEGACY, je.posting_mode DELTA, ERP billing. A 12,000.00 subscription for 2026
+  (MONTHLY_EVEN) is invoiced on 1 January and the ERP books 12,000.00 of pre-standard revenue that day [A: legacy
+  policy recognised billed fees]. ASC606 book: JET-02 Dr CONTRACT_LIABILITY / Cr REVENUE 1,000.00 a month. LEGACY book
+  (JET-15): January Dr PRE_STANDARD_REVENUE 12,000.00 / Cr CONTRACT_LIABILITY 12,000.00. The January delta journal
+  (primary plus LEGACY lines by account) is therefore Dr revenue 11,000.00 / Cr contract liability 11,000.00, and
+  February's is the ASC606 line alone. The pre-standard cumulative amount rolls on every version (REQ-BK-005).
+authority: {codification: ["606-10-65-1"], ifrs: ["IFRS 15.C1"], practice: ["Research 06 §11.3"], urls: []}
+derived_from: {research04: [], research05: [], chk: [], golden: [], dev: []}
+requirements: [REQ-BK-001, REQ-BK-004, REQ-BK-005]
+policy_refs: [POL-005, POL-007, POL-008]
+review:
+  author: answer-keys-fx-entity-books
+  authored_on: "2026-09-12"
+  reviewer: null
+  reviewed_on: null
+  status: pending
+runner: engine
+books: [ASC606, LEGACY]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: US01
+      name: "Avenmoor Systems Inc. (Demo)"
+      functional_currency: USD
+      time_zone: "America/New_York"
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: 1}
+      books: [ASC606, LEGACY]
+  periods: {from: "2026-01", to: "2026-02"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4010", name: "Revenue - services and subscriptions", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, account: "4010"}
+    - {account_role: PRE_STANDARD_REVENUE, account: "4010", book_code: LEGACY}
+  customers:
+    - {code: CUST-1, name: "Pellworth Logistics Inc. (Demo)"}
+  pob_templates:
+    - code: TPL-RAT-ME
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_A
+      recognition_method: TIME_ELAPSED
+      ratable_convention: MONTHLY_EVEN
+  products:
+    - {code: SUB-12M, name: "Subscription, 12 months", pob_template: TPL-RAT-ME}
+  ssp_books:
+    - code: SSP-US-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2026-01-01"
+          methodology_label: "Observable standalone prices"
+          entries:
+            - product: SUB-12M
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "12000.00"}
+  fx_rate_sets: []
+  rule_sets: []
+  policies: {tenant: {billing.posting: ERP, je.posting_mode: DELTA}, entities: {}, books: {}}
+contracts:
+  - external_id: C-DLT-001
+    customer: CUST-1
+    contracting_entity: US01
+    transaction_currency: USD
+    inception_date: "2026-01-01"
+    lines:
+      - obligation_key: L1-SUBSCRIPTION
+        product_code: SUB-12M
+        quantity: "1"
+        total_price: "12000.00"
+        start_date: "2026-01-01"
+        end_date: "2026-12-31"
+timeline:
+  - {seq: 1, kind: event, contract: C-DLT-001, event_type: CONTRACT_BOOKED, effective_date: "2026-01-01", payload: {}}
+  - seq: 2
+    kind: event
+    contract: C-DLT-001
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: 3
+    kind: event
+    contract: C-DLT-001
+    event_type: BILLING_RECORDED
+    effective_date: "2026-01-01"
+    payload: {invoice_number: INV-DLT-1, line_external_id: INV-DLT-1-1, amount: "12000.00", issue_date: "2026-01-01"}
+  - seq: 4
+    kind: event
+    contract: C-DLT-001
+    event_type: PRE_STANDARD_REVENUE_RECORDED
+    effective_date: "2026-01-01"
+    payload: {obligation_key: L1-SUBSCRIPTION, amount: "12000.00"}
+checkpoints:
+  - name: asc606-february
+    after_seq: 4
+    as_of: "2026-02-28"
+    book: ASC606
+    contracts:
+      - contract: C-DLT-001
+        obligations:
+          - {obligation_key: L1-SUBSCRIPTION, revenue_cum: "2000.00", pre_standard_revenue_cum: "12000.00"}
+    subledger:
+      - period_key: FY2026-P01
+        entity: US01
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "1000.00"}
+          - {account_role: REVENUE, account: "4010", cr: "1000.00"}
+      - period_key: FY2026-P02
+        entity: US01
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "1000.00"}
+          - {account_role: REVENUE, account: "4010", cr: "1000.00"}
+  - name: legacy-february
+    after_seq: 4
+    as_of: "2026-02-28"
+    book: LEGACY
+    subledger:
+      - period_key: FY2026-P01
+        entity: US01
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: PRE_STANDARD_REVENUE, account: "4010", dr: "12000.00"}
+          - {account_role: CONTRACT_LIABILITY, account: "2100", cr: "12000.00"}
+      - {period_key: FY2026-P02, entity: US01, match: exact, grain: role_account, lines: []}

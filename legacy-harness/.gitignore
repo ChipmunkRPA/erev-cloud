@@ -1,0 +1,5 @@
+.venv/
+erev_copy/
+out/
+fixtures/
+__pycache__/

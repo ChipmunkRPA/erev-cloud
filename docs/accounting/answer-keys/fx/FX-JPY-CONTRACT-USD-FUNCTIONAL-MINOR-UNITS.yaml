@@ -1,0 +1,205 @@
+# docs/accounting/answer-keys/fx/FX-JPY-CONTRACT-USD-FUNCTIONAL-MINOR-UNITS.yaml
+schema: "erev-answer-key/1"
+id: FX-JPY-CONTRACT-USD-FUNCTIONAL-MINOR-UNITS
+title: >-
+  JPY contract in a USD entity: zero-decimal transaction amounts, cent functional layer shares
+status: active
+families: [FX, RND]
+tags: [fx]
+summary: >-
+  Entity US01 (functional USD) sells a JPY 1,000,000 licence-support service for 2026-04-01 to 2026-06-30 (91 days,
+  DAILY), invoiced upfront at spot JPY/USD 0.006700 (layer USD 6,700.00), ERP billing. Transaction amounts round to
+  yen (ISO 4217 exponent 0, C-06): April round(1,000,000 × 30 ÷ 91) = 329,670, May 340,660, June 329,670. Functional
+  relief is the cumulative-rounded share of the layer at the cent: April USD 2,208.79, May 2,282.42, June 2,208.79, so
+  the layer ends at exactly zero.
+authority:
+  codification:
+    - "830-10-45-18"
+    - "830-10-55-10"
+    - "830-10-55-11"
+    - "830-20-35-2"
+    - "606-10-45-1"
+    - "606-10-45-2"
+    - "606-10-45-3"
+    - "606-10-25-31"
+  ifrs: ["IAS 21.23", "IFRIC 22.8", "IFRIC 22.9", "IFRS 15.105"]
+  practice:
+    - "PwC Viewpoint: Foreign currency guide 2.5 (contract liabilities nonmonetary; research 06 S31)"
+    - "Deloitte Roadmap: Foreign Currency Matters, contract assets and liabilities (research 06 S32)"
+  urls: []
+derived_from: {research04: [], research05: [], chk: [], golden: [], dev: []}
+requirements: [REQ-FX-001, REQ-FX-002, REQ-REC-019]
+policy_refs: [POL-001, POL-003, POL-161]
+review:
+  author: answer-keys-fx-entity-books
+  authored_on: "2026-09-12"
+  reviewer: null
+  reviewed_on: null
+  status: pending
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [JPY, USD]
+  entities:
+    - code: US01
+      name: "Avenmoor Systems Inc. (Demo)"
+      functional_currency: USD
+      time_zone: "America/New_York"
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: 1}
+      books: [ASC606]
+  periods: {from: "2026-04", to: "2026-06"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4010", name: "Revenue - services and subscriptions", account_type: REVENUE}
+    - {code: "7200", name: "Foreign exchange gain or loss", account_type: EXPENSE}
+    - {code: "7900", name: Rounding, account_type: EXPENSE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: FX_GAIN_LOSS, account: "7200"}
+    - {account_role: ROUNDING, account: "7900"}
+    - {account_role: REVENUE, account: "4010", product: SUPPORT-JP}
+  customers:
+    - {code: CUST-1, name: "Pellworth Logistics Inc. (Demo)"}
+  pob_templates:
+    - code: TPL-RAT-DAILY
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_A
+      recognition_method: TIME_ELAPSED
+      ratable_convention: DAILY
+  products:
+    - {code: SUPPORT-JP, name: "Support service, three months (JPY)", pob_template: TPL-RAT-DAILY}
+  ssp_books:
+    - code: SSP-JPY-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2026-01-01"
+          methodology_label: "Observable standalone prices"
+          entries:
+            - product: SUPPORT-JP
+              currency: JPY
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "1000000"}
+  fx_rate_sets:
+    - code: SPOT-JPYUSD
+      rate_type: spot
+      rates:
+        - {base_currency: JPY, quote_currency: USD, effective_date: "2026-04-01", rate: "0.006700"}
+    - code: AVG-JPYUSD
+      rate_type: average
+      rates:
+        - base_currency: JPY
+          quote_currency: USD
+          effective_date: "2026-04-30"
+          period_key: FY2026-P04
+          rate: "0.006650"
+        - base_currency: JPY
+          quote_currency: USD
+          effective_date: "2026-05-31"
+          period_key: FY2026-P05
+          rate: "0.006600"
+        - base_currency: JPY
+          quote_currency: USD
+          effective_date: "2026-06-30"
+          period_key: FY2026-P06
+          rate: "0.006550"
+    - code: CLOSE-JPYUSD
+      rate_type: closing
+      rates:
+        - base_currency: JPY
+          quote_currency: USD
+          effective_date: "2026-04-30"
+          period_key: FY2026-P04
+          rate: "0.006640"
+        - base_currency: JPY
+          quote_currency: USD
+          effective_date: "2026-05-31"
+          period_key: FY2026-P05
+          rate: "0.006590"
+        - base_currency: JPY
+          quote_currency: USD
+          effective_date: "2026-06-30"
+          period_key: FY2026-P06
+          rate: "0.006540"
+  rule_sets: []
+  policies: {tenant: {billing.posting: ERP}, entities: {}, books: {}}
+contracts:
+  - external_id: C-FX-JPY
+    customer: CUST-1
+    contracting_entity: US01
+    transaction_currency: JPY
+    inception_date: "2026-04-01"
+    lines:
+      - obligation_key: L1-SUPPORT
+        product_code: SUPPORT-JP
+        quantity: "1"
+        total_price: "1000000"
+        start_date: "2026-04-01"
+        end_date: "2026-06-30"
+timeline:
+  - {seq: 1, kind: event, contract: C-FX-JPY, event_type: CONTRACT_BOOKED, effective_date: "2026-04-01", payload: {}}
+  - seq: 2
+    kind: event
+    contract: C-FX-JPY
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-04-01"
+    payload: {}
+  - seq: 3
+    kind: event
+    contract: C-FX-JPY
+    event_type: BILLING_RECORDED
+    effective_date: "2026-04-01"
+    payload:
+      invoice_number: INV-JP-0101
+      line_external_id: INV-JP-0101-1
+      amount: "1000000"
+      issue_date: "2026-04-01"
+checkpoints:
+  - name: end-of-term
+    after_seq: 3
+    as_of: "2026-06-30"
+    book: ASC606
+    contracts:
+      - contract: C-FX-JPY
+        balances:
+          - entity: US01
+            contract_liability: "0"
+            contract_asset: "0"
+            unbilled_receivable: "0"
+            functional: {contract_liability: "0.00", contract_asset: "0.00", unbilled_receivable: "0.00"}
+        schedule:
+          - obligation_key: L1-SUPPORT
+            schedule_kind: REVENUE
+            line_type: NORMAL
+            amounts: {FY2026-P04: "329670", FY2026-P05: "340660", FY2026-P06: "329670"}
+    subledger:
+      - period_key: FY2026-P04
+        entity: US01
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "329670", functional_dr: "2208.79"}
+          - {account_role: REVENUE, account: "4010", cr: "329670", functional_cr: "2208.79"}
+      - period_key: FY2026-P05
+        entity: US01
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "340660", functional_dr: "2282.42"}
+          - {account_role: REVENUE, account: "4010", cr: "340660", functional_cr: "2282.42"}
+      - period_key: FY2026-P06
+        entity: US01
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "329670", functional_dr: "2208.79"}
+          - {account_role: REVENUE, account: "4010", cr: "329670", functional_cr: "2208.79"}

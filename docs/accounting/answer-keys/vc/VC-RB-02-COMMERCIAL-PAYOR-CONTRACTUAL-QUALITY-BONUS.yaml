@@ -1,0 +1,240 @@
+schema: erev-answer-key/1
+id: VC-RB-02-COMMERCIAL-PAYOR-CONTRACTUAL-QUALITY-BONUS
+title: "Commercial payor: contracted rates as the transaction price and a value-based quality bonus under the constraint"
+status: active
+families: [VC, POS, JE]
+tags: []
+summary: "April 2026 outpatient procedures for members of a commercial health plan: gross charges 500,000.00; the payor contract pays 45% of charges, so the contractual adjustment of 275,000.00 is an explicit price concession and the fixed consideration is the contracted 225,000.00, billed on 30 April (JET-03, ENGINE mode). The contract adds a quality bonus of 2% of 2026 contracted amounts if quality targets are met. Estimate version 1: most likely 4,500.00, constrained to 0.00 because the measures are outside Riverbend's influence until year-end data are available (606-10-32-12). Version 2 at the 30 September review: targets met on audited data, constrained 4,500.00; revenue +4,500.00 on satisfied visits (JET-04a). The bonus is invoiced on 31 January 2027; until then it is conditional on the annual measurement and is presented as a contract asset."
+authority:
+  codification: ["606-10-32-5", "606-10-32-6", "606-10-32-11", "606-10-32-12", "606-10-32-14", "606-10-45-3"]
+  ifrs: ["IFRS 15.56"]
+  practice: ["PwC Health care industry guide 3.3 (explicit contractual adjustments; value-based arrangements)"]
+  urls: []
+derived_from: {research04: [], research05: [RB-02], chk: [], golden: [], dev: []}
+requirements: [REQ-TP-002, REQ-TP-003, REQ-TP-004, REQ-BIL-002, REQ-BIL-004]
+policy_refs: [POL-004, POL-040, POL-041, POL-122]
+review: {author: answer-keys-industries, authored_on: "2026-09-12", reviewer: null, reviewed_on: null, status: pending}
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: RB-US
+      name: "Riverbend Health System (Demo)"
+      functional_currency: USD
+      time_zone: America/New_York
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: "1"}
+      books: [ASC606]
+  periods: {from: "2026-04", to: "2027-01"}
+  period_states: []
+  gl_accounts:
+    - {code: "1100", name: "Accounts receivable", account_type: ASSET}
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4010", name: "Revenue - services and subscriptions", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: ACCOUNTS_RECEIVABLE, account: "1100"}
+    - {account_role: REVENUE, product: OP-PROC-COMMERCIAL, account: "4010"}
+  customers: [{code: CUST-RB02, name: "Marrowby Health Plan (Demo)"}]
+  pob_templates:
+    - code: TPL-OUTPATIENT
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: POINT_IN_TIME
+      over_time_criterion: NOT_APPLICABLE
+      recognition_method: POINT_IN_TIME
+      policy_values: {balance.right_to_consideration: CONDITIONAL}
+  products:
+    - code: OP-PROC-COMMERCIAL
+      name: "Outpatient procedures, commercial payor"
+      pob_template: TPL-OUTPATIENT
+      revenue_category: PATIENT_SERVICE
+  ssp_books:
+    - code: SSP-RB-US-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2025-01-01"
+          methodology_label: "Observable standalone prices (demo study)"
+          entries:
+            - product: OP-PROC-COMMERCIAL
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges: [{point_value: "225000.00"}]
+  fx_rate_sets: []
+  rule_sets: []
+  policies:
+    tenant: {billing.posting: ENGINE, recognition.time_convention: MONTHLY_EVEN}
+    entities: {}
+    books: {}
+contracts:
+  - external_id: RB-02
+    customer: CUST-RB02
+    contracting_entity: RB-US
+    transaction_currency: USD
+    inception_date: "2026-04-30"
+    contract_type: PORTFOLIO
+    lines: [{obligation_key: L1-PROCEDURES, product_code: OP-PROC-COMMERCIAL, quantity: "1", total_price: "225000.00"}]
+    estimates:
+      - element_code: VC-RB02-QUALITY
+        estimate_kind: VARIABLE_CONSIDERATION
+        method: MOST_LIKELY_AMOUNT
+        obligation_key: L1-PROCEDURES
+        vc_element_type: BONUS
+        allocation_target: OBLIGATIONS
+        target_obligation_keys: [L1-PROCEDURES]
+        versions:
+          - version_no: "1"
+            effective_date: "2026-04-30"
+            unconstrained_amount: "4500.00"
+            most_conservative_amount: "0.00"
+            constrained_amount: "0.00"
+            currency: USD
+            rationale: "Quality targets depend on year-end member outcomes; constrained."
+          - version_no: "2"
+            effective_date: "2026-09-30"
+            unconstrained_amount: "4500.00"
+            most_conservative_amount: "4500.00"
+            constrained_amount: "4500.00"
+            currency: USD
+            rationale: "Q3 audited quality data meet every target; reversal no longer probable."
+timeline:
+  - seq: "1"
+    kind: event
+    contract: RB-02
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-04-30"
+    payload: {}
+  - seq: "2"
+    kind: event
+    contract: RB-02
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-04-30"
+    payload: {}
+  - seq: "3"
+    kind: event
+    contract: RB-02
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-04-30"
+    payload: {estimate: VC-RB02-QUALITY, version_no: "1"}
+  - seq: "4"
+    kind: event
+    contract: RB-02
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-04-30"
+    payload: {obligation_key: L1-PROCEDURES, quantity: "1", trigger: DELIVERY}
+  - seq: "5"
+    kind: event
+    contract: RB-02
+    event_type: BILLING_RECORDED
+    effective_date: "2026-04-30"
+    payload:
+      invoice_number: CLAIMS-RB02-2026-04
+      line_external_id: CLAIMS-RB02-2026-04-1
+      amount: "225000.00"
+      issue_date: "2026-04-30"
+      obligation_key: L1-PROCEDURES
+  - seq: "6"
+    kind: event
+    contract: RB-02
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-09-30"
+    payload: {estimate: VC-RB02-QUALITY, version_no: "2"}
+  - seq: "7"
+    kind: event
+    contract: RB-02
+    event_type: BILLING_RECORDED
+    effective_date: "2027-01-31"
+    payload:
+      invoice_number: INV-RB02-BONUS-2026
+      line_external_id: INV-RB02-BONUS-2026-1
+      amount: "4500.00"
+      issue_date: "2027-01-31"
+      obligation_key: L1-PROCEDURES
+checkpoints:
+  - name: procedures-billed
+    after_seq: "5"
+    as_of: "2026-04-30"
+    book: ASC606
+    contracts:
+      - contract: RB-02
+        version:
+          revenue_cum: "225000.00"
+          billed_cum: "225000.00"
+          transaction_price: "225000.00"
+          fixed_consideration: "225000.00"
+          vc_constrained_amount: "0.00"
+        obligations: [{obligation_key: L1-PROCEDURES, allocated_amount: "225000.00", revenue_cum: "225000.00"}]
+        balances:
+          - entity: RB-US
+            contract_liability: "0.00"
+            contract_asset: "0.00"
+            unbilled_receivable: "0.00"
+            accounts_receivable: "225000.00"
+    subledger:
+      - period_key: FY2026-P04
+        entity: RB-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: ACCOUNTS_RECEIVABLE, account: "1100", dr: "225000.00"}
+          - {account_role: REVENUE, account: "4010", cr: "225000.00"}
+  - name: bonus-unconstrained
+    after_seq: "6"
+    as_of: "2026-09-30"
+    book: ASC606
+    contracts:
+      - contract: RB-02
+        version:
+          revenue_cum: "229500.00"
+          billed_cum: "225000.00"
+          transaction_price: "229500.00"
+          fixed_consideration: "225000.00"
+          vc_constrained_amount: "4500.00"
+        obligations: [{obligation_key: L1-PROCEDURES, allocated_amount: "229500.00", revenue_cum: "229500.00"}]
+        balances:
+          - entity: RB-US
+            contract_liability: "0.00"
+            contract_asset: "4500.00"
+            unbilled_receivable: "0.00"
+            accounts_receivable: "225000.00"
+    subledger:
+      - period_key: FY2026-P09
+        entity: RB-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_ASSET, account: "1200", dr: "4500.00"}
+          - {account_role: REVENUE, account: "4010", cr: "4500.00"}
+  - name: bonus-invoiced
+    after_seq: "7"
+    as_of: "2027-01-31"
+    book: ASC606
+    contracts:
+      - contract: RB-02
+        version:
+          revenue_cum: "229500.00"
+          billed_cum: "229500.00"
+          transaction_price: "229500.00"
+          fixed_consideration: "225000.00"
+          vc_constrained_amount: "4500.00"
+        obligations: [{obligation_key: L1-PROCEDURES, allocated_amount: "229500.00", revenue_cum: "229500.00"}]
+        balances:
+          - entity: RB-US
+            contract_liability: "0.00"
+            contract_asset: "0.00"
+            unbilled_receivable: "0.00"
+            accounts_receivable: "229500.00"
+    subledger:
+      - period_key: FY2027-P01
+        entity: RB-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: ACCOUNTS_RECEIVABLE, account: "1100", dr: "4500.00"}
+          - {account_role: CONTRACT_ASSET, account: "1200", cr: "4500.00"}

@@ -1,0 +1,601 @@
+# Designated 1.0 system controls (docs/03-REQUIREMENTS.md §4.1; REQ-CTL-001; G7).
+# Hand-maintained and validated (dev-guide §1.3): DG-ARC-10 compares ids, titles and the register
+# columns with 03 §4.1, and phase with docs/build-spec/PHASES.md §7. impact_paths are the release
+# stamping globs of docs/05-ARCHITECTURE.md REL-04.
+controls:
+  - id: "CTL-001"
+    title: "Import uniqueness and idempotency: duplicates rejected before commit; command retries are safe"
+    r07_catalogue_id: "IN-01"
+    r07_feature: ["F-11"]
+    type: "Prev · Auto"
+    reqs: ["REQ-DAT-001", "REQ-DAT-011", "REQ-PLT-026"]
+    evidence: "Import run record; rejection log; idempotency store"
+    release: "1.0"
+    phase: "DIN"
+    impact_paths:
+      - "backend/erev_api/domain/imports/**"
+      - "backend/erev_api/idempotency/**"
+  - id: "CTL-002"
+    title: "Interface control totals; a failed batch blocks lock"
+    r07_catalogue_id: "IN-02"
+    r07_feature: ["F-11"]
+    type: "Det/Prev · Auto"
+    reqs: ["REQ-DAT-010", "REQ-CLS-009"]
+    evidence: "Interface run ledger with control totals"
+    release: "1.0"
+    phase: "CLO"
+    impact_paths:
+      - "backend/erev_api/domain/imports/**"
+      - "backend/erev_api/domain/integrations/**"
+      - "backend/erev_api/domain/close/**"
+  - id: "CTL-003"
+    title: "Unmapped products blocked from activation and posting"
+    r07_catalogue_id: "IN-03"
+    r07_feature: ["F-11"]
+    type: "Prev · Auto"
+    reqs: ["REQ-REF-014"]
+    evidence: "Exception queue items"
+    release: "1.0"
+    phase: "CTR"
+    impact_paths:
+      - "backend/erev_api/domain/reference/**"
+      - "backend/erev_api/domain/contracts/**"
+      - "backend/erev_api/domain/imports/**"
+  - id: "CTL-004"
+    title: "Contract activation gate"
+    r07_catalogue_id: "CT-01"
+    r07_feature: ["F-05"]
+    type: "Prev · Auto"
+    reqs: ["REQ-CON-005"]
+    evidence: "Activation checklist record"
+    release: "1.0"
+    phase: "CTR"
+    impact_paths:
+      - "backend/erev_api/domain/contracts/**"
+  - id: "CTL-005"
+    title: "Contract approval routing and rule-based auto-approval"
+    r07_catalogue_id: "CT-02"
+    r07_feature: ["F-04"]
+    type: "Prev · Auto"
+    reqs: ["REQ-CON-006", "REQ-PLT-013", "REQ-PLT-016"]
+    evidence: "Approval record or auto-approval rule id and version"
+    release: "1.0"
+    phase: "CTR"
+    impact_paths:
+      - "backend/erev_api/domain/contracts/**"
+      - "backend/erev_api/approvals/**"
+  - id: "CTL-006"
+    title: "Active contract field locks"
+    r07_catalogue_id: "CM-01"
+    r07_feature: ["F-05"]
+    type: "Prev · Auto"
+    reqs: ["REQ-CON-007"]
+    evidence: "Blocked-edit audit events"
+    release: "1.0"
+    phase: "CTR"
+    impact_paths:
+      - "backend/erev_api/domain/contracts/**"
+      - "backend/erev_api/db/migrations/**"
+  - id: "CTL-007"
+    title: "Modification classification, approval and stale-approval voiding"
+    r07_catalogue_id: "CM-02"
+    r07_feature: ["F-04"]
+    type: "Prev · Auto"
+    reqs: ["REQ-MOD-001", "REQ-MOD-002", "REQ-MOD-013", "REQ-PLT-013", "REQ-PLT-014"]
+    evidence: "Modification register with questionnaire and preview snapshot"
+    release: "1.0"
+    phase: "CTR"
+    impact_paths:
+      - "backend/erev_api/domain/contracts/**"
+      - "backend/erev_api/approvals/**"
+      - "backend/erev_engine/stages/**"
+  - id: "CTL-008"
+    title: "Over-delivery and over-billing blocked"
+    r07_catalogue_id: "EV-01"
+    r07_feature: ["F-12"]
+    type: "Prev · Auto"
+    reqs: ["REQ-REC-024"]
+    evidence: "Rejection log naming POB"
+    release: "1.0"
+    phase: "CTR"
+    impact_paths:
+      - "backend/erev_api/domain/contracts/**"
+      - "backend/erev_engine/stages/**"
+  - id: "CTL-009"
+    title: "Manual progress events require another user's approval; source tagged"
+    r07_catalogue_id: "EV-02"
+    r07_feature: ["F-04"]
+    type: "Prev · Auto"
+    reqs: ["REQ-DAT-014"]
+    evidence: "Approval record; manual-event listing"
+    release: "1.0"
+    phase: "CTR"
+    impact_paths:
+      - "backend/erev_api/domain/contracts/**"
+      - "backend/erev_api/approvals/**"
+  - id: "CTL-010"
+    title: "SSP version maker-checker and override approval"
+    r07_catalogue_id: "SSP-01"
+    r07_feature: ["F-06", "F-02"]
+    type: "Prev · Auto"
+    reqs: ["REQ-SSP-006", "REQ-SSP-007"]
+    evidence: "SSP approval record with diff; override register"
+    release: "1.0"
+    phase: "RFD"
+    impact_paths:
+      - "backend/erev_api/domain/ssp/**"
+      - "backend/erev_api/approvals/**"
+  - id: "CTL-011"
+    title: "Approved SSP immutability, no overlap, effective-date resolution, allocation lineage"
+    r07_catalogue_id: "SSP-02"
+    r07_feature: ["F-06"]
+    type: "Prev · Auto"
+    reqs: ["REQ-SSP-001", "REQ-SSP-011", "REQ-SSP-014"]
+    evidence: "Trigger configuration; validation log; allocation lineage rows"
+    release: "1.0"
+    phase: "RFD"
+    impact_paths:
+      - "backend/erev_api/domain/ssp/**"
+      - "backend/erev_api/db/migrations/**"
+      - "backend/erev_engine/stages/**"
+  - id: "CTL-012"
+    title: "Allocation invariant fails closed"
+    r07_catalogue_id: "AL-01"
+    r07_feature: ["F-12"]
+    type: "Prev · Auto"
+    reqs: ["REQ-ALC-001", "REQ-ALC-002"]
+    evidence: "Evidence registry entry per run"
+    release: "1.0"
+    phase: "ENA"
+    impact_paths:
+      - "backend/erev_engine/stages/**"
+      - "backend/erev_engine/money.py"
+      - "backend/erev_engine/errors.py"
+  - id: "CTL-013"
+    title: "Estimate change maker-checker with immutable versions"
+    r07_catalogue_id: "VC-01"
+    r07_feature: ["F-04"]
+    type: "Prev · Auto"
+    reqs: ["REQ-TP-004", "REQ-TP-005"]
+    evidence: "Estimate change listing"
+    release: "1.0"
+    phase: "CTR"
+    impact_paths:
+      - "backend/erev_api/domain/contracts/**"
+      - "backend/erev_api/approvals/**"
+      - "backend/erev_api/db/migrations/**"
+  - id: "CTL-014"
+    title: "Manual adjustment maker-checker and universal self-approval block"
+    r07_catalogue_id: "MA-01"
+    r07_feature: ["F-02", "F-04"]
+    type: "Prev · Auto"
+    reqs: ["REQ-JE-019", "REQ-PLT-011", "REQ-PLT-013", "REQ-REC-023"]
+    evidence: "Approval record with preparer and approver ids"
+    release: "1.0"
+    phase: "PLF"
+    impact_paths:
+      - "backend/erev_api/domain/journals/**"
+      - "backend/erev_api/approvals/**"
+      - "backend/erev_api/auth/sod.py"
+  - id: "CTL-015"
+    title: "Posting to locked periods blocked; soft-close restriction"
+    r07_catalogue_id: "PC-01"
+    r07_feature: ["F-07"]
+    type: "Prev · Auto"
+    reqs: ["REQ-CLS-001", "REQ-CLS-002", "REQ-CLS-003"]
+    evidence: "Period status log; trigger rejection"
+    release: "1.0"
+    phase: "CLO"
+    impact_paths:
+      - "backend/erev_api/domain/close/**"
+      - "backend/erev_api/periods.py"
+      - "backend/erev_api/db/migrations/**"
+  - id: "CTL-016"
+    title: "Close gates before lock"
+    r07_catalogue_id: "PC-02 (system part)"
+    r07_feature: ["F-07"]
+    type: "Prev · Auto"
+    reqs: ["REQ-CLS-008", "REQ-CLS-009"]
+    evidence: "Close certification with gate results"
+    release: "1.0"
+    phase: "CLO"
+    impact_paths:
+      - "backend/erev_api/domain/close/**"
+  - id: "CTL-017"
+    title: "Out-of-period items post to first open period with origin tag"
+    r07_catalogue_id: "PC-04"
+    r07_feature: ["F-08"]
+    type: "Prev · Auto"
+    reqs: ["REQ-CLS-004", "REQ-CLS-006"]
+    evidence: "Out-of-period register"
+    release: "1.0"
+    phase: "CTR"
+    impact_paths:
+      - "backend/erev_api/domain/contracts/**"
+      - "backend/erev_api/periods.py"
+      - "backend/erev_engine/stages/**"
+  - id: "CTL-018"
+    title: "Reopen requires dual approval; diff at re-lock"
+    r07_catalogue_id: "PC-05"
+    r07_feature: ["F-07"]
+    type: "Prev/Det · Auto"
+    reqs: ["REQ-CLS-011"]
+    evidence: "Reopen record; re-lock diff report"
+    release: "1.0"
+    phase: "CLO"
+    impact_paths:
+      - "backend/erev_api/domain/close/**"
+      - "backend/erev_api/approvals/**"
+  - id: "CTL-019"
+    title: "Journal completeness assertions"
+    r07_catalogue_id: "JE-01"
+    r07_feature: ["F-10"]
+    type: "Det/Prev · Auto"
+    reqs: ["REQ-JE-005"]
+    evidence: "Evidence registry entry per journal run"
+    release: "1.0"
+    phase: "CLO"
+    impact_paths:
+      - "backend/erev_api/domain/journals/**"
+  - id: "CTL-020"
+    title: "Journal line validation: account, dimensions, entity, currency, FX rate id; mapping completeness"
+    r07_catalogue_id: "JE-02"
+    r07_feature: ["F-09"]
+    type: "Prev · Auto"
+    reqs: ["REQ-JE-022", "REQ-REF-007", "REQ-REF-008", "REQ-FX-006"]
+    evidence: "Validation log; exception report"
+    release: "1.0"
+    phase: "CLO"
+    impact_paths:
+      - "backend/erev_api/domain/journals/**"
+      - "backend/erev_api/domain/reference/**"
+  - id: "CTL-021"
+    title: "Idempotent GL export with acknowledgement matching; unacknowledged batches block lock"
+    r07_catalogue_id: "JE-03"
+    r07_feature: ["F-10"]
+    type: "Det · Auto"
+    reqs: ["REQ-JE-012", "REQ-JE-013", "REQ-JE-014", "REQ-JE-015", "REQ-JE-016"]
+    evidence: "Posting receipt register; aging list"
+    release: "1.0"
+    phase: "CLO"
+    impact_paths:
+      - "backend/erev_api/domain/journals/**"
+      - "backend/erev_api/adapters/gl/**"
+      - "backend/erev_api/domain/close/**"
+  - id: "CTL-022"
+    title: "Journals balance per entity, book, currency and period (database constraint)"
+    r07_catalogue_id: "JE-05"
+    r07_feature: ["F-09"]
+    type: "Prev · Auto"
+    reqs: ["REQ-JE-001", "REQ-JE-002"]
+    evidence: "Balancing check result per batch"
+    release: "1.0"
+    phase: "CTR"
+    impact_paths:
+      - "backend/erev_api/db/migrations/**"
+      - "backend/erev_engine/money.py"
+      - "backend/erev_engine/stages/**"
+  - id: "CTL-023"
+    title: "Posted lines corrected only by reversal or delta lines"
+    r07_catalogue_id: "JE-05 (§5.5 reversals)"
+    r07_feature: ["F-09"]
+    type: "Prev · Auto"
+    reqs: ["REQ-JE-006"]
+    evidence: "Reversal lineage on lines"
+    release: "1.0"
+    phase: "CTR"
+    impact_paths:
+      - "backend/erev_api/domain/journals/**"
+      - "backend/erev_api/db/migrations/**"
+  - id: "CTL-024"
+    title: "Billing-to-subledger reconciliation"
+    r07_catalogue_id: "RC-01"
+    r07_feature: ["F-17"]
+    type: "Det · Auto + ITDM"
+    reqs: ["REQ-CLS-015"]
+    evidence: "Reconciliation record with snapshot and sign-off"
+    release: "1.0"
+    phase: "CLO"
+    impact_paths:
+      - "backend/erev_api/domain/close/**"
+  - id: "CTL-025"
+    title: "Subledger-to-GL reconciliation computation and direct-GL-entry flagging"
+    r07_catalogue_id: "RC-02 (system part)"
+    r07_feature: ["F-17"]
+    type: "Det · Auto"
+    reqs: ["REQ-CLS-016"]
+    evidence: "Reconciliation record; direct-GL-entry listing"
+    release: "1.0"
+    phase: "CLO"
+    impact_paths:
+      - "backend/erev_api/domain/close/**"
+      - "backend/erev_api/adapters/gl/**"
+  - id: "CTL-026"
+    title: "Zero-variance auto-certification under an approved rule"
+    r07_catalogue_id: "RC-03"
+    r07_feature: ["F-17"]
+    type: "Det · Auto"
+    reqs: ["REQ-CLS-017"]
+    evidence: "Certification record with rule id"
+    release: "1.0"
+    phase: "CLO"
+    impact_paths:
+      - "backend/erev_api/domain/close/**"
+  - id: "CTL-027"
+    title: "Expedient flag approval and RPO derived from allocations and schedules"
+    r07_catalogue_id: "RP-03"
+    r07_feature: ["F-18"]
+    type: "Prev · Auto"
+    reqs: ["REQ-POL-011", "REQ-RPT-009"]
+    evidence: "Flag approval log; RPO report run record"
+    release: "1.0"
+    phase: "RPS"
+    impact_paths:
+      - "backend/erev_api/domain/policies/**"
+      - "backend/erev_api/domain/reports/**"
+      - "backend/erev_engine/stages/**"
+  - id: "CTL-028"
+    title: "Disaggregation attributes mandatory; disaggregation ties to revenue journals"
+    r07_catalogue_id: "RP-04"
+    r07_feature: ["F-18"]
+    type: "Prev/Det · Auto"
+    reqs: ["REQ-REF-012", "REQ-RPT-011"]
+    evidence: "Tie-out result on report"
+    release: "1.0"
+    phase: "RPS"
+    impact_paths:
+      - "backend/erev_api/domain/reference/**"
+      - "backend/erev_api/domain/reports/**"
+  - id: "CTL-029"
+    title: "Report run records and reproducibility"
+    r07_catalogue_id: "RPT-01"
+    r07_feature: ["F-13"]
+    type: "Det · Auto"
+    reqs: ["REQ-RPT-002"]
+    evidence: "Report run register; output hashes"
+    release: "1.0"
+    phase: "RPS"
+    impact_paths:
+      - "backend/erev_api/domain/reports/**"
+  - id: "CTL-030"
+    title: "Built-in report tie-outs"
+    r07_catalogue_id: "RPT-03"
+    r07_feature: ["F-13"]
+    type: "Det · Auto"
+    reqs: ["REQ-RPT-003", "REQ-RPT-010"]
+    evidence: "Tie-out section on reports"
+    release: "1.0"
+    phase: "RPS"
+    impact_paths:
+      - "backend/erev_api/domain/reports/**"
+  - id: "CTL-031"
+    title: "Configuration change approval, simulation and prospective effect"
+    r07_catalogue_id: "CH-01"
+    r07_feature: ["F-14"]
+    type: "Prev · Auto"
+    reqs: ["REQ-POL-003", "REQ-POL-004", "REQ-POL-006", "REQ-POL-007", "REQ-REF-008", "REQ-REF-012", "REQ-AI-002"]
+    evidence: "Configuration change register with diff and simulation"
+    release: "1.0"
+    phase: "RFD"
+    impact_paths:
+      - "backend/erev_api/domain/policies/**"
+      - "backend/erev_api/registry/**"
+      - "backend/erev_api/approvals/**"
+  - id: "CTL-032"
+    title: "Engine and report-definition release stamping; release manifest with gate evidence"
+    r07_catalogue_id: "CH-03, AL-02, RPT-02 (system part)"
+    r07_feature: ["F-15"]
+    type: "Prev · Auto"
+    reqs: ["REQ-CTL-003"]
+    evidence: "Release manifest; run records carrying engine release"
+    release: "1.0"
+    phase: "SOP"
+    impact_paths:
+      - "backend/erev_api/controls/**"
+      - "backend/erev_engine/__init__.py"
+      - "scripts/release_manifest.py"
+  - id: "CTL-033"
+    title: "MFA enforcement, lockout and session timeout"
+    r07_catalogue_id: "AC-01"
+    r07_feature: ["F-01"]
+    type: "Prev · Auto"
+    reqs: ["REQ-PLT-004", "REQ-PLT-005"]
+    evidence: "Auth settings; login audit events"
+    release: "1.0"
+    phase: "PLF"
+    impact_paths:
+      - "backend/erev_api/auth/**"
+  - id: "CTL-034"
+    title: "Preventive SoD and self-approval block"
+    r07_catalogue_id: "AC-03"
+    r07_feature: ["F-02"]
+    type: "Prev · Auto"
+    reqs: ["REQ-PLT-010", "REQ-PLT-011"]
+    evidence: "SoD exception register; SoD conflict report"
+    release: "1.0"
+    phase: "PLF"
+    impact_paths:
+      - "backend/erev_api/auth/sod.py"
+      - "backend/erev_api/auth/permissions.py"
+      - "backend/erev_api/approvals/**"
+  - id: "CTL-035"
+    title: "Operator support access only by tenant-approved, time-boxed grant"
+    r07_catalogue_id: "AC-05 (system part)"
+    r07_feature: ["F-16"]
+    type: "Prev/Det · Auto"
+    reqs: ["REQ-PLT-036"]
+    evidence: "Support grant log; operator actions in tenant audit log"
+    release: "1.0"
+    phase: "PLF"
+    impact_paths:
+      - "backend/erev_api/domain/platform/**"
+      - "backend/erev_api/auth/dependencies.py"
+  - id: "CTL-036"
+    title: "Forced RLS tenant isolation and catalog lint"
+    r07_catalogue_id: "AC-06"
+    r07_feature: ["F-16"]
+    type: "Prev · Auto"
+    reqs: ["REQ-PLT-001", "REQ-PLT-002"]
+    evidence: "Isolation suite results; catalog lint output"
+    release: "1.0"
+    phase: "PLF"
+    impact_paths:
+      - "backend/erev_api/db/migrations/**"
+      - "backend/erev_api/db/migration_ops.py"
+      - "backend/erev_api/db/lint.py"
+      - "backend/erev_api/db/session.py"
+  - id: "CTL-037"
+    title: "API credentials scoped, expiring and without approval rights"
+    r07_catalogue_id: "AC-07"
+    r07_feature: ["F-01"]
+    type: "Prev · Auto"
+    reqs: ["REQ-PLT-033"]
+    evidence: "API client inventory"
+    release: "1.0"
+    phase: "PLF"
+    impact_paths:
+      - "backend/erev_api/auth/api_clients.py"
+      - "backend/erev_api/domain/platform/**"
+  - id: "CTL-038"
+    title: "Append-only, hash-chained audit log with required coverage"
+    r07_catalogue_id: "AU-01"
+    r07_feature: ["F-03"]
+    type: "Prev/Det · Auto"
+    reqs: ["REQ-PLT-018", "REQ-PLT-019"]
+    evidence: "Grants and trigger configuration; audit events"
+    release: "1.0"
+    phase: "PLF"
+    impact_paths:
+      - "backend/erev_api/audit/**"
+      - "backend/erev_api/uow.py"
+      - "backend/erev_api/db/migrations/**"
+  - id: "CTL-039"
+    title: "Audit chain verification and alerting"
+    r07_catalogue_id: "AU-03"
+    r07_feature: ["F-03"]
+    type: "Det · Auto"
+    reqs: ["REQ-PLT-020"]
+    evidence: "Verification results; digest file"
+    release: "1.0"
+    phase: "PLF"
+    impact_paths:
+      - "backend/erev_api/audit/**"
+  - id: "CTL-040"
+    title: "Failed or stuck jobs detected, retried and alerted"
+    r07_catalogue_id: "OP-01 (system part)"
+    r07_feature: []
+    type: "Det · Auto"
+    reqs: ["REQ-OPS-006"]
+    evidence: "Job failure records; notifications; operator alerts (JOB_FAILED, a job that no person started); exception items (JOB_FAILED, information); cockpit blockers"
+    release: "1.0"
+    phase: "PLF"
+    impact_paths:
+      - "backend/erev_api/jobs/**"
+      - "backend/erev_api/worker.py"
+  - id: "CTL-041"
+    title: "Period evidence pack with manifest and hashes"
+    r07_catalogue_id: "EVD-01"
+    r07_feature: ["F-20"]
+    type: "Det · Auto"
+    reqs: ["REQ-RPT-014"]
+    evidence: "Evidence pack manifest"
+    release: "1.0"
+    phase: "RPS"
+    impact_paths:
+      - "backend/erev_api/domain/reports/**"
+  - id: "CTL-042"
+    title: "Control evidence registry"
+    r07_catalogue_id: "EVD-02"
+    r07_feature: ["F-21"]
+    type: "Det · Auto"
+    reqs: ["REQ-CTL-002"]
+    evidence: "Registry export"
+    release: "1.0"
+    phase: "SOP"
+    impact_paths:
+      - "backend/erev_api/controls/**"
+  - id: "CTL-043"
+    title: "Sandbox tenants cannot post, export, convert or restore over production"
+    r07_catalogue_id: "L13; L4"
+    r07_feature: ["F-23"]
+    type: "Prev · Auto"
+    reqs: ["REQ-PLT-022", "REQ-PLT-024", "REQ-FC-001"]
+    evidence: "Tenant type; blocked-action audit events"
+    release: "1.0"
+    phase: "SNP"
+    impact_paths:
+      - "backend/erev_api/domain/platform/**"
+      - "backend/erev_api/domain/journals/**"
+      - "backend/erev_api/domain/integrations/**"
+      - "backend/erev_api/events/webhooks.py"
+  - id: "CTL-044"
+    title: "Import commit requires approval by a user other than the uploader"
+    r07_catalogue_id: "IN-01, EV-02 (import channel); R01 #5"
+    r07_feature: ["F-04"]
+    type: "Prev · Auto"
+    reqs: ["REQ-DAT-001"]
+    evidence: "Import approval record"
+    release: "1.0"
+    phase: "DIN"
+    impact_paths:
+      - "backend/erev_api/domain/imports/**"
+      - "backend/erev_api/approvals/**"
+  - id: "CTL-045"
+    title: "AI outputs are proposals; accepting is an audited human command; configuration evidence logged"
+    r07_catalogue_id: "R07 §11 Q6; D-46"
+    r07_feature: ["F-04"]
+    type: "Prev · Auto"
+    reqs: ["REQ-AI-003", "REQ-AI-004"]
+    evidence: "Proposal register; AI call evidence log"
+    release: "1.0"
+    phase: "AIX"
+    impact_paths:
+      - "backend/erev_api/domain/ai/**"
+      - "backend/erev_api/adapters/ai/**"
+  - id: "CTL-046"
+    title: "Contract void by approval with reversal lines; no hard delete"
+    r07_catalogue_id: "L3"
+    r07_feature: ["F-05", "F-09"]
+    type: "Prev · Auto"
+    reqs: ["REQ-CON-015"]
+    evidence: "Void approval; reversal lines"
+    release: "1.0"
+    phase: "CTR"
+    impact_paths:
+      - "backend/erev_api/domain/contracts/**"
+      - "backend/erev_api/domain/journals/**"
+  - id: "CTL-047"
+    title: "Immutable contract versions, subledger and import lineage (database-enforced)"
+    r07_catalogue_id: "AU-01 (object integrity); L2"
+    r07_feature: ["F-09"]
+    type: "Prev · Auto"
+    reqs: ["REQ-CON-014", "REQ-JE-006"]
+    evidence: "Grant and trigger configuration; version hashes"
+    release: "1.0"
+    phase: "CTR"
+    impact_paths:
+      - "backend/erev_api/db/migrations/**"
+      - "backend/erev_api/db/migration_ops.py"
+  - id: "CTL-048"
+    title: "Legacy migration reconciliation before promotion"
+    r07_catalogue_id: "K4"
+    r07_feature: ["F-11"]
+    type: "Det · Auto"
+    reqs: ["REQ-MIG-001", "REQ-MIG-002", "REQ-MIG-003"]
+    evidence: "Migration reconciliation report and approval"
+    release: "1.0"
+    phase: "LMG"
+    impact_paths:
+      - "backend/erev_api/domain/migration/**"
+  - id: "CTL-049"
+    title: "Judgement records reviewed before close"
+    r07_catalogue_id: "R04 V11"
+    r07_feature: ["F-04"]
+    type: "Prev · Auto"
+    reqs: ["REQ-POL-008", "REQ-CLS-009"]
+    evidence: "Judgement register; close gate result"
+    release: "1.0"
+    phase: "CLO"
+    impact_paths:
+      - "backend/erev_api/domain/policies/**"
+      - "backend/erev_api/domain/close/**"

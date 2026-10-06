@@ -1,0 +1,2852 @@
+{
+  "steps": [
+    {
+      "nn": "00",
+      "slug": "reset",
+      "handler": "db_reset",
+      "button": "button8",
+      "button_label": "!Reset Database Completely!",
+      "file": null,
+      "file_sha256": null,
+      "date_input": null,
+      "report_window": null,
+      "contract_live_table_exists": false,
+      "sku_ssp_table_exists": false,
+      "rows_before": 24,
+      "rows_after": 0,
+      "rows_appended": -24,
+      "new_version_tokens": [],
+      "sku_ssp_rows": 0,
+      "handler_success": true,
+      "handler_popups": [
+        {
+          "kind": "QMessageBox.question",
+          "title": "Confirmation",
+          "text": "Do you want to proceed wiping out the current database?"
+        },
+        {
+          "kind": "QMessageBox.information",
+          "title": "ASC606 database reset",
+          "text": "ASC606 Database has been wiped out and reset!"
+        }
+      ],
+      "report_popups": 1,
+      "unused_queued_inputs": [],
+      "report_unused_inputs": {
+        "latest_contracts": []
+      },
+      "reports_captured": {
+        "latest_contracts": false,
+        "je_gross": false,
+        "je_delta": false,
+        "contract_history": false
+      },
+      "je_gross_totals": null,
+      "je_delta_totals": null,
+      "contract_history_rows": null,
+      "latest_contract_rows": null,
+      "app_excel_exports": [],
+      "python_warnings": []
+    },
+    {
+      "nn": "01",
+      "slug": "ssp-upload",
+      "handler": "browse_file_SSPs",
+      "button": "button1",
+      "button_label": "Load SSPs",
+      "file": "ops/Example UATs/SSP Upload UAT/SKU SSP Template.xlsx",
+      "file_sha256": "05c40a29f350b2fb71530b8136b12ab97458ddd0c950bd43c6cdd0b5b9e390c4",
+      "date_input": null,
+      "report_window": null,
+      "contract_live_table_exists": false,
+      "sku_ssp_table_exists": true,
+      "rows_before": 0,
+      "rows_after": 0,
+      "rows_appended": 0,
+      "new_version_tokens": [],
+      "sku_ssp_rows": 7,
+      "handler_success": true,
+      "handler_popups": [
+        {
+          "kind": "QMessageBox.information",
+          "title": "SSPs are set up",
+          "text": "All company SSPs for the uploaded file are set up. To add or update, re-upload SSPs to refresh."
+        }
+      ],
+      "report_popups": 1,
+      "unused_queued_inputs": [],
+      "report_unused_inputs": {
+        "latest_contracts": []
+      },
+      "reports_captured": {
+        "latest_contracts": false,
+        "je_gross": false,
+        "je_delta": false,
+        "contract_history": false
+      },
+      "je_gross_totals": null,
+      "je_delta_totals": null,
+      "contract_history_rows": null,
+      "latest_contract_rows": null,
+      "app_excel_exports": [],
+      "python_warnings": []
+    },
+    {
+      "nn": "02",
+      "slug": "contract-setup-2023-01-01",
+      "handler": "browse_file_Contracts",
+      "button": "button2",
+      "button_label": "Load Contracts",
+      "file": "ops/Example UATs/Contract Setup UAT/Contract Setup Template 1.1.2023.xlsx",
+      "file_sha256": "c64f2e09020405bc4c073ef09c2f1a0677896f0927b2f67b26c74ca54ea678a3",
+      "date_input": null,
+      "report_window": [
+        "2023-01-01",
+        "2023-01-01"
+      ],
+      "contract_live_table_exists": true,
+      "sku_ssp_table_exists": true,
+      "rows_before": 0,
+      "rows_after": 8,
+      "rows_appended": 8,
+      "new_version_tokens": [
+        "step-02"
+      ],
+      "sku_ssp_rows": 7,
+      "handler_success": true,
+      "handler_popups": [
+        {
+          "kind": "QMessageBox.information",
+          "title": "Contracts are set up",
+          "text": "All contracts(s) within the uploaded file are successfully set up!"
+        }
+      ],
+      "report_popups": 4,
+      "unused_queued_inputs": [],
+      "report_unused_inputs": {
+        "latest_contracts": [],
+        "je_gross": [],
+        "je_delta": [],
+        "contract_history": []
+      },
+      "reports_captured": {
+        "latest_contracts": true,
+        "je_gross": true,
+        "je_delta": true,
+        "contract_history": true
+      },
+      "je_gross_totals": {
+        "lines": 0,
+        "by_account": [],
+        "total_debit": 0.0,
+        "total_credit": 0.0,
+        "net": 0.0
+      },
+      "je_delta_totals": {
+        "lines": 0,
+        "by_account": [],
+        "total_debit": 0.0,
+        "total_credit": 0.0,
+        "net": 0.0
+      },
+      "contract_history_rows": 8,
+      "latest_contract_rows": 8,
+      "app_excel_exports": [
+        "Contract History between 2023-01-01 and 2023-01-01.xlsx",
+        "Latest Contract Details.xlsx",
+        "Revenue Adj. Summary between 2023-01-01 and 2023-01-01.xlsx",
+        "Revenue JE Summary between 2023-01-01 and 2023-01-01.xlsx"
+      ],
+      "python_warnings": []
+    },
+    {
+      "nn": "03",
+      "slug": "contract-setup-2023-02-01",
+      "handler": "browse_file_Contracts",
+      "button": "button2",
+      "button_label": "Load Contracts",
+      "file": "ops/Example UATs/Contract Setup UAT/Contract Setup Template 2.1.2023.xlsx",
+      "file_sha256": "0d0751fbbf8e288752dc5f88c811d4ab312c5b22a3af806c760248c462a60084",
+      "date_input": null,
+      "report_window": [
+        "2023-02-01",
+        "2023-02-01"
+      ],
+      "contract_live_table_exists": true,
+      "sku_ssp_table_exists": true,
+      "rows_before": 8,
+      "rows_after": 16,
+      "rows_appended": 8,
+      "new_version_tokens": [
+        "step-03"
+      ],
+      "sku_ssp_rows": 7,
+      "handler_success": true,
+      "handler_popups": [
+        {
+          "kind": "QMessageBox.information",
+          "title": "Contracts are set up",
+          "text": "All contracts(s) within the uploaded file are successfully set up!"
+        }
+      ],
+      "report_popups": 4,
+      "unused_queued_inputs": [],
+      "report_unused_inputs": {
+        "latest_contracts": [],
+        "je_gross": [],
+        "je_delta": [],
+        "contract_history": []
+      },
+      "reports_captured": {
+        "latest_contracts": true,
+        "je_gross": true,
+        "je_delta": true,
+        "contract_history": true
+      },
+      "je_gross_totals": {
+        "lines": 0,
+        "by_account": [],
+        "total_debit": 0.0,
+        "total_credit": 0.0,
+        "net": 0.0
+      },
+      "je_delta_totals": {
+        "lines": 0,
+        "by_account": [],
+        "total_debit": 0.0,
+        "total_credit": 0.0,
+        "net": 0.0
+      },
+      "contract_history_rows": 8,
+      "latest_contract_rows": 16,
+      "app_excel_exports": [
+        "Contract History between 2023-02-01 and 2023-02-01.xlsx",
+        "Latest Contract Details.xlsx",
+        "Revenue Adj. Summary between 2023-02-01 and 2023-02-01.xlsx",
+        "Revenue JE Summary between 2023-02-01 and 2023-02-01.xlsx"
+      ],
+      "python_warnings": []
+    },
+    {
+      "nn": "04",
+      "slug": "delivery-billing-2023-01-31",
+      "handler": "browse_file_Deliveries",
+      "button": "button3",
+      "button_label": "Load Delivery and Billing",
+      "file": "ops/Example UATs/Delivery and Billing UAT/Contract Progress Tracking Template 1.31.2023.xlsx",
+      "file_sha256": "cd3abd54be10767eca6fc1729b8de0f30bfe253103519f5d08674bc866fddd46",
+      "date_input": "2023-01-31",
+      "report_window": [
+        "2023-01-02",
+        "2023-01-31"
+      ],
+      "contract_live_table_exists": true,
+      "sku_ssp_table_exists": true,
+      "rows_before": 16,
+      "rows_after": 24,
+      "rows_appended": 8,
+      "new_version_tokens": [
+        "step-04"
+      ],
+      "sku_ssp_rows": 7,
+      "handler_success": true,
+      "handler_popups": [
+        {
+          "kind": "QMessageBox.information",
+          "title": "Rev Rec Success",
+          "text": "Rev Rec has been processed with uploaded deliveries and/or billings for the current date :)"
+        }
+      ],
+      "report_popups": 4,
+      "unused_queued_inputs": [],
+      "report_unused_inputs": {
+        "latest_contracts": [],
+        "je_gross": [],
+        "je_delta": [],
+        "contract_history": []
+      },
+      "reports_captured": {
+        "latest_contracts": true,
+        "je_gross": true,
+        "je_delta": true,
+        "contract_history": true
+      },
+      "je_gross_totals": {
+        "lines": 6,
+        "by_account": [
+          {
+            "account": "5001",
+            "debit": 0.0,
+            "credit": 187.69,
+            "net": -187.69
+          },
+          {
+            "account": "5002",
+            "debit": 0.0,
+            "credit": 118.53,
+            "net": -118.53
+          },
+          {
+            "account": "5003",
+            "debit": 0.0,
+            "credit": 48.32,
+            "net": -48.32
+          },
+          {
+            "account": "15002",
+            "debit": 58.85,
+            "credit": -0.0,
+            "net": 58.85
+          },
+          {
+            "account": "21001",
+            "debit": 295.69,
+            "credit": -0.0,
+            "net": 295.69
+          }
+        ],
+        "total_debit": 354.54,
+        "total_credit": 354.54,
+        "net": 0.0
+      },
+      "je_delta_totals": {
+        "lines": 6,
+        "by_account": [
+          {
+            "account": "5001",
+            "debit": 0.0,
+            "credit": 187.69,
+            "net": -187.69
+          },
+          {
+            "account": "5002",
+            "debit": 0.0,
+            "credit": 52.53,
+            "net": -52.53
+          },
+          {
+            "account": "5003",
+            "debit": 39.68,
+            "credit": -0.0,
+            "net": 39.68
+          },
+          {
+            "account": "15002",
+            "debit": 58.85,
+            "credit": -0.0,
+            "net": 58.85
+          },
+          {
+            "account": "21001",
+            "debit": 141.69,
+            "credit": -0.0,
+            "net": 141.69
+          }
+        ],
+        "total_debit": 240.22,
+        "total_credit": 240.22,
+        "net": 0.0
+      },
+      "contract_history_rows": 8,
+      "latest_contract_rows": 16,
+      "app_excel_exports": [
+        "Contract History between 2023-01-02 and 2023-01-31.xlsx",
+        "Latest Contract Details.xlsx",
+        "Revenue Adj. Summary between 2023-01-02 and 2023-01-31.xlsx",
+        "Revenue JE Summary between 2023-01-02 and 2023-01-31.xlsx"
+      ],
+      "python_warnings": []
+    },
+    {
+      "nn": "05",
+      "slug": "delivery-billing-2023-02-28",
+      "handler": "browse_file_Deliveries",
+      "button": "button3",
+      "button_label": "Load Delivery and Billing",
+      "file": "ops/Example UATs/Delivery and Billing UAT/Contract Progress Tracking Template 2.28.2023.xlsx",
+      "file_sha256": "37a9b8cee4a46385c60ebe8afa26e3aae44554fb7395baef1884ca17b396d547",
+      "date_input": "2023-02-28",
+      "report_window": [
+        "2023-02-02",
+        "2023-02-28"
+      ],
+      "contract_live_table_exists": true,
+      "sku_ssp_table_exists": true,
+      "rows_before": 24,
+      "rows_after": 36,
+      "rows_appended": 12,
+      "new_version_tokens": [
+        "step-05"
+      ],
+      "sku_ssp_rows": 7,
+      "handler_success": true,
+      "handler_popups": [
+        {
+          "kind": "QMessageBox.information",
+          "title": "Rev Rec Success",
+          "text": "Rev Rec has been processed with uploaded deliveries and/or billings for the current date :)"
+        }
+      ],
+      "report_popups": 4,
+      "unused_queued_inputs": [],
+      "report_unused_inputs": {
+        "latest_contracts": [],
+        "je_gross": [],
+        "je_delta": [],
+        "contract_history": []
+      },
+      "reports_captured": {
+        "latest_contracts": true,
+        "je_gross": true,
+        "je_delta": true,
+        "contract_history": true
+      },
+      "je_gross_totals": {
+        "lines": 6,
+        "by_account": [
+          {
+            "account": "5001",
+            "debit": 0.0,
+            "credit": 175.71,
+            "net": -175.71
+          },
+          {
+            "account": "5003",
+            "debit": 0.0,
+            "credit": 48.32,
+            "net": -48.32
+          },
+          {
+            "account": "21001",
+            "debit": 112.74,
+            "credit": -0.0,
+            "net": 112.74
+          },
+          {
+            "account": "21002",
+            "debit": 111.29,
+            "credit": -0.0,
+            "net": 111.29
+          }
+        ],
+        "total_debit": 224.03,
+        "total_credit": 224.03,
+        "net": 0.0
+      },
+      "je_delta_totals": {
+        "lines": 6,
+        "by_account": [
+          {
+            "account": "5001",
+            "debit": 38.71,
+            "credit": 64.42,
+            "net": -25.71
+          },
+          {
+            "account": "5003",
+            "debit": 151.68,
+            "credit": -0.0,
+            "net": 151.68
+          },
+          {
+            "account": "21001",
+            "debit": 64.42,
+            "credit": 151.68,
+            "net": -87.26
+          },
+          {
+            "account": "21002",
+            "debit": 0.0,
+            "credit": 38.71,
+            "net": -38.71
+          }
+        ],
+        "total_debit": 254.81,
+        "total_credit": 254.81,
+        "net": 0.0
+      },
+      "contract_history_rows": 12,
+      "latest_contract_rows": 16,
+      "app_excel_exports": [
+        "Contract History between 2023-02-02 and 2023-02-28.xlsx",
+        "Latest Contract Details.xlsx",
+        "Revenue Adj. Summary between 2023-02-02 and 2023-02-28.xlsx",
+        "Revenue JE Summary between 2023-02-02 and 2023-02-28.xlsx"
+      ],
+      "python_warnings": []
+    },
+    {
+      "nn": "06",
+      "slug": "delivery-billing-2023-03-31",
+      "handler": "browse_file_Deliveries",
+      "button": "button3",
+      "button_label": "Load Delivery and Billing",
+      "file": "ops/Example UATs/Delivery and Billing UAT/Contract Progress Tracking Template 3.31.2023.xlsx",
+      "file_sha256": "6a373ef4913ee9f58186a22df4c195542dffe4a48bf0d3ed2db0947f8faf139c",
+      "date_input": "2023-03-31",
+      "report_window": [
+        "2023-03-01",
+        "2023-03-31"
+      ],
+      "contract_live_table_exists": true,
+      "sku_ssp_table_exists": true,
+      "rows_before": 36,
+      "rows_after": 48,
+      "rows_appended": 12,
+      "new_version_tokens": [
+        "step-06"
+      ],
+      "sku_ssp_rows": 7,
+      "handler_success": true,
+      "handler_popups": [
+        {
+          "kind": "QMessageBox.information",
+          "title": "Rev Rec Success",
+          "text": "Rev Rec has been processed with uploaded deliveries and/or billings for the current date :)"
+        }
+      ],
+      "report_popups": 4,
+      "unused_queued_inputs": [],
+      "report_unused_inputs": {
+        "latest_contracts": [],
+        "je_gross": [],
+        "je_delta": [],
+        "contract_history": []
+      },
+      "reports_captured": {
+        "latest_contracts": true,
+        "je_gross": true,
+        "je_delta": true,
+        "contract_history": true
+      },
+      "je_gross_totals": {
+        "lines": 6,
+        "by_account": [
+          {
+            "account": "5002",
+            "debit": 0.0,
+            "credit": 217.46,
+            "net": -217.46
+          },
+          {
+            "account": "5003",
+            "debit": 0.0,
+            "credit": 46.15,
+            "net": -46.15
+          },
+          {
+            "account": "15002",
+            "debit": 46.15,
+            "credit": -0.0,
+            "net": 46.15
+          },
+          {
+            "account": "21001",
+            "debit": 118.53,
+            "credit": -0.0,
+            "net": 118.53
+          },
+          {
+            "account": "21002",
+            "debit": 98.93,
+            "credit": -0.0,
+            "net": 98.93
+          }
+        ],
+        "total_debit": 263.61,
+        "total_credit": 263.61,
+        "net": 0.0
+      },
+      "je_delta_totals": {
+        "lines": 6,
+        "by_account": [
+          {
+            "account": "5002",
+            "debit": 0.0,
+            "credit": 217.46,
+            "net": -217.46
+          },
+          {
+            "account": "5003",
+            "debit": 0.0,
+            "credit": 46.15,
+            "net": -46.15
+          },
+          {
+            "account": "15002",
+            "debit": 46.15,
+            "credit": -0.0,
+            "net": 46.15
+          },
+          {
+            "account": "21001",
+            "debit": 118.53,
+            "credit": -0.0,
+            "net": 118.53
+          },
+          {
+            "account": "21002",
+            "debit": 98.93,
+            "credit": -0.0,
+            "net": 98.93
+          }
+        ],
+        "total_debit": 263.61,
+        "total_credit": 263.61,
+        "net": 0.0
+      },
+      "contract_history_rows": 12,
+      "latest_contract_rows": 16,
+      "app_excel_exports": [
+        "Contract History between 2023-03-01 and 2023-03-31.xlsx",
+        "Latest Contract Details.xlsx",
+        "Revenue Adj. Summary between 2023-03-01 and 2023-03-31.xlsx",
+        "Revenue JE Summary between 2023-03-01 and 2023-03-31.xlsx"
+      ],
+      "python_warnings": []
+    },
+    {
+      "nn": "07",
+      "slug": "delivery-billing-2023-04-30-return-zero",
+      "handler": "browse_file_Deliveries",
+      "button": "button3",
+      "button_label": "Load Delivery and Billing",
+      "file": "ops/Example UATs/Delivery and Billing UAT/Contract Progress Tracking Template 4.30.2023 - Return & Zero delivery billing.xlsx",
+      "file_sha256": "b12cab5ca658964a3479d7710ae400953b9119fb9cc49c724da9affe98879f00",
+      "date_input": "2023-04-30",
+      "report_window": [
+        "2023-04-01",
+        "2023-04-30"
+      ],
+      "contract_live_table_exists": true,
+      "sku_ssp_table_exists": true,
+      "rows_before": 48,
+      "rows_after": 56,
+      "rows_appended": 8,
+      "new_version_tokens": [
+        "step-07"
+      ],
+      "sku_ssp_rows": 7,
+      "handler_success": true,
+      "handler_popups": [
+        {
+          "kind": "QMessageBox.information",
+          "title": "Rev Rec Success",
+          "text": "Rev Rec has been processed with uploaded deliveries and/or billings for the current date :)"
+        }
+      ],
+      "report_popups": 4,
+      "unused_queued_inputs": [],
+      "report_unused_inputs": {
+        "latest_contracts": [],
+        "je_gross": [],
+        "je_delta": [],
+        "contract_history": []
+      },
+      "reports_captured": {
+        "latest_contracts": true,
+        "je_gross": true,
+        "je_delta": true,
+        "contract_history": true
+      },
+      "je_gross_totals": {
+        "lines": 4,
+        "by_account": [
+          {
+            "account": "5001",
+            "debit": 193.26,
+            "credit": -0.0,
+            "net": 193.26
+          },
+          {
+            "account": "15002",
+            "debit": 0.0,
+            "credit": 20.0,
+            "net": -20.0
+          },
+          {
+            "account": "21001",
+            "debit": 0.0,
+            "credit": 193.26,
+            "net": -193.26
+          },
+          {
+            "account": "21002",
+            "debit": 20.0,
+            "credit": -0.0,
+            "net": 20.0
+          }
+        ],
+        "total_debit": 213.26,
+        "total_credit": 213.26,
+        "net": 0.0
+      },
+      "je_delta_totals": {
+        "lines": 4,
+        "by_account": [
+          {
+            "account": "5001",
+            "debit": 193.26,
+            "credit": -0.0,
+            "net": 193.26
+          },
+          {
+            "account": "15002",
+            "debit": 0.0,
+            "credit": 20.0,
+            "net": -20.0
+          },
+          {
+            "account": "21001",
+            "debit": 0.0,
+            "credit": 193.26,
+            "net": -193.26
+          },
+          {
+            "account": "21002",
+            "debit": 20.0,
+            "credit": -0.0,
+            "net": 20.0
+          }
+        ],
+        "total_debit": 213.26,
+        "total_credit": 213.26,
+        "net": 0.0
+      },
+      "contract_history_rows": 8,
+      "latest_contract_rows": 16,
+      "app_excel_exports": [
+        "Contract History between 2023-04-01 and 2023-04-30.xlsx",
+        "Latest Contract Details.xlsx",
+        "Revenue Adj. Summary between 2023-04-01 and 2023-04-30.xlsx",
+        "Revenue JE Summary between 2023-04-01 and 2023-04-30.xlsx"
+      ],
+      "python_warnings": []
+    },
+    {
+      "nn": "08",
+      "slug": "retro-mod-2023-05-15-vc-pob-increase",
+      "handler": "browse_file_RetroMod",
+      "button": "button5",
+      "button_label": "Retrospective Contract Mod",
+      "file": "ops/Example UATs/Contract Mod UAT/Contract Modification Template 05.15.2023 - retrospective vc + POB increases.xlsx",
+      "file_sha256": "542fa9a99ab4a02662338a79dc81a54799faafd77f3ee2be80fe11d5fd1fbeeb",
+      "date_input": "2023-05-15",
+      "report_window": [
+        "2023-05-01",
+        "2023-05-15"
+      ],
+      "contract_live_table_exists": true,
+      "sku_ssp_table_exists": true,
+      "rows_before": 56,
+      "rows_after": 60,
+      "rows_appended": 4,
+      "new_version_tokens": [
+        "step-08"
+      ],
+      "sku_ssp_rows": 7,
+      "handler_success": true,
+      "handler_popups": [
+        {
+          "kind": "QMessageBox.information",
+          "title": "Mod Success",
+          "text": "Retrospective Mod has been processed with uploaded modifications for the current date :)"
+        }
+      ],
+      "report_popups": 4,
+      "unused_queued_inputs": [],
+      "report_unused_inputs": {
+        "latest_contracts": [],
+        "je_gross": [],
+        "je_delta": [],
+        "contract_history": []
+      },
+      "reports_captured": {
+        "latest_contracts": true,
+        "je_gross": true,
+        "je_delta": true,
+        "contract_history": true
+      },
+      "je_gross_totals": {
+        "lines": 3,
+        "by_account": [
+          {
+            "account": "5001",
+            "debit": 0.0,
+            "credit": 13.38,
+            "net": -13.38
+          },
+          {
+            "account": "5003",
+            "debit": 0.0,
+            "credit": 10.49,
+            "net": -10.49
+          },
+          {
+            "account": "15002",
+            "debit": 23.87,
+            "credit": -0.0,
+            "net": 23.87
+          }
+        ],
+        "total_debit": 23.87,
+        "total_credit": 23.87,
+        "net": 0.0
+      },
+      "je_delta_totals": {
+        "lines": 3,
+        "by_account": [
+          {
+            "account": "5001",
+            "debit": 0.0,
+            "credit": 13.38,
+            "net": -13.38
+          },
+          {
+            "account": "5003",
+            "debit": 0.0,
+            "credit": 10.49,
+            "net": -10.49
+          },
+          {
+            "account": "15002",
+            "debit": 23.87,
+            "credit": -0.0,
+            "net": 23.87
+          }
+        ],
+        "total_debit": 23.87,
+        "total_credit": 23.87,
+        "net": 0.0
+      },
+      "contract_history_rows": 4,
+      "latest_contract_rows": 16,
+      "app_excel_exports": [
+        "Contract History between 2023-05-01 and 2023-05-15.xlsx",
+        "Latest Contract Details.xlsx",
+        "Revenue Adj. Summary between 2023-05-01 and 2023-05-15.xlsx",
+        "Revenue JE Summary between 2023-05-01 and 2023-05-15.xlsx"
+      ],
+      "python_warnings": []
+    },
+    {
+      "nn": "09",
+      "slug": "pob-specific-vc-2023-05-31",
+      "handler": "browse_file_POB_specific_VC",
+      "button": "button5_1",
+      "button_label": "POB Specific VC",
+      "file": "ops/Example UATs/Contract Mod UAT/Contract Modification Template 05.31.2023 - retrospective POB specific VC.xlsx",
+      "file_sha256": "be439dbe86221a51550e692dd4d4ef8376fa293ac38e932f74b68828e78f64d7",
+      "date_input": "2023-05-31",
+      "report_window": [
+        "2023-05-16",
+        "2023-05-31"
+      ],
+      "contract_live_table_exists": true,
+      "sku_ssp_table_exists": true,
+      "rows_before": 60,
+      "rows_after": 64,
+      "rows_appended": 4,
+      "new_version_tokens": [
+        "step-09"
+      ],
+      "sku_ssp_rows": 7,
+      "handler_success": true,
+      "handler_popups": [
+        {
+          "kind": "QMessageBox.information",
+          "title": "POB Specific VC Successfully Applied!",
+          "text": "POB Specific VC has been processed retrospectively for the current date :)"
+        }
+      ],
+      "report_popups": 4,
+      "unused_queued_inputs": [],
+      "report_unused_inputs": {
+        "latest_contracts": [],
+        "je_gross": [],
+        "je_delta": [],
+        "contract_history": []
+      },
+      "reports_captured": {
+        "latest_contracts": true,
+        "je_gross": true,
+        "je_delta": true,
+        "contract_history": true
+      },
+      "je_gross_totals": {
+        "lines": 2,
+        "by_account": [
+          {
+            "account": "5001",
+            "debit": 18.68,
+            "credit": -0.0,
+            "net": 18.68
+          },
+          {
+            "account": "15002",
+            "debit": 0.0,
+            "credit": 18.68,
+            "net": -18.68
+          }
+        ],
+        "total_debit": 18.68,
+        "total_credit": 18.68,
+        "net": 0.0
+      },
+      "je_delta_totals": {
+        "lines": 2,
+        "by_account": [
+          {
+            "account": "5001",
+            "debit": 18.68,
+            "credit": -0.0,
+            "net": 18.68
+          },
+          {
+            "account": "15002",
+            "debit": 0.0,
+            "credit": 18.68,
+            "net": -18.68
+          }
+        ],
+        "total_debit": 18.68,
+        "total_credit": 18.68,
+        "net": 0.0
+      },
+      "contract_history_rows": 4,
+      "latest_contract_rows": 16,
+      "app_excel_exports": [
+        "Contract History between 2023-05-16 and 2023-05-31.xlsx",
+        "Latest Contract Details.xlsx",
+        "Revenue Adj. Summary between 2023-05-16 and 2023-05-31.xlsx",
+        "Revenue JE Summary between 2023-05-16 and 2023-05-31.xlsx"
+      ],
+      "python_warnings": []
+    },
+    {
+      "nn": "10",
+      "slug": "prospective-mod-2023-06-15-reduction",
+      "handler": "browse_file_ProsMod",
+      "button": "button4",
+      "button_label": "Prospective Contract Mod",
+      "file": "ops/Example UATs/Contract Mod UAT/Contract Modification Template 06.15.2023 - prospective reduction.xlsx",
+      "file_sha256": "6b080069d18c82e9fd914646d411998b2e5b78366a9115639fb927e43bfd1b82",
+      "date_input": "2023-06-15",
+      "report_window": [
+        "2023-06-01",
+        "2023-06-15"
+      ],
+      "contract_live_table_exists": true,
+      "sku_ssp_table_exists": true,
+      "rows_before": 64,
+      "rows_after": 68,
+      "rows_appended": 4,
+      "new_version_tokens": [
+        "step-10"
+      ],
+      "sku_ssp_rows": 7,
+      "handler_success": true,
+      "handler_popups": [
+        {
+          "kind": "QMessageBox.information",
+          "title": "Mod Success",
+          "text": "Prospective Mod has been processed with uploaded modifications for the current date :)"
+        }
+      ],
+      "report_popups": 4,
+      "unused_queued_inputs": [],
+      "report_unused_inputs": {
+        "latest_contracts": [],
+        "je_gross": [],
+        "je_delta": [],
+        "contract_history": []
+      },
+      "reports_captured": {
+        "latest_contracts": true,
+        "je_gross": true,
+        "je_delta": true,
+        "contract_history": true
+      },
+      "je_gross_totals": {
+        "lines": 2,
+        "by_account": [
+          {
+            "account": "5003",
+            "debit": 5.3,
+            "credit": -0.0,
+            "net": 5.3
+          },
+          {
+            "account": "21001",
+            "debit": 0.0,
+            "credit": 5.3,
+            "net": -5.3
+          }
+        ],
+        "total_debit": 5.3,
+        "total_credit": 5.3,
+        "net": 0.0
+      },
+      "je_delta_totals": {
+        "lines": 2,
+        "by_account": [
+          {
+            "account": "5003",
+            "debit": 5.3,
+            "credit": -0.0,
+            "net": 5.3
+          },
+          {
+            "account": "21001",
+            "debit": 0.0,
+            "credit": 5.3,
+            "net": -5.3
+          }
+        ],
+        "total_debit": 5.3,
+        "total_credit": 5.3,
+        "net": 0.0
+      },
+      "contract_history_rows": 4,
+      "latest_contract_rows": 16,
+      "app_excel_exports": [
+        "Contract History between 2023-06-01 and 2023-06-15.xlsx",
+        "Latest Contract Details.xlsx",
+        "Revenue Adj. Summary between 2023-06-01 and 2023-06-15.xlsx",
+        "Revenue JE Summary between 2023-06-01 and 2023-06-15.xlsx"
+      ],
+      "python_warnings": []
+    },
+    {
+      "nn": "11",
+      "slug": "prospective-mod-2023-07-15-pob-increase",
+      "handler": "browse_file_ProsMod",
+      "button": "button4",
+      "button_label": "Prospective Contract Mod",
+      "file": "ops/Example UATs/Contract Mod UAT/Contract Modification Template 07.15.2023 - prospective POB increases.xlsx",
+      "file_sha256": "6d132e625e7143374dad6200d48275d52410b7439b8badf9419eba18e9b9eab8",
+      "date_input": "2023-07-15",
+      "report_window": [
+        "2023-07-01",
+        "2023-07-15"
+      ],
+      "contract_live_table_exists": true,
+      "sku_ssp_table_exists": true,
+      "rows_before": 68,
+      "rows_after": 76,
+      "rows_appended": 8,
+      "new_version_tokens": [
+        "step-11"
+      ],
+      "sku_ssp_rows": 7,
+      "handler_success": true,
+      "handler_popups": [
+        {
+          "kind": "QMessageBox.information",
+          "title": "Mod Success",
+          "text": "Prospective Mod has been processed with uploaded modifications for the current date :)"
+        }
+      ],
+      "report_popups": 4,
+      "unused_queued_inputs": [],
+      "report_unused_inputs": {
+        "latest_contracts": [],
+        "je_gross": [],
+        "je_delta": [],
+        "contract_history": []
+      },
+      "reports_captured": {
+        "latest_contracts": true,
+        "je_gross": true,
+        "je_delta": true,
+        "contract_history": true
+      },
+      "je_gross_totals": {
+        "lines": 2,
+        "by_account": [
+          {
+            "account": "5003",
+            "debit": 0.0,
+            "credit": 6.99,
+            "net": -6.99
+          },
+          {
+            "account": "21001",
+            "debit": 6.99,
+            "credit": -0.0,
+            "net": 6.99
+          }
+        ],
+        "total_debit": 6.99,
+        "total_credit": 6.99,
+        "net": 0.0
+      },
+      "je_delta_totals": {
+        "lines": 2,
+        "by_account": [
+          {
+            "account": "5003",
+            "debit": 0.0,
+            "credit": 6.99,
+            "net": -6.99
+          },
+          {
+            "account": "21001",
+            "debit": 6.99,
+            "credit": -0.0,
+            "net": 6.99
+          }
+        ],
+        "total_debit": 6.99,
+        "total_credit": 6.99,
+        "net": 0.0
+      },
+      "contract_history_rows": 8,
+      "latest_contract_rows": 16,
+      "app_excel_exports": [
+        "Contract History between 2023-07-01 and 2023-07-15.xlsx",
+        "Latest Contract Details.xlsx",
+        "Revenue Adj. Summary between 2023-07-01 and 2023-07-15.xlsx",
+        "Revenue JE Summary between 2023-07-01 and 2023-07-15.xlsx"
+      ],
+      "python_warnings": []
+    },
+    {
+      "nn": "12",
+      "slug": "retro-mod-2023-08-15-pob-reduction",
+      "handler": "browse_file_RetroMod",
+      "button": "button5",
+      "button_label": "Retrospective Contract Mod",
+      "file": "ops/Example UATs/Contract Mod UAT/Contract Modification Template 08.15.2023 - retrospective POB reduction.xlsx",
+      "file_sha256": "628d19d6db087248097f2bbdef3b3e3b524fc721d83d2f4e87bfa9c69e97f003",
+      "date_input": "2023-08-15",
+      "report_window": [
+        "2023-08-01",
+        "2023-08-15"
+      ],
+      "contract_live_table_exists": true,
+      "sku_ssp_table_exists": true,
+      "rows_before": 76,
+      "rows_after": 84,
+      "rows_appended": 8,
+      "new_version_tokens": [
+        "step-12"
+      ],
+      "sku_ssp_rows": 7,
+      "handler_success": true,
+      "handler_popups": [
+        {
+          "kind": "QMessageBox.information",
+          "title": "Mod Success",
+          "text": "Retrospective Mod has been processed with uploaded modifications for the current date :)"
+        }
+      ],
+      "report_popups": 4,
+      "unused_queued_inputs": [],
+      "report_unused_inputs": {
+        "latest_contracts": [],
+        "je_gross": [],
+        "je_delta": [],
+        "contract_history": []
+      },
+      "reports_captured": {
+        "latest_contracts": true,
+        "je_gross": true,
+        "je_delta": true,
+        "contract_history": true
+      },
+      "je_gross_totals": {
+        "lines": 6,
+        "by_account": [
+          {
+            "account": "5001",
+            "debit": 0.0,
+            "credit": 8.63,
+            "net": -8.63
+          },
+          {
+            "account": "5002",
+            "debit": 0.0,
+            "credit": 42.55,
+            "net": -42.55
+          },
+          {
+            "account": "5003",
+            "debit": 0.0,
+            "credit": 7.22,
+            "net": -7.22
+          },
+          {
+            "account": "21001",
+            "debit": 42.1,
+            "credit": -0.0,
+            "net": 42.1
+          },
+          {
+            "account": "21002",
+            "debit": 16.3,
+            "credit": -0.0,
+            "net": 16.3
+          }
+        ],
+        "total_debit": 58.4,
+        "total_credit": 58.4,
+        "net": 0.0
+      },
+      "je_delta_totals": {
+        "lines": 6,
+        "by_account": [
+          {
+            "account": "5001",
+            "debit": 0.0,
+            "credit": 8.63,
+            "net": -8.63
+          },
+          {
+            "account": "5002",
+            "debit": 0.0,
+            "credit": 42.55,
+            "net": -42.55
+          },
+          {
+            "account": "5003",
+            "debit": 0.0,
+            "credit": 7.22,
+            "net": -7.22
+          },
+          {
+            "account": "21001",
+            "debit": 42.1,
+            "credit": -0.0,
+            "net": 42.1
+          },
+          {
+            "account": "21002",
+            "debit": 16.3,
+            "credit": -0.0,
+            "net": 16.3
+          }
+        ],
+        "total_debit": 58.4,
+        "total_credit": 58.4,
+        "net": 0.0
+      },
+      "contract_history_rows": 8,
+      "latest_contract_rows": 16,
+      "app_excel_exports": [
+        "Contract History between 2023-08-01 and 2023-08-15.xlsx",
+        "Latest Contract Details.xlsx",
+        "Revenue Adj. Summary between 2023-08-01 and 2023-08-15.xlsx",
+        "Revenue JE Summary between 2023-08-01 and 2023-08-15.xlsx"
+      ],
+      "python_warnings": []
+    },
+    {
+      "nn": "13",
+      "slug": "prospective-mod-2023-09-15-material-right-new-pob",
+      "handler": "browse_file_ProsMod",
+      "button": "button4",
+      "button_label": "Prospective Contract Mod",
+      "file": "ops/Example UATs/Contract Mod UAT/Contract Modification Template 09.15.2023 - material right exericse with new POB added (propsective).xlsx",
+      "file_sha256": "445e7027574d2427e95a8d1671c77e54cd5ad451b609ba32b7b666682dbc944b",
+      "date_input": "2023-09-15",
+      "report_window": [
+        "2023-09-01",
+        "2023-09-15"
+      ],
+      "contract_live_table_exists": true,
+      "sku_ssp_table_exists": true,
+      "rows_before": 84,
+      "rows_after": 89,
+      "rows_appended": 5,
+      "new_version_tokens": [
+        "step-13"
+      ],
+      "sku_ssp_rows": 7,
+      "handler_success": true,
+      "handler_popups": [
+        {
+          "kind": "QMessageBox.information",
+          "title": "Mod Success",
+          "text": "Prospective Mod has been processed with uploaded modifications for the current date :)"
+        }
+      ],
+      "report_popups": 4,
+      "unused_queued_inputs": [],
+      "report_unused_inputs": {
+        "latest_contracts": [],
+        "je_gross": [],
+        "je_delta": [],
+        "contract_history": []
+      },
+      "reports_captured": {
+        "latest_contracts": true,
+        "je_gross": true,
+        "je_delta": true,
+        "contract_history": true
+      },
+      "je_gross_totals": {
+        "lines": 2,
+        "by_account": [
+          {
+            "account": "5003",
+            "debit": 0.0,
+            "credit": 32.14,
+            "net": -32.14
+          },
+          {
+            "account": "21001",
+            "debit": 32.14,
+            "credit": -0.0,
+            "net": 32.14
+          }
+        ],
+        "total_debit": 32.14,
+        "total_credit": 32.14,
+        "net": 0.0
+      },
+      "je_delta_totals": {
+        "lines": 2,
+        "by_account": [
+          {
+            "account": "5003",
+            "debit": 0.0,
+            "credit": 32.14,
+            "net": -32.14
+          },
+          {
+            "account": "21001",
+            "debit": 32.14,
+            "credit": -0.0,
+            "net": 32.14
+          }
+        ],
+        "total_debit": 32.14,
+        "total_credit": 32.14,
+        "net": 0.0
+      },
+      "contract_history_rows": 5,
+      "latest_contract_rows": 17,
+      "app_excel_exports": [
+        "Contract History between 2023-09-01 and 2023-09-15.xlsx",
+        "Latest Contract Details.xlsx",
+        "Revenue Adj. Summary between 2023-09-01 and 2023-09-15.xlsx",
+        "Revenue JE Summary between 2023-09-01 and 2023-09-15.xlsx"
+      ],
+      "python_warnings": []
+    },
+    {
+      "nn": "14",
+      "slug": "full-delivery-2023-10-31",
+      "handler": "browse_file_Deliveries",
+      "button": "button3",
+      "button_label": "Load Delivery and Billing",
+      "file": "ops/Example UATs/Delivery and Billing UAT/Full delivery 10.31.2023.xlsx",
+      "file_sha256": "3d7de60f9fb76b3d3ddf37c9e41204bf139de67c222cd54473ffcea4d332295c",
+      "date_input": "2023-10-31",
+      "report_window": [
+        "2023-10-01",
+        "2023-10-31"
+      ],
+      "contract_live_table_exists": true,
+      "sku_ssp_table_exists": true,
+      "rows_before": 89,
+      "rows_after": 106,
+      "rows_appended": 17,
+      "new_version_tokens": [
+        "step-14"
+      ],
+      "sku_ssp_rows": 7,
+      "handler_success": true,
+      "handler_popups": [
+        {
+          "kind": "QMessageBox.information",
+          "title": "Rev Rec Success",
+          "text": "Rev Rec has been processed with uploaded deliveries and/or billings for the current date :)"
+        }
+      ],
+      "report_popups": 4,
+      "unused_queued_inputs": [],
+      "report_unused_inputs": {
+        "latest_contracts": [],
+        "je_gross": [],
+        "je_delta": [],
+        "contract_history": []
+      },
+      "reports_captured": {
+        "latest_contracts": true,
+        "je_gross": true,
+        "je_delta": true,
+        "contract_history": true
+      },
+      "je_gross_totals": {
+        "lines": 18,
+        "by_account": [
+          {
+            "account": "5001",
+            "debit": 0.0,
+            "credit": 2060.34,
+            "net": -2060.34
+          },
+          {
+            "account": "5002",
+            "debit": 0.0,
+            "credit": 1108.62,
+            "net": -1108.62
+          },
+          {
+            "account": "5003",
+            "debit": 0.0,
+            "credit": 1784.7,
+            "net": -1784.7
+          },
+          {
+            "account": "15002",
+            "debit": 0.0,
+            "credit": 90.19,
+            "net": -90.19
+          },
+          {
+            "account": "21001",
+            "debit": 2990.36,
+            "credit": -0.0,
+            "net": 2990.36
+          },
+          {
+            "account": "21002",
+            "debit": 2053.48,
+            "credit": -0.0,
+            "net": 2053.48
+          }
+        ],
+        "total_debit": 5043.84,
+        "total_credit": 5043.85,
+        "net": -0.01
+      },
+      "je_delta_totals": {
+        "lines": 18,
+        "by_account": [
+          {
+            "account": "5001",
+            "debit": 0.0,
+            "credit": 2060.34,
+            "net": -2060.34
+          },
+          {
+            "account": "5002",
+            "debit": 0.0,
+            "credit": 1108.62,
+            "net": -1108.62
+          },
+          {
+            "account": "5003",
+            "debit": 0.0,
+            "credit": 1784.7,
+            "net": -1784.7
+          },
+          {
+            "account": "15002",
+            "debit": 0.0,
+            "credit": 90.19,
+            "net": -90.19
+          },
+          {
+            "account": "21001",
+            "debit": 2990.36,
+            "credit": -0.0,
+            "net": 2990.36
+          },
+          {
+            "account": "21002",
+            "debit": 2053.48,
+            "credit": -0.0,
+            "net": 2053.48
+          }
+        ],
+        "total_debit": 5043.84,
+        "total_credit": 5043.85,
+        "net": -0.01
+      },
+      "contract_history_rows": 17,
+      "latest_contract_rows": 17,
+      "app_excel_exports": [
+        "Contract History between 2023-10-01 and 2023-10-31.xlsx",
+        "Latest Contract Details.xlsx",
+        "Revenue Adj. Summary between 2023-10-01 and 2023-10-31.xlsx",
+        "Revenue JE Summary between 2023-10-01 and 2023-10-31.xlsx"
+      ],
+      "python_warnings": []
+    }
+  ],
+  "monthly": [
+    {
+      "month": "2023-01",
+      "window": [
+        "2023-01-01",
+        "2023-01-31"
+      ],
+      "je_gross_totals": {
+        "lines": 6,
+        "by_account": [
+          {
+            "account": "5001",
+            "debit": 0.0,
+            "credit": 187.69,
+            "net": -187.69
+          },
+          {
+            "account": "5002",
+            "debit": 0.0,
+            "credit": 118.53,
+            "net": -118.53
+          },
+          {
+            "account": "5003",
+            "debit": 0.0,
+            "credit": 48.32,
+            "net": -48.32
+          },
+          {
+            "account": "15002",
+            "debit": 58.85,
+            "credit": -0.0,
+            "net": 58.85
+          },
+          {
+            "account": "21001",
+            "debit": 295.69,
+            "credit": -0.0,
+            "net": 295.69
+          }
+        ],
+        "total_debit": 354.54,
+        "total_credit": 354.54,
+        "net": 0.0
+      },
+      "je_delta_totals": {
+        "lines": 6,
+        "by_account": [
+          {
+            "account": "5001",
+            "debit": 0.0,
+            "credit": 187.69,
+            "net": -187.69
+          },
+          {
+            "account": "5002",
+            "debit": 0.0,
+            "credit": 52.53,
+            "net": -52.53
+          },
+          {
+            "account": "5003",
+            "debit": 39.68,
+            "credit": -0.0,
+            "net": 39.68
+          },
+          {
+            "account": "15002",
+            "debit": 58.85,
+            "credit": -0.0,
+            "net": 58.85
+          },
+          {
+            "account": "21001",
+            "debit": 141.69,
+            "credit": -0.0,
+            "net": 141.69
+          }
+        ],
+        "total_debit": 240.22,
+        "total_credit": 240.22,
+        "net": 0.0
+      },
+      "contract_history_rows": 16
+    },
+    {
+      "month": "2023-02",
+      "window": [
+        "2023-02-01",
+        "2023-02-28"
+      ],
+      "je_gross_totals": {
+        "lines": 6,
+        "by_account": [
+          {
+            "account": "5001",
+            "debit": 0.0,
+            "credit": 175.71,
+            "net": -175.71
+          },
+          {
+            "account": "5003",
+            "debit": 0.0,
+            "credit": 48.32,
+            "net": -48.32
+          },
+          {
+            "account": "21001",
+            "debit": 112.74,
+            "credit": -0.0,
+            "net": 112.74
+          },
+          {
+            "account": "21002",
+            "debit": 111.29,
+            "credit": -0.0,
+            "net": 111.29
+          }
+        ],
+        "total_debit": 224.03,
+        "total_credit": 224.03,
+        "net": 0.0
+      },
+      "je_delta_totals": {
+        "lines": 6,
+        "by_account": [
+          {
+            "account": "5001",
+            "debit": 38.71,
+            "credit": 64.42,
+            "net": -25.71
+          },
+          {
+            "account": "5003",
+            "debit": 151.68,
+            "credit": -0.0,
+            "net": 151.68
+          },
+          {
+            "account": "21001",
+            "debit": 64.42,
+            "credit": 151.68,
+            "net": -87.26
+          },
+          {
+            "account": "21002",
+            "debit": 0.0,
+            "credit": 38.71,
+            "net": -38.71
+          }
+        ],
+        "total_debit": 254.81,
+        "total_credit": 254.81,
+        "net": 0.0
+      },
+      "contract_history_rows": 20
+    },
+    {
+      "month": "2023-03",
+      "window": [
+        "2023-03-01",
+        "2023-03-31"
+      ],
+      "je_gross_totals": {
+        "lines": 6,
+        "by_account": [
+          {
+            "account": "5002",
+            "debit": 0.0,
+            "credit": 217.46,
+            "net": -217.46
+          },
+          {
+            "account": "5003",
+            "debit": 0.0,
+            "credit": 46.15,
+            "net": -46.15
+          },
+          {
+            "account": "15002",
+            "debit": 46.15,
+            "credit": -0.0,
+            "net": 46.15
+          },
+          {
+            "account": "21001",
+            "debit": 118.53,
+            "credit": -0.0,
+            "net": 118.53
+          },
+          {
+            "account": "21002",
+            "debit": 98.93,
+            "credit": -0.0,
+            "net": 98.93
+          }
+        ],
+        "total_debit": 263.61,
+        "total_credit": 263.61,
+        "net": 0.0
+      },
+      "je_delta_totals": {
+        "lines": 6,
+        "by_account": [
+          {
+            "account": "5002",
+            "debit": 0.0,
+            "credit": 217.46,
+            "net": -217.46
+          },
+          {
+            "account": "5003",
+            "debit": 0.0,
+            "credit": 46.15,
+            "net": -46.15
+          },
+          {
+            "account": "15002",
+            "debit": 46.15,
+            "credit": -0.0,
+            "net": 46.15
+          },
+          {
+            "account": "21001",
+            "debit": 118.53,
+            "credit": -0.0,
+            "net": 118.53
+          },
+          {
+            "account": "21002",
+            "debit": 98.93,
+            "credit": -0.0,
+            "net": 98.93
+          }
+        ],
+        "total_debit": 263.61,
+        "total_credit": 263.61,
+        "net": 0.0
+      },
+      "contract_history_rows": 12
+    },
+    {
+      "month": "2023-04",
+      "window": [
+        "2023-04-01",
+        "2023-04-30"
+      ],
+      "je_gross_totals": {
+        "lines": 4,
+        "by_account": [
+          {
+            "account": "5001",
+            "debit": 193.26,
+            "credit": -0.0,
+            "net": 193.26
+          },
+          {
+            "account": "15002",
+            "debit": 0.0,
+            "credit": 20.0,
+            "net": -20.0
+          },
+          {
+            "account": "21001",
+            "debit": 0.0,
+            "credit": 193.26,
+            "net": -193.26
+          },
+          {
+            "account": "21002",
+            "debit": 20.0,
+            "credit": -0.0,
+            "net": 20.0
+          }
+        ],
+        "total_debit": 213.26,
+        "total_credit": 213.26,
+        "net": 0.0
+      },
+      "je_delta_totals": {
+        "lines": 4,
+        "by_account": [
+          {
+            "account": "5001",
+            "debit": 193.26,
+            "credit": -0.0,
+            "net": 193.26
+          },
+          {
+            "account": "15002",
+            "debit": 0.0,
+            "credit": 20.0,
+            "net": -20.0
+          },
+          {
+            "account": "21001",
+            "debit": 0.0,
+            "credit": 193.26,
+            "net": -193.26
+          },
+          {
+            "account": "21002",
+            "debit": 20.0,
+            "credit": -0.0,
+            "net": 20.0
+          }
+        ],
+        "total_debit": 213.26,
+        "total_credit": 213.26,
+        "net": 0.0
+      },
+      "contract_history_rows": 8
+    },
+    {
+      "month": "2023-05",
+      "window": [
+        "2023-05-01",
+        "2023-05-31"
+      ],
+      "je_gross_totals": {
+        "lines": 3,
+        "by_account": [
+          {
+            "account": "5001",
+            "debit": 5.31,
+            "credit": -0.0,
+            "net": 5.31
+          },
+          {
+            "account": "5003",
+            "debit": 0.0,
+            "credit": 10.49,
+            "net": -10.49
+          },
+          {
+            "account": "15002",
+            "debit": 5.19,
+            "credit": -0.0,
+            "net": 5.19
+          }
+        ],
+        "total_debit": 10.5,
+        "total_credit": 10.49,
+        "net": 0.01
+      },
+      "je_delta_totals": {
+        "lines": 3,
+        "by_account": [
+          {
+            "account": "5001",
+            "debit": 5.31,
+            "credit": -0.0,
+            "net": 5.31
+          },
+          {
+            "account": "5003",
+            "debit": 0.0,
+            "credit": 10.49,
+            "net": -10.49
+          },
+          {
+            "account": "15002",
+            "debit": 5.19,
+            "credit": -0.0,
+            "net": 5.19
+          }
+        ],
+        "total_debit": 10.5,
+        "total_credit": 10.49,
+        "net": 0.01
+      },
+      "contract_history_rows": 8
+    },
+    {
+      "month": "2023-06",
+      "window": [
+        "2023-06-01",
+        "2023-06-30"
+      ],
+      "je_gross_totals": {
+        "lines": 2,
+        "by_account": [
+          {
+            "account": "5003",
+            "debit": 5.3,
+            "credit": -0.0,
+            "net": 5.3
+          },
+          {
+            "account": "21001",
+            "debit": 0.0,
+            "credit": 5.3,
+            "net": -5.3
+          }
+        ],
+        "total_debit": 5.3,
+        "total_credit": 5.3,
+        "net": 0.0
+      },
+      "je_delta_totals": {
+        "lines": 2,
+        "by_account": [
+          {
+            "account": "5003",
+            "debit": 5.3,
+            "credit": -0.0,
+            "net": 5.3
+          },
+          {
+            "account": "21001",
+            "debit": 0.0,
+            "credit": 5.3,
+            "net": -5.3
+          }
+        ],
+        "total_debit": 5.3,
+        "total_credit": 5.3,
+        "net": 0.0
+      },
+      "contract_history_rows": 4
+    },
+    {
+      "month": "2023-07",
+      "window": [
+        "2023-07-01",
+        "2023-07-31"
+      ],
+      "je_gross_totals": {
+        "lines": 2,
+        "by_account": [
+          {
+            "account": "5003",
+            "debit": 0.0,
+            "credit": 6.99,
+            "net": -6.99
+          },
+          {
+            "account": "21001",
+            "debit": 6.99,
+            "credit": -0.0,
+            "net": 6.99
+          }
+        ],
+        "total_debit": 6.99,
+        "total_credit": 6.99,
+        "net": 0.0
+      },
+      "je_delta_totals": {
+        "lines": 2,
+        "by_account": [
+          {
+            "account": "5003",
+            "debit": 0.0,
+            "credit": 6.99,
+            "net": -6.99
+          },
+          {
+            "account": "21001",
+            "debit": 6.99,
+            "credit": -0.0,
+            "net": 6.99
+          }
+        ],
+        "total_debit": 6.99,
+        "total_credit": 6.99,
+        "net": 0.0
+      },
+      "contract_history_rows": 8
+    },
+    {
+      "month": "2023-08",
+      "window": [
+        "2023-08-01",
+        "2023-08-31"
+      ],
+      "je_gross_totals": {
+        "lines": 6,
+        "by_account": [
+          {
+            "account": "5001",
+            "debit": 0.0,
+            "credit": 8.63,
+            "net": -8.63
+          },
+          {
+            "account": "5002",
+            "debit": 0.0,
+            "credit": 42.55,
+            "net": -42.55
+          },
+          {
+            "account": "5003",
+            "debit": 0.0,
+            "credit": 7.22,
+            "net": -7.22
+          },
+          {
+            "account": "21001",
+            "debit": 42.1,
+            "credit": -0.0,
+            "net": 42.1
+          },
+          {
+            "account": "21002",
+            "debit": 16.3,
+            "credit": -0.0,
+            "net": 16.3
+          }
+        ],
+        "total_debit": 58.4,
+        "total_credit": 58.4,
+        "net": 0.0
+      },
+      "je_delta_totals": {
+        "lines": 6,
+        "by_account": [
+          {
+            "account": "5001",
+            "debit": 0.0,
+            "credit": 8.63,
+            "net": -8.63
+          },
+          {
+            "account": "5002",
+            "debit": 0.0,
+            "credit": 42.55,
+            "net": -42.55
+          },
+          {
+            "account": "5003",
+            "debit": 0.0,
+            "credit": 7.22,
+            "net": -7.22
+          },
+          {
+            "account": "21001",
+            "debit": 42.1,
+            "credit": -0.0,
+            "net": 42.1
+          },
+          {
+            "account": "21002",
+            "debit": 16.3,
+            "credit": -0.0,
+            "net": 16.3
+          }
+        ],
+        "total_debit": 58.4,
+        "total_credit": 58.4,
+        "net": 0.0
+      },
+      "contract_history_rows": 8
+    },
+    {
+      "month": "2023-09",
+      "window": [
+        "2023-09-01",
+        "2023-09-30"
+      ],
+      "je_gross_totals": {
+        "lines": 2,
+        "by_account": [
+          {
+            "account": "5003",
+            "debit": 0.0,
+            "credit": 32.14,
+            "net": -32.14
+          },
+          {
+            "account": "21001",
+            "debit": 32.14,
+            "credit": -0.0,
+            "net": 32.14
+          }
+        ],
+        "total_debit": 32.14,
+        "total_credit": 32.14,
+        "net": 0.0
+      },
+      "je_delta_totals": {
+        "lines": 2,
+        "by_account": [
+          {
+            "account": "5003",
+            "debit": 0.0,
+            "credit": 32.14,
+            "net": -32.14
+          },
+          {
+            "account": "21001",
+            "debit": 32.14,
+            "credit": -0.0,
+            "net": 32.14
+          }
+        ],
+        "total_debit": 32.14,
+        "total_credit": 32.14,
+        "net": 0.0
+      },
+      "contract_history_rows": 5
+    },
+    {
+      "month": "2023-10",
+      "window": [
+        "2023-10-01",
+        "2023-10-31"
+      ],
+      "je_gross_totals": {
+        "lines": 18,
+        "by_account": [
+          {
+            "account": "5001",
+            "debit": 0.0,
+            "credit": 2060.34,
+            "net": -2060.34
+          },
+          {
+            "account": "5002",
+            "debit": 0.0,
+            "credit": 1108.62,
+            "net": -1108.62
+          },
+          {
+            "account": "5003",
+            "debit": 0.0,
+            "credit": 1784.7,
+            "net": -1784.7
+          },
+          {
+            "account": "15002",
+            "debit": 0.0,
+            "credit": 90.19,
+            "net": -90.19
+          },
+          {
+            "account": "21001",
+            "debit": 2990.36,
+            "credit": -0.0,
+            "net": 2990.36
+          },
+          {
+            "account": "21002",
+            "debit": 2053.48,
+            "credit": -0.0,
+            "net": 2053.48
+          }
+        ],
+        "total_debit": 5043.84,
+        "total_credit": 5043.85,
+        "net": -0.01
+      },
+      "je_delta_totals": {
+        "lines": 18,
+        "by_account": [
+          {
+            "account": "5001",
+            "debit": 0.0,
+            "credit": 2060.34,
+            "net": -2060.34
+          },
+          {
+            "account": "5002",
+            "debit": 0.0,
+            "credit": 1108.62,
+            "net": -1108.62
+          },
+          {
+            "account": "5003",
+            "debit": 0.0,
+            "credit": 1784.7,
+            "net": -1784.7
+          },
+          {
+            "account": "15002",
+            "debit": 0.0,
+            "credit": 90.19,
+            "net": -90.19
+          },
+          {
+            "account": "21001",
+            "debit": 2990.36,
+            "credit": -0.0,
+            "net": 2990.36
+          },
+          {
+            "account": "21002",
+            "debit": 2053.48,
+            "credit": -0.0,
+            "net": 2053.48
+          }
+        ],
+        "total_debit": 5043.84,
+        "total_credit": 5043.85,
+        "net": -0.01
+      },
+      "contract_history_rows": 17
+    },
+    {
+      "month": "2023-full-year",
+      "window": [
+        "2023-01-01",
+        "2023-12-31"
+      ],
+      "je_gross_totals": {
+        "lines": 17,
+        "by_account": [
+          {
+            "account": "5001",
+            "debit": 0.0,
+            "credit": 2233.81,
+            "net": -2233.81
+          },
+          {
+            "account": "5002",
+            "debit": 0.0,
+            "credit": 1487.17,
+            "net": -1487.17
+          },
+          {
+            "account": "5003",
+            "debit": 0.0,
+            "credit": 1979.02,
+            "net": -1979.02
+          },
+          {
+            "account": "21001",
+            "debit": 3400.0,
+            "credit": -0.0,
+            "net": 3400.0
+          },
+          {
+            "account": "21002",
+            "debit": 2300.0,
+            "credit": -0.0,
+            "net": 2300.0
+          }
+        ],
+        "total_debit": 5700.0,
+        "total_credit": 5700.0,
+        "net": 0.0
+      },
+      "je_delta_totals": {
+        "lines": 17,
+        "by_account": [
+          {
+            "account": "5001",
+            "debit": 0.0,
+            "credit": 2083.81,
+            "net": -2083.81
+          },
+          {
+            "account": "5002",
+            "debit": 0.0,
+            "credit": 1421.17,
+            "net": -1421.17
+          },
+          {
+            "account": "5003",
+            "debit": 12.63,
+            "credit": 1703.65,
+            "net": -1691.02
+          },
+          {
+            "account": "21001",
+            "debit": 3046.0,
+            "credit": -0.0,
+            "net": 3046.0
+          },
+          {
+            "account": "21002",
+            "debit": 2150.0,
+            "credit": -0.0,
+            "net": 2150.0
+          }
+        ],
+        "total_debit": 5208.63,
+        "total_credit": 5208.63,
+        "net": 0.0
+      }
+    }
+  ],
+  "compare": {
+    "shipped_rows": 24,
+    "shipped_versions": [
+      "2025-05-09 09:11:44.708286",
+      "2025-05-09 09:11:53.453841",
+      "2025-05-09 09:12:33.441992"
+    ],
+    "final_replay_rows": 106,
+    "point_in_time_match_steps": [
+      "04"
+    ],
+    "replay_extra_columns": [],
+    "point_in_time_columns_with_mismatch": [],
+    "schema_shipped": [
+      [
+        "Contract Unique Name",
+        "TEXT"
+      ],
+      [
+        "POB Unique ID",
+        "TEXT"
+      ],
+      [
+        "SKU Name",
+        "TEXT"
+      ],
+      [
+        "POB Start Date",
+        "TIMESTAMP"
+      ],
+      [
+        "POB End Date",
+        "TIMESTAMP"
+      ],
+      [
+        "ASC 606 Stratification",
+        "TEXT"
+      ],
+      [
+        "Original POB Total Selling Price",
+        "INTEGER"
+      ],
+      [
+        "Original POB Total Qty",
+        "INTEGER"
+      ],
+      [
+        "Selling Entity",
+        "TEXT"
+      ],
+      [
+        "SSP Version",
+        "TEXT"
+      ],
+      [
+        "Deferred Revenue Account",
+        "INTEGER"
+      ],
+      [
+        "Unbilled A/R Account",
+        "INTEGER"
+      ],
+      [
+        "Current Period",
+        "TIMESTAMP"
+      ],
+      [
+        "Memo 1",
+        "TEXT"
+      ],
+      [
+        "Memo 2",
+        "TEXT"
+      ],
+      [
+        "Memo 3",
+        "TEXT"
+      ],
+      [
+        "SKU Unique ID",
+        "INTEGER"
+      ],
+      [
+        "Distinct or Nondistinct",
+        "TEXT"
+      ],
+      [
+        "SKU Unit List Price",
+        "INTEGER"
+      ],
+      [
+        "Midpoint Discount Percentage",
+        "REAL"
+      ],
+      [
+        "SSP Range Method (+-)",
+        "REAL"
+      ],
+      [
+        "Revenue Account",
+        "INTEGER"
+      ],
+      [
+        "Original SSP - Midpoint",
+        "REAL"
+      ],
+      [
+        "Original SSP - Higher",
+        "REAL"
+      ],
+      [
+        "Original SSP - Lower",
+        "REAL"
+      ],
+      [
+        "Original Extended SSP",
+        "REAL"
+      ],
+      [
+        "Original Total Contract Price",
+        "INTEGER"
+      ],
+      [
+        "Original Total Contract SSP",
+        "REAL"
+      ],
+      [
+        "Original Allocation",
+        "REAL"
+      ],
+      [
+        "Original Unit SSP",
+        "REAL"
+      ],
+      [
+        "Original Unit Rev Rec",
+        "REAL"
+      ],
+      [
+        "Previous Period",
+        "TIMESTAMP"
+      ],
+      [
+        "Previous Remaining Qty",
+        "INTEGER"
+      ],
+      [
+        "Previous Remaining SSP",
+        "REAL"
+      ],
+      [
+        "Previous Remaining Allocation",
+        "REAL"
+      ],
+      [
+        "Previous Remaining Billing",
+        "INTEGER"
+      ],
+      [
+        "Previous Unit SSP",
+        "REAL"
+      ],
+      [
+        "Previous Remaining Unit Rev Rec",
+        "REAL"
+      ],
+      [
+        "Previous Delivery - Cumulative",
+        "INTEGER"
+      ],
+      [
+        "Previous Rev Rec - Cumulative",
+        "INTEGER"
+      ],
+      [
+        "Previous Pre-ASC606 Revenue (Net Design Only) - Cumulative",
+        "INTEGER"
+      ],
+      [
+        "Previous Billing - Cumulative",
+        "INTEGER"
+      ],
+      [
+        "Previous Cumulative Catchup - Cumulative - Disclosure Only",
+        "INTEGER"
+      ],
+      [
+        "Previous SSP Delivered - Cumulative",
+        "INTEGER"
+      ],
+      [
+        "Previous Contract Position - POB",
+        "INTEGER"
+      ],
+      [
+        "Previous Contract Position - Contract Level",
+        "INTEGER"
+      ],
+      [
+        "Previous Reclass to UAR",
+        "INTEGER"
+      ],
+      [
+        "Current Remaining Qty",
+        "INTEGER"
+      ],
+      [
+        "Current Remaining SSP",
+        "REAL"
+      ],
+      [
+        "Current Remaining Allocation",
+        "REAL"
+      ],
+      [
+        "Current Remaining Billing",
+        "INTEGER"
+      ],
+      [
+        "Current Unit SSP",
+        "REAL"
+      ],
+      [
+        "Current Remaining Unit Rev Rec",
+        "REAL"
+      ],
+      [
+        "Current Delivery",
+        "INTEGER"
+      ],
+      [
+        "Current Rev Rec",
+        "INTEGER"
+      ],
+      [
+        "Current Pre-ASC606 Revenue (Net Design Only)",
+        "INTEGER"
+      ],
+      [
+        "Current Billing",
+        "INTEGER"
+      ],
+      [
+        "Current Cumulative Catchup - Disclosure Only",
+        "INTEGER"
+      ],
+      [
+        "Current SSP Delivered",
+        "INTEGER"
+      ],
+      [
+        "Current Delivery - Cumulative",
+        "INTEGER"
+      ],
+      [
+        "Current Rev Rec - Cumulative",
+        "INTEGER"
+      ],
+      [
+        "Current Pre-ASC606 Revenue (Net Design Only) - Cumulative",
+        "INTEGER"
+      ],
+      [
+        "Current Billing - Cumulative",
+        "INTEGER"
+      ],
+      [
+        "Current Cumulative Catchup - Cumulative - Disclosure Only",
+        "INTEGER"
+      ],
+      [
+        "Current SSP Delivered - Cumulative",
+        "INTEGER"
+      ],
+      [
+        "Current Contract Position - POB",
+        "INTEGER"
+      ],
+      [
+        "Current Contract Position - Contract Level",
+        "INTEGER"
+      ],
+      [
+        "Current Reclass to UAR",
+        "INTEGER"
+      ],
+      [
+        "Processing Time Log",
+        "TIMESTAMP"
+      ],
+      [
+        "Record Unique ID without time",
+        "TEXT"
+      ],
+      [
+        "Record Unique ID",
+        "TEXT"
+      ]
+    ],
+    "schema_replay": [
+      [
+        "Contract Unique Name",
+        "TEXT"
+      ],
+      [
+        "POB Unique ID",
+        "TEXT"
+      ],
+      [
+        "SKU Name",
+        "TEXT"
+      ],
+      [
+        "POB Start Date",
+        "TIMESTAMP"
+      ],
+      [
+        "POB End Date",
+        "TIMESTAMP"
+      ],
+      [
+        "ASC 606 Stratification",
+        "TEXT"
+      ],
+      [
+        "Original POB Total Selling Price",
+        "INTEGER"
+      ],
+      [
+        "Original POB Total Qty",
+        "INTEGER"
+      ],
+      [
+        "Selling Entity",
+        "TEXT"
+      ],
+      [
+        "SSP Version",
+        "TEXT"
+      ],
+      [
+        "Deferred Revenue Account",
+        "INTEGER"
+      ],
+      [
+        "Unbilled A/R Account",
+        "INTEGER"
+      ],
+      [
+        "Current Period",
+        "TIMESTAMP"
+      ],
+      [
+        "Memo 1",
+        "TEXT"
+      ],
+      [
+        "Memo 2",
+        "TEXT"
+      ],
+      [
+        "Memo 3",
+        "TEXT"
+      ],
+      [
+        "SKU Unique ID",
+        "INTEGER"
+      ],
+      [
+        "Distinct or Nondistinct",
+        "TEXT"
+      ],
+      [
+        "SKU Unit List Price",
+        "INTEGER"
+      ],
+      [
+        "Midpoint Discount Percentage",
+        "REAL"
+      ],
+      [
+        "SSP Range Method (+-)",
+        "REAL"
+      ],
+      [
+        "Revenue Account",
+        "INTEGER"
+      ],
+      [
+        "Original SSP - Midpoint",
+        "REAL"
+      ],
+      [
+        "Original SSP - Higher",
+        "REAL"
+      ],
+      [
+        "Original SSP - Lower",
+        "REAL"
+      ],
+      [
+        "Original Extended SSP",
+        "REAL"
+      ],
+      [
+        "Original Total Contract Price",
+        "INTEGER"
+      ],
+      [
+        "Original Total Contract SSP",
+        "REAL"
+      ],
+      [
+        "Original Allocation",
+        "REAL"
+      ],
+      [
+        "Original Unit SSP",
+        "REAL"
+      ],
+      [
+        "Original Unit Rev Rec",
+        "REAL"
+      ],
+      [
+        "Previous Period",
+        "TIMESTAMP"
+      ],
+      [
+        "Previous Remaining Qty",
+        "INTEGER"
+      ],
+      [
+        "Previous Remaining SSP",
+        "REAL"
+      ],
+      [
+        "Previous Remaining Allocation",
+        "REAL"
+      ],
+      [
+        "Previous Remaining Billing",
+        "INTEGER"
+      ],
+      [
+        "Previous Unit SSP",
+        "REAL"
+      ],
+      [
+        "Previous Remaining Unit Rev Rec",
+        "REAL"
+      ],
+      [
+        "Previous Delivery - Cumulative",
+        "INTEGER"
+      ],
+      [
+        "Previous Rev Rec - Cumulative",
+        "INTEGER"
+      ],
+      [
+        "Previous Pre-ASC606 Revenue (Net Design Only) - Cumulative",
+        "INTEGER"
+      ],
+      [
+        "Previous Billing - Cumulative",
+        "INTEGER"
+      ],
+      [
+        "Previous Cumulative Catchup - Cumulative - Disclosure Only",
+        "INTEGER"
+      ],
+      [
+        "Previous SSP Delivered - Cumulative",
+        "INTEGER"
+      ],
+      [
+        "Previous Contract Position - POB",
+        "INTEGER"
+      ],
+      [
+        "Previous Contract Position - Contract Level",
+        "INTEGER"
+      ],
+      [
+        "Previous Reclass to UAR",
+        "INTEGER"
+      ],
+      [
+        "Current Remaining Qty",
+        "INTEGER"
+      ],
+      [
+        "Current Remaining SSP",
+        "REAL"
+      ],
+      [
+        "Current Remaining Allocation",
+        "REAL"
+      ],
+      [
+        "Current Remaining Billing",
+        "INTEGER"
+      ],
+      [
+        "Current Unit SSP",
+        "REAL"
+      ],
+      [
+        "Current Remaining Unit Rev Rec",
+        "REAL"
+      ],
+      [
+        "Current Delivery",
+        "INTEGER"
+      ],
+      [
+        "Current Rev Rec",
+        "INTEGER"
+      ],
+      [
+        "Current Pre-ASC606 Revenue (Net Design Only)",
+        "INTEGER"
+      ],
+      [
+        "Current Billing",
+        "INTEGER"
+      ],
+      [
+        "Current Cumulative Catchup - Disclosure Only",
+        "INTEGER"
+      ],
+      [
+        "Current SSP Delivered",
+        "INTEGER"
+      ],
+      [
+        "Current Delivery - Cumulative",
+        "INTEGER"
+      ],
+      [
+        "Current Rev Rec - Cumulative",
+        "INTEGER"
+      ],
+      [
+        "Current Pre-ASC606 Revenue (Net Design Only) - Cumulative",
+        "INTEGER"
+      ],
+      [
+        "Current Billing - Cumulative",
+        "INTEGER"
+      ],
+      [
+        "Current Cumulative Catchup - Cumulative - Disclosure Only",
+        "INTEGER"
+      ],
+      [
+        "Current SSP Delivered - Cumulative",
+        "INTEGER"
+      ],
+      [
+        "Current Contract Position - POB",
+        "INTEGER"
+      ],
+      [
+        "Current Contract Position - Contract Level",
+        "INTEGER"
+      ],
+      [
+        "Current Reclass to UAR",
+        "INTEGER"
+      ],
+      [
+        "Processing Time Log",
+        "TIMESTAMP"
+      ],
+      [
+        "Record Unique ID without time",
+        "TEXT"
+      ],
+      [
+        "Record Unique ID",
+        "TEXT"
+      ]
+    ],
+    "schema_differences": [],
+    "sku_ssp_equal": true,
+    "final_versions_not_in_shipped": 10,
+    "final_rows_not_in_shipped": 82
+  }
+}

@@ -1,0 +1,239 @@
+# docs/accounting/answer-keys/disc/DISC-CHK-006-S10-DISCLOSURES-ROLLFORWARD-EX21.yaml
+schema: "erev-answer-key/1"
+id: DISC-CHK-006-S10-DISCLOSURES-ROLLFORWARD-EX21
+title: >-
+  Research 04 S10-DISCLOSURES rollforward_ex21 re-baselined: year-1 revenue 122,500.00, closing liability and RPO
+  17,500.00
+status: active
+families: [DISC, POS, RND]
+tags: [r04-s10]
+summary: >-
+  Worked example 10-B on the S2-EX11 contract (licence, installation, 24 months of updates and support; 140,000.00
+  invoiced at inception on 2026-01-01; Year 1 = 2026). Cumulative rounding (CHK-006 row S10-DISCLOSURES) replaces the
+  research 04 plugged figures: Year 1 revenue 122,500.00 (point in time 87,500.00, over time 35,000.00), closing
+  contract liability 17,500.00 and RPO 17,500.00, all due within 12 months; Year 2 revenue 17,500.00, all from the
+  opening contract liability (POL-126 FIFO_WITHIN_CONTRACT), closing liability and RPO 0.00. The engine asserts the
+  balances, RPO and revenue by obligation; the platform report key DISC-S10-DISCLOSURES-REPORTS-EX21 asserts the
+  rollforward rows. Cross-slice variants with distinct inputs, kept: DISC-S10-DISCLOSURES-ROLLFORWARD-EX21 (different
+  events and policies) (ADJUDICATION.md R-DUP-02).
+authority:
+  codification:
+    - "606-10-50-8"
+    - "606-10-50-9"
+    - "606-10-50-10"
+    - "606-10-50-12A"
+    - "606-10-50-13"
+    - "606-10-50-14"
+    - "606-10-50-15"
+    - "606-10-50-5"
+  ifrs: ["IFRS 15.114", "IFRS 15.116", "IFRS 15.120"]
+  practice: []
+  urls: []
+derived_from:
+  research04: [S10-DISCLOSURES, S2-EX11-CASEA-OWNPRICES]
+  research05: []
+  chk: [CHK-006]
+  golden: []
+  dev: []
+requirements: [REQ-RPT-006, REQ-RPT-007, REQ-RPT-009, REQ-RPT-011]
+policy_refs: [POL-126, POL-201, POL-003]
+review:
+  author: answer-keys-fx-entity-books
+  authored_on: "2026-09-12"
+  reviewer: null
+  reviewed_on: null
+  status: pending
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: US01
+      name: "Avenmoor Systems Inc. (Demo)"
+      functional_currency: USD
+      time_zone: "America/New_York"
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: 1}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2027-12"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4010", name: "Revenue - services and subscriptions", account_type: REVENUE}
+    - {code: "4020", name: "Revenue - licences and royalties", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, account: "4020", product: LIC-SW}
+    - {account_role: REVENUE, account: "4010", product: INSTALL}
+    - {account_role: REVENUE, account: "4010", product: UPDATES-24}
+    - {account_role: REVENUE, account: "4010", product: SUPPORT-24}
+  customers:
+    - {code: CUST-1, name: "Pellworth Logistics Inc. (Demo)"}
+  pob_templates:
+    - code: TPL-PCT
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_B
+      recognition_method: OUTPUT_PERCENT
+    - code: TPL-PIT
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: POINT_IN_TIME
+      over_time_criterion: NOT_APPLICABLE
+      recognition_method: POINT_IN_TIME
+    - code: TPL-RAT-ME
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_A
+      recognition_method: TIME_ELAPSED
+      ratable_convention: MONTHLY_EVEN
+  products:
+    - {code: LIC-SW, name: "Software licence", pob_template: TPL-PIT}
+    - {code: INSTALL, name: Installation, pob_template: TPL-PCT}
+    - {code: UPDATES-24, name: "When-and-if-available updates, 24 months", pob_template: TPL-RAT-ME}
+    - {code: SUPPORT-24, name: "Technical support, 24 months", pob_template: TPL-RAT-ME}
+  ssp_books:
+    - code: SSP-US-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2026-01-01"
+          methodology_label: "Observable standalone prices"
+          entries:
+            - product: LIC-SW
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "100000.00"}
+            - product: INSTALL
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "20000.00"}
+            - product: UPDATES-24
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "30000.00"}
+            - product: SUPPORT-24
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "10000.00"}
+  fx_rate_sets: []
+  rule_sets: []
+  policies: {tenant: {billing.posting: ERP}, entities: {}, books: {}}
+contracts:
+  - external_id: C-DISC-S10
+    customer: CUST-1
+    contracting_entity: US01
+    transaction_currency: USD
+    inception_date: "2026-01-01"
+    lines:
+      - {obligation_key: L1-LICENCE, product_code: LIC-SW, quantity: "1", total_price: "90000.00"}
+      - {obligation_key: L2-INSTALL, product_code: INSTALL, quantity: "1", total_price: "15000.00"}
+      - obligation_key: L3-UPDATES
+        product_code: UPDATES-24
+        quantity: "1"
+        total_price: "25000.00"
+        start_date: "2026-01-01"
+        end_date: "2027-12-31"
+      - obligation_key: L4-SUPPORT
+        product_code: SUPPORT-24
+        quantity: "1"
+        total_price: "10000.00"
+        start_date: "2026-01-01"
+        end_date: "2027-12-31"
+timeline:
+  - seq: 1
+    kind: event
+    contract: C-DISC-S10
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: 2
+    kind: event
+    contract: C-DISC-S10
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: 3
+    kind: event
+    contract: C-DISC-S10
+    event_type: BILLING_RECORDED
+    effective_date: "2026-01-01"
+    payload: {invoice_number: INV-S10-1, line_external_id: INV-S10-1-1, amount: "140000.00", issue_date: "2026-01-01"}
+  - seq: 4
+    kind: event
+    contract: C-DISC-S10
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-01-01"
+    payload: {obligation_key: L1-LICENCE, quantity: "1", trigger: CONTROL_TRANSFER}
+  - seq: 5
+    kind: event
+    contract: C-DISC-S10
+    event_type: PROGRESS_RECORDED
+    effective_date: "2026-01-31"
+    payload: {obligation_key: L2-INSTALL, cumulative_progress_ratio: "1", measure: OUTPUT_PERCENT}
+checkpoints:
+  - name: year-end-2026
+    after_seq: 5
+    as_of: "2026-12-31"
+    book: ASC606
+    contracts:
+      - contract: C-DISC-S10
+        version: {revenue_cum: "122500.00", billed_cum: "140000.00", rpo_amount: "17500.00"}
+        obligations:
+          - obligation_key: L1-LICENCE
+            revenue_cum: "87500.00"
+            remaining_allocation: "0.00"
+            satisfaction_status: SATISFIED
+          - obligation_key: L2-INSTALL
+            revenue_cum: "17500.00"
+            remaining_allocation: "0.00"
+            satisfaction_status: SATISFIED
+          - obligation_key: L3-UPDATES
+            revenue_cum: "13125.00"
+            remaining_allocation: "13125.00"
+            satisfaction_status: PARTIALLY_SATISFIED
+          - obligation_key: L4-SUPPORT
+            revenue_cum: "4375.00"
+            remaining_allocation: "4375.00"
+            satisfaction_status: PARTIALLY_SATISFIED
+        balances:
+          - {entity: US01, contract_liability: "17500.00", contract_asset: "0.00", unbilled_receivable: "0.00"}
+  - name: year-end-2027
+    after_seq: 5
+    as_of: "2027-12-31"
+    book: ASC606
+    contracts:
+      - contract: C-DISC-S10
+        version: {revenue_cum: "140000.00", billed_cum: "140000.00", rpo_amount: "0.00"}
+        obligations:
+          - obligation_key: L1-LICENCE
+            revenue_cum: "87500.00"
+            remaining_allocation: "0.00"
+            satisfaction_status: SATISFIED
+          - obligation_key: L2-INSTALL
+            revenue_cum: "17500.00"
+            remaining_allocation: "0.00"
+            satisfaction_status: SATISFIED
+          - obligation_key: L3-UPDATES
+            revenue_cum: "26250.00"
+            remaining_allocation: "0.00"
+            satisfaction_status: SATISFIED
+          - obligation_key: L4-SUPPORT
+            revenue_cum: "8750.00"
+            remaining_allocation: "0.00"
+            satisfaction_status: SATISFIED
+        balances:
+          - {entity: US01, contract_liability: "0.00", contract_asset: "0.00", unbilled_receivable: "0.00"}

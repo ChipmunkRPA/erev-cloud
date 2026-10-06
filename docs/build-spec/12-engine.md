@@ -1,0 +1,3318 @@
+# eRev Cloud 1.0 BUILD_SPEC: engine phases (author BS-2)
+
+| Field | Value |
+|---|---|
+| Owner | Senior engineer and technical accountant, BUILD_SPEC author BS-2 (design phase B3, slug `engine`) |
+| Date | 2026-09-12 |
+| Status | Binding build contract for the phases EKC, ENA, ENB, ENC, END, AKS, GPA, EDS, GPB and PRP. Read-only for the build loop (`docs/01-DECISIONS.md` §0; DG-GIT-05). Amended only by the supervisor through appended items and D-numbers (D-70) |
+| Precedence | Subordinate to every document of `docs/01-DECISIONS.md` §0, D-73 and D-74, and to `docs/build-spec/PHASES.md` on membership and order. Governs the acceptance criteria of its own items (PHASES header row "Precedence") |
+| Assembly | This file holds the ten BS-2 phase sections in build order, each starting with `## <nn> <code> <phase name>`. `research-harness/buildspec/merge_buildspec.py` places each section at its PHASES §3 position in `docs/BUILD_SPEC.md`, the authoritative merged file, and reproduces everything above the first phase heading in its Appendix B (header BSF-D-01, BSF-D-02) |
+| Template | `docs/build-spec/00-header.md` §5.1 item template, §6 checkpoint template; header rules XR-01 to XR-20 apply to every item |
+| Revision | 1.14 (2026-10-03), lane ENG-FX (FX-REPUBLISH-DIRTY-1; supervisor ruling R-116 (b) and the supervisor's rulings of 2026-10-02 on the lane's pre-build line; numbers and Alembic revision 0128 assigned by the supervisor, register index 277; built by lane ENG-FX and taken over by lane SECFIX-PLT on 2026-10-03; BUILD_SPEC header 1.254): PRP-7 — the machine holds, after every republication, that a group whose lines move is at work in the reach of a changed key; the note on the database-platform half of `publish_fx_rates` names the item that built it; 1.13 (2026-10-02), lane ENG-FX (ENG-COST-READBACK-1 — PRODUCT DEFECT, release blocker; supervisor ruling R-11 of 2026-09-29 as amended on 2026-10-02; number assigned by the supervisor; BUILD_SPEC header 1.239): END-5 names the witnesses of ENGINE_SPEC_B S14-R-04 and S14-INV-02 rev 1.165 — a posted amount answers the role key of its stored subject; 1.12 (2026-10-01), lane ENG-FX (PINP-PERIOD-VALUE-1 — release blocker; supervisor ruling R-121 (e) of 2026-10-01 and the supervisor's rulings of the same day on the lane's measured finding and on its pre-build line; number assigned by the supervisor; BUILD_SPEC header 1.169): ENC-11 Paths and acceptance name the witnesses of ENGINE_SPEC_B S10-R-06 rev 1.162 — the billing mode of a line is read per period; 1.10 (2026-10-01), lane ENG-FX (ENG-INCEPTION-ESTIMATE-1 — release blocker; supervisor ruling of 2026-10-01 on lane QA-BE's finding and the lane's measurement; number assigned by the supervisor; BUILD_SPEC header 1.162): ENB-10 Paths and acceptance name the witnesses of ENGINE_SPEC S01-R-18, S04-R-01, S08-R-01 and S08-R-05 rev 1.145 — an estimate in force at inception is in the inception price at every record position of its event; 1.9 (2026-10-03), lane SECFIX-CLO (ENG-USAGE-FIXED-SCHEDULE-1 — PRODUCT DEFECT of the engine's classification, release blocker; supervisor ruling R-116 (a), candidate AD-61; number assigned by the supervisor, register index 87; BUILD_SPEC header 1.109): ENC-10 and ENC-14 Paths and acceptance name the witnesses of ENGINE_SPEC_B S09-R-45, S09-R-49, S09-R-50 and S10-R-24 rev 1.126 and the candidate key; 1.8 (2026-09-30), lane ENG-FX (ENG-S10-FUTURE-INCEPTION-1; supervisor ruling R-107 (a) of 2026-09-30; number assigned by the supervisor; BUILD_SPEC header 1.83): ENC-14 Paths, Engine line and acceptance, and END-1 acceptance, name the witnesses of ENGINE_SPEC_B C-05, S10-R-22 and S12-R-13 rev 1.100 — a contract booked ahead of the open periods of its contracting entity computes; 1.7 (2026-09-30), lane ENG-FX (ENG-S12-DUE-DATE-1; supervisor ruling R-81 of 2026-09-30; number assigned by the supervisor; BUILD_SPEC header 1.66): END-1 Paths and acceptance name the witnesses of ENGINE_SPEC_B S12-R-04 rev 1.83 — the POL-160 layer date stays in the accounting period in which a billing line enters the position; 1.6 (2026-09-30), lane ENG-FX (ENG-S14R10-FX-SIGN-1; supervisor ruling R-44 (a) of 2026-09-30; number assigned by the supervisor; BUILD_SPEC header 1.33): PRP-7 Paths and the coverage-restrictions note — restriction (i) of the stateful machine withdrawn, its two ENG-S14R10-FX-SIGN-1 pins lifted into passing witnesses; 1.5 (2026-09-30), lane ACCT (supervisor ruling R-46 of 2026-09-30 on G12 AD-13; number assigned by the supervisor; BUILD_SPEC header 1.47): three acceptance quotations aligned to D-87 L6-5-Q-25 — ENA-8 `test_ex_04_h_…` L = 2026-03-31, ENC-7 `test_s09_r26_window_expiry_time_driven` E = 0 on a measurement dated on or after the window end, and the AKS-3 quotation of `SFC-S3-EX26-RETURN-RIGHT` at `return-right-open`; 1.4 (2026-09-22), lane T1 (line PRP-PROPS, slice change_vc; number assigned by the supervisor 2026-09-22; BUILD_SPEC header 1.21): PRP-7 Paths and the landed-coverage note for the stateful machine's `change_vc` rule; 1.3 (2026-09-22), lane T1 (line PRP-PROPS, follow-up FX-DOMAIN / LOCK-ORDER; number assigned by the supervisor 2026-09-22; BUILD_SPEC header 1.20): PRP-7 Paths and the coverage-restrictions note (ENG-S14R10-FX-SIGN-1, CLO-LOCK-ORDER-1); 1.2 (2026-09-22), lane T1 (line PRP-PROPS, slice publish_fx_rates; number assigned by the supervisor 2026-09-22; BUILD_SPEC header 1.18): PRP-7 Paths and the landed-coverage note for the stateful machine's `publish_fx_rates` rule; 1.1 (2026-09-12), finisher pass |
+
+## Revision log
+
+| Rev | Date | Change |
+|---|---|---|
+| 1.0 | 2026-09-12 | First issue (design phase B3, author BS-2): 98 items and 10 checkpoint items for the phases EKC (12), ENA (13), ENB (12), ENC (14), END (14), AKS (8), GPA (6), EDS (7), GPB (4) and PRP (8). Mechanical check `.scratch/b3-engine/verify.py`: 106 of 106 phase requirements each completed once; 231 of 231 active keys, every CHK id other than CHK-031, every TC hint, GT-01 to GT-24 and the 7 golden kinds cited; 324 of 324 stage rules and every worked example cited |
+| 1.1 | 2026-09-12 | Finisher pass (design phase B3, `bs-finish`; header BSF-D-05 to BSF-D-07): ENB-6 split into ENB-6 (legacy retrospective template and the attribute-conflict validator) and ENB-7 (POB-specific VC template); ENC-3 split into ENC-3 (control-transfer triggers and output measures) and ENC-4 (units measure); the stage 10 item split into ENC-13 (receivables and contract asset versus unbilled receivable) and ENC-14 (reclass attribution and current split); ids renumbered: ENB-7 to ENB-12 became ENB-8 to ENB-13, ENC-4 to ENC-11 became ENC-5 to ENC-12, ENC-12 became ENC-13 and ENC-14, ENC-13 and ENC-14 became ENC-15 and ENC-16. Totals: 101 items and 10 checkpoint items |
+| 1.2 | 2026-09-22 | Lane T1, line PRP-PROPS, slice publish_fx_rates (docs first; number assigned by the supervisor 2026-09-22; BUILD_SPEC header 1.18): PRP-7 Paths gain `support/oracle.py`'s FX clause functions (`RateRow`, `spot_rate`, `period_rate`, `functional`, `layer_relief`, `carrying_share`, `pro_rata_shares` — S12-R-01, S12-R-02, S12-R-05, ENGINE_SPEC_B §12.2.2, S12-R-06, S12-R-07, S12-R-09 — and `layer_ledger`, the transaction-side re-statement of ALG-08 §2.9.1 / §12.2.2 that derives which layer is settled or consumed, by how much and in which order — FIFO or pro rata — from the world's own flows), `support/prop_worlds.py`'s two-currency worlds (`bundle` parameters `functional_currency`, `fx_rates`, `trigger`, `policies`; `FX_ACCOUNTS`), `support/platform_props.py` (`machine_bundle` pass-through, `layer_movements`), `support/bundles.py` (`account_mapping(extra=…)`) and the machine's `publish_fx_rates` rule (every rate type of a postable period; `average` and `closing` of a locked period; the recompute under E-87 `FX_REPUBLISH`). PRP-7 acceptance gains a landed-coverage note (a note, not a criterion): authored rules `create_contract`, `record_progress`, `record_billing`, `start_close`, `lock`, `submit_late_event`, `void_event`, `publish_fx_rates`; P6 is restated as one identity in both currencies — closing − opening = billings + Σ (credit − debit) of the engine's lines to the three balance roles — with the landed `billed − revenue` form kept as its term-by-term witness on every example (transaction column always; functional column in single-currency worlds); open, each with its blocker: `reopen` (CLO-7, F-CLO); `modify` for UPGRADE / CO_TERM / ADD_OBLIGATION / QUANTITY_CHANGE > 0 (TA-K02-MOD-KIND-1) and for TERM_CHANGE / RENEWAL / EARLY_RENEWAL (candidate Technical Accounting term-extension item); `change_vc` (slice 2) and `modify` PRICE_CHANGE (slice 3); the `spot` rate of a locked period — FX-LOCKED-SPOT-REPUBLISH-1 (open for Ray, with a Technical Accounting component: whether a corrected historical rate re-rates a non-monetary layer at all, and who books it; a republished locked-period spot re-rates the historical ERP-booked contract-liability layers with no engine line explaining the change, and RCP-17 / REQ-CLS-013 cover open periods only); the database-platform half — RCP17-FX-DIRTY-1 (`_approve_fx_rate_set_version` marks no group dirty, contrary to RCP-17; owner RFD-3) and CLO19-FX-CAUSE-1 (CLO-19's `test_recompute_only_dirty_groups` does not exercise the FX cause of REQ-CLS-013; F-CLO coverage note). No acceptance criterion, gate or prerequisite changes |
+| 1.3 | 2026-09-22 | Lane T1, line PRP-PROPS, follow-up FX-DOMAIN / LOCK-ORDER (docs first; number assigned by the supervisor 2026-09-22; BUILD_SPEC header 1.20): PRP-7 Paths name the machine's `_bounded` and `_next_to_close`; the PRP-7 acceptance gains a note stating two COVERAGE RESTRICTIONS of the stateful machine's generated world, not rules of the platform: (i) a month's `average` and `closing` rates are drawn within a factor of 2 of its `spot` (`_bounded`; the spot path stays free); (ii) periods close in calendar order — `start_close` and `lock` act only on the earliest period not yet closed (`_next_to_close`). The platform still ADMITS inconsistent rate sets and out-of-order locks; the behaviour there is an OPEN decision and the machine gives NO coverage of it: ENG-S14R10-FX-SIGN-1 (engine, stages 12 / 14, and Ray: on a bundle of valid positive rates — first seen with spot and average orders of magnitude apart, then reproduced at average / spot ratios of 2 and 3 — a redirected FX-affected REVENUE_RECOGNITION line whose transaction and functional amounts differ in sign raises ENGINE_INVARIANT_VIOLATED under the S14-R-10 label at `s14_posting/intents.py:138`, while the S14-R-10 row states no sign rule — allow opposite signs, or refuse such rate sets as malformed input (CV-45)?) and CLO-LOCK-ORDER-1 (product / control, Ray and F-CLO: a plain LOCK of a later period while an earlier one is postable is admitted — `_earlier_unlocked` guards only the permanent lock — and a later posting into the earlier period changes the locked period's opening while its snapshot is frozen; must LOCK require every earlier period closed, or is the frozen rollforward's opening defined otherwise?). Codex production-20260922-1508 §2: positive rates do NOT imply equal delta signs (prior unbilled 100 at average 3 = 300; revised revenue 110 = 50 historical liability at spot 1 + 60 unbilled at average 3 = 230; delta (+10, −70); the same arithmetic at average 2 gives (+10, −30), INSIDE the bound) — so the rate bound REDUCES but does NOT EXCLUDE the opposite-sign exposure; it is a disclosed reduction of frequency, not a safe domain; the sign guard is the earlier engineering decision recorded at `docs/reviews/loop/sprint/L2-5.md:261` (Q-34, opposite-sign refusal under the single-side IntentLine format). Codex production-20260922-1514: "chronological generator restrictions and strict xfail keep the limitation visible; they do not close the admitted product path or establish unrestricted P6" — P6 is not redefined as a fix; F-CLO drafts the docs-first control proposal (sequential close, or out-of-order with specified report bases) for Ray. The failing cases are pinned as deterministic tests marked `xfail(strict=True)` naming their id in `backend/tests/unit/test_prp7_open_items.py` (DG-TST-09 forbids `xfail` on property-marked tests): `test_eng_s14r10_fx_sign_1_inconsistent_rate_kinds_raise_the_sign_invariant`, `test_eng_s14r10_fx_sign_1_codex_1508_arithmetic_inside_the_rate_bound` (JPY → USD, spot 1 / average 2 / closing 1.5, a late billing and a late unit into a locked January with unbilled revenue) and `test_clo_lock_order_1_a_later_period_locked_first_leaves_p6_undefined`; a pin that starts passing means the engine or platform behaviour changed and its expected outcome is rewritten under the ruling; the CPU criterion's xfailed count rises by 3. MEASURED: average / spot ratios of 2 and 3 in the Codex 1508 §2 world shape (a late billing plus a late unit into a locked period holding unbilled revenue), one world shape. INFERRED, not witnessed by any machine run: the machine can reach the condition through `submit_late_event` at other rate ratios ≠ 1. Supervisor pre-ruling (applied at batch #9 as well): a RED in any properties stage whose failure is ENGINE_INVARIANT_VIOLATED with invariant S14-R-10 is the open item ENG-S14R10-FX-SIGN-1, not a regression — quoted with its example, no relaunch to chase a green, no narrowing, no filtering; any other failure is a normal STOP. Disclosed restricted generators plus strict expected failures retain the examples; they do not resolve admitted-input behaviour or establish unrestricted property coverage (Codex production-20260922-1442 §4). No acceptance criterion, gate or prerequisite changes |
+| 1.4 | 2026-09-22 | Lane T1, line PRP-PROPS, slice change_vc (docs first; number assigned by the supervisor 2026-09-22; BUILD_SPEC header 1.21): PRP-7 Paths gain `support/oracle.py`'s variable-consideration clause functions (`VcVersion`, `expected_value`, `most_likely` — S04-R-05; `Oracle.vc_in_force` / `vc_constrained` / `vc_excluded` — S08-R-01, S04-R-02, S04-R-07; `Oracle.segments` / `allocation_at` / `revenue_at` — S08-R-03, S08-R-04, S08-R-06, S08-R-07 with the engine's two routing paths; `largest_remainder` over a negative total, symmetric; `layer_ledger` NEGATIVE_REVENUE credits), `support/bundles.py` (`estimate_version`, `VC_ELEMENT`), `support/prop_worlds.py` (`WorldSpec.vc`, `stream_base`, the version-1 `ESTIMATE_CHANGED` at the inception, `bundle(estimate_versions=…)`), `support/platform_props.py` (`machine_bundle(estimate_versions, vc_events)`) and the machine's `change_vc` rule (`_draw_vc`, `_add_vc_version`, `_vc_floor`, `_admits_contract`). PRP-7 acceptance note (a note, not a criterion): authored rules `create_contract`, `record_progress`, `record_billing`, `start_close`, `lock`, `submit_late_event`, `void_event`, `publish_fx_rates`, `change_vc`; P4 is restated over the engine's schedule streams (a NORMAL stream and a TP_CHANGE stream per cause): per obligation and period the sum of every stream's latest cumulative lies within [0, the allocation in force at the period's end] and equals the oracle's recognised revenue; without a price change there is one NORMAL line and the landed bound, the witness on every example; open, each with its blocker: `reopen` (CLO-7, F-CLO; CLO7-REOPEN-LATE-EVENT-1 open); `modify` for UPGRADE / CO_TERM / ADD_OBLIGATION / QUANTITY_CHANGE > 0 (TA-K02-MOD-KIND-1) and for TERM_CHANGE / RENEWAL / EARLY_RENEWAL (candidate Technical Accounting term-extension item); `modify` PRICE_CHANGE (slice 3); the `spot` rate of a locked period — FX-LOCKED-SPOT-REPUBLISH-1; the database-platform half — RCP17-FX-DIRTY-1 (RFD-3) and CLO19-FX-CAUSE-1 (F-CLO); for `change_vc`: the VC_ALLOCATION_NEGATIVE refusal (S08-R-06) is not exercised — a new K stays above the level that would drive an exact quota below 0 and a contract whose booking would do so retroactively is not booked; the constraint judgement (how much to constrain) is a generated APPROVED input, never computed (S04-R-07, POL-041). No acceptance criterion, gate or prerequisite changes |
+| 1.6 | 2026-09-30 | Lane ENG-FX (ENG-S14R10-FX-SIGN-1; supervisor ruling R-44 (a) of 2026-09-30; docs first; number assigned by the supervisor — 1.5 is lane ACCT's; BUILD_SPEC header 1.33): the PRP-7 coverage-restrictions note gains the closing of ENG-S14R10-FX-SIGN-1 — coverage restriction (i) (a month's `average` and `closing` within a factor of 2 of its `spot`) is withdrawn and the machine draws the rate kinds freely, the two strict expected failures are lifted into passing witnesses of their own figures (pin policy R-10a), and the pre-ruling on a RED naming invariant S14-R-10 lapses; PRP-7 Paths no longer name `_bounded`. Restriction (ii) and CLO-LOCK-ORDER-1 are unchanged. No item, criterion or test node is added or removed; the CPU criterion's xfailed count falls by 2. |
+| 1.5 | 2026-09-30 | Lane ACCT (supervisor ruling R-46 of 2026-09-30 on G12 AD-13; memo `docs/accounting/reviews/AD-13-14-34-MEMO-2026-09-29.md` §4.5 and its review; docs first; number assigned by the supervisor; BUILD_SPEC header 1.47): three acceptance quotations that still carried the day-after reading of a return window are aligned to D-87 L6-5-Q-25. (1) ENA-8, `test_ex_04_h_accretion_suspended_while_returns_exclude_consideration`: "L = 2026-04-01" → "L = 2026-03-31", the value the test asserts for `suspended_until`. (2) ENC-7, `test_s09_r26_window_expiry_time_driven`: "E = 0 from `window_end_date` + 1 day" → "E = 0 on a measurement dated on or after `window_end_date` and E kept the day before". (3) AKS-3, `test_answer_key[SFC-S3-EX26-RETURN-RIGHT]`: the quotation at `return-right-open` (dated on the window end) follows the corrected key — `transaction_price` "100.00", `expected_returns_amount` "0.00", `unbilled_receivable` "100.00", `return_asset` "0.00" and the FY2026-P03 lines `REVENUE` cr "100.00" and `RETURN_ASSET` cr "80.00"; it read "0.00", "-100.00", `return_asset` "80.00" and no FY2026-P03 lines. The later checkpoints of the quotation are unchanged. No item, path or test node changes |
+| 1.7 | 2026-09-30 | Lane ENG-FX (ENG-S12-DUE-DATE-1; supervisor ruling R-81 of 2026-09-30, amending D-87 L6-5-Q-14; docs first; number assigned by the supervisor; BUILD_SPEC header 1.66): END-1 — the Paths gain `backend/tests/engine/s13_books/test_s13_layer_period.py` and `backend/tests/domain/contracts/test_billing_due_date.py`, and the acceptance list gains one bullet naming the item and its witnesses: the stage 12 node `test_s12_r04_layer_date_stays_in_the_period_of_entry`, the fourteen public-compute cases on frozen key bundles (twelve refused before the rule) and the database witness through the events route on K-07. ENGINE_SPEC_B S12-R-04 rev 1.83: the POL-160 layer date stays in the accounting period in which a billing line enters the position. No item, gate, answer key or figure changes |
+| 1.8 | 2026-09-30 | Lane ENG-FX (ENG-S10-FUTURE-INCEPTION-1; supervisor ruling R-107 (a) of 2026-09-30; docs first; number assigned by the supervisor, register index 61; BUILD_SPEC header 1.83): ENC-14 — the Paths gain `backend/tests/engine/s10_billing_balances/test_s10_no_measured_period.py`, `backend/tests/support/booked_ahead.py` and `backend/tests/domain/contracts/test_booked_ahead.py`, the Engine line gains the formula `pos.reclass_attribution.no_measured_period.v1`, and the acceptance list gains one bullet naming the item and its witnesses: fourteen engine nodes (eight shapes of a contract booked ahead, the same on the generated property worlds, the deterministic schedule, the entity that is behind, the exact-column export binding in two shapes, the formula), the narrative of the new formula and two database nodes through `POST /contracts`. END-1 — one bullet for the stage 12 half, witnessed by the same compute cases. ENGINE_SPEC_B rev 1.100: C-05, S10-R-22, S12-R-13. No item, gate, answer key or figure changes |
+| 1.10 | 2026-10-01 | Lane ENG-FX (ENG-INCEPTION-ESTIMATE-1 — PRODUCT DEFECT, release blocker; supervisor ruling of 2026-10-01 on lane QA-BE's finding and the lane's measurement; docs first; number assigned by the supervisor, register index 147; BUILD_SPEC header 1.162): ENB-10 — the Paths gain `backend/tests/engine/s08_estimates_late_events/test_s08_inception_estimate.py`, and the acceptance list gains one bullet naming the item and its witnesses: eleven nodes of that module (nine cases of three keys with a Step 1 assessment, a significant-change flag or a line attribute change recorded before the estimate change of the inception; FASB Example 6 with its amendment dated at the inception; the corpus-wide case, `slow`) and one node each in the stage 01 and stage 06 modules; in the stage 04 module one assertion follows S04-R-01 rev 1.145 at the inception date and one node keeps the position rule on a later date. ENGINE_SPEC rev 1.145: S01-R-18, S04-R-01, S08-R-01, S08-R-05. No item, gate, answer key or figure changes |
+| 1.12 | 2026-10-01 | Lane ENG-FX (item PINP-PERIOD-VALUE-1 — PRODUCT DEFECT, release blocker; supervisor ruling R-121 (e) of 2026-10-01 and the supervisor's rulings of the same day on the lane's measured finding and on its pre-build line; docs first; number assigned by the supervisor, register index 143; BUILD_SPEC header 1.169): ENC-11 — the Paths gain `backend/tests/engine/s10_billing_balances/test_s10_billing_mode_per_period.py`, and the acceptance list gains one bullet naming the item and its two witnesses: the billing mode of a period without a POL-123 value is POL-004's, and the STP1-S1-EX2 bundle with POL-123 from FY2026-P06 on computes the key's figures. ENGINE_SPEC_B rev 1.162: S10-R-06. No item, gate, answer key or figure changes |
+| 1.13 | 2026-10-02 | Lane ENG-FX (item ENG-COST-READBACK-1 — PRODUCT DEFECT, release blocker; supervisor ruling R-11 of 2026-09-29 as amended on 2026-10-02; docs first; number assigned by the supervisor, register index 248; BUILD_SPEC header 1.239): END-5 — the acceptance list gains one bullet naming the item and its engine witnesses (`backend/tests/engine/s14_posting/test_s14_posted_subjects.py`; `backend/tests/engine/s14_posting/test_s14_fx_rate_references.py`): a computation over its own postings posts nothing in any subject family, and the regrouping of a group-level subject. ENGINE_SPEC_B rev 1.165: S14-R-04, S14-INV-02. No item, gate, answer key or figure changes |
+| 1.9 | 2026-10-03 | Lane SECFIX-CLO (ENG-USAGE-FIXED-SCHEDULE-1 — PRODUCT DEFECT of the engine's classification, release blocker; supervisor ruling R-116 (a), candidate AD-61 for the independent accountant; docs first; number assigned by the supervisor, register index 87; BUILD_SPEC header 1.109; row appended at the table's tail): ENC-10 — the Paths gain `backend/erev_engine/stages/s09_recognition/components.py` and `backend/tests/engine/s09_recognition/test_s09_deterministic_component.py`, the acceptance list gains one sub-bullet naming the item and its six tests, and "Answer keys" names the candidate key `REC-USAGE-STAND-READY-FEE-SCHEDULED-TO-TERM-END`, which is not in the release selection. ENC-14 — the acceptance list gains one sub-bullet naming the item's case in `backend/tests/engine/s10_billing_balances/test_chk_alg02_alg03.py`. ENC-16 is not touched: S11-R-17 keeps the method, and the case that holds the difference stands in `backend/tests/engine/s11_costs_loss/test_s11_loss.py`, a module ENC-16 names already. The platform's to-date reader changes with the engine (04 rev 1.178; `backend/tests/unit/test_contract_to_date.py`, `backend/tests/domain/contracts/test_to_date_reads.py`, `backend/tests/domain/reports/test_figures_at_the_as_of_db.py`, `backend/tests/answer_keys/test_answer_key_reads.py`): no item of the build spec names those modules, and none gains an acceptance line here. ENGINE_SPEC_B rev 1.126. No item or gate changes; one answer key is added as a candidate; no figure of an existing key changes |
+| 1.14 | 2026-10-03 | Lane ENG-FX (FX-REPUBLISH-DIRTY-1; supervisor ruling R-116 (b) and the supervisor's rulings of 2026-10-02 on the lane's pre-build line; docs first; numbers and Alembic revision 0128 assigned by the supervisor, register index 277; built by lane ENG-FX and taken over by lane SECFIX-PLT on 2026-10-03; BUILD_SPEC header 1.254): PRP-7 — the landed-coverage note no longer lists RCP17-FX-DIRTY-1 and CLO19-FX-CAUSE-1 as open: the platform half is item FX-REPUBLISH-DIRTY-1; the machine (`backend/tests/properties/test_prop_state_machine.py`) gains the check `_the_reach_holds`, run in its invariant after a republication against the lines and the facts of the run checked before it, and `backend/tests/properties/test_prop_rate_reach.py` holds five examples and the fail-first witness (without the position clause the property fails). No engine file, answer key or figure changes; no item, gate or prerequisite changes |
+
+### Decisions taken in B3 (D-77)
+
+None of these opens a question. Each is the most reasonable default within the BS-2 remit; items below apply them.
+
+| Id | Decision | Rationale |
+|---|---|---|
+| B3-BS2-01 | **Prerequisites across authors.** An item that consumes an interface of a phase authored by BS-1, BS-3 or BS-4 cites `GATE-<code>` of that phase together with the dev-guide signature or the 04 API row, never another author's item number | The other phase files are authored concurrently (PHASES §0 "Cross-author interfaces"); a GATE id is stable and is ticked only after every item of its phase |
+| B3-BS2-02 | **TC test naming tokens (BS-D-21).** `TC-setup-nn` → `test_tc_setup_<nn>_<slug>`; `TC-delivery-nn` → `test_tc_delivery_<nn>_<slug>`; the plain `TC-nn` rows of legacy 03 §7.3 → `test_tc_prospective_<nn>_<slug>`; `TC-RM-nn` → `test_tc_rm_<nn>_<slug>`; `TC-pob-vc-nn` → `test_tc_pob_vc_<nn>_<slug>`; `TC-JE-nn` → `test_tc_je_<nn>_<slug>` | BS-D-21 fixes `test_tc_<doc>_<nn>_<slug>` without a token for the legacy 03 rows, which carry no document prefix |
+| B3-BS2-03 | **TC hints needing later stages.** A TC hint whose "Expected (eRev Cloud)" or "Fixed" value needs a stage built after the completing item closes in the later item that names its test. It is listed there under "Hint closure" with the REQ id | The same pattern PHASES §15 applies to `AK`, `GT` and `PROP` hints; engine stages are built in ENGINE_SPEC order (PHASES §3 rule 1) |
+| B3-BS2-04 | **Legacy probes P1, P2 and P4 close in GPB.** Their expected objects in `docs/legacy/golden/deviations.json` carry `je_gross_*` and `je_delta_*` members. DG-PAR-06 compares these with report `legacy_je_summary` (RPT-13), which RPS builds after GPA. GPA passes `probe-P3-over-delivery-validation`, 94 cases in total. GPB passes the other three probes with the journal kinds. The parity selection of GATE-GPA, and of the GATE rows that say "as GATE-GPA", is `K="initial_allocation or pob_position or contract_position or cumulative_catchup or probe-P3-over-delivery-validation"` (94 cases). GATE-GPB runs `make parity` unfiltered (122 cases) | PHASES §3 rule 4 (harness phases follow the capabilities they measure) and DG-PAR-06 make 97 passing cases at GATE-GPA impossible without a forward dependency on RPS (header XR-19). The supervisor may amend PHASES §4 and §9 to match |
+| B3-BS2-05 | **Modification integrity validator (REQ-MOD-019, REQ-MOD-021).** `backend/erev_engine/stages/s06_modifications/integrity.py` holds the pure function `validate_modification(ctx, st, modification) -> tuple[Finding, ...]`, exported from the stage package `__init__` next to `apply` and `propose`. It returns the 04 table 15.4-A codes `CONTRACT_NOT_FOUND`, `POB_NOT_FOUND`, `MOD_DUPLICATE_KEY`, `MOD_SIGN_MISMATCH`, `IMPORT_NO_DATA_ROWS` and `MOD_ATTRIBUTE_CONFLICT`. The CTR modification command and the DIN legacy v1 modification template call the same function. `s06_modifications.apply` treats any such finding in a bundle as a programming error of bundle assembly (ENGINE_SPEC CV-45), so `compute` never emits these codes (CV-44) | PHASES §6.7 places REQ-MOD-019 in ENB, while its rules are catalogued as import-stage codes. One shared pure validator makes the requirement true in ENB without pre-empting the DIN pipeline (BS-D-16), following the DG-AK-45 precedent of one pure helper shared by a runner and a command |
+| B3-BS2-06 | **`compute` before END.** `erev_engine.compute` is created in END-9. Before then `backend/tests/support/answer_keys/runners.py::run_engine` resolves it at call time and fails closed with `AnswerKeyError(path, "/", "erev_engine.compute not built (BUILD_SPEC END-9)")` (header XR-12). EKC proves bundle assembly through the private helper `build_checkpoint_bundles(key)` | ENGINE_SPEC Table 0.2-A: `compute` is wired only when every stage exists (PHASES §1 ENA row) |
+| B3-BS2-07 | **Stage registry completeness.** EKC-6 creates `STAGES` and `BOUNDARY_HANDLERS` in `backend/erev_engine/stages/__init__.py` with the test `backend/tests/engine/kernel/test_stage_registry.py`, which holds the module tuples `PENDING_STAGES` and `PENDING_BOUNDARY_HANDLERS`. Each entry names its phase code. The item that builds a stage removes its entries. GATE-EDS requires both tuples to be empty | The BS-D-07 pattern, applied to the engine constants of ENGINE_SPEC §0.10 without handler stubs (header XR-14) |
+| B3-BS2-08 | **Golden event streams for engine tests.** `backend/tests/support/golden_streams.py` builds, per legacy contract and step, the `ContractInput`, `SspVersionInput` and `EventInput` tuples of the golden replay. It reads the committed UAT fixtures `backend/tests/fixtures/legacy_uat/NN-<slug>/` (DG-PAR-02) and `docs/legacy/golden/NN-<slug>/step.json` read-only, mapping template rows to events by ENGINE_SPEC S01-R-05 to S01-R-09. It is test support, never product code, and the DIN importer does not import it. GPA cross-checks the same figures through the real import pipeline | Engine-level TC and worked-example tests need the golden histories before DIN exists (PHASES §3 order ENB → DIN) |
+| B3-BS2-09 | **CHK unit tests by stage (PHASES §8.3).** COV-C-14 checks land with the stage that implements the topic rule: CHK-118 and CHK-120 in ENA; CHK-112, CHK-113, CHK-115 and CHK-121 in ENB; CHK-110, CHK-111, CHK-116 and CHK-117 in ENC. CHK-054 lands in ENA, and CHK-050 to CHK-053 in ENC. JET templates (COV-C-03) are tested through `compute` in END. CHK-117's aging export is an RPS report, so ENC asserts the attribution totals that the export ties to, and PRP runs the platform key | PHASES §8.3 rows COV-C-03, COV-C-06 and COV-C-14 |
+| B3-BS2-10 | **Engine scope of split stages.** ENA builds S01-R-11 to S01-R-20; S01-R-01 to S01-R-10 are the DIN platform part (BS-D-16). S02-R-13 and S02-R-14 are CTR platform functions. S07-R-11 to S07-R-13 are LMG. S14-R-16 to S14-R-24 (§14.3) and S14-INV-07 (batch balance per currency and contiguous seal ranges, DB-16) are CLO, except CHK-020, the engine-level delta identity, which END tests. The stage 15 platform parts (report runs, snapshot storage, variance replay jobs) are CLO and RPS; EDS builds the pure per-group datasets, driver decomposition and manifest helpers | ENGINE_SPEC Table 0.2-A, ENGINE_SPEC_B §0.1 and §0.4 separate engine and platform parts |
+| B3-BS2-11 | **AKS grouping.** The 221 keys of PHASES §8.2.1 close in seven family items of at most 40 keys each, in pipeline order (rounding and SSP; allocation, Step 1, obligations and price specialists; variable consideration, returns, financing, breakage and royalties; recognition and presentation; modifications, material rights and late events; journals, costs, loss, IFRS and onboarding; foreign currency and entities), followed by one sweep item | SZ-02 limits an item to forty newly passing keys; later families depend on earlier stages |
+| B3-BS2-12 | **Money figures in acceptance.** Figures are quoted from POLICIES CHK rows, ENGINE_SPEC worked examples, legacy 01 to 06 §7.3 TC rows, `docs/legacy/golden/golden-tests.json` and the answer keys, with their source id. A figure that could only be derived here is never quoted | Header IT-04 |
+| B3-BS2-13 | **Sign of the memo columns.** ENGINE_SPEC rev 1.2 B3 decision 3 states that `contract_version.expected_returns_amount` and `consideration_payable_amount` are ≤ 0. At rev 1.0 the answer keys asserted magnitudes (`RET-CHK-029-S3-EX22` `"300.00"`, `RET-CHK-060-S3-EX22-REVISED` `"400.00"`, `CPC-CHK-133-S3-EX32` `"1500000.00"`, `CPC-BR-07-CASEB-MDF-EXCESS-OVER-FAIR-VALUE` `"20000.00"`). **Resolved by the post-B3 residue sweep (`_coverage/ADJUDICATION.md` R-SGN-01; 04 T-CON-08 rev 1.3):** the keys assert the signed figures `"-300.00"`, `"-400.00"`, `"-1500000.00"` and `"-20000.00"` (and `CPC-WM-03-BUYER-PROMOTIONS-NEGATIVE-REVENUE-TEST` `"-15000.00"`). Items assert both the TpBuildUp members and the persisted columns with the S04-R-02 sign, and no spec question is recorded | `docs/01-DECISIONS.md` §0: for numbers the answer keys win over prose, and a conflict is a spec question; one deterministic default keeps ENA and AKS consistent |
+| B3-BS2-14 | **Hint closure line.** Under **Acceptance**, after "REQs completed", an item adds `Hint closure:` when it closes 03 §1.4 hints (`AK`, `AK-FAM`, `GT`, `TC`, `PROP`, `UNIT`) of a requirement, whether completed by that item or by another. GATE membership checks and the release G1 comparison read these lines together with "REQs completed" | PHASES §15.1 decouples hint closure from completion (harness phases close `AK`, `GT` and `PROP` hints after the completing item); the loop and the supervisor need one greppable record |
+
+## 02 EKC Engine kernel and test harnesses
+
+**Entry criteria.** GATE-FND ticked. FND provides the registry module `backend/erev_api/registry/policies.py` with `POLICY_PARAMETERS` (DG-KRN-REG-04), the StrEnum mirrors `backend/erev_api/enums.py`, the architecture tests DG-ARC-01 to 06, 09, 10, 12 and 13, and the committed legacy fixtures with their manifest (DG-PAR-02).
+
+**Exit criteria (PHASES §1 row EKC).** (1) `erev_engine` public modules of DG-ENG-07 other than stage packages: `money`, `currencies`, `dates`, `progress`, `canonical`, `trace`, `formulas` and `reevaluate`, `enums`, `rules`, `errors`, `guards`, `bundle`, `stages/state`, the `stages/__init__` constants and `ENGINE_VERSION`. (2) DG-ARC-02 purity, and the CHK unit tests of COV-C-01. (3) Answer-key loader of dev-guide §9.5.8 loading all 234 files with zero errors; `coverage()` reporting zero gaps; `run_engine` bundle assembly; `assert_checkpoints`; `test_answer_keys.py`; the `make answer-keys` report. (4) Strategies, Hypothesis profiles, P2, P3, the helper part of P4 and `make properties`.
+
+**Gate scope at exit (PHASES §4 row GATE-EKC).** `make ci`; `make test-pg`; the loader and coverage unit tests inside `make ci`; `make properties` unfiltered; `erev controls-report --tags-only` inside `make lint`. `make e2e`, `make answer-keys` and `make parity` are not yet gates.
+
+**Membership.** REQ-REC-019 (PHASES §6.2). Make targets DG-MK-answer-keys and DG-MK-properties (§13). Properties P2, P3 and the helper part of P4 (§12). CHK unit tests of COV-C-01 (§8.3). No control, route row, placement or journey.
+
+- [ ] **EKC-1 Money kernel: quantisation, largest remainder, currencies and float guards.**
+  - **Prerequisites:** GATE-FND
+  - **Scope:**
+    - Paths: `backend/erev_engine/money.py` (`DECIMAL_CONTEXT`, `EXACT_PLACES`, `to_fraction`, `round_half_up`, `minor_to_decimal`, `decimal_to_minor`, `largest_remainder`, `format_money`, `format_exact`, `Money`); `backend/erev_engine/currencies.py` (`CurrencySpec`, `ISO_4217`, `CurrencyTable`; created, or completed when the GATE-FND T-REF-08 seed already defines it); `backend/erev_engine/errors.py` (`EngineError`); `backend/erev_engine/guards.py` (`no_floats`, `assert_sorted`); `backend/tests/engine/kernel/test_money.py`; `backend/tests/engine/kernel/test_currencies.py`; `backend/tests/engine/kernel/test_guards.py`; `backend/tests/engine/kernel/test_chk_alg01_apportionment.py`
+    - Schema: none
+    - API: none
+    - Engine: dev-guide §5.9 binding signatures of `erev_engine/money.py` and `erev_engine/currencies.py`; §7 `errors.py`; DG-KRN-MONEY-01, 02, 04 and 05; ENGINE_SPEC §0.7 CV-30 to CV-34, CV-36 and CV-37
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/kernel/test_chk_alg01_apportionment.py::test_chk_001_equal_ssp_thirds`: `largest_remainder(10000, [1, 1, 1], ["POB-001", "POB-002", "POB-003"])` returns `[3334, 3333, 3333]` (USD 33.34 / 33.33 / 33.33; POLICIES ALG-01 §2.1.4 CHK-001)
+      - `…::test_chk_003a_jpy_equal_weights`: a total of 10,000 minor units at minor unit 0 over three equal weights returns `[3334, 3333, 3333]` (JPY 3,334 / 3,333 / 3,333; CHK-003a)
+      - `…::test_chk_003b_bhd_weights_one_two`: `largest_remainder(100000, [1, 2], keys)` returns `[33333, 66667]` (BHD 33.333 / 66.667; CHK-003b)
+      - `…::test_chk_003c_negative_total`: `largest_remainder(-10000, [1, 1, 1], keys)` returns `[-3334, -3333, -3333]` (CHK-003c)
+      - `…::test_chk_003d_tie_broken_by_larger_weight`: `largest_remainder(3, [1, 2, 3], keys)` returns `[0, 1, 2]` (CHK-003d)
+      - `backend/tests/engine/kernel/test_money.py::test_largest_remainder_errors_and_order_independence`: a negative weight raises `EngineError` with code `NEGATIVE_WEIGHT`; all-zero weights raise `TOTAL_WEIGHT_ZERO`; reversing the input order returns the same amount per key (DG-KRN-MONEY-02)
+      - `…::test_round_half_up_symmetric`: `round_half_up(Fraction(5, 1000), 2) == 1` and `round_half_up(Fraction(-5, 1000), 2) == -1` (ALG-01 §2.1.1; CV-37); `minor_to_decimal(0, 2)` formats as `"0.00"` and never `"-0.00"` (DG-KRN-MONEY-01)
+      - `…::test_to_fraction_rejects_float_bool_and_exponent`: `to_fraction(1.5)` and `to_fraction(True)` raise `TypeError`; `to_fraction("1E+2")` raises `ValueError` (DG-KRN-MONEY-05)
+      - `…::test_format_money_minor_units`: `format_money(1200, 0) == "1200"`, `format_money(1230, 2) == "12.30"`, `format_money(1250, 3) == "1.250"` (DG-KRN-MONEY-06)
+      - `…::test_format_exact_places_and_trimming`: `format_exact(Fraction(5, 2)) == "2.5"` and `format_exact(Fraction(2, 3)) == "0.666666666666666667"` (18 places, half up, trailing zeros trimmed, no exponent)
+      - `…::test_decimal_context`: `DECIMAL_CONTEXT.prec == 38`, rounding `ROUND_HALF_UP`, and the traps `FloatOperation`, `InvalidOperation`, `DivisionByZero` and `Overflow` are set
+      - `backend/tests/engine/kernel/test_currencies.py::test_iso_4217_minor_units`: `ISO_4217["JPY"].minor_unit == 0`, `["USD"] == 2`, `["BHD"] == 3`, `["CLF"] == 4`; every code matches `^[A-Z]{3}$`; every minor unit lies in 0 to 4; when the T-REF-08 seed exists, its codes and minor units equal `ISO_4217` (DG-KRN-MONEY-04)
+      - `backend/tests/engine/kernel/test_guards.py::test_no_floats_detects_nested_float`: `guards.no_floats` over a frozen dataclass whose tuple member holds `0.5` raises `EngineError("FLOAT_DETECTED")`; over `Fraction`, `Decimal`, `int`, `str`, `date` members it returns without error (DG-ENG-03)
+      - `backend/tests/architecture/test_engine_purity.py` (DG-ARC-02) and `test_money_literals.py` (DG-ARC-06) pass over the new modules
+    - Answer keys: none
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: none; REQs contributed: REQ-ALC-002 (largest remainder), REQ-ALC-003 (exact ratios)
+  - **Read:** dev-guide §5.9 (DG-KRN-MONEY-01 to 07), §6.8 DG-ARC-02 and DG-ARC-06, §7 DG-ENG-03 and DG-ENG-06; POLICIES ALG-01 §2.1.1, §2.1.2, §2.1.4 (CHK-001, CHK-003a to CHK-003d); ENGINE_SPEC §0.7 (CV-30 to CV-37, EX-00-A); D-11; 04 T-REF-08
+  - **Gates:** GK-01 `make ci`; GK-04 `make ci` (engine tests sort first)
+
+- [ ] **EKC-2 Cumulative schedules: `cumulative_posted` and `period_amounts`.**
+  - **Prerequisites:** EKC-1
+  - **Scope:**
+    - Paths: `backend/erev_engine/money.py` (`cumulative_posted`, `period_amounts`); `backend/tests/engine/kernel/test_chk_alg01_schedules.py`; `backend/tests/engine/kernel/test_cumulative_posted.py`
+    - Schema: none
+    - API: none
+    - Engine: dev-guide §5.9 `cumulative_posted`, `period_amounts`; DG-KRN-MONEY-03; POLICIES ALG-01 §2.1.3 as confirmed by D-11a; ENGINE_SPEC CV-35
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/kernel/test_chk_alg01_schedules.py::test_chk_002_golden_gt01_gt03_allocations`: `largest_remainder` over exact quotas gives Contract 1 (TP 130,000 minor units, weights 500 / 368 / 150 / 1,000) `[32210, 23707, 9663, 64420]` with exact values rounded to 4 places 322.1011 / 237.0664 / 96.6303 / 644.2022; Contract 2 (TP 90,000, weights 612 / 408 / 150 / 0) `[47077, 31385, 11538, 0]` with 470.7692 / 313.8462 / 115.3846 / 0; Contract 4 (TP 95,000, weights 612 / 544 / 150 / 0) `[44518, 39571, 10911, 0]` with 445.1761 / 395.7121 / 109.1118 / 0 (CHK-002)
+      - `…::test_chk_004_ratable_35000_over_24_months`: `period_amounts(Fraction(35000), 3500000, [Fraction(k, 24) for k in 1..24], 2)` gives months 1 to 3 `[145833, 145834, 145833]`, cumulative 3,354,167 after month 23, month 23 145,834 and month 24 145,833 (1,458.33, not 1,458.41; CHK-004)
+      - `…::test_chk_005_100_over_three_months`: `[3333, 3334, 3333]` (CHK-005)
+      - `…::test_chk_006_rebaselined_schedules`: for each CHK-006 row of POLICIES §2.1.5 the engine values hold. (a) S2-EX11-CASEA-OWNPRICES: 1,458.34 in months 2, 5, 8, 11, 14, 17, 20 and 23, and 1,458.33 otherwise. (b) S2-WARRANTY-OWN, X = 10,500 × 1,000 ÷ 11,000, A = 95,455: 79.55 in periods 1, 3, 5, 7, 9, 11 and 12, and 79.54 in periods 2, 4, 6, 8 and 10. (c) S5-EX63-OWNSSP, X = 1,000,000 × 30,000 ÷ 1,030,000, A = 2,912,621: 9,708.74 / 9,708.74 / 9,708.73. (d) S8-CONTRACT-COSTS ex2: 1,428.58 in year 4 and 1,428.57 otherwise. (e) S12-FRANCHISOR-OWN, X = 50,000 × 40,000 ÷ 55,000, A = 3,636,364: 3,636.37 in years 2, 5, 7 and 10, and 3,636.36 otherwise. (f) S5-UPFRONTFEE-OWN option B, 3,000.00 over 36 months: 83.34 in months 2, 5, 8 to 35 and 83.33 otherwise. (g) S6-COMBINED-MOD-OWN: 20 months of 1,944.44 and 16 months of 1,944.45, month 1 1,944.44. (h) S6-EX5-CASEB, 8,400.00 over 90 units: 93.33 / 93.34 / 93.33 repeating, 5,600.00 after 60 units and 8,400.00 after 90
+      - `…::test_chk_007_units_rounding_of_exact_allocation`: `cumulative_posted(Fraction(1300 * 368, 2018), 23707, Fraction(1, 2), 2) == 11853` (118.53, not 118.54), `cumulative_posted(…, Fraction(1), 2) == 23707`, and `period_amounts(…, [Fraction(1, 2), Fraction(1)], 2) == [11853, 11854]` (CHK-007)
+      - `backend/tests/engine/kernel/test_cumulative_posted.py::test_bounds_and_completion`: `cumulative_posted(Fraction(-100, 3), -3334, Fraction(1, 2), 2) == -1667` (bounded to [A, 0]; EX-00-A); `f = 1` returns A; `progress = Fraction(3, 2)` raises `ValueError`; `opening_posted_minor = 29569` makes the first period amount C_1 − 29,569 (DG-KRN-MONEY-03; POL-210)
+      - `…::test_forbidden_rounding_of_posted_allocation`: over the CHK-007 inputs the result differs from `round_half_up(Fraction(23707, 100) * Fraction(1, 2), 2)` (11,854), a regression guard for DG-KRN-MONEY-03
+    - Answer keys: none (the re-baselined keys `RND-CHK-004-CHK-006-S2-EX11-CASEA-OWNPRICES` and `RND-CHK-006-*` close in AKS-1)
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none (the helper part of PROP:P4 lands in EKC-7)
+    - REQs completed: REQ-REC-019; REQs contributed: REQ-ALC-002
+    - Hint closure: REQ-REC-019 `PROP:P4` helper part in EKC-7 and schedule part in ENC-10; `AK (re-baselined keys)` in AKS-1
+  - **Read:** dev-guide §5.9 DG-KRN-MONEY-03; POLICIES ALG-01 §2.1.3, §2.1.4 (CHK-002, CHK-004, CHK-005, CHK-007), §2.1.5 (CHK-006); D-11a; 03 REQ-REC-019; ENGINE_SPEC CV-35, EX-00-A
+  - **Gates:** GK-01 `make ci`; GK-04 `make ci`
+
+- [ ] **EKC-3 Canonical serialisation, calculation trace, formula registry and re-evaluation.**
+  - **Prerequisites:** EKC-2
+  - **Scope:**
+    - Paths: `backend/erev_engine/canonical.py` (`canonical_bytes`, `sha256_hex`); `backend/erev_engine/trace.py` (`SourceRef`, `TraceNode`, `Trace`, `TraceBuilder`, `reevaluate`); `backend/erev_engine/formulas.py` (`FORMULAS`, with `sched.cumulative_posted.v1` and `sched.period_difference.v1` registered); `backend/tests/engine/kernel/test_canonical.py`; `backend/tests/engine/kernel/test_trace.py`
+    - Schema: none
+    - API: none
+    - Engine: dev-guide §5.16 `erev_engine/trace.py` binding signature, DG-KRN-EXP-01 to 04; §5.17 DG-KRN-CAN-01 to 15; ENGINE_SPEC §0.9 CV-50 to CV-54
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/kernel/test_canonical.py::test_encoding_table`: one case per DG-KRN-CAN row. `{"b": 1, "a": "é"}` encodes as `{"a":"é","b":1}` in UTF-8 without escaping. `True` encodes as `true`; `Decimal("1.2300")` as `"1.2300"`; `Fraction(1, 4)` as `"0.25"`. `1.5` raises `TypeError`. `date(2026, 9, 12)` encodes as `"2026-09-12"`. A naive `datetime` raises `ValueError`; `2026-09-12T12:00:00+02:00` encodes as `"2026-09-12T10:00:00.000000Z"`. A `UUID` encodes lower case. A `frozenset` is sorted by element bytes. A dataclass encodes as a mapping; `None` as `null`. An arbitrary object raises `TypeError`; `Decimal("NaN")` raises `ValueError`
+      - `…::test_sha256_hex_matches_ex_14_a_vector`: `sha256_hex({"account_role": "CONTRACT_LIABILITY", "book_code": "ASC606", "clearing_purpose": None, "counterparty_entity": None, "entity": "US01", "entry_kind": "REVENUE_RECOGNITION", "origin_period_key": "FY2026-P02", "posting_class": "EVENT", "posting_period_key": "FY2026-P03", "subject_key": "TKT-001/POB-01"}) == "83300736c63604193d4d84963e7a4730332dce8962cf245e22f2b15cb5e99b0a"` (ENGINE_SPEC_B §14.8 EX-14-A; S14-R-15)
+      - `backend/tests/engine/kernel/test_trace.py::test_node_id_and_posted_value_encoding`: `TraceBuilder.node(measure="revenue_cum", subject_key="K-03/POB-01", period_key=None, value=79729412, currency="USD", minor_unit=2, exact=Fraction(1350000 * 502000, 850000), …)` returns id `revenue_cum:K-03/POB-01:-` with value `"797294.12"`, and `Fraction(value) + Fraction(rounding_residue)` equals the exact value to 18 places (ENGINE_SPEC_B §9.7 EX-09-B; DG-KRN-EXP-02, 03)
+      - `…::test_duplicate_node_raises`: a second node with the same id raises `EngineError("TRACE_DUPLICATE_NODE")`
+      - `…::test_trace_sha256_independent_of_insertion_order`: two builders adding the same nodes in different orders give equal `Trace.sha256()` values; `nodes` are sorted by id
+      - `…::test_reevaluate_reproduces_and_detects_tampering`: a graph of `sched.cumulative_posted.v1` and `sched.period_difference.v1` nodes over the CHK-007 inputs re-evaluates to `"118.53"` and `"118.54"`; replacing a stored value with `"118.54"` makes `reevaluate` return a different value for that id (DG-KRN-EXP-04; PROP:P14 contract)
+      - `…::test_formula_ids_registered_and_well_formed`: every `FORMULAS` key matches `^[a-z0-9_]+(\.[a-z0-9_]+)+\.v[0-9]+$`, and every node formula id in the tests is a key of `FORMULAS`
+    - Answer keys: none
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: none; REQs contributed: none
+  - **Read:** dev-guide §5.16 (DG-KRN-EXP-01 to 07), §5.17 (DG-KRN-CAN-01 to 15); ENGINE_SPEC §0.9 (CV-50 to CV-56, Table 0.9-A); ENGINE_SPEC_B §9.7 EX-09-B, §14.8 EX-14-A
+  - **Gates:** GK-01 `make ci`; GK-04 `make ci`
+
+- [ ] **EKC-4 Dates, periods and exact progress functions.**
+  - **Prerequisites:** EKC-3
+  - **Scope:**
+    - Paths: `backend/erev_engine/dates.py` (day counts, month arithmetic including `month_ends_between`, `period_of`, `period_state`, `first_open_period_on_or_after`); `backend/erev_engine/progress.py` (`units_fraction`, `ssp_delivered_fraction`, `cost_fraction`, `hours_fraction`, `output_fraction`, `milestone_fraction`, `time_fraction`); `backend/tests/engine/kernel/test_dates.py`; `backend/tests/engine/kernel/test_progress.py`
+    - Schema: none
+    - API: none
+    - Engine: ENGINE_SPEC §0.2 shared modules `dates` and `progress`; CV-12, CV-13, CV-61, CV-62; POLICIES ALG-11 §2.12
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/kernel/test_progress.py::test_time_fraction_daily`: `time_fraction("DAILY", date(2026, 2, 10), date(2027, 2, 9), date(2026, 6, 15)) == Fraction(126, 365)` (POLICIES §2.12 CHK-140)
+      - `…::test_time_fraction_monthly_even`: on the same term `f(2026-02-20) == Fraction(11, 336)` and `f(2026-06-15) == Fraction(103, 336)` (CHK-141)
+      - `…::test_time_fraction_mid_month`: `f(2026-06-15) == Fraction(1, 3)` (CHK-142)
+      - `…::test_time_fraction_edges`: before the start 0; on and after the end 1; `MID_MONTH` over 2026-01-20 to 2026-02-10 counts February by the fallback, so `f(2026-01-31) == 0` and `f(2026-02-28) == 1` (CHK-145 (a)); progress is non-decreasing over the daily dates of the CHK-140 term (S09-INV-10 contract)
+      - `…::test_ratio_functions`: `units_fraction(2, 5) == Fraction(2, 5)`; `cost_fraction(420000, 820000) == Fraction(21, 41)`; a zero remaining total with zero done returns 1 (CV-62); a non-zero numerator over a zero divisor raises `ValueError`, which stages convert to `NON_FINITE_AMOUNT` (CV-32)
+      - `backend/tests/engine/kernel/test_dates.py::test_period_lookup`: with monthly periods FY2023-P01 to FY2023-P12, `period_of(entity, date(2023, 1, 31))` returns `FY2023-P01`; a date outside every period raises `EngineError("ENGINE_INVARIANT_VIOLATED")` with `detail["rule"] == "CV-12"`; with FY2023-P01 `closed` and FY2023-P02 `open`, `first_open_period_on_or_after(entity, "ASC606", date(2023, 1, 31))` returns `FY2023-P02`
+      - `backend/tests/engine/kernel/test_dates.py::test_month_ends_between`: m(a, b) counts the calendar month ends e with a < e ≤ b: `month_ends_between(date(2026, 1, 1), date(2026, 1, 31)) == 1`; `(date(2026, 1, 31), date(2026, 1, 31)) == 0`; `(date(2026, 1, 15), date(2026, 2, 27)) == 1`; `(date(2026, 1, 1), date(2027, 12, 31)) == 24`; `(date(2026, 1, 1), date(2028, 1, 1)) == 24` (ENGINE_SPEC S04-R-12 rev 1.3; CHK-136, CHK-137)
+    - Answer keys: none
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: none; REQs contributed: REQ-REC-003 (ALG-11 progress)
+  - **Read:** POLICIES ALG-11 §2.12 (CHK-140 to CHK-145); ENGINE_SPEC §0.2 (shared modules), §0.3 CV-12 and CV-13, §4.3 S04-R-12 (month count, rev 1.3), §0.11 CV-61 to CV-63; 04 T-REF-05, E-21
+  - **Gates:** GK-01 `make ci`; GK-04 `make ci`
+
+- [ ] **EKC-5 Engine enumerations, decision-table rules and the engine error vocabulary.**
+  - **Prerequisites:** EKC-4
+  - **Scope:**
+    - Paths: `backend/erev_engine/enums.py` (StrEnums mirroring the 04 §3 enumerations the engine reads, including E-01 with 33 values, E-02, E-03, E-04, E-11, E-17, E-18, E-19, E-21, E-22, E-23, E-27, E-28, E-31, E-47, E-49, E-55, E-56, E-77, E-86, E-87, E-89, E-90, E-91 and E-105); `backend/erev_engine/rules.py` (`FIELDS`, `match`, `RuleMatch`); `backend/tests/engine/kernel/test_rules.py`; `backend/tests/engine/kernel/test_error_vocabulary.py`; `backend/tests/architecture/test_data_model_drift.py` (extended to `erev_engine.enums`)
+    - Schema: none
+    - API: none
+    - Engine: 04 T-REF-26 `conditions` and `outputs`; E-55 `rule_set_kind`; ENGINE_SPEC S03-R-02 matching semantics; DG-ENG-06
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/architecture/test_data_model_drift.py::test_engine_enums_equal_data_model`: every StrEnum in `erev_engine.enums` has exactly the literal set of its 04 §3 row. E-01 has 33 values, including `RETAINED_EARNINGS` and `FINANCING_OBLIGATION`. E-21 is {`DAILY`, `MONTHLY_EVEN`, `MID_MONTH`}; E-105 is {`distinct`, `nondistinct`, `series`}; E-55 is {`POB_ASSIGNMENT`, `SSP_ASSIGNMENT`, `APPROVAL_ROUTING`, `AUTO_APPROVAL`, `COMBINATION_DETECTION`, `HOLD`, `DATA_QUALITY`} (DG-ARC-09)
+      - `backend/tests/engine/kernel/test_rules.py::test_fields_per_kind`: `FIELDS` has one key per E-55 literal; `FIELDS["POB_ASSIGNMENT"] == ("product.code", "product.product_family", "bundle_parent.code", "contract.region", "contract.channel", "customer.segment", "contract.contract_type", "line.term_band", "contract.currency", "effective_date")` (04 T-REF-26); `FIELDS["SSP_ASSIGNMENT"]` equals the same facts (S05-R-02 "evaluated like S03-R-02")
+      - `…::test_match_most_specific_then_priority_then_key`: rules `R1 {product.code eq SKU-1} → TPL-A` and `R2 {product.code eq SKU-1, contract.region eq EMEA} → TPL-B` over facts with region EMEA choose R2 (greater specificity). With equal specificity the greater `priority` wins; with equal priority the ascending `rule_key` wins
+      - `…::test_operators`: `range` includes the lower bound and excludes the upper; `prefix`, `in`, `gte`, `lte` and `eq` behave per T-REF-26; a condition on a field absent from `FIELDS[kind]` raises `ValueError`
+      - `backend/tests/engine/kernel/test_error_vocabulary.py::test_engine_error_codes_catalogued`: every string literal passed as the first argument of `EngineError(...)` under `backend/erev_engine/`, collected with `ast`, is a 04 §15.4 code or one of `ENGINE_VERSION_MISMATCH`, `FLOAT_DETECTED`, `TRACE_DUPLICATE_NODE` and `ENGINE_INVARIANT_VIOLATED` (DG-ENG-06). The test stays in force for every later stage
+    - Answer keys: none
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: none; REQs contributed: none
+  - **Read:** 04 §3 (the E rows listed in Scope), T-REF-26, §15.4 tables 15.4-A to 15.4-D; dev-guide §6.8 DG-ARC-09, §7 DG-ENG-06; ENGINE_SPEC §3.3 S03-R-02, §5.3 S05-R-02
+  - **Gates:** GK-01 `make ci`; GK-04 `make ci`
+
+- [ ] **EKC-6 Engine bundles, shared stage state, stage constants and `ENGINE_VERSION`.**
+  - **Prerequisites:** EKC-5
+  - **Scope:**
+    - Paths: `backend/erev_engine/__init__.py` (`ENGINE_VERSION = "0.1.0"`); `backend/erev_engine/bundle.py` (`InputBundle` and every input dataclass of ENGINE_SPEC §0.4; `OutputBundle`, `BookOutput`, `Diagnostic` and the output dataclasses of §0.5); `backend/erev_engine/stages/__init__.py` (`StageSpec`, `STAGES`, `BOUNDARY_HANDLERS`); `backend/erev_engine/stages/state.py` (`BookContext`, `PolicyResolver`, `CanonicalBundle`, `EventView`, `QuantityLedger`, `LedgerPoint`, `Quota`, `AllocationSegment`, `ObligationState`, `AllocatedState`, `Target`, `ScheduleLineOut`, `Finding`); `backend/tests/engine/kernel/test_bundle.py`; `backend/tests/engine/kernel/test_state.py`; `backend/tests/engine/kernel/test_stage_registry.py`
+    - Schema: none
+    - API: none
+    - Engine: dev-guide §7 binding signatures (`__init__`, `bundle.py`); ENGINE_SPEC §0.4, §0.5 (CV-15 to CV-17), §0.6 (CV-20 to CV-27), §0.10, §0.11; ENGINE_SPEC_B §0.5, §0.6
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/kernel/test_bundle.py::test_input_sha256_excludes_known_at`: two bundles that differ only in `known_at` have equal `sha256()`; changing one event `payload` changes it (CV-25)
+      - `…::test_output_sha256_covers_input_sha256`: two `OutputBundle`s that differ only in `input_sha256` have different `sha256()` (CV-26)
+      - `…::test_dataclasses_frozen_with_slots`: every dataclass defined in `bundle.py` and `stages/state.py` is frozen and uses slots
+      - `backend/tests/engine/kernel/test_state.py::test_policy_resolver_scopes`: for a pin `K` code with GROUP, CONTRACT and OBLIGATION values, `value(code, contract=…, obligation=…)` returns the OBLIGATION value; for a pin `P` code the PERIOD scope `<entity code>@<period_key>` is used; a code declared by a stage and absent from the bundle raises `ValueError` (CV-17)
+      - `backend/tests/engine/kernel/test_stage_registry.py::test_stage_registry_complete`: `PENDING_STAGES` lists stages 02 to 12, 14 and 15 with phase codes ENA, ENB, ENC, END and EDS. `STAGES` holds the built stages in Table 0.2-A order. A stage both built and pending fails. `BOUNDARY_HANDLERS` keys are Table 0.3-A literals, and `PENDING_BOUNDARY_HANDLERS` holds the remaining literals (B3-BS2-07)
+      - `…::test_engine_version_semver`: `ENGINE_VERSION` matches `^\d+\.\d+\.\d+$` (DG-ENG-10)
+    - Answer keys: none
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: none; REQs contributed: none
+  - **Read:** dev-guide §7 (DG-ENG-01 to 12); ENGINE_SPEC §0.3 (Table 0.3-A), §0.4, §0.5, §0.6, §0.10, §0.11 (Table 0.11-A); ENGINE_SPEC_B §0.5, §0.6; PHASES BS-D-07
+  - **Gates:** GK-01 `make ci`; GK-04 `make ci`
+
+- [ ] **EKC-7 Engine test support: bundle builders, strategies, Hypothesis profiles, P2, P3, the helper part of P4, and `make properties`.**
+  - **Prerequisites:** EKC-6
+  - **Scope:**
+    - Paths: `backend/tests/support/bundles.py` (builders for currencies, one entity with monthly periods, books with resolved policies for the `DEFAULT` and `LEGACY_PARITY` presets taken from `erev_api.registry.policies.POLICY_PARAMETERS`, account mapping, contracts and events); `backend/tests/support/strategies.py` (DG-PROP-03); `backend/tests/conftest.py` (profiles `dev`, `ci`, `thorough` exactly as dev-guide §9.7); `backend/tests/properties/test_prop_p02_allocation_quota.py`; `backend/tests/properties/test_prop_p03_allocation_symmetry.py`; `backend/tests/properties/test_prop_p04_schedule_bounds.py`; `backend/tests/engine/support/test_bundle_builders.py`; `Makefile` target `properties` (DG-MK-properties) writing `.run/reports/properties/report.json` (DG-MK-00g)
+    - Schema: none
+    - API: none
+    - Engine: none (test support over EKC-1 to EKC-6)
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/properties/test_prop_p02_allocation_quota.py::test_p02_quota_within_one_minor_unit`: for totals up to 10^12 minor units of either sign, 1 to 200 weights including zeros and ratios up to 1:10^12, and minor units 0, 2, 3 and 4, every `largest_remainder` result lies strictly within one minor unit of T × w_p ÷ Σw (PROP:P2)
+      - `backend/tests/properties/test_prop_p03_allocation_symmetry.py::test_p03_symmetry`: a zero weight gives 0; a permutation of inputs gives the same amount per key; `largest_remainder(-T, w, k) == [-a for a in largest_remainder(T, w, k)]` (PROP:P3)
+      - `backend/tests/properties/test_prop_p04_schedule_bounds.py::test_p04_helper_bounds`: for X, A = the largest-remainder posted allocation, and monotone progress paths ending at 1, `period_amounts` sums to A; 0 ≤ C_t ≤ A when A ≥ 0 and A ≤ C_t ≤ 0 when A < 0; |C_t − X × f_t × 10^μ| ≤ 1/2 for f_t < 1 unless C_t sits on a bound; C_t = A at f_t = 1 (PROP:P4 helper part)
+      - `backend/tests/engine/support/test_bundle_builders.py::test_policy_sets`: `bundles.policy_set("LEGACY_PARITY")` resolves `ssp.outside_range_point` to `NEAREST_BOUND`, `billing.posting` to `ERP` and `material_right.exercise` to `MODIFICATION` (POLICIES §6.3); `bundles.policy_set("DEFAULT")` resolves `recognition.time_convention` to `DAILY` (POL-090) and `billing.posting` to `ERP` (POL-004)
+      - `…::test_builders_deterministic`: two builds of `bundles.minimal_contract()` have equal `InputBundle.sha256()`
+      - `…::test_strategies_emit_no_floats`: 200 draws of every strategy pass `guards.no_floats` (DG-PROP-03)
+      - `make properties K="p02 or p03 or p04"` exits 0 and writes `.run/reports/properties/report.json` with `counts.passed == 3`
+    - Answer keys: none
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: PROP:P2 `backend/tests/properties/test_prop_p02_allocation_quota.py`; PROP:P3 `test_prop_p03_allocation_symmetry.py`; PROP:P4 helper part `test_prop_p04_schedule_bounds.py`
+    - REQs completed: none; REQs contributed: REQ-ALC-002, REQ-ALC-003, REQ-REC-019
+    - Hint closure: REQ-ALC-002 `PROP:P2`, `PROP:P3`; REQ-ALC-003 `PROP:P2`; REQ-REC-019 `PROP:P4` helper part
+  - **Read:** dev-guide §4.4 DG-MK-properties, §9.2 (DG-TST-07 to 09), §9.7 (profiles, DG-PROP-01 to 03, P2 to P4), §7 DG-ENG-11; POLICIES §6.3; 03 REQ-ALC-002, REQ-ALC-003, REQ-REC-019
+  - **Gates:** GK-01 `make ci`; GK-04 `make properties K="p02 or p03 or p04"`
+
+- [ ] **EKC-7a FND review remediation, part 1: gate reports and test-harness guards (FR-G-01, FR-G-02, FR-C-01, FR-B-01, FR-G-04, FR-C-03, FR-B-03, FR-B-04). Supervisor item.**
+  - **Prerequisites:** GATE-FND
+  - **Scope:**
+    - Paths:
+      - `Makefile`:
+        - the `ci` recipe passes `--refuse "TESTS=$(TESTS)"`, `--refuse "K=$(K)"` and `--refuse "FRONTEND=$(FRONTEND)"` to `scripts/gate_report.py` (ruling: DG-MK-ci takes no variables);
+        - the `test-pg` recipe passes `--fail-on-skipped backend`;
+        - `API_PORT ?= $(or $(EREV_API_PORT),8190)` is used by the `backend` holder check, the uvicorn command and the `frontend` proxy target.
+      - `scripts/gate_report.py`:
+        - option `--refuse NAME=VALUE`, whose value may be empty: any non-empty value fails the run before the first stage, with a `failures` entry `{"stage": "variables", "exit_code": 1, "variables": [...]}`;
+        - option `--fail-on-skipped LABEL`;
+        - a run whose stages all pass but whose `--junit` file is absent fails with `{"stage": "junit", "exit_code": 1, "label": <label>}`.
+      - `scripts/proc.sh`:
+        - `start` builds the readiness URL of `api`, `api-e2e`, `api-perf`, `web` and `web-e2e` from its `<port>` argument; the `EREV_*_PORT` variables only give the default when `<port>` is `-`;
+        - the command dispatch runs only when the script is executed, not when it is sourced.
+      - `backend/tests/support/markers.py` (new): the DG-TST-07 and DG-TST-09 placement checks for the `parity`, `answer_key`, `property`, `pg` and `perf` markers. Modules under `architecture/` may carry `pg` (DG-TST-02).
+      - `backend/tests/conftest.py`: the `tryfirst` `pytest_collection_modifyitems` hook also calls `markers.check(items, root)` and raises `pytest.UsageError`.
+      - `backend/tests/engine/conftest.py` (new): DG-TST-18. At collection it fails every item under its directory that requests `test_database`, `db` or `committed_db`, before any fixture is set up.
+      - Tests: `backend/tests/unit/test_makefile_targets.py`, `backend/tests/unit/test_controls_report.py`, `backend/tests/unit/test_engine_isolation.py` (new), `backend/tests/unit/test_proc_sh.py`, `backend/tests/unit/test_registry_seed.py`.
+    - Schema: none
+    - API: none
+    - Engine: none
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/unit/test_makefile_targets.py::test_dg_mk_ci_refuses_narrowing_variables` (FR-G-01):
+        - Command: `scripts/gate_report.py ci --command "make ci TESTS=backend/tests/engine" --refuse "TESTS=backend/tests/engine" --refuse "K=" --refuse "FRONTEND=" --stage "env=touch <tmp>/ran" --reports-dir <tmp>/reports`.
+        - It exits 1 and leaves `<tmp>/ran` absent. The last line is `FAIL ci: TESTS, K and FRONTEND are not accepted (DG-MK-ci)`.
+        - `<tmp>/reports/ci/report.json` holds `exit_code` 1 and `failures` `[{"stage": "variables", "exit_code": 1, "variables": ["TESTS"]}]`.
+        - `--refuse "K=canonical"` and `--refuse "FRONTEND=0"` each fail naming that variable. With all three values empty, the stage runs and the last line is `OK ci`.
+        - The `ci` recipe text passes the three `--refuse` arguments. This is checked on the Makefile text, never through `make -n ci`, whose `$(MAKE)` lines execute.
+      - `backend/tests/unit/test_controls_report.py::test_dg_tst_09_skip_or_xfail_on_marked_tests_fails_collection` (FR-G-02):
+        - Setup: a pytester tree whose conftest calls the collection hook with `root=config.rootpath`, holding `pg/test_probe.py` with `pytestmark = pytest.mark.pg` and a test decorated `@pytest.mark.skip(reason="probe")`.
+        - It fails collection with exit 4 and `pg tests may not carry skip, skipif or xfail (DG-TST-09)`.
+        - The same holds for `@pytest.mark.xfail` and `@pytest.mark.skipif(True, reason="probe")`, and for modules marked `parity`, `answer_key` and `property` under `parity/`, `answer_keys/` and `properties/`.
+      - `::test_dg_tst_07_marker_outside_its_directory_fails_collection` (FR-G-02): in the same layout,
+        - `unit/test_probe.py` with `pytestmark = pytest.mark.pg` fails collection naming `DG-TST-07`;
+        - `pg/test_probe.py` without a `pg` `pytestmark` fails collection naming `DG-TST-07`;
+        - `architecture/test_probe.py` with `pytestmark = pytest.mark.pg` passes;
+        - the repository's own `backend/tests` collects without error.
+      - `backend/tests/unit/test_makefile_targets.py::test_g6_skipped_pg_test_fails_test_pg` (FR-G-02):
+        - Command: `scripts/gate_report.py test-pg --command "make test-pg" --stage "pg=cp <tmp>/one-passed-one-skipped.xml <tmp>/junit.xml" --junit "backend=<tmp>/junit.xml" --fail-on-skipped backend --reports-dir <tmp>/reports`.
+        - It exits 1, and the last line is `FAIL test-pg: 1 skipped test in backend (DG-TST-09)`. `report.json` has `exit_code` 1.
+        - With a JUnit file of zero skipped tests, the run ends `OK test-pg`.
+        - The `test-pg` recipe text passes `--fail-on-skipped backend`.
+      - `::test_dg_mk_00g_missing_junit_fails` (FR-G-04):
+        - Command: `scripts/gate_report.py ci --command "make ci" --stage env=true --junit "backend=<tmp>/absent.xml" --reports-dir <tmp>/reports`.
+        - It exits 1, prints the last line `FAIL ci: JUnit summary backend missing (DG-MK-ci)`, and writes `report.json` with `exit_code` 1 and a `failures` entry `{"stage": "junit", "exit_code": 1, "label": "backend"}`.
+        - The `--junitxml` and `--outputFile.junit` paths of the `test` recipe equal the `--junit` paths of the `ci` recipe.
+      - `backend/tests/unit/test_engine_isolation.py::test_dg_tst_18_engine_test_requesting_database_fixture_fails` (FR-C-01):
+        - Setup: a pytester tree whose root conftest defines stub fixtures `test_database`, `db` and `committed_db`, each creating a marker file when set up. `engine/conftest.py` holds the bytes of `backend/tests/engine/conftest.py`, and `engine/test_probe.py` holds a test requesting `db`.
+        - The run exits non-zero with output naming `DG-TST-18`, and no marker file exists afterwards.
+        - The same holds for `committed_db` and `test_database`.
+        - `engine/test_probe.py` without a database fixture passes. `unit/test_probe.py` requesting `db` passes.
+      - `backend/tests/unit/test_proc_sh.py::test_dg_run_10_readiness_uses_start_port` (FR-B-01):
+        - Sourcing: with `EREV_API_PORT` removed from the environment, `bash -c 'source scripts/proc.sh && readiness api 8192'` prints `http http://127.0.0.1:8192/api/v1/readyz` and starts, stops or lists nothing.
+        - The same command with `EREV_API_PORT=8190` exported still prints port `8192`.
+        - `readiness web 5272` prints `http http://127.0.0.1:5272/`; `readiness api -` prints `http http://127.0.0.1:8190/api/v1/readyz`; `readiness worker -` prints a `heartbeat` line.
+        - `test_dg_run_10_start_reuse_stop_status` still passes.
+      - `backend/tests/unit/test_makefile_targets.py::test_dg_run_01_port_override` (FR-C-03):
+        - `env -u MAKEFLAGS EREV_API_PORT=8192 make -n --no-print-directory backend` prints `lsof -nP -iTCP:8192` and `--port 8192`.
+        - `make -n --no-print-directory frontend` under the same environment prints `EREV_API_PROXY_TARGET=http://127.0.0.1:8192`.
+        - Without `EREV_API_PORT`, both print `8190`.
+        - Neither recipe contains `$(MAKE)`, so `make -n` executes nothing.
+      - `::test_dg_mk_build_imports_worker_when_present` (FR-B-03):
+        - The Makefile `BUILD_IMPORTS` holds `erev_api.main` and `erev_engine`, and holds `erev_api.worker` whenever `backend/erev_api/worker.py` exists (ruling D-78).
+        - The test's check function, given `BUILD_IMPORTS := erev_api.cli, erev_api.main, erev_engine` and a stand-in root that contains `backend/erev_api/worker.py`, returns `DG-MK-build: erev_api.worker missing from make build imports`.
+      - `backend/tests/unit/test_registry_seed.py::test_krn_reg_04_generated_module_current` (FR-B-04):
+        - The test writes the regenerated module and the changed POLICIES copy under pytest `tmp_path`, and the module source no longer references `.run/tmp`.
+        - `backend/tests/unit/test_proc_sh.py::test_dg_run_10_start_reuse_stop_status` uses the process name `probe-<test process pid>` and removes `.run/probe-<pid>.log` at teardown.
+    - Answer keys: none
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: none; REQs contributed: REQ-OPS-007, REQ-OPS-010
+  - **Read:**
+    - dev-guide:
+      - §4.1 DG-MK-00a, DG-MK-00g; §4.2 DG-MK-backend, DG-MK-frontend; §4.3 DG-MK-test, DG-MK-build, DG-MK-ci; §4.4 DG-MK-test-pg, DG-MK-release-manifest;
+      - §3.1 intro and DG-RUN-01, DG-RUN-03; §3.2 DG-RUN-10, DG-RUN-12, DG-RUN-13; §3.3 DG-RUN-21; §3.4 DG-RUN-30;
+      - §9.1 DG-TST-01, DG-TST-02, DG-TST-04; §9.2 DG-TST-07, DG-TST-09; §9.3 DG-TST-18; §10.1 G2, G6, DG-GATE-04;
+      - the `.env.example` D-70 port note (dev-guide line 357).
+    - BUILD_SPEC header §3.1 GK-01, GK-02; §4 XR-07; FND-18 `test_dg_mk_00g_ci_report_fields`.
+    - `docs/reviews/loop/spec-questions-FND.md` SPEC-Q-11, SPEC-Q-45, SPEC-Q-67.
+  - **Gates:** GK-01 `make ci`; GK-02 `make test-pg`
+
+- [ ] **EKC-7b FND review remediation, part 2: database guards, partition immutability and architecture rules (FR-M-01, FR-S-01, FR-M-06, FR-C-04, FR-M-03, FR-C-02, FR-G-03, FR-M-04). Supervisor item.**
+  - **Prerequisites:** GATE-FND; EKC-7a
+  - **Scope:**
+    - Paths:
+      - `backend/erev_api/db/migration_ops.py`:
+        - `apply_class` and `create_monthly_partitions` give every child partition of an IM-A or IM-S parent the statement trigger `tg_<partition>__truncate BEFORE TRUNCATE … FOR EACH STATEMENT EXECUTE FUNCTION erev.tg_forbid_mutation()`, whichever of the two runs first;
+        - `create_monthly_partitions(table, *, first, last, partition_column=None)` admits a probe table outside 04 §1.6 when `partition_column` is given.
+      - `backend/erev_api/db/lint.py`: DB-14 (g) also requires an enabled DB-01 truncate trigger on each child partition of an IM-A parent, and names the partition.
+      - `backend/erev_api/config.py`: a single public `ALLOWED_DATABASE` pattern and a single URL-to-database helper, which refuses the query parameters `dbname`, `service` and `servicefile` and names the parameter, never the credentials.
+      - `backend/erev_api/db/session.py`:
+        - `database_of` delegates to the config helper;
+        - the `connect` listener of `build_engine` compares `SELECT current_database()` with the URL's database and raises `RoleGuardError` naming both.
+      - `scripts/check_env.py`: the same query refusal. It stays importable without the venv (`scripts/setup.sh` runs `--tools` before `uv sync`), so its pattern is compared by test rather than imported.
+      - `backend/tests/support/architecture.py`: `imports` keeps each alias's `asname`.
+      - Architecture tests: `backend/tests/architecture/test_engine_purity.py` (aliased clock owners); `backend/tests/architecture/test_forbidden_patterns.py` (the `database-administration` rule matches `CREATE`, `ALTER` or `DROP` of `DATABASE`, `ROLE`, `USER`, `GROUP`, `EXTENSION` or `TABLESPACE`, plus `ALTER SYSTEM`; ruling D-78 on DG-ENV-14); `backend/tests/architecture/test_layers.py` (rule: `identity_session` is imported only by `backend/erev_api/auth/**`, `backend/erev_api/api/v1/health.py` and `backend/erev_api/db/lint.py`; ruling D-78 on DG-KRN-DB-02).
+      - Guides: `docs/guides/itgc-guide.md` section "Database roles and prerequisites"; `docs/guides/runbook.md` section "Migrations", subsection "Hosted deployments".
+      - Tests: `backend/tests/pg/test_db_invariants.py`, `backend/tests/pg/test_catalogue_lint.py`, `backend/tests/pg/test_session_guards.py`, `backend/tests/unit/test_db_urls.py`, `backend/tests/unit/test_guides.py`.
+    - Schema: none (helper and lint behaviour only; no revision, so the heads are unchanged)
+    - API: none
+    - Engine: none
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/pg/test_db_invariants.py::test_db_01_forbid_truncate_on_partitions` (FR-M-01):
+        - Setup: a committed owner probe `erev.partition_probe (id uuid, occurred_at timestamptz) PARTITION BY RANGE (occurred_at)`, whose partitions come from `create_monthly_partitions("partition_probe", first="2026-09", last="2026-10", partition_column="occurred_at")`. It is built in order A (`apply_class("IM-A")`, then the partitions) and in order B (the partitions, then `apply_class("IM-A")`), and dropped at teardown (SPEC-Q-20 pattern).
+        - For each order, `TRUNCATE erev.partition_probe_p202609` and `TRUNCATE erev.partition_probe_pdefault` as `erev_owner` without `app.data_fix_ticket` fail with `EREV-IMM-001`.
+        - With `app.data_fix_ticket` set, inside a rolled-back transaction, both succeed.
+        - `TRUNCATE erev.partition_probe` fails with `EREV-IMM-001`.
+      - `backend/tests/pg/test_catalogue_lint.py::test_db_14_detects_partition_without_truncate_trigger` (FR-M-01): inside a rolled-back owner transaction, the order-A probe with `tg_partition_probe_p202609__truncate` dropped produces finding (g) naming `partition_probe_p202609`. With the trigger present, check (g) reports nothing for the probe.
+      - `backend/tests/unit/test_db_urls.py::test_dg_env_13_query_parameters_cannot_redirect_database` (FR-S-01):
+        - For `postgresql://u:p@127.0.0.1:5432/erev_test?dbname=postgres`, the config helper and `erev_api.db.session.database_of` raise `SettingsError` naming `dbname` and not containing `p@`.
+        - `scripts/check_env.check_database_allowed` returns an error naming `dbname`.
+        - The same holds for `?service=x` and `?servicefile=x`.
+        - `?sslmode=disable` is accepted by all three.
+      - `::test_dg_env_13_allow_list_helpers_agree` (FR-M-06):
+        - Over URLs whose path is `erev`, `erev_test`, `erev_e2e`, `erev_rv_x%5Fy` or `postgres`, and over `erev_test?dbname=postgres`, the config helper, `erev_api.db.session.database_of` and `scripts/check_env.check_database_allowed` agree on acceptance and on the database name.
+        - `scripts/check_env.DATABASE_ALLOW_LIST.pattern` equals `erev_api.config.ALLOWED_DATABASE.pattern`.
+      - `backend/tests/pg/test_session_guards.py::test_dg_env_13_connected_database_matches_url` (FR-S-01):
+        - With `erev_api.db.session.database_of` patched to return `erev_rv_other` for one `build_engine(<test app URL>, role="erev_app")` call, the first connection raises `RoleGuardError` naming `erev_rv_other` and the connected database.
+        - The unpatched engine connects and passes the role guard.
+      - `backend/tests/architecture/test_layers.py::test_dg_krn_db_02_identity_session_importers` (FR-C-04):
+        - `from erev_api.db.session import identity_session` in a snippet under `backend/erev_api/domain/x.py` yields one finding.
+        - Under `backend/erev_api/auth/x.py`, `backend/erev_api/api/v1/health.py` and `backend/erev_api/db/lint.py` it yields none.
+        - The repository yields none.
+      - `backend/tests/architecture/test_forbidden_patterns.py::test_dg_env_14_database_administration_synonyms` (FR-M-03):
+        - Each of these snippets under `backend/erev_api/db/migrations/versions/0009_x.py` yields exactly one `database-administration` finding: `ALTER USER erev_app BYPASSRLS`, `CREATE USER x`, `DROP USER x`, `CREATE GROUP x`, `DROP ROLE x`, `DROP DATABASE x`, `ALTER DATABASE x SET y = 1`, `CREATE TABLESPACE t LOCATION 'p'`, `DROP EXTENSION x` and `ALTER EXTENSION x UPDATE`. So does `DROP DATABASE x` in `scripts/x.sh`.
+        - `DROP SCHEMA IF EXISTS erev CASCADE` yields none.
+        - `test_dg_arc_05_repository_clean` still passes.
+      - `backend/tests/unit/test_guides.py::test_dg_env_14_itgc_guide_matches_enforced_rule` (FR-M-03): the "Database roles and prerequisites" section of `docs/guides/itgc-guide.md` names DG-ENV-14 and DG-ARC-05, and lists as build failures exactly `CREATE`, `ALTER` or `DROP` of a database, role, user, group, extension or tablespace, plus `ALTER SYSTEM`.
+      - `backend/tests/architecture/test_engine_purity.py::test_dg_arc_02_aliased_clock_reads` (FR-C-02, FR-G-03):
+        - Snippets under `backend/erev_engine/stages/x.py` containing `from datetime import datetime as dt\nknown_at = dt.now()\n`, `from datetime import date as D\nday = D.today()\n` and `from datetime import datetime as DT\nstamp = DT.utcnow()\n` yield exactly one finding each.
+        - `import datetime as dt\nstamp = dt.datetime.now()\n` yields one finding.
+        - `from datetime import date as D\nday = D(2026, 9, 12)\n` yields none.
+        - The repository yields none.
+      - `backend/tests/unit/test_guides.py::test_rb_02_failed_migration_rollback_is_clone_and_cutover` (FR-M-04):
+        - Under "Migrations", the runbook states that a failed hosted migration is rolled back by restore through clone and cutover (05 OPR-11), at the pre-migration backup point (05 OPR-16).
+        - The section contains `clone and cutover` and `never restored in place`, and does not contain `restoring that backup`.
+    - Answer keys: none
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: none; REQs contributed: REQ-OPS-010, REQ-OPS-003, REQ-CTL-004, REQ-PLT-001
+  - **Read:**
+    - 04: §14.1 DB-01, DB-14 (g); §1.5; §1.6 rules 1 to 3; T-PLT-19.
+    - dev-guide:
+      - §6.5 DG-MIG-03, DG-MIG-05, DG-MIG-10 and the `apply_class` and `create_monthly_partitions` helper contract; §9.4 DG-TST-21, DG-TST-23;
+      - §2.4 DG-ENV-11, DG-ENV-12, DG-ENV-13, DG-ENV-14; §5.2 DG-KRN-DB-02, DG-KRN-DB-04;
+      - §6.8 DG-ARC-01, DG-ARC-02, DG-ARC-05; §5.10 DG-KRN-TIME-05; §4.2 DG-MK-migrate.
+    - 05 OPR-11, OPR-16, OPR-23. `docs/00-GOAL.md` §5. BUILD_SPEC header §4 XR-01, XR-20; FND-18 (itgc-guide scope).
+    - `docs/reviews/loop/spec-questions-FND.md` SPEC-Q-9, SPEC-Q-20, SPEC-Q-22, SPEC-Q-49.
+  - **Gates:** GK-01 `make ci`; GK-02 `make test-pg`
+
+- [ ] **EKC-7c FND review remediation, part 3: key management, log hygiene and the HTTP surface (FR-S-04, FR-S-02, FR-S-03, FR-S-05, FR-S-06, FR-S-07, FR-S-09). Supervisor item.**
+  - **Prerequisites:** GATE-FND; EKC-7b
+  - **Scope:**
+    - Paths:
+      - `backend/erev_api/adapters/keys/provider.py`:
+        - `GcpKeyProvider.wrap` and `unwrap` call Cloud KMS `encrypt` and `decrypt` on the DEK, with the canonical bytes of `context` as `additional_authenticated_data`. KEK id `kek:1` names the KMS key; KMS selects the key version (ruling D-78 on SPEC-Q-15).
+        - `GcpKeyProvider.hmac_key("kek:<n>")` raises `ValueError`, and no Secret Manager `app-kek` read remains.
+        - `LocalKeyProvider.secret` refuses the three master-key names with `KeyError`.
+        - `GcpKeyProvider.secret` refuses `app-kek`, `security-hmac`, `audit-hmac-<anything>`, `db-owner-url` and `db-app-url` with `KeyError`, without calling the store.
+      - `backend/erev_api/auth/keyring.py`: the blob layout is `b"erev1"` ‖ KEK id length (1 byte) ‖ KEK id ‖ wrapped DEK length (2 bytes, big-endian) ‖ wrapped DEK ‖ nonce ‖ ciphertext with tag, for both providers. It replaces the fixed `WRAPPED_DEK_BYTES` split (ruling D-78 amending DG-KRN-KEY-04).
+      - `backend/erev_api/db/session.py`: `build_engine` passes `hide_parameters=True`.
+      - `backend/erev_api/problems.py` and `backend/erev_api/logging.py`:
+        - an unmapped `DBAPIError` is logged under `http.unhandled_error` with its class, SQLSTATE and constraint name, and a stack trace whose exception message is replaced;
+        - keys matching the 05 SAR-19 pattern or `FORBIDDEN_FIELDS` are dropped at every depth of mappings and lists;
+        - a quoted secret-assignment value is redacted in full, and an unquoted one to the end of its line;
+        - `configure_logging` removes the handlers of the `uvicorn`, `uvicorn.error` and `uvicorn.access` loggers and sets `propagate = True`.
+      - `backend/tests/support/log_guard.py`: `check` recurses into nested keys.
+      - `backend/erev_api/money.py`: `_MONEY`, `_DECIMAL` and `_RATE` use `[0-9]`.
+      - `backend/erev_api/main.py`:
+        - when `settings.cors_origins` is non-empty, `create_app` installs `CORSMiddleware` with exactly those origins, `allow_credentials=True`, methods `GET, POST, PUT, PATCH, DELETE` and headers `Content-Type, Idempotency-Key, If-Match, X-CSRF-Token, X-Request-Id` (05 SAR-12);
+        - it raises `SettingsError` naming `EREV_CORS_ORIGINS` for `*` or for an origin not matching `^https?://[^/?#]+$`;
+        - `Settings` construction still accepts `*`, so the SOP doctor check can report it.
+      - Tests: `backend/tests/unit/test_keys.py`, `backend/tests/unit/test_logging.py`, `backend/tests/unit/test_api_money.py`, `backend/tests/api/test_middleware.py`, `backend/tests/pg/test_session_guards.py`.
+    - Schema: none
+    - API: none (no route or schema changes; `docs/api/openapi.json` unchanged)
+    - Engine: none
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/unit/test_keys.py::test_key_04_gcp_provider_wraps_deks_through_kms` (FR-S-04):
+        - Setup: fake KMS and Secret Manager clients, no `google.cloud` import and no network (ruling D-78 amending DG-ENV-17 "never exercised in tests"), and a `KeyRing` over `GcpKeyProvider(fake_store, kms_key="projects/p/locations/l/keyRings/erev/cryptoKeys/erev-app-kek", kms_client=fake_kms)`.
+        - `encrypt(b"x", context={"t": "a"})` makes exactly one KMS `encrypt` call. Its `plaintext` holds 32 bytes, and its `additional_authenticated_data` equals the canonical bytes of `{"t": "a"}`. No Secret Manager read occurs.
+        - `decrypt` of that blob with the same context makes one KMS `decrypt` call and returns `b"x"`.
+        - `provider.hmac_key("kek:1")` raises `ValueError`.
+      - `::test_krn_key_04_blob_carries_wrapped_dek_length` (FR-S-04):
+        - A local blob is `b"erev1"`, byte `0x05`, `b"kek:1"`, the 2-byte big-endian value 60, the 60-byte wrapped DEK, a 12-byte nonce and the ciphertext with tag.
+        - A blob whose length field is 59 raises `ValueError`.
+        - `test_krn_key_04_envelope_roundtrip_and_context_binding` still passes.
+      - `::test_krn_key_01_secret_refuses_key_material` (FR-S-03):
+        - `LocalKeyProvider(EnvSecretStore(settings)).secret(name)` raises `KeyError` for `EREV_ENCRYPTION_KEY`, `EREV_AUDIT_HMAC_MASTER_KEY` and `EREV_SECURITY_EVENT_HMAC_KEY`.
+        - `GcpKeyProvider(fake_store, kms_key="k", kms_client=fake_kms).secret(ref)` raises `KeyError` for `app-kek`, `security-hmac`, `audit-hmac-0191e0a0-0000-7000-8000-000000000001`, `db-owner-url` and `db-app-url`, and the fake store records no call.
+        - `secret("sf-client-secret")` returns the stored `SecretStr`.
+      - `backend/tests/pg/test_session_guards.py::test_dg_log_03_db_error_logs_no_bound_parameters` (FR-S-02):
+        - Setup: through `identity_session`, `SELECT CAST(:amount AS text), 1/0` with `amount="146000.00"` and `SELECT CAST(:v AS numeric)` with `v="USD 98765.43"` each raise `DBAPIError`.
+        - Passing each to `problems.unhandled_error_response` under `log_stream` returns 500 about:blank.
+        - No captured line contains `146000.00` or `98765.43`.
+        - The `http.unhandled_error` line holds the exception class, SQLSTATE `22012` or `22P02`, and a stack trace.
+        - `build_engine(<test app URL>, role="erev_app").hide_parameters` is true.
+      - `backend/tests/unit/test_logging.py::test_sar_19_nested_secret_keys_dropped` (FR-S-06):
+        - Logging `error_codes={"password": "p-123456", "cookie": "c-123456"}` and `error_codes=[{"api_key": "k-123456"}]` writes lines containing none of `p-123456`, `c-123456` or `k-123456`.
+        - A message holding `password="alpha bravo charlie"` writes neither `bravo` nor `charlie`.
+        - `log_guard.check([{"event": "x", "error_codes": {"password": "v"}}])` raises `AssertionError`.
+      - `::test_dg_log_06_uvicorn_records_bridged` (FR-S-07):
+        - Setup: `logging.config.dictConfig(uvicorn.config.LOGGING_CONFIG)`, then `configure_logging(stream=buf)`.
+        - `logging.getLogger("uvicorn.error").info("Started server process [1]")` writes exactly one JSON line to `buf` with `logger` `uvicorn.error`.
+        - An `ERROR` record on `uvicorn.error` whose message holds `password=vhunter2-probe` writes no `vhunter2-probe`.
+      - `backend/tests/unit/test_api_money.py::test_api_c_06_non_ascii_digits_rejected` (FR-S-05):
+        - `{"amount": "١٢.٣٠", "currency": "USD"}` and `{"amount": "１２.３０", "currency": "USD"}` return 422 with `errors[0].rule_id == "API-C-06"`.
+        - `TypeAdapter(DecimalStr)` rejects `"٠.٢٥"`, and `TypeAdapter(RateStr)` rejects `"١.٠٨"`.
+        - `{"amount": "12.30", "currency": "USD"}` still converts to minor 1230.
+      - `backend/tests/api/test_middleware.py::test_sar_12_cors_allow_list_and_wildcard_refusal` (FR-S-09):
+        - With `cors_origins=("http://127.0.0.1:5270",)`, an `OPTIONS /api/v1/healthz` preflight from that origin with `Access-Control-Request-Method: POST` and `Access-Control-Request-Headers: Idempotency-Key` returns `Access-Control-Allow-Origin: http://127.0.0.1:5270` and `Access-Control-Allow-Credentials: true`.
+        - A preflight from `http://127.0.0.1:9999` gets no `Access-Control-Allow-Origin`.
+        - With `cors_origins=()`, the middleware stack holds no `CORSMiddleware`.
+        - `create_app(<settings with cors_origins=("*",)>)` raises `SettingsError` naming `EREV_CORS_ORIGINS`, while constructing those settings succeeds.
+    - Answer keys: none
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: none; REQs contributed: REQ-SEC-003, REQ-SEC-004, REQ-OPS-005, REQ-PLT-031
+  - **Read:**
+    - 05: §6.5 KEY-04, KEY-09; SAR-12, SAR-19, SAR-21, SAR-22; ADP-14; DPL-34, DPL-36; OPR-20, OPR-21.
+    - dev-guide:
+      - §5.19 DG-KRN-KEY-01 to DG-KRN-KEY-04; §2.4 DG-ENV-17;
+      - §6.6 DG-LOG-01, DG-LOG-03, DG-LOG-05, DG-LOG-06, DG-LOG-07; §3.4 DG-RUN-31;
+      - §5.9 DG-KRN-MONEY-05, DG-KRN-MONEY-06; §5.1 DG-KRN-CFG-02; §5.8 DG-KRN-ERR-03.
+    - 04 §15.1 API-C-06.
+    - BUILD_SPEC SOP `backend/tests/unit/test_doctor_production_checks.py::test_sar_40_production_checks`; DIN `test_connection_stores_secret_reference_only`.
+    - `docs/reviews/loop/spec-questions-FND.md` SPEC-Q-10, SPEC-Q-14, SPEC-Q-15, SPEC-Q-34, SPEC-Q-36, SPEC-Q-40.
+  - **Gates:** GK-01 `make ci`; GK-02 `make test-pg`
+
+- [ ] **EKC-8 Answer-key models and discovery.**
+  - **Prerequisites:** EKC-7
+  - **Scope:**
+    - Paths: `backend/tests/support/answer_keys/__init__.py`; `backend/tests/support/answer_keys/models.py` (Pydantic models of dev-guide §9.5.2 to §9.5.6, `extra="forbid"`); `backend/tests/support/answer_keys/loader.py` (`ANSWER_KEY_ROOT`, `SCHEMA_ID`, `LoadedKey`, `AnswerKeyError`, `discover`, `load`); `backend/tests/unit/answer_keys/test_loader_discovery.py`
+    - Schema: none
+    - API: none
+    - Engine: none
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/unit/answer_keys/test_loader_discovery.py::test_discover_corpus`: `discover()` returns 234 paths sorted by path, none under `docs/accounting/answer-keys/_coverage/` (DG-AK-30); a root under `.run/tmp/` holding `notes.txt` raises `AnswerKeyError`, while `README.md` is tolerated
+      - `…::test_safe_loader_keeps_scalars_as_strings`: YAML text `amount: 12.30`, `date: 2026-01-01`, `n: 5` loads as the strings `"12.30"`, `"2026-01-01"`, `"5"`; `null`, `~` and `true` resolve; a duplicate mapping key raises `AnswerKeyError` whose pointer names the key (DG-AK-31)
+      - `…::test_load_every_file`: every discovered file loads with zero errors; 232 keys have `status: active` and 2 are `withdrawn` (`POS-S9-PRESENTATION-EX38-CASEA`, `POS-S9-PRESENTATION-EX38-CASEB`); 227 active keys have `runner: engine` and 5 have `runner: platform` (PHASES BS-D-03, §8.1; `_coverage/ADJUDICATION.md` §1, §10.3)
+      - `…::test_models_forbid_extra_fields`: a key with top-level member `foo` fails with pointer `/foo`
+    - Answer keys: none (loading only)
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: none; REQs contributed: none
+  - **Read:** dev-guide §9.5.1 to §9.5.6 (DG-AK-01 to 27), §9.5.8 (DG-AK-30, DG-AK-31); PHASES BS-D-03, §8.1, §8.2.4; `docs/accounting/answer-keys/_coverage/ADJUDICATION.md` §1, §10.3
+  - **Gates:** GK-01 `make ci`
+
+- [ ] **EKC-9 Answer-key cross-validation, encodings and selection.**
+  - **Prerequisites:** EKC-8
+  - **Scope:**
+    - Paths: `backend/tests/support/answer_keys/loader.py` (cross-validation in `load`, DG-AK-34 mapping, DG-AK-35 row keys, `load_all`, `selection_from_env`); `backend/tests/unit/answer_keys/test_loader_validation.py`
+    - Schema: none
+    - API: none
+    - Engine: none
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/unit/answer_keys/test_loader_validation.py::test_cross_validation_rules`: synthetic keys written under `.run/tmp/` each violate one DG-AK-32 rule and yield one `AnswerKeyError` with its JSON pointer. The rules are: path family ≠ `families[0]`; a `seq` gap; an unknown `after_seq`; an unresolved handle; an unknown E-01 literal; an unknown POL key; an unknown REQ id; a CHK id absent from the key id; `"1200.00"` for a JPY amount; a `journals` block with `runner: engine`; `RETAINED_EARNINGS` in a `subledger` line; `clearing_purpose` on a non-`BILLING_CLEARING` row; `tax_lines` and `tax_amount` in one payload; a `tax_lines` item carrying `jurisdiction` (members exactly `{tax_type, amount, principal_or_agent}`); a judgement `questionnaire` holding a member that 04 T-CON-19 does not list for its topic; a `NOT_A_CONTRACT` judgement without `questionnaire` (required member `consideration_nonrefundable`); a contract block asserting `expected_returns_amount` `"300.00"` (never positive); `scenarios` probabilities summing to 0.9. The CHK containment check is case-insensitive: `RND-CHK-003A` contains CHK-003a
+      - `…::test_dg_ak_34_consideration_payable_mapping`: a contract without `consideration_payable` whose `EXPECTED_PURCHASES` element version 1 carries `unconstrained_amount` 1,500,000.00 and `constrained_amount` 1,500,000.00 maps to one item with `amount` 1,500,000.00, no `distinct_good_fair_value` and `share_based` false. Under POL-049 `COMMITTED_PURCHASES`, `committed_purchases` equals the version-1 `expected_total_amount`. A later version that changes `unconstrained_amount` fails loading
+      - `…::test_dg_ak_35_report_row_keys`: a contract handle `C1` becomes `contract:C1`; `TOTAL` becomes `TOTAL:USD` for a USD-only key; an entity code is allowed only when `parameters.entity_codes` lists exactly that entity; a bare value that is both a handle and an entity code fails
+      - `…::test_load_all_collects_every_error`: two invalid files raise one `ExceptionGroup` holding two `AnswerKeyError`s
+      - `…::test_selection_from_env`: `FAMILY=RND` selects the 25 active keys of `answer-keys/rnd/`; `ID=RND-CHK-001,SSP-CHK-035-TC-SETUP` selects 2; `REQ=REQ-REC-019` selects the keys whose `requirements` list it; a filtered selection disables the coverage check (DG-AK-42)
+      - `…::test_corpus_cross_validates`: `load_all()` over the real corpus raises nothing
+    - Answer keys: none (validation only)
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: none; REQs contributed: none
+  - **Read:** dev-guide §9.5.2 to §9.5.8 (DG-AK-32 rev 1.3, DG-AK-34, DG-AK-35, DG-AK-42), §9.5.4 `judgements` `questionnaire`, §9.5.5 `tax_lines`; 04 §3 E-01; 04 T-CON-19 (questionnaire schemas); 04 §16.3 `BILLING_RECORDED`; POLICIES §0.7, §1 POL-049; PHASES §8.1
+  - **Gates:** GK-01 `make ci`
+
+- [ ] **EKC-10 Answer-key corpus coverage.**
+  - **Prerequisites:** EKC-9
+  - **Scope:**
+    - Paths: `backend/tests/support/answer_keys/loader.py` (`coverage`, `CoverageReport`); `backend/tests/unit/answer_keys/test_coverage.py`
+    - Schema: none
+    - API: none
+    - Engine: none
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/unit/answer_keys/test_coverage.py::test_corpus_has_zero_gaps`: `coverage(load_all())` reports no gap. Counts: List A 49 of 49; List B 46 of 46; List C 76 of 76 CHK ids; `AK:` hints 50 of 50; `AK-FAM:` slugs 9 of 9; family codes 28 of 28 (`_coverage/ADJUDICATION.md` §1)
+      - `…::test_each_gap_kind_is_reported`: removing, in memory, `POB-S2-EX45-AGENT-AGENT` and `POB-S2-EX45-AGENT-PRINCIPAL` reports gap `AK:S2-EX45-AGENT` for REQ-POB-009. Removing the three keys tagged `usage-rollover` reports `AK-FAM:usage-rollover`; removing every `ROY` key reports family code `ROY`; removing `VC-CHK-110` reports `CHK-110`. A List B row whose condition cell has another form reports "unparsed coverage row COV-B-nn". The heading is "Corpus gaps (supervisor)" (DG-AK-33)
+      - `…::test_coverage_parses_register_at_run_time`: a copy of `docs/03-REQUIREMENTS.md` under `.run/tmp/` with one extra List A row (`COV-A-99`, scenario `XX-99`) reports that row as a gap
+    - Answer keys: none
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: none; REQs contributed: none
+  - **Read:** dev-guide DG-AK-33; 03 §1.4, §12 (List A, List B, List C COV-C-01 to 14); `_coverage/ADJUDICATION.md` §1
+  - **Gates:** GK-01 `make ci`
+
+- [ ] **EKC-11 Engine runner: checkpoint bundle assembly.**
+  - **Prerequisites:** EKC-10
+  - **Scope:**
+    - Paths: `backend/tests/support/answer_keys/runners.py` (`run_engine`, `RunResult`, private `build_checkpoint_bundles`); `backend/tests/unit/answer_keys/test_runner_engine.py`
+    - Schema: none
+    - API: none
+    - Engine: ENGINE_SPEC §0.4 (bundle members); dev-guide DG-AK-40 and DG-AK-44
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/unit/answer_keys/test_runner_engine.py::test_build_bundles_rnd_chk_001`: for `RND-CHK-001`, one bundle per checkpoint. Timeline items with `seq ≤ after_seq` enter the bundle with `record_seq = seq` and events ordered by (effective_date, record_seq, event_key). `known_at` equals the item's `recorded_at`, or the dev-guide §9.5.5 default. The currencies, entity periods from `world.periods`, contract lines and the resolved policies of `world.policies` are present (DG-AK-40, DG-AK-44)
+      - `…::test_period_state_items`: for `LATE-CHK-090-GOLDEN-CONTRACT1-DELIVERY-AFTER-JANUARY-LOCK` the checkpoint bundle carries period FY2023-P01 in state `closed` for book ASC606 and FY2023-P02 `open`
+      - `…::test_members_enter_bundle`: `SFC-CHK-137-S3-EX28-CASEB` gives `ContractInput.payment_schedule` with 60 points of 18,871.00; `CPC-CHK-133-S3-EX32` gives one `consideration_payable` item of 1,500,000.00; `RET-CHK-116` gives `GroupInput.portfolios` with its portfolio code (DG-AK-40 rev 1.2)
+      - `…::test_judgement_questionnaire_enters_outcome`: for `SFC-CHK-137-S3-EX28-CASEB` the bundle holds one REVIEWED `JudgementInput` of topic `SFC_ASSESSMENT` whose `outcome` maps `obligation_key` to `""`, `significant` to `"true"` and `exception_32_17` to `"NONE"`; for `REC-BR-04-BILL-AND-HOLD-CUSTODIAL` the `BILL_AND_HOLD` record maps `obligation_key` to `"L1-ROBOTS"` and `reason_substantive`, `identified_as_customer_product`, `ready_for_physical_transfer` and `cannot_use_or_direct_to_another_customer` to `"true"` (DG-AK-40 rev 1.3; ENGINE_SPEC S04-R-10; ENGINE_SPEC_B S09-R-12)
+      - `…::test_run_engine_fails_closed_without_compute`: with `monkeypatch.delattr(erev_engine, "compute", raising=False)`, `run_engine(key)` raises `AnswerKeyError` whose message names `BUILD_SPEC END-9` (B3-BS2-06)
+    - Answer keys: none
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: none; REQs contributed: none
+  - **Read:** dev-guide §9.5.3 to §9.5.5 (§9.5.4 `judgements` `questionnaire`, rev 1.3), §9.5.8 (DG-AK-40 rev 1.3, DG-AK-44); ENGINE_SPEC §0.4 Table 0.4-A; 04 T-CON-19
+  - **Gates:** GK-01 `make ci`
+
+- [ ] **EKC-12 Checkpoint assertions, the answer-key test module and `make answer-keys`.**
+  - **Prerequisites:** EKC-11
+  - **Scope:**
+    - Paths: `backend/tests/support/answer_keys/runners.py` (`assert_checkpoints`); `backend/tests/support/answer_keys/report.py`; `backend/tests/answer_keys/test_answer_keys.py` (module `pytestmark = pytest.mark.answer_key`); `backend/tests/unit/answer_keys/test_assert_checkpoints.py`; `Makefile` target `answer-keys` (DG-MK-answer-keys) writing `.run/reports/answer-keys/report.json`
+    - Schema: none
+    - API: none
+    - Engine: none
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/unit/answer_keys/test_assert_checkpoints.py::test_money_places`: expected `"322.10"` against 32,210 minor units passes; `"322.1"` fails loading; amounts inside `functional` use the entity functional currency places (DG-AK-51)
+      - `…::test_exact_values_rounded_to_expected_places`: expected `"0.4"` against exact 0.40000001 passes at d = 1; a rate with 13 decimals fails loading (DG-AK-52)
+      - `…::test_implicit_assertions`: synthetic `OutputBundle`s violate, in turn, Σ a_posted = allocation basis, Σ `allocated_amount` = `transaction_price` − `consideration_payable_amount`, `allocated_amount = revenue_cum + scheduled_amount + awaiting_trigger_amount`, entry balance per (entity, book, currency, period), and `reevaluate(trace)`. Each is reported as a mismatch naming its identity (DG-AK-54)
+      - `…::test_mismatches_collected_before_failing`: two failing checkpoints produce one failure listing key id, checkpoint, object, field, expected and actual for both (DG-AK-55)
+      - `…::test_subledger_aggregation`: a functional-only line `{account_role: FX_GAIN_LOSS, cr: "0.00", functional_cr: "10.00"}` matches a net functional amount of −10.00. Keys whose net transaction and functional amounts are both zero are omitted. `match: exact` with `lines: []` asserts that nothing posted (DG-AK-56)
+      - `…::test_group_balances_sum_members`: a `groups[].balances` value equals the sum of the member contracts' labelled balances per entity and field (DG-AK-57)
+      - `…::test_report_shape`: `report.json` lists per key `id`, `path`, `sha256`, `runner`, `result`, `mismatches` and review status, plus the count of selected keys whose review status is not `approved` (DG-AK-43)
+      - `make answer-keys ID=RND-CHK-001` validates every file (DG-MK-answer-keys step 1). It writes `.run/reports/answer-keys/report.json` with one selected key whose failure message names `BUILD_SPEC END-9`, exits non-zero, and prints `FAIL answer-keys: …` (fail closed, B3-BS2-06; the target is first green in END-9)
+    - Answer keys: none (the runner is first expected green in END-9)
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: none; REQs contributed: none
+  - **Read:** dev-guide §4.4 DG-MK-answer-keys, §9.5.6 (subledger, groups and report blocks), §9.5.7 (DG-AK-50 to 57), §9.5.8 (DG-AK-43); DG-MK-00a, DG-MK-00g
+  - **Gates:** GK-01 `make ci`
+
+- [ ] **GATE-EKC Phase EKC checkpoint.**
+  - **Prerequisites:** every item of phase EKC (EKC-1 to EKC-12)
+  - **Scope:** verification and evidence; fixes only for defects this checkpoint finds
+  - **Acceptance:**
+    - Exit criteria: every exit criterion of PHASES §1 row EKC holds. The evidence is `backend/tests/architecture/test_engine_purity.py` passing; `test_chk_001` to `test_chk_007` passing inside `make ci`; `test_loader_discovery.py`, `test_loader_validation.py`, `test_coverage.py`, `test_runner_engine.py` and `test_assert_checkpoints.py` passing inside `make ci`; and `make properties` unfiltered green
+    - Membership: REQ-REC-019 is listed under "REQs completed" by EKC-2 only; make targets DG-MK-answer-keys (EKC-12) and DG-MK-properties (EKC-7) exist with dev-guide §4.4 semantics; PROP:P2, PROP:P3 and the helper part of PROP:P4 have their modules; CHK-001, CHK-002, CHK-003a to CHK-003d, CHK-004, CHK-005, CHK-006 and CHK-007 have `test_chk_<nnn>_<slug>` tests
+    - Gates: the PHASES §4 row GATE-EKC is green on a clean tree (`git status --porcelain` empty) after the last commit: `make ci`, `make test-pg`, `make properties` (unfiltered), `erev controls-report --tags-only` inside `make lint`
+  - **Read:** PHASES §1 row EKC, §4 row GATE-EKC, §6.2, §8.3 row COV-C-01, §12, §13; header §6
+  - **Gates:** GK-11 `make ci`; `make test-pg`; `make properties`
+
+## 05 ENA Engine stages 01 to 05
+
+**Entry criteria.** GATE-WEB ticked (PHASES §3 order FND → EKC → PLF → WEB → ENA). The kernel of EKC is available (dev-guide §5.9, §5.16, §5.17, §7).
+
+**Exit criteria (PHASES §1 row ENA).** Stage packages of PHASES §16 for ENA, with every S01-R to S05-R rule the engine owns (B3-BS2-10), stage invariant, finding code and trace node, and the worked examples of ENGINE_SPEC §1 to §5 as engine tests. The entry functions of ENGINE_SPEC Table 0.2-A are called directly by tests; `compute` is wired in END. CHK unit tests of COV-C-13 other than CHK-031 are in place. P1 holds at stage 05 level, and CTL-012 allocation identities fail closed. RFD consumes `s05_allocation.resolve_ssp` and `s03_pob_builder.build_lines` with the Table 0.2-A signatures (PHASES §3).
+
+**Gate scope at exit (PHASES §4 row GATE-ENA).** `make ci`; `make test-pg`; `make e2e` unfiltered; answer keys as GATE-EKC (loader and coverage unit tests inside `make ci`); `make properties` unfiltered; `erev controls-report --tags-only` inside `make lint`.
+
+**Membership.** 31 requirements (PHASES §6.5): REQ-SSP-004, REQ-SSP-005, REQ-POB-001 to REQ-POB-005, REQ-POB-008 to REQ-POB-013, REQ-TP-001 to REQ-TP-003, REQ-TP-008, REQ-TP-010 to REQ-TP-015, REQ-ALC-001 to REQ-ALC-008. Control CTL-012 (§7). PROP:P1 stage 05 part (§12). CHK unit tests CHK-030, CHK-032 to CHK-035 (COV-C-13), CHK-054 (COV-C-06 option SSP rows), CHK-118 and CHK-120 (COV-C-14; B3-BS2-09). No route row, placement, journey or make target.
+
+- [ ] **ENA-1 Stage 01 engine canonicalisation, voids, quantity ledger and estimate pins.**
+  - **Prerequisites:** GATE-WEB
+  - **Scope:**
+    - Paths: `backend/erev_engine/stages/s01_canonicalize/__init__.py` (`run(bundle, tb) -> CanonicalBundle`); private submodules `convert.py`, `voids.py`, `classify.py`, `ledger.py`, `pins.py`; `backend/tests/engine/s01_canonicalize/test_s01_rules.py`; `backend/tests/engine/s01_canonicalize/test_ex_01_a.py`
+    - Schema: none
+    - API: none
+    - Engine: stage 01 engine part, ENGINE_SPEC §1.5 S01-R-11 to S01-R-20; §1.6 S01-INV-01 to S01-INV-04; §1.7 findings `EVENT_BEFORE_INCEPTION`, `RETURN_EXCEEDS_DELIVERED`, `REFUND_EXCEEDS_BILLED`, `PROGRESS_OVER_DELIVERY`, `ESTIMATE_VERSION_NOT_APPROVED` and formula `ingest.ledger_sum.v1`; §0.3 Table 0.3-A classification; S01-R-01 to S01-R-10 are DIN (BS-D-16; B3-BS2-10)
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/s01_canonicalize/test_s01_rules.py::test_s01_r11_decimal_conversion`: a payload `Decimal("300.00")` becomes `Fraction(300)`; a bundle field holding `Decimal("1E+2")` raises `ValueError` (DG-KRN-MONEY-05)
+      - `…::test_s01_r12_void_removes_target_and_void`: an `EVENT_VOIDED` whose `supersedes_event_key` is `Contract 1/EV-000004` leaves neither event in `CanonicalBundle.events`, and `events` is strictly increasing in (effective_date, record_seq, event_key) (S01-INV-01)
+      - `…::test_s01_r13_contract_void`: `CONTRACT_VOIDED` removes every other event of that contract from the fold
+      - `…::test_s01_r14_classification`: `CONTRACT_AMENDED`, `OPENING_BALANCE_ESTABLISHED` and `ESTIMATE_CHANGED` are boundary events; the first `CONTRACT_BOOKED` of each member is in neither list; `DELIVERY_RECORDED`, `BILLING_RECORDED` and `HOLD_APPLIED` are measure events; boundary ∪ measure ∪ first bookings = `events`, disjointly (S01-INV-02)
+      - `…::test_s01_r15_event_before_inception`: a `DELIVERY_RECORDED` effective 2022-12-31 on a contract with inception 2023-01-01 yields finding `EVENT_BEFORE_INCEPTION` with severity `ERROR`
+      - `…::test_s01_r16_returns_and_credits_exceeding`: returning 3 units after 2 delivered yields `RETURN_EXCEEDS_DELIVERED`; a credit memo of 150.00 against 100.00 billed yields `REFUND_EXCEEDS_BILLED`; both are collected in one run in CV-43 order (CV-42)
+      - `…::test_s01_r17_over_delivery`: 6 units delivered on an obligation booked for 5, with no quantity-changing boundary, yields `PROGRESS_OVER_DELIVERY` (`ERROR`)
+      - `…::test_s01_r18_estimate_pins`: an `ESTIMATE_CHANGED` naming a version absent from `estimate_versions` yields `ESTIMATE_VERSION_NOT_APPROVED`. `pin(estimate_key, at, before)` returns the latest APPROVED version effective on or before `at` and before the named event, and two calls with the same arguments return equal values (S01-INV-04)
+      - `…::test_s01_r19_ledger_trace_nodes`: node `delivered_quantity_cum:Contract 1/POB %231:-` has value `"2"`, formula `ingest.ledger_sum.v1` and inputs that are `SourceRef(ref_type="contract_event")` of the two delivery events (CV-21 percent-encoding of `#`)
+      - `…::test_s01_r20_booking_payload_is_authoritative`: a `ContractInput` whose header projection differs from the booking payload in `transaction_currency` terms is canonicalised from the payload; `scope_605_35` in force at a date is taken from the latest booking or `CONTRACT_AMENDED` payload carrying the member
+      - `backend/tests/engine/s01_canonicalize/test_ex_01_a.py::test_ex_01_a_ledger`: the nine events of EX-01-A give POB #1 `delivered_cum` 2 and `billed_cum` 300, POB #2 `delivered_cum` 1, POB #3 `delivered_cum` 1/2; every `LedgerPoint` satisfies `delivered_cum ≥ returned_cum ≥ 0` and `billed_cum ≥ credited_cum ≥ 0` (S01-INV-03)
+    - Answer keys: none
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: none; REQs contributed: none
+  - **Read:** ENGINE_SPEC §1.1, §1.2, §1.5 to §1.8 (S01-R-11 to S01-R-20, S01-INV-01 to 04, EX-01-A); §0.3 Table 0.3-A; §0.6 CV-20 to CV-22; §0.8 CV-40 to CV-45, Table 0.8-A; 04 E-03
+  - **Gates:** GK-01 `make ci`; GK-04 `make ci`
+
+- [ ] **ENA-2 Stage 02 contract identification: Step 1 gate, enforceable term and deposits.**
+  - **Prerequisites:** ENA-1
+  - **Scope:**
+    - Paths: `backend/erev_engine/stages/s02_contract_identification/__init__.py` (`run(ctx, cb, tb) -> IdentifiedState`, `apply(ctx, st, ev, tb) -> AllocatedState`); private `status.py`, `term.py`, `deposits.py`; `backend/tests/engine/s02_contract_identification/test_s02_rules.py`; `backend/tests/engine/s02_contract_identification/test_ex_02.py`
+    - Schema: none
+    - API: none
+    - Engine: ENGINE_SPEC §2.2, §2.3 S02-R-01 to S02-R-12; §2.5 S02-INV-01 to S02-INV-04, finding `INVOICE_ON_NOT_A_CONTRACT`, formulas `step1.status.v1`, `step1.enforceable_term.v1`, `step1.deposit.v1`, `step1.event_25_7.v1`, `step1.transition_catch_up.v1`; S02-R-13 and S02-R-14 are CTR (B3-BS2-10)
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/s02_contract_identification/test_ex_02.py::test_ex_02_a_deposit_targets`: a three-year service at 20.00 a month with `COLLECTIBILITY_ASSESSED` `is_probable = false` before activation is `NOT_A_CONTRACT`; receipts of 20.00 at the end of months 1 to 6 give `deposit_liability` 100.00 at the end of month 5 and 120.00 after the month-6 receipt. On `CONTRACT_CRITERIA_MET` under POL-013 `CATCH_UP_AT_TRANSITION` the status becomes `ACTIVE`, `deposit_to_contract_liability` is 120.00, `deposit_liability` is 0.00, and the obligations keep their `INCEPTION` segments (EX-02-A; CHK-021 inputs; S02-R-04, S02-R-08, S02-INV-02, S02-INV-03)
+      - `…::test_ex_02_b_combined_inception_fold`: contracts C-1 and C-2 in `GroupInput.member_contract_keys` both enter the inception state (CV-10; S02-R-09); the allocation figures of EX-02-B are asserted in ENA-13
+      - `backend/tests/engine/s02_contract_identification/test_s02_rules.py::test_s02_r01_gate_per_book`: `COLLECTIBILITY_ASSESSED` for book IFRS15 changes only the IFRS15 status
+      - `…::test_s02_r02_draft_status_recorded`: a contract without `CONTRACT_ACTIVATED` has status `DRAFT` in every book (posting suppression is asserted in END-5)
+      - `…::test_s02_r06_enforceable_term`: under POL-014 `TO_EARLIEST_TERMINATION_WITHOUT_SUBSTANTIVE_PENALTY`, with `termination_party = CUSTOMER`, no substantive penalty and 30 notice days, node `enforceable_end_date:<contract>:-` has params `basis` and `date` equal to the earliest termination date
+      - `…::test_s02_r07_event_25_7`: while `NOT_A_CONTRACT`, with every obligation fully transferred and a reviewed `NOT_A_CONTRACT` judgement `consideration_nonrefundable = true`, the 25-7 recognition fact is produced
+      - `…::test_s02_r10_single_currency`: a member contract in EUR inside a USD group raises `EngineError("ENGINE_INVARIANT_VIOLATED")` (S02-INV-04; CV-45)
+      - `…::test_s02_r11_invoice_on_not_a_contract`: `BILLING_RECORDED` while `NOT_A_CONTRACT` yields finding `INVOICE_ON_NOT_A_CONTRACT` (`WARNING`)
+    - Answer keys: none
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: none; REQs contributed: none
+  - **Read:** ENGINE_SPEC §2.1 to §2.6 (S02-R-01 to S02-R-12, S02-INV-01 to 04, EX-02-A, EX-02-B); §0.4 Table 0.4-A; POLICIES POL-011 to POL-016, POL-128, JET-01b (CHK-021)
+  - **Gates:** GK-01 `make ci`; GK-04 `make ci`
+
+- [ ] **ENA-2b Stage 02 time-elapsed 25-7(a) completion, dated evaluation, STEP1_MET netting, overpayment cap and RPO exclusion (D-91; L1-2-Q-9, GAPS-A3). Supervisor item.**
+  - **Prerequisites:** ENA-2, ENA-3
+  - **Scope:**
+    - Paths: `backend/erev_engine/stages/s02_contract_identification/__init__.py` (`run_deposits(ctx, identified, pob, tb)`; `_fully_performed` reads the stage 03 classification: an `OVER_TIME` `TIME_ELAPSED` obligation with a resolved term is transferred from its term end date inclusive, the S02-R-06 truncated end where truncated, and an unresolved term never by time; the receipt test reads the S02-R-06 enforceable consideration); private `deposits.py` (`DepositLedger.recognise(limit)`: every recognition under (a), (b) and (c) capped at the stated consideration less revenue already recognised under S02-R-07; the dated 25-7(a) evaluation at T = max(term end) as a point ordered after the events of T, node `deposit_to_revenue@<ISO date>:<contract>@<entity>:-`; the sixth EMOD-12 measure `deposit_to_revenue_time_cum`); `backend/erev_engine/stages/s13_books/__init__.py` (`_run_book`: the deposit fold runs after stage 03 and the refined `IdentifiedState` replaces `published["02"]` before stage 04); `backend/erev_engine/stages/s09_recognition/` (S02-R-04 STEP1_MET catch-up max(C_p(d) − R25_p, 0) over the S14-R-25 shares); `backend/erev_engine/stages/s15_disclosures/rpo.py` (the obligations of a contract whose status in the book is `NOT_A_CONTRACT` at d_v are excluded from RPO and its rollforward; a baseline RPO measurement precedes the exclusion); `backend/tests/engine/s02_contract_identification/test_s02_rules.py`; `backend/tests/engine/s13_books/`; `backend/tests/engine/s15_disclosures/`; new answer keys under `docs/accounting/answer-keys/`
+    - Schema: none
+    - API: none
+    - Engine: ENGINE_SPEC §2.3 S02-R-04, S02-R-07, S02-R-08 and §2.5 trace nodes `deposit_to_revenue@<ISO date>:<contract>@<entity>:-`, `deposit_to_revenue_time_cum:<contract>@<entity>:<period>` (rev 1.6); ENGINE_SPEC_B S15-R-08 to S15-R-12 (the NOT_A_CONTRACT exclusion, D-91 gaps (vii)); POLICIES JET-01b rows (rev 1.7)
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/s02_contract_identification/test_s02_rules.py` (new cases; D-91 gaps (ii), (iii), (vi)): a completed, fully paid, nonrefundable `TIME_ELAPSED` service of 1,200.00 recognises its deposit at the term end 2026-12-31 (T1); a term ending 2026-11-15 recognises on 2026-11-15 in FY2026-P11 whatever the ALG-11 convention (T8); when receipts complete after the term end the recognition is dated the completing receipt 2027-01-15 (T4), and nothing is recognised while receipts are short (T4b); a mixed contract releases at max(delivery, service end) 2026-12-31 (T5); an unresolved term is never transferred by time; receipts of 1,300.00 on a 1,200.00 contract recognise 120,000 minor and leave 10,000 minor in `DEPOSIT_LIABILITY` (X4), under (a), (b) and (c) alike
+      - `backend/tests/engine/s13_books/` (new case; D-91 gaps (iii), (v)): the deposit fold runs after stage 03 and `published["02"]` is the refined state; `CONTRACT_CRITERIA_MET` under POL-013 `CATCH_UP_AT_TRANSITION` after a 25-7 recognition posts STEP1_MET revenue of max(C_p(d) − R25_p, 0) per obligation, so total revenue is 120,000 minor with `CONTRACT_LIABILITY` 0 and `DEPOSIT_LIABILITY` 0 (T9, T9b)
+      - `backend/tests/engine/s15_disclosures/` (new case; D-91 gaps (vii)): the obligations of a contract that is `NOT_A_CONTRACT` in the book at d_v contribute nothing to RPO or to any rollforward line; the baseline RPO measurement is asserted before the exclusion
+      - Post-rc twins named by D-91 (x): the closed-period-T twin (origin posting, S14-R-05, S14-R-06), the DAILY twin of T8, and the compute-level release tests driven by the `CLOSE_RELEASE` trigger or a closed period (a `COMMAND` compute with the period open posts nothing: the A11 control)
+    - Answer keys: `make answer-keys ID=STP1-S1-25-7A-TIME-SERVICE-NONREFUNDABLE-RELEASE`, `ID=STP1-S1-25-7A-DELIVERY-RELEASE`, `ID=STP1-S1-25-7B-TERMINATION-REFUND-RELEASE`, `ID=STP1-S1-25-7A-THEN-CRITERIA-MET` and a 25-7C key (new keys authored by this item; requirement coverage for REQ-CON-003; no existing expected value changes; the 232 active keys unchanged)
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: none; REQs contributed: REQ-CON-003 (dated 25-7 evaluation; 03 rev 1.4)
+  - **Read:** 01-DECISIONS D-91 "Contract and obligation gaps" (i) to (x); ENGINE_SPEC §2.3 S02-R-04, S02-R-06, S02-R-07, S02-R-08 and §2.5 (rev 1.6); ENGINE_SPEC_B S14-R-25, Table 14-A JET-01b row (rev 1.7), S15-R-08 to S15-R-12; POLICIES JET-01b (table 2.3-B and the §2.3 row, rev 1.7); 03 REQ-CON-003 (rev 1.4); 05 §3.6.7 EMOD-12 (rev 1.4); `.run/supervisor/d91/D-91.md`; `.run/l9/d91-gaps/exact-checks.txt`
+  - **Gates:** GK-01 `make ci`; GK-04 `make ci`
+
+- [ ] **ENA-3 Stage 03 POB builder: lines, template resolution, bundles, negative and $0 lines, distinctness and series.**
+  - **Prerequisites:** ENA-2
+  - **Scope:**
+    - Paths: `backend/erev_engine/stages/s03_pob_builder/__init__.py` (`run(ctx, st, tb) -> PobState`, `build_lines(ctx, st, lines, at, tb) -> tuple[PobDraft, ...]`); private `templates.py`, `bundles.py`, `distinct.py`; `backend/erev_engine/enums.py` (`legacy_distinctness`); `backend/tests/engine/s03_pob_builder/test_s03_lines.py`; `backend/tests/engine/s03_pob_builder/test_tc_distinct.py`
+    - Schema: none
+    - API: none
+    - Engine: ENGINE_SPEC §3.2; §3.3 S03-R-01 to S03-R-06; §3.4 S03-INV-01 to S03-INV-03, findings `PRODUCT_UNMAPPED`, `NEGATIVE_BOOKING_LINE`, formulas `pob.template_match.v1`, `pob.bundle_split.v1`, `pob.merge.v1`, trace nodes `stated_price:<ob>:-`, `original_quantity:<ob>:-`; 04 table 15.4-A `SSP_DISTINCT_FLAG_INVALID`
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/s03_pob_builder/test_s03_lines.py::test_s03_r02_template_resolution`: a `POB_ASSIGNMENT` rule set evaluated with `rules.match` gives `pob_template_code`; without a match, `product.default_template_code` is used; an absent product yields `PRODUCT_UNMAPPED` (`ERROR`); trace params record `rule_key` and the template `version_key`
+      - `…::test_ex_03_a_bundle_explosion`: bundle `BND-1` (1 unit at 1,000.00) with components HW (SSP 700.00) and SUP (SSP 800.00), `split_basis = relative_ssp`, gives component stated prices 466.67 and 533.33 (`largest_remainder(100000, [700, 800], ["BND-1.01", "BND-1.02"])` = `[46667, 53333]`)
+      - `…::test_s03_r04_negative_and_zero_price_lines`: a native line with Q −1 or P −90.00 yields `NEGATIVE_BOOKING_LINE`; a parity `VC_LINE` with P −100.00 is accepted; a distinct line with P 0.00 is an obligation (REQ-POB-002); a line with Q 0 raises `EngineError("ENGINE_INVARIANT_VIOLATED")` (S03-R-04, CV-45)
+      - `…::test_s03_r05_nondistinct_merge`: a `nondistinct` line whose reviewed `POB_DISTINCT_OVERRIDE` names `integrates_into_obligation_key` merges into that obligation; every line belongs to exactly one obligation (S03-INV-01)
+      - `…::test_s03_r06_series_increment_unit`: `distinctness = series` with `series_increment_unit` `month` gives a series obligation; `series` without an increment unit raises `EngineError("ENGINE_INVARIANT_VIOLATED")`
+      - `…::test_s03_subject_keys_continuous_identity`: obligation subject keys are `<contract external_id>/<obligation_key>` with CV-21 encoding, unique in the group (S03-INV-02), equal across two runs, and `build_lines` at a later pricing date initialises `original_quantity` and `original_stated_price` of every new draft (REQ-POB-004)
+      - `backend/tests/engine/s03_pob_builder/test_tc_distinct.py::test_tc_prospective_13_distinct_flag_exact_strings`: `legacy_distinctness("Distinct") == Distinctness.DISTINCT` and `legacy_distinctness("Nondistinct") == Distinctness.NONDISTINCT`; `"distinct"` and `"Non-distinct"` raise `EngineError` with code `SSP_DISTINCT_FLAG_INVALID`; four booking lines always give four drafts, so no row is dropped (legacy 03 §7.3 TC-13 "rejected at SSP upload")
+    - Answer keys: none (AK hints close in AKS-2)
+    - Golden: none (GT hints close in GPA)
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: REQ-POB-001, REQ-POB-002, REQ-POB-003, REQ-POB-004, REQ-POB-005; REQs contributed: none
+    - Hint closure: REQ-POB-003 `TC-13`, `UNIT`; REQ-POB-004 `UNIT`; REQ-POB-002 `GT-02` and `GT:initial_allocation` in GPA-1; REQ-POB-004 `GT:pob_position` in GPA-5; `AK:S2-EX11-CASEA-OWNPRICES` and `AK:S2-EX12A-OWNVOLUMES` in AKS-2
+  - **Read:** ENGINE_SPEC §3.1 to §3.5 (S03-R-01 to 06, S03-INV-01 to 03, EX-03-A); 04 T-REF-20 to T-REF-23, T-REF-26, E-105, table 15.4-A; legacy 03 §7.3 TC-13; 03 REQ-POB-001 to REQ-POB-005
+  - **Gates:** GK-01 `make ci`; GK-04 `make ci`
+
+- [ ] **ENA-4 Stage 03 options, warranties, principal or agent, licences and time triggers.**
+  - **Prerequisites:** ENA-3
+  - **Scope:**
+    - Paths: `backend/erev_engine/stages/s03_pob_builder/options.py`, `warranties.py`, `agent.py`, `licences.py`; `backend/tests/engine/s03_pob_builder/test_s03_specialist.py`
+    - Schema: none
+    - API: none
+    - Engine: ENGINE_SPEC §3.3 S03-R-07 to S03-R-10; §3.4 S03-INV-04, S03-INV-05, finding `PRINCIPAL_AGENT_NOT_ASSESSED`, formulas `pob.option_ssp.v1`, `pob.agent_net.v1`, trace nodes `option_ssp:<ob>:-`, `gross_amount_memo:<ob>:-`; §0.6 CV-27; POLICIES ALG-05 §2.6.1
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/s03_pob_builder/test_s03_specialist.py::test_chk_054_option_ssp`: product A sold for 100.00 with a 40% voucher, 10% available without the contract, likelihood 80% and expected purchase 50.00 under POL-026 `DISCOUNT_X_LIKELIHOOD` gives node `option_ssp:<ob>:-` = `"12.00"` (EX-03-B; CHK-054; S03-INV-04)
+      - `…::test_ex_03_e_warranty_split`: equipment 10,500.00 with a statutory 12-month assurance warranty and an extended warranty for months 13 to 24 gives two obligations, equipment and a `SERVICE_WARRANTY` from month 13 to month 24. The assurance warranty is no obligation and carries `assurance_cost_per_unit` 200.00 (EX-03-E; S03-R-08)
+      - `…::test_ex_03_c_agent_net`: a marketplace order of 500.00 with the reviewed `PRINCIPAL_AGENT` outcome `AGENT` and `COMMISSION_RATE` 0.10 gives stated price 50.00, `gross_amount_memo` 500.00 and a supplier share of 450.00 excluded from the price (EX-03-C; S03-INV-05)
+      - `…::test_s03_r09_principal_agent_not_assessed`: `principal_agent = NOT_ASSESSED` on an `ACTIVE` contract yields `PRINCIPAL_AGENT_NOT_ASSESSED` (`ERROR`); on a `DRAFT` contract no finding
+      - `…::test_ex_03_d_licence_renewal_start`: a right-to-use licence renewed before the end of the current term takes `recognition_start_date` equal to the first day of the renewal period under POL-025 `RENEWAL_PERIOD_START` (ASC606). In the IFRS15 book it is the later of agreement and availability, `LATER_OF_AGREEMENT_AND_AVAILABILITY` (POLICIES §6.2 row 8; EX-03-D)
+      - `…::test_cv_27_material_right_expiry_trigger`: an open option with `expiry_date` 2026-12-31 yields `TimeTrigger("MATERIAL_RIGHT_EXPIRY", date(2026, 12, 31), <obligation subject key>)`, and no other trigger kind exists
+    - Answer keys: none (AK hints close in AKS-2 and AKS-5)
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: REQ-POB-009, REQ-POB-010; REQs contributed: REQ-POB-006 (option records), REQ-POB-008 (warranty split)
+  - **Read:** ENGINE_SPEC §3.3 S03-R-07 to S03-R-10, §3.4, §3.5 EX-03-B to EX-03-E, §0.6 CV-27; POLICIES ALG-05 §2.6.1 and §2.6.5 (CHK-054), POL-022, POL-024, POL-025, POL-026, POL-030, §6.2; 03 REQ-POB-006, REQ-POB-008 to REQ-POB-010
+  - **Gates:** GK-01 `make ci`; GK-04 `make ci`
+
+- [ ] **ENA-4b Stage 03 ASC 606-10-55-62 functional-IP exception: T-CON-19 members, S03-R-10 consumer and licence-nature drawer (D-91; L2-2-Q-4). Supervisor item.**
+  - **Prerequisites:** ENA-4
+  - **Scope:**
+    - Paths: `backend/erev_engine/stages/s03_pob_builder/licences.py` (S03-R-10 rev 1.6: `FUNCTIONAL` with both `functionality_expected_to_change_substantively = true` and `customer_required_to_use_updated_ip = true` on a reviewed `LICENCE_NATURE` record scoped to `ASC606` or to every book is a right to access, `OVER_TIME` `TIME_ELAPSED`; the IFRS-only `activities_significantly_affect_ip` is never read in the ASC606 book; the `_Questionnaire` no longer ignores stored members); the T-CON-19 questionnaire validation of the judgement record (the two booleans answered together, one alone 422 with T-CON-19 field errors, permitted only when `nature = FUNCTIONAL`); `frontend/src/lib/api/schema.d.ts` (`make openapi`); the SF-03 licence-nature judgement drawer with the two ASC606 members (platform lane); `backend/tests/engine/s03_pob_builder/test_s03_specialist.py`; new answer keys under `docs/accounting/answer-keys/`
+    - Schema: none (the members `functionality_expected_to_change_substantively` and `customer_required_to_use_updated_ip` are questionnaire JSON members of the `LICENCE_NATURE` judgement record, 04 rev 1.11; no table, column, type, default, check or enumeration value changes)
+    - API: judgement-record validation of the T-CON-19 members (422 `validation-failed` when one member is answered without the other or when `nature` is not `FUNCTIONAL`)
+    - Engine: ENGINE_SPEC §0.4 Table 0.4-A `LICENCE_NATURE` and §3.3 S03-R-10 (rev 1.6); 04 T-CON-19 `LICENCE_NATURE` members (rev 1.11); POLICIES POL-024, POL-232
+    - Screens: the SF-03 licence-nature judgement drawer gains the two ASC606 members (platform lane; D-91: no frontend form exists in the rc, so the reviewed path is API and answer-key only until this item ships)
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/s03_pob_builder/test_s03_specialist.py` (new cases; D-91 gaps (viii)): a 12,000.00 annual `FUNCTIONAL` licence with a reviewed ASC606 `LICENCE_NATURE` record answering both 55-62 criteria true recognises 100,000 minor a month as a right to access, and 109,091 minor in the first month when availability is 1 February; one criterion alone, no record, or `activities_significantly_affect_ip` alone keeps the right to use (`POINT_IN_TIME`); a stored member is read, never silently ignored
+      - API test: a `LICENCE_NATURE` judgement record answering one member without the other, or carrying the members with `nature` other than `FUNCTIONAL`, is refused with 422 `validation-failed` and T-CON-19 field errors
+    - Answer keys: `make answer-keys ID=POB-S2-FUNCTIONAL-IP-55-62-ACCESS` and `ID=POB-S2-FUNCTIONAL-IP-55-62-ONE-CRITERION` (new keys; requirement coverage for REQ-POB-010; no existing expected value changes)
+    - Golden: none
+    - Controls: none
+    - Screens: the licence-nature drawer captures in both themes, as its platform lane names
+    - Journeys: none
+    - Properties: none
+    - REQs completed: none; REQs contributed: REQ-POB-010 (the 55-62 exception; 03 rev 1.4)
+  - **Read:** 01-DECISIONS D-91 "Contract and obligation gaps" (i) B1, (viii), (x); ENGINE_SPEC §0.4 Table 0.4-A `LICENCE_NATURE`, §3.3 S03-R-10 (rev 1.6); 04 T-CON-19 (rev 1.11); 03 REQ-POB-010 (rev 1.4); POLICIES POL-024, POL-025, POL-232; `.run/supervisor/d91/D-91.md`
+  - **Gates:** GK-01 `make ci`; GK-04 `make ci`
+
+- [ ] **ENA-5 Stage 03 scope routing, repurchase outcomes, immaterial promises, shipping, franchisor, custodial, measure and legacy templates.**
+  - **Prerequisites:** ENA-4
+  - **Scope:**
+    - Paths: `backend/erev_engine/stages/s03_pob_builder/scope.py`, `elections.py`, `measure.py`; `backend/tests/engine/s03_pob_builder/test_s03_elections.py`
+    - Schema: none
+    - API: none
+    - Engine: ENGINE_SPEC §3.3 S03-R-11 to S03-R-18; formula `pob.merge.v1` (shipping merge); POLICIES POL-020, POL-021, POL-094, POL-202, POL-230 to POL-234
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/s03_pob_builder/test_s03_elections.py::test_s03_r11_scope_routing`: a line with `scope_flag = LEASE_842` stays an allocation target with `routed_out = true` (PT-09; the CHK-118 allocation is asserted in ENA-11)
+      - `…::test_s03_r12_repurchase_lease_outcome`: a reviewed `REPURCHASE_CLASSIFICATION` outcome `LEASE` sets `scope_flag = LEASE_842`; `RIGHT_OF_RETURN` keeps the obligation in scope
+      - `…::test_s03_r13_immaterial_promise_candidates`: under POL-020 `APPLY_RELIEF` in book ASC606, non-option lines below the threshold are marked candidates and material-right lines never are; in book IFRS15 (`ASSESS_ALL`) none is marked (REQ-POB-012; the merge after SSP resolution is asserted in ENA-11)
+      - `…::test_s03_r14_shipping_election`: under POL-021 `TRUE` (ASC606), a shipping line of 50.00 creates no obligation and its price is added to the accompanying product obligation, stated price 1,050.00. In book IFRS15 (`FALSE`, POLICIES §6.2 row 4) it is a separate obligation (REQ-POB-011)
+      - `…::test_s03_r15_franchisor_expedient`: products flagged `is_franchisor_preopening_service` under POL-202 `ELECT_DISTINCT_SERVICES` are distinct obligations; in book IFRS15 the election is not available and the lines follow S03-R-05 (REQ-POB-013; POLICIES §6.2 row 14)
+      - `…::test_s03_r16_custodial_obligation`: under POL-094 `CREATE_WHEN_SSP_PROVIDED` a `CUSTODIAL` line with a resolvable SSP entry becomes a `TIME_ELAPSED` obligation over the holding period
+      - `…::test_s03_r17_one_measure_per_obligation`: an obligation-level `recognition.measure_of_progress` override maps to one E-11 literal; `ratable_convention` is pinned at inception for `TIME_ELAPSED` (POL-090 pin K)
+      - `…::test_s03_r18_legacy_templates`: under the `LEGACY_PARITY` preset stratification `VC` gives template `LEGACY-VC` with obligation kind `VC_LINE`
+    - Answer keys: none (AK hints close in AKS-2 and AKS-6)
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: REQ-POB-011, REQ-POB-012, REQ-POB-013; REQs contributed: none
+    - Hint closure: REQ-POB-012 `UNIT`
+  - **Read:** ENGINE_SPEC §3.3 S03-R-11 to S03-R-18; POLICIES POL-020, POL-021, POL-090, POL-094, POL-202, POL-230 to POL-234, §5.9 PT-09, §6.2 rows 3, 4 and 14; 03 REQ-POB-011 to REQ-POB-013
+  - **Gates:** GK-01 `make ci`; GK-04 `make ci`
+
+- [ ] **ENA-6 Stage 04 transaction price build-up, variable consideration elements and constraint.**
+  - **Prerequisites:** ENA-5
+  - **Scope:**
+    - Paths: `backend/erev_engine/stages/s04_transaction_price/__init__.py` (`run(ctx, st, tb) -> PricedState`, `price_at(ctx, st, at, tb) -> TpBuildUp`, constant `TP_COMPONENTS`); private `buildup.py`, `vc.py`; `backend/tests/engine/s04_transaction_price/test_s04_buildup.py`
+    - Schema: none
+    - API: none
+    - Engine: ENGINE_SPEC §4.2; §4.3 S04-R-01 to S04-R-07; §4.4 S04-INV-01, S04-INV-02, trace nodes named as T-CON-08 columns, formulas `tp.buildup.v1`, `tp.fixed.v1`, `tp.vc_expected_value.v1`, `tp.vc_most_likely.v1`, `tp.vc_entered.v1`, `tp.vc_constrained.v1`, `tp.realised_usage.v1`
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/s04_transaction_price/test_s04_buildup.py::test_ex_04_a_expected_value_and_most_likely`: base 2,500,000.00. A daily incentive or penalty element by `EXPECTED_VALUE` over scenarios (0.2, +100,000.00), (0.5, 0.00), (0.3, −50,000.00) gives U 5,000.00. A bonus by `MOST_LIKELY_AMOUNT` gives U 150,000.00, constrained by version 1 to 0.00. Result: `fixed_consideration` 2,500,000.00; `vc_constrained_amount` 5,000.00; `vc_excluded_amount` 150,000.00; `transaction_price` = `tp_allocation_basis` = 2,505,000.00 (EX-04-A; CHK-100 inputs)
+      - `…::test_s04_r02_version_state_nodes`: nodes `transaction_price`, `fixed_consideration`, `vc_constrained_amount`, `vc_excluded_amount` and `tp_allocation_basis` exist on the group key, and `total.exact` equals the sum of the members' exact values (S04-INV-01)
+      - `…::test_s04_inv_02_constraint_between_bounds`: a version with `constrained_amount` below `most_conservative_amount` raises `EngineError("ENGINE_INVARIANT_VIOLATED")` with `detail["invariant"] == "S04-INV-02"` (V6; CV-45)
+      - `…::test_s04_r05_entered_amount_under_preset`: under `LEGACY_PARITY` (POL-040 `ENTERED_AMOUNT`) a VC line P −100.00 gives `vc_constrained_amount` −100.00 and, for golden Contract 2, `transaction_price` 900.00 (EX-05-A inputs)
+      - `…::test_s04_r06_realised_usage`: for a `PERIOD_VC` obligation, realised usage fees are the sum of `USAGE_REPORTED.rated_amount` with ENG-06 position at or before the date
+      - `…::test_s04_r04_rebate_direction`: an element with `vc_element_type = REBATE` and no `direction` enters with direction `DECREASE` (dev-guide §9.5.4 B3-DG-17) and reduces `vc_constrained_amount` by its constrained amount (REQ-TP-010)
+    - Answer keys: none (AK hints close in AKS-3)
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: REQ-TP-001, REQ-TP-002, REQ-TP-003, REQ-TP-010; REQs contributed: none
+    - Hint closure: REQ-TP-001 `UNIT`
+  - **Read:** ENGINE_SPEC §4.1 to §4.5 (S04-R-01 to S04-R-07, S04-INV-01, 02, EX-04-A); POLICIES POL-040 to POL-044, ALG-10 §2.11.1; 04 T-CON-08, T-CON-12, T-CON-13; 03 REQ-TP-001 to REQ-TP-003, REQ-TP-010
+  - **Gates:** GK-01 `make ci`; GK-04 `make ci`
+
+- [ ] **ENA-7 Stage 04 expected returns, implicit price concessions, sales taxes and the unconstrained view.**
+  - **Prerequisites:** ENA-6
+  - **Scope:**
+    - Paths: `backend/erev_engine/stages/s04_transaction_price/returns.py`, `concessions.py`, `taxes.py`, `unconstrained.py`; `backend/tests/engine/s04_transaction_price/test_s04_reductions.py`
+    - Schema: none
+    - API: none
+    - Engine: ENGINE_SPEC §4.3 S04-R-08, S04-R-08b, S04-R-09, S04-R-20, S04-R-21; S04-INV-03; finding `RETURN_ESTIMATE_MISSING`; formulas `tp.returns_expected.v1`, `tp.concession_implicit.v1`, `tp.tax_excluded.v1`
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/s04_transaction_price/test_s04_reductions.py::test_ex_04_g_expected_returns`: 100 units at 100.00 with a `RETURN_RATE` pin E = 3 give the build-up member `expected_returns` −300.00 (S04-R-02 sign), `transaction_price` 9,700.00 and `tp_allocation_basis` 10,000.00, all targeted at the returnable obligation. The persisted memo column `expected_returns_amount` carries the member sign and equals the answer-key figure `"-300.00"` of `RET-CHK-029-S3-EX22` checkpoint `end-of-january` (ENGINE_SPEC S04-R-02 rev 1.3; 04 T-CON-08 rev 1.3; `_coverage/ADJUDICATION.md` R-SGN-01). `AllocatedState.return_paths[<ob>]` carries the estimate key and p_ref 100.00 (EX-04-G; CHK-029 inputs; S04-R-08b; S04-INV-03)
+      - `…::test_ex_04_g2_memo_on_returned_and_expected`: CHK-029 inputs with r = 100.00. At the end of February 2026 (Y = 2, E = 1), `expected_returns` = −round(100 × (2 + 1)) = −300.00 and `total` 9,700.00, equal to the revenue target round(100 × (100 − 2 − 1)); at window expiry (Y = 2, E = 0), −200.00 and 9,800.00. CHK-060 inputs (E revised to 4): after the two returns −400.00 and 9,600.00; at expiry −200.00 and 9,800.00. A memo on E alone would give −100.00 (EX-04-G2; S04-R-08; R-RET-01)
+      - `…::test_s04_r08_return_estimate_missing`: POL-051 `EXPECTED_RETURNS` with no effective `RETURN_RATE` version and no immateriality judgement yields `RETURN_ESTIMATE_MISSING` (`ERROR`)
+      - `…::test_ex_04_f_implicit_price_concession`: 1,000 units invoiced 1,000,000.00 with expected entitlement 400,000.00 give κ = 3/5, a concession component −600,000.00 and `transaction_price` 400,000.00 (EX-04-F; CHK-138)
+      - `…::test_ex_04_e_sales_tax_excluded`: an invoice of 1,080.00 including 80.00 sales tax in book ASC606 under POL-045 `EXCLUDE_ALL_IN_SCOPE` gives `transaction_price` 1,000.00 and `sales_tax_excluded_amount` 80.00. In book IFRS15 (`ASSESS_EACH_TAX`) the tax enters the price only for a tax the entity collects as principal (EX-04-E; CHK-023)
+      - `…::test_s04_r21_unconstrained_view`: for the EX-04-A contract `tp_unconstrained[contract].at(d)` is 2,655,000.00 (fixed 2,500,000.00 + U 5,000.00 + U 150,000.00)
+    - Answer keys: none (AK hints close in AKS-2 and AKS-3)
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: REQ-TP-008, REQ-TP-014, REQ-TP-015; REQs contributed: none
+  - **Read:** ENGINE_SPEC §4.3 S04-R-08 to S04-R-09, S04-R-20, S04-R-21, §4.3 S04-R-02 (memo sign, rev 1.3), §4.4, §4.5 EX-04-E to EX-04-G, EX-04-G2 (rev 1.3); 04 T-CON-08 `expected_returns_amount`; `_coverage/ADJUDICATION.md` §10 R-SGN-01, R-RET-01; POLICIES ALG-06 §2.7.1 to §2.7.5, POL-045, POL-051, POL-125, §6.2 row 5; 03 REQ-TP-008, REQ-TP-014, REQ-TP-015
+  - **Gates:** GK-01 `make ci`; GK-04 `make ci`
+
+- [ ] **ENA-8 Stage 04 significant financing component.**
+  - **Prerequisites:** ENA-7
+  - **Scope:**
+    - Paths: `backend/erev_engine/stages/s04_transaction_price/financing.py`; `backend/tests/engine/s04_transaction_price/test_s04_financing.py`
+    - Schema: none
+    - API: none
+    - Engine: ENGINE_SPEC §4.3 S04-R-10 to S04-R-13, including S04-R-12a (rev 1.3); S04-INV-04 (financed balance); findings `SFC_REVIEW_REQUIRED`, `SFC_RATE_MISSING`, `SFC_SCHEDULE_UNSETTLED`; formulas `sfc.gap_test.v1`, `sfc.cash_selling_price.v1`, `sfc.effective_interest.monthly.v1`, `sfc.effective_interest.annual.v1`, `sfc.accretion.v1`; trace nodes `financing_interest_cum:<contract>@<entity>:<period>` (params `suspended_until` under S04-R-12a), `cash_selling_price:<ob>:-`
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/s04_transaction_price/test_s04_financing.py::test_ex_04_b_advance_monthly`: 4,000.00 paid on 2026-01-01 for an asset transferred on 2028-01-01, override {`ENTITY_BORROWING_RATE`, 0.06, `MONTHLY`} (j = 0.005), gives `financing_interest_cum` 20.00 at month 1, 246.71 at month 12 and 508.64 at month 24. `financing_adjustment_amount` is +508.64 and `transaction_price` 4,508.64 (EX-04-B; CHK-136 `MONTHLY` row)
+      - `…::test_ex_04_b_advance_annual`: the same contract with `compounding = ANNUAL` gives interest 240.00 in year 1 and 254.40 in year 2, and `transaction_price` 4,494.40 (CHK-136 `ANNUAL` row)
+      - `…::test_ex_04_b2_deferred_payment`: 60 monthly instalments of 18,871.00 after transfer, override {`CUSTOMER_CREDIT_RATE`, 0.12, `MONTHLY`}, give cash selling price 848,346.53, `financing_adjustment_amount` −283,913.47 and month-1 interest 8,483.47 (EX-04-B2; CHK-137)
+      - `…::test_s04_r10_review_required_and_expedient`: a payment gap above 12 months without a reviewed `SFC_ASSESSMENT` judgement yields `SFC_REVIEW_REQUIRED` (`ERROR`); a gap of 12 months or less under POL-046 `sfc.one_year_expedient` gives no adjustment and no finding
+      - `…::test_s04_r11_rate_missing`: an adjustment required without an approved `sfc.discount_rate_basis` override yields `SFC_RATE_MISSING`
+      - `…::test_s04_r12_schedule_unsettled`: payments exceeding the financed balance by more than one minor unit yield `SFC_SCHEDULE_UNSETTLED`; at settlement `financed_balance` is within one minor unit of 0 (S04-INV-04)
+      - `…::test_s04_r12_month_count_calendar_month_ends`: n = m(T, date) for a deferred payment and m(date, T) for an advance, so a payment on 2026-01-31 after a transfer on 2026-01-01 has n = 1, instalment k of CHK-137 has n = k, and the CHK-136 advance of 2026-01-01 for a transfer on 2028-01-01 has n = 24, with ⌊24 ÷ 12⌋ = 2 whole years under `ANNUAL`. No count uses a floor of whole months, which would give CHK-137 a cash selling price of 856,830.00 (ENGINE_SPEC S04-R-12 rev 1.3; `_coverage/ADJUDICATION.md` B3-AK-01, R-SFC-04)
+      - `…::test_ex_04_h_accretion_suspended_while_returns_exclude_consideration`: a product costing 80.00, transferred on 2026-01-01 for 121.00 payable on 2027-12-31 under override {`CUSTOMER_CREDIT_RATE`, 0.10, `ANNUAL`}, gives m = 24, cash selling price 100.00 and `financing_adjustment_amount` −21.00. A `RETURN_RATE` pin expects the one unit back until `window_end_date` 2026-03-31 (E = 1): `expected_returns` −100.00, `transaction_price` 0.00 and `financing_interest_cum` 0.00 through 2026-03-31; L = 2026-03-31 (the measurement dated on the window end has E = 0: D-87 L6-5-Q-25), recorded as trace param `suspended_until`. The 21.00 is then recognised with the inception weights (10 ÷ 12 for months 1 to 12 and 11 ÷ 12 for months 13 to 24; Σ over months 4 to 24 = 18.5): 0.95 in April 2026, 8.51 cumulative at 2026-12-31, 19.96 through November 2027, 1.04 in December 2027 and 12.49 over months 13 to 24. The cash selling price and the POL-047 rate do not change. With `window_end_date` 2026-01-20, no month end falls on or before L and the schedule equals S04-R-12 without suspension (EX-04-H; S04-R-12a; R-SFC-05)
+      - `…::test_s04_r12a_advance_payment_never_suspended`: the EX-04-B advance contract (4,000.00 paid on 2026-01-01, transfer 2028-01-01, {`ENTITY_BORROWING_RATE`, 0.06, `MONTHLY`}) with a `RETURN_RATE` pin E = 1 until 2028-03-31 still gives `financing_interest_cum` 20.00 at month 1 and 508.64 at month 24, and records no `suspended_until` param (S04-R-12a: JET-11b is never suspended)
+    - Answer keys: none (AK hints close in AKS-3 and AKS-6)
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: REQ-TP-011; REQs contributed: REQ-BIL-007 (financed balance measure)
+  - **Read:** ENGINE_SPEC §4.3 S04-R-10 to S04-R-13, §4.4 (trace params `suspended_until`), §4.5 EX-04-B, EX-04-B2, EX-04-H (rev 1.3); POLICIES POL-046, POL-047 notes, JET-11 11a (CHK-136, CHK-137 and the FASB Example 26 paragraph; rev 1.3); D-76 (significant financing component rate); `_coverage/ADJUDICATION.md` B3-AK-01, §10 R-SFC-04, R-SFC-05; 03 REQ-TP-011
+  - **Gates:** GK-01 `make ci`; GK-04 `make ci`
+
+- [ ] **ENA-9 Stage 04 consideration payable, share-based consideration payable, noncash consideration and warranty accrual.**
+  - **Prerequisites:** ENA-8
+  - **Scope:**
+    - Paths: `backend/erev_engine/stages/s04_transaction_price/customer_consideration.py`, `noncash.py`, `specialist.py`; `backend/tests/engine/s04_transaction_price/test_s04_specialist.py`
+    - Schema: none
+    - API: none
+    - Engine: ENGINE_SPEC §4.3 S04-R-14 to S04-R-19; S04-INV-04 (released incentive); formulas `tp.cpc_reduction.v1`, `tp.cpc_release.v1`, `tp.noncash.v1`, `tp.warranty_accrual.v1`; trace nodes `incentive_release_cum`, `noncash_asset_recognised_cum`, `warranty_accrual_cum`
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/s04_transaction_price/test_s04_specialist.py::test_ex_04_d_consideration_payable`: 1,500,000.00 paid at inception for shelving (no distinct good), committed purchases 15,000,000.00, POL-049 `COMMITTED_PURCHASES`, give ρ = 1/10. A month-1 invoice of 2,000,000.00 gives `incentive_release_cum` 200,000.00 and an incentive asset of 1,300,000.00. The build-up member `consideration_payable` is −1,500,000.00 (S04-R-02); the persisted `consideration_payable_amount` carries the member sign and equals the answer-key figure `"-1500000.00"` of `CPC-CHK-133-S3-EX32` checkpoint `at-inception`; `transaction_price` is 13,500,000.00 and `tp_allocation_basis` stays 15,000,000.00, so the later allocation satisfies DB-17 V1: Σ `allocated_amount` 15,000,000.00 = 13,500,000.00 − (−1,500,000.00) (EX-04-D rev 1.3; CHK-133; 04 T-CON-08 rev 1.3; `_coverage/ADJUDICATION.md` R-SGN-01)
+      - `…::test_s04_r15_promise_after_revenue_released_at_promise_date`: a promise dated after revenue for the related purchases was recognised is released in full at the promise date
+      - `…::test_chk_120_share_based_warrants`: warrants with grant-date fair value 50,000.00 vesting on purchases of 1,000,000.00 in two years give a cumulative reduction of 20,000.00 after purchases of 400,000.00 and of 50,000.00 after a further 600,000.00. When vesting becomes not probable at the end of year 1 the cumulative reduction is 0.00 (CHK-120; PT-10)
+      - `…::test_ex_04_c_noncash_consideration`: 100 customer shares per completed week for 52 weeks at a fair value of 10.00 at inception give `noncash_consideration_amount` 52,000.00 and a week-1 `noncash_asset_recognised_cum` of 1,000.00 (EX-04-C; CHK-135)
+      - `…::test_s04_r19_warranty_accrual`: under POL-022 `ENGINE`, an obligation with `assurance_cost_per_unit` 200.00 and one unit transferred has `warranty_accrual_cum` 200.00 at delivery (CHK-134)
+    - Answer keys: none (AK hints close in AKS-2)
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: REQ-TP-012, REQ-TP-013, REQ-POB-008; REQs contributed: none
+  - **Read:** ENGINE_SPEC §4.3 S04-R-14 to S04-R-19, §4.3 S04-R-02 (memo sign and `revenue_cum`, rev 1.3), §4.5 EX-04-C, EX-04-D (V1 figures, rev 1.3); 04 T-CON-08 `consideration_payable_amount`, `revenue_cum` (rev 1.3); `_coverage/ADJUDICATION.md` §10 R-SGN-01, R-V1-01; POLICIES POL-022, POL-048, POL-049, POL-246, §5.10 PT-10 (CHK-120), JET-14, JET-16, JET-17 (CHK-133 to CHK-135); 03 REQ-TP-012, REQ-TP-013, REQ-POB-008
+  - **Gates:** GK-01 `make ci`; GK-04 `make ci`
+
+- [ ] **ENA-10 Stage 05 SSP resolution: book, version, entry, currency, extended values and SSP points.**
+  - **Prerequisites:** ENA-9
+  - **Scope:**
+    - Paths: `backend/erev_engine/stages/s05_allocation/__init__.py` (`run`, `resolve_ssp(ctx, draft, at, tb) -> SspResolution`, `allocate`); private `ssp_books.py`, `points.py` (constant `SSP_POINT_POLICIES`), `convert.py`; `backend/tests/engine/s05_allocation/test_s05_ssp.py`; `backend/tests/engine/s05_allocation/test_tc_ssp_points.py`
+    - Schema: none
+    - API: none
+    - Engine: ENGINE_SPEC §5.2; §5.3 S05-R-01 to S05-R-08; findings `SSP_KEY_NOT_FOUND`, `FX_RATE_MISSING`, `OBSERVABLE_POINT_MISSING`; formulas `ssp.select_version.v1`, `ssp.extend.v1`, `ssp.point.v1`, `ssp.convert.v1`; trace node `original_ssp_selected:<ob>:-`; POLICIES §3.4
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/s05_allocation/test_tc_ssp_points.py::test_tc_setup_03_hardware_in_range`: Hardware 1 (L 100, d 0.10, r 0.15), Q 5, P 500 gives band [382.5, 517.5] and selected SSP 500 under the `LEGACY_PARITY` preset (legacy 01 §7.3 TC-setup-03)
+      - `…::test_tc_setup_04_software_clamped_high`: Software 1 (L 200, d 0.20, r 0.15), Q 2, P 400 gives SSP 368 (TC-setup-04)
+      - `…::test_tc_setup_05_hardware_clamped_low`: Hardware 1, Q 8, P 600 gives SSP 612 (TC-setup-05)
+      - `…::test_tc_setup_06_prices_on_bounds_kept`: P 517.5 (Q 5) and P 272 (Software 1, Q 2) in one contract keep SSP 517.5 and 272, and total SSP equals TP 789.5 (TC-setup-06)
+      - `…::test_chk_035_legacy_range_points`: the four TC-setup-03 to 06 cases give `original_ssp_selected` 500 / 368 / 612 and 517.5 / 272 (CHK-035)
+      - `…::test_tc_prospective_06_ssp_clamp_unit_cases`: under `LEGACY_PARITY`, `resolve_ssp` over `legacy_range` entries gives the legacy 03 §3.1 replay values. (Q −5; L 100, d 0.10, r 0.15; P −500) gives band [−517.5, −382.5] and SSP −500. (+2; 100, 0.10, 0.15; 500) gives [153, 207] and 207. (+2; 300, 0.50, 0; 300) gives 300. (−1,000; 1, 0, 0; 0) gives −1,000. (+5; 300, 0.50, 0; 1,000) gives 750. Q 0 with P 50 gives 0 (legacy 03 §7.3 TC-06; the sign-mismatch refusal is asserted in ENB-13)
+      - `backend/tests/engine/s05_allocation/test_s05_ssp.py::test_chk_030_point_policies`: licence L 200, d 0.20, r 0.15, P 120 gives range 136 to 184 with mid 160. Selected SSP is 136 under POL-072 `NEAREST_BOUND` and `LOW_POINT`, 160 under `MIDPOINT`, 184 under `HIGH_POINT` and 150 under `OBSERVABLE_POINT` with `observable_point` 150. A NULL `observable_point` yields `OBSERVABLE_POINT_MISSING` (`WARNING`) and the nearer bound (EX-05-B; CHK-030 SSP points; allocations in ENA-11)
+      - `…::test_s05_r03_version_selection`: under POL-070 `LATEST_APPROVED_EFFECTIVE_AT_INCEPTION` the version with `effective_from_date` ≤ pricing date ≤ `effective_to_date` is selected; under `NAMED_VERSION` the `legacy_version_label` `2023-01-01` is selected; when no entry resolves, `SSP_KEY_NOT_FOUND` (`ERROR`)
+      - `…::test_s05_r05_currency_conversion`: a EUR entry for a USD contract under POL-079 `CONVERT_AT_INCEPTION_SPOT` without a spot rate yields `FX_RATE_MISSING`
+      - `…::test_s05_r06_native_band_sign_aware`: under `DEFAULT`, a `legacy_range` entry with negative quantity gives low = min and high = max of the two ends (REQ-SSP-004 native branch)
+      - `…::test_s05_r08_bypasses`: a `VC_LINE` takes SSP 0; an option under `ENTERED_AMOUNT` or `DISCOUNT_X_LIKELIHOOD` takes the stage 03 option SSP and is not range-tested
+    - Answer keys: none (AK hints close in AKS-1)
+    - Golden: none (GT hints close in GPA-1)
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: REQ-SSP-004, REQ-SSP-005; REQs contributed: none
+    - Hint closure: REQ-SSP-004 `TC-setup-03 to 06`, `TC-06` (five replay rows and Q 0; the sign-mismatch row in ENB-13); REQ-SSP-004 and REQ-SSP-005 `GT-01`, `GT-02`, `GT:initial_allocation` in GPA-1; REQ-SSP-005 `AK:S4-SSPRANGE-OWN` in AKS-1
+  - **Read:** ENGINE_SPEC §5.1 to §5.3 (S05-R-01 to S05-R-08), §5.5, §5.6 EX-05-B; POLICIES §3.1 to §3.4 (CHK-030, CHK-035), POL-070 to POL-073, POL-079, §6.3; legacy 01 §7.3 TC-setup-03 to 06; legacy 03 §3.1 and §7.3 TC-06; 03 REQ-SSP-004, REQ-SSP-005
+  - **Gates:** GK-01 `make ci`; GK-04 `make ci`
+
+- [ ] **ENA-11 Stage 05 relative-SSP allocation, original columns, immaterial-promise merge and the parity preset.**
+  - **Prerequisites:** ENA-10
+  - **Scope:**
+    - Paths: `backend/erev_engine/stages/s05_allocation/relative.py`, `original.py`; `backend/tests/engine/s05_allocation/test_s05_allocation.py`; `backend/tests/engine/s05_allocation/test_tc_allocation.py`
+    - Schema: none
+    - API: none
+    - Engine: ENGINE_SPEC §5.4 S05-R-09, S05-R-10, S05-R-13, S05-R-16, S05-R-17; §5.5 S05-INV-01 to S05-INV-03, finding `TOTAL_SSP_ZERO`, formulas `alloc.relative_ssp.v1`, `alloc.largest_remainder.v1`, trace nodes `total_ssp:<group>:-`, `allocation_weight:<ob>:-`, `original_allocated_exact:<ob>:-`, `original_allocated_amount:<ob>:-`, `allocation_adjustment:<ob>:-`; S03-R-13 merge step
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/s05_allocation/test_s05_allocation.py::test_ex_05_a_golden_contract2`: Contract 2 with Hardware 1 Q 8 P 600 (selected SSP 612), Software 1 Q 3 P 400 (408), Consulting 1 Q 1 P 0 (150) and VC #1 P −100 (0) gives basis 900.00 and total SSP 1,170. `largest_remainder(90000, …)` gives 47,077 / 31,385 / 11,538 / 0. `original_allocated_exact`, rounded to 4 places, is 470.7692 / 313.8462 / 115.3846 / 0 (EX-05-A; CHK-002; GT-02 values)
+      - `…::test_chk_002_contracts_1_and_4`: Contract 1 (TP 1,300.00; SSP 500 / 368 / 150 / 1,000) gives 322.10 / 237.07 / 96.63 / 644.20; Contract 4 (TP 950.00; SSP 612 / 544 / 150 / 0) gives 445.18 / 395.71 / 109.11 / 0.00 (CHK-002)
+      - `…::test_chk_054_voucher_allocation`: weights 100 and 12 over 100.00 give product 89.29 and voucher 10.71 (EX-03-B; CHK-054)
+      - `…::test_chk_030_allocations`: the EX-05-B contract (basis 420.00) gives licence / services 131.01 / 288.99 (`NEAREST_BOUND`), 146.09 / 273.91 (`MIDPOINT`), 159.67 / 260.33 (`HIGH_POINT`) and 140.00 / 280.00 (`OBSERVABLE_POINT` 150) (CHK-030)
+      - `…::test_chk_118_embedded_lease_allocation`: TP 10,000.00 with lease SSP 9,000.00 and maintenance SSP 3,000.00 gives lease 7,500.00 (routed out) and maintenance 2,500.00 (CHK-118; PT-09)
+      - `…::test_s05_r10_total_ssp_zero`: SSP 0 on every obligation yields `TOTAL_SSP_ZERO` (`ERROR`; POL-077)
+      - `…::test_s05_r16_original_columns_and_allocation_adjustment`: for golden Contract 1, `original_total_contract_price` is 1,300.00 and `original_total_contract_ssp` 2,018. POB #1 `allocation_adjustment` = 322.10 − 500.00 = −177.90, and Σ `allocation_adjustment` over the contract is 0.00 (REQ-ALC-008)
+      - `…::test_s05_inv_02_quota_within_one_minor_unit`: for every obligation of Contracts 1, 2 and 4, |x_exact × 10^μ − a_posted| < 1 (S05-INV-02)
+      - `…::test_s03_r13_immaterial_promise_merge`: a candidate below the POL-020 threshold is merged into its host obligation after SSP resolution, and its weight joins the host's
+      - `…::test_s05_r17_parity_preset_values`: under `LEGACY_PARITY` the resolved values are POL-070 `NAMED_VERSION`, POL-071 `CONTRACT_PRICE`, POL-072 `NEAREST_BOUND`, POL-073 `NOT_ENFORCED`, POL-076 `DISABLED`, POL-044 `NOT_ENFORCED`
+      - `backend/tests/engine/s05_allocation/test_tc_allocation.py::test_tc_setup_08_posted_allocations_sum`: posted allocations sum to 1,300.00 (322.10 + 237.07 + 96.63 + 644.20), 900.00 (470.77 + 313.85 + 115.38) and 950.00 (445.18 + 395.71 + 109.11) (legacy 01 §7.3 TC-setup-08)
+      - `…::test_tc_setup_09_equal_ssp_thirds`: three obligations with equal SSP and TP 100.00 give 33.34 / 33.33 / 33.33 (TC-setup-09)
+    - Answer keys: none (AK hints close in AKS-1 and AKS-2)
+    - Golden: none (GT hints close in GPA-1)
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: REQ-ALC-003, REQ-ALC-008; REQs contributed: REQ-ALC-001, REQ-ALC-002
+    - Hint closure: REQ-ALC-002 `TC-setup-08`, `TC-setup-09`; REQ-ALC-003 `UNIT`; REQ-ALC-008 `UNIT`
+  - **Read:** ENGINE_SPEC §5.4 S05-R-09, S05-R-10, S05-R-13, S05-R-16, S05-R-17, §5.5, §5.6 EX-05-A, EX-05-B, §3.5 EX-03-B; POLICIES ALG-01 §2.1.2, POL-077, §5.9 PT-09 (CHK-118), §6.3; legacy 01 §7.3 TC-setup-08, TC-setup-09; 03 REQ-ALC-001 to REQ-ALC-003, REQ-ALC-008
+  - **Gates:** GK-01 `make ci`; GK-04 `make ci`
+
+- [ ] **ENA-12 Stage 05 targeted variable consideration, discount exception, residual approach and pipeline order.**
+  - **Prerequisites:** ENA-11
+  - **Scope:**
+    - Paths: `backend/erev_engine/stages/s05_allocation/exceptions.py`, `targeted.py`; `backend/tests/engine/s05_allocation/test_s05_exceptions.py`
+    - Schema: none
+    - API: none
+    - Engine: ENGINE_SPEC §5.4 S05-R-09, S05-R-11, S05-R-12, S05-R-14, S05-R-15; findings `RESIDUAL_REJECTED`, `VC_TARGET_TOLERANCE_EXCEEDED`, `VC_ALLOCATION_NEGATIVE`; formulas `alloc.targeted_vc.v1`, `alloc.discount_exception.v1`, `alloc.residual.v1`; trace nodes `residual_ssp:<ob>:-`, `discount_exception@<bundle code>:<contract>:-`; proposals CV-16
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/s05_allocation/test_s05_exceptions.py::test_chk_034_discount_exception_case_a`: SSPs A 40, B 55, C 45; bundle B+C observably sold at 60; basis 100.00. With the approved exception the result is A 40.00, B 33.00, C 27.00. Without approval, a discount-exception proposal is returned (CV-16) and relative SSP applies (EX-05-C Case A; CHK-034)
+      - `…::test_chk_033_residual_case_b`: basis 130.00 with D residual and a range of 15 to 45 gives R 30.00 and A 40.00, B 33.00, C 27.00, D 30.00 (EX-05-C Case B; CHK-033)
+      - `…::test_chk_032_residual_rejected_case_c`: basis 105.00 gives R 5.00 < 15, finding `RESIDUAL_REJECTED` (`ERROR`). After an approved estimated SSP of 30 for D, relative SSP gives 24.71 / 33.97 / 27.79 / 18.53 (EX-05-C Case C; CHK-032)
+      - `…::test_ex_05_d_royalty_not_targeted`: licences X (SSP 800) and Y (SSP 1,000) with fixed 300.00 give X 133.33 and Y 166.67. A month-1 realised royalty of 200.00 whose 32-40(b) test fails is allocated on the inception basis, X 88.89 and Y 111.11 (EX-05-D Case B)
+      - `…::test_ex_05_d_case_a_tolerance`: a royalty targeted at Y with evidence gives r_X = r_Y = r_c = 1 and no finding. A ratio departing from the contract ratio by more than the POL-044 tolerance of 0.20 yields `VC_TARGET_TOLERANCE_EXCEEDED` (`ERROR`), except with a reviewed `OTHER` judgement `pol_044_override = true` naming the element
+      - `…::test_s05_r15_vc_allocation_negative`: a targeted amount making an obligation's total allocation negative yields `VC_ALLOCATION_NEGATIVE`
+      - `…::test_s05_r09_pipeline_order`: for a contract using all four paths, formula ids appear in the trace inputs in the order `alloc.targeted_vc.v1`, `alloc.discount_exception.v1`, `alloc.residual.v1`, `alloc.relative_ssp.v1`, `alloc.largest_remainder.v1` (REQ-ALC-007)
+    - Answer keys: none (AK hints close in AKS-2)
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: REQ-ALC-004, REQ-ALC-005, REQ-ALC-006, REQ-ALC-007; REQs contributed: none
+  - **Read:** ENGINE_SPEC §5.4 S05-R-09, S05-R-11 to S05-R-15, §5.6 EX-05-C, EX-05-D; POLICIES §3.2 (CHK-032 to CHK-034), POL-044, POL-075, POL-076; 03 REQ-ALC-004 to REQ-ALC-007
+  - **Gates:** GK-01 `make ci`; GK-04 `make ci`
+
+- [ ] **ENA-13 Inception fold over stages 01 to 05, P1 at stage 05 and fail-closed allocation identities (CTL-012).**
+  - **Prerequisites:** ENA-12
+  - **Scope:**
+    - Paths: `backend/erev_engine/stages/s05_allocation/__init__.py` (S05-INV-01 assertion before `run` returns); `backend/erev_engine/stages/__init__.py` (register stages 02 to 05 in `STAGES`); `backend/tests/engine/kernel/test_stage_registry.py` (remove 02 to 05 from `PENDING_STAGES`); `backend/tests/support/fold.py` (`fold_inception(bundle, book_code) -> AllocatedState` calling stages 01 to 05); `backend/tests/engine/s05_allocation/test_inception_fold.py`; `backend/tests/engine/s05_allocation/test_ctl_012.py`; `backend/tests/properties/test_prop_p01_allocation_sum.py`
+    - Schema: none
+    - API: none
+    - Engine: ENGINE_SPEC §0.3 `fold_book` inception part (CV-10); §5.5 S05-INV-01; dev-guide DG-ENG-05 allocation identities (the `compute` level is END-9)
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/s05_allocation/test_inception_fold.py::test_ex_02_b_combined_allocation`: `fold_inception` over contracts C-1 (licence at 90,000.00, SSP 100,000) and C-2 (services at 60,000.00, SSP 50,000) combined under 25-9(a) gives TP 150,000.00, licence 100,000.00 and services 50,000.00 (EX-02-B)
+      - `…::test_fold_golden_setup_contracts`: `fold_inception` over golden Contracts 1 to 4 at their inception gives the CHK-002 posted allocations (322.10 / 237.07 / 96.63 / 644.20; 470.77 / 313.85 / 115.38 / 0.00; Contract 3 as Contract 1; 445.18 / 395.71 / 109.11 / 0.00)
+      - `backend/tests/engine/s05_allocation/test_ctl_012.py::test_ctl_012_allocation_sum_fails_closed` (`@pytest.mark.control("CTL-012")`): with `erev_engine.money.largest_remainder` monkeypatched to drop one minor unit from its first result, `s05_allocation.run` raises `EngineError("ENGINE_INVARIANT_VIOLATED")` with `detail["invariant"] == "S05-INV-01"` and returns no state
+      - `…::test_ctl_012_contract_version_identity_fails_closed` (`@pytest.mark.control("CTL-012")`): a state whose Σ `allocated_amount` differs from `transaction_price` − `consideration_payable_amount` by one minor unit raises `EngineError("ENGINE_INVARIANT_VIOLATED")` naming `DB-17 V1`
+      - `backend/tests/properties/test_prop_p01_allocation_sum.py::test_p01_stage05_allocation_sum`: over generated groups (1 to 200 obligations; currencies JPY, USD, BHD, CLF; SSP weights including zeros; positive and negative prices; targeted VC subsets), Σ a_posted = `allocation_basis.posted` per group and book (PROP:P1 stage 05 part)
+      - `backend/tests/engine/kernel/test_stage_registry.py::test_stage_registry_complete`: `STAGES` holds stages 02 to 05 in Table 0.2-A order, and `PENDING_STAGES` no longer lists them
+    - Answer keys: none (AK hints close in AKS-2)
+    - Golden: none (GT hints close in GPA-1)
+    - Controls: CTL-012 `backend/tests/engine/s05_allocation/test_ctl_012.py::test_ctl_012_allocation_sum_fails_closed`; `…::test_ctl_012_contract_version_identity_fails_closed`
+    - Screens: none
+    - Journeys: none
+    - Properties: PROP:P1 `backend/tests/properties/test_prop_p01_allocation_sum.py` (stage 05 part)
+    - REQs completed: REQ-ALC-001, REQ-ALC-002; REQs contributed: none
+    - Hint closure: REQ-ALC-001 `PROP:P1` stage 05 part, `CTL-012`; REQ-ALC-002 `CTL-012`; REQ-ALC-001 `GT:initial_allocation` in GPA-1 and `AK:S4-EX33` in AKS-2
+  - **Read:** ENGINE_SPEC §0.3 (CV-10, CV-11), §5.5 S05-INV-01, §2.6 EX-02-B; dev-guide §7 DG-ENG-05, §9.2 DG-TST-06, §9.7 P1; 03 §4.1 CTL-012, REQ-ALC-001, REQ-ALC-002; PHASES §7 row CTL-012
+  - **Gates:** GK-01 `make ci`; GK-04 `make properties K=p01`
+
+- [ ] **GATE-ENA Phase ENA checkpoint.**
+  - **Prerequisites:** every item of phase ENA (ENA-1 to ENA-13)
+  - **Scope:** verification and evidence; fixes only for defects this checkpoint finds
+  - **Acceptance:**
+    - Exit criteria: every exit criterion of PHASES §1 row ENA holds. Evidence: stage packages `s01_canonicalize` to `s05_allocation` exist with the tests of ENA-1 to ENA-13 passing inside `make ci`; `STAGES` lists stages 02 to 05; `resolve_ssp` and `build_lines` have the ENGINE_SPEC Table 0.2-A signatures; `make properties` is green, including P1 stage 05; CTL-012 tests pass
+    - Membership: the 31 requirements of PHASES §6.5 are each listed under "REQs completed" by exactly one item. They are: REQ-POB-001 to REQ-POB-005 (ENA-3); REQ-POB-009, REQ-POB-010 (ENA-4); REQ-POB-011 to REQ-POB-013 (ENA-5); REQ-TP-001, REQ-TP-002, REQ-TP-003, REQ-TP-010 (ENA-6); REQ-TP-008, REQ-TP-014, REQ-TP-015 (ENA-7); REQ-TP-011 (ENA-8); REQ-TP-012, REQ-TP-013, REQ-POB-008 (ENA-9); REQ-SSP-004, REQ-SSP-005 (ENA-10); REQ-ALC-003, REQ-ALC-008 (ENA-11); REQ-ALC-004 to REQ-ALC-007 (ENA-12); REQ-ALC-001, REQ-ALC-002 (ENA-13). Control CTL-012 has a passing tagged test (ENA-13). CHK-030, CHK-032, CHK-033, CHK-034, CHK-035, CHK-054, CHK-118 and CHK-120 have `test_chk_<nnn>_<slug>` tests
+    - Gates: the PHASES §4 row GATE-ENA is green on a clean tree (`git status --porcelain` empty) after the last commit: `make ci`, `make test-pg`, `make e2e` (unfiltered), `make properties` (unfiltered), `erev controls-report --tags-only` inside `make lint`
+  - **Read:** PHASES §1 row ENA, §4 row GATE-ENA, §6.5, §7 row CTL-012, §8.3 rows COV-C-06, COV-C-13, COV-C-14, §12, §16; header §6
+  - **Gates:** GK-11 `make ci`; `make test-pg`; `make e2e`; `make properties` (row GATE-ENA)
+
+## 07 ENB Engine stages 06 to 08
+
+**Entry criteria.** GATE-RFD ticked (PHASES §3 order ENA → RFD → ENB). Stages 01 to 05 and `backend/tests/support/fold.py` exist (ENA-13). The committed legacy UAT fixtures `backend/tests/fixtures/legacy_uat/` exist (GATE-FND; DG-PAR-02).
+
+**Exit criteria (PHASES §1 row ENB).** Stage packages of PHASES §16 for ENB per ENGINE_SPEC §6 to §8, with rules, invariants, findings, trace nodes and worked examples. The boundary handlers of ENGINE_SPEC Table 0.3-A are registered. CHK unit tests of COV-C-05, COV-C-10 and COV-C-11 are in place, with CHK-112, CHK-113, CHK-115 and CHK-121 of COV-C-14 (B3-BS2-09).
+
+**Gate scope at exit (PHASES §4 row GATE-ENB).** `make ci`; `make test-pg`; `make e2e` unfiltered; answer keys as GATE-EKC; `make properties` unfiltered; `erev controls-report --tags-only` inside `make lint`.
+
+**Membership.** 19 requirements (PHASES §6.7): REQ-POB-007, REQ-TP-006, REQ-TP-007, REQ-MOD-003 to REQ-MOD-011, REQ-MOD-015 to REQ-MOD-021. CHK unit tests CHK-027, CHK-028, CHK-042, CHK-043 (COV-C-05); CHK-090, CHK-091 (COV-C-10); CHK-100, CHK-101 (COV-C-11); CHK-112, CHK-113, CHK-115, CHK-121 (COV-C-14). No control, route row, placement, journey, property module or make target.
+
+- [ ] **ENB-1 Golden event streams for engine tests and the stage 06 modification proposal.**
+  - **Prerequisites:** GATE-RFD
+  - **Scope:**
+    - Paths: `backend/tests/support/golden_streams.py` (`stream(contract: str, through_step: str) -> GoldenStream` with `contracts`, `ssp_versions`, `events`; B3-BS2-08); `backend/tests/engine/support/test_golden_streams.py`; `backend/erev_engine/stages/s06_modifications/__init__.py` (`propose(ctx, st, modification, tb) -> Proposal`); private `classify.py`, `price_test.py`; `backend/tests/engine/s06_modifications/test_s06_proposal.py`
+    - Schema: none
+    - API: none
+    - Engine: ENGINE_SPEC §6.2 S06-R-01 to S06-R-05; finding `MOD_QTY_ON_SATISFIED_POB`; formulas `mod.classify.v1`, `mod.price_test.v1`; proposals of kind `MODIFICATION_TREATMENT` (E-23; CV-16); S01-R-05 to S01-R-09 mapping semantics for the test support only
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/support/test_golden_streams.py::test_setup_lines_equal_golden_contract_live`: `stream("Contract 1", "02").contracts[0]` booking lines carry quantity, price, SKU, SSP version and accounts equal to the `Original …` columns of `docs/legacy/golden/02-contract-setup-2023-01-01/contract_live.csv` for Contract 1 (four lines)
+      - `…::test_step_04_events`: `stream("Contract 1", "04").events` holds the delivery and billing events of the 1.31.2023 UAT upload with effective date 2023-01-31 (`step.json` `date_input`). The ledger after stage 01 gives POB #1 `delivered_cum` 2 and `billed_cum` 100 (legacy 02 §7.3 TC-delivery-01 inputs)
+      - `…::test_streams_read_only`: the helper opens fixture files read-only and writes nothing outside `.run/tmp/`
+      - `backend/tests/engine/s06_modifications/test_s06_proposal.py::test_ex_06_c_separate_contract_proposal`: 120 products at 100.00. After 60 have transferred, 30 are added at 95.00 with a modification-date SSP point of 95.00 and `point_tolerance_pct` 0. Every line is `ADD` and distinct and passes S06-R-04, so the proposal is `SEPARATE_CONTRACT` (EX-06-C). Total revenue 14,850.00 is asserted in ENC-4
+      - `…::test_s06_r05_classes`: an obligation with f = 1 and no quantity line is class S; a distinct obligation with remaining goods is class D; a nondistinct partially satisfied obligation is class N; a quantity line on a class S obligation yields `MOD_QTY_ON_SATISFIED_POB` (`ERROR`)
+      - `…::test_s06_r02_dry_run_same_proposal`: `propose` returns equal proposals under triggers `COMMAND` and `DRY_RUN` (ENG-12)
+      - `…::test_tc_prospective_07_discounted_addon_as_separate_contract`: a distinct hardware add-on priced at its modification-date SSP 90.00 on a discounted contract is proposed as `SEPARATE_CONTRACT`. The existing obligations receive no segment and no catch-up (legacy 03 §7.3 TC-07 fixed column, alternative "add-on as a separate contract at 90"; probe P-16b inputs in legacy 03 §6.3)
+    - Answer keys: none (AK hints close in AKS-5)
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: REQ-MOD-003; REQs contributed: none
+    - Hint closure: REQ-MOD-003 `TC-07 (fixed)`; `AK:S6-EX5-CASEA` in AKS-5
+  - **Read:** ENGINE_SPEC §6.1, §6.2 (S06-R-01 to S06-R-05), §6.7 EX-06-C, §1.4 S01-R-05 to S01-R-09; dev-guide DG-PAR-02; legacy 03 §6.3 and §7.3 TC-07; `docs/legacy/golden/02-contract-setup-2023-01-01/`; 03 REQ-MOD-003
+  - **Gates:** GK-01 `make ci`; GK-04 `make ci`
+
+- [ ] **ENB-2 Stage 06 native prospective modification (25-13(a)): SSP basis, pools, segments and lineage.**
+  - **Prerequisites:** ENB-1
+  - **Scope:**
+    - Paths: `backend/erev_engine/stages/s06_modifications/__init__.py` (`apply(ctx, st, ev, tb) -> AllocatedState` for `CONTRACT_AMENDED`); private `weights.py`, `pool.py`, `segments.py`, `lineage.py`; `backend/tests/engine/s06_modifications/test_s06_prospective.py`
+    - Schema: none
+    - API: none
+    - Engine: ENGINE_SPEC §6.3 S06-R-06 to S06-R-08, S06-R-11 to S06-R-14, S06-R-16 to S06-R-18; §6.6 S06-INV-01, S06-INV-02, S06-INV-04, finding `MOD_REMAINING_NEGATIVE`, formulas `mod.weights.d18.v1`, `mod.pool.remaining_tp.v1`, `mod.catch_up.v1`, trace nodes `mod_weight@<event key>`, `mod_pool@<event key>`, `mod_share@<event key>`, `catch_up@<event key>`; POLICIES ALG-04 §2.5.4 to §2.5.6
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/s06_modifications/test_s06_prospective.py::test_ex_09_a_pool_and_shares`: obligation O1 has allocation 240,000.00, `DAILY` over 2026-01-01 to 2027-12-31, C(15 Sep 2026) 84,821.92. A modification effective 2026-09-16 adds O2 for 60,000.00 with modification-date SSP weights 155,000 : 77,500. Results: Pool 215,178.08; shares O1 143,452.05 and O2 71,726.03, the remaining minor unit going to O2; O1 segment `PROSPECTIVE` with R_k 84,821.92 and A′ 228,273.97; catch-up 0.00 at the boundary (ENGINE_SPEC_B EX-09-A; S06-INV-02)
+      - `…::test_chk_043_series_prospective`: Year 3 unrecognised 100,000.00. Year 3 fee reduced by 20,000.00; three more years added for 200,000.00; modification-date SSP 80,000.00 a year. Pool 280,000.00 over four equal weights gives 70,000.00 a year (EX-06-B; CHK-043)
+      - `…::test_chk_028_pool_over_remaining_and_added_units`: 60 original units remaining at 100.00 and 30 added at 80.00 give Pool 8,400.00 over 90 units with a `PROSPECTIVE` segment of quantity 90 (CHK-028 pool part; the satisfied-performance part is ENB-3)
+      - `…::test_s06_r08_remaining_negative`: removing more units than remain gives RQ_p < 0 and yields `MOD_REMAINING_NEGATIVE` (`ERROR`)
+      - `…::test_s06_r16_every_obligation_versioned_with_lineage`: after the EX-09-A modification every obligation of the contract has a new version. `lineage_pre_modification` of O2 lists O1. `modification_boundary_no` becomes 1 (POL-106; REQ-MOD-020 boundary)
+      - `…::test_s06_inv_01_and_inv_04`: after the boundary Σ a_posted equals `allocation_basis.posted` of `price_at` after the event, and Σ (x′ − x) = Σ ΔC + ΔVC exactly
+    - Answer keys: none (AK hints close in AKS-1 and AKS-5)
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: REQ-MOD-004; REQs contributed: REQ-MOD-020
+  - **Read:** ENGINE_SPEC §6.3 (S06-R-06 to S06-R-18), §6.6, §6.7 EX-06-B; ENGINE_SPEC_B §9.7 EX-09-A; POLICIES ALG-04 §2.5.1 to §2.5.6, §2.5.8 (CHK-028, CHK-043), POL-080, POL-081, POL-103, POL-106; D-18; 03 REQ-MOD-004
+  - **Gates:** GK-01 `make ci`; GK-04 `make ci`
+
+- [ ] **ENB-3 Stage 06 cumulative catch-up and mixed modifications, satisfied performance, targeted concessions, reductions and price-only changes.**
+  - **Prerequisites:** ENB-2
+  - **Scope:**
+    - Paths: `backend/erev_engine/stages/s06_modifications/satisfied.py`, `inception_basis.py`; `backend/tests/engine/s06_modifications/test_s06_catch_up.py`; `backend/tests/engine/s06_modifications/test_tc_prospective_reductions.py`
+    - Schema: none
+    - API: none
+    - Engine: ENGINE_SPEC §6.3 S06-R-09, S06-R-10, S06-R-15; §6.6 S06-INV-03; formulas `mod.satisfied_performance.v1`, `mod.weights.inception_all.v1`, `mod.pool.by_line.v1`, `mod.pool.total_tp.v1`; trace node `satisfied_share@<event key>`
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/s06_modifications/test_s06_catch_up.py::test_chk_027_pure_25_13_b`: A 1,000,000.00, R 600,000.00, ΔC +150,000.00, bonus version now including 200,000.00, costs 420,000.00 and updated EAC 820,000.00. Results: Pool 750,000.00; A′ 1,350,000.00; C′ 691,463.41; CU +91,463.41 (EX-06-D; CHK-027)
+      - `…::test_chk_042_mixed_d18_default`: inception TP 120,000.00 with allocations A 40,000.00, B 60,000.00, C 20,000.00. At d, A is satisfied, B is cost-to-cost 50% complete (class N) and C is unstarted (class D). Non-distinct scope is added to B for 20,000.00 (modification-date SSP 25,000); EAC rises by 15,000.00; C's modification-date SSP is 30,000. Results: Pool 70,000.00; weights B 62,500 and C 30,000; shares 47,297.30 and 22,702.70; A′_B 77,297.30; C′_B 30,918.92; CU_B +918.92; B remaining 46,378.38 (EX-06-A; CHK-042)
+      - `…::test_chk_042_mixed_inception_all`: under POL-080 `INCEPTION_ALL`, weights 62,500 and 25,000 give shares 50,000.00 and 20,000.00, A′_B 80,000.00, C′_B 32,000.00, CU +2,000.00 and B remaining 48,000.00 (CHK-042)
+      - `…::test_chk_028_satisfied_performance_credit`: a credit of 15.00 per unit on 60 delivered defective units, tagged satisfied performance under POL-104 with `price_change_settlement = FUTURE_PRICING`, gives ΔC_sat −900.00 apportioned over the class S obligations (CHK-028; JET-05b lines in END)
+      - `…::test_chk_113_targeted_concession`: golden Contract 2 POB #2 is fully delivered and billed, with posted cumulative revenue 385.19. A targeted concession of −60.00 with questionnaire `pol_243_attested = true` goes wholly to POB #2 under POL-243 `TARGETED_WHEN_32_40_ATTESTED`: CU −60.00, POB #2 cumulative revenue 325.19, other obligations unchanged (CHK-113; legacy 05 TC-pob-vc-16 corrected value; refund liability in ENC-12)
+      - `…::test_s06_inv_03_class_s_unchanged`: under `REMAINING_TP` class S obligations keep X and A unless S06-R-09 gives them a share
+      - `backend/tests/engine/s06_modifications/test_tc_prospective_reductions.py::test_tc_prospective_08_price_only_on_satisfied_pob`: a fully delivered obligation B with price +50.00 and quantity 0 recognises +50.00 at the modification date. TP goes from 180.00 to 230.00, and no consideration is dropped (legacy 03 §7.3 TC-08 fixed; probe P-05 inputs in legacy 03 §6.4)
+      - `…::test_tc_prospective_09_remove_remaining_units`: removing the 2 remaining hardware units for 0.00 gives hardware remaining SSP 0 and remaining allocation 0.00, consulting remaining allocation 330.00, and TP 510.00 (TC-09 fixed; probe P-11 inputs in legacy 03 §6.4)
+      - `…::test_tc_rm_15_zero_remaining_quantity`: Contract 3 POB #1 −7 / −100.00 after golden step 11 (`golden_streams.stream("Contract 3", "11")`) under the preset gives remaining quantity 0, remaining SSP 0 and remaining allocation 0.00 into the pool. No unit SSP is computed, and `guards.no_floats` plus a scan of the state find no non-finite value (legacy 04 §7.3 TC-RM-15 fixed)
+    - Answer keys: none (AK hints close in AKS-5)
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: REQ-MOD-005, REQ-MOD-006, REQ-MOD-009, REQ-MOD-010; REQs contributed: REQ-TP-018 (concession part)
+    - Hint closure: REQ-MOD-009 `TC-09`, `TC-RM-15`; REQ-MOD-010 `TC-08`
+  - **Read:** ENGINE_SPEC §6.3 S06-R-09, S06-R-10, S06-R-15, §6.6, §6.7 EX-06-A, EX-06-D; POLICIES ALG-04 §2.5.3 to §2.5.8 (CHK-027, CHK-028, CHK-042), POL-102, POL-104, POL-243, §5.4 PT-04 (CHK-113); legacy 03 §6.4, §7.3 TC-08, TC-09; legacy 04 §7.3 TC-RM-15; 03 REQ-MOD-005, REQ-MOD-006, REQ-MOD-009, REQ-MOD-010
+  - **Gates:** GK-01 `make ci`; GK-04 `make ci`
+
+- [ ] **ENB-4 Stage 06 subscription changes, terminations, unpriced change orders, credit-rollover renewals and negative allocation.**
+  - **Prerequisites:** ENB-3
+  - **Scope:**
+    - Paths: `backend/erev_engine/stages/s06_modifications/subscriptions.py`, `terminations.py`, `change_orders.py`; `backend/tests/engine/s06_modifications/test_s06_lifecycle.py`
+    - Schema: none
+    - API: none
+    - Engine: ENGINE_SPEC §6.4 S06-R-19 to S06-R-22; formula `mod.termination.v1`; finding `VC_ALLOCATION_NEGATIVE`; ENGINE_SPEC_B §9.2.6 S09-R-22 (renewal carrying credits, stage 06 part)
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/s06_modifications/test_s06_lifecycle.py::test_chk_112_termination_with_refund`: a subscription billed 120,000.00 a year in advance is terminated at month 18 with a refund of 60,000.00 for months 19 to 24. The `REMOVE` line has ΔC −60,000.00 and Pool 0.00. The subscription obligation takes a `TERMINATION` segment at revenue 180,000.00, and a refund component `TERMINATION` of 60,000.00 is recorded in `refund_components` (EX-06-J; CHK-112; the JET-04b and JET-09e lines are asserted in END-12)
+      - `…::test_chk_115_unpriced_change_order`: TP 1,000,000.00, EAC 800,000.00, costs 400,000.00, revenue 500,000.00. An approved scope change adds 100,000.00 of costs with an `UNPRICED_CHANGE_ORDER` estimate, most likely 120,000.00 and constrained 90,000.00. Results: A′ 1,090,000.00; f′ = 400,000 ÷ 900,000; C′ 484,444.44; CU −15,555.56. When the price is agreed at 110,000.00 with costs of 600,000.00 (an `ESTIMATE_CHANGED`), cumulative revenue moves from 726,666.67 to 740,000.00, a catch-up of +13,333.33 (EX-06-I; CHK-115)
+      - `…::test_s06_r19_subscription_commands`: `UPGRADE`, `DOWNGRADE`, `CO_TERM`, `RENEWAL` and `EARLY_RENEWAL` produce the S06-R-19 line shapes; a renewal priced at its modification-date SSP is proposed as `SEPARATE_CONTRACT`
+      - `…::test_s09_r22_renewal_carries_unconsumed_credits`: a `CONTRACT_AMENDED` of kind `RENEWAL` on the source contract extends the redemption obligation's end date. It gives a `PROSPECTIVE` segment with the same `x_exact` and `a_posted`. The renewal's own consideration is booked as its own contract with `renewal_of_contract_key` set to the source contract (REQ-MOD-017)
+      - `…::test_s06_r22_negative_allocation`: a pool share making an obligation's total allocation negative yields `VC_ALLOCATION_NEGATIVE` (`ERROR`)
+    - Answer keys: none (AK-FAM hints close in AKS-3, AKS-5 and AKS-6)
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: REQ-MOD-011, REQ-MOD-016, REQ-MOD-017; REQs contributed: REQ-CST-005 (termination acceleration trigger)
+    - Hint closure: `AK-FAM:termination` for REQ-MOD-011 and REQ-CST-005 in AKS-5; `AK-FAM:construction` for REQ-MOD-016 in AKS-6; `AK-FAM:usage-rollover` for REQ-MOD-017 in AKS-3
+  - **Read:** ENGINE_SPEC §6.4 S06-R-19 to S06-R-22, §6.7 EX-06-I, EX-06-J; ENGINE_SPEC_B §9.2.6 S09-R-22; POLICIES §5.2 PT-02, §5.3 PT-03 (CHK-112), §5.5 PT-05 (CHK-115), POL-105, POL-241, POL-242, POL-244; 03 REQ-MOD-011, REQ-MOD-016, REQ-MOD-017
+  - **Gates:** GK-01 `make ci`; GK-04 `make ci`
+
+- [ ] **ENB-5 Stage 06 material-right exercise, expiry, attribute changes and regrouping.**
+  - **Prerequisites:** ENB-4
+  - **Scope:**
+    - Paths: `backend/erev_engine/stages/s06_modifications/exercise.py`, `attributes.py`, `regroup.py`; `backend/tests/engine/s06_modifications/test_s06_exercise.py`
+    - Schema: none
+    - API: none
+    - Engine: ENGINE_SPEC §6.4 S06-R-23 to S06-R-27; formulas `mod.exercise.continuation.v1`, `mod.exercise.modification.v1`; POLICIES ALG-05 §2.6.2 to §2.6.4
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/s06_modifications/test_s06_exercise.py::test_ex_06_e_exercise_continuation`: TP 1,000.00; SSP P1 900 (satisfied), P2 200 (unstarted), option 100; allocations 750.00 / 166.67 / 83.33. Exercise buys product P3 for 300.00 (SSP 400). Under POL-028 `CONTINUATION`: P3 383.33 and P2 unchanged at 166.67 (EX-06-E)
+      - `…::test_ex_06_e_exercise_modification`: under `MODIFICATION` with `D18_DEFAULT`, Pool 550.00 over weights P2 200 and P3 400 gives P2 183.33 and P3 366.67, with no catch-up (EX-06-E)
+      - `…::test_tc_prospective_04_continuation_values`: golden Contract 3 through step 13 (`golden_streams.stream("Contract 3", "13")`) under POL-028 `CONTINUATION` gives remaining allocation POB #5 1,833.767587, POB #1 334.340803, POB #2 153.413236 and POB #3 62.532569. There is no catch-up, and TP is 2,600.00 (legacy 03 §7.3 TC-04 eRev Cloud column; tolerance 1e-4, D-17)
+      - `…::test_s06_r25_expiry_is_not_a_boundary`: `MATERIAL_RIGHT_EXPIRED` adds no segment
+      - `…::test_s06_r26_line_attributes_changed`: an account override effective 2023-05-01 applies to targets dated on or after that date and adds no segment. A change of the SSP version pin re-allocates the group from inception with the corrected resolution
+      - `…::test_s06_r27_regrouped_before_posting`: moved obligations are treated as booked in the target contract from its inception when no line of either contract has posted
+    - Answer keys: none (AK hints close in AKS-5)
+    - Golden: none (GT-15 closes in GPA-4)
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: REQ-POB-007; REQs contributed: REQ-POB-006, REQ-MOD-021
+    - Hint closure: REQ-POB-007 `TC-04 (continuation values)`; `GT-15` in GPA-4
+  - **Read:** ENGINE_SPEC §6.4 S06-R-23 to S06-R-27, §6.7 EX-06-E; POLICIES ALG-05 §2.6.1 to §2.6.5 (CHK-050), POL-028, POL-212; D-21, D-21a; legacy 03 §5.4, §7.3 TC-04; 03 REQ-POB-007
+  - **Gates:** GK-01 `make ci`; GK-04 `make ci`
+
+- [ ] **ENB-6 Stage 06 legacy retrospective template, with the attribute-conflict validator.**
+  - **Prerequisites:** ENB-5
+  - **Scope:**
+    - Paths: `backend/erev_engine/stages/s06_modifications/legacy_templates.py` (`LEGACY_RETROSPECTIVE`); `backend/erev_engine/stages/s06_modifications/integrity.py` (`validate_modification`, `MOD_ATTRIBUTE_CONFLICT` rule; exported from the package `__init__`; B3-BS2-05); `backend/tests/engine/s06_modifications/test_s06_legacy_retro.py`; `backend/tests/engine/s06_modifications/test_tc_rm.py`
+    - Schema: none
+    - API: none
+    - Engine: ENGINE_SPEC §6.5 S06-R-28 to S06-R-32 for `LEGACY_RETROSPECTIVE`; S06-R-07 attribute members; findings `MOD_PROGRESS_UNDEFINED`, `MOD_REMAINING_NEGATIVE`; formulas `mod.legacy.mod_ssp.v1`, `mod.legacy.retrospective.v1`; trace nodes `mod_ssp@<event key>`, `catch_up@<event key>`; POLICIES ALG-04 §2.5.7
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/s06_modifications/test_s06_legacy_retro.py::test_ex_06_f_retrospective_increase`: golden Contract 2 after step 07, with POB #1 +2 units for 400.00 at 2023-05-15 (band [153, 207], modification SSP 207). Results: r_c = 1,300 ÷ 1,377; CU POB #1 +13.3761 and POB #3 +10.4910; remaining allocation POB #1 700.9804 and POB #3 84.9673; revenue cumulative POB #1 72.2222 (EX-06-F; golden `catchup-08-Contract2-POB1`, `catchup-08-Contract2-POB3`; tolerance 1e-4)
+      - `backend/tests/engine/s06_modifications/test_tc_rm.py::test_tc_rm_01_retro_05_15`: TP 1,300.00; catch-ups POB #1 13.376068 and POB #3 10.491034; remaining allocation 700.980392 / 385.185185 / 84.967320 / 0; POB #1 unit SSP 82.5 (legacy 04 §7.3 TC-RM-01)
+      - `…::test_tc_rm_02_retro_08_15_contract3`: Contract 3 POB #1 −4 / −200.00 after step 11. Under the preset: modification SSP −306 and TP 1,600.00. Under `DEFAULT` (POL-102 `PARTIALLY_SATISFIED_NONDISTINCT_ONLY`) the distinct delivered software POB #2 receives no catch-up (TC-RM-02 FIX-01)
+      - `…::test_tc_rm_03_retro_08_15_contract4`: Contract 4 POB #3 −0.5 / −50.00 after step 11. Under the preset: modification SSP −75 and TP 1,200.00. Under `DEFAULT` the catch-up is confined to the non-distinct POB #3, which has 0 delivered, so it is 0.00 (TC-RM-03 FIX-01)
+      - `…::test_tc_rm_04_account_member_conflict`: a retrospective line on Contract 4 VC #1 (billing −50.00, quantity 0) carrying Deferred Revenue Account 29999 makes `validate_modification` return `MOD_ATTRIBUTE_CONFLICT` (`ERROR`); the stored account stays 21002. The same line with the stored account 21002 gives TP 900.00 and catch-ups POB #1 −5.857580 and POB #2 −5.206738 (legacy 04 §7.3 TC-RM-04; REQ-MOD-021)
+    - Answer keys: none (`MOD-LEGACY-RETRO-GT10` closes in AKS-5)
+    - Golden: none (GT-10, GT-11, GT-14 and `GT:cumulative_catchup` steps 08, 09 and 12 close in GPA-3 and GPA-4)
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: REQ-MOD-008, REQ-MOD-021; REQs contributed: REQ-MOD-019 (validator)
+    - Hint closure: REQ-MOD-008 `TC-RM-01 to 03`; REQ-MOD-021 `TC-RM-04`
+  - **Read:** ENGINE_SPEC §6.3 S06-R-07, §6.5 S06-R-28 to S06-R-32, §6.6, §6.7 EX-06-F; POLICIES ALG-04 §2.5.7, POL-100, POL-102, POL-107, §6.3; 04 table 15.4-A `MOD_ATTRIBUTE_CONFLICT`; legacy 04 §7.3 TC-RM-01 to 04; D-17; 03 REQ-MOD-008, REQ-MOD-021
+  - **Gates:** GK-01 `make ci`; GK-04 `make ci`
+
+- [ ] **ENB-7 Stage 06 legacy POB-specific VC template.**
+  - **Prerequisites:** ENB-6
+  - **Scope:**
+    - Paths: `backend/erev_engine/stages/s06_modifications/legacy_templates.py` (`LEGACY_POB_VC`); `backend/tests/engine/s06_modifications/test_s06_legacy_retro.py` (EX-06-G); `backend/tests/engine/s06_modifications/test_tc_pob_vc.py`
+    - Schema: none
+    - API: none
+    - Engine: ENGINE_SPEC §6.5 S06-R-28 to S06-R-32 for `LEGACY_POB_VC`; findings `VC_QUANTITY_NOT_ALLOWED`, `VC_TARGET_INVALID`, `VC_ALLOCATION_NEGATIVE`, `MOD_REMAINING_NEGATIVE`; formulas `mod.legacy.mod_ssp.v1`, `mod.legacy.pob_vc.v1`; trace node `catch_up@<event key>`; POLICIES ALG-04 §2.5.7
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/s06_modifications/test_s06_legacy_retro.py::test_ex_06_g_pob_specific_vc`: M = −200.00 on POB #1 at 2023-05-31 gives CU −18.6813, remaining allocation 519.6617 and revenue cumulative 53.5409, with untargeted obligations unchanged (EX-06-G; golden `catchup-09-Contract2-POB1`)
+      - `backend/tests/engine/s06_modifications/test_tc_pob_vc.py::test_tc_pob_vc_01_contract2_pob1_minus_200`: after step 07, C2 POB #1 M −200.00 at 2023-05-31 gives POB #1 allocation 519.661711, CU −18.681319, revenue cumulative 53.540904; POB #2 allocation 385.185185 with CU 0; POB #3 allocation 84.967320 with CU 0 (legacy 05 §7.3 TC-pob-vc-01)
+      - `…::test_tc_pob_vc_02_pob2_plus_90`: CU 0.00; POB #2 allocation 475.185185 (TC-pob-vc-02)
+      - `…::test_tc_pob_vc_03_pob1_plus_100`: CU +9.340659; revenue cumulative 81.562882; allocation 791.639733 (TC-pob-vc-03)
+      - `…::test_tc_pob_vc_04_nondistinct_pob3_plus_30`: CU +12.000000; revenue cumulative 68.644880; allocation 102.967320 (TC-pob-vc-04)
+      - `…::test_tc_pob_vc_05_two_lines_one_file`: POB #1 −200.00 and POB #2 +100.00 give POB #1 as TC-pob-vc-01 and POB #2 allocation 485.185185 with CU 0 (TC-pob-vc-05)
+      - `…::test_tc_pob_vc_06_fully_delivered_pob2_plus_60`: after step 13, C2 POB #2 M +60.00 at 2023-11-15 gives CU +60.00, revenue cumulative 445.185185 and remaining allocation 0.00 exactly, never −5.684342e-14 (TC-pob-vc-06 eRev Cloud column)
+      - `…::test_tc_pob_vc_07_untargeted_obligations_unchanged`: after step 10, C3 POB #1 M +100.00 at 2023-07-31 gives POB #1 CU 0 and allocation 687.303258, and POB #2 CU 0, revenue cumulative 118.533201 and allocation 152.848373 (TC-pob-vc-07 eRev Cloud column)
+      - `…::test_tc_pob_vc_08_quantity_on_vc_event_rejected`: C2 POB #1 M −200.00 with quantity +2 yields `VC_QUANTITY_NOT_ALLOWED` (`ERROR`) (TC-pob-vc-08)
+      - `…::test_tc_pob_vc_12_vc_pseudo_line_target_rejected`: C2 VC #1 M −50.00 yields `VC_TARGET_INVALID` (`ERROR`) (TC-pob-vc-12)
+    - Answer keys: none (`MOD-LEGACY-POBVC-GT11` closes in AKS-5)
+    - Golden: none (GT-10, GT-11, GT-14 and `GT:cumulative_catchup` steps 08, 09 and 12 close in GPA-3 and GPA-4)
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: REQ-TP-007; REQs contributed: none
+    - Hint closure: REQ-TP-007 `TC-pob-vc-01 to 07, 08, 12`
+  - **Read:** ENGINE_SPEC §6.5 S06-R-28 to S06-R-32, §6.6, §6.7 EX-06-G; POLICIES ALG-04 §2.5.7, POL-107, §6.3; legacy 05 §7.3 TC-pob-vc-01 to 08, 12; D-17; 03 REQ-TP-007
+  - **Gates:** GK-01 `make ci`; GK-04 `make ci`
+
+- [ ] **ENB-8 Stage 06 legacy prospective template and catch-up disclosure measures.**
+  - **Prerequisites:** ENB-7
+  - **Scope:**
+    - Paths: `backend/erev_engine/stages/s06_modifications/legacy_templates.py` (`LEGACY_PROSPECTIVE`); `backend/tests/engine/s06_modifications/test_s06_legacy_prospective.py`; `backend/tests/engine/s06_modifications/test_tc_prospective.py`
+    - Schema: none
+    - API: none
+    - Engine: ENGINE_SPEC §6.5 S06-R-28 to S06-R-32 for `LEGACY_PROSPECTIVE`; formula `mod.legacy.prospective.v1`; ENGINE_SPEC CV-56 and Table 0.9-A `catch_up_amount` inputs (`catch_up@<event key>` nodes with params `cause`)
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/s06_modifications/test_s06_legacy_prospective.py::test_ex_06_h_prospective_reduction`: golden Contract 1 after step 09 has remaining allocation 322.1011 / 118.5332 / 48.3152 / 644.2022 and remaining SSP 500 / 184 / 75 / 1,000. POB #1 −5 units −500.00 at 2023-06-15 (band [−517.5, −382.5]) gives modification SSP −500. Pool 633.1516 over weights 0 / 184 / 75 / 1,000 gives POB #2 92.5337, POB #3 37.7178 and POB #4 502.9004. For the nondistinct POB #3: CU −5.2988; remaining 43.0163; TP after 800.0000 (EX-06-H; golden `catchup-10-Contract1-POB3`)
+      - `backend/tests/engine/s06_modifications/test_tc_prospective.py::test_tc_prospective_01_contract1_06_15`: remaining allocation POB #1 0, #2 92.533678, #3 43.016348, #4 502.900425; catch-up #3 −5.298816 (legacy 03 §7.3 TC-01)
+      - `…::test_tc_prospective_02_contract3_07_15`: remaining SSP #1 707; remaining allocation #1 587.303258, #2 152.848373, #3 55.308745, #4 830.697678; catch-up #3 +6.993581 (TC-02)
+      - `…::test_tc_prospective_03_contract4_07_15`: remaining allocation #1 362.382747, #2 322.117998, #3 355.277203, VC 0; catch-up 0; POB #3 dates 2023-06-01 to 2024-05-31 (TC-03)
+      - `…::test_tc_prospective_05_end_state`: after step 14 every Contract 3 obligation is at f = 1 on its final segment. Its exact cumulative revenue E = x_k (CV-63) is 678.018250 / 464.523854 / 189.343962 / 0 / 1,268.113933 for POB #1 to #5 under the preset (TC-05)
+      - `…::test_mod_015_catch_up_nodes_by_cause`: for EX-06-H the node `catch_up@Contract 1/EV-<n>:Contract 1/POB %233:-` holds posted −5.30 with exact −5.2988 (value + `rounding_residue`) and params `cause = MODIFICATION`; untouched obligations have no catch-up node (REQ-MOD-015)
+    - Answer keys: none (`MOD-LEGACY-PROS-GT12` closes in AKS-5)
+    - Golden: none (GT-12, GT-13, GT-15 and `GT:cumulative_catchup` steps 10, 11 and 13 close in GPA-4)
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: REQ-MOD-007, REQ-MOD-015; REQs contributed: none
+    - Hint closure: REQ-MOD-007 `TC-01 to TC-05`
+  - **Read:** ENGINE_SPEC §6.5, §6.7 EX-06-H, §0.9 CV-50, CV-56, Table 0.9-A; POLICIES ALG-04 §2.5.7, POL-081, POL-107; legacy 03 §3.1 to §3.6, §7.3 TC-01 to TC-05; 03 REQ-MOD-007, REQ-MOD-015
+  - **Gates:** GK-01 `make ci`; GK-04 `make ci`
+
+- [ ] **ENB-9 Stage 07 onboarding: opening balances, recomputation from inception and business combinations.**
+  - **Prerequisites:** ENB-8
+  - **Scope:**
+    - Paths: `backend/erev_engine/stages/s07_onboarding/__init__.py` (`apply(ctx, st, ev, tb) -> AllocatedState`); private `opening.py`, `difference.py`, `business_combination.py`; `backend/tests/engine/s07_onboarding/test_s07_rules.py`
+    - Schema: none
+    - API: none
+    - Engine: ENGINE_SPEC §7.2, §7.3 S07-R-01 to S07-R-10 (S07-R-11 to S07-R-13 are LMG; B3-BS2-10); §7.5 S07-INV-01 to S07-INV-03, finding `OPENING_BALANCE_INCONSISTENT`, formulas `onb.opening_segment.v1`, `onb.baseline.v1`, `onb.difference.v1`, `onb.ifrs_fair_value_split.v1`
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/s07_onboarding/test_s07_rules.py::test_ex_07_a_opening_balances_mode_a`: golden Contract 1 at cutover 2023-01-31 with payload `revenue_cum` 128.840436… / 118.533201… / 48.315164… / 0 and `remaining_allocation` 193.260647… / 118.533201… / 48.315164… / 644.202180… gives X = 322.1011… / 237.0664… / 96.6303… / 644.2022…, A = 322.10 / 237.07 / 96.63 / 644.20 and C_0 = 128.84 / 118.53 / 48.32 / 0.00, so baseline revenue is 295.69 and billed 300.00. Every revenue target on or before the cutover equals the baseline (S07-INV-01) (EX-07-A)
+      - `…::test_s07_r03_inconsistent_payload`: a payload row where `revenue_cum` + `remaining_allocation` differs from the allocation by more than the S07-R-03 tolerance yields `OPENING_BALANCE_INCONSISTENT` (`ERROR`)
+      - `…::test_ex_07_b_recompute_from_inception`: a support contract of 12,000.00 billed upfront over 2025-11-10 to 2026-11-09 (`DAILY`, 365 days), with 2,000.00 recognised by the source system through the cutover of 2025-12-31. The recomputed target at the cutover is `cumulative_posted(12000, 1200000, 52/365)` = 1,709.59. `ONBOARDING_DIFFERENCE` −290.41 dated 2025-12-31 is produced at most once per (obligation, role) (EX-07-B; S07-INV-03)
+      - `…::test_chk_121_business_combination`: a 24-month subscription of 240,000.00 billed upfront on 2025-01-01, acquired on 2026-01-01. ASC606 book: opening contract liability 120,000.00 and a segment giving 10,000.00 a month over 2026. IFRS15 book with valuation 90,000.00: 7,500.00 a month. Under expedient (b) POL-217, TP 200,000.00 with acquisition-date SSPs 120,000 and 80,000 gives an opening support liability after one year of 40,000.00, against 25,000.00 as if originated (EX-07-C; CHK-121)
+      - `…::test_s07_inv_02_allocation_sum`: Σ a_posted over the migrated contract equals TP_c in minor units
+    - Answer keys: none (`ONB-*` keys close in AKS-6)
+    - Golden: none (`point_in_time_equivalence` closes in GPB-3)
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: none; REQs contributed: none
+  - **Read:** ENGINE_SPEC §7.1 to §7.3, §7.5, §7.6 (EX-07-A to EX-07-C); POLICIES POL-210 to POL-217, §5.11 PT-11 (CHK-121), ALG-01 §2.1.3; D-31
+  - **Gates:** GK-01 `make ci`; GK-04 `make ci`
+
+- [ ] **ENB-10 Stage 08 estimate reassessment: pins, measure-only and reallocating kinds, and 32-45 routing.**
+  - **Prerequisites:** ENB-9
+  - **Scope:**
+    - Paths: `backend/erev_engine/stages/s08_estimates_late_events/__init__.py` (`apply(ctx, st, ev, tb) -> AllocatedState`); private `estimates.py`, `routing.py`; `backend/tests/engine/s08_estimates_late_events/test_s08_estimates.py`; `backend/tests/engine/s08_estimates_late_events/test_s08_inception_estimate.py` (item ENG-INCEPTION-ESTIMATE-1, fragment rev 1.10)
+    - Schema: none
+    - API: none
+    - Engine: ENGINE_SPEC §8.2, §8.3 S08-R-01 to S08-R-07; §8.6 S08-INV-01, S08-INV-02, finding `VC_ALLOCATION_NEGATIVE`, formulas `estimate.pin.v1`, `estimate.tp_delta.v1`, `estimate.route.inception.v1`, `estimate.route.32_45.v1`, `estimate.catch_up.v1`; POLICIES ALG-10 §2.11.1, §2.11.2
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/s08_estimates_late_events/test_s08_estimates.py::test_chk_100_bonus_catch_up`: bonus element version 1 constrained to 0.00, then version 2 at 150,000.00 effective at the start of Year 2 with f = 0.40. Results: ΔTP +150,000.00 on the single `INCEPTION` segment; x′ = 2,655,000; CU 60,000.00 (1,062,000.00 − 1,002,000.00); progress revenue from f = 0.40 to f = 0.80 of 1,062,000.00; Year 2 revenue 1,122,000.00. Node `tp_delta@<event key>:<group>:-` carries the pair (v1, v2) (EX-08-B; CHK-100)
+      - `…::test_chk_101_concession_resolved_after_satisfaction`: a concession constrained at 50% (TP 50,000.00) resolves at 45% (TP 55,000.00) in February, the obligation having been satisfied in December (f = 1). CU +5,000.00; ΔTP +5,000.00 (EX-08-C; CHK-101)
+      - `…::test_ex_08_e_32_45_routing`: X and Y with equal SSPs, fixed 1,000.00 plus VC 200.00, giving 600.00 each; X transferred. A 25-13(a) modification adds Z for 300.00, so Pool 900.00 gives Y 450.00 and Z 450.00. The VC estimate then rises to 240.00 (promised before the modification): Δ_pre = `largest_remainder(4000, [1, 1])` = 20.00 / 20.00. X +20.00 is recognised immediately. Y's 20.00 flows into the post-boundary pool, giving Y +10.00 and Z +10.00, so Y 460.00 and Z 460.00. Total revenue 1,540.00 (EX-08-E; research 04 S4-EX6)
+      - `…::test_s08_r02_measure_only_kinds`: a new `EAC` or `RETURN_RATE` version leaves Σ a_posted unchanged and produces only a measured catch-up
+      - `…::test_s08_inv_02_shares_sum_to_delta`: Σ Δ_p = ΔTP exactly for a change routed over three obligations
+      - Item ENG-INCEPTION-ESTIMATE-1 (fragment rev 1.10 / BUILD_SPEC 1.162; supervisor ruling of 2026-10-01 on lane QA-BE's finding and the lane's measurement; ENGINE_SPEC S01-R-18, S04-R-01, S08-R-01 and S08-R-05 rev 1.145): an estimate in force at inception is in the inception price at every record position of its event. `backend/tests/engine/s08_estimates_late_events/test_s08_inception_estimate.py` — `erev_engine.compute` on oracle bundles of answer keys, read and never changed. `…::test_an_estimate_at_inception_behind_another_boundary_is_in_the_inception_price`, nine cases: `ALC-S4-EX6` (1,200.00 with 200.00 variable, allocated 600.00 and 600.00), contract C-EX42-C of `DISC-S10-DISCLOSURES-RPO-EX42-TIME-BANDS-AND-EXPEDIENT` (3,150.00 with the bonus at 750.00) and `STP1-S1-EX2` (400,000.00 after an implicit price concession of 600,000.00), each with a Step 1 assessment, a significant-change flag or a line attribute change dated at the inception and recorded before the estimate change, at either record position — every checkpoint gives the figures of the key's own stream (the version's price columns, each allocation and cumulative revenue, the posting intents by period, role and side), no `tp_delta` node of the estimate change, and `v_old` "-" on its pin node. `…::test_an_estimate_approved_after_an_inception_amendment_is_in_the_inception_price`: FASB Example 6 with the amendment dated at the inception and the estimate approved after it — 1,500.00 with X 600.00, Y and Z 450.00, then X 620.00, Y and Z 460.00 under `estimate.route.32_45.v1` after the estimate moves to 240.00; every checkpoint equals the key's own. `…::test_no_key_bundle_moves_when_a_boundary_precedes_its_inception_estimate` (`slow`): the same for the three boundary kinds over every corpus bundle with such an estimate change (349 on 2026-10-01). Stage 01: `backend/tests/engine/s01_canonicalize/test_s01_rules.py::test_s01_r18_a_version_in_force_at_inception_applies_before_every_position` (the mark, `pin` before every position, the replaced version) and `backend/tests/engine/s06_modifications/test_s06_same_date_versions.py::test_a_version_in_force_at_inception_is_marked_unless_an_amendment_takes_it` (D-92's precedence). Stage 04: `backend/tests/engine/s04_transaction_price/test_s04_buildup.py::test_s04_r02_version_state_nodes` states S04-R-01 rev 1.145 at the inception date — the bonus of EX-04-A counts before its own event, 150,000.00 excluded — and `::test_s04_r01_a_version_dated_after_the_inception_counts_from_its_event` keeps the position rule on the same bonus dated 1 February: 0.00 in the inception price and before its event, 150,000.00 after it. On the engine before the change the thirteen nodes and the changed stage 04 assertion fail; the stage 04 node of the later date passes on both
+    - Answer keys: none (`ALC-S4-EX6`, `VC-CHK-100-S3-EX21-EXTENDED` and `VC-CHK-101-S3-EX23-CASEB` close in AKS-2 and AKS-3)
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: REQ-TP-006, REQ-MOD-020; REQs contributed: none
+  - **Read:** ENGINE_SPEC §8.1 to §8.3 (S08-R-01 to S08-R-07), §8.6, §8.7 EX-08-B, EX-08-C, EX-08-E; POLICIES ALG-10 §2.11.1 to §2.11.3 (CHK-100, CHK-101), POL-042, POL-043, POL-106; D-20; 03 REQ-TP-006, REQ-MOD-020
+  - **Gates:** GK-01 `make ci`; GK-04 `make ci`
+
+- [ ] **ENB-11 Stage 08 late events, replay and posting-period assignment.**
+  - **Prerequisites:** ENB-10
+  - **Scope:**
+    - Paths: `backend/erev_engine/stages/s08_estimates_late_events/assign.py` (`assign_posting_period(ctx, entity, effective_date) -> Assignment`, exported from the package `__init__`); private `late.py`; `backend/tests/engine/s08_estimates_late_events/test_s08_late_events.py`
+    - Schema: none
+    - API: none
+    - Engine: ENGINE_SPEC §8.4 S08-R-08 to S08-R-13; §8.6 S08-INV-03, finding `LATE_EVENT`, formula `late.assign.v1`; POLICIES ALG-09 §2.10
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/s08_estimates_late_events/test_s08_late_events.py::test_chk_090_late_delivery_assignment`: golden Contract 1 deliveries effective 2023-01-31, recorded 2023-02-05 after FY2023-P01 is closed, with FY2023-P02 open. `assign_posting_period(<US entity>, date(2023, 1, 31))` gives posting `FY2023-P02` and origin `FY2023-P01`. The run raises `LATE_EVENT` (`WARNING`), and the register fact is {event key, contract `Contract 1`, origin `FY2023-P01`, posting `FY2023-P02`, event type `DELIVERY_RECORDED`} (EX-08-A; CHK-090; the 295.69 batch is asserted by `LATE-CHK-090-GOLDEN-CONTRACT1-DELIVERY-AFTER-JANUARY-LOCK` in AKS-5)
+      - `…::test_chk_091_effective_date_order`: Contract 2 POB #2 delivery of 1 unit dated 2023-03-31 recorded first, then POB #1 billing 500.00 dated 2023-02-28 recorded second. `CanonicalBundle.events` orders the billing before the delivery. The billing raises `LATE_EVENT` because it is earlier than a committed later event of the same contract (S08-R-10; CHK-091 inputs; legacy 06 TC-JE-11)
+      - `…::test_ex_08_d_origin_carry`: with FY2026-P12 and FY2027-P01 locked and an estimate version effective 2026-12-31 recorded in February 2027, `assign_posting_period` gives posting `FY2027-P02`, origin `FY2026-P12` and `reason_code = LATE_EVENT` (EX-08-D)
+      - `…::test_tc_prospective_15_backdated_modification_resequenced`: a `CONTRACT_AMENDED` effective 2023-01-15, recorded after a 2023-01-31 delivery with periods open, is folded at its effective position. Stage 06 applies it before the delivery (replay from the branch point, S08-R-09), `LATE_EVENT` is raised, and the delivery is measured in the post-modification segment (legacy 03 §7.3 TC-15 "explicit re-sequence")
+      - `…::test_tc_rm_13_backdated_retro_modification_in_closed_period`: a retrospective template dated 2023-01-15 with FY2023-P01 closed and FY2023-P05 the first open period gives posting `FY2023-P05` and origin `FY2023-P01` for its catch-up (legacy 04 §7.3 TC-RM-13 back-dating workflow)
+      - `…::test_s08_inv_03_never_returns_unavailable_period`: for effective periods in states `closed`, `permanently_locked` and `future`, `assign_posting_period` never returns that period (PROP:P11 engine contract)
+      - `…::test_s08_r13_reassessment_gate_facts`: an open VC element without a version effective at the FY2023-P02 period end appears in `close_gate_facts`
+    - Answer keys: none (`LATE-*` keys close in AKS-5)
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none (PROP:P11 closes in PRP-6)
+    - REQs completed: REQ-MOD-018; REQs contributed: none
+    - Hint closure: REQ-MOD-018 `TC-15`, `TC-RM-13`; `PROP:P11` in PRP-6
+  - **Read:** ENGINE_SPEC §8.4 (S08-R-08 to S08-R-13), §8.6, §8.7 EX-08-A, EX-08-D; POLICIES ALG-09 §2.10 (CHK-090, CHK-091), POL-180 to POL-183; D-19; legacy 03 §7.3 TC-15; legacy 04 §7.3 TC-RM-13; 03 REQ-MOD-018
+  - **Gates:** GK-01 `make ci`; GK-04 `make ci`
+
+- [ ] **ENB-12 Stage 08 prior-period decomposition.**
+  - **Prerequisites:** ENB-11
+  - **Scope:**
+    - Paths: `backend/erev_engine/stages/s08_estimates_late_events/decompose.py` (`decompose_prior_period(ctx, st, period_key, tb) -> tuple[Target, ...]`, exported from the package `__init__`); `backend/tests/engine/s08_estimates_late_events/test_s08_decompose.py`
+    - Schema: none
+    - API: none
+    - Engine: ENGINE_SPEC §8.5 S08-R-14 to S08-R-16; S08-INV-04; formula `estimate.prior_period.v1`; node `revenue_prior_period:<ob>:<period key>`; POLICIES ALG-10 §2.11.3
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/s08_estimates_late_events/test_s08_decompose.py::test_chk_100_prior_period_portion`: for the EX-08-B contract, Year 2 `revenue_prior_period` is round(150,000.00 × 0.40) = 60,000.00 (CHK-100)
+      - `…::test_chk_101_prior_period_portion`: for the EX-08-C contract the February portion is 5,000.00 (CHK-101)
+      - `…::test_ex_15_c_portions`: for contract K-03 in September 2026 (s = 2026-09-01, costs at s 420,000.00), the modification portion is 691,463.414… − 600,000.00 = 91,463.41. The EAC-change portion is 667,058.823… − 691,463.414… = (24,404.59). Prior-period revenue is 67,058.82, and a cost dated 2026-09-29 adds nothing to it (ENGINE_SPEC_B EX-15-C)
+      - `…::test_s08_r14_minimum_commitment_portion`: a calendar-year stand-ready obligation (`MONTHLY_EVEN`) whose TP moves from 140,000.00 to 120,000.00 by a version effective 2026-06-30 gives round(−20,000.00 × 3/12) = (5,000.00) for the period starting 2026-04-01 (POLICIES §5.1 PT-01 CHK-110 prior-period column; the full CHK-110 test is ENC-6)
+      - `…::test_s08_inv_04_prior_plus_current_equals_catch_up`: for every obligation and period, the prior-period part plus the current-period part of each catch-up equals the catch-up
+      - `…::test_s08_r15_late_event_attribution`: the late attribution posted in t equals the recomputed revenue target through the end of t − 1 minus the posted revenue through the end of t − 1
+    - Answer keys: none (`DISC-*` keys close in EDS-7)
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: none; REQs contributed: REQ-MOD-015
+  - **Read:** ENGINE_SPEC §8.5 (S08-R-14 to S08-R-16), §8.6; ENGINE_SPEC_B §15.2.4, §15.7 EX-15-C; POLICIES ALG-10 §2.11.3 (CHK-100, CHK-101), §5.1 PT-01 (CHK-110), POL-204
+  - **Gates:** GK-01 `make ci`; GK-04 `make ci`
+
+- [ ] **ENB-13 Boundary handler registry, boundary fold and modification integrity.**
+  - **Prerequisites:** ENB-12
+  - **Scope:**
+    - Paths: `backend/erev_engine/stages/__init__.py` (`BOUNDARY_HANDLERS` complete for Table 0.3-A; stages 06, 07 and 08 in `STAGES`); `backend/tests/engine/kernel/test_stage_registry.py` (empty `PENDING_BOUNDARY_HANDLERS`; remove 06, 07, 08 from `PENDING_STAGES`); `backend/erev_engine/stages/s06_modifications/integrity.py` (rules `CONTRACT_NOT_FOUND`, `POB_NOT_FOUND`, `MOD_DUPLICATE_KEY`, `MOD_SIGN_MISMATCH`, `IMPORT_NO_DATA_ROWS`; refusal in `apply`; B3-BS2-05); `backend/tests/support/fold.py` (`fold_book(bundle, book_code) -> AllocatedState` over the boundary fold); `backend/tests/engine/s06_modifications/test_integrity.py`; `backend/tests/engine/kernel/test_boundary_fold.py`
+    - Schema: none
+    - API: none
+    - Engine: ENGINE_SPEC §0.3 CV-10, CV-11, Table 0.3-A; §6.3 S06-R-07; 04 table 15.4-A codes named in Paths
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/kernel/test_stage_registry.py::test_boundary_handlers_table_0_3_a`: `COLLECTIBILITY_ASSESSED`, `CONTRACT_CRITERIA_MET` and `SIGNIFICANT_CHANGE_FLAGGED` map to `s02_contract_identification.apply`. `CONTRACT_AMENDED`, `CONTRACT_TERMINATED`, `REGROUPED`, `LINE_ATTRIBUTES_CHANGED` and `MATERIAL_RIGHT_EXERCISED` map to `s06_modifications.apply`; `OPENING_BALANCE_ESTABLISHED` to `s07_onboarding.apply`; `ESTIMATE_CHANGED` to `s08_estimates_late_events.apply`. `PENDING_BOUNDARY_HANDLERS` is empty, and `STAGES` holds stages 02 to 08
+      - `backend/tests/engine/kernel/test_boundary_fold.py::test_fold_golden_contract2_through_step_09`: `fold_book` over `golden_streams.stream("Contract 2", "09")` gives remaining allocation POB #1 519.6617 and POB #3 84.9673 (tolerance 1e-4; TC-pob-vc-01 and golden `catchup-09-Contract2-POB1`)
+      - `backend/tests/engine/s06_modifications/test_integrity.py::test_tc_prospective_10_new_pob_versions_every_obligation`: a modification adding only a new obligation to a contract of two obligations gives three obligation versions with equal contract-level inputs (legacy 03 §7.3 TC-10 fixed; S06-R-16)
+      - `…::test_tc_prospective_11_unknown_contract_rejected`: `validate_modification` for a modification naming `Contract Z`, absent from the group, returns `CONTRACT_NOT_FOUND` (`ERROR`). `s06_modifications.apply` over such an event raises `EngineError("ENGINE_INVARIANT_VIOLATED")` with `detail["rule"] == "S06-R-07"` and `detail["code"] == "CONTRACT_NOT_FOUND"` (TC-11 fixed)
+      - `…::test_tc_rm_14_unknown_contract_rejected`: a retrospective line for `Contract 9` POB #1 +2 / +180.00 returns `CONTRACT_NOT_FOUND` (legacy 04 §7.3 TC-RM-14 fixed)
+      - `…::test_tc_prospective_12_duplicate_lines_rejected`: two identical lines for one contract, POB and SKU return `MOD_DUPLICATE_KEY`. A second `CONTRACT_AMENDED` carrying an already applied `modification_key` raises `EngineError("ENGINE_INVARIANT_VIOLATED")` naming S06-R-07 (TC-12 fixed)
+      - `…::test_tc_rm_10_duplicate_rows_rejected`: duplicate rows Contract 2 POB #1 +1 / +200.00 return `MOD_DUPLICATE_KEY` (TC-RM-10 fixed)
+      - `…::test_tc_prospective_17_sign_mismatch_rejected`: a line with quantity −1 and consideration +90.00 returns `MOD_SIGN_MISMATCH` (`ERROR`) under both presets (TC-17 fixed)
+      - `…::test_tc_prospective_06_ssp_clamp_unit_cases_sign_mismatch_rejected`: the legacy 03 §3.1 row "qty −1 with billing +90" returns `MOD_SIGN_MISMATCH` (TC-06 "sign mismatch rejected")
+      - `…::test_tc_prospective_20_header_only_rejected`: a template modification with zero lines returns `IMPORT_NO_DATA_ROWS` (TC-20 fixed "no modification lines")
+      - `…::test_tc_rm_09_header_only_rejected`: the same for a retrospective template (TC-RM-09 fixed)
+      - `…::test_pob_not_found`: a line naming `POB #9` without `action = ADD` returns `POB_NOT_FOUND`
+      - `backend/tests/architecture/test_engine_purity.py` passes with `integrity.py` importing nothing outside the allow-list (DG-ARC-02)
+    - Answer keys: none
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: REQ-MOD-019; REQs contributed: none
+    - Hint closure: REQ-MOD-019 `TC-10 to TC-12`, `TC-17`, `TC-20`, `TC-RM-09`, `TC-RM-10`, `TC-RM-14`; REQ-SSP-004 `TC-06` sign-mismatch row
+  - **Read:** ENGINE_SPEC §0.3 (CV-10, CV-11, Table 0.3-A), §6.3 S06-R-07, §0.8 CV-44, CV-45; 04 table 15.4-A (`CONTRACT_NOT_FOUND`, `POB_NOT_FOUND`, `MOD_DUPLICATE_KEY`, `MOD_SIGN_MISMATCH`, `IMPORT_NO_DATA_ROWS`, `MOD_ATTRIBUTE_CONFLICT`); legacy 03 §7.3 TC-06, TC-10 to TC-12, TC-17, TC-20; legacy 04 §7.3 TC-RM-09, TC-RM-10, TC-RM-14; 03 REQ-MOD-019; PHASES BS-D-07
+  - **Gates:** GK-01 `make ci`; GK-04 `make ci`
+
+- [ ] **GATE-ENB Phase ENB checkpoint.**
+  - **Prerequisites:** every item of phase ENB (ENB-1 to ENB-13)
+  - **Scope:** verification and evidence; fixes only for defects this checkpoint finds
+  - **Acceptance:**
+    - Exit criteria: every exit criterion of PHASES §1 row ENB holds. Evidence: packages `s06_modifications`, `s07_onboarding` and `s08_estimates_late_events` exist; `BOUNDARY_HANDLERS` equals Table 0.3-A and `PENDING_BOUNDARY_HANDLERS` is empty; the ENB-1 to ENB-13 tests pass inside `make ci`
+    - Membership: the 19 requirements of PHASES §6.7 are each listed under "REQs completed" by exactly one item. They are: REQ-MOD-003 (ENB-1); REQ-MOD-004 (ENB-2); REQ-MOD-005, REQ-MOD-006, REQ-MOD-009, REQ-MOD-010 (ENB-3); REQ-MOD-011, REQ-MOD-016, REQ-MOD-017 (ENB-4); REQ-POB-007 (ENB-5); REQ-MOD-008, REQ-MOD-021 (ENB-6); REQ-TP-007 (ENB-7); REQ-MOD-007, REQ-MOD-015 (ENB-8); REQ-TP-006, REQ-MOD-020 (ENB-10); REQ-MOD-018 (ENB-11); REQ-MOD-019 (ENB-13). CHK-027, CHK-028, CHK-042, CHK-043, CHK-090, CHK-091, CHK-100, CHK-101, CHK-112, CHK-113, CHK-115 and CHK-121 have `test_chk_<nnn>_<slug>` tests
+    - Gates: the PHASES §4 row GATE-ENB is green on a clean tree (`git status --porcelain` empty) after the last commit: `make ci`, `make test-pg`, `make e2e` (unfiltered), `make properties` (unfiltered), `erev controls-report --tags-only` inside `make lint`
+  - **Read:** PHASES §1 row ENB, §4 row GATE-ENB, §6.7, §8.3 rows COV-C-05, COV-C-10, COV-C-11, COV-C-14, §16; header §6
+  - **Gates:** GK-11 `make ci`; `make test-pg`; `make e2e`; `make properties` (row GATE-ENB)
+
+## 08 ENC Engine stages 09 to 11
+
+**Entry criteria.** GATE-ENB ticked. Stages 01 to 08, `BOUNDARY_HANDLERS`, `backend/tests/support/fold.py` and `backend/tests/support/golden_streams.py` exist.
+
+**Exit criteria (PHASES §1 row ENC).** Stage packages of PHASES §16 for ENC per ENGINE_SPEC_B §9 to §11, with rules, invariants, findings, trace nodes and worked examples. CHK unit tests of COV-C-02, 04, 06, 07 and 12, and of CHK-110, CHK-111, CHK-116 and CHK-117 of COV-C-14 (B3-BS2-09). P4 holds at schedule level, and P10 holds.
+
+**Gate scope at exit (PHASES §4 row GATE-ENC).** `make ci`; `make test-pg`; `make e2e` unfiltered; answer keys as GATE-EKC; `make properties` unfiltered; `erev controls-report --tags-only` inside `make lint`.
+
+**Membership.** 38 requirements (PHASES §6.8): REQ-POB-006, REQ-TP-018, REQ-REC-001 to REQ-REC-018, REQ-REC-021, REQ-REC-026, REQ-BIL-002 to REQ-BIL-008, REQ-BIL-010, REQ-BIL-012, REQ-CST-002 to REQ-CST-005, REQ-CST-007, REQ-LOS-001, REQ-LOS-002. PROP:P4 schedule part and PROP:P10 (§12). CHK unit tests CHK-010 to CHK-012 (COV-C-02), CHK-013, CHK-014 (COV-C-04), CHK-050 to CHK-053 (COV-C-06), CHK-029, CHK-060, CHK-061 (COV-C-07), CHK-140 to CHK-145 (COV-C-12), CHK-110, CHK-111, CHK-116, CHK-117 (COV-C-14). No control, route row, placement, journey or make target.
+
+- [ ] **ENC-1 Stage 09 recognition components, FIXED targets over segments, time elapsed and status guards.**
+  - **Prerequisites:** GATE-ENB
+  - **Scope:**
+    - Paths: `backend/erev_engine/stages/s09_recognition/__init__.py` (`run(ctx, st, tb) -> RecognitionState`, with `RecognitionState.allocated` carrying the consumed `AllocatedState`); private `components.py`, `progress_time.py`; `backend/tests/engine/s09_recognition/test_s09_fixed.py`
+    - Schema: none
+    - API: none
+    - Engine: ENGINE_SPEC_B §9.1; §9.2.1 S09-R-01 to S09-R-03; §9.2.2 S09-R-04 to S09-R-07; §9.2.3 S09-R-08, S09-R-09; §9.3 S09-INV-01, S09-INV-02, S09-INV-05, S09-INV-06, S09-INV-09; formulas `rec.progress.time_elapsed.daily.v1`, `…monthly_even.v1`, `…mid_month.v1`, `rec.progress.prospective_segment.v1`, `rec.target_exact.inception.v1`, `rec.target_exact.prospective.v1`, `sched.cumulative_posted.v1`, `sched.period_difference.v1`; ENGINE_SPEC CV-63 and S02-R-03
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/s09_recognition/test_s09_fixed.py::test_ex_09_a_time_elapsed_with_boundary`: O1 with allocation 240,000.00, `DAILY` over 2026-01-01 to 2027-12-31, gives C(31 Aug 2026) 79,890.41 and C(15 Sep 2026) 84,821.92. After the 2026-09-16 boundary adding O2 for 60,000.00: September 2026 revenue O1 9,490.37, O2 2,279.43, total 11,769.80; October 2026 total 14,132.46. The posted target does not change at the boundary (EX-09-A; S09-INV-09)
+      - `…::test_s09_r02_period_vc_realised_component`: a `PERIOD_VC` component has X = A = the realised cumulative amount in minor units, and C_p(d) is the sum of the component targets (S09-R-01 to S09-R-03)
+      - `…::test_s02_r03_revenue_guard_and_transition`: revenue targets are 0 while the status is `DRAFT`, `NOT_A_CONTRACT` or `VOIDED` (S09-INV-05). For EX-02-A, the transition at the end of month 6 gives C = `cumulative_posted(720, 72000, 6/36)` = 120.00 (EX-02-A; CHK-021 revenue)
+      - `…::test_s09_inv_06_before_recognition_start`: an obligation with `recognition_start_date` 2027-01-01 has target 0.00 at every period end before that date (V5)
+      - `…::test_s09_r06_termination_segment`: for the EX-06-J contract the terminated subscription has revenue 180,000.00 at the termination date and f = 1 thereafter
+      - `…::test_ex_07_b_january_revenue`: the EX-07-B contract gives January 2026 revenue 2,728.77 − 1,709.59 = 1,019.18 (83/365 cumulative)
+      - `…::test_s09_r09_custodial_start`: a custodial obligation recognises `TIME_ELAPSED` from the later of its `start_date` and the bill-and-hold transfer date
+      - `…::test_rec_002_over_time_requires_criterion`: an obligation whose `satisfaction_pattern` is over time and whose `over_time_criterion` is not a 606-10-25-27 criterion literal of 04 T-REF-23 raises `EngineError("ENGINE_INVARIANT_VIOLATED")` (CV-45). With criterion (a) it is recognised over time, and a point-in-time obligation holds its allocation as awaiting trigger until a control-transfer event (REQ-REC-002)
+      - `…::test_s09_inv_01_02_component_bounds`: for every component and period, 0 ≤ C ≤ A when A ≥ 0, A ≤ C ≤ 0 when A < 0, and C = A at f = 1 on the final segment
+    - Answer keys: none (AK hints close in AKS-4)
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: REQ-REC-002; REQs contributed: REQ-REC-003
+  - **Read:** ENGINE_SPEC_B §9.1, §9.2.1 to §9.2.3, §9.3, §9.5, §9.7 EX-09-A; ENGINE_SPEC CV-60 to CV-63, S02-R-03, EX-02-A, EX-07-B, EX-06-J; POLICIES ALG-01 §2.1.3, ALG-11 §2.12; 04 T-REF-23; 03 REQ-REC-002
+  - **Gates:** GK-01 `make ci`; GK-04 `make ci`
+
+- [ ] **ENC-2 Time-elapsed conventions and re-baselined ratable schedules.**
+  - **Prerequisites:** ENC-1
+  - **Scope:**
+    - Paths: `backend/erev_engine/stages/s09_recognition/progress_time.py`; `backend/tests/engine/s09_recognition/test_chk_alg11.py`
+    - Schema: none
+    - API: none
+    - Engine: ENGINE_SPEC_B §9.2.3 S09-R-08; POLICIES ALG-11 §2.12 (POL-090); ALG-01 §2.1.5 CHK-006
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/s09_recognition/test_chk_alg11.py::test_chk_140_daily_365_day_term`: 12,000.00 over 2026-02-10 to 2027-02-09 (`DAILY`) gives, February 2026 to February 2027: 624.66 / 1,019.18 / 986.30 / 1,019.18 / 986.30 / 1,019.17 / 1,019.18 / 986.30 / 1,019.18 / 986.30 / 1,019.18 / 1,019.18 / 295.89, total 12,000.00 (CHK-140)
+      - `…::test_chk_141_monthly_even_partial_months`: the same obligation under `MONTHLY_EVEN` gives February 2026 678.57, March 2026 to January 2027 1,000.00 each, and February 2027 321.43 (W = 19/28 + 11 + 9/28 = 12; CHK-141)
+      - `…::test_chk_142_mid_month_day_15_rule`: under `MID_MONTH`, February 2026 to January 2027 1,000.00 each and February 2027 0.00 (CHK-142)
+      - `…::test_chk_143_monthly_even_whole_and_partial_terms`: (a) 35,000.00 over 2026-01-01 to 2027-12-31 gives months 1 to 3 1,458.33 / 1,458.34 / 1,458.33, cumulative 33,541.67 after month 23 and month 24 1,458.33. (b) 3,000.00 over 2026-02-10 to 2026-05-20 gives 612.48 / 902.60 / 902.60 / 582.32, and under `DAILY` 570.00 / 930.00 / 900.00 / 600.00 (CHK-143; CHK-004)
+      - `…::test_chk_144_mid_month_late_start_early_end`: 10,000.00 over 2026-03-20 to 2026-10-10 gives March 0.00, April 1,666.67, May 1,666.66, June 1,666.67, July 1,666.67, August 1,666.66, September 1,666.67, October 0.00 (CHK-144)
+      - `…::test_chk_145_mid_month_edge_cases`: (a) 500.00 over 2026-01-20 to 2026-02-10 gives January 0.00 and February 500.00. (b) 500.00 over 2026-01-05 to 2026-01-10 gives January 500.00. (c) 1,300.00 over 2026-01-15 to 2027-01-15 gives 100.00 in each of the 13 periods from January 2026 to January 2027 (CHK-145)
+      - `…::test_chk_006_warranty_and_franchisor_schedules_at_stage_level`: an extended warranty obligation with allocation X = 10,500 × 1,000 ÷ 11,000 over months 13 to 24 gives 79.55 in months 13, 15, 17, 19, 21, 23 and 24 and 79.54 otherwise. A licence with X = 50,000 × 40,000 ÷ 55,000 over ten years gives 3,636.37 in years 2, 5, 7 and 10 and 3,636.36 otherwise (CHK-006 rows)
+      - `…::test_upfront_fee_option_b_pattern`: under POL-231 upfront fee over the expected relationship of 36 months (option B), a fee of 3,000.00 gives 83.34 in months 2, 5, 8 to 35 and 83.33 otherwise (CHK-006 row S5-UPFRONTFEE-OWN option B; REQ-REC-017)
+    - Answer keys: none (`RND-CHK-140` to `RND-CHK-145` and `RND-CHK-006-*` close in AKS-1; `REC-S5-UPFRONTFEE-OWN-A` and `-B` in AKS-4)
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: REQ-REC-003, REQ-REC-017; REQs contributed: REQ-REC-019
+  - **Read:** POLICIES ALG-11 §2.12 (CHK-140 to CHK-145), ALG-01 §2.1.5 (CHK-006), POL-090, POL-231; ENGINE_SPEC_B §9.2.3; 03 REQ-REC-003, REQ-REC-017
+  - **Gates:** GK-01 `make ci`; GK-04 `make ci`
+
+- [ ] **ENC-3 Point-in-time and output measures: control-transfer triggers, milestones, percent complete, bill-and-hold and repurchase outcomes.**
+  - **Prerequisites:** ENC-2
+  - **Scope:**
+    - Paths: `backend/erev_engine/stages/s09_recognition/progress_events.py` (control-transfer triggers, milestones and output percent); `backend/tests/engine/s09_recognition/test_s09_outputs.py`
+    - Schema: none
+    - API: none
+    - Engine: ENGINE_SPEC_B §9.2.4 S09-R-11 to S09-R-13; finding `BILL_AND_HOLD_CRITERIA_UNMET`; formulas `rec.progress.point_in_time.v1`, `rec.progress.output_percent.v1`, `rec.progress.milestone.v1`
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/s09_recognition/test_s09_outputs.py::test_s09_r11_control_transfer_triggers`: `DELIVERY_RECORDED.trigger` values `DELIVERY`, `ACCEPTANCE`, `SELL_THROUGH` and `CONTROL_TRANSFER` transfer control. A consignment shipment without `SELL_THROUGH` leaves the allocation awaiting trigger; an acceptance clause defers recognition until `ACCEPTANCE`, unless acceptance is objectively determinable and recorded as such (REQ-REC-001, REQ-REC-013, REQ-REC-014)
+      - `…::test_s09_r12_bill_and_hold`: trigger `BILL_AND_HOLD` transfers control only with a REVIEWED `BILL_AND_HOLD` judgement whose four 606-10-55-83 members are all `true`. Otherwise it yields `BILL_AND_HOLD_CRITERIA_UNMET` (`WARNING`) and no revenue (REQ-REC-012)
+      - `…::test_s09_r13_repurchase_outcomes`: `REPURCHASE_CLASSIFICATION` `FINANCING` or `LEASE` gives no revenue target; `RIGHT_OF_RETURN` uses the returns path of §9.2.7; `SALE` follows the normal rules (REQ-REC-015)
+      - `…::test_milestones_and_percent_complete`: `MILESTONE_ACHIEVED` with cumulative weight 0.25 gives f = 1/4 on a `MILESTONE` obligation; `PROGRESS_RECORDED` with output ratio 0.40 gives f = 2/5 on an output-percent obligation (REQ-REC-005, REQ-REC-006)
+    - Answer keys: none (AK hints close in AKS-4)
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: REQ-REC-001, REQ-REC-005, REQ-REC-006, REQ-REC-012, REQ-REC-013, REQ-REC-014, REQ-REC-015; REQs contributed: none
+  - **Read:** ENGINE_SPEC_B §9.2.4 (S09-R-11 to S09-R-13), §9.4, §9.5; ENGINE_SPEC §0.4 Table 0.4-A `BILL_AND_HOLD`, `REPURCHASE_CLASSIFICATION`; POLICIES POL-092 to POL-095, POL-233; 03 REQ-REC-001, REQ-REC-005, REQ-REC-006, REQ-REC-012 to REQ-REC-015
+  - **Gates:** GK-01 `make ci`; GK-04 `make ci`
+
+- [ ] **ENC-4 Units measure: golden delivery revenue and progress edge cases.**
+  - **Prerequisites:** ENC-3
+  - **Scope:**
+    - Paths: `backend/erev_engine/stages/s09_recognition/progress_events.py` (units delivered); `backend/tests/engine/s09_recognition/test_s09_outputs.py` (CHK-007, EX-06-C); `backend/tests/engine/s09_recognition/test_tc_delivery.py`
+    - Schema: none
+    - API: none
+    - Engine: ENGINE_SPEC_B §9.2.4 S09-R-10; formula `rec.progress.units.v1`
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/s09_recognition/test_s09_outputs.py::test_chk_007_units_schedule`: golden Contract 1 POB #2 (exact allocation 237.066402…, posted 237.07, quantity 2), one unit delivered in P1 and the second in P2, gives revenue 118.53 in P1 and 118.54 in P2 (CHK-007)
+      - `…::test_ex_06_c_total_revenue`: when every unit of both the original contract and the separate contract of EX-06-C has transferred, total revenue is 14,850.00
+      - `backend/tests/engine/s09_recognition/test_tc_delivery.py::test_tc_delivery_01_contract1_step04`: after golden step 04, Contract 1 revenue exact values are POB #1 128.840436 (posted 128.84), POB #2 118.533201 (118.53) and POB #3 48.315164 (48.32) (legacy 02 §7.3 TC-delivery-01; GT-04)
+      - `…::test_tc_delivery_02_contract2_delivery_without_billing`: Contract 2 POB #1 revenue exact 58.846154 (TC-delivery-02)
+      - `…::test_tc_delivery_03_step05`: Contract 1 POB #1 revenue 64.420218; Contract 3 POB #3 48.315164; Contract 4 POB #1 111.294028 (TC-delivery-03)
+      - `…::test_tc_delivery_04_contract2_fractional`: Contract 2 POB #3 revenue 46.153846 with remaining quantity 0.6 (TC-delivery-04)
+      - `…::test_tc_delivery_05_contract4_vc_line`: VC line delivery 0.5 with credit −100.00 gives VC revenue 0 and POB #2 revenue 98.928025 (TC-delivery-05)
+      - `…::test_tc_delivery_06_contract1_return`: Contract 1 POB #1 revenue −193.260654 with remaining quantity 5 (TC-delivery-06)
+      - `…::test_tc_delivery_08_full_uat`: after step 14 every remaining quantity is 0, and cumulative revenue per contract is 800.00 / 1,100.00 / 2,600.00 / 1,200.00 (TC-delivery-08; GT-16)
+      - `…::test_tc_delivery_20_deliver_all_then_return`: Contract 1 POB #1 delivering all 5 at once gives revenue 322.101090 = remaining allocation, with no infinite rate; returning 1 unit gives revenue −64.420218 (TC-delivery-20)
+      - `…::test_rec_026_progress_edge_cases`: fractional deliveries (0.4 of 1), billing with zero delivery, and delivery without billing are accepted and give the golden figures of TC-delivery-04, TC-delivery-07 and TC-delivery-02 (REQ-REC-026)
+    - Answer keys: none (AK hints close in AKS-4)
+    - Golden: none (GT-04, GT-05, GT-06, GT-09, GT-16 and `GT:contract_position`, `GT:pob_position` close in GPA-2 and GPA-5)
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: REQ-REC-004, REQ-REC-026; REQs contributed: none
+    - Hint closure: REQ-REC-004 `TC-delivery-01 to 08, 20` (revenue parts; position and reclass parts in ENC-12 and ENC-14, B3-BS2-03)
+  - **Read:** ENGINE_SPEC_B §9.2.4 (S09-R-10), §9.4, §9.5; POLICIES ALG-01 §2.1.4 CHK-007; legacy 02 §7.3 TC-delivery-01 to 08, 20; legacy 07 §7 GT-04, GT-16; 03 REQ-REC-004, REQ-REC-026
+  - **Gates:** GK-01 `make ci`; GK-04 `make ci`
+
+- [ ] **ENC-5 Input measures: cost to cost with EAC, uninstalled materials, waste, labour hours and cost recovery.**
+  - **Prerequisites:** ENC-4
+  - **Scope:**
+    - Paths: `backend/erev_engine/stages/s09_recognition/progress_inputs.py`; `backend/tests/engine/s09_recognition/test_s09_inputs.py`
+    - Schema: none
+    - API: none
+    - Engine: ENGINE_SPEC_B §9.2.5 S09-R-14 to S09-R-17; formulas `rec.progress.cost_to_cost.v1`, `rec.progress.labour_hours.v1`, `rec.progress.cost_recovery.v1`, `rec.uninstalled_materials.v1`; finding `NON_FINITE_AMOUNT`
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/s09_recognition/test_s09_inputs.py::test_ex_09_b_cost_to_cost_modification_and_eac_change`: TP 1,000,000.00, EAC 700,000.00 and costs 420,000.00 at 2026-08-31 give C 600,000.00. Events: `CONTRACT_AMENDED` 2026-09-10 (A′ 1,350,000.00, EAC 820,000.00) gives C 691,463.41, cause `MODIFICATION` 91,463.41. `COST_INCURRED` 2026-09-25 of +82,000.00 gives C 826,463.41, cause `NORMAL` 135,000.00. `ESTIMATE_CHANGED` EAC version 3 of 850,000.00, effective 2026-09-30, gives C 797,294.12, cause `CATCH_UP` (29,169.29). September 2026 revenue is 197,294.12, and the `revenue_cum` node is 797,294.12 with exact 797,294.117647… (EX-09-B; CHK-027)
+      - `…::test_ex_09_b_j14_correction_replay`: adding a cost of 20,500.00 effective 2026-09-29 replays before the EAC change, giving `NORMAL` +33,750.00 (C 860,213.41) then `CATCH_UP` (30,360.47) (C 829,852.94); September 2026 revenue becomes 229,852.94 (EX-09-B)
+      - `…::test_ex_09_c_uninstalled_materials`: X 5,000,000.00 and EAC 4,000,000.00 including elevators of 1,500,000.00 (`uninstalled_materials_cost`), other costs 500,000.00, elevators delivered and controlled by the customer. f = 1/5, revenue 2,200,000.00 (700,000.00 before the elevators arrive), and no `COST_OF_REVENUE` target exists (EX-09-C; D-76)
+      - `…::test_ex_09_c_waste`: X 1,000,000.00, EAC 800,000.00, costs 350,000.00 of which 50,000.00 are flagged `is_wasted`, give f = 3/8 and revenue 375,000.00 (EX-09-C)
+      - `…::test_s09_r15_labour_hours`: f = latest `hours_to_date` ÷ expected total hours; hours without expected hours yield `NON_FINITE_AMOUNT` (`ERROR`) (REQ-REC-008)
+      - `…::test_s09_r16_cost_recovery_until_eac`: while no APPROVED `EAC` pin exists, E = min(X, costs incurred to date); from the first approved `EAC`, cost to cost applies
+      - `…::test_s09_inv_10_progress_bounded`: costs recorded after an `EAC` version and exceeding it give f ≤ 1
+    - Answer keys: none (`REC-S5-EX19`, `REC-S5-PROGRESS-VARIANTS-COSTRECOVERY`, `-WASTE` close in AKS-4)
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: REQ-REC-007, REQ-REC-008; REQs contributed: none
+    - Hint closure: REQ-REC-008 `UNIT`
+  - **Read:** ENGINE_SPEC_B §9.2.5 (S09-R-14 to S09-R-17), §9.4, §9.7 EX-09-B, EX-09-C; POLICIES POL-091, JET-02; D-76 (uninstalled materials); 03 REQ-REC-007, REQ-REC-008
+  - **Gates:** GK-01 `make ci`; GK-04 `make ci`
+
+- [ ] **ENC-6 Right to invoice, usage, minimum commitments and prepaid drawdown.**
+  - **Prerequisites:** ENC-5
+  - **Scope:**
+    - Paths: `backend/erev_engine/stages/s09_recognition/usage.py`; `backend/tests/engine/s09_recognition/test_s09_usage.py`
+    - Schema: none
+    - API: none
+    - Engine: ENGINE_SPEC_B §9.2.6 S09-R-18 to S09-R-21; POLICIES POL-092, POL-240, §5.1 PT-01
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/s09_recognition/test_s09_usage.py::test_chk_014_right_to_invoice_revenue`: 120 hours × 25.00 performed in December under the 55-18 expedient give December revenue 3,000.00 (CHK-014; presentation in ENC-13)
+      - `…::test_chk_110_minimum_commitment_true_up`: calendar-year contract with minimum 120,000.00 billed 30,000.00 per quarter in advance; tiers 0.10 per call up to 1,000,000 calls and 0.08 above; `MONTHLY_EVEN`. At inception expected usage is 1,500,000 calls (fees 140,000.00, TP 140,000.00); at the end of Q2, 1,200,000 calls (fees 116,000.00, TP 120,000.00). Results: Q1 revenue 35,000.00. Q2 revenue 25,000.00, decomposed `NORMAL` 35,000.00 and `TP_CHANGE` (10,000.00) on 2026-06-30. `catch_up_tp_change_cum` (10,000.00) and `revenue_prior_period` (5,000.00). Actual usage of 1,100,000 calls gives fees 108,000.00 and no overage (EX-09-E; CHK-110; S09-R-20)
+      - `…::test_s09_r19_usage_derived`: under POL-240 `DERIVED`, usage fees are realised `PERIOD_VC` amounts counted at the end of their usage period
+      - `…::test_s09_r21_prepaid_drawdown`: nonrefundable prepaid credits recognised by `REDEMPTION_PATTERN` follow `USAGE_REPORTED.quantity` draws against the credits issued
+      - `…::test_s09_r18_right_to_invoice_source`: revenue equals the amount the entity has a right to invoice for performance to date, taken from the rated usage or time events of the obligation
+    - Answer keys: none (`AK-FAM:usage` keys close in AKS-3; `REC-CHK-014-S5-PROGRESS-VARIANTS-RTI` in AKS-4)
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: REQ-REC-009, REQ-REC-010; REQs contributed: none
+  - **Read:** ENGINE_SPEC_B §9.2.6 (S09-R-18 to S09-R-21), §9.7 EX-09-E; POLICIES §5.1 PT-01 (CHK-110), §2.4 ALG-03 (CHK-014), POL-092, POL-240; 03 REQ-REC-009, REQ-REC-010
+  - **Gates:** GK-01 `make ci`; GK-04 `make ci`
+
+- [ ] **ENC-7 Returns within the units measures.**
+  - **Prerequisites:** ENC-6
+  - **Scope:**
+    - Paths: `backend/erev_engine/stages/s09_recognition/returns.py`; `backend/tests/engine/s09_recognition/test_s09_returns.py`
+    - Schema: none
+    - API: none
+    - Engine: ENGINE_SPEC_B §9.2.7 S09-R-23 to S09-R-26; formulas `returns.revenue_target.v1`, `returns.excess_reversal.v1`; node `return_expected_units`; POLICIES ALG-06 §2.7.2, §2.7.3
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/s09_recognition/test_s09_returns.py::test_chk_029_revenue_path`: Q = N = 100, r = p_ref = 100.00 and E = 3 give revenue 9,700.00 at transfer, 9,700.00 after two units are returned and 9,800.00 after window expiry (CHK-029 revenue column)
+      - `…::test_chk_060_revised_estimate_revenue_path`: E revised to 4 at the first period end before any return gives revenue 9,600.00, unchanged after two returns, and 9,800.00 after expiry, a catch-up of +200.00 (CHK-060 revenue column)
+      - `…::test_chk_061_golden_return`: golden Contract 1 POB #1 with 3 units delivered at 64.420218 (posted 128.84 + 64.42), then return −3 units with credit memo −200.00 on 2023-04-30, under the preset (POL-052 `CURRENT_REMAINING_RATE`, POL-053 `RESTORE_REMAINING_QUANTITY`). Results: revenue movement −193.26 (exact −193.260654); remaining quantity 5; remaining allocation 322.1011 (CHK-061; GT-08)
+      - `…::test_s09_r24_returned_units_scope`: under POL-053 `REDUCE_CONTRACT_QUANTITY` returned units leave the contract, so the undelivered quantity Q − N is unchanged; under `RESTORE_REMAINING_QUANTITY` they return to the remaining quantity
+      - `…::test_s09_r26_window_expiry_time_driven`: E = 0 on a measurement dated on or after `window_end_date` and E kept the day before (D-87 L6-5-Q-25), and the expiry effect is a `TIME` amount posted in mode `CLOSE_RELEASE`
+    - Answer keys: none (`RET-*` keys close in AKS-3)
+    - Golden: none (GT-08 closes in GPA-2)
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: none; REQs contributed: REQ-TP-008
+  - **Read:** ENGINE_SPEC_B §9.2.7 (S09-R-23 to S09-R-26); POLICIES ALG-06 §2.7.1 to §2.7.5 (CHK-029, CHK-060, CHK-061), POL-051 to POL-053; legacy 07 §7 GT-08
+  - **Gates:** GK-01 `make ci`; GK-04 `make ci`
+
+- [ ] **ENC-8 Breakage, material-right recognition, credit rollover and royalties.**
+  - **Prerequisites:** ENC-7
+  - **Scope:**
+    - Paths: `backend/erev_engine/stages/s09_recognition/breakage.py`, `royalty.py`; `backend/tests/engine/s09_recognition/test_s09_breakage_royalty.py`; `backend/tests/engine/s09_recognition/test_chk_alg05.py`
+    - Schema: none
+    - API: none
+    - Engine: ENGINE_SPEC_B §9.2.8 S09-R-27 to S09-R-31; §9.2.9 S09-R-32 to S09-R-34; S09-INV-11; findings `BREAKAGE_EXPECTED_ZERO`, `BREAKAGE_OVER_REDEMPTION`, `ESTIMATE_CONSTRAINT_RANGE`, close-gate fact of `ROYALTY_ACCRUAL_MISSING`; formulas `breakage.proportional.v1`, `breakage.remote.v1`, `breakage.expiry.v1`, `royalty.accrual.v1`, `royalty.report_true_up.v1`, `royalty.minimum_guarantee.v1`
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/s09_recognition/test_s09_breakage_royalty.py::test_ex_09_d_breakage_and_unclaimed_property`: 120,000 credits sold for 120,000.00 under POL-055 `PROPORTIONAL_TO_EXERCISE`. By period P1 / P2 / P3 / P4 (expiry): C_total 33,600.00 / 84,000.00 / 100,181.82 / 116,000.00; redeemed 30,000.00 / 75,000.00 / 95,000.00 / 96,000.00; breakage cumulative 3,600.00 / 9,000.00 / 5,181.82 / 20,000.00; period revenue 33,600.00 / 50,400.00 / 16,181.82 / 15,818.18; `BREAKAGE` line 3,600.00 / 5,400.00 / (3,818.18) / 14,818.18. The unclaimed-property share u = 1/30 is never revenue (EX-09-D; S09-INV-11)
+      - `…::test_breakage_findings`: `expected_quantity` 0 on a `PROPORTIONAL_TO_EXERCISE` version yields `BREAKAGE_EXPECTED_ZERO` (`ERROR`); redemptions above R_exp yield `BREAKAGE_OVER_REDEMPTION` (`WARNING`); ρ > 1 yields `ESTIMATE_CONSTRAINT_RANGE` (`ERROR`)
+      - `…::test_ex_09_f_royalties_with_guarantee_jpy`: a functional licence transferred in April 2026 with a guarantee of 50,000,000 JPY gives `FIXED` revenue 50,000,000. The April to June statement of 30,000,000, effective 2026-07-20, gives royalty revenue 0. The July to September accrual of 25,000,000, effective 2026-09-30, gives `ROYALTY` 5,000,000 in September. The July to September statement of 27,000,000, effective 2026-11-15, replaces the accrual, giving a November true-up of 2,000,000. No coverage gap is reported at 2026-07-31 and 2026-08-31 (EX-09-F; REQ-REC-011)
+      - `…::test_s09_r34_coverage_gap_fact`: removing the September accrual makes the 2026-09-30 close-gate facts list the licence obligation for `ROYALTY_ACCRUAL_MISSING`
+      - `backend/tests/engine/s09_recognition/test_chk_alg05.py::test_chk_050_exercise_recognition`: for the EX-06-E contract, `CONTINUATION` recognises P3 383.33 at transfer; `MODIFICATION` recognises P2 183.33 over its term and P3 366.67 at transfer, with no catch-up (CHK-050)
+      - `…::test_chk_051_voucher_redemption_and_expiry`: under FASB Example 49, redemption on a 50.00 purchase paying 30.00 gives revenue 40.71 on the voucher obligation; the expiry alternative gives 10.71 (CHK-051)
+      - `…::test_chk_052_gt15_policies`: golden Contract 3 at 2023-09-15 under `MODIFICATION` (preset) gives allocation POB #5 1,268.1139, POB #1 678.0182 and POB #2 311.1106, a POB #3 catch-up of +32.1394, and TP 2,600.00. Under `CONTINUATION` it gives POB #5 1,833.767587, POB #1 334.340803, POB #2 153.413236 and POB #3 62.532569, with no catch-up (CHK-052)
+      - `…::test_chk_053_loyalty_points`: sales 100,000.00 with 10,000 points expected 9,500 then 9,700 and redeemed 4,500 then 8,500. Results: allocation 91,324.20 / 8,675.80; points revenue P1 4,109.59 and P2 3,492.91 (cumulative P2 = round(X × 8,500 ÷ 9,700) = 7,602.50 with X = 100,000 × 9,500 ÷ 109,500); remaining points allocation 4,566.21 at the end of P1 and 1,073.30 at the end of P2 (CHK-053; S09-R-31)
+      - `…::test_chk_111_credit_rollover`: 100,000.00 of credits for Year 1, 70,000 used in Year 1, 20,000 expected after renewal and 10,000 never. Year 1 revenue is 70,000.00 plus breakage 7,777.78, so `revenue_cum` is 77,777.78. Renewed: Year 2 revenue 20,000.00 plus breakage 2,222.22. Not renewed: 22,222.22 recognised at lapse, `revenue_cum` 100,000.00 (CHK-111; PT-02)
+    - Answer keys: none (`BRK-*`, `MR-*`, `ROY-*` close in AKS-3 and AKS-5)
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: REQ-REC-011, REQ-REC-016, REQ-POB-006; REQs contributed: REQ-MOD-017
+  - **Read:** ENGINE_SPEC_B §9.2.8, §9.2.9 (S09-R-27 to S09-R-34), §9.4, §9.7 EX-09-D, EX-09-F; ENGINE_SPEC §6.7 EX-06-E; POLICIES ALG-05 §2.6.2 to §2.6.5 (CHK-050 to CHK-053), §5.2 PT-02 (CHK-111), POL-055 to POL-057, POL-241; 03 REQ-REC-011, REQ-REC-016, REQ-POB-006
+  - **Gates:** GK-01 `make ci`; GK-04 `make ci`
+
+- [ ] **ENC-9 Sequential cause decomposition, manual release, deferral, schedule overrides and recognition holds.**
+  - **Prerequisites:** ENC-8
+  - **Scope:**
+    - Paths: `backend/erev_engine/stages/s09_recognition/decompose.py`, `manual.py`, `holds.py`; `backend/tests/engine/s09_recognition/test_s09_causes_manual_holds.py`
+    - Schema: none
+    - API: none
+    - Engine: ENGINE_SPEC_B §9.2.10 S09-R-35 to S09-R-37; §9.2.11 S09-R-38 to S09-R-41; §9.2.12 S09-R-42 to S09-R-44; S09-INV-04, S09-INV-08; formulas `rec.decompose.sequential.v1`, `rec.catch_up.sum.v1`, `sched.manual_release.v1`, `sched.manual_defer.v1`, `sched.override_respread.v1`, `sched.hold_freeze.v1`
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/s09_recognition/test_s09_causes_manual_holds.py::test_ex_09_b_cause_split`: September 2026 revenue of the EX-09-B contract, 197,294.12, decomposes as `MODIFICATION` 91,463.41 + `NORMAL` 135,000.00 + `CATCH_UP` (29,169.29), and the decomposition sums exactly to the period amount (S09-INV-04; PRD J-16-AC-1)
+      - `…::test_s09_r37_sequential_catch_up_differs_from_prior_period`: for the CHK-110 contract, `catch_up_tp_change_cum` is (10,000.00) while `revenue_prior_period` is (5,000.00)
+      - `…::test_catch_up_cum_by_cause_nodes`: `catch_up_modification_cum`, `catch_up_tp_change_cum` and `catch_up_estimate_cum` nodes sum the stage 06 and stage 08 `catch_up@<event key>` nodes per obligation (Table 0.9-A; REQ-MOD-015)
+      - `…::test_s09_r38_manual_release`: `MANUAL_ADJUSTMENT_APPLIED` kind `MANUAL_RELEASE` with `ratio` 0.5 at period P gives min(A, max(C(t), C(P) + 0.5 × (A − C(P)))), mirrored for A < 0
+      - `…::test_s09_r39_manual_defer`: `MANUAL_DEFER` with `amount` m moves m out of period P only; later periods keep C(t)
+      - `…::test_s09_r40_schedule_override`: `SCHEDULE_OVERRIDE` with listed periods gives the listed cumulative targets; unlisted periods after the latest listed one follow S09-R-40
+      - `…::test_s09_r41_order_of_application`: segment targets, then manual adjustments in ENG-06 order, then holds, then the V4 status guard
+      - `…::test_ex_09_g_recognition_hold`: 12,000.00 over 2026 (`MONTHLY_EVEN`) with a recognition hold applied 2026-04-10 and released 2026-06-20. The freeze level C(9 Apr) is 3,000.00. Posted targets: April 3,000.00 and May 3,000.00, revenue 0.00 in both; June 6,000.00, revenue 3,000.00 `NORMAL` released at close. At 2026-05-31: scheduled 0.00 and awaiting trigger 9,000.00 (EX-09-G; S09-INV-08)
+      - `…::test_s09_r43_hold_never_defers_a_reversal`: for A < 0 the held target is max(C(t), L)
+    - Answer keys: none (`DISC-CATCH-UP-BY-CAUSE-ESTIMATE-CHANGE-AND-MODIFICATION` closes in EDS-7)
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: none; REQs contributed: REQ-MOD-015
+  - **Read:** ENGINE_SPEC_B §9.2.10 to §9.2.12 (S09-R-35 to S09-R-44), §9.3, §9.5, §9.7 EX-09-B, EX-09-E, EX-09-G; ENGINE_SPEC Table 0.9-A; 04 T-SL-05 manual adjustment kinds
+  - **Gates:** GK-01 `make ci`; GK-04 `make ci`
+
+- [ ] **ENC-10 Obligation measures, schedules and versioning; P4 at schedule level and P10.**
+  - **Prerequisites:** ENC-9
+  - **Scope:**
+    - Paths: `backend/erev_engine/stages/s09_recognition/schedule.py`; `backend/erev_engine/stages/__init__.py` (register stage 09); `backend/tests/engine/kernel/test_stage_registry.py` (remove 09 from `PENDING_STAGES`); `backend/tests/engine/s09_recognition/test_s09_measures.py`; `backend/tests/properties/test_prop_p04_schedule_bounds.py` (schedule part); `backend/tests/properties/test_prop_p10_split_invariance.py`; `backend/erev_engine/stages/s09_recognition/components.py` (`is_deterministic`, `evaluation_periods`) and `backend/tests/engine/s09_recognition/test_s09_deterministic_component.py` (item ENG-USAGE-FIXED-SCHEDULE-1, fragment rev 1.9)
+    - Schema: none
+    - API: none
+    - Engine: ENGINE_SPEC_B §9.2.13 S09-R-45 to S09-R-47; §9.2.14 S09-R-48 to S09-R-50; S09-INV-03, S09-INV-07, S09-INV-10, S09-INV-12; formulas `rec.remaining.v1`, `rec.scheduled.v1`, `rec.awaiting.v1`; ScheduleLineOut (ENGINE_SPEC_B §0.6)
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/s09_recognition/test_s09_measures.py::test_s09_r45_scheduled_and_awaiting_trigger`: for a `TIME_ELAPSED` obligation of 12,000.00 at 2026-03-31, scheduled = allocated − `revenue_cum` and awaiting trigger 0.00. For a units obligation the undelivered allocation is awaiting trigger. For EX-09-G at 2026-05-31: scheduled 0.00 and awaiting trigger 9,000.00. Every obligation has `allocated_amount = revenue_cum + scheduled_amount + awaiting_trigger_amount` (S09-INV-03; DB-17)
+      - `…::test_s09_r46_satisfaction_status`: `UNSATISFIED` at f = 0 with `revenue_cum` 0; `PARTIALLY_SATISFIED` between; `SATISFIED` with `satisfied_date` equal to the first date f = 1; `CANCELLED` after the EX-06-J termination removes remaining allocation
+      - `…::test_s09_r47_legacy_measures`: golden Contract 2 POB #1 after one unit delivered has `ssp_delivered_cum` 76.5 (quantity delivered × unit SSP 76.5; EX-06-F state), and every period measure is 0 on a non-delivery event version (DEV-051)
+      - `…::test_s09_r48_schedule_lines_versioned`: a schedule belongs to one contract version; lines are keyed by (subject key, schedule kind, line type, period); a recomputation supersedes and never updates lines
+      - `…::test_s09_r49_release_flags`: `is_released_at_close` is true only for `NORMAL` lines of deterministic components
+      - `…::test_s09_r50_projection_horizon`: a `TIME_ELAPSED` component has lines through the period containing its term end; an event-driven component has lines only through the evaluation horizon
+        - Item ENG-USAGE-FIXED-SCHEDULE-1 (fragment rev 1.9 / BUILD_SPEC 1.109; supervisor ruling R-116 (a), candidate AD-61; ENGINE_SPEC_B S09-R-45, S09-R-49, S09-R-50 rev 1.126): ONE predicate of the deterministic component — a `FIXED` component measured by time elapsed that carries an allocation. `backend/tests/engine/s09_recognition/test_s09_deterministic_component.py`, six tests over calendar 2026 with the horizon at June. `…::test_s09_r45_the_fixed_fee_of_a_usage_obligation_is_scheduled`: 12,000.00 by time and a usage fee of 150.00 reported on 31 March give allocated 12,150.00, revenue 3,150.00, scheduled 9,000.00 and awaiting trigger 0.00 with the node's `pattern` `DETERMINISTIC`; the PT-01 shape alike; without an allocation the obligation stays `EVENT_DRIVEN`; under a recognition hold the 9,000.00 await their release. `…::test_s09_r45_the_guarantee_of_a_right_to_access_royalty_is_scheduled`, with a right to use beside it, which is not. `…::test_s09_r45_a_right_to_invoice_obligation_is_never_deterministic`, a rate line that holds an allocation included. `…::test_s09_r49_the_months_of_a_fixed_fee_are_released_at_close`: every month's line but the one that holds the usage fee is flagged. `…::test_s09_r50_a_deterministic_component_is_projected_to_its_term_end`: a line in each of the twelve months, 6,000.00 after the horizon. `…::test_the_predicate_mirrors_the_dispatch_of_segment_target`: over every recognition method and satisfaction pattern the engine measures, an obligation with a `FIXED` allocation is deterministic exactly when `segment_target` measures that component by time elapsed, with two named exceptions (a right-to-invoice rate line; a loyalty-points option of method `TIME_ELAPSED`); either half of the allocation is enough and it must be the `FIXED` component's
+      - `…::test_s09_inv_07_one_measure_per_version`: an obligation version carrying two recognition methods raises `EngineError("ENGINE_INVARIANT_VIOLATED")` naming S09-INV-07 (REQ-REC-018)
+      - `backend/tests/properties/test_prop_p04_schedule_bounds.py::test_p04_stage09_schedules`: for generated time-elapsed and units obligations (currencies JPY, USD, BHD, CLF), schedule lines sum to the allocation at completion; 0 ≤ cumulative ≤ allocation for non-negative allocation; cumulative lies within half a minor unit of exact unless the bound binds: for A ≥ 0, C_t = 0 with X × f_t × 10^μ < 0, or C_t = A with X × f_t × 10^μ > A; symmetrically for A < 0 (D-79; PROP:P4 schedule part)
+      - `backend/tests/properties/test_prop_p10_split_invariance.py::test_p10_split_invariance`: one delivery of q on a date gives the same targets as deliveries q1 + q2 = q on that date (PROP:P10)
+      - `backend/tests/engine/kernel/test_stage_registry.py::test_stage_registry_complete`: stage 09 is in `STAGES` and absent from `PENDING_STAGES`
+    - Answer keys: none at the item's first build; (fragment rev 1.9, item ENG-USAGE-FIXED-SCHEDULE-1) `REC-USAGE-STAND-READY-FEE-SCHEDULED-TO-TERM-END` — a candidate for the independent accountant (AD-61), `review.status: pending`, not in the release selection; it runs with every key in `backend/tests/answer_keys`
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: PROP:P4 schedule part `backend/tests/properties/test_prop_p04_schedule_bounds.py::test_p04_stage09_schedules`; PROP:P10 `backend/tests/properties/test_prop_p10_split_invariance.py`
+    - REQs completed: REQ-REC-018, REQ-REC-021; REQs contributed: REQ-REC-019
+    - Hint closure: REQ-REC-018 `UNIT`; REQ-REC-021 `UNIT`; REQ-REC-019 `PROP:P4` schedule part; REQ-REC-021 `PROP:P7` (extended) in EDS-1 and PRP-5
+  - **Read:** ENGINE_SPEC_B §9.2.13, §9.2.14 (S09-R-45 to S09-R-50), §9.3, §0.6; dev-guide §9.7 P4, P10; 04 T-ENG-01, T-ENG-02, T-CON-11, E-22, E-27, E-28; 03 REQ-REC-018, REQ-REC-021
+  - **Gates:** GK-01 `make ci`; GK-04 `make properties K="p04 or p10"`
+
+- [ ] **ENC-11 Stage 10 billing ingestion, attribution and unconditional billing.**
+  - **Prerequisites:** ENC-10
+  - **Scope:**
+    - Paths: `backend/erev_engine/stages/s10_billing_balances/__init__.py` (`run(ctx, st, tb) -> BalanceState`); private `billing.py`, `classification.py`; `backend/tests/engine/s10_billing_balances/test_s10_billing.py`; `backend/tests/engine/s10_billing_balances/test_s10_billing_mode_per_period.py` (item PINP-PERIOD-VALUE-1, fragment rev 1.12)
+    - Schema: none
+    - API: none
+    - Engine: ENGINE_SPEC_B §10.1; §10.2.1 S10-R-01 to S10-R-05; §10.2.2 S10-R-06 to S10-R-08; S10-INV-04, S10-INV-06; finding `INVOICE_STATUS_UPDATE_MISMATCH`; formulas `bil.attribution.v1`, `bil.remaining_billing.v1`, `bil.unconditional_date.v1`; nodes `billed_cum`, `billed_attributed_cum`, `billed_unconditional_cum`, `remaining_billing`
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/s10_billing_balances/test_s10_billing.py::test_s10_r01_attribution_per_document`: a line with `obligation_key` is attributed directly. The unreferenced lines of one invoice are summed and apportioned once over the obligations, the sign applied after apportioning the absolute amount (ENGINE_SPEC_B B3 decision 4). An unreferenced credit memo of −100.00 over three equal weights gives −33.34 / −33.33 / −33.33 (CHK-003c). Σ attributions equal the document amount excluding tax (S10-INV-04)
+      - `…::test_s10_r02_taxes_excluded`: an invoice of 1,080.00 including 80.00 tax gives `billed_cum` 1,000.00 (CHK-023 inputs)
+      - `…::test_s10_r06_erp_and_engine_modes`: in `ERP` mode an invoice counts on its effective date. In `ENGINE` mode (CHK-024 Case A), a cancellable invoice of 1,000.00 issued 2026-01-31 is memo-only, so unconditional billing is 0.00 at 31 January and 1,000.00 after the payment applied on 1 March, and `billed_cum` is 0.00 at 31 January and 1,000.00 after the 1 March payment; in `ERP` mode `billed_cum` counts on the effective date (D-89 L7-6-Q-9). Case B (noncancellable from 31 January) gives unconditional billing 1,000.00 at 31 January (REQ-BIL-002, REQ-BIL-008)
+      - `…::test_s10_r07_status_update_mismatch`: a `BILLING_RECORDED` with the same `invoice_number` and `line_external_id` as an earlier line, `is_cancellable = false` and a different `amount` yields `INVOICE_STATUS_UPDATE_MISMATCH` (`ERROR`)
+      - `…::test_s10_r04_billing_while_not_a_contract`: billing attributed while `NOT_A_CONTRACT` counts for `billed_cum` and enters no position
+      - `…::test_tc_delivery_06_contract1_return_billing`: after golden step 07, Contract 1 POB #1 has remaining billing 500.00 and `billed_cum` 0.00 (CHK-061 billing column), and POB #2 has remaining billing 0.00 and `billed_cum` 400.00 (legacy 02 §7.3 TC-delivery-06)
+      - `…::test_s10_inv_06_erp_mode_has_no_receivable_targets`: in `ERP` mode no `ACCOUNTS_RECEIVABLE`, `RECEIVABLE_CONTRA` or `SALES_TAX_PAYABLE` target exists
+      - `…::test_cash_receipts`: `PAYMENT_RECEIVED` accrues `paid_cum` on the contract subject key and names applied invoices; payments feed the deposit targets of EX-02-A and the layer dates of END-1 (REQ-BIL-012)
+      - Item PINP-PERIOD-VALUE-1 (fragment rev 1.12 / BUILD_SPEC 1.169; supervisor ruling R-121 (e) of 2026-10-01 and the supervisor's rulings of the same day on the lane's measured finding and on its pre-build line; ENGINE_SPEC_B S10-R-06 rev 1.162): the billing mode of a line is read per period. `backend/tests/engine/s10_billing_balances/test_s10_billing_mode_per_period.py::test_s10_r06_a_period_without_a_pol_123_value_reads_pol_004`: with POL-004 `ERP` and a POL-123 value `UNCONDITIONAL_INVOICES_ONLY` from FY2026-P06 on, the mode is `ERP` on 31 May and `ENGINE` on 1 June, and `PolicyResolver.has` answers per period. `…::test_a_bundle_with_pol_123_from_a_later_period_computes_the_billing_of_an_earlier_one`: the STP1-S1-EX2 bundle (a billing line of 15 January 2026) with POL-123 from FY2026-P06 on computes the key's own figures. On the engine before the change both fail with "policy balance.position_invoice_basis has no value for the requested scope (CV-17)"
+    - Answer keys: none (`JE-CHK-024-*` close in AKS-6)
+    - Golden: none (`GT:journal_entry_totals` (`ERP`) closes in GPB-1)
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: REQ-BIL-002, REQ-BIL-008, REQ-BIL-012; REQs contributed: none
+    - Hint closure: REQ-BIL-012 `UNIT`; `AK-FAM:fx` in AKS-7
+  - **Read:** ENGINE_SPEC_B §10.1, §10.2.1, §10.2.2 (S10-R-01 to S10-R-08), §10.3, §10.4, §10.5; POLICIES ALG-02 step 3, POL-004, POL-045, POL-123, JET-03 (CHK-023, CHK-024); legacy 02 §7.3 TC-delivery-06; D-13, D-13a; 03 REQ-BIL-002, REQ-BIL-008, REQ-BIL-012
+  - **Gates:** GK-01 `make ci`; GK-04 `make ci`
+
+- [ ] **ENC-12 Stage 10 net position, refund liabilities and return assets.**
+  - **Prerequisites:** ENC-11
+  - **Scope:**
+    - Paths: `backend/erev_engine/stages/s10_billing_balances/position.py`, `refund_liability.py`; `backend/tests/engine/s10_billing_balances/test_s10_position.py`; `backend/tests/engine/s10_billing_balances/test_chk_alg06.py`
+    - Schema: none
+    - API: none
+    - Engine: ENGINE_SPEC_B §10.2.3 S10-R-09 to S10-R-12; §10.2.4 S10-R-13 to S10-R-15; §10.2.5 S10-R-16, S10-R-17; S10-INV-02, S10-INV-05, S10-INV-07, S10-INV-08; formulas `pos.net_position.v1`, `pos.obligation.v1`, `rl.return.v1`, `rl.vc_target.v1`, `rl.termination.v1`, `rl.concession.v1`, `rl.unclaimed_property.v1`, `rl.consumption.v1`, `returns.return_asset.v1`
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/s10_billing_balances/test_s10_position.py::test_ex_10_a_position_concession_and_credit_memo`: `ERP` mode, one contract and entity. At 31 Jan: P1 R 3,000.00 / B 0.00; P2 10,000.00 / 4,000.00; P3 1,000.00 / 5,000.00; NP (5,000.00). On 15 Feb a concession of 500.00 on P3 (POL-104; JET-05c) gives refund liability 500.00 with NP (5,000.00). On 10 Mar a credit memo of 500.00 consumes the `CONCESSION` component, giving refund liability 0.00 and P3 billed 4,500.00. At 31 Mar: billed 8,500.00 − revenue 13,500.00 − refund liability 0.00 = NP (5,000.00) (EX-10-A; S10-INV-05)
+      - `…::test_s10_r11_unit_per_group_entity_book`: contract X (licence R 60,000.00 B 10,000.00; services R 20,000.00 B 40,000.00) gives NP (30,000.00). A separate, uncombined contract Y gives NP +5,000.00 and is not netted with X (CHK-012 NP part)
+      - `…::test_chk_137_np_includes_accretion`: for the EX-10-C contract, NP = 18,871.00 − 8,483.47 − 848,346.53 = (837,959.00) (CHK-137; D-76)
+      - `…::test_tc_delivery_01_contract1_step04_positions`: after golden step 04, `position_obligation` exact values are POB #1 −28.840436, POB #2 −18.533201, POB #3 51.684836, and the contract position is 4.311199 (legacy 02 §7.3 TC-delivery-01)
+      - `…::test_tc_delivery_08_full_uat_positions`: after golden step 14, every contract position is exactly 0.00 (TC-delivery-08 production value; GT-16)
+      - `…::test_tc_pob_vc_16_concession_on_billed_amount`: after golden step 13, C2 POB #2 M −60.00 on a fully billed and delivered obligation is accepted. CU −60.00; revenue cumulative 325.185185; refund liability 60.00 from the concession component, not negative remaining billing (legacy 05 §7.3 TC-pob-vc-16 eRev Cloud column; CHK-113; REQ-TP-018)
+      - `…::test_s10_inv_08_performing_entity_holds_no_balance`: an entity that only performs an obligation has no balance target
+      - `backend/tests/engine/s10_billing_balances/test_chk_alg06.py::test_chk_029_refund_liability_and_return_asset`: for the CHK-029 contract (k = 60.00): refund liability 300.00 → 100.00 → 0.00; return asset 180.00 (JET-07c) → 60.00 (JET-07d 120.00) → 0.00 (JET-07c 60.00) (CHK-029)
+      - `…::test_chk_060_revised_estimate`: E revised to 4 gives refund liability 400.00 and return asset 240.00. Two returns give refund liability 200.00 and return asset 120.00, a derecognition of 120.00. Expiry gives refund liability 0.00, and revenue ends at 9,800.00 (CHK-060)
+      - `…::test_chk_116_portfolio_returns`: 50 contracts of 10 units at 100.00 under a portfolio return rate of 4% give per contract E 0.4, revenue 960.00 and refund liability 40.00; portfolio revenue is 48,000.00 and refund liability 2,000.00. Actual returns of 25 units (5%), refunded, give at cohort close revenue 47,500.00 (true-up −500.00) and refund liability 0.00 (CHK-116; PT-06)
+      - `…::test_s10_r13_refund_liability_excluded_from_position`: the refund liability of CHK-029 changes NP only through the JET-04b control-role flows (POL-127), and return assets never enter NP (S10-R-17)
+      - `…::test_s10_inv_07_credit_memo_consumption_bounded`: consumption of a credit memo never exceeds its amount, and no component goes below 0.00
+    - Answer keys: none (`POS-*`, `RET-*` close in AKS-3 and AKS-4)
+    - Golden: none (GT-19 and `GT:contract_position` close in GPA-2 to GPA-5)
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none (PROP:P6 closes in PRP-4)
+    - REQs completed: REQ-BIL-003, REQ-BIL-007, REQ-TP-018; REQs contributed: REQ-TP-008
+    - Hint closure: REQ-TP-018 `TC-pob-vc-16`; REQ-REC-004 `TC-delivery-01`, `TC-delivery-08` position parts; REQ-BIL-003 `PROP:P6` in PRP-4
+  - **Read:** ENGINE_SPEC_B §10.2.3 to §10.2.5 (S10-R-09 to S10-R-17), §10.3, §10.7 EX-10-A, EX-10-C; POLICIES ALG-02, ALG-06 (CHK-029, CHK-060), §5.6 PT-06 (CHK-116), POL-120, POL-127, JET-04b, JET-05c, JET-07c, JET-07d, JET-11 (CHK-137); legacy 02 §7.3 TC-delivery-01, 08; legacy 05 §7.3 TC-pob-vc-16; D-12, D-15, D-76; 03 REQ-BIL-003, REQ-BIL-007, REQ-TP-018
+  - **Gates:** GK-01 `make ci`; GK-04 `make ci`
+
+- [ ] **ENC-13 Stage 10 receivables, receivable contra and contract asset versus unbilled receivable.**
+  - **Prerequisites:** ENC-12
+  - **Scope:**
+    - Paths: `backend/erev_engine/stages/s10_billing_balances/reclass.py` (split of a debit net position, receivables and receivable contra); `backend/tests/engine/s10_billing_balances/test_chk_alg02_alg03.py`
+    - Schema: none
+    - API: none
+    - Engine: ENGINE_SPEC_B §10.2.6 S10-R-18, S10-R-19; §10.2.7 S10-R-20, S10-R-21; S10-INV-01; formulas `pos.split_ca_ur.v1`, `pos.receivable_contra.v1`, `bil.ar_balance.v1`, `pos.accretion_attribution.v1`; POLICIES ALG-02 steps 1 to 3 and 6, ALG-03
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/s10_billing_balances/test_chk_alg02_alg03.py::test_chk_012_presentation_netting`: contract X presents contract asset 30,000.00 and contract liability 0.00; contract Y presents contract liability 5,000.00, not netted with X (CHK-012)
+      - `…::test_chk_013_example_39`: allocation A 400.00, B 600.00, payment of 1,000.00 conditional on transferring both. After A transfers: NP (400.00), U 0.00, contract asset 400.00. After B transfers and the invoice in `ENGINE` mode: accounts receivable 1,000.00, NP 0.00, contract asset 0.00 (CHK-013)
+      - `…::test_chk_014_right_to_invoice_presentation`: December NP (3,000.00), unbilled receivable 3,000.00, contract asset 0.00; in January after the invoice, unbilled receivable 0.00 (CHK-014)
+      - `…::test_ex_10_c_financing_in_r_p`: R_p = 848,346.53 + 8,483.47 = 856,830.00; U = 837,959.00; unbilled receivable 837,959.00; contract asset 0.00 (EX-10-C; CHK-137 presentation)
+      - `…::test_chk_138_receivable_contra`: `ENGINE` mode, invoiced 1,000,000.00 with κ = 3/5, gives receivable contra 600,000.00, accounts receivable 1,000,000.00, net receivable 400,000.00 and contract liability 0.00 (CHK-138; S10-R-18)
+      - `…::test_s10_r21_default_classification`: a point-in-time obligation is unconditional only when it is the sole obligation with a non-zero posted allocation for its contracting entity; a customer termination right without penalty makes every obligation conditional
+      - `…::test_s10_inv_01_presented_identity`: presented contract liability − contract asset − unbilled receivable = NP for every (c, e, b, t) of CHK-010 to CHK-014
+    - Answer keys: none (`POS-*` close in AKS-4)
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: REQ-BIL-004; REQs contributed: none
+  - **Read:** ENGINE_SPEC_B §10.2.6, §10.2.7 (S10-R-18 to S10-R-21), §10.3, §10.5, §10.7 EX-10-C; POLICIES ALG-02 §2.2 (CHK-012), ALG-03 §2.4 (CHK-013, CHK-014), JET-04c (CHK-138), §6.3; D-15; 03 REQ-BIL-004
+  - **Gates:** GK-01 `make ci`; GK-04 `make ci`
+
+- [ ] **ENC-14 Stage 10 reclass attribution, netting reclass targets and current split.**
+  - **Prerequisites:** ENC-13
+  - **Scope:**
+    - Paths: `backend/erev_engine/stages/s10_billing_balances/reclass.py` (reclass attribution and JET-06 targets), `current_split.py`; `backend/erev_engine/stages/__init__.py` (register stage 10); `backend/tests/engine/kernel/test_stage_registry.py` (remove 10); `backend/tests/engine/s10_billing_balances/test_chk_alg02_alg03.py`; `backend/tests/engine/s10_billing_balances/test_tc_reclass.py`; `backend/tests/engine/s10_billing_balances/test_s10_no_measured_period.py`; `backend/tests/support/booked_ahead.py`; `backend/tests/domain/contracts/test_booked_ahead.py` (item ENG-S10-FUTURE-INCEPTION-1, fragment rev 1.8)
+    - Schema: none
+    - API: none
+    - Engine: ENGINE_SPEC_B §10.2.7 S10-R-22, S10-R-23; §10.2.8 S10-R-24, S10-R-25; S10-INV-03, S10-INV-09; formulas `pos.reclass_attribution.pob_debit_positions.v1`, `pos.reclass_attribution.cumulative_ssp_delivered.v1`, `pos.reclass_attribution.no_measured_period.v1` (C-05 and S10-R-22 rev 1.100), `pos.current_split.v1`; POLICIES ALG-02 steps 4 and 5
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/s10_billing_balances/test_chk_alg02_alg03.py::test_chk_010_split_and_attribution`: P1 time and materials (unconditional) R 3,000.00 B 0.00; P2 milestone (conditional) R 10,000.00 B 4,000.00; P3 conditional R 1,000.00 B 5,000.00. Results: NP (5,000.00); U 3,000.00; unbilled receivable 3,000.00; contract asset 2,000.00, attributed entirely to P2 under `POB_DEBIT_POSITIONS`; JET-06 targets Dr unbilled receivable 3,000.00 and Dr contract asset 2,000.00 against Cr contract liability 5,000.00 (CHK-010)
+      - `…::test_chk_011_parity_reclass_by_cumulative_ssp_delivered`: golden Contract 2 at 2023-03-31 has posted revenue POB #1 58.85 and POB #3 46.15, billing 0.00, and cumulative SSP delivered 76.5 and 60. Results: NP (105.00); reclass attribution POB #1 58.85 and POB #3 46.15 under POL-121 `CUMULATIVE_SSP_DELIVERED` (CHK-011; GT-06)
+      - `…::test_chk_117_attribution_totals_tie_to_reclass`: at the CHK-010 period end, Σ unbilled receivable attributions (3,000.00) and Σ contract asset attributions (2,000.00) equal the JET-06 targets. Each attribution carries the effective date of the latest revenue event of its obligation, which the `balance_aging` export ages (CHK-117; `_coverage/ADJUDICATION.md` B3-AK-09; the platform key closes in PRP-3)
+      - `…::test_ex_10_b_current_noncurrent`: 36,000.00 billed upfront for 2026 to 2028 (`MONTHLY_EVEN`) gives at 2026-12-31 contract liability 24,000.00, current 12,000.00 and noncurrent 12,000.00; current parts never exceed their balances (EX-10-B; S10-INV-09; REQ-BIL-010)
+        - Item ENG-USAGE-FIXED-SCHEDULE-1 (fragment rev 1.9 / BUILD_SPEC 1.109; supervisor ruling R-116 (a); ENGINE_SPEC_B S10-R-24 rev 1.126): `…::test_s10_r24_the_fixed_fee_of_a_usage_obligation_is_relieved_by_its_projection` — EX-10-B with the obligation measured by usage gives the same 24,000.00, 12,000.00 and 12,000.00 (before the item its current part read 0.00), and a usage obligation without a fixed fee relieves nothing
+      - `…::test_ex_10_a_reclass_reverses_next_period`: the 31 Jan JET-06 targets of EX-10-A are unbilled receivable 3,000.00 (P1) and contract asset 2,000.00 (P2), each with a paired `CONTRACT_LIABILITY` credit on the same obligation string and a reversal target dated 1 Feb (S10-R-22)
+      - `backend/tests/engine/s10_billing_balances/test_tc_reclass.py::test_tc_delivery_02_contract2_reclass`: contract position −58.846154 and reclass POB #1 58.846154, others 0 (legacy 02 §7.3 TC-delivery-02; GT-05)
+      - `…::test_tc_delivery_04_contract2_reclass`: contract position −105.000000; reclass POB #1 58.846154 and POB #3 46.153846 (TC-delivery-04)
+      - `…::test_tc_delivery_07_billing_against_asset`: contract position −85.000000; reclass POB #1 47.637363 and POB #3 37.362637 (TC-delivery-07; GT-09)
+      - `…::test_tc_delivery_09_reclass_key_ssp_delivered`: event 1 (POB #1 deliver 5, bill 0; POB #3 bill 400) gives contract position +77.898910 and reclass 0. Event 2 (POB #2 deliver 2) gives contract position −159.167493 and reclass POB #1 91.686344, POB #2 67.481149, POB #3 0 (TC-delivery-09)
+      - `…::test_tc_je_01_january_reclass_attribution`: after golden step 04, Contract 2 reclass attribution POB #1 58.85 to unbilled receivable and Contract 1 reclass 0.00 (legacy 06 §7.3 TC-JE-01; journal lines in END-10)
+      - `…::test_tc_prospective_19_one_reclass_policy`: a priced VC line on a contract with net contract asset 190.00 gives total reclass 190.00 after both the delivery path and the modification path, with VC lines attributed 0.00 under the preset (legacy 03 §7.3 TC-19 fixed; probe P-17 inputs in legacy 03 §6.4; DEV-057)
+      - `backend/tests/engine/kernel/test_stage_registry.py::test_stage_registry_complete`: stage 10 is in `STAGES` and absent from `PENDING_STAGES`
+      - Item ENG-S10-FUTURE-INCEPTION-1 (fragment rev 1.8 / BUILD_SPEC 1.83; supervisor ruling R-107 (a) of 2026-09-30; ENGINE_SPEC_B C-05, S10-R-22 and S12-R-13 rev 1.100): a contract booked ahead of the open periods of its contracting entity computes. `backend/tests/engine/s10_billing_balances/test_s10_no_measured_period.py` — `erev_engine.compute` on frozen key bundles put into the booked-ahead shape by `backend/tests/support/booked_ahead.py` (twelve earlier open periods, every carried period `future`). `…::test_c05_a_contract_booked_ahead_of_the_open_periods_computes`, eight shapes — a draft; an active invoiced contract under subledger and under ERP billing; the same paid and delivered; a membership recognised daily; a combination of two contracts; a combined group across two entities; a foreign-currency contract in two books: no balance row, no posting intent, no FX layer movement; the contract version and every obligation version equal those of the open form column for column except `netting_reclass_amount` 0 and `netting_reclass_role` NULL; the version-date node is of formula `pos.reclass_attribution.no_measured_period.v1` without an input; every schedule line is one of the open form's; every trace node re-evaluates. `…::test_c05_generated_worlds_booked_ahead_compute_and_present_nothing`: the same on the generated property worlds (`support.prop_worlds`; daily, monthly and point-in-time lines with deliveries and billings; ASC606 and IFRS15). `…::test_c05_the_deterministic_schedule_of_a_contract_booked_ahead_is_whole`: the membership's thirteen schedule lines are those of the open form, which posts thirteen intents where the booked-ahead form posts none. `…::test_c05_an_entity_that_is_behind_does_not_stop_another_entity_of_the_group`: US02's horizon ends on 31 December 2025 and US01 has January 2026 open — US01's balance row, intent and attribution node are those of the open form; US02 gets none, and its obligation the zero node where the open form attributes 7,333.33 of contract asset. `…::test_dg_par_05_the_exact_columns_of_a_version_booked_ahead_bind_their_nodes`, two shapes: the product's exact-column reader (`reports.exact_sources.attach_exact_texts`; 04 §17.1 rule 4) attaches every exact text of the version booked ahead — the reclass "0", every other column the open form's text; without the node it refuses the run under rule DG-PAR-05. `…::test_s10_r22_the_formula_of_an_unmeasured_obligation_is_zero_over_no_input`. Before the rule the thirteen compute nodes raised `IndexError` in stage 10; with the stage 12 half alone missing, eleven of them raise `ValueError` ("end must not precede start"); with the node alone missing, twelve fail. `backend/tests/unit/test_explain_service.py::test_unmeasured_reclass_narrative_renders_without_an_input`: the node's sentence names no input and the explanation is built. `backend/tests/domain/contracts/test_booked_ahead.py` — through `POST /contracts` on the seat world (AVM-US open to September 2026). `…::test_a_contract_booked_ahead_of_the_open_periods_is_stored_and_computed`: ten seats from 1 November 2026 — 201, the computation `SUCCEEDED` and the group's head, one version, no exception item, no balance and no ledger line; the explain route renders the zero node; the activation computes and posts nothing; once October and November are open the November revenue of 1,972.60 posts. `…::test_an_entity_behind_does_not_stop_the_other_entity_of_a_combined_group`: a second entity open to June — its contract from 1 August is stored, computed and activated without a line; combined with an AVM-US contract the group computes, AVM-US presented for August and September and the other entity not
+    - Answer keys: none (`POS-*` close in AKS-4)
+    - Golden: none (GT-05, GT-06, GT-09 close in GPA-2)
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: REQ-BIL-005, REQ-BIL-006, REQ-BIL-010; REQs contributed: none
+    - Hint closure: REQ-BIL-005 `TC-JE-01`; REQ-BIL-006 `TC-delivery-09`, `TC-19`; REQ-BIL-010 `UNIT`; REQ-REC-004 `TC-delivery-02`, `04`, `07` reclass parts
+  - **Read:** ENGINE_SPEC_B §10.2.7, §10.2.8 (S10-R-22 to S10-R-25), §10.3, §10.5, §10.7 EX-10-A, EX-10-B; POLICIES ALG-02 §2.2 (CHK-010, CHK-011), §5.7 PT-07 (CHK-117), POL-121, POL-122, POL-124, JET-06, §6.3; legacy 02 §7.3 TC-delivery-02, 04, 07, 09; legacy 03 §7.3 TC-19; legacy 06 §7.3 TC-JE-01; D-15; 03 REQ-BIL-005, REQ-BIL-006, REQ-BIL-010
+  - **Gates:** GK-01 `make ci`; GK-04 `make ci`
+
+- [ ] **ENC-15 Stage 11 contract costs: capitalisation, amortisation segments, impairment and the IFRS reversal.**
+  - **Prerequisites:** ENC-14
+  - **Scope:**
+    - Paths: `backend/erev_engine/stages/s11_costs_loss/__init__.py` (`run(ctx, st, tb) -> CostLossState`); private `capitalise.py`, `amortise.py`, `impair.py`; `backend/tests/engine/s11_costs_loss/test_s11_costs.py`
+    - Schema: none
+    - API: none
+    - Engine: ENGINE_SPEC_B §11.2.1 to §11.2.5 S11-R-01 to S11-R-10, S11-R-11a, S11-R-11b; S11-INV-01 to S11-INV-04; findings `COST_RELATED_POB_MISSING`, `COST_PATTERN_INVALID`, `COST_NO_EAC`; formulas `cost.capitalise.v1`, `cost.expense_reason.v1`, `cost.amortise.straight_line.v1`, `cost.amortise.proportional.v1`, `cost.recoverable.v1`, `cost.impair.us.v1`, `cost.impair.ifrs_reversal.v1`, `cost.carrying.v1`
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/s11_costs_loss/test_s11_costs.py::test_ex_11_a_k09_daily_amortisation`: commission 6,480.00 amortised from 2026-09-01 to 2029-08-31 (`DAILY`, 1,096 days) gives September 2026 amortisation 177.37 and closing carrying amount 6,302.63 (EX-11-A)
+      - `…::test_ex_11_a_k02_daily_amortisation`: commission 12,000.00 from 2026-01-01 to 2027-12-31 (`DAILY`, 730 days) gives cumulative 3,994.52 at 31 August, September 493.15, opening 8,005.48 and closing 7,512.33 (EX-11-A)
+      - `…::test_chk_131_impairment_and_ifrs_reversal`: 40,000.00 over 48 months (`MONTHLY_EVEN`). Year 1: amortisation 10,000.00 and carrying 30,000.00; recoverable 100,000.00 − 85,000.00 = 15,000.00, so impairment 15,000.00 and segment 2 from 2027-01-01 with base 15,000.00. Year 2, ASC606: amortisation 5,000.00 and carrying 10,000.00, never reversed (S11-INV-03). Year 2, IFRS15: reversal min(25,000.00, 20,000.00) − 10,000.00 = 10,000.00 and carrying 20,000.00. Year 3, IFRS15: amortisation 10,000.00 (EX-11-A; CHK-131; S11-INV-04)
+      - `…::test_ex_11_a_impairment_floor`: carrying amount 5,000.00, remaining expected consideration 100,000.00 and remaining direct costs 215,000.00 give recoverable −115,000.00. The impairment is min(5,000.00, max(0, 5,000.00 − (−115,000.00))) = 5,000.00, not 120,000.00, and the carrying amount is 0.00; nothing beyond the carrying amount is posted (EX-11-A floor row; ENGINE_SPEC_B §11.2.4 and S11-R-08 rev 1.3; JET-09c; REQ-CST-004 rev 1.3; key `COST-S8-CONTRACT-COSTS-IMPAIRMENT` checkpoint `end-2028-floor`)
+      - `…::test_chk_131_one_year_expedient`: a 1,200.00 commission with a 12-month period, a commensurate renewal commission and POL-140 `APPLY` is expensed; node `cost_expensed` carries the expedient reason and no asset exists
+      - `…::test_s11_r01_capitalised_on_activation`: a cost incurred while the contract is not active in the book is capitalised on the date the contract becomes active
+      - `…::test_s11_r02_fulfilment_cost_requires_judgement`: a cost to fulfil without a REVIEWED judgement attesting the three 340-40-25-5 criteria is not capitalised
+      - `…::test_s11_r05_renewal_expectation_prospective`: a later `RENEWAL_EXPECTATION` version starts a new segment on the day after its effective date, amortising the carrying amount after that day's amortisation over the remaining months (REQ-CST-007; D-89 L7-6-Q-7)
+      - `…::test_s11_r09_impairment_includes_anticipated_renewals`: consideration from anticipated renewals in the `RENEWAL_EXPECTATION` version in force enters the recoverable amount (ASU 2016-20; D-76)
+      - `…::test_cost_findings`: related obligation keys outside the group yield `COST_RELATED_POB_MISSING` (`ERROR`); `PROPORTIONAL_TO_RELATED_REVENUE` with a period different from the contract term yields `COST_PATTERN_INVALID` (`ERROR`); an impairment test without an `EAC` version yields `COST_NO_EAC` (`INFO`) once per asset
+      - `…::test_s11_inv_01_carrying_identity`: `carrying_amount = capitalized_cum − amortized_cum − impaired_cum + impairment_reversed_cum − clawback_cum − accelerated_cum ≥ 0` at every period end of CHK-131
+    - Answer keys: none (`COST-*` close in AKS-6)
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: REQ-CST-002, REQ-CST-003, REQ-CST-004, REQ-CST-007; REQs contributed: none
+    - Hint closure: REQ-CST-007 `UNIT`
+  - **Read:** ENGINE_SPEC_B §11.1, §11.2.1 to §11.2.5 (S11-R-01 to S11-R-11b; §11.2.4 and S11-R-08 rev 1.3), §11.3 to §11.5, §11.7 EX-11-A (floor row, rev 1.3); POLICIES POL-140 to POL-144, JET-09a to JET-09d (CHK-130, CHK-131; JET-09c rev 1.3); `_coverage/ADJUDICATION.md` §10 R-COST-03, §6.2 row 10; D-76 (contract-cost impairment); 03 REQ-CST-002 to REQ-CST-004, REQ-CST-007
+  - **Gates:** GK-01 `make ci`; GK-04 `make ci`
+
+- [ ] **ENC-16 Stage 11 clawbacks, termination acceleration and loss provisions.**
+  - **Prerequisites:** ENC-15
+  - **Scope:**
+    - Paths: `backend/erev_engine/stages/s11_costs_loss/loss.py` and `impair.py` (clawback, acceleration); `backend/erev_engine/stages/__init__.py` (register stage 11); `backend/tests/engine/kernel/test_stage_registry.py` (remove 11); `backend/tests/engine/s11_costs_loss/test_s11_loss.py`
+    - Schema: none
+    - API: none
+    - Engine: ENGINE_SPEC_B §11.2.6 S11-R-12, S11-R-13; §11.2.7 S11-R-14 to S11-R-17; S11-INV-05, S11-INV-06; finding `LOSS_EAC_MISSING`; formulas `cost.clawback.v1`, `cost.accelerate.v1`, `loss.tp_unconstrained.v1`, `loss.expected_margin.v1`, `loss.required_provision.v1`, `loss.movement.v1`
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/s11_costs_loss/test_s11_loss.py::test_chk_132_loss_provision`: fixed price 1,000,000.00, cost to cost, EAC 900,000.00 in Year 1 then 1,100,000.00, cumulative costs 450,000.00, 770,000.00 and 1,100,000.00. Revenue to date 500,000.00 / 700,000.00 / 1,000,000.00; total expected loss 100,000.00 from Year 2; required provision 0.00 / 30,000.00 / 0.00 (EX-11-B; CHK-132; S11-INV-05)
+      - `…::test_ex_11_b_constrained_bonus_variant`: a bonus of 20,000.00, unconstrained and constrained to 0.00 until earned in Year 3, gives TP_u 1,020,000.00, total loss 80,000.00 and required provision 0.00 / 10,000.00 / 0.00, with Year 3 revenue 320,000.00 (EX-11-B)
+      - `…::test_chk_112_termination_acceleration`: a commission of 36,000.00 amortised over 36 months (POL-141 renewal commissions not commensurate) with termination at month 18 under POL-145 `ACCELERATE_TO_REMAINING_BENEFIT` gives acceleration 18,000.00 and a cost asset of 0.00 (CHK-112)
+      - `…::test_s11_r12_clawback`: `COST_INCURRED` with `purpose = COST_TO_OBTAIN` and `cost_adjustment = CLAWBACK` reduces the asset by its amount and increases `clawback_cum` (REQ-CST-005)
+      - `…::test_s11_r15_books_scope`: book ASC606 tests only contracts with `scope_605_35 = true`, at the POL-150 unit, with 605-35 costs; book IFRS15 tests every contract with an `EAC` element using IAS 37 unavoidable costs (POL-152; POLICIES §6.2 row 11; REQ-LOS-002)
+      - `…::test_s11_r14_loss_eac_missing`: an in-scope unit measured on costs without an approved `EAC` version at the period end yields `LOSS_EAC_MISSING` (`WARNING`)
+      - `…::test_s11_r17_release_schedule_informational`: the `LOSS_PROVISION_RELEASE` schedule lines have `is_released_at_close = false`
+      - `…::test_s11_inv_06_cost_rollforward_identity`: per asset, opening + additions − amortisation − impairment + reversal − clawback − acceleration = closing for every period of CHK-131 and CHK-112
+      - `backend/tests/engine/kernel/test_stage_registry.py::test_stage_registry_complete`: stage 11 is in `STAGES` and absent from `PENDING_STAGES`
+    - Answer keys: none (`LOSS-*`, `JE-CHK-132-*`, `IFRS-SW11-*` close in AKS-6)
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: REQ-CST-005, REQ-LOS-001, REQ-LOS-002; REQs contributed: REQ-CST-006
+  - **Read:** ENGINE_SPEC_B §11.2.6, §11.2.7 (S11-R-12 to S11-R-17), §11.3 to §11.5, §11.7 EX-11-B; POLICIES POL-145, POL-150 to POL-153, JET-09e, JET-12 (CHK-132), §5.3 PT-03 (CHK-112), §6.2 row 11; 03 REQ-CST-005, REQ-LOS-001, REQ-LOS-002
+  - **Gates:** GK-01 `make ci`; GK-04 `make ci`
+
+- [ ] **GATE-ENC Phase ENC checkpoint.**
+  - **Prerequisites:** every item of phase ENC (ENC-1 to ENC-16)
+  - **Scope:** verification and evidence; fixes only for defects this checkpoint finds
+  - **Acceptance:**
+    - Exit criteria: every exit criterion of PHASES §1 row ENC holds. Evidence: packages `s09_recognition`, `s10_billing_balances` and `s11_costs_loss` exist and are registered in `STAGES`; the ENC-1 to ENC-16 tests pass inside `make ci`; `make properties` is green, including P4 schedule part and P10
+    - Membership: the 38 requirements of PHASES §6.8 are each listed under "REQs completed" by exactly one item. They are: REQ-REC-002 (ENC-1); REQ-REC-003, REQ-REC-017 (ENC-2); REQ-REC-001, REQ-REC-005, REQ-REC-006, REQ-REC-012, REQ-REC-013, REQ-REC-014, REQ-REC-015 (ENC-3); REQ-REC-004, REQ-REC-026 (ENC-4); REQ-REC-007, REQ-REC-008 (ENC-5); REQ-REC-009, REQ-REC-010 (ENC-6); REQ-REC-011, REQ-REC-016, REQ-POB-006 (ENC-8); REQ-REC-018, REQ-REC-021 (ENC-10); REQ-BIL-002, REQ-BIL-008, REQ-BIL-012 (ENC-11); REQ-BIL-003, REQ-BIL-007, REQ-TP-018 (ENC-12); REQ-BIL-004 (ENC-13); REQ-BIL-005, REQ-BIL-006, REQ-BIL-010 (ENC-14); REQ-CST-002, REQ-CST-003, REQ-CST-004, REQ-CST-007 (ENC-15); REQ-CST-005, REQ-LOS-001, REQ-LOS-002 (ENC-16). CHK-010 to CHK-014, CHK-029, CHK-050 to CHK-053, CHK-060, CHK-061, CHK-110, CHK-111, CHK-116, CHK-117 and CHK-140 to CHK-145 have `test_chk_<nnn>_<slug>` tests
+    - Gates: the PHASES §4 row GATE-ENC is green on a clean tree (`git status --porcelain` empty) after the last commit: `make ci`, `make test-pg`, `make e2e` (unfiltered), `make properties` (unfiltered), `erev controls-report --tags-only` inside `make lint`
+  - **Read:** PHASES §1 row ENC, §4 row GATE-ENC, §6.8, §8.3 rows COV-C-02, 04, 06, 07, 12, 14, §12, §16; header §6
+  - **Gates:** GK-11 `make ci`; `make test-pg`; `make e2e`; `make properties` (row GATE-ENC)
+
+## 09 END Engine stages 12 to 14 and `compute`
+
+**Entry criteria.** GATE-ENC ticked. Stages 01 to 11 exist and are registered in `STAGES`.
+
+**Exit criteria (PHASES §1 row END).** Stage packages of PHASES §16 for END per ENGINE_SPEC_B §12, §13 and §14.2. `compute` of ENGINE_SPEC §0.3 with DG-ENG-03, 05, 08 and 10. CHK unit tests of COV-C-03, 08 and 09, including CHK-084. The P5 engine part, P8, P12, P13, P14 and the metamorphic suite.
+
+**Gate scope at exit (PHASES §4 row GATE-END).** `make ci`; `make test-pg`; `make e2e` unfiltered; answer keys as GATE-EKC (loader and coverage unit tests inside `make ci`); `make properties` unfiltered; `erev controls-report --tags-only` inside `make lint`.
+
+**Membership.** 15 requirements (PHASES §6.9): REQ-BK-002 to REQ-BK-005, REQ-FX-001 to REQ-FX-006, REQ-ENT-001 to REQ-ENT-004, REQ-JE-002. PROP:P1 `compute` part, P5 engine part, P8, P12, P13, P14 and metamorphic (§12). CHK unit tests CHK-020 to CHK-026 and CHK-130 to CHK-138 (COV-C-03), CHK-070 and CHK-071 (COV-C-08), CHK-080 to CHK-084 (COV-C-09). No control assignment, route row, placement, journey or make target.
+
+- [ ] **END-1 Stage 12 rates and contract-liability layers.**
+  - **Prerequisites:** GATE-ENC
+  - **Scope:**
+    - Paths: `backend/erev_engine/stages/s12_fx_entities/__init__.py` (`run(ctx, st, tb) -> FxState`); private `rates.py`, `layers.py`; `backend/tests/engine/s12_fx_entities/test_s12_layers.py`; fragment rev 1.7 (item ENG-S12-DUE-DATE-1): `backend/tests/engine/s13_books/test_s13_layer_period.py`, `backend/tests/domain/contracts/test_billing_due_date.py`
+    - Schema: none
+    - API: none
+    - Engine: ENGINE_SPEC_B §12.1; §12.2.1 S12-R-01, S12-R-02; §12.2.2 S12-R-03 to S12-R-08; S12-INV-01, S12-INV-03; finding `FX_RATE_MISSING`; formulas `fx.layer.create.v1`, `fx.layer.consume.fifo.v1`, `fx.layer.consume.pro_rata.v1`, `fx.asset_layer.create.v1`, `fx.credit_memo_difference.v1`, `fx.revenue_functional.v1`; rate inputs as `SourceRef(ref_type="fx_rate")`
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/s12_fx_entities/test_s12_layers.py::test_chk_080_liability_layers_at_historical_rates`: functional USD, contract EUR. Invoices of EUR 6,000.00 on 1 January at 1.1000 and EUR 6,000.00 on 1 July at 1.2000 give layers L1 USD 6,600.00 and L2 USD 7,200.00. Revenue January to June is USD 1,100.00 a month from L1, and July to December USD 1,200.00 a month from L2. L1 is exactly 0.00 on 30 June, no FX movement exists, and annual revenue is USD 13,800.00 (CHK-080; S12-INV-01)
+      - `…::test_ex_12_a_layer_relief`: an invoice of EUR 3,000.00 at spot 1.123456 gives L1 EUR 3,000.00 / USD 3,370.37. Monthly reliefs are USD 1,123.46 (31 Jan), 1,123.45 (28 Feb) and 1,123.46 to completion on 15 Mar, the cumulatively rounded shares of S12-R-05 (EX-12-A)
+      - `…::test_s12_r06_remainder_rate`: revenue beyond the available liability creates an asset layer at the period average rate under POL-162 `PERIOD_AVERAGE`, giving EUR 500.00 at 1.1350 = USD 567.50 (EX-12-A)
+      - `…::test_s12_r01_missing_rate`: a flow whose date has no spot rate yields `FX_RATE_MISSING` (`ERROR`)
+      - `…::test_s12_r04_layer_date`: under POL-160 `EARLIER_OF_RECEIPT_AND_UNCONDITIONAL_DUE` an invoice is dated the earlier of its unconditional date and its first receipt; the IFRS15 book applies IFRIC 22 dates (POLICIES §6.2 extra row "FX transaction date for advances")
+      - Item ENG-S12-DUE-DATE-1 (fragment rev 1.7 / BUILD_SPEC 1.66; supervisor ruling R-81 of 2026-09-30, amending D-87 L6-5-Q-14; ENGINE_SPEC_B S12-R-04 rev 1.83): `…::test_s12_r04_layer_date_stays_in_the_period_of_entry` — under the earlier-of option a layer date in a later period than the line's S10-R-06 date gives the end of that period (issued 12 January, due 12 February, unpaid or paid on 5 February: 31 January), a date in an earlier period gives the S10-R-06 date (a receipt of 12 January naming an invoice of 15 February: 15 February), a date inside the period stands, the ASC606 election is unchanged, and the layers equal the position at every period end (S12-INV-03). `backend/tests/engine/s13_books/test_s13_layer_period.py` — `erev_engine.compute` on frozen key bundles, fourteen cases of which twelve were refused before: FX-POL-160 with the EUR 12,000.00 invoice of 1 January due on 28 February or 30 April, unpaid or paid on 20 February (IFRS15: layer EUR 11,000.00 at the 31 January spot 1.1050 = USD 12,155.00, contract liability 12,155.00 / 11,050.00 / 9,945.00, every figure that of the invoice due on 31 January; ASC606 under the election unchanged at 13,080.00), and the same on the default option in both books; Example 38 in one currency under `ERP` (the position 1,000.00 at every close, every figure that of the invoice without a due date); a receipt of 20 January naming an invoice of 15 February in `ERP` and `ENGINE` mode, cancellable or not, and its foreign-currency form; a second line recorded on 5 February on an invoice paid on 10 January; controls — dates inside the issue period as before, `ENGINE` mode not reading the due date. `backend/tests/domain/contracts/test_billing_due_date.py::test_an_invoice_on_payment_terms_computes_as_without_a_due_date` — through `POST /contracts/{id}/events` on K-07 (the shapes lane F-RPS-REG measured: issued 31 August and due 30 September with August open or locked; issued 12 September and due 12 October): the computation is `SUCCEEDED`, no blocking exception, contract liability EUR 10,714.29, each beside its control without a due date
+      - `…::test_s12_r07_pro_rata_consumption`: under POL-161 `PRO_RATA` a debit is apportioned over open liability layers by open transaction balance with `largest_remainder` keyed by layer key
+      - `…::test_s12_r08_credit_memo_settlement_difference`: a credit memo relieving contract-liability layers at historical carrying against a spot debit produces the JET-10c difference target
+      - `…::test_fx_001_currency_roles_and_rate_ids`: every stage 12 target carries transaction currency and amount, functional currency and amount, and the `rate_key` and `version_key` of the rate used (REQ-FX-001, REQ-FX-006)
+      - `…::test_s12_inv_03_layers_equal_net_position`: Σ open contract-liability layers − Σ open asset layers (transaction currency) = NP for every (c, e, b, t) of CHK-080
+      - Item ENG-S10-FUTURE-INCEPTION-1 (fragment rev 1.8 / BUILD_SPEC 1.83; supervisor ruling R-107 (a) of 2026-09-30; ENGINE_SPEC_B S12-R-13 rev 1.100): a unit whose replay would begin after the horizon is not replayed. Witnesses: the compute cases of `backend/tests/engine/s10_billing_balances/test_s10_no_measured_period.py` listed under ENC-14 — without the stage 12 half eleven of the thirteen compute nodes raise `ValueError` in `covering_periods` ("end must not precede start": seven of the eight shapes, the generated worlds, the schedule test and the two export shapes); with it none has an FX layer movement
+    - Answer keys: none (`AK-FAM:fx` keys close in AKS-7)
+    - Golden: none
+    - Controls: none (CTL-020's first tagged test is CLO)
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: REQ-FX-001, REQ-FX-002, REQ-FX-006; REQs contributed: none
+    - Hint closure: REQ-FX-001 `UNIT`; REQ-FX-006 `UNIT`
+  - **Read:** ENGINE_SPEC_B §12.1, §12.2.1, §12.2.2 (S12-R-01 to S12-R-08), §12.3 to §12.5, §12.7 EX-12-A; POLICIES ALG-08 §2.9.1 to §2.9.3 (CHK-080), POL-160 to POL-163, §6.2; D-25, D-25a; 03 REQ-FX-001, REQ-FX-002, REQ-FX-006
+  - **Gates:** GK-01 `make ci`; GK-04 `make ci`
+
+- [ ] **END-2 Stage 12 period-end remeasurement, monetary liabilities and late-event rates; P12.**
+  - **Prerequisites:** END-1
+  - **Scope:**
+    - Paths: `backend/erev_engine/stages/s12_fx_entities/remeasure.py`, `monetary.py`; `backend/tests/engine/s12_fx_entities/test_s12_remeasurement.py`; `backend/tests/properties/test_prop_p12_fx_layers.py`
+    - Schema: none
+    - API: none
+    - Engine: ENGINE_SPEC_B §12.2.2 S12-R-19 to S12-R-21; §12.2.3 S12-R-09 to S12-R-12; §12.2.4 S12-R-13; S12-INV-02, S12-INV-04, S12-INV-06, S12-INV-08; formulas `fx.settlement.spot.v1`, `fx.remeasure.closing.v1`, `fx.monetary_liability.create.v1`, `fx.monetary_liability.recognition_difference.v1`, `fx.monetary_liability.settle.v1`, `fx.monetary_liability.remeasure.closing.v1`, `fx.gain_loss.sum.v1`; E-86 `LIABILITY_LAYER_REMEASURED`
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/s12_fx_entities/test_s12_remeasurement.py::test_chk_081_contract_asset_remeasured`: billing in arrears with average rates January 1.1100, February 1.1300 and March 1.1500 and closing rates 1.1200 and 1.1400, and EUR 3,000.00 invoiced on 31 March at 1.1600. Revenue USD 1,110.00 / 1,130.00 / 1,150.00; FX gains 10.00 / 30.00 / 50.00; contract asset presented 1,120.00 at 31 January and 2,280.00 at 28 February; receivable at invoice 3,480.00 (CHK-081; S12-INV-04)
+      - `…::test_chk_082_refundable_advance_override`: EUR 12,000.00 invoiced on 1 January at 1.1000 with the approved POL-163 contract override, January average 1.1100 and closing 1.1200. ASC606: January revenue USD 1,110.00; carrying 12,090.00; EUR 11,000.00 remeasured at 1.1200 to 12,320.00; JET-10b target Dr `FX_GAIN_LOSS` 230.00 / Cr `CONTRACT_LIABILITY` 230.00. The IFRS15 book remeasures no contract-liability layer (CHK-082; S12-INV-06)
+      - `…::test_chk_083_engine_receivable_remeasurement`: `ENGINE` mode, receivable EUR 12,000.00 invoiced 1 January at 1.1000 and unpaid at 31 January at closing 1.1200, gives JET-10a′ Dr `ACCOUNTS_RECEIVABLE` 240.00 / Cr `FX_GAIN_LOSS` 240.00 and a receivable of 13,440.00 (CHK-083)
+      - `…::test_chk_084_a_refund_liability_remeasured`: 100 units transfer on 2026-03-01 for EUR 10,000.00 received at spot 1.1000 with E = 3, giving a `REFUND_LIABILITY` layer of 330.00 at spot. Remeasurements: 31 Mar closing 1.1200 → 336.00, loss 6.00. 15 Apr, two units credited at 1.1500: settled share `cumulative_posted`(336.00, 33,600, 2/3) = 224.00, remeasured to 230.00, loss 6.00, carrying 112.00. 30 Apr closing 1.0800 → 108.00, gain 4.00. 31 May window expiry at 1.1000 → 110.00, loss 2.00. Totals: revenue USD 10,780.00; net FX loss 10.00; refund liability 0.00; contract liability 0.00 (EX-12-B; CHK-084 (a))
+      - `…::test_chk_084_b_deposit_liability_remeasured`: EUR 1,000.00 received on 2026-01-10 at 1.1000 gives a `DEPOSIT_LIABILITY` layer of 1,100.00. At closing 1.1200 on 31 January: loss 20.00. `CONTRACT_CRITERIA_MET` on 15 February at spot 1.1300: loss 10.00, the layer consumed at 1,130.00, and a contract-liability layer of EUR 1,000.00 at USD 1,130.00 dated 15 February (CHK-084 (b); S12-R-20)
+      - `…::test_chk_084_c_consideration_payable_remeasured`: EUR 50,000.00 promised on 2026-06-01 at 1.1000 gives a `CONSIDERATION_PAYABLE` layer of 55,000.00. At closing 1.0900 on 30 June: gain 500.00. The customer incentive asset stays at 55,000.00 (CHK-084 (c); S12-R-21)
+      - `…::test_s12_r13_late_event_rates`: a delivery effective in February and recorded in March converts at the February rates of its own effective date and period (POL-181)
+      - `…::test_s12_inv_02_no_remeasurement_to_revenue`: no remeasurement target has role `REVENUE`
+      - `…::test_s12_inv_08_monetary_layers_equal_balances`: for each monetary-liability role, Σ open layers (transaction currency) equals the open balance of that role, and after period-end remeasurement each carries transaction amount × closing rate
+      - `backend/tests/properties/test_prop_p12_fx_layers.py::test_p12_fx_layers`: over generated FX rate paths and billing and revenue paths, contract-liability layer functional amounts never change after creation, consumed layers end at 0, and remeasurement never targets `REVENUE`. Contract assets, receivables, refund liabilities, deposit liabilities and consideration payable carry functional = transaction × closing rate at every period end and at settlement, with the difference on `FX_GAIN_LOSS`, in every book (PROP:P12; D-25, D-25b)
+    - Answer keys: none (`FX-*` close in AKS-7)
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: PROP:P12 `backend/tests/properties/test_prop_p12_fx_layers.py`
+    - REQs completed: REQ-FX-003, REQ-FX-004; REQs contributed: REQ-FX-002
+    - Hint closure: REQ-FX-002 and REQ-FX-003 `PROP:P12`
+  - **Read:** ENGINE_SPEC_B §12.2.2 S12-R-19 to S12-R-21, §12.2.3, §12.2.4 (S12-R-09 to S12-R-13), §12.3, §12.5, §12.7 EX-12-B; POLICIES ALG-08 §2.9.1 to §2.9.3 (CHK-081 to CHK-084), POL-163, POL-164, POL-181, JET-10a to JET-10d; D-25, D-25a, D-25b; dev-guide §9.7 P12; 03 REQ-FX-003, REQ-FX-004
+  - **Gates:** GK-01 `make ci`; GK-04 `make properties K=p12`
+
+- [ ] **END-3 Stage 12 performing and contracting entities, intercompany pairs and reporting-currency translation.**
+  - **Prerequisites:** END-2
+  - **Scope:**
+    - Paths: `backend/erev_engine/stages/s12_fx_entities/intercompany.py`, `reporting.py` (exported pure function `translate_to_reporting` for the RPS reports, S12-R-18); `backend/erev_engine/stages/__init__.py` (register stage 12); `backend/tests/engine/kernel/test_stage_registry.py` (remove 12); `backend/tests/engine/s12_fx_entities/test_s12_entities.py`
+    - Schema: none
+    - API: none
+    - Engine: ENGINE_SPEC_B §12.2.5 S12-R-14 to S12-R-17; §12.2.6 S12-R-18; S12-INV-05, S12-INV-07; formulas `ent.pair.v1`, `ent.performing_revenue_rate.v1`; nodes `ic_pair_txn`, `ic_pair_functional_contracting`, `ic_pair_functional_performing`
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/s12_fx_entities/test_s12_entities.py::test_ex_12_a_layers_asset_layers_and_pairs`: EUR contract, contracting entity US (USD); services S (EUR 3,000.00, January to March, `MONTHLY_EVEN`) performed by UK (GBP); licence L (EUR 1,500.00 at a point in time on 15 March) performed by US. Pair amounts: US USD 1,123.46 / 1,123.45 / 1,135.00 against UK GBP 861.20 (average 0.8612) / 865.50 (0.8655) / 870.00 (0.8700). US licence revenue is USD 1,690.96. At 31 March closing 1.1400, asset layers of EUR 1,500.00 are remeasured from 1,702.50 to 1,710.00 (JET-10a 7.50), and the JET-06 contract asset target is 1,710.00. The EUR 1,500.00 invoice on 20 April at 1.1450 settles the asset layers with a gain of 7.50. Totals: US revenue USD 1,690.96; US FX gain USD 15.00; intercompany pairs EUR 3,000.00; UK revenue GBP 2,596.70 (EX-12-A; S12-INV-05)
+      - `…::test_chk_070_intercompany_pair`: TP 100,000.00 USD in one currency. The licence (US contracts and performs) has allocation 60,000.00 and transfers in P1. Services (US contracts, UK performs) have allocation 40,000.00, 50% performed in P1. US invoices 100,000.00 at inception in `ERP` mode. P1 targets: US revenue relief 60,000.00; US JET-13 Dr `CONTRACT_LIABILITY` 20,000.00 / Cr `INTERCOMPANY_DUE_TO` (counterparty UK) 20,000.00; UK Dr `INTERCOMPANY_DUE_FROM` (counterparty US) 20,000.00 / Cr `REVENUE` 20,000.00 (CHK-070; POL-170 `PERFORMING_ENTITY`)
+      - `…::test_chk_071_contract_asset_held_by_contracting_entity`: CHK-070 without an invoice by the end of P1 gives US NP (80,000.00) and a US contract asset of 80,000.00; UK revenue 20,000.00 and due-from 20,000.00 (CHK-071; S10-INV-08)
+      - `…::test_s12_inv_07_pairs_agree`: for every (contracting entity, performing entity, period), Σ due-to = Σ due-from in transaction currency (REQ-ENT-003)
+      - `…::test_ent_004_legacy_cross_entity_one_allocation`: under the preset, golden Contract 2 with obligations of `Mock Entity 1` and `Mock Entity 2` has one allocation across entities, 470.77 / 313.85 / 115.38 / 0.00 (CHK-002). Balances and netting are per entity, and deferred-revenue and unbilled accounts are per obligation (REQ-ENT-004; DEV-076)
+      - `…::test_s12_r17_revenue_in_performing_entity_calendar`: revenue schedule lines carry the performing entity and that entity's period keys; contract-balance targets carry the contracting entity
+      - `…::test_s12_r18_reporting_translation`: `translate_to_reporting` places balances at the closing rate and flows at the average rate, with a translation line and residue to `ROUNDING` (REQ-FX-005; D-16)
+      - `backend/tests/engine/kernel/test_stage_registry.py::test_stage_registry_complete`: stage 12 is in `STAGES`
+    - Answer keys: none (`ENT-*` close in AKS-7)
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none (PROP:P5 hints of REQ-ENT-002 and REQ-ENT-003 close in END-6 and PRP-4)
+    - REQs completed: REQ-ENT-001, REQ-ENT-002, REQ-ENT-003, REQ-ENT-004, REQ-FX-005; REQs contributed: none
+    - Hint closure: REQ-ENT-004 `UNIT`; REQ-FX-005 `UNIT`
+  - **Read:** ENGINE_SPEC_B §12.2.5, §12.2.6 (S12-R-14 to S12-R-18), §12.3, §12.5, §12.7 EX-12-A; POLICIES ALG-07 §2.8 (CHK-070, CHK-071), POL-170, POL-171, JET-13; D-23; 03 REQ-ENT-001 to REQ-ENT-004, REQ-FX-005
+  - **Gates:** GK-01 `make ci`; GK-04 `make ci`
+
+- [ ] **END-4 Stage 14 template parts, counter roles and amount classes.**
+  - **Prerequisites:** END-3
+  - **Scope:**
+    - Paths: `backend/erev_engine/stages/s14_posting/__init__.py` (`run(ctx, st, tb) -> PostingState`); `templates.py` (constants `JET_PARTS`, `COUNTER_ROLES`); `amount_classes.py` (constant `AMOUNT_CLASSES`); `targets.py`; `backend/tests/engine/s14_posting/test_s14_templates.py`
+    - Schema: none
+    - API: none
+    - Engine: ENGINE_SPEC_B §14.1; §14.2.1 S14-R-01 to S14-R-03; POLICIES §2.3 JET rules R1 to R9, tables 2.3-A and 2.3-B, JET-01 to JET-17
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/s14_posting/test_s14_templates.py::test_jet_parts_cover_policies_templates`: every JET template id of POLICIES §2.3 has a `JET_PARTS` entry whose debit and credit roles equal the template. This covers JET-01, JET-01b, JET-02, JET-03, JET-04a to JET-04c, JET-05a to JET-05c, JET-06, JET-07c, JET-07d, JET-08, JET-09a, JET-09a′, JET-09b to JET-09f, JET-10a, JET-10a′, JET-10b to JET-10d, JET-11a, JET-11b, JET-12 to JET-17. Every E-03 literal of table 2.3-A and every close-run pass of table 2.3-B maps to its templates
+      - `…::test_counter_roles_and_amount_classes`: `COUNTER_ROLES` equals 05 §3.6.1; `AMOUNT_CLASSES` classifies each part as `EVENT` or `TIME` per RCP-07 (JET-06 and JET-10a are `TIME`; JET-02 on `DELIVERY_RECORDED` is `EVENT`)
+      - `…::test_s14_r01_part_targets_signed_cumulative`: part targets are signed cumulative amounts per (book, owner entity, subject, part) and period end, each with its stage 12 functional amount
+      - `…::test_s14_r02_jet_05b_through_revenue_relief`: a price change on satisfied performance settled through future pricing lowers the revenue relief target and derives Dr `REVENUE` / Cr `CONTRACT_LIABILITY`, with no separate JET-05b target
+      - `…::test_s14_r03_expiry_through_jet_02`: JET-08 expiry and the prepaid-credit lapse post through the JET-02 target with cause `NORMAL`, and the unclaimed-property part through JET-04b
+      - `…::test_jet_r4_negative_effect_swaps_sides`: a negative economic effect swaps sides and keeps a non-negative amount (POLICIES §0.9; ENGINE_SPEC_B C-02)
+    - Answer keys: none
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: none; REQs contributed: REQ-JE-002
+  - **Read:** ENGINE_SPEC_B §14.1, §14.2.1 (S14-R-01 to S14-R-03), §14.7; POLICIES §0.8, §0.9, §2.3 (JET rules, tables 2.3-A, 2.3-B, JET-01 to JET-17); 05 §3.6.1, RCP-07
+  - **Gates:** GK-01 `make ci`; GK-04 `make ci`
+
+- [ ] **END-4b Stage 14 JET-01b 25-7 revenue part: s13/s14 binding, obligation attribution (S14-R-25), CLOSE_RELEASE time share and FX split (D-91; L5-5-Q-5). Supervisor item.**
+  - **Prerequisites:** END-4, END-5, ENA-2b
+  - **Scope:**
+    - Paths: `backend/erev_engine/stages/s13_books/__init__.py` (`_DEPOSIT_PARTS_BOUND` binds the 25-7 revenue measure through one constant shared with stage 14; the D-91 rc guard in `costs_view` on a non-zero `deposit_to_revenue_cum` is removed); `backend/erev_engine/stages/s14_posting/targets.py` and `templates.py` (`_DEPOSIT_PARTS`: the JET-01b 25-7 revenue part, `EVENT` for a recognition at an event and `TIME` (`CLOSE_RELEASE`, `time_txn`) for `deposit_to_revenue_time_cum`; the part target cites the stage 09 `deposit_revenue_share` nodes); `backend/erev_engine/stages/s09_recognition/` (nodes `deposit_revenue_share:<obligation>:<period>`; `largest_remainder` over the posted inception allocation, else the resolved SSP, else the stated prices, else `TOTAL_WEIGHT_ZERO`); `backend/erev_engine/formulas.py` (`step1.deposit_revenue_share.v1`); `backend/erev_engine/stages/s12_fx_entities/` (`fx_deposit_to_revenue_functional`, S12-R-20, split over the same shares by S14-R-10); `backend/tests/engine/s14_posting/test_s14_deposits.py` (`test_jet_01b_parts_from_the_deposit_measures` amended on an allocated state); `backend/tests/engine/s13_books/`; `backend/tests/engine/s09_recognition/`
+    - Schema: none
+    - API: none
+    - Engine: ENGINE_SPEC_B §14.1 input row, Table 14-A JET-01b 25-7 row and new S14-R-25 (rev 1.7); ENGINE_SPEC §2.5 formula `step1.deposit_revenue_share.v1` and Table 0.8-A `TOTAL_WEIGHT_ZERO` at stage 14 (rev 1.6); POLICIES table 2.3-B JET-01b and the §2.3 JET-01b row (rev 1.7); 05 §3.6.7 EMOD-12 (rev 1.4)
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/s14_posting/test_s14_deposits.py::test_jet_01b_parts_from_the_deposit_measures` (amended, on an allocated state): a 25-7 recognition posts Dr `DEPOSIT_LIABILITY` / Cr `REVENUE` per `IN_SCOPE_606` obligation by `largest_remainder` over the posted inception allocation; a recognition at an event is an `EVENT` amount and a recognition at a dated point is a `TIME` amount of the `CLOSE_RELEASE` pass; the s13 and s14 part sets read one shared constant; a non-zero `deposit_to_revenue_cum` no longer raises the D-91 rc guard
+      - `backend/tests/engine/s14_posting/` (new case; D-91 gaps (iv), the FX2 figures on the FX-CHK-084-B rates 1.1000 receipt, 1.1200 January closing, 1.1300 settlement): release 100,000 transaction minor / 113,000 functional; JET-10d 2,000 at the January close (110,000 → 112,000) and 1,000 at settlement (112,000 → 113,000), total 3,000; two-obligation split [75,333, 37,667]
+      - `backend/tests/engine/s09_recognition/` (new case): `deposit_revenue_share` nodes carry params `keys`, `weights`, `key`, `basis`; Σ A_p = 0 falls back to the resolved SSP, then to the stated prices, then raises `TOTAL_WEIGHT_ZERO`
+    - Answer keys: `make answer-keys ID=FX-25-7-RELEASE-REMEASURED` (new key derived from the FX-CHK-084-B rates) and the ENA-2b keys with their JET-01b journals; no existing expected value changes
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: none; REQs contributed: REQ-CON-003 (JET-01b posting), REQ-JE-002
+  - **Read:** 01-DECISIONS D-91 "Contract and obligation gaps" (iii), (iv), (x); ENGINE_SPEC_B §14.1, Table 14-A, S14-R-05, S14-R-06, S14-R-10, S14-R-25, S12-R-20 (rev 1.7); ENGINE_SPEC §2.5 and Table 0.8-A (rev 1.6); POLICIES §2.3 JET-01b (rev 1.7); 05 §3.6.7, RCP-07, RCP-08; `.run/supervisor/d91/D-91.md`
+  - **Gates:** GK-01 `make ci`; GK-04 `make ci`
+
+- [ ] **END-5 Stage 14 role targets and deltas: posting classes, period assignment, netting reclass, voids and mapping changes.**
+  - **Prerequisites:** END-4
+  - **Scope:**
+    - Paths: `backend/erev_engine/stages/s14_posting/targets.py`, `assign.py` (calls `s08_estimates_late_events.assign_posting_period`); `backend/tests/engine/s14_posting/test_s14_deltas.py`
+    - Schema: none
+    - API: none
+    - Engine: ENGINE_SPEC_B §14.2.2 S14-R-04 to S14-R-09; S14-INV-02, S14-INV-03; formulas `post.role_target.v1`, `post.delta.v1`; `PostedAmountInput.origin_period_key` and `posting_class` (ENGINE_SPEC §0.4)
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/s14_posting/test_s14_deltas.py::test_s14_r04_period_target_and_posted_by_origin`: `period_target` is the cumulative target through the end of p minus that through the end of p − 1. `posted.by_origin` sums posted amounts by origin period and posting class, classifying E-31 kinds `ENGINE_COMPUTE`, `MANUAL_ADJUSTMENT` and `VOID_REVERSAL` as `EVENT` and `CLOSE_RELEASE`, `FX_REMEASUREMENT` and `NETTING_RECLASS` as `TIME`
+      - `…::test_s14_r05_classes_posted_by_trigger`: trigger `COMMAND` posts `EVENT` amounts for open periods and every amount of closed periods. Trigger `CLOSE_RELEASE` posts only the `TIME` amounts of the close period for its pass (`CLOSE_RELEASE`, `FX_REMEASUREMENT`, `NETTING_RECLASS`). `DRY_RUN` computes the same deltas as `COMMAND` (RCP-08)
+      - `…::test_chk_090_february_intents`: for the EX-08-A late deliveries, the February intents are Dr `CONTRACT_LIABILITY` 295.69 / Cr `REVENUE` 128.84, 118.53 and 48.32 with `origin_period_key` `FY2023-P01` and `reason_code` `LATE_EVENT`, and no intent is dated in January (CHK-090; S14-INV-03)
+      - `…::test_s14_inv_02_repeat_compute_emits_nothing`: a compute over a bundle whose `posted` equals the previous intents emits no intent (PROP:P9 engine contract)
+      - `…::test_s14_r07_netting_reclass_and_reversal`: the JET-06 target of period t is the reclass attribution at the end of t, dated the last day of t, and its reversal target is the negation dated the first day of t + 1 (EX-10-A)
+      - `…::test_s14_r08_void_delta`: voiding a delivery event whose revenue has posted gives a delta in the first open period with `reason_code = VOID` and posting kind `VOID_REVERSAL`
+      - `…::test_s14_r09_mapping_change_never_reposts`: changing the account mapping version does not change any posted period; a new delta resolves its account with the mapping version pinned for the computation
+      - `…::test_s02_r02_draft_contract_posts_nothing`: a contract with status `DRAFT` has targets but no posting intent
+      - Item ENG-COST-READBACK-1 (fragment rev 1.13 / BUILD_SPEC 1.239; supervisor ruling R-11 of 2026-09-29 as amended on 2026-10-02; ENGINE_SPEC_B S14-R-04 and S14-INV-02 rev 1.165): a posted amount answers the role key of the subject stored on its ledger lines, and one regrouping rule replaces the entry-kind match of FX remeasurement. Tests: `backend/tests/engine/s14_posting/test_s14_posted_subjects.py` — for one answer key per subject family (a cost asset with two reason variants and a refund-liability component, MOD-CHK-112 and MOD-FS-09-CANCELLATION-REFUND-COMMISSION; a contract-level loss unit, LOSS-GE-03-LOSS-CONTRACT-PROVISION and LOSS-S7-LOSS-OWN; FX remeasurement and a component, FX-CHK-084-A-REFUND-LIABILITY-REMEASURED and FX-CHK-081-CONTRACT-ASSET-REMEASURED-TO-CLOSING-RATE) the last checkpoint is computed with its three close passes, everything posted is sealed under the engine's subjects, and the computation and the passes again post nothing; a group-level subject stored under a former group answers the current group, and the vectors of `regrouped_subject_key` keep every subject of a member contract. `backend/tests/engine/s14_posting/test_s14_fx_rate_references.py` — the posted remeasurement is read back under `<group>@<entity>` and nothing posts again; the remeasurements two contracts posted as groups of their own attach to the combined group
+    - Answer keys: none (`LATE-*` close in AKS-5)
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none (PROP:P9 and PROP:P11 platform parts close in PRP-5 and PRP-6)
+    - REQs completed: none; REQs contributed: REQ-JE-002
+  - **Read:** ENGINE_SPEC_B §14.2.2 (S14-R-04 to S14-R-09), §14.4; ENGINE_SPEC §0.4 `PostedAmountInput`, §8.4 S08-R-08; POLICIES ALG-09 (CHK-090); 04 E-31; 05 RCP-04 to RCP-09
+  - **Gates:** GK-01 `make ci`; GK-04 `make ci`
+
+- [ ] **END-6 Stage 14 functional amounts, entries, accounts and keys; P5 engine part.**
+  - **Prerequisites:** END-5
+  - **Scope:**
+    - Paths: `backend/erev_engine/stages/s14_posting/intents.py`, `accounts.py`; `backend/erev_engine/stages/__init__.py` (register stage 14); `backend/tests/engine/kernel/test_stage_registry.py` (remove 14); `backend/tests/engine/s14_posting/test_s14_entries.py`; `backend/tests/properties/test_prop_p05_journal_balance.py` (engine part)
+    - Schema: none
+    - API: none
+    - Engine: ENGINE_SPEC_B §14.2.3 S14-R-10, S14-R-11; §14.2.4 S14-R-12 to S14-R-15; S14-INV-01, S14-INV-04, S14-INV-05, S14-INV-06; finding `ACCOUNT_MAPPING_MISSING`; formula `post.account_resolution.v1`
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/s14_posting/test_s14_entries.py::test_ex_14_a_agent_split_and_late_carry`: agent obligation `TKT-001/POB-01` (retained 15%) with gross allocation 1,000.00 over three units. Cumulative gross targets 333.33 / 666.67 / 1,000.00 split by `largest_remainder` 3 : 17 into (50.00, 283.33), (100.00, 566.67) and (150.00, 850.00). Unit 1 (2026-01-31): FY2026-P01 Dr `CONTRACT_LIABILITY` 333.33 / Cr `REVENUE` 50.00, Cr `BILLING_CLEARING` (`AP_SUPPLIER`) 283.33. Unit 2 (effective 2026-02-28, recorded 2026-03-05 after February was locked): FY2026-P03 with origin FY2026-P02 and `reason_code = LATE_EVENT`, Dr 333.34 / Cr 50.00, Cr 283.34. Unit 3 (2026-03-20): FY2026-P03 Dr 333.33 / Cr 50.00, Cr 283.33. The two March entries are distinct because their origin periods differ (EX-14-A; S14-R-12)
+      - `…::test_s14_r15_line_key_test_vector`: the March carry `CONTRACT_LIABILITY` line of EX-14-A has `line_key` `83300736c63604193d4d84963e7a4730332dce8962cf245e22f2b15cb5e99b0a`
+      - `…::test_s14_r10_pairs_from_one_amount`: every debit and credit pair derives from one rounded amount, and within each entry the functional debits equal the functional credits (REQ-JE-002; D-16)
+      - `…::test_s14_r11_engine_never_emits_rounding`: no intent line has role `ROUNDING`
+      - `…::test_s14_r13_dimensions`: every line carries contract, obligation where the subject is one, product or revenue category, counterparty entity for intercompany roles, and `clearing_purpose` exactly on `BILLING_CLEARING` (S14-INV-05)
+      - `…::test_s14_r14_account_mapping_missing`: a role with no mapping rule and no obligation override yields `ACCOUNT_MAPPING_MISSING` (`ERROR`) naming contract, obligation, role, entity and book, and no intent is returned
+      - `…::test_legacy_preset_account_resolution`: under the preset, golden Contract 1 January lines resolve `CONTRACT_LIABILITY` to 21001 and `REVENUE` to 5001, 5002 and 5003. Contract 2 resolves `UNBILLED_RECEIVABLE` and `CONTRACT_ASSET` to 15002 (POLICIES §6.3 mapping preset; CHK-022 accounts)
+      - `…::test_rate_key_on_every_line`: every intent line with a foreign transaction currency carries the FX rate key used (REQ-FX-006)
+      - `…::test_s14_inv_04_control_role_equals_np`: after applying the intents of CHK-010, the `CONTRACT_LIABILITY` balance excluding JET-06 lines equals NP (5,000.00)
+      - `backend/tests/properties/test_prop_p05_journal_balance.py::test_p05_engine_entries_balance`: over generated groups, every intent entry balances per (entity, book, posting period, entry, transaction currency) in transaction amounts and per (entity, book, posting period, entry) in functional amounts (PROP:P5 engine part; S14-INV-01)
+      - `backend/tests/engine/kernel/test_stage_registry.py::test_stage_registry_complete`: stage 14 is in `STAGES`
+    - Answer keys: none
+    - Golden: none
+    - Controls: none (CTL-022's first tagged test is CTR)
+    - Screens: none
+    - Journeys: none
+    - Properties: PROP:P5 engine part `backend/tests/properties/test_prop_p05_journal_balance.py::test_p05_engine_entries_balance`
+    - REQs completed: REQ-JE-002; REQs contributed: REQ-ENT-002, REQ-ENT-003
+    - Hint closure: REQ-JE-002 `UNIT`, `PROP:P5` engine part; REQ-ENT-002 and REQ-ENT-003 `PROP:P5` engine part
+  - **Read:** ENGINE_SPEC_B §14.2.3, §14.2.4 (S14-R-10 to S14-R-15), §14.4 to §14.6, §14.8 EX-14-A; POLICIES §0.8, §2.3 JET R3, §6.3; dev-guide §5.17, §9.7 P5; D-16; 03 REQ-JE-002
+  - **Gates:** GK-01 `make ci`; GK-04 `make properties K=p05`
+
+- [ ] **END-7 Stage 13 book loop, stage keys and framework switches; P13.**
+  - **Prerequisites:** END-6
+  - **Scope:**
+    - Paths: `backend/erev_engine/stages/s13_books/__init__.py` (`run_books(cb, stages) -> tuple[BookResult, ...]`); `memo.py` (constants `STAGE_POLICY_KEYS`, `STAGE_CONTEXT_MEMBERS`); `switches.py`; `backend/tests/engine/s13_books/test_s13_books.py`; `backend/tests/properties/test_prop_p13_book_equivalence.py`
+    - Schema: none
+    - API: none
+    - Engine: ENGINE_SPEC_B §13.2.1 S13-R-01 to S13-R-03; §13.2.2 S13-R-04, S13-R-05; §13.2.3 S13-R-06; S13-INV-01, S13-INV-04, S13-INV-05; ENGINE_SPEC Table 0.10-A; node aliases CV-55
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/s13_books/test_s13_books.py::test_ex_13_b_stage_keys_and_aliases`: an entity keeps `ASC606` and `IFRS15` with identical resolved values for every key of stages 02 to 10, and POL-144 is `PROHIBITED` in ASC606 and `REQUIRED_CAPPED` in IFRS15. The stage keys of stages 02 to 10 are equal, so the IFRS15 book aliases their nodes with params `alias_of_book` and `stage_key`. Stages 11, 12, 14 and 15 run again for IFRS15, and the Year 2 reversal of 10,000.00 exists only in the IFRS15 book (EX-13-B; CHK-131)
+      - `…::test_s13_r01_book_order_and_entity_sets`: books run in the order `ASC606`, `IFRS15`, `LEGACY` for the entities keeping each book, and a book with no entity produces no output
+      - `…::test_s13_r02_memo_scoped_to_call`: two `run_books` calls share no memo object, and `erev_engine` holds no module-level cache (DG-ENG-08)
+      - `…::test_s13_r06_ifrs_switch_list`: parametrised over the 18 rows of POLICIES §6.2, the IFRS15 book resolves the listed value (for example row 4 POL-021 `FALSE`, row 10 POL-144 `REQUIRED_CAPPED`, row 14 POL-202 not available). The consuming stage reads it only through `ctx.policies`, never by branching on `book_code` except the three Table 13-A context members (REQ-BK-002)
+      - `…::test_s13_inv_04_book_order_independent`: swapping the processing order of `ASC606` and `IFRS15` gives the same outputs per book
+      - `…::test_s13_inv_05_delta_requires_legacy_book`: POL-005 `DELTA` for an entity without `LEGACY` in POL-007 raises `EngineError("ENGINE_INVARIANT_VIOLATED")` naming S13-INV-05
+      - `backend/tests/properties/test_prop_p13_book_equivalence.py::test_p13_equal_policy_hashes_equal_allocations`: books whose resolved policy subsets hash identically produce identical allocation outputs (PROP:P13; S13-INV-01)
+    - Answer keys: none (`IFRS-*` close in AKS-6)
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: PROP:P13 `backend/tests/properties/test_prop_p13_book_equivalence.py`
+    - REQs completed: REQ-BK-002, REQ-BK-003; REQs contributed: none
+    - Hint closure: REQ-BK-003 `PROP:P13`; REQ-BK-002 `AK (IFRS variants)` in AKS-7; REQ-BK-003 `PERF` in PRF
+  - **Read:** ENGINE_SPEC_B §13.1, §13.2.1 to §13.2.3 (S13-R-01 to S13-R-06), §13.3, §13.5, §13.7 EX-13-B; ENGINE_SPEC §0.10 Table 0.10-A, CV-55; POLICIES §6.2; 05 RCP-11 to RCP-13; D-24; dev-guide DG-ENG-08, §9.7 P13; 03 REQ-BK-002, REQ-BK-003
+  - **Gates:** GK-01 `make ci`; GK-04 `make properties K=p13`
+
+- [ ] **END-8 Stage 13 LEGACY book fold and the delta identity.**
+  - **Prerequisites:** END-7
+  - **Scope:**
+    - Paths: `backend/erev_engine/stages/s13_books/legacy_book.py`; `backend/tests/engine/s13_books/test_s13_legacy.py`
+    - Schema: none
+    - API: none
+    - Engine: ENGINE_SPEC_B §13.2.4 S13-R-07 to S13-R-11; S13-INV-02, S13-INV-03; formula `books.legacy_fold.v1`; POLICIES JET-15
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/s13_books/test_s13_legacy.py::test_ex_13_a_delta_identity`: in one period an obligation recognises 1,000.00 in `ASC606` (Dr `CONTRACT_LIABILITY` 1,000.00 / Cr `REVENUE` 1,000.00), while the ERP booked pre-standard revenue of 1,200.00 (LEGACY Dr `PRE_STANDARD_REVENUE` 1,200.00 / Cr `CONTRACT_LIABILITY` 1,200.00, the reversal of what the ERP booked). Primary plus LEGACY gives Dr `PRE_STANDARD_REVENUE` 1,200.00; Cr `REVENUE` 1,000.00; Cr `CONTRACT_LIABILITY` 200.00, and debits equal credits (EX-13-A; S13-INV-03; D-89 L7-6-Q-8)
+      - `…::test_s13_r07_legacy_folds_only_pre_standard_events`: the LEGACY book folds `PRE_STANDARD_REVENUE_RECORDED` events only and runs none of stages 02 to 12
+      - `…::test_s13_r10_pre_standard_cum_on_primary_versions`: primary-book obligation versions carry `pre_standard_revenue_cum` equal to the LEGACY target at the version date, and a modification event carries `pre_standard_revenue_amount` 0 while the cumulative rolls (DEV-050)
+      - `…::test_s13_r11_legacy_output_shape`: the LEGACY `BookOutput` has `contract_version = None` and no obligation versions, balances or schedules, only posting intents and trace
+      - `…::test_s13_inv_02_no_revenue_in_legacy`: the LEGACY book produces no `REVENUE` intent and no primary-book target
+    - Answer keys: none (`DLT-NATIVE-SUBSCRIPTION-PRE-STANDARD-UPFRONT` closes in AKS-6)
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: none; REQs contributed: REQ-BK-004, REQ-BK-005
+  - **Read:** ENGINE_SPEC_B §13.2.4 (S13-R-07 to S13-R-11), §13.3, §13.7 EX-13-A; POLICIES POL-005, POL-007, POL-008, JET-15; D-34; 05 RCP-14
+  - **Gates:** GK-01 `make ci`; GK-04 `make ci`
+
+- [ ] **END-9 `compute`: orchestration, blocking findings, fail-closed identities and the first answer-key run.**
+  - **Prerequisites:** END-8
+  - **Scope:**
+    - Paths: `backend/erev_engine/__init__.py` (`compute`, `fold_book`, `assemble_output`); `backend/tests/engine/kernel/test_compute.py`; `backend/tests/engine/kernel/test_ctl_012_compute.py`; `backend/tests/engine/kernel/test_module_state.py`; `backend/tests/properties/test_prop_p01_allocation_sum.py` (`compute` part)
+    - Schema: none
+    - API: none
+    - Engine: ENGINE_SPEC §0.3 (orchestration), §0.5 CV-15 to CV-17, §0.6 CV-25, CV-26, §0.8 CV-41 to CV-43; dev-guide §7 DG-ENG-01 to DG-ENG-05, DG-ENG-08, DG-ENG-10
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/kernel/test_compute.py::test_version_mismatch`: a bundle with `engine_version` ≠ `ENGINE_VERSION` raises `EngineError("ENGINE_VERSION_MISMATCH")`
+      - `…::test_float_guard_on_entry_and_exit`: a float in a bundle field raises `EngineError("FLOAT_DETECTED")` before any stage runs
+      - `…::test_blocking_findings`: a bundle with two independent `ERROR` findings raises `EngineError` whose code is the first in CV-43 order, with `detail["findings"]` holding the canonical JSON of both; nothing is returned (CV-15, CV-42)
+      - `…::test_diagnostics_order`: `WARNING` and `INFO` findings appear in `OutputBundle.diagnostics` sorted per CV-43, with `book_code` set for memoised stages (S13-R-03)
+      - `…::test_golden_contract2_setup_output`: `compute` over golden Contract 2 at inception gives, in book ASC606, obligation versions with posted allocations 470.77 / 313.85 / 115.38 / 0.00 and `OutputBundle.input_sha256` equal to `InputBundle.sha256()` (CHK-002)
+      - `…::test_decimal_context_is_local`: after `compute` returns, the thread's decimal context equals the context before the call
+      - `backend/tests/engine/kernel/test_ctl_012_compute.py::test_ctl_012_compute_identities_fail_closed` (`@pytest.mark.control("CTL-012")`): monkeypatching one stage output to break, in turn, Σ a_posted = allocation basis, Σ `allocated_amount` = `transaction_price` − `consideration_payable_amount`, `allocated_amount = revenue_cum + scheduled_amount + awaiting_trigger_amount`, and entry balance. Each makes `compute` raise `EngineError("ENGINE_INVARIANT_VIOLATED")` naming the failing identity in `detail` (DG-ENG-05)
+      - `backend/tests/engine/kernel/test_module_state.py::test_no_module_level_mutable_state`: an `ast` scan of `backend/erev_engine/` finds no module-level assignment of a `dict`, `list` or `set` other than constants typed `Final` and wrapped in `types.MappingProxyType` or tuples (DG-ENG-08)
+      - `backend/tests/properties/test_prop_p01_allocation_sum.py::test_p01_compute_level`: over generated groups, `compute` output satisfies Σ a_posted = allocation basis per group and book, and Σ `allocated_amount` = `transaction_price` − `consideration_payable_amount` per contract version (PROP:P1 `compute` part)
+      - `make answer-keys ID=RND-CHK-001,RND-CHK-001-USD-EQUAL-SSP-THIRDS,RND-CHK-003A,RND-CHK-005-USD-100-OVER-THREE-MONTHS` passes 4 of 4, the first green run of the engine runner (B3-BS2-06); `RND-CHK-001` checkpoint `after-activation` has `transaction_price` "100.00" and the first obligation's `allocated_amount` "33.34"
+    - Answer keys: `make answer-keys ID=RND-CHK-001,RND-CHK-001-USD-EQUAL-SSP-THIRDS,RND-CHK-003A,RND-CHK-005-USD-100-OVER-THREE-MONTHS` (4 pass)
+    - Golden: none
+    - Controls: CTL-012 `backend/tests/engine/kernel/test_ctl_012_compute.py::test_ctl_012_compute_identities_fail_closed` (additional tagged test)
+    - Screens: none
+    - Journeys: none
+    - Properties: PROP:P1 `compute` part `backend/tests/properties/test_prop_p01_allocation_sum.py::test_p01_compute_level`
+    - REQs completed: none; REQs contributed: REQ-ALC-001
+    - Hint closure: REQ-ALC-001 `PROP:P1` `compute` part
+  - **Read:** ENGINE_SPEC §0.3, §0.5, §0.6, §0.8; dev-guide §7 (DG-ENG-01 to 12), §9.5.8 DG-AK-40, DG-AK-43, §9.7 P1; 03 §4.1 CTL-012
+  - **Gates:** GK-01 `make ci`; GK-04 `make properties K=p01`; GK-05 `make answer-keys ID=RND-CHK-001,RND-CHK-001-USD-EQUAL-SSP-THIRDS,RND-CHK-003A,RND-CHK-005-USD-100-OVER-THREE-MONTHS`
+
+- [ ] **END-10 Delta posting and pre-standard revenue end to end (GT-07 journals at engine level).**
+  - **Prerequisites:** END-9
+  - **Scope:**
+    - Paths: `backend/tests/support/intent_totals.py` (sums `OutputBundle` posting intents by contract, account and window for engine tests; gross view and primary plus LEGACY view; D-89 L7-6-Q-8); `backend/tests/engine/s14_posting/test_chk_delta.py`; `backend/tests/engine/s14_posting/test_tc_je.py`
+    - Schema: none
+    - API: none
+    - Engine: ENGINE_SPEC_B §13.2.4 S13-R-09; §14.3.4 S14-R-23 (the CHK-020 engine identity; B3-BS2-10); POLICIES JET-15
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/s14_posting/test_chk_delta.py::test_chk_022_january_gross`: after golden step 04 in `ERP` mode, Contract 1 has Dr 21001 `CONTRACT_LIABILITY` 295.69 / Cr 5001 128.84, Cr 5002 118.53, Cr 5003 48.32, from exact revenue 128.840436, 118.533201 and 48.315164. Contract 2 has Dr 21002 58.85 / Cr 5001 58.85, then JET-06 Dr 15002 58.85 / Cr 21002 58.85 (CHK-022; GT-04, GT-05)
+      - `…::test_chk_020_january_delta`: with Contract 1 pre-standard revenue POB #2 66.00 and POB #3 88.00, the January delta totals are 21001 Dr 141.69 (295.69 − 154.00), 5002 Cr 52.53 (118.53 − 66.00), 5003 Dr 39.68 (88.00 − 48.32), 5001 Cr 187.69 (128.84 + 58.85) and 15002 Dr 58.85. Debits 240.22 = credits 240.22 (CHK-020; GT-07)
+      - `backend/tests/engine/s14_posting/test_tc_je.py::test_tc_je_02_delta_january`: C1 21001 +141.69; 5001 −128.84; 5002 −52.53; 5003 +39.68; C2 15002 +58.85; C2 5001 −58.85; Σ 0.00 (legacy 06 §7.3 TC-JE-02)
+      - `…::test_tc_je_08_full_year_gross_and_delta`: after step 14, gross deferred debits are C1 21001 +800.00, C2 21002 +1,100.00, C3 21001 +2,600.00 and C4 21002 +1,200.00, with no unbilled A/R lines. Gross revenue lines are C1 POB #2 −211.07, POB #3 −86.03, POB #4 −502.90; C2 POB #1 −573.20, POB #2 −385.19, POB #3 −141.61; C3 POB #1 −678.02, POB #2 −464.52, POB #3 −189.34, POB #5 −1,268.11; C4 POB #1 −479.69, and the remaining TC-JE-08 values of legacy 06 §7.3. The delta view balances (TC-JE-08; GT-18)
+      - `…::test_tc_je_10_pob_vc_zero_modification_delta`: the shipped state plus a POB-specific VC line with Mod Billing 0 and Mod Qty 0 on C1 POB #1 dated 2023-01-31 gives a January delta identical to TC-JE-02 (TC-JE-10)
+      - `…::test_tc_prospective_14_modification_reposts_no_pre_standard`: a delivery with pre-standard revenue 360.00 / 70.00 followed by a modification on 2023-02-15 gives a delta of 0.00 on the modification date (legacy 03 §7.3 TC-14 fixed)
+      - `…::test_tc_rm_12_retro_zero_modification_delta`: through 2023-01-31, a retrospective line on Contract 1 POB #2 (qty 0, billing 0) dated 2023-02-01 gives an adjustment totals window 2023-01-01 to 2023-02-28 of 5002 −52.53, 5003 +39.68 and 21001 +141.69 (legacy 04 §7.3 TC-RM-12 fixed)
+      - `…::test_tc_pob_vc_13_periodic_measures_zero`: after step 04, C4 POB #2 M +50.00 dated 2023-03-01 gives an adjustment totals window 2023-02-28 to 2023-03-01 of 21002 −38.71 and 5001 +38.71, and every periodic measure of the modification version is 0 (legacy 05 §7.3 TC-pob-vc-13)
+    - Answer keys: none (`DLT-NATIVE-SUBSCRIPTION-PRE-STANDARD-UPFRONT` closes in AKS-6; `DLT-CHK-020-CHK-022-GT07-JANUARY-2023-GROSS-AND-DELTA-JOURNALS` in PRP-2)
+    - Golden: none (GT-07, GT-18, GT-23 and `GT:journal_entry_totals` (delta), `GT:legacy_probe` (P2) close in GPB)
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: REQ-BK-004, REQ-BK-005; REQs contributed: REQ-BIL-005
+    - Hint closure: REQ-BK-004 `TC-JE-02`, `TC-JE-08`; REQ-BK-005 `TC-14`, `TC-RM-12`, `TC-pob-vc-13`, `TC-JE-10`
+  - **Read:** ENGINE_SPEC_B §13.2.4, §14.3.4, §14.8; POLICIES JET-02, JET-06, JET-15 (CHK-020, CHK-022), §6.3; legacy 06 §3.3, §7.3 TC-JE-02, TC-JE-08, TC-JE-10; legacy 03 §7.3 TC-14; legacy 04 §7.3 TC-RM-12; legacy 05 §7.3 TC-pob-vc-13; legacy 07 §7 GT-07, GT-18; D-34; 03 REQ-BK-004, REQ-BK-005
+  - **Gates:** GK-01 `make ci`; GK-04 `make ci`
+
+- [ ] **END-11 JET template checks, part 1: deposits, sales tax, cancellable invoices, rebates and catch-ups.**
+  - **Prerequisites:** END-10
+  - **Scope:**
+    - Paths: `backend/tests/engine/s14_posting/test_chk_jet_part1.py`
+    - Schema: none
+    - API: none
+    - Engine: `compute` over the CHK inputs; POLICIES JET-01b, JET-02, JET-03, JET-04a, JET-04b, JET-06
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/s14_posting/test_chk_jet_part1.py::test_chk_021_deposit_to_contract_liability`: receipts of 20.00 in months 1 to 6, each Dr `BILLING_CLEARING` (`UNAPPLIED_CASH`) 20.00 / Cr `DEPOSIT_LIABILITY` 20.00, give deposit liability 100.00 at month 5 and 120.00 at month 6. At the end of month 6: Dr `DEPOSIT_LIABILITY` 120.00 / Cr `CONTRACT_LIABILITY` 120.00, then JET-02 Dr `CONTRACT_LIABILITY` 120.00 / Cr `REVENUE` 120.00. Closing deposit liability 0.00, contract liability 0.00, revenue 120.00 (CHK-021)
+      - `…::test_chk_023_sales_tax_engine_billing`: in `ENGINE` mode, Dr `ACCOUNTS_RECEIVABLE` 1,080.00 / Cr `CONTRACT_LIABILITY` 1,000.00, Cr `SALES_TAX_PAYABLE` 80.00; then JET-02 Dr `CONTRACT_LIABILITY` 1,000.00 / Cr `REVENUE` 1,000.00 (CHK-023)
+      - `…::test_chk_024_cancellable_and_noncancellable_invoices`: Case A, cancellable: the 31 January invoice is memo-only; on 1 March Dr `ACCOUNTS_RECEIVABLE` 1,000.00 / Cr `CONTRACT_LIABILITY` 1,000.00; on 31 March JET-02 1,000.00; receivable 0.00 at 31 January. Case B, noncancellable from 31 January: Dr AR 1,000.00 / Cr CL 1,000.00 on 31 January, with receivable and contract liability of 1,000.00 each (CHK-024)
+      - `…::test_chk_025_volume_rebate_refund_liability`: Q1 JET-02 Dr CL 7,500.00 / Cr REVENUE 7,500.00. Q2 JET-02 for 500 units at the revised unit allocation of 90.00 is 45,000.00; JET-04a for the 75 Q1 units is Dr REVENUE 750.00 / Cr CL 750.00; JET-04b with RL target 5,750.00 is Dr CL 5,750.00 / Cr `REFUND_LIABILITY` 5,750.00. End of Q2: revenue 51,750.00 (Q2 44,250.00); refund liability 5,750.00; position 0.00 (CHK-025)
+      - `…::test_chk_026_bonus_catch_up_lines`: Year 2 JET-04a catch-up 60,000.00; JET-02 progress revenue 1,062,000.00; Year 2 revenue 1,122,000.00; JET-06 contract asset 124,000.00 (CHK-026)
+    - Answer keys: none (`JE-CHK-021`, `JE-CHK-023`, `JE-CHK-024-*`, `JE-CHK-025`, `JE-CHK-026-*` close in AKS-6)
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: none; REQs contributed: REQ-BIL-002, REQ-TP-010
+  - **Read:** POLICIES §2.3 JET-01b, JET-02, JET-03, JET-04, JET-06 (CHK-021, CHK-023 to CHK-026), POL-004, POL-123; ENGINE_SPEC_B §14.2
+  - **Gates:** GK-01 `make ci`; GK-04 `make ci`
+
+- [ ] **END-12 JET template checks, part 2: contract costs, loss, consideration payable, warranties, noncash, financing, concessions and terminations.**
+  - **Prerequisites:** END-11
+  - **Scope:**
+    - Paths: `backend/tests/engine/s14_posting/test_chk_jet_part2.py`
+    - Schema: none
+    - API: none
+    - Engine: `compute` over the CHK inputs; POLICIES JET-04b, JET-04c, JET-09a to JET-09e, JET-10d, JET-11a, JET-11b, JET-12, JET-13, JET-14, JET-16, JET-17
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/s14_posting/test_chk_jet_part2.py::test_chk_130_commission_amortisation`: JET-09a Dr `COST_TO_OBTAIN_ASSET` 10,000.00 / Cr `CONTRACT_COST_CLEARING` 10,000.00; JET-09b 1,428.57 in years 1, 2, 3, 5, 6 and 7 and 1,428.58 in year 4; a fulfilment asset of 140,000.00 amortised 20,000.00 a year (CHK-130)
+      - `…::test_chk_131_impairment_and_reversal_lines`: Year 1 JET-09b 10,000.00 and JET-09c 15,000.00; Year 2 JET-09b 5,000.00; IFRS15 book JET-09d 10,000.00 with carrying 20,000.00; the expedient case capitalises nothing (CHK-131)
+      - `…::test_chk_132_loss_provision_lines`: Year 2 Dr `LOSS_EXPENSE` 30,000.00 / Cr `LOSS_PROVISION` 30,000.00; Year 3 release 30,000.00; provision at the end of Years 1 to 3 0.00 / 30,000.00 / 0.00 (CHK-132)
+      - `…::test_chk_133_consideration_payable_lines`: at inception Dr `CUSTOMER_INCENTIVE_ASSET` 1,500,000.00 / Cr `CONSIDERATION_PAYABLE` 1,500,000.00; month 1 JET-02 Dr CL 2,000,000.00 / Cr REVENUE 2,000,000.00 and JET-14 Dr `REVENUE` 200,000.00 / Cr `CUSTOMER_INCENTIVE_ASSET` 200,000.00; net revenue 1,800,000.00; incentive asset 1,300,000.00 (CHK-133)
+      - `…::test_chk_134_assurance_warranty_accrual`: Dr `WARRANTY_EXPENSE` 200.00 / Cr `WARRANTY_PROVISION` 200.00 at delivery (CHK-134)
+      - `…::test_chk_135_noncash_consideration_lines`: week 1 Dr `NONCASH_CONSIDERATION_ASSET` 1,000.00 / Cr CL 1,000.00; JET-02 Dr CL 1,000.00 / Cr REVENUE 1,000.00; on receipt Dr `BILLING_CLEARING` (`INVESTMENTS`) 1,000.00 / Cr `NONCASH_CONSIDERATION_ASSET` 1,000.00 (CHK-135)
+      - `…::test_chk_136_advance_payment_accretion`: JET-11b Dr `INTEREST_EXPENSE` / Cr CL. `MONTHLY`: year 1 246.71 (month 1 20.00, month 12 21.13); year 2 261.93 (month 24 22.43); contract liability 4,246.71 then 4,508.64; revenue at transfer 4,508.64. `ANNUAL`: 240.00 and 254.40; contract liability 4,240.00 then 4,494.40; revenue 4,494.40 (CHK-136)
+      - `…::test_chk_137_deferred_payment_month_1`: JET-02 revenue 848,346.53; JET-11a Dr CL 8,483.47 / Cr `INTEREST_INCOME` 8,483.47; the ERP instalment invoice of 18,871.00 posts no engine line in `ERP` mode; unbilled receivable 837,959.00 (CHK-137)
+      - `…::test_chk_138_implicit_price_concession_lines`: `ENGINE` mode JET-03 Dr AR 1,000,000.00 / Cr CL 1,000,000.00; JET-02 Dr CL 400,000.00 / Cr REVENUE 400,000.00; JET-04c Dr CL 600,000.00 / Cr `RECEIVABLE_CONTRA` 600,000.00; revenue 400,000.00; net receivable 400,000.00; contract liability 0.00; no credit-loss line (CHK-138)
+      - `…::test_chk_112_termination_journal_lines`: JET-04b Dr CL 60,000.00 / Cr `REFUND_LIABILITY` 60,000.00; after the ERP credit memo, JET-04b Dr `REFUND_LIABILITY` 60,000.00 / Cr CL 60,000.00; JET-09e Dr `CONTRACT_COST_AMORTIZATION` 18,000.00 / Cr `COST_TO_OBTAIN_ASSET` 18,000.00; final revenue 180,000.00, position 0.00, cost asset 0.00 (CHK-112 lines)
+      - `…::test_chk_070_intercompany_lines`: the CHK-070 P1 lines post in US and UK entries that each balance, with counterparty set exactly on the intercompany roles (CHK-070 lines; S14-INV-05)
+      - `…::test_chk_084_jet_10d_lines`: the CHK-084 (a) settlements give JET-10d lines, functional-only on `FX_GAIN_LOSS`: losses 6.00 and 6.00, gain 4.00 and loss 2.00; revenue totals USD 10,780.00 (CHK-084 lines; DG-AK-56 functional-only form)
+    - Answer keys: none (`JE-CHK-130` to `JE-CHK-138`, `NCC-CHK-135-S3-EX31`, `CPC-CHK-133-S3-EX32` close in AKS-2 and AKS-6)
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: none; REQs contributed: REQ-CST-002, REQ-CST-003, REQ-LOS-001, REQ-TP-011
+  - **Read:** POLICIES §2.3 JET-04, JET-09 to JET-14, JET-16, JET-17 (CHK-130 to CHK-138), §5.3 (CHK-112), ALG-07 (CHK-070), ALG-08 §2.9.3 (CHK-084); ENGINE_SPEC_B §14.2, §14.8
+  - **Gates:** GK-01 `make ci`; GK-04 `make ci`
+
+- [ ] **END-13 Replay determinism (P8), trace re-evaluation (P14) and parity measures on the trace.**
+  - **Prerequisites:** END-12
+  - **Scope:**
+    - Paths: `backend/tests/properties/test_prop_p08_determinism.py`; `backend/tests/properties/test_prop_p14_trace_reevaluation.py`; `backend/tests/engine/kernel/test_trace_coverage.py`
+    - Schema: none
+    - API: none
+    - Engine: dev-guide DG-ENG-02, DG-ENG-04; ENGINE_SPEC CV-26, CV-56, Table 0.9-A; S09-INV-12
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/properties/test_prop_p08_determinism.py::test_p08_shuffled_commuting_arrivals`: for generated groups, an interleaving of the contract streams that keeps each stream's own order (a permutation of commuting arrivals within the CV-26 (b) domain: business identities, payloads and every dependency- or order-sensitive relationship are kept, only the record sequence changes) gives identical obligation versions, balances, schedule lines, posting intents and diagnostics, identical trace values outside the stage 12 layer lineage and identical layer totals per (book, entity, movement kind, role pair, date, currencies); `input_sha256` and same-date layer keys may differ (CV-26 (b), D-97 (6)). `test_p08_recompute_is_byte_identical`: two computes of one bundle give byte-identical canonical output and an identical `OutputBundle.sha256()` (CV-26 (a)). One explicit example computes the golden Contract 2 step 09 bundle in a subprocess (`backend/.venv/bin/python -c …`) and compares the hash with the in-process result (PROP:P8)
+      - `backend/tests/properties/test_prop_p14_trace_reevaluation.py::test_p14_reevaluate_reproduces_every_node`: for generated groups and every book, `reevaluate(trace)` equals every stored node value exactly (PROP:P14; DG-KRN-EXP-04)
+      - `backend/tests/engine/kernel/test_trace_coverage.py::test_every_output_value_has_a_node`: every value column of every obligation version, balance, schedule line and posting intent of the golden Contract 2 step 09 output has a trace node id, and every node formula id is a `FORMULAS` key (DG-ENG-04)
+      - `…::test_cv_56_parity_measures`: `revenue_cum`, `remaining_allocation`, `position_obligation`, `catch_up_amount`, `catch_up_cum`, `netting_reclass_amount` and `remaining_billing` exist as version-state nodes with the 04 column names. For golden Contract 2 POB #1 after step 09, `value + rounding_residue` of `remaining_allocation` equals 519.6617 within 1e-4 (Table 0.9-A; DG-PAR-05)
+    - Answer keys: none
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: PROP:P8 `backend/tests/properties/test_prop_p08_determinism.py`; PROP:P14 `backend/tests/properties/test_prop_p14_trace_reevaluation.py`
+    - REQs completed: none; REQs contributed: none
+  - **Read:** dev-guide §5.16 DG-KRN-EXP-01 to 04, §7 DG-ENG-02, DG-ENG-04, §9.6 DG-PAR-05, §9.7 P8, P14; ENGINE_SPEC §0.6 CV-26, §0.9 CV-56, Table 0.9-A
+  - **Gates:** GK-01 `make ci`; GK-04 `make properties K="p08 or p14"`
+
+- [ ] **END-14 Metamorphic suite and engine phase completeness.**
+  - **Prerequisites:** END-13
+  - **Scope:**
+    - Paths: `backend/tests/properties/test_prop_metamorphic.py`; `backend/tests/engine/kernel/test_stage_registry.py` (`PENDING_STAGES` holds only `("15", "EDS")`)
+    - Schema: none
+    - API: none
+    - Engine: dev-guide §9.7 row "Metamorphic" (research 06 §18.5)
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/properties/test_prop_metamorphic.py::test_scaling_by_powers_of_ten`: scaling every exact money input by 10^k within currency limits scales every homogeneous exact money figure by 10^k exactly; dimensionless and non-money quantities (ratios, counts, day fractions, progress) are excluded from the scaling assertion and compared for identity; every posted figure scales within an operation-appropriate derived bound along its derivation (a single rounding: half a minor unit; a largest-remainder allocation of 100.00 over three equal weights: up to two-thirds of a minor unit on one share; the bound composes the operations on the path, with absolute coefficients); a figure computed from rounded or intermediate discontinuous inputs is compared through those inputs, not assumed homogeneous; attributions that turn on a posted zero / non-zero or a posted tie — ALG-02 step 5 (POL-121) over unconditional and conditional POBs and the S10-R-21 classification — are compared as the pool per entity and period at group, member and obligation level; every other assertion is per subject; the pool is confined to the named ALG-02 / S10-R-21 attribution family and preserves the accounting unit (group, entity, book, currency, period) plus the applicable event and intent dimensions; every subject still needs a valid own output-to-node lineage — pooled scaling is never a link exception; the generator has one group and one entity, so the measured examples do not establish a multi-group or multi-entity law. The two pinned counter-examples (BHD 0.227 unbilled receivable → 0.005 / 2.265, total 2.270; K-1@US01 15.649 → 158.183, K-2@US01 0 + 0.865 UR → 6.957 CA, totals 16.514 → 165.140) are the normative examples (D-97 (7) v3.2)
+      - `…::test_one_batch_equals_several_arrivals`: computing a stream in one bundle gives the same cumulative posting intents as computing its prefix, posting the intents into `posted`, and then computing the full stream
+      - `…::test_calendar_shift_with_equal_day_counts`: shifting a `DAILY` ratable obligation to a term with the same day counts per period leaves every period amount unchanged
+      - `…::test_ifrs_book_with_identical_policies_equals_asc606`: an `IFRS15` book whose resolved policies equal the `ASC606` book's gives identical obligation versions, balances, schedules and intents
+      - `backend/tests/engine/kernel/test_stage_registry.py::test_stage_registry_complete`: `STAGES` holds stages 02 to 12 and 14 in Table 0.2-A order, and `PENDING_STAGES == (("15", "EDS"),)`
+    - Answer keys: none
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: Metamorphic `backend/tests/properties/test_prop_metamorphic.py`
+    - REQs completed: none; REQs contributed: REQ-BK-003
+  - **Read:** dev-guide §9.7 (Metamorphic row, DG-PROP-01 to 03); ENGINE_SPEC Table 0.2-A; research 06 §18.5 (background)
+  - **Gates:** GK-01 `make ci`; GK-04 `make properties K=metamorphic`
+
+- [ ] **GATE-END Phase END checkpoint.**
+  - **Prerequisites:** every item of phase END (END-1 to END-14)
+  - **Scope:** verification and evidence; fixes only for defects this checkpoint finds
+  - **Acceptance:**
+    - Exit criteria: every exit criterion of PHASES §1 row END holds. Evidence: packages `s12_fx_entities`, `s13_books` and `s14_posting` exist; `compute` passes the END-9 tests and `make answer-keys ID=RND-CHK-001,RND-CHK-001-USD-EQUAL-SSP-THIRDS,RND-CHK-003A,RND-CHK-005-USD-100-OVER-THREE-MONTHS` (4 of 4); P1 (`compute` part), P5 (engine part), P8, P12, P13, P14 and the metamorphic suite are green in `make properties`
+    - Membership: the 15 requirements of PHASES §6.9 are each listed under "REQs completed" by exactly one item. They are: REQ-FX-001, REQ-FX-002, REQ-FX-006 (END-1); REQ-FX-003, REQ-FX-004 (END-2); REQ-ENT-001 to REQ-ENT-004, REQ-FX-005 (END-3); REQ-JE-002 (END-6); REQ-BK-002, REQ-BK-003 (END-7); REQ-BK-004, REQ-BK-005 (END-10). CHK-020 to CHK-026, CHK-070, CHK-071, CHK-080 to CHK-084 and CHK-130 to CHK-138 have `test_chk_<nnn>_<slug>` tests
+    - Gates: the PHASES §4 row GATE-END is green on a clean tree (`git status --porcelain` empty) after the last commit: `make ci`, `make test-pg`, `make e2e` (unfiltered), `make properties` (unfiltered), `erev controls-report --tags-only` inside `make lint`
+  - **Read:** PHASES §1 row END, §4 row GATE-END, §6.9, §8.3 rows COV-C-03, COV-C-08, COV-C-09, §12, §16; header §6
+  - **Gates:** GK-11 `make ci`; `make test-pg`; `make e2e`; `make properties` (row GATE-END)
+
+## 10 AKS Answer-key sweep, engine runner
+
+**Entry criteria.** GATE-END ticked. `erev_engine.compute` exists, and `make answer-keys` has run green on a selection (END-9).
+
+**Exit criteria (PHASES §1 row AKS).** Every key of PHASES §8.2.1 passes `make answer-keys ID=<ids>`, family by family. Corrections land in the stage packages and cite the ENGINE_SPEC rule they correct. Engine-area requirements whose `AK` hints all fall in §8.2.1 are closed (§15).
+
+**Gate scope at exit (PHASES §4 row GATE-AKS).** `make ci`; `make test-pg`; `make e2e` unfiltered; `make answer-keys ID=<§8.2.1 ids>` (221 keys); `make properties` unfiltered; `erev controls-report --tags-only` inside `make lint`.
+
+**Membership.** No requirement is completed in AKS (PHASES §6.10); the phase closes `AK` hints (§15.1). 220 engine-runner keys (§8.2.1), grouped under B3-BS2-11. No control, route row, placement, journey or make target.
+
+**Rules for every AKS item.**
+- A failing key is fixed in the engine or runner code, never in the key (DG-PAR-09 analogue; PROMPT.md "never edit expected values"). The fix commit message cites the ENGINE_SPEC or POLICIES rule it implements.
+- A key whose expected value the loop believes wrong stays failing: the item stays unticked, and a `SPEC-Q-<n>` names the key, checkpoint, field and both references (header §2 rule 2).
+- Each item re-runs the selections of the earlier AKS items (and END-9) before ticking, so a regression is fixed inside the item (DG-GATE-02).
+
+- [ ] **AKS-1 Rounding and SSP families pass (33 keys), with DG-AK-45 range validation wired.**
+  - **Prerequisites:** GATE-END
+  - **Scope:**
+    - Paths: `backend/tests/support/answer_keys/runners.py` (DG-AK-45: `world.ssp_books[].…population` evaluated through `erev_api.domain.ssp.range_validation.validate_ranges`, the GATE-RFD helper); `backend/tests/unit/answer_keys/test_runner_range_validation.py`; stage package corrections as the keys require
+    - Schema: none
+    - API: none
+    - Engine: corrections within stages 01 to 14 citing their S<nn>-R rule
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/unit/answer_keys/test_runner_range_validation.py::test_dg_ak_45_chk_031`: a range row with midpoint 160.00, range ±15% and 23 of 40 transactions inside passes (h 0.15, c 0.575). A row with ±25% and 20 of 40 inside yields `RANGE_TOO_WIDE` (h 0.25) and `COVERAGE_TOO_LOW` (c 0.50 is not greater than 0.50), each compared with the checkpoint `exceptions` rows that carry `subject = ssp:<book>:<label>:<product>` (CHK-031; DG-AK-45)
+      - `backend/tests/answer_keys/test_answer_keys.py::test_answer_key[SSP-CHK-030-S4-SSPRANGE-OWN-NEAREST]` asserts `total_ssp` "436.00" at checkpoint `end-p1`; `[…-MIDPOINT]` "460.00"; `[…-HIGHPOINT]` "484.00"; `[…-OBSERVABLE-POINT]` "450.00" (CHK-030)
+      - `…[RND-CHK-005-USD-100-OVER-THREE-MONTHS]` asserts schedule FY2026-P01 "33.33" and FY2026-P02 "33.34" (CHK-005); `…[RND-CHK-140-DAILY-365-DAY-TERM]` asserts FY2026-P02 "624.66" (CHK-140); `…[SSP-CHK-035-TC-SETUP]` asserts `original_ssp_selected` "500.00" and "368.00" (CHK-035)
+    - Answer keys: `make answer-keys ID=RND-CHK-001,RND-CHK-001-USD-EQUAL-SSP-THIRDS,RND-CHK-002-CHK-007-GT01-CONTRACT1,RND-CHK-003A,RND-CHK-003A-JPY-EQUAL-SSP-THIRDS,RND-CHK-003B,RND-CHK-003B-BHD-WEIGHTS-ONE-TWO,RND-CHK-003C,RND-CHK-003C-USD-NEGATIVE-CREDIT-MEMO-APPORTIONMENT,RND-CHK-003D,RND-CHK-003D-TIE-BROKEN-BY-LARGER-WEIGHT,RND-CHK-004-CHK-006-S2-EX11-CASEA-OWNPRICES,RND-CHK-005-USD-100-OVER-THREE-MONTHS,RND-CHK-006-S12-FRANCHISOR-OWN-LICENCE-TEN-YEARS,RND-CHK-006-S2-WARRANTY-OWN-EXTENDED-WARRANTY,RND-CHK-006-S5-EX63-OWNSSP-CUSTODY,RND-CHK-006-S5-UPFRONTFEE-OWN-OPTION-B-PATTERN,RND-CHK-006-S6-COMBINED-MOD-OWN-SUPPORT-PATTERN,RND-CHK-006-S6-EX5-CASEB-UNITS-PATTERN,RND-CHK-140-DAILY-365-DAY-TERM,RND-CHK-141-MONTHLY-EVEN-PARTIAL-MONTHS,RND-CHK-142-MID-MONTH-DAY-15-RULE,RND-CHK-143-MONTHLY-EVEN-WHOLE-AND-PARTIAL-TERMS,RND-CHK-144-MID-MONTH-LATE-START-EARLY-END,RND-CHK-145-MID-MONTH-EDGE-CASES,SSP-CHK-030-S4-SSPRANGE-OWN-HIGHPOINT,SSP-CHK-030-S4-SSPRANGE-OWN-LOWPOINT,SSP-CHK-030-S4-SSPRANGE-OWN-MIDPOINT,SSP-CHK-030-S4-SSPRANGE-OWN-NEAREST,SSP-CHK-030-S4-SSPRANGE-OWN-OBSERVABLE-POINT,SSP-CHK-031-RANGE-VALIDATION-AT-PUBLICATION,SSP-CHK-035-TC-SETUP,SSP-FS-05-PERPETUAL-LICENCE-PCS-RESIDUAL` passes 33 of 33 (families `RND` 25, `SSP` 8)
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: none; REQs contributed: none
+    - Hint closure: REQ-REC-019 `AK (re-baselined keys)` (`RND-CHK-004-CHK-006-*`, `RND-CHK-006-*`); REQ-SSP-005 `AK:S4-SSPRANGE-OWN` (the five `SSP-CHK-030-*` keys)
+  - **Read:** dev-guide §9.5.7, §9.5.8 (DG-AK-40, DG-AK-45); POLICIES §2.1 (CHK-001 to CHK-007), §3.3 (CHK-031), §3.4 (CHK-030, CHK-035); PHASES §8.2.1 rows RND and SSP; the key files under `docs/accounting/answer-keys/rnd/` and `ssp/`
+  - **Gates:** GK-01 `make ci`; GK-05 `make answer-keys ID=<the 33 ids above>`
+
+- [ ] **AKS-2 Allocation, Step 1, obligation, tax, noncash and customer-consideration families pass (40 keys).**
+  - **Prerequisites:** AKS-1
+  - **Scope:**
+    - Paths: stage package corrections as the keys require
+    - Schema: none
+    - API: none
+    - Engine: corrections within stages 02 to 05 and 14 citing their S<nn>-R rule
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/answer_keys/test_answer_keys.py::test_answer_key[ALC-CHK-002-GT01-GT03]` asserts at checkpoint `after-setup` `transaction_price` "1300.00" and the first obligation's `allocated_amount` "322.10" (CHK-002)
+      - `…[STP1-S1-COMBINATION-OWN]` asserts at `end-of-january` `transaction_price` "150000.00" and `revenue_cum` "100000.00" (EX-02-B)
+      - `…[POB-S2-EX11-CASEA-OWNPRICES]` asserts at `end-of-month-1` `revenue_cum` "106458.33" (CHK-006 row S2-EX11)
+      - `…[POB-S2-EX45-AGENT-AGENT]` asserts `revenue_cum` "50.00" and `[POB-S2-EX45-AGENT-PRINCIPAL]` "500.00" at `after-delivery` (EX-03-C)
+      - `…[POB-S2-SHIPPING-OWN-ON]` asserts `revenue_cum` "1050.00" and `[POB-S2-SHIPPING-OWN-OFF]` "1000.00" at `end-of-december` (S03-R-14)
+      - `…[POB-CHK-134-S2-WARRANTY-OWN]` asserts at `after-delivery` `revenue_cum` "9545.45" (CHK-134); `…[NCC-CHK-135-S3-EX31]` asserts `noncash_consideration_amount` "52000.00" (CHK-135); `…[ALC-S4-EX6]` asserts at `x-transferred` `revenue_cum` "600.00" (EX-08-E)
+      - `…[CPC-CHK-133-S3-EX32]` asserts at `at-inception` `transaction_price` "13500000.00", `consideration_payable_amount` "-1500000.00" and `L1-GOODS` `allocated_amount` "15000000.00", and at `end-of-month-1` contract `revenue_cum` "1800000.00" (net of the JET-14 release) and `L1-GOODS` `revenue_cum` "2000000.00" (gross target) (CHK-133; ENGINE_SPEC S04-R-02 rev 1.3; R-SGN-01)
+      - `…[POB-JS-05-CASEA-FRANCHISE-PUBLIC]` asserts at `year-1` `L1-LICENCE` `allocated_amount` "146000.00" and `revenue_cum` "101000.00", and `[POB-JS-05-CASEB-FRANCHISE-PRIVATE-EXPEDIENT]` "133894.74" and "99789.47" (realised royalties allocated, ENGINE_SPEC_B S09-R-02; R-V1-01)
+    - Answer keys: `make answer-keys ID=ALC-BR-06-DAAS-EMBEDDED-LEASE-ROUTED-OUT,ALC-CHK-002-GT01-GT03,ALC-CHK-032-S4-EX34-CASEC-ESTIMATED,ALC-CHK-032-S4-EX34-CASEC-REJECTED,ALC-CHK-033-S4-EX34-CASEB,ALC-CHK-034-S4-EX34-CASEA,ALC-CHK-118,ALC-S4-EX33,ALC-S4-EX35-CASEB,ALC-S4-EX6,STP1-S1-COMBINATION-OWN,STP1-S1-EX1-CASEA,STP1-S1-EX1-CASEB-C-VARB,STP1-S1-EX1-CASEB-C-VARC,STP1-S1-EX2,POB-BR-01-ROBOTS-PLATFORM-EXTENDED-WARRANTY,POB-CHK-134-S2-WARRANTY-OWN,POB-JS-05-CASEA-FRANCHISE-PUBLIC,POB-JS-05-CASEB-FRANCHISE-PRIVATE-EXPEDIENT,POB-S12-FRANCHISOR-OWN,POB-S2-EX11-CASEA-OWNPRICES,POB-S2-EX12A-OWNVOLUMES,POB-S2-EX45-AGENT-AGENT,POB-S2-EX45-AGENT-PRINCIPAL,POB-S2-EX59,POB-S2-EX61,POB-S2-SHIPPING-OWN-OFF,POB-S2-SHIPPING-OWN-ON,POB-WM-01-THIRD-PARTY-COMMISSIONS-NET,POB-WM-02-FIRST-PARTY-INVENTORY-GROSS,POB-WM-05-HOTEL-MERCHANT-VERSUS-AGENCY,TAX-S3-SALESTAX-OWN,TAX-WM-08-TAXES-AND-FEES-GROSS-OR-NET,NCC-CHK-135-S3-EX31,CPC-BR-07-CASEA-MDF-DISTINCT-SERVICE-FAIR-VALUE,CPC-BR-07-CASEB-MDF-EXCESS-OVER-FAIR-VALUE,CPC-CHK-120-SHARE-BASED-WARRANTS-NOT-PROBABLE,CPC-CHK-120-SHARE-BASED-WARRANTS-PROBABLE,CPC-CHK-133-S3-EX32,CPC-WM-03-BUYER-PROMOTIONS-NEGATIVE-REVENUE-TEST` passes 40 of 40 (families `ALC` 10, `STP1` 5, `POB` 16, `TAX` 2, `NCC` 1, `CPC` 6)
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: none; REQs contributed: none
+    - Hint closure: REQ-POB-005 and REQ-REC-010 `AK:S2-EX12A-OWNVOLUMES`; REQ-POB-008 `AK:S2-WARRANTY-OWN`; REQ-POB-009 `AK:S2-EX45-AGENT`; REQ-POB-010 `AK:S2-EX61`, `AK:S2-EX59`; REQ-POB-011 `AK:S2-SHIPPING-OWN` (with `IFRS-S13-SWITCH-SHIPPING` in AKS-6); REQ-POB-013 `AK:S12-FRANCHISOR-OWN`; REQ-TP-012 `AK:S3-EX31`; REQ-TP-013 `AK:S3-EX32`; REQ-TP-014 `AK:S3-SALESTAX-OWN` (with `JE-CHK-023-*` in AKS-6); REQ-TP-015 `AK:S1-EX2` (with `JE-CHK-138-*` in AKS-6); REQ-ALC-001 and REQ-ALC-006 `AK:S4-EX33`; REQ-ALC-004 `AK:S4-EX34`; REQ-ALC-005 `AK:S4-EX35`; REQ-ALC-007 `AK:S4-EX33 to EX35`; REQ-TP-006 and REQ-MOD-020 `AK:S4-EX6`. `AK:S2-EX11-CASEA-OWNPRICES` (REQ-POB-001, REQ-REC-003) closes with the DISC keys in EDS-7
+  - **Read:** PHASES §8.2.1 rows ALC, STP1, POB, TAX, NCC, CPC; POLICIES §2.1.5, §3.2 (CHK-032 to CHK-034), §5.9 (CHK-118), §5.10 (CHK-120), JET-14, JET-16, JET-17; ENGINE_SPEC §2.6, §3.5, §4.3 S04-R-02 (rev 1.3), §4.5, §5.6; ENGINE_SPEC_B S09-R-02; `_coverage/ADJUDICATION.md` §10 R-SGN-01, R-V1-01, R-SCH-17
+  - **Gates:** GK-01 `make ci`; GK-05 `make answer-keys ID=<the 40 ids above>`
+
+- [ ] **AKS-3 Variable consideration, returns, financing, breakage and royalty families pass (38 keys).**
+  - **Prerequisites:** AKS-2
+  - **Scope:**
+    - Paths: stage package corrections as the keys require
+    - Schema: none
+    - API: none
+    - Engine: corrections within stages 04, 08, 09, 10 and 14 citing their S<nn>-R rule
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/answer_keys/test_answer_keys.py::test_answer_key[VC-CHK-110]` asserts at `end-q1` `transaction_price` "140000.00" and `revenue_cum` "35000.00" (CHK-110)
+      - `…[VC-CHK-100-S3-EX21-EXTENDED]` asserts at `end-2026` `transaction_price` "2505000.00" and `fixed_consideration` "2500000.00" (EX-04-A)
+      - `…[RET-CHK-061-GT08]` asserts at `end-january` `revenue_cum` "128.84" and "118.53" (CHK-061 inputs; GT-04)
+      - `…[RET-CHK-116]` asserts at `end-of-january` `revenue_cum` "960.00" and `refund_liability` "40.00" (CHK-116)
+      - `…[SFC-CHK-137-S3-EX28-CASEB]` asserts at `end-of-month-1` `transaction_price` "848346.53" and `financing_adjustment_amount` "-283913.47" (CHK-137)
+      - `…[RET-CHK-029-S3-EX22]` asserts at `end-of-january` `expected_returns_amount` "-300.00"; at `end-of-february` `transaction_price` "9700.00", `expected_returns_amount` "-300.00" and `L1-PROD` `allocated_amount` "9700.00"; at `window-expired` `transaction_price` "9800.00" and `expected_returns_amount` "-200.00" (CHK-029; EX-04-G2; R-SGN-01, R-RET-01)
+      - `…[SFC-S3-EX26-RETURN-RIGHT]` asserts at `return-right-open`, dated on the window end 2026-03-31, `transaction_price` "100.00", `expected_returns_amount` "0.00", `financing_adjustment_amount` "-21.00", `unbilled_receivable` "100.00" and `return_asset` "0.00", with FY2026-P01 `RETURN_ASSET` dr "80.00" and the FY2026-P03 lines `REVENUE` cr "100.00" and `RETURN_ASSET` cr "80.00" (D-87 L6-5-Q-25; supervisor ruling R-46); at `right-lapsed` `revenue_cum` "100.00", `INTEREST_INCOME` cr "0.95" and `unbilled_receivable` "100.95"; `unbilled_receivable` "108.51" at `end-of-2026` and "121.00" at `before-settlement-invoice`; `INTEREST_INCOME` cr "1.04" at `settlement-invoice` (EX-04-H; S04-R-12a; R-SFC-05)
+      - `…[BRK-CHK-111-LAPSED]` asserts at `at-lapse` `revenue_cum` "100000.00" (CHK-111); `…[ROY-S5-EX60]` asserts at `end-of-january` `revenue_cum` "80000.00"
+    - Answer keys: `make answer-keys ID=VC-BR-02-DISTRIBUTOR-RETRO-REBATE,VC-CAP-USAGE-QUARTERLY-MINIMUM-TRUEUP,VC-CHK-100-S3-EX21-EXTENDED,VC-CHK-101-S3-EX23-CASEB,VC-CHK-110,VC-CHK-113-TC-POBVC-16,VC-FS-02-COMMITTED-SPEND-TIERED-OVERAGE,VC-GE-04-CPIF-EAC-REVISIONS,VC-GE-05-AWARD-FEE-POOL-CONSTRAINT,VC-RB-01-SELF-PAY-IMPLICIT-CONCESSION-CREDIT-LOSS,VC-RB-02-COMMERCIAL-PAYOR-CONTRACTUAL-QUALITY-BONUS,VC-RB-04-COST-REPORT-SETTLEMENT,VC-S3-EX23-CASEA,VC-S3-EX24,RET-BR-03-PRICE-PROTECTION-STOCK-ROTATION,RET-CHK-029-S3-EX22,RET-CHK-060-S3-EX22-REVISED,RET-CHK-061-GT08,RET-CHK-116,RET-JS-03-ECOMMERCE-REFUND-RETURN-ASSET,RET-WM-04-REFUNDS-AND-CHARGEBACKS,SFC-CAP-DEFERRED-PAYMENT-ROBOT-SALE,SFC-CHK-136-S3-EX29-ANNUAL,SFC-CHK-137-S3-EX28-CASEB,SFC-FS-11-CASEA-UPFRONT-NO-FINANCING,SFC-FS-11-CASEB-UPFRONT-ADVANCE-ACCRETION,SFC-S3-EX26,SFC-S3-EX26-RETURN-RIGHT,SFC-S3-EX29,BRK-CAP-CREDITS-ROLLOVER-RENEWAL,BRK-CHK-111-LAPSED,BRK-CHK-111-RENEWED,BRK-JS-02-GIFT-CARDS-BREAKAGE-ESCHEAT,BRK-S5-BREAKAGE-OWN,BRK-WM-06-PLATFORM-CREDITS-BREAKAGE-RE-ESTIMATE,ROY-JS-07-ADVERTISING-FUND-GROSS,ROY-JS-08-ROYALTIES-LAGGING-REPORTS,ROY-S5-EX60` passes 38 of 38 (families `VC` 14, `RET` 7, `SFC` 8, `BRK` 6, `ROY` 3)
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: none; REQs contributed: none
+    - Hint closure: REQ-TP-008 `AK:S3-EX22` (`RET-CHK-029-S3-EX22`, `RET-CHK-060-S3-EX22-REVISED`) and `AK:S3-EX26` (`SFC-S3-EX26`, `SFC-S3-EX26-RETURN-RIGHT`); REQ-TP-011 `AK:S3-EX28-CASEB` and `AK:S3-EX26` (`AK:S3-EX29` with `JE-CHK-136-*` in AKS-6); REQ-BIL-007 `AK:S3-EX22`, `AK:S3-EX28-CASEB`; REQ-REC-010 `AK-FAM:usage` (`VC-CAP-USAGE-QUARTERLY-MINIMUM-TRUEUP`, `VC-CHK-110`, `VC-FS-02-COMMITTED-SPEND-TIERED-OVERAGE`); REQ-REC-011 `AK:S5-EX60`; REQ-REC-016 `AK:S5-BREAKAGE-OWN`; REQ-MOD-017 `AK-FAM:usage-rollover` (`BRK-CAP-CREDITS-ROLLOVER-RENEWAL`, `BRK-CHK-111-LAPSED`, `BRK-CHK-111-RENEWED`). `AK:S3-EX21-EXTENDED` (REQ-TP-001, REQ-TP-002) and `AK:S3-EX24` (REQ-TP-010) close with their `JE-CHK-*` keys in AKS-6; `AK:S3-EX23` (REQ-TP-003, REQ-TP-018) closes with `DISC-CHK-101-*` in EDS-7
+  - **Read:** PHASES §8.2.1 rows VC, RET, SFC, BRK, ROY; POLICIES ALG-06 (CHK-029, CHK-060, CHK-061), ALG-10 (CHK-100, CHK-101), JET-11 (CHK-136, CHK-137 and the FASB Example 26 paragraph; rev 1.3), §5.1, §5.2, §5.4, §5.6; ENGINE_SPEC §4.3 S04-R-12a, §4.5 (EX-04-G2, EX-04-H); `_coverage/ADJUDICATION.md` §10 R-SFC-05, R-RET-01, R-SGN-01, R-SCH-17; ENGINE_SPEC_B §9.7, §10.7
+  - **Gates:** GK-01 `make ci`; GK-05 `make answer-keys ID=<the 38 ids above>`
+
+- [ ] **AKS-4 Recognition and presentation families pass (33 keys).**
+  - **Prerequisites:** AKS-3
+  - **Scope:**
+    - Paths: stage package corrections as the keys require
+    - Schema: none
+    - API: none
+    - Engine: corrections within stages 09, 10 and 14 citing their S<nn>-R rule
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/answer_keys/test_answer_keys.py::test_answer_key[REC-S5-EX19]` asserts at `year-end` `revenue_cum` "2200000.00" (EX-09-C)
+      - `…[REC-S5-EX63-OWNSSP]` asserts at `bill-and-hold-date` `transaction_price` "1000000.00" and `revenue_cum` "970873.79" (S09-R-12)
+      - `…[REC-S5-OVERTIME-OWN-PIT]` asserts at `end-of-q1` `awaiting_trigger_amount` "1000000.00", and `[REC-S5-OVERTIME-OWN-OT]` `revenue_cum` "375000.00" (REQ-REC-002)
+      - `…[POS-CHK-011-GT06]` asserts at `end-january` `unbilled_receivable` "58.85" (CHK-011; GT-05)
+      - `…[POS-CHK-013-EXAMPLE-39-CONDITIONAL-RIGHT-ENGINE-BILLING]` asserts at `after-product-a` `contract_asset` "400.00" (CHK-013)
+      - `…[POS-CHK-014-S5-PROGRESS-VARIANTS-RIGHT-TO-INVOICE]` asserts at `december-close` `revenue_cum` "3000.00" and `netting_reclass_amount` "3000.00" (CHK-014)
+    - Answer keys: `make answer-keys ID=REC-BR-04-BILL-AND-HOLD-CUSTODIAL,REC-BR-05-CONSIGNMENT-SELL-THROUGH,REC-BR-08-CUSTOMISED-TOOLING-COST-TO-COST,REC-CHK-014-S5-PROGRESS-VARIANTS-RTI,REC-FS-01-SAAS-RAMP-ANNUAL-BILLING,REC-FS-06-TERM-LICENCE-RENEWAL-START-GATE,REC-FS-07-FIXED-FEE-EAC-HOURS-REVISION,REC-FS-08-TM-RIGHT-TO-INVOICE,REC-GE-01-EPC-UNINSTALLED-MATERIALS-ZERO-MARGIN,REC-JS-04-PAID-MEMBERSHIP-DAILY,REC-RB-03-DRG-IN-HOUSE-PATIENT-MONTH-END,REC-RB-05-CAPITATION-PMPM-RATE-AMENDMENT,REC-S5-ACCEPTANCE-OWN-OBJ,REC-S5-ACCEPTANCE-OWN-SUBJ,REC-S5-CONSIGNMENT-OWN,REC-S5-EX19,REC-S5-EX62-CASEB,REC-S5-EX63-OWNSSP,REC-S5-OVERTIME-OWN-OT,REC-S5-OVERTIME-OWN-PIT,REC-S5-PROGRESS-VARIANTS-COSTRECOVERY,REC-S5-PROGRESS-VARIANTS-WASTE,REC-S5-UPFRONTFEE-OWN-A,REC-S5-UPFRONTFEE-OWN-B,POS-CHK-010,POS-CHK-010-UNBILLED-RECEIVABLE-AND-CONTRACT-ASSET-SPLIT,POS-CHK-011-GT06,POS-CHK-011-GT06-CONTRACT2-SSP-DELIVERED-RECLASS,POS-CHK-012-S9-PRESENTATION-NETTING,POS-CHK-013-EXAMPLE-39-CONDITIONAL-RIGHT-ENGINE-BILLING,POS-CHK-013-S9-PRESENTATION-EX39,POS-CHK-014-S5-PROGRESS-VARIANTS-RIGHT-TO-INVOICE,POS-GE-07-RETAINAGE-PRESENTATION` passes 33 of 33 (families `REC` 24, `POS` 9); the withdrawn keys `POS-S9-PRESENTATION-EX38-CASEA` and `-CASEB` are validated and not run (DG-AK-13)
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: none; REQs contributed: none
+    - Hint closure: REQ-REC-001 and REQ-REC-014 `AK:S5-ACCEPTANCE-OWN`; REQ-REC-002 `AK:S5-OVERTIME-OWN`; REQ-REC-005, REQ-REC-006 and REQ-REC-009 `AK:S5-PROGRESS-VARIANTS`; REQ-REC-007 `AK:S5-EX19`, `AK:S5-PROGRESS-VARIANTS`; REQ-REC-012 `AK:S5-EX63-OWNSSP`; REQ-REC-013 `AK:S5-CONSIGNMENT-OWN`; REQ-REC-015 `AK:S5-EX62`; REQ-REC-017 `AK:S5-UPFRONTFEE-OWN`; REQ-BIL-004 `AK:S9-PRESENTATION (ex39)` and `AK:S5-PROGRESS-VARIANTS`. `AK:S9-PRESENTATION` for REQ-BIL-002, REQ-BIL-003, REQ-BIL-005 and REQ-BIL-007 closes with `POS-CHK-012-S9-PRESENTATION-NETTING-PER-CONTRACT` in PRP-1
+  - **Read:** PHASES §8.2.1 rows REC, POS, §8.2.4; POLICIES ALG-02, ALG-03 (CHK-010 to CHK-014); ENGINE_SPEC_B §9.2.4 to §9.2.6, §10.2.7, §10.7
+  - **Gates:** GK-01 `make ci`; GK-05 `make answer-keys ID=<the 33 ids above>`
+
+- [ ] **AKS-5 Modification, material-right and late-event families pass (34 keys).**
+  - **Prerequisites:** AKS-4
+  - **Scope:**
+    - Paths: stage package corrections as the keys require
+    - Schema: none
+    - API: none
+    - Engine: corrections within stages 06, 08, 09, 12 and 14 citing their S<nn>-R rule
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/answer_keys/test_answer_keys.py::test_answer_key[MOD-CHK-027-S6-EX8]` asserts at `end-2026` `transaction_price` "1000000.00" and `revenue_cum` "600000.00" (CHK-027 inputs)
+      - `…[MOD-CHK-112]` asserts at `at-termination` `revenue_cum` "180000.00" (CHK-112)
+      - `…[MR-CHK-054-S2-EX49]` asserts at `after-sale` `total_ssp` "112.00", and `[MR-CHK-051-S2-EX49-REDEEM]` `revenue_cum` "89.29" (CHK-054, CHK-051)
+      - `…[MR-CHK-052-GT15-CONTINUATION]` asserts at `end-september-continuation` `transaction_price` "2600.00" (CHK-052)
+      - `…[LATE-CHK-090-GOLDEN-CONTRACT1-DELIVERY-AFTER-JANUARY-LOCK]` asserts at `february-after-late-deliveries` `revenue_cum` "128.84" and "118.53" (CHK-090)
+      - `…[LATE-CHK-091-TC-JE-11-EVENTS-RECORDED-OUT-OF-ORDER]` asserts at `february-view` `contract_liability` "441.15" (CHK-091; TC-JE-11)
+    - Answer keys: `make answer-keys ID=MOD-CHK-027-S6-EX8,MOD-CHK-028-S6-EX5-CASEB,MOD-CHK-042-D18,MOD-CHK-042-INCEPTION,MOD-CHK-043-S6-EX7,MOD-CHK-112,MOD-CHK-115,MOD-FS-03-CASEA-UPSELL-AT-SSP-SEPARATE,MOD-FS-03-CASEB-UPSELL-DISCOUNT-PROSPECTIVE,MOD-FS-09-CANCELLATION-REFUND-COMMISSION,MOD-FS-10-CLOUD-CONVERSION-CREDIT,MOD-GE-02-CHANGE-ORDERS-UNPRICED-AND-CLAIM,MOD-GE-08-PARTIAL-TERMINATION-FOR-CONVENIENCE,MOD-JS-06-AREA-DEVELOPMENT-SCHEDULE-REVISION,MOD-LEGACY-POBVC-GT11,MOD-LEGACY-PROS-GT12,MOD-LEGACY-RETRO-GT10,MOD-S6-COMBINED-MOD-OWN,MOD-S6-EX5-CASEA,MR-CHK-050-CONTINUATION,MR-CHK-050-MODIFICATION,MR-CHK-051-S2-EX49-EXPIRY,MR-CHK-051-S2-EX49-REDEEM,MR-CHK-052-GT15-CONTINUATION,MR-CHK-052-GT15-MODIFICATION,MR-CHK-053-S2-EX52,MR-CHK-054-S2-EX49,MR-FS-04-EARLY-RENEWAL-PRICE-CAP,MR-JS-01-POS-PORTFOLIO-POINTS-REDEMPTION,MR-S2-EX51,MR-WM-07-PARTNER-AIRLINE-TICKETS-WITH-MILES,LATE-CHK-090-GOLDEN-CONTRACT1-DELIVERY-AFTER-JANUARY-LOCK,LATE-CHK-091-TC-JE-11-EVENTS-RECORDED-OUT-OF-ORDER,LATE-POL-181-FX-LATE-DELIVERY-AT-EFFECTIVE-DATE-RATES` passes 34 of 34 (families `MOD` 19, `MR` 12, `LATE` 3)
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: none; REQs contributed: none
+    - Hint closure: REQ-MOD-003 `AK:S6-EX5-CASEA`; REQ-MOD-004 `AK:S6-EX5-CASEB` (`MOD-CHK-028-S6-EX5-CASEB`, `RND-CHK-006-S6-EX5-CASEB-UNITS-PATTERN`) and `AK:S6-EX7`; REQ-MOD-005 `AK:S6-EX8`; REQ-MOD-006 `AK:S6-COMBINED-MOD-OWN`; REQ-MOD-011 and REQ-CST-005 `AK-FAM:termination` (`MOD-CHK-112`, `MOD-FS-09-CANCELLATION-REFUND-COMMISSION`, `MOD-GE-08-PARTIAL-TERMINATION-FOR-CONVENIENCE`); REQ-POB-006 `AK:S2-EX49`, `AK:S2-EX52`, `AK:S2-EX51`
+  - **Read:** PHASES §8.2.1 rows MOD, MR, LATE; POLICIES ALG-04 (CHK-027, CHK-028, CHK-042, CHK-043), ALG-05 (CHK-050 to CHK-054), ALG-09 (CHK-090, CHK-091), §5.3, §5.5; ENGINE_SPEC §6.7, §8.7
+  - **Gates:** GK-01 `make ci`; GK-05 `make answer-keys ID=<the 34 ids above>`
+
+- [ ] **AKS-6 Journal, delta, cost, loss, IFRS and onboarding families pass (27 keys).**
+  - **Prerequisites:** AKS-5
+  - **Scope:**
+    - Paths: stage package corrections as the keys require
+    - Schema: none
+    - API: none
+    - Engine: corrections within stages 02, 07, 11, 13 and 14 citing their S<nn>-R rule
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/answer_keys/test_answer_keys.py::test_answer_key[JE-CHK-136-S3-EX29-ADVANCE-PAYMENT-ACCRETION]` asserts at `year-1-close` `contract_liability` "4246.71" (CHK-136)
+      - `…[JE-CHK-021-S1-EX1-CASEC-DEPOSIT-TO-CONTRACT-LIABILITY]` asserts at `may-close` `deposit_liability` "100.00" (CHK-021)
+      - `…[JE-CHK-131-S8-IMPAIRMENT-AND-IFRS15-REVERSAL]` asserts at `asc606-period-1` `cost_asset_carrying` "15000.00" (CHK-131)
+      - `…[LOSS-S7-LOSS-OWN]` asserts at `end-2026` `revenue_cum` "500000.00" (CHK-132 inputs)
+      - `…[DLT-NATIVE-SUBSCRIPTION-PRE-STANDARD-UPFRONT]` asserts at `asc606-february` `revenue_cum` "2000.00" and `pre_standard_revenue_cum` "12000.00" (JET-15)
+      - `…[ONB-CHK-121-BUSINESS-COMBINATION-SUBSCRIPTION]` asserts at `january-2026-asc606` `contract_liability` "110000.00" (CHK-121)
+    - Answer keys: `make answer-keys ID=JE-CHK-021-S1-EX1-CASEC-DEPOSIT-TO-CONTRACT-LIABILITY,JE-CHK-023-S3-SALESTAX-OWN-ENGINE-BILLING,JE-CHK-024-S9-PRESENTATION-EX38-CASEA-CANCELLABLE,JE-CHK-024-S9-PRESENTATION-EX38-CASEB-NONCANCELLABLE,JE-CHK-025-S3-EX24-VOLUME-REBATE-REFUND-LIABILITY,JE-CHK-026-CHK-100-S3-EX21-EXTENDED-BONUS-CATCH-UP,JE-CHK-130-S8-CONTRACT-COSTS-EX2-AMORTISATION,JE-CHK-131-S8-EXPEDIENT-ONE-YEAR-COMMISSION-EXPENSED,JE-CHK-131-S8-IMPAIRMENT-AND-IFRS15-REVERSAL,JE-CHK-132-S7-LOSS-OWN-PROVISION-AND-RELEASE,JE-CHK-136-S3-EX29-ADVANCE-PAYMENT-ACCRETION,JE-CHK-138-S1-EX2-IMPLICIT-PRICE-CONCESSION-RECEIVABLE-CONTRA,DLT-NATIVE-SUBSCRIPTION-PRE-STANDARD-UPFRONT,COST-CAP-COMMISSION-EXPECTED-RENEWALS-IMPAIRMENT,COST-S8-CONTRACT-COSTS-EX1,COST-S8-CONTRACT-COSTS-EX2,COST-S8-CONTRACT-COSTS-EXPEDIENT,COST-S8-CONTRACT-COSTS-IMPAIRMENT,LOSS-GE-03-LOSS-CONTRACT-PROVISION,LOSS-S7-LOSS-OWN,IFRS-S13-SWITCH-SHIPPING,IFRS-SW01-COLLECTIBILITY-THRESHOLD-PER-BOOK,IFRS-SW04-SHIPPING-FULFILMENT-ELECTION-VS-SEPARATE-OBLIGATION,IFRS-SW11-ONEROUS-CONTRACT-SCOPE-IFRS15-ONLY,ONB-CHK-121-BUSINESS-COMBINATION-SUBSCRIPTION,ONB-RB-06-RELIEF-GRANT-ROUTED-OUT,ONB-S11-MODRETRO-OWN` passes 27 of 27 (families `JE` 12, `DLT` 1, `COST` 5, `LOSS` 2, `IFRS` 4, `ONB` 3)
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: none; REQs contributed: none
+    - Hint closure: REQ-TP-001 and REQ-TP-002 `AK:S3-EX21-EXTENDED`; REQ-TP-010 `AK:S3-EX24`; REQ-TP-011 `AK:S3-EX29`; REQ-TP-014 `AK:S3-SALESTAX-OWN`; REQ-TP-015 `AK:S1-EX2`; REQ-POB-011 `AK:S2-SHIPPING-OWN`; REQ-BIL-008 `AK:S9-PRESENTATION (ex38)`; REQ-CST-002, REQ-CST-003, REQ-CST-004 and REQ-CST-006 `AK:S8-CONTRACT-COSTS`; REQ-LOS-001 and REQ-LOS-002 `AK:S7-LOSS-OWN`; REQ-MOD-016 `AK-FAM:construction` (`LOSS-GE-03-LOSS-CONTRACT-PROVISION`, `MOD-GE-02-CHANGE-ORDERS-UNPRICED-AND-CLAIM`, `MOD-GE-08-PARTIAL-TERMINATION-FOR-CONVENIENCE`, `POS-GE-07-RETAINAGE-PRESENTATION`, `REC-BR-08-CUSTOMISED-TOOLING-COST-TO-COST`, `REC-GE-01-EPC-UNINSTALLED-MATERIALS-ZERO-MARGIN`, `VC-GE-04-CPIF-EAC-REVISIONS`)
+  - **Read:** PHASES §8.2.1 rows JE, DLT, COST, LOSS, IFRS, ONB; POLICIES §2.3 (CHK-021 to CHK-026, CHK-130 to CHK-138), §5.11 (CHK-121), §6.2; ENGINE_SPEC §7.6; ENGINE_SPEC_B §11.7, §13.7, §14.8
+  - **Gates:** GK-01 `make ci`; GK-05 `make answer-keys ID=<the 27 ids above>`
+
+- [ ] **AKS-7 Foreign-currency and multi-entity families pass (16 keys).**
+  - **Prerequisites:** AKS-6
+  - **Scope:**
+    - Paths: stage package corrections as the keys require
+    - Schema: none
+    - API: none
+    - Engine: corrections within stages 10, 12 and 14 citing their S<nn>-R rule
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/answer_keys/test_answer_keys.py::test_answer_key[FX-CHK-081-CONTRACT-ASSET-REMEASURED-TO-CLOSING-RATE]` asserts at `january-close` `contract_asset` "1000.00" (transaction) and "1120.00" (functional) (CHK-081)
+      - `…[FX-CHK-082-REFUNDABLE-ADVANCE-MONETARY-OVERRIDE-VS-IFRIC22]` asserts at `asc606-january-close` `contract_liability` "11000.00" (transaction) and "12320.00" (functional) (CHK-082)
+      - `…[FX-CHK-084-A-REFUND-LIABILITY-REMEASURED]` asserts at `march-close` `revenue_cum` "9700.00" and `refund_liability` "300.00" (CHK-084 (a))
+      - `…[FX-JPY-CONTRACT-USD-FUNCTIONAL-MINOR-UNITS]` asserts at `end-of-term` `functional_dr` "2208.79" and `functional_cr` "2208.79" (minor units per ISO 4217)
+      - `…[ENT-CHK-070-INTERCOMPANY-PAIR-PERFORMING-ENTITY]` asserts at `end-of-p1` `allocated_amount` "60000.00" and `revenue_cum` "60000.00" (CHK-070)
+    - Answer keys: `make answer-keys ID=FX-BHD-FUNCTIONAL-USD-CONTRACT-MINOR-UNITS,FX-CHK-080-LIABILITY-LAYERS-AT-HISTORICAL-RATES,FX-CHK-081-CONTRACT-ASSET-REMEASURED-TO-CLOSING-RATE,FX-CHK-082-REFUNDABLE-ADVANCE-MONETARY-OVERRIDE-VS-IFRIC22,FX-CHK-083-ENGINE-RECEIVABLE-REMEASUREMENT,FX-CHK-084-A-REFUND-LIABILITY-REMEASURED,FX-CHK-084-B-DEPOSIT-LIABILITY-REMEASURED,FX-CHK-084-C-CONSIDERATION-PAYABLE-REMEASURED,FX-JPY-CONTRACT-USD-FUNCTIONAL-MINOR-UNITS,FX-POL-160-IFRIC22-LAYER-DATE-ASC606-VS-IFRS15,FX-POL-161-FIFO-TWO-LAYERS-IN-ONE-PERIOD,ENT-CHK-070-CONTRACTING-ENTITY-RECOGNISES-REVENUE,ENT-CHK-070-INTERCOMPANY-PAIR-PERFORMING-ENTITY,ENT-CHK-071-CONTRACT-ASSET-HELD-BY-CONTRACTING-ENTITY,ENT-CROSS-CURRENCY-PAIR-GBP-CONTRACT-USD-PERFORMER,ENT-PER-ENTITY-NETTING-IN-A-COMBINED-GROUP` passes 16 of 16 (families `FX` 11, `ENT` 5)
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: none; REQs contributed: none
+    - Hint closure: REQ-FX-001 to REQ-FX-004, REQ-FX-007 and REQ-BIL-012 `AK-FAM:fx`, the 13 keys tagged `fx`: the 11 `FX-*` keys, `ENT-CROSS-CURRENCY-PAIR-GBP-CONTRACT-USD-PERFORMER`, and `LATE-POL-181-FX-LATE-DELIVERY-AT-EFFECTIVE-DATE-RATES` from AKS-5. REQ-ENT-001 to REQ-ENT-004 `AK-FAM:multi-entity` (the five `ENT-*` keys). REQ-BK-002 `AK (IFRS variants of S1, S2, S3, S8 keys)`: the four `IFRS-*` keys, `JE-CHK-131-S8-IMPAIRMENT-AND-IFRS15-REVERSAL` and `ONB-CHK-121-BUSINESS-COMBINATION-SUBSCRIPTION` from AKS-6, plus `FX-CHK-080-*`, `FX-CHK-082-*` and `FX-POL-160-*`
+  - **Read:** PHASES §8.2.1 rows FX, ENT; POLICIES ALG-07 (CHK-070, CHK-071), ALG-08 (CHK-080 to CHK-084), §6.2; ENGINE_SPEC_B §12.7
+  - **Gates:** GK-01 `make ci`; GK-05 `make answer-keys ID=<the 16 ids above>`
+
+- [ ] **AKS-8 Engine-runner corpus sweep (221 keys) and AK hint closure record.**
+  - **Prerequisites:** AKS-7
+  - **Scope:**
+    - Paths: `backend/tests/unit/answer_keys/test_aks_selection.py` (the §8.2.1 id set as a module constant, equal to PHASES §8.2.1); corrections only for regressions this sweep finds
+    - Schema: none
+    - API: none
+    - Engine: none beyond regression fixes
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/unit/answer_keys/test_aks_selection.py::test_aks_selection_equals_phases_8_2_1`: the module constant holds the 221 ids of PHASES §8.2.1. Every id is an active key with `runner: engine` and `families[0]` ≠ `DISC`, and the constant equals the union of the AKS-1 to AKS-7 selections
+      - `make answer-keys ID=<the 221 ids of PHASES §8.2.1>` passes 221 of 221. `.run/reports/answer-keys/report.json` lists 221 keys with `result: passed` and reports the count whose review status is not `approved` (every key `pending` at issue, `_coverage/ADJUDICATION.md`)
+      - `make properties` unfiltered stays green (no regression from AKS corrections)
+    - Answer keys: `make answer-keys ID=<the 221 ids of PHASES §8.2.1>` (221 pass)
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: none; REQs contributed: none
+    - Hint closure: every `AK:` and `AK-FAM:` hint of the requirements of EKC, ENA, ENB, ENC and END whose keys all fall in §8.2.1 is closed, as the AKS-1 to AKS-7 lines state. The remaining engine-area hints close later: `AK:S2-EX11-CASEA-OWNPRICES` (REQ-POB-001, REQ-REC-003), `AK:S3-EX23` (REQ-TP-003, REQ-TP-018) and `AK:S10-DISCLOSURES` engine keys (REQ-TP-003) in EDS-7; `AK:S9-PRESENTATION` (REQ-BIL-002, REQ-BIL-003, REQ-BIL-005, REQ-BIL-007) in PRP-1; `AK:S10-DISCLOSURES` platform keys (REQ-TP-003) in PRP-3
+  - **Read:** PHASES §1 row AKS, §8.2.1, §15.1; dev-guide DG-AK-42, DG-AK-43
+  - **Gates:** GK-01 `make ci`; GK-05 `make answer-keys ID=<the 221 ids of PHASES §8.2.1>`; GK-04 `make properties`
+
+- [ ] **GATE-AKS Phase AKS checkpoint.**
+  - **Prerequisites:** every item of phase AKS (AKS-1 to AKS-8)
+  - **Scope:** verification and evidence; fixes only for defects this checkpoint finds
+  - **Acceptance:**
+    - Exit criteria: every exit criterion of PHASES §1 row AKS holds. Evidence: `make answer-keys ID=<§8.2.1 ids>` reports 221 of 221 passed; each correction commit cites its ENGINE_SPEC or POLICIES rule
+    - Membership: no requirement is completed in AKS (PHASES §6.10); the hint closures of AKS-1 to AKS-8 are recorded; no control, route row, placement, journey or make target is assigned
+    - Gates: the PHASES §4 row GATE-AKS is green on a clean tree (`git status --porcelain` empty) after the last commit: `make ci`, `make test-pg`, `make e2e` (unfiltered), `make answer-keys ID=<§8.2.1 ids>` (221 keys), `make properties` (unfiltered), `erev controls-report --tags-only` inside `make lint`
+  - **Read:** PHASES §1 row AKS, §4 row GATE-AKS, §8.2.1, §15.1; header §6
+  - **Gates:** GK-11 `make ci`; `make test-pg`; `make e2e`; `make answer-keys ID=<§8.2.1 ids>`; `make properties` (row GATE-AKS)
+
+## 13 GPA Golden parity: contract and probe kinds
+
+**Entry criteria.** GATE-DIN ticked (PHASES §3 order AKS → CTR → DIN → GPA). GPA consumes these interfaces:
+- the DIN legacy v1 import pipeline, 04 API-R-43 (`POST /imports`, validate, diff, submit, approve, commit), with the four legacy templates of 04 §17.4;
+- the RFD preset command `create_preset_version` (DG-KRN-REG-05) through the registry version lifecycle;
+- the CTR contract, obligation-version and calculation-trace stores and queries (API-R-28 to API-R-36, API-R-49);
+- the committed fixtures of DG-PAR-02 (GATE-FND).
+
+**Exit criteria (PHASES §1 row GPA, as adjusted by B3-BS2-04).** The parity runner of DG-PAR-01 to 11 runs over the legacy v1 pipeline under the `LEGACY_PARITY` preset. `make parity K="initial_allocation or pob_position or contract_position or cumulative_catchup or probe-P3-over-delivery-validation"` passes 94 of 94, and the DG-PAR-08 report is written. Probes P1, P2 and P4 close in GPB-1.
+
+**Gate scope at exit (PHASES §4 row GATE-GPA, B3-BS2-04).** `make ci`; `make test-pg`; `make e2e` unfiltered; `make answer-keys ID=<§8.2.1 ids>` (221 keys); `make parity K="initial_allocation or pob_position or contract_position or cumulative_catchup or probe-P3-over-delivery-validation"` (94 cases); `make properties` unfiltered; `erev controls-report --tags-only` inside `make lint`; the parity report counts by kind as extra evidence.
+
+**Membership.** No requirement is completed (PHASES §6.13); GPA closes `GT:` and `GT-nn` hints of §9 kinds `initial_allocation`, `pob_position`, `contract_position`, `cumulative_catchup` and probe P3 of `legacy_probe`. Make target DG-MK-parity (§13).
+
+- [ ] **GPA-1 Parity runner, integrity preconditions, scenario replay of steps 01 to 03, and the `initial_allocation` kind (16 cases).**
+  - **Prerequisites:** GATE-DIN
+  - **Scope:**
+    - Paths: `backend/tests/parity/test_golden_parity.py` (module `pytestmark = pytest.mark.parity`; one case per id `<kind>::<test id>`); `backend/tests/support/parity/__init__.py`, `integrity.py` (DG-PAR-03), `scenario.py` (DG-PAR-04), `values.py` (DG-PAR-05), `compare.py` (DG-PAR-07), `report.py` (DG-PAR-08); `backend/tests/unit/parity/test_parity_support.py`; `Makefile` target `parity` (DG-MK-parity)
+    - Schema: none
+    - API: none (consumes 04 API-R-43 and the GATE-RFD registry routes through the test client)
+    - Engine: none
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/unit/parity/test_parity_support.py::test_integrity_preconditions`: SHA-256 of `docs/legacy/golden/golden-tests.json` equals `deviations.json` `inputs.golden_tests_sha256`, `31fd2a081ff01f9838b478d3d39682f2889d2a132987407b296ffb1091acc850`. Both files hold the same 122 ids; `self_check_failures` is empty; `posting_rule_id == "EXACT-CUM"`; the keys of `probe_status_mapping` are exactly {`authority`, `COMMITTED`, `COMMITTED_WITH_FINDINGS`, `REJECTED`, `error_code`} (DG-PAR-03)
+      - `…::test_stale_deviations_fail_every_case`: with a copy of `deviations.json` under `.run/tmp/` whose `golden_tests_sha256` differs, every collected case fails with "deviations.json is stale; the supervisor must rerun research-harness/deviations/build_deviations.py"
+      - `…::test_exact_value_source`: for an `erev.money` column, `exact(m) = Fraction(Decimal(node.value)) + Fraction(node.rounding_residue)` of `obligation_version.trace_nodes[m]` (DG-PAR-05). Unit amounts pass when |exact − expected| ≤ 1/10000, and journal amounts only when exact to the cent. −0.0 equals 0; an expected null requires a null actual (DG-PAR-07)
+      - `…::test_case_ids_and_no_skip`: collection yields 122 cases with ids such as `initial_allocation::setup-alloc-Contract1-POB1`, all marked `parity` through module `pytestmark`, none with `skip` or `xfail` (DG-PAR-01, DG-PAR-09)
+      - `backend/tests/parity/test_golden_parity.py` scenario (DG-PAR-04): tenant `legacy-parity-test` in `erev_test` (`committed_db`), personas `ak-preparer` and `ak-approver`, periods 2023-01 to 2023-12 open, books `ASC606` and `LEGACY`. The `LEGACY_PARITY` preset version is created, tested, submitted, approved by `ak-approver` and published before step 01. Steps 01 to 03 replay through upload, validate, dry-run diff, submit, approve and commit, with the template chosen from the step handler and the upload date from `step.json` `date_input`. The application `FrozenClock` starts at `2026-01-01T00:00:00Z` and advances one hour per step; `known_at[NN]` is `SELECT clock_timestamp()` after each commit
+      - `make parity K=initial_allocation` passes 16 of 16. For example `setup-alloc-Contract1-POB1` gives `ssp_midpoint` 450.0, `extended_ssp` 500.0, `allocation` 322.1011, `contract_price` 1300.0 and `contract_ssp` 2018.0. `setup-alloc-Contract1-POB2` gives `extended_ssp` 368.0 and `allocation` 237.0664 (GT-01). Contract 2 gives allocations 470.7692 / 313.8462 / 115.3846 / 0 (GT-02); Contract 4 gives contract SSP 1,306 and allocations 445.1761 / 395.7121 / 109.1118 / 0 (GT-03)
+      - `.run/reports/parity/report.json` lists per id `{kind, classification, dev_id, passed, mismatches}` with counts by kind and class (`initial_allocation`: A 14, C 2) (DG-PAR-08)
+    - Answer keys: none
+    - Golden: `make parity K=initial_allocation` (16 pass)
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: none; REQs contributed: none
+    - Hint closure: REQ-SSP-004 and REQ-SSP-005 `GT-01`, `GT-02`, `GT:initial_allocation`; REQ-POB-002 `GT-02`, `GT:initial_allocation`; REQ-ALC-001 `GT:initial_allocation`
+  - **Read:** dev-guide §4.4 DG-MK-parity, §9.6 (DG-PAR-01 to DG-PAR-11, kind table), §9.3 DG-TST-13, DG-TST-16; `docs/legacy/DEVIATIONS.md` §2, §3; `docs/legacy/golden/golden-tests.json`, `deviations.json` (`inputs`, `tolerance`, `counts`); legacy 07 §7 GT-01 to GT-03; 04 API-R-43, §17.4
+  - **Gates:** GK-01 `make ci`; GK-06 `make parity K=initial_allocation`
+
+- [ ] **GPA-2 Contract positions after steps 02 to 07 (22 cases).**
+  - **Prerequisites:** GPA-1
+  - **Scope:**
+    - Paths: `backend/tests/support/parity/scenario.py` (steps 04 to 07: deliveries and billings of 2023-01-31, 2023-02-28, 2023-03-31 and 2023-04-30 with the return); `backend/tests/support/parity/values.py` (`contract_position` field sources); code corrections as the cases require, citing the ENGINE_SPEC rule or DEV id
+    - Schema: none
+    - API: none
+    - Engine: corrections within stages 01, 09 and 10 as required
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `make parity K="contract_position and (rollforward-02 or rollforward-03 or rollforward-04 or rollforward-05 or rollforward-06 or rollforward-07)"` passes 22 of 22. `rollforward-04-Contract2` gives `tp_allocation_basis` 900.0, `revenue_cum` 58.8462, `billing_cum` 0.0, `remaining_allocation` 841.1538, `position` −58.8462, `contract_liability` 0.0, `contract_asset` 58.8462, `uar_reclass_field` 58.8462 and `catchup_cum_disclosure` 0.0 (GT-05, GT-19)
+      - the step 06 Contract 2 case gives `position` −105.00 with `uar_reclass_field` 105.00 = 58.8462 + 46.1538 (GT-06); the step 07 Contract 2 case gives `position` −85.00 with reclass 47.6374 + 37.3626 (GT-09)
+      - `.run/reports/parity/report.json` shows every `contract_position` case of steps 02 to 07 passed
+    - Answer keys: none
+    - Golden: `make parity K="contract_position and (rollforward-02 or rollforward-03 or rollforward-04 or rollforward-05 or rollforward-06 or rollforward-07)"` (22 pass)
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: none; REQs contributed: none
+    - Hint closure: REQ-REC-004 `GT-04`; REQ-REC-026 `GT-05`, `GT-06`, `GT-09`; REQ-BIL-005 `GT-05`, `GT-06`, `GT-09`; REQ-BIL-006 `GT-06`, `GT-09`
+  - **Read:** dev-guide §9.6 kind table row `contract_position`; `docs/legacy/golden/04-*` to `07-*` `step.json`, `contract-rollforward.csv`; legacy 07 §7 GT-04 to GT-09, GT-19; `docs/legacy/DEVIATIONS.md` (DEV ids named by the cases)
+  - **Gates:** GK-01 `make ci`; GK-06 `make parity K="contract_position and (rollforward-02 or rollforward-03 or rollforward-04 or rollforward-05 or rollforward-06 or rollforward-07)"`
+
+- [ ] **GPA-3 Retrospective and POB-specific VC templates: steps 08 and 09 (11 cases).**
+  - **Prerequisites:** GPA-2
+  - **Scope:**
+    - Paths: `backend/tests/support/parity/scenario.py` (steps 08 and 09 through the contract modification template, E-24 `template_mode` `retrospective` and `pob_price_change`); `values.py` (`cumulative_catchup` sources); corrections as required
+    - Schema: none
+    - API: none
+    - Engine: corrections within stages 06, 09 and 10 as required
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `make parity K="catchup-08 or catchup-09 or rollforward-08 or rollforward-09"` passes 11 of 11. `catchup-08-Contract2-POB1`: `catchup` 13.3761, `remaining_allocation` 700.9804, `revenue_cum` 72.2222. `catchup-08-Contract2-POB3`: 10.491 / 84.9673 / 56.6449. `catchup-09-Contract2-POB1`: −18.6813 / 519.6617 / 53.5409 (GT-10, GT-11)
+    - Answer keys: none
+    - Golden: `make parity K="catchup-08 or catchup-09 or rollforward-08 or rollforward-09"` (11 pass)
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: none; REQs contributed: none
+    - Hint closure: REQ-TP-007 `GT-11`, `GT:cumulative_catchup (step 09)`; REQ-MOD-008 `GT-10`, `GT:cumulative_catchup (steps 08)`
+  - **Read:** dev-guide §9.6 kind rows `cumulative_catchup`, `contract_position`; `docs/legacy/golden/08-*`, `09-*`; legacy 04 §3, legacy 05 §3; legacy 07 §7 GT-10, GT-11; ENGINE_SPEC §6.5, EX-06-F, EX-06-G
+  - **Gates:** GK-01 `make ci`; GK-06 `make parity K="catchup-08 or catchup-09 or rollforward-08 or rollforward-09"`
+
+- [ ] **GPA-4 Prospective, retrospective-reduction and material-right templates: steps 10 to 13 (23 cases).**
+  - **Prerequisites:** GPA-3
+  - **Scope:**
+    - Paths: `backend/tests/support/parity/scenario.py` (steps 10 to 13); corrections as required
+    - Schema: none
+    - API: none
+    - Engine: corrections within stages 05, 06, 09 and 10 as required
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `make parity K="catchup-10 or catchup-11 or catchup-12 or catchup-13 or rollforward-10 or rollforward-11 or rollforward-12 or rollforward-13"` passes 23 of 23:
+        - GT-12 (step 10): TP 800; POB #3 catch-up −5.2988 with remaining 43.0163;
+        - GT-13 (step 11): Contract 3 POB #1 remaining SSP 707, POB #3 catch-up +6.9936; Contract 4 POB #3 allocation 355.2772;
+        - GT-14 (step 12): Contract 3 modification SSP −306, TP 1,600, catch-ups +34.8800 / +7.2238; Contract 4 modification SSP −75, TP 1,200, catch-ups +8.6276 / +7.6690;
+        - GT-15 (step 13): POB #5 1,268.1139, POB #1 678.0182, POB #2 311.1106, POB #3 catch-up +32.1394, TP 2,600
+    - Answer keys: none
+    - Golden: `make parity K="catchup-10 or catchup-11 or catchup-12 or catchup-13 or rollforward-10 or rollforward-11 or rollforward-12 or rollforward-13"` (23 pass)
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: none; REQs contributed: none
+    - Hint closure: REQ-MOD-007 `GT-12`, `GT-13`, `GT-15`, `GT:cumulative_catchup (steps 10, 11, 13)`; REQ-MOD-008 `GT-14`, `GT:cumulative_catchup (step 12)`; REQ-POB-007 `GT-15`; REQ-MOD-015 `GT:cumulative_catchup`
+  - **Read:** dev-guide §9.6; `docs/legacy/golden/10-*` to `13-*`; legacy 03 §3, §5; legacy 07 §7 GT-12 to GT-15; ENGINE_SPEC §6.5, EX-06-H; POLICIES ALG-05 §2.6.5 CHK-052
+  - **Gates:** GK-01 `make ci`; GK-06 `make parity K="catchup-10 or catchup-11 or catchup-12 or catchup-13 or rollforward-10 or rollforward-11 or rollforward-12 or rollforward-13"`
+
+- [ ] **GPA-5 Full delivery end state: step 14 obligation and contract positions (21 cases).**
+  - **Prerequisites:** GPA-4
+  - **Scope:**
+    - Paths: `backend/tests/support/parity/scenario.py` (step 14); `values.py` (`pob_position` field sources); corrections as required
+    - Schema: none
+    - API: none
+    - Engine: corrections within stages 09 and 10 as required
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `make parity K="pob_position or rollforward-14"` passes 21 of 21. Every one of the 17 obligations has `Remaining qty` 0.0 and `Remaining allocation` 0.0. `final-pob-Contract1-POB1` has `Original allocation` 322.1011. Revenue equals billing equals TP per contract: 800 / 1,100 / 2,600 / 1,200, with net position 0 (GT-16)
+      - `final-pob-Contract3-POB5` (class B, DEV-052) passes with its corrected expected values, and `.run/reports/parity/report.json` lists it under the DEV-052 sign-off unit
+    - Answer keys: none
+    - Golden: `make parity K="pob_position or rollforward-14"` (21 pass)
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: none; REQs contributed: none
+    - Hint closure: REQ-POB-004 `GT:pob_position`; REQ-REC-004 `GT:pob_position`, `GT:contract_position`, `GT-16`; REQ-REC-001 `GT-16`; REQ-BIL-003 `GT-19`, `GT:contract_position` (all 50 `contract_position` cases pass after this item)
+  - **Read:** dev-guide §9.6 kind row `pob_position`; `docs/legacy/golden/14-full-delivery-2023-10-31/`, `final-pob-positions.csv`; `docs/legacy/DEVIATIONS.md` DEV-052; legacy 07 §7 GT-16, GT-19
+  - **Gates:** GK-01 `make ci`; GK-06 `make parity K="pob_position or rollforward-14"`
+
+- [ ] **GPA-6 Legacy probe runner and probe P3; the GATE-GPA parity selection (94 cases).**
+  - **Prerequisites:** GPA-5
+  - **Scope:**
+    - Paths: `backend/tests/support/parity/probes.py` (DG-PAR-06 replay in a fresh tenant per probe; DG-PAR-10 status mapping; DG-PAR-11 findings; journal expectations compared with report `legacy_je_summary`, failing closed with "legacy_je_summary not built (BUILD_SPEC RPS)" while RPT-13 is absent); `backend/tests/unit/parity/test_probe_support.py`
+    - Schema: none
+    - API: none (consumes 04 API-R-43)
+    - Engine: none
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/unit/parity/test_probe_support.py::test_probe_status_mapping`: each row of the DG-PAR-10 table classifies correctly. E-40 `COMMITTED` with zero findings is `COMMITTED`. `COMMITTED` with a `WARNING` and no `ERROR` is `COMMITTED_WITH_FINDINGS`. E-40 `INVALID` is `REJECTED`, with `error_code` the first `ERROR` finding code. A 409 `duplicate-import` with no `import_upload` row is `REJECTED` with `error_code` `IMPORT_FILE_DUPLICATE`
+      - `…::test_findings_order_and_business_key`: findings are ordered file stage first, then by sheet, Excel row and code. `business_key` `Contract 1 / POB #2 / Software 1` normalises to `Contract 1 POB #2 Software 1`, and string members such as `blank_memos` must appear verbatim in the message (DG-PAR-11)
+      - `…::test_journal_expectation_fails_closed_before_rps`: while report definition `legacy_je_summary` is absent, an expected `je_gross_*` member yields a mismatch naming `BUILD_SPEC RPS` (B3-BS2-04; XR-12)
+      - `make parity K=probe-P3-over-delivery-validation` passes 1 of 1: `import_status` `REJECTED` (E-40 `INVALID`); `error_code` `PROGRESS_OVER_DELIVERY`; `detail` "Contract 1 POB #1 Hardware 1: delivery 7 exceeds remaining quantity 5"; `findings` [{`code` `PROGRESS_OVER_DELIVERY`, `severity` `ERROR`, `worksheet_row` 2, `worksheet_rows` [2, 6], `pob` "Contract 1 POB #1 Hardware 1"}]; `versions_before` 8 and `versions_after` 8 (GT-21; DEV-020)
+      - `make parity K="initial_allocation or pob_position or contract_position or cumulative_catchup or probe-P3-over-delivery-validation"` passes 94 of 94. The report counts by kind are `initial_allocation` 16, `pob_position` 17, `contract_position` 50, `cumulative_catchup` 10 and `legacy_probe` 1 (B3-BS2-04)
+    - Answer keys: none
+    - Golden: `make parity K="initial_allocation or pob_position or contract_position or cumulative_catchup or probe-P3-over-delivery-validation"` (94 pass)
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: none; REQs contributed: none
+  - **Read:** dev-guide §9.6 DG-PAR-06, DG-PAR-10, DG-PAR-11 and the probe import-status mapping table; `docs/legacy/golden/probes/P3-over-delivery-validation/probe.json`; `deviations.json` `tests["probe-P3-over-delivery-validation"]`; `docs/legacy/DEVIATIONS.md` DEV-020; legacy 07 §7 GT-21
+  - **Gates:** GK-01 `make ci`; GK-06 `make parity K="initial_allocation or pob_position or contract_position or cumulative_catchup or probe-P3-over-delivery-validation"`
+
+- [ ] **GATE-GPA Phase GPA checkpoint.**
+  - **Prerequisites:** every item of phase GPA (GPA-1 to GPA-6)
+  - **Scope:** verification and evidence; fixes only for defects this checkpoint finds
+  - **Acceptance:**
+    - Exit criteria: every exit criterion of PHASES §1 row GPA holds as adjusted by B3-BS2-04. Evidence: `make parity K="initial_allocation or pob_position or contract_position or cumulative_catchup or probe-P3-over-delivery-validation"` reports 94 of 94 passed with none skipped, and `.run/reports/parity/report.json` has counts by kind and class
+    - Membership: no requirement is completed (PHASES §6.13); DG-MK-parity exists with dev-guide §4.4 semantics; the GT hint closures of GPA-1 to GPA-5 are recorded; probes P1, P2 and P4 are assigned to GPB-1 (B3-BS2-04)
+    - Gates: the PHASES §4 row GATE-GPA is green on a clean tree (`git status --porcelain` empty) after the last commit, with the B3-BS2-04 selection: `make ci`, `make test-pg`, `make e2e` (unfiltered), `make answer-keys ID=<§8.2.1 ids>` (221 keys), `make parity K="initial_allocation or pob_position or contract_position or cumulative_catchup or probe-P3-over-delivery-validation"` (94 cases), `make properties` (unfiltered), `erev controls-report --tags-only` inside `make lint`; parity report counts by kind recorded
+  - **Read:** PHASES §1 row GPA, §4 row GATE-GPA, §9, §13; B3-BS2-04; header §6
+  - **Gates:** GK-11 `make ci`; `make test-pg`; `make e2e`; `make answer-keys ID=<§8.2.1 ids>`; `make parity` (94-case selection); `make properties` (row GATE-GPA)
+
+## 14 EDS Engine stage 15: close projections and disclosures
+
+**Entry criteria.** GATE-GPA ticked. `compute` runs stages 02 to 14 (END-9), and `PENDING_STAGES == (("15", "EDS"),)`.
+
+**Exit criteria (PHASES §1 row EDS).** The stage 15 engine part of ENGINE_SPEC_B §15.2 exists, with invariants, findings and worked examples: RPO and time bands, rollforwards, prior-period revenue, disaggregation, cost rollforward, lock snapshot content and variance between closes. The keys of PHASES §8.2.2 pass, and P7 holds for the engine part. The platform report runs, snapshot storage and variance jobs are CLO and RPS (B3-BS2-10).
+
+**Gate scope at exit (PHASES §4 row GATE-EDS).** `make ci`; `make test-pg`; `make e2e` unfiltered; `make answer-keys ID=<§8.2.1 and §8.2.2 ids>` (227 keys); `make parity` with the GATE-GPA selection (94 cases, B3-BS2-04); `make properties` unfiltered; `erev controls-report --tags-only` inside `make lint`.
+
+**Membership.** 2 requirements (PHASES §6.14): REQ-CST-006, REQ-FX-007. PROP:P7 engine part (§12). Keys of §8.2.2 (6 `DISC` engine-runner keys). No control, route row, placement, journey or make target.
+
+- [ ] **EDS-1 Stage 15 RPO, practical-expedient exemptions and time bands; P7 engine part.**
+  - **Prerequisites:** GATE-GPA
+  - **Scope:**
+    - Paths: `backend/erev_engine/stages/s15_disclosures/__init__.py` (`run(ctx, st, tb) -> DisclosureState`); private `rpo.py`; `backend/erev_engine/stages/__init__.py` (register stage 15; `compute` runs it); `backend/tests/engine/kernel/test_stage_registry.py` (`PENDING_STAGES` empty); `backend/tests/engine/s15_disclosures/test_s15_rpo.py`; `backend/tests/properties/test_prop_p07_rpo.py` (engine part)
+    - Schema: none
+    - API: none
+    - Engine: ENGINE_SPEC_B §15.1; §15.2.3 S15-R-08 to S15-R-11; S15-INV-02; formulas `disc.rpo.v1`, `disc.rpo_band.v1`, `disc.rpo_exemption.v1`; `contract_version.rpo_amount`; POLICIES POL-197 to POL-201
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/s15_disclosures/test_s15_rpo.py::test_ex_15_a_rpo_time_bands`: contract K-02 at 2026-09-30, after the EX-09-A boundary, gives O1 RPO 228,273.97 − 89,380.78, O2 71,726.03 − 2,279.43, and total 208,339.79 (300,000.00 − 91,660.21). Band boundaries are 2027-09-30 and 2028-09-30, giving within 12 months 166,398.30, 13 to 24 months 41,941.49 and after 24 months 0.00 (EX-15-A; POL-201 default bands [12, 24])
+      - `…::test_ex_15_a_fasb_example_42`: at 2027-12-31 (`MONTHLY_EVEN`), contract B RPO is 7,200.00 = 4,800.00 + 2,400.00 and contract C is 2,362.50 = 1,575.00 + 787.50. Contract A is exempt under POL-198 when elected and is listed with its nature and remaining duration (EX-15-A)
+      - `…::test_s15_r09_one_year_exemption`: under POL-197 `APPLY`, every obligation of a contract whose original expected duration is 12 months or less is flagged exempt and excluded from the bands
+      - `…::test_s15_r11_narrative_dataset`: the 50-15 narrative dataset lists `vc_excluded_amount` 150,000.00 for the EX-04-A contract and every exempt amount (REQ-TP-003)
+      - `…::test_s15_inv_02_bands_sum_to_rpo`: Σ bands = RPO after exemptions, and RPO before exemptions = scheduled + awaiting trigger of the included obligations
+      - `backend/tests/properties/test_prop_p07_rpo.py::test_p07_engine_rpo`: over generated groups, RPO = allocated constrained transaction price − cumulative revenue for unsatisfied or partially satisfied obligations. RPO before exemptions equals scheduled + awaiting trigger, and waterfall totals equal schedule totals (PROP:P7 engine part, extended with the scheduled and awaiting-trigger split of REQ-REC-021)
+      - `backend/tests/engine/kernel/test_stage_registry.py::test_stage_registry_complete`: `STAGES` holds stages 02 to 12, 14 and 15, `PENDING_STAGES` is empty and `PENDING_BOUNDARY_HANDLERS` is empty (B3-BS2-07)
+    - Answer keys: none (`DISC-*` close in EDS-7)
+    - Golden: none
+    - Controls: none (CTL-027's first tagged test is RPS)
+    - Screens: none
+    - Journeys: none
+    - Properties: PROP:P7 engine part `backend/tests/properties/test_prop_p07_rpo.py::test_p07_engine_rpo`
+    - REQs completed: none; REQs contributed: REQ-REC-021, REQ-TP-003
+    - Hint closure: REQ-REC-021 `PROP:P7` engine part
+  - **Read:** ENGINE_SPEC_B §15.1, §15.2.3 (S15-R-08 to S15-R-11), §15.3, §15.5, §15.7 EX-15-A; POLICIES POL-197 to POL-201; dev-guide §9.7 P7; D-76 (RPO bands); 03 REQ-REC-021
+  - **Gates:** GK-01 `make ci`; GK-04 `make properties K=p07`
+
+- [ ] **EDS-2 Revenue waterfall measures and the RPO rollforward.**
+  - **Prerequisites:** EDS-1
+  - **Scope:**
+    - Paths: `backend/erev_engine/stages/s15_disclosures/waterfall.py`, `rpo.py` (rollforward); `backend/tests/engine/s15_disclosures/test_s15_waterfall.py`
+    - Schema: none
+    - API: none
+    - Engine: ENGINE_SPEC_B §15.2.1 S15-R-01, S15-R-02; §15.2.3 S15-R-12
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/s15_disclosures/test_s15_waterfall.py::test_s15_r01_waterfall_measures`: for K-02, September 2026 `recognised` is 11,769.80 (EX-09-A). `scheduled` per future period equals the schedule lines of the version, and `awaiting` per obligation equals `awaiting_trigger_amount`
+      - `…::test_s15_r02_recognised_ties_to_revenue_intents`: for each period of K-02 and K-03, `recognised` equals the sum of `REVENUE` posting intents of that period (S14-INV-06)
+      - `…::test_s15_r12_rpo_rollforward`: opening RPO + new contracts ± modifications ± estimate changes − revenue ± FX = closing RPO. For K-02 from August to September 2026: opening + modification 60,000.00 − September revenue 11,769.80 = closing 208,339.79 (EX-15-A; V9)
+    - Answer keys: none
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: none; REQs contributed: none
+  - **Read:** ENGINE_SPEC_B §15.2.1, §15.2.3 S15-R-12, §14.4 S14-INV-06, §9.7 EX-09-A, §15.7 EX-15-A
+  - **Gates:** GK-01 `make ci`; GK-04 `make ci`
+
+- [ ] **EDS-3 Contract balances rollforward with FX movement.**
+  - **Prerequisites:** EDS-2
+  - **Scope:**
+    - Paths: `backend/erev_engine/stages/s15_disclosures/rollforward.py`; `backend/tests/engine/s15_disclosures/test_s15_rollforward.py`
+    - Schema: none
+    - API: none
+    - Engine: ENGINE_SPEC_B §15.2.2 `rollforward_contract`, S15-R-03 to S15-R-07; S15-INV-01, S15-INV-05; POL-126
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/s15_disclosures/test_s15_rollforward.py::test_ex_15_b_flip_to_asset_and_back`: opening at 31 Mar has billed 20,000.00, revenue 15,000.00 and contract liability 5,000.00. April flows: 10 Apr delivery revenue 8,000.00; 20 Apr invoice 4,000.00; 25 Apr TP catch-up +200.00; 30 Apr time-elapsed revenue 600.00. Lines: contract liability opening 5,000.00; revenue from opening balance (5,000.00); contract asset revenue in excess of billing 3,000.00; transferred to receivables (3,000.00); billings and other increases 1,000.00; revenue from other increases (800.00); closing contract liability 200.00 and contract asset 0.00. Revenue 8,800.00 = 5,000.00 + 3,000.00 + 800.00; billing 4,000.00 = 3,000.00 + 1,000.00; memo by cause `NORMAL` 8,600.00 and `TP_CHANGE` 200.00 (EX-15-B; S15-R-03, S15-R-04)
+      - `…::test_s15_r05_revenue_from_opening_liability`: under POL-126 `FIFO_WITHIN_CONTRACT` the EX-15-B line equals min(5,000.00, 8,800.00) = 5,000.00 (S15-INV-05)
+      - `…::test_fx_line_shown_separately`: for the CHK-081 contract in the functional view, the contract asset rollforward of January shows revenue in excess of billing 1,110.00 and a separate FX line of 10.00, closing 1,120.00 (REQ-FX-007; CHK-081)
+      - `…::test_s15_r06_business_combination_line`: the ASC606 opening balances of CHK-121 enter as the business-combinations line, contract liability 120,000.00, with no journal lines
+      - `…::test_s15_inv_01_opening_plus_lines_equals_closing`: for every balance, entity, book and currency of EX-15-B, EX-12-A and CHK-081, opening + lines = closing, and an unexplained difference would appear as `other` (S15-R-07)
+    - Answer keys: none (`DISC-S10-DISCLOSURES-ROLLFORWARD-EX21` and `DISC-CHK-006-*` close in EDS-7)
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none (PROP:P6 closes in PRP-4)
+    - REQs completed: REQ-FX-007; REQs contributed: none
+    - Hint closure: REQ-FX-007 `AK-FAM:fx` closed in AKS-7; `PROP:P6` in PRP-4
+  - **Read:** ENGINE_SPEC_B §15.2.2 (S15-R-03 to S15-R-07), §15.3, §15.7 EX-15-B, §12.7 EX-12-A; POLICIES POL-126, ALG-08 §2.9.3 (CHK-081), §5.11 (CHK-121); 03 REQ-FX-007
+  - **Gates:** GK-01 `make ci`; GK-04 `make ci`
+
+- [ ] **EDS-4 Revenue from obligations satisfied in prior periods, and disaggregation tags.**
+  - **Prerequisites:** EDS-3
+  - **Scope:**
+    - Paths: `backend/erev_engine/stages/s15_disclosures/prior_period.py`, `disaggregation.py`; `backend/tests/engine/s15_disclosures/test_s15_prior_period_disaggregation.py`
+    - Schema: none
+    - API: none
+    - Engine: ENGINE_SPEC_B §15.2.4 S15-R-13, S15-R-14; §15.2.5 S15-R-15, S15-R-16; S15-INV-03; formula `disc.prior_period_sum.v1` over `estimate.prior_period.v1` nodes (stage 08 `decompose_prior_period` with `RecognitionState.allocated`)
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/s15_disclosures/test_s15_prior_period_disaggregation.py::test_ex_15_c_prior_period_aggregation`: K-03 in September 2026 gives prior-period revenue 67,058.82 and current-period revenue 130,235.30, total 197,294.12. The cost dated 2026-09-29 adds nothing to the prior-period measure. For the CHK-100 contract, Year 2 prior-period revenue is 60,000.00 (EX-15-C; CHK-100)
+      - `…::test_s15_r15_disaggregation_tags_on_revenue_lines`: every `REVENUE` intent carries the template `disaggregation` mapping, product family, revenue category and timing tag of its obligation. For EX-15-B, timing gives point in time 8,200.00 and over time 600.00
+      - `…::test_s15_r16_other_revenue_lines_included`: JET-13 performing-side lines, JET-05c, JET-14 release and JET-01b 25-7 lines carry disaggregation tags
+      - `…::test_s15_inv_03_disaggregation_total_equals_revenue`: for each period of EX-15-B and EX-12-A, the disaggregation total equals the `REVENUE` intent total
+    - Answer keys: none (`DISC-CHK-101-S3-EX23-CASEB-PRIOR-PERIOD-POB-REVENUE` closes in EDS-7)
+    - Golden: none
+    - Controls: none (CTL-028's first tagged test is RPS)
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: none; REQs contributed: REQ-MOD-015
+  - **Read:** ENGINE_SPEC_B §15.2.4, §15.2.5 (S15-R-13 to S15-R-16), §15.3, §15.7 EX-15-B, EX-15-C; ENGINE_SPEC §8.5; POLICIES ALG-10 §2.11.3, POL-191, POL-204
+  - **Gates:** GK-01 `make ci`; GK-04 `make ci`
+
+- [ ] **EDS-5 Contract-cost rollforward.**
+  - **Prerequisites:** EDS-4
+  - **Scope:**
+    - Paths: `backend/erev_engine/stages/s15_disclosures/cost_rollforward.py`; `backend/tests/engine/s15_disclosures/test_s15_cost_rollforward.py`
+    - Schema: none
+    - API: none
+    - Engine: ENGINE_SPEC_B §15.2.6 S15-R-17; S15-INV-04; POL-196; ENGINE_SPEC_B S11-INV-06
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/s15_disclosures/test_s15_cost_rollforward.py::test_chk_131_cost_rollforward`: per entity, book and kind `OBTAIN`. Year 1: opening 0.00, additions 40,000.00, amortisation (10,000.00), impairment (15,000.00), closing 15,000.00. Year 2 ASC606: amortisation (5,000.00), closing 10,000.00. Year 2 IFRS15: amortisation (5,000.00), reversal 10,000.00, closing 20,000.00 (CHK-131)
+      - `…::test_k02_september_2026`: the K-02 commission asset gives opening 8,005.48, amortisation (493.15) and closing 7,512.33 (EX-11-A)
+      - `…::test_chk_112_acceleration_line`: the terminated subscription's asset shows acceleration (18,000.00) and closing 0.00 (CHK-112)
+      - `…::test_s15_inv_04_closing_equals_carrying`: cost rollforward closing equals Σ `carrying_amount` of the cost-asset versions at the period end
+    - Answer keys: none (`COST-*` passed in AKS-6)
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none (PROP:P6 closes in PRP-4)
+    - REQs completed: REQ-CST-006; REQs contributed: none
+    - Hint closure: REQ-CST-006 `AK:S8-CONTRACT-COSTS` closed in AKS-6; `PROP:P6` in PRP-4
+  - **Read:** ENGINE_SPEC_B §15.2.6 (S15-R-17), §15.3, §11.3 S11-INV-06, §11.7 EX-11-A; POLICIES POL-196, JET-09 (CHK-131), §5.3 (CHK-112); 03 REQ-CST-006
+  - **Gates:** GK-01 `make ci`; GK-04 `make ci`
+
+- [ ] **EDS-6 Lock snapshot content, manifest hashing and variance between closes.**
+  - **Prerequisites:** EDS-5
+  - **Scope:**
+    - Paths: `backend/erev_engine/stages/s15_disclosures/snapshots.py` (pure dataset rows, CSV bytes, control totals, `manifest_sha256`); `backend/erev_engine/stages/s15_disclosures/variance.py` (pure driver decomposition over ordered metric evaluations); `backend/tests/engine/s15_disclosures/test_s15_snapshots_variance.py`
+    - Schema: none
+    - API: none
+    - Engine: ENGINE_SPEC_B §15.2.7 S15-R-18 to S15-R-20; §15.2.8 S15-R-21 to S15-R-23; S15-INV-06, S15-INV-07; E-64 snapshot kinds
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/s15_disclosures/test_s15_snapshots_variance.py::test_s15_r18_dataset_encoding`: dataset bytes are UTF-8 CSV with a header row, rows sorted by row key, money with exactly the currency's minor-unit places ("1200" for JPY, "12.30" for USD), exact values trimmed, and no index column (DEV-099). `file_sha256` is the SHA-256 of the bytes, and two builds from the same state give identical bytes and control totals (S15-INV-06)
+      - `…::test_s15_r19_manifest_hash`: `manifest_sha256` is the SHA-256 of the lines `<snapshot kind>:<file_sha256>`, sorted by kind and joined with `\n`
+      - `…::test_ex_15_d_variance_between_closes`: K-03 cumulative revenue from the August 2026 lock to the September 2026 lock decomposes into drivers `PROGRESS` (time) 0.00, `MODIFICATION` 91,463.41, `PROGRESS` 135,000.00 and `ESTIMATE_CHANGE` (29,169.29), total 197,294.12. From the September lock to the September re-lock (J-14), `LATE_EVENT` is +32,558.82 on revenue and (32,558.82) on RPO. Drivers sum exactly to the metric change (EX-15-D; S15-INV-07)
+      - `…::test_s15_r20_opening_from_previous_snapshot`: the rollforward opening of period t equals the closing of the `CONTRACT_BALANCE_ROLLFORWARD` dataset of t − 1
+    - Answer keys: none
+    - Golden: none
+    - Controls: none (CTL-029's first tagged test is RPS)
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: none; REQs contributed: none
+  - **Read:** ENGINE_SPEC_B §15.2.7, §15.2.8 (S15-R-18 to S15-R-23), §15.3, §15.7 EX-15-D; dev-guide DG-KRN-MONEY-06, §5.17; 04 T-CLS-04, T-CLS-05, E-64; `docs/legacy/DEVIATIONS.md` DEV-099
+  - **Gates:** GK-01 `make ci`; GK-04 `make ci`
+
+- [ ] **EDS-7 Disclosure engine-runner keys pass (6 keys); regression over 227 keys.**
+  - **Prerequisites:** EDS-6
+  - **Scope:**
+    - Paths: stage package corrections as the keys require
+    - Schema: none
+    - API: none
+    - Engine: corrections within stages 08, 09 and 15 citing their S<nn>-R rule
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/answer_keys/test_answer_keys.py::test_answer_key[DISC-S10-DISCLOSURES-ROLLFORWARD-EX21]` asserts at `year-1-end` `revenue_cum` "122500.00", `billed_cum` "140000.00", `rpo_amount` "17500.00" and `scheduled_amount` "17500.00" (CHK-006 row S10-DISCLOSURES `rollforward_ex21`)
+      - `…[DISC-S10-DISCLOSURES-RPO-EX42]` asserts at `31-december-2026` `transaction_price` "9600.00", `revenue_cum` "2400.00", `rpo_amount` "7200.00" and schedule FY2027-P01 "400.00" (EX-15-A, FASB Example 42)
+      - `…[DISC-GE-06-IDIQ-TASK-ORDERS-OPTIONS-RPO]` asserts at `task-order-mid-year` `rpo_amount` "700000.00"
+      - `…[DISC-CHK-101-S3-EX23-CASEB-PRIOR-PERIOD-POB-REVENUE]` asserts at `december-2026` `contract_asset` "50000.00" (CHK-101)
+    - Answer keys: `make answer-keys ID=DISC-CATCH-UP-BY-CAUSE-ESTIMATE-CHANGE-AND-MODIFICATION,DISC-CHK-006-S10-DISCLOSURES-ROLLFORWARD-EX21,DISC-CHK-101-S3-EX23-CASEB-PRIOR-PERIOD-POB-REVENUE,DISC-GE-06-IDIQ-TASK-ORDERS-OPTIONS-RPO,DISC-S10-DISCLOSURES-ROLLFORWARD-EX21,DISC-S10-DISCLOSURES-RPO-EX42` passes 6 of 6 (PHASES §8.2.2), and `make answer-keys ID=<§8.2.1 and §8.2.2 ids>` passes 227 of 227
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: none; REQs contributed: none
+    - Hint closure: REQ-POB-001 and REQ-REC-003 `AK:S2-EX11-CASEA-OWNPRICES` (`DISC-CHK-006-S10-DISCLOSURES-ROLLFORWARD-EX21`, `DISC-S10-DISCLOSURES-ROLLFORWARD-EX21`); REQ-TP-003 and REQ-TP-018 `AK:S3-EX23` (`DISC-CHK-101-S3-EX23-CASEB-PRIOR-PERIOD-POB-REVENUE`); REQ-TP-003 `AK:S10-DISCLOSURES` engine keys (platform keys in PRP-3)
+  - **Read:** PHASES §8.2.2; ENGINE_SPEC_B §15.7; POLICIES §2.1.5 (CHK-006 S10-DISCLOSURES), ALG-10 (CHK-101)
+  - **Gates:** GK-01 `make ci`; GK-05 `make answer-keys ID=<§8.2.1 and §8.2.2 ids>`
+
+- [ ] **GATE-EDS Phase EDS checkpoint.**
+  - **Prerequisites:** every item of phase EDS (EDS-1 to EDS-7)
+  - **Scope:** verification and evidence; fixes only for defects this checkpoint finds
+  - **Acceptance:**
+    - Exit criteria: every exit criterion of PHASES §1 row EDS holds. Evidence: package `s15_disclosures` exists and `compute` runs it; `PENDING_STAGES` and `PENDING_BOUNDARY_HANDLERS` are empty; `make answer-keys ID=<§8.2.1 and §8.2.2 ids>` reports 227 of 227; P7 engine part is green
+    - Membership: REQ-FX-007 (EDS-3) and REQ-CST-006 (EDS-5) are each listed under "REQs completed" by exactly one item; PROP:P7 engine part exists (EDS-1); the six keys of §8.2.2 pass (EDS-7)
+    - Gates: the PHASES §4 row GATE-EDS is green on a clean tree (`git status --porcelain` empty) after the last commit: `make ci`, `make test-pg`, `make e2e` (unfiltered), `make answer-keys ID=<§8.2.1 and §8.2.2 ids>` (227 keys), `make parity` with the GATE-GPA selection (94 cases; B3-BS2-04), `make properties` (unfiltered), `erev controls-report --tags-only` inside `make lint`
+  - **Read:** PHASES §1 row EDS, §4 row GATE-EDS, §6.14, §8.2.2, §12, §16; B3-BS2-04, B3-BS2-07; header §6
+  - **Gates:** GK-11 `make ci`; `make test-pg`; `make e2e`; `make answer-keys ID=<§8.2.1 and §8.2.2 ids>`; `make parity` (94-case selection); `make properties` (row GATE-EDS)
+
+## 19 GPB Golden parity: journal and migration kinds; full G3
+
+**Entry criteria.** GATE-LMG ticked (PHASES §3 order … RPS → SNP → LMG → GPB). GPB consumes these interfaces:
+- the RPS report `legacy_je_summary` (RPT-13) through 04 API-R-41, computed from subledger lines by DEVIATIONS PJR-2 to PJR-5 (ENGINE_SPEC_B S14-R-23);
+- the LMG migration mode (b) with report `migration_reconciliation` (RPT-41) through API-R-48;
+- the GPA parity runner.
+
+**Exit criteria (PHASES §1 row GPB, with B3-BS2-04).** `journal_entry_totals` (24), `point_in_time_equivalence` (1) and probes P1, P2 and P4 of `legacy_probe` pass. `make parity` passes 122 of 122 with none skipped, and the DEV sign-off statuses are listed (DG-PAR-08).
+
+**Gate scope at exit (PHASES §4 row GATE-GPB).** `make ci`; `make test-pg`; `make e2e` unfiltered; `make answer-keys ID=<§8.2.1 and §8.2.2 ids>` (227 keys); `make parity` unfiltered (122 cases); `make properties` unfiltered; `erev controls-report --tags-only` inside `make lint`; the DEV sign-off listing as extra evidence.
+
+**Membership.** No requirement is completed (PHASES §6.19); GPB closes `GT:journal_entry_totals`, `GT:point_in_time_equivalence`, `GT:legacy_probe` (P1, P2, P4) and every remaining `GT-nn` hint (§9, §15.1). No control, route row, placement, journey or make target.
+
+- [ ] **GPB-1 Journal totals of steps 02 to 07 and months January to April 2023, and probes P1, P2 and P4 (13 cases).**
+  - **Prerequisites:** GATE-LMG
+  - **Scope:**
+    - Paths: `backend/tests/support/parity/values.py` (`journal_entry_totals` source: report run `legacy_je_summary` with `from = window[0]`, `to = window[1]`, book `ASC606`, gross and adjustment views); `backend/tests/support/parity/probes.py` (journal expectations through `legacy_je_summary`); `backend/tests/unit/parity/test_probe_support.py` (the fail-closed test of GPA-6 re-run with the real report, XR-12)
+    - Schema: none
+    - API: none (consumes 04 API-R-41)
+    - Engine: none
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/unit/parity/test_probe_support.py::test_journal_expectation_uses_legacy_je_summary`: with RPT-13 present, an expected `je_gross_*` member is compared field by field with the report run's gross view (`lines`, `by_account[]`, `total_debit`, `total_credit`, `net`, `line_items[]`), and no "not built" mismatch remains
+      - `make parity K="je-step-02 or je-step-03 or je-step-04 or je-step-05 or je-step-06 or je-step-07 or je-month-2023-01 or je-month-2023-02 or je-month-2023-03 or je-month-2023-04 or probe-P1-blank-memo-drops-progress-rows or probe-P2-mod-reposts-pre-asc606-in-delta-je or probe-P4-duplicate-upload-double-counts"` passes 13 of 13:
+        - `je-step-02` has 0 gross and delta lines with totals "0.00";
+        - `je-month-2023-01` delta view: 21001 Dr 141.69, 5002 Cr 52.53, 5003 Dr 39.68, 5001 Cr 187.69, 15002 Dr 58.85; debits 240.22 = credits 240.22 (GT-07; CHK-020);
+        - probe P1: `import_status` `COMMITTED_WITH_FINDINGS` (E-40 `COMMITTED`); findings `PROGRESS_MEMO_BLANK` (`WARNING`) at `worksheet_row` 3 (`Contract 1 POB #2 Software 1`) and 4 (`Contract 1 POB #3 Consulting 1`) with `blank_memos` ["Memo 3"]; `versions_before` 8, `versions_after` 16; `je_gross_2023_01` 6 lines with 5001 credit 187.69, 5002 credit 118.53, 5003 credit 48.32, 15002 debit 58.85, 21001 debit 295.69 (GT-22; DEV-010);
+        - probe P2: `je_gross_feb` and `je_delta_feb` have 0 lines with totals "0.00" (GT-23; DEV-050);
+        - probe P4: `second_2_28_upload` is `REJECTED` with problem 409 `duplicate-import`, `errors[0].rule_id` `IMPORT_FILE_DUPLICATE` and no `import_upload` row; `versions_before_second` 36 and `versions_after_second` 36; `je_gross_feb` 6 lines, `total_debit` 224.03 = `total_credit` 224.03, with 5001 credit 175.71, 5003 credit 48.32, 21001 debit 112.74, 21002 debit 111.29 (GT-24; DEV-011)
+    - Answer keys: none
+    - Golden: `make parity K="<the 13-case selection above>"` (13 pass)
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: none; REQs contributed: none
+    - Hint closure: REQ-BK-004 `GT-07`; REQ-BK-005 `GT-23`, `GT:legacy_probe (P2)`
+  - **Read:** dev-guide §9.6 DG-PAR-06, kind row `journal_entry_totals`; `docs/legacy/DEVIATIONS.md` §3 (PJR-1 to PJR-5), DEV-010, DEV-011, DEV-050; `docs/legacy/golden/probes/P1-*`, `P2-*`, `P4-*`; legacy 07 §7 GT-07, GT-22 to GT-24; ENGINE_SPEC_B S14-R-23; 04 API-R-41 (RPT-13)
+  - **Gates:** GK-01 `make ci`; GK-06 `make parity K="<the 13-case selection above>"`
+
+- [ ] **GPB-2 Journal totals of steps 08 to 14, months May to October 2023 and the full year (14 cases).**
+  - **Prerequisites:** GPB-1
+  - **Scope:**
+    - Paths: `backend/tests/support/parity/values.py`; corrections as the cases require, citing the ENGINE_SPEC rule or DEV id
+    - Schema: none
+    - API: none
+    - Engine: corrections within stages 13 and 14 as required
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `make parity K="je-step-08 or je-step-09 or je-step-10 or je-step-11 or je-step-12 or je-step-13 or je-step-14 or je-month-2023-05 or je-month-2023-06 or je-month-2023-07 or je-month-2023-08 or je-month-2023-09 or je-month-2023-10 or je-month-2023-full-year"` passes 14 of 14:
+        - the May and October 2023 entries balance to the cent, where legacy shows +0.01 and −0.01 (GT-17);
+        - the full year gives revenue 5001 2,233.81, 5002 1,487.17 and 5003 1,979.02 = 5,700.00, deferred revenue 21001 3,400.00 and 21002 2,300.00, and a delta JE of 5,208.62 balanced (GT-18; DEVIATIONS §4.2 corrected value of the DEV-002 cent-difference class, legacy 5,208.63; D-88a)
+      - `.run/reports/parity/report.json` lists `je-step-08`, `je-step-14`, `je-month-2023-05`, `je-month-2023-10` and `je-month-2023-full-year` under the sign-off unit DEV-002 (class approval, D-17a)
+    - Answer keys: none
+    - Golden: `make parity K="<the 14-case selection above>"` (14 pass)
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: none; REQs contributed: none
+    - Hint closure: REQ-BK-004 `GT-18 (delta)`, `GT:journal_entry_totals (delta)`; REQ-BIL-002 `GT:journal_entry_totals (ERP)`
+  - **Read:** dev-guide §9.6; `docs/legacy/DEVIATIONS.md` DEV-001, DEV-002; `deviations.json` `signoff_units`; legacy 06 §3.3, §7.3 TC-JE-05 to TC-JE-09; legacy 07 §7 GT-17, GT-18; D-17a
+  - **Gates:** GK-01 `make ci`; GK-06 `make parity K="<the 14-case selection above>"`
+
+- [ ] **GPB-3 Point-in-time equivalence against the shipped legacy database (1 case).**
+  - **Prerequisites:** GPB-2
+  - **Scope:**
+    - Paths: `backend/tests/support/parity/equivalence.py` (mode (b) replay of steps 01 to 04 into a sandbox through 04 API-R-48, then report `migration_reconciliation` against `backend/tests/fixtures/legacy_db/ASC606-shipped-step04.db`, opened read-only per DG-LAY-11); corrections as required
+    - Schema: none
+    - API: none (consumes 04 API-R-48, API-R-41)
+    - Engine: none
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `make parity K=point_in_time_equivalence` passes 1 of 1: `shipped-db-equivalence` reports `rows` 24 and `columns_with_mismatch` []. Numeric columns compare within 1e-4 and text exactly; `Processing Time Log` and `Record Unique ID` are excluded (DEVIATIONS OQ-D7; GT-20)
+      - `backend/tests/architecture/test_forbidden_patterns.py` (DG-ARC-05) stays green: `sqlite3` is imported only under `backend/tests/support/parity/`, `scripts/build_fixtures.py` and `backend/erev_api/domain/migration/`
+    - Answer keys: none
+    - Golden: `make parity K=point_in_time_equivalence` (1 pass)
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: none; REQs contributed: none
+  - **Read:** dev-guide §9.6 kind row `point_in_time_equivalence`, DG-LAY-11, DG-PAR-02 (3); `docs/legacy/DEVIATIONS.md` OQ-D7; legacy 07 §7 GT-20; ENGINE_SPEC §7.4 S07-R-12; 04 API-R-48
+  - **Gates:** GK-01 `make ci`; GK-06 `make parity K=point_in_time_equivalence`
+
+- [ ] **GPB-4 Full legacy parity (G3): 122 cases and the DEV sign-off listing.**
+  - **Prerequisites:** GPB-3
+  - **Scope:**
+    - Paths: `backend/tests/support/parity/report.py` (sign-off listing); regression corrections only
+    - Schema: none
+    - API: none
+    - Engine: none beyond regression fixes
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `make parity` (unfiltered) passes 122 of 122 with none skipped and exits 0 (G3; DG-MK-parity)
+      - `.run/reports/parity/report.json` shows counts A 56, B 9, C 57. By kind: `contract_position` 50, `journal_entry_totals` 24, `pob_position` 17, `initial_allocation` 16, `cumulative_catchup` 10, `legacy_probe` 4, `point_in_time_equivalence` 1. The report lists the nine `signoff_required` ids (`je-step-08`, `je-step-14`, `final-pob-Contract3-POB5`, `je-month-2023-05`, `je-month-2023-10`, `je-month-2023-full-year`, `probe-P1-blank-memo-drops-progress-rows`, `probe-P2-mod-reposts-pre-asc606-in-delta-je`, `probe-P4-duplicate-upload-double-counts`), each with its `docs/legacy/DEVIATIONS.md` sign-off status. It also lists the sign-off units DEV-002 (5 tests), DEV-010, DEV-011, DEV-050 and DEV-052 (DG-PAR-08; D-17a)
+    - Answer keys: none
+    - Golden: `make parity` (122 pass, 0 skipped)
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: none; REQs contributed: none
+    - Hint closure: every `GT:` and `GT-nn` hint of the engine requirements is closed (GPA-1 to GPA-5, GPB-1 to GPB-3). REQ-POL-005 `GT:all kinds; make parity` (RFD) is satisfied by this run
+  - **Read:** PHASES §1 row GPB, §9; dev-guide §4.4 DG-MK-parity, §9.6 DG-PAR-08, DG-PAR-09; `deviations.json` `counts`, `signoff_required`, `signoff_units`; `docs/legacy/DEVIATIONS.md` sign-off columns
+  - **Gates:** GK-01 `make ci`; GK-06 `make parity`
+
+- [ ] **GATE-GPB Phase GPB checkpoint.**
+  - **Prerequisites:** every item of phase GPB (GPB-1 to GPB-4)
+  - **Scope:** verification and evidence; fixes only for defects this checkpoint finds
+  - **Acceptance:**
+    - Exit criteria: every exit criterion of PHASES §1 row GPB holds. Evidence: `make parity` unfiltered reports 122 of 122 passed, none skipped, with the DEV sign-off listing
+    - Membership: no requirement is completed (PHASES §6.19); every golden kind of §9 has passed; probes P1, P2 and P4 moved here by B3-BS2-04 pass
+    - Gates: the PHASES §4 row GATE-GPB is green on a clean tree (`git status --porcelain` empty) after the last commit: `make ci`, `make test-pg`, `make e2e` (unfiltered), `make answer-keys ID=<§8.2.1 and §8.2.2 ids>` (227 keys), `make parity` (unfiltered, 122 cases), `make properties` (unfiltered), `erev controls-report --tags-only` inside `make lint`; DEV sign-off listing recorded
+  - **Read:** PHASES §1 row GPB, §4 row GATE-GPB, §9; B3-BS2-04; header §6
+  - **Gates:** GK-11 `make ci`; `make test-pg`; `make e2e`; `make answer-keys ID=<§8.2.1 and §8.2.2 ids>`; `make parity`; `make properties` (row GATE-GPB)
+
+## 20 PRP Platform properties and platform answer keys; full G4 and G5
+
+**Entry criteria.** GATE-GPB ticked. PRP consumes these interfaces:
+- tenant provisioning (DG-KRN-TEN; GATE-PLF);
+- the RFD configuration commands and lifecycles;
+- the CTR contract, event, modification and estimate commands and queries;
+- the DIN import commands;
+- the CLO commands `close_run`, `journal_run`, `lock_period` and `reopen_period` (04 API-R-18, API-R-38, API-R-39);
+- the RPS report runs (API-R-41).
+
+**Exit criteria (PHASES §1 row PRP).** The platform parts of P5, P6 and P7; P9; P11; the stateful machine (dev-guide §9.7); the keys of PHASES §8.2.3 pass. `make answer-keys` unfiltered reports 232 active keys with zero corpus gaps, and `make properties` unfiltered is green.
+
+**Gate scope at exit (PHASES §4 row GATE-PRP).** `make ci`; `make test-pg`; `make e2e` unfiltered; `make answer-keys` unfiltered (232 keys, zero gaps); `make parity` unfiltered; `make properties` unfiltered; `erev controls-report --tags-only` inside `make lint`.
+
+**Membership.** No requirement is completed (PHASES §6.20). PROP:P5 platform part, P6, P7 platform part, P9, P11 and the stateful machine (§12). Keys of §8.2.3 (5 platform-runner keys). No control, route row, placement, journey or make target.
+
+- [ ] **PRP-1 Platform answer-key runner and the per-contract netting key.**
+  - **Prerequisites:** GATE-GPB
+  - **Scope:**
+    - Paths: `backend/tests/support/answer_keys/platform_runner.py` (`run_platform` behind the `PlatformPort` protocol, DG-AK-41; `InMemoryPlatform` — the key's world and timeline as the store, the engine as the computation, every DB-only step reported not run; `DbPlatform` — every step through the domain handlers, selected with `EREV_AK_PLATFORM=db`; `journal_lines`, `summarise_intents`, `journal_totals`, `platform_outcome`); `backend/tests/support/answer_keys/platform_plan.py` (`plan(loaded)`: the command plan of a key — provisioning, personas, world, contracts, timeline and checkpoint steps with their handlers `H`, `PERIOD_STATE_HANDLERS`, `COMMAND_HANDLERS` and the named gaps); `backend/tests/support/answer_keys/database_platform.py`, `workspace_adapter.py`, `workspace_reads.py`, `ledger_resolver.py`, `request_models.py`, `step_permissions.py`, `db_personas.py`, `terms.py` (the database platform over the real adapter: PLAT-G4-1, READ-1 to READ-6, RES-1, ACT-2); `backend/tests/unit/answer_keys/test_platform_runner.py`, `test_platform_runner_review.py`, `test_platform_plan.py`, `test_database_platform.py`, `test_platform_db_adapter.py`, `test_platform_workspace_adapter.py`, `test_platform_workspace_reads.py`, `test_platform_workspace_review.py`, `test_platform_ledger_resolver.py`, `test_platform_request_models.py`, `test_platform_step_permissions.py`, `test_platform_persona_coverage.py`, `test_platform_conversion_review.py`, `test_platform_following_models.py`, `test_platform_trace_balances.py`; `backend/tests/domain/answer_keys/test_platform_following_db.py`, `test_platform_ledger_resolver_db.py`, `test_platform_reads_db.py` (DB-bound); `backend/tests/answer_keys/test_answer_keys.py::_platform_key` (a platform key passes only on the database platform; in memory the best outcome is `not_run`)
+    - Schema: none
+    - API: none (consumes the domain command handlers of PLF, RFD, CTR and DIN)
+    - Engine: none
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/domain/answer_keys/test_runner_platform.py::test_world_application`: for `POS-CHK-012-S9-PRESENTATION-NETTING-PER-CONTRACT`, `run_platform` provisions a fresh tenant in `erev_test` (`committed_db`) with personas `ak-preparer` (revenue accountant) and `ak-approver` (controller and approver). Every `world` configuration version is published through its lifecycle and approved by `ak-approver`, and the contracts are booked through commands (DG-AK-41)
+      - `…::test_known_at_capture`: after each timeline item commits, `known_at[seq]` equals `SELECT clock_timestamp()`. The application `FrozenClock` is set to the item's `recorded_at`, and the event `recorded_at` values assigned by the server (DB-08) increase with `seq`
+      - `make answer-keys ID=POS-CHK-012-S9-PRESENTATION-NETTING-PER-CONTRACT` passes 1 of 1: checkpoint `end-of-p1` has `revenue_cum` "80000.00", `billed_cum` "50000.00", `position_obligation` "-50000.00" and `netting_reclass_amount` "30000.00" (CHK-012)
+    - Answer keys: `make answer-keys ID=POS-CHK-012-S9-PRESENTATION-NETTING-PER-CONTRACT` (1 pass)
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: none; REQs contributed: none
+    - Hint closure: REQ-BIL-002, REQ-BIL-003, REQ-BIL-005 and REQ-BIL-007 `AK:S9-PRESENTATION` (every active key derived from S9-PRESENTATION now passes)
+  - **Read:** dev-guide §9.5.8 DG-AK-41, §9.5.6 (contracts and subledger blocks), §9.3 DG-TST-13, DG-TST-16; PHASES §8.2.3, §8.2.5; POLICIES §2.2 (CHK-012)
+  - **Gates:** GK-01 `make ci`; GK-05 `make answer-keys ID=POS-CHK-012-S9-PRESENTATION-NETTING-PER-CONTRACT`
+
+- [ ] **PRP-2 Platform timeline commands and the gross and delta journals key.**
+  - **Prerequisites:** PRP-1
+  - **Scope:**
+    - Paths: `backend/tests/support/answer_keys/platform_plan.py` (`_timeline_steps`: the `command` timeline items `close_run`, `journal_run`, `lock_period`, `reopen_period`, `publish_fx_rate_set`, `import_upload` through `COMMAND_HANDLERS`; `expect_problem` refusals asserted by code and unchanged state (PLAT-1); the `journals` and `period_states` blocks; the named gaps `CLOSE_RUN_GAP`, `LOCK_GAP`, `REOPEN_GAP`, `PORTFOLIO_GAP`, `EXCEPTIONS_GAP`); `backend/tests/support/answer_keys/platform_runner.py` (`journal_lines` — `GROSS` the primary book's lines, `DELTA` primary plus `LEGACY`, netted per (contract, account, transaction currency) by `summarise_intents`; `period_state` at the checkpoint cutoff, PLAT-2); `backend/tests/unit/answer_keys/test_platform_journal_helper.py`, `test_platform_plan.py`, `test_platform_report_run_clock.py`; corrections as required
+    - Schema: none
+    - API: none (consumes the CLO and DIN domain command handlers)
+    - Engine: none
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/domain/answer_keys/test_runner_platform_commands.py::test_expect_problem_leaves_state_unchanged`: a `lock_period` item with `expect_problem` whose close gates are unmet fails with the named code, and no row changes (dev-guide §9.5.5)
+      - `…::test_journal_block_matching`: a `journals` block `[{run: {entity, period_key, mode, grain}, match, lines}]` compares `journal_line` rows of the named run
+      - `make answer-keys ID=DLT-CHK-020-CHK-022-GT07-JANUARY-2023-GROSS-AND-DELTA-JOURNALS` passes 1 of 1. Checkpoint `asc606-january` has `pre_standard_revenue_cum` "66.00" and "88.00", and subledger Dr "295.69" / Cr "128.84". The delta journal run has debits 240.22 = credits 240.22 (CHK-020), and the gross run has Contract 1 Dr 21001 295.69 / Cr 5001 128.84, 5002 118.53, 5003 48.32 (CHK-022; GT-07)
+    - Answer keys: `make answer-keys ID=DLT-CHK-020-CHK-022-GT07-JANUARY-2023-GROSS-AND-DELTA-JOURNALS` (1 pass)
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: none; REQs contributed: none
+  - **Read:** dev-guide §9.5.5 (`command`, `expect_problem`), §9.5.6 (`journals`, `period_states`), DG-AK-41; POLICIES JET-15 (CHK-020), JET-02 (CHK-022); 04 API-R-18, API-R-38, API-R-39
+  - **Gates:** GK-01 `make ci`; GK-05 `make answer-keys ID=DLT-CHK-020-CHK-022-GT07-JANUARY-2023-GROSS-AND-DELTA-JOURNALS`
+
+- [ ] **PRP-3 Report-block platform keys: rollforward, timing, RPO bands and balance aging.**
+  - **Prerequisites:** PRP-2
+  - **Scope:**
+    - Paths: `backend/tests/support/answer_keys/report_cells.py` (report-block cells: resolution and comparison, row keys per DG-AK-35, values per the dev-guide §9.5.6 "Report cell keys" table); `backend/tests/support/answer_keys/workspace_reads.py` (READ-1 to READ-6: the report runs and reads of the database platform); `backend/tests/support/answer_keys/platform_plan.py` (`_checkpoint_steps` report runs; `REPORT_GAPS` — report codes the catalogue defines without a builder on main, by the item that builds them); `backend/tests/domain/answer_keys/test_platform_pos117_balance_aging_db.py`, `test_platform_reads_db.py` (DB-bound); corrections as required
+    - Schema: none
+    - API: none (consumes 04 API-R-41 report runs)
+    - Engine: none
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/domain/answer_keys/test_runner_platform_reports.py::test_report_cell_mapping`: for report `rpo` the default bands give columns `within_12_months`, `months_13_to_24`, `after_24_months` and `total`, read from the run row's flat band fields named by the band key (`within_12_months`, `months_13_to_24`, `after_24_months`) and `total` (dev-guide §9.5.6 rev 1.18). For `contract_balance_rollforward`, column `revenue_from_opening_liability` reads row `REVENUE_FROM_OPENING`, field `contract_liability`, signed negative (dev-guide §9.5.6)
+      - `make answer-keys ID=DISC-S10-DISCLOSURES-REPORTS-EX21-ROLLFORWARD-AND-TIMING,DISC-S10-DISCLOSURES-RPO-EX42-TIME-BANDS-AND-EXPEDIENT,POS-CHK-117-BALANCE-AGING-EXPORT-TIES-TO-RECLASS` passes 3 of 3. `DISC-S10-DISCLOSURES-REPORTS-EX21-ROLLFORWARD-AND-TIMING` at `reports-after-year-2` has cells "17500.00", "-17500.00" and "87500.00". `DISC-S10-DISCLOSURES-RPO-EX42-TIME-BANDS-AND-EXPEDIENT` at `december-2026-rpo` has `revenue_cum` "3000.00" with `rpo_amount` "9000.00", and "2400.00" with "7200.00". `POS-CHK-117-BALANCE-AGING-EXPORT-TIES-TO-RECLASS` at `march-close` has `contract_asset` "2000.00" and `unbilled_receivable` "3000.00", with row keys `contract:<external id>:<E-01 role>` (CHK-117; `_coverage/ADJUDICATION.md` B3-AK-09)
+      - `make answer-keys ID=<the 5 ids of PHASES §8.2.3>` passes 5 of 5
+    - Answer keys: `make answer-keys ID=<the 5 ids of PHASES §8.2.3>` (5 pass)
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: none; REQs contributed: none
+    - Hint closure: REQ-TP-003 `AK:S10-DISCLOSURES` (platform keys)
+  - **Read:** dev-guide §9.5.6 (`reports` block and "Report cell keys" table), DG-AK-35, DG-AK-41; PHASES §8.2.3, §8.2.5; SCREENS_B RPT-03, RPT-04, RPT-06, RPT-08, RPT-36; POLICIES §5.7 (CHK-117)
+  - **Gates:** GK-01 `make ci`; GK-05 `make answer-keys ID=<the 5 ids of PHASES §8.2.3>`
+
+- [ ] **PRP-4 Platform journal balance (P5) and rollforward ties (P6).**
+  - **Prerequisites:** PRP-3
+  - **Scope:**
+    - Paths: `backend/tests/support/platform_props.py` (`platform_settings()`: 25 examples under `ci`, 100 under `thorough`, DG-PROP-01; generated worlds of `support.prop_worlds` driven as the platform drives them — the engine computed over the world, the journal batches of every (entity, period, mode) summarised through `support.answer_keys.platform_runner.summarise_intents` / `journal_totals` (the platform's journal-run grain) in transaction and functional currency, balances and positions read from the computed books; the same properties over the database platform (`DbPlatform`, the domain command handlers) are the DB-bound part, reported not run until the lane databases exist); `backend/tests/properties/test_prop_p05_journal_balance.py` (platform part); `backend/tests/properties/test_prop_p06_rollforward.py`
+    - Schema: none
+    - API: none
+    - Engine: none
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/properties/test_prop_p05_journal_balance.py::test_p05_platform_batches_balance`: for generated contract streams run through commands, close runs and journal runs, every journal batch balances per batch × entity × book × currency in transaction and functional amounts (PROP:P5 platform part; DB-16)
+      - `backend/tests/properties/test_prop_p06_rollforward.py::test_p06_rollforward_ties`: for generated streams through close runs, the `contract_balance_rollforward` report satisfies opening + billings − revenue ± reclass ± FX remeasurement = closing, for contract liability and for contract asset. `net_position` = cumulative billed − cumulative revenue (D-12; PROP:P6)
+    - Answer keys: none
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: PROP:P5 platform part `backend/tests/properties/test_prop_p05_journal_balance.py::test_p05_platform_batches_balance`; PROP:P6 `backend/tests/properties/test_prop_p06_rollforward.py`
+    - REQs completed: none; REQs contributed: none
+    - Hint closure: REQ-BIL-003, REQ-CST-006 and REQ-FX-007 `PROP:P6`; REQ-ENT-002, REQ-ENT-003 and REQ-JE-002 `PROP:P5`
+  - **Read:** dev-guide §9.7 (DG-PROP-01 to 03; P5, P6); ENGINE_SPEC_B §15.2.2; 04 DB-16; D-12
+  - **Gates:** GK-01 `make ci`; GK-04 `make properties K="p05 or p06"`; GK-02 `make test-pg`
+
+- [ ] **PRP-5 Platform RPO and waterfall (P7) and idempotency (P9).**
+  - **Prerequisites:** PRP-4
+  - **Scope:**
+    - Paths: `backend/tests/support/platform_props.py`; `backend/tests/properties/test_prop_p07_rpo.py` (platform part: RPO, scheduled and awaiting-trigger amounts and the waterfall schedule totals read from the computed books at the platform grain); `backend/tests/properties/test_prop_p09_idempotency.py` (the request-identity part over `erev_api.idempotency.store.request_sha256` — DG-KRN-IDEM-02 canonical digest; the command-layer replay through `begin` / `complete` on the database is the DB-bound part, reported not run until the lane databases exist)
+    - Schema: none
+    - API: none
+    - Engine: none
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/properties/test_prop_p07_rpo.py::test_p07_platform_rpo_and_waterfall`: for generated streams, report `rpo` equals allocated transaction price − cumulative revenue for unsatisfied or partially satisfied obligations. Report `revenue_waterfall` totals equal the schedule totals, and scheduled plus awaiting trigger equals RPO before exemptions (PROP:P7 platform part; REQ-REC-021 extended)
+      - `backend/tests/properties/test_prop_p09_idempotency.py::test_p09_resubmission_creates_nothing`: resubmitting an event command or an import with the same `Idempotency-Key` creates no new event, import row or subledger line, and replays the original response (PROP:P9)
+    - Answer keys: none
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: PROP:P7 platform part `backend/tests/properties/test_prop_p07_rpo.py::test_p07_platform_rpo_and_waterfall`; PROP:P9 `backend/tests/properties/test_prop_p09_idempotency.py`
+    - REQs completed: none; REQs contributed: none
+    - Hint closure: REQ-REC-021 `PROP:P7 (extended with the scheduled and awaiting-trigger split)`; REQ-PLT-026 `PROP:P9` (PLF requirement)
+  - **Read:** dev-guide §9.7 (P7, P9), §5.7 (KRN-IDEM); ENGINE_SPEC_B §15.2.1, §15.2.3; 03 REQ-REC-021
+  - **Gates:** GK-01 `make ci`; GK-04 `make properties K="p07 or p09"`; GK-02 `make test-pg`
+
+- [ ] **PRP-6 Closed-period immutability (P11).**
+  - **Prerequisites:** PRP-5
+  - **Scope:**
+    - Paths: `backend/tests/properties/test_prop_p11_closed_period.py` (the engine part: periods closed through `PeriodInput.states`, the lines posted before the lock sealed as `posted` (RCP-05; `support.intent_totals.posted`), late events placed by `s08_estimates_late_events.assign_posting_period` in the earliest postable period with `origin_period_key` and `reason_code = LATE_EVENT` (S14-R-05, S14-R-06); the `lock_period` command part is DB-bound and waits for the CLO-6 domain command (`platform_plan.LOCK_GAP`), reported not run)
+    - Schema: none
+    - API: none
+    - Engine: none
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/properties/test_prop_p11_closed_period.py::test_p11_locked_period_unchanged`: after a period is locked through `lock_period`, no generated command sequence changes a subledger line of that period. The sequences cover late deliveries, estimate changes, modifications, voids and FX rate republication. Late events create lines in the first open period with `origin_period_id` set and `reason_code` `LATE_EVENT` (PROP:P11; S14-INV-03; D-19)
+    - Answer keys: none
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: PROP:P11 `backend/tests/properties/test_prop_p11_closed_period.py`
+    - REQs completed: none; REQs contributed: none
+    - Hint closure: REQ-MOD-018 `PROP:P11`
+  - **Read:** dev-guide §9.7 (P11); ENGINE_SPEC §8.4 S08-R-08 to S08-R-10; ENGINE_SPEC_B §14.4 S14-INV-03; 04 DB-07; 03 REQ-MOD-018
+  - **Gates:** GK-01 `make ci`; GK-04 `make properties K=p11`; GK-02 `make test-pg`
+
+- [ ] **PRP-7 Stateful machine over the platform with a reference oracle.**
+  - **Prerequisites:** PRP-6
+  - **Scope:**
+    - Paths: `backend/tests/properties/test_prop_state_machine.py` (the machine over `support.platform_props` in memory — the event stream as the store, the engine as the computation, period states through `PeriodInput.states`; the same machine over the database platform is the DB-bound part, reported not run until the lane databases exist); `backend/tests/support/oracle.py` (simple reference implementation of allocation, units and time recognition, billing position and period locks, the FX clause functions `RateRow`, `spot_rate`, `period_rate`, `functional`, `layer_relief`, `carrying_share`, `pro_rata_shares` — S12-R-01, S12-R-02, S12-R-05, ENGINE_SPEC_B §12.2.2, S12-R-06, S12-R-07, S12-R-09 — and `layer_ledger`, the transaction-side re-statement of ALG-08 §2.9.1 / §12.2.2 (which layer is settled or consumed, by how much, in which order — FIFO or pro rata — from the flows alone), written from ENGINE_SPEC / ENGINE_SPEC_B and independent of `erev_engine`); `backend/tests/support/prop_worlds.py` (`bundle`: two-currency worlds through `functional_currency`, `fx_rates`, `trigger`, `policies`; `FX_ACCOUNTS`); `backend/tests/support/platform_props.py` (`machine_bundle` pass-through; `layer_movements`); `backend/tests/support/bundles.py` (`account_mapping(extra=…)`; `estimate_version`, `VC_ELEMENT`); the variable-consideration clause functions and segments of `support/oracle.py` (`VcVersion`, `expected_value`, `most_likely`, `Oracle.vc_in_force` / `vc_constrained` / `vc_excluded` / `segments` / `allocation_at` / `revenue_at`), `support/prop_worlds.py` (`WorldSpec.vc`, `stream_base`, `bundle(estimate_versions=…)`), `support/platform_props.py` (`machine_bundle(estimate_versions, vc_events)`); the machine's world-domain helper `_next_to_close` (calendar-order close) with the refusal witness of CLO-LOCK-ORDER-1 (header rev 1.37: ruled by R-6; the file holds no strict expected failure) (fragment rev 1.6: the rate-bound helper `_bounded` is removed — `_batch9_rate` keeps its arithmetic for the recorded batch-#9 example only — and the two ENG-S14R10-FX-SIGN-1 pins are passing witnesses)
+    - Schema: none
+    - API: none
+    - Engine: none
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/properties/test_prop_state_machine.py::TestRevenueStateMachine` (`RuleBasedStateMachine`): rules `create_contract`, `record_progress`, `record_billing`, `modify`, `change_vc`, `publish_fx_rates`, `start_close`, `lock`, `reopen`, `submit_late_event` and `void_event` run as commands on a fresh tenant. After every step P1, P4, P5, P6 and P11 hold, and allocations, cumulative revenue and net positions equal the oracle's (dev-guide §9.7 "Stateful")
+      - Landed coverage (fragment rev 1.4 / BUILD_SPEC 1.21, lane T1 — a note, not a criterion): authored rules `create_contract`, `record_progress`, `record_billing`, `start_close`, `lock`, `submit_late_event`, `void_event`, `publish_fx_rates`, `change_vc`, each with an exact oracle (`publish_fx_rates`: the transaction-side layer decomposition equals `oracle.layer_ledger` over the world's own flows, every T-CON-18 functional amount follows its clause, the presented functional net position equals the layers' carrying; `change_vc`: the price is Σ fixed + Σ K in force, a change routes by inception weights over the element's contract and re-apportions or increments per the engine's two S08-R-07 paths, recognition follows the allocation in force at each date, `vc_constrained_amount` / `vc_excluded_amount` follow S04-R-07; P5 and P6 in both currencies; P4 is restated over the engine's schedule streams (a NORMAL stream and a TP_CHANGE stream per cause): per obligation and period the sum of every stream's latest cumulative lies within [0, the allocation in force at the period's end] and equals the oracle's recognised revenue; without a price change there is one NORMAL line and the landed bound, the witness on every example); open, each with its blocker: `reopen` (CLO-7, F-CLO; CLO7-REOPEN-LATE-EVENT-1 open); `modify` for UPGRADE / CO_TERM / ADD_OBLIGATION / QUANTITY_CHANGE > 0 (TA-K02-MOD-KIND-1) and for TERM_CHANGE / RENEWAL / EARLY_RENEWAL (candidate Technical Accounting term-extension item); `modify` PRICE_CHANGE (slice 3); the `spot` rate of a locked period — FX-LOCKED-SPOT-REPUBLISH-1; the database-platform half of `publish_fx_rates` is built as item FX-REPUBLISH-DIRTY-1 (fragment rev 1.14 / BUILD_SPEC 1.254; the former open items RCP17-FX-DIRTY-1 and CLO19-FX-CAUSE-1 — RFD-3 and CLO-19 name its witnesses), and the machine holds the rule that says which groups a changed rate reaches: after every republication, whenever a line the platform would post moves, `rate_reach.at_work` finds the group at work in the reach of a changed key (`backend/tests/properties/test_prop_rate_reach.py`: examples of one clause each and the fail-first witness); for `change_vc`: the VC_ALLOCATION_NEGATIVE refusal (S08-R-06) is not exercised — a new K stays above the level that would drive an exact quota below 0 and a contract whose booking would do so retroactively is not booked; the constraint judgement (how much to constrain) is a generated APPROVED input, never computed (S04-R-07, POL-041)
+      - CLO-LOCK-ORDER-1 is ruled (header rev 1.37; supervisor ruling R-6; PRD BR-CLS-08, ERR-65): a period is submitted for lock, and locked, only when no earlier period of its entity and book is postable, so restriction (ii) of the note below is the product rule for the lock and an out-of-order lock is not a reachable state. The pin `test_clo_lock_order_1_a_later_period_locked_first_leaves_p6_undefined` is rewritten as `backend/tests/unit/test_prp7_open_items.py::test_clo_lock_order_1_a_later_period_is_not_locked_first`: it asserts the refusal on the pure period machine and keeps the pin's arithmetic as an inequality — what the refusal prevents. It is no longer an expected failure: with fragment rev 1.6 the CPU criterion's xfailed count from this file is 0. The note below is kept as written on 2026-09-22 and amended by fragment rev 1.6, whose last sentence predates this ruling.
+      - Coverage restrictions (fragment rev 1.3 / BUILD_SPEC 1.20, lane T1 — a note, not a criterion): two COVERAGE RESTRICTIONS of the stateful machine's generated world, not rules of the platform: (i) a month's `average` and `closing` rates are drawn within a factor of 2 of its `spot` (`_bounded`; the spot path stays free); (ii) periods close in calendar order — `start_close` and `lock` act only on the earliest period not yet closed (`_next_to_close`). The platform still ADMITS inconsistent rate sets and out-of-order locks; the behaviour there is an OPEN decision and the machine gives NO coverage of it: ENG-S14R10-FX-SIGN-1 (engine, stages 12 / 14, and Ray: on a bundle of valid positive rates — first seen with spot and average orders of magnitude apart, then reproduced at average / spot ratios of 2 and 3 — a redirected FX-affected REVENUE_RECOGNITION line whose transaction and functional amounts differ in sign raises ENGINE_INVARIANT_VIOLATED under the S14-R-10 label at `s14_posting/intents.py:138`, while the S14-R-10 row states no sign rule — allow opposite signs, or refuse such rate sets as malformed input (CV-45)?) and CLO-LOCK-ORDER-1 (product / control, Ray and F-CLO: a plain LOCK of a later period while an earlier one is postable is admitted — `_earlier_unlocked` guards only the permanent lock — and a later posting into the earlier period changes the locked period's opening while its snapshot is frozen; must LOCK require every earlier period closed, or is the frozen rollforward's opening defined otherwise?). Codex production-20260922-1508 §2: positive rates do NOT imply equal delta signs (prior unbilled 100 at average 3 = 300; revised revenue 110 = 50 historical liability at spot 1 + 60 unbilled at average 3 = 230; delta (+10, −70); the same arithmetic at average 2 gives (+10, −30), INSIDE the bound) — so the rate bound REDUCES but does NOT EXCLUDE the opposite-sign exposure; it is a disclosed reduction of frequency, not a safe domain; the sign guard is the earlier engineering decision recorded at `docs/reviews/loop/sprint/L2-5.md:261` (Q-34, opposite-sign refusal under the single-side IntentLine format). Codex production-20260922-1514: "chronological generator restrictions and strict xfail keep the limitation visible; they do not close the admitted product path or establish unrestricted P6" — P6 is not redefined as a fix; F-CLO drafts the docs-first control proposal (sequential close, or out-of-order with specified report bases) for Ray. The failing cases are pinned as deterministic tests marked `xfail(strict=True)` naming their id in `backend/tests/unit/test_prp7_open_items.py` (DG-TST-09 forbids `xfail` on property-marked tests): `test_eng_s14r10_fx_sign_1_inconsistent_rate_kinds_raise_the_sign_invariant`, `test_eng_s14r10_fx_sign_1_codex_1508_arithmetic_inside_the_rate_bound` (JPY → USD, spot 1 / average 2 / closing 1.5, a late billing and a late unit into a locked January with unbilled revenue) and `test_clo_lock_order_1_a_later_period_locked_first_leaves_p6_undefined`; a pin that starts passing means the engine or platform behaviour changed and its expected outcome is rewritten under the ruling; the CPU criterion's xfailed count rises by 3. MEASURED: average / spot ratios of 2 and 3 in the Codex 1508 §2 world shape (a late billing plus a late unit into a locked period holding unbilled revenue), one world shape. INFERRED, not witnessed by any machine run: the machine can reach the condition through `submit_late_event` at other rate ratios ≠ 1. Supervisor pre-ruling (applied at batch #9 as well): a RED in any properties stage whose failure is ENGINE_INVARIANT_VIOLATED with invariant S14-R-10 is the open item ENG-S14R10-FX-SIGN-1, not a regression — quoted with its example, no relaunch to chase a green, no narrowing, no filtering; any other failure is a normal STOP. Disclosed restricted generators plus strict expected failures retain the examples; they do not resolve admitted-input behaviour or establish unrestricted property coverage (Codex production-20260922-1442 §4). **Fragment rev 1.6 / BUILD_SPEC 1.33 (lane ENG-FX; supervisor ruling R-44 (a) of 2026-09-30):** restriction (i) is WITHDRAWN and ENG-S14R10-FX-SIGN-1 is CLOSED — a role delta whose transaction and functional amounts differ in sign posts as a transaction line and a functional line of the same role (ENGINE_SPEC_B S14-R-10, S14-INV-09, rev 1.65), and decision L2-5-Q-34's refusal is withdrawn. The machine draws the rate kinds of a period freely again (`_bounded` is removed; a new failure is reported, not bounded again). The two pins are lifted under pin policy R-10a and stay in the same module as passing witnesses of their own figures — `test_eng_s14r10_fx_sign_1_inconsistent_rate_kinds_post_the_two_lines` and `test_eng_s14r10_fx_sign_1_codex_1508_arithmetic_posts_the_two_lines`; the witness at market rates is `backend/tests/engine/s14_posting/test_s14_fx_sign_witness.py` and the database witness on the events route is `backend/tests/domain/contracts/test_fx_opposed_delta.py`; the CPU criterion's xfailed count falls by 2. The supervisor pre-ruling on a RED whose failure names invariant S14-R-10 lapses: the engine raises no such label any more, and any properties failure is a normal STOP. Restriction (ii) and CLO-LOCK-ORDER-1 stand unchanged
+      - every failing example found during development is pinned with `@example(...)` before the fix commit (DG-PROP-02)
+    - Answer keys: none
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: Stateful machine `backend/tests/properties/test_prop_state_machine.py`
+    - REQs completed: none; REQs contributed: none
+  - **Read:** dev-guide §9.7 (Stateful row, DG-PROP-01, DG-PROP-02); research 06 §18.4 (background)
+  - **Gates:** GK-01 `make ci`; GK-04 `make properties K=state_machine`; GK-02 `make test-pg`
+
+- [ ] **PRP-8 Full accounting corpus (G4) and full invariant suite (G5).**
+  - **Prerequisites:** PRP-7
+  - **Scope:**
+    - Paths: regression corrections only
+    - Schema: none
+    - API: none
+    - Engine: none beyond regression fixes
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `make answer-keys` (unfiltered) validates 234 files. It passes 232 of 232 active keys, 227 engine runner and 5 platform runner, and reports the 2 withdrawn keys as validated and not run. The coverage check prints no "Corpus gaps (supervisor)" section, and the run exits 0 (G4; DG-AK-33; BS-D-03)
+      - `.run/reports/answer-keys/report.json` reports the count of keys whose review status is not `approved`, recorded for G12
+      - `make properties` (unfiltered, `HYPOTHESIS_PROFILE=thorough`) passes P1 to P14, the stateful machine and the metamorphic suite (G5)
+    - Answer keys: `make answer-keys` unfiltered (232 pass, zero corpus gaps)
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: every module of PHASES §12 (`test_prop_p01_allocation_sum.py` to `test_prop_p14_trace_reevaluation.py`, `test_prop_state_machine.py`, `test_prop_metamorphic.py`)
+    - REQs completed: none; REQs contributed: none
+    - Hint closure: every `AK:`, `AK-FAM:`, CHK-containment and `PROP:` hint of 03 is closed. The unfiltered runs supersede the filtered evidence of AKS, EDS and PRP-1 to PRP-7 (PHASES §15.1)
+  - **Read:** PHASES §1 row PRP, §8, §12, §15.1; dev-guide §4.4 DG-MK-answer-keys, DG-MK-properties, DG-AK-33; `_coverage/ADJUDICATION.md` §1
+  - **Gates:** GK-01 `make ci`; GK-05 `make answer-keys`; GK-04 `make properties`
+
+- [ ] **GATE-PRP Phase PRP checkpoint.**
+  - **Prerequisites:** every item of phase PRP (PRP-1 to PRP-8)
+  - **Scope:** verification and evidence; fixes only for defects this checkpoint finds
+  - **Acceptance:**
+    - Exit criteria: every exit criterion of PHASES §1 row PRP holds. Evidence: `make answer-keys` unfiltered reports 232 of 232 passed with zero corpus gaps, and `make properties` unfiltered is green, including the platform parts of P5, P6 and P7, P9, P11 and the stateful machine
+    - Membership: no requirement is completed (PHASES §6.20); every property module of §12 exists; the five keys of §8.2.3 pass
+    - Gates: the PHASES §4 row GATE-PRP is green on a clean tree (`git status --porcelain` empty) after the last commit: `make ci`, `make test-pg`, `make e2e` (unfiltered), `make answer-keys` (unfiltered, 232 keys, zero gaps), `make parity` (unfiltered), `make properties` (unfiltered), `erev controls-report --tags-only` inside `make lint`
+  - **Read:** PHASES §1 row PRP, §4 row GATE-PRP, §8.2.3, §12; header §6
+  - **Gates:** GK-11 `make ci`; `make test-pg`; `make e2e`; `make answer-keys`; `make parity`; `make properties` (row GATE-PRP)

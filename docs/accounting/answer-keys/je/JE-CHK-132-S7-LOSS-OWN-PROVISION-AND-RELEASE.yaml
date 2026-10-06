@@ -1,0 +1,233 @@
+# docs/accounting/answer-keys/je/JE-CHK-132-S7-LOSS-OWN-PROVISION-AND-RELEASE.yaml
+schema: "erev-answer-key/1"
+id: JE-CHK-132-S7-LOSS-OWN-PROVISION-AND-RELEASE
+title: >-
+  JET-12: anticipated loss provided when the EAC rises above the price, released as the loss is incurred
+status: active
+families: [JE, LOSS]
+tags: [r04-s7]
+summary: >-
+  Research 04 S7-LOSS-OWN re-anchored to 2026 to 2028 on a monthly calendar with year-end events. Entity US01, USD,
+  ERP billing; the contract is a Subtopic 605-35 contract (scope_605_35 true), so the ASC606 book tests it under the
+  default POL-151 SCOPED_605_35_ONLY (ADJUDICATION.md R-SCH-03). Fixed price 1,000,000.00, cost-to-cost progress. Year
+  1: EAC 900,000.00, costs 450,000.00, revenue 500,000.00, no provision. Year 2: EAC 1,100,000.00, cumulative costs
+  770,000.00, progress 70%, revenue 200,000.00; total expected loss 100,000.00 less the 70,000.00 already recognised
+  through margin gives JET-12 Dr LOSS_EXPENSE 30,000.00 / Cr LOSS_PROVISION 30,000.00. Year 3: costs 1,100,000.00,
+  revenue 300,000.00, the provision is released 30,000.00 (CHK-132). Invoices equal each year's revenue, so the
+  position stays nil. Cross-slice variants with distinct inputs, kept: LOSS-S7-LOSS-OWN (unbilled contract versus
+  yearly invoices) (ADJUDICATION.md R-DUP-02).
+authority:
+  codification: ["605-35-25-45", "605-35-25-46", "605-35-25-46A", "605-35-25-47"]
+  ifrs: ["IAS 37.66", "IAS 37.68A"]
+  practice: []
+  urls: []
+derived_from: {research04: [S7-LOSS-OWN], research05: [], chk: [CHK-132], golden: [], dev: []}
+requirements: [REQ-LOS-001, REQ-REC-007]
+policy_refs: [POL-150, POL-151, POL-152, POL-153]
+review:
+  author: answer-keys-fx-entity-books
+  authored_on: "2026-09-12"
+  reviewer: null
+  reviewed_on: null
+  status: pending
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: US01
+      name: "Avenmoor Systems Inc. (Demo)"
+      functional_currency: USD
+      time_zone: "America/New_York"
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: 1}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2028-12"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "2300", name: "Provision for anticipated losses", account_type: LIABILITY}
+    - {code: "4000", name: "Revenue - products", account_type: REVENUE}
+    - {code: "5300", name: "Anticipated loss expense", account_type: EXPENSE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, account: "4000", product: PLANT-BUILD}
+    - {account_role: LOSS_EXPENSE, account: "5300"}
+    - {account_role: LOSS_PROVISION, account: "2300"}
+  customers:
+    - {code: CUST-1, name: "Pellworth Logistics Inc. (Demo)"}
+  pob_templates:
+    - code: TPL-C2C
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_B
+      recognition_method: COST_TO_COST
+  products:
+    - {code: PLANT-BUILD, name: "Process plant construction", pob_template: TPL-C2C}
+  ssp_books:
+    - code: SSP-US-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2026-01-01"
+          methodology_label: "Observable standalone prices"
+          entries:
+            - product: PLANT-BUILD
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "1000000.00"}
+  fx_rate_sets: []
+  rule_sets: []
+  policies: {tenant: {billing.posting: ERP}, entities: {}, books: {}}
+contracts:
+  - external_id: C-JE-132
+    customer: CUST-1
+    contracting_entity: US01
+    transaction_currency: USD
+    inception_date: "2026-01-01"
+    lines:
+      - {obligation_key: L1-BUILD, product_code: PLANT-BUILD, quantity: "1", total_price: "1000000.00"}
+    scope_605_35: true
+    estimates:
+      - element_code: EAC-132
+        estimate_kind: EAC
+        method: COST_BUILDUP
+        versions:
+          - version_no: "1"
+            effective_date: "2026-01-01"
+            expected_total_amount: "900000.00"
+            rationale: "Engineering cost review"
+          - version_no: "2"
+            effective_date: "2027-12-31"
+            expected_total_amount: "1100000.00"
+            rationale: "Engineering cost review"
+timeline:
+  - {seq: 1, kind: event, contract: C-JE-132, event_type: CONTRACT_BOOKED, effective_date: "2026-01-01", payload: {}}
+  - seq: 2
+    kind: event
+    contract: C-JE-132
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: 3
+    kind: event
+    contract: C-JE-132
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-01-01"
+    payload: {estimate: EAC-132, version_no: "1"}
+  - seq: 4
+    kind: event
+    contract: C-JE-132
+    event_type: COST_INCURRED
+    effective_date: "2026-12-31"
+    payload: {purpose: PROGRESS_INPUT, obligation_key: L1-BUILD, amount: "450000.00"}
+  - seq: 5
+    kind: event
+    contract: C-JE-132
+    event_type: BILLING_RECORDED
+    effective_date: "2026-12-31"
+    payload:
+      invoice_number: INV-LOSS-1
+      line_external_id: INV-LOSS-1-1
+      amount: "500000.00"
+      issue_date: "2026-12-31"
+  - seq: 6
+    kind: event
+    contract: C-JE-132
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2027-12-31"
+    payload: {estimate: EAC-132, version_no: "2"}
+  - seq: 7
+    kind: event
+    contract: C-JE-132
+    event_type: COST_INCURRED
+    effective_date: "2027-12-31"
+    payload: {purpose: PROGRESS_INPUT, obligation_key: L1-BUILD, amount: "320000.00"}
+  - seq: 8
+    kind: event
+    contract: C-JE-132
+    event_type: BILLING_RECORDED
+    effective_date: "2027-12-31"
+    payload:
+      invoice_number: INV-LOSS-2
+      line_external_id: INV-LOSS-2-1
+      amount: "200000.00"
+      issue_date: "2027-12-31"
+  - seq: 9
+    kind: event
+    contract: C-JE-132
+    event_type: COST_INCURRED
+    effective_date: "2028-12-31"
+    payload: {purpose: PROGRESS_INPUT, obligation_key: L1-BUILD, amount: "330000.00"}
+  - seq: 10
+    kind: event
+    contract: C-JE-132
+    event_type: BILLING_RECORDED
+    effective_date: "2028-12-31"
+    payload:
+      invoice_number: INV-LOSS-3
+      line_external_id: INV-LOSS-3-1
+      amount: "300000.00"
+      issue_date: "2028-12-31"
+checkpoints:
+  - name: year-end-2026
+    after_seq: 5
+    as_of: "2026-12-31"
+    book: ASC606
+    contracts:
+      - contract: C-JE-132
+        version: {revenue_cum: "500000.00"}
+        balances:
+          - {entity: US01, loss_provision: "0.00", contract_liability: "0.00", contract_asset: "0.00"}
+    subledger:
+      - period_key: FY2026-P12
+        entity: US01
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "500000.00"}
+          - {account_role: REVENUE, account: "4000", cr: "500000.00"}
+  - name: year-end-2027
+    after_seq: 8
+    as_of: "2027-12-31"
+    book: ASC606
+    contracts:
+      - contract: C-JE-132
+        version: {revenue_cum: "700000.00"}
+        balances:
+          - {entity: US01, loss_provision: "30000.00", contract_liability: "0.00", contract_asset: "0.00"}
+    subledger:
+      - period_key: FY2027-P12
+        entity: US01
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "200000.00"}
+          - {account_role: LOSS_EXPENSE, account: "5300", dr: "30000.00"}
+          - {account_role: REVENUE, account: "4000", cr: "200000.00"}
+          - {account_role: LOSS_PROVISION, account: "2300", cr: "30000.00"}
+  - name: year-end-2028
+    after_seq: 10
+    as_of: "2028-12-31"
+    book: ASC606
+    contracts:
+      - contract: C-JE-132
+        version: {revenue_cum: "1000000.00"}
+        balances:
+          - {entity: US01, loss_provision: "0.00", contract_liability: "0.00", contract_asset: "0.00"}
+    subledger:
+      - period_key: FY2028-P12
+        entity: US01
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "300000.00"}
+          - {account_role: LOSS_PROVISION, account: "2300", dr: "30000.00"}
+          - {account_role: REVENUE, account: "4000", cr: "300000.00"}
+          - {account_role: LOSS_EXPENSE, account: "5300", cr: "30000.00"}

@@ -1,0 +1,106 @@
+{
+  "nn": "08",
+  "slug": "retro-mod-2023-05-15-vc-pob-increase",
+  "handler": "browse_file_RetroMod",
+  "button": "button5",
+  "button_label": "Retrospective Contract Mod",
+  "file": "ops/Example UATs/Contract Mod UAT/Contract Modification Template 05.15.2023 - retrospective vc + POB increases.xlsx",
+  "file_sha256": "542fa9a99ab4a02662338a79dc81a54799faafd77f3ee2be80fe11d5fd1fbeeb",
+  "date_input": "2023-05-15",
+  "report_window": [
+    "2023-05-01",
+    "2023-05-15"
+  ],
+  "contract_live_table_exists": true,
+  "sku_ssp_table_exists": true,
+  "rows_before": 56,
+  "rows_after": 60,
+  "rows_appended": 4,
+  "new_version_tokens": [
+    "step-08"
+  ],
+  "sku_ssp_rows": 7,
+  "handler_success": true,
+  "handler_popups": [
+    {
+      "kind": "QMessageBox.information",
+      "title": "Mod Success",
+      "text": "Retrospective Mod has been processed with uploaded modifications for the current date :)"
+    }
+  ],
+  "report_popups": 4,
+  "unused_queued_inputs": [],
+  "report_unused_inputs": {
+    "latest_contracts": [],
+    "je_gross": [],
+    "je_delta": [],
+    "contract_history": []
+  },
+  "reports_captured": {
+    "latest_contracts": true,
+    "je_gross": true,
+    "je_delta": true,
+    "contract_history": true
+  },
+  "je_gross_totals": {
+    "lines": 3,
+    "by_account": [
+      {
+        "account": "5001",
+        "debit": 0.0,
+        "credit": 13.38,
+        "net": -13.38
+      },
+      {
+        "account": "5003",
+        "debit": 0.0,
+        "credit": 10.49,
+        "net": -10.49
+      },
+      {
+        "account": "15002",
+        "debit": 23.87,
+        "credit": -0.0,
+        "net": 23.87
+      }
+    ],
+    "total_debit": 23.87,
+    "total_credit": 23.87,
+    "net": 0.0
+  },
+  "je_delta_totals": {
+    "lines": 3,
+    "by_account": [
+      {
+        "account": "5001",
+        "debit": 0.0,
+        "credit": 13.38,
+        "net": -13.38
+      },
+      {
+        "account": "5003",
+        "debit": 0.0,
+        "credit": 10.49,
+        "net": -10.49
+      },
+      {
+        "account": "15002",
+        "debit": 23.87,
+        "credit": -0.0,
+        "net": 23.87
+      }
+    ],
+    "total_debit": 23.87,
+    "total_credit": 23.87,
+    "net": 0.0
+  },
+  "contract_history_rows": 4,
+  "latest_contract_rows": 16,
+  "app_excel_exports": [
+    "Contract History between 2023-05-01 and 2023-05-15.xlsx",
+    "Latest Contract Details.xlsx",
+    "Revenue Adj. Summary between 2023-05-01 and 2023-05-15.xlsx",
+    "Revenue JE Summary between 2023-05-01 and 2023-05-15.xlsx"
+  ],
+  "python_warnings": []
+}

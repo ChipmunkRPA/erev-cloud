@@ -1,0 +1,2110 @@
+"""Tenant-snapshot dataset pipeline, pure part (F-SNP preparation; SBX-03, SBX-04, SBX-07, SBX-11;
+T-PLT-34, T-PLT-29; PRV-06; DG-KRN-CAN; rulings D-98 candidate 25 on Q-1 to Q-4). No database."""
+
+from __future__ import annotations
+
+import hashlib
+import ipaddress
+import json
+import re
+from datetime import UTC, date, datetime, timedelta
+from decimal import Decimal
+from pathlib import Path
+from types import MappingProxyType
+from typing import Any
+from uuid import UUID
+
+import pytest
+from erev_api.db import tables
+from erev_api.db.tables import metadata
+from erev_api.db.transitions import TRANSITIONS
+from erev_api.domain.platform import snapshot_dataset as sd
+from erev_engine.canonical import canonical_bytes
+from hypothesis import given
+from hypothesis import strategies as st
+from sqlalchemy import ARRAY as sa_ARRAY
+from sqlalchemy import Column, LargeBinary, MetaData, Table, Text, Uuid
+from support.snapshots import immutability_classes
+
+INV = sd.inventory()
+KNOWN_AT = datetime(2026, 6, 30, 23, 59, 59, tzinfo=UTC)
+DATA_MODEL = Path(__file__).resolve().parents[3] / "docs/04-DATA_MODEL.md"
+TENANT = UUID("00000000-0000-4000-8000-000000000001")
+NAMES = {table.name for table in metadata.tables.values()}
+
+
+def _copy(exclude: str | None = None) -> MetaData:
+    copied = MetaData(schema="erev")
+    for table in metadata.tables.values():
+        if table.name != exclude:
+            table.to_metadata(copied)
+    return copied
+
+
+# --- inventory (SBX-03; ruling Q-1) ---------------------------------------------------------------
+
+
+def test_every_model_table_is_classified_exactly_once() -> None:
+    assert set(sd.RULES) == NAMES
+    assert set(sd.PENDING).isdisjoint(NAMES)
+    assert sd.PENDING_TABLES == frozenset(sd.PENDING)
+    assert INV.names | {item.name for item in INV.exclusions} == NAMES
+    assert not (INV.names & {item.name for item in INV.exclusions})
+    assert [dataset.name for dataset in INV.datasets] == list(sd.LOAD_ORDER)
+    assert set(INV.classes) == NAMES
+
+
+def test_class_totals_and_reasons_are_pinned() -> None:
+    """The ruled classes over the 131 tables (130 of main + tenant_snapshot) and 28 pending."""
+    totals: dict[sd.SnapshotClass, int] = {}
+    for rule in sd.RULES.values():
+        totals[rule.snapshot_class] = totals.get(rule.snapshot_class, 0) + 1
+        assert rule.reason
+    assert totals == {
+        sd.SnapshotClass.COPIED: 75,  # + migration_batch, migrated_legacy_row (main 065e7f65);
+        # + modification (T-CON-06; CTR-17 / D-98 140, revision 0068)
+        # + migration_population_version, migration_population_obligation (04 rev 1.60, F-LMG)
+        sd.SnapshotClass.REPLAY_REFERENCE: 3,
+        sd.SnapshotClass.REGENERATED: 48,  # + control_execution, migration_reconciliation_line,
+        # subledger_line_event (T-SL-12, lane ENG-C6); + sync_run, external_id_map (DIN-12, 0072);
+        # + audit_event_contract (T-PLT-48, revision 0101: the index of the sandbox's own events);
+        # + file_upload (T-PLT-49, revision 0103: the sandbox's own uploads)
+        sd.SnapshotClass.EXCLUDED_SECRET: 10,  # + integration_connection (DIN-12, 0072)
+        sd.SnapshotClass.SHARED: 9,  # + registry_parameter_correction (T-PLT-47, 04 1.59)
+    }
+    # four landed with main 065e7f65 (wave end); modification (CTR-17); the three T-INT tables
+    # (DIN-12, revision 0072)
+    assert len(sd.PENDING) == 20
+    for item in sd.PENDING.values():
+        assert item.reason and item.lane
+        assert item.planned is not sd.SnapshotClass.PENDING
+    planned = {name: item.planned for name, item in sd.PENDING.items()}
+    assert planned["material_right"] is sd.SnapshotClass.COPIED  # T-CON-14, not an event type
+    assert sd.RULES["integration_connection"].snapshot_class is sd.SnapshotClass.EXCLUDED_SECRET
+    assert sd.RULES["sync_run"].snapshot_class is sd.SnapshotClass.REGENERATED
+    assert sd.RULES["external_id_map"].snapshot_class is sd.SnapshotClass.REGENERATED
+    assert sd.RULES["tenant_snapshot"].snapshot_class is sd.SnapshotClass.REGENERATED
+    assert [item.name for item in INV.pending] == sorted(sd.PENDING)
+    # SHARED is exactly the tables without a tenant_id column.
+    shared = {
+        name for name, rule in sd.RULES.items() if rule.snapshot_class is sd.SnapshotClass.SHARED
+    }
+    without_tenant = {t.name for t in metadata.tables.values() if "tenant_id" not in t.c}
+    assert shared == without_tenant - {
+        n for n, r in sd.RULES.items() if r.snapshot_class is sd.SnapshotClass.EXCLUDED_SECRET
+    }
+
+
+def test_snapshot_copies_facts_not_derived() -> None:
+    """The SBX-03 lists and the Q-1 rulings: copied populations present, never-copied ones absent
+    (BUILD_SPEC SNP-1 ``test_snapshot_copies_facts_not_derived`` read over the inventory)."""
+    copied = INV.names
+    assert {
+        "contract",
+        "contract_event",
+        "obligation",
+        "estimate",
+        "estimate_version",
+        "judgement_record",
+        "policy_override",
+        "manual_adjustment",
+        "approval_request",
+        "approval_decision",
+        "file_object",
+        "import_upload",
+        "import_row_lineage",
+        "customer",
+        "product",
+        "period",
+        "tenant_membership",
+        "role_assignment",
+        "registry_version",
+        # ruling Q-1
+        "source_record",
+        "source_order",
+        "event_submission",
+        "contract_hold",
+        "numbering_series",
+        "tenant_currency",
+        "ssp_calculator_run",
+        "ssp_calculator_result",
+        "ssp_calculator_exclusion",
+    } <= copied
+    excluded = {item.name: item for item in INV.exclusions}
+    for name in (
+        "contract_computation",
+        "contract_version",
+        "schedule_line",
+        "calc_trace",
+        "subledger_posting",
+        "journal_run",
+        "report_run",
+        "lock_snapshot",
+        "exception_item",  # ruling Q-1: validation derives it on load
+    ):
+        assert excluded[name].snapshot_class is sd.SnapshotClass.REGENERATED, name
+    assert excluded["audit_event"].snapshot_class is sd.SnapshotClass.REGENERATED
+    for name in ("user_session", "api_client", "api_token", "user_mfa_factor", "webhook_endpoint"):
+        assert excluded[name].snapshot_class is sd.SnapshotClass.EXCLUDED_SECRET, name
+    assert excluded["support_grant"].snapshot_class is sd.SnapshotClass.EXCLUDED_SECRET
+    assert excluded["tenant"].snapshot_class is sd.SnapshotClass.SHARED
+    assert excluded["tenant"].category is sd.Category.GLOBAL_REFERENCE
+    assert "integration_connection" not in copied  # EXCLUDED_SECRET since DIN-12 (0072)
+    assert "integration_connection" not in sd.PENDING
+    # No copied table carries a binary column (PRV-06 ciphertexts stay with their secret tables).
+    for dataset in INV.datasets:
+        table = metadata.tables[f"erev.{dataset.name}"]
+        assert not [c.name for c in table.columns if isinstance(c.type, LargeBinary)]
+    binary_tables = {
+        t.name
+        for t in metadata.tables.values()
+        if any(isinstance(c.type, LargeBinary) for c in t.c)
+    }
+    assert binary_tables == {"user_mfa_factor", "webhook_endpoint"}
+    assert all(
+        excluded[n].snapshot_class is sd.SnapshotClass.EXCLUDED_SECRET for n in binary_tables
+    )
+
+
+def test_cutoff_and_order_columns_exist() -> None:
+    for dataset in INV.datasets:
+        table = metadata.tables[f"erev.{dataset.name}"]
+        columns = {column.name for column in table.columns}
+        assert set(dataset.order_by) <= columns, dataset.name
+        assert dataset.cutoff_column is None or dataset.cutoff_column in columns, dataset.name
+        assert set(dataset.deferred) <= columns and set(dataset.nulled_on_export) <= columns
+    assert INV.dataset("contract_event").cutoff_column == "recorded_at"
+    assert INV.dataset("contract_event").order_by == ("record_seq", "id")
+    assert INV.dataset("contract").cutoff_column == "created_at"
+    assert INV.dataset("tenant_currency").order_by == ("currency_code",)
+
+
+# --- references and load order (the metadata declares no foreign keys) ---------------------------
+
+
+def test_references_resolve_every_id_column_of_the_copied_tables() -> None:
+    refs = {(r.table, r.column): r for r in INV.references}
+    # 188 scalar + 7 array references (D-98 106); + 5 scalar for T-MIG-04 / 05 (04 rev 1.60, lane
+    # F-LMG): the two migration_batch_id keys, payload_migration_batch_id, population_version_id
+    # and engine_release_id (F-SNP review nit: five, as the pin counts). Their identity-token
+    # columns are NOT references (TOKEN_COLUMNS, the D-98 candidate 106 exclusion) and never
+    # appear here.
+    # 195 + migration_batch_id ×2, payload_migration_batch_id, population_version_id,
+    # engine_release_id (T-MIG-04 / 05, 04 rev 1.60)
+    # 207 with the seven T-CON-06 modification columns; + approval_request.entity_ids, the array
+    # of legal entities of a request that names several (04 T-PLT-17 rev 1.104, lane SECFIX-APR);
+    # + the array reference import_upload.named_entity_ids → legal_entity (04 rev 1.107
+    # T-IMP-02; ruling R-29, lane SECFIX-IMP, revision 0087)
+    # + estimate_version.modification_id → modification (04 rev 1.210 T-CON-13; ruling
+    # R-118 (e), lane SECFIX-ACT, revision 0114): the modification loads before the stream
+    # component, so the link is inserted with the row = 210
+    # + the array reference ssp_calculator_run.entity_ids → legal_entity (04 rev 1.277 T-REF-32;
+    # item SSP-ENTITY-SCOPE-1, lane SECFIX-APR, revision 0123): the entities the provider of a
+    # calculator run read, a requirement set (ruling R-98) = 211
+    assert len(refs) == len(INV.references) == 211
+    assert refs[("approval_request", "entity_ids")].target == "legal_entity"
+    assert refs[("approval_request", "entity_ids")].array
+    assert refs[("ssp_calculator_run", "entity_ids")].target == "legal_entity"
+    assert refs[("ssp_calculator_run", "entity_ids")].array
+    assert refs[("estimate_version", "modification_id")].target == "modification"
+    # the identity tokens (04 rev 1.60; D-98 candidate 126 — the D-98 106 exclusion): every pair
+    # names an existing column of a COPIED table (a stale declaration is refused), none is a
+    # reference, and the REAL references of the capture tables resolve to their parents
+    assert not set(refs) & sd.TOKEN_COLUMNS
+    for table_name, column_name in sd.TOKEN_COLUMNS:
+        table = metadata.tables[f"erev.{table_name}"]
+        assert column_name in table.c, (table_name, column_name)
+        assert sd.RULES[table_name].snapshot_class is sd.SnapshotClass.COPIED
+        # F-SNP review notes: a token is a uuid or uuid[] column, and never also a declared array
+        # reference or a shared-key column
+        column_type = table.c[column_name].type
+        assert isinstance(column_type, Uuid) or (
+            isinstance(column_type, sa_ARRAY) and isinstance(column_type.item_type, Uuid)
+        ), (table_name, column_name, column_type)
+    assert not sd.TOKEN_COLUMNS & set(sd.ARRAY_REFERENCES)
+    shared_pairs = {(key.table, column) for key in sd.SHARED_KEYS for column in key.columns}
+    assert not sd.TOKEN_COLUMNS & shared_pairs
+    assert refs[("migration_population_version", "migration_batch_id")].target == "migration_batch"
+    assert refs[("migration_population_version", "payload_migration_batch_id")].target == (
+        "migration_batch"
+    )
+    assert refs[("migration_population_version", "engine_release_id")].target == "engine_release"
+    assert refs[("migration_population_obligation", "population_version_id")].target == (
+        "migration_population_version"
+    )
+    assert refs[("migration_population_obligation", "migration_batch_id")].target == (
+        "migration_batch"
+    )
+    for dataset in INV.datasets:
+        table = metadata.tables[f"erev.{dataset.name}"]
+        for column in table.columns:
+            if column.name.endswith("_id") and column.name not in ("id", "tenant_id"):
+                assert (
+                    (dataset.name, column.name) in refs
+                    or column.name in sd.NON_REFERENCES
+                    or (dataset.name, column.name) in sd.TOKEN_COLUMNS  # identity tokens (rev 1.60)
+                )
+    known = NAMES | set(sd.PENDING)
+    assert all(r.target in known for r in INV.references)
+    assert refs[("contract", "combination_group_id")].nullable is False
+    assert refs[("combination_group_member", "join_event_id")].target == "contract_event"
+    assert refs[("import_upload", "diff_file_id")].target == "file_object"
+    assert refs[("contract_event", "supersedes_event_id")].self_reference
+
+
+def test_unresolved_reference_column_forces_a_decision() -> None:
+    extra = _copy()
+    Table("brand_new_table", extra, Column("id", Uuid(), primary_key=True))
+    with pytest.raises(ValueError, match="unclassified tables \\['brand_new_table'\\]"):
+        sd.inventory(extra)
+    widened = _copy()
+    widened.tables["erev.customer"].append_column(Column("mystery_id", Uuid(), nullable=True))
+    with pytest.raises(ValueError, match="customer.mystery_id: unresolved reference column"):
+        sd.references(widened)
+
+
+def test_load_order_places_every_not_null_parent_first() -> None:
+    """A NOT NULL reference's target loads before its child; a nullable reference to a LATER table
+    is deferred to the fixup step (the contract / combination-group cycle); a nullable reference
+    to the SAME table is never deferred — the dataset's rows load referenced-first; a reference
+    between two tables of one component is satisfied by the component's row order, whichever
+    table comes first, unless it is the component's declared deferred edge."""
+    position = {name: index for index, name in enumerate(sd.LOAD_ORDER)}
+    parents = sd.parents()
+    for child, targets in parents.items():
+        for parent in targets:
+            assert position[parent] < position[child], (parent, child)
+    for reference in INV.references:
+        if reference.array:
+            continue  # D-98 106: per-element policy, not a parent-first constraint
+        dataset = INV.dataset(reference.table)
+        if dataset.snapshot_class is sd.SnapshotClass.REPLAY_REFERENCE:
+            continue
+        if (
+            reference.target in position
+            and INV.classes[reference.target] is sd.SnapshotClass.COPIED
+        ):
+            component = COMPONENT_OF.get(reference.table)
+            if reference.self_reference:
+                assert reference.nullable, reference
+                assert reference.column in dataset.self_references, reference
+                assert reference.column not in dataset.deferred, reference
+            elif component is not None and reference.target in component.tables:
+                deferred = (reference.table, reference.column) in component.deferred
+                assert (reference.column in dataset.deferred) is deferred, reference
+                assert (reference.column in dataset.row_references) is not deferred, reference
+            elif position[reference.target] > position[reference.table]:
+                assert reference.nullable, reference
+                assert reference.column in dataset.deferred, reference
+            else:
+                assert reference.column not in dataset.deferred, reference
+                assert reference.column not in dataset.self_references, reference
+            if component is None or reference.target not in component.tables:
+                assert reference.column not in dataset.row_references, reference
+    # The cycle contract → combination_group → member → contract_event → contract is resolved.
+    assert position["combination_group"] < position["contract"] < position["contract_event"]
+    assert position["contract_event"] < position["combination_group_member"]
+    assert INV.dataset("contract").self_references == ("renewal_of_contract_id",)
+    assert INV.dataset("contract").deferred == ()
+    assert "judgement_record_id" in INV.dataset("combination_group").deferred
+    # D-98 140-A3 F1 (F-SNP consent 2026-09-21; CTR-17): judgement_record loads directly after
+    # contract and before modification, and modification before contract_event (its IM-A
+    # ``modification_id`` edge admits no fixup), so modification defers only fixup-safe columns.
+    assert position["contract"] + 1 == position["judgement_record"] < position["modification"]
+    assert position["modification"] < position["contract_event"]
+    # FIX-D1: the approval graphs now load before modification, so its ``approval_request_id`` is
+    # inserted with the row (was deferred: ("approval_request_id", "applied_event_id")).
+    assert INV.dataset("modification").deferred == ("applied_event_id",)
+    assert set(parents["contract"]) == {"legal_entity", "customer", "combination_group"}
+
+
+def test_approval_graphs_load_before_the_rows_that_freeze_their_reference() -> None:
+    """FIX-D1 (the frozen-deferral finding, F-SNP record §14.13; "ordering is the only governed
+    fix"): ``approval_request_id`` is frozen at insert on ``sod_exception`` and ``role_assignment``
+    (IM-S without an UPDATE grant on the column) and on the IM-A ``contract_event`` — a fixup
+    UPDATE there is refused (42501), and every provisioned tenant carries such a row (the
+    AUTO-BOOTSTRAP admin grant). So the approval graphs load first, and the rule sets before them
+    (``approval_request.routing_*`` and ``approval_decision.auto_*`` are frozen the same way);
+    the DB-10 decision guard still finds the approvers' memberships, which load earlier."""
+    position = {name: index for index, name in enumerate(sd.LOAD_ORDER)}
+    graph = ("approval_request", "approval_step", "approval_decision")
+    assert [position[name] for name in graph] == list(
+        range(position["approval_request"], position["approval_request"] + 3)
+    )
+    for table in ("sod_exception", "role_assignment", "contract_event", "modification"):
+        assert position["approval_decision"] < position[table], table
+        assert "approval_request_id" not in INV.dataset(table).deferred, table
+    for table in ("rule_set", "rule_set_version", "rule"):
+        assert position[table] < position["approval_request"], table
+    assert position["tenant_membership"] < position["approval_request"]  # DB-10: ACTIVE approver
+    assert position["role"] < position["approval_step"]  # required_role_id
+    for table in graph:
+        assert INV.dataset(table).deferred == () and INV.dataset(table).self_references == ()
+    # Only IM-P versions that load before the graphs still defer the reference — a lifecycle
+    # column DB-04 lets a fixup set (04 §1.5 IM-P).
+    assert {d.name for d in INV.datasets if "approval_request_id" in d.deferred} == {
+        "pob_template_version",
+        "sod_rule",
+        "rule_set_version",
+    }
+    # 05 rev 1.30 names these two positions in its account of the batch-#8 finding: unchanged.
+    assert position["pob_template_version"] == 14 and position["sod_rule"] == 20
+
+
+def test_self_references_are_never_deferred() -> None:
+    """FIX-D1: a nullable reference to the dataset's own table is in ``self_references`` and never
+    in ``deferred`` — whatever the table's immutability class, because most of them freeze the
+    column (the eight IM-P ``supersedes_version_id``, the IM-A stream and obligation links, the
+    DB-03 ``supersedes_id`` / ``renewal_of_contract_id``); a graph dataset carries none (a graph
+    loads root by root); a NOT NULL self-reference is refused by the inventory."""
+    found = {d.name: d.self_references for d in INV.datasets if d.self_references}
+    assert found == {
+        "legal_entity": ("parent_entity_id",),
+        "dimension_value": ("parent_value_id",),
+        "customer": ("parent_customer_id",),
+        "pob_template_version": ("supersedes_version_id",),
+        "sod_rule": ("supersedes_version_id",),
+        "rule_set_version": ("supersedes_version_id",),
+        "account_mapping_version": ("supersedes_version_id",),
+        "registry_version": ("supersedes_version_id",),
+        "import_mapping_profile": ("supersedes_version_id",),
+        "import_row": ("aggregated_into_row_id",),
+        "fx_rate_set_version": ("supersedes_version_id",),
+        "ssp_book_version": ("supersedes_version_id",),
+        "contract": ("renewal_of_contract_id",),
+        "judgement_record": ("supersedes_id",),
+        "contract_event": ("supersedes_event_id",),
+        "obligation": ("parent_obligation_id", "regrouped_from_obligation_id"),
+        "estimate_version": ("supersedes_version_id",),
+        "policy_override": ("supersedes_id",),
+    }
+    for dataset in INV.datasets:
+        assert not set(dataset.self_references) & set(dataset.deferred), dataset.name
+        if dataset.snapshot_class is sd.SnapshotClass.REPLAY_REFERENCE:
+            assert dataset.self_references == ()  # consumed by the replay, never inserted
+    for graph in sd.GRAPHS.values():
+        for name in (graph.root, *(dependant for dependant, _ in graph.dependants)):
+            assert INV.dataset(name).self_references == (), name
+    required = _copy()
+    required.tables["erev.customer"].c.parent_customer_id.nullable = False
+    with pytest.raises(ValueError, match="customer.parent_customer_id is a NOT NULL self-ref"):
+        sd.inventory(required)
+
+
+def test_referenced_first_orders_a_dataset_by_its_self_references() -> None:
+    """The rows come out with every referenced row before the rows that name it, the given order
+    kept wherever it already satisfies that; a value naming no row of the dataset, a row naming
+    itself and a cycle are an inconsistent export."""
+
+    def row(key: str, **references: str | None) -> dict[str, Any]:
+        return {"id": key, **references}
+
+    def ids(rows: Any) -> list[str]:
+        return [str(item["id"]) for item in rows]
+
+    # v3 supersedes v2 supersedes v1, given newest first: the chain is turned round
+    versions = [row("v3", s="v2"), row("v2", s="v1"), row("v1", s=None)]
+    assert ids(sd.referenced_first("t", versions, ("s",))) == ["v1", "v2", "v3"]
+    # an order that already satisfies the references is kept exactly (a stream in record order)
+    stream = [row("e1", s=None), row("e2", s=None), row("e3", s="e1"), row("e4", s="e3")]
+    assert ids(sd.referenced_first("contract_event", stream, ("s",))) == ["e1", "e2", "e3", "e4"]
+    # a row moves only behind the rows it names: b waits for c, a and d keep their places
+    mixed = [row("a", s=None), row("b", s="c"), row("c", s=None), row("d", s=None)]
+    assert ids(sd.referenced_first("t", mixed, ("s",))) == ["a", "c", "b", "d"]
+    # two self-reference columns (obligation: parent and regrouped-from), a shared ancestor once
+    two = [row("o3", p="o1", r="o2"), row("o2", p="o1", r=None), row("o1", p=None, r=None)]
+    assert ids(sd.referenced_first("obligation", two, ("p", "r"))) == ["o1", "o2", "o3"]
+    # nothing to order: no column, or no row
+    assert sd.referenced_first("t", versions, ()) == tuple(versions)
+    assert sd.referenced_first("t", [], ("s",)) == ()
+    # every row comes out exactly once, whatever the shape
+    wide = [row(f"n{i}", s=f"n{i + 1}" if i < 400 else None) for i in range(401)]
+    ordered = ids(sd.referenced_first("t", wide, ("s",)))
+    assert ordered == [f"n{i}" for i in range(400, -1, -1)]  # a 400-deep chain, no recursion
+    with pytest.raises(ValueError, match="t.s: row b names zz, which the dataset does not carry"):
+        sd.referenced_first("t", [row("a", s=None), row("b", s="zz")], ("s",))
+    with pytest.raises(ValueError, match="t.s: row a is part of a reference cycle"):
+        sd.referenced_first("t", [row("a", s="a")], ("s",))
+    with pytest.raises(ValueError, match="reference cycle"):
+        sd.referenced_first("t", [row("a", s="b"), row("b", s="c"), row("c", s="a")], ("s",))
+    with pytest.raises(ValueError, match="t: two rows carry the id a"):
+        sd.referenced_first("t", [row("a", s=None), row("a", s=None)], ("s",))
+
+
+@given(st.permutations(list(range(12))), st.data())
+def test_referenced_first_places_every_parent_first_for_any_order(
+    order: list[int], data: st.DataObject
+) -> None:
+    """Whatever forest the self-reference draws and whatever order the rows arrive in, the result
+    is a permutation of the rows in which every row follows the row it names, and rows that name
+    nothing and are named by nothing keep their relative order."""
+    parents = {
+        node: data.draw(st.one_of(st.none(), st.integers(min_value=0, max_value=node - 1)))
+        if node
+        else None
+        for node in range(12)
+    }
+    rows = [
+        {"id": f"r{node}", "p": None if parents[node] is None else f"r{parents[node]}"}
+        for node in order
+    ]
+    result = sd.referenced_first("t", rows, ("p",))
+    placed = [str(item["id"]) for item in result]
+    assert sorted(placed) == sorted(f"r{node}" for node in range(12))
+    index = {key: position for position, key in enumerate(placed)}
+    for item in result:
+        if item["p"] is not None:
+            assert index[str(item["p"])] < index[str(item["id"])]
+    named = {f"r{parent}" for parent in parents.values() if parent is not None}
+    loose = [str(item["id"]) for item in rows if item["p"] is None and item["id"] not in named]
+    assert [key for key in placed if key in set(loose)] == loose
+
+
+# --- the row-ordered component (05 SBX-04 rev 1.50; supervisor ruling R-43 (b)) -----------------
+
+STREAM = sd.COMPONENTS["contract_event"]
+STREAM_REFERENCES = sd.component_references(INV, STREAM)
+
+
+def test_the_stream_component_is_pinned() -> None:
+    """The one component of the registry: the stream and the four tables whose frozen or NOT NULL
+    references close a cycle with it. Its two IM-A edges are row references (the named row is
+    inserted first), the adjustment's updatable back-edge is the deferred one, and every copied
+    parent outside the component loads before the component's position."""
+    assert dict(sd.COMPONENTS) == {
+        "contract_event": sd.Component(
+            "stream",
+            ("contract_event", "obligation", "estimate", "estimate_version", "manual_adjustment"),
+            "contract_event",
+            frozenset({("manual_adjustment", "applied_event_id")}),
+        )
+    }
+    assert {d.name: d.row_references for d in INV.datasets if d.row_references} == {
+        "contract_event": ("estimate_version_id", "manual_adjustment_id"),
+        "obligation": ("created_by_event_id",),
+        "estimate": ("obligation_id",),
+        "estimate_version": ("estimate_id",),
+        "manual_adjustment": ("obligation_id",),
+    }
+    assert INV.dataset("contract_event").deferred == ()  # IM-A: no fixup could restore one
+    assert INV.dataset("manual_adjustment").deferred == ("applied_event_id",)
+    assert dict(STREAM_REFERENCES) == {
+        "contract_event": (
+            ("supersedes_event_id", "contract_event"),
+            ("estimate_version_id", "estimate_version"),
+            ("manual_adjustment_id", "manual_adjustment"),
+        ),
+        "obligation": (
+            ("created_by_event_id", "contract_event"),
+            ("parent_obligation_id", "obligation"),
+            ("regrouped_from_obligation_id", "obligation"),
+        ),
+        "estimate": (("obligation_id", "obligation"),),
+        "estimate_version": (
+            ("estimate_id", "estimate"),
+            ("supersedes_version_id", "estimate_version"),
+        ),
+        "manual_adjustment": (("obligation_id", "obligation"),),
+    }
+    position = {name: index for index, name in enumerate(sd.LOAD_ORDER)}
+    anchor = position[STREAM.tables[0]]
+    assert [position[name] for name in STREAM.tables] == sorted(position[n] for n in STREAM.tables)
+    for reference in INV.references:
+        if reference.table not in STREAM.tables or reference.array:
+            continue
+        outside = reference.target not in STREAM.tables and reference.target in position
+        if outside and INV.classes[reference.target] is sd.SnapshotClass.COPIED:
+            assert position[reference.target] < anchor, reference
+    graphs = {n for g in sd.GRAPHS.values() for n in (g.root, *(d for d, _ in g.dependants))}
+    assert not graphs & set(STREAM.tables)
+
+
+def test_inventory_refuses_an_inconsistent_component(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A component the catalogue cannot honour is refused when the inventory is built."""
+
+    def declared(component: sd.Component) -> None:
+        monkeypatch.setattr(sd, "COMPONENTS", {component.tables[0]: component})
+        monkeypatch.setattr(sd, "_COMPONENT_OF", {table: component for table in component.tables})
+
+    tables = STREAM.tables
+    declared(sd.Component("stream", tables[::-1], "contract_event"))
+    with pytest.raises(ValueError, match="component stream lists its tables out of LOAD_ORDER"):
+        sd.inventory()
+    declared(sd.Component("stream", tables, "contract"))
+    with pytest.raises(ValueError, match="orders one of its own"):
+        sd.inventory()
+    declared(sd.Component("stream", tables, tables[0], frozenset({("obligation", "product_id")})))
+    with pytest.raises(ValueError, match="defers references it does not carry"):
+        sd.inventory()
+    # a NOT NULL reference cannot wait for the fixup step
+    declared(
+        sd.Component(
+            "stream", tables, tables[0], frozenset({("obligation", "created_by_event_id")})
+        )
+    )
+    with pytest.raises(ValueError, match="obligation.created_by_event_id is NOT NULL"):
+        sd.inventory()
+    # a member whose copied parent loads after the component's position
+    early = ("judgement_record", "contract_event")
+    declared(sd.Component("early", early, "contract_event"))
+    with pytest.raises(
+        ValueError,
+        match="component early: contract_event.modification_id names modification, which loads "
+        "after the component does",
+    ):
+        sd.inventory()
+    declared(sd.Component("graph", ("approval_request", "approval_step"), "approval_request"))
+    with pytest.raises(ValueError, match="shares a table with another component or a graph"):
+        sd.inventory()
+
+
+def _stream_rows(**tables: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
+    return {name: tables.get(name, []) for name in STREAM.tables}
+
+
+def _placed(rows: dict[str, list[dict[str, Any]]]) -> list[str]:
+    return [str(row["id"]) for _, row in sd.component_order(STREAM, rows, STREAM_REFERENCES)]
+
+
+def _event(key: str, **named: str | None) -> dict[str, Any]:
+    return {
+        "id": key,
+        "supersedes_event_id": None,
+        "estimate_version_id": None,
+        "manual_adjustment_id": None,
+        **named,
+    }
+
+
+def test_component_order_places_every_named_row_before_the_row_that_names_it() -> None:
+    """The stream component in one order. An ESTIMATE_CHANGED event waits for its version, the
+    version for its estimate, the estimate for its obligation, the obligation for the event that
+    created it; a manual adjustment goes in before the event that names it (its own
+    ``applied_event_id`` is the deferred edge, not an ordering one); every event keeps its place
+    in the stream and every other row the LOAD_ORDER position it had."""
+    obligation = {
+        "id": "o1",
+        "created_by_event_id": "e1",
+        "parent_obligation_id": None,
+        "regrouped_from_obligation_id": None,
+    }
+    other = {**obligation, "id": "o2"}
+    # a contract-level estimate (K-06): e3 names v1, v1 names t1, t1 names no obligation
+    rows = _stream_rows(
+        contract_event=[_event("e1"), _event("e2"), _event("e3", estimate_version_id="v1")],
+        obligation=[obligation],
+        estimate=[{"id": "t1", "obligation_id": None}],
+        estimate_version=[{"id": "v1", "estimate_id": "t1", "supersedes_version_id": None}],
+    )
+    assert _placed(rows) == ["e1", "e2", "t1", "v1", "e3", "o1"]
+    # an obligation-level estimate: the obligation and its creating event come first
+    rows = _stream_rows(
+        contract_event=[_event("e1"), _event("e2"), _event("e3", estimate_version_id="v1")],
+        obligation=[other, obligation],
+        estimate=[{"id": "t1", "obligation_id": "o1"}],
+        estimate_version=[{"id": "v1", "estimate_id": "t1", "supersedes_version_id": None}],
+    )
+    assert _placed(rows) == ["e1", "e2", "o1", "t1", "v1", "e3", "o2"]
+    # version 2 supersedes version 1; each event names its own version
+    rows = _stream_rows(
+        contract_event=[
+            _event("e1"),
+            _event("e2", estimate_version_id="v1"),
+            _event("e3", estimate_version_id="v2"),
+        ],
+        obligation=[obligation],
+        estimate=[{"id": "t1", "obligation_id": "o1"}],
+        estimate_version=[
+            {"id": "v2", "estimate_id": "t1", "supersedes_version_id": "v1"},
+            {"id": "v1", "estimate_id": "t1", "supersedes_version_id": None},
+        ],
+    )
+    assert _placed(rows) == ["e1", "o1", "t1", "v1", "e2", "v2", "e3"]
+    # a manual adjustment: before the event that names it, though it names that event itself
+    rows = _stream_rows(
+        contract_event=[_event("e1"), _event("e2", manual_adjustment_id="a1")],
+        obligation=[obligation],
+        manual_adjustment=[{"id": "a1", "obligation_id": "o1", "applied_event_id": "e2"}],
+    )
+    assert _placed(rows) == ["e1", "o1", "a1", "e2"]
+    assert ("applied_event_id", "contract_event") not in STREAM_REFERENCES["manual_adjustment"]
+    # nothing names anything beyond the creating event: exactly LOAD_ORDER, as before slice 2
+    rows = _stream_rows(
+        contract_event=[_event("e1"), _event("e2")],
+        obligation=[obligation, other],
+        estimate=[{"id": "t1", "obligation_id": "o2"}],
+    )
+    assert _placed(rows) == ["e1", "e2", "o1", "o2", "t1"]
+    tables = [table for table, _ in sd.component_order(STREAM, rows, STREAM_REFERENCES)]
+    assert tables == ["contract_event"] * 2 + ["obligation"] * 2 + ["estimate"]
+    assert sd.component_order(STREAM, _stream_rows(), STREAM_REFERENCES) == ()
+
+
+def test_component_order_refuses_an_inconsistent_export() -> None:
+    """The stream never changes its order: an event naming — through its version, estimate and
+    obligation — an event recorded LATER is refused, as are a value naming no row of the
+    component, a reference cycle and a repeated id."""
+    late = {
+        "id": "o9",
+        "created_by_event_id": "e3",  # created by an event recorded after e2
+        "parent_obligation_id": None,
+        "regrouped_from_obligation_id": None,
+    }
+    rows = _stream_rows(
+        contract_event=[_event("e1"), _event("e2", estimate_version_id="v1"), _event("e3")],
+        obligation=[late],
+        estimate=[{"id": "t1", "obligation_id": "o9"}],
+        estimate_version=[{"id": "v1", "estimate_id": "t1", "supersedes_version_id": None}],
+    )
+    with pytest.raises(ValueError, match="contract_event: row e3 would load out of its source"):
+        _placed(rows)
+    missing = _stream_rows(contract_event=[_event("e1", estimate_version_id="v7")])
+    with pytest.raises(
+        ValueError,
+        match="contract_event.estimate_version_id: row e1 names estimate_version v7, which the "
+        "stream component does not carry",
+    ):
+        _placed(missing)
+    cycle = _stream_rows(
+        estimate=[{"id": "t1", "obligation_id": None}],
+        estimate_version=[
+            {"id": "v1", "estimate_id": "t1", "supersedes_version_id": "v2"},
+            {"id": "v2", "estimate_id": "t1", "supersedes_version_id": "v1"},
+        ],
+    )
+    with pytest.raises(ValueError, match="is part of a reference cycle"):
+        _placed(cycle)
+    with pytest.raises(ValueError, match="contract_event: two rows carry the id e1"):
+        _placed(_stream_rows(contract_event=[_event("e1"), _event("e1")]))
+    # the same id in two tables is two rows, not a clash
+    assert _placed(
+        _stream_rows(contract_event=[_event("x")], estimate=[{"id": "x", "obligation_id": None}])
+    ) == ["x", "x"]
+
+
+@given(st.data())
+def test_component_order_keeps_the_stream_and_places_every_named_row_first(
+    data: st.DataObject,
+) -> None:
+    """Whatever a causally built history looks like — each row created after the rows it names,
+    as the product writes them — and in whatever order the four side datasets arrive, the result
+    is a permutation of all rows, every row follows each row it names, and the events keep their
+    stream order."""
+    events: list[dict[str, Any]] = []
+    side: dict[str, list[dict[str, Any]]] = {name: [] for name in STREAM.tables[1:]}
+
+    def pick(table: str) -> str | None:
+        pool = events if table == "contract_event" else side[table]
+        return data.draw(st.sampled_from([row["id"] for row in pool])) if pool else None
+
+    for step in range(data.draw(st.integers(min_value=1, max_value=14))):
+        kind = data.draw(st.sampled_from(["event", "obligation", "estimate", "version", "adjust"]))
+        if kind == "event" or not events:
+            choice = data.draw(st.sampled_from(["plain", "version", "adjustment"]))
+            events.append(
+                _event(
+                    f"e{step}",
+                    estimate_version_id=pick("estimate_version") if choice == "version" else None,
+                    manual_adjustment_id=(
+                        pick("manual_adjustment") if choice == "adjustment" else None
+                    ),
+                )
+            )
+        elif kind == "obligation":
+            side["obligation"].append(
+                {
+                    "id": f"o{step}",
+                    "created_by_event_id": pick("contract_event"),
+                    "parent_obligation_id": pick("obligation"),
+                    "regrouped_from_obligation_id": None,
+                }
+            )
+        elif kind == "estimate":
+            side["estimate"].append({"id": f"t{step}", "obligation_id": pick("obligation")})
+        elif kind == "version" and side["estimate"]:
+            side["estimate_version"].append(
+                {
+                    "id": f"v{step}",
+                    "estimate_id": pick("estimate"),
+                    "supersedes_version_id": pick("estimate_version"),
+                }
+            )
+        elif kind == "adjust":
+            side["manual_adjustment"].append(
+                {"id": f"a{step}", "obligation_id": pick("obligation"), "applied_event_id": None}
+            )
+    rows = {
+        "contract_event": events,
+        **{name: data.draw(st.permutations(found)) for name, found in side.items()},
+    }
+    result = sd.component_order(STREAM, rows, STREAM_REFERENCES)
+    assert sorted((t, r["id"]) for t, r in result) == sorted(
+        (t, r["id"]) for t, found in rows.items() for r in found
+    )
+    assert [r["id"] for t, r in result if t == "contract_event"] == [e["id"] for e in events]
+    index = {(t, r["id"]): position for position, (t, r) in enumerate(result)}
+    for table, row in result:
+        for column, referenced in STREAM_REFERENCES[table]:
+            if row.get(column) is not None:
+                assert index[(referenced, row[column])] < index[(table, row["id"])], (table, row)
+
+
+# D-98 140-A3 F1 (supervisor ruling 2026-09-21): the frozen deferrals still open, named so the
+# guard below is red for any NEW one and an entry that no longer violates must be removed. Each
+# would be a fixup UPDATE the database refuses once the row exists. NONE is open: lane FIX-D1
+# closed the six the F1 landing recorded (the two ``approval_request_id`` edges by LOAD_ORDER, the
+# four self-references by referenced-first insertion) and widened the guard from the DB-03 kernel
+# specs to every 04 immutability class, which surfaced ``contract_event.estimate_version_id`` and
+# ``.manual_adjustment_id`` on the IM-A stream; slice 2 (supervisor ruling R-43 (b)) closed those
+# two by the row-ordered ``stream`` component — no table order could, the cycle through
+# ``obligation.created_by_event_id`` being frozen or NOT NULL on every edge. This guard reads the
+# class from 04; its counterpart on the INSTALLED privileges and triggers is
+# ``tests/pg/test_snapshot_deferred_references.py``, which holds the same (empty) named set.
+KNOWN_FROZEN_DEFERRALS: dict[str, frozenset[str]] = {}
+COMPONENT_OF = {
+    table: component for component in sd.COMPONENTS.values() for table in component.tables
+}
+# 04 §1.5 IM-P: the lifecycle columns a version keeps mutable after DRAFT / TESTED (DB-04).
+_IM_P_LIFECYCLE = frozenset(
+    {"status", "effective_to", "published_at", "published_by", "approval_request_id"}
+)
+
+
+# The 04 ``Class.`` of every LOAD_ORDER table (``support.snapshots.immutability_classes``); the pg
+# suite pins that these are the classes installed (``test_snapshot_deferred_references.py``).
+IM_CLASSES = immutability_classes()
+
+
+def _frozen_columns(name: str) -> frozenset[str]:
+    """The columns a fixup UPDATE can never restore once the row exists, by the table's 04
+    immutability class (§1.5): IM-A, IM-X and an IM-P child freeze every column; IM-S everything
+    outside the DB-03 kernel's ``updatable_columns`` (the row may be past its editable states);
+    IM-P everything outside the DB-04 lifecycle columns (the version may be past TESTED); IM-M
+    freezes nothing."""
+    columns = {str(column.name) for column in tables.metadata.tables[f"erev.{name}"].columns}
+    klass = IM_CLASSES[name]
+    if klass == "IM-M":
+        return frozenset()
+    if klass == "IM-S":
+        spec = TRANSITIONS[name]
+        status = {spec.status_column} if spec.status_column is not None else set()
+        return frozenset(columns - set(spec.updatable_columns) - status)
+    if klass == "IM-P":
+        return frozenset(columns - _IM_P_LIFECYCLE)
+    return frozenset(columns)
+
+
+def test_immutability_classes_cover_the_copied_tables() -> None:
+    """Every LOAD_ORDER table states its class in 04, every IM-S one has a DB-03 kernel spec, and
+    the IM-P lifecycle columns are the ones the DB-04 trigger keeps mutable."""
+    from erev_api.db.migration_ops import CONFIG_MUTABLE_COLUMNS
+
+    assert set(IM_CLASSES) == set(sd.LOAD_ORDER)
+    assert set(IM_CLASSES.values()) == {"IM-A", "IM-S", "IM-P", "IM-P child", "IM-M", "IM-X"}
+    assert all(name in TRANSITIONS for name, klass in IM_CLASSES.items() if klass == "IM-S")
+    assert _IM_P_LIFECYCLE <= set(CONFIG_MUTABLE_COLUMNS)
+    assert set(CONFIG_MUTABLE_COLUMNS) - _IM_P_LIFECYCLE == {
+        "row_version",
+        "updated_at",
+        "updated_by",
+        "updated_by_kind",
+    }  # the SC-M columns DB-02 maintains
+
+
+def test_no_copied_dataset_defers_a_frozen_column() -> None:
+    """D-98 140-A3 F1: a deferred column is restored by a NULL-then-UPDATE by identity; a column
+    the table's immutability class freezes can never be deferred — the fixup is exactly what the
+    freeze forbids (DB-01 and the column grants for IM-A / IM-S, DB-03 past the editable states,
+    DB-04 past TESTED). The ordering fix is complete when no COPIED dataset defers a frozen column
+    beyond the named set (which must stay exact: an entry that no longer violates is removed)."""
+    found: dict[str, frozenset[str]] = {}
+    for dataset in INV.datasets:
+        if dataset.snapshot_class is not sd.SnapshotClass.COPIED or not dataset.deferred:
+            continue
+        frozen = set(dataset.deferred) & _frozen_columns(dataset.name)
+        if frozen:
+            found[dataset.name] = frozenset(frozen)
+    assert found == KNOWN_FROZEN_DEFERRALS, sorted(
+        (name, sorted(columns)) for name, columns in found.items()
+    )
+
+
+def test_references_to_regenerated_pending_or_secret_targets_are_nulled_on_export() -> None:
+    for reference in INV.references:
+        target_class = INV.classes.get(reference.target, sd.SnapshotClass.PENDING)
+        dataset = INV.dataset(reference.table)
+        if target_class in (
+            sd.SnapshotClass.REGENERATED,
+            sd.SnapshotClass.PENDING,
+            sd.SnapshotClass.EXCLUDED_SECRET,
+        ):
+            assert reference.nullable, reference
+            assert reference.column in dataset.nulled_on_export, reference
+        if target_class is sd.SnapshotClass.SHARED:
+            # a SHARED identity travels — unless an explicit rebuild step names it as the
+            # source's own (migration_batch.sandbox_tenant_id; 05 SBX-10), then it is nulled
+            if (reference.table, reference.column) in sd.REBUILD_STEPS:
+                assert reference.column in dataset.nulled_on_export, reference
+            else:
+                assert reference.column not in dataset.nulled_on_export, reference
+    assert set(INV.dataset("contract").nulled_on_export) == {
+        "latest_computation_id",
+        "portfolio_id",
+    }
+    assert INV.dataset("source_record").nulled_on_export == ("sync_run_id",)
+    assert INV.dataset("tenant_membership").nulled_on_export == ("invitation_token_sha256",)
+    assert INV.dataset("period_state_transition").nulled_on_export == ("close_run_id",)
+
+
+def test_inventory_refuses_stale_or_present_pending_tables_and_credential_columns() -> None:
+    with pytest.raises(ValueError, match="stale entries \\['customer'\\]"):
+        sd.inventory(_copy(exclude="customer"))
+    present = _copy()
+    Table("material_right", present, Column("id", Uuid(), primary_key=True))
+    with pytest.raises(ValueError, match="pending tables present \\['material_right'\\]"):
+        sd.inventory(present)
+    credential = _copy()
+    credential.tables["erev.customer"].append_column(
+        Column("reset_token_sha256", Text(), nullable=True)
+    )
+    with pytest.raises(
+        ValueError, match="credential-like or binary columns \\[\\('customer', 'reset"
+    ):
+        sd.inventory(credential)
+    binary = _copy()
+    binary.tables["erev.customer"].append_column(Column("blob", LargeBinary(), nullable=True))
+    with pytest.raises(
+        ValueError, match="credential-like or binary columns \\[\\('customer', 'blob'"
+    ):
+        sd.inventory(binary)
+
+
+# --- per-table cutoff (ruling Q-6), excluded columns (Q-5), rebuild steps, 04 FK edges -----------
+
+
+def test_every_dataset_has_a_cutoff_rule_and_the_kinds_are_pinned() -> None:
+    assert set(sd.CUTOFF_RULES) == set(sd.LOAD_ORDER)
+    kinds: dict[sd.CutoffKind, int] = {}
+    for dataset in INV.datasets:
+        kinds[dataset.cutoff.kind] = kinds.get(dataset.cutoff.kind, 0) + 1
+    assert kinds == {
+        # + migration_batch, migrated_legacy_row; + T-MIG-04 / 05; + modification (CTR-17)
+        sd.CutoffKind.TIMESTAMP: 55,
+        sd.CutoffKind.EFFECTIVE: 12,
+        sd.CutoffKind.PARENT: 8,
+        sd.CutoffKind.NONE: 3,
+    }
+    effective = {d.name for d in INV.datasets if d.cutoff.kind is sd.CutoffKind.EFFECTIVE}
+    assert effective == {
+        "pob_template_version",
+        "sod_rule",
+        "rule_set_version",
+        "account_mapping_version",
+        "registry_version",
+        "import_mapping_profile",
+        "fx_rate_set_version",
+        "ssp_book_version",
+        "product_bundle_component",
+        "sod_exception",
+        "role_assignment",
+        "fx_rate",
+    }
+    assert {d.name for d in INV.datasets if d.cutoff.kind is sd.CutoffKind.NONE} == {
+        "period",
+        "numbering_series",
+        "period_state",
+    }
+    # facts and events by their timestamp; SBX-03 names contract_event.recorded_at
+    for dataset in INV.datasets:
+        if dataset.category is sd.Category.FACT:
+            assert dataset.cutoff.kind in (sd.CutoffKind.TIMESTAMP, sd.CutoffKind.PARENT)
+    assert INV.dataset("contract_event").cutoff == sd.CutoffRule(
+        sd.CutoffKind.TIMESTAMP, "recorded_at"
+    )
+    assert INV.dataset("approval_decision").cutoff.column == "decided_at"
+    assert INV.dataset("import_mapping_profile").category is sd.Category.CONFIGURATION
+
+
+def test_effective_cutoff_keeps_versions_effective_on_or_before_known_at() -> None:
+    """A version created after known_at but effective on or before it IS included; one effective
+    after known_at is not; a NULL effective value (DRAFT) falls back to created_at (Q-8b)."""
+    versions = INV.dataset("rule_set_version")
+    before = KNOWN_AT - timedelta(days=30)
+    after = KNOWN_AT + timedelta(days=1)
+    rows = [
+        {"id": 1, "created_at": after, "effective_from": before},  # created after, effective before
+        {"id": 2, "created_at": before, "effective_from": after},  # effective after known_at
+        {"id": 3, "created_at": before, "effective_from": None},  # draft that existed
+        {"id": 4, "created_at": after, "effective_from": None},  # draft that did not exist yet
+        {"id": 5, "created_at": before, "effective_from": KNOWN_AT},  # effective at the instant
+    ]
+    assert [r["id"] for r in sd.cutoff(versions, rows, KNOWN_AT)] == [1, 3, 5]
+    dated = INV.dataset("fx_rate")  # a DATE effectivity column compares with the UTC date
+    rates = [
+        {"id": 1, "effective_date": date(2026, 6, 30)},
+        {"id": 2, "effective_date": date(2026, 7, 1)},
+    ]
+    assert [r["id"] for r in sd.cutoff(dated, rates, KNOWN_AT)] == [1]
+    with pytest.raises(ValueError, match="datetime or a date is required"):
+        sd.cutoff(dated, [{"id": 1, "effective_date": "2026-06-30"}], KNOWN_AT)
+    components = INV.dataset("product_bundle_component")  # NULL effective, no fallback: kept
+    assert sd.cutoff(components, [{"id": 1, "valid_from": None}], KNOWN_AT) == (
+        {"id": 1, "valid_from": None},
+    )
+    children = INV.dataset("rule")  # PARENT: every row follows its version
+    assert sd.cutoff(children, [{"id": 1}, {"id": 2}], KNOWN_AT) == ({"id": 1}, {"id": 2})
+    whole = INV.dataset("period")
+    assert sd.cutoff(whole, [{"id": 1, "created_at": after}], KNOWN_AT) == (
+        {"id": 1, "created_at": after},
+    )
+
+
+def test_cutoff_rule_drift_guards() -> None:
+    from sqlalchemy import DateTime
+
+    versioned_master = _copy()  # a configuration table gains effective_from: the rule must follow
+    versioned_master.tables["erev.book"].append_column(
+        Column("effective_from", DateTime(timezone=True), nullable=True)
+    )
+    with pytest.raises(ValueError, match="book carries \\['effective_from'\\]; a configuration"):
+        sd.inventory(versioned_master)
+
+
+def test_excluded_column_scan_is_pinned_and_guarded() -> None:
+    assert sd.scan_excluded_columns() == (("tenant_membership", "invitation_token_sha256"),)
+    assert dict(sd.EXCLUDED_COLUMNS) == {
+        "tenant_membership": frozenset({"invitation_token_sha256"})
+    }
+    scanned = _copy()
+    scanned.tables["erev.customer"].append_column(
+        Column("portal_token_sha256", Text(), nullable=True)
+    )
+    assert ("customer", "portal_token_sha256") in sd.scan_excluded_columns(scanned)
+    with pytest.raises(ValueError, match="credential-like or binary columns"):
+        sd.inventory(scanned)
+
+
+def test_an_open_invitation_is_carried_as_one_withdrawn_before_acceptance() -> None:
+    """Item SBX-COPY-OPEN-INVITATION-1 (05 SBX-03 rev 1.205): the three columns the table's two
+    checks tie together — ``(status = 'INVITED') = (token IS NOT NULL)`` and ``(token IS NULL) =
+    (expiry IS NULL)`` — are stated together, with ``removed_at``. An INVITED membership cannot be
+    carried as it is once its token is nulled; the copy carries it REMOVED, and its role
+    assignments still in force revoked at the cut by SYSTEM, as a removal leaves them. Every other
+    row is the object it was."""
+    assert sd.OPEN_INVITATION == "INVITED"
+    assert dict(sd.CLOSED_INVITATION) == {
+        "status": "REMOVED",
+        "invitation_token_sha256": None,
+        "invitation_expires_at": None,
+    }
+    assert (sd.CLOSED_INVITATION_AT, sd.REVOKED_WITH_INVITATION_AT) == ("removed_at", "revoked_at")
+    assert dict(sd.REVOKED_WITH_INVITATION) == {"revoked_by": None, "revoked_by_kind": "SYSTEM"}
+    # The column the export nulls (ruling Q-5) is one of the three: one rule, two statements.
+    assert sd.EXCLUDED_COLUMNS["tenant_membership"] <= set(sd.CLOSED_INVITATION)
+
+    earlier = KNOWN_AT - timedelta(days=30)
+
+    def member(number: int, status: str, **more: Any) -> dict[str, Any]:
+        return {
+            "id": UUID(int=number),
+            "status": status,
+            "invitation_token_sha256": None,
+            "invitation_expires_at": None,
+            "activated_at": None,
+            "removed_at": None,
+            "created_at": earlier,
+            **more,
+        }
+
+    def grant(number: int, of: dict[str, Any], **more: Any) -> dict[str, Any]:
+        return {
+            "id": UUID(int=number),
+            "membership_id": of["id"],
+            "revoked_at": None,
+            "revoked_by": None,
+            "revoked_by_kind": None,
+            **more,
+        }
+
+    token = {"invitation_token_sha256": "ab" * 32}
+    invited = member(1, "INVITED", **token, invitation_expires_at=KNOWN_AT + timedelta(days=3))
+    expired = member(2, "INVITED", **token, invitation_expires_at=KNOWN_AT - timedelta(days=1))
+    again = member(3, "INVITED", **token, invitation_expires_at=KNOWN_AT, activated_at=earlier)
+    active = member(4, "ACTIVE", activated_at=earlier)
+    removed = member(5, "REMOVED", activated_at=earlier, removed_at=earlier)
+    by_a_person = {"revoked_at": earlier, "revoked_by": UUID(int=77), "revoked_by_kind": "USER"}
+    grants = (
+        grant(11, invited),
+        grant(12, invited, **by_a_person),
+        grant(13, expired),
+        grant(14, active),
+        grant(15, removed, **by_a_person),
+    )
+    customers = ({"id": UUID(int=99)},)
+    rows = {
+        "tenant_membership": (invited, expired, again, active, removed),
+        "role_assignment": grants,
+        "customer": customers,
+    }
+    carried = sd.close_open_invitations(rows, KNOWN_AT)
+
+    def closed(row: dict[str, Any]) -> dict[str, Any]:
+        return {
+            **row,
+            "status": "REMOVED",
+            "invitation_token_sha256": None,
+            "invitation_expires_at": None,
+            "removed_at": KNOWN_AT,
+        }
+
+    assert carried["tenant_membership"] == (
+        closed(invited),
+        closed(expired),
+        closed(again),
+        active,
+        removed,
+    )
+    # ``activated_at`` as it is: the load holds back a membership that was once active.
+    assert carried["tenant_membership"][2]["activated_at"] == earlier
+    assert carried["tenant_membership"][3] is active and carried["tenant_membership"][4] is removed
+    by_system = {"revoked_at": KNOWN_AT, "revoked_by": None, "revoked_by_kind": "SYSTEM"}
+    assert carried["role_assignment"] == (
+        {**grants[0], **by_system},
+        grants[1],  # revoked before, by a person: as it was
+        {**grants[2], **by_system},
+        grants[3],
+        grants[4],
+    )
+    assert all(carried["role_assignment"][index] is grants[index] for index in (1, 3, 4))
+    assert carried["customer"] is customers
+    # What the load inserts meets the table's two checks; the row carried as it was does not.
+    membership = INV.dataset("tenant_membership")
+    for row in carried["tenant_membership"]:
+        exported = sd.export_row(membership, row)
+        has_token = exported["invitation_token_sha256"] is not None
+        assert (exported["status"] == "INVITED") == has_token
+        assert has_token == (exported["invitation_expires_at"] is not None)
+    as_it_was = sd.export_row(membership, invited)
+    assert (as_it_was["status"], as_it_was["invitation_token_sha256"]) == ("INVITED", None)
+    assert as_it_was["invitation_expires_at"] is not None
+    # No open invitation: the rows themselves. A cut without a zone is refused, as ``cutoff`` does.
+    quiet = {"tenant_membership": (active, removed), "role_assignment": (grants[3],)}
+    assert sd.close_open_invitations(quiet, KNOWN_AT) is quiet
+    assert "role_assignment" not in sd.close_open_invitations(
+        {"tenant_membership": (invited,)}, KNOWN_AT
+    )
+    with pytest.raises(ValueError, match="timezone-aware"):
+        sd.close_open_invitations(rows, KNOWN_AT.replace(tzinfo=None))
+
+
+def test_every_nulled_reference_has_a_rebuild_step_or_a_recorded_none() -> None:
+    steps = {step.name for step in sd.load_plan("SANDBOX_COPY", INV)}
+    nulled = {
+        (d.name, c)
+        for d in INV.datasets
+        for c in d.nulled_on_export
+        if c not in sd.EXCLUDED_COLUMNS.get(d.name, frozenset())
+    }
+    assert nulled == set(sd.REBUILD_STEPS) - sd.POLYMORPHIC_SUBJECT_COLUMNS
+    for key, step in sd.REBUILD_STEPS.items():
+        assert step is None or step in steps, (key, step)
+    assert sd.REBUILD_STEPS[("contract", "latest_computation_id")] == "recompute"
+    assert sd.REBUILD_STEPS[("approval_decision", "delegation_id")] is None
+    assert sd.REBUILD_STEPS[("source_record", "sync_run_id")] is None  # PENDING sync_run (F-DIN)
+
+
+def _spec_fk_edges() -> list[tuple[str, str, str, bool]]:
+    """(table, column, target, nullable) for every "FK →" note of a copied table in 04."""
+    text = DATA_MODEL.read_text(encoding="utf-8")
+    sections = re.split(r"\n### T-[A-Z]+-\d+ `([a-z_]+)`", text)
+    edges: list[tuple[str, str, str, bool]] = []
+    for index in range(1, len(sections), 2):
+        name, body = sections[index], sections[index + 1].split("\n### ")[0]
+        if name not in sd.LOAD_ORDER:
+            continue
+        for row in body.splitlines():
+            cells = [cell.strip() for cell in row.strip().strip("|").split("|")]
+            if len(cells) >= 5 and cells[0].startswith("`") and cells[0].endswith("`"):
+                for target in re.findall(r"FK → `([a-z_]+)", cells[4]):
+                    edges.append((name, cells[0].strip("`"), target, cells[2] == "Y"))
+    return edges
+
+
+def test_every_04_fk_edge_is_honoured_deferred_or_nulled() -> None:
+    """Ruling on finding 1: the 04 "FK →" notes are the parent graph the metadata lacks; every
+    edge of a copied table is known to references() with the same target and is either honoured
+    by LOAD_ORDER, deferred (nullable, fixup step), nulled on export (target never loaded) or
+    points at a SHARED table."""
+    edges = _spec_fk_edges()
+    assert len(edges) >= 70  # 76 noted edges on the copied tables at 04 rev 1.3
+    refs = {(r.table, r.column): r for r in INV.references}
+    position = {name: index for index, name in enumerate(sd.LOAD_ORDER)}
+    position_of_shared = {k.shared_table for k in sd.SHARED_KEYS}
+    for table, column, target, nullable in edges:
+        if target == table:
+            continue  # self references are inserted referenced-first by construction
+        if not column.endswith("_id"):
+            # code columns (permission_code, functional_currency, policy_key): SHARED identities
+            assert INV.classes[target] is sd.SnapshotClass.SHARED, (table, column, target)
+            assert target in position_of_shared
+            assert any(k.table == table and column in k.columns for k in sd.SHARED_KEYS), (
+                table,
+                column,
+            )
+            continue
+        reference = refs[(table, column)]
+        assert reference.target == target, (table, column, reference.target, target)
+        assert reference.nullable == nullable, (table, column)
+        dataset = INV.dataset(table)
+        target_class = INV.classes.get(target, sd.SnapshotClass.PENDING)
+        if dataset.snapshot_class is sd.SnapshotClass.REPLAY_REFERENCE:
+            continue
+        if target_class is sd.SnapshotClass.SHARED:
+            continue
+        if target_class is sd.SnapshotClass.COPIED:
+            if position[target] < position[table]:
+                continue  # honoured by the order
+            assert column in dataset.deferred, (table, column, target)
+        else:
+            assert column in dataset.nulled_on_export, (table, column, target)
+    # the NOT NULL edges of the cycle are honoured by the order, not deferred
+    assert ("contract", "combination_group_id", "combination_group", False) in edges
+    assert ("combination_group_member", "join_event_id", "contract_event", False) in edges
+
+
+# --- SHARED dependencies and the audit statement (ruling Q-7) -------------------------------------
+
+
+def test_shared_keys_cover_every_shared_reference_and_build_the_manifest_block() -> None:
+    shared_tables = {n for n, r in sd.RULES.items() if r.snapshot_class is sd.SnapshotClass.SHARED}
+    assert {k.shared_table for k in sd.SHARED_KEYS} <= shared_tables
+    for reference in INV.references:
+        if (reference.table, reference.column) in sd.REBUILD_STEPS:
+            continue  # nulled on export by an explicit rebuild step, not a shared dependency
+        if INV.classes.get(reference.target) is sd.SnapshotClass.SHARED:
+            assert any(
+                k.table == reference.table and reference.column in k.columns for k in sd.SHARED_KEYS
+            ), reference
+    rows = {
+        "tenant_membership": [{"user_id": UUID(int=7)}, {"user_id": UUID(int=8)}],
+        "contract": [{"transaction_currency": "USD"}, {"transaction_currency": "JPY"}],
+        "fx_rate": [{"base_currency": "EUR", "quote_currency": "USD"}],
+        "sod_rule": [{"function_a_permissions": ["contract.create"], "function_b_permissions": []}],
+        "import_upload": [{"template_code": "contracts", "template_version": 2}],
+        "import_mapping_profile": [{"template_code": "customers"}],
+        "approval_request": [{"amount_currency": None}],
+    }
+    shared = sd.shared_dependencies(rows, engine_release="1.0.0")
+    assert {ref.table: ref.values for ref in shared.refs} == {
+        "app_user": (str(UUID(int=7)), str(UUID(int=8))),
+        "currency": ("EUR", "JPY", "USD"),
+        "permission": ("contract.create",),
+        "import_template": ("contracts|2", "customers"),
+    }
+    manifest = sd.Manifest(
+        sd.Stamp(TENANT, KNOWN_AT, "STORED_BACKUP"), (), INV.exclusions, None, shared
+    )
+    parsed = json.loads(sd.manifest_bytes(manifest))
+    assert parsed["shared"]["engine_release"] == "1.0.0"
+    assert parsed["shared"]["refs"][1] == {"table": "currency", "values": ["EUR", "JPY", "USD"]}
+    assert parsed["audit_history_carried"] is False
+    assert parsed["audit_statement"] == sd.AUDIT_HISTORY_STATEMENT
+    assert "not carried" in sd.AUDIT_HISTORY_STATEMENT
+    present = {"app_user": [str(UUID(int=7))], "currency": ["USD", "EUR"], "permission": []}
+    assert sd.verify_shared(manifest, present) == (
+        f"app_user: missing ['{UUID(int=8)}']",
+        "currency: missing ['JPY']",
+        "import_template: missing ['contracts|2', 'customers']",
+        "permission: missing ['contract.create']",
+    )
+    assert sd.verify_shared(sd.Manifest(manifest.stamp, (), ()), present) == (
+        "manifest carries no shared block",
+    )
+
+
+# --- JSONL codec, hash and count ------------------------------------------------------------------
+
+_scalars = st.one_of(
+    st.none(),
+    st.booleans(),
+    st.integers(min_value=-(10**18), max_value=10**18),
+    st.text(max_size=12),
+    st.decimals(
+        allow_nan=False, allow_infinity=False, places=2, min_value=-(10**9), max_value=10**9
+    ),
+    st.uuids(),
+    st.dates(),
+    st.datetimes(
+        min_value=datetime(2000, 1, 1), max_value=datetime(2099, 12, 31), timezones=st.just(UTC)
+    ),
+)
+_json_values = st.recursive(
+    _scalars,
+    lambda children: st.one_of(
+        st.lists(children, max_size=3), st.dictionaries(st.text(max_size=6), children, max_size=3)
+    ),
+    max_leaves=6,
+)
+_aware = st.datetimes(
+    min_value=datetime(2000, 1, 1), max_value=datetime(2099, 12, 31), timezones=st.just(UTC)
+)
+_rows = st.lists(
+    st.fixed_dictionaries(
+        {"id": st.uuids(), "created_at": _aware},
+        optional={"payload": _json_values, "amount": _scalars, "note": st.text(max_size=8)},
+    ),
+    max_size=8,
+    unique_by=lambda row: row["id"],
+)
+CONTRACT = INV.dataset("contract")
+
+
+@given(_rows)
+def test_jsonl_round_trip_is_byte_identical_and_order_independent(
+    rows: list[dict[str, Any]],
+) -> None:
+    encoded = sd.encode_rows(CONTRACT, rows)
+    again = sd.encode_rows(CONTRACT, list(reversed(rows)))
+    assert encoded.content == again.content and encoded.sha256 == again.sha256
+    assert encoded.row_count == len(rows) == encoded.content.count(b"\n")
+    decoded = sd.decode_rows(encoded.content)
+    assert sd.encode_rows(CONTRACT, decoded).content == encoded.content
+    assert [row["id"] for row in decoded] == sorted(str(row["id"]) for row in rows)
+    for line in encoded.content.split(b"\n")[:-1]:
+        assert canonical_bytes(json.loads(line)) == line  # every line is canonical JSON
+
+
+def test_encoding_forms_follow_dg_krn_can() -> None:
+    row = {
+        "id": UUID("11111111-1111-4111-8111-111111111111"),
+        "created_at": datetime(2026, 1, 15, 12, 30, tzinfo=UTC),
+        "amount": Decimal("1234.50"),
+        "on": date(2026, 1, 15),
+        "flag": True,
+        "count": 3,
+        "payload": {"b": [1, "x"], "a": None},
+        "kind": sd.Category.FACT,
+    }
+    encoded = sd.encode_rows(CONTRACT, [row])
+    assert encoded.content == (
+        b'{"amount":"1234.50","count":3,"created_at":"2026-01-15T12:30:00.000000Z",'
+        b'"flag":true,"id":"11111111-1111-4111-8111-111111111111","kind":"FACT",'
+        b'"on":"2026-01-15","payload":{"a":null,"b":[1,"x"]}}\n'
+    )
+    assert encoded.sha256 == hashlib.sha256(encoded.content).hexdigest()
+
+
+def test_export_nulls_secret_columns_and_regenerated_references_and_normalises_inet() -> None:
+    membership = INV.dataset("tenant_membership")
+    row = {"id": UUID(int=1), "created_at": KNOWN_AT, "invitation_token_sha256": "ab" * 32}
+    exported = sd.export_row(membership, row)
+    assert exported["invitation_token_sha256"] is None  # Q-5
+    line = sd.encode_rows(membership, [row]).content
+    assert b'"invitation_token_sha256":null' in line and b"abab" not in line
+    contract = {"id": UUID(int=2), "created_at": KNOWN_AT, "latest_computation_id": UUID(int=9)}
+    assert sd.export_row(CONTRACT, contract)["latest_computation_id"] is None
+    kept = {"id": UUID(int=3), "created_at": KNOWN_AT, "renewal_of_contract_id": UUID(int=4)}
+    assert sd.export_row(CONTRACT, kept)["renewal_of_contract_id"] == UUID(int=4)  # deferred
+    address = {"id": UUID(int=5), "created_at": KNOWN_AT, "ip": ipaddress.ip_address("10.0.0.1")}
+    assert b'"ip":"10.0.0.1"' in sd.encode_rows(CONTRACT, [address]).content
+
+
+def test_binary_float_and_naive_datetime_values_are_refused() -> None:
+    base = {"id": UUID(int=1), "created_at": KNOWN_AT}
+    with pytest.raises(TypeError, match="binary values are refused"):
+        sd.encode_rows(CONTRACT, [{**base, "secret_ciphertext": b"\x00\x01"}])
+    with pytest.raises(TypeError, match="rejects float"):
+        sd.encode_rows(CONTRACT, [{**base, "amount": 1.5}])
+    with pytest.raises(ValueError, match="timezone-aware"):
+        sd.encode_rows(CONTRACT, [{**base, "created_at": datetime(2026, 1, 1)}])
+    with pytest.raises(ValueError, match="order column"):
+        sd.encode_rows(CONTRACT, [{"created_at": KNOWN_AT}])
+
+
+def test_stream_rows_sort_by_record_seq_numerically() -> None:
+    events = INV.dataset("contract_event")
+    rows = [
+        {"id": UUID(int=n), "record_seq": seq, "recorded_at": KNOWN_AT}
+        for n, seq in ((1, 10), (2, 9), (3, 100), (4, 1))
+    ]
+    decoded = sd.decode_rows(sd.encode_rows(events, rows).content)
+    assert [row["record_seq"] for row in decoded] == [1, 9, 10, 100]
+
+
+def test_decode_refuses_a_truncated_or_non_object_line() -> None:
+    with pytest.raises(ValueError, match="line feed"):
+        sd.decode_rows(b'{"id":"a"}')
+    with pytest.raises(ValueError, match="JSON object"):
+        sd.decode_rows(b"[1]\n")
+    assert sd.decode_rows(b"") == ()
+
+
+# --- known_at cutoff (SBX-03) ---------------------------------------------------------------------
+
+
+@given(
+    st.lists(st.integers(min_value=-1000, max_value=1000), max_size=20), st.integers(-1000, 1000)
+)
+def test_known_at_cutoff_keeps_exactly_the_rows_recorded_by_then(
+    offsets: list[int], edge: int
+) -> None:
+    events = INV.dataset("contract_event")
+    rows = [
+        {
+            "id": UUID(int=index + 1),
+            "record_seq": index,
+            "recorded_at": KNOWN_AT + timedelta(minutes=o),
+        }
+        for index, o in enumerate(offsets)
+    ]
+    known = KNOWN_AT + timedelta(minutes=edge)
+    kept = sd.cutoff(events, rows, known)
+    assert [row["record_seq"] for row in kept] == [
+        index for index, o in enumerate(offsets) if KNOWN_AT + timedelta(minutes=o) <= known
+    ]
+    earlier = sd.cutoff(events, rows, known - timedelta(minutes=1))
+    assert set(map(id, earlier)) <= set(map(id, kept))  # monotone in known_at
+
+
+def test_known_at_cutoff_rules_per_table() -> None:
+    after = KNOWN_AT + timedelta(seconds=1)
+    events = INV.dataset("contract_event")
+    assert sd.cutoff(events, [{"recorded_at": KNOWN_AT}, {"recorded_at": after}], KNOWN_AT) == (
+        {"recorded_at": KNOWN_AT},
+    )
+    with pytest.raises(ValueError, match="timezone-aware datetime is required"):
+        sd.cutoff(events, [{"recorded_at": None}], KNOWN_AT)
+    with pytest.raises(ValueError, match="known_at is timezone-aware"):
+        sd.cutoff(events, [], datetime(2026, 1, 1))
+    rules = INV.dataset("rule")  # no cutoff column: every row follows its rule-set version
+    assert rules.cutoff_column is None
+    assert sd.cutoff(rules, [{"id": 1}, {"id": 2}], KNOWN_AT) == ({"id": 1}, {"id": 2})
+    holds = INV.dataset("contract_hold")
+    assert sd.cutoff(holds, [{"applied_at": after}], KNOWN_AT) == ()
+
+
+# --- manifest (T-PLT-34) and retention (ruling Q-4) -----------------------------------------------
+
+FILE_A = UUID(int=0xA)
+FILE_B = UUID(int=0xB)
+
+
+def _files(hold_b: bool = False, until_a: date | None = None) -> list[dict[str, Any]]:
+    return [
+        {
+            "id": FILE_A,
+            "sha256": "a" * 64,
+            "purpose": "ATTACHMENT",
+            "retention_until": until_a,
+            "legal_hold": False,
+        },
+        {
+            "id": FILE_B,
+            "sha256": "b" * 64,
+            "purpose": "IMPORT_SOURCE",
+            "retention_until": None,
+            "legal_hold": hold_b,
+        },
+    ]
+
+
+def _manifest(files: dict[str, bytes], retention: sd.Retention | None = None) -> sd.Manifest:
+    entries = tuple(
+        sd.ManifestEntry(name, hashlib.sha256(content).hexdigest(), content.count(b"\n"))
+        for name, content in files.items()
+    )
+    return sd.Manifest(
+        sd.Stamp(TENANT, KNOWN_AT, "SANDBOX_COPY"), entries, INV.exclusions, retention
+    )
+
+
+def test_manifest_hashes_and_counts() -> None:
+    contracts = sd.encode_rows(CONTRACT, [{"id": UUID(int=1), "created_at": KNOWN_AT}])
+    customers = sd.encode_rows(INV.dataset("customer"), [])
+    files = {"contract": contracts.content, "customer": customers.content}
+    manifest = _manifest(files)
+    assert sd.verify_manifest(manifest, files) == ()
+    assert sd.manifest_sha256(manifest) == hashlib.sha256(sd.manifest_bytes(manifest)).hexdigest()
+    parsed = json.loads(sd.manifest_bytes(manifest))
+    assert parsed["format_version"] == 2 and parsed["purpose"] == "SANDBOX_COPY"
+    assert parsed["known_at"] == "2026-06-30T23:59:59.000000Z"
+    assert parsed["datasets"] == [
+        {"name": "contract", "row_count": 1, "sha256": contracts.sha256},
+        {"name": "customer", "row_count": 0, "sha256": customers.sha256},
+    ]
+    assert {item["name"] for item in parsed["exclusions"]} == {i.name for i in INV.exclusions}
+    assert {item["class"] for item in parsed["exclusions"]} == {
+        "REGENERATED",
+        "EXCLUDED_SECRET",
+        "SHARED",
+    }
+    assert "retention" not in parsed
+    tampered = {**files, "contract": files["contract"] + b'{"id":"x"}\n'}
+    findings = sd.verify_manifest(manifest, tampered)
+    assert any("sha256" in f for f in findings) and any("rows differ" in f for f in findings)
+    # I-3: the empty customer dataset is not stored, so its entry needs no file; a dataset with
+    # rows still must be present
+    assert sd.verify_manifest(manifest, {"contract": files["contract"]}) == ()
+    assert sd.verify_manifest(manifest, {"customer": files["customer"]}) == (
+        "contract: file missing",
+    )
+    assert sd.verify_manifest(manifest, {**files, "extra": b""}) == (
+        "extra: file not in the manifest",
+    )
+
+
+def test_stamp_refuses_unknown_purpose_and_naive_known_at() -> None:
+    with pytest.raises(ValueError, match="purpose"):
+        sd.Stamp(TENANT, KNOWN_AT, "PRODUCTION_RESTORE")
+    with pytest.raises(ValueError, match="timezone-aware"):
+        sd.Stamp(TENANT, datetime(2026, 1, 1), "STORED_BACKUP")
+
+
+def test_retention_block_lists_every_file_and_inherits_the_legal_hold() -> None:
+    retention = sd.retention_of(_files(hold_b=True, until_a=date(2027, 1, 1)))
+    assert [item.id for item in retention.files] == sorted((FILE_A, FILE_B), key=str)
+    assert retention.source_legal_hold is True
+    manifest = _manifest({}, retention)
+    parsed = json.loads(sd.manifest_bytes(manifest))
+    assert parsed["retention"]["source_legal_hold"] is True
+    assert {f["id"] for f in parsed["retention"]["files"]} == {str(FILE_A), str(FILE_B)}
+    assert parsed["retention"]["attribute"] == sd.RETENTION_ATTRIBUTE == "retention"  # P8 reply
+    assert parsed["retention"]["families"]["file_object"] == "FILE_RETENTION"
+    assert parsed["retention"]["families"]["contract_event"] == "AUDIT_RETENTION_YEARS"
+    assert parsed["retention"]["families_status"].startswith("PROPOSED")
+    assert parsed["retention"]["files"][0]["retention_until"] in ("2027-01-01", None)
+    assert sd.manifest_sha256(manifest) != sd.manifest_sha256(_manifest({}))
+    with pytest.raises(ValueError, match="retention_until is a date"):
+        sd.retention_of([{**_files()[0], "retention_until": "2027-01-01"}])
+
+
+def test_shred_targets_and_checks_follow_file_retention_active_and_the_ruled_inheritance() -> None:
+    today = date(2026, 9, 19)
+    free = _manifest({}, sd.retention_of(_files()))
+    assert sd.shred_targets(free, FILE_A) == ("file_object", "manifest.retention")
+    assert sd.shred_targets(free, UUID(int=99)) == ()
+    assert sd.shred_check(free, FILE_A, today) == ()
+    assert sd.shred_check(free, UUID(int=99), today) == (
+        f"file {UUID(int=99)} is not in the snapshot",
+    )
+    assert sd.shred_check(_manifest({}), FILE_A, today) == (
+        "manifest carries no retention block (format < 2)",
+    )
+    future = _manifest({}, sd.retention_of(_files(until_a=date(2027, 1, 1))))
+    assert sd.shred_check(future, FILE_A, today) == (
+        "FILE_RETENTION_ACTIVE: retention until 2027-01-01",
+    )
+    assert sd.shred_check(future, FILE_A, date(2027, 1, 1)) == ()
+    held = _manifest({}, sd.retention_of(_files(hold_b=True)))
+    assert sd.shred_check(held, FILE_B, today) == ("FILE_RETENTION_ACTIVE: legal hold on the file",)
+    inherited = sd.shred_check(held, FILE_A, today)
+    assert len(inherited) == 1 and inherited[0].startswith("inherited legal hold")
+    assert "requires human confirmation" in inherited[0]
+
+
+# --- source untouched (SBX-11) and the plans (SBX-04, SBX-07) -------------------------------------
+
+
+def test_source_unchanged_comparison() -> None:
+    before = {"contract": 10, "contract_event": 120}
+    assert sd.source_untouched(before, dict(before)) == ()
+    assert sd.source_untouched(before, {"contract": 10, "contract_event": 121}) == (
+        "contract_event: 120 rows before, 121 after",
+    )
+    assert sd.source_untouched(before, {"contract": 10}) == (
+        "contract_event: counted on one side only",
+    )
+
+
+@pytest.mark.parametrize("purpose", sorted(sd.PURPOSES))
+def test_load_plan_gates_and_writes(purpose: str) -> None:
+    plan = sd.load_plan(purpose, INV)
+    copied = [d.name for d in INV.datasets if d.snapshot_class is sd.SnapshotClass.COPIED]
+    assert [step.name for step in plan] == [
+        "authorise",
+        "queue",
+        "provision",
+        # F-SNP-R1: exactly LOAD_ORDER, one step each — the stream component one step at its
+        # first table (ruling R-43 (b))
+        *_executed_steps(copied),
+        "fixup-deferred-references",
+        "recompute",
+        "replay-period-states",
+        "verify-determinism",
+        "audit",
+    ]
+    assert plan[0].gates == (sd.GATE_PERMISSION, sd.GATE_STEP_UP)
+    assert sd.GATE_PROVISIONING_SCOPE in plan[2].gates
+    written = {name for step in plan for name in step.writes}
+    assert set(sd.LOAD_ORDER) <= written  # every copied table is written by some step
+    load_steps = [step for step in plan if step.name.startswith("load:")]
+    assert all(step.gates == (sd.GATE_PROVISIONING_SCOPE,) for step in load_steps)
+    # FIX-D1: a self-reference is inserted with its row (the rows referenced-first), a reference
+    # to a later table is deferred to the fixup step.
+    assert "rows referenced-first (inserted with the row): renewal_of_contract_id" in next(
+        step.description for step in load_steps if step.writes == ("contract",)
+    )
+    assert "deferred (inserted NULL): judgement_record_id" in next(
+        step.description for step in load_steps if step.writes == ("combination_group",)
+    )
+    fixup = next(step for step in plan if step.name == "fixup-deferred-references")
+    assert set(fixup.writes) == {d.name for d in INV.datasets if d.deferred}
+    assert {"combination_group", "manual_adjustment"} <= set(fixup.writes)
+    assert "contract" not in fixup.writes  # its only later reference was the self-reference
+    assert "contract_event" not in fixup.writes  # IM-A: what it names arrives before it
+    stream = next(step for step in load_steps if step.name == "load:stream")
+    assert stream.writes == sd.COMPONENTS["contract_event"].tables
+    assert "contract_event: supersedes_event_id, estimate_version_id, manual_adjustment_id" in (
+        stream.description
+    )
+    assert "contract_event rows keep their source record_seq order (DB-08)" in stream.description
+    assert "deferred (inserted NULL): manual_adjustment: applied_event_id" in stream.description
+    replay = next(step for step in plan if step.name == "replay-period-states")
+    assert set(replay.writes) == {"period_state", "period_state_transition", "period_lock"}
+    # No step writes an excluded population of the source (sessions, credentials, audit copies).
+    assert written.isdisjoint({"user_session", "api_client", "api_token", "audit_chain_head"})
+    with pytest.raises(ValueError, match="purpose"):
+        sd.load_plan("PRODUCTION_RESTORE", INV)
+
+
+def test_reset_plan_is_a_supersession_on_the_catalogue_route() -> None:
+    plan = sd.reset_plan()
+    assert [step.name for step in plan] == [
+        "authorise",
+        "supersede",
+        "archive",
+        "move-session",
+        "audit",
+    ]
+    assert sd.RESET_ROUTE == "POST /tenant/reset" and sd.RESET_ROUTE in plan[0].description
+    assert "production-reset-forbidden" in plan[0].description
+    assert "no row deleted" in plan[2].description
+    assert plan[0].gates == (sd.GATE_RESET_PERMISSION, sd.GATE_STEP_UP)
+
+
+def _executed_steps(copied: list[str]) -> list[str]:
+    """The load steps in executed order: one per copied dataset in LOAD_ORDER, a component's
+    tables as one step at the position of its first table."""
+    steps: list[str] = []
+    for name in copied:
+        component = COMPONENT_OF.get(name)
+        if component is None:
+            steps.append(f"load:{name}")
+        elif name == component.tables[0]:
+            steps.append(f"load:{component.name}")
+    return steps
+
+
+# --- Codex review of 1a41066: F-SNP-R1 (one executed sequence) ------------------------------------
+
+
+def test_load_plan_executes_exactly_load_order_and_defers_every_later_parent() -> None:
+    """F-SNP-R1: the plan loads the copied datasets one step each in LOAD_ORDER (no family
+    reordering) — a component's tables as one step at its first table — so the deferral computed
+    from LOAD_ORDER is the deferral of the executed sequence; every nullable reference to a
+    dataset that loads in a later step is deferred and its value survives export_row for the
+    fixup step; a self-reference survives export_row too and is inserted with its row (the rows
+    referenced-first); a reference inside a component's step survives and is inserted with its
+    row (the component's row order), or is the component's declared deferred edge."""
+    plan = sd.load_plan("SANDBOX_COPY", INV)
+    load_steps = [step for step in plan if step.name.startswith("load:")]
+    copied = [d.name for d in INV.datasets if d.snapshot_class is sd.SnapshotClass.COPIED]
+    assert [step.name for step in load_steps] == _executed_steps(copied)
+    assert sorted(name for step in load_steps for name in step.writes) == sorted(copied)
+    assert [step.writes for step in load_steps if len(step.writes) > 1] == [
+        sd.COMPONENTS["contract_event"].tables
+    ]
+    executed = {name: index for index, step in enumerate(load_steps) for name in step.writes}
+    for reference in INV.references:
+        if reference.array:
+            continue  # D-98 106: per-element policy, not a parent-first constraint
+        if reference.table not in executed or reference.target not in executed:
+            continue
+        dataset = INV.dataset(reference.table)
+        same_step = executed[reference.target] == executed[reference.table]
+        later = executed[reference.target] > executed[reference.table]
+        assert (
+            len({reference.column} & set(dataset.self_references))
+            + len({reference.column} & set(dataset.row_references))
+            + len({reference.column} & set(dataset.deferred))
+            <= 1
+        ), reference
+        if reference.self_reference:
+            carried: tuple[str, ...] = dataset.self_references
+        elif same_step:  # two tables of one component
+            carried = (*dataset.row_references, *dataset.deferred)
+        elif later:
+            carried = dataset.deferred
+        else:
+            continue  # the parent's step ran earlier: nothing to carry
+        if later or reference.self_reference or reference.column in dataset.deferred:
+            assert reference.nullable, reference
+        assert reference.column in carried, reference
+        row = {c: UUID(int=1) for c in dataset.order_by} | {reference.column: UUID(int=42)}
+        assert sd.export_row(dataset, row)[reference.column] == UUID(int=42), reference
+    # the six references Codex named are honoured by the executed order (parents load first)
+    for table, column, target in (
+        ("rule_set_version", "impact_simulation_file_id", "file_object"),
+        ("account_mapping_version", "impact_simulation_file_id", "file_object"),
+        ("registry_version", "impact_simulation_file_id", "file_object"),
+        ("fx_rate_set_version", "import_upload_id", "import_upload"),
+        ("ssp_book_version", "ssp_calculator_run_id", "ssp_calculator_run"),
+        ("ssp_book_version", "import_upload_id", "import_upload"),
+    ):
+        assert executed[target] < executed[table], (table, column)
+        assert column not in INV.dataset(table).deferred, (table, column)
+
+
+# --- the EMPTY sandbox (SNP-3 mode EMPTY; LMG-4 replay target; F-LMG interface) -------------------
+
+
+def test_empty_sandbox_plan_seeds_only_and_names_the_callers_permission() -> None:
+    plan = sd.empty_sandbox_plan("sandbox.reset")
+    assert [step.name for step in plan] == ["authorise", "provision", "seed", "audit"]
+    assert plan[0].gates == ("permission sandbox.reset", sd.GATE_STEP_UP)
+    assert plan[1].writes == ("tenant",) and sd.GATE_PROVISIONING_SCOPE in plan[1].gates
+    assert "source_known_at NULL" in plan[1].description
+    seeded = set(plan[2].writes)
+    assert {"book", "audit_chain_head", "numbering_series", "role", "registry_version"} <= seeded
+    # nothing beyond the provisioning seed: no dataset of LOAD_ORDER is loaded, no snapshot row
+    loaded = {name for step in plan for name in step.writes}
+    assert "tenant_snapshot" not in loaded and "contract" not in loaded
+    assert not any(step.name.startswith("load:") for step in plan)
+    assert sd.EMPTY_SANDBOX_PURPOSE == "EMPTY" and sd.EMPTY_SANDBOX_PURPOSE not in sd.PURPOSES
+    replay_target = sd.empty_sandbox_plan("migration.replay")
+    assert replay_target[0].gates[0] == "permission migration.replay"
+    with pytest.raises(ValueError, match="permission code"):
+        sd.empty_sandbox_plan("")
+    assert "empty_sandbox_plan" in sd.reset_plan()[1].description
+
+
+# --- ruling D-98 62 (F-SNP-I2-R1): parent cutoff applied transitively -----------------------------
+
+
+def test_apply_parent_cutoff_excludes_descendants_and_reports_broken_references() -> None:
+    inv = INV
+    version_kept, version_cut, entry_kept, entry_cut, range_kept, range_cut = (
+        UUID(int=n) for n in range(1, 7)
+    )
+    source = {
+        "ssp_book_version": [{"id": version_kept}, {"id": version_cut}],
+        "ssp_entry": [
+            {"id": entry_kept, "ssp_book_version_id": version_kept},
+            {"id": entry_cut, "ssp_book_version_id": version_cut},
+        ],
+        "ssp_range": [
+            {"id": range_kept, "ssp_entry_id": entry_kept},
+            {"id": range_cut, "ssp_entry_id": entry_cut},
+        ],
+    }
+    cut = {
+        **source,
+        "ssp_book_version": [{"id": version_kept}],
+    }  # the version's own cutoff dropped one
+    result = sd.apply_parent_cutoff(inv, source, cut)
+    assert [r["id"] for r in result.kept["ssp_entry"]] == [entry_kept]
+    assert [r["id"] for r in result.kept["ssp_range"]] == [range_kept]  # transitive
+    assert result.excluded_descendants == {"ssp_entry": 1, "ssp_range": 1}
+    assert result.broken == ()
+    # a reference to a row absent from the source is a broken reference, not an exclusion
+    dangling = {
+        **cut,
+        "ssp_entry": [*cut["ssp_entry"], {"id": UUID(int=9), "ssp_book_version_id": UUID(int=99)}],
+    }
+    broken = sd.apply_parent_cutoff(inv, {**source, "ssp_entry": dangling["ssp_entry"]}, dangling)
+    assert broken.broken == (
+        f"ssp_entry.ssp_book_version_id: {UUID(int=9)} names {UUID(int=99)}, "
+        "absent from the source",
+    )
+    # NULL references and references to non-copied targets are not checked
+    contract_only = {
+        "contract": [{"id": UUID(int=1), "latest_computation_id": UUID(int=5), "customer_id": None}]
+    }
+    assert sd.apply_parent_cutoff(inv, contract_only, contract_only).broken == ()
+
+
+# --- ruling D-98 71 (F-SNP-I2-R2): exclude, never null; the shared block needs a release --------
+
+
+def test_apply_parent_cutoff_excludes_a_row_whose_optional_reference_is_cut() -> None:
+    """Nullable or not, a reference to a target cut by known_at excludes the row; the result names
+    the excluded ids per table; nothing is nulled (Codex observation: run 500 → version 201)."""
+    version_kept, version_cut, run = UUID(int=1), UUID(int=2), UUID(int=500)
+    source = {
+        "ssp_book_version": [{"id": version_kept}, {"id": version_cut}],
+        "ssp_calculator_run": [{"id": run, "draft_ssp_book_version_id": version_cut}],
+    }
+    cut = {**source, "ssp_book_version": [{"id": version_kept}]}
+    result = sd.apply_parent_cutoff(INV, source, cut)
+    assert result.kept["ssp_calculator_run"] == ()
+    assert result.excluded_descendants == {"ssp_calculator_run": 1}
+    assert result.excluded_ids == {"ssp_calculator_run": (str(run),)}  # identity text (I2-R3)
+    assert not hasattr(result, "nulled_as_of")
+    assert result.broken == ()
+
+
+def test_shared_block_requires_an_engine_release() -> None:
+    with pytest.raises(ValueError, match="engine release"):
+        sd.Shared((), None)  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="engine release"):
+        sd.Shared((), "")
+    with pytest.raises(ValueError, match="engine release"):
+        sd.shared_dependencies({}, None)  # type: ignore[arg-type]
+    unshared = sd.Manifest(sd.Stamp(TENANT, KNOWN_AT, "STORED_BACKUP"), (), INV.exclusions, None)
+    assert sd.verify_shared(unshared, {}) == ("manifest carries no shared block",)
+
+
+# --- slice I-3: the streaming encoder and the unstored empty dataset ------------------------------
+
+
+def test_encode_stream_yields_lines_lazily_and_hashes_what_it_yields() -> None:
+    dataset = INV.dataset("ssp_entry")
+    rows = [{**{c: UUID(int=n) for c in dataset.order_by}, "id": UUID(int=n)} for n in (3, 1, 2)]
+    whole = sd.encode_rows(dataset, rows)
+    stream = sd.encode_stream(dataset, rows)
+    first = whole.content.split(b"\n")[0] + b"\n"
+    assert stream.read(len(first)) == first
+    assert stream.row_count == 1  # produced line by line as read, not buffered up front
+    rest = stream.read()
+    assert first + rest == whole.content and stream.read() == b""
+    assert (stream.row_count, stream.size) == (3, len(whole.content))
+    assert stream.sha256 == whole.sha256 == hashlib.sha256(whole.content).hexdigest()
+    empty = sd.encode_stream(dataset, [])
+    assert empty.read() == b"" and empty.sha256 == sd.EMPTY_SHA256 and empty.row_count == 0
+    assert sd.EMPTY_SHA256 == hashlib.sha256(b"").hexdigest()
+
+
+def test_verify_manifest_accepts_an_unstored_empty_dataset() -> None:
+    stamp = sd.Stamp(TENANT, KNOWN_AT, "STORED_BACKUP")
+    entries = (
+        sd.ManifestEntry("contract", sd.EMPTY_SHA256, 0),
+        sd.ManifestEntry("customer", "ab" * 32, 1),
+    )
+    assert sd.verify_manifest(sd.Manifest(stamp, entries, INV.exclusions), {}) == (
+        "customer: file missing",
+    )
+    wrong = (sd.ManifestEntry("contract", "ab" * 32, 0),)  # zero rows but not the empty digest
+    assert sd.verify_manifest(sd.Manifest(stamp, wrong, INV.exclusions), {}) == (
+        "contract: file missing",
+    )
+
+
+# --- Codex I2-R3 (D-98 71 refinement): the excluded identity is the primary key ------------------
+
+
+def test_excluded_identity_is_the_primary_key_within_the_tenant_scope() -> None:
+    """role_permission has no id column: the excluded identity is the table's primary key from the
+    metadata minus the tenant scope every copied table shares, in PK column order, as text — never
+    None, never invented; a row lacking a key column refuses."""
+    assert sd.primary_key("role_permission") == ("tenant_id", "role_id", "permission_code")
+    assert sd.identity_columns("role_permission") == ("role_id", "permission_code")
+    assert sd.identity_columns("contract") == ("id",)
+    assert sd.identity_columns("tenant_currency") == ("currency_code",)
+    role_kept, role_cut = UUID(int=1), UUID(int=2)
+    source = {
+        "role": [{"id": role_kept}, {"id": role_cut}],
+        "role_permission": [
+            {"role_id": role_kept, "permission_code": "contract.read"},
+            {"role_id": role_cut, "permission_code": "contract.read"},
+        ],
+    }
+    cut = {**source, "role": [{"id": role_kept}]}
+    result = sd.apply_parent_cutoff(INV, source, cut)
+    assert result.excluded_descendants == {"role_permission": 1}
+    assert result.excluded_ids == {"role_permission": (f"{role_cut}|contract.read",)}
+    assert sd.row_identity("ssp_entry", {"id": role_cut}) == str(role_cut)  # single value kept
+    with pytest.raises(ValueError, match="primary key"):
+        sd.row_identity("role_permission", {"role_id": role_cut})
+    with pytest.raises(ValueError, match="primary key"):
+        sd.row_identity("contract", {"id": None})
+
+
+# --- slice I-5: retention configuration (T-PLT-31 platform.snapshot_retention_families) ----------
+
+
+def test_retention_parameter_spec_and_schema() -> None:
+    from erev_api.registry import versions
+    from erev_api.registry.platform import PLATFORM_PARAMETERS
+
+    spec = PLATFORM_PARAMETERS[sd.RETENTION_PARAMETER]
+    assert sd.RETENTION_PARAMETER == "platform.snapshot_retention_families"
+    assert spec.category.value == "PLATFORM" and spec.default_asc606 == {}
+    assert spec.legacy_parity_value == {} and spec.pin == "P" and spec.approval_code == "CFG"
+    # 04 rev 1.56: anyOf [the refusing default {} | all five families]; a default must validate
+    refusing, full = spec.value_schema["anyOf"]
+    assert refusing == {"const": {}} and set(full["required"]) == set(sd.RETENTION_FAMILIES)
+    assert versions.schema_errors(spec.value_schema, {}) == []
+    assert versions.schema_errors(spec.value_schema, dict(sd.RETENTION_FAMILIES)) == []
+    partial = {"file_object": "FILE_RETENTION"}
+    assert versions.schema_errors(spec.value_schema, partial) != []
+    wrong = {**sd.RETENTION_FAMILIES, "contract_event": "FOREVER"}
+    assert versions.schema_errors(spec.value_schema, wrong) != []
+    extra = {**sd.RETENTION_FAMILIES, "audit_event": "TENANT_LIFETIME"}
+    assert versions.schema_errors(spec.value_schema, extra) != []
+
+
+def test_retention_policy_of_refuses_by_default_and_fails_closed() -> None:
+    assert sd.retention_policy_of({}, "registry version x (TENANT)") is None  # refusing default
+    assert sd.retention_policy_of(None, "framework default") is None
+    policy = sd.retention_policy_of(dict(sd.RETENTION_FAMILIES), "registry version x (TENANT)")
+    assert policy is not None and dict(policy.families) == dict(sd.RETENTION_FAMILIES)
+    assert policy.source == "registry version x (TENANT)"
+    with pytest.raises(ValueError, match="family"):
+        sd.retention_policy_of({"file_object": "FILE_RETENTION"}, "partial")  # not all five
+    with pytest.raises(ValueError, match="literal"):
+        sd.retention_policy_of({**sd.RETENTION_FAMILIES, "contract_event": "FOREVER"}, "bad")
+    with pytest.raises(ValueError, match="family"):
+        sd.retention_policy_of({**sd.RETENTION_FAMILIES, "audit_event": "TENANT_LIFETIME"}, "x")
+    retention = sd.retention_of([], policy)
+    assert retention.families == policy.families
+    assert retention.families_status == "CONFIRMED: registry version x (TENANT)"
+
+
+# --- ruling D-98 candidate 86: a named human approval confirms the retention families -----------
+
+
+def _version(**changes: Any) -> dict[str, Any]:
+    return {
+        "id": UUID(int=0x86),
+        "status": "PUBLISHED",
+        "published_by": UUID(int=0x77),
+        "published_at": KNOWN_AT,
+        "approval_request_id": UUID(int=0x88),
+        **changes,
+    }
+
+
+def _decision(**changes: Any) -> dict[str, Any]:
+    return {
+        "approval_request_id": UUID(int=0x88),
+        "decision": "APPROVE",
+        "approver_id": UUID(int=0x99),
+        "approver_kind": "USER",
+        "auto_rule_id": None,
+        "decided_at": datetime(2026, 6, 29, 9, 30, tzinfo=UTC),
+        **changes,
+    }
+
+
+def test_retention_confirmation_requires_a_named_human_approval() -> None:
+    confirmed = sd.retention_confirmation(_version(), [_decision()])
+    assert (confirmed.approver_id, confirmed.decided_at) == (
+        UUID(int=0x99),
+        datetime(2026, 6, 29, 9, 30, tzinfo=UTC),
+    )
+    source = sd.confirmation_source(_version(), confirmed)
+    assert source == (
+        f"registry version {UUID(int=0x86)} approved by {UUID(int=0x99)} "
+        "at 2026-06-29T09:30:00+00:00"
+    )
+    # 04 T-PLT-31 rev 1.183: a later version that carries the families forward is named beside
+    # the confirming one; the confirming version in force is named once.
+    assert sd.confirmation_source(_version(), confirmed, in_force=_version()) == source
+    carried = sd.confirmation_source(_version(), confirmed, in_force=_version(id=UUID(int=0x87)))
+    assert carried == f"{source}; in force as registry version {UUID(int=0x87)}"
+    with pytest.raises(sd.UnconfirmedRetention, match="AUTO_APPROVE"):
+        sd.retention_confirmation(
+            _version(),
+            [_decision(decision="AUTO_APPROVE", approver_kind="SYSTEM", auto_rule_id=UUID(int=5))],
+        )
+    with pytest.raises(sd.UnconfirmedRetention, match="published_by"):
+        sd.retention_confirmation(_version(published_by=None), [_decision()])
+    with pytest.raises(sd.UnconfirmedRetention, match="decision"):
+        sd.retention_confirmation(_version(), [])
+    with pytest.raises(sd.UnconfirmedRetention, match="approval_request_id"):
+        sd.retention_confirmation(_version(approval_request_id=None), [_decision()])
+    with pytest.raises(sd.UnconfirmedRetention, match="USER"):
+        sd.retention_confirmation(_version(), [_decision(approver_kind="SYSTEM")])
+    # the latest human APPROVE names the approver when several exist
+    later = _decision(approver_id=UUID(int=0x9A), decided_at=datetime(2026, 6, 30, tzinfo=UTC))
+    assert sd.retention_confirmation(_version(), [_decision(), later]).approver_id == UUID(int=0x9A)
+
+
+def test_registry_rule_disallows_auto_approval_for_the_retention_parameter() -> None:
+    from erev_api.domain.policies import registry_versions
+    from erev_api.registry.platform import HUMAN_APPROVAL_REQUIRED
+
+    assert HUMAN_APPROVAL_REQUIRED == frozenset({sd.RETENTION_PARAMETER})
+    from erev_api.domain.policies import lifecycle
+
+    # The check reads what a version CHANGES — stated for the first time, changed or returned to
+    # the default — not the keys of its whole value set (04 T-PLT-32; the supervisor's ruling of
+    # 2026-10-01 on the independent review of item REG-VERSION-WHOLE-SET-1): a version that only
+    # carries the retention families forward names them in none of the three lists.
+    none: dict[str, list[str]] = {"changed": [], "added": [], "returned_to_default": []}
+    for member in none:
+        touched = {**none, member: [sd.RETENTION_PARAMETER]}
+        assert lifecycle.human_approval_required(touched) is True, member
+        assert registry_versions.auto_approval_allowed(touched) is False, member
+    other = {**none, "changed": ["close.late_entry_window_days"], "added": ["ai.enabled"]}
+    assert lifecycle.human_approval_required(other) is False
+    assert registry_versions.auto_approval_allowed(other) is True
+    assert lifecycle.human_approval_required(none) is False  # carried forward: nothing changes
+    assert lifecycle.human_approval_required(None) is False  # rule sets / templates record none
+
+
+# --- ruling D-98 candidate 106: array references (per element; counted drops; broken refusal) -----
+
+
+def test_array_references_are_declared_and_scanned() -> None:
+    declared = {(t, c): target for (t, c), target in sd.ARRAY_REFERENCES.items()}
+    assert declared[("migration_batch", "import_upload_ids")] == "import_upload"
+    assert declared[("contract_event", "obligation_ids")] == "obligation"
+    assert declared[("estimate", "target_obligation_ids")] == "obligation"
+    assert declared[("gl_account", "entity_ids")] == "legal_entity"
+    assert declared[("role_assignment", "entity_ids")] == "legal_entity"
+    assert declared[("event_submission", "applied_event_ids")] == "contract_event"
+    assert declared[("estimate_version", "applied_event_ids")] == "contract_event"
+    arrays = [r for r in INV.references if r.array]
+    assert {(r.table, r.column) for r in arrays} == set(sd.ARRAY_REFERENCES)
+    assert "applied_invoice_external_ids" in sd.NON_REFERENCES  # text external ids, not a reference
+    # array references are filtered per element: never nulled, never a parent-first constraint
+    for reference in arrays:
+        assert reference.column not in INV.dataset(reference.table).nulled_on_export
+
+
+def test_undeclared_array_reference_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(sd, "ARRAY_REFERENCES", MappingProxyType({}))
+    with pytest.raises(ValueError, match="array reference"):
+        sd.references()
+
+
+def test_array_elements_follow_kept_cut_absent_per_element() -> None:
+    up_kept, up_cut, up_absent, batch = (UUID(int=n) for n in (1, 2, 3, 9))
+    source = {
+        "import_upload": [{"id": up_kept}, {"id": up_cut}],
+        "migration_batch": [{"id": batch, "import_upload_ids": [up_cut, up_kept, up_cut]}],
+    }
+    cut = {**source, "import_upload": [{"id": up_kept}]}  # the upload's own cutoff dropped one
+    result = sd.apply_parent_cutoff(INV, source, cut)
+    (row,) = result.kept["migration_batch"]
+    assert row["import_upload_ids"] == [up_kept]  # order preserved, cut elements dropped
+    assert result.dropped_elements == {"migration_batch.import_upload_ids": 2}
+    assert result.excluded_descendants == {} and result.broken == ()
+    broken = sd.apply_parent_cutoff(
+        INV,
+        {**source, "migration_batch": [{"id": batch, "import_upload_ids": [up_kept, up_absent]}]},
+        {**cut, "migration_batch": [{"id": batch, "import_upload_ids": [up_kept, up_absent]}]},
+    )
+    assert broken.broken == (
+        f"migration_batch.import_upload_ids[1]: {batch} names {up_absent}, absent from the source",
+    )
+
+
+# --- ruling D-98 candidate 106a: scope arrays (partial keeps; complete refuses; flag never flips) -
+
+
+def test_scope_arrays_keep_partial_scopes_and_refuse_complete_cuts() -> None:
+    e_kept, e_cut, same, partial, complete, every = (UUID(int=n) for n in range(1, 7))
+    assert sd.SCOPE_ARRAYS[("gl_account", "entity_ids")].empty_means_all is True
+    assert sd.SCOPE_ARRAYS[("role_assignment", "entity_ids")].paired_flag == "is_all_entities"
+    source = {
+        "legal_entity": [{"id": e_kept}, {"id": e_cut}],
+        "gl_account": [
+            {"id": same, "entity_ids": [e_kept]},
+            {"id": partial, "entity_ids": [e_cut, e_kept]},
+            {"id": every, "entity_ids": []},
+        ],
+    }
+    cut = {**source, "legal_entity": [{"id": e_kept}]}  # the entity's own cutoff dropped e_cut
+    result = sd.apply_parent_cutoff(INV, source, cut)
+    rows = {row["id"]: row for row in result.kept["gl_account"]}
+    assert rows[same]["entity_ids"] == [e_kept]  # unchanged
+    assert rows[partial]["entity_ids"] == [e_kept]  # partial: the remaining non-empty scope
+    assert rows[every]["entity_ids"] == []  # empty at the source stays empty (= all entities)
+    assert result.dropped_elements == {"gl_account.entity_ids": 1}
+    assert result.unrepresentable == () and result.broken == ()
+    whole = {"id": complete, "entity_ids": [e_cut]}
+    refused = sd.apply_parent_cutoff(
+        INV, {**source, "gl_account": [whole]}, {**cut, "gl_account": [whole]}
+    )
+    assert refused.unrepresentable == (
+        f"gl_account.entity_ids: {complete} — every scoped target cut ({e_cut}); "
+        "[] would mean all entities",
+    )
+    (row,) = refused.kept["gl_account"]
+    assert row["entity_ids"] == [e_cut]  # never rewritten to []
+    assert refused.dropped_elements == {}
+
+
+# --- ruling R-98: a requirement array is unresolved once it loses an element ----------------------
+
+
+def test_a_requirement_array_that_loses_an_element_is_exported_unresolved() -> None:
+    """04 T-IMP-02 ``named_entity_ids``: a reader covers the upload only with EVERY named entity
+    (``imports.scope.visible``), so the cut never shortens the set — an upload naming two entities
+    copied as naming one would be read in the sandbox by a reader of that one alone. A set that
+    loses an element is exported NULL (not resolved: an all-entities scope only), for a partial
+    and a complete cut alike, and the copy is not refused; a set that loses nothing, a
+    tenant-level upload and an unresolved one are exported as they are."""
+    e_kept, e_cut, e_other = UUID(int=1), UUID(int=2), UUID(int=3)
+    whole, partial, complete, tenant_level, unresolved = (UUID(int=n) for n in range(11, 16))
+    rule = sd.SCOPE_ARRAYS[("import_upload", "named_entity_ids")]
+    assert rule.every_element_required and rule.empty_means_all and rule.paired_flag is None
+    # the two arrays that GRANT per element keep the rule of D-98 candidate 106a
+    assert not sd.SCOPE_ARRAYS[("gl_account", "entity_ids")].every_element_required
+    assert not sd.SCOPE_ARRAYS[("role_assignment", "entity_ids")].every_element_required
+    source = {
+        "legal_entity": [{"id": e_kept}, {"id": e_cut}, {"id": e_other}],
+        "import_upload": [
+            {"id": whole, "named_entity_ids": [e_kept, e_other]},
+            {"id": partial, "named_entity_ids": [e_kept, e_cut]},
+            {"id": complete, "named_entity_ids": [e_cut]},
+            {"id": tenant_level, "named_entity_ids": []},
+            {"id": unresolved, "named_entity_ids": None},
+        ],
+    }
+    cut = {**source, "legal_entity": [{"id": e_kept}, {"id": e_other}]}  # e_cut after known_at
+    result = sd.apply_parent_cutoff(INV, source, cut)
+    named = {row["id"]: row["named_entity_ids"] for row in result.kept["import_upload"]}
+    assert named == {
+        whole: [e_kept, e_other],
+        partial: None,  # never [e_kept]: a reader of e_kept alone must not gain the upload
+        complete: None,  # and no refusal of the whole copy
+        tenant_level: [],
+        unresolved: None,
+    }
+    assert result.dropped_elements == {"import_upload.named_entity_ids": 2}
+    assert result.unrepresentable == () and result.broken == ()
+    assert result.excluded_descendants == {}  # every upload travels
+
+
+def test_a_requirement_array_must_be_nullable(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The unresolved form is NULL, so the inventory refuses the rule on a column that cannot hold
+    it, and a scope rule on a column that is no declared array."""
+    grant = sd.ScopeRule(empty_means_all=True, every_element_required=True)
+    monkeypatch.setattr(sd, "SCOPE_ARRAYS", MappingProxyType({("gl_account", "entity_ids"): grant}))
+    with pytest.raises(ValueError, match="gl_account.entity_ids is a requirement array"):
+        sd.inventory()
+    monkeypatch.setattr(sd, "SCOPE_ARRAYS", MappingProxyType({("import_upload", "status"): grant}))
+    with pytest.raises(ValueError, match="SCOPE_ARRAYS names import_upload.status, no array"):
+        sd.inventory()
+
+
+def test_role_assignment_scope_keeps_the_load_check_invariant_and_never_flips_the_flag() -> None:
+    e_kept, e_cut = UUID(int=1), UUID(int=2)
+    scoped_partial = {"id": UUID(int=11), "is_all_entities": False, "entity_ids": [e_cut, e_kept]}
+    all_entities = {"id": UUID(int=12), "is_all_entities": True, "entity_ids": []}
+    scoped_complete = {"id": UUID(int=13), "is_all_entities": False, "entity_ids": [e_cut]}
+    entities = [{"id": e_kept}, {"id": e_cut}]
+    result = sd.apply_parent_cutoff(
+        INV,
+        {"legal_entity": entities, "role_assignment": [scoped_partial, all_entities]},
+        {"legal_entity": [{"id": e_kept}], "role_assignment": [scoped_partial, all_entities]},
+    )
+    for row in result.kept["role_assignment"]:
+        assert row["is_all_entities"] == (len(row["entity_ids"]) == 0)  # 0007_roles CHECK
+    assert {r["id"]: r["entity_ids"] for r in result.kept["role_assignment"]} == {
+        UUID(int=11): [e_kept],
+        UUID(int=12): [],
+    }
+    assert result.dropped_elements == {"role_assignment.entity_ids": 1}
+    refused = sd.apply_parent_cutoff(
+        INV,
+        {"legal_entity": entities, "role_assignment": [scoped_complete]},
+        {"legal_entity": [{"id": e_kept}], "role_assignment": [scoped_complete]},
+    )
+    assert len(refused.unrepresentable) == 1
+    assert refused.unrepresentable[0].startswith(f"role_assignment.entity_ids: {UUID(int=13)}")
+    (row,) = refused.kept["role_assignment"]
+    assert row["is_all_entities"] is False and row["entity_ids"] == [e_cut]  # never flipped

@@ -1,0 +1,205 @@
+{
+  "id": "P2-mod-reposts-pre-asc606-in-delta-je",
+  "question": "Does a modification version re-post the previous Current Pre-ASC606 Revenue in the Revenue Adjustment JE?",
+  "code_ref": "Mods never reset 'Current Pre-ASC606 Revenue (Net Design Only)' (l.1469-1473, 1965-1968, 2383-2386); journal_entries_delta posts that field for every version in the range (l.2966-2979)",
+  "baseline": "No Pre-ASC606 revenue was loaded in February; the correct February delta JE is the gross JE (no Pre-ASC606 lines)",
+  "sequence": [
+    {
+      "i": 0,
+      "button_label": "!Reset Database Completely!",
+      "file": null,
+      "date_input": null,
+      "rows_before": 16,
+      "rows_after": 0,
+      "popups": [
+        {
+          "kind": "QMessageBox.question",
+          "title": "Confirmation",
+          "text": "Do you want to proceed wiping out the current database?"
+        },
+        {
+          "kind": "QMessageBox.information",
+          "title": "ASC606 database reset",
+          "text": "ASC606 Database has been wiped out and reset!"
+        }
+      ]
+    },
+    {
+      "i": 1,
+      "button_label": "Load SSPs",
+      "file": "SKU SSP Template.xlsx",
+      "date_input": null,
+      "rows_before": 0,
+      "rows_after": 0,
+      "popups": [
+        {
+          "kind": "QMessageBox.information",
+          "title": "SSPs are set up",
+          "text": "All company SSPs for the uploaded file are set up. To add or update, re-upload SSPs to refresh."
+        }
+      ]
+    },
+    {
+      "i": 2,
+      "button_label": "Load Contracts",
+      "file": "Contract Setup Template 1.1.2023.xlsx",
+      "date_input": null,
+      "rows_before": 0,
+      "rows_after": 8,
+      "popups": [
+        {
+          "kind": "QMessageBox.information",
+          "title": "Contracts are set up",
+          "text": "All contracts(s) within the uploaded file are successfully set up!"
+        }
+      ]
+    },
+    {
+      "i": 3,
+      "button_label": "Load Delivery and Billing",
+      "file": "Contract Progress Tracking Template 1.31.2023.xlsx",
+      "date_input": "2023-01-31",
+      "rows_before": 8,
+      "rows_after": 16,
+      "popups": [
+        {
+          "kind": "QMessageBox.information",
+          "title": "Rev Rec Success",
+          "text": "Rev Rec has been processed with uploaded deliveries and/or billings for the current date :)"
+        }
+      ]
+    },
+    {
+      "i": 4,
+      "button_label": "Prospective Contract Mod",
+      "file": "P2 no-op prospective mod - Contract 1 POB #1 qty 0 billing 0.xlsx",
+      "date_input": "2023-02-15",
+      "rows_before": 16,
+      "rows_after": 20,
+      "popups": [
+        {
+          "kind": "QMessageBox.information",
+          "title": "Mod Success",
+          "text": "Prospective Mod has been processed with uploaded modifications for the current date :)"
+        }
+      ]
+    }
+  ],
+  "reports": {
+    "je_gross_feb": {
+      "window": [
+        "2023-02-01",
+        "2023-02-28"
+      ],
+      "totals": {
+        "lines": 0,
+        "by_account": [],
+        "total_debit": 0.0,
+        "total_credit": 0.0,
+        "net": 0.0
+      }
+    },
+    "je_delta_feb": {
+      "window": [
+        "2023-02-01",
+        "2023-02-28"
+      ],
+      "totals": {
+        "lines": 3,
+        "by_account": [
+          {
+            "account": "5002",
+            "debit": 66.0,
+            "credit": -0.0,
+            "net": 66.0
+          },
+          {
+            "account": "5003",
+            "debit": 88.0,
+            "credit": -0.0,
+            "net": 88.0
+          },
+          {
+            "account": "21001",
+            "debit": 0.0,
+            "credit": 154.0,
+            "net": -154.0
+          }
+        ],
+        "total_debit": 154.0,
+        "total_credit": 154.0,
+        "net": 0.0
+      }
+    },
+    "je_delta_jan": {
+      "window": [
+        "2023-01-01",
+        "2023-01-31"
+      ],
+      "totals": {
+        "lines": 6,
+        "by_account": [
+          {
+            "account": "5001",
+            "debit": 0.0,
+            "credit": 187.69,
+            "net": -187.69
+          },
+          {
+            "account": "5002",
+            "debit": 0.0,
+            "credit": 52.53,
+            "net": -52.53
+          },
+          {
+            "account": "5003",
+            "debit": 39.68,
+            "credit": -0.0,
+            "net": 39.68
+          },
+          {
+            "account": "15002",
+            "debit": 58.85,
+            "credit": -0.0,
+            "net": 58.85
+          },
+          {
+            "account": "21001",
+            "debit": 141.69,
+            "credit": -0.0,
+            "net": 141.69
+          }
+        ],
+        "total_debit": 240.22,
+        "total_credit": 240.22,
+        "net": 0.0
+      }
+    }
+  },
+  "watched_latest": [
+    {
+      "contract": "Contract 1",
+      "pob": "POB #2",
+      "Current Delivery - Cumulative": 1.0,
+      "Current Billing - Cumulative": 100.0,
+      "Current Rev Rec - Cumulative": 118.5332,
+      "Current Pre-ASC606 Revenue (Net Design Only)": 66.0,
+      "Current Pre-ASC606 Revenue (Net Design Only) - Cumulative": 66.0,
+      "Current Remaining Qty": 1.0,
+      "Current Remaining Allocation": 118.5332,
+      "Current Period": "2023-02-15 00:00:00"
+    },
+    {
+      "contract": "Contract 1",
+      "pob": "POB #3",
+      "Current Delivery - Cumulative": 0.5,
+      "Current Billing - Cumulative": 100.0,
+      "Current Rev Rec - Cumulative": 48.3152,
+      "Current Pre-ASC606 Revenue (Net Design Only)": 88.0,
+      "Current Pre-ASC606 Revenue (Net Design Only) - Cumulative": 88.0,
+      "Current Remaining Qty": 0.5,
+      "Current Remaining Allocation": 48.3152,
+      "Current Period": "2023-02-15 00:00:00"
+    }
+  ]
+}

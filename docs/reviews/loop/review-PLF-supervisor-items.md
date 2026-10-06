@@ -1,0 +1,474 @@
+# Supervisor items: PLF review remediation
+
+## Placement
+
+- **Where.** Insert the four items in `docs/BUILD_SPEC.md` directly after WEB-2 and ahead of WEB-3, the loop's next unticked item (PROGRESS "In flight: none").
+  - Rename them WEB-2a to WEB-2d, so that the loop takes them next (BS-D-01). This file uses the placeholders SUP-PLF-1 to SUP-PLF-4.
+  - They must precede WEB-12 (MFA challenge screen), WEB-14 (password change and reset screens), WEB-19 (users screens), WEB-23 (API clients and webhooks screen), SOP-4 and SOP-8.
+- **Copies and records.**
+  - Copy the items into `docs/build-spec/11-foundation-platform.md` (BSF-D-01).
+  - Add their Appendix A rows.
+  - Add an Appendix C row after CW-20: "Supervisor remediation items WEB-2a to WEB-2d from the phase PLF review (D-80) were inserted before WEB-3 so that the platform fixes land before the screens that bind them; the phase's own build items are unchanged".
+  - Copy `~/dev/erev-rv/reports/plf/REVIEW-PLF.md` to `docs/reviews/loop/review-PLF.md` and this file to `docs/reviews/loop/review-PLF-supervisor-items.md`, as the EKC review was recorded.
+- **Sizing (SZ-05).** SUP-PLF-1 is the largest item. If it does not fit one iteration, split it as follows, both before SUP-PLF-2:
+  - SUP-PLF-1a: PR-A-01, PR-Z-01, PR-C-04;
+  - SUP-PLF-1b: PR-K-02, PR-C-03, PR-K-01, PR-C-02.
+- **Verifier pass first.** Before placing SUP-PLF-1, run a verifier pass on PR-Z-01 and PR-Z-02. The authz-tenancy lens returned no findings list, so these two rest on its probe output and the lead's code reading only.
+
+## Document edits the supervisor makes before the loop reaches the items
+
+1. **01-DECISIONS.** Add §11 "Rulings after the phase PLF review (2026-09-13)" to `docs/01-DECISIONS.md`, containing D-80 "PLF review rulings" with the table of `REVIEW-PLF.md` "Proposed D-80" verbatim. Where a ruling differs from the text of the dev-guide, 04 or 05, the ruling governs.
+2. **BUILD_SPEC PLF-15** `test_change_password` (`BUILD_SPEC:2153`).
+   - Replace "keeps the current session" with "keeps the user signed in under a rotated token: the 204 carries a new `erev_session` cookie and the presented token returns 401 `unauthenticated` (SAR-09; D-80)".
+   - Mirror the change in `docs/build-spec/11-foundation-platform.md`.
+3. **Optional amendments.** D-80 governs, so these text edits are optional before REL. They cite D-80 at:
+   - dev-guide: DG-KRN-AUD-07 (`:800`), DG-KRN-IDEM-03 and DG-KRN-IDEM-04 (`:885-886`), DG-KRN-PERM-03 (`:752`), DG-KRN-EVT-05 (`:1097`), DG-KRN-JOB-06 (`:1152`), DG-MK-dev-up (`:487`), DG-RUN-03 (`:426`);
+   - 04: DB-04 (`:4805`), DB-09 (`:4810`), T-PLT-22 (`:1291`), API-R-05 (`:4977`), API-C-17 (`:4887`), §16.12 (`:6100`);
+   - 05: SAR-06 (`:1118`), SAR-15 (`:1179`).
+4. **Supervisor verification register** (`docs/reviews/loop/supervisor-verification.md`):
+   - PR-C-06: provide a frequency-ranked common-password list with its source and licence recorded.
+   - PR-R-09: schedule streaming seal and download before the first LMG item.
+   - S-3: add `EREV_PUBLIC_ORIGIN` for the web port of each review worktree `.env`, and state in `.env.example` that the origin follows the web port.
+
+Findings and adjudication: `~/dev/erev-rv/reports/plf/REVIEW-PLF.md`.
+
+## Coverage
+
+| Finding | Severity | Item |
+|---|---|---|
+| PR-A-01, PR-Z-01, PR-K-02, PR-K-01 | P1 | SUP-PLF-1 |
+| PR-C-04, PR-C-03 | P2 | SUP-PLF-1 |
+| PR-C-02 | P3 | SUP-PLF-1 |
+| PR-A-02, PR-A-03, PR-A-04, PR-Z-02 | P2 | SUP-PLF-2 |
+| PR-R-08 | P3 | SUP-PLF-2 |
+| PR-R-01, PR-R-02, PR-R-03, PR-R-04 | P2 | SUP-PLF-3 |
+| PR-K-03, PR-C-05, PR-R-05, PR-R-06, PR-R-07 (setup S-1) | P2 | SUP-PLF-4 |
+| S-2, S-4 | P3 | SUP-PLF-4 |
+| PR-C-06, PR-R-09 | P3 | Not carried (see document edit 4) |
+
+## Items
+
+- [ ] **SUP-PLF-1 PLF review remediation, part 1: MFA challenge limits, MFA reset scope, serialised SoD approval and audit chain anchoring (PR-A-01, PR-Z-01, PR-C-04, PR-K-02, PR-C-03, PR-K-01, PR-C-02). Supervisor item.**
+  - **Prerequisites:** GATE-PLF
+  - **Scope:**
+    - Paths:
+      - `backend/erev_api/api/v1/session.py` `session_verify_mfa` (D-80 MFA challenge limits):
+        - admits the attempt through `app.state.login_rate_limiter`, keyed by client address and the session user's normalised email, before `mfa.verify`. The login and MFA routes share the SAR-13 buckets;
+        - a refused attempt answers 429 `rate-limited` with `Retry-After` and writes nothing;
+        - `problem_responses` gains `rate-limited` and `account-locked`.
+      - `backend/erev_api/auth/mfa.py` `verify` (D-80):
+        - a wrong TOTP code or recovery code writes `MFA_CHALLENGE_FAILED`;
+        - the fifth such event for the user after the later of `user_mfa_factor.updated_at` and `app_user.locked_until` sets `locked_until` to now + 15 minutes, writes `ACCOUNT_LOCKED` and answers 423 `account-locked`;
+        - while `locked_until` is in the future, the route answers 423 `account-locked` without verifying.
+      - `backend/erev_api/domain/platform/users.py` (D-80 MFA reset):
+        - `reset_mfa` refuses a membership that is neither `ACTIVE` nor `SUSPENDED` with 409 `invalid-transition` (`errors[0].field == "status"`) before any write. A target whose `app_user.is_operator` is true answers 404 `not-found`;
+        - `reset_mfa` writes `user_mfa_factor.reset` in the tenant of every ACTIVE membership of the user, as `auth/mfa.py` `_audit_enrolment` does (04 T-PLT-04; SPEC-Q-182 (d) overruled);
+        - `invite_user` refuses an email whose `app_user.is_operator` is true with 422 `validation-failed` on `email`, rule `T-PLT-02`, message "This email cannot be invited to a workspace."
+      - `backend/erev_api/approvals/subjects.py`:
+        - `_apply_role_assignment` locks the membership row `FOR UPDATE` before `sod.assert_assignment_allowed`;
+        - `_apply_role_change` locks the membership of every holder of the role, in ascending id order, before `sod.assert_role_change_allowed` (DG-CMD-02; precedent `users._lock_membership`).
+      - `backend/erev_api/audit/verify.py` (D-80 chain anchoring):
+        - `verify_tenant_chain` compares the last checked event with `audit_chain_head`, read in the same transaction;
+        - `record_tenant_verification` compares the latest earlier PASS row's `to_chain_seq` event with its `digest_last_hmac`.
+      - `backend/erev_api/db/migrations/versions/0025_audit_chain_head_guard.py`, created with `make revision MSG="audit chain head guard" ITEM=SUP-PLF-1`:
+        - it creates `erev.tg_audit_chain_head__guard()` and trigger `tg_audit_chain_head__guard` `BEFORE UPDATE ON erev.audit_chain_head`;
+        - the trigger refuses with `EREV-AUD-001` any update issued outside `tg_audit_event__chain` (`pg_trigger_depth() < 2`) or not setting `last_chain_seq = OLD.last_chain_seq + 1`;
+        - `downgrade()` drops both.
+      - Tests: `backend/tests/api/test_mfa.py`, `backend/tests/api/test_users_api.py`, `backend/tests/api/test_roles_api.py`, `backend/tests/domain/platform/test_approval_engine.py`, `backend/tests/domain/platform/test_audit_verification.py`, `backend/tests/domain/platform/test_audit_writer.py`, `backend/tests/pg/test_chains.py`, `backend/tests/pg/test_db_invariants.py`.
+      - `docs/api/openapi.json` and `frontend/src/lib/api/schema.d.ts` through `make openapi`.
+      - The runbook section "Chain verification" (SPEC-Q-188 a), and the security notes under `docs/security/` for the MFA route limits (XR-16; DG-DONE-07).
+    - Schema: DB-09 extended by trigger `tg_audit_chain_head__guard` on T-PLT-22 `audit_chain_head` (D-80). No table, column or enum change
+    - API:
+      - API-R-01 `POST /session/mfa` (429 `rate-limited`; 423 `account-locked`);
+      - API-R-05 `POST /users` (operator email refused) and `POST /users/{id}/reset-mfa` (409 `invalid-transition`; 404 for operator targets).
+    - Engine: none
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/api/test_mfa.py::test_sar_13_mfa_rate_limit` (PR-A-01):
+        - Setup: user U with a confirmed factor signs in with the password only (`mfa_verified_at` null) in an earlier FrozenClock minute.
+        - Within one minute from one client address, wrong codes to `POST /api/v1/session/mfa` give:
+          - attempts 1 to 4: 422 `validation-failed`;
+          - attempt 5: 423 `account-locked`;
+          - attempts 6 to 10: 423 without verification;
+          - attempt 11: 429 `rate-limited` with a `Retry-After` header.
+        - `MFA_CHALLENGE_FAILED` is written 5 times and `ACCOUNT_LOCKED` once.
+        - Ten other users, signed in during an earlier minute, each send 5 wrong codes from one address within one minute (50 requests). The 51st request from that address, for an eleventh user, returns 429 `rate-limited` and writes no `MFA_CHALLENGE_FAILED`.
+        - After the clock advances 16 minutes, U's correct code returns 200 with `mfa_verified_at` set.
+        - The review probe `test_probe_mfa_challenge_unthrottled` observed 150 × 422 in this situation.
+      - `backend/tests/api/test_mfa.py::test_ctl_033_mfa_lockout_after_five_failures` (PR-A-01):
+        - U sends 4 wrong codes (422), signs in with the password again, then sends 1 wrong code: 423 `account-locked`. `app_user.locked_until` equals the FrozenClock time + 15 minutes.
+        - While U is locked, a correct code returns 423, and the session's `mfa_verified_at` stays null.
+        - For a second user, 4 wrong TOTP codes and 1 wrong recovery code lock the account.
+        - 15 minutes later U's correct code returns 200, and a following wrong code returns 422.
+        - `test_ctl_033_mfa_required_permission_blocks_until_verified`, `test_recovery_code_single_use` and `test_bs1_d_19_step_up_window` still pass.
+      - `backend/tests/api/test_users_api.py::test_reset_mfa_refused_for_unaccepted_invitation` (PR-Z-01):
+        - Setup: the admin of workspace B is `ACTIVE` in B, with a confirmed factor and an open session.
+        - The Tenant Admin of workspace A, with a fresh step-up, sends `POST /users {email: <B admin email>, display_name: "Name typed by A", roles: [{role_id: <viewer>, is_all_entities: true, entity_codes: []}]}`: 201 `INVITED`.
+        - `POST /users/{that membership}/reset-mfa {reason: "probe cross tenant reset"}` returns 409 `invalid-transition` with `errors[0].field == "status"`, and then:
+          - the factor's `disabled_at` stays null;
+          - the B admin's session still gets 200 on `GET /api/v1/users`;
+          - no `MFA_RESET` security event and no `user_mfa_factor.reset` audit event is written.
+        - After the B admin accepts the invitation (membership `ACTIVE`), the command with a new `Idempotency-Key` returns 200.
+        - The review probe P-3 observed 200 and the victim's sessions ended.
+        - `test_reset_mfa_step_up_and_sessions` still passes.
+      - `backend/tests/api/test_users_api.py::test_operator_identity_not_invitable_or_resettable` (PR-Z-01):
+        - Setup: an operator identity created through `auth.operators.create_operator`, enrolled, with one open session.
+        - `POST /users` with that email from workspace A returns 422 `validation-failed` with `errors[0] = {field: "email", rule_id: "T-PLT-02"}`, and no membership is written.
+        - A membership of A for that identity, inserted as `erev_owner` with status `ACTIVE`, makes `POST /users/{id}/reset-mfa` return 404 `not-found`. The operator's factor and session are unchanged.
+      - `backend/tests/api/test_users_api.py::test_reset_mfa_audited_in_every_active_workspace` (PR-C-04):
+        - Setup: Lena is `ACTIVE` in workspaces A and B and `INVITED` in C.
+        - A reset from A returns 200.
+        - Exactly one `user_mfa_factor.reset` audit event exists in A and one in B, and none in C.
+        - One `MFA_RESET` security event is written, and every session of Lena ends `REVOKED`.
+        - The review observed A=1, B=0.
+      - `backend/tests/domain/platform/test_approval_engine.py::test_ctl_034_concurrent_conflicting_approvals_serialised` (PR-K-02):
+        - Setup: setup completed. Member M holds no role and has two `PENDING` `ROLE_ASSIGNMENT` requests, for `revenue_accountant` and `revenue_reviewer`.
+        - Approver A's `decide` of the first runs on its own connection and holds its transaction open after `_apply_role_assignment`.
+        - Approver B's `decide` of the second runs on a second connection under `SET LOCAL lock_timeout = '500ms'`. It raises lock-not-available (SQLSTATE `55P03`) and commits nothing.
+        - After A commits, B's `decide` in a new transaction raises 409 `sod-conflict` naming `SoD-3` and rolls back. Then:
+          - B's request stays `PENDING`;
+          - M holds exactly one active assignment;
+          - `sod.conflict_report(as_of=now)` lists no uncovered conflict for M.
+        - A `ROLE_CHANGE` approval for a role held by a member whose membership another open transaction has locked raises `55P03` under the same `lock_timeout`.
+        - The review probe observed both roles granted in 8 of 8 trials.
+      - `backend/tests/api/test_roles_api.py::test_ctl_034_second_pending_grant_refused_at_approval` (PR-C-03):
+        - Setup: setup completed.
+        - Tomas sends `POST /role-assignments {membership_id: <Lena>, role_id: <revenue_accountant>, is_all_entities: true}`, then the same for `revenue_reviewer`: both return 201 `REQUESTED`.
+        - Grace approves the first (200) and then the second: 409 `sod-conflict` naming `SoD-3`.
+        - The request statuses are `[APPROVED, PENDING]`, and Lena holds one active assignment.
+        - The test fails when `_apply_role_assignment` swallows the SoD problem (review probe G3e).
+      - `backend/tests/domain/platform/test_audit_verification.py::test_ctl_039_truncated_chain_fails` (PR-K-01):
+        - **(a) Tail truncation.** A bare tenant of 5 events (`tests/support/rows.insert_audited_tenant`). As `erev_owner` with `app.data_fix_ticket` set, delete `chain_seq` 4 and 5; `audit_chain_head.last_chain_seq` stays 5. `record_tenant_verification(trigger="ON_DEMAND")` writes a row with:
+          - `result` `FAIL`, `to_chain_seq` 3 and `first_failure_seq` 4;
+          - `failure_detail.reason` "the chain ends before the head";
+          - `digest_file_id` null.
+          It also notifies `CHAIN_VERIFICATION_FAILED`.
+        - **(b) Truncation with a rewound head.**
+          - A second tenant of 5 events is verified `PASS` (`to_chain_seq` 5; the verification's own event is `chain_seq` 6).
+          - As `erev_owner` with a ticket: delete `chain_seq` 5 and 6, disable `tg_audit_chain_head__guard`, set the head to `chain_seq` 4 with its hmac, then re-enable the guard.
+          - The next verification writes `FAIL` with `first_failure_seq` 5 and reason "a verified event is missing or changed".
+        - The review probes observed PASS in both cases.
+        - `test_ctl_039_failure_notifies_and_records` and `test_req_plt_020_pass_writes_digest` still pass.
+      - `backend/tests/pg/test_db_invariants.py::test_db_09_chain_head_advances_only_through_append` (PR-K-01):
+        - As `erev_app` in the tenant context, `UPDATE erev.audit_chain_head SET last_chain_seq = last_chain_seq - 1` fails with `EREV-AUD-001`.
+        - An update that writes the current values fails the same way.
+        - One `uow.audit(...)` followed by commit still advances the head by one.
+        - `test_db_09_audit_chain_continuity` still passes.
+      - `backend/tests/pg/test_chains.py::test_ctl_038_actor_tamper_detected` (PR-C-02): as `erev_owner` with a data-fix ticket, set `actor_id` of `chain_seq` 2 to a new uuid. `verify_tenant_chain` returns `FAIL` with `first_failure_seq` 2.
+      - `backend/tests/domain/platform/test_audit_writer.py::test_krn_aud_03_hmac_covers_every_column` (PR-C-02):
+        - For every column of `audit_event.c` except `hmac`, a row copy with that column changed to a different value of its type gives a different `canonical_event(row)`. Changing `hmac` leaves it unchanged.
+        - The test fails under review probe G2b (canonical form without `actor_id`, `actor_kind`, `outcome`, `action` and `object_id`).
+    - Answer keys: none
+    - Golden: none
+    - Controls:
+      - CTL-033: `backend/tests/api/test_mfa.py::test_ctl_033_mfa_lockout_after_five_failures`;
+      - CTL-034: `backend/tests/domain/platform/test_approval_engine.py::test_ctl_034_concurrent_conflicting_approvals_serialised` and `backend/tests/api/test_roles_api.py::test_ctl_034_second_pending_grant_refused_at_approval`;
+      - CTL-038: `backend/tests/pg/test_chains.py::test_ctl_038_actor_tamper_detected`;
+      - CTL-039: `backend/tests/domain/platform/test_audit_verification.py::test_ctl_039_truncated_chain_fails`.
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: none; REQs contributed: REQ-SEC-004, REQ-PLT-004, REQ-PLT-005, REQ-PLT-010, REQ-PLT-019, REQ-PLT-020, REQ-PLT-036
+  - **Read:**
+    - 05:
+      - SAR-06 (line 1118), SAR-09 (1132), SAR-10 (1133), SAR-13 (1152), SAR-31 (1195), SAR-42 (1221);
+      - OPR-11 (1256);
+      - THR-03 (1041), THR-07, THR-09 (1047), THR-20.
+    - 04:
+      - T-PLT-02 (768; `is_operator` 786), T-PLT-04 (814-817), T-PLT-07 (877), T-PLT-22 (1291), T-PLT-23 (1307);
+      - DB-09 (4810); API-R-01 (4973), API-R-05 (4977); §15.2 slugs `rate-limited`, `account-locked`, `invalid-transition`.
+    - 03: REQ-PLT-004 (169), REQ-PLT-010 (175), REQ-PLT-020 (185), REQ-PLT-036 (201), REQ-SEC-004 (670).
+    - PRD: membership state machine (1501), SM-13 (1502), NFR-43 (1904).
+    - SCREENS_B §9.10 (5473, 5518).
+    - dev-guide: DG-KRN-PERM-02 (751), DG-KRN-AUD-03, DG-KRN-AUD-07 (800), DG-KRN-IDEM-03 (885), DG-CMD-02, DG-TST-06 (1936), DG-TST-22 (1961).
+    - BUILD_SPEC:
+      - header §3.1 GK-01 to GK-03; §4 XR-01, XR-07;
+      - PLF-2 (1509), PLF-3 (1539), PLF-17 (2191), PLF-18 (2219), PLF-23 (2342), SOP-4 (10321).
+    - 01-DECISIONS D-80.
+    - `docs/reviews/loop/spec-questions-PLF.md` SPEC-Q-128, SPEC-Q-133, SPEC-Q-182, SPEC-Q-188.
+    - `docs/reviews/loop/review-PLF.md` PR-A-01, PR-Z-01, PR-C-04, PR-K-02, PR-C-03, PR-K-01, PR-C-02.
+  - **Gates:** GK-01 `make ci`; GK-02 `make test-pg`; GK-03 `make openapi` in the same commit
+
+- [ ] **SUP-PLF-2 PLF review remediation, part 2: one-time secrets, password-change rotation, outbound destination guard and invitation identity data (PR-A-02, PR-A-03, PR-A-04, PR-R-08, PR-Z-02). Supervisor item.**
+  - **Prerequisites:** GATE-PLF; SUP-PLF-1
+  - **Scope:**
+    - Paths:
+      - One-time secrets (D-80; SPEC-Q-189 (b) and SPEC-Q-190 (b) overruled):
+        - `backend/erev_api/api/deps.py` `run_command` and `backend/erev_api/idempotency/store.py` `complete`: a command may give the body to store separately from the body it returns;
+        - `backend/erev_api/api/v1/api_clients.py` (create, rotate-secret) and `backend/erev_api/api/v1/webhooks.py` (create) store the body with `client_secret` or `signing_secret` null;
+        - the response schemas declare that member nullable.
+      - Password change (D-80):
+        - `backend/erev_api/auth/credentials.py` `change_password` calls `sessions.reissue` in the same transaction, and the presented session ends `REVOKED`;
+        - `backend/erev_api/api/v1/me.py` `POST /me/password` answers 204 with the new `erev_session` cookie.
+      - Outbound destinations (D-80; SPEC-Q-192 (f) overruled):
+        - `backend/erev_api/adapters/http/guard.py` `check_destination` applies the address rule;
+        - `backend/erev_api/adapters/idp/oidc_http.py` passes every discovery, JWKS and token URL through `check_destination(url, env=settings.env)` and connects to the checked address with SNI, as `adapters/http/webhook_client.py` does;
+        - `backend/erev_api/auth/oidc.py` `_issuer_valid(url, *, env)`;
+        - `backend/erev_api/cli.py` `erev idp create` passes the environment;
+        - `backend/erev_api/adapters/email/smtp.py` checks `EREV_SMTP_HOST` before connecting.
+      - Invitation identity data (D-80; SPEC-Q-182 (c) overruled in part):
+        - `backend/erev_api/domain/platform/users.py` `member_select`, `user_outs` and `update_user`;
+        - `backend/erev_api/schemas/users.py`: `mfa_enrolled` becomes nullable.
+      - Tests: `backend/tests/api/test_api_clients.py`, `backend/tests/api/test_webhooks_api.py`, `backend/tests/api/test_me_password.py`, `backend/tests/api/test_oidc.py`, `backend/tests/unit/test_oidc_client.py`, `backend/tests/unit/test_cli_idp.py`, `backend/tests/domain/platform/test_webhooks.py`, `backend/tests/domain/platform/test_outbox.py`, `backend/tests/api/test_users_api.py`.
+      - `docs/api/openapi.json` and `frontend/src/lib/api/schema.d.ts` through `make openapi`.
+      - The runbook sections "API clients and access tokens", "Outbound webhooks" and "Identity providers (OIDC sign-in)", and the SAR-15 security notes under `docs/security/` (XR-16).
+    - Schema: none
+    - API:
+      - API-R-03 `POST /me/password`;
+      - API-R-05 `GET, POST /users` and `GET, PATCH /users/{membership_id}`;
+      - API-R-08 `POST /api-clients` and `POST /api-clients/{id}/rotate-secret`;
+      - API-R-15 `POST /webhook-endpoints`;
+      - API-R-01 `GET /session/oidc/{provider}/start` and `/callback`.
+    - Engine: none
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/api/test_api_clients.py::test_client_secret_not_kept_for_replay` (PR-A-02):
+        - A Tenant Admin with a fresh step-up sends `POST /api/v1/api-clients {name: "svc-probe", scopes: ["audit.read"]}` with `Idempotency-Key: k-sup-plf-2-api-client-0001`: 201 with a 43-character `client_secret`.
+        - The `idempotency_record` of that key is `COMPLETED`. Its `response_body` holds `client_secret` null and does not contain the returned secret as a substring, and `api_client.secret_hash` starts with `$argon2id$`.
+        - Replaying the key returns 201 with `Idempotent-Replay: true` and `client_secret` null.
+        - `POST /api/v1/api-clients/{id}/rotate-secret` with a new key behaves the same, and the rotated secret authenticates `POST /oauth/token`.
+        - The review probe observed the plaintext stored for 7 days and returned on replay.
+        - `test_create_client_secret_shown_once` and `test_token_expiry_revocation_and_rotation` still pass.
+      - `backend/tests/api/test_webhooks_api.py::test_signing_secret_not_kept_for_replay` (PR-A-02):
+        - `POST /api/v1/webhook-endpoints` with `webhook.manage` and a key returns 201 with a 43-character `signing_secret`.
+        - The stored `response_body` holds `signing_secret` null and not the secret, and a replay returns 201 with `signing_secret` null.
+        - Deliveries to the endpoint are still signed with the issued secret.
+        - `test_create_endpoint_shows_secret_once` and `test_krn_evt_07_signature_header` still pass.
+      - `backend/tests/api/test_me_password.py::test_change_password` (PR-A-03; amended per D-80):
+        - A wrong current password returns 422 `validation-failed` with `errors[0].field == "current_password"`.
+        - Success returns 204 with a `Set-Cookie` `erev_session` whose value differs from the presented one. Then:
+          - the presented cookie returns 401 `unauthenticated` on `GET /api/v1/me`, and its `user_session.end_reason` is `REVOKED`;
+          - the new cookie returns 200 on `GET /api/v1/me`;
+          - the user's other sessions end `PASSWORD_CHANGED`, and `PASSWORD_CHANGED` is written once.
+        - This replaces the assertion at `test_me_password.py:82-84` that the presented token keeps working.
+      - `backend/tests/unit/test_oidc_client.py::test_sar_15_provider_urls_guarded` (PR-A-04):
+        - Setup: `HttpxOidcHttp` built with `env="production"`, a fake resolver (`idp.example` → 93.184.216.34, `internal.example` → 10.0.0.5, `meta.example` → 169.254.169.254) and a recording `httpx.MockTransport`.
+        - Fetching `https://idp.example/.well-known/openid-configuration` sends one request to 93.184.216.34 with SNI `idp.example`.
+        - `https://internal.example/token` and `https://meta.example/jwks` raise `DestinationRefused`, and the transport records no request.
+        - `http://idp.example/x` is refused for its scheme.
+        - With `env="test"`, `http://127.0.0.1:8190/api/v1/__mocks__/oidc/.well-known/openid-configuration` is allowed.
+      - `backend/tests/api/test_oidc.py::test_sar_15_callback_refuses_private_endpoints` (PR-A-04):
+        - The mock IdP's discovery document names `token_endpoint` `http://10.0.0.5/internal-admin` and `jwks_uri` `http://169.254.169.254/latest/meta-data/`.
+        - The callback returns 401 `unauthenticated`, `LOGIN_FAILED` carries `detail.reason` `provider_request_failed`, and the recording transport receives no request for either URL.
+        - The review probe observed a POST of the token form to `10.0.0.5`.
+        - `test_links_existing_user_by_verified_email` still passes.
+      - `backend/tests/unit/test_cli_idp.py::test_idp_create_refuses_loopback_http_issuer_in_production` (PR-A-04):
+        - With injected settings whose `env` is `production`, `erev idp create --issuer-url http://127.0.0.1:9000/realms/x` (other arguments as in the existing test) exits 1, names rule `T-PLT-03` and writes no `identity_provider` row.
+        - `_issuer_valid("http://127.0.0.1:9000/realms/x", env="production")` is false, and with `env="test"` it is true.
+        - `test_idp_create_writes_platform_security_event` still passes.
+      - `backend/tests/domain/platform/test_webhooks.py::test_sar_15_destination_guard` (PR-R-08; extended):
+        - Under `env=production`, `check_destination` refuses `64:ff9b::a9fe:a9fe`, `64:ff9b::7f00:1`, `::a9fe:a9fe`, `::7f00:1`, `2002:a9fe:a9fe::1`, `2002:0a00:0005::1`, `fec0::1`, `ff02::1`, `224.0.0.1`, `255.255.255.255`, `240.0.0.1`, `198.18.0.1` and `192.0.0.170`.
+        - It still refuses every SAR-15 range and allows `93.184.216.34`.
+      - `backend/tests/domain/platform/test_outbox.py::test_sar_15_smtp_host_guarded` (PR-R-08):
+        - Under `env=production`, the SMTP adapter with `EREV_SMTP_HOST` resolving to 10.0.0.5 raises `DestinationRefused` before any socket connects (the socket guard fixture records no connect).
+        - The fake email path under `test` is unchanged, and `test_ntr_05_fake_email_file` still passes.
+      - `backend/tests/api/test_users_api.py::test_invitation_of_existing_user_discloses_nothing` (PR-Z-02):
+        - Setup: the admin of workspace B is `ACTIVE` in B, with display name "b admin real name", `last_login_at` set and a confirmed factor.
+        - The Tenant Admin of A sends `POST /users {email: <B admin email>, display_name: "Name typed by A", roles: [viewer]}`: 201 with `status` `INVITED`, `display_name` equal to the email, `last_login_at` null and `mfa_enrolled` null. `GET /users/{id}` and the `GET /users` row show the same.
+        - After the B admin accepts the invitation, `GET /users/{id}` shows "b admin real name", the real `last_login_at` and `mfa_enrolled` true.
+        - The review probe P-2 observed the real name, last sign-in and MFA status disclosed.
+        - `test_invite_during_setup_auto_approved` still passes.
+      - `backend/tests/api/test_users_api.py::test_rename_only_users_created_by_the_invitation` (PR-Z-02):
+        - Setup: workspace C is provisioned with admin `c-admin@<code>.test`, who has never signed in.
+        - The Tenant Admin of A invites that email (201). `PATCH /users/{id} {display_name: "Renamed from tenant A"}` with the current `If-Match` then returns 409 `invalid-transition` with `errors[0].field == "status"`, and `app_user.display_name` stays `c-admin@<code>.test`.
+        - Renaming a user that A's own invitation created still returns 200.
+        - The review probe P-5 observed 200 and the global name changed.
+        - `test_list_detail_update_reactivate_remove` still passes.
+    - Answer keys: none
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: none; REQs contributed: REQ-SEC-003, REQ-SEC-004, REQ-PLT-006, REQ-PLT-034
+  - **Read:**
+    - 05:
+      - SAR-09 (line 1132), SAR-10 (1133), SAR-15 (1179), SAR-18 (1110), SAR-42 (1221);
+      - THR-04 (1042), THR-05 (1043), THR-07, THR-15 (1053);
+      - PRV-01 (1202); NTR-13.
+    - 03 REQ-SEC-003 (669).
+    - 04:
+      - T-PLT-02 (768), T-PLT-03, T-PLT-07 (877), T-PLT-15 (1102), T-PLT-28 (1419), T-PLT-35 (1629);
+      - API-R-01 (4973), API-R-03 (4975), API-R-05 (4977), API-R-08 (4980), API-R-15 (4987);
+      - §16.12 (6100).
+    - dev-guide: DG-KRN-IDEM-03 (885), DG-KRN-IDEM-04 (886), DG-KRN-AUTH-07 (709), DG-API-09.
+    - BUILD_SPEC:
+      - PLF-15 (2139; test at 2153), PLF-17 (2191), PLF-24 (2368), PLF-25 (2395), PLF-27 (2447);
+      - SOP-8 (10423; tests at 10435 and 10439).
+    - 01-DECISIONS D-80.
+    - `docs/reviews/loop/spec-questions-PLF.md` SPEC-Q-126, SPEC-Q-182, SPEC-Q-189, SPEC-Q-190, SPEC-Q-192.
+    - `docs/reviews/loop/review-PLF.md` PR-A-02, PR-A-03, PR-A-04, PR-R-08, PR-Z-02.
+  - **Gates:** GK-01 `make ci`; GK-02 `make test-pg`; GK-03 `make openapi` in the same commit
+
+- [ ] **SUP-PLF-3 PLF review remediation, part 3: single-claim outbox and webhook dispatch, handler heartbeats and stranded-task recovery (PR-R-01, PR-R-02, PR-R-03, PR-R-04). Supervisor item.**
+  - **Prerequisites:** GATE-PLF; SUP-PLF-2
+  - **Scope:**
+    - Paths:
+      - `backend/erev_api/events/webhooks.py` `_claim`, `_attempt`, `_record` and `deliver` (D-80 dispatch and job recovery; SPEC-Q-189 (c) corrected):
+        - one due delivery is claimed (`FOR UPDATE SKIP LOCKED`, with `next_attempt_at` = now + 120 s as the claim stamp) and committed, then posted, then recorded only where `next_attempt_at` still equals the stamp;
+        - zero recorded rows means another deliverer settled the delivery, and the run continues without raising;
+        - `jc.heartbeat()` runs after each delivery, with at most 100 deliveries per run.
+      - `backend/erev_api/events/outbox.py` `_claim`, `_dispatch`, `_relay` and `relay`:
+        - the same single-claim loop over messages, with `updated_at` as the claim stamp;
+        - the ADP-32 re-claim takes only messages whose own stamp is older than 15 minutes;
+        - `jc.heartbeat()` runs after each message.
+      - `backend/erev_api/domain/platform/audit_jobs.py`: `jc.heartbeat()` at least every 1,000 verified events or 30 seconds.
+      - `backend/erev_api/jobs/registry.py` `run_job` and `_move`:
+        - completion is recorded only on the RUNNING row of the attempt that ran (same `procrastinate_job_id` and attempt number);
+        - `_defer_unless_pending` counts only QUEUED rows whose Procrastinate task is `todo` or `doing`.
+      - `backend/erev_api/jobs/sweeper.py` (05 JOB-06 part one and SCH-04; SPEC-Q-187 (b) overruled):
+        - re-dispatches QUEUED job rows whose Procrastinate task is `failed`, `cancelled` or `aborted`, within the kind's retry profile;
+        - retries tasks stalled in `doing` found through `JobManager.get_stalled_jobs` (worker heartbeats), using `retry_job_by_id` (Procrastinate 3.9.0);
+        - past the last attempt, the row ends `FAILED` with problem `job-stalled`.
+      - `backend/erev_api/worker.py`: only if the periodic sweeper wiring changes.
+      - Tests: `backend/tests/domain/platform/test_webhooks.py`, `backend/tests/domain/platform/test_outbox.py`, `backend/tests/domain/platform/test_job_monitoring.py`, `backend/tests/domain/platform/test_jobs.py`.
+      - The runbook sections "Stuck and failed jobs" and "Outbound webhooks" (SPEC-Q-187 a; SPEC-Q-189 a).
+    - Schema: none
+    - API: none
+    - Engine: none
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/domain/platform/test_webhooks.py::test_ntr_12_one_post_per_attempt_when_the_lease_lapses` (PR-R-01):
+        - Setup: three `period.locked` events are emitted to one active endpoint.
+        - An SCH-12 `WEBHOOK_DELIVERY` job posts the first delivery. The recording transport then advances the FrozenClock 121 s and runs a second `deliver()` to completion before the first job continues.
+        - Every envelope id is posted exactly once, every delivery is `DELIVERED` after one attempt, and both jobs end `SUCCEEDED`.
+        - The review probe A observed `[1, 2, 2]` POSTs and two `invalid-transition` failures.
+        - `test_retry_backoff_and_abandon` and `test_inactive_endpoint_abandons_delivery` still pass.
+      - `backend/tests/domain/platform/test_outbox.py::test_adp_32_live_relay_not_reclaimed` (PR-R-02):
+        - Setup: three `EMAIL` messages are enqueued.
+        - Relay 1 dispatches the first message. The fake email adapter then advances the clock 15 minutes and runs relay 2 to completion before relay 1 continues.
+        - The fake email directory holds exactly three files, every message is `DISPATCHED`, and both relays end `SUCCEEDED`.
+        - A message left `DISPATCHING` by a relay that stopped is still re-claimed and sent once after 15 minutes.
+        - The review probe B observed `[1, 2, 2]` sends.
+        - `test_krn_evt_05_relay_backoff_and_dead_letter` still passes.
+      - `backend/tests/domain/platform/test_job_monitoring.py::test_krn_job_04_heartbeat_keeps_long_handlers_running` (PR-R-03):
+        - A `WEBHOOK_DELIVERY` run over 70 due deliveries uses a recording transport that advances the FrozenClock 10 s per POST and calls `sweeper.fail_stalled(runtime)` after every sixth POST. The run stays `RUNNING` throughout, ends `SUCCEEDED`, posts 70 times and is never re-queued.
+        - A user's `OUTBOX_RELAY` over 70 messages with the same clock pattern ends `SUCCEEDED`, and no `JOB_FAILED` notification is written.
+        - `test_ctl_040_stalled_job_failed_and_notified` still passes.
+      - `backend/tests/domain/platform/test_job_monitoring.py::test_run_job_records_only_its_own_attempt` (PR-R-03):
+        - Setup: attempt 1 of a `WEBHOOK_DELIVERY` job is `RUNNING`. After 10 minutes 1 second without a heartbeat, the sweeper re-queues it, and attempt 2 moves the row to `RUNNING`.
+        - When attempt 1's handler returns, the row stays `RUNNING` under attempt 2 and no result is stored.
+        - Attempt 2's completion sets `SUCCEEDED`.
+        - The review probe V5 observed attempt 1 marking attempt 2's row `SUCCEEDED`.
+      - `backend/tests/domain/platform/test_jobs.py::test_krn_job_06_stranded_tasks_redispatched` (PR-R-04):
+        - Setup: an `OUTBOX_RELAY` job is dispatched, and `registry.job_concurrency` is patched to raise `OperationalError`. `run_job` raises, and the Procrastinate task ends `failed` while the row stays `QUEUED`.
+        - `outbox.sweep` still defers a relay for the tenant while due messages exist.
+        - `sweeper.sweep` re-dispatches the job with a new `procrastinate_job_id`, and the job then ends `SUCCEEDED`.
+        - A `WEBHOOK_DELIVERY` task stalled in `doing`, whose worker stopped sending heartbeats (`get_stalled_jobs` with `seconds_since_heartbeat` 30), is retried the same way.
+        - `defer_for_active_tenants` again defers `AUDIT_CHAIN_VERIFY` and `RETENTION_SWEEP` for the tenant.
+        - Review probes C and V6 observed the job still `QUEUED` and 0 deferrals two days later.
+        - `test_krn_job_06_sweeper_requeues_undispatched_jobs` still passes.
+    - Answer keys: none
+    - Golden: none
+    - Controls: CTL-040 `backend/tests/domain/platform/test_jobs.py::test_krn_job_06_stranded_tasks_redispatched`
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: none; REQs contributed: REQ-OPS-006, REQ-PLT-020, REQ-PLT-029, REQ-PLT-034
+  - **Read:**
+    - 05:
+      - ADP-31, ADP-32 (line 873);
+      - JOB-02, JOB-06 (907), and the §5.6 job profiles;
+      - SCH-01 (940), SCH-03 (942), SCH-04 (943);
+      - NTR-12 (973).
+    - 04: T-PLT-27 `job`, T-PLT-36 (1648), T-INT-03.
+    - dev-guide: DG-KRN-EVT-05 (1097), DG-KRN-JOB-04 (1150), DG-KRN-JOB-06 (1152).
+    - BUILD_SPEC: PLF-9 (1967), PLF-14 (2108), PLF-22 (2317), PLF-23 (2342), PLF-24 (2368).
+    - 01-DECISIONS D-80.
+    - `docs/reviews/loop/spec-questions-PLF.md` SPEC-Q-179, SPEC-Q-187, SPEC-Q-188, SPEC-Q-189.
+    - Procrastinate 3.9.0 `JobManager.get_stalled_jobs` and `retry_job_by_id` (`backend/.venv/lib/python3.12/site-packages/procrastinate/manager.py:223`, `:536`).
+    - `docs/reviews/loop/review-PLF.md` PR-R-01 to PR-R-04.
+  - **Gates:** GK-01 `make ci`; GK-02 `make test-pg`
+
+- [ ] **SUP-PLF-4 PLF review remediation, part 4: configuration insert guard, SoD rules as of a date, upload limits on inflated bytes, streamed body limits and review-port launchers (PR-K-03, PR-C-05, PR-R-05, PR-R-06, PR-R-07, S-2, S-4). Supervisor item.**
+  - **Prerequisites:** GATE-PLF; SUP-PLF-3
+  - **Scope:**
+    - Paths:
+      - Configuration insert guard (D-80; SPEC-Q-151 overruled): `backend/erev_api/db/migration_ops.py` `CONFIG_VERSION_BODY` and `backend/erev_api/db/migrations/versions/0026_config_version_insert_guard.py`, created with `make revision MSG="config version insert guard" ITEM=SUP-PLF-4`:
+        - `CREATE OR REPLACE FUNCTION erev.tg_config_version()` refuses an INSERT with `status <> 'DRAFT'` unless `current_setting('app.platform_scope', true) = 'provisioning'` (`EREV-CFG-002`);
+        - `downgrade()` restores the previous body.
+      - SoD rules as of a date (D-80; SPEC-Q-150 overruled):
+        - `backend/erev_api/auth/sod.py` `_published_rules` and `conflict_report`;
+        - `backend/tests/domain/platform/test_sod.py` replaces the assertion at `:240-247`.
+      - Upload limits on inflated bytes: `backend/erev_api/files/policy.py` `zip_within_limits` and `_ooxml_media_type`:
+        - entries are read through bounded streaming reads that count inflated bytes;
+        - the UPL-04 entry, total and ratio limits apply to the actual output;
+        - an entry whose output exceeds its declared `file_size`, or whose local-header and central-directory sizes differ, is refused.
+      - Streamed body limits (D-80 upload bodies): `backend/erev_api/api/middleware.py` `_receive_within_limit` and `backend/erev_api/api/v1/files.py`.
+      - Launcher ports (D-80): `Makefile` and `scripts/proc.sh`:
+        - `EREV_API_PORT`, `EREV_WEB_PORT`, `EREV_E2E_API_PORT` and `EREV_E2E_WEB_PORT` come from the environment, else from the `.env` named by `EREV_DOTENV` (default `.env`), else the defaults;
+        - `WEB_ENV` passes `EREV_WEB_PORT` to the web process;
+        - no value is ever printed.
+      - `backend/erev_api/db/types.py`: `MoneyType`, `ExactType` and `FxRateType` set `cache_ok = True`.
+      - Tests: `backend/tests/pg/test_db_invariants.py`, `backend/tests/domain/platform/test_sod.py`, `backend/tests/unit/test_upload_policy.py`, `backend/tests/api/test_middleware.py`, `backend/tests/unit/test_makefile_targets.py`, `backend/tests/unit/test_proc_sh.py`, `backend/tests/unit/test_db_types.py`.
+      - `docs/guides/` developer notes on review-worktree ports (XR-16).
+    - Schema: DB-04 `erev.tg_config_version()` INSERT rule (D-80). No table, column or enum change
+    - API: `POST /api/v1/files` (PLF-8) without `Content-Length` returns 422 `validation-failed` with `errors[0].rule_id == "API-C-17"`
+    - Engine: none
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/pg/test_db_invariants.py::test_db_04_insert_outside_draft_refused` (PR-K-03):
+        - As `erev_app` in a provisioned tenant's context, with no platform scope, each of these inserts fails with `EREV-CFG-002`: a `sod_rule` version with `status` `PUBLISHED`; a `sod_rule` version with `status` `APPROVED`; a `registry_version` with `status` `PUBLISHED`. Each carries `approval_request_id` NULL and a valid `content_sha256`.
+        - In one transaction, superseding SoD-3 v1 and then inserting v2 `PUBLISHED` fails, and SoD-3 still conflicts for `revenue_accountant` with `revenue_reviewer`.
+        - The same inserts inside `platform_session("provisioning", …)` succeed.
+        - The review probe `db04.log` observed the conflict removed with 0 approval requests.
+        - `test_db_04_published_sod_rule_frozen`, `test_db_04_published_overlap_rejected` and `test_krn_ten_01_every_plf_seed_row` still pass.
+      - `backend/tests/domain/platform/test_sod.py::test_conflict_report_as_of_uses_rule_in_force_then` (PR-C-05):
+        - Setup: provisioning at FrozenClock t0 publishes SoD-3 v1. A membership holds `revenue_accountant` and `revenue_reviewer` from t0, as rows written directly (a legacy conflict).
+        - `conflict_report(as_of=t0 + 1 day)` lists SoD-3.
+        - At t1 = t0 + 10 days, a `ROLE_CHANGE` approval publishes v2 (`ssp.create` × `ssp.approve`) and supersedes v1. Afterwards:
+          - `conflict_report(as_of=t0 + 1 day)` still lists SoD-3 with the v1 function sets;
+          - `conflict_report(as_of=t1 + 1 second)` does not list it.
+        - An assignment revoked at t2 counts for `as_of < t2` and not for `as_of >= t2`.
+        - `test_krn_perm_03_rules_from_published_rows_only` asserts that a SUPERSEDED version counts for instants in `[published_at, effective_to)`, and that DRAFT, TESTED and SUBMITTED versions count at no date.
+        - `test_conflict_report_as_of` still passes.
+      - `backend/tests/unit/test_upload_policy.py::test_upl_04_declared_sizes_not_trusted` (PR-R-05):
+        - Setup: an xlsx built in the test whose `[Content_Types].xml` inflates to 100 MiB, with `file_size` patched to 1,500 in both the local header and the central directory, and the CRC of the first 1,500 bytes (review probe `zip_declared_size_bomb.py`).
+        - `check_upload(purpose=IMPORT_SOURCE)` raises 422 `upload-type-not-allowed`.
+        - A counting wrapper shows that no entry read inflated more than 1,500 bytes + 64 KiB.
+        - An archive whose local-header and central-directory sizes differ is refused.
+        - `test_upl_04_zip_limits` still passes.
+      - `backend/tests/api/test_middleware.py::test_api_c_17_chunked_upload_needs_declared_length` (PR-R-06):
+        - Setup: a chunked `POST /api/v1/files` without `Content-Length` and without a session, whose body generator yields 64 KiB chunks up to 256 MiB.
+        - The request returns 422 `validation-failed` with `errors[0].rule_id == "API-C-17"`, and the generator yielded at most one chunk.
+        - The review verifier observed 192 MiB consumed before the 401.
+        - `test_upload_limits_per_purpose` still passes.
+      - `backend/tests/api/test_middleware.py::test_api_c_17_body_limit_without_declared_length` (PR-R-06; amended):
+        - A chunked 4 MiB body to a 1 MiB route returns 422 `validation-failed` with `rule_id` `API-C-17`, after the generator yielded at most 1 MiB plus one 64 KiB chunk.
+        - A probe app receives the first chunk before the body ends (no pre-buffering).
+      - `backend/tests/unit/test_makefile_targets.py::test_dg_run_01_port_override` (PR-R-07, S-2; extended):
+        - Setup: `EREV_API_PORT` and `EREV_WEB_PORT` are absent from the environment, and `EREV_DOTENV` names a scratch file under `.run/tmp/` holding `EREV_API_PORT=8192`, `EREV_WEB_PORT=5272` and a sentinel line `EREV_SENTINEL=do-not-print`.
+        - `make -n dev-up` shows `proc.sh start api 8192` and `proc.sh start web 5272`, the web command line carries `EREV_WEB_PORT=5272`, and stdout does not contain `do-not-print`.
+        - An exported `EREV_API_PORT=8193` wins over the file.
+        - `make -n dev-up API_PORT=8192 WEB_PORT=5272` passes `EREV_WEB_PORT=5272` to the web process.
+        - The existing `backend` and `frontend` assertions still pass.
+      - `backend/tests/unit/test_proc_sh.py::test_dg_run_10_ports_from_dotenv` (PR-R-07): with no exported port and `EREV_DOTENV` naming a scratch file that holds `EREV_WEB_PORT=5272`, `scripts/proc.sh status` reports `port=5272` for `web`. `test_dg_run_10_readiness_uses_start_port` still passes.
+      - `backend/tests/unit/test_db_types.py::test_krn_money_05_types_cacheable` (S-4):
+        - `MoneyType()`, `ExactType()` and `FxRateType()` each have a `_static_cache_key` that is not `sqlalchemy.sql.cache_key.NO_CACHE`.
+        - Compiling a `select` over a money column under `warnings.simplefilter("error", SAWarning)` raises nothing.
+    - Answer keys: none
+    - Golden: none
+    - Controls: CTL-034 `backend/tests/pg/test_db_invariants.py::test_db_04_insert_outside_draft_refused`
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: none; REQs contributed: REQ-PLT-009, REQ-PLT-010, REQ-PLT-016, REQ-SEC-012, REQ-OPS-003
+  - **Read:**
+    - 04:
+      - §1.5 IM-P (line 243); DB-04 (4805); API-C-17 (4887);
+      - T-PLT-13 (1060), T-PLT-29 (1445); §14.3.
+    - 05:
+      - UPL-01 (1158), UPL-04 (1161);
+      - THR-12 (1050), THR-18 (1056);
+      - §2.5 step 3; DPL-12.
+    - 03: REQ-PLT-010 (175), REQ-SEC-012 (678).
+    - dev-guide: §2.3 port block (357-359), DG-RUN-03 (426), DG-RUN-21 (453), DG-MK-dev-up (487), DG-KRN-PERM-03 (752), DG-KRN-MONEY-05 (994), DG-RUN-30.
+    - BUILD_SPEC: PLF-6 (1879), PLF-8 (1938), PLF-12 (2055), PLF-13 (2081), PLF-19 (2244), PLF-30 (2527).
+    - 01-DECISIONS: D-78 port row (286); D-80.
+    - `docs/reviews/loop/spec-questions-PLF.md` SPEC-Q-150, SPEC-Q-151, SPEC-Q-159, SPEC-Q-175, SPEC-Q-184.
+    - `docs/reviews/loop/review-PLF.md`: PR-K-03, PR-C-05, PR-R-05, PR-R-06, PR-R-07 and baseline S-1, S-2, S-4.
+  - **Gates:** GK-01 `make ci`; GK-02 `make test-pg`

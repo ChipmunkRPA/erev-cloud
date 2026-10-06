@@ -1,0 +1,173 @@
+# docs/accounting/answer-keys/ifrs/IFRS-SW11-ONEROUS-CONTRACT-SCOPE-IFRS15-ONLY.yaml
+schema: "erev-answer-key/1"
+id: IFRS-SW11-ONEROUS-CONTRACT-SCOPE-IFRS15-ONLY
+title: >-
+  IFRS switch #11: loss-making contract outside Subtopic 605-35 scope provided only in the IFRS15 book
+status: active
+families: [IFRS, LOSS, JE]
+tags: [r04-s13]
+summary: >-
+  Research 04 §13 #11 (POL-151, POL-152). Entity US01, USD, ERP billing. A fixed-price software implementation of
+  1,000,000.00 measured cost-to-cost with an EAC of 1,100,000.00 from inception [A]. By 2026-06-30 costs of 440,000.00
+  give 40% progress and revenue 400,000.00, invoiced. ASC606 book: POL-151 SCOPED_605_35_ONLY and the contract is not
+  a Subtopic 605-35 contract, so no provision. IFRS15 book (ALL_CONTRACTS_WITH_EAC forced; IAS 37.68A costs equal the
+  EAC here [A]): total expected loss 100,000.00 less the 40,000.00 recognised through margin gives JET-12 Dr
+  LOSS_EXPENSE 60,000.00 / Cr LOSS_PROVISION 60,000.00.
+authority:
+  codification: ["605-35-15-2", "605-35-25-46A"]
+  ifrs: ["IAS 37.66", "IAS 37.68", "IAS 37.68A"]
+  practice: ["FASB and IASB comparison, onerous contracts (research 04 S14, S11)"]
+  urls: []
+derived_from: {research04: [], research05: [], chk: [], golden: [], dev: []}
+requirements: [REQ-BK-002, REQ-LOS-001, REQ-LOS-002]
+policy_refs: [POL-150, POL-151, POL-152]
+review:
+  author: answer-keys-fx-entity-books
+  authored_on: "2026-09-12"
+  reviewer: null
+  reviewed_on: null
+  status: pending
+runner: engine
+books: [ASC606, IFRS15]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: US01
+      name: "Avenmoor Systems Inc. (Demo)"
+      functional_currency: USD
+      time_zone: "America/New_York"
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: 1}
+      books: [ASC606, IFRS15]
+  periods: {from: "2026-01", to: "2026-06"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "2300", name: "Provision for anticipated losses", account_type: LIABILITY}
+    - {code: "4010", name: "Revenue - services and subscriptions", account_type: REVENUE}
+    - {code: "5300", name: "Anticipated loss expense", account_type: EXPENSE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, account: "4010", product: IMPL-FIXED}
+    - {account_role: LOSS_EXPENSE, account: "5300"}
+    - {account_role: LOSS_PROVISION, account: "2300"}
+  customers:
+    - {code: CUST-1, name: "Pellworth Logistics Inc. (Demo)"}
+  pob_templates:
+    - code: TPL-C2C
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_B
+      recognition_method: COST_TO_COST
+  products:
+    - {code: IMPL-FIXED, name: "Fixed-price implementation", pob_template: TPL-C2C}
+  ssp_books:
+    - code: SSP-US-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2026-01-01"
+          methodology_label: "Observable standalone prices"
+          entries:
+            - product: IMPL-FIXED
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "1000000.00"}
+  fx_rate_sets: []
+  rule_sets: []
+  policies: {tenant: {billing.posting: ERP}, entities: {}, books: {}}
+contracts:
+  - external_id: C-IFRS-SW11
+    customer: CUST-1
+    contracting_entity: US01
+    transaction_currency: USD
+    inception_date: "2026-01-01"
+    lines:
+      - {obligation_key: L1-IMPLEMENTATION, product_code: IMPL-FIXED, quantity: "1", total_price: "1000000.00"}
+    estimates:
+      - element_code: EAC-SW11
+        estimate_kind: EAC
+        method: COST_BUILDUP
+        versions:
+          - version_no: "1"
+            effective_date: "2026-01-01"
+            expected_total_amount: "1100000.00"
+            rationale: "Bid estimate after scope confirmation"
+timeline:
+  - seq: 1
+    kind: event
+    contract: C-IFRS-SW11
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: 2
+    kind: event
+    contract: C-IFRS-SW11
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: 3
+    kind: event
+    contract: C-IFRS-SW11
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-01-01"
+    payload: {estimate: EAC-SW11, version_no: "1"}
+  - seq: 4
+    kind: event
+    contract: C-IFRS-SW11
+    event_type: COST_INCURRED
+    effective_date: "2026-06-30"
+    payload: {purpose: PROGRESS_INPUT, obligation_key: L1-IMPLEMENTATION, amount: "440000.00"}
+  - seq: 5
+    kind: event
+    contract: C-IFRS-SW11
+    event_type: BILLING_RECORDED
+    effective_date: "2026-06-30"
+    payload:
+      invoice_number: INV-SW11-1
+      line_external_id: INV-SW11-1-1
+      amount: "400000.00"
+      issue_date: "2026-06-30"
+checkpoints:
+  - name: asc606-june-close
+    after_seq: 5
+    as_of: "2026-06-30"
+    book: ASC606
+    contracts:
+      - contract: C-IFRS-SW11
+        version: {revenue_cum: "400000.00"}
+        balances:
+          - {entity: US01, loss_provision: "0.00", contract_liability: "0.00"}
+    subledger:
+      - period_key: FY2026-P06
+        entity: US01
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "400000.00"}
+          - {account_role: REVENUE, account: "4010", cr: "400000.00"}
+  - name: ifrs15-june-close
+    after_seq: 5
+    as_of: "2026-06-30"
+    book: IFRS15
+    contracts:
+      - contract: C-IFRS-SW11
+        version: {revenue_cum: "400000.00"}
+        balances:
+          - {entity: US01, loss_provision: "60000.00", contract_liability: "0.00"}
+    subledger:
+      - period_key: FY2026-P06
+        entity: US01
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "400000.00"}
+          - {account_role: LOSS_PROVISION, account: "2300", dr: "40000.00"}
+          - {account_role: REVENUE, account: "4010", cr: "400000.00"}
+          - {account_role: LOSS_EXPENSE, account: "5300", cr: "40000.00"}

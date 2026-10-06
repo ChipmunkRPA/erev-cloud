@@ -1,0 +1,288 @@
+# docs/accounting/answer-keys/fx/FX-CHK-084-A-REFUND-LIABILITY-REMEASURED.yaml
+schema: "erev-answer-key/1"
+id: FX-CHK-084-A-REFUND-LIABILITY-REMEASURED
+title: >-
+  D-25b: EUR refund liability created at spot, remeasured at closing and at settlement, released at window expiry
+  (CHK-084 a)
+status: active
+families: [FX, RET, JE]
+tags: [fx]
+summary: >-
+  POLICIES CHK-084 (a); entity US01 (functional USD), EUR contract, ERP billing, the same figures in every book
+  (D-25b). On 1 March 2026 100 units transfer for EUR 10,000.00, invoiced and received that day at spot 1.1000:
+  contract-liability layer USD 11,000.00. Expected returns are 3 units at 100.00 (RETURN_RATE; carrying and recovery
+  cost equal, so no return asset). JET-02 revenue EUR 9,700.00 relieves USD 10,670.00; JET-04b Dr CONTRACT_LIABILITY /
+  Cr REFUND_LIABILITY EUR 300.00 = USD 330.00 at spot. 31 March, closing 1.1200: JET-10d loss 6.00 (carrying 336.00).
+  15 April: two units are returned and credited EUR 200.00 at spot 1.1500; the settled carrying share 224.00 is
+  remeasured to 230.00 (loss 6.00) and JET-04b releases 230.00 against the liability the ERP credit memo debits. 30
+  April, closing 1.0800: gain 4.00 (carrying 108.00 for EUR 100.00). 31 May the return window expires at 1.1000: loss
+  2.00; JET-04b releases 110.00 to the contract liability and JET-04a recognises revenue EUR 100.00 = USD 110.00.
+  Totals: revenue USD 10,780.00, net FX loss 10.00, refund liability 0.00 (ALG-08 §2.9.1; JET-10d).
+authority:
+  codification: ["830-20-35-1", "830-20-35-2", "830-10-45-17", "606-10-55-22", "606-10-55-23", "606-10-55-27"]
+  ifrs: ["IAS 21.16", "IAS 21.23"]
+  practice: []
+  urls: []
+derived_from: {research04: [], research05: [], chk: [CHK-084], golden: [], dev: []}
+requirements: [REQ-FX-003, REQ-FX-001, REQ-TP-009]
+policy_refs: [POL-164, POL-051]
+review:
+  author: answer-keys-fx-entity-books
+  authored_on: "2026-09-12"
+  reviewer: null
+  reviewed_on: null
+  status: pending
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [EUR, USD]
+  entities:
+    - code: US01
+      name: "Avenmoor Systems Inc. (Demo)"
+      functional_currency: USD
+      time_zone: "America/New_York"
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: 1}
+      books: [ASC606]
+  periods: {from: "2026-03", to: "2026-05"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "1310", name: "Asset for right to recover products", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "2110", name: "Refund liability", account_type: LIABILITY}
+    - {code: "4000", name: "Revenue - products", account_type: REVENUE}
+    - {code: "7200", name: "Foreign exchange gain or loss", account_type: EXPENSE}
+    - {code: "7900", name: Rounding, account_type: EXPENSE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: FX_GAIN_LOSS, account: "7200"}
+    - {account_role: ROUNDING, account: "7900"}
+    - {account_role: REVENUE, account: "4000", product: GADGET-EUR}
+    - {account_role: REFUND_LIABILITY, account: "2110"}
+    - {account_role: RETURN_ASSET, account: "1310"}
+  customers:
+    - {code: CUST-1, name: "Pellworth Logistics Inc. (Demo)"}
+  pob_templates:
+    - code: TPL-UNITS
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: POINT_IN_TIME
+      over_time_criterion: NOT_APPLICABLE
+      recognition_method: UNITS_DELIVERED
+  products:
+    - code: GADGET-EUR
+      name: "Returnable gadget (EUR)"
+      pob_template: TPL-UNITS
+      policy_values: {returns.model: EXPECTED_RETURNS}
+  ssp_books:
+    - code: SSP-EUR-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2026-01-01"
+          methodology_label: "Observable standalone prices"
+          entries:
+            - product: GADGET-EUR
+              currency: EUR
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "100.00"}
+  fx_rate_sets:
+    - code: SPOT-EURUSD
+      rate_type: spot
+      rates:
+        - {base_currency: EUR, quote_currency: USD, effective_date: "2026-03-01", rate: "1.1000"}
+        - {base_currency: EUR, quote_currency: USD, effective_date: "2026-04-15", rate: "1.1500"}
+        - {base_currency: EUR, quote_currency: USD, effective_date: "2026-05-31", rate: "1.1000"}
+    - code: AVG-EURUSD
+      rate_type: average
+      rates:
+        - base_currency: EUR
+          quote_currency: USD
+          effective_date: "2026-03-31"
+          period_key: FY2026-P03
+          rate: "1.1000"
+        - base_currency: EUR
+          quote_currency: USD
+          effective_date: "2026-04-30"
+          period_key: FY2026-P04
+          rate: "1.1300"
+        - base_currency: EUR
+          quote_currency: USD
+          effective_date: "2026-05-31"
+          period_key: FY2026-P05
+          rate: "1.1000"
+    - code: CLOSE-EURUSD
+      rate_type: closing
+      rates:
+        - base_currency: EUR
+          quote_currency: USD
+          effective_date: "2026-03-31"
+          period_key: FY2026-P03
+          rate: "1.1200"
+        - base_currency: EUR
+          quote_currency: USD
+          effective_date: "2026-04-30"
+          period_key: FY2026-P04
+          rate: "1.0800"
+        - base_currency: EUR
+          quote_currency: USD
+          effective_date: "2026-05-31"
+          period_key: FY2026-P05
+          rate: "1.1000"
+  rule_sets: []
+  policies: {tenant: {billing.posting: ERP}, entities: {}, books: {}}
+contracts:
+  - external_id: C-FX-084-A
+    customer: CUST-1
+    contracting_entity: US01
+    transaction_currency: EUR
+    inception_date: "2026-03-01"
+    lines:
+      - {obligation_key: L1-GADGET, product_code: GADGET-EUR, quantity: "100", total_price: "10000.00"}
+    estimates:
+      - element_code: RET-084
+        estimate_kind: RETURN_RATE
+        method: RATE
+        obligation_key: L1-GADGET
+        versions:
+          - version_no: "1"
+            effective_date: "2026-03-01"
+            rate: "0.03"
+            expected_quantity: "3"
+            parameters:
+              carrying_cost_per_unit: "60.00"
+              recovery_cost_per_unit: "60.00"
+              window_end_date: "2026-05-31"
+            rationale: "Returns expected on 3% of the units within the 90-day window"
+timeline:
+  - seq: 1
+    kind: event
+    contract: C-FX-084-A
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-03-01"
+    payload: {}
+  - seq: 2
+    kind: event
+    contract: C-FX-084-A
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-03-01"
+    payload: {}
+  - seq: 3
+    kind: event
+    contract: C-FX-084-A
+    event_type: BILLING_RECORDED
+    effective_date: "2026-03-01"
+    payload:
+      invoice_number: INV-084A-1
+      line_external_id: INV-084A-1-1
+      amount: "10000.00"
+      issue_date: "2026-03-01"
+  - seq: 4
+    kind: event
+    contract: C-FX-084-A
+    event_type: PAYMENT_RECEIVED
+    effective_date: "2026-03-01"
+    payload:
+      receipt_reference: RCPT-084A-1
+      amount: "10000.00"
+      receipt_date: "2026-03-01"
+      applied_invoice_numbers: [INV-084A-1]
+  - seq: 5
+    kind: event
+    contract: C-FX-084-A
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-03-01"
+    payload: {estimate: RET-084, version_no: "1"}
+  - seq: 6
+    kind: event
+    contract: C-FX-084-A
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-03-01"
+    payload: {obligation_key: L1-GADGET, quantity: "100", trigger: DELIVERY}
+  - seq: 7
+    kind: event
+    contract: C-FX-084-A
+    event_type: RETURN_RECORDED
+    effective_date: "2026-04-15"
+    payload: {obligation_key: L1-GADGET, quantity: "2", refund_amount: "200.00"}
+  - seq: 8
+    kind: event
+    contract: C-FX-084-A
+    event_type: CREDIT_MEMO_RECORDED
+    effective_date: "2026-04-15"
+    payload:
+      credit_memo_number: CM-084A-1
+      credited_invoice_number: INV-084A-1
+      obligation_key: L1-GADGET
+      amount: "200.00"
+      issue_date: "2026-04-15"
+checkpoints:
+  - name: march-close
+    after_seq: 6
+    as_of: "2026-03-31"
+    book: ASC606
+    contracts:
+      - contract: C-FX-084-A
+        version: {revenue_cum: "9700.00"}
+        balances:
+          - entity: US01
+            contract_liability: "0.00"
+            refund_liability: "300.00"
+            functional: {contract_liability: "0.00", refund_liability: "336.00"}
+    subledger:
+      - period_key: FY2026-P03
+        entity: US01
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "10000.00", functional_dr: "11000.00"}
+          - {account_role: FX_GAIN_LOSS, account: "7200", dr: "0.00", functional_dr: "6.00"}
+          - {account_role: REVENUE, account: "4000", cr: "9700.00", functional_cr: "10670.00"}
+          - {account_role: REFUND_LIABILITY, account: "2110", cr: "300.00", functional_cr: "336.00"}
+  - name: april-close
+    after_seq: 8
+    as_of: "2026-04-30"
+    book: ASC606
+    contracts:
+      - contract: C-FX-084-A
+        version: {revenue_cum: "9700.00"}
+        balances:
+          - entity: US01
+            contract_liability: "0.00"
+            refund_liability: "100.00"
+            functional: {contract_liability: "0.00", refund_liability: "108.00"}
+    subledger:
+      - period_key: FY2026-P04
+        entity: US01
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: REFUND_LIABILITY, account: "2110", dr: "200.00", functional_dr: "228.00"}
+          - {account_role: FX_GAIN_LOSS, account: "7200", dr: "0.00", functional_dr: "2.00"}
+          - {account_role: CONTRACT_LIABILITY, account: "2100", cr: "200.00", functional_cr: "230.00"}
+  - name: may-close
+    after_seq: 8
+    as_of: "2026-05-31"
+    book: ASC606
+    contracts:
+      - contract: C-FX-084-A
+        version: {revenue_cum: "9800.00"}
+        balances:
+          - entity: US01
+            contract_liability: "0.00"
+            refund_liability: "0.00"
+            functional: {contract_liability: "0.00", refund_liability: "0.00"}
+    subledger:
+      - period_key: FY2026-P05
+        entity: US01
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: REFUND_LIABILITY, account: "2110", dr: "100.00", functional_dr: "108.00"}
+          - {account_role: FX_GAIN_LOSS, account: "7200", dr: "0.00", functional_dr: "2.00"}
+          - {account_role: REVENUE, account: "4000", cr: "100.00", functional_cr: "110.00"}

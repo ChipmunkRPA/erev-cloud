@@ -1,0 +1,115 @@
+[project]
+name = "erev-backend"
+version = "0.1.0"
+description = "eRev Cloud backend: API, worker, CLI and the pure revenue engine"
+license = "PolyForm-Noncommercial-1.0.0"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "alembic>=1.13",
+  "argon2-cffi>=23.1",
+  # OIDC client checks and JOSE validation (05 SAR-27; BSD-3-Clause).
+  "authlib>=1.3",
+  # Exact pin: revision 0012 installs this version's schema SQL (DG-MIG-09).
+  "procrastinate==3.9.0",
+  "cryptography>=43",
+  # XML entity-expansion protection; openpyxl uses it when installed (05 UPL-05, IPL-02; PSF-2.0).
+  "defusedxml>=0.7.1",
+  "fastapi>=0.115",
+  "httpx>=0.27",
+  # JWT and JWKS validation for OIDC; Authlib's own JOSE implementation (BSD-3-Clause).
+  "joserfc>=1.0",
+  # Excel reading for imports (D-40; 05 IPL-02; MIT).
+  "openpyxl>=3.1",
+  "psycopg[binary]>=3.2",
+  "pydantic>=2.9",
+  "pydantic-settings>=2.7",
+  "pyotp>=2.9",
+  "python-multipart>=0.0.20",
+  "pyyaml>=6.0",
+  "sqlalchemy>=2.0.36",
+  "structlog>=24.4",
+  "typer>=0.12",
+  "uuid-utils>=0.11",
+  "uvicorn>=0.35",
+  # Excel writing for templates, reports and exports (D-40; BSD-2-Clause).
+  "xlsxwriter>=3.2",
+]
+
+# Hosted providers (05 SAR-21, CMP-05; DG-KRN-FILE-05): Cloud Storage, Cloud KMS and Secret Manager
+# clients, Apache-2.0. Installed only through this extra: the images run `uv sync --extra gcp`
+# (DPL-01, DPL-02) and `make setup` syncs every extra so licence-check reads their metadata.
+[project.optional-dependencies]
+gcp = [
+  "google-cloud-kms>=3.0",
+  "google-cloud-secret-manager>=2.20",
+  "google-cloud-storage>=3.0",
+]
+
+[project.scripts]
+erev = "erev_api.cli:app"
+
+[dependency-groups]
+dev = [
+  "hypothesis>=6.112",
+  "mypy>=1.11",
+  "pytest>=8.3",
+  "ruff>=0.6",
+  "types-PyYAML>=6.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["erev_api", "erev_engine"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+# S608: SQL built from strings (DG-KRN-DB-06); S501: TLS verification disabled; T20: print (DG-LOG-06).
+select = ["E", "F", "W", "I", "B", "UP", "S608", "S501", "T20"]
+
+[tool.ruff.lint.per-file-ignores]
+# DDL helpers interpolate catalogue identifiers, which cannot be bound; they bind no values (DG-MIG-01).
+"**/erev_api/db/migration_ops.py" = ["S608"]
+# Command-line scripts report to stdout; application code logs through structlog (DG-LOG-06).
+"**/scripts/*.py" = ["T20"]
+# Generated from POLICIES.md §1; question text is emitted verbatim on one line (DG-LAY-07).
+"**/erev_api/registry/policies.py" = ["E501"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+cache_dir = "backend/.mypy_cache"
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+# Mako (an Alembic dependency) ships no type information; only Template is used.
+module = ["mako", "mako.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# Authlib ships no type information; only the PKCE and token helpers are used.
+module = ["authlib", "authlib.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# openpyxl, XlsxWriter and defusedxml ship no py.typed marker; spreadsheet I/O stays in typed wrappers.
+module = ["openpyxl", "openpyxl.*", "xlsxwriter", "xlsxwriter.*", "defusedxml", "defusedxml.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+addopts = "--strict-markers --strict-config -ra --durations=25"
+testpaths = ["tests"]
+markers = [
+  "control(control_id): designated system control CTL-NNN proven by this test (G7)",
+  "parity: legacy golden parity case (G3)",
+  "answer_key: accounting answer key (G4)",
+  "property: Hypothesis invariant (G5)",
+  "pg: isolation, immutability, chain, invariant, lint and migration suite (G6)",
+  "perf: performance benchmark (G9)",
+  "slow: a single test that takes more than 10 seconds",
+]

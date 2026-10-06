@@ -1,0 +1,9 @@
+Self-test fixture: no secrets-check pattern matches any line of this file.
+EREV_DEMO_PASSWORD=Demo1234!Demo
+EREV_AUDIT_HMAC_MASTER_KEY=CHANGE_ME_64_HEX
+password = "fixture-not-a-secret" (PASSWORD_ASSIGNMENT scans code files only)
+-----END CERTIFICATE-----
+BEGIN PRIVATE KEY without the dashes
+sk-ant-short
+AKIA-not-a-key
+xoxb-short

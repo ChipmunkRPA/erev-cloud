@@ -1,0 +1,177 @@
+schema: erev-answer-key/1
+id: REC-RB-03-DRG-IN-HOUSE-PATIENT-MONTH-END
+title: "Inpatient DRG case spanning month end: revenue by days of care, contract asset before discharge billing"
+status: active
+families: [REC, POS, JE]
+tags: []
+summary: "research 05 §12 worked example. A Medicare inpatient admitted on 29 March 2026 is assigned a DRG that pays a fixed 15,000.00 for an expected five-day stay. The stay is a performance obligation satisfied over time as the patient receives care (606-10-25-27(a)); progress is days of care over the expected length of stay: 3 of 5 days by 31 March (60%, 9,000.00) and complete on discharge on 3 April (6,000.00). The claim can be submitted only after discharge, so the March revenue is conditional and presented as a contract asset; the claim of 5 April posts the receivable (JET-03, ENGINE mode). Research 05 §12 pitfall 3: no accrual for in-house patients at period end."
+authority:
+  codification: ["606-10-25-27", "606-10-25-31", "606-10-55-17", "606-10-45-3"]
+  ifrs: ["IFRS 15.35(a)"]
+  practice: ["PwC Health care industry guide 3.2 (inpatient stays spanning period end)"]
+  urls: []
+derived_from: {research04: [], research05: [RB-03], chk: [], golden: [], dev: []}
+requirements: [REQ-REC-006, REQ-BIL-004, REQ-BIL-005, REQ-BIL-002]
+policy_refs: [POL-004, POL-091, POL-122]
+review: {author: answer-keys-industries, authored_on: "2026-09-12", reviewer: null, reviewed_on: null, status: pending}
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: RB-US
+      name: "Riverbend Health System (Demo)"
+      functional_currency: USD
+      time_zone: America/New_York
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: "1"}
+      books: [ASC606]
+  periods: {from: "2026-03", to: "2026-04"}
+  period_states: []
+  gl_accounts:
+    - {code: "1100", name: "Accounts receivable", account_type: ASSET}
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4010", name: "Revenue - services and subscriptions", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: ACCOUNTS_RECEIVABLE, account: "1100"}
+    - {account_role: REVENUE, product: DRG-INPATIENT, account: "4010"}
+  customers: [{code: CUST-RB03, name: "Medicare administrative contractor, patient case 2026-0329 (Demo)"}]
+  pob_templates:
+    - code: TPL-INPATIENT
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_A
+      recognition_method: OUTPUT_PERCENT
+      policy_values: {balance.right_to_consideration: CONDITIONAL}
+  products:
+    - code: DRG-INPATIENT
+      name: "Inpatient stay, DRG payment"
+      pob_template: TPL-INPATIENT
+      revenue_category: PATIENT_SERVICE
+  ssp_books:
+    - code: SSP-RB-US-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2025-01-01"
+          methodology_label: "Observable standalone prices (demo study)"
+          entries:
+            - product: DRG-INPATIENT
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges: [{point_value: "15000.00"}]
+  fx_rate_sets: []
+  rule_sets: []
+  policies:
+    tenant: {billing.posting: ENGINE, recognition.time_convention: MONTHLY_EVEN}
+    entities: {}
+    books: {}
+contracts:
+  - external_id: RB-03
+    customer: CUST-RB03
+    contracting_entity: RB-US
+    transaction_currency: USD
+    inception_date: "2026-03-29"
+    lines:
+      - obligation_key: L1-STAY
+        product_code: DRG-INPATIENT
+        quantity: "1"
+        total_price: "15000.00"
+        start_date: "2026-03-29"
+        end_date: "2026-04-03"
+timeline:
+  - seq: "1"
+    kind: event
+    contract: RB-03
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-03-29"
+    payload: {}
+  - seq: "2"
+    kind: event
+    contract: RB-03
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-03-29"
+    payload: {}
+  - seq: "3"
+    kind: event
+    contract: RB-03
+    event_type: PROGRESS_RECORDED
+    effective_date: "2026-03-31"
+    payload: {obligation_key: L1-STAY, cumulative_progress_ratio: "0.6", measure: OUTPUT_PERCENT}
+  - seq: "4"
+    kind: event
+    contract: RB-03
+    event_type: PROGRESS_RECORDED
+    effective_date: "2026-04-03"
+    payload: {obligation_key: L1-STAY, cumulative_progress_ratio: "1", measure: OUTPUT_PERCENT}
+  - seq: "5"
+    kind: event
+    contract: RB-03
+    event_type: BILLING_RECORDED
+    effective_date: "2026-04-05"
+    payload:
+      invoice_number: CLAIM-RB03-0329
+      line_external_id: CLAIM-RB03-0329-1
+      amount: "15000.00"
+      issue_date: "2026-04-05"
+      obligation_key: L1-STAY
+checkpoints:
+  - name: in-house-at-month-end
+    after_seq: "3"
+    as_of: "2026-03-31"
+    book: ASC606
+    contracts:
+      - contract: RB-03
+        version: {revenue_cum: "9000.00", billed_cum: "0.00", transaction_price: "15000.00"}
+        obligations:
+          - obligation_key: L1-STAY
+            allocated_amount: "15000.00"
+            revenue_cum: "9000.00"
+            satisfaction_status: PARTIALLY_SATISFIED
+        balances:
+          - entity: RB-US
+            contract_liability: "0.00"
+            contract_asset: "9000.00"
+            unbilled_receivable: "0.00"
+            accounts_receivable: "0.00"
+    subledger:
+      - period_key: FY2026-P03
+        entity: RB-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_ASSET, account: "1200", dr: "9000.00"}
+          - {account_role: REVENUE, account: "4010", cr: "9000.00"}
+  - name: discharged-and-billed
+    after_seq: "5"
+    as_of: "2026-04-30"
+    book: ASC606
+    contracts:
+      - contract: RB-03
+        version: {revenue_cum: "15000.00", billed_cum: "15000.00", transaction_price: "15000.00"}
+        obligations:
+          - obligation_key: L1-STAY
+            allocated_amount: "15000.00"
+            revenue_cum: "15000.00"
+            satisfaction_status: SATISFIED
+        balances:
+          - entity: RB-US
+            contract_liability: "0.00"
+            contract_asset: "0.00"
+            unbilled_receivable: "0.00"
+            accounts_receivable: "15000.00"
+    subledger:
+      - period_key: FY2026-P04
+        entity: RB-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: ACCOUNTS_RECEIVABLE, account: "1100", dr: "15000.00"}
+          - {account_role: CONTRACT_ASSET, account: "1200", cr: "9000.00"}
+          - {account_role: REVENUE, account: "4010", cr: "6000.00"}

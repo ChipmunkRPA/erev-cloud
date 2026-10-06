@@ -1,0 +1,319 @@
+schema: erev-answer-key/1
+id: DISC-GE-06-IDIQ-TASK-ORDERS-OPTIONS-RPO
+title: "IDIQ vehicle: task orders are contracts; unexercised priced options excluded from the transaction price and RPO"
+status: active
+families: [DISC, STP1, REC, POS]
+tags: []
+summary: "An indefinite-delivery, indefinite-quantity vehicle (ceiling 20,000,000.00; minimum 500,000.00) creates no enforceable rights beyond the minimum until task orders are issued. Task order TO-1 (1 February 2026) buys 12 months of engineering support for a fixed 1,200,000.00 with two option years at 1,300,000.00 each; the options are priced at SSP, so they are not material rights and are excluded from the transaction price and from remaining performance obligations until exercised (606-10-55-42; research 05 §7 pitfall 1). Revenue 100,000.00 a month; monthly invoices on the 10th of the following month; the right for elapsed months is unconditional (termination for convenience pays for work performed), so uninvoiced months are unbilled receivables. RPO at 30 June 2026: 700,000.00. Option year 1 is exercised on 1 February 2027 at SSP and is a separate contract (606-10-25-12): RPO at 28 February 2027 is 1,191,666.67."
+authority:
+  codification: ["606-10-25-1", "606-10-25-3", "606-10-55-42", "606-10-25-12", "606-10-50-13", "606-10-45-4"]
+  ifrs: ["IFRS 15.120"]
+  practice: ["BDO Government contractors guide (IDIQ and options)", "DART 4.4 (contract term and options)"]
+  urls: []
+derived_from: {research04: [], research05: [GE-06], chk: [], golden: [], dev: []}
+requirements: [REQ-RPT-009, REQ-CON-013, REQ-MOD-003, REQ-REC-003, REQ-BIL-004]
+policy_refs: [POL-014, POL-197, POL-201, POL-122]
+review: {author: answer-keys-industries, authored_on: "2026-09-12", reviewer: null, reviewed_on: null, status: pending}
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: GE-US
+      name: "Granitefield Engineering US (Demo)"
+      functional_currency: USD
+      time_zone: America/Denver
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: "1"}
+      books: [ASC606]
+  periods: {from: "2026-02", to: "2027-02"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4010", name: "Revenue - services and subscriptions", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, product: ENG-SUPPORT-12M, account: "4010"}
+  customers: [{code: CUST-GE06, name: "Federal Engineering Directorate (Demo)"}]
+  pob_templates:
+    - code: TPL-SUPPORT-GOV
+      obligation_kind: STANDARD
+      distinctness: series
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_A
+      recognition_method: TIME_ELAPSED
+      ratable_convention: MONTHLY_EVEN
+      series_increment_unit: month
+      policy_values: {balance.right_to_consideration: UNCONDITIONAL}
+  products:
+    - code: ENG-SUPPORT-12M
+      name: "Engineering support, 12 months"
+      pob_template: TPL-SUPPORT-GOV
+      revenue_category: GOVERNMENT
+  ssp_books:
+    - code: SSP-GE-US-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2025-01-01"
+          methodology_label: "Observable standalone prices (demo study)"
+          entries:
+            - product: ENG-SUPPORT-12M
+              currency: USD
+              method: observable
+              value_basis: AMOUNT  # D-93 (4): declared remaining-increments reading (the reading the key's oracle embodies); no value change
+              distinctness: distinct
+              ranges: [{point_value: "1300000.00"}]
+  fx_rate_sets: []
+  rule_sets: []
+  policies:
+    tenant: {billing.posting: ERP, recognition.time_convention: MONTHLY_EVEN}
+    entities: {}
+    books: {}
+contracts:
+  - external_id: GE-06-TO1
+    customer: CUST-GE06
+    contracting_entity: GE-US
+    transaction_currency: USD
+    inception_date: "2026-02-01"
+    contract_type: GOVERNMENT_IDIQ_TASK_ORDER
+    lines:
+      - obligation_key: L1-SUPPORT
+        product_code: ENG-SUPPORT-12M
+        quantity: "1"
+        total_price: "1200000.00"
+        start_date: "2026-02-01"
+        end_date: "2027-01-31"
+    judgements:
+      - handle: JDG-GE06-OPTIONS
+        topic: CONTRACT_TERM
+        conclusion: "IDIQ ceiling and option years are not enforceable consideration; options priced at SSP are not material rights."
+        questionnaire: {enforceable_end_date: "2027-01-31", termination_penalty_substantive: false}
+  - external_id: GE-06-OPT1
+    customer: CUST-GE06
+    contracting_entity: GE-US
+    transaction_currency: USD
+    inception_date: "2027-02-01"
+    contract_type: GOVERNMENT_IDIQ_TASK_ORDER
+    lines:
+      - obligation_key: L1-SUPPORT-OPT1
+        product_code: ENG-SUPPORT-12M
+        quantity: "1"
+        total_price: "1300000.00"
+        start_date: "2027-02-01"
+        end_date: "2028-01-31"
+timeline:
+  - seq: "1"
+    kind: event
+    contract: GE-06-TO1
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-02-01"
+    payload: {}
+  - seq: "2"
+    kind: event
+    contract: GE-06-TO1
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-02-01"
+    payload: {}
+  - seq: "3"
+    kind: event
+    contract: GE-06-TO1
+    event_type: BILLING_RECORDED
+    effective_date: "2026-03-10"
+    payload:
+      invoice_number: INV-GE06-TO1-01
+      line_external_id: INV-GE06-TO1-01-1
+      amount: "100000.00"
+      issue_date: "2026-03-10"
+      obligation_key: L1-SUPPORT
+  - seq: "4"
+    kind: event
+    contract: GE-06-TO1
+    event_type: BILLING_RECORDED
+    effective_date: "2026-04-10"
+    payload:
+      invoice_number: INV-GE06-TO1-02
+      line_external_id: INV-GE06-TO1-02-1
+      amount: "100000.00"
+      issue_date: "2026-04-10"
+      obligation_key: L1-SUPPORT
+  - seq: "5"
+    kind: event
+    contract: GE-06-TO1
+    event_type: BILLING_RECORDED
+    effective_date: "2026-05-10"
+    payload:
+      invoice_number: INV-GE06-TO1-03
+      line_external_id: INV-GE06-TO1-03-1
+      amount: "100000.00"
+      issue_date: "2026-05-10"
+      obligation_key: L1-SUPPORT
+  - seq: "6"
+    kind: event
+    contract: GE-06-TO1
+    event_type: BILLING_RECORDED
+    effective_date: "2026-06-10"
+    payload:
+      invoice_number: INV-GE06-TO1-04
+      line_external_id: INV-GE06-TO1-04-1
+      amount: "100000.00"
+      issue_date: "2026-06-10"
+      obligation_key: L1-SUPPORT
+  - seq: "7"
+    kind: event
+    contract: GE-06-TO1
+    event_type: BILLING_RECORDED
+    effective_date: "2026-07-10"
+    payload:
+      invoice_number: INV-GE06-TO1-05
+      line_external_id: INV-GE06-TO1-05-1
+      amount: "100000.00"
+      issue_date: "2026-07-10"
+      obligation_key: L1-SUPPORT
+  - seq: "8"
+    kind: event
+    contract: GE-06-TO1
+    event_type: BILLING_RECORDED
+    effective_date: "2026-08-10"
+    payload:
+      invoice_number: INV-GE06-TO1-06
+      line_external_id: INV-GE06-TO1-06-1
+      amount: "100000.00"
+      issue_date: "2026-08-10"
+      obligation_key: L1-SUPPORT
+  - seq: "9"
+    kind: event
+    contract: GE-06-TO1
+    event_type: BILLING_RECORDED
+    effective_date: "2026-09-10"
+    payload:
+      invoice_number: INV-GE06-TO1-07
+      line_external_id: INV-GE06-TO1-07-1
+      amount: "100000.00"
+      issue_date: "2026-09-10"
+      obligation_key: L1-SUPPORT
+  - seq: "10"
+    kind: event
+    contract: GE-06-TO1
+    event_type: BILLING_RECORDED
+    effective_date: "2026-10-10"
+    payload:
+      invoice_number: INV-GE06-TO1-08
+      line_external_id: INV-GE06-TO1-08-1
+      amount: "100000.00"
+      issue_date: "2026-10-10"
+      obligation_key: L1-SUPPORT
+  - seq: "11"
+    kind: event
+    contract: GE-06-TO1
+    event_type: BILLING_RECORDED
+    effective_date: "2026-11-10"
+    payload:
+      invoice_number: INV-GE06-TO1-09
+      line_external_id: INV-GE06-TO1-09-1
+      amount: "100000.00"
+      issue_date: "2026-11-10"
+      obligation_key: L1-SUPPORT
+  - seq: "12"
+    kind: event
+    contract: GE-06-TO1
+    event_type: BILLING_RECORDED
+    effective_date: "2026-12-10"
+    payload:
+      invoice_number: INV-GE06-TO1-10
+      line_external_id: INV-GE06-TO1-10-1
+      amount: "100000.00"
+      issue_date: "2026-12-10"
+      obligation_key: L1-SUPPORT
+  - seq: "13"
+    kind: event
+    contract: GE-06-TO1
+    event_type: BILLING_RECORDED
+    effective_date: "2027-01-10"
+    payload:
+      invoice_number: INV-GE06-TO1-11
+      line_external_id: INV-GE06-TO1-11-1
+      amount: "100000.00"
+      issue_date: "2027-01-10"
+      obligation_key: L1-SUPPORT
+  - seq: "14"
+    kind: event
+    contract: GE-06-TO1
+    event_type: BILLING_RECORDED
+    effective_date: "2027-02-10"
+    payload:
+      invoice_number: INV-GE06-TO1-12
+      line_external_id: INV-GE06-TO1-12-1
+      amount: "100000.00"
+      issue_date: "2027-02-10"
+      obligation_key: L1-SUPPORT
+  - seq: "15"
+    kind: event
+    contract: GE-06-OPT1
+    event_type: CONTRACT_BOOKED
+    effective_date: "2027-02-01"
+    payload: {}
+  - seq: "16"
+    kind: event
+    contract: GE-06-OPT1
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2027-02-01"
+    payload: {}
+checkpoints:
+  - name: task-order-mid-year
+    after_seq: "6"
+    as_of: "2026-06-30"
+    book: ASC606
+    contracts:
+      - contract: GE-06-TO1
+        version:
+          transaction_price: "1200000.00"
+          revenue_cum: "500000.00"
+          billed_cum: "400000.00"
+          rpo_amount: "700000.00"
+        obligations: [{obligation_key: L1-SUPPORT, allocated_amount: "1200000.00", revenue_cum: "500000.00"}]
+        balances:
+          - {entity: GE-US, contract_liability: "0.00", contract_asset: "0.00", unbilled_receivable: "100000.00"}
+    subledger:
+      - period_key: FY2026-P06
+        entity: GE-US
+        match: exact
+        contract: GE-06-TO1
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "100000.00"}
+          - {account_role: REVENUE, account: "4010", cr: "100000.00"}
+  - name: option-year-exercised
+    after_seq: "16"
+    as_of: "2027-02-28"
+    book: ASC606
+    contracts:
+      - contract: GE-06-TO1
+        version:
+          transaction_price: "1200000.00"
+          revenue_cum: "1200000.00"
+          billed_cum: "1200000.00"
+          rpo_amount: "0.00"
+        obligations: [{obligation_key: L1-SUPPORT, allocated_amount: "1200000.00", revenue_cum: "1200000.00"}]
+        balances: [{entity: GE-US, contract_liability: "0.00", contract_asset: "0.00", unbilled_receivable: "0.00"}]
+      - contract: GE-06-OPT1
+        version:
+          transaction_price: "1300000.00"
+          revenue_cum: "108333.33"
+          billed_cum: "0.00"
+          rpo_amount: "1191666.67"
+        obligations: [{obligation_key: L1-SUPPORT-OPT1, allocated_amount: "1300000.00", revenue_cum: "108333.33"}]
+        balances:
+          - {entity: GE-US, contract_liability: "0.00", contract_asset: "0.00", unbilled_receivable: "108333.33"}
+    subledger:
+      - period_key: FY2027-P02
+        entity: GE-US
+        match: exact
+        contract: GE-06-OPT1
+        grain: role_account
+        lines:
+          - {account_role: REVENUE, account: "4010", cr: "108333.33"}
+          - {account_role: UNBILLED_RECEIVABLE, account: "1105", dr: "108333.33"}

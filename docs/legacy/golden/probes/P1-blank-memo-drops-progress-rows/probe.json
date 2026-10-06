@@ -1,0 +1,151 @@
+{
+  "id": "P1-blank-memo-drops-progress-rows",
+  "question": "Does a blank memo cell silently drop a delivery/billing row?",
+  "code_ref": "eRev.py l.909-913: df_progress.groupby([... 'Memo 1', 'Memo 2', 'Memo 3']).sum() uses pandas dropna=True",
+  "baseline": "UAT replay step 04: Contract 1 POB #2 delivered 1.0 / billed 100 / revenue 118.5332; POB #3 delivered 0.5 / billed 100 / revenue 48.3152",
+  "sequence": [
+    {
+      "i": 0,
+      "button_label": "!Reset Database Completely!",
+      "file": null,
+      "date_input": null,
+      "rows_before": 24,
+      "rows_after": 0,
+      "popups": [
+        {
+          "kind": "QMessageBox.question",
+          "title": "Confirmation",
+          "text": "Do you want to proceed wiping out the current database?"
+        },
+        {
+          "kind": "QMessageBox.information",
+          "title": "ASC606 database reset",
+          "text": "ASC606 Database has been wiped out and reset!"
+        }
+      ]
+    },
+    {
+      "i": 1,
+      "button_label": "Load SSPs",
+      "file": "SKU SSP Template.xlsx",
+      "date_input": null,
+      "rows_before": 0,
+      "rows_after": 0,
+      "popups": [
+        {
+          "kind": "QMessageBox.information",
+          "title": "SSPs are set up",
+          "text": "All company SSPs for the uploaded file are set up. To add or update, re-upload SSPs to refresh."
+        }
+      ]
+    },
+    {
+      "i": 2,
+      "button_label": "Load Contracts",
+      "file": "Contract Setup Template 1.1.2023.xlsx",
+      "date_input": null,
+      "rows_before": 0,
+      "rows_after": 8,
+      "popups": [
+        {
+          "kind": "QMessageBox.information",
+          "title": "Contracts are set up",
+          "text": "All contracts(s) within the uploaded file are successfully set up!"
+        }
+      ]
+    },
+    {
+      "i": 3,
+      "button_label": "Load Delivery and Billing",
+      "file": "P1 progress 1.31.2023 - Memo 3 blank on Contract 1 POB #2 and POB #3.xlsx",
+      "date_input": "2023-01-31",
+      "rows_before": 8,
+      "rows_after": 16,
+      "popups": [
+        {
+          "kind": "QMessageBox.information",
+          "title": "Rev Rec Success",
+          "text": "Rev Rec has been processed with uploaded deliveries and/or billings for the current date :)"
+        }
+      ]
+    }
+  ],
+  "reports": {
+    "je_gross": {
+      "window": [
+        "2023-01-01",
+        "2023-01-31"
+      ],
+      "totals": {
+        "lines": 5,
+        "by_account": [
+          {
+            "account": "5001",
+            "debit": 0.0,
+            "credit": 187.69,
+            "net": -187.69
+          },
+          {
+            "account": "15001",
+            "debit": 28.84,
+            "credit": -0.0,
+            "net": 28.84
+          },
+          {
+            "account": "15002",
+            "debit": 58.85,
+            "credit": -0.0,
+            "net": 58.85
+          },
+          {
+            "account": "21001",
+            "debit": 100.0,
+            "credit": -0.0,
+            "net": 100.0
+          }
+        ],
+        "total_debit": 187.69,
+        "total_credit": 187.69,
+        "net": 0.0
+      }
+    }
+  },
+  "watched_latest": [
+    {
+      "contract": "Contract 1",
+      "pob": "POB #1",
+      "Current Delivery - Cumulative": 2.0,
+      "Current Billing - Cumulative": 100.0,
+      "Current Rev Rec - Cumulative": 128.8404,
+      "Current Pre-ASC606 Revenue (Net Design Only)": 0.0,
+      "Current Pre-ASC606 Revenue (Net Design Only) - Cumulative": 0.0,
+      "Current Remaining Qty": 3.0,
+      "Current Remaining Allocation": 193.2607,
+      "Current Period": "2023-01-31 00:00:00"
+    },
+    {
+      "contract": "Contract 1",
+      "pob": "POB #2",
+      "Current Delivery - Cumulative": 0.0,
+      "Current Billing - Cumulative": 0.0,
+      "Current Rev Rec - Cumulative": 0.0,
+      "Current Pre-ASC606 Revenue (Net Design Only)": 0.0,
+      "Current Pre-ASC606 Revenue (Net Design Only) - Cumulative": 0.0,
+      "Current Remaining Qty": 2.0,
+      "Current Remaining Allocation": 237.0664,
+      "Current Period": "2023-01-31 00:00:00"
+    },
+    {
+      "contract": "Contract 1",
+      "pob": "POB #3",
+      "Current Delivery - Cumulative": 0.0,
+      "Current Billing - Cumulative": 0.0,
+      "Current Rev Rec - Cumulative": 0.0,
+      "Current Pre-ASC606 Revenue (Net Design Only)": 0.0,
+      "Current Pre-ASC606 Revenue (Net Design Only) - Cumulative": 0.0,
+      "Current Remaining Qty": 1.0,
+      "Current Remaining Allocation": 96.6303,
+      "Current Period": "2023-01-31 00:00:00"
+    }
+  ]
+}

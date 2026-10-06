@@ -1,0 +1,236 @@
+schema: erev-answer-key/1
+id: REC-BR-04-BILL-AND-HOLD-CUSTODIAL
+title: "Bill-and-hold robots with a custodial service POB recognised over the holding period"
+status: active
+families: [REC, ALC, POB]
+tags: []
+summary: "A customer orders 10 palletising robots for 500,000.00 on 10 January 2026 and asks Bracken to hold them until its new plant opens. On 31 March the robots are complete, tagged and segregated as the customer's, ready for shipment and cannot be redirected, and the customer has requested the arrangement: the four criteria of 606-10-55-83 are met and recorded, control transfers and the robots are invoiced. Bracken will store the robots for an expected six months (April to September); the custodial service is a separate POB (606-10-55-84; POL-094) with SSP 12,000.00 and no stated price. Allocation over SSPs 520,000.00 and 12,000.00: robots 488,721.80, custody 11,278.20 (the remaining cent goes to custody by larger fractional remainder), recognised 1,879.70 a month."
+authority:
+  codification: ["606-10-55-81", "606-10-55-82", "606-10-55-83", "606-10-55-84", "606-10-25-30", "606-10-32-28"]
+  ifrs: ["IFRS 15.B79", "IFRS 15.B81"]
+  practice: ["FASB Example 63 (606-10-55-409 to 55-413)"]
+  urls: []
+derived_from: {research04: [], research05: [BR-04], chk: [], golden: [], dev: []}
+requirements: [REQ-REC-012, REQ-REC-001, REQ-ALC-001, REQ-ALC-002, REQ-POB-002]
+policy_refs: [POL-002, POL-090, POL-094]
+review: {author: answer-keys-industries, authored_on: "2026-09-12", reviewer: null, reviewed_on: null, status: pending}
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: BR-US
+      name: "Bracken Robotics US (Demo)"
+      functional_currency: USD
+      time_zone: America/Chicago
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: "1"}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2026-09"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4000", name: "Revenue - products", account_type: REVENUE}
+    - {code: "4010", name: "Revenue - services and subscriptions", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, product: ROBOT-PAL-LOT10, account: "4000"}
+    - {account_role: REVENUE, product: CUSTODY-SVC, account: "4010"}
+  customers: [{code: CUST-BR04, name: "Ulvane Telematics Inc. (Demo)"}]
+  pob_templates:
+    - code: TPL-GOODS
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: POINT_IN_TIME
+      over_time_criterion: NOT_APPLICABLE
+      recognition_method: POINT_IN_TIME
+      policy_values: {balance.right_to_consideration: UNCONDITIONAL}
+    - code: TPL-CUSTODY
+      obligation_kind: CUSTODIAL
+      distinctness: distinct
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_A
+      recognition_method: TIME_ELAPSED
+      ratable_convention: MONTHLY_EVEN
+      policy_values: {balance.right_to_consideration: CONDITIONAL}
+  products:
+    - code: ROBOT-PAL-LOT10
+      name: "Palletising robots, lot of 10"
+      pob_template: TPL-GOODS
+      revenue_category: PRODUCTS
+    - {code: CUSTODY-SVC, name: "Custodial storage service", pob_template: TPL-CUSTODY, revenue_category: SERVICES}
+  ssp_books:
+    - code: SSP-BR-US-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2025-01-01"
+          methodology_label: "Observable standalone prices (demo study)"
+          entries:
+            - product: ROBOT-PAL-LOT10
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges: [{point_value: "520000.00"}]
+            - product: CUSTODY-SVC
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges: [{point_value: "12000.00"}]
+  fx_rate_sets: []
+  rule_sets: []
+  policies:
+    tenant:
+      billing.posting: ERP
+      recognition.time_convention: MONTHLY_EVEN
+      bill_and_hold.custodial_pob: CREATE_WHEN_SSP_PROVIDED
+    entities: {}
+    books: {}
+contracts:
+  - external_id: BR-04
+    customer: CUST-BR04
+    contracting_entity: BR-US
+    transaction_currency: USD
+    inception_date: "2026-01-10"
+    lines:
+      - {obligation_key: L1-ROBOTS, product_code: ROBOT-PAL-LOT10, quantity: "1", total_price: "500000.00"}
+      - obligation_key: L2-CUSTODY
+        product_code: CUSTODY-SVC
+        quantity: "1"
+        total_price: "0.00"
+        start_date: "2026-04-01"
+        end_date: "2026-09-30"
+    judgements:
+      - handle: JDG-BR04-BAH
+        topic: BILL_AND_HOLD
+        subject_obligation_key: L1-ROBOTS
+        conclusion: "Bill-and-hold criteria 606-10-55-83(a)-(d) met on 31 March 2026: customer request letter, segregation photos, factory acceptance test, serial numbers reserved."
+        questionnaire:
+          obligation_key: L1-ROBOTS
+          reason_substantive: true
+          identified_as_customer_product: true
+          ready_for_physical_transfer: true
+          cannot_use_or_direct_to_another_customer: true
+timeline:
+  - seq: "1"
+    kind: event
+    contract: BR-04
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-01-10"
+    payload: {}
+  - seq: "2"
+    kind: event
+    contract: BR-04
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-10"
+    payload: {}
+  - seq: "3"
+    kind: event
+    contract: BR-04
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-03-31"
+    payload: {obligation_key: L1-ROBOTS, quantity: "1", trigger: BILL_AND_HOLD}
+  - seq: "4"
+    kind: event
+    contract: BR-04
+    event_type: BILLING_RECORDED
+    effective_date: "2026-03-31"
+    payload:
+      invoice_number: INV-BR04-001
+      line_external_id: INV-BR04-001-1
+      amount: "500000.00"
+      issue_date: "2026-03-31"
+      obligation_key: L1-ROBOTS
+checkpoints:
+  - name: before-bill-and-hold
+    after_seq: "2"
+    as_of: "2026-02-28"
+    book: ASC606
+    contracts:
+      - contract: BR-04
+        version: {transaction_price: "500000.00", revenue_cum: "0.00", billed_cum: "0.00"}
+        obligations:
+          - obligation_key: L1-ROBOTS
+            allocated_amount: "488721.80"
+            revenue_cum: "0.00"
+            satisfaction_status: UNSATISFIED
+          - obligation_key: L2-CUSTODY
+            allocated_amount: "11278.20"
+            revenue_cum: "0.00"
+            satisfaction_status: UNSATISFIED
+        balances: [{entity: BR-US, contract_liability: "0.00", contract_asset: "0.00", unbilled_receivable: "0.00"}]
+  - name: bill-and-hold-transfer
+    after_seq: "4"
+    as_of: "2026-03-31"
+    book: ASC606
+    contracts:
+      - contract: BR-04
+        version: {transaction_price: "500000.00", revenue_cum: "488721.80", billed_cum: "500000.00"}
+        obligations:
+          - obligation_key: L1-ROBOTS
+            allocated_amount: "488721.80"
+            revenue_cum: "488721.80"
+            satisfaction_status: SATISFIED
+            allocated_exact: "488721.804511"
+          - obligation_key: L2-CUSTODY
+            allocated_amount: "11278.20"
+            revenue_cum: "0.00"
+            satisfaction_status: UNSATISFIED
+            allocated_exact: "11278.195489"
+        balances: [{entity: BR-US, contract_liability: "11278.20", contract_asset: "0.00", unbilled_receivable: "0.00"}]
+        schedule:
+          - obligation_key: L2-CUSTODY
+            schedule_kind: REVENUE
+            line_type: NORMAL
+            amounts:
+              FY2026-P04: "1879.70"
+              FY2026-P05: "1879.70"
+              FY2026-P06: "1879.70"
+              FY2026-P07: "1879.70"
+              FY2026-P08: "1879.70"
+              FY2026-P09: "1879.70"
+    subledger:
+      - period_key: FY2026-P03
+        entity: BR-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "488721.80"}
+          - {account_role: REVENUE, account: "4000", cr: "488721.80"}
+  - name: custody-mid
+    after_seq: "4"
+    as_of: "2026-06-30"
+    book: ASC606
+    contracts:
+      - contract: BR-04
+        version: {transaction_price: "500000.00", revenue_cum: "494360.90", billed_cum: "500000.00"}
+        obligations:
+          - obligation_key: L1-ROBOTS
+            allocated_amount: "488721.80"
+            revenue_cum: "488721.80"
+            satisfaction_status: SATISFIED
+          - obligation_key: L2-CUSTODY
+            allocated_amount: "11278.20"
+            revenue_cum: "5639.10"
+            satisfaction_status: PARTIALLY_SATISFIED
+        balances: [{entity: BR-US, contract_liability: "5639.10", contract_asset: "0.00", unbilled_receivable: "0.00"}]
+  - name: custody-complete
+    after_seq: "4"
+    as_of: "2026-09-30"
+    book: ASC606
+    contracts:
+      - contract: BR-04
+        version: {transaction_price: "500000.00", revenue_cum: "500000.00", billed_cum: "500000.00"}
+        obligations:
+          - obligation_key: L1-ROBOTS
+            allocated_amount: "488721.80"
+            revenue_cum: "488721.80"
+            satisfaction_status: SATISFIED
+          - obligation_key: L2-CUSTODY
+            allocated_amount: "11278.20"
+            revenue_cum: "11278.20"
+            satisfaction_status: SATISFIED
+        balances: [{entity: BR-US, contract_liability: "0.00", contract_asset: "0.00", unbilled_receivable: "0.00"}]

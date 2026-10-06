@@ -1,0 +1,260 @@
+schema: erev-answer-key/1
+id: REC-BR-08-CUSTOMISED-TOOLING-COST-TO-COST
+title: "Customised tooling over time on cost-to-cost with a non-distinct change order (cumulative catch-up)"
+status: active
+families: [REC, MOD, POS]
+tags: [construction]
+summary: "Bracken Robotik GmbH builds customer-specific end-of-arm tooling for EUR 400,000.00 (inception 1 February 2026). The tooling has no alternative use and the contract gives an enforceable right to payment for performance to date (606-10-25-27(c)), so revenue is recognised over time on cost-to-cost; EAC 300,000.00. Costs: 30,000.00 in February, 60,000.00 in March, 60,000.00 in April. On 30 April an approved change order adds cooling channels for 60,000.00 and 40,000.00 of cost; the work is not distinct from the tooling, so the modification is part of the existing contract (606-10-25-13(b)): allocation 460,000.00, progress 150,000 ÷ 340,000, cumulative revenue 202,941.18, catch-up +2,941.18 (ALG-04 step 6). May costs 100,000.00; June costs 90,000.00 complete the work. Milestone invoices 200,000.00 (31 March) and 260,000.00 (30 June). Revenue ahead of the milestone invoices is conditional: contract asset."
+authority:
+  codification: ["606-10-25-27", "606-10-25-31", "606-10-55-20", "606-10-25-10", "606-10-25-13", "606-10-45-3"]
+  ifrs: ["IFRS 15.35(c)", "IFRS 15.21(b)"]
+  practice: ["DART 8.4 (no alternative use and right to payment)", "FASB Example 8 pattern"]
+  urls: []
+derived_from: {research04: [], research05: [BR-08], chk: [], golden: [], dev: []}
+requirements: [REQ-REC-002, REQ-REC-007, REQ-MOD-005, REQ-MOD-001, REQ-BIL-004, REQ-TP-004]
+policy_refs: [POL-091, POL-102, POL-100, POL-122]
+review: {author: answer-keys-industries, authored_on: "2026-09-12", reviewer: null, reviewed_on: null, status: pending}
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: EUR, preset: DEFAULT}
+  currencies: [EUR]
+  entities:
+    - code: BR-DE
+      name: "Bracken Robotik GmbH (Demo)"
+      functional_currency: EUR
+      time_zone: Europe/Berlin
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: "1"}
+      books: [ASC606]
+  periods: {from: "2026-02", to: "2026-06"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4000", name: "Revenue - products", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, product: TOOL-CUSTOM, account: "4000"}
+  customers: [{code: CUST-BR08, name: "Hollenbrand Klinikbedarf GmbH (Demo)"}]
+  pob_templates:
+    - code: TPL-TOOLING
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_C
+      recognition_method: COST_TO_COST
+      policy_values: {balance.right_to_consideration: CONDITIONAL}
+  products:
+    - code: TOOL-CUSTOM
+      name: "Customer-specific end-of-arm tooling"
+      pob_template: TPL-TOOLING
+      revenue_category: PRODUCTS
+  ssp_books:
+    - code: SSP-BR-DE-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2025-01-01"
+          methodology_label: "Observable standalone prices (demo study)"
+          entries:
+            - product: TOOL-CUSTOM
+              currency: EUR
+              method: observable
+              distinctness: distinct
+              ranges: [{point_value: "400000.00"}]
+  fx_rate_sets: []
+  rule_sets: []
+  policies:
+    tenant: {billing.posting: ERP, recognition.time_convention: MONTHLY_EVEN}
+    entities: {}
+    books: {}
+contracts:
+  - external_id: BR-08
+    customer: CUST-BR08
+    contracting_entity: BR-DE
+    transaction_currency: EUR
+    inception_date: "2026-02-01"
+    lines:
+      - obligation_key: L1-TOOL
+        product_code: TOOL-CUSTOM
+        quantity: "1"
+        total_price: "400000.00"
+        start_date: "2026-02-01"
+        end_date: "2026-06-30"
+    estimates:
+      - element_code: EAC-BR08
+        estimate_kind: EAC
+        method: COST_BUILDUP
+        obligation_key: L1-TOOL
+        versions:
+          - version_no: "1"
+            effective_date: "2026-02-01"
+            expected_total_amount: "300000.00"
+            currency: EUR
+            rationale: "Engineering cost build-up."
+          - version_no: "2"
+            effective_date: "2026-04-30"
+            expected_total_amount: "340000.00"
+            currency: EUR
+            rationale: "Change order CO-1 adds 40,000.00 of cost."
+    modifications:
+      - reference: MOD-BR08-CO1
+        effective_date: "2026-04-30"
+        kind: OTHER
+        lines:
+          - obligation_key: L1-TOOL
+            product_code: TOOL-CUSTOM
+            quantity: "1"
+            total_price: "460000.00"
+            start_date: "2026-02-01"
+            end_date: "2026-06-30"
+        price_change_amount: "60000.00"
+timeline:
+  - seq: "1"
+    kind: event
+    contract: BR-08
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-02-01"
+    payload: {}
+  - seq: "2"
+    kind: event
+    contract: BR-08
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-02-01"
+    payload: {}
+  - seq: "3"
+    kind: event
+    contract: BR-08
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-02-01"
+    payload: {estimate: EAC-BR08, version_no: "1"}
+  - seq: "4"
+    kind: event
+    contract: BR-08
+    event_type: COST_INCURRED
+    effective_date: "2026-02-28"
+    payload: {purpose: PROGRESS_INPUT, obligation_key: L1-TOOL, amount: "30000.00"}
+  - seq: "5"
+    kind: event
+    contract: BR-08
+    event_type: COST_INCURRED
+    effective_date: "2026-03-31"
+    payload: {purpose: PROGRESS_INPUT, obligation_key: L1-TOOL, amount: "60000.00"}
+  - seq: "6"
+    kind: event
+    contract: BR-08
+    event_type: BILLING_RECORDED
+    effective_date: "2026-03-31"
+    payload:
+      invoice_number: INV-BR08-M1
+      line_external_id: INV-BR08-M1-1
+      amount: "200000.00"
+      issue_date: "2026-03-31"
+      obligation_key: L1-TOOL
+  - seq: "7"
+    kind: event
+    contract: BR-08
+    event_type: COST_INCURRED
+    effective_date: "2026-04-30"
+    payload: {purpose: PROGRESS_INPUT, obligation_key: L1-TOOL, amount: "60000.00"}
+  - seq: "8"
+    kind: event
+    contract: BR-08
+    event_type: CONTRACT_AMENDED
+    effective_date: "2026-04-30"
+    payload: {modification: MOD-BR08-CO1}
+  - seq: "9"
+    kind: event
+    contract: BR-08
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-04-30"
+    payload: {estimate: EAC-BR08, version_no: "2"}
+  - seq: "10"
+    kind: event
+    contract: BR-08
+    event_type: COST_INCURRED
+    effective_date: "2026-05-31"
+    payload: {purpose: PROGRESS_INPUT, obligation_key: L1-TOOL, amount: "100000.00"}
+  - seq: "11"
+    kind: event
+    contract: BR-08
+    event_type: COST_INCURRED
+    effective_date: "2026-06-30"
+    payload: {purpose: PROGRESS_INPUT, obligation_key: L1-TOOL, amount: "90000.00"}
+  - seq: "12"
+    kind: event
+    contract: BR-08
+    event_type: BILLING_RECORDED
+    effective_date: "2026-06-30"
+    payload:
+      invoice_number: INV-BR08-M2
+      line_external_id: INV-BR08-M2-1
+      amount: "260000.00"
+      issue_date: "2026-06-30"
+      obligation_key: L1-TOOL
+checkpoints:
+  - name: february
+    after_seq: "4"
+    as_of: "2026-02-28"
+    book: ASC606
+    contracts:
+      - contract: BR-08
+        version: {transaction_price: "400000.00", revenue_cum: "40000.00", billed_cum: "0.00"}
+        obligations:
+          - obligation_key: L1-TOOL
+            allocated_amount: "400000.00"
+            revenue_cum: "40000.00"
+            satisfaction_status: PARTIALLY_SATISFIED
+        balances: [{entity: BR-DE, contract_liability: "0.00", contract_asset: "40000.00", unbilled_receivable: "0.00"}]
+  - name: change-order
+    after_seq: "9"
+    as_of: "2026-04-30"
+    book: ASC606
+    contracts:
+      - contract: BR-08
+        version: {transaction_price: "460000.00", revenue_cum: "202941.18", billed_cum: "200000.00"}
+        obligations:
+          - obligation_key: L1-TOOL
+            allocated_amount: "460000.00"
+            revenue_cum: "202941.18"
+            satisfaction_status: PARTIALLY_SATISFIED
+        balances: [{entity: BR-DE, contract_liability: "0.00", contract_asset: "2941.18", unbilled_receivable: "0.00"}]
+        modifications:
+          - reference: MOD-BR08-CO1
+            proposed_treatments: {L1-TOOL: CUMULATIVE_CATCH_UP}
+        # D-92 (2): the CV-50 node catch_up@<event key>:<obligation key>:- of the change-order amendment
+        # (seq 8; OQ-A-23 retired catch_up:<obligation key>:<period key>); the value is unchanged.
+        trace: [{measure: "catch_up@BR-08/EV-000008", subject_key: L1-TOOL, value: "2941.18"}]
+    subledger:
+      - period_key: FY2026-P04
+        entity: BR-DE
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_ASSET, account: "1200", dr: "2941.18"}
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "80000.00"}
+          - {account_role: REVENUE, account: "4000", cr: "82941.18"}
+  - name: complete
+    after_seq: "12"
+    as_of: "2026-06-30"
+    book: ASC606
+    contracts:
+      - contract: BR-08
+        version: {transaction_price: "460000.00", revenue_cum: "460000.00", billed_cum: "460000.00"}
+        obligations:
+          - obligation_key: L1-TOOL
+            allocated_amount: "460000.00"
+            revenue_cum: "460000.00"
+            satisfaction_status: SATISFIED
+        balances: [{entity: BR-DE, contract_liability: "0.00", contract_asset: "0.00", unbilled_receivable: "0.00"}]
+    subledger:
+      - period_key: FY2026-P06
+        entity: BR-DE
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_ASSET, account: "1200", cr: "138235.29"}
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "260000.00"}
+          - {account_role: REVENUE, account: "4000", cr: "121764.71"}

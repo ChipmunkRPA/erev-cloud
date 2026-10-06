@@ -1,0 +1,4 @@
+Self-test fixture for PEM_BLOCK (DG-MK-secrets-check). Not a real certificate.
+-----BEGIN CERTIFICATE-----
+fixture body without certificate material
+-----END CERTIFICATE-----

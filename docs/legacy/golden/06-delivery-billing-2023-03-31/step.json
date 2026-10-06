@@ -1,0 +1,130 @@
+{
+  "nn": "06",
+  "slug": "delivery-billing-2023-03-31",
+  "handler": "browse_file_Deliveries",
+  "button": "button3",
+  "button_label": "Load Delivery and Billing",
+  "file": "ops/Example UATs/Delivery and Billing UAT/Contract Progress Tracking Template 3.31.2023.xlsx",
+  "file_sha256": "6a373ef4913ee9f58186a22df4c195542dffe4a48bf0d3ed2db0947f8faf139c",
+  "date_input": "2023-03-31",
+  "report_window": [
+    "2023-03-01",
+    "2023-03-31"
+  ],
+  "contract_live_table_exists": true,
+  "sku_ssp_table_exists": true,
+  "rows_before": 36,
+  "rows_after": 48,
+  "rows_appended": 12,
+  "new_version_tokens": [
+    "step-06"
+  ],
+  "sku_ssp_rows": 7,
+  "handler_success": true,
+  "handler_popups": [
+    {
+      "kind": "QMessageBox.information",
+      "title": "Rev Rec Success",
+      "text": "Rev Rec has been processed with uploaded deliveries and/or billings for the current date :)"
+    }
+  ],
+  "report_popups": 4,
+  "unused_queued_inputs": [],
+  "report_unused_inputs": {
+    "latest_contracts": [],
+    "je_gross": [],
+    "je_delta": [],
+    "contract_history": []
+  },
+  "reports_captured": {
+    "latest_contracts": true,
+    "je_gross": true,
+    "je_delta": true,
+    "contract_history": true
+  },
+  "je_gross_totals": {
+    "lines": 6,
+    "by_account": [
+      {
+        "account": "5002",
+        "debit": 0.0,
+        "credit": 217.46,
+        "net": -217.46
+      },
+      {
+        "account": "5003",
+        "debit": 0.0,
+        "credit": 46.15,
+        "net": -46.15
+      },
+      {
+        "account": "15002",
+        "debit": 46.15,
+        "credit": -0.0,
+        "net": 46.15
+      },
+      {
+        "account": "21001",
+        "debit": 118.53,
+        "credit": -0.0,
+        "net": 118.53
+      },
+      {
+        "account": "21002",
+        "debit": 98.93,
+        "credit": -0.0,
+        "net": 98.93
+      }
+    ],
+    "total_debit": 263.61,
+    "total_credit": 263.61,
+    "net": 0.0
+  },
+  "je_delta_totals": {
+    "lines": 6,
+    "by_account": [
+      {
+        "account": "5002",
+        "debit": 0.0,
+        "credit": 217.46,
+        "net": -217.46
+      },
+      {
+        "account": "5003",
+        "debit": 0.0,
+        "credit": 46.15,
+        "net": -46.15
+      },
+      {
+        "account": "15002",
+        "debit": 46.15,
+        "credit": -0.0,
+        "net": 46.15
+      },
+      {
+        "account": "21001",
+        "debit": 118.53,
+        "credit": -0.0,
+        "net": 118.53
+      },
+      {
+        "account": "21002",
+        "debit": 98.93,
+        "credit": -0.0,
+        "net": 98.93
+      }
+    ],
+    "total_debit": 263.61,
+    "total_credit": 263.61,
+    "net": 0.0
+  },
+  "contract_history_rows": 12,
+  "latest_contract_rows": 16,
+  "app_excel_exports": [
+    "Contract History between 2023-03-01 and 2023-03-31.xlsx",
+    "Latest Contract Details.xlsx",
+    "Revenue Adj. Summary between 2023-03-01 and 2023-03-31.xlsx",
+    "Revenue JE Summary between 2023-03-01 and 2023-03-31.xlsx"
+  ],
+  "python_warnings": []
+}

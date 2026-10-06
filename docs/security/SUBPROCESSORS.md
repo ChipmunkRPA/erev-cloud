@@ -1,0 +1,19 @@
+# eRev Cloud sub-processors
+
+**DRAFT for Legal and privacy-owner review.** Counterparty identities are external inputs (UI-14) to be supplied, not invented; nothing here is a signed agreement.
+
+Source: `docs/05-ARCHITECTURE.md` §6.17 PRV-10 and PRV-11 (BUILD_SPEC SOP-9). This list applies to a hosted deployment, where the operator is a processor under GDPR Art. 28 for each tenant (PRV-02); a self-hosting customer is the controller with no processor in the loop and this list does not apply to it except for the services the customer configures itself. Data classes are those of `erev_api.privacy.CLASSIFICATION` (05 PRV-01).
+
+Counterparty identities (legal entity, contracting affiliate, DPA reference, contact) are external inputs the supervisor and Ray supply (readiness register UI-14); the placeholders below are not filled in by the build loop and nothing here should be read as a signed agreement.
+
+| Sub-processor | Service | Purpose | Data classes processed | Region and residency (PRV-10) | Enabled when | Legal entity and DPA reference |
+|---|---|---|---|---|---|---|
+| Google Cloud | Cloud Run, Cloud SQL for PostgreSQL, Cloud Storage, Cloud KMS, Secret Manager, Cloud Logging | Hosting of the api, web and worker; the database; the file store and the wrapped data keys; key management; secret storage; application and database logs | C0 to C3 (every column of a hosted deployment lives in Cloud SQL; file bytes and `.dek` sidecars in Cloud Storage; audit digests in Cloud Storage) | The deployment's single region (Terraform variable `region`; Cloud SQL, Cloud Run, GCS and KMS in that region; bucket location equal to the region). Multi-region residency is served by separate deployments | Always, for a hosted deployment | `<UI-14: Google Cloud contracting entity and Cloud Data Processing Addendum reference>` |
+| Anthropic | Claude models through the Anthropic API | AI proposals (contract extraction, narratives, answers) for tenants that enabled AI | C2 business text of the prompt after PRV-08 redaction of e-mail addresses and phone numbers; model output stored in `ai_proposal.content` and `citations` (catalogue recipient `AI_PROVIDER`). No C3 by design; the redaction is the control, not a guarantee against personal data typed into memos (PRV-03) | A separate transfer outside the deployment region (PRV-10); disclosed to the tenant before enabling AI | Only for tenants that enabled AI (D-46; `tenant.ai_disabled_at` null and the AI feature switched on); never for a tenant that did not | `<UI-14: Anthropic contracting entity and DPA reference>` |
+| Configured SMTP relay | Outbound e-mail relay (`EREV_EMAIL_BACKEND` other than `fake`) | Invitations, notifications, password-reset links | C3: the recipient's e-mail address (`app_user.email`); C2: notification titles and bodies (catalogue recipient `SMTP_RELAY`) | The relay's location as configured by the operator | Always, for a hosted deployment that sends e-mail | `<UI-14: relay provider, contracting entity and DPA reference>` |
+
+There is no other sub-processor. In particular, the following are not sub-processors: the tenant's own systems reached by adapters and exports (Salesforce, Stripe, NetSuite, QuickBooks Online, the tenant's webhook endpoints, the tenant's ERP), which receive data on the tenant's instruction as the controller (catalogue recipient `TENANT_SYSTEMS`); the tenant's identity provider under OIDC (the tenant's own processor); and the penetration-test vendor (UI-11), who receives no tenant data.
+
+## Change procedure
+
+A sub-processor is added, replaced or removed only with a change to this file, notice to every hosted tenant before the change takes effect (the DPA template's sub-processor clause), and a corresponding update of `erev_api.privacy.classification`'s recipient labels where a column's recipients change. The tenant's AI switch (D-46) is the only per-tenant enablement; everything else applies to the deployment as a whole.

@@ -1,0 +1,1541 @@
+[
+ {
+  "name": "rc-smoke-02-import-review",
+  "surface": "SF-10:detail",
+  "step": "RC-SMOKE.2",
+  "title": "The release candidate's smoke journey, step RC-SMOKE.2 (SF-10:detail)",
+  "light": "screens/rc-smoke-02-import-review.light.png",
+  "dark": "screens/rc-smoke-02-import-review.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "rc-smoke-06-schedules",
+  "surface": "SF-03:schedules",
+  "step": "RC-SMOKE.6",
+  "title": "The release candidate's smoke journey, step RC-SMOKE.6 (SF-03:schedules)",
+  "light": "screens/rc-smoke-06-schedules.light.png",
+  "dark": "screens/rc-smoke-06-schedules.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "rc-smoke-07-journal-run",
+  "surface": "SF-06:run",
+  "step": "RC-SMOKE.7",
+  "title": "The release candidate's smoke journey, step RC-SMOKE.7 (SF-06:run)",
+  "light": "screens/rc-smoke-07-journal-run.light.png",
+  "dark": "screens/rc-smoke-07-journal-run.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "rc-smoke-09-run-batches",
+  "surface": "SF-06:run-batches",
+  "step": "RC-SMOKE.9",
+  "title": "The release candidate's smoke journey, step RC-SMOKE.9 (SF-06:run-batches)",
+  "light": "screens/rc-smoke-09-run-batches.light.png",
+  "dark": "screens/rc-smoke-09-run-batches.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "rc-smoke-10-waterfall",
+  "surface": "SF-08:report",
+  "step": "RC-SMOKE.10",
+  "title": "The release candidate's smoke journey, step RC-SMOKE.10 (SF-08:report)",
+  "light": "screens/rc-smoke-10-waterfall.light.png",
+  "dark": "screens/rc-smoke-10-waterfall.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "rc-smoke-10-rpo",
+  "surface": "SF-08:report",
+  "step": "RC-SMOKE.10",
+  "title": "The release candidate's smoke journey, step RC-SMOKE.10 (SF-08:report)",
+  "light": "screens/rc-smoke-10-rpo.light.png",
+  "dark": "screens/rc-smoke-10-rpo.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-22",
+  "surface": "SF-22",
+  "step": null,
+  "title": "SF-22 Sign in (RT-01 /sign-in), persona unauthenticated",
+  "light": "screens/sf-22.light.png",
+  "dark": "screens/sf-22.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-22-mfa-challenge",
+  "surface": "SF-22:mfa-challenge",
+  "step": null,
+  "title": "SF-22:mfa-challenge Verify your sign-in (RT-02 /sign-in/mfa), persona marcus",
+  "light": "screens/sf-22-mfa-challenge.light.png",
+  "dark": "screens/sf-22-mfa-challenge.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-22-session-expired",
+  "surface": "SF-22",
+  "step": null,
+  "title": "SF-22 Sign in (RT-01 /sign-in), persona unauthenticated",
+  "light": "screens/sf-22-session-expired.light.png",
+  "dark": "screens/sf-22-session-expired.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-23-select",
+  "surface": "SF-23:select",
+  "step": null,
+  "title": "SF-23:select Choose a workspace (RT-06 /select-workspace), persona robert",
+  "light": "screens/sf-23-select.light.png",
+  "dark": "screens/sf-23-select.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-01-viewer",
+  "surface": "SF-01",
+  "step": null,
+  "title": "SF-01 Home (RT-07 /home), personas priya, robert and maya",
+  "light": "screens/sf-01-viewer.light.png",
+  "dark": "screens/sf-01-viewer.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-01-approver",
+  "surface": "SF-01",
+  "step": null,
+  "title": "SF-01 Home (RT-07 /home), personas priya, robert and maya",
+  "light": "screens/sf-01-approver.light.png",
+  "dark": "screens/sf-01-approver.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-12",
+  "surface": "SF-12",
+  "step": null,
+  "title": "SF-12 Approvals (RT-54 /approvals), persona tomas",
+  "light": "screens/sf-12.light.png",
+  "dark": "screens/sf-12.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-12-submitted-empty",
+  "surface": "SF-12:submitted",
+  "step": null,
+  "title": "SF-12:submitted Submitted by me (RT-55 /approvals/submitted), personas maya and priya",
+  "light": "screens/sf-12-submitted-empty.light.png",
+  "dark": "screens/sf-12-submitted-empty.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-12-submitted",
+  "surface": "SF-12:submitted",
+  "step": null,
+  "title": "SF-12:submitted Submitted by me (RT-55 /approvals/submitted), personas maya and priya",
+  "light": "screens/sf-12-submitted.light.png",
+  "dark": "screens/sf-12-submitted.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-12-all",
+  "surface": "SF-12:all",
+  "step": null,
+  "title": "SF-12:all All requests (RT-56 /approvals/all), persona grace",
+  "light": "screens/sf-12-all.light.png",
+  "dark": "screens/sf-12-all.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-12-request",
+  "surface": "SF-12:request",
+  "step": null,
+  "title": "SF-12:request Request (RT-57 /approvals/requests/:requestId), persona grace",
+  "light": "screens/sf-12-request.light.png",
+  "dark": "screens/sf-12-request.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-12-delegations",
+  "surface": "SF-12:delegations",
+  "step": null,
+  "title": "SF-12:delegations Delegations (RT-58 /approvals/delegations), persona priya",
+  "light": "screens/sf-12-delegations.light.png",
+  "dark": "screens/sf-12-delegations.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-10",
+  "surface": "SF-10",
+  "step": null,
+  "title": "SF-10 Imports (RT-42 /data/imports), persona maya",
+  "light": "screens/sf-10.light.png",
+  "dark": "screens/sf-10.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-10-new",
+  "surface": "SF-10:new",
+  "step": null,
+  "title": "SF-10:new New import (RT-43 /data/imports/new), persona maya",
+  "light": "screens/sf-10-new.light.png",
+  "dark": "screens/sf-10-new.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-10-detail",
+  "surface": "SF-10:detail",
+  "step": null,
+  "title": "SF-10:detail Import (RT-44 /data/imports/:importId/:step), persona maya",
+  "light": "screens/sf-10-detail.light.png",
+  "dark": "screens/sf-10-detail.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-10-templates",
+  "surface": "SF-10:templates",
+  "step": null,
+  "title": "SF-10:templates Import templates (RT-45 /data/templates), persona maya",
+  "light": "screens/sf-10-templates.light.png",
+  "dark": "screens/sf-10-templates.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-11",
+  "surface": "SF-11",
+  "step": null,
+  "title": "SF-11 Exceptions (RT-46 /data/exceptions), persona maya",
+  "light": "screens/sf-11.light.png",
+  "dark": "screens/sf-11.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-15",
+  "surface": "SF-15",
+  "step": null,
+  "title": "SF-15 Settings (RT-71 /settings), persona tomas",
+  "light": "screens/sf-15.light.png",
+  "dark": "screens/sf-15.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-11-item",
+  "surface": "SF-11:item",
+  "step": null,
+  "title": "SF-11:item Exception (RT-47 /data/exceptions/:exceptionId), persona maya",
+  "light": "screens/sf-11-item.light.png",
+  "dark": "screens/sf-11-item.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-15-notifications",
+  "surface": "SF-15:notifications",
+  "step": null,
+  "title": "SF-15:notifications Notification preferences (RT-72 /settings/notifications), persona maya",
+  "light": "screens/sf-15-notifications.light.png",
+  "dark": "screens/sf-15-notifications.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-21",
+  "surface": "SF-21",
+  "step": null,
+  "title": "SF-21 Notifications (placement, /approvals), persona grace",
+  "light": "screens/sf-21.light.png",
+  "dark": "screens/sf-21.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-15-profile",
+  "surface": "SF-15:profile",
+  "step": null,
+  "title": "SF-15:profile Profile (RT-73 /settings/profile), persona maya",
+  "light": "screens/sf-15-profile.light.png",
+  "dark": "screens/sf-15-profile.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-24-results",
+  "surface": "SF-24:results",
+  "step": null,
+  "title": "SF-24 Command palette and SF-24:results Search results (RT-95 /search), persona maya",
+  "light": "screens/sf-24-results.light.png",
+  "dark": "screens/sf-24-results.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-24-palette",
+  "surface": "SF-24",
+  "step": null,
+  "title": "SF-24 Command palette and SF-24:results Search results (RT-95 /search), persona maya",
+  "light": "screens/sf-24-palette.light.png",
+  "dark": "screens/sf-24-palette.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-15-chart-of-accounts",
+  "surface": "SF-15:chart-of-accounts",
+  "step": null,
+  "title": "SF-15:chart-of-accounts Chart of accounts (RT-78 /settings/chart-of-accounts), persona tomas",
+  "light": "screens/sf-15-chart-of-accounts.light.png",
+  "dark": "screens/sf-15-chart-of-accounts.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-15-workspace",
+  "surface": "SF-15:workspace",
+  "step": null,
+  "title": "SF-15:workspace Workspace settings (RT-110 /settings/workspace), persona tomas",
+  "light": "screens/sf-15-workspace.light.png",
+  "dark": "screens/sf-15-workspace.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-15-sandbox",
+  "surface": "SF-15:sandbox",
+  "step": null,
+  "title": "SF-15:sandbox Sandbox copies (RT-84 /settings/sandbox), persona marcus",
+  "light": "screens/sf-15-sandbox.light.png",
+  "dark": "screens/sf-15-sandbox.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-23",
+  "surface": "SF-23",
+  "step": null,
+  "title": "SF-23 Context pill (placement, /settings/workspace), persona tomas",
+  "light": "screens/sf-23.light.png",
+  "dark": "screens/sf-23.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-13-revenue",
+  "surface": "SF-13:revenue",
+  "step": null,
+  "title": "SF-13:revenue Revenue policies (RT-59 /policies/revenue), persona maya",
+  "light": "screens/sf-13-revenue.light.png",
+  "dark": "screens/sf-13-revenue.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-13-control-rules",
+  "surface": "SF-13:control-rules",
+  "step": null,
+  "title": "SF-13:control-rules Control rules (RT-60 /policies/control-rules), persona maya",
+  "light": "screens/sf-13-control-rules.light.png",
+  "dark": "screens/sf-13-control-rules.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-12-bulk",
+  "surface": "SF-12",
+  "step": null,
+  "title": "SF-21 Notifications (placement, /approvals), persona grace",
+  "light": "screens/sf-12-bulk.light.png",
+  "dark": "screens/sf-12-bulk.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-13-rule-set-version",
+  "surface": "SF-13:rule-set-version",
+  "step": null,
+  "title": "SF-13:rule-set-version Rule set version (RT-62 /policies/rule-sets/:ruleSetId/versions/:versionId), persona maya",
+  "light": "screens/sf-13-rule-set-version.light.png",
+  "dark": "screens/sf-13-rule-set-version.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-13-template-version",
+  "surface": "SF-13:template-version",
+  "step": null,
+  "title": "SF-13:template-version Obligation template version (RT-61 /policies/templates/:templateId/versions/:versionId), persona maya",
+  "light": "screens/sf-13-template-version.light.png",
+  "dark": "screens/sf-13-template-version.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-13-template-version-draft",
+  "surface": "SF-13:template-version",
+  "step": null,
+  "title": "SF-13:template-version Obligation template version (RT-61 /policies/templates/:templateId/versions/:versionId), persona maya",
+  "light": "screens/sf-13-template-version-draft.light.png",
+  "dark": "screens/sf-13-template-version-draft.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-13-accounting",
+  "surface": "SF-13:accounting",
+  "step": null,
+  "title": "SF-13:accounting Accounting policies (RT-63 /policies/accounting, RT-64 /policies/accounting/:policyId), persona marcus",
+  "light": "screens/sf-13-accounting.light.png",
+  "dark": "screens/sf-13-accounting.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-13-accounting-version",
+  "surface": "SF-13:accounting-version",
+  "step": null,
+  "title": "SF-13:accounting Accounting policies (RT-63 /policies/accounting, RT-64 /policies/accounting/:policyId), persona marcus",
+  "light": "screens/sf-13-accounting-version.light.png",
+  "dark": "screens/sf-13-accounting-version.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-13-account-mapping",
+  "surface": "SF-13:account-mapping",
+  "step": null,
+  "title": "SF-13:account-mapping Account mapping (RT-69 /policies/account-mapping, RT-70 /policies/account-mapping/:mappingVersionId), persona marcus",
+  "light": "screens/sf-13-account-mapping.light.png",
+  "dark": "screens/sf-13-account-mapping.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-13-account-mapping-version",
+  "surface": "SF-13:account-mapping-version",
+  "step": null,
+  "title": "SF-13:account-mapping Account mapping (RT-69 /policies/account-mapping, RT-70 /policies/account-mapping/:mappingVersionId), persona marcus",
+  "light": "screens/sf-13-account-mapping-version.light.png",
+  "dark": "screens/sf-13-account-mapping-version.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-13-ssp-books",
+  "surface": "SF-13:ssp-books",
+  "step": null,
+  "title": "SF-13:ssp-books SSP books (RT-65 /policies/ssp-books), persona maya",
+  "light": "screens/sf-13-ssp-books.light.png",
+  "dark": "screens/sf-13-ssp-books.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-13-ssp-book-version",
+  "surface": "SF-13:ssp-book-version",
+  "step": null,
+  "title": "SF-13:ssp-book-version SSP book version (RT-66 /policies/ssp-books/:bookId/versions/:versionId), persona maya",
+  "light": "screens/sf-13-ssp-book-version.light.png",
+  "dark": "screens/sf-13-ssp-book-version.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-13-ssp-calculator",
+  "surface": "SF-13:ssp-calculator",
+  "step": null,
+  "title": "SF-13:ssp-calculator Historical SSP calculator (RT-67, RT-68), persona maya",
+  "light": "screens/sf-13-ssp-calculator.light.png",
+  "dark": "screens/sf-13-ssp-calculator.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-02",
+  "surface": "SF-02",
+  "step": null,
+  "title": "SF-02 Contracts (RT-08 /contracts), persona maya",
+  "light": "screens/sf-02.light.png",
+  "dark": "screens/sf-02.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-13-ssp-calculator-run",
+  "surface": "SF-13:ssp-calculator-run",
+  "step": null,
+  "title": "SF-13:ssp-calculator Historical SSP calculator (RT-67, RT-68), persona maya",
+  "light": "screens/sf-13-ssp-calculator-run.light.png",
+  "dark": "screens/sf-13-ssp-calculator-run.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-03",
+  "surface": "SF-03",
+  "step": null,
+  "title": "SF-03 Contract workbench (RT-10 /contracts/:contractId/obligations), persona maya",
+  "light": "screens/sf-03.light.png",
+  "dark": "screens/sf-03.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-03-obligation",
+  "surface": "SF-03:obligation",
+  "step": null,
+  "title": "SF-03:obligation Obligation detail pane (RT-11 /contracts/:contractId/obligations/:obligationId), persona maya",
+  "light": "screens/sf-03-obligation.light.png",
+  "dark": "screens/sf-03-obligation.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-02-compact",
+  "surface": "SF-02",
+  "step": null,
+  "title": "SF-03 Contract workbench (RT-10 /contracts/:contractId/obligations), persona maya",
+  "light": "screens/sf-02-compact.light.png",
+  "dark": "screens/sf-02-compact.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-03-compact",
+  "surface": "SF-03",
+  "step": null,
+  "title": "SF-03 Contract workbench (RT-10 /contracts/:contractId/obligations), persona maya",
+  "light": "screens/sf-03-compact.light.png",
+  "dark": "screens/sf-03-compact.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-03-schedules",
+  "surface": "SF-03:schedules",
+  "step": null,
+  "title": "SF-03:schedules Schedules tab (RT-14 /contracts/:contractId/schedules), persona maya",
+  "light": "screens/sf-03-schedules.light.png",
+  "dark": "screens/sf-03-schedules.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-03-billing",
+  "surface": "SF-03:billing",
+  "step": null,
+  "title": "SF-03:billing Billing tab (RT-15 /contracts/:contractId/billing), persona maya",
+  "light": "screens/sf-03-billing.light.png",
+  "dark": "screens/sf-03-billing.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-03-journals",
+  "surface": "SF-03:journals",
+  "step": null,
+  "title": "SF-03:journals Journals tab (RT-16 /contracts/:contractId/journals), persona maya",
+  "light": "screens/sf-03-journals.light.png",
+  "dark": "screens/sf-03-journals.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-03-modifications",
+  "surface": "SF-03:modifications",
+  "step": null,
+  "title": "SF-03:modifications, SF-07 and SF-07:detail: the modifications of K-02 (RT-17, RT-20, RT-21), persona maya",
+  "light": "screens/sf-03-modifications.light.png",
+  "dark": "screens/sf-03-modifications.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-07",
+  "surface": "SF-07",
+  "step": null,
+  "title": "SF-03:modifications, SF-07 and SF-07:detail: the modifications of K-02 (RT-17, RT-20, RT-21), persona maya",
+  "light": "screens/sf-07.light.png",
+  "dark": "screens/sf-07.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-03-estimate-version",
+  "surface": "SF-03:estimate",
+  "step": null,
+  "title": "SF-03:estimates and SF-03:estimate: the estimates of K-03 (RT-12, RT-13), persona maya",
+  "light": "screens/sf-03-estimate-version.light.png",
+  "dark": "screens/sf-03-estimate-version.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-03-estimates",
+  "surface": "SF-03:estimates",
+  "step": null,
+  "title": "SF-03:estimates and SF-03:estimate: the estimates of K-03 (RT-12, RT-13), persona maya",
+  "light": "screens/sf-03-estimates.light.png",
+  "dark": "screens/sf-03-estimates.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-07-detail",
+  "surface": "SF-07:detail",
+  "step": null,
+  "title": "SF-03:modifications, SF-07 and SF-07:detail: the modifications of K-02 (RT-17, RT-20, RT-21), persona maya",
+  "light": "screens/sf-07-detail.light.png",
+  "dark": "screens/sf-07-detail.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-07-detail-approval",
+  "surface": "SF-07:detail",
+  "step": null,
+  "title": "SF-03:modifications, SF-07 and SF-07:detail: the modifications of K-02 (RT-17, RT-20, RT-21), persona maya",
+  "light": "screens/sf-07-detail-approval.light.png",
+  "dark": "screens/sf-07-detail-approval.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-03-estimate",
+  "surface": "SF-03:estimate",
+  "step": null,
+  "title": "SF-03:estimates and SF-03:estimate: the estimates of K-03 (RT-12, RT-13), persona maya",
+  "light": "screens/sf-03-estimate.light.png",
+  "dark": "screens/sf-03-estimate.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-07-change",
+  "surface": "SF-07",
+  "step": null,
+  "title": "SF-03:modifications, SF-07 and SF-07:detail: the modifications of K-02 (RT-17, RT-20, RT-21), persona maya",
+  "light": "screens/sf-07-change.light.png",
+  "dark": "screens/sf-07-change.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-03-estimate-current",
+  "surface": "SF-03:estimate",
+  "step": null,
+  "title": "SF-03:estimates and SF-03:estimate: the estimates of K-03 (RT-12, RT-13), persona maya",
+  "light": "screens/sf-03-estimate-current.light.png",
+  "dark": "screens/sf-03-estimate-current.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-03-history",
+  "surface": "SF-03:history",
+  "step": null,
+  "title": "SF-03:history History tab (RT-18 /contracts/:contractId/history), persona maya",
+  "light": "screens/sf-03-history.light.png",
+  "dark": "screens/sf-03-history.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-03-new",
+  "surface": "SF-03:new",
+  "step": null,
+  "title": "SF-03:new and SF-03:edit Draft contract form (RT-09 /contracts/new, RT-19 /contracts/:contractId/edit), persona maya",
+  "light": "screens/sf-03-new.light.png",
+  "dark": "screens/sf-03-new.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-03-new-lines",
+  "surface": "SF-03:new",
+  "step": null,
+  "title": "SF-03:new and SF-03:edit Draft contract form (RT-09 /contracts/new, RT-19 /contracts/:contractId/edit), persona maya",
+  "light": "screens/sf-03-new-lines.light.png",
+  "dark": "screens/sf-03-new-lines.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-03-edit",
+  "surface": "SF-03:edit",
+  "step": null,
+  "title": "SF-03:new and SF-03:edit Draft contract form (RT-09 /contracts/new, RT-19 /contracts/:contractId/edit), persona maya",
+  "light": "screens/sf-03-edit.light.png",
+  "dark": "screens/sf-03-edit.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-03-estimate-discard",
+  "surface": "SF-03:estimate",
+  "step": null,
+  "title": "SF-03:estimates and SF-03:estimate: the estimates of K-03 (RT-12, RT-13), persona maya",
+  "light": "screens/sf-03-estimate-discard.light.png",
+  "dark": "screens/sf-03-estimate-discard.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "explain-panel",
+  "surface": "Explain panel",
+  "step": null,
+  "title": "Explain panel (placement on SF-03, URL parameter explain), persona maya",
+  "light": "screens/explain-panel.light.png",
+  "dark": "screens/explain-panel.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "x-trace",
+  "surface": "X:trace",
+  "step": null,
+  "title": "X:trace Calculation trace (RT-96 /trace/:calcTraceId), persona maya",
+  "light": "screens/x-trace.light.png",
+  "dark": "screens/x-trace.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-05-open",
+  "surface": "SF-05",
+  "step": null,
+  "title": "SF-05 Close cockpit (RT-26 /close/:entity/:book/:period, RT-100), persona maya",
+  "light": "screens/sf-05-open.light.png",
+  "dark": "screens/sf-05-open.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-11-blocking",
+  "surface": "SF-11",
+  "step": null,
+  "title": "SF-05 Close cockpit (RT-26 /close/:entity/:book/:period, RT-100), persona maya",
+  "light": "screens/sf-11-blocking.light.png",
+  "dark": "screens/sf-11-blocking.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-05-submit-lock-order",
+  "surface": "SF-05",
+  "step": null,
+  "title": "SF-05 Close cockpit (RT-26 /close/:entity/:book/:period, RT-100), persona maya",
+  "light": "screens/sf-05-submit-lock-order.light.png",
+  "dark": "screens/sf-05-submit-lock-order.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-05-submit-lock-refused",
+  "surface": "SF-05",
+  "step": null,
+  "title": "SF-05 Close cockpit (RT-26 /close/:entity/:book/:period, RT-100), persona maya",
+  "light": "screens/sf-05-submit-lock-refused.light.png",
+  "dark": "screens/sf-05-submit-lock-refused.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-05-journal-preview",
+  "surface": "SF-05:journal-preview",
+  "step": null,
+  "title": "SF-05 Close cockpit (RT-26 /close/:entity/:book/:period, RT-100), persona maya",
+  "light": "screens/sf-05-journal-preview.light.png",
+  "dark": "screens/sf-05-journal-preview.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-05-history",
+  "surface": "SF-05:history",
+  "step": null,
+  "title": "SF-05:close-run, SF-05:history and SF-05:multi-entity (RT-99, RT-101, RT-27), personas maya and marcus",
+  "light": "screens/sf-05-history.light.png",
+  "dark": "screens/sf-05-history.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-05-reconciliations-generated",
+  "surface": "SF-05:reconciliations",
+  "step": null,
+  "title": "SF-05:reconciliations and SF-05:reconciliation (RT-102, RT-103), personas maya and priya",
+  "light": "screens/sf-05-reconciliations-generated.light.png",
+  "dark": "screens/sf-05-reconciliations-generated.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-05-reconciliation-draft",
+  "surface": "SF-05:reconciliation",
+  "step": null,
+  "title": "SF-05:reconciliations and SF-05:reconciliation (RT-102, RT-103), personas maya and priya",
+  "light": "screens/sf-05-reconciliation-draft.light.png",
+  "dark": "screens/sf-05-reconciliation-draft.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-05-reconciliation-reviewer",
+  "surface": "SF-05:reconciliation",
+  "step": null,
+  "title": "SF-05:reconciliations and SF-05:reconciliation (RT-102, RT-103), personas maya and priya",
+  "light": "screens/sf-05-reconciliation-reviewer.light.png",
+  "dark": "screens/sf-05-reconciliation-reviewer.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-05-close-run",
+  "surface": "SF-05:close-run",
+  "step": null,
+  "title": "SF-05:close-run, SF-05:history and SF-05:multi-entity (RT-99, RT-101, RT-27), personas maya and marcus",
+  "light": "screens/sf-05-close-run.light.png",
+  "dark": "screens/sf-05-close-run.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-05-multi-entity",
+  "surface": "SF-05:multi-entity",
+  "step": null,
+  "title": "SF-05:close-run, SF-05:history and SF-05:multi-entity (RT-99, RT-101, RT-27), personas maya and marcus",
+  "light": "screens/sf-05-multi-entity.light.png",
+  "dark": "screens/sf-05-multi-entity.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-05-reconciliation-attach",
+  "surface": "SF-05:reconciliation",
+  "step": null,
+  "title": "SF-05:reconciliations and SF-05:reconciliation (RT-102, RT-103), personas maya and priya",
+  "light": "screens/sf-05-reconciliation-attach.light.png",
+  "dark": "screens/sf-05-reconciliation-attach.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-05-reconciliation-gl",
+  "surface": "SF-05:reconciliation",
+  "step": null,
+  "title": "SF-05:reconciliations and SF-05:reconciliation (RT-102, RT-103), personas maya and priya",
+  "light": "screens/sf-05-reconciliation-gl.light.png",
+  "dark": "screens/sf-05-reconciliation-gl.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-08",
+  "surface": "SF-08",
+  "step": null,
+  "title": "SF-08 Reports (RT-31 /reports), persona robert",
+  "light": "screens/sf-08.light.png",
+  "dark": "screens/sf-08.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-06",
+  "surface": "SF-06",
+  "step": null,
+  "title": "SF-06 Journal runs (RT-28, RT-29, RT-104, RT-105), persona maya",
+  "light": "screens/sf-06.light.png",
+  "dark": "screens/sf-06.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-06-run",
+  "surface": "SF-06:run",
+  "step": null,
+  "title": "SF-06 Journal runs (RT-28, RT-29, RT-104, RT-105), persona maya",
+  "light": "screens/sf-06-run.light.png",
+  "dark": "screens/sf-06-run.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-08-report-revenue-waterfall",
+  "surface": "SF-08:report",
+  "step": null,
+  "title": "SF-08:report Report view (RT-32 /reports/:reportCode), persona marcus",
+  "light": "screens/sf-08-report-revenue-waterfall.light.png",
+  "dark": "screens/sf-08-report-revenue-waterfall.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-06-run-lines",
+  "surface": "SF-06:run-lines",
+  "step": null,
+  "title": "SF-06 Journal runs (RT-28, RT-29, RT-104, RT-105), persona maya",
+  "light": "screens/sf-06-run-lines.light.png",
+  "dark": "screens/sf-06-run-lines.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-06-run-batches",
+  "surface": "SF-06:run-batches",
+  "step": null,
+  "title": "SF-06 Journal runs (RT-28, RT-29, RT-104, RT-105), persona maya",
+  "light": "screens/sf-06-run-batches.light.png",
+  "dark": "screens/sf-06-run-batches.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-06-entries",
+  "surface": "SF-06:entries",
+  "step": null,
+  "title": "SF-06 Journal runs (RT-28, RT-29, RT-104, RT-105), persona maya",
+  "light": "screens/sf-06-entries.light.png",
+  "dark": "screens/sf-06-entries.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-08-dashboard-revenue",
+  "surface": "SF-08:dashboard",
+  "step": null,
+  "title": "SF-08:dashboard Revenue dashboard (RT-107 /reports/dashboards/:dashboardCode), persona robert",
+  "light": "screens/sf-08-dashboard-revenue.light.png",
+  "dark": "screens/sf-08-dashboard-revenue.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-08-dashboard-revenue-default",
+  "surface": "SF-08:dashboard",
+  "step": null,
+  "title": "SF-08:dashboard Revenue dashboard (RT-107 /reports/dashboards/:dashboardCode), persona robert",
+  "light": "screens/sf-08-dashboard-revenue-default.light.png",
+  "dark": "screens/sf-08-dashboard-revenue-default.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-08-report-legacy-contract-history-export",
+  "surface": "SF-08:report",
+  "step": null,
+  "title": "SF-08:report Report view (RT-32 /reports/:reportCode), persona marcus",
+  "light": "screens/sf-08-report-legacy-contract-history-export.light.png",
+  "dark": "screens/sf-08-report-legacy-contract-history-export.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-08-dashboard-revenue-entity",
+  "surface": "SF-08:dashboard",
+  "step": null,
+  "title": "SF-08:dashboard Revenue dashboard (RT-107 /reports/dashboards/:dashboardCode), persona robert",
+  "light": "screens/sf-08-dashboard-revenue-entity.light.png",
+  "dark": "screens/sf-08-dashboard-revenue-entity.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-08-dashboard-revenue-categories",
+  "surface": "SF-08:dashboard",
+  "step": null,
+  "title": "SF-08:dashboard Revenue dashboard (RT-107 /reports/dashboards/:dashboardCode), persona robert",
+  "light": "screens/sf-08-dashboard-revenue-categories.light.png",
+  "dark": "screens/sf-08-dashboard-revenue-categories.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-04-quarter",
+  "surface": "SF-04",
+  "step": null,
+  "title": "SF-04 Schedules (RT-25 /schedules), persona marcus",
+  "light": "screens/sf-04-quarter.light.png",
+  "dark": "screens/sf-04-quarter.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-08-runs",
+  "surface": "SF-08:runs",
+  "step": null,
+  "title": "SF-08:runs Report runs (RT-106 /reports/runs, RT-33), persona marcus",
+  "light": "screens/sf-08-runs.light.png",
+  "dark": "screens/sf-08-runs.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-08-run",
+  "surface": "SF-08:run",
+  "step": null,
+  "title": "SF-08:runs Report runs (RT-106 /reports/runs, RT-33), persona marcus",
+  "light": "screens/sf-08-run.light.png",
+  "dark": "screens/sf-08-run.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-04-avm-us-quarter",
+  "surface": "SF-04",
+  "step": null,
+  "title": "SF-04 Schedules (RT-25 /schedules), persona marcus",
+  "light": "screens/sf-04-avm-us-quarter.light.png",
+  "dark": "screens/sf-04-avm-us-quarter.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-16-add-connection",
+  "surface": "SF-16",
+  "step": null,
+  "title": "SF-16 Integrations (RT-48 /data/integrations, RT-49, RT-50), persona nikhil",
+  "light": "screens/sf-16-add-connection.light.png",
+  "dark": "screens/sf-16-add-connection.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-16",
+  "surface": "SF-16",
+  "step": null,
+  "title": "SF-16 Integrations (RT-48 /data/integrations, RT-49, RT-50), persona nikhil",
+  "light": "screens/sf-16.light.png",
+  "dark": "screens/sf-16.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-16-connection",
+  "surface": "SF-16:connection",
+  "step": null,
+  "title": "SF-16 Integrations (RT-48 /data/integrations, RT-49, RT-50), persona nikhil",
+  "light": "screens/sf-16-connection.light.png",
+  "dark": "screens/sf-16-connection.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-09-audit-log",
+  "surface": "SF-09:audit-log",
+  "step": null,
+  "title": "SF-09:audit-log Audit log (RT-37 /reports/audit-log, RT-38), persona hannah",
+  "light": "screens/sf-09-audit-log.light.png",
+  "dark": "screens/sf-09-audit-log.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-16-sync-run",
+  "surface": "SF-16:sync-run",
+  "step": null,
+  "title": "SF-16 Integrations (RT-48 /data/integrations, RT-49, RT-50), persona nikhil",
+  "light": "screens/sf-16-sync-run.light.png",
+  "dark": "screens/sf-16-sync-run.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-09-verification",
+  "surface": "SF-09:verification",
+  "step": null,
+  "title": "SF-09:audit-log Audit log (RT-37 /reports/audit-log, RT-38), persona hannah",
+  "light": "screens/sf-09-verification.light.png",
+  "dark": "screens/sf-09-verification.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-15-setup",
+  "surface": "SF-15:setup",
+  "step": null,
+  "title": "SF-15:setup Workspace setup (RT-74 /settings/setup), persona tomas",
+  "light": "screens/sf-15-setup.light.png",
+  "dark": "screens/sf-15-setup.dark.png",
+  "run": "screens"
+ },
+ {
+  "name": "sf-15-calendars",
+  "surface": "SF-15:calendars",
+  "step": null,
+  "title": "SF-15:calendars Calendars (/settings/calendars), persona tomas",
+  "light": "screens/sf-15-calendars.light.png",
+  "dark": "screens/sf-15-calendars.dark.png",
+  "run": "supplementary"
+ },
+ {
+  "name": "sf-15-currencies",
+  "surface": "SF-15:currencies",
+  "step": null,
+  "title": "SF-15:currencies Currencies and rates (/settings/currencies), persona tomas",
+  "light": "screens/sf-15-currencies.light.png",
+  "dark": "screens/sf-15-currencies.dark.png",
+  "run": "supplementary"
+ },
+ {
+  "name": "sf-15-customers",
+  "surface": "SF-15:customers",
+  "step": null,
+  "title": "SF-15:customers Customers (/settings/customers), persona tomas",
+  "light": "screens/sf-15-customers.light.png",
+  "dark": "screens/sf-15-customers.dark.png",
+  "run": "supplementary"
+ },
+ {
+  "name": "sf-15-related-party-groups",
+  "surface": "SF-15:related-party-groups",
+  "step": null,
+  "title": "SF-15:related-party-groups Related-party groups (/settings/related-party-groups), persona tomas",
+  "light": "screens/sf-15-related-party-groups.light.png",
+  "dark": "screens/sf-15-related-party-groups.dark.png",
+  "run": "supplementary"
+ },
+ {
+  "name": "sf-15-entities",
+  "surface": "SF-15:entities",
+  "step": null,
+  "title": "SF-15:entities Entities (/settings/entities), persona tomas",
+  "light": "screens/sf-15-entities.light.png",
+  "dark": "screens/sf-15-entities.dark.png",
+  "run": "supplementary"
+ },
+ {
+  "name": "sf-15-products",
+  "surface": "SF-15:products",
+  "step": null,
+  "title": "SF-15:products Products (/settings/products), persona tomas",
+  "light": "screens/sf-15-products.light.png",
+  "dark": "screens/sf-15-products.dark.png",
+  "run": "supplementary"
+ },
+ {
+  "name": "sf-14-users",
+  "surface": "SF-14",
+  "step": null,
+  "title": "SF-14 Users (/settings/users), persona tomas",
+  "light": "screens/sf-14-users.light.png",
+  "dark": "screens/sf-14-users.dark.png",
+  "run": "supplementary"
+ },
+ {
+  "name": "sf-14-roles",
+  "surface": "SF-14:roles",
+  "step": null,
+  "title": "SF-14:roles Roles (/settings/roles), persona tomas",
+  "light": "screens/sf-14-roles.light.png",
+  "dark": "screens/sf-14-roles.dark.png",
+  "run": "supplementary"
+ },
+ {
+  "name": "sf-14-sod",
+  "surface": "SF-14:sod",
+  "step": null,
+  "title": "SF-14:sod Separation of duties (/settings/separation-of-duties), persona tomas",
+  "light": "screens/sf-14-sod.light.png",
+  "dark": "screens/sf-14-sod.dark.png",
+  "run": "supplementary"
+ },
+ {
+  "name": "sf-14-access-reviews",
+  "surface": "SF-14:access-reviews",
+  "step": null,
+  "title": "SF-14:access-reviews Access reviews (/settings/access-reviews), persona tomas",
+  "light": "screens/sf-14-access-reviews.light.png",
+  "dark": "screens/sf-14-access-reviews.dark.png",
+  "run": "supplementary"
+ },
+ {
+  "name": "sf-14-security",
+  "surface": "SF-14:security",
+  "step": null,
+  "title": "SF-14:security Security (/settings/security), persona tomas",
+  "light": "screens/sf-14-security.light.png",
+  "dark": "screens/sf-14-security.dark.png",
+  "run": "supplementary"
+ },
+ {
+  "name": "sf-14-support-access",
+  "surface": "SF-14:support-access",
+  "step": null,
+  "title": "SF-14:support-access Support access (/settings/support-access), persona tomas",
+  "light": "screens/sf-14-support-access.light.png",
+  "dark": "screens/sf-14-support-access.dark.png",
+  "run": "supplementary"
+ },
+ {
+  "name": "sf-16-developer",
+  "surface": "SF-16:developer",
+  "step": null,
+  "title": "SF-16:developer API clients and webhooks (/settings/developer), persona tomas",
+  "light": "screens/sf-16-developer.light.png",
+  "dark": "screens/sf-16-developer.dark.png",
+  "run": "supplementary"
+ },
+ {
+  "name": "sf-15-customer",
+  "surface": "SF-15:customer",
+  "step": null,
+  "title": "SF-15:customer Customer (/settings/customers/:customerId), persona tomas",
+  "light": "screens/sf-15-customer.light.png",
+  "dark": "screens/sf-15-customer.dark.png",
+  "run": "supplementary"
+ },
+ {
+  "name": "sf-15-product",
+  "surface": "SF-15:product",
+  "step": null,
+  "title": "SF-15:product Product (/settings/products/:productId), persona tomas",
+  "light": "screens/sf-15-product.light.png",
+  "dark": "screens/sf-15-product.dark.png",
+  "run": "supplementary"
+ },
+ {
+  "name": "sf-14-user",
+  "surface": "SF-14:user",
+  "step": null,
+  "title": "SF-14:user Member (/settings/users/:membershipId), persona tomas",
+  "light": "screens/sf-14-user.light.png",
+  "dark": "screens/sf-14-user.dark.png",
+  "run": "supplementary"
+ },
+ {
+  "name": "sf-22-password-reset",
+  "surface": "SF-22:password-reset",
+  "step": null,
+  "title": "SF-22:password-reset Reset password (/password/reset), persona unauthenticated",
+  "light": "screens/sf-22-password-reset.light.png",
+  "dark": "screens/sf-22-password-reset.dark.png",
+  "run": "supplementary"
+ },
+ {
+  "name": "sf-22-password-change",
+  "surface": "SF-22:password-change",
+  "step": null,
+  "title": "SF-22:password-change Change password (/password/change), persona maya",
+  "light": "screens/sf-22-password-change.light.png",
+  "dark": "screens/sf-22-password-change.dark.png",
+  "run": "supplementary"
+ },
+ {
+  "name": "001-s-1-sign-in-landing-and-rail-maya",
+  "surface": null,
+  "step": null,
+  "title": "S-1 sign in landing and rail (Maya)",
+  "light": "qa-pass/001-s-1-sign-in-landing-and-rail-maya.png",
+  "dark": null,
+  "run": "qa-pass"
+ },
+ {
+  "name": "002-s-1-sign-in-landing-and-rail-priya",
+  "surface": null,
+  "step": null,
+  "title": "S-1 sign in landing and rail (Priya)",
+  "light": "qa-pass/002-s-1-sign-in-landing-and-rail-priya.png",
+  "dark": null,
+  "run": "qa-pass"
+ },
+ {
+  "name": "003-s-1-sign-in-landing-and-rail-marcus",
+  "surface": null,
+  "step": null,
+  "title": "S-1 sign in landing and rail (Marcus)",
+  "light": "qa-pass/003-s-1-sign-in-landing-and-rail-marcus.png",
+  "dark": null,
+  "run": "qa-pass"
+ },
+ {
+  "name": "004-s-1-sign-in-landing-and-rail-elena",
+  "surface": null,
+  "step": null,
+  "title": "S-1 sign in landing and rail (Elena)",
+  "light": "qa-pass/004-s-1-sign-in-landing-and-rail-elena.png",
+  "dark": null,
+  "run": "qa-pass"
+ },
+ {
+  "name": "005-s-1-sign-in-landing-and-rail-robert",
+  "surface": null,
+  "step": null,
+  "title": "S-1 sign in landing and rail (Robert)",
+  "light": "qa-pass/005-s-1-sign-in-landing-and-rail-robert.png",
+  "dark": null,
+  "run": "qa-pass"
+ },
+ {
+  "name": "006-s-1-sign-in-landing-and-rail-hannah",
+  "surface": null,
+  "step": null,
+  "title": "S-1 sign in landing and rail (Hannah)",
+  "light": "qa-pass/006-s-1-sign-in-landing-and-rail-hannah.png",
+  "dark": null,
+  "run": "qa-pass"
+ },
+ {
+  "name": "007-s-1-sign-in-landing-and-rail-samuel",
+  "surface": null,
+  "step": null,
+  "title": "S-1 sign in landing and rail (Samuel)",
+  "light": "qa-pass/007-s-1-sign-in-landing-and-rail-samuel.png",
+  "dark": null,
+  "run": "qa-pass"
+ },
+ {
+  "name": "008-s-1-sign-in-landing-and-rail-tomas",
+  "surface": null,
+  "step": null,
+  "title": "S-1 sign in landing and rail (Tomas)",
+  "light": "qa-pass/008-s-1-sign-in-landing-and-rail-tomas.png",
+  "dark": null,
+  "run": "qa-pass"
+ },
+ {
+  "name": "009-s-1-sign-in-landing-and-rail-grace",
+  "surface": null,
+  "step": null,
+  "title": "S-1 sign in landing and rail (Grace)",
+  "light": "qa-pass/009-s-1-sign-in-landing-and-rail-grace.png",
+  "dark": null,
+  "run": "qa-pass"
+ },
+ {
+  "name": "010-s-1-sign-in-landing-and-rail-nikhil",
+  "surface": null,
+  "step": null,
+  "title": "S-1 sign in landing and rail (Nikhil)",
+  "light": "qa-pass/010-s-1-sign-in-landing-and-rail-nikhil.png",
+  "dark": null,
+  "run": "qa-pass"
+ },
+ {
+  "name": "011-s-1-sign-in-landing-and-rail-jordan",
+  "surface": null,
+  "step": null,
+  "title": "S-1 sign in landing and rail (Jordan)",
+  "light": "qa-pass/011-s-1-sign-in-landing-and-rail-jordan.png",
+  "dark": null,
+  "run": "qa-pass"
+ },
+ {
+  "name": "012-g-1-invitation-for-one-entity-tomas",
+  "surface": null,
+  "step": null,
+  "title": "G-1 invitation for one entity (Tomas)",
+  "light": "qa-pass/012-g-1-invitation-for-one-entity-tomas.png",
+  "dark": null,
+  "run": "qa-pass"
+ },
+ {
+  "name": "013-g-2-the-second-administrator-decides-grace",
+  "surface": null,
+  "step": null,
+  "title": "G-2 the second administrator decides (Grace)",
+  "light": "qa-pass/013-g-2-the-second-administrator-decides-grace.png",
+  "dark": null,
+  "run": "qa-pass"
+ },
+ {
+  "name": "014-g-3-acceptance-lena",
+  "surface": null,
+  "step": null,
+  "title": "G-3 acceptance (Lena)",
+  "light": "qa-pass/014-g-3-acceptance-lena.png",
+  "dark": null,
+  "run": "qa-pass"
+ },
+ {
+  "name": "015-g-4-the-first-session-of-a-member-of-one-entity-lena",
+  "surface": null,
+  "step": null,
+  "title": "G-4 the first session of a member of one entity (Lena)",
+  "light": "qa-pass/015-g-4-the-first-session-of-a-member-of-one-entity-lena.png",
+  "dark": null,
+  "run": "qa-pass"
+ },
+ {
+  "name": "016-g-5-sign-out-and-a-sign-in-with-the-chosen-password-lena",
+  "surface": null,
+  "step": null,
+  "title": "G-5 sign out and a sign in with the chosen password (Lena)",
+  "light": "qa-pass/016-g-5-sign-out-and-a-sign-in-with-the-chosen-password-lena.png",
+  "dark": null,
+  "run": "qa-pass"
+ },
+ {
+  "name": "017-k-4-a-typed-address-report-run-of-avm-us-lena",
+  "surface": null,
+  "step": null,
+  "title": "K-4 a typed address report run of avm us (Lena)",
+  "light": "qa-pass/017-k-4-a-typed-address-report-run-of-avm-us-lena.png",
+  "dark": null,
+  "run": "qa-pass"
+ },
+ {
+  "name": "018-k-5-every-screen-she-can-open-lena",
+  "surface": null,
+  "step": null,
+  "title": "K-5 every screen she can open (Lena)",
+  "light": "qa-pass/018-k-5-every-screen-she-can-open-lena.png",
+  "dark": null,
+  "run": "qa-pass"
+ },
+ {
+  "name": "019-k-6-what-all-entities-offers-her-and-what-it-totals-lena",
+  "surface": null,
+  "step": null,
+  "title": "K-6 what all entities offers her and what it totals (Lena)",
+  "light": "qa-pass/019-k-6-what-all-entities-offers-her-and-what-it-totals-lena.png",
+  "dark": null,
+  "run": "qa-pass"
+ },
+ {
+  "name": "020-a-1-a-draft-on-sf-03-new-maya",
+  "surface": null,
+  "step": null,
+  "title": "A-1 a draft on sf 03 new (Maya)",
+  "light": "qa-pass/020-a-1-a-draft-on-sf-03-new-maya.png",
+  "dark": null,
+  "run": "qa-pass"
+ },
+ {
+  "name": "021-a-3-the-step-1-review-submitted-maya",
+  "surface": null,
+  "step": null,
+  "title": "A-3 the step 1 review submitted (Maya)",
+  "light": "qa-pass/021-a-3-the-step-1-review-submitted-maya.png",
+  "dark": null,
+  "run": "qa-pass"
+ },
+ {
+  "name": "022-a-4-the-step-1-review-reviewed-priya",
+  "surface": null,
+  "step": null,
+  "title": "A-4 the step 1 review reviewed (Priya)",
+  "light": "qa-pass/022-a-4-the-step-1-review-reviewed-priya.png",
+  "dark": null,
+  "run": "qa-pass"
+ },
+ {
+  "name": "023-a-5-the-assessment-maya",
+  "surface": null,
+  "step": null,
+  "title": "A-5 the assessment (Maya)",
+  "light": "qa-pass/023-a-5-the-assessment-maya.png",
+  "dark": null,
+  "run": "qa-pass"
+ },
+ {
+  "name": "024-a-6-submitted-for-activation-maya",
+  "surface": null,
+  "step": null,
+  "title": "A-6 submitted for activation (Maya)",
+  "light": "qa-pass/024-a-6-submitted-for-activation-maya.png",
+  "dark": null,
+  "run": "qa-pass"
+ },
+ {
+  "name": "025-a-7-the-activation-approved-priya",
+  "surface": null,
+  "step": null,
+  "title": "A-7 the activation approved (Priya)",
+  "light": "qa-pass/025-a-7-the-activation-approved-priya.png",
+  "dark": null,
+  "run": "qa-pass"
+ },
+ {
+  "name": "026-a-8-the-obligation-s-september-amount-every-place-maya",
+  "surface": null,
+  "step": null,
+  "title": "A-8 the obligation s september amount every place (Maya)",
+  "light": "qa-pass/026-a-8-the-obligation-s-september-amount-every-place-maya.png",
+  "dark": null,
+  "run": "qa-pass"
+ },
+ {
+  "name": "027-c-0-the-cockpit-before-the-close-marcus",
+  "surface": null,
+  "step": null,
+  "title": "C-0 the cockpit before the close (Marcus)",
+  "light": "qa-pass/027-c-0-the-cockpit-before-the-close-marcus.png",
+  "dark": null,
+  "run": "qa-pass"
+ },
+ {
+  "name": "028-c-1-the-pending-requests-of-the-month-priya",
+  "surface": null,
+  "step": null,
+  "title": "C-1 the pending requests of the month (Priya)",
+  "light": "qa-pass/028-c-1-the-pending-requests-of-the-month-priya.png",
+  "dark": null,
+  "run": "qa-pass"
+ },
+ {
+  "name": "029-c-2-the-exceptions-that-hold-the-period-maya",
+  "surface": null,
+  "step": null,
+  "title": "C-2 the exceptions that hold the period (Maya)",
+  "light": "qa-pass/029-c-2-the-exceptions-that-hold-the-period-maya.png",
+  "dark": null,
+  "run": "qa-pass"
+ },
+ {
+  "name": "030-c-3-the-hold-released-on-the-screen-maya",
+  "surface": null,
+  "step": null,
+  "title": "C-3 the hold released on the screen (Maya)",
+  "light": "qa-pass/030-c-3-the-hold-released-on-the-screen-maya.png",
+  "dark": null,
+  "run": "qa-pass"
+ },
+ {
+  "name": "031-c-5-the-soft-close-marcus",
+  "surface": null,
+  "step": null,
+  "title": "C-5 the soft close (Marcus)",
+  "light": "qa-pass/031-c-5-the-soft-close-marcus.png",
+  "dark": null,
+  "run": "qa-pass"
+ },
+ {
+  "name": "032-c-6-the-close-run-maya",
+  "surface": null,
+  "step": null,
+  "title": "C-6 the close run (Maya)",
+  "light": "qa-pass/032-c-6-the-close-run-maya.png",
+  "dark": null,
+  "run": "qa-pass"
+ },
+ {
+  "name": "033-c-7a-the-journal-run-jr-000009-submitted-maya",
+  "surface": null,
+  "step": null,
+  "title": "C-7a the journal run jr 000009 submitted (Maya)",
+  "light": "qa-pass/033-c-7a-the-journal-run-jr-000009-submitted-maya.png",
+  "dark": null,
+  "run": "qa-pass"
+ },
+ {
+  "name": "034-c-7b-the-journal-run-jr-000009-approved-priya",
+  "surface": null,
+  "step": null,
+  "title": "C-7b the journal run jr 000009 approved (Priya)",
+  "light": "qa-pass/034-c-7b-the-journal-run-jr-000009-approved-priya.png",
+  "dark": null,
+  "run": "qa-pass"
+ },
+ {
+  "name": "035-c-7d-the-ledger-s-reference-for-each-batch-of-jr-000009-maya",
+  "surface": null,
+  "step": null,
+  "title": "C-7d the ledger s reference for each batch of jr 000009 (Maya)",
+  "light": "qa-pass/035-c-7d-the-ledger-s-reference-for-each-batch-of-jr-000009-maya.png",
+  "dark": null,
+  "run": "qa-pass"
+ },
+ {
+  "name": "036-c-8a-billing-to-subledger-maya-priya",
+  "surface": null,
+  "step": null,
+  "title": "C-8a billing to subledger (Maya, Priya)",
+  "light": "qa-pass/036-c-8a-billing-to-subledger-maya-priya.png",
+  "dark": null,
+  "run": "qa-pass"
+ },
+ {
+  "name": "037-c-8b-subledger-to-gl-maya-priya",
+  "surface": null,
+  "step": null,
+  "title": "C-8b subledger to gl (Maya, Priya)",
+  "light": "qa-pass/037-c-8b-subledger-to-gl-maya-priya.png",
+  "dark": null,
+  "run": "qa-pass"
+ },
+ {
+  "name": "038-c-9-submitted-for-lock-the-screens-alone-maya",
+  "surface": null,
+  "step": null,
+  "title": "C-9 submitted for lock the screens alone (Maya)",
+  "light": "qa-pass/038-c-9-submitted-for-lock-the-screens-alone-maya.png",
+  "dark": null,
+  "run": "qa-pass"
+ },
+ {
+  "name": "039-c-10-the-lock-on-the-cockpit-marcus",
+  "surface": null,
+  "step": null,
+  "title": "C-10 the lock on the cockpit (Marcus)",
+  "light": "qa-pass/039-c-10-the-lock-on-the-cockpit-marcus.png",
+  "dark": null,
+  "run": "qa-pass"
+ },
+ {
+  "name": "040-c-12-the-locked-month-every-place-marcus",
+  "surface": null,
+  "step": null,
+  "title": "C-12 the locked month every place (Marcus)",
+  "light": "qa-pass/040-c-12-the-locked-month-every-place-marcus.png",
+  "dark": null,
+  "run": "qa-pass"
+ },
+ {
+  "name": "041-p-1-a-lock-request-on-its-own-screen-marcus-elena",
+  "surface": null,
+  "step": null,
+  "title": "P-1 a lock request on its own screen (Marcus, Elena)",
+  "light": "qa-pass/041-p-1-a-lock-request-on-its-own-screen-marcus-elena.png",
+  "dark": null,
+  "run": "qa-pass"
+ },
+ {
+  "name": "042-m-2-one-screen-per-area-she-holds-no-permission-for-tomas",
+  "surface": null,
+  "step": null,
+  "title": "M-2 one screen per area she holds no permission for (Tomas)",
+  "light": "qa-pass/042-m-2-one-screen-per-area-she-holds-no-permission-for-tomas.png",
+  "dark": null,
+  "run": "qa-pass"
+ },
+ {
+  "name": "043-m-2-one-screen-per-area-she-holds-no-permission-for-grace",
+  "surface": null,
+  "step": null,
+  "title": "M-2 one screen per area she holds no permission for (Grace)",
+  "light": "qa-pass/043-m-2-one-screen-per-area-she-holds-no-permission-for-grace.png",
+  "dark": null,
+  "run": "qa-pass"
+ },
+ {
+  "name": "044-e-4-the-waterfall-of-a-closed-month-on-screen-marcus",
+  "surface": null,
+  "step": null,
+  "title": "E-4 the waterfall of a closed month on screen (Marcus)",
+  "light": "qa-pass/044-e-4-the-waterfall-of-a-closed-month-on-screen-marcus.png",
+  "dark": null,
+  "run": "qa-pass"
+ },
+ {
+  "name": "045-e-5-home-s-key-figures-of-a-closed-month-on-screen-marcus",
+  "surface": null,
+  "step": null,
+  "title": "E-5 home s key figures of a closed month on screen (Marcus)",
+  "light": "qa-pass/045-e-5-home-s-key-figures-of-a-closed-month-on-screen-marcus.png",
+  "dark": null,
+  "run": "qa-pass"
+ }
+]

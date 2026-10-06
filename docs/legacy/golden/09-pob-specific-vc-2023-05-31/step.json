@@ -1,0 +1,94 @@
+{
+  "nn": "09",
+  "slug": "pob-specific-vc-2023-05-31",
+  "handler": "browse_file_POB_specific_VC",
+  "button": "button5_1",
+  "button_label": "POB Specific VC",
+  "file": "ops/Example UATs/Contract Mod UAT/Contract Modification Template 05.31.2023 - retrospective POB specific VC.xlsx",
+  "file_sha256": "be439dbe86221a51550e692dd4d4ef8376fa293ac38e932f74b68828e78f64d7",
+  "date_input": "2023-05-31",
+  "report_window": [
+    "2023-05-16",
+    "2023-05-31"
+  ],
+  "contract_live_table_exists": true,
+  "sku_ssp_table_exists": true,
+  "rows_before": 60,
+  "rows_after": 64,
+  "rows_appended": 4,
+  "new_version_tokens": [
+    "step-09"
+  ],
+  "sku_ssp_rows": 7,
+  "handler_success": true,
+  "handler_popups": [
+    {
+      "kind": "QMessageBox.information",
+      "title": "POB Specific VC Successfully Applied!",
+      "text": "POB Specific VC has been processed retrospectively for the current date :)"
+    }
+  ],
+  "report_popups": 4,
+  "unused_queued_inputs": [],
+  "report_unused_inputs": {
+    "latest_contracts": [],
+    "je_gross": [],
+    "je_delta": [],
+    "contract_history": []
+  },
+  "reports_captured": {
+    "latest_contracts": true,
+    "je_gross": true,
+    "je_delta": true,
+    "contract_history": true
+  },
+  "je_gross_totals": {
+    "lines": 2,
+    "by_account": [
+      {
+        "account": "5001",
+        "debit": 18.68,
+        "credit": -0.0,
+        "net": 18.68
+      },
+      {
+        "account": "15002",
+        "debit": 0.0,
+        "credit": 18.68,
+        "net": -18.68
+      }
+    ],
+    "total_debit": 18.68,
+    "total_credit": 18.68,
+    "net": 0.0
+  },
+  "je_delta_totals": {
+    "lines": 2,
+    "by_account": [
+      {
+        "account": "5001",
+        "debit": 18.68,
+        "credit": -0.0,
+        "net": 18.68
+      },
+      {
+        "account": "15002",
+        "debit": 0.0,
+        "credit": 18.68,
+        "net": -18.68
+      }
+    ],
+    "total_debit": 18.68,
+    "total_credit": 18.68,
+    "net": 0.0
+  },
+  "contract_history_rows": 4,
+  "latest_contract_rows": 16,
+  "app_excel_exports": [
+    "Contract History between 2023-05-16 and 2023-05-31.xlsx",
+    "Latest Contract Details.xlsx",
+    "Revenue Adj. Summary between 2023-05-16 and 2023-05-31.xlsx",
+    "Revenue JE Summary between 2023-05-16 and 2023-05-31.xlsx"
+  ],
+  "python_warnings": []
+}

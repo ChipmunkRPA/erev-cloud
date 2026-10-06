@@ -1,0 +1,290 @@
+schema: erev-answer-key/1
+id: LOSS-GE-03-LOSS-CONTRACT-PROVISION
+title: "Anticipated loss on a fixed-price bridge retrofit: provision recognised in full and released as work is performed"
+status: active
+families: [LOSS, REC, POS]
+tags: [construction]
+summary: "Granitefield Engineering Canada (CAD) retrofits a bridge for a fixed 2,400,000.00 on cost-to-cost; EAC 2,000,000.00. Costs to date: 800,000.00 (30 June 2026), 1,300,000.00 (30 September), 1,950,000.00 (31 December), 2,600,000.00 at completion (31 March 2027). On 30 September a steel overrun raises the EAC to 2,600,000.00: total expected loss 200,000.00; loss already recognised through margin to date = costs 1,300,000.00 − revenue 1,200,000.00 = 100,000.00; required provision 100,000.00 (JET-12; POL-153). As loss-making work is performed the provision is released so remaining work shows nil margin: 50,000.00 at 31 December, 0.00 at completion. The loss test runs at contract level (POL-150 CONTRACT). The contract is a Subtopic 605-35 construction contract (scope_605_35 true), so the ASC606 book tests it under the default POL-151 SCOPED_605_35_ONLY (ADJUDICATION.md R-SCH-03). Progress billings 900,000.00 / 600,000.00 / 900,000.00."
+authority:
+  codification: ["605-35-25-45", "605-35-25-46", "605-35-25-46A", "605-35-25-47", "606-10-25-31", "606-10-45-3"]
+  ifrs: ["IAS 37.66", "IAS 37.68A"]
+  practice: ["DART 13.5 (provisions for anticipated losses)"]
+  urls: []
+derived_from: {research04: [], research05: [GE-03], chk: [], golden: [], dev: []}
+requirements: [REQ-LOS-001, REQ-LOS-003, REQ-REC-007, REQ-TP-004, REQ-BIL-004]
+policy_refs: [POL-150, POL-151, POL-152, POL-153, POL-091]
+review: {author: answer-keys-industries, authored_on: "2026-09-12", reviewer: null, reviewed_on: null, status: pending}
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: CAD, preset: DEFAULT}
+  currencies: [CAD]
+  entities:
+    - code: GE-CA
+      name: "Granitefield Engineering Canada (Demo)"
+      functional_currency: CAD
+      time_zone: America/Toronto
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: "1"}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2027-03"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "2300", name: "Provision for anticipated contract losses", account_type: LIABILITY}
+    - {code: "4000", name: "Revenue - products", account_type: REVENUE}
+    - {code: "5300", name: "Loss on contracts", account_type: EXPENSE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: LOSS_PROVISION, account: "2300"}
+    - {account_role: LOSS_EXPENSE, account: "5300"}
+    - {account_role: REVENUE, product: BRIDGE-RETROFIT, account: "4000"}
+  customers: [{code: CUST-GE03, name: "Provincial Infrastructure Agency (Demo)"}]
+  pob_templates:
+    - code: TPL-CTC
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_B
+      recognition_method: COST_TO_COST
+      policy_values: {balance.right_to_consideration: CONDITIONAL}
+  products:
+    - {code: BRIDGE-RETROFIT, name: "Bridge seismic retrofit", pob_template: TPL-CTC, revenue_category: CONSTRUCTION}
+  ssp_books:
+    - code: SSP-GE-CA-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2025-01-01"
+          methodology_label: "Observable standalone prices (demo study)"
+          entries:
+            - product: BRIDGE-RETROFIT
+              currency: CAD
+              method: observable
+              distinctness: distinct
+              ranges: [{point_value: "2400000.00"}]
+  fx_rate_sets: []
+  rule_sets: []
+  policies:
+    tenant: {billing.posting: ERP, recognition.time_convention: MONTHLY_EVEN, loss.unit: CONTRACT}
+    entities: {}
+    books: {}
+contracts:
+  - external_id: GE-03
+    customer: CUST-GE03
+    contracting_entity: GE-CA
+    transaction_currency: CAD
+    inception_date: "2026-01-01"
+    contract_type: CONSTRUCTION
+    scope_605_35: true
+    lines:
+      - obligation_key: L1-WORK
+        product_code: BRIDGE-RETROFIT
+        quantity: "1"
+        total_price: "2400000.00"
+        start_date: "2026-01-01"
+        end_date: "2027-03-31"
+    estimates:
+      - element_code: EAC-GE03
+        estimate_kind: EAC
+        method: COST_BUILDUP
+        obligation_key: L1-WORK
+        versions:
+          - version_no: "1"
+            effective_date: "2026-01-01"
+            expected_total_amount: "2000000.00"
+            currency: CAD
+            rationale: "Bid estimate."
+          - version_no: "2"
+            effective_date: "2026-09-30"
+            expected_total_amount: "2600000.00"
+            currency: CAD
+            rationale: "Structural steel price escalation and redesign of bearings."
+timeline:
+  - seq: "1"
+    kind: event
+    contract: GE-03
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: "2"
+    kind: event
+    contract: GE-03
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: "3"
+    kind: event
+    contract: GE-03
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-01-01"
+    payload: {estimate: EAC-GE03, version_no: "1"}
+  - seq: "4"
+    kind: event
+    contract: GE-03
+    event_type: COST_INCURRED
+    effective_date: "2026-06-30"
+    payload: {purpose: PROGRESS_INPUT, obligation_key: L1-WORK, amount: "800000.00"}
+  - seq: "5"
+    kind: event
+    contract: GE-03
+    event_type: BILLING_RECORDED
+    effective_date: "2026-06-30"
+    payload:
+      invoice_number: PAYAPP-GE03-01
+      line_external_id: PAYAPP-GE03-01-1
+      amount: "900000.00"
+      issue_date: "2026-06-30"
+      obligation_key: L1-WORK
+  - seq: "6"
+    kind: event
+    contract: GE-03
+    event_type: COST_INCURRED
+    effective_date: "2026-09-30"
+    payload: {purpose: PROGRESS_INPUT, obligation_key: L1-WORK, amount: "500000.00"}
+  - seq: "7"
+    kind: event
+    contract: GE-03
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-09-30"
+    payload: {estimate: EAC-GE03, version_no: "2"}
+  - seq: "8"
+    kind: event
+    contract: GE-03
+    event_type: COST_INCURRED
+    effective_date: "2026-12-31"
+    payload: {purpose: PROGRESS_INPUT, obligation_key: L1-WORK, amount: "650000.00"}
+  - seq: "9"
+    kind: event
+    contract: GE-03
+    event_type: BILLING_RECORDED
+    effective_date: "2026-12-31"
+    payload:
+      invoice_number: PAYAPP-GE03-02
+      line_external_id: PAYAPP-GE03-02-1
+      amount: "600000.00"
+      issue_date: "2026-12-31"
+      obligation_key: L1-WORK
+  - seq: "10"
+    kind: event
+    contract: GE-03
+    event_type: COST_INCURRED
+    effective_date: "2027-03-31"
+    payload: {purpose: PROGRESS_INPUT, obligation_key: L1-WORK, amount: "650000.00"}
+  - seq: "11"
+    kind: event
+    contract: GE-03
+    event_type: BILLING_RECORDED
+    effective_date: "2027-03-31"
+    payload:
+      invoice_number: PAYAPP-GE03-03
+      line_external_id: PAYAPP-GE03-03-1
+      amount: "900000.00"
+      issue_date: "2027-03-31"
+      obligation_key: L1-WORK
+checkpoints:
+  - name: q2
+    after_seq: "5"
+    as_of: "2026-06-30"
+    book: ASC606
+    contracts:
+      - contract: GE-03
+        version: {transaction_price: "2400000.00", revenue_cum: "960000.00", billed_cum: "900000.00"}
+        obligations:
+          - obligation_key: L1-WORK
+            allocated_amount: "2400000.00"
+            revenue_cum: "960000.00"
+            satisfaction_status: PARTIALLY_SATISFIED
+        balances:
+          - entity: GE-CA
+            contract_liability: "0.00"
+            contract_asset: "60000.00"
+            unbilled_receivable: "0.00"
+            loss_provision: "0.00"
+  - name: eac-overrun
+    after_seq: "7"
+    as_of: "2026-09-30"
+    book: ASC606
+    contracts:
+      - contract: GE-03
+        version: {transaction_price: "2400000.00", revenue_cum: "1200000.00", billed_cum: "900000.00"}
+        obligations:
+          - obligation_key: L1-WORK
+            allocated_amount: "2400000.00"
+            revenue_cum: "1200000.00"
+            satisfaction_status: PARTIALLY_SATISFIED
+        balances:
+          - entity: GE-CA
+            contract_liability: "0.00"
+            contract_asset: "300000.00"
+            unbilled_receivable: "0.00"
+            loss_provision: "100000.00"
+    subledger:
+      - period_key: FY2026-P09
+        entity: GE-CA
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_ASSET, account: "1200", dr: "240000.00"}
+          - {account_role: LOSS_EXPENSE, account: "5300", dr: "100000.00"}
+          - {account_role: LOSS_PROVISION, account: "2300", cr: "100000.00"}
+          - {account_role: REVENUE, account: "4000", cr: "240000.00"}
+  - name: year-end-release
+    after_seq: "9"
+    as_of: "2026-12-31"
+    book: ASC606
+    contracts:
+      - contract: GE-03
+        version: {transaction_price: "2400000.00", revenue_cum: "1800000.00", billed_cum: "1500000.00"}
+        obligations:
+          - obligation_key: L1-WORK
+            allocated_amount: "2400000.00"
+            revenue_cum: "1800000.00"
+            satisfaction_status: PARTIALLY_SATISFIED
+        balances:
+          - entity: GE-CA
+            contract_liability: "0.00"
+            contract_asset: "300000.00"
+            unbilled_receivable: "0.00"
+            loss_provision: "50000.00"
+    subledger:
+      - period_key: FY2026-P12
+        entity: GE-CA
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "600000.00"}
+          - {account_role: LOSS_EXPENSE, account: "5300", cr: "50000.00"}
+          - {account_role: LOSS_PROVISION, account: "2300", dr: "50000.00"}
+          - {account_role: REVENUE, account: "4000", cr: "600000.00"}
+  - name: complete
+    after_seq: "11"
+    as_of: "2027-03-31"
+    book: ASC606
+    contracts:
+      - contract: GE-03
+        version: {transaction_price: "2400000.00", revenue_cum: "2400000.00", billed_cum: "2400000.00"}
+        obligations:
+          - obligation_key: L1-WORK
+            allocated_amount: "2400000.00"
+            revenue_cum: "2400000.00"
+            satisfaction_status: SATISFIED
+        balances:
+          - entity: GE-CA
+            contract_liability: "0.00"
+            contract_asset: "0.00"
+            unbilled_receivable: "0.00"
+            loss_provision: "0.00"
+    subledger:
+      - period_key: FY2027-P03
+        entity: GE-CA
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_ASSET, account: "1200", cr: "300000.00"}
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "900000.00"}
+          - {account_role: LOSS_EXPENSE, account: "5300", cr: "50000.00"}
+          - {account_role: LOSS_PROVISION, account: "2300", dr: "50000.00"}
+          - {account_role: REVENUE, account: "4000", cr: "600000.00"}

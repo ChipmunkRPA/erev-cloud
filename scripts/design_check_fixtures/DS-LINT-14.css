@@ -1,0 +1,4 @@
+/* design-check fixture DS-LINT-14: a stale token copy. */
+:root {
+  --bg-canvas: var(--stale);
+}

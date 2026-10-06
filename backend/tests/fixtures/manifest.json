@@ -1,0 +1,110 @@
+[
+  {
+    "path": "legacy_db/ASC606-shipped-step04.db",
+    "sha256": "6e35b508218420c670f3f19d0fb1df83b32ff498bb45e6bd47df68cbdf1aafc2",
+    "bytes": 28672,
+    "source": "legacy-harness/fixtures/ASC606.shipped.db"
+  },
+  {
+    "path": "legacy_probes/P1 progress 1.31.2023 - Memo 3 blank on Contract 1 POB #2 and POB #3.xlsx",
+    "sha256": "c020911399007bd96f7aefa4044ceda98b13ff7237843839e7f7b31d133b76a9",
+    "bytes": 5357,
+    "source": "legacy-harness/out/probes/inputs/P1 progress 1.31.2023 - Memo 3 blank on Contract 1 POB #2 and POB #3.xlsx"
+  },
+  {
+    "path": "legacy_probes/P2 no-op prospective mod - Contract 1 POB #1 qty 0 billing 0.xlsx",
+    "sha256": "3bfdb87e5a8fa1cf4e46c80bc8c7ea58f87a9b531e3c9a676b07f7795ef08822",
+    "bytes": 5401,
+    "source": "legacy-harness/out/probes/inputs/P2 no-op prospective mod - Contract 1 POB #1 qty 0 billing 0.xlsx"
+  },
+  {
+    "path": "legacy_probes/P3 progress 1.31.2023 - Contract 1 POB #1 over-delivered.xlsx",
+    "sha256": "fadb2372780e08339f6fccaa5d0eb1af2c9040afed11380ffa619065e82d385d",
+    "bytes": 5366,
+    "source": "legacy-harness/out/probes/inputs/P3 progress 1.31.2023 - Contract 1 POB #1 over-delivered.xlsx"
+  },
+  {
+    "path": "legacy_uat/01-ssp-upload/SKU SSP Template.xlsx",
+    "sha256": "05c40a29f350b2fb71530b8136b12ab97458ddd0c950bd43c6cdd0b5b9e390c4",
+    "bytes": 9351,
+    "source": "legacy:ops/Example UATs/SSP Upload UAT/SKU SSP Template.xlsx"
+  },
+  {
+    "path": "legacy_uat/02-contract-setup-2023-01-01/Contract Setup Template 1.1.2023.xlsx",
+    "sha256": "c64f2e09020405bc4c073ef09c2f1a0677896f0927b2f67b26c74ca54ea678a3",
+    "bytes": 9926,
+    "source": "legacy:ops/Example UATs/Contract Setup UAT/Contract Setup Template 1.1.2023.xlsx"
+  },
+  {
+    "path": "legacy_uat/03-contract-setup-2023-02-01/Contract Setup Template 2.1.2023.xlsx",
+    "sha256": "0d0751fbbf8e288752dc5f88c811d4ab312c5b22a3af806c760248c462a60084",
+    "bytes": 9943,
+    "source": "legacy:ops/Example UATs/Contract Setup UAT/Contract Setup Template 2.1.2023.xlsx"
+  },
+  {
+    "path": "legacy_uat/04-delivery-billing-2023-01-31/Contract Progress Tracking Template 1.31.2023.xlsx",
+    "sha256": "cd3abd54be10767eca6fc1729b8de0f30bfe253103519f5d08674bc866fddd46",
+    "bytes": 9316,
+    "source": "legacy:ops/Example UATs/Delivery and Billing UAT/Contract Progress Tracking Template 1.31.2023.xlsx"
+  },
+  {
+    "path": "legacy_uat/05-delivery-billing-2023-02-28/Contract Progress Tracking Template 2.28.2023.xlsx",
+    "sha256": "37a9b8cee4a46385c60ebe8afa26e3aae44554fb7395baef1884ca17b396d547",
+    "bytes": 9222,
+    "source": "legacy:ops/Example UATs/Delivery and Billing UAT/Contract Progress Tracking Template 2.28.2023.xlsx"
+  },
+  {
+    "path": "legacy_uat/06-delivery-billing-2023-03-31/Contract Progress Tracking Template 3.31.2023.xlsx",
+    "sha256": "6a373ef4913ee9f58186a22df4c195542dffe4a48bf0d3ed2db0947f8faf139c",
+    "bytes": 9331,
+    "source": "legacy:ops/Example UATs/Delivery and Billing UAT/Contract Progress Tracking Template 3.31.2023.xlsx"
+  },
+  {
+    "path": "legacy_uat/07-delivery-billing-2023-04-30-return-zero/Contract Progress Tracking Template 4.30.2023 - Return & Zero delivery billing.xlsx",
+    "sha256": "b12cab5ca658964a3479d7710ae400953b9119fb9cc49c724da9affe98879f00",
+    "bytes": 9266,
+    "source": "legacy:ops/Example UATs/Delivery and Billing UAT/Contract Progress Tracking Template 4.30.2023 - Return & Zero delivery billing.xlsx"
+  },
+  {
+    "path": "legacy_uat/08-retro-mod-2023-05-15-vc-pob-increase/Contract Modification Template 05.15.2023 - retrospective vc + POB increases.xlsx",
+    "sha256": "542fa9a99ab4a02662338a79dc81a54799faafd77f3ee2be80fe11d5fd1fbeeb",
+    "bytes": 9755,
+    "source": "legacy:ops/Example UATs/Contract Mod UAT/Contract Modification Template 05.15.2023 - retrospective vc + POB increases.xlsx"
+  },
+  {
+    "path": "legacy_uat/09-pob-specific-vc-2023-05-31/Contract Modification Template 05.31.2023 - retrospective POB specific VC.xlsx",
+    "sha256": "be439dbe86221a51550e692dd4d4ef8376fa293ac38e932f74b68828e78f64d7",
+    "bytes": 10078,
+    "source": "legacy:ops/Example UATs/Contract Mod UAT/Contract Modification Template 05.31.2023 - retrospective POB specific VC.xlsx"
+  },
+  {
+    "path": "legacy_uat/10-prospective-mod-2023-06-15-reduction/Contract Modification Template 06.15.2023 - prospective reduction.xlsx",
+    "sha256": "6b080069d18c82e9fd914646d411998b2e5b78366a9115639fb927e43bfd1b82",
+    "bytes": 9755,
+    "source": "legacy:ops/Example UATs/Contract Mod UAT/Contract Modification Template 06.15.2023 - prospective reduction.xlsx"
+  },
+  {
+    "path": "legacy_uat/11-prospective-mod-2023-07-15-pob-increase/Contract Modification Template 07.15.2023 - prospective POB increases.xlsx",
+    "sha256": "6d132e625e7143374dad6200d48275d52410b7439b8badf9419eba18e9b9eab8",
+    "bytes": 9963,
+    "source": "legacy:ops/Example UATs/Contract Mod UAT/Contract Modification Template 07.15.2023 - prospective POB increases.xlsx"
+  },
+  {
+    "path": "legacy_uat/12-retro-mod-2023-08-15-pob-reduction/Contract Modification Template 08.15.2023 - retrospective POB reduction.xlsx",
+    "sha256": "628d19d6db087248097f2bbdef3b3e3b524fc721d83d2f4e87bfa9c69e97f003",
+    "bytes": 10187,
+    "source": "legacy:ops/Example UATs/Contract Mod UAT/Contract Modification Template 08.15.2023 - retrospective POB reduction.xlsx"
+  },
+  {
+    "path": "legacy_uat/13-prospective-mod-2023-09-15-material-right-new-pob/Contract Modification Template 09.15.2023 - material right exericse with new POB added (propsective).xlsx",
+    "sha256": "445e7027574d2427e95a8d1671c77e54cd5ad451b609ba32b7b666682dbc944b",
+    "bytes": 9848,
+    "source": "legacy:ops/Example UATs/Contract Mod UAT/Contract Modification Template 09.15.2023 - material right exericse with new POB added (propsective).xlsx"
+  },
+  {
+    "path": "legacy_uat/14-full-delivery-2023-10-31/Full delivery 10.31.2023.xlsx",
+    "sha256": "3d7de60f9fb76b3d3ddf37c9e41204bf139de67c222cd54473ffcea4d332295c",
+    "bytes": 9751,
+    "source": "legacy:ops/Example UATs/Delivery and Billing UAT/Full delivery 10.31.2023.xlsx"
+  }
+]

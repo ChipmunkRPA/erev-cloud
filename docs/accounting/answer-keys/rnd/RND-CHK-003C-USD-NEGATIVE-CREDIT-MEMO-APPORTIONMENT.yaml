@@ -1,0 +1,173 @@
+# docs/accounting/answer-keys/rnd/RND-CHK-003C-USD-NEGATIVE-CREDIT-MEMO-APPORTIONMENT.yaml
+schema: "erev-answer-key/1"
+id: RND-CHK-003C-USD-NEGATIVE-CREDIT-MEMO-APPORTIONMENT
+title: >-
+  Largest remainder of a negative total: an unreferenced 100.00 credit memo over three equal allocations
+status: active
+families: [RND, POS]
+tags: []
+summary: >-
+  Entity US01, USD, ERP billing. Three services of 100.00 each with equal SSPs (allocations 100.00 each). Invoices of
+  100.00 reference each obligation. A credit memo of 100.00 references no obligation, so ALG-02 step 3 attributes it
+  by ALG-01 over the allocations of the obligations it covers. The signed total −100.00 apportions to −33.34 / −33.33
+  / −33.33 (sign applied after the apportionment of |T|, CHK-003c), so the billed amounts by obligation become 66.66 /
+  66.67 / 66.67. [J] Attribution is per billing document, not over cumulative billing; see the coverage file OQ-AK-03.
+  Cross-slice variants with distinct inputs, kept: RND-CHK-003C (price concession on satisfied POBs versus a credit
+  memo) (ADJUDICATION.md R-DUP-02).
+authority: {codification: ["606-10-45-1", "606-10-45-2"], ifrs: ["IFRS 15.105"], practice: [], urls: []}
+derived_from: {research04: [], research05: [], chk: [CHK-003c], golden: [], dev: []}
+requirements: [REQ-ALC-002, REQ-BIL-001, REQ-BIL-003]
+policy_refs: [POL-002, POL-004, POL-121]
+review:
+  author: answer-keys-fx-entity-books
+  authored_on: "2026-09-12"
+  reviewer: null
+  reviewed_on: null
+  status: pending
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: US01
+      name: "Avenmoor Systems Inc. (Demo)"
+      functional_currency: USD
+      time_zone: "America/New_York"
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: 1}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2026-02"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4010", name: "Revenue - services and subscriptions", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, account: "4010", product: SVC-A}
+    - {account_role: REVENUE, account: "4010", product: SVC-B}
+    - {account_role: REVENUE, account: "4010", product: SVC-C}
+  customers:
+    - {code: CUST-1, name: "Pellworth Logistics Inc. (Demo)"}
+  pob_templates:
+    - code: TPL-PCT
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_B
+      recognition_method: OUTPUT_PERCENT
+  products:
+    - {code: SVC-A, name: "Site survey", pob_template: TPL-PCT}
+    - {code: SVC-B, name: Installation, pob_template: TPL-PCT}
+    - {code: SVC-C, name: Training, pob_template: TPL-PCT}
+  ssp_books:
+    - code: SSP-US01-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2026-01-01"
+          methodology_label: "Observable standalone prices"
+          entries:
+            - product: SVC-A
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "100.00"}
+            - product: SVC-B
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "100.00"}
+            - product: SVC-C
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "100.00"}
+  fx_rate_sets: []
+  rule_sets: []
+  policies: {tenant: {billing.posting: ERP}, entities: {}, books: {}}
+contracts:
+  - external_id: C-RND-003C
+    customer: CUST-1
+    contracting_entity: US01
+    transaction_currency: USD
+    inception_date: "2026-01-02"
+    lines:
+      - {obligation_key: POB-001, product_code: SVC-A, quantity: "1", total_price: "100.00"}
+      - {obligation_key: POB-002, product_code: SVC-B, quantity: "1", total_price: "100.00"}
+      - {obligation_key: POB-003, product_code: SVC-C, quantity: "1", total_price: "100.00"}
+timeline:
+  - seq: 1
+    kind: event
+    contract: C-RND-003C
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-01-02"
+    payload: {}
+  - seq: 2
+    kind: event
+    contract: C-RND-003C
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-02"
+    payload: {}
+  - seq: 3
+    kind: event
+    contract: C-RND-003C
+    event_type: BILLING_RECORDED
+    effective_date: "2026-01-02"
+    payload:
+      invoice_number: INV-RND-C1
+      line_external_id: INV-RND-C1-1
+      obligation_key: POB-001
+      amount: "100.00"
+      issue_date: "2026-01-02"
+  - seq: 4
+    kind: event
+    contract: C-RND-003C
+    event_type: BILLING_RECORDED
+    effective_date: "2026-01-02"
+    payload:
+      invoice_number: INV-RND-C2
+      line_external_id: INV-RND-C2-1
+      obligation_key: POB-002
+      amount: "100.00"
+      issue_date: "2026-01-02"
+  - seq: 5
+    kind: event
+    contract: C-RND-003C
+    event_type: BILLING_RECORDED
+    effective_date: "2026-01-02"
+    payload:
+      invoice_number: INV-RND-C3
+      line_external_id: INV-RND-C3-1
+      obligation_key: POB-003
+      amount: "100.00"
+      issue_date: "2026-01-02"
+  - seq: 6
+    kind: event
+    contract: C-RND-003C
+    event_type: CREDIT_MEMO_RECORDED
+    effective_date: "2026-01-15"
+    payload:
+      credit_memo_number: CM-RND-C1
+      amount: "100.00"
+      issue_date: "2026-01-15"
+      reason: "Commercial concession"
+checkpoints:
+  - name: after-credit-memo
+    after_seq: 6
+    as_of: "2026-01-31"
+    book: ASC606
+    contracts:
+      - contract: C-RND-003C
+        version: {billed_cum: "200.00", revenue_cum: "0.00"}
+        obligations:
+          - {obligation_key: POB-001, billed_cum: "66.66", position_obligation: "66.66"}
+          - {obligation_key: POB-002, billed_cum: "66.67", position_obligation: "66.67"}
+          - {obligation_key: POB-003, billed_cum: "66.67", position_obligation: "66.67"}
+        balances:
+          - {entity: US01, contract_liability: "200.00", contract_asset: "0.00", unbilled_receivable: "0.00"}

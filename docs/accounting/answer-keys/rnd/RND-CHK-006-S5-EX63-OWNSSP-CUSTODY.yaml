@@ -1,0 +1,218 @@
+# docs/accounting/answer-keys/rnd/RND-CHK-006-S5-EX63-OWNSSP-CUSTODY.yaml
+schema: "erev-answer-key/1"
+id: RND-CHK-006-S5-EX63-OWNSSP-CUSTODY
+title: "Research 04 S5-EX63-OWNSSP re-baselined under D-11a: custody 29,126.21 over three years"
+status: active
+families: [RND, REC]
+tags: [r04-s5]
+summary: >-
+  Bill-and-hold facts of FASB Example 63 with research 04 assumption SSPs machine 900,000, spare parts 100,000,
+  custody 30,000 and price 1,000,000.00 [A stated 870,000 / 100,000 / 30,000]. Allocation 873,786.41 / 97,087.38 /
+  29,126.21; machine and parts transfer on 2026-01-01 (revenue 970,873.79). Custody runs 2026-01-01 to 2028-12-31 by
+  whole months. Cumulative custody revenue rounds X × k ÷ 36 with X = 29,126.2135…: year totals 9,708.74 / 9,708.74 /
+  9,708.73. POLICIES CHK-006 lists 9,708.74 / 9,708.73 / 9,708.74, which is round(A × f); see discrepancy D-AK-02.
+  Cross-slice variants with distinct inputs, kept: REC-S5-EX63-OWNSSP (custody periods 2027 to 2029 versus 2026 to
+  2028) (ADJUDICATION.md R-DUP-02).
+authority:
+  codification: ["606-10-55-81", "606-10-55-83", "606-10-32-28", "606-10-25-31"]
+  ifrs: ["IFRS 15.B79", "IFRS 15.B81"]
+  practice: []
+  urls: []
+derived_from: {research04: [S5-EX63-OWNSSP], research05: [], chk: [CHK-006], golden: [], dev: []}
+requirements: [REQ-REC-019, REQ-ALC-002]
+policy_refs: [POL-003, POL-090, POL-094]
+review:
+  author: answer-keys-fx-entity-books
+  authored_on: "2026-09-12"
+  reviewer: null
+  reviewed_on: null
+  status: pending
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: US01
+      name: "Avenmoor Systems Inc. (Demo)"
+      functional_currency: USD
+      time_zone: "America/New_York"
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: 1}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2028-12"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4000", name: "Revenue - products", account_type: REVENUE}
+    - {code: "4010", name: "Revenue - services and subscriptions", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, account: "4000", product: MACHINE}
+    - {account_role: REVENUE, account: "4000", product: SPARE-PARTS}
+    - {account_role: REVENUE, account: "4010", product: CUSTODY-3Y}
+  customers:
+    - {code: CUST-1, name: "Pellworth Logistics Inc. (Demo)"}
+  pob_templates:
+    - code: TPL-PIT
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: POINT_IN_TIME
+      over_time_criterion: NOT_APPLICABLE
+      recognition_method: POINT_IN_TIME
+    - code: TPL-RAT-ME
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_A
+      recognition_method: TIME_ELAPSED
+      ratable_convention: MONTHLY_EVEN
+  products:
+    - {code: MACHINE, name: Machine, pob_template: TPL-PIT}
+    - {code: SPARE-PARTS, name: "Spare parts", pob_template: TPL-PIT}
+    - {code: CUSTODY-3Y, name: "Custodial services, three years", pob_template: TPL-RAT-ME}
+  ssp_books:
+    - code: SSP-US01-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2026-01-01"
+          methodology_label: "Observable standalone prices"
+          entries:
+            - product: MACHINE
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "900000.00"}
+            - product: SPARE-PARTS
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "100000.00"}
+            - product: CUSTODY-3Y
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "30000.00"}
+  fx_rate_sets: []
+  rule_sets: []
+  policies: {tenant: {billing.posting: ERP}, entities: {}, books: {}}
+contracts:
+  - external_id: C-S5-EX63
+    customer: CUST-1
+    contracting_entity: US01
+    transaction_currency: USD
+    inception_date: "2026-01-01"
+    lines:
+      - {obligation_key: L1-MACHINE, product_code: MACHINE, quantity: "1", total_price: "870000.00"}
+      - {obligation_key: L2-PARTS, product_code: SPARE-PARTS, quantity: "1", total_price: "100000.00"}
+      - obligation_key: L3-CUSTODY
+        product_code: CUSTODY-3Y
+        quantity: "1"
+        total_price: "30000.00"
+        start_date: "2026-01-01"
+        end_date: "2028-12-31"
+    judgements:
+      - handle: J-BAH-L1-MACHINE
+        topic: BILL_AND_HOLD
+        subject_obligation_key: L1-MACHINE
+        conclusion: >-
+          Customer-requested bill-and-hold: goods segregated, identified as the customer's, ready for transfer and
+          unusable by the entity (606-10-55-83).
+        questionnaire:
+          obligation_key: L1-MACHINE
+          reason_substantive: true
+          identified_as_customer_product: true
+          ready_for_physical_transfer: true
+          cannot_use_or_direct_to_another_customer: true
+      - handle: J-BAH-L2-PARTS
+        topic: BILL_AND_HOLD
+        subject_obligation_key: L2-PARTS
+        conclusion: >-
+          Customer-requested bill-and-hold: goods segregated, identified as the customer's, ready for transfer and
+          unusable by the entity (606-10-55-83).
+        questionnaire:
+          obligation_key: L2-PARTS
+          reason_substantive: true
+          identified_as_customer_product: true
+          ready_for_physical_transfer: true
+          cannot_use_or_direct_to_another_customer: true
+timeline:
+  - {seq: 1, kind: event, contract: C-S5-EX63, event_type: CONTRACT_BOOKED, effective_date: "2026-01-01", payload: {}}
+  - seq: 2
+    kind: event
+    contract: C-S5-EX63
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: 3
+    kind: event
+    contract: C-S5-EX63
+    event_type: BILLING_RECORDED
+    effective_date: "2026-01-01"
+    payload:
+      invoice_number: INV-EX63-1
+      line_external_id: INV-EX63-1-1
+      amount: "1000000.00"
+      issue_date: "2026-01-01"
+  - seq: 4
+    kind: event
+    contract: C-S5-EX63
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-01-01"
+    payload: {obligation_key: L1-MACHINE, quantity: "1", trigger: BILL_AND_HOLD}
+  - seq: 5
+    kind: event
+    contract: C-S5-EX63
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-01-01"
+    payload: {obligation_key: L2-PARTS, quantity: "1", trigger: BILL_AND_HOLD}
+checkpoints:
+  - name: allocation-and-transfer
+    after_seq: 5
+    as_of: "2026-01-31"
+    book: ASC606
+    contracts:
+      - contract: C-S5-EX63
+        obligations:
+          - obligation_key: L1-MACHINE
+            allocated_amount: "873786.41"
+            allocated_exact: "873786.407767"
+            revenue_cum: "873786.41"
+          - obligation_key: L2-PARTS
+            allocated_amount: "97087.38"
+            allocated_exact: "97087.378641"
+            revenue_cum: "97087.38"
+          - obligation_key: L3-CUSTODY
+            allocated_amount: "29126.21"
+            allocated_exact: "29126.213592"
+            revenue_cum: "809.06"
+  - name: custody-year-end-2026
+    after_seq: 5
+    as_of: "2026-12-31"
+    book: ASC606
+    contracts:
+      - contract: C-S5-EX63
+        obligations:
+          - {obligation_key: L3-CUSTODY, revenue_cum: "9708.74", remaining_allocation: "19417.47"}
+  - name: custody-year-end-2027
+    after_seq: 5
+    as_of: "2027-12-31"
+    book: ASC606
+    contracts:
+      - contract: C-S5-EX63
+        obligations:
+          - {obligation_key: L3-CUSTODY, revenue_cum: "19417.48", remaining_allocation: "9708.73"}
+  - name: custody-year-end-2028
+    after_seq: 5
+    as_of: "2028-12-31"
+    book: ASC606
+    contracts:
+      - contract: C-S5-EX63
+        obligations:
+          - {obligation_key: L3-CUSTODY, revenue_cum: "29126.21", remaining_allocation: "0.00"}

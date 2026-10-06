@@ -1,0 +1,123 @@
+# docs/accounting/answer-keys/rnd/RND-CHK-144-MID-MONTH-LATE-START-EARLY-END.yaml
+schema: "erev-answer-key/1"
+id: RND-CHK-144-MID-MONTH-LATE-START-EARLY-END
+title: "ALG-11 MID_MONTH: start after the 15th and end before it"
+status: active
+families: [RND, REC]
+tags: [subscription]
+summary: >-
+  10,000.00 over 2026-03-20 to 2026-10-10 under MID_MONTH: counted periods April to September 2026 (m = 6); March and
+  October post 0.00; cumulative rounding of 10,000 × k ÷ 6 posts 1,666.67 / 1,666.66 / 1,666.67 / 1,666.67 / 1,666.66
+  / 1,666.67.
+authority:
+  codification: ["606-10-25-27", "606-10-25-31", "606-10-55-17", "606-10-55-20"]
+  ifrs: ["IFRS 15.35", "IFRS 15.39", "IFRS 15.B15"]
+  practice: []
+  urls: []
+derived_from: {research04: [], research05: [], chk: [CHK-144], golden: [], dev: []}
+requirements: [REQ-REC-003, REQ-REC-019]
+policy_refs: [POL-003, POL-090]
+review:
+  author: answer-keys-fx-entity-books
+  authored_on: "2026-09-12"
+  reviewer: null
+  reviewed_on: null
+  status: pending
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: US01
+      name: "Avenmoor Systems Inc. (Demo)"
+      functional_currency: USD
+      time_zone: "America/New_York"
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: 1}
+      books: [ASC606]
+  periods: {from: "2026-03", to: "2026-10"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4010", name: "Revenue - services and subscriptions", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, account: "4010", product: SUB-MM-7M}
+  customers:
+    - {code: CUST-1, name: "Pellworth Logistics Inc. (Demo)"}
+  pob_templates:
+    - code: TPL-RAT-MM
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_A
+      recognition_method: TIME_ELAPSED
+      ratable_convention: MID_MONTH
+  products:
+    - {code: SUB-MM-7M, name: "Subscription SUB-MM-7M", pob_template: TPL-RAT-MM}
+  ssp_books:
+    - code: SSP-US01-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2026-03-01"
+          methodology_label: "Observable standalone prices"
+          entries:
+            - product: SUB-MM-7M
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "10000.00"}
+  fx_rate_sets: []
+  rule_sets: []
+  policies: {tenant: {billing.posting: ERP}, entities: {}, books: {}}
+contracts:
+  - external_id: C-RND-CHK-144-MID-MONTH-LATE-START-EARLY-END
+    customer: CUST-1
+    contracting_entity: US01
+    transaction_currency: USD
+    inception_date: "2026-03-20"
+    lines:
+      - obligation_key: POB-001
+        product_code: SUB-MM-7M
+        quantity: "1"
+        total_price: "10000.00"
+        start_date: "2026-03-20"
+        end_date: "2026-10-10"
+timeline:
+  - seq: 1
+    kind: event
+    contract: C-RND-CHK-144-MID-MONTH-LATE-START-EARLY-END
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-03-20"
+    payload: {}
+  - seq: 2
+    kind: event
+    contract: C-RND-CHK-144-MID-MONTH-LATE-START-EARLY-END
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-03-20"
+    payload: {}
+checkpoints:
+  - name: full-schedule
+    after_seq: 2
+    as_of: "2026-10-31"
+    book: ASC606
+    contracts:
+      - contract: C-RND-CHK-144-MID-MONTH-LATE-START-EARLY-END
+        schedule:
+          - obligation_key: POB-001
+            schedule_kind: REVENUE
+            line_type: NORMAL
+            amounts:
+              FY2026-P03: "0.00"
+              FY2026-P04: "1666.67"
+              FY2026-P05: "1666.66"
+              FY2026-P06: "1666.67"
+              FY2026-P07: "1666.67"
+              FY2026-P08: "1666.66"
+              FY2026-P09: "1666.67"
+              FY2026-P10: "0.00"

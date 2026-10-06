@@ -1,0 +1,393 @@
+schema: erev-answer-key/1
+id: RET-BR-03-PRICE-PROTECTION-STOCK-ROTATION
+title: "Distributor price protection and stock-rotation returns: refund liability and return asset"
+status: active
+families: [RET, VC, POS]
+tags: []
+summary: "Bracken Robotik GmbH sells to a distributor on 1 March 2026 (EUR). Contract BR-03-ARMS: 1,000 robot arms at 200.00 (200,000.00) with price protection: when the list price falls, the distributor is credited the reduction on units still in its stock. Estimate version 1: no reduction planned (0.00). On 15 May the list price falls by 20.00 with 600 units in distributor stock: version 2 constrains 12,000.00; revenue falls to 188,000.00 (JET-04a) and a refund liability of 12,000.00 is recognised (JET-04b) until the credit memo of 10 June. Contract BR-03-SPARES: 500 spare kits at 80.00 (40,000.00) with a stock-rotation right to return slow-moving kits for credit until 31 August; expected returns 25 kits, carrying cost 50.00 and recovery cost 2.00 per kit (ALG-06). At transfer: revenue 38,000.00, refund liability 2,000.00, return asset 1,200.00 (JET-07c against COST_OF_REVENUE). 20 kits are returned and credited on 20 June: refund liability 400.00; JET-07d derecognises 960.00 into inventory clearing. At window expiry: revenue +400.00, refund liability 0.00, return asset 0.00. Refund liabilities and return assets are never netted into the contract position (POL-127)."
+authority:
+  codification:
+    - "606-10-32-5"
+    - "606-10-32-10"
+    - "606-10-55-22"
+    - "606-10-55-23"
+    - "606-10-55-25"
+    - "606-10-55-27"
+    - "606-10-32-39"
+    - "606-10-32-40"
+  ifrs: ["IFRS 15.B21", "IFRS 15.B25"]
+  practice: ["DART 6.3 (price protection)", "DART 14.3 (refund liabilities and return assets presentation)"]
+  urls: []
+derived_from: {research04: [], research05: [BR-03], chk: [], golden: [], dev: []}
+requirements: [REQ-TP-008, REQ-TP-002, REQ-TP-006, REQ-BIL-007, REQ-TP-018]
+policy_refs: [POL-051, POL-052, POL-053, POL-127, POL-243]
+review: {author: answer-keys-industries, authored_on: "2026-09-12", reviewer: null, reviewed_on: null, status: pending}
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: EUR, preset: DEFAULT}
+  currencies: [EUR]
+  entities:
+    - code: BR-DE
+      name: "Bracken Robotik GmbH (Demo)"
+      functional_currency: EUR
+      time_zone: Europe/Berlin
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: "1"}
+      books: [ASC606]
+  periods: {from: "2026-03", to: "2026-08"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "1310", name: "Asset for right to recover returned products", account_type: ASSET}
+    - {code: "1350", name: "Inventory clearing", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "2110", name: "Refund liability", account_type: LIABILITY}
+    - {code: "4000", name: "Revenue - products", account_type: REVENUE}
+    - {code: "5000", name: "Cost of revenue", account_type: EXPENSE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REFUND_LIABILITY, account: "2110"}
+    - {account_role: RETURN_ASSET, account: "1310"}
+    - {account_role: COST_OF_REVENUE, account: "5000"}
+    - {account_role: REVENUE, product: ARM-200, account: "4000"}
+    - {account_role: REVENUE, product: SPARE-KIT, account: "4000"}
+    - {account_role: BILLING_CLEARING, clearing_purpose: INVENTORY, account: "1350"}
+  customers: [{code: CUST-BR03, name: "Drossel Fahrzeugtechnik GmbH (Demo)"}]
+  pob_templates:
+    - code: TPL-GOODS
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: POINT_IN_TIME
+      over_time_criterion: NOT_APPLICABLE
+      recognition_method: POINT_IN_TIME
+      policy_values: {balance.right_to_consideration: UNCONDITIONAL}
+  products:
+    - code: ARM-200
+      name: "Robot arm (distributor SKU)"
+      pob_template: TPL-GOODS
+      revenue_category: PRODUCTS
+      policy_values: {returns.model: EXPECTED_RETURNS}
+    - code: SPARE-KIT
+      name: "Spare parts kit (distributor SKU)"
+      pob_template: TPL-GOODS
+      revenue_category: PRODUCTS
+      policy_values: {returns.model: EXPECTED_RETURNS}
+  ssp_books:
+    - code: SSP-BR-DE-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2025-01-01"
+          methodology_label: "Observable standalone prices (demo study)"
+          entries:
+            - product: ARM-200
+              currency: EUR
+              method: observable
+              distinctness: distinct
+              ranges: [{point_value: "200.00"}]
+            - product: SPARE-KIT
+              currency: EUR
+              method: observable
+              distinctness: distinct
+              ranges: [{point_value: "80.00"}]
+  fx_rate_sets: []
+  rule_sets: []
+  policies:
+    tenant: {billing.posting: ERP, recognition.time_convention: MONTHLY_EVEN}
+    entities: {}
+    books: {}
+contracts:
+  - external_id: BR-03-ARMS
+    customer: CUST-BR03
+    contracting_entity: BR-DE
+    transaction_currency: EUR
+    inception_date: "2026-03-01"
+    lines:
+      - obligation_key: L1-ARMS
+        product_code: ARM-200
+        quantity: "1000"
+        total_price: "200000.00"
+        unit_price: "200"
+    estimates:
+      - element_code: PP-BR03-ARMS
+        estimate_kind: VARIABLE_CONSIDERATION
+        method: MOST_LIKELY_AMOUNT
+        obligation_key: L1-ARMS
+        vc_element_type: PRICE_PROTECTION
+        allocation_target: OBLIGATIONS
+        target_obligation_keys: [L1-ARMS]
+        versions:
+          - version_no: "1"
+            effective_date: "2026-03-01"
+            unconstrained_amount: "0.00"
+            most_conservative_amount: "0.00"
+            constrained_amount: "0.00"
+            currency: EUR
+            rationale: "No list price change planned for 2026."
+          - version_no: "2"
+            effective_date: "2026-05-15"
+            unconstrained_amount: "12000.00"
+            most_conservative_amount: "12000.00"
+            constrained_amount: "12000.00"
+            expected_quantity: "600"
+            currency: EUR
+            rationale: "List price reduced by 20.00 on 15 May; distributor stock report shows 600 units."
+  - external_id: BR-03-SPARES
+    customer: CUST-BR03
+    contracting_entity: BR-DE
+    transaction_currency: EUR
+    inception_date: "2026-03-01"
+    lines:
+      - obligation_key: L1-SPARES
+        product_code: SPARE-KIT
+        quantity: "500"
+        total_price: "40000.00"
+        unit_price: "80"
+    estimates:
+      - element_code: RET-BR03-SPARES
+        estimate_kind: RETURN_RATE
+        method: RATE
+        obligation_key: L1-SPARES
+        versions:
+          - version_no: "1"
+            effective_date: "2026-03-01"
+            rate: "0.05"
+            expected_quantity: "25"
+            parameters: {carrying_cost_per_unit: "50.00", recovery_cost_per_unit: "2.00", window_end_date: "2026-08-31"}
+            rationale: "Stock-rotation history: 5% of spare kits returned within six months."
+timeline:
+  - seq: "1"
+    kind: event
+    contract: BR-03-ARMS
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-03-01"
+    payload: {}
+  - seq: "2"
+    kind: event
+    contract: BR-03-ARMS
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-03-01"
+    payload: {}
+  - seq: "3"
+    kind: event
+    contract: BR-03-ARMS
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-03-01"
+    payload: {estimate: PP-BR03-ARMS, version_no: "1"}
+  - seq: "4"
+    kind: event
+    contract: BR-03-ARMS
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-03-01"
+    payload: {obligation_key: L1-ARMS, quantity: "1000", trigger: DELIVERY}
+  - seq: "5"
+    kind: event
+    contract: BR-03-ARMS
+    event_type: BILLING_RECORDED
+    effective_date: "2026-03-01"
+    payload:
+      invoice_number: INV-BR03-A01
+      line_external_id: INV-BR03-A01-1
+      amount: "200000.00"
+      issue_date: "2026-03-01"
+      obligation_key: L1-ARMS
+  - seq: "6"
+    kind: event
+    contract: BR-03-SPARES
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-03-01"
+    payload: {}
+  - seq: "7"
+    kind: event
+    contract: BR-03-SPARES
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-03-01"
+    payload: {}
+  - seq: "8"
+    kind: event
+    contract: BR-03-SPARES
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-03-01"
+    payload: {estimate: RET-BR03-SPARES, version_no: "1"}
+  - seq: "9"
+    kind: event
+    contract: BR-03-SPARES
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-03-01"
+    payload: {obligation_key: L1-SPARES, quantity: "500", trigger: DELIVERY}
+  - seq: "10"
+    kind: event
+    contract: BR-03-SPARES
+    event_type: BILLING_RECORDED
+    effective_date: "2026-03-01"
+    payload:
+      invoice_number: INV-BR03-S01
+      line_external_id: INV-BR03-S01-1
+      amount: "40000.00"
+      issue_date: "2026-03-01"
+      obligation_key: L1-SPARES
+  - seq: "11"
+    kind: event
+    contract: BR-03-ARMS
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-05-15"
+    payload: {estimate: PP-BR03-ARMS, version_no: "2"}
+  - seq: "12"
+    kind: event
+    contract: BR-03-ARMS
+    event_type: CREDIT_MEMO_RECORDED
+    effective_date: "2026-06-10"
+    payload:
+      credit_memo_number: CM-BR03-PP01
+      obligation_key: L1-ARMS
+      amount: "12000.00"
+      issue_date: "2026-06-10"
+      reason: PRICE_PROTECTION
+  - seq: "13"
+    kind: event
+    contract: BR-03-SPARES
+    event_type: RETURN_RECORDED
+    effective_date: "2026-06-20"
+    payload: {obligation_key: L1-SPARES, quantity: "20", refund_amount: "1600.00", reason: STOCK_ROTATION}
+  - seq: "14"
+    kind: event
+    contract: BR-03-SPARES
+    event_type: CREDIT_MEMO_RECORDED
+    effective_date: "2026-06-20"
+    payload:
+      credit_memo_number: CM-BR03-SR01
+      obligation_key: L1-SPARES
+      amount: "1600.00"
+      issue_date: "2026-06-20"
+      reason: STOCK_ROTATION_RETURN
+checkpoints:
+  - name: shipment-month
+    after_seq: "10"
+    as_of: "2026-03-31"
+    book: ASC606
+    contracts:
+      - contract: BR-03-ARMS
+        version: {revenue_cum: "200000.00", billed_cum: "200000.00"}
+        obligations: [{obligation_key: L1-ARMS, revenue_cum: "200000.00", returned_quantity_cum: "0"}]
+        balances:
+          - entity: BR-DE
+            contract_liability: "0.00"
+            contract_asset: "0.00"
+            unbilled_receivable: "0.00"
+            refund_liability: "0.00"
+      - contract: BR-03-SPARES
+        version: {revenue_cum: "38000.00", billed_cum: "40000.00"}
+        obligations: [{obligation_key: L1-SPARES, revenue_cum: "38000.00", returned_quantity_cum: "0"}]
+        balances:
+          - entity: BR-DE
+            contract_liability: "0.00"
+            contract_asset: "0.00"
+            unbilled_receivable: "0.00"
+            refund_liability: "2000.00"
+            return_asset: "1200.00"
+    subledger:
+      - period_key: FY2026-P03
+        entity: BR-DE
+        match: exact
+        contract: BR-03-SPARES
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "40000.00"}
+          - {account_role: COST_OF_REVENUE, account: "5000", cr: "1200.00"}
+          - {account_role: REFUND_LIABILITY, account: "2110", cr: "2000.00"}
+          - {account_role: RETURN_ASSET, account: "1310", dr: "1200.00"}
+          - {account_role: REVENUE, account: "4000", cr: "38000.00"}
+  - name: price-protection
+    after_seq: "11"
+    as_of: "2026-05-31"
+    book: ASC606
+    contracts:
+      - contract: BR-03-ARMS
+        version: {revenue_cum: "188000.00", billed_cum: "200000.00"}
+        obligations: [{obligation_key: L1-ARMS, revenue_cum: "188000.00", returned_quantity_cum: "0"}]
+        balances:
+          - entity: BR-DE
+            contract_liability: "0.00"
+            contract_asset: "0.00"
+            unbilled_receivable: "0.00"
+            refund_liability: "12000.00"
+    subledger:
+      - period_key: FY2026-P05
+        entity: BR-DE
+        match: exact
+        contract: BR-03-ARMS
+        grain: role_account
+        lines:
+          - {account_role: REFUND_LIABILITY, account: "2110", cr: "12000.00"}
+          - {account_role: REVENUE, account: "4000", dr: "12000.00"}
+  - name: credits-and-returns
+    after_seq: "14"
+    as_of: "2026-06-30"
+    book: ASC606
+    contracts:
+      - contract: BR-03-ARMS
+        version: {revenue_cum: "188000.00", billed_cum: "188000.00"}
+        obligations: [{obligation_key: L1-ARMS, revenue_cum: "188000.00", returned_quantity_cum: "0"}]
+        balances:
+          - entity: BR-DE
+            contract_liability: "0.00"
+            contract_asset: "0.00"
+            unbilled_receivable: "0.00"
+            refund_liability: "0.00"
+      - contract: BR-03-SPARES
+        version: {revenue_cum: "38000.00", billed_cum: "38400.00"}
+        obligations: [{obligation_key: L1-SPARES, revenue_cum: "38000.00", returned_quantity_cum: "20"}]
+        balances:
+          - entity: BR-DE
+            contract_liability: "0.00"
+            contract_asset: "0.00"
+            unbilled_receivable: "0.00"
+            refund_liability: "400.00"
+            return_asset: "240.00"
+    subledger:
+      - period_key: FY2026-P06
+        entity: BR-DE
+        match: exact
+        contract: BR-03-ARMS
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", cr: "12000.00"}
+          - {account_role: REFUND_LIABILITY, account: "2110", dr: "12000.00"}
+      - period_key: FY2026-P06
+        entity: BR-DE
+        match: exact
+        contract: BR-03-SPARES
+        grain: role_account
+        lines:
+          - {account_role: BILLING_CLEARING, clearing_purpose: INVENTORY, account: "1350", dr: "960.00"}
+          - {account_role: CONTRACT_LIABILITY, account: "2100", cr: "1600.00"}
+          - {account_role: REFUND_LIABILITY, account: "2110", dr: "1600.00"}
+          - {account_role: RETURN_ASSET, account: "1310", cr: "960.00"}
+  - name: return-window-expired
+    after_seq: "14"
+    as_of: "2026-08-31"
+    book: ASC606
+    contracts:
+      - contract: BR-03-SPARES
+        version: {revenue_cum: "38400.00", billed_cum: "38400.00"}
+        obligations: [{obligation_key: L1-SPARES, revenue_cum: "38400.00", returned_quantity_cum: "20"}]
+        balances:
+          - entity: BR-DE
+            contract_liability: "0.00"
+            contract_asset: "0.00"
+            unbilled_receivable: "0.00"
+            refund_liability: "0.00"
+            return_asset: "0.00"
+    subledger:
+      - period_key: FY2026-P08
+        entity: BR-DE
+        match: exact
+        contract: BR-03-SPARES
+        grain: role_account
+        lines:
+          - {account_role: COST_OF_REVENUE, account: "5000", dr: "240.00"}
+          - {account_role: REFUND_LIABILITY, account: "2110", dr: "400.00"}
+          - {account_role: RETURN_ASSET, account: "1310", cr: "240.00"}
+          - {account_role: REVENUE, account: "4000", cr: "400.00"}

@@ -1,0 +1,189 @@
+# docs/accounting/answer-keys/je/JE-CHK-136-S3-EX29-ADVANCE-PAYMENT-ACCRETION.yaml
+schema: "erev-answer-key/1"
+id: JE-CHK-136-S3-EX29-ADVANCE-PAYMENT-ACCRETION
+title: >-
+  JET-11b: interest expense accreted on a two-year advance payment, revenue at the accreted amount
+status: active
+families: [JE, SFC]
+tags: [r04-s3]
+summary: >-
+  FASB Example 29 facts (research 04 S3-EX29) re-anchored to 2026: an asset is sold for 4,000.00 paid on 1 January
+  2026 with transfer on 1 January 2028; the entity's incremental borrowing rate is 6% (POL-047 ENTITY_BORROWING_RATE,
+  one approved contract-level override with annual_rate 0.06, SFC judgement recorded). Entity US01, USD, ERP billing.
+  EMOD-18 builds a monthly effective-interest schedule; [J] the monthly rate is annual_rate ÷ 12 and cumulative
+  interest is round(4,000 × (1.005^m − 1)) (ALG-01 over exact cumulative interest), so JET-11b Dr INTEREST_EXPENSE /
+  Cr CONTRACT_LIABILITY totals 246.71 in 2026 and 261.93 in 2027 (cumulative 508.64), and JET-02 recognises 4,508.64
+  on transfer. POLICIES CHK-136 and research 04 compound annually (240.00, 254.40, 4,494.40); the difference is
+  discrepancy D-AK-05 and OQ-AK-05 in the coverage file. Cross-slice variants with distinct inputs, kept: SFC-S3-EX29
+  (transfer on 31 December 2027 versus 1 January 2028) (ADJUDICATION.md R-DUP-02).
+authority:
+  codification: ["606-10-32-15", "606-10-32-16", "606-10-32-19", "606-10-32-20", "835-30-35-2"]
+  ifrs: ["IFRS 15.60", "IFRS 15.64", "IFRS 15.IE148"]
+  practice: []
+  urls: []
+derived_from: {research04: [S3-EX29], research05: [], chk: [CHK-136], golden: [], dev: []}
+requirements: [REQ-TP-011, REQ-JE-002, REQ-BIL-007]
+policy_refs: [POL-046, POL-047]
+review:
+  author: answer-keys-fx-entity-books
+  authored_on: "2026-09-12"
+  reviewer: null
+  reviewed_on: null
+  status: pending
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: US01
+      name: "Avenmoor Systems Inc. (Demo)"
+      functional_currency: USD
+      time_zone: "America/New_York"
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: 1}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2028-01"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4000", name: "Revenue - products", account_type: REVENUE}
+    - {code: "7100", name: "Interest expense", account_type: EXPENSE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, account: "4000", product: ASSET-29}
+    - {account_role: INTEREST_EXPENSE, account: "7100"}
+  customers:
+    - {code: CUST-1, name: "Pellworth Logistics Inc. (Demo)"}
+  pob_templates:
+    - code: TPL-PIT
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: POINT_IN_TIME
+      over_time_criterion: NOT_APPLICABLE
+      recognition_method: POINT_IN_TIME
+  products:
+    - {code: ASSET-29, name: "Specialised asset", pob_template: TPL-PIT}
+  ssp_books:
+    - code: SSP-US-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2026-01-01"
+          methodology_label: "Observable standalone prices"
+          entries:
+            - product: ASSET-29
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "4000.00"}
+  fx_rate_sets: []
+  rule_sets: []
+  policies: {tenant: {billing.posting: ERP}, entities: {}, books: {}}
+contracts:
+  - external_id: C-JE-136
+    customer: CUST-1
+    contracting_entity: US01
+    transaction_currency: USD
+    inception_date: "2026-01-01"
+    lines:
+      - {obligation_key: L1-ASSET, product_code: ASSET-29, quantity: "1", total_price: "4000.00"}
+    policy_overrides:
+      - policy_key: sfc.discount_rate_basis
+        value: {basis: ENTITY_BORROWING_RATE, annual_rate: "0.06", compounding: MONTHLY}
+        rationale: "Incremental borrowing rate at inception (FASB Example 29)"
+    judgements:
+      - handle: JDG-SFC-136
+        topic: SFC_ASSESSMENT
+        conclusion: "Advance payment two years before transfer; significant financing component exists"
+        questionnaire: {obligation_key: "", significant: true, exception_32_17: NONE}
+timeline:
+  - {seq: 1, kind: event, contract: C-JE-136, event_type: CONTRACT_BOOKED, effective_date: "2026-01-01", payload: {}}
+  - seq: 2
+    kind: event
+    contract: C-JE-136
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: 3
+    kind: event
+    contract: C-JE-136
+    event_type: BILLING_RECORDED
+    effective_date: "2026-01-01"
+    payload: {invoice_number: INV-SFC-1, line_external_id: INV-SFC-1-1, amount: "4000.00", issue_date: "2026-01-01"}
+  - seq: 4
+    kind: event
+    contract: C-JE-136
+    event_type: PAYMENT_RECEIVED
+    effective_date: "2026-01-01"
+    payload:
+      receipt_reference: RCPT-SFC-1
+      amount: "4000.00"
+      receipt_date: "2026-01-01"
+      applied_invoice_numbers: [INV-SFC-1]
+  - seq: 5
+    kind: event
+    contract: C-JE-136
+    event_type: DELIVERY_RECORDED
+    effective_date: "2028-01-01"
+    payload: {obligation_key: L1-ASSET, quantity: "1", trigger: CONTROL_TRANSFER}
+checkpoints:
+  - name: year-1-close
+    after_seq: 4
+    as_of: "2026-12-31"
+    book: ASC606
+    contracts:
+      - contract: C-JE-136
+        balances:
+          - {entity: US01, contract_liability: "4246.71"}
+    subledger:
+      - period_key: FY2026-P01
+        entity: US01
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: INTEREST_EXPENSE, account: "7100", dr: "20.00"}
+          - {account_role: CONTRACT_LIABILITY, account: "2100", cr: "20.00"}
+      - period_key: FY2026-P12
+        entity: US01
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: INTEREST_EXPENSE, account: "7100", dr: "21.13"}
+          - {account_role: CONTRACT_LIABILITY, account: "2100", cr: "21.13"}
+  - name: year-2-close
+    after_seq: 4
+    as_of: "2027-12-31"
+    book: ASC606
+    contracts:
+      - contract: C-JE-136
+        balances:
+          - {entity: US01, contract_liability: "4508.64"}
+    subledger:
+      - period_key: FY2027-P12
+        entity: US01
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: INTEREST_EXPENSE, account: "7100", dr: "22.43"}
+          - {account_role: CONTRACT_LIABILITY, account: "2100", cr: "22.43"}
+  - name: transfer
+    after_seq: 5
+    as_of: "2028-01-31"
+    book: ASC606
+    contracts:
+      - contract: C-JE-136
+        version: {transaction_price: "4508.64", financing_adjustment_amount: "508.64", revenue_cum: "4508.64"}
+        balances:
+          - {entity: US01, contract_liability: "0.00", contract_asset: "0.00"}
+    subledger:
+      - period_key: FY2028-P01
+        entity: US01
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "4508.64"}
+          - {account_role: REVENUE, account: "4000", cr: "4508.64"}

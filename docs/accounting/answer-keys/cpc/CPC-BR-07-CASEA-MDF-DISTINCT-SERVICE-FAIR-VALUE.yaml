@@ -1,0 +1,257 @@
+schema: erev-answer-key/1
+id: CPC-BR-07-CASEA-MDF-DISTINCT-SERVICE-FAIR-VALUE
+title: "Market development funds paid for a distinct advertising service at fair value: no revenue reduction"
+status: active
+families: [CPC, POB]
+tags: []
+summary: "A distributor buys 10,000 servo drives at 100.00 (1,000,000.00) under a noncancellable 2026 blanket order, shipped and invoiced 2,500 a quarter. Bracken pays the distributor 40,000.00 of market development funds for a co-branded advertising campaign that Bracken could have bought from an agency; third-party quotes support a fair value of 40,000.00. The payment buys a distinct service at fair value (606-10-32-26), so it is a purchase from a supplier recorded in the ERP, not consideration payable to a customer: revenue is the gross 1,000,000.00 and no incentive asset or payable is posted by the engine. The expected-purchases estimate carries the payment (unconstrained) and 0.00 as the amount that reduces the transaction price (constrained)."
+authority:
+  codification: ["606-10-32-25", "606-10-32-26", "606-10-32-27", "606-10-25-18"]
+  ifrs: ["IFRS 15.70", "IFRS 15.71"]
+  practice: ["DART 6.6 (consideration payable to a customer)", "FASB Example 32 pattern"]
+  urls: []
+derived_from: {research04: [], research05: [BR-07], chk: [], golden: [], dev: []}
+requirements: [REQ-TP-013, REQ-TP-001, REQ-POL-008]
+policy_refs: [POL-049]
+review: {author: answer-keys-industries, authored_on: "2026-09-12", reviewer: null, reviewed_on: null, status: pending}
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: BR-US
+      name: "Bracken Robotics US (Demo)"
+      functional_currency: USD
+      time_zone: America/Chicago
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: "1"}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2026-12"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "1210", name: "Customer incentive asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "2400", name: "Consideration payable to customers", account_type: LIABILITY}
+    - {code: "4000", name: "Revenue - products", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: CUSTOMER_INCENTIVE_ASSET, account: "1210"}
+    - {account_role: CONSIDERATION_PAYABLE, account: "2400"}
+    - {account_role: REVENUE, product: SERVO-DRIVE, account: "4000"}
+  customers: [{code: CUST-BR07, name: "Castellan Industrial Distribution Inc. (Demo)"}]
+  pob_templates:
+    - code: TPL-GOODS
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: POINT_IN_TIME
+      over_time_criterion: NOT_APPLICABLE
+      recognition_method: POINT_IN_TIME
+      policy_values: {balance.right_to_consideration: UNCONDITIONAL}
+  products:
+    - {code: SERVO-DRIVE, name: "Servo drive (distributor SKU)", pob_template: TPL-GOODS, revenue_category: PRODUCTS}
+  ssp_books:
+    - code: SSP-BR-US-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2025-01-01"
+          methodology_label: "Observable standalone prices (demo study)"
+          entries:
+            - product: SERVO-DRIVE
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges: [{point_value: "100.00"}]
+  fx_rate_sets: []
+  rule_sets: []
+  policies:
+    tenant: {billing.posting: ERP, recognition.time_convention: MONTHLY_EVEN}
+    entities: {}
+    books: {}
+contracts:
+  - external_id: BR-07
+    customer: CUST-BR07
+    contracting_entity: BR-US
+    transaction_currency: USD
+    inception_date: "2026-01-01"
+    lines:
+      - obligation_key: L1-DRIVES
+        product_code: SERVO-DRIVE
+        quantity: "10000"
+        total_price: "1000000.00"
+        unit_price: "100"
+    judgements:
+      - handle: JDG-BR07-MDF
+        topic: OTHER
+        subject_obligation_key: L1-DRIVES
+        conclusion: "MDF payment 40000.00; distinct advertising service fair value 40000.00 (agency quotes Q4 2025); amount reducing the transaction price 0.00."
+    estimates:
+      - element_code: EXP-BR07-PURCH
+        estimate_kind: EXPECTED_PURCHASES
+        method: ENTERED_AMOUNT
+        obligation_key: L1-DRIVES
+        versions:
+          - version_no: "1"
+            effective_date: "2026-01-01"
+            expected_total_amount: "1000000.00"
+            unconstrained_amount: "40000.00"
+            most_conservative_amount: "0.00"
+            constrained_amount: "0.00"
+            currency: USD
+            rationale: "Blanket order 10,000 units; payment and distinct-service fair value per judgement JDG-BR07-MDF."
+timeline:
+  - seq: "1"
+    kind: event
+    contract: BR-07
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: "2"
+    kind: event
+    contract: BR-07
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: "3"
+    kind: event
+    contract: BR-07
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-01-01"
+    payload: {estimate: EXP-BR07-PURCH, version_no: "1"}
+  - seq: "4"
+    kind: event
+    contract: BR-07
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-03-31"
+    payload: {obligation_key: L1-DRIVES, quantity: "2500", trigger: DELIVERY}
+  - seq: "5"
+    kind: event
+    contract: BR-07
+    event_type: BILLING_RECORDED
+    effective_date: "2026-03-31"
+    payload:
+      invoice_number: INV-BR07-Q1
+      line_external_id: INV-BR07-Q1-1
+      amount: "250000.00"
+      issue_date: "2026-03-31"
+      obligation_key: L1-DRIVES
+  - seq: "6"
+    kind: event
+    contract: BR-07
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-06-30"
+    payload: {obligation_key: L1-DRIVES, quantity: "2500", trigger: DELIVERY}
+  - seq: "7"
+    kind: event
+    contract: BR-07
+    event_type: BILLING_RECORDED
+    effective_date: "2026-06-30"
+    payload:
+      invoice_number: INV-BR07-Q2
+      line_external_id: INV-BR07-Q2-1
+      amount: "250000.00"
+      issue_date: "2026-06-30"
+      obligation_key: L1-DRIVES
+  - seq: "8"
+    kind: event
+    contract: BR-07
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-09-30"
+    payload: {obligation_key: L1-DRIVES, quantity: "2500", trigger: DELIVERY}
+  - seq: "9"
+    kind: event
+    contract: BR-07
+    event_type: BILLING_RECORDED
+    effective_date: "2026-09-30"
+    payload:
+      invoice_number: INV-BR07-Q3
+      line_external_id: INV-BR07-Q3-1
+      amount: "250000.00"
+      issue_date: "2026-09-30"
+      obligation_key: L1-DRIVES
+  - seq: "10"
+    kind: event
+    contract: BR-07
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-12-31"
+    payload: {obligation_key: L1-DRIVES, quantity: "2500", trigger: DELIVERY}
+  - seq: "11"
+    kind: event
+    contract: BR-07
+    event_type: BILLING_RECORDED
+    effective_date: "2026-12-31"
+    payload:
+      invoice_number: INV-BR07-Q4
+      line_external_id: INV-BR07-Q4-1
+      amount: "250000.00"
+      issue_date: "2026-12-31"
+      obligation_key: L1-DRIVES
+checkpoints:
+  - name: activation-month
+    after_seq: "3"
+    as_of: "2026-01-31"
+    book: ASC606
+    contracts:
+      - contract: BR-07
+        version:
+          transaction_price: "1000000.00"
+          consideration_payable_amount: "0.00"
+          revenue_cum: "0.00"
+          billed_cum: "0.00"
+        obligations: [{obligation_key: L1-DRIVES, allocated_amount: "1000000.00"}]
+        balances:
+          - entity: BR-US
+            contract_liability: "0.00"
+            contract_asset: "0.00"
+            unbilled_receivable: "0.00"
+            customer_incentive_asset: "0.00"
+            consideration_payable: "0.00"
+  - name: q1
+    after_seq: "5"
+    as_of: "2026-03-31"
+    book: ASC606
+    contracts:
+      - contract: BR-07
+        version:
+          transaction_price: "1000000.00"
+          consideration_payable_amount: "0.00"
+          revenue_cum: "250000.00"
+          billed_cum: "250000.00"
+        obligations: [{obligation_key: L1-DRIVES, allocated_amount: "1000000.00"}]
+        balances:
+          - entity: BR-US
+            contract_liability: "0.00"
+            contract_asset: "0.00"
+            unbilled_receivable: "0.00"
+            customer_incentive_asset: "0.00"
+            consideration_payable: "0.00"
+    subledger:
+      - period_key: FY2026-P03
+        entity: BR-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "250000.00"}
+          - {account_role: REVENUE, account: "4000", cr: "250000.00"}
+  - name: year-end
+    after_seq: "11"
+    as_of: "2026-12-31"
+    book: ASC606
+    contracts:
+      - contract: BR-07
+        version:
+          transaction_price: "1000000.00"
+          consideration_payable_amount: "0.00"
+          revenue_cum: "1000000.00"
+          billed_cum: "1000000.00"
+        obligations: [{obligation_key: L1-DRIVES, allocated_amount: "1000000.00"}]
+        balances:
+          - entity: BR-US
+            contract_liability: "0.00"
+            contract_asset: "0.00"
+            unbilled_receivable: "0.00"
+            customer_incentive_asset: "0.00"
+            consideration_payable: "0.00"

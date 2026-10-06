@@ -1,0 +1,21 @@
+{
+  "$schema": "erev mock scenario v1 (05 ADP-20 to ADP-23; PRD J-13.11, WLD-B-07, WLD-F-32; BUILD_SPEC CLO-15)",
+  "tenant_code": "avenmoor",
+  "subsidiary": "AVM-US",
+  "period": "FY2026-P09",
+  "period_end": "2026-09-30",
+  "currency": "USD",
+  "documents": [
+    {
+      "reference": "JE-NS-88121",
+      "date": "2026-09-30",
+      "period": "FY2026-P09",
+      "memo": "Manual accrual posted in NetSuite by AP; reversed on 01 Oct 2026 by JE-NS-88410.",
+      "lines": [{"account": "2100", "amount": "250.00"}]
+    }
+  ],
+  "scenario_notes": {
+    "direct_gl_entry": "WLD-B-07: a journal made in NetSuite, USD 250.00 to the subledger-controlled account 2100. It carries no eRev external id, so the subledger-to-GL reconciliation classifies it as a direct GL entry (J-13.11). Only the line on the controlled account is stated; its other side lies on an account the subledger does not control. The documents name no date: 30 Sep 2026 is the last day of the period the entry belongs to.",
+    "trial_balance": "The mock computes the closing balances: every journal posted to it through the period end, the documents made in the ERP (POST /__erp/documents) and the documents of this file. A `balances` member ([{account, currency, amount}]) fixes the balances of this workspace, subsidiary and period instead (the demo seed states them, BUILD_SPEC CLO-22)."
+  }
+}

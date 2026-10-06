@@ -1,0 +1,14 @@
+{
+  "contract_balance_rollforward": "CONTRACT_BALANCE_ROLLFORWARD",
+  "contract_balances": "CONTRACT_BALANCES",
+  "contract_cost_rollforward": "COST_ROLLFORWARD",
+  "disaggregation": "DISAGGREGATION",
+  "je_population": "JE_POPULATION",
+  "manual_adjustment_register": "MANUAL_ADJUSTMENT_REGISTER",
+  "modification_register": "MODIFICATION_REGISTER",
+  "out_of_period_register": "OUT_OF_PERIOD_REGISTER",
+  "revenue_from_prior_period_obligations": "PRIOR_PERIOD_POB_REVENUE",
+  "revenue_waterfall": "WATERFALL",
+  "rpo": "RPO",
+  "rpo_rollforward": "RPO_ROLLFORWARD"
+}

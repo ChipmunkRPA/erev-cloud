@@ -1,0 +1,7 @@
+# Pinned to 2024-era releases contemporaneous with eRev.py (copyright 2024, EOL date 2025-12-31).
+# eRev.py imports: PySide6, pandas, numpy, python-dotenv; pandas.read_excel/to_excel use openpyxl.
+PySide6==6.7.3
+pandas==2.2.3
+numpy==1.26.4
+openpyxl==3.1.5
+python-dotenv==1.0.1

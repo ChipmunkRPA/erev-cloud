@@ -1,0 +1,436 @@
+# docs/accounting/answer-keys/rec/REC-USAGE-STAND-READY-FEE-SCHEDULED-TO-TERM-END.yaml
+# Authored by lane SECFIX-CLO for item ENG-USAGE-FIXED-SCHEDULE-1 (supervisor ruling R-116 (a); candidate AD-61 for the
+# independent accountant). Every expected value is derived by hand from the contract's terms, as the notes below
+# show; none is read from the engine.
+schema: "erev-answer-key/1"
+id: "REC-USAGE-STAND-READY-FEE-SCHEDULED-TO-TERM-END"
+title: "Usage obligation with a fixed stand-ready fee: the fee is scheduled by time to the term end, beyond the open periods"
+status: "active"
+families: ["REC", "DISC", "POS"]
+tags: ["usage"]
+summary: >-
+  Northstead gives a freight carrier access to its routing API for three years, 1 January 2026 to 31 December 2028,
+  for a fixed fee of 300,000.00 — 200,000.00 paid at signing on 31 December 2025 for the first two years,
+  100,000.00 due on 1 January 2028 — plus 0.05 for every call, reported, invoiced and paid at each quarter end. The
+  obligation is measured by usage: the calls of a quarter are revenue of that quarter (606-10-32-40), and the fixed
+  fee is the consideration for standing ready, recognised as time elapses, 8,333.33 or 8,333.34 a month under
+  MONTHLY_EVEN. Only December 2025 to September 2026 are open; every later period is future. The unrecognised part
+  of the fixed fee depends on no event: it is scheduled, month by month to December 2028, and nothing of it awaits a
+  trigger. At signing the remaining performance obligation of 300,000.00 falls 100,000.00 into each time band, and
+  of the contract liability of 200,000.00 the 100,000.00 to be earned in 2026 is current; at 30 September 2026,
+  after 63,750.00 of usage fees, the remainder of 225,000.00 falls 100,000.00, 100,000.00 and 25,000.00, and of the
+  contract liability of 125,000.00 the 100,000.00 to be earned by 30 September 2027 is current. Usage of later
+  quarters is in no figure before it is reported.
+notes:
+  - >-
+    Candidate for the independent accountant (AD-61; supervisor ruling R-116 (a) of 2026-09-30, item
+    ENG-USAGE-FIXED-SCHEDULE-1): not an approved key. The ruling: the unrecognised part of a fixed fee that a usage
+    obligation recognises by time elapsed is scheduled, not awaiting a trigger. If the accountant answers that it
+    awaits a trigger, the expected values of scheduled_amount and awaiting_trigger_amount change places, the
+    schedule ends with September 2026, the bands read 75,000.00 / 0.00 / 225,000.00 at signing and 0.00 / 0.00 /
+    225,000.00 at 30 September, and the current part of the liability reads 0.00 at both dates.
+  - >-
+    Derivation of the fixed fee (R-116 (a); POL-090 MONTHLY_EVEN, ALG-11; ALG-01 2.1.3). 36 whole months; the
+    cumulative amount at the end of month n is 300,000.00 x n / 36 rounded half up to the cent, and a month's amount
+    is the difference of two cumulative amounts: 8,333.33, 16,666.67, 25,000.00 give 8,333.33, 8,333.34, 8,333.33,
+    and so in every quarter. Cumulative: 75,000.00 at September 2026, 100,000.00 at December 2026, 175,000.00 at
+    September 2027, 200,000.00 at December 2027, 275,000.00 at September 2028. At signing, the day before the term
+    begins, no month has ended.
+  - >-
+    Derivation of the usage fees (R-116 (a); POL-240 DERIVED, S09-R-19). 360,000, 430,000 and 485,000 calls at 0.05
+    are 18,000.00, 21,500.00 and 24,250.00, together 63,750.00; each is revenue of the month its quarter ends in and
+    raises the transaction price and the allocation by its amount. September 2026: 8,333.33 + 24,250.00 = 32,583.33.
+    At 30 September: price and allocation 363,750.00; revenue 75,000.00 + 63,750.00 = 138,750.00; billed
+    200,000.00 + 63,750.00 = 263,750.00; remainder 300,000.00 - 75,000.00 = 225,000.00, all of it the fixed fee.
+  - >-
+    Derivation of the time bands (R-116 (a); POL-201 [12, 24], S15-R-10). From signing, 31 December 2025, the
+    bounds are 31 December 2026 and 31 December 2027: the months of 2026, of 2027 and of 2028, 100,000.00 each.
+    From 30 September 2026 the bounds are 30 September 2027 and 30 September 2028: 175,000.00 - 75,000.00 =
+    100,000.00, 275,000.00 - 175,000.00 = 100,000.00 and 300,000.00 - 275,000.00 = 25,000.00.
+  - >-
+    Derivation of the liability and its current part (R-116 (a); POL-124, S10-R-24). The liability is what was
+    billed less revenue: 200,000.00 at 31 December 2025, when nothing is earned, and 263,750.00 - 138,750.00 =
+    125,000.00 at 30 September 2026. The fixed fee recognised in the twelve months after either date is
+    100,000.00, below the liability, so the current part is 100,000.00 at both dates. The current part is stated
+    per combination group and entity, so the key asserts it on the trace node of CG-NS-ROUTE-01@NS-US.
+  - >-
+    No financing adjustment (POL-046 APPLY; ENGINE_SPEC S04-R-10). The payments are 200,000.00 on 31 December
+    2025 and 100,000.00 on 1 January 2028, 731 days apart: weighted by amount their date is 243 2/3 days after
+    signing, the turn of August to September 2026. The service transfers evenly over the term, whose midpoint is
+    2 July 2027. The gap is about 305 days, not more than one year, so the consideration is not adjusted. This is
+    the policy's test as the product documents it; it is not what the key is a candidate for.
+authority:
+  codification:
+    - "606-10-25-18"
+    - "606-10-25-31"
+    - "606-10-32-39"
+    - "606-10-32-40"
+    - "606-10-50-13"
+    - "210-10-45"
+  ifrs: ["IFRS 15.120"]
+  practice: []
+  urls: []
+derived_from: {research04: [], research05: [], chk: [], golden: [], dev: []}
+requirements: ["REQ-REC-021", "REQ-REC-010", "REQ-REC-003", "REQ-RPT-009", "REQ-RPT-004"]
+policy_refs: ["POL-046", "POL-090", "POL-124", "POL-201", "POL-240"]
+review:
+  author: "lane SECFIX-CLO (supervisor ruling R-116 (a); candidate AD-61)"
+  authored_on: "2026-10-03"
+  reviewer: null
+  reviewed_on: null
+  status: "pending"
+runner: "engine"
+books: ["ASC606"]
+world:
+  tenant: {reporting_currency: "USD", preset: "DEFAULT"}
+  currencies: ["USD"]
+  entities:
+    - code: "NS-US"
+      name: "Northstead Data Services Inc. (Demo)"
+      functional_currency: "USD"
+      time_zone: "America/Chicago"
+      calendar: {pattern: "MONTHLY", fiscal_year_start_month: "1"}
+      books: ["ASC606"]
+  periods: {from: "2025-12", to: "2026-09"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: "ASSET"}
+    - {code: "1200", name: "Contract asset", account_type: "ASSET"}
+    - {code: "2100", name: "Contract liability", account_type: "LIABILITY"}
+    - {code: "4010", name: "Revenue - services and subscriptions", account_type: "REVENUE"}
+  account_mapping:
+    - {account_role: "CONTRACT_LIABILITY", account: "2100"}
+    - {account_role: "CONTRACT_ASSET", account: "1200"}
+    - {account_role: "UNBILLED_RECEIVABLE", account: "1105"}
+    - {account_role: "REVENUE", product: "ROUTING-API", account: "4010"}
+  customers:
+    - {code: "CUST-CALLOWHILL", name: "Callowhill Freight Lines Inc. (Demo)"}
+  pob_templates:
+    - code: "TPL-API-USAGE"
+      obligation_kind: "STANDARD"
+      distinctness: "series"
+      satisfaction_pattern: "OVER_TIME"
+      over_time_criterion: "OT_A"
+      recognition_method: "USAGE"
+      series_increment_unit: "month"
+  products:
+    - code: "ROUTING-API"
+      name: "Routing API, stand-ready access and metered calls"
+      pob_template: "TPL-API-USAGE"
+      revenue_category: "SUBSCRIPTION"
+  ssp_books:
+    - code: "SSP-NS-US-2026"
+      resolution_mode: "EFFECTIVE_DATE"
+      versions:
+        - effective_from_date: "2025-01-01"
+          methodology_label: "Observable standalone prices (demo study)"
+          entries:
+            - product: "ROUTING-API"
+              currency: "USD"
+              method: "observable"
+              value_basis: "AMOUNT"
+              distinctness: "distinct"
+              ranges: [{point_value: "300000.00"}]
+  fx_rate_sets: []
+  rule_sets: []
+  policies:
+    tenant:
+      billing.posting: "ERP"
+      recognition.time_convention: "MONTHLY_EVEN"
+      rpo.time_bands: ["12", "24"]
+    entities: {}
+    books: {}
+contracts:
+  - external_id: "NS-ROUTE-01"
+    customer: "CUST-CALLOWHILL"
+    contracting_entity: "NS-US"
+    transaction_currency: "USD"
+    inception_date: "2025-12-31"
+    payment_schedule:
+      - {date: "2025-12-31", amount: "200000.00"}
+      - {date: "2028-01-01", amount: "100000.00"}
+    lines:
+      - obligation_key: "L1-ROUTING"
+        product_code: "ROUTING-API"
+        quantity: "1"
+        total_price: "300000.00"
+        start_date: "2026-01-01"
+        end_date: "2028-12-31"
+timeline:
+  - {seq: "1", kind: "event", contract: "NS-ROUTE-01", event_type: "CONTRACT_BOOKED", effective_date: "2025-12-31", payload: {}}
+  - seq: "2"
+    kind: "event"
+    contract: "NS-ROUTE-01"
+    event_type: "CONTRACT_ACTIVATED"
+    effective_date: "2025-12-31"
+    payload: {}
+  - seq: "3"
+    kind: "event"
+    contract: "NS-ROUTE-01"
+    event_type: "BILLING_RECORDED"
+    effective_date: "2025-12-31"
+    payload:
+      invoice_number: "INV-NS-0001"
+      line_external_id: "INV-NS-0001-1"
+      amount: "200000.00"
+      issue_date: "2025-12-31"
+      obligation_key: "L1-ROUTING"
+  - seq: "4"
+    kind: "event"
+    contract: "NS-ROUTE-01"
+    event_type: "PAYMENT_RECEIVED"
+    effective_date: "2025-12-31"
+    payload: {receipt_reference: "RCPT-NS-0001", amount: "200000.00", receipt_date: "2025-12-31"}
+  - seq: "5"
+    kind: "event"
+    contract: "NS-ROUTE-01"
+    event_type: "USAGE_REPORTED"
+    effective_date: "2026-03-31"
+    payload:
+      obligation_key: "L1-ROUTING"
+      usage_period_start: "2026-01-01"
+      usage_period_end: "2026-03-31"
+      metric: "API_CALLS"
+      quantity: "360000"
+      rated_amount: "18000.00"
+  - seq: "6"
+    kind: "event"
+    contract: "NS-ROUTE-01"
+    event_type: "BILLING_RECORDED"
+    effective_date: "2026-03-31"
+    payload:
+      invoice_number: "INV-NS-0002"
+      line_external_id: "INV-NS-0002-1"
+      amount: "18000.00"
+      issue_date: "2026-03-31"
+      obligation_key: "L1-ROUTING"
+  - seq: "7"
+    kind: "event"
+    contract: "NS-ROUTE-01"
+    event_type: "PAYMENT_RECEIVED"
+    effective_date: "2026-03-31"
+    payload: {receipt_reference: "RCPT-NS-0002", amount: "18000.00", receipt_date: "2026-03-31"}
+  - seq: "8"
+    kind: "event"
+    contract: "NS-ROUTE-01"
+    event_type: "USAGE_REPORTED"
+    effective_date: "2026-06-30"
+    payload:
+      obligation_key: "L1-ROUTING"
+      usage_period_start: "2026-04-01"
+      usage_period_end: "2026-06-30"
+      metric: "API_CALLS"
+      quantity: "430000"
+      rated_amount: "21500.00"
+  - seq: "9"
+    kind: "event"
+    contract: "NS-ROUTE-01"
+    event_type: "BILLING_RECORDED"
+    effective_date: "2026-06-30"
+    payload:
+      invoice_number: "INV-NS-0003"
+      line_external_id: "INV-NS-0003-1"
+      amount: "21500.00"
+      issue_date: "2026-06-30"
+      obligation_key: "L1-ROUTING"
+  - seq: "10"
+    kind: "event"
+    contract: "NS-ROUTE-01"
+    event_type: "PAYMENT_RECEIVED"
+    effective_date: "2026-06-30"
+    payload: {receipt_reference: "RCPT-NS-0003", amount: "21500.00", receipt_date: "2026-06-30"}
+  - seq: "11"
+    kind: "event"
+    contract: "NS-ROUTE-01"
+    event_type: "USAGE_REPORTED"
+    effective_date: "2026-09-30"
+    payload:
+      obligation_key: "L1-ROUTING"
+      usage_period_start: "2026-07-01"
+      usage_period_end: "2026-09-30"
+      metric: "API_CALLS"
+      quantity: "485000"
+      rated_amount: "24250.00"
+  - seq: "12"
+    kind: "event"
+    contract: "NS-ROUTE-01"
+    event_type: "BILLING_RECORDED"
+    effective_date: "2026-09-30"
+    payload:
+      invoice_number: "INV-NS-0004"
+      line_external_id: "INV-NS-0004-1"
+      amount: "24250.00"
+      issue_date: "2026-09-30"
+      obligation_key: "L1-ROUTING"
+  - seq: "13"
+    kind: "event"
+    contract: "NS-ROUTE-01"
+    event_type: "PAYMENT_RECEIVED"
+    effective_date: "2026-09-30"
+    payload: {receipt_reference: "RCPT-NS-0004", amount: "24250.00", receipt_date: "2026-09-30"}
+checkpoints:
+  - name: "inception"
+    after_seq: "4"
+    as_of: "2025-12-31"
+    book: "ASC606"
+    contracts:
+      - contract: "NS-ROUTE-01"
+        version:
+          transaction_price: "300000.00"
+          revenue_cum: "0.00"
+          billed_cum: "200000.00"
+          rpo_amount: "300000.00"
+          scheduled_amount: "300000.00"
+          awaiting_trigger_amount: "0.00"
+        obligations:
+          - obligation_key: "L1-ROUTING"
+            allocated_amount: "300000.00"
+            revenue_cum: "0.00"
+            remaining_allocation: "300000.00"
+            scheduled_amount: "300000.00"
+            awaiting_trigger_amount: "0.00"
+        balances:
+          - entity: "NS-US"
+            contract_liability: "200000.00"
+            contract_asset: "0.00"
+            unbilled_receivable: "0.00"
+        schedule:
+          - obligation_key: "L1-ROUTING"
+            schedule_kind: "REVENUE"
+            line_type: "NORMAL"
+            amounts:
+              FY2026-P01: "8333.33"
+              FY2026-P02: "8333.34"
+              FY2026-P03: "8333.33"
+              FY2026-P04: "8333.33"
+              FY2026-P05: "8333.34"
+              FY2026-P06: "8333.33"
+              FY2026-P07: "8333.33"
+              FY2026-P08: "8333.34"
+              FY2026-P09: "8333.33"
+              FY2026-P10: "8333.33"
+              FY2026-P11: "8333.34"
+              FY2026-P12: "8333.33"
+              FY2027-P01: "8333.33"
+              FY2027-P02: "8333.34"
+              FY2027-P03: "8333.33"
+              FY2027-P04: "8333.33"
+              FY2027-P05: "8333.34"
+              FY2027-P06: "8333.33"
+              FY2027-P07: "8333.33"
+              FY2027-P08: "8333.34"
+              FY2027-P09: "8333.33"
+              FY2027-P10: "8333.33"
+              FY2027-P11: "8333.34"
+              FY2027-P12: "8333.33"
+              FY2028-P01: "8333.33"
+              FY2028-P02: "8333.34"
+              FY2028-P03: "8333.33"
+              FY2028-P04: "8333.33"
+              FY2028-P05: "8333.34"
+              FY2028-P06: "8333.33"
+              FY2028-P07: "8333.33"
+              FY2028-P08: "8333.34"
+              FY2028-P09: "8333.33"
+              FY2028-P10: "8333.33"
+              FY2028-P11: "8333.34"
+              FY2028-P12: "8333.33"
+        trace:
+          - {measure: "rpo_amount", subject_key: "L1-ROUTING", value: "300000.00", formula_id: "disc.rpo.v1"}
+          - {measure: "rpo_band", subject_key: "NS-ROUTE-01/L1-ROUTING/0", value: "100000.00", formula_id: "disc.rpo_band.v1"}
+          - {measure: "rpo_band", subject_key: "NS-ROUTE-01/L1-ROUTING/1", value: "100000.00", formula_id: "disc.rpo_band.v1"}
+          - {measure: "rpo_band", subject_key: "NS-ROUTE-01/L1-ROUTING/2", value: "100000.00", formula_id: "disc.rpo_band.v1"}
+          - measure: "contract_liability_current"
+            subject_key: "CG-NS-ROUTE-01@NS-US"
+            period_key: "FY2025-P12"
+            value: "100000.00"
+            formula_id: "pos.current_split.v1"
+  - name: "september-2026"
+    after_seq: "13"
+    as_of: "2026-09-30"
+    book: "ASC606"
+    contracts:
+      - contract: "NS-ROUTE-01"
+        version:
+          transaction_price: "363750.00"
+          revenue_cum: "138750.00"
+          billed_cum: "263750.00"
+          rpo_amount: "225000.00"
+          scheduled_amount: "225000.00"
+          awaiting_trigger_amount: "0.00"
+        obligations:
+          - obligation_key: "L1-ROUTING"
+            allocated_amount: "363750.00"
+            revenue_cum: "138750.00"
+            remaining_allocation: "225000.00"
+            scheduled_amount: "225000.00"
+            awaiting_trigger_amount: "0.00"
+        balances:
+          - entity: "NS-US"
+            contract_liability: "125000.00"
+            contract_asset: "0.00"
+            unbilled_receivable: "0.00"
+        schedule:
+          - obligation_key: "L1-ROUTING"
+            schedule_kind: "REVENUE"
+            line_type: "NORMAL"
+            amounts:
+              FY2026-P01: "8333.33"
+              FY2026-P02: "8333.34"
+              FY2026-P03: "26333.33"
+              FY2026-P04: "8333.33"
+              FY2026-P05: "8333.34"
+              FY2026-P06: "29833.33"
+              FY2026-P07: "8333.33"
+              FY2026-P08: "8333.34"
+              FY2026-P09: "32583.33"
+              FY2026-P10: "8333.33"
+              FY2026-P11: "8333.34"
+              FY2026-P12: "8333.33"
+              FY2027-P01: "8333.33"
+              FY2027-P02: "8333.34"
+              FY2027-P03: "8333.33"
+              FY2027-P04: "8333.33"
+              FY2027-P05: "8333.34"
+              FY2027-P06: "8333.33"
+              FY2027-P07: "8333.33"
+              FY2027-P08: "8333.34"
+              FY2027-P09: "8333.33"
+              FY2027-P10: "8333.33"
+              FY2027-P11: "8333.34"
+              FY2027-P12: "8333.33"
+              FY2028-P01: "8333.33"
+              FY2028-P02: "8333.34"
+              FY2028-P03: "8333.33"
+              FY2028-P04: "8333.33"
+              FY2028-P05: "8333.34"
+              FY2028-P06: "8333.33"
+              FY2028-P07: "8333.33"
+              FY2028-P08: "8333.34"
+              FY2028-P09: "8333.33"
+              FY2028-P10: "8333.33"
+              FY2028-P11: "8333.34"
+              FY2028-P12: "8333.33"
+        trace:
+          - {measure: "rpo_amount", subject_key: "L1-ROUTING", value: "225000.00", formula_id: "disc.rpo.v1"}
+          - {measure: "rpo_band", subject_key: "NS-ROUTE-01/L1-ROUTING/0", value: "100000.00", formula_id: "disc.rpo_band.v1"}
+          - {measure: "rpo_band", subject_key: "NS-ROUTE-01/L1-ROUTING/1", value: "100000.00", formula_id: "disc.rpo_band.v1"}
+          - {measure: "rpo_band", subject_key: "NS-ROUTE-01/L1-ROUTING/2", value: "25000.00", formula_id: "disc.rpo_band.v1"}
+          - measure: "contract_liability_current"
+            subject_key: "CG-NS-ROUTE-01@NS-US"
+            period_key: "FY2026-P09"
+            value: "100000.00"
+            formula_id: "pos.current_split.v1"
+    subledger:
+      - period_key: "FY2026-P09"
+        entity: "NS-US"
+        match: "exact"
+        grain: "role_account"
+        lines:
+          - {account_role: "CONTRACT_LIABILITY", account: "2100", dr: "32583.33"}
+          - {account_role: "REVENUE", account: "4010", cr: "32583.33"}
+      - period_key: "FY2026-P10"
+        entity: "NS-US"
+        match: "exact"
+        grain: "role_account"
+        lines: []

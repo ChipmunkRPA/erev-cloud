@@ -1,0 +1,220 @@
+schema: erev-answer-key/1
+id: BRK-CAP-CREDITS-ROLLOVER-RENEWAL
+title: "Prepaid API credits rolling into a renewal: breakage measured on expected use including rollover use"
+status: active
+families: [BRK, MOD, REC]
+tags: [usage-rollover]
+summary: "Capability key for credits rollover (POLICIES PT-02; POL-241 BREAKAGE_INCLUDING_EXPECTED_ROLLOVER_USE; REQ-MOD-017). A customer prepays 240,000.00 of nonrefundable API credits for 2026. Unused credits roll into the next year if the customer renews. At inception Fernhill expects 150,000.00 of credits to be used in 2026 and 60,000.00 after rollover, and 30,000.00 never to be used, so expected total use is 210,000.00 and breakage is recognised in proportion to use (606-10-55-48): revenue = credits sold × cumulative use ÷ expected total use. Use: 70,000.00 by 30 June and 150,000.00 by 31 December 2026 (revenue 171,428.57; contract liability 68,571.43, of which expected breakage 8,571.43). The customer renews on 31 December 2026 and the rolled credits' expiry extends to 31 December 2027 (modification, no consideration). Rolled credits of 60,000.00 are used by 30 June 2027: cumulative revenue 240,000.00; liability 0.00. Had the customer not renewed, the remaining 68,571.43 would be recognised when the rights lapse."
+authority:
+  codification: ["606-10-55-46", "606-10-55-47", "606-10-55-48", "606-10-25-10", "606-10-25-13"]
+  ifrs: ["IFRS 15.B46"]
+  practice: ["POLICIES PT-02", "research 01b §7 (credit rollover)"]
+  urls: []
+derived_from: {research04: [], research05: [], chk: [], golden: [], dev: []}
+requirements: [REQ-MOD-017, REQ-REC-016, REQ-REC-010, REQ-MOD-012]
+policy_refs: [POL-055, POL-241, POL-182]
+review: {author: answer-keys-industries, authored_on: "2026-09-12", reviewer: null, reviewed_on: null, status: pending}
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: FS-US
+      name: "Fernhill Software US (Demo)"
+      functional_currency: USD
+      time_zone: America/Los_Angeles
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: "1"}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2027-06"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4010", name: "Revenue - services and subscriptions", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, product: API-CREDITS, account: "4010"}
+  customers: [{code: CUST-CAP-ROLL, name: "Kestrel Analytics Inc. (Demo)"}]
+  pob_templates:
+    - code: TPL-CREDITS
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_A
+      recognition_method: REDEMPTION_PATTERN
+      policy_values:
+        balance.right_to_consideration: CONDITIONAL
+        credits.rollover_treatment: BREAKAGE_INCLUDING_EXPECTED_ROLLOVER_USE
+  products: [{code: API-CREDITS, name: "Prepaid API credits", pob_template: TPL-CREDITS, revenue_category: PREPAID}]
+  ssp_books:
+    - code: SSP-FS-US-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2025-01-01"
+          methodology_label: "Observable standalone prices (demo study)"
+          entries:
+            - product: API-CREDITS
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges: [{point_value: "1.00"}]
+  fx_rate_sets: []
+  rule_sets: []
+  policies:
+    tenant: {billing.posting: ERP, recognition.time_convention: MONTHLY_EVEN}
+    entities: {}
+    books: {}
+contracts:
+  - external_id: CAP-CREDITS-ROLL
+    customer: CUST-CAP-ROLL
+    contracting_entity: FS-US
+    transaction_currency: USD
+    inception_date: "2026-01-01"
+    lines:
+      - obligation_key: L1-CREDITS
+        product_code: API-CREDITS
+        quantity: "240000"
+        total_price: "240000.00"
+        start_date: "2026-01-01"
+        end_date: "2026-12-31"
+    estimates:
+      - element_code: BRK-CAP-ROLL
+        estimate_kind: BREAKAGE
+        method: RATE
+        obligation_key: L1-CREDITS
+        versions:
+          - version_no: "1"
+            effective_date: "2026-01-01"
+            rate: "0.125"
+            expected_quantity: "210000"
+            rationale: "Expected use 150,000.00 in 2026 plus 60,000.00 after rollover (renewal expected); 30,000.00 never used."
+    modifications:
+      - reference: MOD-CAP-ROLL-RENEW
+        effective_date: "2026-12-31"
+        kind: RENEWAL
+        price_change_amount: "0.00"
+        lines:
+          - obligation_key: L1-CREDITS
+            product_code: API-CREDITS
+            quantity: "240000"
+            total_price: "240000.00"
+            start_date: "2026-01-01"
+            end_date: "2027-12-31"
+timeline:
+  - seq: "1"
+    kind: event
+    contract: CAP-CREDITS-ROLL
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: "2"
+    kind: event
+    contract: CAP-CREDITS-ROLL
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: "3"
+    kind: event
+    contract: CAP-CREDITS-ROLL
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-01-01"
+    payload: {estimate: BRK-CAP-ROLL, version_no: "1"}
+  - seq: "4"
+    kind: event
+    contract: CAP-CREDITS-ROLL
+    event_type: BILLING_RECORDED
+    effective_date: "2026-01-01"
+    payload:
+      invoice_number: INV-CAP-ROLL-2026
+      line_external_id: INV-CAP-ROLL-2026-1
+      amount: "240000.00"
+      issue_date: "2026-01-01"
+      obligation_key: L1-CREDITS
+  - seq: "5"
+    kind: event
+    contract: CAP-CREDITS-ROLL
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-06-30"
+    payload: {obligation_key: L1-CREDITS, quantity: "70000", trigger: DELIVERY}
+  - seq: "6"
+    kind: event
+    contract: CAP-CREDITS-ROLL
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-12-31"
+    payload: {obligation_key: L1-CREDITS, quantity: "80000", trigger: DELIVERY}
+  - seq: "7"
+    kind: event
+    contract: CAP-CREDITS-ROLL
+    event_type: CONTRACT_AMENDED
+    effective_date: "2026-12-31"
+    payload: {modification: MOD-CAP-ROLL-RENEW}
+  - seq: "8"
+    kind: event
+    contract: CAP-CREDITS-ROLL
+    event_type: DELIVERY_RECORDED
+    effective_date: "2027-06-30"
+    payload: {obligation_key: L1-CREDITS, quantity: "60000", trigger: DELIVERY}
+checkpoints:
+  - name: half-year
+    after_seq: "5"
+    as_of: "2026-06-30"
+    book: ASC606
+    contracts:
+      - contract: CAP-CREDITS-ROLL
+        version: {transaction_price: "240000.00", revenue_cum: "80000.00", billed_cum: "240000.00"}
+        obligations:
+          - obligation_key: L1-CREDITS
+            allocated_amount: "240000.00"
+            revenue_cum: "80000.00"
+            delivered_quantity_cum: "70000"
+        balances:
+          - {entity: FS-US, contract_liability: "160000.00", contract_asset: "0.00", unbilled_receivable: "0.00"}
+  - name: renewal-rollover
+    after_seq: "7"
+    as_of: "2026-12-31"
+    book: ASC606
+    contracts:
+      - contract: CAP-CREDITS-ROLL
+        version: {transaction_price: "240000.00", revenue_cum: "171428.57", billed_cum: "240000.00"}
+        obligations:
+          - obligation_key: L1-CREDITS
+            allocated_amount: "240000.00"
+            revenue_cum: "171428.57"
+            delivered_quantity_cum: "150000"
+        balances: [{entity: FS-US, contract_liability: "68571.43", contract_asset: "0.00", unbilled_receivable: "0.00"}]
+        modifications:
+          - reference: MOD-CAP-ROLL-RENEW
+            proposed_treatments: {L1-CREDITS: PROSPECTIVE}
+    subledger:
+      - period_key: FY2026-P12
+        entity: FS-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "91428.57"}
+          - {account_role: REVENUE, account: "4010", cr: "91428.57"}
+  - name: rolled-credits-used
+    after_seq: "8"
+    as_of: "2027-06-30"
+    book: ASC606
+    contracts:
+      - contract: CAP-CREDITS-ROLL
+        version: {transaction_price: "240000.00", revenue_cum: "240000.00", billed_cum: "240000.00"}
+        obligations:
+          - obligation_key: L1-CREDITS
+            allocated_amount: "240000.00"
+            revenue_cum: "240000.00"
+            delivered_quantity_cum: "210000"
+        balances: [{entity: FS-US, contract_liability: "0.00", contract_asset: "0.00", unbilled_receivable: "0.00"}]
+    subledger:
+      - period_key: FY2027-P06
+        entity: FS-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "68571.43"}
+          - {account_role: REVENUE, account: "4010", cr: "68571.43"}

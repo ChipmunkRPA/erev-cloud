@@ -1,0 +1,12 @@
+step,phase,seq,category,kind,title,text,answer
+P3-over-delivery-validation,P3-over-delivery-validation:00:!Reset Database Completely!,38,popup,QMessageBox.question,Confirmation,Do you want to proceed wiping out the current database?,Yes
+P3-over-delivery-validation,P3-over-delivery-validation:00:!Reset Database Completely!,39,popup,QMessageBox.information,ASC606 database reset,ASC606 Database has been wiped out and reset!,Ok
+P3-over-delivery-validation,P3-over-delivery-validation:01:Load SSPs,40,file,QFileDialog.getOpenFileName,Select File,ops/Example UATs/SSP Upload UAT/SKU SSP Template.xlsx,selected
+P3-over-delivery-validation,P3-over-delivery-validation:01:Load SSPs,41,platform,ctypes.WinDLL,Advapi32.EncryptFileW,ops/libnew/libwarm/db/ASC606.db,"1 (stubbed success, no encryption)"
+P3-over-delivery-validation,P3-over-delivery-validation:01:Load SSPs,42,popup,QMessageBox.information,SSPs are set up,"All company SSPs for the uploaded file are set up. To add or update, re-upload SSPs to refresh.",Ok
+P3-over-delivery-validation,P3-over-delivery-validation:02:Load Contracts,43,file,QFileDialog.getOpenFileName,Select File,ops/Example UATs/Contract Setup UAT/Contract Setup Template 1.1.2023.xlsx,selected
+P3-over-delivery-validation,P3-over-delivery-validation:02:Load Contracts,44,popup,QMessageBox.information,Contracts are set up,All contracts(s) within the uploaded file are successfully set up!,Ok
+P3-over-delivery-validation,P3-over-delivery-validation:03:Load Delivery and Billing,45,file,QFileDialog.getOpenFileName,Select File,P3 progress 1.31.2023 - Contract 1 POB #1 over-delivered.xlsx,selected
+P3-over-delivery-validation,P3-over-delivery-validation:03:Load Delivery and Billing,46,input,QInputDialog.getText,Date Input,Enter current period in this format (YYYY-MM-DD) for delivery/billing upload:,2023-01-31
+P3-over-delivery-validation,P3-over-delivery-validation:03:Load Delivery and Billing,47,popup,QMessageBox.information,Delivery/Billing load failed,Qty or billing loaded are greater than the remaining of the POBs. Check your uploads please.,Ok
+P3-over-delivery-validation,P3-over-delivery-validation:03:Load Delivery and Billing,48,popup,QMessageBox.critical,Error Notification,The process is stopped for users to fix the file,Ok

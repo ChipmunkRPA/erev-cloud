@@ -1,0 +1,331 @@
+schema: erev-answer-key/1
+id: REC-RB-05-CAPITATION-PMPM-RATE-AMENDMENT
+title: "Capitation per member per month: stand-ready series, variable membership allocated to each month, prospective rate amendment"
+status: active
+families: [REC, MOD, VC, JE]
+tags: []
+summary: "Riverbend's primary-care network is paid a capitation of 50.00 per member per month for 2026. Coverage is a stand-ready series of monthly increments; the fee for each month depends only on that month's eligible members at a constant rate, so the variable consideration is allocated entirely to the month it relates to (606-10-32-39(b), 32-40). Membership: January 10,000, February 10,200, March 9,900; revenue 500,000.00, 510,000.00, 495,000.00, billed monthly (ENGINE mode). On 1 July the payor amends the rate to 55.00 for the remaining months; the remaining increments are distinct, so the amendment is prospective (606-10-25-13(a)) and July's 10,100 members give 555,500.00."
+authority:
+  codification: ["606-10-25-14", "606-10-25-15", "606-10-32-39", "606-10-32-40", "606-10-25-13", "606-10-55-18"]
+  ifrs: ["IFRS 15.85"]
+  practice: ["PwC Health care industry guide 3.4 (capitation arrangements)"]
+  urls: []
+derived_from: {research04: [], research05: [RB-05], chk: [], golden: [], dev: []}
+requirements: [REQ-POB-005, REQ-ALC-005, REQ-REC-010, REQ-MOD-004, REQ-BIL-002]
+policy_refs: [POL-004, POL-100, POL-240]
+review: {author: answer-keys-industries, authored_on: "2026-09-12", reviewer: null, reviewed_on: null, status: pending}
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: RB-US
+      name: "Riverbend Health System (Demo)"
+      functional_currency: USD
+      time_zone: America/New_York
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: "1"}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2026-07"}
+  period_states: []
+  gl_accounts:
+    - {code: "1100", name: "Accounts receivable", account_type: ASSET}
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4010", name: "Revenue - services and subscriptions", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: ACCOUNTS_RECEIVABLE, account: "1100"}
+    - {account_role: REVENUE, product: CAPITATION-PMPM, account: "4010"}
+  customers: [{code: CUST-RB05, name: "Riverside Medicaid Managed Care Plan (Demo)"}]
+  pob_templates:
+    - code: TPL-CAPITATION
+      obligation_kind: STANDARD
+      distinctness: series
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_A
+      recognition_method: USAGE
+      series_increment_unit: month
+      policy_values: {balance.right_to_consideration: UNCONDITIONAL}
+  products:
+    - code: CAPITATION-PMPM
+      name: "Primary-care capitation coverage"
+      pob_template: TPL-CAPITATION
+      revenue_category: CAPITATION
+  ssp_books:
+    - code: SSP-RB-US-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2025-01-01"
+          methodology_label: "Observable standalone prices (demo study)"
+          entries:
+            - product: CAPITATION-PMPM
+              currency: USD
+              method: observable
+              value_basis: AMOUNT  # D-93 (4): declared remaining-increments reading (the reading the key's oracle embodies); no value change
+              distinctness: distinct
+              ranges: [{point_value: "50.00"}]
+  fx_rate_sets: []
+  rule_sets: []
+  policies:
+    tenant: {billing.posting: ENGINE, recognition.time_convention: MONTHLY_EVEN}
+    entities: {}
+    books: {}
+contracts:
+  - external_id: RB-05
+    customer: CUST-RB05
+    contracting_entity: RB-US
+    transaction_currency: USD
+    inception_date: "2026-01-01"
+    lines:
+      - obligation_key: L1-COVERAGE
+        product_code: CAPITATION-PMPM
+        quantity: "1"
+        total_price: "0.00"
+        unit_price: "50"
+        start_date: "2026-01-01"
+        end_date: "2026-12-31"
+    modifications:
+      - reference: MOD-RB05-RATE
+        effective_date: "2026-07-01"
+        kind: PRICE_CHANGE
+        price_change_amount: "0.00"
+        lines:
+          - obligation_key: L1-COVERAGE
+            product_code: CAPITATION-PMPM
+            quantity: "1"
+            total_price: "0.00"
+            unit_price: "55"
+            start_date: "2026-01-01"
+            end_date: "2026-12-31"
+timeline:
+  - seq: "1"
+    kind: event
+    contract: RB-05
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: "2"
+    kind: event
+    contract: RB-05
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: "3"
+    kind: event
+    contract: RB-05
+    event_type: USAGE_REPORTED
+    effective_date: "2026-01-31"
+    payload:
+      obligation_key: L1-COVERAGE
+      usage_period_start: "2026-01-01"
+      usage_period_end: "2026-01-31"
+      metric: MEMBER_MONTHS
+      quantity: "10000"
+      rated_amount: "500000.00"
+  - seq: "4"
+    kind: event
+    contract: RB-05
+    event_type: BILLING_RECORDED
+    effective_date: "2026-01-31"
+    payload:
+      invoice_number: CAP-RB05-2026-01
+      line_external_id: CAP-RB05-2026-01-1
+      amount: "500000.00"
+      issue_date: "2026-01-31"
+      obligation_key: L1-COVERAGE
+  - seq: "5"
+    kind: event
+    contract: RB-05
+    event_type: USAGE_REPORTED
+    effective_date: "2026-02-28"
+    payload:
+      obligation_key: L1-COVERAGE
+      usage_period_start: "2026-02-01"
+      usage_period_end: "2026-02-28"
+      metric: MEMBER_MONTHS
+      quantity: "10200"
+      rated_amount: "510000.00"
+  - seq: "6"
+    kind: event
+    contract: RB-05
+    event_type: BILLING_RECORDED
+    effective_date: "2026-02-28"
+    payload:
+      invoice_number: CAP-RB05-2026-02
+      line_external_id: CAP-RB05-2026-02-1
+      amount: "510000.00"
+      issue_date: "2026-02-28"
+      obligation_key: L1-COVERAGE
+  - seq: "7"
+    kind: event
+    contract: RB-05
+    event_type: USAGE_REPORTED
+    effective_date: "2026-03-31"
+    payload:
+      obligation_key: L1-COVERAGE
+      usage_period_start: "2026-03-01"
+      usage_period_end: "2026-03-31"
+      metric: MEMBER_MONTHS
+      quantity: "9900"
+      rated_amount: "495000.00"
+  - seq: "8"
+    kind: event
+    contract: RB-05
+    event_type: BILLING_RECORDED
+    effective_date: "2026-03-31"
+    payload:
+      invoice_number: CAP-RB05-2026-03
+      line_external_id: CAP-RB05-2026-03-1
+      amount: "495000.00"
+      issue_date: "2026-03-31"
+      obligation_key: L1-COVERAGE
+  - seq: "9"
+    kind: event
+    contract: RB-05
+    event_type: USAGE_REPORTED
+    effective_date: "2026-04-30"
+    payload:
+      obligation_key: L1-COVERAGE
+      usage_period_start: "2026-04-01"
+      usage_period_end: "2026-04-30"
+      metric: MEMBER_MONTHS
+      quantity: "10050"
+      rated_amount: "502500.00"
+  - seq: "10"
+    kind: event
+    contract: RB-05
+    event_type: BILLING_RECORDED
+    effective_date: "2026-04-30"
+    payload:
+      invoice_number: CAP-RB05-2026-04
+      line_external_id: CAP-RB05-2026-04-1
+      amount: "502500.00"
+      issue_date: "2026-04-30"
+      obligation_key: L1-COVERAGE
+  - seq: "11"
+    kind: event
+    contract: RB-05
+    event_type: USAGE_REPORTED
+    effective_date: "2026-05-31"
+    payload:
+      obligation_key: L1-COVERAGE
+      usage_period_start: "2026-05-01"
+      usage_period_end: "2026-05-31"
+      metric: MEMBER_MONTHS
+      quantity: "10000"
+      rated_amount: "500000.00"
+  - seq: "12"
+    kind: event
+    contract: RB-05
+    event_type: BILLING_RECORDED
+    effective_date: "2026-05-31"
+    payload:
+      invoice_number: CAP-RB05-2026-05
+      line_external_id: CAP-RB05-2026-05-1
+      amount: "500000.00"
+      issue_date: "2026-05-31"
+      obligation_key: L1-COVERAGE
+  - seq: "13"
+    kind: event
+    contract: RB-05
+    event_type: USAGE_REPORTED
+    effective_date: "2026-06-30"
+    payload:
+      obligation_key: L1-COVERAGE
+      usage_period_start: "2026-06-01"
+      usage_period_end: "2026-06-30"
+      metric: MEMBER_MONTHS
+      quantity: "10150"
+      rated_amount: "507500.00"
+  - seq: "14"
+    kind: event
+    contract: RB-05
+    event_type: BILLING_RECORDED
+    effective_date: "2026-06-30"
+    payload:
+      invoice_number: CAP-RB05-2026-06
+      line_external_id: CAP-RB05-2026-06-1
+      amount: "507500.00"
+      issue_date: "2026-06-30"
+      obligation_key: L1-COVERAGE
+  - seq: "15"
+    kind: event
+    contract: RB-05
+    event_type: CONTRACT_AMENDED
+    effective_date: "2026-07-01"
+    payload: {modification: MOD-RB05-RATE}
+  - seq: "16"
+    kind: event
+    contract: RB-05
+    event_type: USAGE_REPORTED
+    effective_date: "2026-07-31"
+    payload:
+      obligation_key: L1-COVERAGE
+      usage_period_start: "2026-07-01"
+      usage_period_end: "2026-07-31"
+      metric: MEMBER_MONTHS
+      quantity: "10100"
+      rated_amount: "555500.00"
+  - seq: "17"
+    kind: event
+    contract: RB-05
+    event_type: BILLING_RECORDED
+    effective_date: "2026-07-31"
+    payload:
+      invoice_number: CAP-RB05-2026-07
+      line_external_id: CAP-RB05-2026-07-1
+      amount: "555500.00"
+      issue_date: "2026-07-31"
+      obligation_key: L1-COVERAGE
+checkpoints:
+  - name: q1
+    after_seq: "8"
+    as_of: "2026-03-31"
+    book: ASC606
+    contracts:
+      - contract: RB-05
+        version: {revenue_cum: "1505000.00", billed_cum: "1505000.00", transaction_price: "1505000.00"}
+        obligations: [{obligation_key: L1-COVERAGE, revenue_cum: "1505000.00"}]
+        balances:
+          - entity: RB-US
+            contract_liability: "0.00"
+            contract_asset: "0.00"
+            unbilled_receivable: "0.00"
+            accounts_receivable: "1505000.00"
+    subledger:
+      - period_key: FY2026-P03
+        entity: RB-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: ACCOUNTS_RECEIVABLE, account: "1100", dr: "495000.00"}
+          - {account_role: REVENUE, account: "4010", cr: "495000.00"}
+  - name: rate-amended
+    after_seq: "17"
+    as_of: "2026-07-31"
+    book: ASC606
+    contracts:
+      - contract: RB-05
+        version: {revenue_cum: "3570500.00", billed_cum: "3570500.00", transaction_price: "3570500.00"}
+        obligations: [{obligation_key: L1-COVERAGE, revenue_cum: "3570500.00"}]
+        balances:
+          - entity: RB-US
+            contract_liability: "0.00"
+            contract_asset: "0.00"
+            unbilled_receivable: "0.00"
+            accounts_receivable: "3570500.00"
+        modifications:
+          - reference: MOD-RB05-RATE
+            proposed_treatments: {L1-COVERAGE: PROSPECTIVE}
+    subledger:
+      - period_key: FY2026-P07
+        entity: RB-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: ACCOUNTS_RECEIVABLE, account: "1100", dr: "555500.00"}
+          - {account_role: REVENUE, account: "4010", cr: "555500.00"}

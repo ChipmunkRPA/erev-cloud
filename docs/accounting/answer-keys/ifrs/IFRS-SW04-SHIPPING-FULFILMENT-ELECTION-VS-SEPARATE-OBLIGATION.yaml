@@ -1,0 +1,195 @@
+# docs/accounting/answer-keys/ifrs/IFRS-SW04-SHIPPING-FULFILMENT-ELECTION-VS-SEPARATE-OBLIGATION.yaml
+schema: "erev-answer-key/1"
+id: IFRS-SW04-SHIPPING-FULFILMENT-ELECTION-VS-SEPARATE-OBLIGATION
+title: >-
+  IFRS switch #4: shipping after control is a fulfilment activity in ASC606 (election) and an obligation in IFRS15
+status: active
+families: [IFRS, POB, REC]
+tags: [r04-s13]
+summary: >-
+  Research 04 §13 #4 (POL-021). Entity US01, USD, ERP billing. An industrial pump (1,000.00, SSP 1,000.00) is sold FOB
+  shipping point with delivery to the customer's site for 100.00 (SSP 100.00); control transfers at shipment on
+  2026-03-28 and the carrier delivers on 2026-04-03; invoiced 1,100.00 at shipment. ASC606 book with
+  pob.shipping_as_fulfilment = TRUE (606-10-25-18B): the freight charge joins the pump obligation, revenue 1,100.00 in
+  March and no contract liability; the carrier cost accrual is an ERP posting. IFRS15 forces FALSE: two obligations
+  allocated 1,000.00 and 100.00; March revenue 1,000.00 with a 100.00 contract liability, April revenue 100.00 on
+  delivery. Cross-slice variants with distinct inputs, kept: IFRS-S13-SWITCH-SHIPPING (different lines and events)
+  (ADJUDICATION.md R-DUP-02).
+authority:
+  codification: ["606-10-25-18A", "606-10-25-18B", "606-10-25-23"]
+  ifrs: ["IFRS 15.22", "IFRS 15.38"]
+  practice: ["FASB and IASB comparison, shipping and handling (research 04 S8, A1(h))"]
+  urls: []
+derived_from: {research04: [], research05: [], chk: [], golden: [], dev: []}
+requirements: [REQ-BK-002, REQ-POB-011]
+policy_refs: [POL-021]
+review:
+  author: answer-keys-fx-entity-books
+  authored_on: "2026-09-12"
+  reviewer: null
+  reviewed_on: null
+  status: pending
+runner: engine
+books: [ASC606, IFRS15]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: US01
+      name: "Avenmoor Systems Inc. (Demo)"
+      functional_currency: USD
+      time_zone: "America/New_York"
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: 1}
+      books: [ASC606, IFRS15]
+  periods: {from: "2026-03", to: "2026-04"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4000", name: "Revenue - products", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, account: "4000"}
+  customers:
+    - {code: CUST-1, name: "Pellworth Logistics Inc. (Demo)"}
+  pob_templates:
+    - code: TPL-PIT
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: POINT_IN_TIME
+      over_time_criterion: NOT_APPLICABLE
+      recognition_method: POINT_IN_TIME
+    - code: TPL-SHIPPING
+      obligation_kind: SHIPPING
+      distinctness: distinct
+      satisfaction_pattern: POINT_IN_TIME
+      over_time_criterion: NOT_APPLICABLE
+      recognition_method: POINT_IN_TIME
+  products:
+    - {code: PUMP-200, name: "Industrial pump", pob_template: TPL-PIT}
+    - {code: FREIGHT, name: "Delivery to site", pob_template: TPL-SHIPPING}
+  ssp_books:
+    - code: SSP-US-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2026-01-01"
+          methodology_label: "Observable standalone prices"
+          entries:
+            - product: PUMP-200
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "1000.00"}
+            - product: FREIGHT
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "100.00"}
+  fx_rate_sets: []
+  rule_sets: []
+  policies: {tenant: {billing.posting: ERP, pob.shipping_as_fulfilment: "TRUE"}, entities: {}, books: {}}
+contracts:
+  - external_id: C-IFRS-SW04
+    customer: CUST-1
+    contracting_entity: US01
+    transaction_currency: USD
+    inception_date: "2026-03-20"
+    lines:
+      - {obligation_key: L1-PUMP, product_code: PUMP-200, quantity: "1", total_price: "1000.00"}
+      - {obligation_key: L2-FREIGHT, product_code: FREIGHT, quantity: "1", total_price: "100.00"}
+timeline:
+  - seq: 1
+    kind: event
+    contract: C-IFRS-SW04
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-03-20"
+    payload: {}
+  - seq: 2
+    kind: event
+    contract: C-IFRS-SW04
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-03-20"
+    payload: {}
+  - seq: 3
+    kind: event
+    contract: C-IFRS-SW04
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-03-28"
+    payload: {obligation_key: L1-PUMP, quantity: "1", trigger: CONTROL_TRANSFER}
+  - seq: 4
+    kind: event
+    contract: C-IFRS-SW04
+    event_type: BILLING_RECORDED
+    effective_date: "2026-03-28"
+    payload: {invoice_number: INV-SW04-1, line_external_id: INV-SW04-1-1, amount: "1100.00", issue_date: "2026-03-28"}
+  - seq: 5
+    kind: event
+    contract: C-IFRS-SW04
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-04-03"
+    payload: {obligation_key: L2-FREIGHT, quantity: "1", trigger: DELIVERY}
+checkpoints:
+  - name: asc606-march
+    after_seq: 4
+    as_of: "2026-03-31"
+    book: ASC606
+    contracts:
+      - contract: C-IFRS-SW04
+        obligations:
+          - {obligation_key: L1-PUMP, allocated_amount: "1100.00", revenue_cum: "1100.00"}
+        balances:
+          - {entity: US01, contract_liability: "0.00", contract_asset: "0.00", unbilled_receivable: "0.00"}
+    subledger:
+      - period_key: FY2026-P03
+        entity: US01
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "1100.00"}
+          - {account_role: REVENUE, account: "4000", cr: "1100.00"}
+  - name: ifrs15-march
+    after_seq: 4
+    as_of: "2026-03-31"
+    book: IFRS15
+    contracts:
+      - contract: C-IFRS-SW04
+        obligations:
+          - {obligation_key: L1-PUMP, allocated_amount: "1000.00", revenue_cum: "1000.00"}
+          - {obligation_key: L2-FREIGHT, allocated_amount: "100.00", revenue_cum: "0.00"}
+        balances:
+          - {entity: US01, contract_liability: "100.00", contract_asset: "0.00", unbilled_receivable: "0.00"}
+    subledger:
+      - period_key: FY2026-P03
+        entity: US01
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "1000.00"}
+          - {account_role: REVENUE, account: "4000", cr: "1000.00"}
+  - name: ifrs15-april
+    after_seq: 5
+    as_of: "2026-04-30"
+    book: IFRS15
+    contracts:
+      - contract: C-IFRS-SW04
+        balances:
+          - {entity: US01, contract_liability: "0.00", contract_asset: "0.00", unbilled_receivable: "0.00"}
+    subledger:
+      - period_key: FY2026-P04
+        entity: US01
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "100.00"}
+          - {account_role: REVENUE, account: "4000", cr: "100.00"}
+  - name: asc606-april
+    after_seq: 5
+    as_of: "2026-04-30"
+    book: ASC606
+    subledger:
+      - {period_key: FY2026-P04, entity: US01, match: exact, grain: role_account, lines: []}

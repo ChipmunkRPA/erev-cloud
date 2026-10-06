@@ -1,0 +1,379 @@
+schema: erev-answer-key/1
+id: VC-BR-02-DISTRIBUTOR-RETRO-REBATE
+title: "Distributor retrospective volume rebate re-estimated quarterly with a refund liability"
+status: active
+families: [VC, RET, POS]
+tags: []
+summary: "research 05 §8 worked example, adapted so that the threshold measures the distributor's annual sell-through: a noncancellable blanket order for 20,000 servo packs at 50.00 (1,000,000.00) ships 6,000 / 7,000 / 5,000 / 2,000 units in the four quarters of 2026, invoiced gross on shipment. The retrospective rebate on all 2026 purchases is 3% if sell-through exceeds 10,000 units and 5% if it exceeds 18,000 units (most likely amount; the constraint favours the higher rebate when evidence is weak). Estimate versions: 1 January forecast 16,000 (3%, 30,000.00); 30 June forecast 19,000 (5%, 50,000.00); 31 December actual 18,000 (3%, 30,000.00). The rebate is price-reducing VC allocated to the POB; revenue = unit allocation × units shipped with cumulative catch-up (JET-02, JET-04a) and the rebate on billed consideration is a refund liability (JET-04b), settled by the credit memo of 31 January 2027. Quarterly revenue 291,000.00 / 326,500.00 / 237,500.00 / 115,000.00; refund liability 9,000.00 / 32,500.00 / 45,000.00 / 30,000.00."
+authority:
+  codification:
+    - "606-10-32-5"
+    - "606-10-32-6"
+    - "606-10-32-8"
+    - "606-10-32-11"
+    - "606-10-32-14"
+    - "606-10-32-10"
+    - "606-10-55-22"
+  ifrs: ["IFRS 15.55", "IFRS 15.87"]
+  practice: ["DART 6.3 (volume rebates)", "FASB Example 24 pattern (606-10-55-216 to 55-220)"]
+  urls: []
+derived_from: {research04: [], research05: [BR-02], chk: [], golden: [], dev: []}
+requirements: [REQ-TP-002, REQ-TP-004, REQ-TP-006, REQ-TP-010, REQ-BIL-007]
+policy_refs: [POL-040, POL-041, POL-127, POL-182]
+review: {author: answer-keys-industries, authored_on: "2026-09-12", reviewer: null, reviewed_on: null, status: pending}
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: BR-US
+      name: "Bracken Robotics US (Demo)"
+      functional_currency: USD
+      time_zone: America/Chicago
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: "1"}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2027-01"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "2110", name: "Refund liability", account_type: LIABILITY}
+    - {code: "4000", name: "Revenue - products", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REFUND_LIABILITY, account: "2110"}
+    - {account_role: REVENUE, product: SERVO-PACK, account: "4000"}
+  customers: [{code: CUST-BR02, name: "Kinsley Marrow Industrial Supply Inc. (Demo)"}]
+  pob_templates:
+    - code: TPL-GOODS
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: POINT_IN_TIME
+      over_time_criterion: NOT_APPLICABLE
+      recognition_method: POINT_IN_TIME
+      policy_values: {balance.right_to_consideration: UNCONDITIONAL}
+  products:
+    - {code: SERVO-PACK, name: "Servo pack (distributor SKU)", pob_template: TPL-GOODS, revenue_category: PRODUCTS}
+  ssp_books:
+    - code: SSP-BR-US-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2025-01-01"
+          methodology_label: "Observable standalone prices (demo study)"
+          entries:
+            - product: SERVO-PACK
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges: [{point_value: "50.00"}]
+  fx_rate_sets: []
+  rule_sets: []
+  policies:
+    tenant: {billing.posting: ERP, recognition.time_convention: MONTHLY_EVEN}
+    entities: {}
+    books: {}
+contracts:
+  - external_id: BR-02
+    customer: CUST-BR02
+    contracting_entity: BR-US
+    transaction_currency: USD
+    inception_date: "2026-01-01"
+    lines:
+      - obligation_key: L1-SERVO
+        product_code: SERVO-PACK
+        quantity: "20000"
+        total_price: "1000000.00"
+        unit_price: "50"
+    estimates:
+      - element_code: RBT-BR02-2026
+        estimate_kind: VARIABLE_CONSIDERATION
+        method: MOST_LIKELY_AMOUNT
+        obligation_key: L1-SERVO
+        vc_element_type: REBATE
+        allocation_target: OBLIGATIONS
+        target_obligation_keys: [L1-SERVO]
+        versions:
+          - version_no: "1"
+            effective_date: "2026-01-01"
+            expected_quantity: "16000"
+            unconstrained_amount: "30000.00"
+            most_conservative_amount: "30000.00"
+            constrained_amount: "30000.00"
+            currency: USD
+            rationale: "Distributor forecast of 2026 sell-through 16,000 units."
+          - version_no: "2"
+            effective_date: "2026-06-30"
+            expected_quantity: "19000"
+            unconstrained_amount: "50000.00"
+            most_conservative_amount: "50000.00"
+            constrained_amount: "50000.00"
+            currency: USD
+            rationale: "Two new retail accounts raise forecast sell-through to 19,000 units."
+          - version_no: "3"
+            effective_date: "2026-12-31"
+            expected_quantity: "18000"
+            unconstrained_amount: "30000.00"
+            most_conservative_amount: "30000.00"
+            constrained_amount: "30000.00"
+            currency: USD
+            rationale: "Actual 2026 sell-through 18,000 units; 5% threshold not exceeded."
+timeline:
+  - seq: "1"
+    kind: event
+    contract: BR-02
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: "2"
+    kind: event
+    contract: BR-02
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: "3"
+    kind: event
+    contract: BR-02
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-01-01"
+    payload: {estimate: RBT-BR02-2026, version_no: "1"}
+  - seq: "4"
+    kind: event
+    contract: BR-02
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-03-15"
+    payload: {obligation_key: L1-SERVO, quantity: "6000", trigger: DELIVERY}
+  - seq: "5"
+    kind: event
+    contract: BR-02
+    event_type: BILLING_RECORDED
+    effective_date: "2026-03-15"
+    payload:
+      invoice_number: INV-BR02-20260315
+      line_external_id: INV-BR02-20260315-1
+      amount: "300000.00"
+      issue_date: "2026-03-15"
+      obligation_key: L1-SERVO
+  - seq: "6"
+    kind: event
+    contract: BR-02
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-06-15"
+    payload: {obligation_key: L1-SERVO, quantity: "7000", trigger: DELIVERY}
+  - seq: "7"
+    kind: event
+    contract: BR-02
+    event_type: BILLING_RECORDED
+    effective_date: "2026-06-15"
+    payload:
+      invoice_number: INV-BR02-20260615
+      line_external_id: INV-BR02-20260615-1
+      amount: "350000.00"
+      issue_date: "2026-06-15"
+      obligation_key: L1-SERVO
+  - seq: "8"
+    kind: event
+    contract: BR-02
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-06-30"
+    payload: {estimate: RBT-BR02-2026, version_no: "2"}
+  - seq: "9"
+    kind: event
+    contract: BR-02
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-09-15"
+    payload: {obligation_key: L1-SERVO, quantity: "5000", trigger: DELIVERY}
+  - seq: "10"
+    kind: event
+    contract: BR-02
+    event_type: BILLING_RECORDED
+    effective_date: "2026-09-15"
+    payload:
+      invoice_number: INV-BR02-20260915
+      line_external_id: INV-BR02-20260915-1
+      amount: "250000.00"
+      issue_date: "2026-09-15"
+      obligation_key: L1-SERVO
+  - seq: "11"
+    kind: event
+    contract: BR-02
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-12-10"
+    payload: {obligation_key: L1-SERVO, quantity: "2000", trigger: DELIVERY}
+  - seq: "12"
+    kind: event
+    contract: BR-02
+    event_type: BILLING_RECORDED
+    effective_date: "2026-12-10"
+    payload:
+      invoice_number: INV-BR02-20261210
+      line_external_id: INV-BR02-20261210-1
+      amount: "100000.00"
+      issue_date: "2026-12-10"
+      obligation_key: L1-SERVO
+  - seq: "13"
+    kind: event
+    contract: BR-02
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-12-31"
+    payload: {estimate: RBT-BR02-2026, version_no: "3"}
+  - seq: "14"
+    kind: event
+    contract: BR-02
+    event_type: CREDIT_MEMO_RECORDED
+    effective_date: "2027-01-31"
+    payload:
+      credit_memo_number: CM-BR02-REBATE-2026
+      obligation_key: L1-SERVO
+      amount: "30000.00"
+      issue_date: "2027-01-31"
+      reason: VOLUME_REBATE_2026
+checkpoints:
+  - name: q1
+    after_seq: "5"
+    as_of: "2026-03-31"
+    book: ASC606
+    contracts:
+      - contract: BR-02
+        version:
+          transaction_price: "970000.00"
+          vc_constrained_amount: "30000.00"
+          revenue_cum: "291000.00"
+          billed_cum: "300000.00"
+        obligations:
+          - obligation_key: L1-SERVO
+            allocated_amount: "970000.00"
+            revenue_cum: "291000.00"
+            delivered_quantity_cum: "6000"
+        balances:
+          - entity: BR-US
+            contract_liability: "0.00"
+            contract_asset: "0.00"
+            unbilled_receivable: "0.00"
+            refund_liability: "9000.00"
+    subledger:
+      - period_key: FY2026-P03
+        entity: BR-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "300000.00"}
+          - {account_role: REFUND_LIABILITY, account: "2110", cr: "9000.00"}
+          - {account_role: REVENUE, account: "4000", cr: "291000.00"}
+  - name: q2-higher-tier
+    after_seq: "8"
+    as_of: "2026-06-30"
+    book: ASC606
+    contracts:
+      - contract: BR-02
+        version:
+          transaction_price: "950000.00"
+          vc_constrained_amount: "50000.00"
+          revenue_cum: "617500.00"
+          billed_cum: "650000.00"
+        obligations:
+          - obligation_key: L1-SERVO
+            allocated_amount: "950000.00"
+            revenue_cum: "617500.00"
+            delivered_quantity_cum: "13000"
+        balances:
+          - entity: BR-US
+            contract_liability: "0.00"
+            contract_asset: "0.00"
+            unbilled_receivable: "0.00"
+            refund_liability: "32500.00"
+    subledger:
+      - period_key: FY2026-P06
+        entity: BR-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "350000.00"}
+          - {account_role: REFUND_LIABILITY, account: "2110", cr: "23500.00"}
+          - {account_role: REVENUE, account: "4000", cr: "326500.00"}
+  - name: q3
+    after_seq: "10"
+    as_of: "2026-09-30"
+    book: ASC606
+    contracts:
+      - contract: BR-02
+        version:
+          transaction_price: "950000.00"
+          vc_constrained_amount: "50000.00"
+          revenue_cum: "855000.00"
+          billed_cum: "900000.00"
+        obligations:
+          - obligation_key: L1-SERVO
+            allocated_amount: "950000.00"
+            revenue_cum: "855000.00"
+            delivered_quantity_cum: "18000"
+        balances:
+          - entity: BR-US
+            contract_liability: "0.00"
+            contract_asset: "0.00"
+            unbilled_receivable: "0.00"
+            refund_liability: "45000.00"
+  - name: q4-actual
+    after_seq: "13"
+    as_of: "2026-12-31"
+    book: ASC606
+    contracts:
+      - contract: BR-02
+        version:
+          transaction_price: "970000.00"
+          vc_constrained_amount: "30000.00"
+          revenue_cum: "970000.00"
+          billed_cum: "1000000.00"
+        obligations:
+          - obligation_key: L1-SERVO
+            allocated_amount: "970000.00"
+            revenue_cum: "970000.00"
+            delivered_quantity_cum: "20000"
+        balances:
+          - entity: BR-US
+            contract_liability: "0.00"
+            contract_asset: "0.00"
+            unbilled_receivable: "0.00"
+            refund_liability: "30000.00"
+    subledger:
+      - period_key: FY2026-P12
+        entity: BR-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "100000.00"}
+          - {account_role: REFUND_LIABILITY, account: "2110", dr: "15000.00"}
+          - {account_role: REVENUE, account: "4000", cr: "115000.00"}
+  - name: rebate-settled
+    after_seq: "14"
+    as_of: "2027-01-31"
+    book: ASC606
+    contracts:
+      - contract: BR-02
+        version:
+          transaction_price: "970000.00"
+          vc_constrained_amount: "30000.00"
+          revenue_cum: "970000.00"
+          billed_cum: "970000.00"
+        obligations:
+          - obligation_key: L1-SERVO
+            allocated_amount: "970000.00"
+            revenue_cum: "970000.00"
+            delivered_quantity_cum: "20000"
+        balances:
+          - entity: BR-US
+            contract_liability: "0.00"
+            contract_asset: "0.00"
+            unbilled_receivable: "0.00"
+            refund_liability: "0.00"
+    subledger:
+      - period_key: FY2027-P01
+        entity: BR-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", cr: "30000.00"}
+          - {account_role: REFUND_LIABILITY, account: "2110", dr: "30000.00"}

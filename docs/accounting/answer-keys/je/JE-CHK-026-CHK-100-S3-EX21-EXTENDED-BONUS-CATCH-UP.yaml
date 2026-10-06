@@ -1,0 +1,282 @@
+# docs/accounting/answer-keys/je/JE-CHK-026-CHK-100-S3-EX21-EXTENDED-BONUS-CATCH-UP.yaml
+schema: "erev-answer-key/1"
+id: JE-CHK-026-CHK-100-S3-EX21-EXTENDED-BONUS-CATCH-UP
+title: >-
+  JET-04a on a bonus released from the constraint, with the prior-period revenue decomposition
+status: active
+families: [JE, VC, DISC]
+tags: [r04-s3, r04-s10]
+summary: >-
+  Research 04 S3-EX21-EXTENDED (FASB Example 21 extended) with years 20X7 to 20X9 re-anchored to 2026 to 2028 on a
+  monthly calendar. Entity US01, USD, ERP billing. Base consideration 2,500,000.00; timing incentive element
+  (EXPECTED_VALUE over +100,000 at 20%, 0 at 50%, −50,000 at 30%) included at 5,000.00; completion bonus 150,000.00
+  (MOST_LIKELY_AMOUNT) constrained to 0.00 in version 1. Output progress [A in place of cost-to-cost] 40% on
+  2026-12-31, 80% on 2027-12-31 and 100% on 2028-12-31; invoices 1,000,000.00 at each year end. Year 1 revenue
+  1,002,000.00 and contract asset 2,000.00. Bonus version 2, effective 2027-01-01 while progress is still 40%,
+  includes 150,000.00: January 2027 posts JET-04a 60,000.00 (CHK-026), which POL-204 reports as revenue from
+  obligations satisfied in previous periods, ΔX × f(s) = 150,000 × 40% (CHK-100). Year 2 progress revenue
+  1,062,000.00; Year 2 revenue 1,122,000.00; contract asset 124,000.00 at 2027-12-31. The timing element resolves at
+  +100,000.00 on 2028-12-31: Year 3 revenue 626,000.00, final transaction price 2,750,000.00, position nil.
+  Cross-slice variants with distinct inputs, kept: VC-CHK-100-S3-EX21-EXTENDED (cost-to-cost progress versus output
+  progress events) (ADJUDICATION.md R-DUP-02).
+authority:
+  codification: ["606-10-32-5", "606-10-32-8", "606-10-32-11", "606-10-32-14", "606-10-32-43", "606-10-50-12A"]
+  ifrs: ["IFRS 15.53", "IFRS 15.56", "IFRS 15.59", "IFRS 15.88", "IFRS 15.116"]
+  practice: []
+  urls: []
+derived_from:
+  research04: [S3-EX21-EXTENDED, S10-DISCLOSURES]
+  research05: []
+  chk: [CHK-026, CHK-100]
+  golden: []
+  dev: []
+requirements: [REQ-TP-001, REQ-TP-004, REQ-RPT-008, REQ-BIL-004]
+policy_refs: [POL-040, POL-041, POL-182, POL-204]
+review:
+  author: answer-keys-fx-entity-books
+  authored_on: "2026-09-12"
+  reviewer: null
+  reviewed_on: null
+  status: pending
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: US01
+      name: "Avenmoor Systems Inc. (Demo)"
+      functional_currency: USD
+      time_zone: "America/New_York"
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: 1}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2028-12"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4000", name: "Revenue - products", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, account: "4000", product: ASSET-BUILD}
+  customers:
+    - {code: CUST-1, name: "Pellworth Logistics Inc. (Demo)"}
+  pob_templates:
+    - code: TPL-PCT
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_B
+      recognition_method: OUTPUT_PERCENT
+  products:
+    - {code: ASSET-BUILD, name: "Customised asset construction", pob_template: TPL-PCT}
+  ssp_books:
+    - code: SSP-US-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2026-01-01"
+          methodology_label: "Observable standalone prices"
+          entries:
+            - product: ASSET-BUILD
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "2500000.00"}
+  fx_rate_sets: []
+  rule_sets: []
+  policies: {tenant: {billing.posting: ERP}, entities: {}, books: {}}
+contracts:
+  - external_id: C-JE-026
+    customer: CUST-1
+    contracting_entity: US01
+    transaction_currency: USD
+    inception_date: "2026-01-01"
+    lines:
+      - {obligation_key: L1-BUILD, product_code: ASSET-BUILD, quantity: "1", total_price: "2500000.00"}
+    policy_overrides:
+      - policy_key: balance.right_to_consideration
+        value: CONDITIONAL
+        obligation_key: L1-BUILD
+        rationale: "Billing milestones are conditional on completion stages"
+    estimates:
+      - element_code: VC-TIMING
+        estimate_kind: VARIABLE_CONSIDERATION
+        method: EXPECTED_VALUE
+        vc_element_type: PERFORMANCE_INCENTIVE
+        allocation_target: CONTRACT
+        versions:
+          - version_no: "1"
+            effective_date: "2026-01-01"
+            scenarios:
+              - {outcome: "10 days early", amount: "100000.00", probability: "0.2"}
+              - {outcome: "on time", amount: "0.00", probability: "0.5"}
+              - {outcome: "5 days late", amount: "-50000.00", probability: "0.3"}
+            unconstrained_amount: "5000.00"
+            constrained_amount: "5000.00"
+            rationale: "Expected value of the daily incentive"
+          - version_no: "2"
+            effective_date: "2028-12-31"
+            unconstrained_amount: "100000.00"
+            most_conservative_amount: "100000.00"
+            constrained_amount: "100000.00"
+            rationale: "Completed 10 days early"
+      - element_code: VC-BONUS
+        estimate_kind: VARIABLE_CONSIDERATION
+        method: MOST_LIKELY_AMOUNT
+        vc_element_type: BONUS
+        allocation_target: CONTRACT
+        versions:
+          - version_no: "1"
+            effective_date: "2026-01-01"
+            unconstrained_amount: "150000.00"
+            most_conservative_amount: "0.00"
+            constrained_amount: "0.00"
+            rationale: "Rating outcome susceptible to external factors; constrained"
+          - version_no: "2"
+            effective_date: "2027-01-01"
+            unconstrained_amount: "150000.00"
+            most_conservative_amount: "150000.00"
+            constrained_amount: "150000.00"
+            rationale: "Preliminary rating results remove the constraint"
+timeline:
+  - {seq: 1, kind: event, contract: C-JE-026, event_type: CONTRACT_BOOKED, effective_date: "2026-01-01", payload: {}}
+  - seq: 2
+    kind: event
+    contract: C-JE-026
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: 3
+    kind: event
+    contract: C-JE-026
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-01-01"
+    payload: {estimate: VC-TIMING, version_no: "1"}
+  - seq: 4
+    kind: event
+    contract: C-JE-026
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-01-01"
+    payload: {estimate: VC-BONUS, version_no: "1"}
+  - seq: 5
+    kind: event
+    contract: C-JE-026
+    event_type: PROGRESS_RECORDED
+    effective_date: "2026-12-31"
+    payload: {obligation_key: L1-BUILD, cumulative_progress_ratio: "0.4", measure: OUTPUT_PERCENT}
+  - seq: 6
+    kind: event
+    contract: C-JE-026
+    event_type: BILLING_RECORDED
+    effective_date: "2026-12-31"
+    payload:
+      invoice_number: INV-EX21-1
+      line_external_id: INV-EX21-1-1
+      amount: "1000000.00"
+      issue_date: "2026-12-31"
+  - seq: 7
+    kind: event
+    contract: C-JE-026
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2027-01-01"
+    payload: {estimate: VC-BONUS, version_no: "2"}
+  - seq: 8
+    kind: event
+    contract: C-JE-026
+    event_type: PROGRESS_RECORDED
+    effective_date: "2027-12-31"
+    payload: {obligation_key: L1-BUILD, cumulative_progress_ratio: "0.8", measure: OUTPUT_PERCENT}
+  - seq: 9
+    kind: event
+    contract: C-JE-026
+    event_type: BILLING_RECORDED
+    effective_date: "2027-12-31"
+    payload:
+      invoice_number: INV-EX21-2
+      line_external_id: INV-EX21-2-1
+      amount: "1000000.00"
+      issue_date: "2027-12-31"
+  - seq: 10
+    kind: event
+    contract: C-JE-026
+    event_type: PROGRESS_RECORDED
+    effective_date: "2028-12-31"
+    payload: {obligation_key: L1-BUILD, cumulative_progress_ratio: "1", measure: OUTPUT_PERCENT}
+  - seq: 11
+    kind: event
+    contract: C-JE-026
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2028-12-31"
+    payload: {estimate: VC-TIMING, version_no: "2"}
+  - seq: 12
+    kind: event
+    contract: C-JE-026
+    event_type: BILLING_RECORDED
+    effective_date: "2028-12-31"
+    payload:
+      invoice_number: INV-EX21-3
+      line_external_id: INV-EX21-3-1
+      amount: "750000.00"
+      issue_date: "2028-12-31"
+checkpoints:
+  - name: year-1-close
+    after_seq: 6
+    as_of: "2026-12-31"
+    book: ASC606
+    contracts:
+      - contract: C-JE-026
+        version: {transaction_price: "2505000.00", revenue_cum: "1002000.00"}
+        balances:
+          - {entity: US01, contract_liability: "0.00", contract_asset: "2000.00", unbilled_receivable: "0.00"}
+  - name: year-2-january-catch-up
+    after_seq: 7
+    as_of: "2027-01-31"
+    book: ASC606
+    contracts:
+      - contract: C-JE-026
+        version: {transaction_price: "2655000.00", revenue_cum: "1062000.00"}
+        obligations:
+          - {obligation_key: L1-BUILD, catch_up_estimate_cum: "60000.00"}
+        trace:
+          - {measure: revenue_prior_period, subject_key: L1-BUILD, period_key: FY2027-P01, value: "60000.00"}
+    subledger:
+      - period_key: FY2027-P01
+        entity: US01
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_ASSET, account: "1200", dr: "60000.00"}
+          - {account_role: REVENUE, account: "4000", cr: "60000.00"}
+  - name: year-2-close
+    after_seq: 9
+    as_of: "2027-12-31"
+    book: ASC606
+    contracts:
+      - contract: C-JE-026
+        version: {transaction_price: "2655000.00", revenue_cum: "2124000.00"}
+        balances:
+          - {entity: US01, contract_liability: "0.00", contract_asset: "124000.00", unbilled_receivable: "0.00"}
+        trace:
+          - {measure: revenue_prior_period, subject_key: L1-BUILD, period_key: FY2027-P12, value: "0.00"}
+    subledger:
+      - period_key: FY2027-P12
+        entity: US01
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "1000000.00"}
+          - {account_role: CONTRACT_ASSET, account: "1200", dr: "62000.00"}
+          - {account_role: REVENUE, account: "4000", cr: "1062000.00"}
+  - name: year-3-close
+    after_seq: 12
+    as_of: "2028-12-31"
+    book: ASC606
+    contracts:
+      - contract: C-JE-026
+        version: {transaction_price: "2750000.00", revenue_cum: "2750000.00"}
+        balances:
+          - {entity: US01, contract_liability: "0.00", contract_asset: "0.00", unbilled_receivable: "0.00"}

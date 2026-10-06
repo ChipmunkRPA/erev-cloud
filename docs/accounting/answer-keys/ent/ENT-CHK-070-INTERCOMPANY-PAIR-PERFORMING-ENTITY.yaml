@@ -1,0 +1,179 @@
+# docs/accounting/answer-keys/ent/ENT-CHK-070-INTERCOMPANY-PAIR-PERFORMING-ENTITY.yaml
+schema: "erev-answer-key/1"
+id: ENT-CHK-070-INTERCOMPANY-PAIR-PERFORMING-ENTITY
+title: >-
+  Performing entity recognises revenue: intercompany due-to and due-from pair per period, each entity balanced
+status: active
+families: [ENT, JE]
+tags: [multi-entity]
+summary: >-
+  Transaction price 100,000.00 (USD, one currency). The licence (60,000.00) is contracted and performed by US01 and
+  transfers in P1; the implementation (40,000.00) is contracted by US01 and performed by UK01 [A: UK01 has USD
+  functional currency], 50% complete at the end of P1. US01 invoices 100,000.00 at inception (ERP). Under POL-170
+  PERFORMING_ENTITY, US01 posts JET-02 Dr CONTRACT_LIABILITY 60,000.00 / Cr REVENUE 60,000.00 and JET-13 Dr
+  CONTRACT_LIABILITY 20,000.00 / Cr INTERCOMPANY_DUE_TO (counterparty UK01) 20,000.00; UK01 posts Dr
+  INTERCOMPANY_DUE_FROM (counterparty US01) 20,000.00 / Cr REVENUE 20,000.00. Each entity's batch balances on its own;
+  US01 presents a 20,000.00 contract liability and UK01 holds no contract balance (CHK-070). Eliminations belong to
+  consolidation (810-10-45-1).
+authority:
+  codification: ["606-10-25-19", "606-10-32-28", "606-10-45-1", "810-10-45-1", "606-10-55-36"]
+  ifrs: ["IFRS 10.B86", "IFRS 15.74", "IFRS 15.105"]
+  practice: ["Research 06 §10.2 to §10.3 (contracting and performing entity roles, eliminations boundary)"]
+  urls: []
+derived_from: {research04: [], research05: [], chk: [CHK-070], golden: [], dev: []}
+requirements: [REQ-ENT-001, REQ-ENT-002, REQ-ENT-003, REQ-JE-001]
+policy_refs: [POL-120, POL-170, POL-171, POL-004]
+review:
+  author: answer-keys-fx-entity-books
+  authored_on: "2026-09-12"
+  reviewer: null
+  reviewed_on: null
+  status: pending
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: US01
+      name: "Avenmoor Systems Inc. (Demo)"
+      functional_currency: USD
+      time_zone: "America/New_York"
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: 1}
+      books: [ASC606]
+    - code: UK01
+      name: "Avenmoor Services UK Ltd (Demo)"
+      functional_currency: USD
+      time_zone: "Europe/London"
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: 1}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2026-02"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "1800", name: "Intercompany due from", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "2800", name: "Intercompany due to", account_type: LIABILITY}
+    - {code: "4010", name: "Revenue - services and subscriptions", account_type: REVENUE}
+    - {code: "4020", name: "Revenue - licences and royalties", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: INTERCOMPANY_DUE_TO, account: "2800"}
+    - {account_role: INTERCOMPANY_DUE_FROM, account: "1800"}
+    - {account_role: REVENUE, account: "4020", product: LICENCE-SW}
+    - {account_role: REVENUE, account: "4010", product: IMPL-SVC}
+  customers:
+    - {code: CUST-1, name: "Pellworth Logistics Inc. (Demo)"}
+  pob_templates:
+    - code: TPL-PCT
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_B
+      recognition_method: OUTPUT_PERCENT
+    - code: TPL-PIT
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: POINT_IN_TIME
+      over_time_criterion: NOT_APPLICABLE
+      recognition_method: POINT_IN_TIME
+  products:
+    - {code: LICENCE-SW, name: "Software licence", pob_template: TPL-PIT}
+    - {code: IMPL-SVC, name: "Implementation services", pob_template: TPL-PCT}
+  ssp_books:
+    - code: SSP-USD-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2026-01-01"
+          methodology_label: "Observable standalone prices"
+          entries:
+            - product: LICENCE-SW
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "60000.00"}
+            - product: IMPL-SVC
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "40000.00"}
+  fx_rate_sets: []
+  rule_sets: []
+  policies: {tenant: {billing.posting: ERP}, entities: {}, books: {}}
+contracts:
+  - external_id: C-ENT-070
+    customer: CUST-1
+    contracting_entity: US01
+    transaction_currency: USD
+    inception_date: "2026-01-05"
+    lines:
+      - {obligation_key: L1-LICENCE, product_code: LICENCE-SW, quantity: "1", total_price: "60000.00"}
+      - obligation_key: L2-SERVICES
+        product_code: IMPL-SVC
+        quantity: "1"
+        total_price: "40000.00"
+        performing_entity_code: UK01
+timeline:
+  - {seq: 1, kind: event, contract: C-ENT-070, event_type: CONTRACT_BOOKED, effective_date: "2026-01-05", payload: {}}
+  - seq: 2
+    kind: event
+    contract: C-ENT-070
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-05"
+    payload: {}
+  - seq: 3
+    kind: event
+    contract: C-ENT-070
+    event_type: BILLING_RECORDED
+    effective_date: "2026-01-05"
+    payload:
+      invoice_number: INV-ENT-0001
+      line_external_id: INV-ENT-0001-1
+      amount: "100000.00"
+      issue_date: "2026-01-05"
+  - seq: 4
+    kind: event
+    contract: C-ENT-070
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-01-20"
+    payload: {obligation_key: L1-LICENCE, quantity: "1", trigger: CONTROL_TRANSFER}
+  - seq: 5
+    kind: event
+    contract: C-ENT-070
+    event_type: PROGRESS_RECORDED
+    effective_date: "2026-01-31"
+    payload: {obligation_key: L2-SERVICES, cumulative_progress_ratio: "0.5", measure: OUTPUT_PERCENT}
+checkpoints:
+  - name: end-of-p1
+    after_seq: 5
+    as_of: "2026-01-31"
+    book: ASC606
+    contracts:
+      - contract: C-ENT-070
+        obligations:
+          - {obligation_key: L1-LICENCE, allocated_amount: "60000.00", revenue_cum: "60000.00"}
+          - {obligation_key: L2-SERVICES, allocated_amount: "40000.00", revenue_cum: "20000.00"}
+        balances:
+          - {entity: US01, contract_liability: "20000.00", contract_asset: "0.00", unbilled_receivable: "0.00"}
+          - {entity: UK01, contract_liability: "0.00", contract_asset: "0.00", unbilled_receivable: "0.00"}
+    subledger:
+      - period_key: FY2026-P01
+        entity: US01
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "80000.00"}
+          - {account_role: REVENUE, account: "4020", cr: "60000.00"}
+          - {account_role: INTERCOMPANY_DUE_TO, account: "2800", counterparty_entity: UK01, cr: "20000.00"}
+      - period_key: FY2026-P01
+        entity: UK01
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: INTERCOMPANY_DUE_FROM, account: "1800", counterparty_entity: US01, dr: "20000.00"}
+          - {account_role: REVENUE, account: "4010", cr: "20000.00"}

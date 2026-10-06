@@ -1,0 +1,2 @@
+Self-test fixture for AWS_ACCESS_KEY (DG-MK-secrets-check). Not a real key.
+aws_access_key_id = AKIAFIXTURE000000000

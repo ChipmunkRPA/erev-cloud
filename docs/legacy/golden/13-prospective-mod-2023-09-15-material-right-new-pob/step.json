@@ -1,0 +1,94 @@
+{
+  "nn": "13",
+  "slug": "prospective-mod-2023-09-15-material-right-new-pob",
+  "handler": "browse_file_ProsMod",
+  "button": "button4",
+  "button_label": "Prospective Contract Mod",
+  "file": "ops/Example UATs/Contract Mod UAT/Contract Modification Template 09.15.2023 - material right exericse with new POB added (propsective).xlsx",
+  "file_sha256": "445e7027574d2427e95a8d1671c77e54cd5ad451b609ba32b7b666682dbc944b",
+  "date_input": "2023-09-15",
+  "report_window": [
+    "2023-09-01",
+    "2023-09-15"
+  ],
+  "contract_live_table_exists": true,
+  "sku_ssp_table_exists": true,
+  "rows_before": 84,
+  "rows_after": 89,
+  "rows_appended": 5,
+  "new_version_tokens": [
+    "step-13"
+  ],
+  "sku_ssp_rows": 7,
+  "handler_success": true,
+  "handler_popups": [
+    {
+      "kind": "QMessageBox.information",
+      "title": "Mod Success",
+      "text": "Prospective Mod has been processed with uploaded modifications for the current date :)"
+    }
+  ],
+  "report_popups": 4,
+  "unused_queued_inputs": [],
+  "report_unused_inputs": {
+    "latest_contracts": [],
+    "je_gross": [],
+    "je_delta": [],
+    "contract_history": []
+  },
+  "reports_captured": {
+    "latest_contracts": true,
+    "je_gross": true,
+    "je_delta": true,
+    "contract_history": true
+  },
+  "je_gross_totals": {
+    "lines": 2,
+    "by_account": [
+      {
+        "account": "5003",
+        "debit": 0.0,
+        "credit": 32.14,
+        "net": -32.14
+      },
+      {
+        "account": "21001",
+        "debit": 32.14,
+        "credit": -0.0,
+        "net": 32.14
+      }
+    ],
+    "total_debit": 32.14,
+    "total_credit": 32.14,
+    "net": 0.0
+  },
+  "je_delta_totals": {
+    "lines": 2,
+    "by_account": [
+      {
+        "account": "5003",
+        "debit": 0.0,
+        "credit": 32.14,
+        "net": -32.14
+      },
+      {
+        "account": "21001",
+        "debit": 32.14,
+        "credit": -0.0,
+        "net": 32.14
+      }
+    ],
+    "total_debit": 32.14,
+    "total_credit": 32.14,
+    "net": 0.0
+  },
+  "contract_history_rows": 5,
+  "latest_contract_rows": 17,
+  "app_excel_exports": [
+    "Contract History between 2023-09-01 and 2023-09-15.xlsx",
+    "Latest Contract Details.xlsx",
+    "Revenue Adj. Summary between 2023-09-01 and 2023-09-15.xlsx",
+    "Revenue JE Summary between 2023-09-01 and 2023-09-15.xlsx"
+  ],
+  "python_warnings": []
+}

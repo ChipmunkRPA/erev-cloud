@@ -1,0 +1,180 @@
+schema: erev-answer-key/1
+id: REC-JS-04-PAID-MEMBERSHIP-DAILY
+title: "Paid membership cohort joining mid-month: stand-ready obligation recognised daily"
+status: active
+families: [REC, POS]
+tags: [subscription, portfolio]
+summary: "The Reserve Club membership gives a free drink each month and member pricing for one year for 120.00, paid on joining. 5,000 members join on 15 January 2026 (600,000.00; term 15 January 2026 to 14 January 2027). The membership is a stand-ready obligation satisfied over the year; the benefit is available evenly, so revenue follows time elapsed under the DAILY convention (POL-090 set at product level): January 27,945.21 (17 of 365 days), then day counts per month; February 2027 has no revenue. Contract liability at 30 June 2026 is 332,054.79."
+authority:
+  codification: ["606-10-25-27", "606-10-25-31", "606-10-55-17", "606-10-55-184"]
+  ifrs: ["IFRS 15.B15"]
+  practice: ["FASB Example 18 (health club membership)"]
+  urls: []
+derived_from: {research04: [], research05: [JS-04], chk: [], golden: [], dev: []}
+requirements: [REQ-REC-003, REQ-REC-019, REQ-BIL-003]
+policy_refs: [POL-090]
+review: {author: answer-keys-industries, authored_on: "2026-09-12", reviewer: null, reviewed_on: null, status: pending}
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: JS-US
+      name: "Juniper Street US (Demo)"
+      functional_currency: USD
+      time_zone: America/Los_Angeles
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: "1"}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2027-01"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4010", name: "Revenue - services and subscriptions", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, product: RESERVE-CLUB-12M, account: "4010"}
+  customers: [{code: CUST-JS04, name: "January 2026 membership cohort (Demo)"}]
+  pob_templates:
+    - code: TPL-MEMBERSHIP
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_A
+      recognition_method: TIME_ELAPSED
+      ratable_convention: DAILY
+      policy_values: {balance.right_to_consideration: CONDITIONAL, recognition.time_convention: DAILY}
+  products:
+    - code: RESERVE-CLUB-12M
+      name: "Reserve Club membership, 12 months"
+      pob_template: TPL-MEMBERSHIP
+      revenue_category: MEMBERSHIP
+  ssp_books:
+    - code: SSP-JS-US-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2025-01-01"
+          methodology_label: "Observable standalone prices (demo study)"
+          entries:
+            - product: RESERVE-CLUB-12M
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges: [{point_value: "120.00"}]
+  fx_rate_sets: []
+  rule_sets: []
+  policies:
+    tenant: {billing.posting: ERP, recognition.time_convention: MONTHLY_EVEN}
+    entities: {}
+    books: {}
+contracts:
+  - external_id: JS-04
+    customer: CUST-JS04
+    contracting_entity: JS-US
+    transaction_currency: USD
+    inception_date: "2026-01-15"
+    contract_type: PORTFOLIO
+    lines:
+      - obligation_key: L1-MEMBERSHIP
+        product_code: RESERVE-CLUB-12M
+        quantity: "5000"
+        total_price: "600000.00"
+        unit_price: "120"
+        start_date: "2026-01-15"
+        end_date: "2027-01-14"
+timeline:
+  - seq: "1"
+    kind: event
+    contract: JS-04
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-01-15"
+    payload: {}
+  - seq: "2"
+    kind: event
+    contract: JS-04
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-15"
+    payload: {}
+  - seq: "3"
+    kind: event
+    contract: JS-04
+    event_type: BILLING_RECORDED
+    effective_date: "2026-01-15"
+    payload:
+      invoice_number: POS-JS04-JOIN
+      line_external_id: POS-JS04-JOIN-1
+      amount: "600000.00"
+      issue_date: "2026-01-15"
+      obligation_key: L1-MEMBERSHIP
+checkpoints:
+  - name: join-month
+    after_seq: "3"
+    as_of: "2026-01-31"
+    book: ASC606
+    contracts:
+      - contract: JS-04
+        version: {transaction_price: "600000.00", revenue_cum: "27945.21", billed_cum: "600000.00"}
+        obligations:
+          - obligation_key: L1-MEMBERSHIP
+            allocated_amount: "600000.00"
+            revenue_cum: "27945.21"
+            satisfaction_status: PARTIALLY_SATISFIED
+        balances:
+          - {entity: JS-US, contract_liability: "572054.79", contract_asset: "0.00", unbilled_receivable: "0.00"}
+    subledger:
+      - period_key: FY2026-P01
+        entity: JS-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "27945.21"}
+          - {account_role: REVENUE, account: "4010", cr: "27945.21"}
+  - name: mid-year
+    after_seq: "3"
+    as_of: "2026-06-30"
+    book: ASC606
+    contracts:
+      - contract: JS-04
+        version: {transaction_price: "600000.00", revenue_cum: "274520.55", billed_cum: "600000.00"}
+        obligations:
+          - obligation_key: L1-MEMBERSHIP
+            allocated_amount: "600000.00"
+            revenue_cum: "274520.55"
+            satisfaction_status: PARTIALLY_SATISFIED
+        balances:
+          - {entity: JS-US, contract_liability: "325479.45", contract_asset: "0.00", unbilled_receivable: "0.00"}
+        schedule:
+          - obligation_key: L1-MEMBERSHIP
+            schedule_kind: REVENUE
+            line_type: NORMAL
+            amounts:
+              FY2026-P01: "27945.21"
+              FY2026-P02: "46027.39"
+              FY2026-P03: "50958.91"
+              FY2026-P04: "49315.07"
+              FY2026-P05: "50958.90"
+              FY2026-P06: "49315.07"
+              FY2026-P07: "50958.90"
+              FY2026-P08: "50958.91"
+              FY2026-P09: "49315.06"
+              FY2026-P10: "50958.91"
+              FY2026-P11: "49315.07"
+              FY2026-P12: "50958.90"
+              FY2027-P01: "23013.70"
+  - name: term-complete
+    after_seq: "3"
+    as_of: "2027-01-31"
+    book: ASC606
+    contracts:
+      - contract: JS-04
+        version: {transaction_price: "600000.00", revenue_cum: "600000.00", billed_cum: "600000.00"}
+        obligations:
+          - obligation_key: L1-MEMBERSHIP
+            allocated_amount: "600000.00"
+            revenue_cum: "600000.00"
+            satisfaction_status: SATISFIED
+        balances: [{entity: JS-US, contract_liability: "0.00", contract_asset: "0.00", unbilled_receivable: "0.00"}]

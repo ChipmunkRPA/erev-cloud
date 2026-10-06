@@ -1,0 +1,209 @@
+schema: erev-answer-key/1
+id: REC-BR-05-CONSIGNMENT-SELL-THROUGH
+title: "Consignment stock at customer plants: revenue on consumption, unbilled receivable before the monthly invoice"
+status: active
+families: [REC, POS]
+tags: []
+summary: "Bracken Robotics KK consigns 200 gripper modules (JPY 150,000 each, JPY 30,000,000) to a customer's plants on 1 February 2026. Bracken controls the stock until the customer draws a module into production and can relocate unused stock; the customer has no obligation to pay for modules not consumed (606-10-55-80). Revenue is recognised on each consumption report: 60, 90 and 50 modules at the end of February, March and April. Consumption is invoiced on the 10th of the following month; the right to payment for consumed modules is unconditional, so uninvoiced consumption is an unbilled receivable. JPY has no minor unit (ISO 4217 exponent 0)."
+authority:
+  codification: ["606-10-55-79", "606-10-55-80", "606-10-25-30", "606-10-45-4"]
+  ifrs: ["IFRS 15.B77", "IFRS 15.B78"]
+  practice: ["DART 8.6 (consignment indicators)"]
+  urls: []
+derived_from: {research04: [], research05: [BR-05], chk: [], golden: [], dev: []}
+requirements: [REQ-REC-013, REQ-REC-001, REQ-BIL-004, REQ-BIL-005, REQ-PLT-031]
+policy_refs: [POL-001, POL-122]
+review: {author: answer-keys-industries, authored_on: "2026-09-12", reviewer: null, reviewed_on: null, status: pending}
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: JPY, preset: DEFAULT}
+  currencies: [JPY]
+  entities:
+    - code: BR-JP
+      name: "Bracken Robotics KK (Demo)"
+      functional_currency: JPY
+      time_zone: Asia/Tokyo
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: "1"}
+      books: [ASC606]
+  periods: {from: "2026-02", to: "2026-05"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4000", name: "Revenue - products", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, product: GRIPPER-MOD, account: "4000"}
+  customers: [{code: CUST-BR05, name: "Kumotori Precision KK (Demo)"}]
+  pob_templates:
+    - code: TPL-GOODS
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: POINT_IN_TIME
+      over_time_criterion: NOT_APPLICABLE
+      recognition_method: POINT_IN_TIME
+      policy_values: {balance.right_to_consideration: UNCONDITIONAL}
+  products: [{code: GRIPPER-MOD, name: "Gripper module", pob_template: TPL-GOODS, revenue_category: PRODUCTS}]
+  ssp_books:
+    - code: SSP-BR-JP-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2025-01-01"
+          methodology_label: "Observable standalone prices (demo study)"
+          entries:
+            - product: GRIPPER-MOD
+              currency: JPY
+              method: observable
+              distinctness: distinct
+              ranges: [{point_value: "150000"}]
+  fx_rate_sets: []
+  rule_sets: []
+  policies:
+    tenant: {billing.posting: ERP, recognition.time_convention: MONTHLY_EVEN}
+    entities: {}
+    books: {}
+contracts:
+  - external_id: BR-05
+    customer: CUST-BR05
+    contracting_entity: BR-JP
+    transaction_currency: JPY
+    inception_date: "2026-02-01"
+    lines:
+      - obligation_key: L1-GRIPPERS
+        product_code: GRIPPER-MOD
+        quantity: "200"
+        total_price: "30000000"
+        unit_price: "150000"
+timeline:
+  - seq: "1"
+    kind: event
+    contract: BR-05
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-02-01"
+    payload: {}
+  - seq: "2"
+    kind: event
+    contract: BR-05
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-02-01"
+    payload: {}
+  - seq: "3"
+    kind: event
+    contract: BR-05
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-02-28"
+    payload: {obligation_key: L1-GRIPPERS, quantity: "60", trigger: SELL_THROUGH}
+  - seq: "4"
+    kind: event
+    contract: BR-05
+    event_type: BILLING_RECORDED
+    effective_date: "2026-03-10"
+    payload:
+      invoice_number: INV-BR05-202603
+      line_external_id: INV-BR05-202603-1
+      amount: "9000000"
+      issue_date: "2026-03-10"
+      obligation_key: L1-GRIPPERS
+  - seq: "5"
+    kind: event
+    contract: BR-05
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-03-31"
+    payload: {obligation_key: L1-GRIPPERS, quantity: "90", trigger: SELL_THROUGH}
+  - seq: "6"
+    kind: event
+    contract: BR-05
+    event_type: BILLING_RECORDED
+    effective_date: "2026-04-10"
+    payload:
+      invoice_number: INV-BR05-202604
+      line_external_id: INV-BR05-202604-1
+      amount: "13500000"
+      issue_date: "2026-04-10"
+      obligation_key: L1-GRIPPERS
+  - seq: "7"
+    kind: event
+    contract: BR-05
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-04-30"
+    payload: {obligation_key: L1-GRIPPERS, quantity: "50", trigger: SELL_THROUGH}
+  - seq: "8"
+    kind: event
+    contract: BR-05
+    event_type: BILLING_RECORDED
+    effective_date: "2026-05-10"
+    payload:
+      invoice_number: INV-BR05-202605
+      line_external_id: INV-BR05-202605-1
+      amount: "7500000"
+      issue_date: "2026-05-10"
+      obligation_key: L1-GRIPPERS
+checkpoints:
+  - name: february-consumption
+    after_seq: "3"
+    as_of: "2026-02-28"
+    book: ASC606
+    contracts:
+      - contract: BR-05
+        version: {transaction_price: "30000000", revenue_cum: "9000000", billed_cum: "0"}
+        obligations:
+          - obligation_key: L1-GRIPPERS
+            allocated_amount: "30000000"
+            revenue_cum: "9000000"
+            satisfaction_status: PARTIALLY_SATISFIED
+        balances: [{entity: BR-JP, contract_liability: "0", contract_asset: "0", unbilled_receivable: "9000000"}]
+    subledger:
+      - period_key: FY2026-P02
+        entity: BR-JP
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: REVENUE, account: "4000", cr: "9000000"}
+          - {account_role: UNBILLED_RECEIVABLE, account: "1105", dr: "9000000"}
+  - name: march-consumption
+    after_seq: "5"
+    as_of: "2026-03-31"
+    book: ASC606
+    contracts:
+      - contract: BR-05
+        version: {transaction_price: "30000000", revenue_cum: "22500000", billed_cum: "9000000"}
+        obligations:
+          - obligation_key: L1-GRIPPERS
+            allocated_amount: "30000000"
+            revenue_cum: "22500000"
+            satisfaction_status: PARTIALLY_SATISFIED
+        balances: [{entity: BR-JP, contract_liability: "0", contract_asset: "0", unbilled_receivable: "13500000"}]
+    subledger:
+      - period_key: FY2026-P03
+        entity: BR-JP
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "9000000"}
+          - {account_role: REVENUE, account: "4000", cr: "13500000"}
+          - {account_role: UNBILLED_RECEIVABLE, account: "1105", dr: "4500000"}
+  - name: all-invoiced
+    after_seq: "8"
+    as_of: "2026-05-31"
+    book: ASC606
+    contracts:
+      - contract: BR-05
+        version: {transaction_price: "30000000", revenue_cum: "30000000", billed_cum: "30000000"}
+        obligations:
+          - obligation_key: L1-GRIPPERS
+            allocated_amount: "30000000"
+            revenue_cum: "30000000"
+            satisfaction_status: SATISFIED
+        balances: [{entity: BR-JP, contract_liability: "0", contract_asset: "0", unbilled_receivable: "0"}]
+    subledger:
+      - period_key: FY2026-P05
+        entity: BR-JP
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "7500000"}
+          - {account_role: UNBILLED_RECEIVABLE, account: "1105", cr: "7500000"}

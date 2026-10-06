@@ -1,0 +1,196 @@
+{
+  "id": "P4-duplicate-upload-double-counts",
+  "question": "Is re-uploading the same delivery/billing file idempotent?",
+  "code_ref": "eRev.py l.1112-1154: every upload appends a new version; no file, event or period de-duplication",
+  "baseline": "UAT replay (single 2.28 upload): February gross JE totals Dr/Cr 224.03; Contract 1 POB #1 delivered cum 3.0",
+  "sequence": [
+    {
+      "i": 0,
+      "button_label": "!Reset Database Completely!",
+      "file": null,
+      "date_input": null,
+      "rows_before": 8,
+      "rows_after": 0,
+      "popups": [
+        {
+          "kind": "QMessageBox.question",
+          "title": "Confirmation",
+          "text": "Do you want to proceed wiping out the current database?"
+        },
+        {
+          "kind": "QMessageBox.information",
+          "title": "ASC606 database reset",
+          "text": "ASC606 Database has been wiped out and reset!"
+        }
+      ]
+    },
+    {
+      "i": 1,
+      "button_label": "Load SSPs",
+      "file": "SKU SSP Template.xlsx",
+      "date_input": null,
+      "rows_before": 0,
+      "rows_after": 0,
+      "popups": [
+        {
+          "kind": "QMessageBox.information",
+          "title": "SSPs are set up",
+          "text": "All company SSPs for the uploaded file are set up. To add or update, re-upload SSPs to refresh."
+        }
+      ]
+    },
+    {
+      "i": 2,
+      "button_label": "Load Contracts",
+      "file": "Contract Setup Template 1.1.2023.xlsx",
+      "date_input": null,
+      "rows_before": 0,
+      "rows_after": 8,
+      "popups": [
+        {
+          "kind": "QMessageBox.information",
+          "title": "Contracts are set up",
+          "text": "All contracts(s) within the uploaded file are successfully set up!"
+        }
+      ]
+    },
+    {
+      "i": 3,
+      "button_label": "Load Contracts",
+      "file": "Contract Setup Template 2.1.2023.xlsx",
+      "date_input": null,
+      "rows_before": 8,
+      "rows_after": 16,
+      "popups": [
+        {
+          "kind": "QMessageBox.information",
+          "title": "Contracts are set up",
+          "text": "All contracts(s) within the uploaded file are successfully set up!"
+        }
+      ]
+    },
+    {
+      "i": 4,
+      "button_label": "Load Delivery and Billing",
+      "file": "Contract Progress Tracking Template 1.31.2023.xlsx",
+      "date_input": "2023-01-31",
+      "rows_before": 16,
+      "rows_after": 24,
+      "popups": [
+        {
+          "kind": "QMessageBox.information",
+          "title": "Rev Rec Success",
+          "text": "Rev Rec has been processed with uploaded deliveries and/or billings for the current date :)"
+        }
+      ]
+    },
+    {
+      "i": 5,
+      "button_label": "Load Delivery and Billing",
+      "file": "Contract Progress Tracking Template 2.28.2023.xlsx",
+      "date_input": "2023-02-28",
+      "rows_before": 24,
+      "rows_after": 36,
+      "popups": [
+        {
+          "kind": "QMessageBox.information",
+          "title": "Rev Rec Success",
+          "text": "Rev Rec has been processed with uploaded deliveries and/or billings for the current date :)"
+        }
+      ]
+    },
+    {
+      "i": 6,
+      "button_label": "Load Delivery and Billing",
+      "file": "Contract Progress Tracking Template 2.28.2023.xlsx",
+      "date_input": "2023-02-28",
+      "rows_before": 36,
+      "rows_after": 48,
+      "popups": [
+        {
+          "kind": "QMessageBox.information",
+          "title": "Rev Rec Success",
+          "text": "Rev Rec has been processed with uploaded deliveries and/or billings for the current date :)"
+        }
+      ]
+    }
+  ],
+  "reports": {
+    "je_gross_feb": {
+      "window": [
+        "2023-02-01",
+        "2023-02-28"
+      ],
+      "totals": {
+        "lines": 6,
+        "by_account": [
+          {
+            "account": "5001",
+            "debit": 0.0,
+            "credit": 351.43,
+            "net": -351.43
+          },
+          {
+            "account": "5003",
+            "debit": 0.0,
+            "credit": 96.63,
+            "net": -96.63
+          },
+          {
+            "account": "21001",
+            "debit": 225.47,
+            "credit": -0.0,
+            "net": 225.47
+          },
+          {
+            "account": "21002",
+            "debit": 222.59,
+            "credit": -0.0,
+            "net": 222.59
+          }
+        ],
+        "total_debit": 448.06,
+        "total_credit": 448.06,
+        "net": 0.0
+      }
+    }
+  },
+  "watched_latest": [
+    {
+      "contract": "Contract 1",
+      "pob": "POB #1",
+      "Current Delivery - Cumulative": 4.0,
+      "Current Billing - Cumulative": 300.0,
+      "Current Rev Rec - Cumulative": 257.6809,
+      "Current Pre-ASC606 Revenue (Net Design Only)": 0.0,
+      "Current Pre-ASC606 Revenue (Net Design Only) - Cumulative": 0.0,
+      "Current Remaining Qty": 1.0,
+      "Current Remaining Allocation": 64.4202,
+      "Current Period": "2023-02-28 00:00:00"
+    },
+    {
+      "contract": "Contract 3",
+      "pob": "POB #3",
+      "Current Delivery - Cumulative": 1.0,
+      "Current Billing - Cumulative": 400.0,
+      "Current Rev Rec - Cumulative": 96.6303,
+      "Current Pre-ASC606 Revenue (Net Design Only)": 200.0,
+      "Current Pre-ASC606 Revenue (Net Design Only) - Cumulative": 400.0,
+      "Current Remaining Qty": 0.0,
+      "Current Remaining Allocation": 0.0,
+      "Current Period": "2023-02-28 00:00:00"
+    },
+    {
+      "contract": "Contract 4",
+      "pob": "POB #1",
+      "Current Delivery - Cumulative": 4.0,
+      "Current Billing - Cumulative": 300.0,
+      "Current Rev Rec - Cumulative": 222.5881,
+      "Current Pre-ASC606 Revenue (Net Design Only)": 150.0,
+      "Current Pre-ASC606 Revenue (Net Design Only) - Cumulative": 300.0,
+      "Current Remaining Qty": 4.0,
+      "Current Remaining Allocation": 222.5881,
+      "Current Period": "2023-02-28 00:00:00"
+    }
+  ]
+}

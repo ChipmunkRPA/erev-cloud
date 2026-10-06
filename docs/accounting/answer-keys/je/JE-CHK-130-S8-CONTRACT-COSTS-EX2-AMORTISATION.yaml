@@ -1,0 +1,228 @@
+# docs/accounting/answer-keys/je/JE-CHK-130-S8-CONTRACT-COSTS-EX2-AMORTISATION.yaml
+schema: "erev-answer-key/1"
+id: JE-CHK-130-S8-CONTRACT-COSTS-EX2-AMORTISATION
+title: >-
+  JET-09a and 09b: commission and fulfilment asset capitalised against CONTRACT_COST_CLEARING and amortised
+status: active
+families: [JE, COST, RND]
+tags: [r04-s8]
+summary: >-
+  Research 04 S8-CONTRACT-COSTS example 2 re-anchored to 2026. Entity US01, USD, ERP billing, tenant POL-090
+  MONTHLY_EVEN so straight-line amortisation (POL-143) runs by whole months. A seven-year managed-service contract
+  (700,000.00 over 2026-01-01 to 2032-12-31) with an incremental sales commission of 10,000.00 and attested fulfilment
+  set-up costs of 140,000.00 [A amortisation period = contract term of 84 months; no renewals]. January 2026: JET-09a
+  Dr COST_TO_OBTAIN_ASSET 10,000.00 and Dr COST_TO_FULFILL_ASSET 140,000.00 / Cr CONTRACT_COST_CLEARING 150,000.00;
+  JET-09b month 1 amortisation 119.05 and 1,666.67. Cumulative rounding of 10,000 × k ÷ 84 gives annual commission
+  amortisation 1,428.57 in years 1 to 3 and 5 to 7 and 1,428.58 in year 4; the fulfilment asset amortises 20,000.00 a
+  year (CHK-130; CHK-006 row S8 ex2). No EAC exists, so the impairment test uses zero remaining costs and never
+  impairs. Cross-slice variants with distinct inputs, kept: COST-S8-CONTRACT-COSTS-EX2 (600,000.00 over five years
+  versus 700,000.00 over seven) (ADJUDICATION.md R-DUP-02).
+authority:
+  codification: ["340-40-25-1", "340-40-25-5", "340-40-35-1", "340-40-35-2"]
+  ifrs: ["IFRS 15.91", "IFRS 15.95", "IFRS 15.99"]
+  practice: []
+  urls: []
+derived_from: {research04: [S8-CONTRACT-COSTS], research05: [], chk: [CHK-130], golden: [], dev: []}
+requirements: [REQ-CST-001, REQ-CST-002, REQ-CST-003, REQ-CST-006]
+policy_refs: [POL-140, POL-141, POL-143, POL-146, POL-090]
+review:
+  author: answer-keys-fx-entity-books
+  authored_on: "2026-09-12"
+  reviewer: null
+  reviewed_on: null
+  status: pending
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: US01
+      name: "Avenmoor Systems Inc. (Demo)"
+      functional_currency: USD
+      time_zone: "America/New_York"
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: 1}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2032-12"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "1400", name: "Capitalised costs to obtain a contract", account_type: ASSET}
+    - {code: "1410", name: "Capitalised costs to fulfil a contract", account_type: ASSET}
+    - {code: "2020", name: "Commissions payable (contract cost clearing)", account_type: LIABILITY}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4010", name: "Revenue - services and subscriptions", account_type: REVENUE}
+    - {code: "5100", name: "Amortisation of contract costs", account_type: EXPENSE}
+    - {code: "6000", name: "Impairment of contract cost assets", account_type: EXPENSE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, account: "4010", product: MSP-7Y}
+    - {account_role: COST_TO_OBTAIN_ASSET, account: "1400"}
+    - {account_role: COST_TO_FULFILL_ASSET, account: "1410"}
+    - {account_role: CONTRACT_COST_AMORTIZATION, account: "5100"}
+    - {account_role: CONTRACT_COST_IMPAIRMENT, account: "6000"}
+    - {account_role: CONTRACT_COST_CLEARING, account: "2020"}
+  customers:
+    - {code: CUST-1, name: "Pellworth Logistics Inc. (Demo)"}
+  pob_templates:
+    - code: TPL-RAT-ME
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_A
+      recognition_method: TIME_ELAPSED
+      ratable_convention: MONTHLY_EVEN
+  products:
+    - {code: MSP-7Y, name: "Managed service, seven years", pob_template: TPL-RAT-ME}
+  ssp_books:
+    - code: SSP-US-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2026-01-01"
+          methodology_label: "Observable standalone prices"
+          entries:
+            - product: MSP-7Y
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "700000.00"}
+  fx_rate_sets: []
+  rule_sets: []
+  policies: {tenant: {billing.posting: ERP, recognition.time_convention: MONTHLY_EVEN}, entities: {}, books: {}}
+contracts:
+  - external_id: C-JE-130
+    customer: CUST-1
+    contracting_entity: US01
+    transaction_currency: USD
+    inception_date: "2026-01-01"
+    lines:
+      - obligation_key: L1-SERVICE
+        product_code: MSP-7Y
+        quantity: "1"
+        total_price: "700000.00"
+        start_date: "2026-01-01"
+        end_date: "2032-12-31"
+    judgements:
+      - handle: JDG-FULFIL-25-5
+        topic: OTHER
+        conclusion: >-
+          Set-up costs relate directly to the contract, generate resources used to satisfy it and are expected to be
+          recovered (340-40-25-5)
+timeline:
+  - {seq: 1, kind: event, contract: C-JE-130, event_type: CONTRACT_BOOKED, effective_date: "2026-01-01", payload: {}}
+  - seq: 2
+    kind: event
+    contract: C-JE-130
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: 3
+    kind: event
+    contract: C-JE-130
+    event_type: BILLING_RECORDED
+    effective_date: "2026-01-01"
+    payload:
+      invoice_number: INV-MSP-2026
+      line_external_id: INV-MSP-2026-1
+      amount: "100000.00"
+      issue_date: "2026-01-01"
+  - seq: 4
+    kind: event
+    contract: C-JE-130
+    event_type: COST_INCURRED
+    effective_date: "2026-01-01"
+    payload:
+      purpose: COST_TO_OBTAIN
+      obligation_key: L1-SERVICE
+      amount: "10000.00"
+      payee: SALES-REP-0417
+      plan_code: FY26-ENT
+      is_incremental: true
+      has_clawback: false
+  - seq: 5
+    kind: event
+    contract: C-JE-130
+    event_type: COST_INCURRED
+    effective_date: "2026-01-01"
+    payload: {purpose: COST_TO_FULFILL, obligation_key: L1-SERVICE, amount: "140000.00"}
+checkpoints:
+  - name: january-2026
+    after_seq: 5
+    as_of: "2026-01-31"
+    book: ASC606
+    contracts:
+      - contract: C-JE-130
+        balances:
+          - {entity: US01, cost_asset_carrying: "148214.28"}
+    subledger:
+      - period_key: FY2026-P01
+        entity: US01
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "8333.33"}
+          - {account_role: COST_TO_OBTAIN_ASSET, account: "1400", dr: "9880.95"}
+          - {account_role: COST_TO_FULFILL_ASSET, account: "1410", dr: "138333.33"}
+          - {account_role: CONTRACT_COST_AMORTIZATION, account: "5100", dr: "1785.72"}
+          - {account_role: REVENUE, account: "4010", cr: "8333.33"}
+          - {account_role: CONTRACT_COST_CLEARING, account: "2020", cr: "150000.00"}
+  - name: year-end-2026
+    after_seq: 5
+    as_of: "2026-12-31"
+    book: ASC606
+    contracts:
+      - contract: C-JE-130
+        balances:
+          - {entity: US01, cost_asset_carrying: "128571.43"}
+  - name: year-end-2027
+    after_seq: 5
+    as_of: "2027-12-31"
+    book: ASC606
+    contracts:
+      - contract: C-JE-130
+        balances:
+          - {entity: US01, cost_asset_carrying: "107142.86"}
+  - name: year-end-2028
+    after_seq: 5
+    as_of: "2028-12-31"
+    book: ASC606
+    contracts:
+      - contract: C-JE-130
+        balances:
+          - {entity: US01, cost_asset_carrying: "85714.29"}
+  - name: year-end-2029
+    after_seq: 5
+    as_of: "2029-12-31"
+    book: ASC606
+    contracts:
+      - contract: C-JE-130
+        balances:
+          - {entity: US01, cost_asset_carrying: "64285.71"}
+  - name: year-end-2030
+    after_seq: 5
+    as_of: "2030-12-31"
+    book: ASC606
+    contracts:
+      - contract: C-JE-130
+        balances:
+          - {entity: US01, cost_asset_carrying: "42857.14"}
+  - name: year-end-2031
+    after_seq: 5
+    as_of: "2031-12-31"
+    book: ASC606
+    contracts:
+      - contract: C-JE-130
+        balances:
+          - {entity: US01, cost_asset_carrying: "21428.57"}
+  - name: year-end-2032
+    after_seq: 5
+    as_of: "2032-12-31"
+    book: ASC606
+    contracts:
+      - contract: C-JE-130
+        balances:
+          - {entity: US01, cost_asset_carrying: "0.00"}

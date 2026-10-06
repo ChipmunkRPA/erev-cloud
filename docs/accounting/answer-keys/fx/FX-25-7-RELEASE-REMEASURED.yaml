@@ -1,0 +1,239 @@
+# docs/accounting/answer-keys/fx/FX-25-7-RELEASE-REMEASURED.yaml
+# Authored by lane ENG-D1 from the D-91 rules; every figure derived with Fraction arithmetic in .run/l9/d91-gaps-d1/derive.py before the engine ran the key.
+schema: "erev-answer-key/1"
+id: "FX-25-7-RELEASE-REMEASURED"
+title: "EUR deposit of a USD entity released under 606-10-25-7(c): remeasured to the settlement spot, split over two obligations by the attribution weights (D-91 FX2)"
+status: "active"
+families: ["FX", "STP1", "JE"]
+tags: ["fx"]
+summary: "Entity US01 (functional USD), a EUR contract of 3,000.00 for two goods (G1 2,000.00, SSP 2,000; G2 1,000.00, SSP 1,000; posted allocation 200,000 : 100,000 minor) booked on 5 January 2026 while collectibility is not probable (NOT_A_CONTRACT). EUR 1,000.00 is received on 10 January at spot 1.1000: JET-01b Dr BILLING_CLEARING UNAPPLIED_CASH / Cr DEPOSIT_LIABILITY USD 1,100.00; the deposit is a monetary item (D-25b): 31 January closing 1.1200, JET-10d loss 20.00 (1,100.00 to 1,120.00). The reviewed NOT_A_CONTRACT record is nonrefundable with event_c_met_on 15 February 2026: the deposit is derecognised at that dated point at spot 1.1300, JET-10d loss 10.00 (1,120.00 to 1,130.00), then Dr DEPOSIT_LIABILITY EUR 1,000.00 / Cr REVENUE EUR 1,000.00 functional 1,130.00 (S12-R-20; CHK-084 (b) rates), attributed to the two obligations by largest remainder over the posted inception allocation (S14-R-25): transaction [666.67, 333.33], functional [753.33, 376.67] over the same weights (D-91 gaps (iv), the corrected FX2 figures: release 100,000 / 113,000 minor, JET-10d 2,000 at the close and 1,000 at settlement, total 3,000, split [75,333, 37,667]). The release is a TIME amount of the CLOSE_RELEASE pass."
+authority:
+  codification: ["830-20-35-1", "830-20-35-2", "606-10-25-7", "606-10-25-8", "606-10-32-1"]
+  ifrs: ["IAS 21.16", "IAS 21.23", "IFRS 15.15"]
+  practice: []
+  urls: []
+derived_from:
+  research04: []
+  research05: []
+  chk: []
+  golden: []
+  dev: []
+requirements: ["REQ-FX-003", "REQ-FX-001", "REQ-CON-003", "REQ-JE-002"]
+policy_refs: ["POL-164", "POL-012", "POL-128"]
+review: {author: "lane ENG-D1 (D-91 gaps; ENA-2b, END-4b, ENA-4b)", authored_on: "2026-09-19", reviewer: null, reviewed_on: null, status: "pending"}
+runner: "engine"
+books: ["ASC606"]
+world:
+  tenant: {reporting_currency: "USD", preset: "DEFAULT"}
+  currencies: ["EUR", "USD"]
+  entities:
+    - code: "US01"
+      name: "Example US (Demo)"
+      functional_currency: "USD"
+      time_zone: "America/New_York"
+      calendar: {pattern: "MONTHLY", fiscal_year_start_month: "1"}
+      books: ["ASC606"]
+  periods: {from: "2026-01", to: "2026-02"}
+  period_states: []
+  gl_accounts:
+    - {code: "1100", name: "Accounts receivable (billed)", account_type: "ASSET"}
+    - {code: "1101", name: "AR contra - implicit price concession", account_type: "ASSET"}
+    - {code: "1105", name: "Unbilled receivable", account_type: "ASSET"}
+    - {code: "1200", name: "Contract asset", account_type: "ASSET"}
+    - {code: "1210", name: "Customer incentive asset", account_type: "ASSET"}
+    - {code: "1310", name: "Asset for right to recover returned products", account_type: "ASSET"}
+    - {code: "1400", name: "Capitalised costs to obtain a contract", account_type: "ASSET"}
+    - {code: "1410", name: "Capitalised costs to fulfil a contract", account_type: "ASSET"}
+    - {code: "1500", name: "Noncash consideration received", account_type: "ASSET"}
+    - {code: "1800", name: "Intercompany due from", account_type: "ASSET"}
+    - {code: "1900", name: "Clearing - unapplied cash", account_type: "ASSET"}
+    - {code: "1910", name: "Clearing - inventory", account_type: "ASSET"}
+    - {code: "1920", name: "Clearing - investments", account_type: "ASSET"}
+    - {code: "2020", name: "Commissions payable (contract cost clearing)", account_type: "LIABILITY"}
+    - {code: "2050", name: "Clearing - supplier payables", account_type: "LIABILITY"}
+    - {code: "2060", name: "Clearing - billing", account_type: "LIABILITY"}
+    - {code: "2100", name: "Contract liability", account_type: "LIABILITY"}
+    - {code: "2105", name: "Deposit liability (Step 1 not met)", account_type: "LIABILITY"}
+    - {code: "2110", name: "Refund liability", account_type: "LIABILITY"}
+    - {code: "2200", name: "Sales tax payable", account_type: "LIABILITY"}
+    - {code: "2300", name: "Provision for anticipated losses on contracts", account_type: "LIABILITY"}
+    - {code: "2400", name: "Consideration payable to customer", account_type: "LIABILITY"}
+    - {code: "2600", name: "Assurance-type warranty provision", account_type: "LIABILITY"}
+    - {code: "2800", name: "Intercompany due to", account_type: "LIABILITY"}
+    - {code: "3100", name: "Clearing - equity", account_type: "EQUITY"}
+    - {code: "4000", name: "Revenue - products", account_type: "REVENUE"}
+    - {code: "4010", name: "Revenue - services / subscriptions", account_type: "REVENUE"}
+    - {code: "4020", name: "Revenue - licences / royalties", account_type: "REVENUE"}
+    - {code: "4030", name: "Revenue - material rights / loyalty / breakage", account_type: "REVENUE"}
+    - {code: "4900", name: "Pre-standard revenue", account_type: "REVENUE"}
+    - {code: "5000", name: "Cost of revenue", account_type: "EXPENSE"}
+    - {code: "5100", name: "Amortisation of contract costs", account_type: "EXPENSE"}
+    - {code: "5200", name: "Warranty expense", account_type: "EXPENSE"}
+    - {code: "5300", name: "Loss on contracts", account_type: "EXPENSE"}
+    - {code: "6000", name: "Impairment of contract cost assets", account_type: "EXPENSE"}
+    - {code: "7000", name: "Interest income", account_type: "REVENUE"}
+    - {code: "7100", name: "Interest expense", account_type: "EXPENSE"}
+    - {code: "7200", name: "Foreign exchange gain or loss", account_type: "EXPENSE"}
+    - {code: "7900", name: "Rounding", account_type: "EXPENSE"}
+  account_mapping:
+    - {account_role: "REVENUE", account: "4000"}
+    - {account_role: "CONTRACT_LIABILITY", account: "2100"}
+    - {account_role: "CONTRACT_ASSET", account: "1200"}
+    - {account_role: "UNBILLED_RECEIVABLE", account: "1105"}
+    - {account_role: "ACCOUNTS_RECEIVABLE", account: "1100"}
+    - {account_role: "BILLING_CLEARING", clearing_purpose: "BILLING", account: "2060"}
+    - {account_role: "BILLING_CLEARING", clearing_purpose: "UNAPPLIED_CASH", account: "1900"}
+    - {account_role: "BILLING_CLEARING", clearing_purpose: "AP_SUPPLIER", account: "2050"}
+    - {account_role: "BILLING_CLEARING", clearing_purpose: "INVENTORY", account: "1910"}
+    - {account_role: "BILLING_CLEARING", clearing_purpose: "EQUITY", account: "3100"}
+    - {account_role: "BILLING_CLEARING", clearing_purpose: "INVESTMENTS", account: "1920"}
+    - {account_role: "REFUND_LIABILITY", account: "2110"}
+    - {account_role: "RETURN_ASSET", account: "1310"}
+    - {account_role: "DEPOSIT_LIABILITY", account: "2105"}
+    - {account_role: "CONSIDERATION_PAYABLE", account: "2400"}
+    - {account_role: "CUSTOMER_INCENTIVE_ASSET", account: "1210"}
+    - {account_role: "COST_TO_OBTAIN_ASSET", account: "1400"}
+    - {account_role: "COST_TO_FULFILL_ASSET", account: "1410"}
+    - {account_role: "CONTRACT_COST_AMORTIZATION", account: "5100"}
+    - {account_role: "CONTRACT_COST_IMPAIRMENT", account: "6000"}
+    - {account_role: "LOSS_PROVISION", account: "2300"}
+    - {account_role: "LOSS_EXPENSE", account: "5300"}
+    - {account_role: "WARRANTY_PROVISION", account: "2600"}
+    - {account_role: "WARRANTY_EXPENSE", account: "5200"}
+    - {account_role: "INTEREST_INCOME", account: "7000"}
+    - {account_role: "INTEREST_EXPENSE", account: "7100"}
+    - {account_role: "FX_GAIN_LOSS", account: "7200"}
+    - {account_role: "INTERCOMPANY_DUE_TO", account: "2800"}
+    - {account_role: "INTERCOMPANY_DUE_FROM", account: "1800"}
+    - {account_role: "NONCASH_CONSIDERATION_ASSET", account: "1500"}
+    - {account_role: "SALES_TAX_PAYABLE", account: "2200"}
+    - {account_role: "PRE_STANDARD_REVENUE", account: "4900"}
+    - {account_role: "ROUNDING", account: "7900"}
+    - {account_role: "COST_OF_REVENUE", account: "5000"}
+    - {account_role: "CONTRACT_COST_CLEARING", account: "2020"}
+    - {account_role: "RECEIVABLE_CONTRA", account: "1101"}
+  customers:
+    - {code: "CUST-1", name: "Example Customer (Demo)"}
+  pob_templates:
+    - code: "TPL-PIT"
+      obligation_kind: "STANDARD"
+      distinctness: "distinct"
+      satisfaction_pattern: "POINT_IN_TIME"
+      over_time_criterion: "NOT_APPLICABLE"
+      recognition_method: "POINT_IN_TIME"
+  products:
+    - {code: "G1", name: "Equipment (EUR)", pob_template: "TPL-PIT"}
+    - {code: "G2", name: "Accessories (EUR)", pob_template: "TPL-PIT"}
+  ssp_books:
+    - code: "SSP-MAIN"
+      resolution_mode: "EFFECTIVE_DATE"
+      versions:
+        - effective_from_date: "2026-01-01"
+          methodology_label: "Observable standalone prices"
+          entries:
+            - product: "G1"
+              currency: "EUR"
+              method: "observable"
+              distinctness: "distinct"
+              ranges:
+                - {point_value: "2000"}
+            - product: "G2"
+              currency: "EUR"
+              method: "observable"
+              distinctness: "distinct"
+              ranges:
+                - {point_value: "1000"}
+  fx_rate_sets:
+    - code: "SPOT-EURUSD"
+      rate_type: "spot"
+      rates:
+        - {base_currency: "EUR", quote_currency: "USD", effective_date: "2026-01-10", rate: "1.1000"}
+        - {base_currency: "EUR", quote_currency: "USD", effective_date: "2026-02-15", rate: "1.1300"}
+    - code: "AVG-EURUSD"
+      rate_type: "average"
+      rates:
+        - {base_currency: "EUR", quote_currency: "USD", effective_date: "2026-01-31", period_key: "FY2026-P01", rate: "1.1100"}
+        - {base_currency: "EUR", quote_currency: "USD", effective_date: "2026-02-28", period_key: "FY2026-P02", rate: "1.1250"}
+    - code: "CLOSE-EURUSD"
+      rate_type: "closing"
+      rates:
+        - {base_currency: "EUR", quote_currency: "USD", effective_date: "2026-01-31", period_key: "FY2026-P01", rate: "1.1200"}
+        - {base_currency: "EUR", quote_currency: "USD", effective_date: "2026-02-28", period_key: "FY2026-P02", rate: "1.1300"}
+  rule_sets: []
+  policies:
+    tenant: {billing.posting: "ERP"}
+    entities: {}
+    books: {ASC606: {step1.collectibility_threshold: "US_PROBABLE", step1.event_c_enabled: "ENABLED"}}
+contracts:
+  - external_id: "C-FX-257"
+    customer: "CUST-1"
+    contracting_entity: "US01"
+    transaction_currency: "EUR"
+    inception_date: "2026-01-05"
+    judgements:
+      - handle: "J-COLL"
+        topic: "COLLECTIBILITY"
+        conclusion: "Collectibility is not probable at inception: no credit history and a disputed order (606-10-25-1(e))."
+      - handle: "J-NAC"
+        topic: "NOT_A_CONTRACT"
+        conclusion: "Nonrefundable consideration; on 15 February 2026 the entity has stopped transferring and has no obligation to transfer more (606-10-25-7(c))."
+        questionnaire: {consideration_nonrefundable: true, event_c_met_on: "2026-02-15"}
+    lines:
+      - {obligation_key: "L1", product_code: "G1", quantity: "1", total_price: "2000.00"}
+      - {obligation_key: "L2", product_code: "G2", quantity: "1", total_price: "1000.00"}
+timeline:
+  - {seq: 1, kind: "event", contract: "C-FX-257", event_type: "CONTRACT_BOOKED", effective_date: "2026-01-05", payload: {}}
+  - seq: 2
+    kind: "event"
+    contract: "C-FX-257"
+    event_type: "COLLECTIBILITY_ASSESSED"
+    effective_date: "2026-01-05"
+    payload: {book: "ASC606", is_probable: false, judgement: "J-COLL"}
+  - seq: 3
+    kind: "event"
+    contract: "C-FX-257"
+    event_type: "PAYMENT_RECEIVED"
+    effective_date: "2026-01-10"
+    payload: {receipt_reference: "RCPT-257-1", amount: "1000.00", receipt_date: "2026-01-10"}
+checkpoints:
+  - name: "january-close"
+    after_seq: 3
+    as_of: "2026-01-31"
+    book: "ASC606"
+    contracts:
+      - contract: "C-FX-257"
+        status_in_book: "NOT_A_CONTRACT"
+        version: {revenue_cum: "0.00", rpo_amount: "0.00"}
+        balances:
+          - {entity: "US01", deposit_liability: "1000.00", contract_liability: "0.00", functional: {deposit_liability: "1120.00", contract_liability: "0.00"}}
+    subledger:
+      - period_key: "FY2026-P01"
+        entity: "US01"
+        match: "exact"
+        grain: "role_account"
+        lines:
+          - {account_role: "BILLING_CLEARING", clearing_purpose: "UNAPPLIED_CASH", account: "1900", dr: "1000.00", functional_dr: "1100.00"}
+          - {account_role: "FX_GAIN_LOSS", account: "7200", dr: "0.00", functional_dr: "20.00"}
+          - {account_role: "DEPOSIT_LIABILITY", account: "2105", cr: "1000.00", functional_cr: "1120.00"}
+  - name: "february-release"
+    after_seq: 3
+    as_of: "2026-02-28"
+    book: "ASC606"
+    contracts:
+      - contract: "C-FX-257"
+        status_in_book: "NOT_A_CONTRACT"
+        version: {revenue_cum: "0.00", rpo_amount: "0.00"}
+        balances:
+          - {entity: "US01", deposit_liability: "0.00", contract_liability: "0.00", functional: {deposit_liability: "0.00", contract_liability: "0.00"}}
+    subledger:
+      - period_key: "FY2026-P02"
+        entity: "US01"
+        match: "exact"
+        grain: "role_account_obligation"
+        lines:
+          - {account_role: "DEPOSIT_LIABILITY", account: "2105", obligation_key: "L1", dr: "666.67", functional_dr: "753.33"}
+          - {account_role: "DEPOSIT_LIABILITY", account: "2105", obligation_key: "L2", dr: "333.33", functional_dr: "376.67"}
+          - {account_role: "DEPOSIT_LIABILITY", account: "2105", cr: "0.00", functional_cr: "10.00"}
+          - {account_role: "FX_GAIN_LOSS", account: "7200", dr: "0.00", functional_dr: "10.00"}
+          - {account_role: "REVENUE", account: "4000", obligation_key: "L1", cr: "666.67", functional_cr: "753.33"}
+          - {account_role: "REVENUE", account: "4000", obligation_key: "L2", cr: "333.33", functional_cr: "376.67"}

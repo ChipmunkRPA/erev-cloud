@@ -1,0 +1,2 @@
+Self-test fixture for SLACK_TOKEN (DG-MK-secrets-check). Not a real token.
+slack bot token xoxb-fixture-00000000

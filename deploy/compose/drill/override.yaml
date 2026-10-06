@@ -1,0 +1,19 @@
+# The postgres service as `make restore-drill` starts it (docs/dev-guide.md DG-MK-restore-drill,
+# DG-RUN-08a; compose project erev-verify-drill only). Used on top of deploy/compose.yaml:
+#   docker compose -f deploy/compose.yaml -f deploy/compose/drill/override.yaml \
+#     --env-file deploy/compose.env.example -p erev-verify-drill up -d postgres
+# It publishes the server on the drill's own loopback port and adds the recovery roles and the
+# restore target of runbook RB-11 to the container's first start (02-recovery-roles.sql). The
+# three EREV_DRILL_* variables are set by scripts/restore_drill.sh for each run. Relative paths
+# resolve against deploy/, the directory of the first compose file.
+services:
+  postgres:
+    ports: !override
+      - "127.0.0.1:${EREV_DRILL_PORT}:5432"
+    environment:
+      EREV_DRILL_BACKUP_PASSWORD: ${EREV_DRILL_BACKUP_PASSWORD}
+      EREV_DRILL_RESTORE_ADMIN_PASSWORD: ${EREV_DRILL_RESTORE_ADMIN_PASSWORD}
+    volumes: !override
+      - erev-pg:/var/lib/postgresql/data
+      - ./compose/initdb/01-roles.sql:/docker-entrypoint-initdb.d/01-roles.sql:ro
+      - ./compose/drill/02-recovery-roles.sql:/docker-entrypoint-initdb.d/02-recovery-roles.sql:ro

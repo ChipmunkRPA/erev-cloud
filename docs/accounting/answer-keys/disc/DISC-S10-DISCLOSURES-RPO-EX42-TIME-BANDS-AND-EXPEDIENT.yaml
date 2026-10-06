@@ -1,0 +1,302 @@
+# docs/accounting/answer-keys/disc/DISC-S10-DISCLOSURES-RPO-EX42-TIME-BANDS-AND-EXPEDIENT.yaml
+schema: "erev-answer-key/1"
+id: DISC-S10-DISCLOSURES-RPO-EX42-TIME-BANDS-AND-EXPEDIENT
+title: >-
+  RPO in POL-201 time bands with the right-to-invoice expedient and the constrained-bonus narrative amount
+status: active
+families: [DISC, VC]
+tags: [r04-s10]
+summary: >-
+  FASB Example 42 (606-10-55-298 to 55-305A) with 30 June 20X7 re-anchored to contracts running 2026-07-01 to
+  2028-06-30 and the disclosure at 31 December 2026. Entity US01, USD, POL-201 bands [12, 24], POL-198
+  rpo.exemption_right_to_invoice = APPLY at entity level. Contract A: cleaning at 25.00 per hour, RIGHT_TO_INVOICE [A
+  480 expected hours], 120 hours performed; exempt, so it is excluded from the report although its engine RPO measure
+  is 9,000.00. Contract B: 400.00 a month by time elapsed (MONTHLY_EVEN): RPO 7,200.00 = 4,800.00 within 12 months and
+  2,400.00 in months 13 to 24. Contract C: 100.00 a month plus a bonus of up to 1,000.00 of which 750.00 is included
+  (transaction price 3,150.00): RPO 2,362.50 = 1,575.00 and 787.50; the excluded constrained amount 250.00 feeds the
+  50-15 narrative. Report total 9,562.50. [J] Cell keys: row_key = contract external_id or TOTAL; column_key =
+  within_12_months, months_13_to_24, after_24_months, total (OQ-AK-11). Cross-slice variants with distinct inputs,
+  kept: DISC-S10-DISCLOSURES-RPO-EX42 (different contracts and figures; platform runner) (ADJUDICATION.md R-DUP-02).
+authority:
+  codification:
+    - "606-10-50-8"
+    - "606-10-50-9"
+    - "606-10-50-10"
+    - "606-10-50-12A"
+    - "606-10-50-13"
+    - "606-10-50-14"
+    - "606-10-50-15"
+    - "606-10-50-14B"
+    - "606-10-55-300"
+    - "606-10-55-305"
+  ifrs: ["IFRS 15.120", "IFRS 15.121", "IFRS 15.IE221"]
+  practice: []
+  urls: []
+derived_from: {research04: [S10-DISCLOSURES], research05: [], chk: [], golden: [], dev: []}
+requirements: [REQ-RPT-009, REQ-RPT-010, REQ-TP-003]
+policy_refs: [POL-197, POL-198, POL-201, POL-041]
+review:
+  author: answer-keys-fx-entity-books
+  authored_on: "2026-09-12"
+  reviewer: null
+  reviewed_on: null
+  status: pending
+runner: platform
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: US01
+      name: "Avenmoor Systems Inc. (Demo)"
+      functional_currency: USD
+      time_zone: "America/New_York"
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: 1}
+      books: [ASC606]
+  periods: {from: "2026-07", to: "2028-06"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4010", name: "Revenue - services and subscriptions", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, account: "4010", product: CLEANING-HR}
+    - {account_role: REVENUE, account: "4010", product: SVC-MONTHLY-B}
+    - {account_role: REVENUE, account: "4010", product: SVC-MONTHLY-C}
+  customers:
+    - {code: CUST-1, name: "Pellworth Logistics Inc. (Demo)"}
+  pob_templates:
+    - code: TPL-RAT-ME
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_A
+      recognition_method: TIME_ELAPSED
+      ratable_convention: MONTHLY_EVEN
+    - code: TPL-RTI
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_A
+      recognition_method: RIGHT_TO_INVOICE
+  products:
+    - {code: CLEANING-HR, name: "Cleaning per hour", pob_template: TPL-RTI}
+    - {code: SVC-MONTHLY-B, name: "Monthly service B", pob_template: TPL-RAT-ME}
+    - {code: SVC-MONTHLY-C, name: "Monthly service C", pob_template: TPL-RAT-ME}
+  ssp_books:
+    - code: SSP-US-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2026-01-01"
+          methodology_label: "Observable standalone prices"
+          entries:
+            - product: CLEANING-HR
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "25.00"}
+            - product: SVC-MONTHLY-B
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "9600.00"}
+            - product: SVC-MONTHLY-C
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "3150.00"}
+  fx_rate_sets: []
+  rule_sets: []
+  policies:
+    tenant: {billing.posting: ERP, rpo.time_bands: ["12", "24"]}
+    entities: {US01: {rpo.exemption_right_to_invoice: APPLY}}
+    books: {}
+contracts:
+  - external_id: C-EX42-A
+    customer: CUST-1
+    contracting_entity: US01
+    transaction_currency: USD
+    inception_date: "2026-07-01"
+    lines:
+      - obligation_key: A1-CLEANING
+        product_code: CLEANING-HR
+        quantity: "480"
+        total_price: "12000.00"
+        unit_price: "25"
+        start_date: "2026-07-01"
+        end_date: "2028-06-30"
+  - external_id: C-EX42-B
+    customer: CUST-1
+    contracting_entity: US01
+    transaction_currency: USD
+    inception_date: "2026-07-01"
+    lines:
+      - obligation_key: B1-SERVICE
+        product_code: SVC-MONTHLY-B
+        quantity: "1"
+        total_price: "9600.00"
+        start_date: "2026-07-01"
+        end_date: "2028-06-30"
+  - external_id: C-EX42-C
+    customer: CUST-1
+    contracting_entity: US01
+    transaction_currency: USD
+    inception_date: "2026-07-01"
+    lines:
+      - obligation_key: C1-SERVICE
+        product_code: SVC-MONTHLY-C
+        quantity: "1"
+        total_price: "2400.00"
+        start_date: "2026-07-01"
+        end_date: "2028-06-30"
+    estimates:
+      - element_code: BONUS-C
+        estimate_kind: VARIABLE_CONSIDERATION
+        method: EXPECTED_VALUE
+        vc_element_type: BONUS
+        allocation_target: CONTRACT
+        versions:
+          - version_no: "1"
+            effective_date: "2026-07-01"
+            unconstrained_amount: "1000.00"
+            most_conservative_amount: "0.00"
+            constrained_amount: "750.00"
+            rationale: "Performance bonus of 0.00 to 1,000.00; 750.00 not subject to significant reversal"
+timeline:
+  - {seq: 1, kind: event, contract: C-EX42-A, event_type: CONTRACT_BOOKED, effective_date: "2026-07-01", payload: {}}
+  - seq: 2
+    kind: event
+    contract: C-EX42-A
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-07-01"
+    payload: {}
+  - {seq: 3, kind: event, contract: C-EX42-B, event_type: CONTRACT_BOOKED, effective_date: "2026-07-01", payload: {}}
+  - seq: 4
+    kind: event
+    contract: C-EX42-B
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-07-01"
+    payload: {}
+  - {seq: 5, kind: event, contract: C-EX42-C, event_type: CONTRACT_BOOKED, effective_date: "2026-07-01", payload: {}}
+  - seq: 6
+    kind: event
+    contract: C-EX42-C
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-07-01"
+    payload: {}
+  - seq: 7
+    kind: event
+    contract: C-EX42-C
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-07-01"
+    payload: {estimate: BONUS-C, version_no: "1"}
+  - seq: 8
+    kind: event
+    contract: C-EX42-A
+    event_type: USAGE_REPORTED
+    effective_date: "2026-07-31"
+    payload:
+      obligation_key: A1-CLEANING
+      usage_period_start: "2026-07-01"
+      usage_period_end: "2026-07-31"
+      metric: HOURS
+      quantity: "20"
+      rated_amount: "500.00"
+  - seq: 9
+    kind: event
+    contract: C-EX42-A
+    event_type: USAGE_REPORTED
+    effective_date: "2026-08-31"
+    payload:
+      obligation_key: A1-CLEANING
+      usage_period_start: "2026-08-01"
+      usage_period_end: "2026-08-31"
+      metric: HOURS
+      quantity: "20"
+      rated_amount: "500.00"
+  - seq: 10
+    kind: event
+    contract: C-EX42-A
+    event_type: USAGE_REPORTED
+    effective_date: "2026-09-30"
+    payload:
+      obligation_key: A1-CLEANING
+      usage_period_start: "2026-09-01"
+      usage_period_end: "2026-09-30"
+      metric: HOURS
+      quantity: "20"
+      rated_amount: "500.00"
+  - seq: 11
+    kind: event
+    contract: C-EX42-A
+    event_type: USAGE_REPORTED
+    effective_date: "2026-10-31"
+    payload:
+      obligation_key: A1-CLEANING
+      usage_period_start: "2026-10-01"
+      usage_period_end: "2026-10-31"
+      metric: HOURS
+      quantity: "20"
+      rated_amount: "500.00"
+  - seq: 12
+    kind: event
+    contract: C-EX42-A
+    event_type: USAGE_REPORTED
+    effective_date: "2026-11-30"
+    payload:
+      obligation_key: A1-CLEANING
+      usage_period_start: "2026-11-01"
+      usage_period_end: "2026-11-30"
+      metric: HOURS
+      quantity: "20"
+      rated_amount: "500.00"
+  - seq: 13
+    kind: event
+    contract: C-EX42-A
+    event_type: USAGE_REPORTED
+    effective_date: "2026-12-31"
+    payload:
+      obligation_key: A1-CLEANING
+      usage_period_start: "2026-12-01"
+      usage_period_end: "2026-12-31"
+      metric: HOURS
+      quantity: "20"
+      rated_amount: "500.00"
+checkpoints:
+  - name: december-2026-rpo
+    after_seq: 13
+    as_of: "2026-12-31"
+    book: ASC606
+    contracts:
+      - {contract: C-EX42-A, version: {revenue_cum: "3000.00", rpo_amount: "9000.00"}}
+      - {contract: C-EX42-B, version: {revenue_cum: "2400.00", rpo_amount: "7200.00"}}
+      - contract: C-EX42-C
+        version:
+          transaction_price: "3150.00"
+          revenue_cum: "787.50"
+          rpo_amount: "2362.50"
+          vc_constrained_amount: "750.00"
+          vc_excluded_amount: "250.00"
+    reports:
+      - report_code: rpo
+        parameters: {entity_codes: [US01], book: ASC606, period_key: FY2026-P12, time_bands: ["12", "24"]}
+        cells:
+          - {row_key: C-EX42-B, column_key: within_12_months, value: "4800.00"}
+          - {row_key: C-EX42-B, column_key: months_13_to_24, value: "2400.00"}
+          - {row_key: C-EX42-B, column_key: after_24_months, value: "0.00"}
+          - {row_key: C-EX42-B, column_key: total, value: "7200.00"}
+          - {row_key: C-EX42-C, column_key: within_12_months, value: "1575.00"}
+          - {row_key: C-EX42-C, column_key: months_13_to_24, value: "787.50"}
+          - {row_key: C-EX42-C, column_key: after_24_months, value: "0.00"}
+          - {row_key: C-EX42-C, column_key: total, value: "2362.50"}
+          - {row_key: TOTAL, column_key: within_12_months, value: "6375.00"}
+          - {row_key: TOTAL, column_key: months_13_to_24, value: "3187.50"}
+          - {row_key: TOTAL, column_key: after_24_months, value: "0.00"}
+          - {row_key: TOTAL, column_key: total, value: "9562.50"}

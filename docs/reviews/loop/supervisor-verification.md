@@ -1,0 +1,17 @@
+# Supervisor verification register
+
+The loop records items it may not verify itself (D-48a, network, cloud) under **Supervisor verification needed** in `PROGRESS.md`. This register records the supervisor's result for each one.
+
+| Item | Source | Result | Evidence | Date |
+|---|---|---|---|---|
+| Licence allow-list: colorama | FND-16, SPEC-Q-63 | Verified. BSD-3-Clause matches the allow-list entry | PyPI JSON for colorama 0.4.6 (locked in `backend/uv.lock`): classifier `License :: OSI Approved :: BSD License` | 2026-09-13 |
+| Licence allow-list: greenlet | FND-16, SPEC-Q-63 | Verified. `MIT AND PSF-2.0` matches the allow-list entry | PyPI JSON for greenlet 3.5.5: `license_expression` `MIT AND PSF-2.0` | 2026-09-13 |
+| Licence allow-list: tzdata | FND-16, SPEC-Q-63 | Verified. Apache-2.0 matches the allow-list entry | PyPI JSON for tzdata 2026.4: `license` `Apache-2.0` | 2026-09-13 |
+| Licence allow-list: python-dateutil | PLF-9, SPEC-Q-163 | Verified. Code contributed after 2017-12-01 is dual Apache-2.0 and BSD-3-Clause; the allow-list's `Apache-2.0 AND BSD-3-Clause` names both licences that apply, and both are permissive | Installed dist-info 2.9.0.post0 and PyPI JSON: classifiers Apache Software License and BSD License, `LICENSE` file | 2026-09-13 |
+| `make audit-deps`: 2 moderate npm advisories (vitest, @vitest/mocker path traversal) | FND-1, EKC review W-2 | Open. The `make audit-deps` target does not exist yet (deferred DEP-5). `npm audit` in `frontend/` reports the same 2 moderate advisories (vitest and @vitest/mocker 2.1.0 to 4.1.10), fixed in vitest 4.1.11, a major upgrade from ^3.2.0. D-86a gives the upgrade to lane L7-4 under `make ci`; if it does not fit the lane, the rc records an accepted dev-toolchain risk | `npm audit --json`: moderate 2, high 0, critical 0 | 2026-09-15 |
+| `GcpSecretManagerStore`, `GcpKeyProvider` | FND-4, SPEC-Q-15/16, D-78 | Open. They are exercised with fake clients (EKC-7c). Verify them against a real GCP project before any hosted use | — | — |
+| Webhook TLS to the checked address (`sni_hostname`) | PLF-24, SPEC-Q-189 | Open. Exercised only through `httpx.MockTransport`. Make one delivery to a real HTTPS receiver before hosted use | — | — |
+| Common-password list (password policy) | PLF review PR-C-06, SPEC-Q-128 | Open. `backend/erev_api/auth/data/common-passwords.txt` holds 10,000 entries, not in frequency order, and records no source or licence. D-86a gives lane L7-4 the job of vendoring a frequency-ranked, licensed list with a NOTICE naming source, commit and licence | `wc -l` 10000; first entries `qwertyuiop12`, `qwertyuiop123` | 2026-09-15 |
+| Streaming seal and download of large files | PLF review PR-R-09 | Open. Schedule before the first LMG item (legacy database import) | — | — |
+| Review worktree public origin | PLF review setup S-3 | Open. Review worktree `.env` needs `EREV_PUBLIC_ORIGIN` for the review web port before browser QA; `.env.example` should state that the origin follows the web port | — | — |
+| MFA-reset audit fan-out durability | WEB-3a, SPEC-Q-209 | Open: review at GATE-WEB. The reset audit in the victim's other workspaces is written after the command commits, and a failed write is only logged. D-80 and T-PLT-04 require the event in each ACTIVE membership's audit log. Check whether a silent miss is possible; if so, route a supervisor item for durable fan-out (outbox-backed, retried, alerting) | — | — |

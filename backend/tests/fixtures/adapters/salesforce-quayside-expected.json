@@ -1,0 +1,57 @@
+{
+  "scenario": "quayside-salesforce-scenario.json (PRD WLD-F-31; J-23.4)",
+  "notifications": 5,
+  "duplicate_notification_ids": [
+    "NTF-Q-0001"
+  ],
+  "unique_objects": 3,
+  "stale_versions": [
+    {
+      "object": "SF-ORD-Q-002",
+      "version": "1",
+      "highest": "2"
+    }
+  ],
+  "unmapped_products": {
+    "SF-ORD-Q-003": [
+      "SF-PROD-X99"
+    ]
+  },
+  "control_totals": {
+    "count": 3,
+    "amount_by_currency": {
+      "USD": "190000.00"
+    }
+  },
+  "object_totals": {
+    "SF-ORD-Q-001": "120000.00",
+    "SF-ORD-Q-002": "15000.00",
+    "SF-ORD-Q-003": "55000.00"
+  },
+  "fault_route": "/salesforce/sobjects/Order",
+  "fault_object": {
+    "type": "ORDER",
+    "id": "SF-ORD-Q-003",
+    "version": "1"
+  },
+  "missing_object": {
+    "type": "ORDER",
+    "id": "SF-ORD-Q-404"
+  },
+  "resume": {
+    "replay_id": 3,
+    "later": [
+      4,
+      5
+    ],
+    "latest": 5
+  },
+  "sweep": {
+    "watermark": "2026-09-04T00:00:00+00:00",
+    "found": [
+      "SF-ORD-Q-002",
+      "SF-ORD-Q-003"
+    ],
+    "watermark_after": "2026-09-05T16:45:00+00:00"
+  }
+}

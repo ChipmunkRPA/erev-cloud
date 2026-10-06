@@ -1,0 +1,2 @@
+Self-test fixture for ANTHROPIC_KEY (DG-MK-secrets-check). Not a real key.
+ANTHROPIC_API_KEY=sk-ant-fixture0notarealkey

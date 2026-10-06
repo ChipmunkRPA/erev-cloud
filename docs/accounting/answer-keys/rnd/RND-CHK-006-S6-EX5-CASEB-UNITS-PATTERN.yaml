@@ -1,0 +1,165 @@
+# docs/accounting/answer-keys/rnd/RND-CHK-006-S6-EX5-CASEB-UNITS-PATTERN.yaml
+schema: "erev-answer-key/1"
+id: RND-CHK-006-S6-EX5-CASEB-UNITS-PATTERN
+title: "Research 04 S6-EX5-CASEB unit rounding pattern: 8,400.00 over 90 units"
+status: active
+families: [RND, REC]
+tags: [r04-s6]
+summary: >-
+  Rounding pattern of the post-modification pool of FASB Example 5 Case B (8,400.00 over 90 units). [A] To isolate
+  ALG-01 the pool is booked as one 90-unit point-in-time line of 8,400.00; the 25-13(a) route and the 900.00 credit
+  belong to the MOD family (CHK-028). Units 1, 2 and 3 post 93.33 / 93.34 / 93.33 (cumulative round(8,400 × n ÷ 90));
+  5,600.00 after 60 units and 8,400.00 after 90. Cross-slice variants with distinct inputs, kept:
+  MOD-CHK-028-S6-EX5-CASEB (different modification inputs) (ADJUDICATION.md R-DUP-02).
+authority:
+  codification: ["606-10-25-13", "606-10-32-28", "606-10-25-30"]
+  ifrs: ["IFRS 15.21"]
+  practice: []
+  urls: []
+derived_from: {research04: [S6-EX5-CASEB], research05: [], chk: [CHK-006], golden: [], dev: []}
+requirements: [REQ-REC-019]
+policy_refs: [POL-003]
+review:
+  author: answer-keys-fx-entity-books
+  authored_on: "2026-09-12"
+  reviewer: null
+  reviewed_on: null
+  status: pending
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: US01
+      name: "Avenmoor Systems Inc. (Demo)"
+      functional_currency: USD
+      time_zone: "America/New_York"
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: 1}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2026-05"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4000", name: "Revenue - products", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, account: "4000", product: PART-X}
+  customers:
+    - {code: CUST-1, name: "Pellworth Logistics Inc. (Demo)"}
+  pob_templates:
+    - code: TPL-UNITS
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: POINT_IN_TIME
+      over_time_criterion: NOT_APPLICABLE
+      recognition_method: UNITS_DELIVERED
+  products:
+    - {code: PART-X, name: "Product X", pob_template: TPL-UNITS}
+  ssp_books:
+    - code: SSP-US01-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2026-01-01"
+          methodology_label: "Observable standalone prices"
+          entries:
+            - product: PART-X
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "93.3333"}
+  fx_rate_sets: []
+  rule_sets: []
+  policies: {tenant: {billing.posting: ERP}, entities: {}, books: {}}
+contracts:
+  - external_id: C-S6-EX5B
+    customer: CUST-1
+    contracting_entity: US01
+    transaction_currency: USD
+    inception_date: "2026-01-01"
+    lines:
+      - {obligation_key: L1-UNITS, product_code: PART-X, quantity: "90", total_price: "8400.00"}
+timeline:
+  - {seq: 1, kind: event, contract: C-S6-EX5B, event_type: CONTRACT_BOOKED, effective_date: "2026-01-01", payload: {}}
+  - seq: 2
+    kind: event
+    contract: C-S6-EX5B
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: 3
+    kind: event
+    contract: C-S6-EX5B
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-01-10"
+    payload: {obligation_key: L1-UNITS, quantity: "1", trigger: DELIVERY}
+  - seq: 4
+    kind: event
+    contract: C-S6-EX5B
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-02-10"
+    payload: {obligation_key: L1-UNITS, quantity: "1", trigger: DELIVERY}
+  - seq: 5
+    kind: event
+    contract: C-S6-EX5B
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-03-10"
+    payload: {obligation_key: L1-UNITS, quantity: "1", trigger: DELIVERY}
+  - seq: 6
+    kind: event
+    contract: C-S6-EX5B
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-04-10"
+    payload: {obligation_key: L1-UNITS, quantity: "57", trigger: DELIVERY}
+  - seq: 7
+    kind: event
+    contract: C-S6-EX5B
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-05-10"
+    payload: {obligation_key: L1-UNITS, quantity: "30", trigger: DELIVERY}
+checkpoints:
+  - name: after-delivery-1
+    after_seq: 3
+    as_of: "2026-01-31"
+    book: ASC606
+    contracts:
+      - contract: C-S6-EX5B
+        obligations:
+          - {obligation_key: L1-UNITS, revenue_cum: "93.33", remaining_allocation: "8306.67"}
+  - name: after-delivery-2
+    after_seq: 4
+    as_of: "2026-02-28"
+    book: ASC606
+    contracts:
+      - contract: C-S6-EX5B
+        obligations:
+          - {obligation_key: L1-UNITS, revenue_cum: "186.67", remaining_allocation: "8213.33"}
+  - name: after-delivery-3
+    after_seq: 5
+    as_of: "2026-03-31"
+    book: ASC606
+    contracts:
+      - contract: C-S6-EX5B
+        obligations:
+          - {obligation_key: L1-UNITS, revenue_cum: "280.00", remaining_allocation: "8120.00"}
+  - name: after-delivery-4
+    after_seq: 6
+    as_of: "2026-04-30"
+    book: ASC606
+    contracts:
+      - contract: C-S6-EX5B
+        obligations:
+          - {obligation_key: L1-UNITS, revenue_cum: "5600.00", remaining_allocation: "2800.00"}
+  - name: after-delivery-5
+    after_seq: 7
+    as_of: "2026-05-31"
+    book: ASC606
+    contracts:
+      - contract: C-S6-EX5B
+        obligations:
+          - {obligation_key: L1-UNITS, revenue_cum: "8400.00", remaining_allocation: "0.00"}

@@ -1,0 +1,278 @@
+# Supervisor items: EKC review remediation
+
+Placement:
+- Append these items directly after GATE-EKC in `docs/BUILD_SPEC.md`. The loop then takes them as the first unticked items once PLF-2, which is in flight, is ticked.
+  - SUP-EKC-1 must precede ENB-11 and ENC-10.
+  - SUP-EKC-2 and SUP-EKC-3 must precede END-9.
+- Copy them into `docs/build-spec/12-engine.md` before the next merge (BSF-D-01).
+- Record the rulings they carry under a new D-79 "EKC review rulings".
+- Before the loop reaches the items, apply these document edits:
+  - BUILD_SPEC EKC-4 `test_time_fraction_edges` (`:981`): "on and after the end 1" applies to `DAILY` and `MONTHLY_EVEN`; `MID_MONTH` follows ALG-11 at every date.
+  - BUILD_SPEC EKC-7 `test_p04_helper_bounds` (`:1058`) and ENC-10 `test_p04_stage09_schedules` (`:4690`): replace "unless C_t sits on a bound" with "unless the bound binds: for A ≥ 0, C_t = 0 with X × f_t × 10^μ < 0, or C_t = A with X × f_t × 10^μ > A; symmetrically for A < 0".
+  - dev-guide DG-KRN-TIME-04 (`:1039`): the later-period branch uses `POSTABLE_STATES`, as 05 RCP-04 and ENGINE_SPEC S08-R-08 do.
+  - dev-guide §9.5.5 `expect_problem` (`:2069`): for engine keys, the step's bundle raises `EngineError` with that code, and its findings are the checkpoint's `ERROR` exception rows. This overrules SPEC-Q-108.
+
+Findings and adjudication: `~/dev/erev-rv/reports/ekc/REVIEW-EKC.md`.
+
+Not carried: ER-S-02 (P3). Storing compound approval codes needs a T-PLT-31 ruling first; see the recommendation in the review.
+
+- [ ] **SUP-EKC-1 EKC review remediation, part 1: kernel posting periods, MID_MONTH completion, P4 bounds and engine purity guards (ER-N-01, ER-N-02, ER-C-03, ER-S-03, ER-S-06). Supervisor item.**
+  - **Prerequisites:** GATE-EKC
+  - **Scope:**
+    - Paths:
+      - `backend/erev_engine/dates.py` (ruling D-79 on SPEC-Q-79):
+        - `first_open_period_on_or_after(entity, book_code, d)` returns the earliest period ending on or after `d` whose state for the book is `open`, `closing` or `reopened`, else `None`;
+        - `OPEN_STATES` is replaced by `POSTABLE_STATES = frozenset({"open", "closing", "reopened"})`, citing ENGINE_SPEC S08-R-08, 05 RCP-04 and CV-13;
+        - a period without a state for the book still raises `ENGINE_INVARIANT_VIOLATED` (CV-13).
+      - `backend/erev_engine/progress.py` (ruling D-79 on SPEC-Q-78):
+        - `time_fraction` returns 1 for `d ≥ end` only under `DAILY` and `MONTHLY_EVEN`;
+        - under `MID_MONTH` it evaluates POLICIES ALG-11 at every `d ≥ start`: (counted periods whose last day ≤ d) ÷ m.
+      - `backend/erev_engine/guards.py`: `no_floats` walks `set` and `frozenset` members in the order `sorted(members, key=lambda m: (type(m).__qualname__, repr(m)))`, so the `FLOAT_DETECTED` detail does not depend on `PYTHONHASHSEED` (DG-ENG-02; CV-23).
+      - `backend/tests/properties/test_prop_p04_schedule_bounds.py` (ruling D-79: dev-guide §9.7 P4 governs):
+        - a module-level check function `p04_bound_violations(exact, allocation, path, minor_unit, cumulative)` returns every f_t < 1 at which |C_t − X × f_t × 10^μ| > 1/2 without a binding bound. For A ≥ 0 a bound binds when C_t = 0 with X × f_t × 10^μ < 0, or C_t = A with X × f_t × 10^μ > A. For A < 0 it binds when C_t = 0 with X × f_t × 10^μ > 0, or C_t = A with X × f_t × 10^μ < A;
+        - `test_p04_helper_bounds` asserts that this function returns nothing, in place of the `value not in (0, allocation)` exemption.
+      - `backend/tests/architecture/test_engine_purity.py` (ruling D-79 extending D-78 on DG-ARC-02). Under `backend/erev_engine` these are findings:
+        - bare-name calls of `eval`, `exec`, `compile`, `globals`, `vars`, `breakpoint` and `input`;
+        - any reference to the name `__builtins__`;
+        - an attribute `now`, `today`, `utcnow`, `fromtimestamp` or `utcfromtimestamp` on any owner;
+        - `getattr(<x>, "now" | "today" | "utcnow")`.
+
+        Attribute calls such as `re.compile(` are not findings, and the module docstring states exactly this list.
+      - Tests: `backend/tests/engine/kernel/test_dates.py`, `backend/tests/engine/kernel/test_progress.py`, `backend/tests/engine/kernel/test_guards.py`, `backend/tests/properties/test_prop_p04_schedule_bounds.py`, `backend/tests/architecture/test_engine_purity.py`.
+    - Schema: none
+    - API: none
+    - Engine:
+      - ENGINE_SPEC §8.4 S08-R-08, and the posting-period search of §8.2 `assign_posting_period`;
+      - §0.3 CV-13 and CV-23;
+      - POLICIES ALG-11 §2.12 `MID_MONTH` and ALG-01 §2.1.3.
+
+      These are kernel helpers and guards only. No stage changes, and `ENGINE_VERSION` stays unchanged, because no stage calls these helpers yet and `compute` is unbuilt (END-9).
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/engine/kernel/test_dates.py::test_s08_r08_first_postable_period_includes_closing` (ER-N-01):
+        - With FY2023-P01 `closed`, P02 `closing` and P03 `open`, `first_open_period_on_or_after(entity, "ASC606", date(2023, 2, 1)).period_key == "FY2023-P02"`.
+        - With P01 `closed`, P02 `closing` and P03 to P12 `future`, the result is `FY2023-P02`, not `None`.
+        - With P01 and P02 `closed`, P03 `closing` and P04 `reopened`, the result from `date(2023, 1, 15)` is `FY2023-P03`. With every later period `closed` or `future`, the result is `None`.
+        - In `test_period_lookup`, the assertions that `closing` is skipped are replaced, as the ruling directs. With `{1: closed, 2: closing, 3: closed, 4: reopened}`, the result from `date(2023, 1, 15)` is `FY2023-P02`. The EKC-4 case (P01 `closed`, P02 `open` → `FY2023-P02`) still passes.
+      - `backend/tests/engine/kernel/test_progress.py::test_alg_11_mid_month_after_term_end` (ER-C-03):
+        - CHK-145 (a), term 2026-01-20 to 2026-02-10: `time_fraction("MID_MONTH", date(2026, 1, 20), date(2026, 2, 10), date(2026, 2, 10)) == 0` and `f(2026-02-28) == 1`.
+        - CHK-145 (b), term 2026-01-05 to 2026-01-10: `f(2026-01-10) == 0` and `f(2026-01-31) == 1`.
+        - CHK-145 (c), term 2026-01-15 to 2027-01-15: `f(2027-01-15) == Fraction(12, 13)`, `f(2027-01-20) == Fraction(12, 13)` and `f(2027-01-31) == 1`.
+        - Under `DAILY` and `MONTHLY_EVEN`, `f(e) == 1` on the CHK-140 term and on each CHK-145 term.
+        - `test_time_fraction_edges` asserts "on and after the end 1" for `DAILY` and `MONTHLY_EVEN` only. Its non-decreasing check still passes for all three conventions, and `test_chk_145_mid_month_edge_cases` still passes, because period-end schedules are unchanged.
+      - `backend/tests/properties/test_prop_p04_schedule_bounds.py::test_p04_exemption_rejects_unbound_values` (ER-N-02):
+        - The inputs are CHK-004: X = 35,000.00 USD, A = 3,500,000 minor units, μ = 2, path f_t = t ÷ 24 for t = 1 to 24.
+        - `p04_bound_violations` returns nothing for the `cumulative_posted` values, which are 145,833, 291,667 and 437,500 for months 1 to 3.
+        - It returns a violation at f_1 = 1/24 for the front-loaded values (3,500,000 at every f_t > 0).
+        - It returns a violation at f_1 = 1/24 for the back-loaded values (0 until f_24 = 1).
+        - `test_p04_helper_bounds` passes under the `thorough` profile.
+      - `backend/tests/engine/kernel/test_guards.py::test_no_floats_detail_independent_of_hash_seed` (ER-S-06):
+        - `no_floats(frozenset({"alpha", "beta", "gamma", "delta", 1.5}))` is run in three subprocesses, with `PYTHONHASHSEED` 1, 3 and 10.
+        - Each raises `EngineError` `FLOAT_DETECTED` with an identical `detail`.
+        - `test_no_floats_detects_nested_float` still passes.
+      - `backend/tests/architecture/test_engine_purity.py::test_dg_arc_02_builtins_and_owner_free_clock_reads` (ER-S-03):
+        - Each snippet under `backend/erev_engine/stages/x.py` yields exactly one DG-ARC-02 finding: `x = eval("1")\n`, `exec("x = 1")\n`, `code = compile("1", "x", "eval")\n`, `f = __builtins__["__import__"]\n`, `stamp = as_of.today()\n`, `stamp = datetime.min.now()\n`, `clock = datetime\nstamp = clock.now()\n` and `stamp = getattr(datetime, "now")()\n`.
+        - `pattern = re.compile("x")\n` and `from datetime import date as D\nday = D(2026, 9, 12)\n` yield none.
+        - The repository scan of `backend/erev_engine` yields none, and `test_dg_arc_02_aliased_clock_reads` still yields exactly one finding per snippet.
+    - Answer keys: none
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: PROP:P4 helper part `backend/tests/properties/test_prop_p04_schedule_bounds.py` (exemption limited to binding bounds)
+    - REQs completed: none; REQs contributed: REQ-REC-003, REQ-REC-019
+  - **Read:**
+    - ENGINE_SPEC:
+      - §8.2 `assign_posting_period` (lines 1522-1530);
+      - §8.4 S08-R-08 (line 1549);
+      - §0.3 CV-13 (line 176) and CV-23 (line 445).
+    - 05 RCP-04 (line 483).
+    - dev-guide:
+      - §5.10 `POSTABLE_STATES` and DG-KRN-TIME-04 (lines 1025, 1039);
+      - §5.9 DG-KRN-MONEY-03 (line 992);
+      - §7 DG-ENG-01, DG-ENG-02 (lines 1824-1825);
+      - §6.8 DG-ARC-02 (line 1763);
+      - §9.7 P4 (line 2416) and DG-PROP-02 (line 2408).
+    - POLICIES:
+      - ALG-11 §2.12 (line 1057) and CHK-145 (line 1086);
+      - ALG-01 §2.1.3;
+      - CHK-004 (line 444);
+      - ALG-09 §2.10 steps 2 to 4.
+    - BUILD_SPEC:
+      - header §2 rows at lines 76-78 and 83;
+      - EKC-4 (lines 971-995);
+      - EKC-7 (line 1058);
+      - ENB-11 (line 4314);
+      - ENC-10 (line 4690).
+    - 01-DECISIONS D-78 (line 280), engine purity row.
+    - `docs/reviews/loop/spec-questions-EKC.md` SPEC-Q-70, SPEC-Q-78, SPEC-Q-79; `docs/reviews/loop/spec-questions-FND.md` SPEC-Q-49.
+  - **Gates:** GK-01 `make ci`; GK-04 `make properties K="p04"`
+
+- [ ] **SUP-EKC-2 EKC review remediation, part 2: answer-key runner expected problems, the returns basis identity and key selection (ER-C-01, ER-C-02, ER-G-01). Supervisor item.**
+  - **Prerequisites:** GATE-EKC; SUP-EKC-1
+  - **Scope:**
+    - Paths:
+      - `backend/tests/support/answer_keys/runners.py`:
+        - `expect_problem` (dev-guide §9.5.5; ruling D-79 on SPEC-Q-108):
+          - For a timeline item carrying `expect_problem`, `run_engine` computes one step bundle for the item's combination group. The bundle holds the items with `seq` ≤ that item's `seq`, excluding earlier `expect_problem` items.
+          - The step passes when `compute` raises `EngineError` whose `code` equals `expect_problem.code`. Otherwise the run records a mismatch with subject `timeline seq <n>`, field `expect_problem`, expected that code, and actual `computed` or the other code.
+          - The item never enters a checkpoint bundle or a later step bundle, and the timeline continues.
+          - `RunResult` carries each step outcome.
+          - The `detail["findings"]` of every expected-problem step with `seq` ≤ `after_seq` joins that checkpoint's `exceptions` comparison as `ERROR` findings (ENGINE_SPEC CV-15, CV-41; dev-guide §9.5.6 `ERROR` ↔ `BLOCKING`).
+        - DG-AK-54 identity 1 (ruling D-79 on SPEC-Q-112):
+          - The node `tp_allocation_basis:<group>:-` equals Σ obligation `allocated_amount` − `contract_version.expected_returns_amount`. That is Σ `a_posted` under ENGINE_SPEC S04-R-02 and S04-R-08, ENGINE_SPEC_B S09-R-23, and ENGINE_SPEC rev 1.2 B3 decision 2.
+          - The mismatch field is `DG-AK-54 sum allocated_amount - expected_returns_amount = tp_allocation_basis`.
+          - The V1 and DB-17 checks are unchanged.
+      - `backend/tests/support/answer_keys/loader.py`: new `active_selection(environ=None)`, which returns the active keys among `select_keys(load_all(include_withdrawn=True), include_withdrawn=True, **selection_from_env(environ))`. An unknown family, id or REQ still raises `ValueError` (SPEC-Q-106).
+      - `backend/tests/answer_keys/test_answer_keys.py`: parametrises over `active_selection()`. A withdrawn id in `ID` is therefore validated and reported, never collected (DG-AK-13; ruling D-79 on SPEC-Q-106).
+      - `backend/tests/support/answer_keys/report.py`: when the selection holds no active key, the run appends `{"stage": "select", "exit_code": 1, "message": "the selection holds no active answer key (DG-AK-13)"}`, starts no pytest, and prints `FAIL answer-keys: the selection holds no active answer key (DG-AK-13)`.
+      - Tests: `backend/tests/unit/answer_keys/test_runner_engine.py`, `backend/tests/unit/answer_keys/test_assert_checkpoints.py`, `backend/tests/unit/answer_keys/test_loader_validation.py`.
+    - Schema: none
+    - API: none
+    - Engine: none (test harness only; `erev_engine.compute` is still absent, so stub computes installed with `monkeypatch.setattr(erev_engine, "compute", …, raising=False)` drive the tests)
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/unit/answer_keys/test_runner_engine.py::test_expect_problem_leaves_state_unchanged` (ER-C-02):
+        - For `ALC-CHK-032-S4-EX34-CASEC-REJECTED`:
+          - the bundle of checkpoint `activation-refused` holds the events `[(1, CONTRACT_BOOKED)]` only;
+          - the expected-problem step bundle holds `[(1, CONTRACT_BOOKED), (2, CONTRACT_ACTIVATED)]`.
+        - With a stub `compute` that:
+          - raises `EngineError("RESIDUAL_REJECTED", …, detail={"findings": <canonical JSON of one ERROR finding on C-EX34/L4-D>})` for the step bundle, and
+          - for the checkpoint bundle returns a book meeting the checkpoint (`status_in_book` `DRAFT`, `transaction_price` 10500 minor units) and the DG-AK-54 identities,
+
+          `assert_checkpoints(key, run_engine(key))` raises nothing.
+        - A stub that returns normally for the step bundle gives exactly one mismatch with field `expect_problem` and expected `RESIDUAL_REJECTED`.
+        - A stub that raises `EngineError("TOTAL_SSP_ZERO", …)` for the step bundle gives exactly one `expect_problem` mismatch with actual `TOTAL_SSP_ZERO`.
+        - `test_build_bundles_rnd_chk_001` and `test_run_engine_fails_closed_without_compute` still pass.
+      - `backend/tests/unit/answer_keys/test_assert_checkpoints.py::test_implicit_assertions` (ER-C-01):
+        - A synthetic `RET-CHK-029-S3-EX22` `end-of-february` ASC606 book gives no DG-AK-54 mismatch. Its figures come from the key and EX-04-G2:
+          - `transaction_price` 970000, `expected_returns_amount` −30000 and `consideration_payable_amount` 0;
+          - obligation `L1-PROD` `allocated_amount` 970000;
+          - node `tp_allocation_basis` "10000.00".
+        - The same book with the node "9999.99" gives exactly one mismatch, with field `DG-AK-54 sum allocated_amount - expected_returns_amount = tp_allocation_basis`, expected `9999.99` and actual `10000.00`.
+        - The existing RND-CHK-001 cases still hold.
+      - `backend/tests/unit/answer_keys/test_loader_validation.py::test_dg_ak_13_withdrawn_ids_are_never_collected` (ER-G-01):
+        - `active_selection({"ID": "RND-CHK-001,POS-S9-PRESENTATION-EX38-CASEA"})` returns exactly the key `RND-CHK-001`.
+        - `active_selection({"ID": "POS-S9-PRESENTATION-EX38-CASEA"})` returns `[]`.
+        - `active_selection({"ID": "NO-SUCH-KEY"})` raises `ValueError` naming `NO-SUCH-KEY`.
+      - `backend/tests/unit/answer_keys/test_assert_checkpoints.py::test_dg_ak_13_selection_without_active_key_fails` (ER-G-01):
+        - Setup: `ID=POS-S9-PRESENTATION-EX38-CASEA` is set through `monkeypatch.setenv`.
+        - `report.main(["--command", "probe", "--reports-dir", <tmp_path>/reports, "--basetemp", <tmp_path>/basetemp])` returns 1, and the last line is `FAIL answer-keys: the selection holds no active answer key (DG-AK-13)`.
+        - `<tmp_path>/reports/answer-keys/report.json` holds `exit_code` 1, `failures[0].stage == "select"` and counts `withdrawn` 1.
+        - `test_report_shape` still passes.
+      - `make answer-keys ID=RND-CHK-001,POS-S9-PRESENTATION-EX38-CASEA` exits non-zero (fail closed, B3-BS2-06):
+        - it collects one test;
+        - `.run/reports/answer-keys/report.json` counts `selected` 2, `failed` 1, `not_run` 0 and `withdrawn` 1;
+        - the `RND-CHK-001` failure names `BUILD_SPEC END-9`.
+      - `make answer-keys ID=POS-S9-PRESENTATION-EX38-CASEA` exits non-zero and prints `FAIL answer-keys: the selection holds no active answer key (DG-AK-13)`.
+      - After both runs, the unfiltered report is restored by `make answer-keys`, which still reports 0 corpus gaps.
+    - Answer keys: none (the engine runner is first expected green in END-9)
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: none; REQs contributed: none
+  - **Read:**
+    - dev-guide:
+      - §9.5.5 `expect_problem` (line 2069);
+      - §9.5.6 `exceptions` (line 2085);
+      - §9.5.7 DG-AK-54 and DG-AK-55 (lines 2128-2129);
+      - §9.5.8 DG-AK-13 (line 1986), DG-AK-40 (line 2174), DG-AK-42 (line 2176) and DG-AK-43 (line 2177);
+      - §4.4 DG-MK-answer-keys (line 524);
+      - §7 DG-ENG-05 (line 1828).
+    - ENGINE_SPEC:
+      - §0.3 CV-15 (line 434), CV-41 (line 480) and CV-43 (line 482);
+      - §0.5 (lines 400-420);
+      - S04-R-02 (line 1030) and S04-R-08;
+      - the S05-R-12 `RESIDUAL_REJECTED` row (line 508);
+      - rev 1.2 decisions in B3, items 2 and 3 (line 21).
+    - ENGINE_SPEC_B S09-R-23 (line 412). 04 DB-17 (line 4818).
+    - Answer keys: `docs/accounting/answer-keys/alc/ALC-CHK-032-S4-EX34-CASEC-REJECTED.yaml`; `docs/accounting/answer-keys/ret/RET-CHK-029-S3-EX22.yaml` checkpoint `end-of-february`.
+    - BUILD_SPEC:
+      - header §3.1 GK-05; §4 XR-07 and XR-12;
+      - EKC-11 and EKC-12 (lines 1391-1442);
+      - END-9 (line 5138), AKS-2 (line 5355) and AKS-3 (line 5384);
+      - B3-BS2-06 (line 12076).
+    - `docs/reviews/loop/spec-questions-EKC.md` SPEC-Q-106, SPEC-Q-108, SPEC-Q-111, SPEC-Q-112, SPEC-Q-113.
+  - **Gates:** GK-01 `make ci`
+
+- [ ] **SUP-EKC-3 EKC review remediation, part 3: gate and harness integrity for skipped properties, ci overrides, guard wiring and checkpoint-assertion coverage (ER-G-03, ER-G-04, ER-G-05, ER-C-05, ER-G-02). Supervisor item.**
+  - **Prerequisites:** GATE-EKC; SUP-EKC-2
+  - **Scope:**
+    - Paths:
+      - `scripts/gate_report.py`: `--fail-on-skipped` may name the target when `--counts-junit` is given. A skipped test in that flat summary fails the run with `{"stage": "skipped", "exit_code": 1, "label": <target>}` and the last line `FAIL <target>: <n> skipped test(s) in <target> (DG-TST-09)`.
+      - `Makefile`:
+        - the `properties` recipe passes `--fail-on-skipped properties` (ruling D-79 extending D-78: DG-TST-09 and G5 bind `make properties`);
+        - the `ci` recipe also passes `--refuse "OVERRIDES=$(strip $(MAKEOVERRIDES))"`, so any command-line variable fails before the first stage, including `PYTEST_PATHS`, `PYTEST_MARKERS` and `RUN_VITEST` (ruling D-79 on DG-MK-ci "Variables: none").
+      - `backend/tests/support/answer_keys/runners.py` (ruling D-79; 05 RCP-11; ENGINE_SPEC §0.5):
+        - every `BookInput` of a bundle needs a `BookOutput` with the same `book_code`. A missing one, including the checkpoint book, is a mismatch with subject `book <code>`, field `computed` and actual `<absent>`;
+        - a `BookOutput` other than `LEGACY` whose `contract_version` is `None` is a mismatch with field `contract_version`.
+      - Tests: `backend/tests/unit/test_makefile_targets.py`, `backend/tests/unit/test_controls_report.py`, `backend/tests/unit/answer_keys/test_assert_checkpoints.py`, `backend/tests/unit/answer_keys/test_coverage.py`.
+    - Schema: none
+    - API: none
+    - Engine: none
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/unit/test_makefile_targets.py::test_g5_skipped_property_test_fails_properties` (ER-G-03):
+        - Command: `scripts/gate_report.py properties --command "make properties" --stage "properties=cp <tmp>/three-passed-one-skipped.xml <tmp>/junit.xml" --counts-junit <tmp>/junit.xml --fail-on-skipped properties --reports-dir <tmp>/reports`.
+        - It exits 1, and the last line is `FAIL properties: 1 skipped test in properties (DG-TST-09)`. `report.json` has `exit_code` 1, `counts.skipped` 1 and `failures` `[{"stage": "skipped", "exit_code": 1, "label": "properties"}]`.
+        - With a JUnit file of 3 passed and 0 skipped, the run ends `OK properties` with `counts.passed` 3.
+        - `--fail-on-skipped properties` without `--junit` or `--counts-junit` still exits with the message naming `properties`.
+        - The `properties` recipe text passes `--fail-on-skipped properties`, and `test_dg_mk_properties_report_counts` still passes.
+      - `backend/tests/unit/test_makefile_targets.py::test_dg_mk_ci_refuses_command_line_overrides` (ER-G-04):
+        - Command: `scripts/gate_report.py ci --command "make ci PYTEST_PATHS=backend/tests/engine/kernel/test_money.py" --refuse "TESTS=" --refuse "K=" --refuse "FRONTEND=" --refuse "OVERRIDES=PYTEST_PATHS=backend/tests/engine/kernel/test_money.py" --stage "env=touch <tmp>/ran" --reports-dir <tmp>/reports`.
+        - It exits 1 and leaves `<tmp>/ran` absent. `report.json` has `failures` `[{"stage": "variables", "exit_code": 1, "variables": ["OVERRIDES"]}]`.
+        - With `--refuse "OVERRIDES="`, the stage runs and the last line is `OK ci`.
+        - The `ci` recipe text passes `--refuse "OVERRIDES=$(strip $(MAKEOVERRIDES))"`. This is checked on the Makefile text, never through `make -n ci`, whose `$(MAKE)` lines execute.
+        - `test_dg_mk_ci_refuses_narrowing_variables` still passes.
+      - `backend/tests/unit/test_controls_report.py::test_dg_tst_07_root_hook_calls_markers_check` (ER-G-05 part (a)):
+        - A check function `root_hook_findings(source)` parses `backend/tests/conftest.py`. It returns `[]` when the `tryfirst` `pytest_collection_modifyitems` hook calls `markers.check(items, TESTS_ROOT)` before `items.sort(...)`.
+        - Given the same source with that call removed, it returns `["DG-TST-07: backend/tests/conftest.py does not call markers.check"]`.
+      - `backend/tests/unit/answer_keys/test_coverage.py::test_withdrawn_key_does_not_cover` (ER-G-05 part (b)):
+        - `coverage` receives all 234 loaded keys, withdrawn keys included, with `VC-CHK-110` flipped in memory to `status: withdrawn`; it reports gap `CHK-110`.
+        - The unmodified 234 keys report no gap.
+      - `backend/tests/unit/answer_keys/test_assert_checkpoints.py::test_books_and_contract_version_required` (ER-C-05):
+        - `ONB-CHK-121-BUSINESS-COMBINATION-SUBSCRIPTION` checkpoint `cutover-no-postings` with `OutputBundle(books=())` gives a mismatch with subject `book ASC606`, field `computed` and actual `<absent>`.
+        - An `RND-CHK-001` ASC606 book with `contract_version=None` gives exactly one mismatch with field `contract_version`.
+        - A synthetic bundle whose books include `LEGACY` passes with a `LEGACY` `BookOutput` whose `contract_version` is `None`.
+      - `backend/tests/unit/answer_keys/test_assert_checkpoints.py::test_optional_blocks_compared` (ER-G-02): synthetic keys (in-memory copies) and outputs.
+        - Each violation yields exactly one mismatch naming its field:
+          - a schedule row in `amounts` form with one wrong period amount (field `amount`);
+          - a period-form schedule row with a wrong `amount`, then a wrong `cumulative_amount`, then a wrong `quantity`;
+          - a `trace` assertion with a wrong node value (field `value`), then a wrong `formula_id`, then an absent node;
+          - a `modifications` row whose `proposed_treatments` differ (field `proposed_treatments`);
+          - an `exceptions` row list with one extra `WARNING` diagnostic of a listed code on the checkpoint book (leftover, field `finding`);
+          - a `RunResult` missing one checkpoint (subject `checkpoint`, field `run`).
+        - The same extra diagnostic on another book gives no mismatch.
+        - A two-book output (ASC606 and IFRS15) whose checkpoint book holds the expected figures gives no mismatch. Swapping the two books' figures gives at least one mismatch.
+    - Answer keys: none
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none (the `make properties` recipe changes; no property changes)
+    - REQs completed: none; REQs contributed: REQ-OPS-007
+  - **Read:**
+    - dev-guide:
+      - §4.1 DG-MK-00a and DG-MK-00g;
+      - §4.3 DG-MK-ci (line 516);
+      - §4.4 DG-MK-properties (line 525) and DG-MK-test-pg;
+      - §9.2 DG-TST-07 and DG-TST-09 (lines 1937, 1939);
+      - §9.5.6 `exceptions`, `schedule`, `modifications`, `trace` (lines 2085, 2096-2098);
+      - §9.5.7 DG-AK-54 and DG-AK-55 (lines 2128-2129);
+      - DG-AK-33 (line 2171);
+      - §9.7 DG-PROP-01 (line 2407);
+      - §10.1 G5 (line 2501) and DG-GATE-04.
+    - ENGINE_SPEC §0.5 (`contract_version` `None` for LEGACY, line 413). 05 RCP-11 (line 666).
+    - 01-DECISIONS D-78 (line 280), gate integrity row.
+    - BUILD_SPEC:
+      - header §3.1 GK-01 and GK-04; §4 XR-07; §5.3 SZ-03;
+      - EKC-7, the `make properties` acceptance (line 1062);
+      - EKC-7a (lines 1074-1159);
+      - EKC-10 (line 1368) and EKC-12 (line 1416).
+    - `docs/reviews/loop/spec-questions-EKC.md` SPEC-Q-90, SPEC-Q-92, SPEC-Q-93, SPEC-Q-107, SPEC-Q-111, SPEC-Q-112.
+  - **Gates:** GK-01 `make ci`; GK-04 `make properties` (unfiltered; `report.json` `counts.skipped` 0)

@@ -1,0 +1,209 @@
+# docs/accounting/answer-keys/disc/DISC-S10-DISCLOSURES-REPORTS-EX21-ROLLFORWARD-AND-TIMING.yaml
+schema: "erev-answer-key/1"
+id: DISC-S10-DISCLOSURES-REPORTS-EX21-ROLLFORWARD-AND-TIMING
+title: >-
+  Year-2 contract balance rollforward, revenue from the opening liability and timing disaggregation (reports)
+status: active
+families: [DISC, POS]
+tags: [r04-s10]
+summary: >-
+  The S2-EX11 contract of DISC-CHK-006-S10-DISCLOSURES-ROLLFORWARD-EX21 through the platform report runs.
+  contract_balance_rollforward for 2027 (FY2027-P01 to FY2027-P12, entity US01, ASC606): opening contract liability
+  17,500.00, billings 0.00, revenue from the opening liability −17,500.00, revenue from period billings 0.00, closing
+  0.00 (606-10-50-8; POL-126). revenue_from_opening_liability 2027: 17,500.00 (REQ-RPT-007). disaggregation for 2026
+  by timing of transfer: point in time 87,500.00 and over time 35,000.00; 2027 over time 17,500.00 (606-10-50-5,
+  55-91(f)). [J] Cell keys follow the convention proposed in OQ-AK-11: row_key is the entity code (rollforward,
+  opening-liability revenue) or `timing:<satisfaction_pattern>` (disaggregation); column keys are the measure names
+  used here.
+authority:
+  codification:
+    - "606-10-50-8"
+    - "606-10-50-9"
+    - "606-10-50-10"
+    - "606-10-50-12A"
+    - "606-10-50-13"
+    - "606-10-50-14"
+    - "606-10-50-15"
+    - "606-10-50-5"
+    - "606-10-55-91"
+  ifrs: ["IFRS 15.114", "IFRS 15.116", "IFRS 15.B89"]
+  practice: []
+  urls: []
+derived_from: {research04: [S10-DISCLOSURES], research05: [], chk: [], golden: [], dev: []}
+requirements: [REQ-RPT-006, REQ-RPT-007, REQ-RPT-011, REQ-RPT-003]
+policy_refs: [POL-126, POL-191]
+review:
+  author: answer-keys-fx-entity-books
+  authored_on: "2026-09-12"
+  reviewer: null
+  reviewed_on: null
+  status: pending
+runner: platform
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: US01
+      name: "Avenmoor Systems Inc. (Demo)"
+      functional_currency: USD
+      time_zone: "America/New_York"
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: 1}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2027-12"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4010", name: "Revenue - services and subscriptions", account_type: REVENUE}
+    - {code: "4020", name: "Revenue - licences and royalties", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, account: "4020", product: LIC-SW}
+    - {account_role: REVENUE, account: "4010", product: INSTALL}
+    - {account_role: REVENUE, account: "4010", product: UPDATES-24}
+    - {account_role: REVENUE, account: "4010", product: SUPPORT-24}
+  customers:
+    - {code: CUST-1, name: "Pellworth Logistics Inc. (Demo)"}
+  pob_templates:
+    - code: TPL-PCT
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_B
+      recognition_method: OUTPUT_PERCENT
+    - code: TPL-PIT
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: POINT_IN_TIME
+      over_time_criterion: NOT_APPLICABLE
+      recognition_method: POINT_IN_TIME
+    - code: TPL-RAT-ME
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_A
+      recognition_method: TIME_ELAPSED
+      ratable_convention: MONTHLY_EVEN
+  products:
+    - {code: LIC-SW, name: "Software licence", pob_template: TPL-PIT}
+    - {code: INSTALL, name: Installation, pob_template: TPL-PCT}
+    - {code: UPDATES-24, name: "When-and-if-available updates, 24 months", pob_template: TPL-RAT-ME}
+    - {code: SUPPORT-24, name: "Technical support, 24 months", pob_template: TPL-RAT-ME}
+  ssp_books:
+    - code: SSP-US-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2026-01-01"
+          methodology_label: "Observable standalone prices"
+          entries:
+            - product: LIC-SW
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "100000.00"}
+            - product: INSTALL
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "20000.00"}
+            - product: UPDATES-24
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "30000.00"}
+            - product: SUPPORT-24
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "10000.00"}
+  fx_rate_sets: []
+  rule_sets: []
+  policies: {tenant: {billing.posting: ERP}, entities: {}, books: {}}
+contracts:
+  - external_id: C-DISC-S10R
+    customer: CUST-1
+    contracting_entity: US01
+    transaction_currency: USD
+    inception_date: "2026-01-01"
+    lines:
+      - {obligation_key: L1-LICENCE, product_code: LIC-SW, quantity: "1", total_price: "90000.00"}
+      - {obligation_key: L2-INSTALL, product_code: INSTALL, quantity: "1", total_price: "15000.00"}
+      - obligation_key: L3-UPDATES
+        product_code: UPDATES-24
+        quantity: "1"
+        total_price: "25000.00"
+        start_date: "2026-01-01"
+        end_date: "2027-12-31"
+      - obligation_key: L4-SUPPORT
+        product_code: SUPPORT-24
+        quantity: "1"
+        total_price: "10000.00"
+        start_date: "2026-01-01"
+        end_date: "2027-12-31"
+timeline:
+  - seq: 1
+    kind: event
+    contract: C-DISC-S10R
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: 2
+    kind: event
+    contract: C-DISC-S10R
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: 3
+    kind: event
+    contract: C-DISC-S10R
+    event_type: BILLING_RECORDED
+    effective_date: "2026-01-01"
+    payload: {invoice_number: INV-S10-1, line_external_id: INV-S10-1-1, amount: "140000.00", issue_date: "2026-01-01"}
+  - seq: 4
+    kind: event
+    contract: C-DISC-S10R
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-01-01"
+    payload: {obligation_key: L1-LICENCE, quantity: "1", trigger: CONTROL_TRANSFER}
+  - seq: 5
+    kind: event
+    contract: C-DISC-S10R
+    event_type: PROGRESS_RECORDED
+    effective_date: "2026-01-31"
+    payload: {obligation_key: L2-INSTALL, cumulative_progress_ratio: "1", measure: OUTPUT_PERCENT}
+checkpoints:
+  - name: reports-after-year-2
+    after_seq: 5
+    as_of: "2027-12-31"
+    book: ASC606
+    reports:
+      - report_code: contract_balance_rollforward
+        parameters: {entity_codes: [US01], book: ASC606, from_period_key: FY2027-P01, to_period_key: FY2027-P12}
+        cells:
+          - {row_key: US01, column_key: opening_contract_liability, value: "17500.00"}
+          - {row_key: US01, column_key: billings, value: "0.00"}
+          - {row_key: US01, column_key: revenue_from_opening_liability, value: "-17500.00"}
+          - {row_key: US01, column_key: revenue_from_period_billings, value: "0.00"}
+          - {row_key: US01, column_key: closing_contract_liability, value: "0.00"}
+      - report_code: revenue_from_opening_liability
+        parameters: {entity_codes: [US01], book: ASC606, from_period_key: FY2027-P01, to_period_key: FY2027-P12}
+        cells:
+          - {row_key: US01, column_key: revenue_from_opening_liability, value: "17500.00"}
+      - report_code: disaggregation
+        parameters: {entity_codes: [US01], book: ASC606, from_period_key: FY2026-P01, to_period_key: FY2026-P12}
+        cells:
+          - {row_key: "timing:POINT_IN_TIME", column_key: revenue, value: "87500.00"}
+          - {row_key: "timing:OVER_TIME", column_key: revenue, value: "35000.00"}
+      - report_code: disaggregation
+        parameters: {entity_codes: [US01], book: ASC606, from_period_key: FY2027-P01, to_period_key: FY2027-P12}
+        cells:
+          - {row_key: "timing:POINT_IN_TIME", column_key: revenue, value: "0.00"}
+          - {row_key: "timing:OVER_TIME", column_key: revenue, value: "17500.00"}

@@ -1,0 +1,208 @@
+schema: erev-answer-key/1
+id: TAX-WM-08-TAXES-AND-FEES-GROSS-OR-NET
+title: "Booking fees with VAT collected from customers excluded from the transaction price under engine billing"
+status: active
+families: [TAX, JE, POB]
+tags: [portfolio]
+summary: "Wayfarer Marketplace UK charges travellers a booking fee and collects UK VAT at 20% on it. The tenant elects to exclude taxes collected from customers on behalf of tax authorities (POL-045 EXCLUDE_ALL_IN_SCOPE; 606-10-32-2A), and this key runs with billing.posting ENGINE, so the engine posts the invoice: Dr ACCOUNTS_RECEIVABLE / Cr CONTRACT_LIABILITY for the fee and Cr SALES_TAX_PAYABLE for the VAT (JET-03). Booking fees of GBP 50,000.00 / 55,000.00 / 45,000.00 in the first quarter of 2026 carry VAT of 10,000.00 / 11,000.00 / 9,000.00; the booking service is complete when the booking is confirmed, so revenue equals the net fees (150,000.00). A digital services tax imposed on Wayfarer's own UK revenue is not collected from customers and is not excluded; it is an ERP expense, not an engine posting. BILLING_RECORDED amount is the net fee and tax_amount the VAT."
+authority:
+  codification: ["606-10-32-2", "606-10-32-2A", "606-10-55-36"]
+  ifrs: ["IFRS 15.47"]
+  practice: ["DART 6.7 (sales taxes and similar taxes)"]
+  urls: []
+derived_from: {research04: [], research05: [WM-08], chk: [], golden: [], dev: []}
+requirements: [REQ-TP-014, REQ-BIL-002, REQ-JE-002]
+policy_refs: [POL-004, POL-045]
+review: {author: answer-keys-industries, authored_on: "2026-09-12", reviewer: null, reviewed_on: null, status: pending}
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: GBP, preset: DEFAULT}
+  currencies: [GBP]
+  entities:
+    - code: WM-UK
+      name: "Wayfarer Marketplace UK (Demo)"
+      functional_currency: GBP
+      time_zone: Europe/London
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: "1"}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2026-03"}
+  period_states: []
+  gl_accounts:
+    - {code: "1100", name: "Accounts receivable", account_type: ASSET}
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "2200", name: "Sales and value-added tax payable", account_type: LIABILITY}
+    - {code: "4010", name: "Revenue - services and subscriptions", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: ACCOUNTS_RECEIVABLE, account: "1100"}
+    - {account_role: SALES_TAX_PAYABLE, account: "2200"}
+    - {account_role: REVENUE, product: BOOKING-FEE, account: "4010"}
+  customers: [{code: CUST-WM08, name: "Q1 2026 UK travellers (Demo)"}]
+  pob_templates:
+    - code: TPL-BOOKING-FEE
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: POINT_IN_TIME
+      over_time_criterion: NOT_APPLICABLE
+      recognition_method: POINT_IN_TIME
+      policy_values: {balance.right_to_consideration: UNCONDITIONAL}
+  products:
+    - code: BOOKING-FEE
+      name: "Traveller booking fee"
+      pob_template: TPL-BOOKING-FEE
+      revenue_category: FEES
+      principal_agent: PRINCIPAL
+  ssp_books:
+    - code: SSP-WM-UK-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2025-01-01"
+          methodology_label: "Observable standalone prices (demo study)"
+          entries:
+            - product: BOOKING-FEE
+              currency: GBP
+              method: observable
+              distinctness: distinct
+              ranges: [{point_value: "1.00"}]
+  fx_rate_sets: []
+  rule_sets: []
+  policies:
+    tenant: {billing.posting: ENGINE, recognition.time_convention: MONTHLY_EVEN}
+    entities:
+      WM-UK: {tp.sales_tax_exclusion: EXCLUDE_ALL_IN_SCOPE}
+    books: {}
+contracts:
+  - external_id: WM-08
+    customer: CUST-WM08
+    contracting_entity: WM-UK
+    transaction_currency: GBP
+    inception_date: "2026-01-01"
+    contract_type: PORTFOLIO
+    lines: [{obligation_key: L1-BOOKINGS, product_code: BOOKING-FEE, quantity: "150000", total_price: "150000.00"}]
+timeline:
+  - seq: "1"
+    kind: event
+    contract: WM-08
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: "2"
+    kind: event
+    contract: WM-08
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: "3"
+    kind: event
+    contract: WM-08
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-01-31"
+    payload: {obligation_key: L1-BOOKINGS, quantity: "50000", trigger: DELIVERY}
+  - seq: "4"
+    kind: event
+    contract: WM-08
+    event_type: BILLING_RECORDED
+    effective_date: "2026-01-31"
+    payload:
+      invoice_number: BKG-WM08-2026-01
+      line_external_id: BKG-WM08-2026-01-1
+      amount: "50000.00"
+      issue_date: "2026-01-31"
+      obligation_key: L1-BOOKINGS
+      tax_amount: "10000.00"
+  - seq: "5"
+    kind: event
+    contract: WM-08
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-02-28"
+    payload: {obligation_key: L1-BOOKINGS, quantity: "55000", trigger: DELIVERY}
+  - seq: "6"
+    kind: event
+    contract: WM-08
+    event_type: BILLING_RECORDED
+    effective_date: "2026-02-28"
+    payload:
+      invoice_number: BKG-WM08-2026-02
+      line_external_id: BKG-WM08-2026-02-1
+      amount: "55000.00"
+      issue_date: "2026-02-28"
+      obligation_key: L1-BOOKINGS
+      tax_amount: "11000.00"
+  - seq: "7"
+    kind: event
+    contract: WM-08
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-03-31"
+    payload: {obligation_key: L1-BOOKINGS, quantity: "45000", trigger: DELIVERY}
+  - seq: "8"
+    kind: event
+    contract: WM-08
+    event_type: BILLING_RECORDED
+    effective_date: "2026-03-31"
+    payload:
+      invoice_number: BKG-WM08-2026-03
+      line_external_id: BKG-WM08-2026-03-1
+      amount: "45000.00"
+      issue_date: "2026-03-31"
+      obligation_key: L1-BOOKINGS
+      tax_amount: "9000.00"
+checkpoints:
+  - name: january
+    after_seq: "4"
+    as_of: "2026-01-31"
+    book: ASC606
+    contracts:
+      - contract: WM-08
+        version:
+          revenue_cum: "50000.00"
+          billed_cum: "50000.00"
+          transaction_price: "150000.00"
+          sales_tax_excluded_amount: "10000.00"
+        obligations: [{obligation_key: L1-BOOKINGS, revenue_cum: "50000.00"}]
+        balances:
+          - entity: WM-UK
+            contract_liability: "0.00"
+            contract_asset: "0.00"
+            unbilled_receivable: "0.00"
+            accounts_receivable: "60000.00"
+    subledger:
+      - period_key: FY2026-P01
+        entity: WM-UK
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: ACCOUNTS_RECEIVABLE, account: "1100", dr: "60000.00"}
+          - {account_role: REVENUE, account: "4010", cr: "50000.00"}
+          - {account_role: SALES_TAX_PAYABLE, account: "2200", cr: "10000.00"}
+  - name: quarter-end
+    after_seq: "8"
+    as_of: "2026-03-31"
+    book: ASC606
+    contracts:
+      - contract: WM-08
+        version:
+          revenue_cum: "150000.00"
+          billed_cum: "150000.00"
+          transaction_price: "150000.00"
+          sales_tax_excluded_amount: "30000.00"
+        obligations: [{obligation_key: L1-BOOKINGS, revenue_cum: "150000.00"}]
+        balances:
+          - entity: WM-UK
+            contract_liability: "0.00"
+            contract_asset: "0.00"
+            unbilled_receivable: "0.00"
+            accounts_receivable: "180000.00"
+    subledger:
+      - period_key: FY2026-P03
+        entity: WM-UK
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: ACCOUNTS_RECEIVABLE, account: "1100", dr: "54000.00"}
+          - {account_role: REVENUE, account: "4010", cr: "45000.00"}
+          - {account_role: SALES_TAX_PAYABLE, account: "2200", cr: "9000.00"}

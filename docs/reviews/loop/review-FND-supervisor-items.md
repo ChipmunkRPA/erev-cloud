@@ -1,0 +1,252 @@
+# Supervisor items: FND review remediation
+
+Placement:
+- Append these items directly after GATE-FND in `docs/BUILD_SPEC.md`, so the loop takes them as the first unticked items.
+- Copy them into `docs/build-spec/11-foundation-platform.md` before the next merge (BSF-D-01).
+- Record the rulings they carry under D-70.
+
+Findings and adjudication: `~/dev/erev-rv/reports/fnd/REVIEW-FND.md`.
+
+- [ ] **SUP-FND-1 FND review remediation, part 1: gate reports and test-harness guards (FR-G-01, FR-G-02, FR-C-01, FR-B-01, FR-G-04, FR-C-03, FR-B-03, FR-B-04). Supervisor item.**
+  - **Prerequisites:** GATE-FND
+  - **Scope:**
+    - Paths:
+      - `Makefile`:
+        - the `ci` recipe passes `--refuse "TESTS=$(TESTS)"`, `--refuse "K=$(K)"` and `--refuse "FRONTEND=$(FRONTEND)"` to `scripts/gate_report.py` (ruling: DG-MK-ci takes no variables);
+        - the `test-pg` recipe passes `--fail-on-skipped backend`;
+        - `API_PORT ?= $(or $(EREV_API_PORT),8190)` is used by the `backend` holder check, the uvicorn command and the `frontend` proxy target.
+      - `scripts/gate_report.py`:
+        - option `--refuse NAME=VALUE`, whose value may be empty: any non-empty value fails the run before the first stage, with a `failures` entry `{"stage": "variables", "exit_code": 1, "variables": [...]}`;
+        - option `--fail-on-skipped LABEL`;
+        - a run whose stages all pass but whose `--junit` file is absent fails with `{"stage": "junit", "exit_code": 1, "label": <label>}`.
+      - `scripts/proc.sh`:
+        - `start` builds the readiness URL of `api`, `api-e2e`, `api-perf`, `web` and `web-e2e` from its `<port>` argument; the `EREV_*_PORT` variables only give the default when `<port>` is `-`;
+        - the command dispatch runs only when the script is executed, not when it is sourced.
+      - `backend/tests/support/markers.py` (new): the DG-TST-07 and DG-TST-09 placement checks for the `parity`, `answer_key`, `property`, `pg` and `perf` markers. Modules under `architecture/` may carry `pg` (DG-TST-02).
+      - `backend/tests/conftest.py`: the `tryfirst` `pytest_collection_modifyitems` hook also calls `markers.check(items, root)` and raises `pytest.UsageError`.
+      - `backend/tests/engine/conftest.py` (new): DG-TST-18. At collection it fails every item under its directory that requests `test_database`, `db` or `committed_db`, before any fixture is set up.
+      - Tests: `backend/tests/unit/test_makefile_targets.py`, `backend/tests/unit/test_controls_report.py`, `backend/tests/unit/test_engine_isolation.py` (new), `backend/tests/unit/test_proc_sh.py`, `backend/tests/unit/test_registry_seed.py`.
+    - Schema: none
+    - API: none
+    - Engine: none
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/unit/test_makefile_targets.py::test_dg_mk_ci_refuses_narrowing_variables` (FR-G-01):
+        - Command: `scripts/gate_report.py ci --command "make ci TESTS=backend/tests/engine" --refuse "TESTS=backend/tests/engine" --refuse "K=" --refuse "FRONTEND=" --stage "env=touch <tmp>/ran" --reports-dir <tmp>/reports`.
+        - It exits 1 and leaves `<tmp>/ran` absent. The last line is `FAIL ci: TESTS, K and FRONTEND are not accepted (DG-MK-ci)`.
+        - `<tmp>/reports/ci/report.json` holds `exit_code` 1 and `failures` `[{"stage": "variables", "exit_code": 1, "variables": ["TESTS"]}]`.
+        - `--refuse "K=canonical"` and `--refuse "FRONTEND=0"` each fail naming that variable. With all three values empty, the stage runs and the last line is `OK ci`.
+        - The `ci` recipe text passes the three `--refuse` arguments. This is checked on the Makefile text, never through `make -n ci`, whose `$(MAKE)` lines execute.
+      - `backend/tests/unit/test_controls_report.py::test_dg_tst_09_skip_or_xfail_on_marked_tests_fails_collection` (FR-G-02):
+        - Setup: a pytester tree whose conftest calls the collection hook with `root=config.rootpath`, holding `pg/test_probe.py` with `pytestmark = pytest.mark.pg` and a test decorated `@pytest.mark.skip(reason="probe")`.
+        - It fails collection with exit 4 and `pg tests may not carry skip, skipif or xfail (DG-TST-09)`.
+        - The same holds for `@pytest.mark.xfail` and `@pytest.mark.skipif(True, reason="probe")`, and for modules marked `parity`, `answer_key` and `property` under `parity/`, `answer_keys/` and `properties/`.
+      - `::test_dg_tst_07_marker_outside_its_directory_fails_collection` (FR-G-02): in the same layout,
+        - `unit/test_probe.py` with `pytestmark = pytest.mark.pg` fails collection naming `DG-TST-07`;
+        - `pg/test_probe.py` without a `pg` `pytestmark` fails collection naming `DG-TST-07`;
+        - `architecture/test_probe.py` with `pytestmark = pytest.mark.pg` passes;
+        - the repository's own `backend/tests` collects without error.
+      - `backend/tests/unit/test_makefile_targets.py::test_g6_skipped_pg_test_fails_test_pg` (FR-G-02):
+        - Command: `scripts/gate_report.py test-pg --command "make test-pg" --stage "pg=cp <tmp>/one-passed-one-skipped.xml <tmp>/junit.xml" --junit "backend=<tmp>/junit.xml" --fail-on-skipped backend --reports-dir <tmp>/reports`.
+        - It exits 1, and the last line is `FAIL test-pg: 1 skipped test in backend (DG-TST-09)`. `report.json` has `exit_code` 1.
+        - With a JUnit file of zero skipped tests, the run ends `OK test-pg`.
+        - The `test-pg` recipe text passes `--fail-on-skipped backend`.
+      - `::test_dg_mk_00g_missing_junit_fails` (FR-G-04):
+        - Command: `scripts/gate_report.py ci --command "make ci" --stage env=true --junit "backend=<tmp>/absent.xml" --reports-dir <tmp>/reports`.
+        - It exits 1, prints the last line `FAIL ci: JUnit summary backend missing (DG-MK-ci)`, and writes `report.json` with `exit_code` 1 and a `failures` entry `{"stage": "junit", "exit_code": 1, "label": "backend"}`.
+        - The `--junitxml` and `--outputFile.junit` paths of the `test` recipe equal the `--junit` paths of the `ci` recipe.
+      - `backend/tests/unit/test_engine_isolation.py::test_dg_tst_18_engine_test_requesting_database_fixture_fails` (FR-C-01):
+        - Setup: a pytester tree whose root conftest defines stub fixtures `test_database`, `db` and `committed_db`, each creating a marker file when set up. `engine/conftest.py` holds the bytes of `backend/tests/engine/conftest.py`, and `engine/test_probe.py` holds a test requesting `db`.
+        - The run exits non-zero with output naming `DG-TST-18`, and no marker file exists afterwards.
+        - The same holds for `committed_db` and `test_database`.
+        - `engine/test_probe.py` without a database fixture passes. `unit/test_probe.py` requesting `db` passes.
+      - `backend/tests/unit/test_proc_sh.py::test_dg_run_10_readiness_uses_start_port` (FR-B-01):
+        - Sourcing: with `EREV_API_PORT` removed from the environment, `bash -c 'source scripts/proc.sh && readiness api 8192'` prints `http http://127.0.0.1:8192/api/v1/readyz` and starts, stops or lists nothing.
+        - The same command with `EREV_API_PORT=8190` exported still prints port `8192`.
+        - `readiness web 5272` prints `http http://127.0.0.1:5272/`; `readiness api -` prints `http http://127.0.0.1:8190/api/v1/readyz`; `readiness worker -` prints a `heartbeat` line.
+        - `test_dg_run_10_start_reuse_stop_status` still passes.
+      - `backend/tests/unit/test_makefile_targets.py::test_dg_run_01_port_override` (FR-C-03):
+        - `env -u MAKEFLAGS EREV_API_PORT=8192 make -n --no-print-directory backend` prints `lsof -nP -iTCP:8192` and `--port 8192`.
+        - `make -n --no-print-directory frontend` under the same environment prints `EREV_API_PROXY_TARGET=http://127.0.0.1:8192`.
+        - Without `EREV_API_PORT`, both print `8190`.
+        - Neither recipe contains `$(MAKE)`, so `make -n` executes nothing.
+      - `::test_dg_mk_build_imports_worker_when_present` (FR-B-03):
+        - The Makefile `BUILD_IMPORTS` holds `erev_api.main` and `erev_engine`, and holds `erev_api.worker` whenever `backend/erev_api/worker.py` exists (ruling D-70).
+        - The test's check function, given `BUILD_IMPORTS := erev_api.cli, erev_api.main, erev_engine` and a stand-in root that contains `backend/erev_api/worker.py`, returns `DG-MK-build: erev_api.worker missing from make build imports`.
+      - `backend/tests/unit/test_registry_seed.py::test_krn_reg_04_generated_module_current` (FR-B-04):
+        - The test writes the regenerated module and the changed POLICIES copy under pytest `tmp_path`, and the module source no longer references `.run/tmp`.
+        - `backend/tests/unit/test_proc_sh.py::test_dg_run_10_start_reuse_stop_status` uses the process name `probe-<test process pid>` and removes `.run/probe-<pid>.log` at teardown.
+    - Answer keys: none
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: none; REQs contributed: REQ-OPS-007, REQ-OPS-010
+  - **Read:**
+    - dev-guide:
+      - §4.1 DG-MK-00a, DG-MK-00g; §4.2 DG-MK-backend, DG-MK-frontend; §4.3 DG-MK-test, DG-MK-build, DG-MK-ci; §4.4 DG-MK-test-pg, DG-MK-release-manifest;
+      - §3.1 intro and DG-RUN-01, DG-RUN-03; §3.2 DG-RUN-10, DG-RUN-12, DG-RUN-13; §3.3 DG-RUN-21; §3.4 DG-RUN-30;
+      - §9.1 DG-TST-01, DG-TST-02, DG-TST-04; §9.2 DG-TST-07, DG-TST-09; §9.3 DG-TST-18; §10.1 G2, G6, DG-GATE-04;
+      - the `.env.example` D-70 port note (dev-guide line 357).
+    - BUILD_SPEC header §3.1 GK-01, GK-02; §4 XR-07; FND-18 `test_dg_mk_00g_ci_report_fields`.
+    - `docs/reviews/loop/spec-questions-FND.md` SPEC-Q-11, SPEC-Q-45, SPEC-Q-67.
+  - **Gates:** GK-01 `make ci`; GK-02 `make test-pg`
+
+- [ ] **SUP-FND-2 FND review remediation, part 2: database guards, partition immutability and architecture rules (FR-M-01, FR-S-01, FR-M-06, FR-C-04, FR-M-03, FR-C-02, FR-G-03, FR-M-04). Supervisor item.**
+  - **Prerequisites:** GATE-FND; SUP-FND-1
+  - **Scope:**
+    - Paths:
+      - `backend/erev_api/db/migration_ops.py`:
+        - `apply_class` and `create_monthly_partitions` give every child partition of an IM-A or IM-S parent the statement trigger `tg_<partition>__truncate BEFORE TRUNCATE … FOR EACH STATEMENT EXECUTE FUNCTION erev.tg_forbid_mutation()`, whichever of the two runs first;
+        - `create_monthly_partitions(table, *, first, last, partition_column=None)` admits a probe table outside 04 §1.6 when `partition_column` is given.
+      - `backend/erev_api/db/lint.py`: DB-14 (g) also requires an enabled DB-01 truncate trigger on each child partition of an IM-A parent, and names the partition.
+      - `backend/erev_api/config.py`: a single public `ALLOWED_DATABASE` pattern and a single URL-to-database helper, which refuses the query parameters `dbname`, `service` and `servicefile` and names the parameter, never the credentials.
+      - `backend/erev_api/db/session.py`:
+        - `database_of` delegates to the config helper;
+        - the `connect` listener of `build_engine` compares `SELECT current_database()` with the URL's database and raises `RoleGuardError` naming both.
+      - `scripts/check_env.py`: the same query refusal. It stays importable without the venv (`scripts/setup.sh` runs `--tools` before `uv sync`), so its pattern is compared by test rather than imported.
+      - `backend/tests/support/architecture.py`: `imports` keeps each alias's `asname`.
+      - Architecture tests: `backend/tests/architecture/test_engine_purity.py` (aliased clock owners); `backend/tests/architecture/test_forbidden_patterns.py` (the `database-administration` rule matches `CREATE`, `ALTER` or `DROP` of `DATABASE`, `ROLE`, `USER`, `GROUP`, `EXTENSION` or `TABLESPACE`, plus `ALTER SYSTEM`; ruling D-70 on DG-ENV-14); `backend/tests/architecture/test_layers.py` (rule: `identity_session` is imported only by `backend/erev_api/auth/**`, `backend/erev_api/api/v1/health.py` and `backend/erev_api/db/lint.py`; ruling D-70 on DG-KRN-DB-02).
+      - Guides: `docs/guides/itgc-guide.md` section "Database roles and prerequisites"; `docs/guides/runbook.md` section "Migrations", subsection "Hosted deployments".
+      - Tests: `backend/tests/pg/test_db_invariants.py`, `backend/tests/pg/test_catalogue_lint.py`, `backend/tests/pg/test_session_guards.py`, `backend/tests/unit/test_db_urls.py`, `backend/tests/unit/test_guides.py`.
+    - Schema: none (helper and lint behaviour only; no revision, so the heads are unchanged)
+    - API: none
+    - Engine: none
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/pg/test_db_invariants.py::test_db_01_forbid_truncate_on_partitions` (FR-M-01):
+        - Setup: a committed owner probe `erev.partition_probe (id uuid, occurred_at timestamptz) PARTITION BY RANGE (occurred_at)`, whose partitions come from `create_monthly_partitions("partition_probe", first="2026-09", last="2026-10", partition_column="occurred_at")`. It is built in order A (`apply_class("IM-A")`, then the partitions) and in order B (the partitions, then `apply_class("IM-A")`), and dropped at teardown (SPEC-Q-20 pattern).
+        - For each order, `TRUNCATE erev.partition_probe_p202609` and `TRUNCATE erev.partition_probe_pdefault` as `erev_owner` without `app.data_fix_ticket` fail with `EREV-IMM-001`.
+        - With `app.data_fix_ticket` set, inside a rolled-back transaction, both succeed.
+        - `TRUNCATE erev.partition_probe` fails with `EREV-IMM-001`.
+      - `backend/tests/pg/test_catalogue_lint.py::test_db_14_detects_partition_without_truncate_trigger` (FR-M-01): inside a rolled-back owner transaction, the order-A probe with `tg_partition_probe_p202609__truncate` dropped produces finding (g) naming `partition_probe_p202609`. With the trigger present, check (g) reports nothing for the probe.
+      - `backend/tests/unit/test_db_urls.py::test_dg_env_13_query_parameters_cannot_redirect_database` (FR-S-01):
+        - For `postgresql://u:p@127.0.0.1:5432/erev_test?dbname=postgres`, the config helper and `erev_api.db.session.database_of` raise `SettingsError` naming `dbname` and not containing `p@`.
+        - `scripts/check_env.check_database_allowed` returns an error naming `dbname`.
+        - The same holds for `?service=x` and `?servicefile=x`.
+        - `?sslmode=disable` is accepted by all three.
+      - `::test_dg_env_13_allow_list_helpers_agree` (FR-M-06):
+        - Over URLs whose path is `erev`, `erev_test`, `erev_e2e`, `erev_rv_x%5Fy` or `postgres`, and over `erev_test?dbname=postgres`, the config helper, `erev_api.db.session.database_of` and `scripts/check_env.check_database_allowed` agree on acceptance and on the database name.
+        - `scripts/check_env.DATABASE_ALLOW_LIST.pattern` equals `erev_api.config.ALLOWED_DATABASE.pattern`.
+      - `backend/tests/pg/test_session_guards.py::test_dg_env_13_connected_database_matches_url` (FR-S-01):
+        - With `erev_api.db.session.database_of` patched to return `erev_rv_other` for one `build_engine(<test app URL>, role="erev_app")` call, the first connection raises `RoleGuardError` naming `erev_rv_other` and the connected database.
+        - The unpatched engine connects and passes the role guard.
+      - `backend/tests/architecture/test_layers.py::test_dg_krn_db_02_identity_session_importers` (FR-C-04):
+        - `from erev_api.db.session import identity_session` in a snippet under `backend/erev_api/domain/x.py` yields one finding.
+        - Under `backend/erev_api/auth/x.py`, `backend/erev_api/api/v1/health.py` and `backend/erev_api/db/lint.py` it yields none.
+        - The repository yields none.
+      - `backend/tests/architecture/test_forbidden_patterns.py::test_dg_env_14_database_administration_synonyms` (FR-M-03):
+        - Each of these snippets under `backend/erev_api/db/migrations/versions/0009_x.py` yields exactly one `database-administration` finding: `ALTER USER erev_app BYPASSRLS`, `CREATE USER x`, `DROP USER x`, `CREATE GROUP x`, `DROP ROLE x`, `DROP DATABASE x`, `ALTER DATABASE x SET y = 1`, `CREATE TABLESPACE t LOCATION 'p'`, `DROP EXTENSION x` and `ALTER EXTENSION x UPDATE`. So does `DROP DATABASE x` in `scripts/x.sh`.
+        - `DROP SCHEMA IF EXISTS erev CASCADE` yields none.
+        - `test_dg_arc_05_repository_clean` still passes.
+      - `backend/tests/unit/test_guides.py::test_dg_env_14_itgc_guide_matches_enforced_rule` (FR-M-03): the "Database roles and prerequisites" section of `docs/guides/itgc-guide.md` names DG-ENV-14 and DG-ARC-05, and lists as build failures exactly `CREATE`, `ALTER` or `DROP` of a database, role, user, group, extension or tablespace, plus `ALTER SYSTEM`.
+      - `backend/tests/architecture/test_engine_purity.py::test_dg_arc_02_aliased_clock_reads` (FR-C-02, FR-G-03):
+        - Snippets under `backend/erev_engine/stages/x.py` containing `from datetime import datetime as dt\nknown_at = dt.now()\n`, `from datetime import date as D\nday = D.today()\n` and `from datetime import datetime as DT\nstamp = DT.utcnow()\n` yield exactly one finding each.
+        - `import datetime as dt\nstamp = dt.datetime.now()\n` yields one finding.
+        - `from datetime import date as D\nday = D(2026, 9, 12)\n` yields none.
+        - The repository yields none.
+      - `backend/tests/unit/test_guides.py::test_rb_02_failed_migration_rollback_is_clone_and_cutover` (FR-M-04):
+        - Under "Migrations", the runbook states that a failed hosted migration is rolled back by restore through clone and cutover (05 OPR-11), at the pre-migration backup point (05 OPR-16).
+        - The section contains `clone and cutover` and `never restored in place`, and does not contain `restoring that backup`.
+    - Answer keys: none
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: none; REQs contributed: REQ-OPS-010, REQ-OPS-003, REQ-CTL-004, REQ-PLT-001
+  - **Read:**
+    - 04: §14.1 DB-01, DB-14 (g); §1.5; §1.6 rules 1 to 3; T-PLT-19.
+    - dev-guide:
+      - §6.5 DG-MIG-03, DG-MIG-05, DG-MIG-10 and the `apply_class` and `create_monthly_partitions` helper contract; §9.4 DG-TST-21, DG-TST-23;
+      - §2.4 DG-ENV-11, DG-ENV-12, DG-ENV-13, DG-ENV-14; §5.2 DG-KRN-DB-02, DG-KRN-DB-04;
+      - §6.8 DG-ARC-01, DG-ARC-02, DG-ARC-05; §5.10 DG-KRN-TIME-05; §4.2 DG-MK-migrate.
+    - 05 OPR-11, OPR-16, OPR-23. `docs/00-GOAL.md` §5. BUILD_SPEC header §4 XR-01, XR-20; FND-18 (itgc-guide scope).
+    - `docs/reviews/loop/spec-questions-FND.md` SPEC-Q-9, SPEC-Q-20, SPEC-Q-22, SPEC-Q-49.
+  - **Gates:** GK-01 `make ci`; GK-02 `make test-pg`
+
+- [ ] **SUP-FND-3 FND review remediation, part 3: key management, log hygiene and the HTTP surface (FR-S-04, FR-S-02, FR-S-03, FR-S-05, FR-S-06, FR-S-07, FR-S-09). Supervisor item.**
+  - **Prerequisites:** GATE-FND; SUP-FND-2
+  - **Scope:**
+    - Paths:
+      - `backend/erev_api/adapters/keys/provider.py`:
+        - `GcpKeyProvider.wrap` and `unwrap` call Cloud KMS `encrypt` and `decrypt` on the DEK, with the canonical bytes of `context` as `additional_authenticated_data`. KEK id `kek:1` names the KMS key; KMS selects the key version (ruling D-70 on SPEC-Q-15).
+        - `GcpKeyProvider.hmac_key("kek:<n>")` raises `ValueError`, and no Secret Manager `app-kek` read remains.
+        - `LocalKeyProvider.secret` refuses the three master-key names with `KeyError`.
+        - `GcpKeyProvider.secret` refuses `app-kek`, `security-hmac`, `audit-hmac-<anything>`, `db-owner-url` and `db-app-url` with `KeyError`, without calling the store.
+      - `backend/erev_api/auth/keyring.py`: the blob layout is `b"erev1"` ‖ KEK id length (1 byte) ‖ KEK id ‖ wrapped DEK length (2 bytes, big-endian) ‖ wrapped DEK ‖ nonce ‖ ciphertext with tag, for both providers. It replaces the fixed `WRAPPED_DEK_BYTES` split (ruling D-70 amending DG-KRN-KEY-04).
+      - `backend/erev_api/db/session.py`: `build_engine` passes `hide_parameters=True`.
+      - `backend/erev_api/problems.py` and `backend/erev_api/logging.py`:
+        - an unmapped `DBAPIError` is logged under `http.unhandled_error` with its class, SQLSTATE and constraint name, and a stack trace whose exception message is replaced;
+        - keys matching the 05 SAR-19 pattern or `FORBIDDEN_FIELDS` are dropped at every depth of mappings and lists;
+        - a quoted secret-assignment value is redacted in full, and an unquoted one to the end of its line;
+        - `configure_logging` removes the handlers of the `uvicorn`, `uvicorn.error` and `uvicorn.access` loggers and sets `propagate = True`.
+      - `backend/tests/support/log_guard.py`: `check` recurses into nested keys.
+      - `backend/erev_api/money.py`: `_MONEY`, `_DECIMAL` and `_RATE` use `[0-9]`.
+      - `backend/erev_api/main.py`:
+        - when `settings.cors_origins` is non-empty, `create_app` installs `CORSMiddleware` with exactly those origins, `allow_credentials=True`, methods `GET, POST, PUT, PATCH, DELETE` and headers `Content-Type, Idempotency-Key, If-Match, X-CSRF-Token, X-Request-Id` (05 SAR-12);
+        - it raises `SettingsError` naming `EREV_CORS_ORIGINS` for `*` or for an origin not matching `^https?://[^/?#]+$`;
+        - `Settings` construction still accepts `*`, so the SOP doctor check can report it.
+      - Tests: `backend/tests/unit/test_keys.py`, `backend/tests/unit/test_logging.py`, `backend/tests/unit/test_api_money.py`, `backend/tests/api/test_middleware.py`, `backend/tests/pg/test_session_guards.py`.
+    - Schema: none
+    - API: none (no route or schema changes; `docs/api/openapi.json` unchanged)
+    - Engine: none
+    - Screens: none
+  - **Acceptance:**
+    - Tests:
+      - `backend/tests/unit/test_keys.py::test_key_04_gcp_provider_wraps_deks_through_kms` (FR-S-04):
+        - Setup: fake KMS and Secret Manager clients, no `google.cloud` import and no network (ruling D-70 amending DG-ENV-17 "never exercised in tests"), and a `KeyRing` over `GcpKeyProvider(fake_store, kms_key="projects/p/locations/l/keyRings/erev/cryptoKeys/erev-app-kek", kms_client=fake_kms)`.
+        - `encrypt(b"x", context={"t": "a"})` makes exactly one KMS `encrypt` call. Its `plaintext` holds 32 bytes, and its `additional_authenticated_data` equals the canonical bytes of `{"t": "a"}`. No Secret Manager read occurs.
+        - `decrypt` of that blob with the same context makes one KMS `decrypt` call and returns `b"x"`.
+        - `provider.hmac_key("kek:1")` raises `ValueError`.
+      - `::test_krn_key_04_blob_carries_wrapped_dek_length` (FR-S-04):
+        - A local blob is `b"erev1"`, byte `0x05`, `b"kek:1"`, the 2-byte big-endian value 60, the 60-byte wrapped DEK, a 12-byte nonce and the ciphertext with tag.
+        - A blob whose length field is 59 raises `ValueError`.
+        - `test_krn_key_04_envelope_roundtrip_and_context_binding` still passes.
+      - `::test_krn_key_01_secret_refuses_key_material` (FR-S-03):
+        - `LocalKeyProvider(EnvSecretStore(settings)).secret(name)` raises `KeyError` for `EREV_ENCRYPTION_KEY`, `EREV_AUDIT_HMAC_MASTER_KEY` and `EREV_SECURITY_EVENT_HMAC_KEY`.
+        - `GcpKeyProvider(fake_store, kms_key="k", kms_client=fake_kms).secret(ref)` raises `KeyError` for `app-kek`, `security-hmac`, `audit-hmac-0191e0a0-0000-7000-8000-000000000001`, `db-owner-url` and `db-app-url`, and the fake store records no call.
+        - `secret("sf-client-secret")` returns the stored `SecretStr`.
+      - `backend/tests/pg/test_session_guards.py::test_dg_log_03_db_error_logs_no_bound_parameters` (FR-S-02):
+        - Setup: through `identity_session`, `SELECT CAST(:amount AS text), 1/0` with `amount="146000.00"` and `SELECT CAST(:v AS numeric)` with `v="USD 98765.43"` each raise `DBAPIError`.
+        - Passing each to `problems.unhandled_error_response` under `log_stream` returns 500 about:blank.
+        - No captured line contains `146000.00` or `98765.43`.
+        - The `http.unhandled_error` line holds the exception class, SQLSTATE `22012` or `22P02`, and a stack trace.
+        - `build_engine(<test app URL>, role="erev_app").hide_parameters` is true.
+      - `backend/tests/unit/test_logging.py::test_sar_19_nested_secret_keys_dropped` (FR-S-06):
+        - Logging `error_codes={"password": "p-123456", "cookie": "c-123456"}` and `error_codes=[{"api_key": "k-123456"}]` writes lines containing none of `p-123456`, `c-123456` or `k-123456`.
+        - A message holding `password="alpha bravo charlie"` writes neither `bravo` nor `charlie`.
+        - `log_guard.check([{"event": "x", "error_codes": {"password": "v"}}])` raises `AssertionError`.
+      - `::test_dg_log_06_uvicorn_records_bridged` (FR-S-07):
+        - Setup: `logging.config.dictConfig(uvicorn.config.LOGGING_CONFIG)`, then `configure_logging(stream=buf)`.
+        - `logging.getLogger("uvicorn.error").info("Started server process [1]")` writes exactly one JSON line to `buf` with `logger` `uvicorn.error`.
+        - An `ERROR` record on `uvicorn.error` whose message holds `password=vhunter2-probe` writes no `vhunter2-probe`.
+      - `backend/tests/unit/test_api_money.py::test_api_c_06_non_ascii_digits_rejected` (FR-S-05):
+        - `{"amount": "١٢.٣٠", "currency": "USD"}` and `{"amount": "１２.３０", "currency": "USD"}` return 422 with `errors[0].rule_id == "API-C-06"`.
+        - `TypeAdapter(DecimalStr)` rejects `"٠.٢٥"`, and `TypeAdapter(RateStr)` rejects `"١.٠٨"`.
+        - `{"amount": "12.30", "currency": "USD"}` still converts to minor 1230.
+      - `backend/tests/api/test_middleware.py::test_sar_12_cors_allow_list_and_wildcard_refusal` (FR-S-09):
+        - With `cors_origins=("http://127.0.0.1:5270",)`, an `OPTIONS /api/v1/healthz` preflight from that origin with `Access-Control-Request-Method: POST` and `Access-Control-Request-Headers: Idempotency-Key` returns `Access-Control-Allow-Origin: http://127.0.0.1:5270` and `Access-Control-Allow-Credentials: true`.
+        - A preflight from `http://127.0.0.1:9999` gets no `Access-Control-Allow-Origin`.
+        - With `cors_origins=()`, the middleware stack holds no `CORSMiddleware`.
+        - `create_app(<settings with cors_origins=("*",)>)` raises `SettingsError` naming `EREV_CORS_ORIGINS`, while constructing those settings succeeds.
+    - Answer keys: none
+    - Golden: none
+    - Controls: none
+    - Screens: none
+    - Journeys: none
+    - Properties: none
+    - REQs completed: none; REQs contributed: REQ-SEC-003, REQ-SEC-004, REQ-OPS-005, REQ-PLT-031
+  - **Read:**
+    - 05: §6.5 KEY-04, KEY-09; SAR-12, SAR-19, SAR-21, SAR-22; ADP-14; DPL-34, DPL-36; OPR-20, OPR-21.
+    - dev-guide:
+      - §5.19 DG-KRN-KEY-01 to DG-KRN-KEY-04; §2.4 DG-ENV-17;
+      - §6.6 DG-LOG-01, DG-LOG-03, DG-LOG-05, DG-LOG-06, DG-LOG-07; §3.4 DG-RUN-31;
+      - §5.9 DG-KRN-MONEY-05, DG-KRN-MONEY-06; §5.1 DG-KRN-CFG-02; §5.8 DG-KRN-ERR-03.
+    - 04 §15.1 API-C-06.
+    - BUILD_SPEC SOP `backend/tests/unit/test_doctor_production_checks.py::test_sar_40_production_checks`; DIN `test_connection_stores_secret_reference_only`.
+    - `docs/reviews/loop/spec-questions-FND.md` SPEC-Q-10, SPEC-Q-14, SPEC-Q-15, SPEC-Q-34, SPEC-Q-36, SPEC-Q-40.
+  - **Gates:** GK-01 `make ci`; GK-02 `make test-pg`

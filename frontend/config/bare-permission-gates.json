@@ -1,0 +1,18 @@
+[
+  "src/routes/close/close-run.tsx",
+  "src/routes/close/cockpit.tsx",
+  "src/routes/close/history.tsx",
+  "src/routes/close/journal-preview.tsx",
+  "src/routes/close/multi-entity.tsx",
+  "src/routes/close/reconciliation.tsx",
+  "src/routes/close/reconciliations.tsx",
+  "src/routes/contracts/draft-form.tsx",
+  "src/routes/contracts/list.tsx",
+  "src/routes/contracts/modification-detail.tsx",
+  "src/routes/contracts/modification-wizard.tsx",
+  "src/routes/contracts/obligation-pane.tsx",
+  "src/routes/contracts/tabs/journals.tsx",
+  "src/routes/contracts/tabs/modifications.tsx",
+  "src/routes/contracts/tabs/schedules.tsx",
+  "src/routes/contracts/workbench.tsx"
+]

@@ -1,0 +1,237 @@
+schema: erev-answer-key/1
+id: VC-RB-01-SELF-PAY-IMPLICIT-CONCESSION-CREDIT-LOSS
+title: "Self-pay emergency visit cohort: implicit price concessions to a receivable contra, later credit loss outside revenue"
+status: active
+families: [VC, JE, POS, STP1]
+tags: [portfolio]
+summary: "research 05 §12 worked example. The March 2026 cohort of self-pay emergency visits is billed at gross charges of 2,000,000.00. Riverbend treats patients regardless of ability to pay and expects to collect 20% based on the cohort's collection history, so the transaction price is 400,000.00 net of an implicit price concession (606-10-32-7(b); POL-015 portfolio). Under billing.posting ENGINE the engine posts the receivable (JET-03 Dr ACCOUNTS_RECEIVABLE 2,000,000.00), revenue 400,000.00 (JET-02) and the concession to RECEIVABLE_CONTRA (JET-04c, κ = 0.80: 1,600,000.00; D-14a). On 30 June the collection estimate falls to 18% (κ = 0.82): revenue −40,000.00 (JET-04a) and receivable contra +40,000.00; net receivable 360,000.00. In September a patient's bankruptcy leads to a 5,000.00 write-off: a credit loss measured outside the engine (POL-125; 606-10-55-106 to 55-109), so the engine posts nothing and revenue stays 360,000.00. Cash collection and write-offs are ERP postings."
+authority:
+  codification:
+    - "606-10-25-1"
+    - "606-10-32-7"
+    - "606-10-10-4"
+    - "606-10-55-99"
+    - "606-10-55-106"
+    - "606-10-45-4"
+    - "326-20-30-1"
+  ifrs: ["IFRS 15.52"]
+  practice:
+    - "PwC Health care industry guide 3.3 (implicit price concessions)"
+    - "HFMA revenue recognition implementation paper"
+  urls: []
+derived_from: {research04: [], research05: [RB-01], chk: [], golden: [], dev: []}
+requirements: [REQ-TP-015, REQ-TP-017, REQ-BIL-002, REQ-BIL-011, REQ-CON-004]
+policy_refs: [POL-004, POL-015, POL-040, POL-123, POL-125]
+review: {author: answer-keys-industries, authored_on: "2026-09-12", reviewer: null, reviewed_on: null, status: pending}
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: RB-US
+      name: "Riverbend Health System (Demo)"
+      functional_currency: USD
+      time_zone: America/New_York
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: "1"}
+      books: [ASC606]
+  periods: {from: "2026-03", to: "2026-09"}
+  period_states: []
+  gl_accounts:
+    - {code: "1100", name: "Accounts receivable", account_type: ASSET}
+    - {code: "1101", name: "Receivable contra - implicit price concessions", account_type: ASSET}
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4010", name: "Revenue - services and subscriptions", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: ACCOUNTS_RECEIVABLE, account: "1100"}
+    - {account_role: RECEIVABLE_CONTRA, account: "1101"}
+    - {account_role: REVENUE, product: ED-VISIT-SELFPAY, account: "4010"}
+  customers: [{code: CUST-RB01, name: "March 2026 self-pay emergency cohort (Demo)"}]
+  pob_templates:
+    - code: TPL-ED-VISIT
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: POINT_IN_TIME
+      over_time_criterion: NOT_APPLICABLE
+      recognition_method: POINT_IN_TIME
+      policy_values: {balance.right_to_consideration: UNCONDITIONAL}
+  products:
+    - code: ED-VISIT-SELFPAY
+      name: "Emergency department visit, self-pay cohort"
+      pob_template: TPL-ED-VISIT
+      revenue_category: PATIENT_SERVICE
+  ssp_books:
+    - code: SSP-RB-US-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2025-01-01"
+          methodology_label: "Observable standalone prices (demo study)"
+          entries:
+            - product: ED-VISIT-SELFPAY
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges: [{point_value: "1600.00"}]
+  fx_rate_sets: []
+  rule_sets: []
+  policies:
+    tenant: {billing.posting: ENGINE, recognition.time_convention: MONTHLY_EVEN}
+    entities: {}
+    books: {}
+contracts:
+  - external_id: RB-01
+    customer: CUST-RB01
+    contracting_entity: RB-US
+    transaction_currency: USD
+    inception_date: "2026-03-31"
+    contract_type: PORTFOLIO
+    lines: [{obligation_key: L1-VISITS, product_code: ED-VISIT-SELFPAY, quantity: "1250", total_price: "2000000.00"}]
+    judgements:
+      - handle: JDG-RB01-COLLECT
+        topic: COLLECTIBILITY
+        subject_obligation_key: L1-VISITS
+        conclusion: "Services provided without credit assessment; shortfall against charges is an implicit price concession; collectibility of the concession-adjusted amount is probable."
+    estimates:
+      - element_code: IPC-RB01-2026-03
+        estimate_kind: IMPLICIT_PRICE_CONCESSION
+        method: EXPECTED_VALUE
+        obligation_key: L1-VISITS
+        versions:
+          - version_no: "1"
+            effective_date: "2026-03-31"
+            rate: "0.80"
+            unconstrained_amount: "1600000.00"
+            most_conservative_amount: "1600000.00"
+            constrained_amount: "1600000.00"
+            currency: USD
+            rationale: "Twelve-month self-pay collection rate 20%."
+          - version_no: "2"
+            effective_date: "2026-06-30"
+            rate: "0.82"
+            unconstrained_amount: "1640000.00"
+            most_conservative_amount: "1640000.00"
+            constrained_amount: "1640000.00"
+            currency: USD
+            rationale: "Cohort collections to date indicate 18%; no patient-specific credit event."
+timeline:
+  - seq: "1"
+    kind: event
+    contract: RB-01
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-03-31"
+    payload: {}
+  - seq: "2"
+    kind: event
+    contract: RB-01
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-03-31"
+    payload: {}
+  - seq: "3"
+    kind: event
+    contract: RB-01
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-03-31"
+    payload: {estimate: IPC-RB01-2026-03, version_no: "1"}
+  - seq: "4"
+    kind: event
+    contract: RB-01
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-03-31"
+    payload: {obligation_key: L1-VISITS, quantity: "1250", trigger: DELIVERY}
+  - seq: "5"
+    kind: event
+    contract: RB-01
+    event_type: BILLING_RECORDED
+    effective_date: "2026-03-31"
+    payload:
+      invoice_number: STMT-RB01-2026-03
+      line_external_id: STMT-RB01-2026-03-1
+      amount: "2000000.00"
+      issue_date: "2026-03-31"
+      obligation_key: L1-VISITS
+      is_cancellable: false
+  - seq: "6"
+    kind: event
+    contract: RB-01
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-06-30"
+    payload: {estimate: IPC-RB01-2026-03, version_no: "2"}
+checkpoints:
+  - name: cohort-billed
+    after_seq: "5"
+    as_of: "2026-03-31"
+    book: ASC606
+    contracts:
+      - contract: RB-01
+        version: {revenue_cum: "400000.00", billed_cum: "2000000.00", transaction_price: "400000.00"}
+        obligations:
+          - obligation_key: L1-VISITS
+            allocated_amount: "400000.00"
+            revenue_cum: "400000.00"
+            satisfaction_status: SATISFIED
+        balances:
+          - entity: RB-US
+            contract_liability: "0.00"
+            contract_asset: "0.00"
+            unbilled_receivable: "0.00"
+            accounts_receivable: "2000000.00"
+    subledger:
+      - period_key: FY2026-P03
+        entity: RB-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: ACCOUNTS_RECEIVABLE, account: "1100", dr: "2000000.00"}
+          - {account_role: RECEIVABLE_CONTRA, account: "1101", cr: "1600000.00"}
+          - {account_role: REVENUE, account: "4010", cr: "400000.00"}
+  - name: collection-re-estimate
+    after_seq: "6"
+    as_of: "2026-06-30"
+    book: ASC606
+    contracts:
+      - contract: RB-01
+        version: {revenue_cum: "360000.00", billed_cum: "2000000.00", transaction_price: "360000.00"}
+        obligations:
+          - obligation_key: L1-VISITS
+            allocated_amount: "360000.00"
+            revenue_cum: "360000.00"
+            satisfaction_status: SATISFIED
+        balances:
+          - entity: RB-US
+            contract_liability: "0.00"
+            contract_asset: "0.00"
+            unbilled_receivable: "0.00"
+            accounts_receivable: "2000000.00"
+    subledger:
+      - period_key: FY2026-P06
+        entity: RB-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: RECEIVABLE_CONTRA, account: "1101", cr: "40000.00"}
+          - {account_role: REVENUE, account: "4010", dr: "40000.00"}
+  - name: credit-loss-outside-revenue
+    after_seq: "6"
+    as_of: "2026-09-30"
+    book: ASC606
+    contracts:
+      - contract: RB-01
+        version: {revenue_cum: "360000.00", billed_cum: "2000000.00", transaction_price: "360000.00"}
+        obligations:
+          - obligation_key: L1-VISITS
+            allocated_amount: "360000.00"
+            revenue_cum: "360000.00"
+            satisfaction_status: SATISFIED
+        balances:
+          - entity: RB-US
+            contract_liability: "0.00"
+            contract_asset: "0.00"
+            unbilled_receivable: "0.00"
+            accounts_receivable: "2000000.00"
+    subledger:
+      - {period_key: FY2026-P09, entity: RB-US, match: exact, grain: role_account, lines: []}

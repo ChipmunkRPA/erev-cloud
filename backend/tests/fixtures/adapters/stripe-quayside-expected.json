@@ -1,0 +1,16 @@
+{
+  "scenario": "quayside-stripe-scenario.json (PRD WLD-F-31; J-23.6)",
+  "notifications": 5,
+  "duplicate_notification_ids": ["evt_DEMO0002"],
+  "unique_objects": 3,
+  "stale_versions": [{"object": "in_DEMO0001", "version": "1", "highest": "2"}],
+  "control_totals": {"count": 3, "amount_by_currency": {"USD": "2300.00"}},
+  "object_totals": {"sub_DEMO0001": "1200.00", "in_DEMO0001": "1200.00", "cn_DEMO0001": "-100.00"},
+  "fault_route": "/stripe/v1/invoices",
+  "fault_object": {"type": "INVOICE", "id": "in_DEMO0001", "version": "2"},
+  "missing_object": {"type": "INVOICE", "id": "in_MISSING"},
+  "resume": {"replay_id": 3, "later": [4, 5], "latest": 5},
+  "sweep": {"watermark": "2026-09-01T00:00:00+00:00", "found": [], "watermark_after": "2026-09-01T00:00:00+00:00"},
+  "recovery_sweep": {"watermark": "2026-09-01T00:00:00+00:00", "found": ["cn_DEMO0001"], "watermark_after": "2026-09-06T00:00:00+00:00", "mode": "RECOVERY (05 ADP-17 rev 1.12; F-DIN DIN-G1) — the events feed since the watermark plus the created-filtered lists; sweep above is the INVOICES_CREATED mode, its original expectation unchanged"},
+  "service_period": {"object": "in_DEMO0001", "start": "2026-09-01", "end": "2027-08-31"}
+}

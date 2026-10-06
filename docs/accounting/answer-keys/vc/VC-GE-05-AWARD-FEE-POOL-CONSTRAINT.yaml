@@ -1,0 +1,347 @@
+schema: erev-answer-key/1
+id: VC-GE-05-AWARD-FEE-POOL-CONSTRAINT
+title: "Cost-plus-award-fee contract: award fee pool constrained on award history and trued up at each evaluation"
+status: active
+families: [VC, REC, POS]
+tags: []
+summary: "A 2026 cost-plus-award-fee services contract: estimated allowable costs 4,000,000.00 plus a base fee of 120,000.00 (stated consideration 4,120,000.00), cost-to-cost progress; an award fee pool of 500,000.00 per half-year is determined by the customer's evaluation board. Estimate version 1 (inception): expected value 700,000.00 but constrained to 0.00 because the programme has no award history and the outcome depends on the board's judgement (606-10-32-12(a), (d)). Version 2 (30 June): period 1 award 400,000.00 determined; period 2 expected 350,000.00, constrained 250,000.00; constrained total 650,000.00. Version 3 (31 December): period 2 award 420,000.00; total 820,000.00. Costs 1,000,000.00 a quarter; billing = costs plus 3% base fee quarterly, award fees invoiced when determined. Revenue ahead of billing is conditional on the award determination (contract asset)."
+authority:
+  codification: ["606-10-32-5", "606-10-32-11", "606-10-32-12", "606-10-32-14", "606-10-25-31", "606-10-45-3"]
+  ifrs: ["IFRS 15.56", "IFRS 15.57"]
+  practice: ["BDO Government contractors guide (award fees and the constraint)"]
+  urls: []
+derived_from: {research04: [], research05: [GE-05], chk: [], golden: [], dev: []}
+requirements: [REQ-TP-002, REQ-TP-003, REQ-TP-004, REQ-REC-007, REQ-BIL-004]
+policy_refs: [POL-040, POL-041, POL-042, POL-122]
+review: {author: answer-keys-industries, authored_on: "2026-09-12", reviewer: null, reviewed_on: null, status: pending}
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: GE-US
+      name: "Granitefield Engineering US (Demo)"
+      functional_currency: USD
+      time_zone: America/Denver
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: "1"}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2027-01"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4010", name: "Revenue - services and subscriptions", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, product: SVC-CPAF, account: "4010"}
+  customers: [{code: CUST-GE05, name: "Federal Facilities Agency (Demo)"}]
+  pob_templates:
+    - code: TPL-CTC-GOV
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_A
+      recognition_method: COST_TO_COST
+      policy_values: {balance.right_to_consideration: CONDITIONAL}
+  products:
+    - code: SVC-CPAF
+      name: "Mission support services (CPAF)"
+      pob_template: TPL-CTC-GOV
+      revenue_category: GOVERNMENT
+  ssp_books:
+    - code: SSP-GE-US-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2025-01-01"
+          methodology_label: "Observable standalone prices (demo study)"
+          entries:
+            - product: SVC-CPAF
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges: [{point_value: "4120000.00"}]
+  fx_rate_sets: []
+  rule_sets: []
+  policies:
+    tenant: {billing.posting: ERP, recognition.time_convention: MONTHLY_EVEN}
+    entities: {}
+    books: {}
+contracts:
+  - external_id: GE-05
+    customer: CUST-GE05
+    contracting_entity: GE-US
+    transaction_currency: USD
+    inception_date: "2026-01-01"
+    contract_type: GOVERNMENT_CPAF
+    lines:
+      - obligation_key: L1-WORK
+        product_code: SVC-CPAF
+        quantity: "1"
+        total_price: "4120000.00"
+        start_date: "2026-01-01"
+        end_date: "2026-12-31"
+    estimates:
+      - element_code: EAC-GE05
+        estimate_kind: EAC
+        method: COST_BUILDUP
+        obligation_key: L1-WORK
+        versions:
+          - version_no: "1"
+            effective_date: "2026-01-01"
+            expected_total_amount: "4000000.00"
+            currency: USD
+            rationale: "Staffing plan."
+      - element_code: VC-GE05-AWARD
+        estimate_kind: VARIABLE_CONSIDERATION
+        method: EXPECTED_VALUE
+        obligation_key: L1-WORK
+        vc_element_type: PERFORMANCE_INCENTIVE
+        allocation_target: OBLIGATIONS
+        target_obligation_keys: [L1-WORK]
+        versions:
+          - version_no: "1"
+            effective_date: "2026-01-01"
+            scenarios:
+              - {outcome: "award=500000+500000", amount: "1000000.00", probability: "0.30"}
+              - {outcome: "award=350000+350000", amount: "700000.00", probability: "0.40"}
+              - {outcome: "award=200000+200000", amount: "400000.00", probability: "0.30"}
+            unconstrained_amount: "700000.00"
+            most_conservative_amount: "0.00"
+            constrained_amount: "0.00"
+            currency: USD
+            rationale: "No award history on this programme; board judgement."
+          - version_no: "2"
+            effective_date: "2026-06-30"
+            scenarios:
+              - {outcome: "award=400000+500000", amount: "900000.00", probability: "0.30"}
+              - {outcome: "award=400000+350000", amount: "750000.00", probability: "0.40"}
+              - {outcome: "award=400000+200000", amount: "600000.00", probability: "0.30"}
+            unconstrained_amount: "750000.00"
+            most_conservative_amount: "400000.00"
+            constrained_amount: "650000.00"
+            currency: USD
+            rationale: "Period 1 award 400,000.00 determined; period 2 constrained."
+          - version_no: "3"
+            effective_date: "2026-12-31"
+            scenarios: [{outcome: "award=400000+420000", amount: "820000.00", probability: "1.00"}]
+            unconstrained_amount: "820000.00"
+            most_conservative_amount: "820000.00"
+            constrained_amount: "820000.00"
+            currency: USD
+            rationale: "Period 2 award 420,000.00 determined."
+timeline:
+  - seq: "1"
+    kind: event
+    contract: GE-05
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: "2"
+    kind: event
+    contract: GE-05
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: "3"
+    kind: event
+    contract: GE-05
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-01-01"
+    payload: {estimate: EAC-GE05, version_no: "1"}
+  - seq: "4"
+    kind: event
+    contract: GE-05
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-01-01"
+    payload: {estimate: VC-GE05-AWARD, version_no: "1"}
+  - seq: "5"
+    kind: event
+    contract: GE-05
+    event_type: COST_INCURRED
+    effective_date: "2026-03-31"
+    payload: {purpose: PROGRESS_INPUT, obligation_key: L1-WORK, amount: "1000000.00"}
+  - seq: "6"
+    kind: event
+    contract: GE-05
+    event_type: BILLING_RECORDED
+    effective_date: "2026-03-31"
+    payload:
+      invoice_number: VOUCHER-GE05-Q1
+      line_external_id: VOUCHER-GE05-Q1-1
+      amount: "1030000.00"
+      issue_date: "2026-03-31"
+      obligation_key: L1-WORK
+  - seq: "7"
+    kind: event
+    contract: GE-05
+    event_type: COST_INCURRED
+    effective_date: "2026-06-30"
+    payload: {purpose: PROGRESS_INPUT, obligation_key: L1-WORK, amount: "1000000.00"}
+  - seq: "8"
+    kind: event
+    contract: GE-05
+    event_type: BILLING_RECORDED
+    effective_date: "2026-06-30"
+    payload:
+      invoice_number: VOUCHER-GE05-Q2
+      line_external_id: VOUCHER-GE05-Q2-1
+      amount: "1030000.00"
+      issue_date: "2026-06-30"
+      obligation_key: L1-WORK
+  - seq: "9"
+    kind: event
+    contract: GE-05
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-06-30"
+    payload: {estimate: VC-GE05-AWARD, version_no: "2"}
+  - seq: "10"
+    kind: event
+    contract: GE-05
+    event_type: BILLING_RECORDED
+    effective_date: "2026-07-15"
+    payload:
+      invoice_number: INV-GE05-AWARD1
+      line_external_id: INV-GE05-AWARD1-1
+      amount: "400000.00"
+      issue_date: "2026-07-15"
+      obligation_key: L1-WORK
+  - seq: "11"
+    kind: event
+    contract: GE-05
+    event_type: COST_INCURRED
+    effective_date: "2026-09-30"
+    payload: {purpose: PROGRESS_INPUT, obligation_key: L1-WORK, amount: "1000000.00"}
+  - seq: "12"
+    kind: event
+    contract: GE-05
+    event_type: BILLING_RECORDED
+    effective_date: "2026-09-30"
+    payload:
+      invoice_number: VOUCHER-GE05-Q3
+      line_external_id: VOUCHER-GE05-Q3-1
+      amount: "1030000.00"
+      issue_date: "2026-09-30"
+      obligation_key: L1-WORK
+  - seq: "13"
+    kind: event
+    contract: GE-05
+    event_type: COST_INCURRED
+    effective_date: "2026-12-31"
+    payload: {purpose: PROGRESS_INPUT, obligation_key: L1-WORK, amount: "1000000.00"}
+  - seq: "14"
+    kind: event
+    contract: GE-05
+    event_type: BILLING_RECORDED
+    effective_date: "2026-12-31"
+    payload:
+      invoice_number: VOUCHER-GE05-Q4
+      line_external_id: VOUCHER-GE05-Q4-1
+      amount: "1030000.00"
+      issue_date: "2026-12-31"
+      obligation_key: L1-WORK
+  - seq: "15"
+    kind: event
+    contract: GE-05
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-12-31"
+    payload: {estimate: VC-GE05-AWARD, version_no: "3"}
+  - seq: "16"
+    kind: event
+    contract: GE-05
+    event_type: BILLING_RECORDED
+    effective_date: "2027-01-15"
+    payload:
+      invoice_number: INV-GE05-AWARD2
+      line_external_id: INV-GE05-AWARD2-1
+      amount: "420000.00"
+      issue_date: "2027-01-15"
+      obligation_key: L1-WORK
+checkpoints:
+  - name: q1-constrained-to-zero
+    after_seq: "6"
+    as_of: "2026-03-31"
+    book: ASC606
+    contracts:
+      - contract: GE-05
+        version:
+          transaction_price: "4120000.00"
+          revenue_cum: "1030000.00"
+          billed_cum: "1030000.00"
+          vc_constrained_amount: "0.00"
+          vc_excluded_amount: "700000.00"
+        obligations: [{obligation_key: L1-WORK, allocated_amount: "4120000.00", revenue_cum: "1030000.00"}]
+        balances: [{entity: GE-US, contract_liability: "0.00", contract_asset: "0.00", unbilled_receivable: "0.00"}]
+  - name: period-1-award
+    after_seq: "9"
+    as_of: "2026-06-30"
+    book: ASC606
+    contracts:
+      - contract: GE-05
+        version:
+          transaction_price: "4770000.00"
+          revenue_cum: "2385000.00"
+          billed_cum: "2060000.00"
+          vc_constrained_amount: "650000.00"
+          vc_excluded_amount: "100000.00"
+        obligations: [{obligation_key: L1-WORK, allocated_amount: "4770000.00", revenue_cum: "2385000.00"}]
+        balances:
+          - {entity: GE-US, contract_liability: "0.00", contract_asset: "325000.00", unbilled_receivable: "0.00"}
+    subledger:
+      - period_key: FY2026-P06
+        entity: GE-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_ASSET, account: "1200", dr: "325000.00"}
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "1030000.00"}
+          - {account_role: REVENUE, account: "4010", cr: "1355000.00"}
+  - name: period-2-award
+    after_seq: "15"
+    as_of: "2026-12-31"
+    book: ASC606
+    contracts:
+      - contract: GE-05
+        version:
+          transaction_price: "4940000.00"
+          revenue_cum: "4940000.00"
+          billed_cum: "4520000.00"
+          vc_constrained_amount: "820000.00"
+          vc_excluded_amount: "0.00"
+        obligations: [{obligation_key: L1-WORK, allocated_amount: "4940000.00", revenue_cum: "4940000.00"}]
+        balances:
+          - {entity: GE-US, contract_liability: "0.00", contract_asset: "420000.00", unbilled_receivable: "0.00"}
+    subledger:
+      - period_key: FY2026-P12
+        entity: GE-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_ASSET, account: "1200", dr: "332500.00"}
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "1030000.00"}
+          - {account_role: REVENUE, account: "4010", cr: "1362500.00"}
+  - name: award-invoiced
+    after_seq: "16"
+    as_of: "2027-01-31"
+    book: ASC606
+    contracts:
+      - contract: GE-05
+        version:
+          transaction_price: "4940000.00"
+          revenue_cum: "4940000.00"
+          billed_cum: "4940000.00"
+          vc_constrained_amount: "820000.00"
+          vc_excluded_amount: "0.00"
+        obligations: [{obligation_key: L1-WORK, allocated_amount: "4940000.00", revenue_cum: "4940000.00"}]
+        balances: [{entity: GE-US, contract_liability: "0.00", contract_asset: "0.00", unbilled_receivable: "0.00"}]
+    subledger:
+      - period_key: FY2027-P01
+        entity: GE-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_ASSET, account: "1200", cr: "420000.00"}
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "420000.00"}

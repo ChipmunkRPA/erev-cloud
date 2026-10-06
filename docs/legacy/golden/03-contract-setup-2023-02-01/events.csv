@@ -1,0 +1,13 @@
+step,phase,seq,category,kind,title,text,answer
+03,handler:browse_file_Contracts,22,file,QFileDialog.getOpenFileName,Select File,ops/Example UATs/Contract Setup UAT/Contract Setup Template 2.1.2023.xlsx,selected
+03,handler:browse_file_Contracts,23,popup,QMessageBox.information,Contracts are set up,All contracts(s) within the uploaded file are successfully set up!,Ok
+03,report:latest_contracts,24,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+03,report:je_gross,25,input,QInputDialog.getText,Start Date Input,Enter the start date of the date range to retrieve the revenue journal entries (YYYY-MM-DD):,2023-02-01
+03,report:je_gross,26,input,QInputDialog.getText,Date Input,Enter the end date of the date range to retrieve the revenue journal entries (YYYY-MM-DD):,2023-02-01
+03,report:je_gross,27,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+03,report:je_delta,28,input,QInputDialog.getText,Start Date Input,Enter the start date of the date range to retrieve the revenue journal entries (YYYY-MM-DD):,2023-02-01
+03,report:je_delta,29,input,QInputDialog.getText,Date Input,Enter the end date of the date range to retrieve the revenue journal entries (YYYY-MM-DD):,2023-02-01
+03,report:je_delta,30,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+03,report:contract_history,31,input,QInputDialog.getText,Start Date Input,Enter the start date of the date range to retrieve the revenue contract history (YYYY-MM-DD):,2023-02-01
+03,report:contract_history,32,input,QInputDialog.getText,Date Input,Enter the end date of the date range to retrieve the revenue contract history (YYYY-MM-DD):,2023-02-01
+03,report:contract_history,33,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok

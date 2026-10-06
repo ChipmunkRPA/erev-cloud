@@ -1,0 +1,255 @@
+schema: erev-answer-key/1
+id: ROY-JS-08-ROYALTIES-LAGGING-REPORTS
+title: "Franchise royalties accrued from occurred sales before lagging reports arrive, trued up on the statement"
+status: active
+families: [ROY, VC, POS, LATE]
+tags: []
+summary: "Royalties of 6% of franchisee sales on a symbolic franchise licence. Franchisee sales reports arrive about 20 days after quarter end, so at each quarter end Juniper Street accrues an estimate of royalties on sales that have occurred (POL-056 ACCRUE_ESTIMATE; 606-10-55-65 permits no forecast of future sales). Q1 2026 accrual 17,400.00 (POS sell-through data indicate sales of 290,000.00); the statement of 20 April reports 305,000.00 (18,300.00) and the difference of +900.00 posts in April (JET-04a). Q2 accrual 18,000.00; the statement of 20 July reports 295,000.00 (17,700.00): true-up −300.00 in July. Royalties on occurred sales are unconditional rights, so the accrual is presented as an unbilled receivable until the statement is invoiced."
+authority:
+  codification: ["606-10-55-65", "606-10-55-65A", "606-10-32-14", "606-10-45-4", "606-10-50-12A"]
+  ifrs: ["IFRS 15.B63"]
+  practice: ["DART 12.7 (estimating royalties on unreported sales)"]
+  urls: []
+derived_from: {research04: [], research05: [JS-08], chk: [], golden: [], dev: []}
+requirements: [REQ-REC-011, REQ-TP-004, REQ-BIL-004, REQ-CLS-004]
+policy_refs: [POL-056, POL-122, POL-182]
+review: {author: answer-keys-industries, authored_on: "2026-09-12", reviewer: null, reviewed_on: null, status: pending}
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: JS-US
+      name: "Juniper Street US (Demo)"
+      functional_currency: USD
+      time_zone: America/Los_Angeles
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: "1"}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2026-07"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4020", name: "Revenue - licences and royalties", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, product: FRANCHISE-ROYALTY, account: "4020"}
+  customers: [{code: CUST-JS08, name: "Lakeshore Brew Partners LLC (Demo)"}]
+  pob_templates:
+    - code: TPL-FRANCHISE-ROY
+      obligation_kind: LICENCE
+      distinctness: distinct
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_A
+      recognition_method: ROYALTY
+      licence_nature: SYMBOLIC
+      start_date_rule: LICENCE_START_OR_AVAILABLE
+      policy_values: {balance.right_to_consideration: UNCONDITIONAL}
+  products:
+    - code: FRANCHISE-ROYALTY
+      name: "Franchise licence - royalties"
+      pob_template: TPL-FRANCHISE-ROY
+      revenue_category: ROYALTIES
+  ssp_books:
+    - code: SSP-JS-US-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2025-01-01"
+          methodology_label: "Observable standalone prices (demo study)"
+          entries:
+            - product: FRANCHISE-ROYALTY
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges: [{point_value: "72000.00"}]
+  fx_rate_sets: []
+  rule_sets: []
+  policies:
+    tenant: {billing.posting: ERP, recognition.time_convention: MONTHLY_EVEN}
+    entities: {}
+    books: {}
+contracts:
+  - external_id: JS-08
+    customer: CUST-JS08
+    contracting_entity: JS-US
+    transaction_currency: USD
+    inception_date: "2026-01-01"
+    lines:
+      - obligation_key: L1-ROYALTY
+        product_code: FRANCHISE-ROYALTY
+        quantity: "1"
+        total_price: "0.00"
+        start_date: "2026-01-01"
+        end_date: "2035-12-31"
+    estimates:
+      - element_code: ROY-JS08-ACCRUAL
+        estimate_kind: ROYALTY_ACCRUAL
+        method: ENTERED_AMOUNT
+        obligation_key: L1-ROYALTY
+        versions:
+          - version_no: "1"
+            effective_date: "2026-03-31"
+            expected_total_amount: "17400.00"
+            expected_quantity: "290000"
+            currency: USD
+            parameters: {usage_period_start_date: "2026-01-01", usage_period_end_date: "2026-03-31"}
+            rationale: "POS sell-through feed: Q1 sales 290,000.00."
+          - version_no: "2"
+            effective_date: "2026-06-30"
+            expected_total_amount: "18000.00"
+            expected_quantity: "300000"
+            currency: USD
+            parameters: {usage_period_start_date: "2026-04-01", usage_period_end_date: "2026-06-30"}
+            rationale: "POS sell-through feed: Q2 sales 300,000.00."
+    policy_overrides:
+      - policy_key: royalty.unreported_sales
+        value: ACCRUE_ESTIMATE
+        rationale: "Election carried per contract: POLICIES §1 allows royalty.unreported_sales only at levels C (B3 adjudication R-POL-01)"
+timeline:
+  - seq: "1"
+    kind: event
+    contract: JS-08
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: "2"
+    kind: event
+    contract: JS-08
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: "3"
+    kind: event
+    contract: JS-08
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-03-31"
+    payload: {estimate: ROY-JS08-ACCRUAL, version_no: "1"}
+  - seq: "4"
+    kind: event
+    contract: JS-08
+    event_type: USAGE_REPORTED
+    effective_date: "2026-04-20"
+    payload:
+      obligation_key: L1-ROYALTY
+      usage_period_start: "2026-01-01"
+      usage_period_end: "2026-03-31"
+      metric: FRANCHISEE_SALES
+      quantity: "305000"
+      rated_amount: "18300.00"
+      is_royalty_statement: true
+  - seq: "5"
+    kind: event
+    contract: JS-08
+    event_type: BILLING_RECORDED
+    effective_date: "2026-04-20"
+    payload:
+      invoice_number: INV-JS08-Q1
+      line_external_id: INV-JS08-Q1-1
+      amount: "18300.00"
+      issue_date: "2026-04-20"
+      obligation_key: L1-ROYALTY
+  - seq: "6"
+    kind: event
+    contract: JS-08
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-06-30"
+    payload: {estimate: ROY-JS08-ACCRUAL, version_no: "2"}
+  - seq: "7"
+    kind: event
+    contract: JS-08
+    event_type: USAGE_REPORTED
+    effective_date: "2026-07-20"
+    payload:
+      obligation_key: L1-ROYALTY
+      usage_period_start: "2026-04-01"
+      usage_period_end: "2026-06-30"
+      metric: FRANCHISEE_SALES
+      quantity: "295000"
+      rated_amount: "17700.00"
+      is_royalty_statement: true
+  - seq: "8"
+    kind: event
+    contract: JS-08
+    event_type: BILLING_RECORDED
+    effective_date: "2026-07-20"
+    payload:
+      invoice_number: INV-JS08-Q2
+      line_external_id: INV-JS08-Q2-1
+      amount: "17700.00"
+      issue_date: "2026-07-20"
+      obligation_key: L1-ROYALTY
+checkpoints:
+  - name: q1-accrual
+    after_seq: "3"
+    as_of: "2026-03-31"
+    book: ASC606
+    contracts:
+      - contract: JS-08
+        version: {revenue_cum: "17400.00", billed_cum: "0.00"}
+        obligations: [{obligation_key: L1-ROYALTY, revenue_cum: "17400.00"}]
+        balances: [{entity: JS-US, contract_liability: "0.00", contract_asset: "0.00", unbilled_receivable: "17400.00"}]
+    subledger:
+      - period_key: FY2026-P03
+        entity: JS-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: REVENUE, account: "4020", cr: "17400.00"}
+          - {account_role: UNBILLED_RECEIVABLE, account: "1105", dr: "17400.00"}
+  - name: q1-statement
+    after_seq: "5"
+    as_of: "2026-04-30"
+    book: ASC606
+    contracts:
+      - contract: JS-08
+        version: {revenue_cum: "18300.00", billed_cum: "18300.00"}
+        obligations: [{obligation_key: L1-ROYALTY, revenue_cum: "18300.00"}]
+        balances: [{entity: JS-US, contract_liability: "0.00", contract_asset: "0.00", unbilled_receivable: "0.00"}]
+    subledger:
+      - period_key: FY2026-P04
+        entity: JS-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "18300.00"}
+          - {account_role: REVENUE, account: "4020", cr: "900.00"}
+          - {account_role: UNBILLED_RECEIVABLE, account: "1105", cr: "17400.00"}
+  - name: q2-accrual
+    after_seq: "6"
+    as_of: "2026-06-30"
+    book: ASC606
+    contracts:
+      - contract: JS-08
+        version: {revenue_cum: "36300.00", billed_cum: "18300.00"}
+        obligations: [{obligation_key: L1-ROYALTY, revenue_cum: "36300.00"}]
+        balances: [{entity: JS-US, contract_liability: "0.00", contract_asset: "0.00", unbilled_receivable: "18000.00"}]
+    subledger:
+      - period_key: FY2026-P06
+        entity: JS-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: REVENUE, account: "4020", cr: "18000.00"}
+          - {account_role: UNBILLED_RECEIVABLE, account: "1105", dr: "18000.00"}
+  - name: q2-statement
+    after_seq: "8"
+    as_of: "2026-07-31"
+    book: ASC606
+    contracts:
+      - contract: JS-08
+        version: {revenue_cum: "36000.00", billed_cum: "36000.00"}
+        obligations: [{obligation_key: L1-ROYALTY, revenue_cum: "36000.00"}]
+        balances: [{entity: JS-US, contract_liability: "0.00", contract_asset: "0.00", unbilled_receivable: "0.00"}]
+    subledger:
+      - period_key: FY2026-P07
+        entity: JS-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "17700.00"}
+          - {account_role: REVENUE, account: "4020", dr: "300.00"}
+          - {account_role: UNBILLED_RECEIVABLE, account: "1105", cr: "18000.00"}

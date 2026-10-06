@@ -1,0 +1,7 @@
+step,phase,seq,category,kind,title,text,answer
+P1-blank-memo-drops-progress-rows,P1-blank-memo-drops-progress-rows:00:!Reset Database Completely!,3,popup,QMessageBox.question,Confirmation,Do you want to proceed wiping out the current database?,Yes
+P1-blank-memo-drops-progress-rows,P1-blank-memo-drops-progress-rows:00:!Reset Database Completely!,4,popup,QMessageBox.information,ASC606 database reset,ASC606 Database has been wiped out and reset!,Ok
+P1-blank-memo-drops-progress-rows,P1-blank-memo-drops-progress-rows:01:Load SSPs,7,popup,QMessageBox.information,SSPs are set up,"All company SSPs for the uploaded file are set up. To add or update, re-upload SSPs to refresh.",Ok
+P1-blank-memo-drops-progress-rows,P1-blank-memo-drops-progress-rows:02:Load Contracts,9,popup,QMessageBox.information,Contracts are set up,All contracts(s) within the uploaded file are successfully set up!,Ok
+P1-blank-memo-drops-progress-rows,P1-blank-memo-drops-progress-rows:03:Load Delivery and Billing,12,popup,QMessageBox.information,Rev Rec Success,Rev Rec has been processed with uploaded deliveries and/or billings for the current date :),Ok
+P1-blank-memo-drops-progress-rows,P1-blank-memo-drops-progress-rows:report:je_gross,15,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok

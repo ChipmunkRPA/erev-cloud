@@ -1,0 +1,6 @@
+step,phase,seq,category,kind,title,text,answer
+13,handler:browse_file_ProsMod,153,popup,QMessageBox.information,Mod Success,Prospective Mod has been processed with uploaded modifications for the current date :),Ok
+13,report:latest_contracts,154,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+13,report:je_gross,157,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+13,report:je_delta,160,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+13,report:contract_history,163,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok

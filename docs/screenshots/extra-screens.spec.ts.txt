@@ -1,0 +1,143 @@
+// Supplementary screen captures for the illustrated guide (docs/guides/illustrated-guide.md): the routed
+// screens of Settings and of sign-in that the `screens` project does not capture. This file is NOT part of the
+// release candidate's e2e projects: it was written on 2026-10-04 and run once, on the seeded open world, under
+// the `screens` project's file pattern (`make e2e PROJECT=screens SPEC=extra-screens.spec.ts`), with the same
+// capture helper (frontend/e2e/support/screens.ts). It opens each screen as a demo persona, waits for its
+// heading and its reads, and captures both themes; it asserts nothing else and changes no data.
+import type { Page } from "@playwright/test";
+
+import { personaEmail } from "../support/auth";
+import { expect, test } from "../support/fixtures";
+
+interface Listed<T> {
+  readonly items: readonly T[];
+}
+
+async function listed<T>(
+  page: Page,
+  path: string,
+  params: Record<string, string> = {},
+): Promise<readonly T[]> {
+  const response = await page.request.get(path, { params });
+  expect(response.ok(), `${path} answered ${response.status()}`).toBe(true);
+  return ((await response.json()) as Listed<T>).items;
+}
+
+/** The page has drawn its heading and its reads have come. */
+async function settled(page: Page, title?: string): Promise<void> {
+  const heading =
+    title === undefined
+      ? page.getByRole("heading", { level: 1 }).first()
+      : page.getByRole("heading", { level: 1, name: title, exact: true });
+  await expect(heading).toBeVisible();
+  await page.waitForLoadState("networkidle");
+  await page.waitForTimeout(500);
+}
+
+const TOMAS_PAGES = [
+  ["sf-15-entities", "SF-15:entities", "/settings/entities", "Entities"],
+  ["sf-15-calendars", "SF-15:calendars", "/settings/calendars", "Calendars"],
+  ["sf-15-currencies", "SF-15:currencies", "/settings/currencies", "Currencies and rates"],
+  ["sf-15-customers", "SF-15:customers", "/settings/customers", "Customers"],
+  [
+    "sf-15-related-party-groups",
+    "SF-15:related-party-groups",
+    "/settings/related-party-groups",
+    "Related-party groups",
+  ],
+  ["sf-15-products", "SF-15:products", "/settings/products", "Products"],
+  ["sf-14-users", "SF-14", "/settings/users", "Users"],
+  ["sf-14-roles", "SF-14:roles", "/settings/roles", "Roles"],
+  ["sf-14-sod", "SF-14:sod", "/settings/separation-of-duties", "Separation of duties"],
+  ["sf-14-access-reviews", "SF-14:access-reviews", "/settings/access-reviews", "Access reviews"],
+  ["sf-14-security", "SF-14:security", "/settings/security", "Security"],
+  ["sf-14-support-access", "SF-14:support-access", "/settings/support-access", "Support access"],
+  ["sf-16-developer", "SF-16:developer", "/settings/developer", "API clients and webhooks"],
+] as const;
+
+for (const [name, surface, path, title] of TOMAS_PAGES) {
+  test.describe(`${surface} ${title} (${path}), persona tomas`, () => {
+    test(`${surface} as tomas`, async ({ personas, screens }) => {
+      const page = await personas.page("tomas");
+      await page.goto(path);
+      await settled(page, title);
+      await screens.capture(page, name, { surface });
+    });
+  });
+}
+
+test.describe("SF-15:customer Customer (/settings/customers/:customerId), persona tomas", () => {
+  test("SF-15:customer as tomas", async ({ personas, screens }) => {
+    const page = await personas.page("tomas");
+    const customers = await listed<{ readonly id: string; readonly name: string }>(
+      page,
+      "/api/v1/customers",
+      { q: "Pellworth" },
+    );
+    const customer = customers[0];
+    expect(customer, "a customer named Pellworth").toBeDefined();
+    await page.goto(`/settings/customers/${customer?.id ?? ""}`);
+    await settled(page);
+    await screens.capture(page, "sf-15-customer", { surface: "SF-15:customer" });
+  });
+});
+
+test.describe("SF-15:product Product (/settings/products/:productId), persona tomas", () => {
+  test("SF-15:product as tomas", async ({ personas, screens }) => {
+    const page = await personas.page("tomas");
+    const products = await listed<{ readonly id: string; readonly code: string }>(
+      page,
+      "/api/v1/products",
+      { q: "AVM-PLAT-100" },
+    );
+    const product = products.find((item) => item.code === "AVM-PLAT-100");
+    expect(product, "the product AVM-PLAT-100").toBeDefined();
+    await page.goto(`/settings/products/${product?.id ?? ""}`);
+    await settled(page);
+    await screens.capture(page, "sf-15-product", { surface: "SF-15:product" });
+  });
+});
+
+test.describe("SF-14:user Member (/settings/users/:membershipId), persona tomas", () => {
+  test("SF-14:user as tomas", async ({ personas, screens }) => {
+    const page = await personas.page("tomas");
+    const users = await listed<{ readonly id: string; readonly email: string }>(
+      page,
+      "/api/v1/users",
+      { q: personaEmail("maya") },
+    );
+    const user = users.find((item) => item.email === personaEmail("maya"));
+    expect(user, "the membership of maya").toBeDefined();
+    await page.goto(`/settings/users/${user?.id ?? ""}`);
+    await settled(page);
+    await screens.capture(page, "sf-14-user", { surface: "SF-14:user" });
+  });
+});
+
+test.describe("SF-14:access-review Campaign (/settings/access-reviews/:reviewId), persona tomas", () => {
+  test("SF-14:access-review as tomas", async ({ personas, screens }) => {
+    const page = await personas.page("tomas");
+    const reviews = await listed<{ readonly id: string }>(page, "/api/v1/access-reviews");
+    test.skip(reviews.length === 0, "the seeded world holds no access review campaign");
+    await page.goto(`/settings/access-reviews/${reviews[0]?.id ?? ""}`);
+    await settled(page);
+    await screens.capture(page, "sf-14-access-review", { surface: "SF-14:access-review" });
+  });
+});
+
+test.describe("SF-22:password-reset Reset password (/password/reset), persona unauthenticated", () => {
+  test("SF-22:password-reset empty form", async ({ page, screens }) => {
+    await page.goto("/password/reset");
+    await settled(page, "Reset password");
+    await screens.capture(page, "sf-22-password-reset", { surface: "SF-22:password-reset" });
+  });
+});
+
+test.describe("SF-22:password-change Change password (/password/change), persona maya", () => {
+  test("SF-22:password-change as maya", async ({ personas, screens }) => {
+    const page = await personas.page("maya");
+    await page.goto("/password/change");
+    await settled(page, "Change password");
+    await screens.capture(page, "sf-22-password-change", { surface: "SF-22:password-change" });
+  });
+});

@@ -1,0 +1,18 @@
+Record Unique ID without time,Account,Amount
+Contract 1,21001,646.0
+Contract 1 POB #2 Software 1,5002,-145.07
+Contract 1 POB #3 Consulting 1,5003,1.97
+Contract 1 POB #4 Material Right - Hardware,5001,-502.9
+Contract 2,21002,1100.0
+Contract 2 POB #1 Hardware 1,5001,-573.2
+Contract 2 POB #2 Software 1,5002,-385.19
+Contract 2 POB #3 Consulting 1,5003,-141.61
+Contract 3,21001,2400.0
+Contract 3 POB #1 Hardware 1,5001,-678.02
+Contract 3 POB #2 Software 1,5002,-464.52
+Contract 3 POB #3 Consulting 1,5003,10.66
+Contract 3 POB #5 Consulting 1,5003,-1268.11
+Contract 4,21002,1050.0
+Contract 4 POB #1 Hardware 1,5001,-329.69
+Contract 4 POB #2 Software 1,5002,-426.39
+Contract 4 POB #3 Consulting 1,5003,-293.93

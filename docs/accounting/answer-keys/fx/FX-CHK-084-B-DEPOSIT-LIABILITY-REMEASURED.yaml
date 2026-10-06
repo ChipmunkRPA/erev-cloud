@@ -1,0 +1,211 @@
+# docs/accounting/answer-keys/fx/FX-CHK-084-B-DEPOSIT-LIABILITY-REMEASURED.yaml
+schema: "erev-answer-key/1"
+id: FX-CHK-084-B-DEPOSIT-LIABILITY-REMEASURED
+title: >-
+  D-25b: EUR deposit received while not a contract remeasured until criteria are met, then layered at the
+  transfer-date spot (CHK-084 b)
+status: active
+families: [FX, STP1, JE]
+tags: [fx]
+summary: >-
+  POLICIES CHK-084 (b); entity US01 (functional USD), EUR contract, ERP billing. Collectibility is not probable at
+  booking, so the contract is NOT_A_CONTRACT. EUR 1,000.00 is received on 10 January 2026 at spot 1.1000: JET-01b Dr
+  BILLING_CLEARING (UNAPPLIED_CASH) / Cr DEPOSIT_LIABILITY USD 1,100.00. The deposit is a monetary item (D-25b): 31
+  January, closing 1.1200, JET-10d loss 20.00. CONTRACT_CRITERIA_MET on 15 February at spot 1.1300 settles the
+  deposit: JET-10d loss 10.00, then JET-01b Dr DEPOSIT_LIABILITY / Cr CONTRACT_LIABILITY USD 1,130.00, which creates a
+  contract-liability layer of EUR 1,000.00 at 1,130.00 (IFRIC 22.8; POLICIES B3 decision 4). The contract liability is
+  nonmonetary and is not remeasured afterwards.
+authority:
+  codification: ["830-20-35-1", "830-20-35-2", "830-10-45-17", "606-10-25-1", "606-10-25-7", "606-10-25-8"]
+  ifrs: ["IAS 21.16", "IAS 21.23", "IFRIC 22.8"]
+  practice: []
+  urls: []
+derived_from: {research04: [], research05: [], chk: [CHK-084], golden: [], dev: []}
+requirements: [REQ-FX-003, REQ-FX-001, REQ-CON-003]
+policy_refs: [POL-164, POL-013, POL-128]
+review:
+  author: answer-keys-fx-entity-books
+  authored_on: "2026-09-12"
+  reviewer: null
+  reviewed_on: null
+  status: pending
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [EUR, USD]
+  entities:
+    - code: US01
+      name: "Avenmoor Systems Inc. (Demo)"
+      functional_currency: USD
+      time_zone: "America/New_York"
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: 1}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2026-02"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "2105", name: "Deposit liability", account_type: LIABILITY}
+    - {code: "4010", name: "Revenue - services and subscriptions", account_type: REVENUE}
+    - {code: "7200", name: "Foreign exchange gain or loss", account_type: EXPENSE}
+    - {code: "7900", name: Rounding, account_type: EXPENSE}
+    - {code: "1900", name: "Clearing - unapplied cash", account_type: ASSET}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: FX_GAIN_LOSS, account: "7200"}
+    - {account_role: ROUNDING, account: "7900"}
+    - {account_role: REVENUE, account: "4010", product: SERVICE-EUR}
+    - {account_role: DEPOSIT_LIABILITY, account: "2105"}
+    - {account_role: BILLING_CLEARING, clearing_purpose: UNAPPLIED_CASH, account: "1900"}
+  customers:
+    - {code: CUST-1, name: "Pellworth Logistics Inc. (Demo)"}
+  pob_templates:
+    - code: TPL-UNITS
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: POINT_IN_TIME
+      over_time_criterion: NOT_APPLICABLE
+      recognition_method: UNITS_DELIVERED
+  products:
+    - {code: SERVICE-EUR, name: "Installation service (EUR)", pob_template: TPL-UNITS}
+  ssp_books:
+    - code: SSP-EUR-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2026-01-01"
+          methodology_label: "Observable standalone prices"
+          entries:
+            - product: SERVICE-EUR
+              currency: EUR
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "1000.00"}
+  fx_rate_sets:
+    - code: SPOT-EURUSD
+      rate_type: spot
+      rates:
+        - {base_currency: EUR, quote_currency: USD, effective_date: "2026-01-10", rate: "1.1000"}
+        - {base_currency: EUR, quote_currency: USD, effective_date: "2026-02-15", rate: "1.1300"}
+    - code: AVG-EURUSD
+      rate_type: average
+      rates:
+        - base_currency: EUR
+          quote_currency: USD
+          effective_date: "2026-01-31"
+          period_key: FY2026-P01
+          rate: "1.1100"
+        - base_currency: EUR
+          quote_currency: USD
+          effective_date: "2026-02-28"
+          period_key: FY2026-P02
+          rate: "1.1250"
+    - code: CLOSE-EURUSD
+      rate_type: closing
+      rates:
+        - base_currency: EUR
+          quote_currency: USD
+          effective_date: "2026-01-31"
+          period_key: FY2026-P01
+          rate: "1.1200"
+        - base_currency: EUR
+          quote_currency: USD
+          effective_date: "2026-02-28"
+          period_key: FY2026-P02
+          rate: "1.1300"
+  rule_sets: []
+  policies: {tenant: {billing.posting: ERP}, entities: {}, books: {}}
+contracts:
+  - external_id: C-FX-084-B
+    customer: CUST-1
+    contracting_entity: US01
+    transaction_currency: EUR
+    inception_date: "2026-01-05"
+    lines:
+      - {obligation_key: L1-SERVICE, product_code: SERVICE-EUR, quantity: "1", total_price: "1000.00"}
+    judgements:
+      - handle: J-COLL-084B
+        topic: COLLECTIBILITY
+        conclusion: >-
+          No credit history with the customer: collectibility not probable at inception (606-10-25-1(e)).
+      - handle: J-MET-084B
+        topic: NOT_A_CONTRACT
+        conclusion: >-
+          Bank guarantee received on 15 February 2026: collectibility probable, the criteria are met (606-10-25-6).
+        questionnaire: {consideration_nonrefundable: false}
+timeline:
+  - seq: 1
+    kind: event
+    contract: C-FX-084-B
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-01-05"
+    payload: {}
+  - seq: 2
+    kind: event
+    contract: C-FX-084-B
+    event_type: COLLECTIBILITY_ASSESSED
+    effective_date: "2026-01-05"
+    payload: {book: ASC606, is_probable: false, judgement: J-COLL-084B}
+  - seq: 3
+    kind: event
+    contract: C-FX-084-B
+    event_type: PAYMENT_RECEIVED
+    effective_date: "2026-01-10"
+    payload: {receipt_reference: RCPT-084B-1, amount: "1000.00", receipt_date: "2026-01-10"}
+  - seq: 4
+    kind: event
+    contract: C-FX-084-B
+    event_type: CONTRACT_CRITERIA_MET
+    effective_date: "2026-02-15"
+    payload: {book: ASC606, judgement: J-MET-084B}
+checkpoints:
+  - name: january-close
+    after_seq: 3
+    as_of: "2026-01-31"
+    book: ASC606
+    contracts:
+      - contract: C-FX-084-B
+        status_in_book: NOT_A_CONTRACT
+        balances:
+          - entity: US01
+            deposit_liability: "1000.00"
+            contract_liability: "0.00"
+            functional: {deposit_liability: "1120.00", contract_liability: "0.00"}
+    subledger:
+      - period_key: FY2026-P01
+        entity: US01
+        match: exact
+        grain: role_account
+        lines:
+          - account_role: BILLING_CLEARING
+            clearing_purpose: UNAPPLIED_CASH
+            account: "1900"
+            dr: "1000.00"
+            functional_dr: "1100.00"
+          - {account_role: FX_GAIN_LOSS, account: "7200", dr: "0.00", functional_dr: "20.00"}
+          - {account_role: DEPOSIT_LIABILITY, account: "2105", cr: "1000.00", functional_cr: "1120.00"}
+  - name: february-close
+    after_seq: 4
+    as_of: "2026-02-28"
+    book: ASC606
+    contracts:
+      - contract: C-FX-084-B
+        status_in_book: ACTIVE
+        balances:
+          - entity: US01
+            deposit_liability: "0.00"
+            contract_liability: "1000.00"
+            functional: {deposit_liability: "0.00", contract_liability: "1130.00"}
+    subledger:
+      - period_key: FY2026-P02
+        entity: US01
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: DEPOSIT_LIABILITY, account: "2105", dr: "1000.00", functional_dr: "1120.00"}
+          - {account_role: FX_GAIN_LOSS, account: "7200", dr: "0.00", functional_dr: "10.00"}
+          - {account_role: CONTRACT_LIABILITY, account: "2100", cr: "1000.00", functional_cr: "1130.00"}

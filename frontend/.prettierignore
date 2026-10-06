@@ -1,0 +1,5 @@
+# Byte copy of docs/design/tokens.css written by make tokens (DG-MK-tokens); never reformatted.
+src/styles/tokens.css
+# Written by scripts/as_locked_fixture.py from the API's own tables, one report to a line
+# (DG-FE-18); never reformatted. backend/tests/unit/test_as_locked_fixture.py holds it to the API.
+src/test/as-locked.json

@@ -1,0 +1,157 @@
+# docs/accounting/answer-keys/rnd/RND-CHK-003A-JPY-EQUAL-SSP-THIRDS.yaml
+schema: "erev-answer-key/1"
+id: RND-CHK-003A-JPY-EQUAL-SSP-THIRDS
+title: "Largest remainder at a zero-decimal currency: JPY 10,000 over three equal weights"
+status: active
+families: [RND, ALC, FX]
+tags: []
+summary: >-
+  Entity JP01 with functional currency JPY and a JPY contract of 10,000 (stated 4,000 / 3,000 / 3,000; equal
+  observable SSPs 2,000). ISO 4217 minor unit 0 (C-06): the exact quotas 3,333.33… leave one yen, assigned to POB-001
+  by the tie-break, giving 3,334 / 3,333 / 3,333. The first kit transfers in April 2026 and posts 3,334 with no
+  decimals. Cross-slice variants with distinct inputs, kept: RND-CHK-003A (different contract, prices and events)
+  (ADJUDICATION.md R-DUP-02).
+authority:
+  codification: ["606-10-32-28", "606-10-32-29", "606-10-32-31"]
+  ifrs: ["IFRS 15.74"]
+  practice: []
+  urls: []
+derived_from: {research04: [], research05: [], chk: [CHK-003a], golden: [], dev: []}
+requirements: [REQ-ALC-001, REQ-ALC-002, REQ-FX-001]
+policy_refs: [POL-001, POL-002]
+review:
+  author: answer-keys-fx-entity-books
+  authored_on: "2026-09-12"
+  reviewer: null
+  reviewed_on: null
+  status: pending
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [JPY, USD]
+  entities:
+    - code: JP01
+      name: "Avenmoor Systems KK (Demo)"
+      functional_currency: JPY
+      time_zone: "Asia/Tokyo"
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: 1}
+      books: [ASC606]
+  periods: {from: "2026-04", to: "2026-05"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4000", name: "Revenue - products", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, account: "4000", product: KIT-A}
+    - {account_role: REVENUE, account: "4000", product: KIT-B}
+    - {account_role: REVENUE, account: "4000", product: KIT-C}
+  customers:
+    - {code: CUST-1, name: "Pellworth Logistics Inc. (Demo)"}
+  pob_templates:
+    - code: TPL-PIT
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: POINT_IN_TIME
+      over_time_criterion: NOT_APPLICABLE
+      recognition_method: POINT_IN_TIME
+  products:
+    - {code: KIT-A, name: "Sensor kit A", pob_template: TPL-PIT}
+    - {code: KIT-B, name: "Sensor kit B", pob_template: TPL-PIT}
+    - {code: KIT-C, name: "Sensor kit C", pob_template: TPL-PIT}
+  ssp_books:
+    - code: SSP-JP01-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2026-04-01"
+          methodology_label: "Observable standalone prices"
+          entries:
+            - product: KIT-A
+              currency: JPY
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "2000"}
+            - product: KIT-B
+              currency: JPY
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "2000"}
+            - product: KIT-C
+              currency: JPY
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "2000"}
+  fx_rate_sets: []
+  rule_sets: []
+  policies: {tenant: {billing.posting: ERP}, entities: {}, books: {}}
+contracts:
+  - external_id: C-RND-003A
+    customer: CUST-1
+    contracting_entity: JP01
+    transaction_currency: JPY
+    inception_date: "2026-04-01"
+    lines:
+      - {obligation_key: POB-001, product_code: KIT-A, quantity: "1", total_price: "4000"}
+      - {obligation_key: POB-002, product_code: KIT-B, quantity: "1", total_price: "3000"}
+      - {obligation_key: POB-003, product_code: KIT-C, quantity: "1", total_price: "3000"}
+timeline:
+  - seq: 1
+    kind: event
+    contract: C-RND-003A
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-04-01"
+    payload: {}
+  - seq: 2
+    kind: event
+    contract: C-RND-003A
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-04-01"
+    payload: {}
+  - seq: 3
+    kind: event
+    contract: C-RND-003A
+    event_type: BILLING_RECORDED
+    effective_date: "2026-04-01"
+    payload: {invoice_number: INV-JP-0003, line_external_id: INV-JP-0003-1, amount: "10000", issue_date: "2026-04-01"}
+  - seq: 4
+    kind: event
+    contract: C-RND-003A
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-04-15"
+    payload: {obligation_key: POB-001, quantity: "1", trigger: CONTROL_TRANSFER}
+checkpoints:
+  - name: allocation-at-activation
+    after_seq: 2
+    as_of: "2026-04-01"
+    book: ASC606
+    contracts:
+      - contract: C-RND-003A
+        version: {transaction_price: "10000", total_ssp: "6000"}
+        obligations:
+          - {obligation_key: POB-001, allocated_amount: "3334", allocated_exact: "3333.333333"}
+          - {obligation_key: POB-002, allocated_amount: "3333", allocated_exact: "3333.333333"}
+          - {obligation_key: POB-003, allocated_amount: "3333", allocated_exact: "3333.333333"}
+  - name: april-transfer
+    after_seq: 4
+    as_of: "2026-04-30"
+    book: ASC606
+    contracts:
+      - contract: C-RND-003A
+        balances:
+          - {entity: JP01, contract_liability: "6666", contract_asset: "0", unbilled_receivable: "0"}
+    subledger:
+      - period_key: FY2026-P04
+        entity: JP01
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "3334"}
+          - {account_role: REVENUE, account: "4000", cr: "3334"}

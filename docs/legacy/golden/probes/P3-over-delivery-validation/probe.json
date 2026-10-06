@@ -1,0 +1,93 @@
+{
+  "id": "P3-over-delivery-validation",
+  "question": "What does the loader do when a delivery exceeds the remaining quantity?",
+  "code_ref": "eRev.py l.959-974 (Flag_Qty / Flag_Billing) and the outer except at l.1163-1168",
+  "baseline": "Contract 1 POB #1 remaining qty 5; upload asks for 7",
+  "sequence": [
+    {
+      "i": 0,
+      "button_label": "!Reset Database Completely!",
+      "file": null,
+      "date_input": null,
+      "rows_before": 20,
+      "rows_after": 0,
+      "popups": [
+        {
+          "kind": "QMessageBox.question",
+          "title": "Confirmation",
+          "text": "Do you want to proceed wiping out the current database?"
+        },
+        {
+          "kind": "QMessageBox.information",
+          "title": "ASC606 database reset",
+          "text": "ASC606 Database has been wiped out and reset!"
+        }
+      ]
+    },
+    {
+      "i": 1,
+      "button_label": "Load SSPs",
+      "file": "SKU SSP Template.xlsx",
+      "date_input": null,
+      "rows_before": 0,
+      "rows_after": 0,
+      "popups": [
+        {
+          "kind": "QMessageBox.information",
+          "title": "SSPs are set up",
+          "text": "All company SSPs for the uploaded file are set up. To add or update, re-upload SSPs to refresh."
+        }
+      ]
+    },
+    {
+      "i": 2,
+      "button_label": "Load Contracts",
+      "file": "Contract Setup Template 1.1.2023.xlsx",
+      "date_input": null,
+      "rows_before": 0,
+      "rows_after": 8,
+      "popups": [
+        {
+          "kind": "QMessageBox.information",
+          "title": "Contracts are set up",
+          "text": "All contracts(s) within the uploaded file are successfully set up!"
+        }
+      ]
+    },
+    {
+      "i": 3,
+      "button_label": "Load Delivery and Billing",
+      "file": "P3 progress 1.31.2023 - Contract 1 POB #1 over-delivered.xlsx",
+      "date_input": "2023-01-31",
+      "rows_before": 8,
+      "rows_after": 8,
+      "popups": [
+        {
+          "kind": "QMessageBox.information",
+          "title": "Delivery/Billing load failed",
+          "text": "Qty or billing loaded are greater than the remaining of the POBs. Check your uploads please."
+        },
+        {
+          "kind": "QMessageBox.critical",
+          "title": "Error Notification",
+          "text": "The process is stopped for users to fix the file"
+        }
+      ]
+    }
+  ],
+  "reports": {},
+  "watched_latest": [
+    {
+      "contract": "Contract 1",
+      "pob": "POB #1",
+      "Current Delivery - Cumulative": 0.0,
+      "Current Billing - Cumulative": 0.0,
+      "Current Rev Rec - Cumulative": 0.0,
+      "Current Pre-ASC606 Revenue (Net Design Only)": 0.0,
+      "Current Pre-ASC606 Revenue (Net Design Only) - Cumulative": 0.0,
+      "Current Remaining Qty": 5.0,
+      "Current Remaining Allocation": 322.1011,
+      "Current Period": "2023-01-01 00:00:00"
+    }
+  ]
+}

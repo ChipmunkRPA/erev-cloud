@@ -1,0 +1,124 @@
+# docs/accounting/answer-keys/rnd/RND-CHK-003B-BHD-WEIGHTS-ONE-TWO.yaml
+schema: "erev-answer-key/1"
+id: RND-CHK-003B-BHD-WEIGHTS-ONE-TWO
+title: "Largest remainder at a three-decimal currency: BHD 100.000 over weights 1 and 2"
+status: active
+families: [RND, ALC, FX]
+tags: []
+summary: >-
+  Entity BH01 with functional currency BHD and a BHD contract of 100.000 (stated 40.000 and 60.000; observable SSPs
+  10.000 and 20.000). ISO 4217 minor unit 3 (C-06): exact quotas 33.3333… and 66.6666… leave one fils, assigned to
+  POB-002 by the larger fractional remainder: 33.333 / 66.667. Cross-slice variants with distinct inputs, kept:
+  RND-CHK-003B (different contract, prices and events) (ADJUDICATION.md R-DUP-02).
+authority:
+  codification: ["606-10-32-28", "606-10-32-29", "606-10-32-31"]
+  ifrs: ["IFRS 15.74"]
+  practice: []
+  urls: []
+derived_from: {research04: [], research05: [], chk: [CHK-003b], golden: [], dev: []}
+requirements: [REQ-ALC-001, REQ-ALC-002, REQ-FX-001]
+policy_refs: [POL-001, POL-002]
+review:
+  author: answer-keys-fx-entity-books
+  authored_on: "2026-09-12"
+  reviewer: null
+  reviewed_on: null
+  status: pending
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [BHD, USD]
+  entities:
+    - code: BH01
+      name: "Avenmoor Systems W.L.L. (Demo)"
+      functional_currency: BHD
+      time_zone: "Asia/Bahrain"
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: 1}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2026-02"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4010", name: "Revenue - services and subscriptions", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, account: "4010", product: SVC-A}
+    - {account_role: REVENUE, account: "4010", product: SVC-B}
+  customers:
+    - {code: CUST-1, name: "Pellworth Logistics Inc. (Demo)"}
+  pob_templates:
+    - code: TPL-PIT
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: POINT_IN_TIME
+      over_time_criterion: NOT_APPLICABLE
+      recognition_method: POINT_IN_TIME
+  products:
+    - {code: SVC-A, name: "Field survey", pob_template: TPL-PIT}
+    - {code: SVC-B, name: Commissioning, pob_template: TPL-PIT}
+  ssp_books:
+    - code: SSP-BH01-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2026-01-01"
+          methodology_label: "Observable standalone prices"
+          entries:
+            - product: SVC-A
+              currency: BHD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "10.000"}
+            - product: SVC-B
+              currency: BHD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "20.000"}
+  fx_rate_sets: []
+  rule_sets: []
+  policies: {tenant: {billing.posting: ERP}, entities: {}, books: {}}
+contracts:
+  - external_id: C-RND-003B
+    customer: CUST-1
+    contracting_entity: BH01
+    transaction_currency: BHD
+    inception_date: "2026-01-10"
+    lines:
+      - {obligation_key: POB-001, product_code: SVC-A, quantity: "1", total_price: "40.000"}
+      - {obligation_key: POB-002, product_code: SVC-B, quantity: "1", total_price: "60.000"}
+timeline:
+  - seq: 1
+    kind: event
+    contract: C-RND-003B
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-01-10"
+    payload: {}
+  - seq: 2
+    kind: event
+    contract: C-RND-003B
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-10"
+    payload: {}
+checkpoints:
+  - name: allocation-at-activation
+    after_seq: 2
+    as_of: "2026-01-10"
+    book: ASC606
+    contracts:
+      - contract: C-RND-003B
+        version: {transaction_price: "100.000", total_ssp: "30.000"}
+        obligations:
+          - obligation_key: POB-001
+            allocated_amount: "33.333"
+            allocated_exact: "33.333333"
+            allocation_adjustment: "-6.667"
+          - obligation_key: POB-002
+            allocated_amount: "66.667"
+            allocated_exact: "66.666667"
+            allocation_adjustment: "6.667"

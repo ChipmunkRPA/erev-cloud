@@ -1,0 +1,11 @@
+[
+  "src/components/data-grid/SavedViewSelector.tsx",
+  "src/routes/auth/password-shared.tsx",
+  "src/routes/auth/sign-in.tsx",
+  "src/routes/data/exceptions.tsx",
+  "src/routes/data/import-detail.tsx",
+  "src/routes/policies/rule-set-version.tsx",
+  "src/routes/policies/ssp-book-version.tsx",
+  "src/routes/policies/ssp-calculator.tsx",
+  "src/routes/policies/version-meta.tsx"
+]

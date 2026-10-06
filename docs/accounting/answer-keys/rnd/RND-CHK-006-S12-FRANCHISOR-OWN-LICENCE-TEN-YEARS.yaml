@@ -1,0 +1,228 @@
+# docs/accounting/answer-keys/rnd/RND-CHK-006-S12-FRANCHISOR-OWN-LICENCE-TEN-YEARS.yaml
+schema: "erev-answer-key/1"
+id: RND-CHK-006-S12-FRANCHISOR-OWN-LICENCE-TEN-YEARS
+title: "Research 04 S12-FRANCHISOR-OWN re-baselined under D-11a: licence 36,363.64 over ten years"
+status: active
+families: [RND, REC]
+tags: [r04-s12]
+summary: >-
+  Initial franchise fee 50,000.00 with pre-opening services (SSP 15,000) and a ten-year symbolic franchise licence
+  (SSP 40,000) [A stated 10,000 / 40,000; both distinct, as research 04 concludes under the franchisor expedient].
+  Allocation 13,636.36 / 36,363.64; services complete during 2026 (output 100% on 2026-12-31). The licence runs
+  2026-01-01 to 2035-12-31 by whole months; cumulative revenue rounds X × k ÷ 120 with X = 36,363.6363…. Year totals
+  are 3,636.37 in years 2, 5, 7 and 10 and 3,636.36 otherwise; year-1 revenue 17,272.72. POLICIES CHK-006 lists
+  3,636.37 in years 2, 4, 7 and 9 and licence_year10 3,636.36 (round(A × f)); see discrepancy D-AK-02. Cross-slice
+  variants with distinct inputs, kept: POB-S12-FRANCHISOR-OWN (different events and policies) (ADJUDICATION.md
+  R-DUP-02).
+authority:
+  codification: ["952-606-25-2", "606-10-55-59", "606-10-55-60", "606-10-32-28", "606-10-25-31"]
+  ifrs: ["IFRS 15.B58"]
+  practice: []
+  urls: []
+derived_from: {research04: [S12-FRANCHISOR-OWN], research05: [], chk: [CHK-006], golden: [], dev: []}
+requirements: [REQ-REC-019, REQ-ALC-002, REQ-POB-013]
+policy_refs: [POL-003, POL-090, POL-202]
+review:
+  author: answer-keys-fx-entity-books
+  authored_on: "2026-09-12"
+  reviewer: null
+  reviewed_on: null
+  status: pending
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: US01
+      name: "Avenmoor Systems Inc. (Demo)"
+      functional_currency: USD
+      time_zone: "America/New_York"
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: 1}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2035-12"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4010", name: "Revenue - services and subscriptions", account_type: REVENUE}
+    - {code: "4020", name: "Revenue - licences and royalties", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, account: "4010", product: PREOPENING}
+    - {account_role: REVENUE, account: "4020", product: FRANCHISE-LIC}
+  customers:
+    - {code: CUST-1, name: "Pellworth Logistics Inc. (Demo)"}
+  pob_templates:
+    - code: TPL-PCT
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_B
+      recognition_method: OUTPUT_PERCENT
+    - code: TPL-RAT-ME
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_A
+      recognition_method: TIME_ELAPSED
+      ratable_convention: MONTHLY_EVEN
+  products:
+    - code: PREOPENING
+      name: "Pre-opening training and site selection"
+      pob_template: TPL-PCT
+      is_franchisor_preopening_service: true
+    - {code: FRANCHISE-LIC, name: "Franchise licence, ten years", pob_template: TPL-RAT-ME}
+  ssp_books:
+    - code: SSP-US01-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2026-01-01"
+          methodology_label: "Observable standalone prices"
+          entries:
+            - product: PREOPENING
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "15000.00"}
+            - product: FRANCHISE-LIC
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "40000.00"}
+  fx_rate_sets: []
+  rule_sets: []
+  policies: {tenant: {billing.posting: ERP}, entities: {}, books: {}}
+contracts:
+  - external_id: C-S12-FRANCHISE
+    customer: CUST-1
+    contracting_entity: US01
+    transaction_currency: USD
+    inception_date: "2026-01-01"
+    lines:
+      - {obligation_key: L1-PREOPENING, product_code: PREOPENING, quantity: "1", total_price: "10000.00"}
+      - obligation_key: L2-LICENCE
+        product_code: FRANCHISE-LIC
+        quantity: "1"
+        total_price: "40000.00"
+        start_date: "2026-01-01"
+        end_date: "2035-12-31"
+timeline:
+  - seq: 1
+    kind: event
+    contract: C-S12-FRANCHISE
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: 2
+    kind: event
+    contract: C-S12-FRANCHISE
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: 3
+    kind: event
+    contract: C-S12-FRANCHISE
+    event_type: BILLING_RECORDED
+    effective_date: "2026-01-01"
+    payload: {invoice_number: INV-FR-1, line_external_id: INV-FR-1-1, amount: "50000.00", issue_date: "2026-01-01"}
+  - seq: 4
+    kind: event
+    contract: C-S12-FRANCHISE
+    event_type: PROGRESS_RECORDED
+    effective_date: "2026-12-31"
+    payload: {obligation_key: L1-PREOPENING, cumulative_progress_ratio: "1", measure: OUTPUT_PERCENT}
+checkpoints:
+  - name: year-end-2026
+    after_seq: 4
+    as_of: "2026-12-31"
+    book: ASC606
+    contracts:
+      - contract: C-S12-FRANCHISE
+        version: {revenue_cum: "17272.72"}
+        obligations:
+          - obligation_key: L1-PREOPENING
+            allocated_amount: "13636.36"
+            allocated_exact: "13636.363636"
+            revenue_cum: "13636.36"
+          - obligation_key: L2-LICENCE
+            allocated_amount: "36363.64"
+            allocated_exact: "36363.636364"
+            revenue_cum: "3636.36"
+  - name: year-end-2027
+    after_seq: 4
+    as_of: "2027-12-31"
+    book: ASC606
+    contracts:
+      - contract: C-S12-FRANCHISE
+        obligations:
+          - {obligation_key: L2-LICENCE, revenue_cum: "7272.73"}
+  - name: year-end-2028
+    after_seq: 4
+    as_of: "2028-12-31"
+    book: ASC606
+    contracts:
+      - contract: C-S12-FRANCHISE
+        obligations:
+          - {obligation_key: L2-LICENCE, revenue_cum: "10909.09"}
+  - name: year-end-2029
+    after_seq: 4
+    as_of: "2029-12-31"
+    book: ASC606
+    contracts:
+      - contract: C-S12-FRANCHISE
+        obligations:
+          - {obligation_key: L2-LICENCE, revenue_cum: "14545.45"}
+  - name: year-end-2030
+    after_seq: 4
+    as_of: "2030-12-31"
+    book: ASC606
+    contracts:
+      - contract: C-S12-FRANCHISE
+        obligations:
+          - {obligation_key: L2-LICENCE, revenue_cum: "18181.82"}
+  - name: year-end-2031
+    after_seq: 4
+    as_of: "2031-12-31"
+    book: ASC606
+    contracts:
+      - contract: C-S12-FRANCHISE
+        obligations:
+          - {obligation_key: L2-LICENCE, revenue_cum: "21818.18"}
+  - name: year-end-2032
+    after_seq: 4
+    as_of: "2032-12-31"
+    book: ASC606
+    contracts:
+      - contract: C-S12-FRANCHISE
+        obligations:
+          - {obligation_key: L2-LICENCE, revenue_cum: "25454.55"}
+  - name: year-end-2033
+    after_seq: 4
+    as_of: "2033-12-31"
+    book: ASC606
+    contracts:
+      - contract: C-S12-FRANCHISE
+        obligations:
+          - {obligation_key: L2-LICENCE, revenue_cum: "29090.91"}
+  - name: year-end-2034
+    after_seq: 4
+    as_of: "2034-12-31"
+    book: ASC606
+    contracts:
+      - contract: C-S12-FRANCHISE
+        obligations:
+          - {obligation_key: L2-LICENCE, revenue_cum: "32727.27"}
+  - name: year-end-2035
+    after_seq: 4
+    as_of: "2035-12-31"
+    book: ASC606
+    contracts:
+      - contract: C-S12-FRANCHISE
+        obligations:
+          - {obligation_key: L2-LICENCE, revenue_cum: "36363.64"}

@@ -1,0 +1,3787 @@
+{
+  "generated_from": "docs/legacy/golden (legacy eRev.py replay)",
+  "tolerance": {
+    "amount_4dp": 0.0001,
+    "je_2dp": 0.0
+  },
+  "note": "Values are legacy behaviour, including legacy defects flagged in 07-golden-master.md section 6.",
+  "tests": [
+    {
+      "id": "je-step-02",
+      "kind": "journal_entry_totals",
+      "steps_through": "02",
+      "window": [
+        "2023-01-01",
+        "2023-01-01"
+      ],
+      "gross": {
+        "lines": 0,
+        "by_account": [],
+        "total_debit": 0.0,
+        "total_credit": 0.0,
+        "net": 0.0
+      },
+      "delta": {
+        "lines": 0,
+        "by_account": [],
+        "total_debit": 0.0,
+        "total_credit": 0.0,
+        "net": 0.0
+      },
+      "source": "golden/02-contract-setup-2023-01-01/je_gross.csv, je_delta.csv"
+    },
+    {
+      "id": "je-step-03",
+      "kind": "journal_entry_totals",
+      "steps_through": "03",
+      "window": [
+        "2023-02-01",
+        "2023-02-01"
+      ],
+      "gross": {
+        "lines": 0,
+        "by_account": [],
+        "total_debit": 0.0,
+        "total_credit": 0.0,
+        "net": 0.0
+      },
+      "delta": {
+        "lines": 0,
+        "by_account": [],
+        "total_debit": 0.0,
+        "total_credit": 0.0,
+        "net": 0.0
+      },
+      "source": "golden/03-contract-setup-2023-02-01/je_gross.csv, je_delta.csv"
+    },
+    {
+      "id": "je-step-04",
+      "kind": "journal_entry_totals",
+      "steps_through": "04",
+      "window": [
+        "2023-01-02",
+        "2023-01-31"
+      ],
+      "gross": {
+        "lines": 6,
+        "by_account": [
+          {
+            "account": "5001",
+            "debit": 0.0,
+            "credit": 187.69,
+            "net": -187.69
+          },
+          {
+            "account": "5002",
+            "debit": 0.0,
+            "credit": 118.53,
+            "net": -118.53
+          },
+          {
+            "account": "5003",
+            "debit": 0.0,
+            "credit": 48.32,
+            "net": -48.32
+          },
+          {
+            "account": "15002",
+            "debit": 58.85,
+            "credit": -0.0,
+            "net": 58.85
+          },
+          {
+            "account": "21001",
+            "debit": 295.69,
+            "credit": -0.0,
+            "net": 295.69
+          }
+        ],
+        "total_debit": 354.54,
+        "total_credit": 354.54,
+        "net": 0.0
+      },
+      "delta": {
+        "lines": 6,
+        "by_account": [
+          {
+            "account": "5001",
+            "debit": 0.0,
+            "credit": 187.69,
+            "net": -187.69
+          },
+          {
+            "account": "5002",
+            "debit": 0.0,
+            "credit": 52.53,
+            "net": -52.53
+          },
+          {
+            "account": "5003",
+            "debit": 39.68,
+            "credit": -0.0,
+            "net": 39.68
+          },
+          {
+            "account": "15002",
+            "debit": 58.85,
+            "credit": -0.0,
+            "net": 58.85
+          },
+          {
+            "account": "21001",
+            "debit": 141.69,
+            "credit": -0.0,
+            "net": 141.69
+          }
+        ],
+        "total_debit": 240.22,
+        "total_credit": 240.22,
+        "net": 0.0
+      },
+      "source": "golden/04-delivery-billing-2023-01-31/je_gross.csv, je_delta.csv"
+    },
+    {
+      "id": "je-step-05",
+      "kind": "journal_entry_totals",
+      "steps_through": "05",
+      "window": [
+        "2023-02-02",
+        "2023-02-28"
+      ],
+      "gross": {
+        "lines": 6,
+        "by_account": [
+          {
+            "account": "5001",
+            "debit": 0.0,
+            "credit": 175.71,
+            "net": -175.71
+          },
+          {
+            "account": "5003",
+            "debit": 0.0,
+            "credit": 48.32,
+            "net": -48.32
+          },
+          {
+            "account": "21001",
+            "debit": 112.74,
+            "credit": -0.0,
+            "net": 112.74
+          },
+          {
+            "account": "21002",
+            "debit": 111.29,
+            "credit": -0.0,
+            "net": 111.29
+          }
+        ],
+        "total_debit": 224.03,
+        "total_credit": 224.03,
+        "net": 0.0
+      },
+      "delta": {
+        "lines": 6,
+        "by_account": [
+          {
+            "account": "5001",
+            "debit": 38.71,
+            "credit": 64.42,
+            "net": -25.71
+          },
+          {
+            "account": "5003",
+            "debit": 151.68,
+            "credit": -0.0,
+            "net": 151.68
+          },
+          {
+            "account": "21001",
+            "debit": 64.42,
+            "credit": 151.68,
+            "net": -87.26
+          },
+          {
+            "account": "21002",
+            "debit": 0.0,
+            "credit": 38.71,
+            "net": -38.71
+          }
+        ],
+        "total_debit": 254.81,
+        "total_credit": 254.81,
+        "net": 0.0
+      },
+      "source": "golden/05-delivery-billing-2023-02-28/je_gross.csv, je_delta.csv"
+    },
+    {
+      "id": "je-step-06",
+      "kind": "journal_entry_totals",
+      "steps_through": "06",
+      "window": [
+        "2023-03-01",
+        "2023-03-31"
+      ],
+      "gross": {
+        "lines": 6,
+        "by_account": [
+          {
+            "account": "5002",
+            "debit": 0.0,
+            "credit": 217.46,
+            "net": -217.46
+          },
+          {
+            "account": "5003",
+            "debit": 0.0,
+            "credit": 46.15,
+            "net": -46.15
+          },
+          {
+            "account": "15002",
+            "debit": 46.15,
+            "credit": -0.0,
+            "net": 46.15
+          },
+          {
+            "account": "21001",
+            "debit": 118.53,
+            "credit": -0.0,
+            "net": 118.53
+          },
+          {
+            "account": "21002",
+            "debit": 98.93,
+            "credit": -0.0,
+            "net": 98.93
+          }
+        ],
+        "total_debit": 263.61,
+        "total_credit": 263.61,
+        "net": 0.0
+      },
+      "delta": {
+        "lines": 6,
+        "by_account": [
+          {
+            "account": "5002",
+            "debit": 0.0,
+            "credit": 217.46,
+            "net": -217.46
+          },
+          {
+            "account": "5003",
+            "debit": 0.0,
+            "credit": 46.15,
+            "net": -46.15
+          },
+          {
+            "account": "15002",
+            "debit": 46.15,
+            "credit": -0.0,
+            "net": 46.15
+          },
+          {
+            "account": "21001",
+            "debit": 118.53,
+            "credit": -0.0,
+            "net": 118.53
+          },
+          {
+            "account": "21002",
+            "debit": 98.93,
+            "credit": -0.0,
+            "net": 98.93
+          }
+        ],
+        "total_debit": 263.61,
+        "total_credit": 263.61,
+        "net": 0.0
+      },
+      "source": "golden/06-delivery-billing-2023-03-31/je_gross.csv, je_delta.csv"
+    },
+    {
+      "id": "je-step-07",
+      "kind": "journal_entry_totals",
+      "steps_through": "07",
+      "window": [
+        "2023-04-01",
+        "2023-04-30"
+      ],
+      "gross": {
+        "lines": 4,
+        "by_account": [
+          {
+            "account": "5001",
+            "debit": 193.26,
+            "credit": -0.0,
+            "net": 193.26
+          },
+          {
+            "account": "15002",
+            "debit": 0.0,
+            "credit": 20.0,
+            "net": -20.0
+          },
+          {
+            "account": "21001",
+            "debit": 0.0,
+            "credit": 193.26,
+            "net": -193.26
+          },
+          {
+            "account": "21002",
+            "debit": 20.0,
+            "credit": -0.0,
+            "net": 20.0
+          }
+        ],
+        "total_debit": 213.26,
+        "total_credit": 213.26,
+        "net": 0.0
+      },
+      "delta": {
+        "lines": 4,
+        "by_account": [
+          {
+            "account": "5001",
+            "debit": 193.26,
+            "credit": -0.0,
+            "net": 193.26
+          },
+          {
+            "account": "15002",
+            "debit": 0.0,
+            "credit": 20.0,
+            "net": -20.0
+          },
+          {
+            "account": "21001",
+            "debit": 0.0,
+            "credit": 193.26,
+            "net": -193.26
+          },
+          {
+            "account": "21002",
+            "debit": 20.0,
+            "credit": -0.0,
+            "net": 20.0
+          }
+        ],
+        "total_debit": 213.26,
+        "total_credit": 213.26,
+        "net": 0.0
+      },
+      "source": "golden/07-delivery-billing-2023-04-30-return-zero/je_gross.csv, je_delta.csv"
+    },
+    {
+      "id": "je-step-08",
+      "kind": "journal_entry_totals",
+      "steps_through": "08",
+      "window": [
+        "2023-05-01",
+        "2023-05-15"
+      ],
+      "gross": {
+        "lines": 3,
+        "by_account": [
+          {
+            "account": "5001",
+            "debit": 0.0,
+            "credit": 13.38,
+            "net": -13.38
+          },
+          {
+            "account": "5003",
+            "debit": 0.0,
+            "credit": 10.49,
+            "net": -10.49
+          },
+          {
+            "account": "15002",
+            "debit": 23.87,
+            "credit": -0.0,
+            "net": 23.87
+          }
+        ],
+        "total_debit": 23.87,
+        "total_credit": 23.87,
+        "net": 0.0
+      },
+      "delta": {
+        "lines": 3,
+        "by_account": [
+          {
+            "account": "5001",
+            "debit": 0.0,
+            "credit": 13.38,
+            "net": -13.38
+          },
+          {
+            "account": "5003",
+            "debit": 0.0,
+            "credit": 10.49,
+            "net": -10.49
+          },
+          {
+            "account": "15002",
+            "debit": 23.87,
+            "credit": -0.0,
+            "net": 23.87
+          }
+        ],
+        "total_debit": 23.87,
+        "total_credit": 23.87,
+        "net": 0.0
+      },
+      "source": "golden/08-retro-mod-2023-05-15-vc-pob-increase/je_gross.csv, je_delta.csv"
+    },
+    {
+      "id": "je-step-09",
+      "kind": "journal_entry_totals",
+      "steps_through": "09",
+      "window": [
+        "2023-05-16",
+        "2023-05-31"
+      ],
+      "gross": {
+        "lines": 2,
+        "by_account": [
+          {
+            "account": "5001",
+            "debit": 18.68,
+            "credit": -0.0,
+            "net": 18.68
+          },
+          {
+            "account": "15002",
+            "debit": 0.0,
+            "credit": 18.68,
+            "net": -18.68
+          }
+        ],
+        "total_debit": 18.68,
+        "total_credit": 18.68,
+        "net": 0.0
+      },
+      "delta": {
+        "lines": 2,
+        "by_account": [
+          {
+            "account": "5001",
+            "debit": 18.68,
+            "credit": -0.0,
+            "net": 18.68
+          },
+          {
+            "account": "15002",
+            "debit": 0.0,
+            "credit": 18.68,
+            "net": -18.68
+          }
+        ],
+        "total_debit": 18.68,
+        "total_credit": 18.68,
+        "net": 0.0
+      },
+      "source": "golden/09-pob-specific-vc-2023-05-31/je_gross.csv, je_delta.csv"
+    },
+    {
+      "id": "je-step-10",
+      "kind": "journal_entry_totals",
+      "steps_through": "10",
+      "window": [
+        "2023-06-01",
+        "2023-06-15"
+      ],
+      "gross": {
+        "lines": 2,
+        "by_account": [
+          {
+            "account": "5003",
+            "debit": 5.3,
+            "credit": -0.0,
+            "net": 5.3
+          },
+          {
+            "account": "21001",
+            "debit": 0.0,
+            "credit": 5.3,
+            "net": -5.3
+          }
+        ],
+        "total_debit": 5.3,
+        "total_credit": 5.3,
+        "net": 0.0
+      },
+      "delta": {
+        "lines": 2,
+        "by_account": [
+          {
+            "account": "5003",
+            "debit": 5.3,
+            "credit": -0.0,
+            "net": 5.3
+          },
+          {
+            "account": "21001",
+            "debit": 0.0,
+            "credit": 5.3,
+            "net": -5.3
+          }
+        ],
+        "total_debit": 5.3,
+        "total_credit": 5.3,
+        "net": 0.0
+      },
+      "source": "golden/10-prospective-mod-2023-06-15-reduction/je_gross.csv, je_delta.csv"
+    },
+    {
+      "id": "je-step-11",
+      "kind": "journal_entry_totals",
+      "steps_through": "11",
+      "window": [
+        "2023-07-01",
+        "2023-07-15"
+      ],
+      "gross": {
+        "lines": 2,
+        "by_account": [
+          {
+            "account": "5003",
+            "debit": 0.0,
+            "credit": 6.99,
+            "net": -6.99
+          },
+          {
+            "account": "21001",
+            "debit": 6.99,
+            "credit": -0.0,
+            "net": 6.99
+          }
+        ],
+        "total_debit": 6.99,
+        "total_credit": 6.99,
+        "net": 0.0
+      },
+      "delta": {
+        "lines": 2,
+        "by_account": [
+          {
+            "account": "5003",
+            "debit": 0.0,
+            "credit": 6.99,
+            "net": -6.99
+          },
+          {
+            "account": "21001",
+            "debit": 6.99,
+            "credit": -0.0,
+            "net": 6.99
+          }
+        ],
+        "total_debit": 6.99,
+        "total_credit": 6.99,
+        "net": 0.0
+      },
+      "source": "golden/11-prospective-mod-2023-07-15-pob-increase/je_gross.csv, je_delta.csv"
+    },
+    {
+      "id": "je-step-12",
+      "kind": "journal_entry_totals",
+      "steps_through": "12",
+      "window": [
+        "2023-08-01",
+        "2023-08-15"
+      ],
+      "gross": {
+        "lines": 6,
+        "by_account": [
+          {
+            "account": "5001",
+            "debit": 0.0,
+            "credit": 8.63,
+            "net": -8.63
+          },
+          {
+            "account": "5002",
+            "debit": 0.0,
+            "credit": 42.55,
+            "net": -42.55
+          },
+          {
+            "account": "5003",
+            "debit": 0.0,
+            "credit": 7.22,
+            "net": -7.22
+          },
+          {
+            "account": "21001",
+            "debit": 42.1,
+            "credit": -0.0,
+            "net": 42.1
+          },
+          {
+            "account": "21002",
+            "debit": 16.3,
+            "credit": -0.0,
+            "net": 16.3
+          }
+        ],
+        "total_debit": 58.4,
+        "total_credit": 58.4,
+        "net": 0.0
+      },
+      "delta": {
+        "lines": 6,
+        "by_account": [
+          {
+            "account": "5001",
+            "debit": 0.0,
+            "credit": 8.63,
+            "net": -8.63
+          },
+          {
+            "account": "5002",
+            "debit": 0.0,
+            "credit": 42.55,
+            "net": -42.55
+          },
+          {
+            "account": "5003",
+            "debit": 0.0,
+            "credit": 7.22,
+            "net": -7.22
+          },
+          {
+            "account": "21001",
+            "debit": 42.1,
+            "credit": -0.0,
+            "net": 42.1
+          },
+          {
+            "account": "21002",
+            "debit": 16.3,
+            "credit": -0.0,
+            "net": 16.3
+          }
+        ],
+        "total_debit": 58.4,
+        "total_credit": 58.4,
+        "net": 0.0
+      },
+      "source": "golden/12-retro-mod-2023-08-15-pob-reduction/je_gross.csv, je_delta.csv"
+    },
+    {
+      "id": "je-step-13",
+      "kind": "journal_entry_totals",
+      "steps_through": "13",
+      "window": [
+        "2023-09-01",
+        "2023-09-15"
+      ],
+      "gross": {
+        "lines": 2,
+        "by_account": [
+          {
+            "account": "5003",
+            "debit": 0.0,
+            "credit": 32.14,
+            "net": -32.14
+          },
+          {
+            "account": "21001",
+            "debit": 32.14,
+            "credit": -0.0,
+            "net": 32.14
+          }
+        ],
+        "total_debit": 32.14,
+        "total_credit": 32.14,
+        "net": 0.0
+      },
+      "delta": {
+        "lines": 2,
+        "by_account": [
+          {
+            "account": "5003",
+            "debit": 0.0,
+            "credit": 32.14,
+            "net": -32.14
+          },
+          {
+            "account": "21001",
+            "debit": 32.14,
+            "credit": -0.0,
+            "net": 32.14
+          }
+        ],
+        "total_debit": 32.14,
+        "total_credit": 32.14,
+        "net": 0.0
+      },
+      "source": "golden/13-prospective-mod-2023-09-15-material-right-new-pob/je_gross.csv, je_delta.csv"
+    },
+    {
+      "id": "je-step-14",
+      "kind": "journal_entry_totals",
+      "steps_through": "14",
+      "window": [
+        "2023-10-01",
+        "2023-10-31"
+      ],
+      "gross": {
+        "lines": 18,
+        "by_account": [
+          {
+            "account": "5001",
+            "debit": 0.0,
+            "credit": 2060.34,
+            "net": -2060.34
+          },
+          {
+            "account": "5002",
+            "debit": 0.0,
+            "credit": 1108.62,
+            "net": -1108.62
+          },
+          {
+            "account": "5003",
+            "debit": 0.0,
+            "credit": 1784.7,
+            "net": -1784.7
+          },
+          {
+            "account": "15002",
+            "debit": 0.0,
+            "credit": 90.19,
+            "net": -90.19
+          },
+          {
+            "account": "21001",
+            "debit": 2990.36,
+            "credit": -0.0,
+            "net": 2990.36
+          },
+          {
+            "account": "21002",
+            "debit": 2053.48,
+            "credit": -0.0,
+            "net": 2053.48
+          }
+        ],
+        "total_debit": 5043.84,
+        "total_credit": 5043.85,
+        "net": -0.01
+      },
+      "delta": {
+        "lines": 18,
+        "by_account": [
+          {
+            "account": "5001",
+            "debit": 0.0,
+            "credit": 2060.34,
+            "net": -2060.34
+          },
+          {
+            "account": "5002",
+            "debit": 0.0,
+            "credit": 1108.62,
+            "net": -1108.62
+          },
+          {
+            "account": "5003",
+            "debit": 0.0,
+            "credit": 1784.7,
+            "net": -1784.7
+          },
+          {
+            "account": "15002",
+            "debit": 0.0,
+            "credit": 90.19,
+            "net": -90.19
+          },
+          {
+            "account": "21001",
+            "debit": 2990.36,
+            "credit": -0.0,
+            "net": 2990.36
+          },
+          {
+            "account": "21002",
+            "debit": 2053.48,
+            "credit": -0.0,
+            "net": 2053.48
+          }
+        ],
+        "total_debit": 5043.84,
+        "total_credit": 5043.85,
+        "net": -0.01
+      },
+      "source": "golden/14-full-delivery-2023-10-31/je_gross.csv, je_delta.csv"
+    },
+    {
+      "id": "rollforward-02-Contract1",
+      "kind": "contract_position",
+      "steps_through": "02",
+      "contract": "Contract 1",
+      "expected": {
+        "tp_allocation_basis": 1300.0,
+        "tp_billing_basis": 1300.0,
+        "revenue_cum": 0.0,
+        "billing_cum": 0.0,
+        "remaining_allocation": 1300.0,
+        "position": 0.0,
+        "contract_liability": 0.0,
+        "contract_asset": -0.0,
+        "uar_reclass_field": 0.0,
+        "catchup_cum_disclosure": 0.0
+      },
+      "source": "golden/contract-rollforward.csv"
+    },
+    {
+      "id": "rollforward-02-Contract2",
+      "kind": "contract_position",
+      "steps_through": "02",
+      "contract": "Contract 2",
+      "expected": {
+        "tp_allocation_basis": 900.0,
+        "tp_billing_basis": 900.0,
+        "revenue_cum": 0.0,
+        "billing_cum": 0.0,
+        "remaining_allocation": 900.0,
+        "position": 0.0,
+        "contract_liability": 0.0,
+        "contract_asset": -0.0,
+        "uar_reclass_field": 0.0,
+        "catchup_cum_disclosure": 0.0
+      },
+      "source": "golden/contract-rollforward.csv"
+    },
+    {
+      "id": "rollforward-03-Contract1",
+      "kind": "contract_position",
+      "steps_through": "03",
+      "contract": "Contract 1",
+      "expected": {
+        "tp_allocation_basis": 1300.0,
+        "tp_billing_basis": 1300.0,
+        "revenue_cum": 0.0,
+        "billing_cum": 0.0,
+        "remaining_allocation": 1300.0,
+        "position": 0.0,
+        "contract_liability": 0.0,
+        "contract_asset": -0.0,
+        "uar_reclass_field": 0.0,
+        "catchup_cum_disclosure": 0.0
+      },
+      "source": "golden/contract-rollforward.csv"
+    },
+    {
+      "id": "rollforward-03-Contract2",
+      "kind": "contract_position",
+      "steps_through": "03",
+      "contract": "Contract 2",
+      "expected": {
+        "tp_allocation_basis": 900.0,
+        "tp_billing_basis": 900.0,
+        "revenue_cum": 0.0,
+        "billing_cum": 0.0,
+        "remaining_allocation": 900.0,
+        "position": 0.0,
+        "contract_liability": 0.0,
+        "contract_asset": -0.0,
+        "uar_reclass_field": 0.0,
+        "catchup_cum_disclosure": 0.0
+      },
+      "source": "golden/contract-rollforward.csv"
+    },
+    {
+      "id": "rollforward-03-Contract3",
+      "kind": "contract_position",
+      "steps_through": "03",
+      "contract": "Contract 3",
+      "expected": {
+        "tp_allocation_basis": 1300.0,
+        "tp_billing_basis": 1300.0,
+        "revenue_cum": 0.0,
+        "billing_cum": 0.0,
+        "remaining_allocation": 1300.0,
+        "position": 0.0,
+        "contract_liability": 0.0,
+        "contract_asset": -0.0,
+        "uar_reclass_field": 0.0,
+        "catchup_cum_disclosure": 0.0
+      },
+      "source": "golden/contract-rollforward.csv"
+    },
+    {
+      "id": "rollforward-03-Contract4",
+      "kind": "contract_position",
+      "steps_through": "03",
+      "contract": "Contract 4",
+      "expected": {
+        "tp_allocation_basis": 950.0,
+        "tp_billing_basis": 950.0,
+        "revenue_cum": 0.0,
+        "billing_cum": 0.0,
+        "remaining_allocation": 950.0,
+        "position": 0.0,
+        "contract_liability": 0.0,
+        "contract_asset": -0.0,
+        "uar_reclass_field": 0.0,
+        "catchup_cum_disclosure": 0.0
+      },
+      "source": "golden/contract-rollforward.csv"
+    },
+    {
+      "id": "rollforward-04-Contract1",
+      "kind": "contract_position",
+      "steps_through": "04",
+      "contract": "Contract 1",
+      "expected": {
+        "tp_allocation_basis": 1300.0,
+        "tp_billing_basis": 1300.0,
+        "revenue_cum": 295.6888,
+        "billing_cum": 300.0,
+        "remaining_allocation": 1004.3112,
+        "position": 4.3112,
+        "contract_liability": 4.3112,
+        "contract_asset": 0.0,
+        "uar_reclass_field": 0.0,
+        "catchup_cum_disclosure": 0.0
+      },
+      "source": "golden/contract-rollforward.csv"
+    },
+    {
+      "id": "rollforward-04-Contract2",
+      "kind": "contract_position",
+      "steps_through": "04",
+      "contract": "Contract 2",
+      "expected": {
+        "tp_allocation_basis": 900.0,
+        "tp_billing_basis": 900.0,
+        "revenue_cum": 58.8462,
+        "billing_cum": 0.0,
+        "remaining_allocation": 841.1538,
+        "position": -58.8462,
+        "contract_liability": 0.0,
+        "contract_asset": 58.8462,
+        "uar_reclass_field": 58.8462,
+        "catchup_cum_disclosure": 0.0
+      },
+      "source": "golden/contract-rollforward.csv"
+    },
+    {
+      "id": "rollforward-04-Contract3",
+      "kind": "contract_position",
+      "steps_through": "04",
+      "contract": "Contract 3",
+      "expected": {
+        "tp_allocation_basis": 1300.0,
+        "tp_billing_basis": 1300.0,
+        "revenue_cum": 0.0,
+        "billing_cum": 0.0,
+        "remaining_allocation": 1300.0,
+        "position": 0.0,
+        "contract_liability": 0.0,
+        "contract_asset": -0.0,
+        "uar_reclass_field": 0.0,
+        "catchup_cum_disclosure": 0.0
+      },
+      "source": "golden/contract-rollforward.csv"
+    },
+    {
+      "id": "rollforward-04-Contract4",
+      "kind": "contract_position",
+      "steps_through": "04",
+      "contract": "Contract 4",
+      "expected": {
+        "tp_allocation_basis": 950.0,
+        "tp_billing_basis": 950.0,
+        "revenue_cum": 0.0,
+        "billing_cum": 0.0,
+        "remaining_allocation": 950.0,
+        "position": 0.0,
+        "contract_liability": 0.0,
+        "contract_asset": -0.0,
+        "uar_reclass_field": 0.0,
+        "catchup_cum_disclosure": 0.0
+      },
+      "source": "golden/contract-rollforward.csv"
+    },
+    {
+      "id": "rollforward-05-Contract1",
+      "kind": "contract_position",
+      "steps_through": "05",
+      "contract": "Contract 1",
+      "expected": {
+        "tp_allocation_basis": 1300.0,
+        "tp_billing_basis": 1300.0,
+        "revenue_cum": 360.109,
+        "billing_cum": 400.0,
+        "remaining_allocation": 939.891,
+        "position": 39.891,
+        "contract_liability": 39.891,
+        "contract_asset": 0.0,
+        "uar_reclass_field": 0.0,
+        "catchup_cum_disclosure": 0.0
+      },
+      "source": "golden/contract-rollforward.csv"
+    },
+    {
+      "id": "rollforward-05-Contract2",
+      "kind": "contract_position",
+      "steps_through": "05",
+      "contract": "Contract 2",
+      "expected": {
+        "tp_allocation_basis": 900.0,
+        "tp_billing_basis": 900.0,
+        "revenue_cum": 58.8462,
+        "billing_cum": 0.0,
+        "remaining_allocation": 841.1538,
+        "position": -58.8462,
+        "contract_liability": 0.0,
+        "contract_asset": 58.8462,
+        "uar_reclass_field": 58.8462,
+        "catchup_cum_disclosure": 0.0
+      },
+      "source": "golden/contract-rollforward.csv"
+    },
+    {
+      "id": "rollforward-05-Contract3",
+      "kind": "contract_position",
+      "steps_through": "05",
+      "contract": "Contract 3",
+      "expected": {
+        "tp_allocation_basis": 1300.0,
+        "tp_billing_basis": 1300.0,
+        "revenue_cum": 48.3152,
+        "billing_cum": 200.0,
+        "remaining_allocation": 1251.6848,
+        "position": 151.6848,
+        "contract_liability": 151.6848,
+        "contract_asset": 0.0,
+        "uar_reclass_field": 0.0,
+        "catchup_cum_disclosure": 0.0
+      },
+      "source": "golden/contract-rollforward.csv"
+    },
+    {
+      "id": "rollforward-05-Contract4",
+      "kind": "contract_position",
+      "steps_through": "05",
+      "contract": "Contract 4",
+      "expected": {
+        "tp_allocation_basis": 950.0,
+        "tp_billing_basis": 950.0,
+        "revenue_cum": 111.294,
+        "billing_cum": 150.0,
+        "remaining_allocation": 838.706,
+        "position": 38.706,
+        "contract_liability": 38.706,
+        "contract_asset": 0.0,
+        "uar_reclass_field": 0.0,
+        "catchup_cum_disclosure": 0.0
+      },
+      "source": "golden/contract-rollforward.csv"
+    },
+    {
+      "id": "rollforward-06-Contract1",
+      "kind": "contract_position",
+      "steps_through": "06",
+      "contract": "Contract 1",
+      "expected": {
+        "tp_allocation_basis": 1300.0,
+        "tp_billing_basis": 1300.0,
+        "revenue_cum": 360.109,
+        "billing_cum": 400.0,
+        "remaining_allocation": 939.891,
+        "position": 39.891,
+        "contract_liability": 39.891,
+        "contract_asset": 0.0,
+        "uar_reclass_field": 0.0,
+        "catchup_cum_disclosure": 0.0
+      },
+      "source": "golden/contract-rollforward.csv"
+    },
+    {
+      "id": "rollforward-06-Contract2",
+      "kind": "contract_position",
+      "steps_through": "06",
+      "contract": "Contract 2",
+      "expected": {
+        "tp_allocation_basis": 900.0,
+        "tp_billing_basis": 900.0,
+        "revenue_cum": 105.0,
+        "billing_cum": 0.0,
+        "remaining_allocation": 795.0,
+        "position": -105.0,
+        "contract_liability": 0.0,
+        "contract_asset": 105.0,
+        "uar_reclass_field": 105.0,
+        "catchup_cum_disclosure": 0.0
+      },
+      "source": "golden/contract-rollforward.csv"
+    },
+    {
+      "id": "rollforward-06-Contract3",
+      "kind": "contract_position",
+      "steps_through": "06",
+      "contract": "Contract 3",
+      "expected": {
+        "tp_allocation_basis": 1300.0,
+        "tp_billing_basis": 1300.0,
+        "revenue_cum": 166.8484,
+        "billing_cum": 400.0,
+        "remaining_allocation": 1133.1516,
+        "position": 233.1516,
+        "contract_liability": 233.1516,
+        "contract_asset": 0.0,
+        "uar_reclass_field": 0.0,
+        "catchup_cum_disclosure": 0.0
+      },
+      "source": "golden/contract-rollforward.csv"
+    },
+    {
+      "id": "rollforward-06-Contract4",
+      "kind": "contract_position",
+      "steps_through": "06",
+      "contract": "Contract 4",
+      "expected": {
+        "tp_allocation_basis": 950.0,
+        "tp_billing_basis": 950.0,
+        "revenue_cum": 210.2221,
+        "billing_cum": 250.0,
+        "remaining_allocation": 739.7779,
+        "position": 39.7779,
+        "contract_liability": 39.7779,
+        "contract_asset": 0.0,
+        "uar_reclass_field": 0.0,
+        "catchup_cum_disclosure": 0.0
+      },
+      "source": "golden/contract-rollforward.csv"
+    },
+    {
+      "id": "rollforward-07-Contract1",
+      "kind": "contract_position",
+      "steps_through": "07",
+      "contract": "Contract 1",
+      "expected": {
+        "tp_allocation_basis": 1300.0,
+        "tp_billing_basis": 1300.0,
+        "revenue_cum": 166.8484,
+        "billing_cum": 500.0,
+        "remaining_allocation": 1133.1516,
+        "position": 333.1516,
+        "contract_liability": 333.1516,
+        "contract_asset": 0.0,
+        "uar_reclass_field": 0.0,
+        "catchup_cum_disclosure": 0.0
+      },
+      "source": "golden/contract-rollforward.csv"
+    },
+    {
+      "id": "rollforward-07-Contract2",
+      "kind": "contract_position",
+      "steps_through": "07",
+      "contract": "Contract 2",
+      "expected": {
+        "tp_allocation_basis": 900.0,
+        "tp_billing_basis": 900.0,
+        "revenue_cum": 105.0,
+        "billing_cum": 20.0,
+        "remaining_allocation": 795.0,
+        "position": -85.0,
+        "contract_liability": 0.0,
+        "contract_asset": 85.0,
+        "uar_reclass_field": 85.0,
+        "catchup_cum_disclosure": 0.0
+      },
+      "source": "golden/contract-rollforward.csv"
+    },
+    {
+      "id": "rollforward-07-Contract3",
+      "kind": "contract_position",
+      "steps_through": "07",
+      "contract": "Contract 3",
+      "expected": {
+        "tp_allocation_basis": 1300.0,
+        "tp_billing_basis": 1300.0,
+        "revenue_cum": 166.8484,
+        "billing_cum": 400.0,
+        "remaining_allocation": 1133.1516,
+        "position": 233.1516,
+        "contract_liability": 233.1516,
+        "contract_asset": 0.0,
+        "uar_reclass_field": 0.0,
+        "catchup_cum_disclosure": 0.0
+      },
+      "source": "golden/contract-rollforward.csv"
+    },
+    {
+      "id": "rollforward-07-Contract4",
+      "kind": "contract_position",
+      "steps_through": "07",
+      "contract": "Contract 4",
+      "expected": {
+        "tp_allocation_basis": 950.0,
+        "tp_billing_basis": 950.0,
+        "revenue_cum": 210.2221,
+        "billing_cum": 250.0,
+        "remaining_allocation": 739.7779,
+        "position": 39.7779,
+        "contract_liability": 39.7779,
+        "contract_asset": 0.0,
+        "uar_reclass_field": 0.0,
+        "catchup_cum_disclosure": 0.0
+      },
+      "source": "golden/contract-rollforward.csv"
+    },
+    {
+      "id": "rollforward-08-Contract1",
+      "kind": "contract_position",
+      "steps_through": "08",
+      "contract": "Contract 1",
+      "expected": {
+        "tp_allocation_basis": 1300.0,
+        "tp_billing_basis": 1300.0,
+        "revenue_cum": 166.8484,
+        "billing_cum": 500.0,
+        "remaining_allocation": 1133.1516,
+        "position": 333.1516,
+        "contract_liability": 333.1516,
+        "contract_asset": 0.0,
+        "uar_reclass_field": 0.0,
+        "catchup_cum_disclosure": 0.0
+      },
+      "source": "golden/contract-rollforward.csv"
+    },
+    {
+      "id": "rollforward-08-Contract2",
+      "kind": "contract_position",
+      "steps_through": "08",
+      "contract": "Contract 2",
+      "expected": {
+        "tp_allocation_basis": 1300.0,
+        "tp_billing_basis": 1300.0,
+        "revenue_cum": 128.8671,
+        "billing_cum": 20.0,
+        "remaining_allocation": 1171.1329,
+        "position": -108.8671,
+        "contract_liability": 0.0,
+        "contract_asset": 108.8671,
+        "uar_reclass_field": 108.8671,
+        "catchup_cum_disclosure": 23.8671
+      },
+      "source": "golden/contract-rollforward.csv"
+    },
+    {
+      "id": "rollforward-08-Contract3",
+      "kind": "contract_position",
+      "steps_through": "08",
+      "contract": "Contract 3",
+      "expected": {
+        "tp_allocation_basis": 1300.0,
+        "tp_billing_basis": 1300.0,
+        "revenue_cum": 166.8484,
+        "billing_cum": 400.0,
+        "remaining_allocation": 1133.1516,
+        "position": 233.1516,
+        "contract_liability": 233.1516,
+        "contract_asset": 0.0,
+        "uar_reclass_field": 0.0,
+        "catchup_cum_disclosure": 0.0
+      },
+      "source": "golden/contract-rollforward.csv"
+    },
+    {
+      "id": "rollforward-08-Contract4",
+      "kind": "contract_position",
+      "steps_through": "08",
+      "contract": "Contract 4",
+      "expected": {
+        "tp_allocation_basis": 950.0,
+        "tp_billing_basis": 950.0,
+        "revenue_cum": 210.2221,
+        "billing_cum": 250.0,
+        "remaining_allocation": 739.7779,
+        "position": 39.7779,
+        "contract_liability": 39.7779,
+        "contract_asset": 0.0,
+        "uar_reclass_field": 0.0,
+        "catchup_cum_disclosure": 0.0
+      },
+      "source": "golden/contract-rollforward.csv"
+    },
+    {
+      "id": "rollforward-09-Contract1",
+      "kind": "contract_position",
+      "steps_through": "09",
+      "contract": "Contract 1",
+      "expected": {
+        "tp_allocation_basis": 1300.0,
+        "tp_billing_basis": 1300.0,
+        "revenue_cum": 166.8484,
+        "billing_cum": 500.0,
+        "remaining_allocation": 1133.1516,
+        "position": 333.1516,
+        "contract_liability": 333.1516,
+        "contract_asset": 0.0,
+        "uar_reclass_field": 0.0,
+        "catchup_cum_disclosure": 0.0
+      },
+      "source": "golden/contract-rollforward.csv"
+    },
+    {
+      "id": "rollforward-09-Contract2",
+      "kind": "contract_position",
+      "steps_through": "09",
+      "contract": "Contract 2",
+      "expected": {
+        "tp_allocation_basis": 1100.0,
+        "tp_billing_basis": 1100.0,
+        "revenue_cum": 110.1858,
+        "billing_cum": 20.0,
+        "remaining_allocation": 989.8142,
+        "position": -90.1858,
+        "contract_liability": 0.0,
+        "contract_asset": 90.1858,
+        "uar_reclass_field": 90.1858,
+        "catchup_cum_disclosure": 5.1858
+      },
+      "source": "golden/contract-rollforward.csv"
+    },
+    {
+      "id": "rollforward-09-Contract3",
+      "kind": "contract_position",
+      "steps_through": "09",
+      "contract": "Contract 3",
+      "expected": {
+        "tp_allocation_basis": 1300.0,
+        "tp_billing_basis": 1300.0,
+        "revenue_cum": 166.8484,
+        "billing_cum": 400.0,
+        "remaining_allocation": 1133.1516,
+        "position": 233.1516,
+        "contract_liability": 233.1516,
+        "contract_asset": 0.0,
+        "uar_reclass_field": 0.0,
+        "catchup_cum_disclosure": 0.0
+      },
+      "source": "golden/contract-rollforward.csv"
+    },
+    {
+      "id": "rollforward-09-Contract4",
+      "kind": "contract_position",
+      "steps_through": "09",
+      "contract": "Contract 4",
+      "expected": {
+        "tp_allocation_basis": 950.0,
+        "tp_billing_basis": 950.0,
+        "revenue_cum": 210.2221,
+        "billing_cum": 250.0,
+        "remaining_allocation": 739.7779,
+        "position": 39.7779,
+        "contract_liability": 39.7779,
+        "contract_asset": 0.0,
+        "uar_reclass_field": 0.0,
+        "catchup_cum_disclosure": 0.0
+      },
+      "source": "golden/contract-rollforward.csv"
+    },
+    {
+      "id": "rollforward-10-Contract1",
+      "kind": "contract_position",
+      "steps_through": "10",
+      "contract": "Contract 1",
+      "expected": {
+        "tp_allocation_basis": 800.0,
+        "tp_billing_basis": 800.0,
+        "revenue_cum": 161.5495,
+        "billing_cum": 500.0,
+        "remaining_allocation": 638.4505,
+        "position": 338.4505,
+        "contract_liability": 338.4505,
+        "contract_asset": 0.0,
+        "uar_reclass_field": 0.0,
+        "catchup_cum_disclosure": -5.2988
+      },
+      "source": "golden/contract-rollforward.csv"
+    },
+    {
+      "id": "rollforward-10-Contract2",
+      "kind": "contract_position",
+      "steps_through": "10",
+      "contract": "Contract 2",
+      "expected": {
+        "tp_allocation_basis": 1100.0,
+        "tp_billing_basis": 1100.0,
+        "revenue_cum": 110.1858,
+        "billing_cum": 20.0,
+        "remaining_allocation": 989.8142,
+        "position": -90.1858,
+        "contract_liability": 0.0,
+        "contract_asset": 90.1858,
+        "uar_reclass_field": 90.1858,
+        "catchup_cum_disclosure": 5.1858
+      },
+      "source": "golden/contract-rollforward.csv"
+    },
+    {
+      "id": "rollforward-10-Contract3",
+      "kind": "contract_position",
+      "steps_through": "10",
+      "contract": "Contract 3",
+      "expected": {
+        "tp_allocation_basis": 1300.0,
+        "tp_billing_basis": 1300.0,
+        "revenue_cum": 166.8484,
+        "billing_cum": 400.0,
+        "remaining_allocation": 1133.1516,
+        "position": 233.1516,
+        "contract_liability": 233.1516,
+        "contract_asset": 0.0,
+        "uar_reclass_field": 0.0,
+        "catchup_cum_disclosure": 0.0
+      },
+      "source": "golden/contract-rollforward.csv"
+    },
+    {
+      "id": "rollforward-10-Contract4",
+      "kind": "contract_position",
+      "steps_through": "10",
+      "contract": "Contract 4",
+      "expected": {
+        "tp_allocation_basis": 950.0,
+        "tp_billing_basis": 950.0,
+        "revenue_cum": 210.2221,
+        "billing_cum": 250.0,
+        "remaining_allocation": 739.7779,
+        "position": 39.7779,
+        "contract_liability": 39.7779,
+        "contract_asset": 0.0,
+        "uar_reclass_field": 0.0,
+        "catchup_cum_disclosure": 0.0
+      },
+      "source": "golden/contract-rollforward.csv"
+    },
+    {
+      "id": "rollforward-11-Contract1",
+      "kind": "contract_position",
+      "steps_through": "11",
+      "contract": "Contract 1",
+      "expected": {
+        "tp_allocation_basis": 800.0,
+        "tp_billing_basis": 800.0,
+        "revenue_cum": 161.5495,
+        "billing_cum": 500.0,
+        "remaining_allocation": 638.4505,
+        "position": 338.4505,
+        "contract_liability": 338.4505,
+        "contract_asset": 0.0,
+        "uar_reclass_field": 0.0,
+        "catchup_cum_disclosure": -5.2988
+      },
+      "source": "golden/contract-rollforward.csv"
+    },
+    {
+      "id": "rollforward-11-Contract2",
+      "kind": "contract_position",
+      "steps_through": "11",
+      "contract": "Contract 2",
+      "expected": {
+        "tp_allocation_basis": 1100.0,
+        "tp_billing_basis": 1100.0,
+        "revenue_cum": 110.1858,
+        "billing_cum": 20.0,
+        "remaining_allocation": 989.8142,
+        "position": -90.1858,
+        "contract_liability": 0.0,
+        "contract_asset": 90.1858,
+        "uar_reclass_field": 90.1858,
+        "catchup_cum_disclosure": 5.1858
+      },
+      "source": "golden/contract-rollforward.csv"
+    },
+    {
+      "id": "rollforward-11-Contract3",
+      "kind": "contract_position",
+      "steps_through": "11",
+      "contract": "Contract 3",
+      "expected": {
+        "tp_allocation_basis": 1800.0,
+        "tp_billing_basis": 1800.0,
+        "revenue_cum": 173.8419,
+        "billing_cum": 400.0,
+        "remaining_allocation": 1626.1581,
+        "position": 226.1581,
+        "contract_liability": 226.1581,
+        "contract_asset": 0.0,
+        "uar_reclass_field": 0.0,
+        "catchup_cum_disclosure": 6.9936
+      },
+      "source": "golden/contract-rollforward.csv"
+    },
+    {
+      "id": "rollforward-11-Contract4",
+      "kind": "contract_position",
+      "steps_through": "11",
+      "contract": "Contract 4",
+      "expected": {
+        "tp_allocation_basis": 1250.0,
+        "tp_billing_basis": 1250.0,
+        "revenue_cum": 210.2221,
+        "billing_cum": 250.0,
+        "remaining_allocation": 1039.7779,
+        "position": 39.7779,
+        "contract_liability": 39.7779,
+        "contract_asset": 0.0,
+        "uar_reclass_field": 0.0,
+        "catchup_cum_disclosure": 0.0
+      },
+      "source": "golden/contract-rollforward.csv"
+    },
+    {
+      "id": "rollforward-12-Contract1",
+      "kind": "contract_position",
+      "steps_through": "12",
+      "contract": "Contract 1",
+      "expected": {
+        "tp_allocation_basis": 800.0,
+        "tp_billing_basis": 800.0,
+        "revenue_cum": 161.5495,
+        "billing_cum": 500.0,
+        "remaining_allocation": 638.4505,
+        "position": 338.4505,
+        "contract_liability": 338.4505,
+        "contract_asset": 0.0,
+        "uar_reclass_field": 0.0,
+        "catchup_cum_disclosure": -5.2988
+      },
+      "source": "golden/contract-rollforward.csv"
+    },
+    {
+      "id": "rollforward-12-Contract2",
+      "kind": "contract_position",
+      "steps_through": "12",
+      "contract": "Contract 2",
+      "expected": {
+        "tp_allocation_basis": 1100.0,
+        "tp_billing_basis": 1100.0,
+        "revenue_cum": 110.1858,
+        "billing_cum": 20.0,
+        "remaining_allocation": 989.8142,
+        "position": -90.1858,
+        "contract_liability": 0.0,
+        "contract_asset": 90.1858,
+        "uar_reclass_field": 90.1858,
+        "catchup_cum_disclosure": 5.1858
+      },
+      "source": "golden/contract-rollforward.csv"
+    },
+    {
+      "id": "rollforward-12-Contract3",
+      "kind": "contract_position",
+      "steps_through": "12",
+      "contract": "Contract 3",
+      "expected": {
+        "tp_allocation_basis": 1600.0,
+        "tp_billing_basis": 1600.0,
+        "revenue_cum": 215.9458,
+        "billing_cum": 400.0,
+        "remaining_allocation": 1384.0542,
+        "position": 184.0542,
+        "contract_liability": 184.0542,
+        "contract_asset": 0.0,
+        "uar_reclass_field": 0.0,
+        "catchup_cum_disclosure": 49.0974
+      },
+      "source": "golden/contract-rollforward.csv"
+    },
+    {
+      "id": "rollforward-12-Contract4",
+      "kind": "contract_position",
+      "steps_through": "12",
+      "contract": "Contract 4",
+      "expected": {
+        "tp_allocation_basis": 1200.0,
+        "tp_billing_basis": 1200.0,
+        "revenue_cum": 226.5186,
+        "billing_cum": 250.0,
+        "remaining_allocation": 973.4814,
+        "position": 23.4814,
+        "contract_liability": 23.4814,
+        "contract_asset": 0.0,
+        "uar_reclass_field": 0.0,
+        "catchup_cum_disclosure": 16.2966
+      },
+      "source": "golden/contract-rollforward.csv"
+    },
+    {
+      "id": "rollforward-13-Contract1",
+      "kind": "contract_position",
+      "steps_through": "13",
+      "contract": "Contract 1",
+      "expected": {
+        "tp_allocation_basis": 800.0,
+        "tp_billing_basis": 800.0,
+        "revenue_cum": 161.5495,
+        "billing_cum": 500.0,
+        "remaining_allocation": 638.4505,
+        "position": 338.4505,
+        "contract_liability": 338.4505,
+        "contract_asset": 0.0,
+        "uar_reclass_field": 0.0,
+        "catchup_cum_disclosure": -5.2988
+      },
+      "source": "golden/contract-rollforward.csv"
+    },
+    {
+      "id": "rollforward-13-Contract2",
+      "kind": "contract_position",
+      "steps_through": "13",
+      "contract": "Contract 2",
+      "expected": {
+        "tp_allocation_basis": 1100.0,
+        "tp_billing_basis": 1100.0,
+        "revenue_cum": 110.1858,
+        "billing_cum": 20.0,
+        "remaining_allocation": 989.8142,
+        "position": -90.1858,
+        "contract_liability": 0.0,
+        "contract_asset": 90.1858,
+        "uar_reclass_field": 90.1858,
+        "catchup_cum_disclosure": 5.1858
+      },
+      "source": "golden/contract-rollforward.csv"
+    },
+    {
+      "id": "rollforward-13-Contract3",
+      "kind": "contract_position",
+      "steps_through": "13",
+      "contract": "Contract 3",
+      "expected": {
+        "tp_allocation_basis": 2600.0,
+        "tp_billing_basis": 2600.0,
+        "revenue_cum": 248.0852,
+        "billing_cum": 400.0,
+        "remaining_allocation": 2351.9148,
+        "position": 151.9148,
+        "contract_liability": 151.9148,
+        "contract_asset": 0.0,
+        "uar_reclass_field": 0.0,
+        "catchup_cum_disclosure": 81.2369
+      },
+      "source": "golden/contract-rollforward.csv"
+    },
+    {
+      "id": "rollforward-13-Contract4",
+      "kind": "contract_position",
+      "steps_through": "13",
+      "contract": "Contract 4",
+      "expected": {
+        "tp_allocation_basis": 1200.0,
+        "tp_billing_basis": 1200.0,
+        "revenue_cum": 226.5186,
+        "billing_cum": 250.0,
+        "remaining_allocation": 973.4814,
+        "position": 23.4814,
+        "contract_liability": 23.4814,
+        "contract_asset": 0.0,
+        "uar_reclass_field": 0.0,
+        "catchup_cum_disclosure": 16.2966
+      },
+      "source": "golden/contract-rollforward.csv"
+    },
+    {
+      "id": "rollforward-14-Contract1",
+      "kind": "contract_position",
+      "steps_through": "14",
+      "contract": "Contract 1",
+      "expected": {
+        "tp_allocation_basis": 800.0,
+        "tp_billing_basis": 800.0,
+        "revenue_cum": 800.0,
+        "billing_cum": 800.0,
+        "remaining_allocation": 0.0,
+        "position": 0.0,
+        "contract_liability": 0.0,
+        "contract_asset": -0.0,
+        "uar_reclass_field": 0.0,
+        "catchup_cum_disclosure": -5.2988
+      },
+      "source": "golden/contract-rollforward.csv"
+    },
+    {
+      "id": "rollforward-14-Contract2",
+      "kind": "contract_position",
+      "steps_through": "14",
+      "contract": "Contract 2",
+      "expected": {
+        "tp_allocation_basis": 1100.0,
+        "tp_billing_basis": 1100.0,
+        "revenue_cum": 1100.0,
+        "billing_cum": 1100.0,
+        "remaining_allocation": 0.0,
+        "position": 0.0,
+        "contract_liability": 0.0,
+        "contract_asset": 0.0,
+        "uar_reclass_field": 0.0,
+        "catchup_cum_disclosure": 5.1858
+      },
+      "source": "golden/contract-rollforward.csv"
+    },
+    {
+      "id": "rollforward-14-Contract3",
+      "kind": "contract_position",
+      "steps_through": "14",
+      "contract": "Contract 3",
+      "expected": {
+        "tp_allocation_basis": 2600.0,
+        "tp_billing_basis": 2600.0,
+        "revenue_cum": 2600.0,
+        "billing_cum": 2600.0,
+        "remaining_allocation": 0.0,
+        "position": -0.0,
+        "contract_liability": 0.0,
+        "contract_asset": 0.0,
+        "uar_reclass_field": 0.0,
+        "catchup_cum_disclosure": 81.2369
+      },
+      "source": "golden/contract-rollforward.csv"
+    },
+    {
+      "id": "rollforward-14-Contract4",
+      "kind": "contract_position",
+      "steps_through": "14",
+      "contract": "Contract 4",
+      "expected": {
+        "tp_allocation_basis": 1200.0,
+        "tp_billing_basis": 1200.0,
+        "revenue_cum": 1200.0,
+        "billing_cum": 1200.0,
+        "remaining_allocation": 0.0,
+        "position": -0.0,
+        "contract_liability": 0.0,
+        "contract_asset": 0.0,
+        "uar_reclass_field": 0.0,
+        "catchup_cum_disclosure": 16.2966
+      },
+      "source": "golden/contract-rollforward.csv"
+    },
+    {
+      "id": "final-pob-Contract1-POB1",
+      "kind": "pob_position",
+      "steps_through": "14",
+      "contract": "Contract 1",
+      "pob": "POB #1",
+      "sku": "Hardware 1",
+      "expected": {
+        "Original allocation": 322.1011,
+        "Final allocation (rev cum + remaining)": 0.0,
+        "Qty delivered cum": 0.0,
+        "Revenue cum": 0.0,
+        "Billing cum": 0.0,
+        "Remaining qty": 0.0,
+        "Remaining allocation": 0.0,
+        "Position POB": -0.0,
+        "Catch-up cum (disclosure)": 0.0
+      },
+      "source": "golden/final-pob-positions.csv"
+    },
+    {
+      "id": "final-pob-Contract1-POB2",
+      "kind": "pob_position",
+      "steps_through": "14",
+      "contract": "Contract 1",
+      "pob": "POB #2",
+      "sku": "Software 1",
+      "expected": {
+        "Original allocation": 237.0664,
+        "Final allocation (rev cum + remaining)": 211.0669,
+        "Qty delivered cum": 2.0,
+        "Revenue cum": 211.0669,
+        "Billing cum": 400.0,
+        "Remaining qty": 0.0,
+        "Remaining allocation": 0.0,
+        "Position POB": 188.9331,
+        "Catch-up cum (disclosure)": 0.0
+      },
+      "source": "golden/final-pob-positions.csv"
+    },
+    {
+      "id": "final-pob-Contract1-POB3",
+      "kind": "pob_position",
+      "steps_through": "14",
+      "contract": "Contract 1",
+      "pob": "POB #3",
+      "sku": "Consulting 1",
+      "expected": {
+        "Original allocation": 96.6303,
+        "Final allocation (rev cum + remaining)": 86.0327,
+        "Qty delivered cum": 1.0,
+        "Revenue cum": 86.0327,
+        "Billing cum": 400.0,
+        "Remaining qty": 0.0,
+        "Remaining allocation": 0.0,
+        "Position POB": 313.9673,
+        "Catch-up cum (disclosure)": -5.2988
+      },
+      "source": "golden/final-pob-positions.csv"
+    },
+    {
+      "id": "final-pob-Contract1-POB4",
+      "kind": "pob_position",
+      "steps_through": "14",
+      "contract": "Contract 1",
+      "pob": "POB #4",
+      "sku": "Material Right - Hardware",
+      "expected": {
+        "Original allocation": 644.2022,
+        "Final allocation (rev cum + remaining)": 502.9004,
+        "Qty delivered cum": 1000.0,
+        "Revenue cum": 502.9004,
+        "Billing cum": 0.0,
+        "Remaining qty": 0.0,
+        "Remaining allocation": 0.0,
+        "Position POB": -502.9004,
+        "Catch-up cum (disclosure)": 0.0
+      },
+      "source": "golden/final-pob-positions.csv"
+    },
+    {
+      "id": "final-pob-Contract2-POB1",
+      "kind": "pob_position",
+      "steps_through": "14",
+      "contract": "Contract 2",
+      "pob": "POB #1",
+      "sku": "Hardware 1",
+      "expected": {
+        "Original allocation": 470.7692,
+        "Final allocation (rev cum + remaining)": 573.2026,
+        "Qty delivered cum": 10.0,
+        "Revenue cum": 573.2026,
+        "Billing cum": 800.0,
+        "Remaining qty": 0.0,
+        "Remaining allocation": 0.0,
+        "Position POB": 226.7974,
+        "Catch-up cum (disclosure)": -5.3053
+      },
+      "source": "golden/final-pob-positions.csv"
+    },
+    {
+      "id": "final-pob-Contract2-POB2",
+      "kind": "pob_position",
+      "steps_through": "14",
+      "contract": "Contract 2",
+      "pob": "POB #2",
+      "sku": "Software 1",
+      "expected": {
+        "Original allocation": 313.8462,
+        "Final allocation (rev cum + remaining)": 385.1852,
+        "Qty delivered cum": 3.0,
+        "Revenue cum": 385.1852,
+        "Billing cum": 400.0,
+        "Remaining qty": 0.0,
+        "Remaining allocation": 0.0,
+        "Position POB": 14.8148,
+        "Catch-up cum (disclosure)": 0.0
+      },
+      "source": "golden/final-pob-positions.csv"
+    },
+    {
+      "id": "final-pob-Contract2-POB3",
+      "kind": "pob_position",
+      "steps_through": "14",
+      "contract": "Contract 2",
+      "pob": "POB #3",
+      "sku": "Consulting 1",
+      "expected": {
+        "Original allocation": 115.3846,
+        "Final allocation (rev cum + remaining)": 141.6122,
+        "Qty delivered cum": 1.0,
+        "Revenue cum": 141.6122,
+        "Billing cum": 0.0,
+        "Remaining qty": 0.0,
+        "Remaining allocation": 0.0,
+        "Position POB": -141.6122,
+        "Catch-up cum (disclosure)": 10.491
+      },
+      "source": "golden/final-pob-positions.csv"
+    },
+    {
+      "id": "final-pob-Contract2-VC1",
+      "kind": "pob_position",
+      "steps_through": "14",
+      "contract": "Contract 2",
+      "pob": "VC #1",
+      "sku": "Variable Consideration",
+      "expected": {
+        "Original allocation": 0.0,
+        "Final allocation (rev cum + remaining)": 0.0,
+        "Qty delivered cum": 1.0,
+        "Revenue cum": 0.0,
+        "Billing cum": -100.0,
+        "Remaining qty": 0.0,
+        "Remaining allocation": 0.0,
+        "Position POB": -100.0,
+        "Catch-up cum (disclosure)": 0.0
+      },
+      "source": "golden/final-pob-positions.csv"
+    },
+    {
+      "id": "final-pob-Contract3-POB1",
+      "kind": "pob_position",
+      "steps_through": "14",
+      "contract": "Contract 3",
+      "pob": "POB #1",
+      "sku": "Hardware 1",
+      "expected": {
+        "Original allocation": 322.1011,
+        "Final allocation (rev cum + remaining)": 678.0182,
+        "Qty delivered cum": 3.0,
+        "Revenue cum": 678.0182,
+        "Billing cum": 800.0,
+        "Remaining qty": 0.0,
+        "Remaining allocation": 0.0,
+        "Position POB": 121.9818,
+        "Catch-up cum (disclosure)": 0.0
+      },
+      "source": "golden/final-pob-positions.csv"
+    },
+    {
+      "id": "final-pob-Contract3-POB2",
+      "kind": "pob_position",
+      "steps_through": "14",
+      "contract": "Contract 3",
+      "pob": "POB #2",
+      "sku": "Software 1",
+      "expected": {
+        "Original allocation": 237.0664,
+        "Final allocation (rev cum + remaining)": 464.5239,
+        "Qty delivered cum": 2.0,
+        "Revenue cum": 464.5239,
+        "Billing cum": 400.0,
+        "Remaining qty": 0.0,
+        "Remaining allocation": 0.0,
+        "Position POB": -64.5239,
+        "Catch-up cum (disclosure)": 34.88
+      },
+      "source": "golden/final-pob-positions.csv"
+    },
+    {
+      "id": "final-pob-Contract3-POB3",
+      "kind": "pob_position",
+      "steps_through": "14",
+      "contract": "Contract 3",
+      "pob": "POB #3",
+      "sku": "Consulting 1",
+      "expected": {
+        "Original allocation": 96.6303,
+        "Final allocation (rev cum + remaining)": 189.344,
+        "Qty delivered cum": 1.0,
+        "Revenue cum": 189.344,
+        "Billing cum": 400.0,
+        "Remaining qty": 0.0,
+        "Remaining allocation": 0.0,
+        "Position POB": 210.656,
+        "Catch-up cum (disclosure)": 46.3568
+      },
+      "source": "golden/final-pob-positions.csv"
+    },
+    {
+      "id": "final-pob-Contract3-POB4",
+      "kind": "pob_position",
+      "steps_through": "14",
+      "contract": "Contract 3",
+      "pob": "POB #4",
+      "sku": "Material Right - Services",
+      "expected": {
+        "Original allocation": 644.2022,
+        "Final allocation (rev cum + remaining)": 0.0,
+        "Qty delivered cum": 0.0,
+        "Revenue cum": 0.0,
+        "Billing cum": 0.0,
+        "Remaining qty": 0.0,
+        "Remaining allocation": 0.0,
+        "Position POB": 0.0,
+        "Catch-up cum (disclosure)": 0.0
+      },
+      "source": "golden/final-pob-positions.csv"
+    },
+    {
+      "id": "final-pob-Contract3-POB5",
+      "kind": "pob_position",
+      "steps_through": "14",
+      "contract": "Contract 3",
+      "pob": "POB #5",
+      "sku": "Consulting 1",
+      "expected": {
+        "Original allocation": null,
+        "Final allocation (rev cum + remaining)": 1268.1139,
+        "Qty delivered cum": 5.0,
+        "Revenue cum": 1268.1139,
+        "Billing cum": 1000.0,
+        "Remaining qty": 0.0,
+        "Remaining allocation": 0.0,
+        "Position POB": -268.1139,
+        "Catch-up cum (disclosure)": 0.0
+      },
+      "source": "golden/final-pob-positions.csv"
+    },
+    {
+      "id": "final-pob-Contract4-POB1",
+      "kind": "pob_position",
+      "steps_through": "14",
+      "contract": "Contract 4",
+      "pob": "POB #1",
+      "sku": "Hardware 1",
+      "expected": {
+        "Original allocation": 445.1761,
+        "Final allocation (rev cum + remaining)": 479.6865,
+        "Qty delivered cum": 8.0,
+        "Revenue cum": 479.6865,
+        "Billing cum": 600.0,
+        "Remaining qty": 0.0,
+        "Remaining allocation": 0.0,
+        "Position POB": 120.3135,
+        "Catch-up cum (disclosure)": 8.6276
+      },
+      "source": "golden/final-pob-positions.csv"
+    },
+    {
+      "id": "final-pob-Contract4-POB2",
+      "kind": "pob_position",
+      "steps_through": "14",
+      "contract": "Contract 4",
+      "pob": "POB #2",
+      "sku": "Software 1",
+      "expected": {
+        "Original allocation": 395.7121,
+        "Final allocation (rev cum + remaining)": 426.388,
+        "Qty delivered cum": 4.0,
+        "Revenue cum": 426.388,
+        "Billing cum": 400.0,
+        "Remaining qty": 0.0,
+        "Remaining allocation": 0.0,
+        "Position POB": -26.388,
+        "Catch-up cum (disclosure)": 7.669
+      },
+      "source": "golden/final-pob-positions.csv"
+    },
+    {
+      "id": "final-pob-Contract4-POB3",
+      "kind": "pob_position",
+      "steps_through": "14",
+      "contract": "Contract 4",
+      "pob": "POB #3",
+      "sku": "Consulting 1",
+      "expected": {
+        "Original allocation": 109.1118,
+        "Final allocation (rev cum + remaining)": 293.9255,
+        "Qty delivered cum": 2.5,
+        "Revenue cum": 293.9255,
+        "Billing cum": 400.0,
+        "Remaining qty": 0.0,
+        "Remaining allocation": 0.0,
+        "Position POB": 106.0745,
+        "Catch-up cum (disclosure)": 0.0
+      },
+      "source": "golden/final-pob-positions.csv"
+    },
+    {
+      "id": "final-pob-Contract4-VC1",
+      "kind": "pob_position",
+      "steps_through": "14",
+      "contract": "Contract 4",
+      "pob": "VC #1",
+      "sku": "Variable Consideration",
+      "expected": {
+        "Original allocation": 0.0,
+        "Final allocation (rev cum + remaining)": 0.0,
+        "Qty delivered cum": 1.0,
+        "Revenue cum": 0.0,
+        "Billing cum": -200.0,
+        "Remaining qty": 0.0,
+        "Remaining allocation": 0.0,
+        "Position POB": -200.0,
+        "Catch-up cum (disclosure)": 0.0
+      },
+      "source": "golden/final-pob-positions.csv"
+    },
+    {
+      "id": "je-month-2023-01",
+      "kind": "journal_entry_totals",
+      "steps_through": "14",
+      "window": [
+        "2023-01-01",
+        "2023-01-31"
+      ],
+      "gross": {
+        "lines": 6,
+        "by_account": [
+          {
+            "account": "5001",
+            "debit": 0.0,
+            "credit": 187.69,
+            "net": -187.69
+          },
+          {
+            "account": "5002",
+            "debit": 0.0,
+            "credit": 118.53,
+            "net": -118.53
+          },
+          {
+            "account": "5003",
+            "debit": 0.0,
+            "credit": 48.32,
+            "net": -48.32
+          },
+          {
+            "account": "15002",
+            "debit": 58.85,
+            "credit": -0.0,
+            "net": 58.85
+          },
+          {
+            "account": "21001",
+            "debit": 295.69,
+            "credit": -0.0,
+            "net": 295.69
+          }
+        ],
+        "total_debit": 354.54,
+        "total_credit": 354.54,
+        "net": 0.0
+      },
+      "delta": {
+        "lines": 6,
+        "by_account": [
+          {
+            "account": "5001",
+            "debit": 0.0,
+            "credit": 187.69,
+            "net": -187.69
+          },
+          {
+            "account": "5002",
+            "debit": 0.0,
+            "credit": 52.53,
+            "net": -52.53
+          },
+          {
+            "account": "5003",
+            "debit": 39.68,
+            "credit": -0.0,
+            "net": 39.68
+          },
+          {
+            "account": "15002",
+            "debit": 58.85,
+            "credit": -0.0,
+            "net": 58.85
+          },
+          {
+            "account": "21001",
+            "debit": 141.69,
+            "credit": -0.0,
+            "net": 141.69
+          }
+        ],
+        "total_debit": 240.22,
+        "total_credit": 240.22,
+        "net": 0.0
+      },
+      "source": "golden/monthly/2023-01/"
+    },
+    {
+      "id": "je-month-2023-02",
+      "kind": "journal_entry_totals",
+      "steps_through": "14",
+      "window": [
+        "2023-02-01",
+        "2023-02-28"
+      ],
+      "gross": {
+        "lines": 6,
+        "by_account": [
+          {
+            "account": "5001",
+            "debit": 0.0,
+            "credit": 175.71,
+            "net": -175.71
+          },
+          {
+            "account": "5003",
+            "debit": 0.0,
+            "credit": 48.32,
+            "net": -48.32
+          },
+          {
+            "account": "21001",
+            "debit": 112.74,
+            "credit": -0.0,
+            "net": 112.74
+          },
+          {
+            "account": "21002",
+            "debit": 111.29,
+            "credit": -0.0,
+            "net": 111.29
+          }
+        ],
+        "total_debit": 224.03,
+        "total_credit": 224.03,
+        "net": 0.0
+      },
+      "delta": {
+        "lines": 6,
+        "by_account": [
+          {
+            "account": "5001",
+            "debit": 38.71,
+            "credit": 64.42,
+            "net": -25.71
+          },
+          {
+            "account": "5003",
+            "debit": 151.68,
+            "credit": -0.0,
+            "net": 151.68
+          },
+          {
+            "account": "21001",
+            "debit": 64.42,
+            "credit": 151.68,
+            "net": -87.26
+          },
+          {
+            "account": "21002",
+            "debit": 0.0,
+            "credit": 38.71,
+            "net": -38.71
+          }
+        ],
+        "total_debit": 254.81,
+        "total_credit": 254.81,
+        "net": 0.0
+      },
+      "source": "golden/monthly/2023-02/"
+    },
+    {
+      "id": "je-month-2023-03",
+      "kind": "journal_entry_totals",
+      "steps_through": "14",
+      "window": [
+        "2023-03-01",
+        "2023-03-31"
+      ],
+      "gross": {
+        "lines": 6,
+        "by_account": [
+          {
+            "account": "5002",
+            "debit": 0.0,
+            "credit": 217.46,
+            "net": -217.46
+          },
+          {
+            "account": "5003",
+            "debit": 0.0,
+            "credit": 46.15,
+            "net": -46.15
+          },
+          {
+            "account": "15002",
+            "debit": 46.15,
+            "credit": -0.0,
+            "net": 46.15
+          },
+          {
+            "account": "21001",
+            "debit": 118.53,
+            "credit": -0.0,
+            "net": 118.53
+          },
+          {
+            "account": "21002",
+            "debit": 98.93,
+            "credit": -0.0,
+            "net": 98.93
+          }
+        ],
+        "total_debit": 263.61,
+        "total_credit": 263.61,
+        "net": 0.0
+      },
+      "delta": {
+        "lines": 6,
+        "by_account": [
+          {
+            "account": "5002",
+            "debit": 0.0,
+            "credit": 217.46,
+            "net": -217.46
+          },
+          {
+            "account": "5003",
+            "debit": 0.0,
+            "credit": 46.15,
+            "net": -46.15
+          },
+          {
+            "account": "15002",
+            "debit": 46.15,
+            "credit": -0.0,
+            "net": 46.15
+          },
+          {
+            "account": "21001",
+            "debit": 118.53,
+            "credit": -0.0,
+            "net": 118.53
+          },
+          {
+            "account": "21002",
+            "debit": 98.93,
+            "credit": -0.0,
+            "net": 98.93
+          }
+        ],
+        "total_debit": 263.61,
+        "total_credit": 263.61,
+        "net": 0.0
+      },
+      "source": "golden/monthly/2023-03/"
+    },
+    {
+      "id": "je-month-2023-04",
+      "kind": "journal_entry_totals",
+      "steps_through": "14",
+      "window": [
+        "2023-04-01",
+        "2023-04-30"
+      ],
+      "gross": {
+        "lines": 4,
+        "by_account": [
+          {
+            "account": "5001",
+            "debit": 193.26,
+            "credit": -0.0,
+            "net": 193.26
+          },
+          {
+            "account": "15002",
+            "debit": 0.0,
+            "credit": 20.0,
+            "net": -20.0
+          },
+          {
+            "account": "21001",
+            "debit": 0.0,
+            "credit": 193.26,
+            "net": -193.26
+          },
+          {
+            "account": "21002",
+            "debit": 20.0,
+            "credit": -0.0,
+            "net": 20.0
+          }
+        ],
+        "total_debit": 213.26,
+        "total_credit": 213.26,
+        "net": 0.0
+      },
+      "delta": {
+        "lines": 4,
+        "by_account": [
+          {
+            "account": "5001",
+            "debit": 193.26,
+            "credit": -0.0,
+            "net": 193.26
+          },
+          {
+            "account": "15002",
+            "debit": 0.0,
+            "credit": 20.0,
+            "net": -20.0
+          },
+          {
+            "account": "21001",
+            "debit": 0.0,
+            "credit": 193.26,
+            "net": -193.26
+          },
+          {
+            "account": "21002",
+            "debit": 20.0,
+            "credit": -0.0,
+            "net": 20.0
+          }
+        ],
+        "total_debit": 213.26,
+        "total_credit": 213.26,
+        "net": 0.0
+      },
+      "source": "golden/monthly/2023-04/"
+    },
+    {
+      "id": "je-month-2023-05",
+      "kind": "journal_entry_totals",
+      "steps_through": "14",
+      "window": [
+        "2023-05-01",
+        "2023-05-31"
+      ],
+      "gross": {
+        "lines": 3,
+        "by_account": [
+          {
+            "account": "5001",
+            "debit": 5.31,
+            "credit": -0.0,
+            "net": 5.31
+          },
+          {
+            "account": "5003",
+            "debit": 0.0,
+            "credit": 10.49,
+            "net": -10.49
+          },
+          {
+            "account": "15002",
+            "debit": 5.19,
+            "credit": -0.0,
+            "net": 5.19
+          }
+        ],
+        "total_debit": 10.5,
+        "total_credit": 10.49,
+        "net": 0.01
+      },
+      "delta": {
+        "lines": 3,
+        "by_account": [
+          {
+            "account": "5001",
+            "debit": 5.31,
+            "credit": -0.0,
+            "net": 5.31
+          },
+          {
+            "account": "5003",
+            "debit": 0.0,
+            "credit": 10.49,
+            "net": -10.49
+          },
+          {
+            "account": "15002",
+            "debit": 5.19,
+            "credit": -0.0,
+            "net": 5.19
+          }
+        ],
+        "total_debit": 10.5,
+        "total_credit": 10.49,
+        "net": 0.01
+      },
+      "source": "golden/monthly/2023-05/"
+    },
+    {
+      "id": "je-month-2023-06",
+      "kind": "journal_entry_totals",
+      "steps_through": "14",
+      "window": [
+        "2023-06-01",
+        "2023-06-30"
+      ],
+      "gross": {
+        "lines": 2,
+        "by_account": [
+          {
+            "account": "5003",
+            "debit": 5.3,
+            "credit": -0.0,
+            "net": 5.3
+          },
+          {
+            "account": "21001",
+            "debit": 0.0,
+            "credit": 5.3,
+            "net": -5.3
+          }
+        ],
+        "total_debit": 5.3,
+        "total_credit": 5.3,
+        "net": 0.0
+      },
+      "delta": {
+        "lines": 2,
+        "by_account": [
+          {
+            "account": "5003",
+            "debit": 5.3,
+            "credit": -0.0,
+            "net": 5.3
+          },
+          {
+            "account": "21001",
+            "debit": 0.0,
+            "credit": 5.3,
+            "net": -5.3
+          }
+        ],
+        "total_debit": 5.3,
+        "total_credit": 5.3,
+        "net": 0.0
+      },
+      "source": "golden/monthly/2023-06/"
+    },
+    {
+      "id": "je-month-2023-07",
+      "kind": "journal_entry_totals",
+      "steps_through": "14",
+      "window": [
+        "2023-07-01",
+        "2023-07-31"
+      ],
+      "gross": {
+        "lines": 2,
+        "by_account": [
+          {
+            "account": "5003",
+            "debit": 0.0,
+            "credit": 6.99,
+            "net": -6.99
+          },
+          {
+            "account": "21001",
+            "debit": 6.99,
+            "credit": -0.0,
+            "net": 6.99
+          }
+        ],
+        "total_debit": 6.99,
+        "total_credit": 6.99,
+        "net": 0.0
+      },
+      "delta": {
+        "lines": 2,
+        "by_account": [
+          {
+            "account": "5003",
+            "debit": 0.0,
+            "credit": 6.99,
+            "net": -6.99
+          },
+          {
+            "account": "21001",
+            "debit": 6.99,
+            "credit": -0.0,
+            "net": 6.99
+          }
+        ],
+        "total_debit": 6.99,
+        "total_credit": 6.99,
+        "net": 0.0
+      },
+      "source": "golden/monthly/2023-07/"
+    },
+    {
+      "id": "je-month-2023-08",
+      "kind": "journal_entry_totals",
+      "steps_through": "14",
+      "window": [
+        "2023-08-01",
+        "2023-08-31"
+      ],
+      "gross": {
+        "lines": 6,
+        "by_account": [
+          {
+            "account": "5001",
+            "debit": 0.0,
+            "credit": 8.63,
+            "net": -8.63
+          },
+          {
+            "account": "5002",
+            "debit": 0.0,
+            "credit": 42.55,
+            "net": -42.55
+          },
+          {
+            "account": "5003",
+            "debit": 0.0,
+            "credit": 7.22,
+            "net": -7.22
+          },
+          {
+            "account": "21001",
+            "debit": 42.1,
+            "credit": -0.0,
+            "net": 42.1
+          },
+          {
+            "account": "21002",
+            "debit": 16.3,
+            "credit": -0.0,
+            "net": 16.3
+          }
+        ],
+        "total_debit": 58.4,
+        "total_credit": 58.4,
+        "net": 0.0
+      },
+      "delta": {
+        "lines": 6,
+        "by_account": [
+          {
+            "account": "5001",
+            "debit": 0.0,
+            "credit": 8.63,
+            "net": -8.63
+          },
+          {
+            "account": "5002",
+            "debit": 0.0,
+            "credit": 42.55,
+            "net": -42.55
+          },
+          {
+            "account": "5003",
+            "debit": 0.0,
+            "credit": 7.22,
+            "net": -7.22
+          },
+          {
+            "account": "21001",
+            "debit": 42.1,
+            "credit": -0.0,
+            "net": 42.1
+          },
+          {
+            "account": "21002",
+            "debit": 16.3,
+            "credit": -0.0,
+            "net": 16.3
+          }
+        ],
+        "total_debit": 58.4,
+        "total_credit": 58.4,
+        "net": 0.0
+      },
+      "source": "golden/monthly/2023-08/"
+    },
+    {
+      "id": "je-month-2023-09",
+      "kind": "journal_entry_totals",
+      "steps_through": "14",
+      "window": [
+        "2023-09-01",
+        "2023-09-30"
+      ],
+      "gross": {
+        "lines": 2,
+        "by_account": [
+          {
+            "account": "5003",
+            "debit": 0.0,
+            "credit": 32.14,
+            "net": -32.14
+          },
+          {
+            "account": "21001",
+            "debit": 32.14,
+            "credit": -0.0,
+            "net": 32.14
+          }
+        ],
+        "total_debit": 32.14,
+        "total_credit": 32.14,
+        "net": 0.0
+      },
+      "delta": {
+        "lines": 2,
+        "by_account": [
+          {
+            "account": "5003",
+            "debit": 0.0,
+            "credit": 32.14,
+            "net": -32.14
+          },
+          {
+            "account": "21001",
+            "debit": 32.14,
+            "credit": -0.0,
+            "net": 32.14
+          }
+        ],
+        "total_debit": 32.14,
+        "total_credit": 32.14,
+        "net": 0.0
+      },
+      "source": "golden/monthly/2023-09/"
+    },
+    {
+      "id": "je-month-2023-10",
+      "kind": "journal_entry_totals",
+      "steps_through": "14",
+      "window": [
+        "2023-10-01",
+        "2023-10-31"
+      ],
+      "gross": {
+        "lines": 18,
+        "by_account": [
+          {
+            "account": "5001",
+            "debit": 0.0,
+            "credit": 2060.34,
+            "net": -2060.34
+          },
+          {
+            "account": "5002",
+            "debit": 0.0,
+            "credit": 1108.62,
+            "net": -1108.62
+          },
+          {
+            "account": "5003",
+            "debit": 0.0,
+            "credit": 1784.7,
+            "net": -1784.7
+          },
+          {
+            "account": "15002",
+            "debit": 0.0,
+            "credit": 90.19,
+            "net": -90.19
+          },
+          {
+            "account": "21001",
+            "debit": 2990.36,
+            "credit": -0.0,
+            "net": 2990.36
+          },
+          {
+            "account": "21002",
+            "debit": 2053.48,
+            "credit": -0.0,
+            "net": 2053.48
+          }
+        ],
+        "total_debit": 5043.84,
+        "total_credit": 5043.85,
+        "net": -0.01
+      },
+      "delta": {
+        "lines": 18,
+        "by_account": [
+          {
+            "account": "5001",
+            "debit": 0.0,
+            "credit": 2060.34,
+            "net": -2060.34
+          },
+          {
+            "account": "5002",
+            "debit": 0.0,
+            "credit": 1108.62,
+            "net": -1108.62
+          },
+          {
+            "account": "5003",
+            "debit": 0.0,
+            "credit": 1784.7,
+            "net": -1784.7
+          },
+          {
+            "account": "15002",
+            "debit": 0.0,
+            "credit": 90.19,
+            "net": -90.19
+          },
+          {
+            "account": "21001",
+            "debit": 2990.36,
+            "credit": -0.0,
+            "net": 2990.36
+          },
+          {
+            "account": "21002",
+            "debit": 2053.48,
+            "credit": -0.0,
+            "net": 2053.48
+          }
+        ],
+        "total_debit": 5043.84,
+        "total_credit": 5043.85,
+        "net": -0.01
+      },
+      "source": "golden/monthly/2023-10/"
+    },
+    {
+      "id": "je-month-2023-full-year",
+      "kind": "journal_entry_totals",
+      "steps_through": "14",
+      "window": [
+        "2023-01-01",
+        "2023-12-31"
+      ],
+      "gross": {
+        "lines": 17,
+        "by_account": [
+          {
+            "account": "5001",
+            "debit": 0.0,
+            "credit": 2233.81,
+            "net": -2233.81
+          },
+          {
+            "account": "5002",
+            "debit": 0.0,
+            "credit": 1487.17,
+            "net": -1487.17
+          },
+          {
+            "account": "5003",
+            "debit": 0.0,
+            "credit": 1979.02,
+            "net": -1979.02
+          },
+          {
+            "account": "21001",
+            "debit": 3400.0,
+            "credit": -0.0,
+            "net": 3400.0
+          },
+          {
+            "account": "21002",
+            "debit": 2300.0,
+            "credit": -0.0,
+            "net": 2300.0
+          }
+        ],
+        "total_debit": 5700.0,
+        "total_credit": 5700.0,
+        "net": 0.0
+      },
+      "delta": {
+        "lines": 17,
+        "by_account": [
+          {
+            "account": "5001",
+            "debit": 0.0,
+            "credit": 2083.81,
+            "net": -2083.81
+          },
+          {
+            "account": "5002",
+            "debit": 0.0,
+            "credit": 1421.17,
+            "net": -1421.17
+          },
+          {
+            "account": "5003",
+            "debit": 12.63,
+            "credit": 1703.65,
+            "net": -1691.02
+          },
+          {
+            "account": "21001",
+            "debit": 3046.0,
+            "credit": -0.0,
+            "net": 3046.0
+          },
+          {
+            "account": "21002",
+            "debit": 2150.0,
+            "credit": -0.0,
+            "net": 2150.0
+          }
+        ],
+        "total_debit": 5208.63,
+        "total_credit": 5208.63,
+        "net": 0.0
+      },
+      "source": "golden/monthly/2023-full-year/"
+    },
+    {
+      "id": "catchup-08-Contract2-POB1",
+      "kind": "cumulative_catchup",
+      "steps_through": "08",
+      "contract": "Contract 2",
+      "pob": "POB #1",
+      "expected": {
+        "catchup": 13.3761,
+        "remaining_allocation": 700.9804,
+        "revenue_cum": 72.2222
+      }
+    },
+    {
+      "id": "catchup-08-Contract2-POB3",
+      "kind": "cumulative_catchup",
+      "steps_through": "08",
+      "contract": "Contract 2",
+      "pob": "POB #3",
+      "expected": {
+        "catchup": 10.491,
+        "remaining_allocation": 84.9673,
+        "revenue_cum": 56.6449
+      }
+    },
+    {
+      "id": "catchup-09-Contract2-POB1",
+      "kind": "cumulative_catchup",
+      "steps_through": "09",
+      "contract": "Contract 2",
+      "pob": "POB #1",
+      "expected": {
+        "catchup": -18.6813,
+        "remaining_allocation": 519.6617,
+        "revenue_cum": 53.5409
+      }
+    },
+    {
+      "id": "catchup-10-Contract1-POB3",
+      "kind": "cumulative_catchup",
+      "steps_through": "10",
+      "contract": "Contract 1",
+      "pob": "POB #3",
+      "expected": {
+        "catchup": -5.2988,
+        "remaining_allocation": 43.0163,
+        "revenue_cum": 43.0163
+      }
+    },
+    {
+      "id": "catchup-11-Contract3-POB3",
+      "kind": "cumulative_catchup",
+      "steps_through": "11",
+      "contract": "Contract 3",
+      "pob": "POB #3",
+      "expected": {
+        "catchup": 6.9936,
+        "remaining_allocation": 55.3087,
+        "revenue_cum": 55.3087
+      }
+    },
+    {
+      "id": "catchup-12-Contract3-POB2",
+      "kind": "cumulative_catchup",
+      "steps_through": "12",
+      "contract": "Contract 3",
+      "pob": "POB #2",
+      "expected": {
+        "catchup": 34.88,
+        "remaining_allocation": 153.4132,
+        "revenue_cum": 153.4132
+      }
+    },
+    {
+      "id": "catchup-12-Contract3-POB3",
+      "kind": "cumulative_catchup",
+      "steps_through": "12",
+      "contract": "Contract 3",
+      "pob": "POB #3",
+      "expected": {
+        "catchup": 7.2238,
+        "remaining_allocation": 62.5326,
+        "revenue_cum": 62.5326
+      }
+    },
+    {
+      "id": "catchup-12-Contract4-POB1",
+      "kind": "cumulative_catchup",
+      "steps_through": "12",
+      "contract": "Contract 4",
+      "pob": "POB #1",
+      "expected": {
+        "catchup": 8.6276,
+        "remaining_allocation": 359.7649,
+        "revenue_cum": 119.9216
+      }
+    },
+    {
+      "id": "catchup-12-Contract4-POB2",
+      "kind": "cumulative_catchup",
+      "steps_through": "12",
+      "contract": "Contract 4",
+      "pob": "POB #2",
+      "expected": {
+        "catchup": 7.669,
+        "remaining_allocation": 319.791,
+        "revenue_cum": 106.597
+      }
+    },
+    {
+      "id": "catchup-13-Contract3-POB3",
+      "kind": "cumulative_catchup",
+      "steps_through": "13",
+      "contract": "Contract 3",
+      "pob": "POB #3",
+      "expected": {
+        "catchup": 32.1394,
+        "remaining_allocation": 94.672,
+        "revenue_cum": 94.672
+      }
+    },
+    {
+      "id": "setup-alloc-Contract1-POB1",
+      "kind": "initial_allocation",
+      "steps_through": "02",
+      "contract": "Contract 1",
+      "pob": "POB #1",
+      "sku": "Hardware 1",
+      "inputs": {
+        "price": 500.0,
+        "qty": 5.0,
+        "list_price": 100.0,
+        "midpoint_discount": 0.1,
+        "range": 0.15
+      },
+      "expected": {
+        "ssp_midpoint": 450.0,
+        "extended_ssp": 500.0,
+        "allocation": 322.1011,
+        "contract_price": 1300.0,
+        "contract_ssp": 2018.0
+      }
+    },
+    {
+      "id": "setup-alloc-Contract1-POB2",
+      "kind": "initial_allocation",
+      "steps_through": "02",
+      "contract": "Contract 1",
+      "pob": "POB #2",
+      "sku": "Software 1",
+      "inputs": {
+        "price": 400.0,
+        "qty": 2.0,
+        "list_price": 200.0,
+        "midpoint_discount": 0.2,
+        "range": 0.15
+      },
+      "expected": {
+        "ssp_midpoint": 320.0,
+        "extended_ssp": 368.0,
+        "allocation": 237.0664,
+        "contract_price": 1300.0,
+        "contract_ssp": 2018.0
+      }
+    },
+    {
+      "id": "setup-alloc-Contract1-POB3",
+      "kind": "initial_allocation",
+      "steps_through": "02",
+      "contract": "Contract 1",
+      "pob": "POB #3",
+      "sku": "Consulting 1",
+      "inputs": {
+        "price": 400.0,
+        "qty": 1.0,
+        "list_price": 300.0,
+        "midpoint_discount": 0.5,
+        "range": 0.0
+      },
+      "expected": {
+        "ssp_midpoint": 150.0,
+        "extended_ssp": 150.0,
+        "allocation": 96.6303,
+        "contract_price": 1300.0,
+        "contract_ssp": 2018.0
+      }
+    },
+    {
+      "id": "setup-alloc-Contract1-POB4",
+      "kind": "initial_allocation",
+      "steps_through": "02",
+      "contract": "Contract 1",
+      "pob": "POB #4",
+      "sku": "Material Right - Hardware",
+      "inputs": {
+        "price": 0.0,
+        "qty": 1000.0,
+        "list_price": 1.0,
+        "midpoint_discount": 0.0,
+        "range": 0.0
+      },
+      "expected": {
+        "ssp_midpoint": 1000.0,
+        "extended_ssp": 1000.0,
+        "allocation": 644.2022,
+        "contract_price": 1300.0,
+        "contract_ssp": 2018.0
+      }
+    },
+    {
+      "id": "setup-alloc-Contract2-POB1",
+      "kind": "initial_allocation",
+      "steps_through": "02",
+      "contract": "Contract 2",
+      "pob": "POB #1",
+      "sku": "Hardware 1",
+      "inputs": {
+        "price": 600.0,
+        "qty": 8.0,
+        "list_price": 100.0,
+        "midpoint_discount": 0.1,
+        "range": 0.15
+      },
+      "expected": {
+        "ssp_midpoint": 720.0,
+        "extended_ssp": 612.0,
+        "allocation": 470.7692,
+        "contract_price": 900.0,
+        "contract_ssp": 1170.0
+      }
+    },
+    {
+      "id": "setup-alloc-Contract2-POB2",
+      "kind": "initial_allocation",
+      "steps_through": "02",
+      "contract": "Contract 2",
+      "pob": "POB #2",
+      "sku": "Software 1",
+      "inputs": {
+        "price": 400.0,
+        "qty": 3.0,
+        "list_price": 200.0,
+        "midpoint_discount": 0.2,
+        "range": 0.15
+      },
+      "expected": {
+        "ssp_midpoint": 480.0,
+        "extended_ssp": 408.0,
+        "allocation": 313.8462,
+        "contract_price": 900.0,
+        "contract_ssp": 1170.0
+      }
+    },
+    {
+      "id": "setup-alloc-Contract2-POB3",
+      "kind": "initial_allocation",
+      "steps_through": "02",
+      "contract": "Contract 2",
+      "pob": "POB #3",
+      "sku": "Consulting 1",
+      "inputs": {
+        "price": 0.0,
+        "qty": 1.0,
+        "list_price": 300.0,
+        "midpoint_discount": 0.5,
+        "range": 0.0
+      },
+      "expected": {
+        "ssp_midpoint": 150.0,
+        "extended_ssp": 150.0,
+        "allocation": 115.3846,
+        "contract_price": 900.0,
+        "contract_ssp": 1170.0
+      }
+    },
+    {
+      "id": "setup-alloc-Contract2-VC1",
+      "kind": "initial_allocation",
+      "steps_through": "02",
+      "contract": "Contract 2",
+      "pob": "VC #1",
+      "sku": "Variable Consideration",
+      "inputs": {
+        "price": -100.0,
+        "qty": 1.0,
+        "list_price": 0.0,
+        "midpoint_discount": 0.0,
+        "range": 0.0
+      },
+      "expected": {
+        "ssp_midpoint": 0.0,
+        "extended_ssp": 0.0,
+        "allocation": 0.0,
+        "contract_price": 900.0,
+        "contract_ssp": 1170.0
+      }
+    },
+    {
+      "id": "setup-alloc-Contract3-POB1",
+      "kind": "initial_allocation",
+      "steps_through": "03",
+      "contract": "Contract 3",
+      "pob": "POB #1",
+      "sku": "Hardware 1",
+      "inputs": {
+        "price": 500.0,
+        "qty": 5.0,
+        "list_price": 100.0,
+        "midpoint_discount": 0.1,
+        "range": 0.15
+      },
+      "expected": {
+        "ssp_midpoint": 450.0,
+        "extended_ssp": 500.0,
+        "allocation": 322.1011,
+        "contract_price": 1300.0,
+        "contract_ssp": 2018.0
+      }
+    },
+    {
+      "id": "setup-alloc-Contract3-POB2",
+      "kind": "initial_allocation",
+      "steps_through": "03",
+      "contract": "Contract 3",
+      "pob": "POB #2",
+      "sku": "Software 1",
+      "inputs": {
+        "price": 400.0,
+        "qty": 2.0,
+        "list_price": 200.0,
+        "midpoint_discount": 0.2,
+        "range": 0.15
+      },
+      "expected": {
+        "ssp_midpoint": 320.0,
+        "extended_ssp": 368.0,
+        "allocation": 237.0664,
+        "contract_price": 1300.0,
+        "contract_ssp": 2018.0
+      }
+    },
+    {
+      "id": "setup-alloc-Contract3-POB3",
+      "kind": "initial_allocation",
+      "steps_through": "03",
+      "contract": "Contract 3",
+      "pob": "POB #3",
+      "sku": "Consulting 1",
+      "inputs": {
+        "price": 400.0,
+        "qty": 1.0,
+        "list_price": 300.0,
+        "midpoint_discount": 0.5,
+        "range": 0.0
+      },
+      "expected": {
+        "ssp_midpoint": 150.0,
+        "extended_ssp": 150.0,
+        "allocation": 96.6303,
+        "contract_price": 1300.0,
+        "contract_ssp": 2018.0
+      }
+    },
+    {
+      "id": "setup-alloc-Contract3-POB4",
+      "kind": "initial_allocation",
+      "steps_through": "03",
+      "contract": "Contract 3",
+      "pob": "POB #4",
+      "sku": "Material Right - Services",
+      "inputs": {
+        "price": 0.0,
+        "qty": 1000.0,
+        "list_price": 1.0,
+        "midpoint_discount": 0.0,
+        "range": 0.0
+      },
+      "expected": {
+        "ssp_midpoint": 1000.0,
+        "extended_ssp": 1000.0,
+        "allocation": 644.2022,
+        "contract_price": 1300.0,
+        "contract_ssp": 2018.0
+      }
+    },
+    {
+      "id": "setup-alloc-Contract4-POB1",
+      "kind": "initial_allocation",
+      "steps_through": "03",
+      "contract": "Contract 4",
+      "pob": "POB #1",
+      "sku": "Hardware 1",
+      "inputs": {
+        "price": 600.0,
+        "qty": 8.0,
+        "list_price": 100.0,
+        "midpoint_discount": 0.1,
+        "range": 0.15
+      },
+      "expected": {
+        "ssp_midpoint": 720.0,
+        "extended_ssp": 612.0,
+        "allocation": 445.1761,
+        "contract_price": 950.0,
+        "contract_ssp": 1306.0
+      }
+    },
+    {
+      "id": "setup-alloc-Contract4-POB2",
+      "kind": "initial_allocation",
+      "steps_through": "03",
+      "contract": "Contract 4",
+      "pob": "POB #2",
+      "sku": "Software 1",
+      "inputs": {
+        "price": 400.0,
+        "qty": 4.0,
+        "list_price": 200.0,
+        "midpoint_discount": 0.2,
+        "range": 0.15
+      },
+      "expected": {
+        "ssp_midpoint": 640.0,
+        "extended_ssp": 544.0,
+        "allocation": 395.7121,
+        "contract_price": 950.0,
+        "contract_ssp": 1306.0
+      }
+    },
+    {
+      "id": "setup-alloc-Contract4-POB3",
+      "kind": "initial_allocation",
+      "steps_through": "03",
+      "contract": "Contract 4",
+      "pob": "POB #3",
+      "sku": "Consulting 1",
+      "inputs": {
+        "price": 150.0,
+        "qty": 1.0,
+        "list_price": 300.0,
+        "midpoint_discount": 0.5,
+        "range": 0.0
+      },
+      "expected": {
+        "ssp_midpoint": 150.0,
+        "extended_ssp": 150.0,
+        "allocation": 109.1118,
+        "contract_price": 950.0,
+        "contract_ssp": 1306.0
+      }
+    },
+    {
+      "id": "setup-alloc-Contract4-VC1",
+      "kind": "initial_allocation",
+      "steps_through": "03",
+      "contract": "Contract 4",
+      "pob": "VC #1",
+      "sku": "Variable Consideration",
+      "inputs": {
+        "price": -200.0,
+        "qty": 1.0,
+        "list_price": 0.0,
+        "midpoint_discount": 0.0,
+        "range": 0.0
+      },
+      "expected": {
+        "ssp_midpoint": 0.0,
+        "extended_ssp": 0.0,
+        "allocation": 0.0,
+        "contract_price": 950.0,
+        "contract_ssp": 1306.0
+      }
+    },
+    {
+      "id": "shipped-db-equivalence",
+      "kind": "point_in_time_equivalence",
+      "steps_through": "04",
+      "expected": {
+        "rows": 24,
+        "columns_with_mismatch": []
+      },
+      "source": "golden/compare-shipped/"
+    },
+    {
+      "id": "probe-P1-blank-memo-drops-progress-rows",
+      "kind": "legacy_probe",
+      "question": "Does a blank memo cell silently drop a delivery/billing row?",
+      "observed": {
+        "last_action": {
+          "i": 3,
+          "button_label": "Load Delivery and Billing",
+          "file": "P1 progress 1.31.2023 - Memo 3 blank on Contract 1 POB #2 and POB #3.xlsx",
+          "date_input": "2023-01-31",
+          "rows_before": 8,
+          "rows_after": 16,
+          "popups": [
+            {
+              "kind": "QMessageBox.information",
+              "title": "Rev Rec Success",
+              "text": "Rev Rec has been processed with uploaded deliveries and/or billings for the current date :)"
+            }
+          ]
+        },
+        "reports": {
+          "je_gross": {
+            "window": [
+              "2023-01-01",
+              "2023-01-31"
+            ],
+            "totals": {
+              "lines": 5,
+              "by_account": [
+                {
+                  "account": "5001",
+                  "debit": 0.0,
+                  "credit": 187.69,
+                  "net": -187.69
+                },
+                {
+                  "account": "15001",
+                  "debit": 28.84,
+                  "credit": -0.0,
+                  "net": 28.84
+                },
+                {
+                  "account": "15002",
+                  "debit": 58.85,
+                  "credit": -0.0,
+                  "net": 58.85
+                },
+                {
+                  "account": "21001",
+                  "debit": 100.0,
+                  "credit": -0.0,
+                  "net": 100.0
+                }
+              ],
+              "total_debit": 187.69,
+              "total_credit": 187.69,
+              "net": 0.0
+            }
+          }
+        },
+        "watched_latest": [
+          {
+            "contract": "Contract 1",
+            "pob": "POB #1",
+            "Current Delivery - Cumulative": 2.0,
+            "Current Billing - Cumulative": 100.0,
+            "Current Rev Rec - Cumulative": 128.8404,
+            "Current Pre-ASC606 Revenue (Net Design Only)": 0.0,
+            "Current Pre-ASC606 Revenue (Net Design Only) - Cumulative": 0.0,
+            "Current Remaining Qty": 3.0,
+            "Current Remaining Allocation": 193.2607,
+            "Current Period": "2023-01-31 00:00:00"
+          },
+          {
+            "contract": "Contract 1",
+            "pob": "POB #2",
+            "Current Delivery - Cumulative": 0.0,
+            "Current Billing - Cumulative": 0.0,
+            "Current Rev Rec - Cumulative": 0.0,
+            "Current Pre-ASC606 Revenue (Net Design Only)": 0.0,
+            "Current Pre-ASC606 Revenue (Net Design Only) - Cumulative": 0.0,
+            "Current Remaining Qty": 2.0,
+            "Current Remaining Allocation": 237.0664,
+            "Current Period": "2023-01-31 00:00:00"
+          },
+          {
+            "contract": "Contract 1",
+            "pob": "POB #3",
+            "Current Delivery - Cumulative": 0.0,
+            "Current Billing - Cumulative": 0.0,
+            "Current Rev Rec - Cumulative": 0.0,
+            "Current Pre-ASC606 Revenue (Net Design Only)": 0.0,
+            "Current Pre-ASC606 Revenue (Net Design Only) - Cumulative": 0.0,
+            "Current Remaining Qty": 1.0,
+            "Current Remaining Allocation": 96.6303,
+            "Current Period": "2023-01-31 00:00:00"
+          }
+        ]
+      },
+      "baseline": "UAT replay step 04: Contract 1 POB #2 delivered 1.0 / billed 100 / revenue 118.5332; POB #3 delivered 0.5 / billed 100 / revenue 48.3152",
+      "source": "golden/probes/P1-blank-memo-drops-progress-rows/"
+    },
+    {
+      "id": "probe-P2-mod-reposts-pre-asc606-in-delta-je",
+      "kind": "legacy_probe",
+      "question": "Does a modification version re-post the previous Current Pre-ASC606 Revenue in the Revenue Adjustment JE?",
+      "observed": {
+        "last_action": {
+          "i": 4,
+          "button_label": "Prospective Contract Mod",
+          "file": "P2 no-op prospective mod - Contract 1 POB #1 qty 0 billing 0.xlsx",
+          "date_input": "2023-02-15",
+          "rows_before": 16,
+          "rows_after": 20,
+          "popups": [
+            {
+              "kind": "QMessageBox.information",
+              "title": "Mod Success",
+              "text": "Prospective Mod has been processed with uploaded modifications for the current date :)"
+            }
+          ]
+        },
+        "reports": {
+          "je_gross_feb": {
+            "window": [
+              "2023-02-01",
+              "2023-02-28"
+            ],
+            "totals": {
+              "lines": 0,
+              "by_account": [],
+              "total_debit": 0.0,
+              "total_credit": 0.0,
+              "net": 0.0
+            }
+          },
+          "je_delta_feb": {
+            "window": [
+              "2023-02-01",
+              "2023-02-28"
+            ],
+            "totals": {
+              "lines": 3,
+              "by_account": [
+                {
+                  "account": "5002",
+                  "debit": 66.0,
+                  "credit": -0.0,
+                  "net": 66.0
+                },
+                {
+                  "account": "5003",
+                  "debit": 88.0,
+                  "credit": -0.0,
+                  "net": 88.0
+                },
+                {
+                  "account": "21001",
+                  "debit": 0.0,
+                  "credit": 154.0,
+                  "net": -154.0
+                }
+              ],
+              "total_debit": 154.0,
+              "total_credit": 154.0,
+              "net": 0.0
+            }
+          },
+          "je_delta_jan": {
+            "window": [
+              "2023-01-01",
+              "2023-01-31"
+            ],
+            "totals": {
+              "lines": 6,
+              "by_account": [
+                {
+                  "account": "5001",
+                  "debit": 0.0,
+                  "credit": 187.69,
+                  "net": -187.69
+                },
+                {
+                  "account": "5002",
+                  "debit": 0.0,
+                  "credit": 52.53,
+                  "net": -52.53
+                },
+                {
+                  "account": "5003",
+                  "debit": 39.68,
+                  "credit": -0.0,
+                  "net": 39.68
+                },
+                {
+                  "account": "15002",
+                  "debit": 58.85,
+                  "credit": -0.0,
+                  "net": 58.85
+                },
+                {
+                  "account": "21001",
+                  "debit": 141.69,
+                  "credit": -0.0,
+                  "net": 141.69
+                }
+              ],
+              "total_debit": 240.22,
+              "total_credit": 240.22,
+              "net": 0.0
+            }
+          }
+        },
+        "watched_latest": [
+          {
+            "contract": "Contract 1",
+            "pob": "POB #2",
+            "Current Delivery - Cumulative": 1.0,
+            "Current Billing - Cumulative": 100.0,
+            "Current Rev Rec - Cumulative": 118.5332,
+            "Current Pre-ASC606 Revenue (Net Design Only)": 66.0,
+            "Current Pre-ASC606 Revenue (Net Design Only) - Cumulative": 66.0,
+            "Current Remaining Qty": 1.0,
+            "Current Remaining Allocation": 118.5332,
+            "Current Period": "2023-02-15 00:00:00"
+          },
+          {
+            "contract": "Contract 1",
+            "pob": "POB #3",
+            "Current Delivery - Cumulative": 0.5,
+            "Current Billing - Cumulative": 100.0,
+            "Current Rev Rec - Cumulative": 48.3152,
+            "Current Pre-ASC606 Revenue (Net Design Only)": 88.0,
+            "Current Pre-ASC606 Revenue (Net Design Only) - Cumulative": 88.0,
+            "Current Remaining Qty": 0.5,
+            "Current Remaining Allocation": 48.3152,
+            "Current Period": "2023-02-15 00:00:00"
+          }
+        ]
+      },
+      "baseline": "No Pre-ASC606 revenue was loaded in February; the correct February delta JE is the gross JE (no Pre-ASC606 lines)",
+      "source": "golden/probes/P2-mod-reposts-pre-asc606-in-delta-je/"
+    },
+    {
+      "id": "probe-P3-over-delivery-validation",
+      "kind": "legacy_probe",
+      "question": "What does the loader do when a delivery exceeds the remaining quantity?",
+      "observed": {
+        "last_action": {
+          "i": 3,
+          "button_label": "Load Delivery and Billing",
+          "file": "P3 progress 1.31.2023 - Contract 1 POB #1 over-delivered.xlsx",
+          "date_input": "2023-01-31",
+          "rows_before": 8,
+          "rows_after": 8,
+          "popups": [
+            {
+              "kind": "QMessageBox.information",
+              "title": "Delivery/Billing load failed",
+              "text": "Qty or billing loaded are greater than the remaining of the POBs. Check your uploads please."
+            },
+            {
+              "kind": "QMessageBox.critical",
+              "title": "Error Notification",
+              "text": "The process is stopped for users to fix the file"
+            }
+          ]
+        },
+        "reports": {},
+        "watched_latest": [
+          {
+            "contract": "Contract 1",
+            "pob": "POB #1",
+            "Current Delivery - Cumulative": 0.0,
+            "Current Billing - Cumulative": 0.0,
+            "Current Rev Rec - Cumulative": 0.0,
+            "Current Pre-ASC606 Revenue (Net Design Only)": 0.0,
+            "Current Pre-ASC606 Revenue (Net Design Only) - Cumulative": 0.0,
+            "Current Remaining Qty": 5.0,
+            "Current Remaining Allocation": 322.1011,
+            "Current Period": "2023-01-01 00:00:00"
+          }
+        ]
+      },
+      "baseline": "Contract 1 POB #1 remaining qty 5; upload asks for 7",
+      "source": "golden/probes/P3-over-delivery-validation/"
+    },
+    {
+      "id": "probe-P4-duplicate-upload-double-counts",
+      "kind": "legacy_probe",
+      "question": "Is re-uploading the same delivery/billing file idempotent?",
+      "observed": {
+        "last_action": {
+          "i": 6,
+          "button_label": "Load Delivery and Billing",
+          "file": "Contract Progress Tracking Template 2.28.2023.xlsx",
+          "date_input": "2023-02-28",
+          "rows_before": 36,
+          "rows_after": 48,
+          "popups": [
+            {
+              "kind": "QMessageBox.information",
+              "title": "Rev Rec Success",
+              "text": "Rev Rec has been processed with uploaded deliveries and/or billings for the current date :)"
+            }
+          ]
+        },
+        "reports": {
+          "je_gross_feb": {
+            "window": [
+              "2023-02-01",
+              "2023-02-28"
+            ],
+            "totals": {
+              "lines": 6,
+              "by_account": [
+                {
+                  "account": "5001",
+                  "debit": 0.0,
+                  "credit": 351.43,
+                  "net": -351.43
+                },
+                {
+                  "account": "5003",
+                  "debit": 0.0,
+                  "credit": 96.63,
+                  "net": -96.63
+                },
+                {
+                  "account": "21001",
+                  "debit": 225.47,
+                  "credit": -0.0,
+                  "net": 225.47
+                },
+                {
+                  "account": "21002",
+                  "debit": 222.59,
+                  "credit": -0.0,
+                  "net": 222.59
+                }
+              ],
+              "total_debit": 448.06,
+              "total_credit": 448.06,
+              "net": 0.0
+            }
+          }
+        },
+        "watched_latest": [
+          {
+            "contract": "Contract 1",
+            "pob": "POB #1",
+            "Current Delivery - Cumulative": 4.0,
+            "Current Billing - Cumulative": 300.0,
+            "Current Rev Rec - Cumulative": 257.6809,
+            "Current Pre-ASC606 Revenue (Net Design Only)": 0.0,
+            "Current Pre-ASC606 Revenue (Net Design Only) - Cumulative": 0.0,
+            "Current Remaining Qty": 1.0,
+            "Current Remaining Allocation": 64.4202,
+            "Current Period": "2023-02-28 00:00:00"
+          },
+          {
+            "contract": "Contract 3",
+            "pob": "POB #3",
+            "Current Delivery - Cumulative": 1.0,
+            "Current Billing - Cumulative": 400.0,
+            "Current Rev Rec - Cumulative": 96.6303,
+            "Current Pre-ASC606 Revenue (Net Design Only)": 200.0,
+            "Current Pre-ASC606 Revenue (Net Design Only) - Cumulative": 400.0,
+            "Current Remaining Qty": 0.0,
+            "Current Remaining Allocation": 0.0,
+            "Current Period": "2023-02-28 00:00:00"
+          },
+          {
+            "contract": "Contract 4",
+            "pob": "POB #1",
+            "Current Delivery - Cumulative": 4.0,
+            "Current Billing - Cumulative": 300.0,
+            "Current Rev Rec - Cumulative": 222.5881,
+            "Current Pre-ASC606 Revenue (Net Design Only)": 150.0,
+            "Current Pre-ASC606 Revenue (Net Design Only) - Cumulative": 300.0,
+            "Current Remaining Qty": 4.0,
+            "Current Remaining Allocation": 222.5881,
+            "Current Period": "2023-02-28 00:00:00"
+          }
+        ]
+      },
+      "baseline": "UAT replay (single 2.28 upload): February gross JE totals Dr/Cr 224.03; Contract 1 POB #1 delivered cum 3.0",
+      "source": "golden/probes/P4-duplicate-upload-double-counts/"
+    }
+  ]
+}

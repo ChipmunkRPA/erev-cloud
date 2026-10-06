@@ -1,0 +1,207 @@
+# docs/accounting/answer-keys/ent/ENT-PER-ENTITY-NETTING-IN-A-COMBINED-GROUP.yaml
+schema: "erev-answer-key/1"
+id: ENT-PER-ENTITY-NETTING-IN-A-COMBINED-GROUP
+title: "Combination across two legal entities: one allocation, no netting across entities"
+status: active
+families: [ENT, POS, ALC]
+tags: [multi-entity]
+summary: >-
+  Two contracts with the same customer are combined under 606-10-25-9(a): C-ENT-A contracted by US01 (12-month
+  support, stated 12,000.00, SSP 15,000.00, invoiced 12,000.00 upfront) and C-ENT-B contracted by US02 (installation,
+  stated 10,000.00, SSP 7,500.00, transferred on 2026-01-20, not yet invoiced). Allocation spans the group in one
+  currency (ALG-07 step 1): 22,000.00 × 15,000 ÷ 22,500 = 14,666.67 and 7,333.33 by largest remainder. Netting runs
+  per (group, contracting entity, book) (POL-120): at 31 January US01 presents a contract liability of 12,000.00 −
+  1,222.22 = 10,777.78 and US02 a contract asset of 7,333.33 [A CONDITIONAL]. The legacy contract-level netting across
+  entities (3,444.45 liability) is not reproduced (REQ-ENT-002). The checkpoint also asserts the group's labelled
+  balances per legal entity through the block groups (dev-guide DG-AK-57; ADJUDICATION.md R-SCH-05).
+authority:
+  codification: ["606-10-25-9", "606-10-32-28", "606-10-45-1"]
+  ifrs: ["IFRS 15.17", "IFRS 15.74", "IFRS 15.105"]
+  practice: ["Deloitte Roadmap: Revenue Recognition 14.1 (netting within a contract)"]
+  urls: []
+derived_from: {research04: [], research05: [], chk: [], golden: [], dev: []}
+requirements: [REQ-ENT-002, REQ-ALC-001, REQ-CON-009, REQ-BIL-003]
+policy_refs: [POL-120, POL-002, POL-016]
+review:
+  author: answer-keys-fx-entity-books
+  authored_on: "2026-09-12"
+  reviewer: null
+  reviewed_on: null
+  status: pending
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: US01
+      name: "Avenmoor Systems Inc. (Demo)"
+      functional_currency: USD
+      time_zone: "America/New_York"
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: 1}
+      books: [ASC606]
+    - code: US02
+      name: "Avenmoor Field Services LLC (Demo)"
+      functional_currency: USD
+      time_zone: "America/Chicago"
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: 1}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2026-01"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "1800", name: "Intercompany due from", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "2800", name: "Intercompany due to", account_type: LIABILITY}
+    - {code: "4010", name: "Revenue - services and subscriptions", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: INTERCOMPANY_DUE_TO, account: "2800"}
+    - {account_role: INTERCOMPANY_DUE_FROM, account: "1800"}
+    - {account_role: REVENUE, account: "4010", product: SUPPORT-12M}
+    - {account_role: REVENUE, account: "4010", product: INSTALL}
+  customers:
+    - {code: CUST-1, name: "Pellworth Logistics Inc. (Demo)"}
+  pob_templates:
+    - code: TPL-PIT
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: POINT_IN_TIME
+      over_time_criterion: NOT_APPLICABLE
+      recognition_method: POINT_IN_TIME
+    - code: TPL-RAT-ME
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_A
+      recognition_method: TIME_ELAPSED
+      ratable_convention: MONTHLY_EVEN
+  products:
+    - {code: SUPPORT-12M, name: "Support, 12 months", pob_template: TPL-RAT-ME}
+    - {code: INSTALL, name: Installation, pob_template: TPL-PIT}
+  ssp_books:
+    - code: SSP-USD-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2026-01-01"
+          methodology_label: "Observable standalone prices"
+          entries:
+            - product: SUPPORT-12M
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "15000.00"}
+            - product: INSTALL
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "7500.00"}
+  fx_rate_sets: []
+  rule_sets: []
+  policies: {tenant: {billing.posting: ERP}, entities: {}, books: {}}
+contracts:
+  - external_id: C-ENT-A
+    customer: CUST-1
+    contracting_entity: US01
+    transaction_currency: USD
+    inception_date: "2026-01-01"
+    combination_group: G-ENT-01
+    combination_criterion: "25_9_A"
+    lines:
+      - obligation_key: A1-SUPPORT
+        product_code: SUPPORT-12M
+        quantity: "1"
+        total_price: "12000.00"
+        start_date: "2026-01-01"
+        end_date: "2026-12-31"
+  - external_id: C-ENT-B
+    customer: CUST-1
+    contracting_entity: US02
+    transaction_currency: USD
+    inception_date: "2026-01-01"
+    combination_group: G-ENT-01
+    lines:
+      - {obligation_key: B1-INSTALL, product_code: INSTALL, quantity: "1", total_price: "10000.00"}
+    policy_overrides:
+      - policy_key: balance.right_to_consideration
+        value: CONDITIONAL
+        obligation_key: B1-INSTALL
+        rationale: "Installation fee payable on acceptance of the combined solution"
+timeline:
+  - {seq: 1, kind: event, contract: C-ENT-A, event_type: CONTRACT_BOOKED, effective_date: "2026-01-01", payload: {}}
+  - {seq: 2, kind: event, contract: C-ENT-B, event_type: CONTRACT_BOOKED, effective_date: "2026-01-01", payload: {}}
+  - seq: 3
+    kind: event
+    contract: C-ENT-A
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: 4
+    kind: event
+    contract: C-ENT-B
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: 5
+    kind: event
+    contract: C-ENT-A
+    event_type: BILLING_RECORDED
+    effective_date: "2026-01-01"
+    payload:
+      invoice_number: INV-ENT-A-1
+      line_external_id: INV-ENT-A-1-1
+      amount: "12000.00"
+      issue_date: "2026-01-01"
+  - seq: 6
+    kind: event
+    contract: C-ENT-B
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-01-20"
+    payload: {obligation_key: B1-INSTALL, quantity: "1", trigger: ACCEPTANCE}
+checkpoints:
+  - name: january-close
+    after_seq: 6
+    as_of: "2026-01-31"
+    book: ASC606
+    contracts:
+      - contract: C-ENT-A
+        obligations:
+          - obligation_key: A1-SUPPORT
+            allocated_amount: "14666.67"
+            allocated_exact: "14666.666667"
+            revenue_cum: "1222.22"
+        balances:
+          - {entity: US01, contract_liability: "10777.78", contract_asset: "0.00", unbilled_receivable: "0.00"}
+      - contract: C-ENT-B
+        obligations:
+          - obligation_key: B1-INSTALL
+            allocated_amount: "7333.33"
+            allocated_exact: "7333.333333"
+            revenue_cum: "7333.33"
+        balances:
+          - {entity: US02, contract_liability: "0.00", contract_asset: "7333.33", unbilled_receivable: "0.00"}
+    subledger:
+      - period_key: FY2026-P01
+        entity: US01
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "1222.22"}
+          - {account_role: REVENUE, account: "4010", cr: "1222.22"}
+      - period_key: FY2026-P01
+        entity: US02
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_ASSET, account: "1200", dr: "7333.33"}
+          - {account_role: REVENUE, account: "4010", cr: "7333.33"}
+    groups:
+      - group: G-ENT-01
+        balances:
+          - {entity: US01, contract_liability: "10777.78", contract_asset: "0.00", unbilled_receivable: "0.00"}
+          - {entity: US02, contract_liability: "0.00", contract_asset: "7333.33", unbilled_receivable: "0.00"}

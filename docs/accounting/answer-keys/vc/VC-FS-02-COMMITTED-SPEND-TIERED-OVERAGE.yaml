@@ -1,0 +1,322 @@
+schema: erev-answer-key/1
+id: VC-FS-02-COMMITTED-SPEND-TIERED-OVERAGE
+title: "Committed-spend drawdown with annual tiered overage estimated for the measurement period"
+status: active
+families: [VC, REC, POS, DISC]
+tags: [usage]
+summary: "Annual API platform agreement for calendar 2026: a committed spend of 200,000.00 invoiced on 1 January covers the first 4,000,000 calls; calls above the commitment are rated on annual cumulative usage at 0.04 per call up to 6,000,000 calls and 0.03 above, invoiced in arrears. Because the overage rate depends on usage in other quarters, the usage cannot be allocated to the period in which it occurs (32-40(b) fails; POL-240 ESTIMATE_MEASUREMENT_PERIOD_TP, POLICIES PT-01). The stand-ready series POB recognises the constrained transaction price on time elapsed. Estimate version 1 (expected value 40,000.00, constrained 20,000.00), version 2 at 30 June (expected value 95,000.00, constrained 80,000.00) and version 3 at 31 December (actual 6,500,000 calls, 95,000.00) each trigger a cumulative catch-up (ALG-10). Revenue ahead of the overage invoices is a conditional right (contract asset). The June catch-up splits into 25,000.00 of revenue from prior-period performance (ALG-10 §2.11.3) and current-period progress. The overage element carries an explicit direction INCREASE (T-CON-12; supervisor-ruled input clarification of 2026-09-19, ENC-VC-direction): additional consideration above the commitment, never a refund candidate."
+authority:
+  codification:
+    - "606-10-32-5"
+    - "606-10-32-8"
+    - "606-10-32-11"
+    - "606-10-32-14"
+    - "606-10-32-39"
+    - "606-10-32-40"
+    - "606-10-32-43"
+    - "606-10-55-18"
+    - "606-10-50-12A"
+    - "606-10-45-3"
+  ifrs: ["IFRS 15.53", "IFRS 15.56", "IFRS 15.85"]
+  practice:
+    - "Deloitte, Cloud-based arrangements: variable consideration (tiered pricing and minimums)"
+    - "POLICIES PT-01"
+  urls: []
+derived_from: {research04: [], research05: [FS-02], chk: [], golden: [], dev: []}
+requirements: [REQ-REC-010, REQ-TP-002, REQ-TP-003, REQ-TP-004, REQ-TP-006, REQ-BIL-004, REQ-RPT-008]
+policy_refs: [POL-040, POL-041, POL-090, POL-122, POL-204, POL-240]
+review: {author: answer-keys-industries, authored_on: "2026-09-12", reviewer: null, reviewed_on: null, status: pending}
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: FS-US
+      name: "Fernhill Software US (Demo)"
+      functional_currency: USD
+      time_zone: America/Los_Angeles
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: "1"}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2026-12"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4010", name: "Revenue - services and subscriptions", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, product: API-COMMIT, account: "4010"}
+  customers: [{code: CUST-FS02, name: "Ostrander Payments Inc. (Demo)"}]
+  pob_templates:
+    - code: TPL-API-COMMIT
+      obligation_kind: STANDARD
+      distinctness: series
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_A
+      recognition_method: TIME_ELAPSED
+      ratable_convention: MONTHLY_EVEN
+      series_increment_unit: month
+      policy_values:
+        balance.right_to_consideration: CONDITIONAL
+        usage.tier_minimum_method: ESTIMATE_MEASUREMENT_PERIOD_TP
+  products:
+    - {code: API-COMMIT, name: "API platform committed spend", pob_template: TPL-API-COMMIT, revenue_category: USAGE}
+  ssp_books:
+    - code: SSP-FS-US-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2025-01-01"
+          methodology_label: "Observable standalone prices (demo study)"
+          entries:
+            - product: API-COMMIT
+              currency: USD
+              method: observable
+              value_basis: AMOUNT  # D-93 (4): declared remaining-increments reading (the reading the key's oracle embodies); no value change
+              distinctness: distinct
+              ranges: [{point_value: "200000.00"}]
+  fx_rate_sets: []
+  rule_sets: []
+  policies:
+    tenant: {billing.posting: ERP, recognition.time_convention: MONTHLY_EVEN}
+    entities: {}
+    books: {}
+contracts:
+  - external_id: FS-02
+    customer: CUST-FS02
+    contracting_entity: FS-US
+    transaction_currency: USD
+    inception_date: "2026-01-01"
+    lines:
+      - obligation_key: L1-COMMIT
+        product_code: API-COMMIT
+        quantity: "1"
+        total_price: "200000.00"
+        start_date: "2026-01-01"
+        end_date: "2026-12-31"
+    estimates:
+      - element_code: VC-FS02-OVERAGE
+        estimate_kind: VARIABLE_CONSIDERATION
+        method: EXPECTED_VALUE
+        obligation_key: L1-COMMIT
+        vc_element_type: VOLUME_TIER
+        # Supervisor-ruled input correction (2026-09-19, ENC-VC-direction; an input clarification,
+        # not an oracle change): the tiered overage is additional consideration the customer pays
+        # above the 200,000.00 commitment (606-10-32-5, 32-8), so the element INCREASES the
+        # transaction price (T-CON-12 direction, 04 B3-D16). The key's text and every expected
+        # figure already describe an increase (TP 220,000.00 / 280,000.00 / 295,000.00; revenue
+        # 55,000.00 / 140,000.00 / 233,333.33 / 295,000.00) and are unchanged. Without the member
+        # the B3-DG-17 default for VOLUME_TIER (a volume rebate, DECREASE) applied, the overage was
+        # measured as a refundable reduction and stage 10 sought a REFUND_LIABILITY account this
+        # world does not map (ACCOUNT_MAPPING_MISSING). No refund, rebate, return or cancellation
+        # right exists in these facts.
+        direction: INCREASE
+        allocation_target: OBLIGATIONS
+        target_obligation_keys: [L1-COMMIT]
+        versions:
+          - version_no: "1"
+            effective_date: "2026-01-01"
+            scenarios:
+              - {outcome: "calls=4000000", amount: "0.00", probability: "0.25"}
+              - {outcome: "calls=5000000", amount: "40000.00", probability: "0.50"}
+              - {outcome: "calls=6000000", amount: "80000.00", probability: "0.25"}
+            unconstrained_amount: "40000.00"
+            most_conservative_amount: "0.00"
+            constrained_amount: "20000.00"
+            currency: USD
+            rationale: "No usage history for this customer; half of the expected overage is constrained (606-10-32-12(b), (c))."
+          - version_no: "2"
+            effective_date: "2026-06-30"
+            scenarios:
+              - {outcome: "calls=6000000", amount: "80000.00", probability: "0.50"}
+              - {outcome: "calls=7000000", amount: "110000.00", probability: "0.50"}
+            unconstrained_amount: "95000.00"
+            most_conservative_amount: "0.00"
+            constrained_amount: "80000.00"
+            currency: USD
+            rationale: "Cumulative calls 2,500,000 at 30 June with a rising monthly run rate; the 7,000,000-call outcome remains uncertain."
+          - version_no: "3"
+            effective_date: "2026-12-31"
+            scenarios: [{outcome: "calls=6500000", amount: "95000.00", probability: "1.00"}]
+            unconstrained_amount: "95000.00"
+            most_conservative_amount: "95000.00"
+            constrained_amount: "95000.00"
+            currency: USD
+            rationale: "Actual annual usage 6,500,000 calls; uncertainty resolved."
+timeline:
+  - seq: "1"
+    kind: event
+    contract: FS-02
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: "2"
+    kind: event
+    contract: FS-02
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: "3"
+    kind: event
+    contract: FS-02
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-01-01"
+    payload: {estimate: VC-FS02-OVERAGE, version_no: "1"}
+  - seq: "4"
+    kind: event
+    contract: FS-02
+    event_type: BILLING_RECORDED
+    effective_date: "2026-01-01"
+    payload:
+      invoice_number: INV-FS02-001
+      line_external_id: INV-FS02-001-1
+      amount: "200000.00"
+      issue_date: "2026-01-01"
+      obligation_key: L1-COMMIT
+  - seq: "5"
+    kind: event
+    contract: FS-02
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-06-30"
+    payload: {estimate: VC-FS02-OVERAGE, version_no: "2"}
+  - seq: "6"
+    kind: event
+    contract: FS-02
+    event_type: BILLING_RECORDED
+    effective_date: "2026-09-30"
+    payload:
+      invoice_number: INV-FS02-OVG-Q3
+      line_external_id: INV-FS02-OVG-Q3-1
+      amount: "20000.00"
+      issue_date: "2026-09-30"
+      obligation_key: L1-COMMIT
+      service_period_start: "2026-07-01"
+      service_period_end: "2026-09-30"
+  - seq: "7"
+    kind: event
+    contract: FS-02
+    event_type: BILLING_RECORDED
+    effective_date: "2026-12-31"
+    payload:
+      invoice_number: INV-FS02-OVG-Q4
+      line_external_id: INV-FS02-OVG-Q4-1
+      amount: "75000.00"
+      issue_date: "2026-12-31"
+      obligation_key: L1-COMMIT
+      service_period_start: "2026-10-01"
+      service_period_end: "2026-12-31"
+  - seq: "8"
+    kind: event
+    contract: FS-02
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-12-31"
+    payload: {estimate: VC-FS02-OVERAGE, version_no: "3"}
+checkpoints:
+  - name: q1
+    after_seq: "4"
+    as_of: "2026-03-31"
+    book: ASC606
+    contracts:
+      - contract: FS-02
+        version:
+          transaction_price: "220000.00"
+          fixed_consideration: "200000.00"
+          vc_constrained_amount: "20000.00"
+          revenue_cum: "55000.00"
+          billed_cum: "200000.00"
+        obligations:
+          - obligation_key: L1-COMMIT
+            allocated_amount: "220000.00"
+            revenue_cum: "55000.00"
+            satisfaction_status: PARTIALLY_SATISFIED
+        balances:
+          - {entity: FS-US, contract_liability: "145000.00", contract_asset: "0.00", unbilled_receivable: "0.00"}
+  - name: q2-reestimate
+    after_seq: "5"
+    as_of: "2026-06-30"
+    book: ASC606
+    contracts:
+      - contract: FS-02
+        version:
+          transaction_price: "280000.00"
+          fixed_consideration: "200000.00"
+          vc_constrained_amount: "80000.00"
+          revenue_cum: "140000.00"
+          billed_cum: "200000.00"
+        obligations:
+          - obligation_key: L1-COMMIT
+            allocated_amount: "280000.00"
+            revenue_cum: "140000.00"
+            satisfaction_status: PARTIALLY_SATISFIED
+        balances: [{entity: FS-US, contract_liability: "60000.00", contract_asset: "0.00", unbilled_receivable: "0.00"}]
+        trace:
+          - measure: revenue_prior_period
+            subject_key: L1-COMMIT
+            period_key: FY2026-P06
+            value: "25000.00"
+            formula_id: estimate.prior_period.v1
+    subledger:
+      - period_key: FY2026-P06
+        entity: FS-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "48333.33"}
+          - {account_role: REVENUE, account: "4010", cr: "48333.33"}
+  - name: october-contract-asset
+    after_seq: "6"
+    as_of: "2026-10-31"
+    book: ASC606
+    contracts:
+      - contract: FS-02
+        version:
+          transaction_price: "280000.00"
+          fixed_consideration: "200000.00"
+          vc_constrained_amount: "80000.00"
+          revenue_cum: "233333.33"
+          billed_cum: "220000.00"
+        obligations:
+          - obligation_key: L1-COMMIT
+            allocated_amount: "280000.00"
+            revenue_cum: "233333.33"
+            satisfaction_status: PARTIALLY_SATISFIED
+        balances: [{entity: FS-US, contract_liability: "0.00", contract_asset: "13333.33", unbilled_receivable: "0.00"}]
+    subledger:
+      - period_key: FY2026-P10
+        entity: FS-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_ASSET, account: "1200", dr: "13333.33"}
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "10000.00"}
+          - {account_role: REVENUE, account: "4010", cr: "23333.33"}
+  - name: year-end-actual
+    after_seq: "8"
+    as_of: "2026-12-31"
+    book: ASC606
+    contracts:
+      - contract: FS-02
+        version:
+          transaction_price: "295000.00"
+          fixed_consideration: "200000.00"
+          vc_constrained_amount: "95000.00"
+          revenue_cum: "295000.00"
+          billed_cum: "295000.00"
+        obligations:
+          - obligation_key: L1-COMMIT
+            allocated_amount: "295000.00"
+            revenue_cum: "295000.00"
+            satisfaction_status: SATISFIED
+        balances: [{entity: FS-US, contract_liability: "0.00", contract_asset: "0.00", unbilled_receivable: "0.00"}]
+    subledger:
+      - period_key: FY2026-P12
+        entity: FS-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_ASSET, account: "1200", cr: "36666.67"}
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "75000.00"}
+          - {account_role: REVENUE, account: "4010", cr: "38333.33"}

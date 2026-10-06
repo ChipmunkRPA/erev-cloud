@@ -1,0 +1,165 @@
+# docs/accounting/answer-keys/fx/FX-CHK-084-C-CONSIDERATION-PAYABLE-REMEASURED.yaml
+schema: "erev-answer-key/1"
+id: FX-CHK-084-C-CONSIDERATION-PAYABLE-REMEASURED
+title: >-
+  D-25b: EUR consideration payable remeasured at closing; the customer incentive asset stays at the promise-date rate
+  (CHK-084 c)
+status: active
+families: [FX, CPC, JE]
+tags: [fx]
+summary: >-
+  POLICIES CHK-084 (c); entity US01 (functional USD), EUR contract, ERP billing. On 1 June 2026 the entity promises
+  the customer EUR 50,000.00 before any related revenue (booking member consideration_payable, committed purchases
+  500,000.00): JET-14 Dr CUSTOMER_INCENTIVE_ASSET / Cr CONSIDERATION_PAYABLE USD 55,000.00 at spot 1.1000. The payable
+  is unsettled at 30 June; it is a monetary item (D-25b), so at closing 1.0900 JET-10d Dr CONSIDERATION_PAYABLE / Cr
+  FX_GAIN_LOSS USD 500.00 (carrying 54,500.00). The incentive asset is nonmonetary and stays at 55,000.00 (POLICIES B3
+  decision 5: an open promise is remeasured at every period end until a settlement is recorded).
+authority:
+  codification: ["830-20-35-1", "830-20-35-2", "830-10-45-17", "606-10-32-25", "606-10-32-27"]
+  ifrs: ["IAS 21.16", "IAS 21.23"]
+  practice: []
+  urls: []
+derived_from: {research04: [], research05: [], chk: [CHK-084], golden: [], dev: []}
+requirements: [REQ-FX-003, REQ-FX-001, REQ-TP-013]
+policy_refs: [POL-164, POL-049]
+review:
+  author: answer-keys-fx-entity-books
+  authored_on: "2026-09-12"
+  reviewer: null
+  reviewed_on: null
+  status: pending
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [EUR, USD]
+  entities:
+    - code: US01
+      name: "Avenmoor Systems Inc. (Demo)"
+      functional_currency: USD
+      time_zone: "America/New_York"
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: 1}
+      books: [ASC606]
+  periods: {from: "2026-06", to: "2026-06"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "1210", name: "Customer incentive asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "2400", name: "Consideration payable to customers", account_type: LIABILITY}
+    - {code: "4000", name: "Revenue - products", account_type: REVENUE}
+    - {code: "7200", name: "Foreign exchange gain or loss", account_type: EXPENSE}
+    - {code: "7900", name: Rounding, account_type: EXPENSE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: FX_GAIN_LOSS, account: "7200"}
+    - {account_role: ROUNDING, account: "7900"}
+    - {account_role: REVENUE, account: "4000", product: SUPPLY-EUR}
+    - {account_role: CONSIDERATION_PAYABLE, account: "2400"}
+    - {account_role: CUSTOMER_INCENTIVE_ASSET, account: "1210"}
+  customers:
+    - {code: CUST-1, name: "Pellworth Logistics Inc. (Demo)"}
+  pob_templates:
+    - code: TPL-UNITS
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: POINT_IN_TIME
+      over_time_criterion: NOT_APPLICABLE
+      recognition_method: UNITS_DELIVERED
+  products:
+    - {code: SUPPLY-EUR, name: "Supplies to a retailer (EUR)", pob_template: TPL-UNITS}
+  ssp_books:
+    - code: SSP-EUR-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2026-01-01"
+          methodology_label: "Observable standalone prices"
+          entries:
+            - product: SUPPLY-EUR
+              currency: EUR
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "1.00"}
+  fx_rate_sets:
+    - code: SPOT-EURUSD
+      rate_type: spot
+      rates:
+        - {base_currency: EUR, quote_currency: USD, effective_date: "2026-06-01", rate: "1.1000"}
+    - code: AVG-EURUSD
+      rate_type: average
+      rates:
+        - base_currency: EUR
+          quote_currency: USD
+          effective_date: "2026-06-30"
+          period_key: FY2026-P06
+          rate: "1.0950"
+    - code: CLOSE-EURUSD
+      rate_type: closing
+      rates:
+        - base_currency: EUR
+          quote_currency: USD
+          effective_date: "2026-06-30"
+          period_key: FY2026-P06
+          rate: "1.0900"
+  rule_sets: []
+  policies: {tenant: {billing.posting: ERP}, entities: {}, books: {}}
+contracts:
+  - external_id: C-FX-084-C
+    customer: CUST-1
+    contracting_entity: US01
+    transaction_currency: EUR
+    inception_date: "2026-06-01"
+    consideration_payable:
+      - amount: "50000.00"
+        promise_date: "2026-06-01"
+        related_obligation_keys: [L1-SUPPLY]
+        committed_purchases: "500000.00"
+        share_based: false
+    lines:
+      - obligation_key: L1-SUPPLY
+        product_code: SUPPLY-EUR
+        quantity: "500000"
+        total_price: "500000.00"
+        unit_price: "1.00"
+    policy_overrides:
+      - policy_key: cpc.incentive_asset_release_basis
+        value: COMMITTED_PURCHASES
+        rationale: "The retailer commits to purchases of EUR 500,000.00 (POL-049)"
+timeline:
+  - seq: 1
+    kind: event
+    contract: C-FX-084-C
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-06-01"
+    payload: {}
+  - seq: 2
+    kind: event
+    contract: C-FX-084-C
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-06-01"
+    payload: {}
+checkpoints:
+  - name: june-close
+    after_seq: 2
+    as_of: "2026-06-30"
+    book: ASC606
+    contracts:
+      - contract: C-FX-084-C
+        balances:
+          - entity: US01
+            consideration_payable: "50000.00"
+            customer_incentive_asset: "50000.00"
+            functional: {consideration_payable: "54500.00", customer_incentive_asset: "55000.00"}
+    subledger:
+      - period_key: FY2026-P06
+        entity: US01
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CUSTOMER_INCENTIVE_ASSET, account: "1210", dr: "50000.00", functional_dr: "55000.00"}
+          - {account_role: CONSIDERATION_PAYABLE, account: "2400", cr: "50000.00", functional_cr: "54500.00"}
+          - {account_role: FX_GAIN_LOSS, account: "7200", cr: "0.00", functional_cr: "500.00"}

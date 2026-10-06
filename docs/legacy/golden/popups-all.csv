@@ -1,0 +1,119 @@
+step,phase,seq,category,kind,title,text,answer
+00,handler:db_reset,3,popup,QMessageBox.question,Confirmation,Do you want to proceed wiping out the current database?,Yes
+00,handler:db_reset,4,popup,QMessageBox.information,ASC606 database reset,ASC606 Database has been wiped out and reset!,Ok
+00,report:latest_contracts,5,popup,QMessageBox.critical,Error Notification,"Execution failed on sql '
+                                SELECT t1.*
+                                FROM Contract_Live t1
+                                JOIN (
+                                        SELECT ""Record Unique ID without time"", MAX(""Processing Time Log"") AS max_timestamp
+                                        FROM Contract_Live
+                                        GROUP BY ""Record Unique ID without time""
+                                ) t2 ON t1.""Record Unique ID without time"" = t2.""Record Unique ID without time"" AND t1.""Processing Time Log"" = t2.max_timestamp;
+                                ': no such table: Contract_Live",Ok
+01,handler:browse_file_SSPs,8,popup,QMessageBox.information,SSPs are set up,"All company SSPs for the uploaded file are set up. To add or update, re-upload SSPs to refresh.",Ok
+01,report:latest_contracts,9,popup,QMessageBox.critical,Error Notification,"Execution failed on sql '
+                                SELECT t1.*
+                                FROM Contract_Live t1
+                                JOIN (
+                                        SELECT ""Record Unique ID without time"", MAX(""Processing Time Log"") AS max_timestamp
+                                        FROM Contract_Live
+                                        GROUP BY ""Record Unique ID without time""
+                                ) t2 ON t1.""Record Unique ID without time"" = t2.""Record Unique ID without time"" AND t1.""Processing Time Log"" = t2.max_timestamp;
+                                ': no such table: Contract_Live",Ok
+02,handler:browse_file_Contracts,11,popup,QMessageBox.information,Contracts are set up,All contracts(s) within the uploaded file are successfully set up!,Ok
+02,report:latest_contracts,12,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+02,report:je_gross,15,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+02,report:je_delta,18,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+02,report:contract_history,21,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+03,handler:browse_file_Contracts,23,popup,QMessageBox.information,Contracts are set up,All contracts(s) within the uploaded file are successfully set up!,Ok
+03,report:latest_contracts,24,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+03,report:je_gross,27,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+03,report:je_delta,30,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+03,report:contract_history,33,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+04,handler:browse_file_Deliveries,36,popup,QMessageBox.information,Rev Rec Success,Rev Rec has been processed with uploaded deliveries and/or billings for the current date :),Ok
+04,report:latest_contracts,37,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+04,report:je_gross,40,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+04,report:je_delta,43,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+04,report:contract_history,46,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+05,handler:browse_file_Deliveries,49,popup,QMessageBox.information,Rev Rec Success,Rev Rec has been processed with uploaded deliveries and/or billings for the current date :),Ok
+05,report:latest_contracts,50,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+05,report:je_gross,53,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+05,report:je_delta,56,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+05,report:contract_history,59,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+06,handler:browse_file_Deliveries,62,popup,QMessageBox.information,Rev Rec Success,Rev Rec has been processed with uploaded deliveries and/or billings for the current date :),Ok
+06,report:latest_contracts,63,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+06,report:je_gross,66,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+06,report:je_delta,69,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+06,report:contract_history,72,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+07,handler:browse_file_Deliveries,75,popup,QMessageBox.information,Rev Rec Success,Rev Rec has been processed with uploaded deliveries and/or billings for the current date :),Ok
+07,report:latest_contracts,76,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+07,report:je_gross,79,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+07,report:je_delta,82,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+07,report:contract_history,85,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+08,handler:browse_file_RetroMod,88,popup,QMessageBox.information,Mod Success,Retrospective Mod has been processed with uploaded modifications for the current date :),Ok
+08,report:latest_contracts,89,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+08,report:je_gross,92,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+08,report:je_delta,95,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+08,report:contract_history,98,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+09,handler:browse_file_POB_specific_VC,101,popup,QMessageBox.information,POB Specific VC Successfully Applied!,POB Specific VC has been processed retrospectively for the current date :),Ok
+09,report:latest_contracts,102,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+09,report:je_gross,105,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+09,report:je_delta,108,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+09,report:contract_history,111,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+10,handler:browse_file_ProsMod,114,popup,QMessageBox.information,Mod Success,Prospective Mod has been processed with uploaded modifications for the current date :),Ok
+10,report:latest_contracts,115,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+10,report:je_gross,118,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+10,report:je_delta,121,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+10,report:contract_history,124,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+11,handler:browse_file_ProsMod,127,popup,QMessageBox.information,Mod Success,Prospective Mod has been processed with uploaded modifications for the current date :),Ok
+11,report:latest_contracts,128,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+11,report:je_gross,131,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+11,report:je_delta,134,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+11,report:contract_history,137,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+12,handler:browse_file_RetroMod,140,popup,QMessageBox.information,Mod Success,Retrospective Mod has been processed with uploaded modifications for the current date :),Ok
+12,report:latest_contracts,141,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+12,report:je_gross,144,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+12,report:je_delta,147,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+12,report:contract_history,150,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+13,handler:browse_file_ProsMod,153,popup,QMessageBox.information,Mod Success,Prospective Mod has been processed with uploaded modifications for the current date :),Ok
+13,report:latest_contracts,154,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+13,report:je_gross,157,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+13,report:je_delta,160,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+13,report:contract_history,163,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+14,handler:browse_file_Deliveries,166,popup,QMessageBox.information,Rev Rec Success,Rev Rec has been processed with uploaded deliveries and/or billings for the current date :),Ok
+14,report:latest_contracts,167,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+14,report:je_gross,170,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+14,report:je_delta,173,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+14,report:contract_history,176,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+monthly,monthly:01:je_gross,179,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+monthly,monthly:01:je_delta,182,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+monthly,monthly:01:contract_history,185,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+monthly,monthly:02:je_gross,188,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+monthly,monthly:02:je_delta,191,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+monthly,monthly:02:contract_history,194,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+monthly,monthly:03:je_gross,197,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+monthly,monthly:03:je_delta,200,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+monthly,monthly:03:contract_history,203,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+monthly,monthly:04:je_gross,206,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+monthly,monthly:04:je_delta,209,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+monthly,monthly:04:contract_history,212,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+monthly,monthly:05:je_gross,215,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+monthly,monthly:05:je_delta,218,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+monthly,monthly:05:contract_history,221,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+monthly,monthly:06:je_gross,224,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+monthly,monthly:06:je_delta,227,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+monthly,monthly:06:contract_history,230,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+monthly,monthly:07:je_gross,233,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+monthly,monthly:07:je_delta,236,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+monthly,monthly:07:contract_history,239,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+monthly,monthly:08:je_gross,242,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+monthly,monthly:08:je_delta,245,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+monthly,monthly:08:contract_history,248,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+monthly,monthly:09:je_gross,251,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+monthly,monthly:09:je_delta,254,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+monthly,monthly:09:contract_history,257,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+monthly,monthly:10:je_gross,260,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+monthly,monthly:10:je_delta,263,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+monthly,monthly:10:contract_history,266,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+monthly,monthly:year:je_gross,269,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+monthly,monthly:year:je_delta,272,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok

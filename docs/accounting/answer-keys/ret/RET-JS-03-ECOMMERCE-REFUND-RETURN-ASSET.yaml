@@ -1,0 +1,255 @@
+schema: erev-answer-key/1
+id: RET-JS-03-ECOMMERCE-REFUND-RETURN-ASSET
+title: "E-commerce espresso machines with a 30-day return right: refund liability, return asset and re-estimate"
+status: active
+families: [RET, REC, POS]
+tags: [portfolio]
+summary: "The March 2026 e-commerce cohort ships 400 espresso machines at 250.00 (100,000.00), paid at order, with a 30-day return right ending 30 April. Expected returns 20 machines (5%); carrying cost 150.00 and recovery cost 10.00 per machine (ALG-06): revenue 95,000.00, refund liability 5,000.00, return asset 2,800.00 at 31 March. On 15 April early return data reduce the estimate to 18 (JET-04a +500.00; refund liability 4,500.00; return asset 2,520.00). Returns: 12 machines on 20 April and 4 on 28 April, refunded by credit memo; each return reduces E and derecognises the return asset into inventory clearing (JET-07d: 1,680.00 and 560.00). At window expiry E = 0: revenue 96,000.00, refund liability 0.00, return asset 0.00 (JET-07c releases 280.00 to cost of revenue)."
+authority:
+  codification: ["606-10-32-10", "606-10-55-22", "606-10-55-23", "606-10-55-25", "606-10-55-27", "606-10-55-29"]
+  ifrs: ["IFRS 15.B21", "IFRS 15.B25"]
+  practice: ["DART 14.3 (refund liabilities and return assets)"]
+  urls: []
+derived_from: {research04: [], research05: [JS-03], chk: [], golden: [], dev: []}
+requirements: [REQ-TP-008, REQ-TP-009, REQ-TP-017, REQ-BIL-007]
+policy_refs: [POL-051, POL-052, POL-053, POL-127]
+review: {author: answer-keys-industries, authored_on: "2026-09-12", reviewer: null, reviewed_on: null, status: pending}
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: JS-US
+      name: "Juniper Street US (Demo)"
+      functional_currency: USD
+      time_zone: America/Los_Angeles
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: "1"}
+      books: [ASC606]
+  periods: {from: "2026-03", to: "2026-04"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "1310", name: "Asset for right to recover returned products", account_type: ASSET}
+    - {code: "1350", name: "Inventory clearing", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "2110", name: "Refund liability", account_type: LIABILITY}
+    - {code: "4000", name: "Revenue - products", account_type: REVENUE}
+    - {code: "5000", name: "Cost of revenue", account_type: EXPENSE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REFUND_LIABILITY, account: "2110"}
+    - {account_role: RETURN_ASSET, account: "1310"}
+    - {account_role: COST_OF_REVENUE, account: "5000"}
+    - {account_role: REVENUE, product: ESPRESSO-MACHINE, account: "4000"}
+    - {account_role: BILLING_CLEARING, clearing_purpose: INVENTORY, account: "1350"}
+  customers: [{code: CUST-JS03, name: "March 2026 e-commerce cohort (Demo)"}]
+  pob_templates:
+    - code: TPL-GOODS
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: POINT_IN_TIME
+      over_time_criterion: NOT_APPLICABLE
+      recognition_method: POINT_IN_TIME
+      policy_values: {balance.right_to_consideration: UNCONDITIONAL}
+  products:
+    - code: ESPRESSO-MACHINE
+      name: "Home espresso machine (e-commerce)"
+      pob_template: TPL-GOODS
+      revenue_category: PRODUCTS
+  ssp_books:
+    - code: SSP-JS-US-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2025-01-01"
+          methodology_label: "Observable standalone prices (demo study)"
+          entries:
+            - product: ESPRESSO-MACHINE
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges: [{point_value: "250.00"}]
+  fx_rate_sets: []
+  rule_sets: []
+  policies:
+    tenant: {billing.posting: ERP, recognition.time_convention: MONTHLY_EVEN}
+    entities: {}
+    books: {}
+contracts:
+  - external_id: JS-03
+    customer: CUST-JS03
+    contracting_entity: JS-US
+    transaction_currency: USD
+    inception_date: "2026-03-31"
+    contract_type: PORTFOLIO
+    lines:
+      - obligation_key: L1-MACHINES
+        product_code: ESPRESSO-MACHINE
+        quantity: "400"
+        total_price: "100000.00"
+        unit_price: "250"
+    estimates:
+      - element_code: RET-JS03-MAR
+        estimate_kind: RETURN_RATE
+        method: RATE
+        obligation_key: L1-MACHINES
+        versions:
+          - version_no: "1"
+            effective_date: "2026-03-31"
+            rate: "0.05"
+            expected_quantity: "20"
+            parameters:
+              carrying_cost_per_unit: "150.00"
+              recovery_cost_per_unit: "10.00"
+              window_end_date: "2026-04-30"
+            rationale: "Trailing twelve-month return rate 5%."
+          - version_no: "2"
+            effective_date: "2026-04-15"
+            rate: "0.045"
+            expected_quantity: "18"
+            parameters:
+              carrying_cost_per_unit: "150.00"
+              recovery_cost_per_unit: "10.00"
+              window_end_date: "2026-04-30"
+            rationale: "Return authorisations to 15 April indicate 18 returns."
+timeline:
+  - seq: "1"
+    kind: event
+    contract: JS-03
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-03-31"
+    payload: {}
+  - seq: "2"
+    kind: event
+    contract: JS-03
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-03-31"
+    payload: {}
+  - seq: "3"
+    kind: event
+    contract: JS-03
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-03-31"
+    payload: {estimate: RET-JS03-MAR, version_no: "1"}
+  - seq: "4"
+    kind: event
+    contract: JS-03
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-03-31"
+    payload: {obligation_key: L1-MACHINES, quantity: "400", trigger: DELIVERY}
+  - seq: "5"
+    kind: event
+    contract: JS-03
+    event_type: BILLING_RECORDED
+    effective_date: "2026-03-31"
+    payload:
+      invoice_number: ORD-JS03-2026-03
+      line_external_id: ORD-JS03-2026-03-1
+      amount: "100000.00"
+      issue_date: "2026-03-31"
+      obligation_key: L1-MACHINES
+  - seq: "6"
+    kind: event
+    contract: JS-03
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-04-15"
+    payload: {estimate: RET-JS03-MAR, version_no: "2"}
+  - seq: "7"
+    kind: event
+    contract: JS-03
+    event_type: RETURN_RECORDED
+    effective_date: "2026-04-20"
+    payload: {obligation_key: L1-MACHINES, quantity: "12", refund_amount: "3000.00", reason: CHANGE_OF_MIND}
+  - seq: "8"
+    kind: event
+    contract: JS-03
+    event_type: CREDIT_MEMO_RECORDED
+    effective_date: "2026-04-20"
+    payload:
+      credit_memo_number: RMA-JS03-20
+      obligation_key: L1-MACHINES
+      amount: "3000.00"
+      issue_date: "2026-04-20"
+      reason: RETURN
+  - seq: "9"
+    kind: event
+    contract: JS-03
+    event_type: RETURN_RECORDED
+    effective_date: "2026-04-28"
+    payload: {obligation_key: L1-MACHINES, quantity: "4", refund_amount: "1000.00", reason: CHANGE_OF_MIND}
+  - seq: "10"
+    kind: event
+    contract: JS-03
+    event_type: CREDIT_MEMO_RECORDED
+    effective_date: "2026-04-28"
+    payload:
+      credit_memo_number: RMA-JS03-28
+      obligation_key: L1-MACHINES
+      amount: "1000.00"
+      issue_date: "2026-04-28"
+      reason: RETURN
+checkpoints:
+  - name: shipment
+    after_seq: "5"
+    as_of: "2026-03-31"
+    book: ASC606
+    contracts:
+      - contract: JS-03
+        version: {revenue_cum: "95000.00", billed_cum: "100000.00"}
+        obligations:
+          - obligation_key: L1-MACHINES
+            revenue_cum: "95000.00"
+            delivered_quantity_cum: "400"
+            returned_quantity_cum: "0"
+        balances:
+          - entity: JS-US
+            contract_liability: "0.00"
+            contract_asset: "0.00"
+            unbilled_receivable: "0.00"
+            refund_liability: "5000.00"
+            return_asset: "2800.00"
+    subledger:
+      - period_key: FY2026-P03
+        entity: JS-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "100000.00"}
+          - {account_role: COST_OF_REVENUE, account: "5000", cr: "2800.00"}
+          - {account_role: REFUND_LIABILITY, account: "2110", cr: "5000.00"}
+          - {account_role: RETURN_ASSET, account: "1310", dr: "2800.00"}
+          - {account_role: REVENUE, account: "4000", cr: "95000.00"}
+  - name: window-expired
+    after_seq: "10"
+    as_of: "2026-04-30"
+    book: ASC606
+    contracts:
+      - contract: JS-03
+        version: {revenue_cum: "96000.00", billed_cum: "96000.00"}
+        obligations:
+          - obligation_key: L1-MACHINES
+            revenue_cum: "96000.00"
+            delivered_quantity_cum: "400"
+            returned_quantity_cum: "16"
+        balances:
+          - entity: JS-US
+            contract_liability: "0.00"
+            contract_asset: "0.00"
+            unbilled_receivable: "0.00"
+            refund_liability: "0.00"
+            return_asset: "0.00"
+    subledger:
+      - period_key: FY2026-P04
+        entity: JS-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: BILLING_CLEARING, clearing_purpose: INVENTORY, account: "1350", dr: "2240.00"}
+          - {account_role: CONTRACT_LIABILITY, account: "2100", cr: "4000.00"}
+          - {account_role: COST_OF_REVENUE, account: "5000", dr: "560.00"}
+          - {account_role: REFUND_LIABILITY, account: "2110", dr: "5000.00"}
+          - {account_role: RETURN_ASSET, account: "1310", cr: "2800.00"}
+          - {account_role: REVENUE, account: "4000", cr: "1000.00"}

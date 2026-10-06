@@ -1,0 +1,89 @@
+{
+  "$schema": "erev mock scenario v1 (05 ADP-22; PRD WLD-F-31, J-23.4)",
+  "tenant_code": "quayside",
+  "api_version": "v60.0",
+  "webhook_signature_header": "X-Erev-Mock-Signature",
+  "orders": [
+    {
+      "Id": "SF-ORD-Q-001",
+      "OrderNumber": "Q-001",
+      "SystemModstamp": "2026-09-03T14:05:00Z",
+      "EffectiveDate": "2026-09-01",
+      "Status": "Activated",
+      "AccountId": "ACC-QUAY-1001",
+      "CurrencyIsoCode": "USD",
+      "PoNumber": "PO-88101",
+      "Performing_Entity__c": "QUAY-US",
+      "Acceptance_Clause__c": false,
+      "Side_Letter__c": false,
+      "versions": {
+        "1": {
+          "OrderItems": [
+            {"Id": "SF-OI-Q-001-1", "ProductCode": "QUAY-PLAT", "Quantity": "1", "TotalPrice": "100000.00", "ServiceDate": "2026-09-01", "EndDate": "2027-08-31"},
+            {"Id": "SF-OI-Q-001-2", "ProductCode": "QUAY-SVC", "Quantity": "40", "TotalPrice": "20000.00", "ServiceDate": "2026-09-01", "EndDate": "2026-11-30"}
+          ]
+        }
+      }
+    },
+    {
+      "Id": "SF-ORD-Q-002",
+      "OrderNumber": "Q-002",
+      "SystemModstamp": "2026-09-04T09:30:00Z",
+      "EffectiveDate": "2026-09-02",
+      "Status": "Activated",
+      "AccountId": "ACC-QUAY-1002",
+      "CurrencyIsoCode": "USD",
+      "PoNumber": null,
+      "Performing_Entity__c": "QUAY-US",
+      "Acceptance_Clause__c": false,
+      "Side_Letter__c": false,
+      "versions": {
+        "1": {
+          "OrderItems": [
+            {"Id": "SF-OI-Q-002-1", "ProductCode": "QUAY-ADDON", "Quantity": "10", "TotalPrice": "12000.00", "ServiceDate": "2026-09-02", "EndDate": "2027-09-01"}
+          ]
+        },
+        "2": {
+          "OrderItems": [
+            {"Id": "SF-OI-Q-002-1", "ProductCode": "QUAY-ADDON", "Quantity": "10", "TotalPrice": "15000.00", "ServiceDate": "2026-09-02", "EndDate": "2027-09-01"}
+          ]
+        }
+      }
+    },
+    {
+      "Id": "SF-ORD-Q-003",
+      "OrderNumber": "Q-003",
+      "SystemModstamp": "2026-09-05T16:45:00Z",
+      "EffectiveDate": "2026-09-05",
+      "Status": "Activated",
+      "AccountId": "ACC-QUAY-1003",
+      "CurrencyIsoCode": "USD",
+      "PoNumber": "PO-88102",
+      "Performing_Entity__c": "QUAY-US",
+      "Acceptance_Clause__c": false,
+      "Side_Letter__c": false,
+      "versions": {
+        "1": {
+          "OrderItems": [
+            {"Id": "SF-OI-Q-003-1", "ProductCode": "QUAY-PLAT", "Quantity": "1", "TotalPrice": "50000.00", "ServiceDate": "2026-09-05", "EndDate": "2027-09-04"},
+            {"Id": "SF-OI-Q-003-2", "ProductCode": "SF-PROD-X99", "Quantity": "1", "TotalPrice": "5000.00", "ServiceDate": "2026-09-05", "EndDate": "2027-09-04"}
+          ]
+        }
+      }
+    }
+  ],
+  "notifications": [
+    {"replayId": 1, "notificationId": "NTF-Q-0001", "orderId": "SF-ORD-Q-001", "version": "1"},
+    {"replayId": 2, "notificationId": "NTF-Q-0002", "orderId": "SF-ORD-Q-002", "version": "2"},
+    {"replayId": 3, "notificationId": "NTF-Q-0003", "orderId": "SF-ORD-Q-002", "version": "1"},
+    {"replayId": 4, "notificationId": "NTF-Q-0004", "orderId": "SF-ORD-Q-003", "version": "1"},
+    {"replayId": 5, "notificationId": "NTF-Q-0001", "orderId": "SF-ORD-Q-001", "version": "1"}
+  ],
+  "scenario_notes": {
+    "duplicate_webhook": "replayId 5 repeats notification NTF-Q-0001 (recorded once)",
+    "out_of_order_version": "replayId 3 delivers SF-ORD-Q-002 version 1 after version 2 (STALE_SOURCE_VERSION)",
+    "rate_limit": "the scenario's first fetch of SF-ORD-Q-003 answers 429 once when the RATE_LIMIT fault is queued",
+    "unmapped_product": "SF-ORD-Q-003 line 2 product SF-PROD-X99 has no product record (PRODUCT_UNMAPPED, remediable)",
+    "control_totals": "3 unique orders; USD 190000.00 (120000.00 + 15000.00 + 55000.00)"
+  }
+}

@@ -1,0 +1,68 @@
+{
+  "nn": "03",
+  "slug": "contract-setup-2023-02-01",
+  "handler": "browse_file_Contracts",
+  "button": "button2",
+  "button_label": "Load Contracts",
+  "file": "ops/Example UATs/Contract Setup UAT/Contract Setup Template 2.1.2023.xlsx",
+  "file_sha256": "0d0751fbbf8e288752dc5f88c811d4ab312c5b22a3af806c760248c462a60084",
+  "date_input": null,
+  "report_window": [
+    "2023-02-01",
+    "2023-02-01"
+  ],
+  "contract_live_table_exists": true,
+  "sku_ssp_table_exists": true,
+  "rows_before": 8,
+  "rows_after": 16,
+  "rows_appended": 8,
+  "new_version_tokens": [
+    "step-03"
+  ],
+  "sku_ssp_rows": 7,
+  "handler_success": true,
+  "handler_popups": [
+    {
+      "kind": "QMessageBox.information",
+      "title": "Contracts are set up",
+      "text": "All contracts(s) within the uploaded file are successfully set up!"
+    }
+  ],
+  "report_popups": 4,
+  "unused_queued_inputs": [],
+  "report_unused_inputs": {
+    "latest_contracts": [],
+    "je_gross": [],
+    "je_delta": [],
+    "contract_history": []
+  },
+  "reports_captured": {
+    "latest_contracts": true,
+    "je_gross": true,
+    "je_delta": true,
+    "contract_history": true
+  },
+  "je_gross_totals": {
+    "lines": 0,
+    "by_account": [],
+    "total_debit": 0.0,
+    "total_credit": 0.0,
+    "net": 0.0
+  },
+  "je_delta_totals": {
+    "lines": 0,
+    "by_account": [],
+    "total_debit": 0.0,
+    "total_credit": 0.0,
+    "net": 0.0
+  },
+  "contract_history_rows": 8,
+  "latest_contract_rows": 16,
+  "app_excel_exports": [
+    "Contract History between 2023-02-01 and 2023-02-01.xlsx",
+    "Latest Contract Details.xlsx",
+    "Revenue Adj. Summary between 2023-02-01 and 2023-02-01.xlsx",
+    "Revenue JE Summary between 2023-02-01 and 2023-02-01.xlsx"
+  ],
+  "python_warnings": []
+}

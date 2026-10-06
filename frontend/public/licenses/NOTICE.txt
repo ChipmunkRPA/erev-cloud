@@ -1,0 +1,25 @@
+eRev Cloud
+Required Notice: Copyright (c) 2025-2026 ChipmunkRPA
+Licensed under the PolyForm Noncommercial License 1.0.0 (see LICENSE).
+
+eRev Cloud uses the third-party components below under their own licences.
+
+psycopg 3 (https://www.psycopg.org/)
+  Licence: GNU Lesser General Public License v3.0 (LGPL-3.0).
+  eRev Cloud uses psycopg as an unmodified library, installed as a separate
+  package and dynamically linked at run time. Its source code is available at
+  https://github.com/psycopg/psycopg. The psycopg-binary wheel bundles libpq
+  from PostgreSQL (PostgreSQL Licence) and the libraries libpq depends on, each
+  under its own licence as recorded in the wheel. psycopg-pool
+  (https://github.com/psycopg/psycopg/tree/master/psycopg_pool), the psycopg
+  connection pool used by Procrastinate, is used on the same terms under the
+  same licence.
+
+Inter (https://rsms.me/inter/)
+  Licence: SIL Open Font License 1.1 (OFL-1.1).
+
+JetBrains Mono (https://www.jetbrains.com/lp/mono/)
+  Licence: SIL Open Font License 1.1 (OFL-1.1).
+
+Phosphor Icons (https://github.com/phosphor-icons/react)
+  Licence: MIT License. Copyright (c) 2020 Phosphor Icons.

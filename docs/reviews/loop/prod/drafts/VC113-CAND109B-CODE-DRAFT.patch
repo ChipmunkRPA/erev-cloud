@@ -1,0 +1,284 @@
+diff --git a/backend/erev_engine/stages/s14_posting/intents.py b/backend/erev_engine/stages/s14_posting/intents.py
+index c0df7159..c792ed1f 100644
+--- a/backend/erev_engine/stages/s14_posting/intents.py
++++ b/backend/erev_engine/stages/s14_posting/intents.py
+@@ -32,7 +32,13 @@ from erev_engine.bundle import IntentLine, PostingIntent
+ from erev_engine.canonical import sha256_hex
+ from erev_engine.errors import EngineError
+ from erev_engine.stages.s12_fx_entities import RateRef
+-from erev_engine.stages.s14_posting.accounts import Resolution, emit, missing, resolve
++from erev_engine.stages.s14_posting.accounts import (
++    Resolution,
++    emit,
++    missing,
++    override_key,
++    resolve,
++)
+ from erev_engine.stages.s14_posting.assign import RoleDelta, subject_contracts
+ from erev_engine.stages.s14_posting.targets import RoleKey
+ from erev_engine.stages.s14_posting.templates import (
+@@ -176,6 +182,34 @@ def _dimensions(
+     return MappingProxyType(dict(sorted(dims.items())))
+ 
+ 
++# D-98 candidate 109b (draft): the refund-liability component kinds an obligation owns (S14-R-26 rev
++# 1.18 / D-98 35a ownership). Their lines resolve accounts through the owning obligation's
++# overrides (T-REF-15 step 1); the subject of every role key stays the component key.
++_OBLIGATION_OWNED_COMPONENTS: Final = frozenset({"RETURN", "CONCESSION", "UNCLAIMED_PROPERTY"})
++
++
++def _owner_obligation(st: AllocatedState, subject_key: str) -> ObligationState | None:
++    """The obligation a refund-liability component key ``<group>@<entity>/<KIND>/<source>`` names
++    through its source, by exact CV-21 encoded identity (D-98 candidate 109b, draft; Codex 1517):
++    ``RETURN`` and ``UNCLAIMED_PROPERTY`` — the source IS an obligation subject key of the state;
++    ``CONCESSION`` — the source is ``<event key>/<obligation subject key>`` where the event key is
++    an event of the state and the remainder an obligation subject key of the state. No suffix or
++    substring guess, no lookup through openings (a contract without a baseline resolves the same
++    way), and never an obligation for a contract-owned kind (``TERMINATION``,
++    ``VARIABLE_CONSIDERATION``) or for any other subject: None."""
++    head, _, rest = subject_key.partition("/")
++    kind, _, source = rest.partition("/")
++    if "@" not in head or kind not in _OBLIGATION_OWNED_COMPONENTS or not source:
++        return None
++    by_key = {ob.subject_key: ob for ob in st.obligations}
++    if kind != "CONCESSION":
++        return by_key.get(source)
++    for event_key in sorted(ev.event_key for ev in st.events):
++        if source.startswith(f"{event_key}/"):
++            return by_key.get(source[len(event_key) + 1 :])
++    return None
++
++
+ def _contract_scope(st: AllocatedState, subject_key: str) -> tuple[str | None, str | None]:
+     """The product and revenue category of a line whose subject is not an obligation: those every
+     obligation of its one member contract shares, else None (JET rule R3; S14-R-13; L5-5-Q-8)."""
+@@ -236,7 +270,16 @@ def group_into_entries(
+                 if obligation is not None
+                 else _contract_scope(st, delta.key.subject_key)
+             )
+-            resolution = resolve(ctx, obligation, delta.key, subject_scope=scope)
++            # D-98 candidate 109b (draft): a component an obligation owns takes that obligation's
++            # account override for the role when it has one (T-REF-15 step 1 through the owner);
++            # every other path — mapping rules, contract-scope dimensions, the line's dimensions,
++            # the subject — is unchanged.
++            owner = None if obligation is not None else _owner_obligation(st, delta.key.subject_key)
++            label = override_key(delta.key.account_role, delta.key.clearing_purpose)
++            if owner is not None and label in owner.account_overrides:
++                resolution = resolve(ctx, owner, delta.key)
++            else:
++                resolution = resolve(ctx, obligation, delta.key, subject_scope=scope)
+             if resolution is None:
+                 findings.append(missing(ctx, st, obligation, delta.key))
+                 continue
+diff --git a/backend/tests/engine/s14_posting/test_s14_entries.py b/backend/tests/engine/s14_posting/test_s14_entries.py
+index 817123d4..21f736d5 100644
+--- a/backend/tests/engine/s14_posting/test_s14_entries.py
++++ b/backend/tests/engine/s14_posting/test_s14_entries.py
+@@ -16,6 +16,7 @@ from dataclasses import dataclass
+ from datetime import date
+ from decimal import Decimal
+ from fractions import Fraction
++from types import MappingProxyType
+ 
+ import pytest
+ from erev_engine import ENGINE_VERSION
+@@ -909,3 +910,68 @@ def test_s14_inv_04_control_role_equals_np() -> None:
+     assert (balance("UNBILLED_RECEIVABLE"), balance("CONTRACT_ASSET")) == (300000, 200000)
+     assert balance(CL, ["NETTING_RECLASS"]) == -500000
+     assert balance("ACCOUNTS_RECEIVABLE") == billed
++
++
++def test_cand109b_owner_override_precedes_mapping_defaults_in_group_into_entries() -> None:
++    """D-98 candidate 109b (DRAFT; Codex 1541 (2)): through the production branch
++    ``group_into_entries`` → ``resolve`` → ``_dimensions``. A component an obligation owns
++    (``RETURN`` of C-B/POB-001) takes the owner's ``CONTRACT_LIABILITY`` override for its JET-04b
++    contract-liability line; ``_dimensions`` starts from ``resolution.default_dimensions``, which
++    is ``{}`` for an override and the selected rule's defaults for a mapping resolution — so a
++    dimension the OLD rule alone supplied (here ``department``) is absent when the owner override
++    wins. This is the existing T-REF-15 precedence (step 1 before step 3), stated, not a new
++    arithmetic defect; unselected-rule defaults are not copied to keep the dimensions equal. The
++    component subject, the netting and the line's ``obligation_key``-free dimensions are unchanged
++    in both variants."""
++    base = _mapping()
++    with_default = AccountMappingInput(
++        base.version_key,
++        base.content_sha256,
++        tuple(
++            dataclasses.replace(rule, default_dimensions={"department": "D-MAP"})
++            if (rule.account_role, rule.clearing_purpose) == (CL, None)
++            else rule
++            for rule in base.rules
++        ),
++    )
++    ctx = dataclasses.replace(book_context(bundles.entity(months=1)), mapping=with_default)
++
++    def entries(overrides: Mapping[str, str]) -> tuple[Mapping[str, object], Mapping[str, object]]:
++        st = _two_member_group()
++        a, b = st.obligations
++        owner = dataclasses.replace(b, account_overrides=MappingProxyType(dict(overrides)))
++        st = dataclasses.replace(st, obligations=(a, owner))
++        component = f"G@{ENTITY}/RETURN/{owner.subject_key}"
++        inputs = PartInputs(
++            relief=(
++                *_relief(a.subject_key, {_period(1): 60000}),
++                *_relief(owner.subject_key, {_period(1): 58000}),
++            ),
++            refund_liabilities=(
++                _target("refund_liability", component, _period(1), 2000, cause="RETURN"),
++            ),
++        )
++        state, _ = _compute(ctx, st, inputs)
++        _balanced(state)
++        (jet_04b,) = [item for item in state.posting_intents if item.subject_key == component]
++        (liability,) = [line for line in jet_04b.lines if line.account_role == CL]
++        (refund,) = [line for line in jet_04b.lines if line.account_role == "REFUND_LIABILITY"]
++        return (
++            {"account": liability.account_code, "dims": dict(liability.dimensions)},
++            {"account": refund.account_code, "dims": dict(refund.dimensions)},
++        )
++
++    without_override, refund_plain = entries({})
++    with_override, refund_owned = entries({CL: "21002"})
++    # Without an owner override: the mapping rule and ITS default dimension.
++    assert without_override["account"] == _code(CL)
++    assert without_override["dims"]["department"] == "D-MAP"
++    # With the owner override: the override account; the rule's default dimension is not carried.
++    assert with_override["account"] == "21002"
++    assert "department" not in with_override["dims"]
++    # In both variants the line keeps the component's contract-scope dimensions and no obligation.
++    for dims in (without_override["dims"], with_override["dims"]):
++        assert (dims["contract"], dims["contract_key"], dims["product"]) == ("G", "C-B", "SKU-1")
++        assert "obligation_key" not in dims
++    # The refund-liability leg is resolved by the mapping in both variants (no override for it).
++    assert refund_plain == refund_owned and refund_plain["account"] == _code("REFUND_LIABILITY")
+diff --git a/backend/tests/engine/s14_posting/test_s14_cand109b_component_owner_accounts.py b/backend/tests/engine/s14_posting/test_s14_cand109b_component_owner_accounts.py
+new file mode 100644
+index 00000000..6dc09cda
+--- /dev/null
++++ b/backend/tests/engine/s14_posting/test_s14_cand109b_component_owner_accounts.py
+@@ -0,0 +1,125 @@
++"""D-98 candidate 109b (DRAFT; lane F-CTR): a refund-liability component an obligation owns
++(``RETURN``, ``CONCESSION``, ``UNCLAIMED_PROPERTY``) resolves the accounts of the roles that
++obligation overrides through the owner's ``account_overrides`` (T-REF-15 step 1), found by exact
++CV-21 encoded identity from the component key; every other path (mapping rules under the
++component's contract scope, line dimensions, the subject, contract-owned kinds) is unchanged.
++Codex 1517 focused cases. CPU only.
++"""
++
++from __future__ import annotations
++
++import dataclasses
++from datetime import date
++from fractions import Fraction
++from types import MappingProxyType
++
++from erev_engine.stages.s14_posting import intents
++from erev_engine.stages.s14_posting.accounts import resolve
++from erev_engine.stages.s14_posting.targets import RoleKey
++from support import bundles
++from support.recognition import (
++    CONTRACT_KEY,
++    allocated_state,
++    book_context,
++    event_view,
++    obligation,
++    segment,
++)
++
++START, END = date(2023, 1, 1), date(2023, 12, 31)
++GROUP = f"CG-{CONTRACT_KEY}@US01"
++
++
++def _ob(key: str, **overrides: str):  # type: ignore[no-untyped-def]
++    """An obligation whose subject key is ``<contract>/<key>`` with ``key`` already CV-21 encoded
++    (the support helper does not encode), carrying ``overrides`` as its account overrides."""
++    built = obligation(
++        key, [segment(Fraction(400), 40_000, start=START, end=END)], start=START, end=END
++    )
++    return dataclasses.replace(built, account_overrides=MappingProxyType(dict(overrides)))
++
++
++def _state(*obs, with_event: bool = True):  # type: ignore[no-untyped-def]
++    events = (
++        [
++            event_view(
++                CONTRACT_KEY,
++                15,
++                "ESTIMATE_CHANGED",
++                date(2023, 11, 15),
++                {"estimate": "VC-1", "version_no": "1"},
++            )
++        ]
++        if with_event
++        else []
++    )
++    return allocated_state(list(obs), events=events)  # no OPENING_BALANCE_ESTABLISHED: no baseline
++
++
++EVENT = f"{CONTRACT_KEY}/EV-000015"
++
++
++def test_cand109b_owner_by_exact_encoded_identity_and_none_for_contract_owned_kinds() -> None:
++    pob2 = _ob("POB %232", CONTRACT_LIABILITY="21002")  # "POB #2" encoded
++    st = _state(pob2)
++    assert intents._owner_obligation(st, f"{GROUP}/CONCESSION/{EVENT}/{pob2.subject_key}") is pob2
++    assert intents._owner_obligation(st, f"{GROUP}/RETURN/{pob2.subject_key}") is pob2
++    assert intents._owner_obligation(st, f"{GROUP}/UNCLAIMED_PROPERTY/{pob2.subject_key}") is pob2
++    # Contract-owned kinds never infer an obligation; ordinary subjects have no owner.
++    assert intents._owner_obligation(st, f"{GROUP}/TERMINATION/{CONTRACT_KEY}/EV-000009") is None
++    assert (
++        intents._owner_obligation(st, f"{GROUP}/VARIABLE_CONSIDERATION/{CONTRACT_KEY}/VC-1") is None
++    )
++    assert intents._owner_obligation(st, pob2.subject_key) is None
++    assert intents._owner_obligation(st, f"{CONTRACT_KEY}@US01") is None
++    # The CONCESSION event key must be an event of the state; a foreign or malformed prefix is None.
++    assert (
++        intents._owner_obligation(
++            st, f"{GROUP}/CONCESSION/{CONTRACT_KEY}/EV-000099/{pob2.subject_key}"
++        )
++        is None
++    )
++    assert (
++        intents._owner_obligation(
++            _state(pob2, with_event=False), f"{GROUP}/CONCESSION/{EVENT}/{pob2.subject_key}"
++        )
++        is None
++    )
++
++
++def test_cand109b_encoded_delimiters_are_exact_never_suffix_matched() -> None:
++    slash = _ob("A%2FB", CONTRACT_LIABILITY="21001")  # obligation key "A/B" encoded
++    plain = _ob("B", CONTRACT_LIABILITY="21002")
++    st = _state(slash, plain)
++    assert intents._owner_obligation(st, f"{GROUP}/CONCESSION/{EVENT}/{slash.subject_key}") is slash
++    assert intents._owner_obligation(st, f"{GROUP}/CONCESSION/{EVENT}/{plain.subject_key}") is plain
++    assert intents._owner_obligation(st, f"{GROUP}/RETURN/{slash.subject_key}") is slash
++    # A raw, unencoded form is not an identity of the state.
++    assert intents._owner_obligation(st, f"{GROUP}/CONCESSION/{EVENT}/{CONTRACT_KEY}/A/B") is None
++    assert intents._owner_obligation(st, f"{GROUP}/RETURN/{CONTRACT_KEY}/A/B") is None
++
++
++def test_cand109b_two_obligations_take_their_own_overrides_and_fall_back_without_one() -> None:
++    first = _ob("POB-1", CONTRACT_LIABILITY="21001")
++    second = _ob("POB %232", CONTRACT_LIABILITY="21002")
++    st = _state(first, second)
++    ctx = book_context(bundles.entity(start=START, months=12), book_code="ASC606", currency="USD")
++    for ob in (first, second):
++        component = f"{GROUP}/CONCESSION/{EVENT}/{ob.subject_key}"
++        owner = intents._owner_obligation(st, component)
++        assert owner is ob
++        liability = RoleKey(
++            "ASC606", "US01", component, "REFUND_LIABILITY", "CONTRACT_LIABILITY", None, None
++        )
++        found = resolve(ctx, owner, liability)
++        assert found is not None
++        assert (found.account_code, found.step) == (ob.account_overrides["CONTRACT_LIABILITY"], 1)
++        assert found.source.ref_id == f"{ob.subject_key}#account_overrides/CONTRACT_LIABILITY"
++        # A role the owner does not override is not resolved through the owner (the intents loop
++        # then takes the ordinary component path: mapping rules under the contract scope).
++        refund = RoleKey(
++            "ASC606", "US01", component, "REFUND_LIABILITY", "REFUND_LIABILITY", None, None
++        )
++        assert "REFUND_LIABILITY" not in owner.account_overrides
++        unresolved = resolve(ctx, owner, refund)
++        assert unresolved is None or unresolved.step == 3

@@ -1,0 +1,143 @@
+# docs/accounting/answer-keys/je/JE-CHK-023-S3-SALESTAX-OWN-ENGINE-BILLING.yaml
+schema: "erev-answer-key/1"
+id: JE-CHK-023-S3-SALESTAX-OWN-ENGINE-BILLING
+title: >-
+  JET-03 under ENGINE billing: sales tax to SALES_TAX_PAYABLE, excluded from the transaction price
+status: active
+families: [JE, TAX]
+tags: [r04-s3]
+summary: >-
+  Research 04 worked example 3.7 re-anchored. Entity US01, USD, billing.posting ENGINE, US election to exclude
+  in-scope taxes (POL-045 EXCLUDE_ALL_IN_SCOPE). A product sold for 1,000.00 plus 8% sales tax: the noncancellable
+  invoice carries amount 1,000.00 and tax_amount 80.00 [A payload convention: amount excludes tax]. JET-03: Dr
+  ACCOUNTS_RECEIVABLE 1,080.00 / Cr CONTRACT_LIABILITY 1,000.00, Cr SALES_TAX_PAYABLE 80.00; on transfer JET-02 Dr
+  CONTRACT_LIABILITY 1,000.00 / Cr REVENUE 1,000.00 (CHK-023). The 2% gross-receipts tax is the entity's own expense
+  and no engine posting. Cross-slice variants with distinct inputs, kept: TAX-S3-SALESTAX-OWN (different inception
+  date and invoice terms) (ADJUDICATION.md R-DUP-02).
+authority:
+  codification: ["606-10-32-2", "606-10-32-2A", "606-10-45-4"]
+  ifrs: ["IFRS 15.47"]
+  practice: []
+  urls: []
+derived_from: {research04: [S3-SALESTAX-OWN], research05: [], chk: [CHK-023], golden: [], dev: []}
+requirements: [REQ-TP-014, REQ-BIL-002, REQ-JE-002]
+policy_refs: [POL-004, POL-045]
+review:
+  author: answer-keys-fx-entity-books
+  authored_on: "2026-09-12"
+  reviewer: null
+  reviewed_on: null
+  status: pending
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: US01
+      name: "Avenmoor Systems Inc. (Demo)"
+      functional_currency: USD
+      time_zone: "America/New_York"
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: 1}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2026-01"}
+  period_states: []
+  gl_accounts:
+    - {code: "1100", name: "Accounts receivable", account_type: ASSET}
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "2200", name: "Sales tax payable", account_type: LIABILITY}
+    - {code: "4000", name: "Revenue - products", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, account: "4000", product: WIDGET}
+    - {account_role: ACCOUNTS_RECEIVABLE, account: "1100"}
+    - {account_role: SALES_TAX_PAYABLE, account: "2200"}
+  customers:
+    - {code: CUST-1, name: "Pellworth Logistics Inc. (Demo)"}
+  pob_templates:
+    - code: TPL-PIT
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: POINT_IN_TIME
+      over_time_criterion: NOT_APPLICABLE
+      recognition_method: POINT_IN_TIME
+  products:
+    - {code: WIDGET, name: "Industrial widget", pob_template: TPL-PIT}
+  ssp_books:
+    - code: SSP-US-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2026-01-01"
+          methodology_label: "Observable standalone prices"
+          entries:
+            - product: WIDGET
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "1000.00"}
+  fx_rate_sets: []
+  rule_sets: []
+  policies:
+    tenant: {billing.posting: ENGINE}
+    entities: {US01: {tp.sales_tax_exclusion: EXCLUDE_ALL_IN_SCOPE}}
+    books: {}
+contracts:
+  - external_id: C-JE-023
+    customer: CUST-1
+    contracting_entity: US01
+    transaction_currency: USD
+    inception_date: "2026-01-10"
+    lines:
+      - {obligation_key: L1-WIDGET, product_code: WIDGET, quantity: "1", total_price: "1000.00"}
+timeline:
+  - {seq: 1, kind: event, contract: C-JE-023, event_type: CONTRACT_BOOKED, effective_date: "2026-01-10", payload: {}}
+  - seq: 2
+    kind: event
+    contract: C-JE-023
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-10"
+    payload: {}
+  - seq: 3
+    kind: event
+    contract: C-JE-023
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-01-15"
+    payload: {obligation_key: L1-WIDGET, quantity: "1", trigger: CONTROL_TRANSFER}
+  - seq: 4
+    kind: event
+    contract: C-JE-023
+    event_type: BILLING_RECORDED
+    effective_date: "2026-01-15"
+    payload:
+      invoice_number: INV-TAX-0001
+      line_external_id: INV-TAX-0001-1
+      obligation_key: L1-WIDGET
+      amount: "1000.00"
+      issue_date: "2026-01-15"
+      tax_amount: "80.00"
+      due_date: "2026-02-14"
+      is_cancellable: false
+checkpoints:
+  - name: january-close
+    after_seq: 4
+    as_of: "2026-01-31"
+    book: ASC606
+    contracts:
+      - contract: C-JE-023
+        version: {transaction_price: "1000.00", revenue_cum: "1000.00"}
+        balances:
+          - {entity: US01, contract_liability: "0.00", accounts_receivable: "1080.00"}
+    subledger:
+      - period_key: FY2026-P01
+        entity: US01
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: ACCOUNTS_RECEIVABLE, account: "1100", dr: "1080.00"}
+          - {account_role: REVENUE, account: "4000", cr: "1000.00"}
+          - {account_role: SALES_TAX_PAYABLE, account: "2200", cr: "80.00"}

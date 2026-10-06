@@ -1,0 +1,235 @@
+schema: erev-answer-key/1
+id: REC-FS-01-SAAS-RAMP-ANNUAL-BILLING
+title: "Three-year SaaS ramp billed annually: straight-line revenue, contract asset in the ramp years"
+status: active
+families: [REC, POS]
+tags: [subscription]
+summary: "Fernhill Software books a 36-month enterprise subscription (1 Jan 2026 to 31 Dec 2028) with ramped annual fees of 100,000.00, 150,000.00 and 200,000.00, each invoiced on 1 January under a noncancellable agreement. The service is the same in every year, so the ramp does not reflect a different service level and the 450,000.00 transaction price is recognised on time elapsed (MONTHLY_EVEN, 12,500.00 a month; judgement per research 05 §2 pitfall 2). Revenue runs ahead of billing in the ramp years; the right to the next annual invoice depends on continuing to provide the service, so the debit position is a conditional right presented as a contract asset, not an unbilled receivable (ALG-03; closes M-RA-07 for this pattern)."
+authority:
+  codification: ["606-10-25-27", "606-10-25-31", "606-10-55-17", "606-10-32-28", "606-10-45-1", "606-10-45-3"]
+  ifrs: ["IFRS 15.35", "IFRS 15.107"]
+  practice:
+    - "DART 8.5 (straight-line time-elapsed measure for stand-ready SaaS)"
+    - "DART 14.4 (contract asset versus receivable)"
+  urls: []
+derived_from: {research04: [], research05: [FS-01], chk: [], golden: [], dev: []}
+requirements: [REQ-REC-003, REQ-REC-019, REQ-BIL-003, REQ-BIL-004, REQ-BIL-005]
+policy_refs: [POL-004, POL-090, POL-120, POL-121, POL-122]
+review: {author: answer-keys-industries, authored_on: "2026-09-12", reviewer: null, reviewed_on: null, status: pending}
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: FS-US
+      name: "Fernhill Software US (Demo)"
+      functional_currency: USD
+      time_zone: America/Los_Angeles
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: "1"}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2028-12"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4010", name: "Revenue - services and subscriptions", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, product: SAAS-ENT, account: "4010"}
+  customers: [{code: CUST-FS01, name: "Kestrel Analytics Inc. (Demo)"}]
+  pob_templates:
+    - code: TPL-SAAS-RAMP
+      obligation_kind: STANDARD
+      distinctness: series
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_A
+      recognition_method: TIME_ELAPSED
+      ratable_convention: MONTHLY_EVEN
+      series_increment_unit: month
+      policy_values: {balance.right_to_consideration: CONDITIONAL}
+  products:
+    - code: SAAS-ENT
+      name: "Enterprise platform subscription"
+      pob_template: TPL-SAAS-RAMP
+      revenue_category: SUBSCRIPTION
+  ssp_books:
+    - code: SSP-FS-US-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2025-01-01"
+          methodology_label: "Observable standalone prices (demo study)"
+          entries:
+            - product: SAAS-ENT
+              currency: USD
+              method: observable
+              value_basis: AMOUNT  # D-93 (4): declared remaining-increments reading (the reading the key's oracle embodies); no value change
+              distinctness: distinct
+              ranges: [{point_value: "450000.00"}]
+  fx_rate_sets: []
+  rule_sets: []
+  policies:
+    tenant: {billing.posting: ERP, recognition.time_convention: MONTHLY_EVEN}
+    entities: {}
+    books: {}
+contracts:
+  - external_id: FS-01
+    customer: CUST-FS01
+    contracting_entity: FS-US
+    transaction_currency: USD
+    inception_date: "2026-01-01"
+    payment_terms: NET30
+    lines:
+      - obligation_key: L1-SAAS
+        product_code: SAAS-ENT
+        quantity: "1"
+        total_price: "450000.00"
+        start_date: "2026-01-01"
+        end_date: "2028-12-31"
+timeline:
+  - seq: "1"
+    kind: event
+    contract: FS-01
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: "2"
+    kind: event
+    contract: FS-01
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: "3"
+    kind: event
+    contract: FS-01
+    event_type: BILLING_RECORDED
+    effective_date: "2026-01-01"
+    payload:
+      invoice_number: INV-FS01-2026
+      line_external_id: INV-FS01-2026-1
+      amount: "100000.00"
+      issue_date: "2026-01-01"
+      obligation_key: L1-SAAS
+  - seq: "4"
+    kind: event
+    contract: FS-01
+    event_type: BILLING_RECORDED
+    effective_date: "2027-01-01"
+    payload:
+      invoice_number: INV-FS01-2027
+      line_external_id: INV-FS01-2027-1
+      amount: "150000.00"
+      issue_date: "2027-01-01"
+      obligation_key: L1-SAAS
+  - seq: "5"
+    kind: event
+    contract: FS-01
+    event_type: BILLING_RECORDED
+    effective_date: "2028-01-01"
+    payload:
+      invoice_number: INV-FS01-2028
+      line_external_id: INV-FS01-2028-1
+      amount: "200000.00"
+      issue_date: "2028-01-01"
+      obligation_key: L1-SAAS
+checkpoints:
+  - name: end-2026
+    after_seq: "3"
+    as_of: "2026-12-31"
+    book: ASC606
+    contracts:
+      - contract: FS-01
+        version:
+          transaction_price: "450000.00"
+          revenue_cum: "150000.00"
+          billed_cum: "100000.00"
+          rpo_amount: "300000.00"
+        obligations:
+          - obligation_key: L1-SAAS
+            allocated_amount: "450000.00"
+            revenue_cum: "150000.00"
+            satisfaction_status: PARTIALLY_SATISFIED
+        balances: [{entity: FS-US, contract_liability: "0.00", contract_asset: "50000.00", unbilled_receivable: "0.00"}]
+        schedule:
+          - obligation_key: L1-SAAS
+            schedule_kind: REVENUE
+            line_type: NORMAL
+            amounts:
+              FY2026-P01: "12500.00"
+              FY2026-P02: "12500.00"
+              FY2026-P03: "12500.00"
+              FY2026-P04: "12500.00"
+              FY2026-P05: "12500.00"
+              FY2026-P06: "12500.00"
+              FY2026-P07: "12500.00"
+              FY2026-P08: "12500.00"
+              FY2026-P09: "12500.00"
+              FY2026-P10: "12500.00"
+              FY2026-P11: "12500.00"
+              FY2026-P12: "12500.00"
+    subledger:
+      - period_key: FY2026-P12
+        entity: FS-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_ASSET, account: "1200", dr: "12500.00"}
+          - {account_role: REVENUE, account: "4010", cr: "12500.00"}
+  - name: end-2027
+    after_seq: "4"
+    as_of: "2027-12-31"
+    book: ASC606
+    contracts:
+      - contract: FS-01
+        version:
+          transaction_price: "450000.00"
+          revenue_cum: "300000.00"
+          billed_cum: "250000.00"
+          rpo_amount: "150000.00"
+        obligations:
+          - obligation_key: L1-SAAS
+            allocated_amount: "450000.00"
+            revenue_cum: "300000.00"
+            satisfaction_status: PARTIALLY_SATISFIED
+        balances: [{entity: FS-US, contract_liability: "0.00", contract_asset: "50000.00", unbilled_receivable: "0.00"}]
+    subledger:
+      - period_key: FY2027-P01
+        entity: FS-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_ASSET, account: "1200", cr: "50000.00"}
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "62500.00"}
+          - {account_role: REVENUE, account: "4010", cr: "12500.00"}
+      - period_key: FY2027-P12
+        entity: FS-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_ASSET, account: "1200", dr: "12500.00"}
+          - {account_role: REVENUE, account: "4010", cr: "12500.00"}
+  - name: end-2028
+    after_seq: "5"
+    as_of: "2028-12-31"
+    book: ASC606
+    contracts:
+      - contract: FS-01
+        version: {transaction_price: "450000.00", revenue_cum: "450000.00", billed_cum: "450000.00", rpo_amount: "0.00"}
+        obligations:
+          - obligation_key: L1-SAAS
+            allocated_amount: "450000.00"
+            revenue_cum: "450000.00"
+            satisfaction_status: SATISFIED
+        balances: [{entity: FS-US, contract_liability: "0.00", contract_asset: "0.00", unbilled_receivable: "0.00"}]
+    subledger:
+      - period_key: FY2028-P01
+        entity: FS-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_ASSET, account: "1200", cr: "50000.00"}
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "62500.00"}
+          - {account_role: REVENUE, account: "4010", cr: "12500.00"}

@@ -1,0 +1,48 @@
+{
+  "nn": "00",
+  "slug": "reset",
+  "handler": "db_reset",
+  "button": "button8",
+  "button_label": "!Reset Database Completely!",
+  "file": null,
+  "file_sha256": null,
+  "date_input": null,
+  "report_window": null,
+  "contract_live_table_exists": false,
+  "sku_ssp_table_exists": false,
+  "rows_before": 24,
+  "rows_after": 0,
+  "rows_appended": -24,
+  "new_version_tokens": [],
+  "sku_ssp_rows": 0,
+  "handler_success": true,
+  "handler_popups": [
+    {
+      "kind": "QMessageBox.question",
+      "title": "Confirmation",
+      "text": "Do you want to proceed wiping out the current database?"
+    },
+    {
+      "kind": "QMessageBox.information",
+      "title": "ASC606 database reset",
+      "text": "ASC606 Database has been wiped out and reset!"
+    }
+  ],
+  "report_popups": 1,
+  "unused_queued_inputs": [],
+  "report_unused_inputs": {
+    "latest_contracts": []
+  },
+  "reports_captured": {
+    "latest_contracts": false,
+    "je_gross": false,
+    "je_delta": false,
+    "contract_history": false
+  },
+  "je_gross_totals": null,
+  "je_delta_totals": null,
+  "contract_history_rows": null,
+  "latest_contract_rows": null,
+  "app_excel_exports": [],
+  "python_warnings": []
+}

@@ -1,0 +1,43 @@
+{
+  "nn": "01",
+  "slug": "ssp-upload",
+  "handler": "browse_file_SSPs",
+  "button": "button1",
+  "button_label": "Load SSPs",
+  "file": "ops/Example UATs/SSP Upload UAT/SKU SSP Template.xlsx",
+  "file_sha256": "05c40a29f350b2fb71530b8136b12ab97458ddd0c950bd43c6cdd0b5b9e390c4",
+  "date_input": null,
+  "report_window": null,
+  "contract_live_table_exists": false,
+  "sku_ssp_table_exists": true,
+  "rows_before": 0,
+  "rows_after": 0,
+  "rows_appended": 0,
+  "new_version_tokens": [],
+  "sku_ssp_rows": 7,
+  "handler_success": true,
+  "handler_popups": [
+    {
+      "kind": "QMessageBox.information",
+      "title": "SSPs are set up",
+      "text": "All company SSPs for the uploaded file are set up. To add or update, re-upload SSPs to refresh."
+    }
+  ],
+  "report_popups": 1,
+  "unused_queued_inputs": [],
+  "report_unused_inputs": {
+    "latest_contracts": []
+  },
+  "reports_captured": {
+    "latest_contracts": false,
+    "je_gross": false,
+    "je_delta": false,
+    "contract_history": false
+  },
+  "je_gross_totals": null,
+  "je_delta_totals": null,
+  "contract_history_rows": null,
+  "latest_contract_rows": null,
+  "app_excel_exports": [],
+  "python_warnings": []
+}

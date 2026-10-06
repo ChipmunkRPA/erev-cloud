@@ -1,0 +1,70 @@
+column,status,mismatches,max_abs_diff
+Contract Unique Name,text,0,
+POB Unique ID,text,0,
+SKU Name,text,0,
+POB Start Date,text,0,
+POB End Date,text,0,
+ASC 606 Stratification,text,0,
+Original POB Total Selling Price,numeric,0,0.0
+Original POB Total Qty,numeric,0,0.0
+Selling Entity,text,0,
+SSP Version,text,0,
+Deferred Revenue Account,numeric,0,0.0
+Unbilled A/R Account,numeric,0,0.0
+Current Period,text,0,
+Memo 1,text,0,
+Memo 2,text,0,
+Memo 3,text,0,
+SKU Unique ID,numeric,0,0.0
+Distinct or Nondistinct,text,0,
+SKU Unit List Price,numeric,0,0.0
+Midpoint Discount Percentage,numeric,0,0.0
+SSP Range Method (+-),numeric,0,0.0
+Revenue Account,numeric,0,0.0
+Original SSP - Midpoint,numeric,0,0.0
+Original SSP - Higher,numeric,0,0.0
+Original SSP - Lower,numeric,0,0.0
+Original Extended SSP,numeric,0,0.0
+Original Total Contract Price,numeric,0,0.0
+Original Total Contract SSP,numeric,0,0.0
+Original Allocation,numeric,0,0.0
+Original Unit SSP,numeric,0,0.0
+Original Unit Rev Rec,numeric,0,0.0
+Previous Period,text,0,
+Previous Remaining Qty,numeric,0,0.0
+Previous Remaining SSP,numeric,0,0.0
+Previous Remaining Allocation,numeric,0,0.0
+Previous Remaining Billing,numeric,0,0.0
+Previous Unit SSP,numeric,0,0.0
+Previous Remaining Unit Rev Rec,numeric,0,0.0
+Previous Delivery - Cumulative,numeric,0,0.0
+Previous Rev Rec - Cumulative,numeric,0,0.0
+Previous Pre-ASC606 Revenue (Net Design Only) - Cumulative,numeric,0,0.0
+Previous Billing - Cumulative,numeric,0,0.0
+Previous Cumulative Catchup - Cumulative - Disclosure Only,numeric,0,0.0
+Previous SSP Delivered - Cumulative,numeric,0,0.0
+Previous Contract Position - POB,numeric,0,0.0
+Previous Contract Position - Contract Level,numeric,0,0.0
+Previous Reclass to UAR,numeric,0,0.0
+Current Remaining Qty,numeric,0,0.0
+Current Remaining SSP,numeric,0,0.0
+Current Remaining Allocation,numeric,0,0.0
+Current Remaining Billing,numeric,0,0.0
+Current Unit SSP,numeric,0,0.0
+Current Remaining Unit Rev Rec,numeric,0,0.0
+Current Delivery,numeric,0,0.0
+Current Rev Rec,numeric,0,0.0
+Current Pre-ASC606 Revenue (Net Design Only),numeric,0,0.0
+Current Billing,numeric,0,0.0
+Current Cumulative Catchup - Disclosure Only,numeric,0,0.0
+Current SSP Delivered,numeric,0,0.0
+Current Delivery - Cumulative,numeric,0,0.0
+Current Rev Rec - Cumulative,numeric,0,0.0
+Current Pre-ASC606 Revenue (Net Design Only) - Cumulative,numeric,0,0.0
+Current Billing - Cumulative,numeric,0,0.0
+Current Cumulative Catchup - Cumulative - Disclosure Only,numeric,0,0.0
+Current SSP Delivered - Cumulative,numeric,0,0.0
+Current Contract Position - POB,numeric,0,0.0
+Current Contract Position - Contract Level,numeric,0,0.0
+Current Reclass to UAR,numeric,0,0.0
+Record Unique ID without time,text,0,

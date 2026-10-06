@@ -1,0 +1,442 @@
+schema: erev-answer-key/1
+id: MOD-GE-02-CHANGE-ORDERS-UNPRICED-AND-CLAIM
+title: "Priced change order, unpriced change order and a claim on a cost-to-cost contract"
+status: active
+families: [MOD, VC, REC, POS]
+tags: [construction]
+summary: "Highway interchange for 5,000,000.00 (single POB, cost-to-cost, EAC 4,000,000.00). 30 June 2026: costs 1,600,000.00; approved change order CO-1 adds 300,000.00 of price and 250,000.00 of cost; not distinct, so 25-13(b): allocation 5,300,000.00, progress 1,600,000 ÷ 4,250,000, catch-up −4,705.88. 30 September: CO-2 approves added drainage scope with the price undetermined; cost +200,000.00; the price change is VC estimated by most likely amount 240,000.00 and constrained to 180,000.00 (606-10-25-11; POL-105; POLICIES PT-05). 30 November: a claim for owner-caused delay of 400,000.00 is attested enforceable (POL-244); most likely 150,000.00, constrained to 100,000.00. 31 December: CO-2 is priced at 220,000.00 and the claim settled at 120,000.00 (final estimate versions; ALG-10 catch-up). Work completes on 31 March 2027. Progress billings 1,800,000.00 / 2,600,000.00 / 1,240,000.00; revenue ahead of billing is a contract asset. Covers research 04 §6.1 (list B COV-B-32)."
+authority:
+  codification:
+    - "606-10-25-10"
+    - "606-10-25-11"
+    - "606-10-25-13"
+    - "606-10-32-5"
+    - "606-10-32-8"
+    - "606-10-32-11"
+    - "606-10-32-14"
+    - "606-10-55-134"
+  ifrs: ["IFRS 15.19", "IFRS 15.21"]
+  practice: ["FASB Example 9 (606-10-55-134 to 55-135)", "POLICIES PT-05"]
+  urls: []
+derived_from: {research04: [], research05: [GE-02], chk: [], golden: [], dev: []}
+requirements: [REQ-MOD-001, REQ-MOD-005, REQ-MOD-016, REQ-TP-002, REQ-TP-003, REQ-TP-004, REQ-REC-007, REQ-BIL-004]
+policy_refs: [POL-091, POL-102, POL-105, POL-244, POL-040, POL-041]
+review: {author: answer-keys-industries, authored_on: "2026-09-12", reviewer: null, reviewed_on: null, status: pending}
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: GE-US
+      name: "Granitefield Engineering US (Demo)"
+      functional_currency: USD
+      time_zone: America/Denver
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: "1"}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2027-03"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4000", name: "Revenue - products", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, product: CIVIL-INTERCHANGE, account: "4000"}
+  customers: [{code: CUST-GE02, name: "State Department of Transportation District 4 (Demo)"}]
+  pob_templates:
+    - code: TPL-CTC
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_B
+      recognition_method: COST_TO_COST
+      policy_values: {balance.right_to_consideration: CONDITIONAL}
+  products:
+    - code: CIVIL-INTERCHANGE
+      name: "Highway interchange construction"
+      pob_template: TPL-CTC
+      revenue_category: CONSTRUCTION
+  ssp_books:
+    - code: SSP-GE-US-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2025-01-01"
+          methodology_label: "Observable standalone prices (demo study)"
+          entries:
+            - product: CIVIL-INTERCHANGE
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges: [{point_value: "5000000.00"}]
+  fx_rate_sets: []
+  rule_sets: []
+  policies:
+    tenant: {billing.posting: ERP, recognition.time_convention: MONTHLY_EVEN}
+    entities: {}
+    books: {}
+contracts:
+  - external_id: GE-02
+    customer: CUST-GE02
+    contracting_entity: GE-US
+    transaction_currency: USD
+    inception_date: "2026-01-01"
+    lines:
+      - obligation_key: L1-WORK
+        product_code: CIVIL-INTERCHANGE
+        quantity: "1"
+        total_price: "5000000.00"
+        start_date: "2026-01-01"
+        end_date: "2027-03-31"
+    judgements:
+      - handle: JDG-GE02-CLAIM
+        topic: OTHER
+        subject_obligation_key: L1-WORK
+        conclusion: "Delay claim is enforceable: owner-furnished design late by 11 weeks; counsel opinion 2026-11-20 (606-10-25-11, POL-244)."
+        questionnaire: {claim_enforceable: true, estimate_key: VC-GE02-CLAIM}
+    estimates:
+      - element_code: EAC-GE02
+        estimate_kind: EAC
+        method: COST_BUILDUP
+        obligation_key: L1-WORK
+        versions:
+          - version_no: "1"
+            effective_date: "2026-01-01"
+            expected_total_amount: "4000000.00"
+            currency: USD
+            rationale: "Bid cost estimate."
+          - version_no: "2"
+            effective_date: "2026-06-30"
+            expected_total_amount: "4250000.00"
+            currency: USD
+            rationale: "CO-1 adds 250,000.00."
+          - version_no: "3"
+            effective_date: "2026-09-30"
+            expected_total_amount: "4450000.00"
+            currency: USD
+            rationale: "CO-2 adds 200,000.00."
+      - element_code: VC-GE02-CO2
+        estimate_kind: VARIABLE_CONSIDERATION
+        method: MOST_LIKELY_AMOUNT
+        obligation_key: L1-WORK
+        vc_element_type: UNPRICED_CHANGE_ORDER
+        allocation_target: OBLIGATIONS
+        target_obligation_keys: [L1-WORK]
+        versions:
+          - version_no: "1"
+            effective_date: "2026-09-30"
+            unconstrained_amount: "240000.00"
+            most_conservative_amount: "0.00"
+            constrained_amount: "180000.00"
+            currency: USD
+            rationale: "Negotiation range 200,000.00-260,000.00; owner budget pressure."
+          - version_no: "2"
+            effective_date: "2026-12-31"
+            unconstrained_amount: "220000.00"
+            most_conservative_amount: "220000.00"
+            constrained_amount: "220000.00"
+            currency: USD
+            rationale: "CO-2 priced by signed amendment."
+      - element_code: VC-GE02-CLAIM
+        estimate_kind: VARIABLE_CONSIDERATION
+        method: MOST_LIKELY_AMOUNT
+        obligation_key: L1-WORK
+        vc_element_type: CLAIM
+        allocation_target: OBLIGATIONS
+        target_obligation_keys: [L1-WORK]
+        versions:
+          - version_no: "1"
+            effective_date: "2026-11-30"
+            unconstrained_amount: "150000.00"
+            most_conservative_amount: "0.00"
+            constrained_amount: "100000.00"
+            currency: USD
+            rationale: "Claim 400,000.00; most likely settlement 150,000.00; constrained."
+          - version_no: "2"
+            effective_date: "2026-12-31"
+            unconstrained_amount: "120000.00"
+            most_conservative_amount: "120000.00"
+            constrained_amount: "120000.00"
+            currency: USD
+            rationale: "Settlement agreement."
+    modifications:
+      - reference: MOD-GE02-CO1
+        effective_date: "2026-06-30"
+        kind: OTHER
+        price_change_amount: "300000.00"
+        lines:
+          - obligation_key: L1-WORK
+            product_code: CIVIL-INTERCHANGE
+            quantity: "1"
+            total_price: "5300000.00"
+            start_date: "2026-01-01"
+            end_date: "2027-03-31"
+      - reference: MOD-GE02-CO2
+        effective_date: "2026-09-30"
+        kind: OTHER
+        price_change_amount: "0.00"
+        lines:
+          - obligation_key: L1-WORK
+            product_code: CIVIL-INTERCHANGE
+            quantity: "1"
+            total_price: "5300000.00"
+            start_date: "2026-01-01"
+            end_date: "2027-03-31"
+timeline:
+  - seq: "1"
+    kind: event
+    contract: GE-02
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: "2"
+    kind: event
+    contract: GE-02
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: "3"
+    kind: event
+    contract: GE-02
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-01-01"
+    payload: {estimate: EAC-GE02, version_no: "1"}
+  - seq: "4"
+    kind: event
+    contract: GE-02
+    event_type: COST_INCURRED
+    effective_date: "2026-06-30"
+    payload: {purpose: PROGRESS_INPUT, obligation_key: L1-WORK, amount: "1600000.00"}
+  - seq: "5"
+    kind: event
+    contract: GE-02
+    event_type: CONTRACT_AMENDED
+    effective_date: "2026-06-30"
+    payload: {modification: MOD-GE02-CO1}
+  - seq: "6"
+    kind: event
+    contract: GE-02
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-06-30"
+    payload: {estimate: EAC-GE02, version_no: "2"}
+  - seq: "7"
+    kind: event
+    contract: GE-02
+    event_type: BILLING_RECORDED
+    effective_date: "2026-06-30"
+    payload:
+      invoice_number: PAYAPP-GE02-01
+      line_external_id: PAYAPP-GE02-01-1
+      amount: "1800000.00"
+      issue_date: "2026-06-30"
+      obligation_key: L1-WORK
+  - seq: "8"
+    kind: event
+    contract: GE-02
+    event_type: COST_INCURRED
+    effective_date: "2026-09-30"
+    payload: {purpose: PROGRESS_INPUT, obligation_key: L1-WORK, amount: "950000.00"}
+  - seq: "9"
+    kind: event
+    contract: GE-02
+    event_type: CONTRACT_AMENDED
+    effective_date: "2026-09-30"
+    payload: {modification: MOD-GE02-CO2}
+  - seq: "10"
+    kind: event
+    contract: GE-02
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-09-30"
+    payload: {estimate: EAC-GE02, version_no: "3"}
+  - seq: "11"
+    kind: event
+    contract: GE-02
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-09-30"
+    payload: {estimate: VC-GE02-CO2, version_no: "1"}
+  - seq: "12"
+    kind: event
+    contract: GE-02
+    event_type: COST_INCURRED
+    effective_date: "2026-11-30"
+    payload: {purpose: PROGRESS_INPUT, obligation_key: L1-WORK, amount: "850000.00"}
+  - seq: "13"
+    kind: event
+    contract: GE-02
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-11-30"
+    payload: {estimate: VC-GE02-CLAIM, version_no: "1"}
+  - seq: "14"
+    kind: event
+    contract: GE-02
+    event_type: COST_INCURRED
+    effective_date: "2026-12-31"
+    payload: {purpose: PROGRESS_INPUT, obligation_key: L1-WORK, amount: "500000.00"}
+  - seq: "15"
+    kind: event
+    contract: GE-02
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-12-31"
+    payload: {estimate: VC-GE02-CO2, version_no: "2"}
+  - seq: "16"
+    kind: event
+    contract: GE-02
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-12-31"
+    payload: {estimate: VC-GE02-CLAIM, version_no: "2"}
+  - seq: "17"
+    kind: event
+    contract: GE-02
+    event_type: BILLING_RECORDED
+    effective_date: "2026-12-31"
+    payload:
+      invoice_number: PAYAPP-GE02-02
+      line_external_id: PAYAPP-GE02-02-1
+      amount: "2600000.00"
+      issue_date: "2026-12-31"
+      obligation_key: L1-WORK
+  - seq: "18"
+    kind: event
+    contract: GE-02
+    event_type: COST_INCURRED
+    effective_date: "2027-03-31"
+    payload: {purpose: PROGRESS_INPUT, obligation_key: L1-WORK, amount: "550000.00"}
+  - seq: "19"
+    kind: event
+    contract: GE-02
+    event_type: BILLING_RECORDED
+    effective_date: "2027-03-31"
+    payload:
+      invoice_number: PAYAPP-GE02-03
+      line_external_id: PAYAPP-GE02-03-1
+      amount: "1240000.00"
+      issue_date: "2027-03-31"
+      obligation_key: L1-WORK
+checkpoints:
+  - name: co1-priced-change
+    after_seq: "7"
+    as_of: "2026-06-30"
+    book: ASC606
+    contracts:
+      - contract: GE-02
+        version:
+          transaction_price: "5300000.00"
+          revenue_cum: "1995294.12"
+          billed_cum: "1800000.00"
+          vc_constrained_amount: "0.00"
+        obligations:
+          - obligation_key: L1-WORK
+            allocated_amount: "5300000.00"
+            revenue_cum: "1995294.12"
+            satisfaction_status: PARTIALLY_SATISFIED
+        balances:
+          - {entity: GE-US, contract_liability: "0.00", contract_asset: "195294.12", unbilled_receivable: "0.00"}
+        modifications:
+          - reference: MOD-GE02-CO1
+            proposed_treatments: {L1-WORK: CUMULATIVE_CATCH_UP}
+        # D-92 (2): the CV-50 node catch_up@<event key>:<obligation key>:- of the CO1 amendment (seq 5;
+        # OQ-A-23 retired catch_up:<obligation key>:<period key>); the value is unchanged.
+        trace: [{measure: "catch_up@GE-02/EV-000005", subject_key: L1-WORK, value: "-4705.88"}]
+    subledger:
+      - period_key: FY2026-P06
+        entity: GE-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_ASSET, account: "1200", dr: "195294.12"}
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "1800000.00"}
+          - {account_role: REVENUE, account: "4000", cr: "1995294.12"}
+  - name: co2-unpriced
+    after_seq: "11"
+    as_of: "2026-09-30"
+    book: ASC606
+    contracts:
+      - contract: GE-02
+        version:
+          transaction_price: "5480000.00"
+          revenue_cum: "3140224.72"
+          billed_cum: "1800000.00"
+          vc_constrained_amount: "180000.00"
+        obligations:
+          - obligation_key: L1-WORK
+            allocated_amount: "5480000.00"
+            revenue_cum: "3140224.72"
+            satisfaction_status: PARTIALLY_SATISFIED
+        balances:
+          - {entity: GE-US, contract_liability: "0.00", contract_asset: "1340224.72", unbilled_receivable: "0.00"}
+        modifications:
+          - reference: MOD-GE02-CO2
+            proposed_treatments: {L1-WORK: CUMULATIVE_CATCH_UP}
+  - name: claim-attested
+    after_seq: "13"
+    as_of: "2026-11-30"
+    book: ASC606
+    contracts:
+      - contract: GE-02
+        version:
+          transaction_price: "5580000.00"
+          revenue_cum: "4263370.79"
+          billed_cum: "1800000.00"
+          vc_constrained_amount: "280000.00"
+        obligations:
+          - obligation_key: L1-WORK
+            allocated_amount: "5580000.00"
+            revenue_cum: "4263370.79"
+            satisfaction_status: PARTIALLY_SATISFIED
+        balances:
+          - {entity: GE-US, contract_liability: "0.00", contract_asset: "2463370.79", unbilled_receivable: "0.00"}
+    subledger:
+      - period_key: FY2026-P11
+        entity: GE-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_ASSET, account: "1200", dr: "1123146.07"}
+          - {account_role: REVENUE, account: "4000", cr: "1123146.07"}
+  - name: priced-and-settled
+    after_seq: "17"
+    as_of: "2026-12-31"
+    book: ASC606
+    contracts:
+      - contract: GE-02
+        version:
+          transaction_price: "5640000.00"
+          revenue_cum: "4942921.35"
+          billed_cum: "4400000.00"
+          vc_constrained_amount: "340000.00"
+        obligations:
+          - obligation_key: L1-WORK
+            allocated_amount: "5640000.00"
+            revenue_cum: "4942921.35"
+            satisfaction_status: PARTIALLY_SATISFIED
+        balances:
+          - {entity: GE-US, contract_liability: "0.00", contract_asset: "542921.35", unbilled_receivable: "0.00"}
+    subledger:
+      - period_key: FY2026-P12
+        entity: GE-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_ASSET, account: "1200", cr: "1920449.44"}
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "2600000.00"}
+          - {account_role: REVENUE, account: "4000", cr: "679550.56"}
+  - name: complete
+    after_seq: "19"
+    as_of: "2027-03-31"
+    book: ASC606
+    contracts:
+      - contract: GE-02
+        version:
+          transaction_price: "5640000.00"
+          revenue_cum: "5640000.00"
+          billed_cum: "5640000.00"
+          vc_constrained_amount: "340000.00"
+        obligations:
+          - obligation_key: L1-WORK
+            allocated_amount: "5640000.00"
+            revenue_cum: "5640000.00"
+            satisfaction_status: SATISFIED
+        balances: [{entity: GE-US, contract_liability: "0.00", contract_asset: "0.00", unbilled_receivable: "0.00"}]

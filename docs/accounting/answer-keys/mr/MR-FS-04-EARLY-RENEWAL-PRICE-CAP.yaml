@@ -1,0 +1,272 @@
+schema: erev-answer-key/1
+id: MR-FS-04-EARLY-RENEWAL-PRICE-CAP
+title: "Renewal price cap below SSP is a material right; early renewal exercised under CONTINUATION"
+status: active
+families: [MR, ALC, REC, POS]
+tags: [subscription]
+summary: "A 2026 subscription for 100,000.00 (SSP 100,000.00) includes an option to renew for 2027 at a price capped at 75,000.00. Expected renewal list value 100,000.00; discount on exercise 25%; a 5% discount is available to any customer without the contract, so the incremental discount is 20%; likelihood of exercise 80% (estimate version). Option SSP = 100,000.00 × 0.20 × 0.80 = 16,000.00 (606-10-55-44, D-21a). Allocation over total SSP 116,000.00 by largest remainder: subscription 86,206.90, material right 13,793.10. On 1 October 2026 the customer renews early and is invoiced 75,000.00. Under POL-028 CONTINUATION the option POB closes and a 2027 subscription POB is created with allocation 13,793.10 + 75,000.00 = 88,793.10, recognised over 2027; other POBs keep their allocations (ALG-05 §2.6.2)."
+authority:
+  codification: ["606-10-55-41", "606-10-55-42", "606-10-55-43", "606-10-55-44", "606-10-32-28", "606-10-25-31"]
+  ifrs: ["IFRS 15.B40", "IFRS 15.B42"]
+  practice: ["DART 11.7 (exercise of material rights; TRG Q&A 15)"]
+  urls: []
+derived_from: {research04: [], research05: [FS-04], chk: [], golden: [], dev: []}
+requirements: [REQ-POB-006, REQ-POB-007, REQ-ALC-001, REQ-ALC-002, REQ-MOD-012, REQ-REC-003]
+policy_refs: [POL-026, POL-028, POL-090]
+review: {author: answer-keys-industries, authored_on: "2026-09-12", reviewer: null, reviewed_on: null, status: pending}
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: FS-US
+      name: "Fernhill Software US (Demo)"
+      functional_currency: USD
+      time_zone: America/Los_Angeles
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: "1"}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2027-12"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4010", name: "Revenue - services and subscriptions", account_type: REVENUE}
+    - {code: "4030", name: "Revenue - material rights, loyalty and breakage", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, product: SAAS-PRO-12M, account: "4010"}
+    - {account_role: REVENUE, product: RENEWAL-CAP-OPT, account: "4030"}
+  customers: [{code: CUST-FS04, name: "Ulvane Telematics Inc. (Demo)"}]
+  pob_templates:
+    - code: TPL-SUB
+      obligation_kind: STANDARD
+      distinctness: series
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_A
+      recognition_method: TIME_ELAPSED
+      ratable_convention: MONTHLY_EVEN
+      series_increment_unit: month
+      policy_values: {balance.right_to_consideration: CONDITIONAL}
+    - code: TPL-RENEWAL-OPTION
+      obligation_kind: MATERIAL_RIGHT
+      distinctness: distinct
+      satisfaction_pattern: POINT_IN_TIME
+      over_time_criterion: NOT_APPLICABLE
+      recognition_method: POINT_IN_TIME
+      policy_values: {balance.right_to_consideration: CONDITIONAL}
+  products:
+    - code: SAAS-PRO-12M
+      name: "Professional platform subscription, 12 months"
+      pob_template: TPL-SUB
+      revenue_category: SUBSCRIPTION
+    - code: RENEWAL-CAP-OPT
+      name: "Renewal price cap option"
+      pob_template: TPL-RENEWAL-OPTION
+      revenue_category: MATERIAL_RIGHT
+  ssp_books:
+    - code: SSP-FS-US-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2025-01-01"
+          methodology_label: "Observable standalone prices (demo study)"
+          entries:
+            - product: SAAS-PRO-12M
+              currency: USD
+              method: observable
+              value_basis: AMOUNT  # D-93 (4): declared remaining-increments reading (the reading the key's oracle embodies); no value change
+              distinctness: distinct
+              ranges: [{point_value: "100000.00"}]
+  fx_rate_sets: []
+  rule_sets: []
+  policies:
+    tenant: {billing.posting: ERP, recognition.time_convention: MONTHLY_EVEN, material_right.exercise: CONTINUATION}
+    entities: {}
+    books: {}
+contracts:
+  - external_id: FS-04
+    customer: CUST-FS04
+    contracting_entity: FS-US
+    transaction_currency: USD
+    inception_date: "2026-01-01"
+    lines:
+      - obligation_key: L1-SUB-2026
+        product_code: SAAS-PRO-12M
+        quantity: "1"
+        total_price: "100000.00"
+        start_date: "2026-01-01"
+        end_date: "2026-12-31"
+      - {obligation_key: L2-RENEW-OPT, product_code: RENEWAL-CAP-OPT, quantity: "1", total_price: "0.00"}
+    estimates:
+      - element_code: EXL-FS04-RENEW
+        estimate_kind: EXERCISE_LIKELIHOOD
+        method: RATE
+        obligation_key: L2-RENEW-OPT
+        versions:
+          - version_no: "1"
+            effective_date: "2026-01-01"
+            rate: "0.80"
+            rationale: "Renewal history of comparable professional-tier customers with a price cap."
+    material_rights:
+      - obligation_key: L2-RENEW-OPT
+        option_type: RENEWAL_OPTION
+        incremental_discount_ratio: "0.20"
+        is_discount_available_without_contract: true
+        expected_purchase_amount: "100000.00"
+        ssp_method: DISCOUNT_X_LIKELIHOOD
+        expiry_date: "2026-12-31"
+        likelihood_estimate: EXL-FS04-RENEW
+timeline:
+  - seq: "1"
+    kind: event
+    contract: FS-04
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: "2"
+    kind: event
+    contract: FS-04
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: "3"
+    kind: event
+    contract: FS-04
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-01-01"
+    payload: {estimate: EXL-FS04-RENEW, version_no: "1"}
+  - seq: "4"
+    kind: event
+    contract: FS-04
+    event_type: BILLING_RECORDED
+    effective_date: "2026-01-01"
+    payload:
+      invoice_number: INV-FS04-2026
+      line_external_id: INV-FS04-2026-1
+      amount: "100000.00"
+      issue_date: "2026-01-01"
+      obligation_key: L1-SUB-2026
+  - seq: "5"
+    kind: event
+    contract: FS-04
+    event_type: MATERIAL_RIGHT_EXERCISED
+    effective_date: "2026-10-01"
+    payload:
+      obligation_key: L2-RENEW-OPT
+      exercised_quantity: "1"
+      additional_consideration: "75000.00"
+      new_lines:
+        - obligation_key: L3-SUB-2027
+          product_code: SAAS-PRO-12M
+          quantity: "1"
+          total_price: "75000.00"
+          start_date: "2027-01-01"
+          end_date: "2027-12-31"
+  - seq: "6"
+    kind: event
+    contract: FS-04
+    event_type: BILLING_RECORDED
+    effective_date: "2026-10-01"
+    payload:
+      invoice_number: INV-FS04-2027
+      line_external_id: INV-FS04-2027-1
+      amount: "75000.00"
+      issue_date: "2026-10-01"
+      obligation_key: L3-SUB-2027
+checkpoints:
+  - name: before-exercise
+    after_seq: "4"
+    as_of: "2026-09-30"
+    book: ASC606
+    contracts:
+      - contract: FS-04
+        version:
+          transaction_price: "100000.00"
+          total_ssp: "116000.00"
+          revenue_cum: "64655.17"
+          billed_cum: "100000.00"
+          rpo_amount: "35344.83"
+        obligations:
+          - obligation_key: L1-SUB-2026
+            allocated_amount: "86206.90"
+            revenue_cum: "64655.17"
+            satisfaction_status: PARTIALLY_SATISFIED
+            allocated_exact: "86206.896552"
+          - obligation_key: L2-RENEW-OPT
+            allocated_amount: "13793.10"
+            revenue_cum: "0.00"
+            satisfaction_status: UNSATISFIED
+            allocated_exact: "13793.103448"
+        balances: [{entity: FS-US, contract_liability: "35344.83", contract_asset: "0.00", unbilled_receivable: "0.00"}]
+  - name: after-early-renewal
+    after_seq: "6"
+    as_of: "2026-12-31"
+    book: ASC606
+    contracts:
+      - contract: FS-04
+        version:
+          transaction_price: "175000.00"
+          total_ssp: "116000.00"
+          revenue_cum: "86206.90"
+          billed_cum: "175000.00"
+          rpo_amount: "88793.10"
+        obligations:
+          - obligation_key: L1-SUB-2026
+            allocated_amount: "86206.90"
+            revenue_cum: "86206.90"
+            satisfaction_status: SATISFIED
+          - obligation_key: L3-SUB-2027
+            allocated_amount: "88793.10"
+            revenue_cum: "0.00"
+            satisfaction_status: UNSATISFIED
+        balances: [{entity: FS-US, contract_liability: "88793.10", contract_asset: "0.00", unbilled_receivable: "0.00"}]
+        schedule:
+          - obligation_key: L3-SUB-2027
+            schedule_kind: REVENUE
+            line_type: NORMAL
+            amounts:
+              FY2027-P01: "7399.43"
+              FY2027-P02: "7399.42"
+              FY2027-P03: "7399.43"
+              FY2027-P04: "7399.42"
+              FY2027-P05: "7399.43"
+              FY2027-P06: "7399.42"
+              FY2027-P07: "7399.43"
+              FY2027-P08: "7399.42"
+              FY2027-P09: "7399.43"
+              FY2027-P10: "7399.42"
+              FY2027-P11: "7399.43"
+              FY2027-P12: "7399.42"
+    subledger:
+      - period_key: FY2026-P10
+        entity: FS-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "7183.91"}
+          - {account_role: REVENUE, account: "4010", cr: "7183.91"}
+  - name: renewal-complete
+    after_seq: "6"
+    as_of: "2027-12-31"
+    book: ASC606
+    contracts:
+      - contract: FS-04
+        version:
+          transaction_price: "175000.00"
+          total_ssp: "116000.00"
+          revenue_cum: "175000.00"
+          billed_cum: "175000.00"
+          rpo_amount: "0.00"
+        obligations:
+          - obligation_key: L1-SUB-2026
+            allocated_amount: "86206.90"
+            revenue_cum: "86206.90"
+            satisfaction_status: SATISFIED
+          - obligation_key: L3-SUB-2027
+            allocated_amount: "88793.10"
+            revenue_cum: "88793.10"
+            satisfaction_status: SATISFIED
+        balances: [{entity: FS-US, contract_liability: "0.00", contract_asset: "0.00", unbilled_receivable: "0.00"}]

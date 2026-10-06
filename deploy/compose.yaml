@@ -1,0 +1,193 @@
+# eRev Cloud compose stack (docs/05-ARCHITECTURE.md §8.2 DPL-10 to DPL-16; D-47; G§5).
+#
+# Run from the repository root with your own environment file: a copy of
+# deploy/compose.env.example with the passwords, the three master keys, the public origin and the
+# SMTP relay set (docs/guides/runbook.md "Compose stack: start, first operator and first workspace"):
+#   docker compose -f deploy/compose.yaml --env-file <your env file> -p erev-verify up -d
+# The example file starts nothing as it is: it ships no master key. make compose-verify (supervisor
+# target DG-MK-compose-verify) builds, starts, checks and tears down project erev-verify with the
+# example file and the keys it generates for the run; the loop never runs Docker (DG-FORBID-12).
+#
+# Every published port binds 127.0.0.1 (REQ-SEC-001): web 8195 and PostgreSQL 5436 (G§5). The api
+# publishes no port; nginx in web proxies /api/ to api:8080 (DPL-12). There is no mocks service:
+# mock routers never mount under production (DPL-15 withdrawn, DG-API-09).
+#
+# Interpolated variables use the EREV_COMPOSE_ prefix, so EREV_* values exported by a developer
+# shell never reach the containers. Database passwords must be URL-safe (letters, digits, - and _)
+# because they are placed in the database URLs below.
+#
+# A production api or worker refuses to start on a placeholder master key or on two equal keys
+# (05 CFG-26, SAR-40 startup subset). Generate the three with
+#   python3 -c "import secrets; print(secrets.token_hex(32))"
+
+name: erev
+
+# DPL-13 and DPL-14: the environment of the api and the worker, and the base of migrate's.
+# EREV_ENV=production with EREV_KEY_PROVIDER=local reads the database URL from the environment,
+# and EnvSecretStore serves the CFG-26 master keys (DG-ENV-10; D-76). The api and the worker
+# connect as erev_app only: the owner URL is on the migrate service alone (DPL-11; DPL-33 least
+# privilege, as hosted), so a compromised api or worker holds no credential of the role that owns
+# the tables, the triggers and the policies. Both need the three master keys (envelope encryption
+# of files and secrets, the audit and security-event chains) and the worker sends the mail. The
+# run directory lives on the container's own tmpfs /tmp, because the root filesystem is read-only.
+x-erev-environment: &erev-environment
+  EREV_ENV: production
+  EREV_KEY_PROVIDER: local
+  EREV_DB_APP_URL: postgresql+psycopg://erev_app:${EREV_COMPOSE_APP_PASSWORD}@postgres:5432/erev
+  EREV_ENCRYPTION_KEY: ${EREV_COMPOSE_ENCRYPTION_KEY}
+  EREV_AUDIT_HMAC_MASTER_KEY: ${EREV_COMPOSE_AUDIT_HMAC_MASTER_KEY}
+  EREV_SECURITY_EVENT_HMAC_KEY: ${EREV_COMPOSE_SECURITY_EVENT_HMAC_KEY}
+  # 05 KEY-03 rev 1.17: the derivation version of the platform security key, pinned in production.
+  EREV_SECURITY_HMAC_SECRET_VERSION: "1"
+  # 05 CFG-17, CFG-18: production sends its mail over SMTP with STARTTLS; the fake backend is
+  # refused at startup. The relay must resolve to public addresses only (SAR-15) and present a
+  # certificate valid for its name. A blank user name or password means no authentication.
+  EREV_EMAIL_BACKEND: smtp
+  EREV_SMTP_HOST: ${EREV_COMPOSE_SMTP_HOST}
+  EREV_SMTP_PORT: ${EREV_COMPOSE_SMTP_PORT}
+  EREV_SMTP_USERNAME: ${EREV_COMPOSE_SMTP_USERNAME}
+  EREV_SMTP_PASSWORD: ${EREV_COMPOSE_SMTP_PASSWORD}
+  EREV_SMTP_FROM: ${EREV_COMPOSE_SMTP_FROM}
+  # 05 SAR-15, CFG-18 rev 1.53: the operator's opt-in for a relay on a private or loopback
+  # address - one on this stack's own network, for instance - and the path, inside the
+  # containers, of the PEM bundle its certificate is verified against (mounted by an override
+  # file; runbook "A relay on the stack's own network"). STARTTLS and verification stay required.
+  # A blank value leaves the opt-in off and the bundle unset.
+  EREV_SMTP_PRIVATE_RELAY: ${EREV_COMPOSE_SMTP_PRIVATE_RELAY}
+  EREV_SMTP_CA_FILE: ${EREV_COMPOSE_SMTP_CA_FILE}
+  EREV_AI_PROVIDER: fake
+  EREV_TRUSTED_PROXY_HOPS: "1"
+  # 05 CFG-09: the origin users reach. A deployment served over TLS names its https origin here.
+  # The session cookie is Secure unless this is an http origin on a loopback host (SAR-09).
+  EREV_PUBLIC_ORIGIN: ${EREV_COMPOSE_PUBLIC_ORIGIN}
+  EREV_FILE_ROOT: /data/files
+  EREV_RUN_DIR: /tmp/erev
+  EREV_LOG_FORMAT: json
+
+x-api-build: &api-build
+  context: ..
+  dockerfile: deploy/docker/api.Dockerfile
+
+services:
+  # DPL-10: container PostgreSQL 17, separate from the Homebrew server. The image runs
+  # compose/initdb/01-roles.sql once, inside the container, when volume erev-pg is empty.
+  postgres:
+    image: postgres:17-bookworm
+    # 05 §2.7 lock budget. The image default of 64 gives 6,400 lock slots for the whole server, and
+    # a statement that reads a partitioned table without the month locks every partition and every
+    # index of it until its transaction ends: 3,094 relations for the three partitioned tables
+    # (one contract computation holds about 2,250). Rule: max_locks_per_transaction x
+    # (max_connections + max_prepared_transactions) >= floor(0.8 x max_connections) x 3,094
+    # + 5,044 relations, which needs 2,526 at the default 100 connections; 4096 leaves room for
+    # nine more years of monthly partitions. PostgreSQL reads the setting at server start only;
+    # `erev doctor` evaluates the rule on the live catalogue (check lock-budget, SAR-40).
+    command: ["postgres", "-c", "max_locks_per_transaction=4096"]
+    ports:
+      - "127.0.0.1:5436:5432"
+    environment:
+      POSTGRES_PASSWORD: ${EREV_COMPOSE_POSTGRES_PASSWORD}
+      EREV_COMPOSE_OWNER_PASSWORD: ${EREV_COMPOSE_OWNER_PASSWORD}
+      EREV_COMPOSE_APP_PASSWORD: ${EREV_COMPOSE_APP_PASSWORD}
+    volumes:
+      - erev-pg:/var/lib/postgresql/data
+      - ./compose/initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      # DPL-10 rev 1.106: a sign-in, not pg_isready, which answers 0 for any server that accepts
+      # connections whether or not the role and the database exist. As erev_app on erev, one
+      # statement, over the container's loopback (the image's pg_hba.conf trusts it): a first
+      # start that 01-roles.sql refused leaves neither, the container is unhealthy and migrate,
+      # which waits for service_healthy, is not started.
+      # TCP, not the socket: the image's temporary init server listens on the socket only, so the
+      # check passes once the init script has run and the server has restarted.
+      test: ["CMD", "psql", "-h", "127.0.0.1", "-p", "5432", "-U", "erev_app", "-d", "erev", "-v", "ON_ERROR_STOP=1", "-tAc", "select 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+    restart: unless-stopped
+
+  # DPL-11: one-shot Alembic upgrade to head as erev_owner, then the DB-14 lint as erev_app. The
+  # only service that holds the owner URL; the owner-only commands run through it:
+  #   docker compose ... run --rm migrate idp create ...
+  migrate:
+    build: *api-build
+    image: erev-api:local
+    command: ["migrate"]
+    environment:
+      <<: *erev-environment
+      EREV_DB_OWNER_URL: postgresql+psycopg://erev_owner:${EREV_COMPOSE_OWNER_PASSWORD}@postgres:5432/erev
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - "no-new-privileges:true"
+    healthcheck:
+      disable: true
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  # DPL-13: the api image; no published port.
+  api:
+    build: *api-build
+    image: erev-api:local
+    environment: *erev-environment
+    volumes:
+      - erev-files:/data/files
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - "no-new-privileges:true"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  # DPL-14: all eight queues; the worker image's HEALTHCHECK is the heartbeat check (DPL-02).
+  worker:
+    build:
+      context: ..
+      dockerfile: deploy/docker/worker.Dockerfile
+    image: erev-worker:local
+    command: ["worker"]
+    environment: *erev-environment
+    volumes:
+      - erev-files:/data/files
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - "no-new-privileges:true"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  # DPL-12: nginx serves the SPA with the SAR-20 headers and proxies /api/ to api:8080.
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/docker/web.Dockerfile
+    image: erev-web:local
+    ports:
+      - "127.0.0.1:8195:8080"
+    cap_drop:
+      - ALL
+    security_opt:
+      - "no-new-privileges:true"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  erev-pg:
+  erev-files:

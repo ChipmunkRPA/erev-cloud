@@ -1,0 +1,144 @@
+# docs/accounting/answer-keys/rnd/RND-CHK-005-USD-100-OVER-THREE-MONTHS.yaml
+schema: "erev-answer-key/1"
+id: RND-CHK-005-USD-100-OVER-THREE-MONTHS
+title: "Cumulative rounding: 100.00 over three whole months posts 33.33 / 33.34 / 33.33"
+status: active
+families: [RND, REC]
+tags: []
+summary: >-
+  Entity US01, USD. A three-month support obligation of 100.00 (2026-01-01 to 2026-03-31, MONTHLY_EVEN) invoiced
+  upfront. Cumulative posted revenue is round(100 × k ÷ 3): 33.33, 66.67, 100.00, so the period amounts are 33.33 /
+  33.34 / 33.33 with no plug (D-11, CHK-005).
+authority:
+  codification: ["606-10-25-27", "606-10-25-31", "606-10-55-17", "606-10-55-20"]
+  ifrs: ["IFRS 15.35", "IFRS 15.39"]
+  practice: []
+  urls: []
+derived_from: {research04: [], research05: [], chk: [CHK-005], golden: [], dev: []}
+requirements: [REQ-REC-003, REQ-REC-019]
+policy_refs: [POL-003, POL-090]
+review:
+  author: answer-keys-fx-entity-books
+  authored_on: "2026-09-12"
+  reviewer: null
+  reviewed_on: null
+  status: pending
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: US01
+      name: "Avenmoor Systems Inc. (Demo)"
+      functional_currency: USD
+      time_zone: "America/New_York"
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: 1}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2026-03"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4010", name: "Revenue - services and subscriptions", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, account: "4010", product: SUP-3M}
+  customers:
+    - {code: CUST-1, name: "Pellworth Logistics Inc. (Demo)"}
+  pob_templates:
+    - code: TPL-RAT-ME
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_A
+      recognition_method: TIME_ELAPSED
+      ratable_convention: MONTHLY_EVEN
+  products:
+    - {code: SUP-3M, name: "Support, three months", pob_template: TPL-RAT-ME}
+  ssp_books:
+    - code: SSP-US01-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2026-01-01"
+          methodology_label: "Observable standalone prices"
+          entries:
+            - product: SUP-3M
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "100.00"}
+  fx_rate_sets: []
+  rule_sets: []
+  policies: {tenant: {billing.posting: ERP}, entities: {}, books: {}}
+contracts:
+  - external_id: C-RND-005
+    customer: CUST-1
+    contracting_entity: US01
+    transaction_currency: USD
+    inception_date: "2026-01-01"
+    lines:
+      - obligation_key: POB-001
+        product_code: SUP-3M
+        quantity: "1"
+        total_price: "100.00"
+        start_date: "2026-01-01"
+        end_date: "2026-03-31"
+timeline:
+  - {seq: 1, kind: event, contract: C-RND-005, event_type: CONTRACT_BOOKED, effective_date: "2026-01-01", payload: {}}
+  - seq: 2
+    kind: event
+    contract: C-RND-005
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: 3
+    kind: event
+    contract: C-RND-005
+    event_type: BILLING_RECORDED
+    effective_date: "2026-01-01"
+    payload:
+      invoice_number: INV-RND-005
+      line_external_id: INV-RND-005-1
+      amount: "100.00"
+      issue_date: "2026-01-01"
+checkpoints:
+  - name: end-of-term
+    after_seq: 3
+    as_of: "2026-03-31"
+    book: ASC606
+    contracts:
+      - contract: C-RND-005
+        schedule:
+          - obligation_key: POB-001
+            schedule_kind: REVENUE
+            line_type: NORMAL
+            amounts: {FY2026-P01: "33.33", FY2026-P02: "33.34", FY2026-P03: "33.33"}
+        balances:
+          - {entity: US01, contract_liability: "0.00"}
+    subledger:
+      - period_key: FY2026-P01
+        entity: US01
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "33.33"}
+          - {account_role: REVENUE, account: "4010", cr: "33.33"}
+      - period_key: FY2026-P02
+        entity: US01
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "33.34"}
+          - {account_role: REVENUE, account: "4010", cr: "33.34"}
+      - period_key: FY2026-P03
+        entity: US01
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "33.33"}
+          - {account_role: REVENUE, account: "4010", cr: "33.33"}

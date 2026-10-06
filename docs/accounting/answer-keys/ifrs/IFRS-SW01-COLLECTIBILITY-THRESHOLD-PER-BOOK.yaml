@@ -1,0 +1,227 @@
+# docs/accounting/answer-keys/ifrs/IFRS-SW01-COLLECTIBILITY-THRESHOLD-PER-BOOK.yaml
+schema: "erev-answer-key/1"
+id: IFRS-SW01-COLLECTIBILITY-THRESHOLD-PER-BOOK
+title: >-
+  IFRS switch #1: collectibility probable in IFRS15 but not in ASC606; deposit liability in one book only
+status: active
+families: [IFRS, STP1, JE]
+tags: [r04-s13]
+summary: >-
+  Research 04 §13 #1 (POL-011). Entity US01, USD, ERP billing. A 12-month service (12,000.00, MONTHLY_EVEN) with a
+  customer whose collectibility is assessed as more likely than not but not likely to occur: the IFRS15 judgement
+  concludes probable (IFRS 15.9(e), more likely than not) and the ASC606 judgement does not (606-10-25-1(e), likely to
+  occur). The customer is invoiced and pays 1,000.00 on the first day of each month. ASC606 book: NOT_A_CONTRACT; each
+  receipt posts JET-01b Dr BILLING_CLEARING (UNAPPLIED_CASH) / Cr DEPOSIT_LIABILITY 1,000.00; no revenue; deposit
+  liability 3,000.00 at 31 March; each invoice raises INVOICE_ON_NOT_A_CONTRACT (WARNING) without posting. IFRS15
+  book: ACTIVE; revenue 1,000.00 a month and no contract balance. [J] The reverse split (probable under US GAAP but
+  not IFRS) cannot arise because the US threshold is the higher one.
+authority:
+  codification: ["606-10-25-1", "606-10-25-6", "606-10-25-7", "606-10-25-8"]
+  ifrs: ["IFRS 15.9", "IFRS 15.15", "IFRS 15.16"]
+  practice: ["FASB and IASB comparison of Topic 606 and IFRS 15, collectibility threshold (research 04 S8, A1(a))"]
+  urls: []
+derived_from: {research04: [], research05: [], chk: [], golden: [], dev: []}
+requirements: [REQ-BK-002, REQ-CON-003, REQ-CON-004]
+policy_refs: [POL-011, POL-012, POL-128]
+review:
+  author: answer-keys-fx-entity-books
+  authored_on: "2026-09-12"
+  reviewer: null
+  reviewed_on: null
+  status: pending
+runner: engine
+books: [ASC606, IFRS15]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: US01
+      name: "Avenmoor Systems Inc. (Demo)"
+      functional_currency: USD
+      time_zone: "America/New_York"
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: 1}
+      books: [ASC606, IFRS15]
+  periods: {from: "2026-01", to: "2026-03"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2090", name: "Subledger clearing", account_type: LIABILITY}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "2105", name: "Deposit liability", account_type: LIABILITY}
+    - {code: "4010", name: "Revenue - services and subscriptions", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, account: "4010"}
+    - {account_role: DEPOSIT_LIABILITY, account: "2105"}
+    - {account_role: BILLING_CLEARING, clearing_purpose: UNAPPLIED_CASH, account: "2090"}
+  customers:
+    - {code: CUST-1, name: "Pellworth Logistics Inc. (Demo)"}
+  pob_templates:
+    - code: TPL-RAT-ME
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_A
+      recognition_method: TIME_ELAPSED
+      ratable_convention: MONTHLY_EVEN
+  products:
+    - {code: SVC-12M, name: "Managed service, 12 months", pob_template: TPL-RAT-ME}
+  ssp_books:
+    - code: SSP-US-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2026-01-01"
+          methodology_label: "Observable standalone prices"
+          entries:
+            - product: SVC-12M
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "12000.00"}
+  fx_rate_sets: []
+  rule_sets: []
+  policies: {tenant: {billing.posting: ERP}, entities: {}, books: {}}
+contracts:
+  - external_id: C-IFRS-SW01
+    customer: CUST-1
+    contracting_entity: US01
+    transaction_currency: USD
+    inception_date: "2026-01-01"
+    lines:
+      - obligation_key: L1-SERVICE
+        product_code: SVC-12M
+        quantity: "1"
+        total_price: "12000.00"
+        start_date: "2026-01-01"
+        end_date: "2026-12-31"
+    judgements:
+      - handle: JDG-COLLECT-US
+        topic: COLLECTIBILITY
+        conclusion: "Not probable (likely to occur) in the ASC606 book; weak payment history"
+      - handle: JDG-COLLECT-IFRS
+        topic: COLLECTIBILITY
+        conclusion: "Probable (more likely than not) in the IFRS15 book"
+timeline:
+  - seq: 1
+    kind: event
+    contract: C-IFRS-SW01
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: 2
+    kind: event
+    contract: C-IFRS-SW01
+    event_type: COLLECTIBILITY_ASSESSED
+    effective_date: "2026-01-01"
+    payload: {book: ASC606, is_probable: false, judgement: JDG-COLLECT-US}
+  - seq: 3
+    kind: event
+    contract: C-IFRS-SW01
+    event_type: COLLECTIBILITY_ASSESSED
+    effective_date: "2026-01-01"
+    payload: {book: IFRS15, is_probable: true, judgement: JDG-COLLECT-IFRS}
+  - seq: 4
+    kind: event
+    contract: C-IFRS-SW01
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: 5
+    kind: event
+    contract: C-IFRS-SW01
+    event_type: BILLING_RECORDED
+    effective_date: "2026-01-01"
+    payload: {invoice_number: INV-SW01-1, line_external_id: INV-SW01-1-1, amount: "1000.00", issue_date: "2026-01-01"}
+  - seq: 6
+    kind: event
+    contract: C-IFRS-SW01
+    event_type: PAYMENT_RECEIVED
+    effective_date: "2026-01-01"
+    payload:
+      receipt_reference: RCPT-SW01-1
+      amount: "1000.00"
+      receipt_date: "2026-01-01"
+      applied_invoice_numbers: [INV-SW01-1]
+  - seq: 7
+    kind: event
+    contract: C-IFRS-SW01
+    event_type: BILLING_RECORDED
+    effective_date: "2026-02-01"
+    payload: {invoice_number: INV-SW01-2, line_external_id: INV-SW01-2-1, amount: "1000.00", issue_date: "2026-02-01"}
+  - seq: 8
+    kind: event
+    contract: C-IFRS-SW01
+    event_type: PAYMENT_RECEIVED
+    effective_date: "2026-02-01"
+    payload:
+      receipt_reference: RCPT-SW01-2
+      amount: "1000.00"
+      receipt_date: "2026-02-01"
+      applied_invoice_numbers: [INV-SW01-2]
+  - seq: 9
+    kind: event
+    contract: C-IFRS-SW01
+    event_type: BILLING_RECORDED
+    effective_date: "2026-03-01"
+    payload: {invoice_number: INV-SW01-3, line_external_id: INV-SW01-3-1, amount: "1000.00", issue_date: "2026-03-01"}
+  - seq: 10
+    kind: event
+    contract: C-IFRS-SW01
+    event_type: PAYMENT_RECEIVED
+    effective_date: "2026-03-01"
+    payload:
+      receipt_reference: RCPT-SW01-3
+      amount: "1000.00"
+      receipt_date: "2026-03-01"
+      applied_invoice_numbers: [INV-SW01-3]
+checkpoints:
+  - name: asc606-march
+    after_seq: 10
+    as_of: "2026-03-31"
+    book: ASC606
+    contracts:
+      - contract: C-IFRS-SW01
+        status_in_book: NOT_A_CONTRACT
+        obligations:
+          - {obligation_key: L1-SERVICE, revenue_cum: "0.00"}
+        balances:
+          - {entity: US01, contract_liability: "0.00", deposit_liability: "3000.00"}
+    subledger:
+      - period_key: FY2026-P03
+        entity: US01
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: BILLING_CLEARING, clearing_purpose: UNAPPLIED_CASH, account: "2090", dr: "1000.00"}
+          - {account_role: DEPOSIT_LIABILITY, account: "2105", cr: "1000.00"}
+    exceptions:
+      - {code: INVOICE_ON_NOT_A_CONTRACT, severity: WARNING, contract: C-IFRS-SW01}
+      - {code: INVOICE_ON_NOT_A_CONTRACT, severity: WARNING, contract: C-IFRS-SW01}
+      - {code: INVOICE_ON_NOT_A_CONTRACT, severity: WARNING, contract: C-IFRS-SW01}
+  - name: ifrs15-march
+    after_seq: 10
+    as_of: "2026-03-31"
+    book: IFRS15
+    contracts:
+      - contract: C-IFRS-SW01
+        status_in_book: ACTIVE
+        obligations:
+          - {obligation_key: L1-SERVICE, revenue_cum: "3000.00"}
+        balances:
+          - entity: US01
+            contract_liability: "0.00"
+            contract_asset: "0.00"
+            unbilled_receivable: "0.00"
+            deposit_liability: "0.00"
+    subledger:
+      - period_key: FY2026-P03
+        entity: US01
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "1000.00"}
+          - {account_role: REVENUE, account: "4010", cr: "1000.00"}

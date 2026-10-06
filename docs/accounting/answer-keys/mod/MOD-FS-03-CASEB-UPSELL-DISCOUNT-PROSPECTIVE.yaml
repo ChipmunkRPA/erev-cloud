@@ -1,0 +1,340 @@
+schema: erev-answer-key/1
+id: MOD-FS-03-CASEB-UPSELL-DISCOUNT-PROSPECTIVE
+title: "Upsell of distinct seats at a discount accounted for prospectively (25-13(a))"
+status: active
+families: [MOD, ALC, REC]
+tags: [subscription]
+summary: "research 05 §2 worked example re-anchored: 12-month subscription 120,000.00 (SSP 132,000.00) invoiced in advance and implementation 15,000.00 (SSP 18,000.00) invoiced on completion; allocation 118,800.00 and 16,200.00. Implementation progress on labour hours (200 of 500 hours in January, complete in February). At 31 March the subscription carries a liability of 90,300.00 and the implementation an asset of 1,200.00; the contract presents one net contract liability of 89,100.00 (ALG-02). On 1 July the customer adds 50 seats for the remaining six months (mod-date SSP 33,000.00). Case B: the seats are priced at 26,400.00 (20% below SSP), so 25-12(b) fails and the remaining services are distinct: termination and creation of a new contract (606-10-25-13(a)). Pool = unrecognised subscription allocation 59,400.00 + 26,400.00 = 85,800.00, apportioned on modification-date SSPs of the remaining increments (66,000.00) and the added seats (33,000.00, the stated price clamped to the SSP point under POL-072): 57,200.00 and 28,600.00, recognised over July to December with cumulative rounding. No catch-up; the satisfied implementation POB is untouched (D-18, ALG-04)."
+authority:
+  codification: ["606-10-25-10", "606-10-25-12", "606-10-25-13", "606-10-32-28", "606-10-32-31", "606-10-45-1"]
+  ifrs: ["IFRS 15.20", "IFRS 15.21"]
+  practice: ["DART 9.2 (modification accounting)", "FASB Example 5 (606-10-55-111 to 55-116)"]
+  urls: []
+derived_from: {research04: [], research05: [FS-03], chk: [], golden: [], dev: []}
+requirements: [REQ-MOD-001, REQ-MOD-002, REQ-MOD-004, REQ-MOD-012, REQ-SSP-006, REQ-REC-008, REQ-BIL-003]
+policy_refs: [POL-072, POL-080, POL-090, POL-091, POL-100, POL-101, POL-103, POL-120]
+review: {author: answer-keys-industries, authored_on: "2026-09-12", reviewer: null, reviewed_on: null, status: pending}
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: FS-US
+      name: "Fernhill Software US (Demo)"
+      functional_currency: USD
+      time_zone: America/Los_Angeles
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: "1"}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2026-12"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4010", name: "Revenue - services and subscriptions", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, product: SAAS-SEATS-12M, account: "4010"}
+    - {account_role: REVENUE, product: IMPL-STD, account: "4010"}
+    - {account_role: REVENUE, product: SAAS-SEATS-ADD6M, account: "4010"}
+  customers: [{code: CUST-FS03, name: "Pellworth Logistics Inc. (Demo)"}]
+  pob_templates:
+    - code: TPL-SUB
+      obligation_kind: STANDARD
+      distinctness: series
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_A
+      recognition_method: TIME_ELAPSED
+      ratable_convention: MONTHLY_EVEN
+      series_increment_unit: month
+      policy_values: {balance.right_to_consideration: CONDITIONAL}
+    - code: TPL-IMPL
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_B
+      recognition_method: LABOUR_HOURS
+      policy_values: {balance.right_to_consideration: CONDITIONAL}
+  products:
+    - code: SAAS-SEATS-12M
+      name: "Platform subscription, 100 seats, 12 months"
+      pob_template: TPL-SUB
+      revenue_category: SUBSCRIPTION
+    - {code: IMPL-STD, name: "Standard implementation", pob_template: TPL-IMPL, revenue_category: SERVICES}
+    - code: SAAS-SEATS-ADD6M
+      name: "Platform subscription, 50 added seats, 6 months"
+      pob_template: TPL-SUB
+      revenue_category: SUBSCRIPTION
+  ssp_books:
+    - code: SSP-FS-US-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2025-01-01"
+          methodology_label: "Observable standalone prices (demo study)"
+          entries:
+            - product: SAAS-SEATS-12M
+              currency: USD
+              method: observable
+              # D-93 (4): the entry prices the booked 12-month term of the series subscription, so
+              # at the 1 Jul modification the remaining six months weigh 66,000.00 (S06-R-11).
+              value_basis: PER_BOOKED_TERM
+              distinctness: distinct
+              ranges: [{point_value: "132000.00"}]
+            - product: IMPL-STD
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges: [{point_value: "18000.00"}]
+            - product: SAAS-SEATS-ADD6M
+              currency: USD
+              method: observable
+              value_basis: AMOUNT  # D-93 (4): declared remaining-increments reading (the reading the key's oracle embodies); no value change
+              distinctness: distinct
+              ranges: [{point_value: "33000.00"}]
+  fx_rate_sets: []
+  rule_sets: []
+  policies:
+    tenant: {billing.posting: ERP, recognition.time_convention: MONTHLY_EVEN}
+    entities: {}
+    books: {}
+contracts:
+  - external_id: FS-03
+    customer: CUST-FS03
+    contracting_entity: FS-US
+    transaction_currency: USD
+    inception_date: "2026-01-01"
+    lines:
+      - obligation_key: L1-SUB
+        product_code: SAAS-SEATS-12M
+        quantity: "1"
+        total_price: "120000.00"
+        start_date: "2026-01-01"
+        end_date: "2026-12-31"
+      - obligation_key: L2-IMPL
+        product_code: IMPL-STD
+        quantity: "1"
+        total_price: "15000.00"
+        start_date: "2026-01-01"
+        end_date: "2026-02-28"
+    estimates:
+      - element_code: EAC-FS03-IMPL
+        estimate_kind: EAC
+        method: COST_BUILDUP
+        obligation_key: L2-IMPL
+        versions:
+          - version_no: "1"
+            effective_date: "2026-01-01"
+            expected_quantity: "500"
+            rationale: "Implementation plan: 500 consultant hours."
+    modifications:
+      - reference: MOD-FS03-B
+        effective_date: "2026-07-01"
+        kind: ADD_OBLIGATION
+        lines:
+          - obligation_key: L3-SEATS
+            product_code: SAAS-SEATS-ADD6M
+            quantity: "1"
+            total_price: "26400.00"
+            start_date: "2026-07-01"
+            end_date: "2026-12-31"
+timeline:
+  - seq: "1"
+    kind: event
+    contract: FS-03
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: "2"
+    kind: event
+    contract: FS-03
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: "3"
+    kind: event
+    contract: FS-03
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-01-01"
+    payload: {estimate: EAC-FS03-IMPL, version_no: "1"}
+  - seq: "4"
+    kind: event
+    contract: FS-03
+    event_type: BILLING_RECORDED
+    effective_date: "2026-01-01"
+    payload:
+      invoice_number: INV-FS03-001
+      line_external_id: INV-FS03-001-1
+      amount: "120000.00"
+      issue_date: "2026-01-01"
+      obligation_key: L1-SUB
+  - seq: "5"
+    kind: event
+    contract: FS-03
+    event_type: PROGRESS_RECORDED
+    effective_date: "2026-01-31"
+    payload: {obligation_key: L2-IMPL, cumulative_progress_ratio: "0.4", measure: LABOUR_HOURS, hours_to_date: "200"}
+  - seq: "6"
+    kind: event
+    contract: FS-03
+    event_type: PROGRESS_RECORDED
+    effective_date: "2026-02-28"
+    payload: {obligation_key: L2-IMPL, cumulative_progress_ratio: "1", measure: LABOUR_HOURS, hours_to_date: "500"}
+  - seq: "7"
+    kind: event
+    contract: FS-03
+    event_type: BILLING_RECORDED
+    effective_date: "2026-02-28"
+    payload:
+      invoice_number: INV-FS03-002
+      line_external_id: INV-FS03-002-1
+      amount: "15000.00"
+      issue_date: "2026-02-28"
+      obligation_key: L2-IMPL
+  - seq: "8"
+    kind: event
+    contract: FS-03
+    event_type: CONTRACT_AMENDED
+    effective_date: "2026-07-01"
+    payload: {modification: MOD-FS03-B}
+  - seq: "9"
+    kind: event
+    contract: FS-03
+    event_type: BILLING_RECORDED
+    effective_date: "2026-07-01"
+    payload:
+      invoice_number: INV-FS03-003
+      line_external_id: INV-FS03-003-1
+      amount: "26400.00"
+      issue_date: "2026-07-01"
+      obligation_key: L3-SEATS
+checkpoints:
+  - name: january-implementation-asset-netted
+    after_seq: "5"
+    as_of: "2026-01-31"
+    book: ASC606
+    contracts:
+      - contract: FS-03
+        version: {transaction_price: "135000.00", revenue_cum: "16380.00", billed_cum: "120000.00"}
+        obligations:
+          - obligation_key: L1-SUB
+            allocated_amount: "118800.00"
+            revenue_cum: "9900.00"
+            satisfaction_status: PARTIALLY_SATISFIED
+          - obligation_key: L2-IMPL
+            allocated_amount: "16200.00"
+            revenue_cum: "6480.00"
+            satisfaction_status: PARTIALLY_SATISFIED
+        balances:
+          - {entity: FS-US, contract_liability: "103620.00", contract_asset: "0.00", unbilled_receivable: "0.00"}
+    subledger:
+      - period_key: FY2026-P01
+        entity: FS-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "16380.00"}
+          - {account_role: REVENUE, account: "4010", cr: "16380.00"}
+  - name: march-net-liability
+    after_seq: "7"
+    as_of: "2026-03-31"
+    book: ASC606
+    contracts:
+      - contract: FS-03
+        version: {transaction_price: "135000.00", revenue_cum: "45900.00", billed_cum: "135000.00"}
+        obligations:
+          - obligation_key: L1-SUB
+            allocated_amount: "118800.00"
+            revenue_cum: "29700.00"
+            satisfaction_status: PARTIALLY_SATISFIED
+          - obligation_key: L2-IMPL
+            allocated_amount: "16200.00"
+            revenue_cum: "16200.00"
+            satisfaction_status: SATISFIED
+        balances: [{entity: FS-US, contract_liability: "89100.00", contract_asset: "0.00", unbilled_receivable: "0.00"}]
+  - name: july-after-prospective-modification
+    after_seq: "9"
+    as_of: "2026-07-31"
+    book: ASC606
+    contracts:
+      - contract: FS-03
+        version:
+          transaction_price: "161400.00"
+          revenue_cum: "89900.00"
+          billed_cum: "161400.00"
+          modification_boundary_no: "1"
+        obligations:
+          - obligation_key: L1-SUB
+            allocated_amount: "116600.00"
+            revenue_cum: "68933.33"
+            satisfaction_status: PARTIALLY_SATISFIED
+          - obligation_key: L2-IMPL
+            allocated_amount: "16200.00"
+            revenue_cum: "16200.00"
+            satisfaction_status: SATISFIED
+          - obligation_key: L3-SEATS
+            allocated_amount: "28600.00"
+            revenue_cum: "4766.67"
+            satisfaction_status: PARTIALLY_SATISFIED
+        balances: [{entity: FS-US, contract_liability: "71500.00", contract_asset: "0.00", unbilled_receivable: "0.00"}]
+        modifications:
+          - reference: MOD-FS03-B
+            proposed_treatments: {L1-SUB: PROSPECTIVE, L3-SEATS: PROSPECTIVE}
+        schedule:
+          - obligation_key: L1-SUB
+            schedule_kind: REVENUE
+            line_type: NORMAL
+            amounts:
+              FY2026-P01: "9900.00"
+              FY2026-P02: "9900.00"
+              FY2026-P03: "9900.00"
+              FY2026-P04: "9900.00"
+              FY2026-P05: "9900.00"
+              FY2026-P06: "9900.00"
+              FY2026-P07: "9533.33"
+              FY2026-P08: "9533.34"
+              FY2026-P09: "9533.33"
+              FY2026-P10: "9533.33"
+              FY2026-P11: "9533.34"
+              FY2026-P12: "9533.33"
+          - obligation_key: L3-SEATS
+            schedule_kind: REVENUE
+            line_type: NORMAL
+            amounts:
+              FY2026-P07: "4766.67"
+              FY2026-P08: "4766.66"
+              FY2026-P09: "4766.67"
+              FY2026-P10: "4766.67"
+              FY2026-P11: "4766.66"
+              FY2026-P12: "4766.67"
+    subledger:
+      - period_key: FY2026-P07
+        entity: FS-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "14300.00"}
+          - {account_role: REVENUE, account: "4010", cr: "14300.00"}
+  - name: year-end
+    after_seq: "9"
+    as_of: "2026-12-31"
+    book: ASC606
+    contracts:
+      - contract: FS-03
+        version: {transaction_price: "161400.00", revenue_cum: "161400.00", billed_cum: "161400.00"}
+        obligations:
+          - obligation_key: L1-SUB
+            allocated_amount: "116600.00"
+            revenue_cum: "116600.00"
+            satisfaction_status: SATISFIED
+          - obligation_key: L2-IMPL
+            allocated_amount: "16200.00"
+            revenue_cum: "16200.00"
+            satisfaction_status: SATISFIED
+          - obligation_key: L3-SEATS
+            allocated_amount: "28600.00"
+            revenue_cum: "28600.00"
+            satisfaction_status: SATISFIED
+        balances: [{entity: FS-US, contract_liability: "0.00", contract_asset: "0.00", unbilled_receivable: "0.00"}]

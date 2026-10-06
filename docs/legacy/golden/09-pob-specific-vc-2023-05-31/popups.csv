@@ -1,0 +1,6 @@
+step,phase,seq,category,kind,title,text,answer
+09,handler:browse_file_POB_specific_VC,101,popup,QMessageBox.information,POB Specific VC Successfully Applied!,POB Specific VC has been processed retrospectively for the current date :),Ok
+09,report:latest_contracts,102,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+09,report:je_gross,105,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+09,report:je_delta,108,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+09,report:contract_history,111,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok

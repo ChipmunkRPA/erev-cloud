@@ -1,0 +1,390 @@
+{
+  "purpose": "Codex production-20260922-0422 \u00a74 / 0431 \u00a75 / 0453 \u00a73 (ACKed by the supervisor 2026-09-21): independent binding of lane F-CTR's MAIN DEFECT 2 DB evidence \u2014 identifiers, hashes and run lines; the retained shipped-db-equivalence entry carries its four cell values as written in the report; figures appear nowhere else; no re-run",
+  "lane": "F-CTR",
+  "branch": "sprint/l20",
+  "lane_database": "erev_rv_l20_test \u2014 the SESSION-scoped test_database fixture resets + migrates it once per pytest process (once per db_evidence.sh run; the parity driver calls pytest once)",
+  "code_head": {
+    "commit": "984ea7f34db7013825eeb6a872cdce02ba6d16ff",
+    "tree": "a90d3024faafdef5032fa9212f71ad186068a447",
+    "subject": "MAIN DEFECT 2 fix ((c)-QUALIFIED; 04 rev 1.80): the legacy Contract Modification import stores NULL in the T-CON-05 `contract_event.modification_id` column \u2014 le"
+  },
+  "docs_head_fail_first": {
+    "commit": "7e11e048f7af93782194696139c5cc4771807600",
+    "tree": "123c3c52bb04ba893a54091a5bcfc8516a318c6e"
+  },
+  "earlier_run_identity": {
+    "commit": "72944ccc0b11ca177914710dd1ab6fa815c17bcd",
+    "tree": "656e57ee3ea128400f181273e3c9ff10476315c4",
+    "parity_report": ".run/F-CTR/trn-fix/reports-parity-g-parity/parity/report.json",
+    "parity_report_sha256": "4a0f015bb4d2b9187243f7777575ace386f562baa5863f8972c07f0d43bd98d0",
+    "counts_as_written": {
+      "by_class": {
+        "A": 56,
+        "B": 9,
+        "C": 57
+      },
+      "by_kind": {
+        "contract_position": {
+          "A": 29,
+          "C": 21
+        },
+        "cumulative_catchup": {
+          "A": 1,
+          "C": 9
+        },
+        "initial_allocation": {
+          "A": 14,
+          "C": 2
+        },
+        "journal_entry_totals": {
+          "A": 10,
+          "B": 5,
+          "C": 9
+        },
+        "legacy_probe": {
+          "A": 1,
+          "B": 3
+        },
+        "pob_position": {
+          "B": 1,
+          "C": 16
+        },
+        "point_in_time_equivalence": {
+          "A": 1
+        }
+      },
+      "failed": 113,
+      "passed": 9,
+      "passed_by_kind": {
+        "journal_entry_totals": 6,
+        "legacy_probe": 3
+      },
+      "selected": 122,
+      "skipped": 0
+    },
+    "note": "9 passed / 113 failed: 111 golden-step-08 ScenarioBrokenError + legacy_probe::probe-P2-mod-reposts-pre-asc606-in-delta-je + point_in_time_equivalence::shipped-db-equivalence (the last byte-identical to the 984ea7f3 run)"
+  },
+  "runs": {
+    "fail_first_docs_head": {
+      "label": "ff-legacy-modification",
+      "head": "7e11e048",
+      "slot_2_waited_s": 0,
+      "start": "2026-09-21 20:36:22",
+      "end": "2026-09-21 20:38:13",
+      "selection": "backend/tests/domain/imports/legacy_v1/test_modification.py",
+      "rc": 1
+    },
+    "g2_legacy_modification": {
+      "label": "g2-legacy-modification",
+      "head": "984ea7f3",
+      "slot_2_waited_s": 0,
+      "start": "2026-09-21 21:00:10",
+      "end": "2026-09-21 21:02:20",
+      "selection": "backend/tests/domain/imports/legacy_v1/test_modification.py",
+      "rc": 0
+    },
+    "g2_pg_fk": {
+      "label": "g2-pg-fk",
+      "head": "984ea7f3",
+      "slot_2_waited_s": 0,
+      "start": "2026-09-21 21:02:20",
+      "end": "2026-09-21 21:02:31",
+      "selection": "backend/tests/pg/test_contract_event_modification_fk.py",
+      "rc": 0
+    },
+    "fixtures_check": "fixtures CHECK=1 rc=0 | OK fixtures",
+    "g2_parity": {
+      "label": "g2-parity",
+      "head": "984ea7f3",
+      "slot_2_waited_s": 0,
+      "start": "2026-09-21 21:02:32",
+      "end": "2026-09-21 21:04:31",
+      "selection": "the full parity driver, K unset",
+      "rc": 1
+    }
+  },
+  "parity": {
+    "driver": "support.parity.report (the FULL governed driver); K unset",
+    "report": ".run/F-CTR/trn-fix/reports-parity-g2-parity/parity/report.json",
+    "report_sha256": "eb4c26db87d0b1e8a496543abf6d3789ecae75e600cc456892f6f5fdd8c4dce5",
+    "counts_as_written": {
+      "by_class": {
+        "A": 56,
+        "B": 9,
+        "C": 57
+      },
+      "by_kind": {
+        "contract_position": {
+          "A": 29,
+          "C": 21
+        },
+        "cumulative_catchup": {
+          "A": 1,
+          "C": 9
+        },
+        "initial_allocation": {
+          "A": 14,
+          "C": 2
+        },
+        "journal_entry_totals": {
+          "A": 10,
+          "B": 5,
+          "C": 9
+        },
+        "legacy_probe": {
+          "A": 1,
+          "B": 3
+        },
+        "pob_position": {
+          "B": 1,
+          "C": 16
+        },
+        "point_in_time_equivalence": {
+          "A": 1
+        }
+      },
+      "failed": 1,
+      "passed": 121,
+      "passed_by_kind": {
+        "contract_position": 50,
+        "cumulative_catchup": 10,
+        "initial_allocation": 16,
+        "journal_entry_totals": 24,
+        "legacy_probe": 4,
+        "pob_position": 17
+      },
+      "selected": 122,
+      "skipped": 0
+    },
+    "exit_code": 1,
+    "build_sha": "984ea7f34db7013825eeb6a872cdce02ba6d16ff",
+    "worktree_dirty": false,
+    "failures_as_written": [
+      {
+        "cases": [
+          "shipped-db-equivalence"
+        ],
+        "exit_code": 1,
+        "skipped": [],
+        "stage": "cases"
+      }
+    ],
+    "selector": {
+      "marker_cases": 122,
+      "case_ids_sha256": "0aa43f8137d63c1640ad71f3680332074fa63ecc1c60212190f340124aff9d8c",
+      "case_ids": [
+        "catchup-08-Contract2-POB1",
+        "catchup-08-Contract2-POB3",
+        "catchup-09-Contract2-POB1",
+        "catchup-10-Contract1-POB3",
+        "catchup-11-Contract3-POB3",
+        "catchup-12-Contract3-POB2",
+        "catchup-12-Contract3-POB3",
+        "catchup-12-Contract4-POB1",
+        "catchup-12-Contract4-POB2",
+        "catchup-13-Contract3-POB3",
+        "final-pob-Contract1-POB1",
+        "final-pob-Contract1-POB2",
+        "final-pob-Contract1-POB3",
+        "final-pob-Contract1-POB4",
+        "final-pob-Contract2-POB1",
+        "final-pob-Contract2-POB2",
+        "final-pob-Contract2-POB3",
+        "final-pob-Contract2-VC1",
+        "final-pob-Contract3-POB1",
+        "final-pob-Contract3-POB2",
+        "final-pob-Contract3-POB3",
+        "final-pob-Contract3-POB4",
+        "final-pob-Contract3-POB5",
+        "final-pob-Contract4-POB1",
+        "final-pob-Contract4-POB2",
+        "final-pob-Contract4-POB3",
+        "final-pob-Contract4-VC1",
+        "je-month-2023-01",
+        "je-month-2023-02",
+        "je-month-2023-03",
+        "je-month-2023-04",
+        "je-month-2023-05",
+        "je-month-2023-06",
+        "je-month-2023-07",
+        "je-month-2023-08",
+        "je-month-2023-09",
+        "je-month-2023-10",
+        "je-month-2023-full-year",
+        "je-step-02",
+        "je-step-03",
+        "je-step-04",
+        "je-step-05",
+        "je-step-06",
+        "je-step-07",
+        "je-step-08",
+        "je-step-09",
+        "je-step-10",
+        "je-step-11",
+        "je-step-12",
+        "je-step-13",
+        "je-step-14",
+        "probe-P1-blank-memo-drops-progress-rows",
+        "probe-P2-mod-reposts-pre-asc606-in-delta-je",
+        "probe-P3-over-delivery-validation",
+        "probe-P4-duplicate-upload-double-counts",
+        "rollforward-02-Contract1",
+        "rollforward-02-Contract2",
+        "rollforward-03-Contract1",
+        "rollforward-03-Contract2",
+        "rollforward-03-Contract3",
+        "rollforward-03-Contract4",
+        "rollforward-04-Contract1",
+        "rollforward-04-Contract2",
+        "rollforward-04-Contract3",
+        "rollforward-04-Contract4",
+        "rollforward-05-Contract1",
+        "rollforward-05-Contract2",
+        "rollforward-05-Contract3",
+        "rollforward-05-Contract4",
+        "rollforward-06-Contract1",
+        "rollforward-06-Contract2",
+        "rollforward-06-Contract3",
+        "rollforward-06-Contract4",
+        "rollforward-07-Contract1",
+        "rollforward-07-Contract2",
+        "rollforward-07-Contract3",
+        "rollforward-07-Contract4",
+        "rollforward-08-Contract1",
+        "rollforward-08-Contract2",
+        "rollforward-08-Contract3",
+        "rollforward-08-Contract4",
+        "rollforward-09-Contract1",
+        "rollforward-09-Contract2",
+        "rollforward-09-Contract3",
+        "rollforward-09-Contract4",
+        "rollforward-10-Contract1",
+        "rollforward-10-Contract2",
+        "rollforward-10-Contract3",
+        "rollforward-10-Contract4",
+        "rollforward-11-Contract1",
+        "rollforward-11-Contract2",
+        "rollforward-11-Contract3",
+        "rollforward-11-Contract4",
+        "rollforward-12-Contract1",
+        "rollforward-12-Contract2",
+        "rollforward-12-Contract3",
+        "rollforward-12-Contract4",
+        "rollforward-13-Contract1",
+        "rollforward-13-Contract2",
+        "rollforward-13-Contract3",
+        "rollforward-13-Contract4",
+        "rollforward-14-Contract1",
+        "rollforward-14-Contract2",
+        "rollforward-14-Contract3",
+        "rollforward-14-Contract4",
+        "setup-alloc-Contract1-POB1",
+        "setup-alloc-Contract1-POB2",
+        "setup-alloc-Contract1-POB3",
+        "setup-alloc-Contract1-POB4",
+        "setup-alloc-Contract2-POB1",
+        "setup-alloc-Contract2-POB2",
+        "setup-alloc-Contract2-POB3",
+        "setup-alloc-Contract2-VC1",
+        "setup-alloc-Contract3-POB1",
+        "setup-alloc-Contract3-POB2",
+        "setup-alloc-Contract3-POB3",
+        "setup-alloc-Contract3-POB4",
+        "setup-alloc-Contract4-POB1",
+        "setup-alloc-Contract4-POB2",
+        "setup-alloc-Contract4-POB3",
+        "setup-alloc-Contract4-VC1",
+        "shipped-db-equivalence"
+      ],
+      "same_selection_as_72944ccc_run": true
+    }
+  },
+  "inputs": {
+    "fixtures_manifest": "backend/tests/fixtures/manifest.json",
+    "fixtures_manifest_sha256": "3dbd25e4b59e1ad7a690b98032cf8f856467109004c5192ac435fe006c998093",
+    "golden_manifest": "docs/legacy/golden/manifest.json",
+    "golden_manifest_sha256": "36c14348f3fc12bbac15032eed6d87607238049c4c2fe36a075e2433ee74610f",
+    "golden_tests": "docs/legacy/golden/golden-tests.json",
+    "golden_tests_sha256": "31fd2a081ff01f9838b478d3d39682f2889d2a132987407b296ffb1091acc850",
+    "deviations": "docs/legacy/golden/deviations.json",
+    "deviations_sha256": "a8ac329dccc955ca46de75f30868f668d343641612fa279fd2d1b23cfadd53ae",
+    "golden_edits_by_this_lane": "none"
+  },
+  "run_logs": {
+    "ff-legacy-modification": ".run/F-CTR/trn-fix/run-ff-legacy-modification.log",
+    "g2-legacy-modification": ".run/F-CTR/trn-fix/run-g2-legacy-modification.log",
+    "g2-pg-fk": ".run/F-CTR/trn-fix/run-g2-pg-fk.log",
+    "g2-parity": ".run/F-CTR/trn-fix/run-g2-parity.log"
+  },
+  "codex_0431_s5_supplement": {
+    "shipped_db_equivalence_entry_as_written": {
+      "classification": "A",
+      "dev_id": null,
+      "kind": "point_in_time_equivalence",
+      "message": "point_in_time_equivalence::shipped-db-equivalence: 2 mismatches\ncolumns_with_mismatch: expected [], actual ['Current Rev Rec'], legacy None\ncolumns[Current Rev Rec]: expected match, actual {'kind': 'numeric', 'mismatches': 4, 'max_abs_diff': '483647175421/100000000000000', 'first': [{'row_key': '3:Contract 1 POB #1 Hardware 1', 'legacy': '128.8404360753221', 'erev': '128.84', 'diff': '-4360753221/10000000000000'}, {'row_key': '3:Contract 1 POB #2 Software 1', 'legacy': '118.53320118929634', 'erev': '118.53', 'diff': '-160059464817/50000000000000'}, {'row_key': '3:Contract 1 POB #3 Consulting 1', 'legacy': '48.31516352824579', 'erev': '48.32', 'diff': '483647175421/100000000000000'}, {'row_key': '3:Contract 2 POB #1 Hardware 1', 'legacy': '58.84615384615385', 'erev': '58.85', 'diff': '76923076923/20000000000000'}]}, legacy None",
+      "mismatches": [
+        {
+          "actual": [
+            "Current Rev Rec"
+          ],
+          "expected": [],
+          "field": "columns_with_mismatch",
+          "legacy": null
+        },
+        {
+          "actual": {
+            "first": [
+              {
+                "diff": "-4360753221/10000000000000",
+                "erev": "128.84",
+                "legacy": "128.8404360753221",
+                "row_key": "3:Contract 1 POB #1 Hardware 1"
+              },
+              {
+                "diff": "-160059464817/50000000000000",
+                "erev": "118.53",
+                "legacy": "118.53320118929634",
+                "row_key": "3:Contract 1 POB #2 Software 1"
+              },
+              {
+                "diff": "483647175421/100000000000000",
+                "erev": "48.32",
+                "legacy": "48.31516352824579",
+                "row_key": "3:Contract 1 POB #3 Consulting 1"
+              },
+              {
+                "diff": "76923076923/20000000000000",
+                "erev": "58.85",
+                "legacy": "58.84615384615385",
+                "row_key": "3:Contract 2 POB #1 Hardware 1"
+              }
+            ],
+            "kind": "numeric",
+            "max_abs_diff": "483647175421/100000000000000",
+            "mismatches": 4
+          },
+          "expected": "match",
+          "field": "columns[Current Rev Rec]",
+          "legacy": null
+        }
+      ],
+      "passed": false
+    },
+    "sanitized_linkage": {
+      "legacy_source_sha256": "6e35b508218420c670f3f19d0fb1df83b32ff498bb45e6bd47df68cbdf1aafc2",
+      "legacy_source_sha256_method": "post-run READ-ONLY fixture reconstruction (Codex 0453 \u00a73): the reader's legacy_side('04') opens backend/tests/fixtures/legacy_db/ASC606-shipped-step04.db in SQLite read-only IMMUTABLE mode (no lane DB, no re-run); equals docs/legacy/golden/manifest.json shipped_db_sha256 and the fixtures-manifest pin the reader verifies. A reconstruction of the INPUT, distinct from a retained export / trace linkage of the actual run",
+      "legacy_rows": 24,
+      "prescribed_plan_uploads": 4,
+      "window": {
+        "start": "2023-01-01",
+        "end": "2023-12-31",
+        "method": "window_of over those reconstructed rows (itself pure): the calendar years every legacy Current Period lies in \u2014 a reconstruction of the input, not a retained value of the actual run"
+      },
+      "tenant_code": "legacy-parity-equivalence",
+      "export_run_id": null,
+      "export_run_id_note": "not retained: report.py records case outcomes only and the driver ran pytest -q; a read-only SELECT of the lane DB under the chain lock + slot 2 after the chain (21:34:16) found 0 report_run rows and 0 tenants \u2014 producer-attributed, cause UNVERIFIED (the named test_database fixture is SESSION-scoped and the driver calls pytest once, so a per-case reset is NOT the explanation); not re-run for evidence (Codex 0431 \u00a75 / 0453 \u00a73; supervisor)",
+      "lane_db_read_only_look": "RUN db-read-rpt10 | head 8c4e8d6d | start 2026-09-21 21:34:16 | end 2026-09-21 21:34:16 | read-only SELECT on erev_rv_l20_test (report_run RPT-10) under chain lock + slot 2 | rc=0",
+      "comparator_unchanged_since_104a954c": "support/parity/equivalence.py, erev_api/domain/migration/reconciliation.py (compare_point_in_time: numeric within 1/10000, text exact, Processing Time Log and Record Unique ID excluded), the RPT-10 builder and deviations.json: git diff --stat 104a954c 72944ccc empty"
+    }
+  }
+}

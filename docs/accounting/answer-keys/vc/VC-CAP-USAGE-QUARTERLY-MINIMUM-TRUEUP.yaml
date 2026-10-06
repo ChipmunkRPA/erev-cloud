@@ -1,0 +1,431 @@
+schema: erev-answer-key/1
+id: VC-CAP-USAGE-QUARTERLY-MINIMUM-TRUEUP
+title: "API usage with a non-cumulative quarterly minimum: measurement-period estimate, shortfall invoice and true-up"
+status: active
+families: [VC, REC, POS]
+tags: [usage]
+summary: "Capability key for the usage-and-minimum-commitment family (research 05 CAP-13; POLICIES PT-01), Fernhill Software. API calls are billed monthly in arrears at 0.10 per call with a minimum of 30,000.00 per calendar quarter; a quarter's shortfall is invoiced at quarter end and the minimum does not carry over. Because the minimum makes the monthly fee depend on usage in other months of the quarter, usage is not allocated to the month it occurs (POL-240 ESTIMATE_MEASUREMENT_PERIOD_TP), but each quarter's consideration relates only to that quarter, so each quarter is its own measurement period: one stand-ready POB per quarter with its minimum as fixed consideration and usage above the minimum as VC targeted to that quarter (32-40). Q1: expected usage 270,000 calls (27,000.00), no VC; revenue 10,000.00 a month; actual 240,000 calls (8,000.00 / 9,000.00 / 7,000.00) and a shortfall invoice of 6,000.00. Q2: version 2 expects 360,000 calls (VC 6,000.00, 12,000.00 a month); actual 400,000 calls (13,000.00 / 14,000.00 / 13,000.00); version 3 at 30 June true-ups VC to 10,000.00 and June revenue to 16,000.00. Revenue ahead of the usage and shortfall invoices is a contract asset."
+authority:
+  codification:
+    - "606-10-32-5"
+    - "606-10-32-11"
+    - "606-10-32-14"
+    - "606-10-32-39"
+    - "606-10-32-40"
+    - "606-10-25-31"
+    - "606-10-45-3"
+  ifrs: ["IFRS 15.85"]
+  practice: ["Deloitte, Cloud-based arrangements: minimum commitments", "POLICIES PT-01", "research 05 CAP-13"]
+  urls: []
+derived_from: {research04: [], research05: [], chk: [], golden: [], dev: []}
+requirements: [REQ-REC-010, REQ-TP-002, REQ-TP-004, REQ-ALC-005, REQ-BIL-004]
+policy_refs: [POL-040, POL-041, POL-090, POL-240]
+review: {author: answer-keys-industries, authored_on: "2026-09-12", reviewer: null, reviewed_on: null, status: pending}
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: FS-US
+      name: "Fernhill Software US (Demo)"
+      functional_currency: USD
+      time_zone: America/Los_Angeles
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: "1"}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2026-06"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4010", name: "Revenue - services and subscriptions", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, product: API-QTR-MIN, account: "4010"}
+  customers: [{code: CUST-CAP-USG, name: "Quayside Analytics Inc. (Demo)"}]
+  pob_templates:
+    - code: TPL-API-QTR
+      obligation_kind: STANDARD
+      distinctness: series
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_A
+      recognition_method: TIME_ELAPSED
+      ratable_convention: MONTHLY_EVEN
+      series_increment_unit: month
+      policy_values:
+        balance.right_to_consideration: CONDITIONAL
+        usage.tier_minimum_method: ESTIMATE_MEASUREMENT_PERIOD_TP
+  products:
+    - code: API-QTR-MIN
+      name: "API platform, quarterly minimum commitment"
+      pob_template: TPL-API-QTR
+      revenue_category: USAGE
+  ssp_books:
+    - code: SSP-FS-US-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2025-01-01"
+          methodology_label: "Observable standalone prices (demo study)"
+          entries:
+            - product: API-QTR-MIN
+              currency: USD
+              method: observable
+              value_basis: AMOUNT  # D-93 (4): declared remaining-increments reading (the reading the key's oracle embodies); no value change
+              distinctness: distinct
+              ranges: [{point_value: "30000.00"}]
+  fx_rate_sets: []
+  rule_sets: []
+  policies:
+    tenant: {billing.posting: ERP, recognition.time_convention: MONTHLY_EVEN}
+    entities: {}
+    books: {}
+contracts:
+  - external_id: CAP-USAGE-MIN
+    customer: CUST-CAP-USG
+    contracting_entity: FS-US
+    transaction_currency: USD
+    inception_date: "2026-01-01"
+    lines:
+      - obligation_key: L1-Q1
+        product_code: API-QTR-MIN
+        quantity: "1"
+        total_price: "30000.00"
+        unit_price: "0.10"
+        start_date: "2026-01-01"
+        end_date: "2026-03-31"
+      - obligation_key: L2-Q2
+        product_code: API-QTR-MIN
+        quantity: "1"
+        total_price: "30000.00"
+        unit_price: "0.10"
+        start_date: "2026-04-01"
+        end_date: "2026-06-30"
+    estimates:
+      - element_code: VC-CAP-USG-Q1
+        estimate_kind: VARIABLE_CONSIDERATION
+        method: MOST_LIKELY_AMOUNT
+        obligation_key: L1-Q1
+        vc_element_type: USAGE
+        allocation_target: OBLIGATIONS
+        target_obligation_keys: [L1-Q1]
+        versions:
+          - version_no: "1"
+            effective_date: "2026-01-01"
+            unconstrained_amount: "0.00"
+            most_conservative_amount: "0.00"
+            constrained_amount: "0.00"
+            currency: USD
+            rationale: "Expected Q1 usage 270,000 calls is below the minimum."
+      - element_code: VC-CAP-USG-Q2
+        estimate_kind: VARIABLE_CONSIDERATION
+        method: MOST_LIKELY_AMOUNT
+        obligation_key: L2-Q2
+        vc_element_type: USAGE
+        allocation_target: OBLIGATIONS
+        target_obligation_keys: [L2-Q2]
+        versions:
+          - version_no: "1"
+            effective_date: "2026-01-01"
+            unconstrained_amount: "0.00"
+            most_conservative_amount: "0.00"
+            constrained_amount: "0.00"
+            currency: USD
+            rationale: "No Q2 forecast at inception."
+          - version_no: "2"
+            effective_date: "2026-04-01"
+            unconstrained_amount: "6000.00"
+            most_conservative_amount: "0.00"
+            constrained_amount: "6000.00"
+            currency: USD
+            rationale: "Q2 forecast 360,000 calls."
+          - version_no: "3"
+            effective_date: "2026-06-30"
+            unconstrained_amount: "10000.00"
+            most_conservative_amount: "10000.00"
+            constrained_amount: "10000.00"
+            currency: USD
+            rationale: "Actual Q2 usage 400,000 calls."
+timeline:
+  - seq: "1"
+    kind: event
+    contract: CAP-USAGE-MIN
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: "2"
+    kind: event
+    contract: CAP-USAGE-MIN
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: "3"
+    kind: event
+    contract: CAP-USAGE-MIN
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-01-01"
+    payload: {estimate: VC-CAP-USG-Q1, version_no: "1"}
+  - seq: "4"
+    kind: event
+    contract: CAP-USAGE-MIN
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-01-01"
+    payload: {estimate: VC-CAP-USG-Q2, version_no: "1"}
+  - seq: "5"
+    kind: event
+    contract: CAP-USAGE-MIN
+    event_type: USAGE_REPORTED
+    effective_date: "2026-01-31"
+    payload:
+      obligation_key: L1-Q1
+      usage_period_start: "2026-01-01"
+      usage_period_end: "2026-01-31"
+      metric: API_CALLS
+      quantity: "80000"
+      rated_amount: "8000.00"
+  - seq: "6"
+    kind: event
+    contract: CAP-USAGE-MIN
+    event_type: BILLING_RECORDED
+    effective_date: "2026-01-31"
+    payload:
+      invoice_number: USG-CAP-2026-01
+      line_external_id: USG-CAP-2026-01-1
+      amount: "8000.00"
+      issue_date: "2026-01-31"
+      obligation_key: L1-Q1
+  - seq: "7"
+    kind: event
+    contract: CAP-USAGE-MIN
+    event_type: USAGE_REPORTED
+    effective_date: "2026-02-28"
+    payload:
+      obligation_key: L1-Q1
+      usage_period_start: "2026-02-01"
+      usage_period_end: "2026-02-28"
+      metric: API_CALLS
+      quantity: "90000"
+      rated_amount: "9000.00"
+  - seq: "8"
+    kind: event
+    contract: CAP-USAGE-MIN
+    event_type: BILLING_RECORDED
+    effective_date: "2026-02-28"
+    payload:
+      invoice_number: USG-CAP-2026-02
+      line_external_id: USG-CAP-2026-02-1
+      amount: "9000.00"
+      issue_date: "2026-02-28"
+      obligation_key: L1-Q1
+  - seq: "9"
+    kind: event
+    contract: CAP-USAGE-MIN
+    event_type: USAGE_REPORTED
+    effective_date: "2026-03-31"
+    payload:
+      obligation_key: L1-Q1
+      usage_period_start: "2026-03-01"
+      usage_period_end: "2026-03-31"
+      metric: API_CALLS
+      quantity: "70000"
+      rated_amount: "7000.00"
+  - seq: "10"
+    kind: event
+    contract: CAP-USAGE-MIN
+    event_type: BILLING_RECORDED
+    effective_date: "2026-03-31"
+    payload:
+      invoice_number: USG-CAP-2026-03
+      line_external_id: USG-CAP-2026-03-1
+      amount: "7000.00"
+      issue_date: "2026-03-31"
+      obligation_key: L1-Q1
+  - seq: "11"
+    kind: event
+    contract: CAP-USAGE-MIN
+    event_type: BILLING_RECORDED
+    effective_date: "2026-03-31"
+    payload:
+      invoice_number: SHORTFALL-CAP-Q1
+      line_external_id: SHORTFALL-CAP-Q1-1
+      amount: "6000.00"
+      issue_date: "2026-03-31"
+      obligation_key: L1-Q1
+  - seq: "12"
+    kind: event
+    contract: CAP-USAGE-MIN
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-04-01"
+    payload: {estimate: VC-CAP-USG-Q2, version_no: "2"}
+  - seq: "13"
+    kind: event
+    contract: CAP-USAGE-MIN
+    event_type: USAGE_REPORTED
+    effective_date: "2026-04-30"
+    payload:
+      obligation_key: L2-Q2
+      usage_period_start: "2026-04-01"
+      usage_period_end: "2026-04-30"
+      metric: API_CALLS
+      quantity: "130000"
+      rated_amount: "13000.00"
+  - seq: "14"
+    kind: event
+    contract: CAP-USAGE-MIN
+    event_type: BILLING_RECORDED
+    effective_date: "2026-04-30"
+    payload:
+      invoice_number: USG-CAP-2026-04
+      line_external_id: USG-CAP-2026-04-1
+      amount: "13000.00"
+      issue_date: "2026-04-30"
+      obligation_key: L2-Q2
+  - seq: "15"
+    kind: event
+    contract: CAP-USAGE-MIN
+    event_type: USAGE_REPORTED
+    effective_date: "2026-05-31"
+    payload:
+      obligation_key: L2-Q2
+      usage_period_start: "2026-05-01"
+      usage_period_end: "2026-05-31"
+      metric: API_CALLS
+      quantity: "140000"
+      rated_amount: "14000.00"
+  - seq: "16"
+    kind: event
+    contract: CAP-USAGE-MIN
+    event_type: BILLING_RECORDED
+    effective_date: "2026-05-31"
+    payload:
+      invoice_number: USG-CAP-2026-05
+      line_external_id: USG-CAP-2026-05-1
+      amount: "14000.00"
+      issue_date: "2026-05-31"
+      obligation_key: L2-Q2
+  - seq: "17"
+    kind: event
+    contract: CAP-USAGE-MIN
+    event_type: USAGE_REPORTED
+    effective_date: "2026-06-30"
+    payload:
+      obligation_key: L2-Q2
+      usage_period_start: "2026-06-01"
+      usage_period_end: "2026-06-30"
+      metric: API_CALLS
+      quantity: "130000"
+      rated_amount: "13000.00"
+  - seq: "18"
+    kind: event
+    contract: CAP-USAGE-MIN
+    event_type: BILLING_RECORDED
+    effective_date: "2026-06-30"
+    payload:
+      invoice_number: USG-CAP-2026-06
+      line_external_id: USG-CAP-2026-06-1
+      amount: "13000.00"
+      issue_date: "2026-06-30"
+      obligation_key: L2-Q2
+  - seq: "19"
+    kind: event
+    contract: CAP-USAGE-MIN
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-06-30"
+    payload: {estimate: VC-CAP-USG-Q2, version_no: "3"}
+checkpoints:
+  - name: january-contract-asset
+    after_seq: "6"
+    as_of: "2026-01-31"
+    book: ASC606
+    contracts:
+      - contract: CAP-USAGE-MIN
+        version: {transaction_price: "60000.00", revenue_cum: "10000.00", billed_cum: "8000.00"}
+        obligations:
+          - obligation_key: L1-Q1
+            allocated_amount: "30000.00"
+            revenue_cum: "10000.00"
+            satisfaction_status: PARTIALLY_SATISFIED
+          - obligation_key: L2-Q2
+            allocated_amount: "30000.00"
+            revenue_cum: "0.00"
+            satisfaction_status: UNSATISFIED
+        balances: [{entity: FS-US, contract_liability: "0.00", contract_asset: "2000.00", unbilled_receivable: "0.00"}]
+    subledger:
+      - period_key: FY2026-P01
+        entity: FS-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_ASSET, account: "1200", dr: "2000.00"}
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "8000.00"}
+          - {account_role: REVENUE, account: "4010", cr: "10000.00"}
+  - name: q1-shortfall
+    after_seq: "11"
+    as_of: "2026-03-31"
+    book: ASC606
+    contracts:
+      - contract: CAP-USAGE-MIN
+        version: {transaction_price: "60000.00", revenue_cum: "30000.00", billed_cum: "30000.00"}
+        obligations:
+          - obligation_key: L1-Q1
+            allocated_amount: "30000.00"
+            revenue_cum: "30000.00"
+            satisfaction_status: SATISFIED
+          - obligation_key: L2-Q2
+            allocated_amount: "30000.00"
+            revenue_cum: "0.00"
+            satisfaction_status: UNSATISFIED
+        balances: [{entity: FS-US, contract_liability: "0.00", contract_asset: "0.00", unbilled_receivable: "0.00"}]
+    subledger:
+      - period_key: FY2026-P03
+        entity: FS-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_ASSET, account: "1200", cr: "3000.00"}
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "13000.00"}
+          - {account_role: REVENUE, account: "4010", cr: "10000.00"}
+  - name: april
+    after_seq: "14"
+    as_of: "2026-04-30"
+    book: ASC606
+    contracts:
+      - contract: CAP-USAGE-MIN
+        version: {transaction_price: "66000.00", revenue_cum: "42000.00", billed_cum: "43000.00"}
+        obligations:
+          - obligation_key: L1-Q1
+            allocated_amount: "30000.00"
+            revenue_cum: "30000.00"
+            satisfaction_status: SATISFIED
+          - obligation_key: L2-Q2
+            allocated_amount: "36000.00"
+            revenue_cum: "12000.00"
+            satisfaction_status: PARTIALLY_SATISFIED
+        balances: [{entity: FS-US, contract_liability: "1000.00", contract_asset: "0.00", unbilled_receivable: "0.00"}]
+  - name: q2-true-up
+    after_seq: "19"
+    as_of: "2026-06-30"
+    book: ASC606
+    contracts:
+      - contract: CAP-USAGE-MIN
+        version: {transaction_price: "70000.00", revenue_cum: "70000.00", billed_cum: "70000.00"}
+        obligations:
+          - obligation_key: L1-Q1
+            allocated_amount: "30000.00"
+            revenue_cum: "30000.00"
+            satisfaction_status: SATISFIED
+          - obligation_key: L2-Q2
+            allocated_amount: "40000.00"
+            revenue_cum: "40000.00"
+            satisfaction_status: SATISFIED
+        balances: [{entity: FS-US, contract_liability: "0.00", contract_asset: "0.00", unbilled_receivable: "0.00"}]
+    subledger:
+      - period_key: FY2026-P06
+        entity: FS-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "16000.00"}
+          - {account_role: REVENUE, account: "4010", cr: "16000.00"}

@@ -1,0 +1,279 @@
+schema: erev-answer-key/1
+id: POB-WM-01-THIRD-PARTY-COMMISSIONS-NET
+title: "Third-party marketplace orders: agent commission presented net, payment service presented gross"
+status: active
+families: [POB, REC, JE]
+tags: [portfolio]
+summary: "research 05 §17 worked example, first quarter of 2026. Wayfarer is merchant of record for third-party sellers: buyers pay the platform 1,000,000.00 of gross merchandise value (300,000.00 / 330,000.00 / 370,000.00 by month), and the platform keeps a 15% commission. The specified good is the seller's product, which Wayfarer never controls (no inventory risk, no pricing discretion): Wayfarer is an agent and revenue is the commission (606-10-55-38): 45,000.00 / 49,500.00 / 55,500.00. The gross amount relieves the contract liability and the seller payable of 850,000.00 goes to BILLING_CLEARING with clearing_purpose AP_SUPPLIER (JET-02 agent case, POL-030). Wayfarer also provides its own payment processing service to sellers for 3% (30,000.00), which it controls: principal, gross revenue, invoiced monthly by deduction from payouts. GMV is a memo measure."
+authority:
+  codification: ["606-10-55-36", "606-10-55-36A", "606-10-55-37A", "606-10-55-38", "606-10-55-39", "606-10-50-12"]
+  ifrs: ["IFRS 15.B36", "IFRS 15.B37"]
+  practice: ["DART 10.1 to 10.3 (principal versus agent)", "FASB Example 45 (606-10-55-317 to 55-319)"]
+  urls: []
+derived_from: {research04: [], research05: [WM-01], chk: [], golden: [], dev: []}
+requirements: [REQ-POB-009, REQ-REC-001, REQ-JE-002]
+policy_refs: [POL-030]
+review: {author: answer-keys-industries, authored_on: "2026-09-12", reviewer: null, reviewed_on: null, status: pending}
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: WM-US
+      name: "Wayfarer Marketplace US (Demo)"
+      functional_currency: USD
+      time_zone: America/New_York
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: "1"}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2026-03"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2050", name: "Payable to suppliers clearing", account_type: LIABILITY}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4010", name: "Revenue - services and subscriptions", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, product: MKT-FACILITATION-3P, account: "4010"}
+    - {account_role: REVENUE, product: PAYMENT-SVC, account: "4010"}
+    - {account_role: BILLING_CLEARING, clearing_purpose: AP_SUPPLIER, account: "2050"}
+  customers: [{code: CUST-WM01, name: "Q1 2026 third-party seller cohort (Demo)"}]
+  pob_templates:
+    - code: TPL-FACILITATION
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: POINT_IN_TIME
+      over_time_criterion: NOT_APPLICABLE
+      recognition_method: POINT_IN_TIME
+      principal_agent: AGENT
+      policy_values: {balance.right_to_consideration: UNCONDITIONAL}
+    - code: TPL-PAYMENT-SVC
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: POINT_IN_TIME
+      over_time_criterion: NOT_APPLICABLE
+      recognition_method: POINT_IN_TIME
+      policy_values: {balance.right_to_consideration: UNCONDITIONAL}
+  products:
+    - code: MKT-FACILITATION-3P
+      name: "Marketplace facilitation, third-party orders"
+      pob_template: TPL-FACILITATION
+      revenue_category: COMMISSIONS
+      principal_agent: AGENT
+    - code: PAYMENT-SVC
+      name: "Seller payment processing service"
+      pob_template: TPL-PAYMENT-SVC
+      revenue_category: PAYMENTS
+      principal_agent: PRINCIPAL
+  ssp_books:
+    - code: SSP-WM-US-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2025-01-01"
+          methodology_label: "Observable standalone prices (demo study)"
+          entries:
+            - product: MKT-FACILITATION-3P
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges: [{point_value: "0.15"}]
+            - product: PAYMENT-SVC
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges: [{point_value: "0.03"}]
+  fx_rate_sets: []
+  rule_sets: []
+  policies:
+    tenant: {billing.posting: ERP, recognition.time_convention: MONTHLY_EVEN}
+    entities: {}
+    books: {}
+contracts:
+  - external_id: WM-01
+    customer: CUST-WM01
+    contracting_entity: WM-US
+    transaction_currency: USD
+    inception_date: "2026-01-01"
+    contract_type: PORTFOLIO
+    lines:
+      - obligation_key: L1-FACILITATION
+        product_code: MKT-FACILITATION-3P
+        quantity: "1000000"
+        total_price: "150000.00"
+      - {obligation_key: L2-PAYMENTS, product_code: PAYMENT-SVC, quantity: "1000000", total_price: "30000.00"}
+    judgements:
+      - handle: JDG-WM01-PA
+        topic: PRINCIPAL_AGENT
+        subject_obligation_key: L1-FACILITATION
+        conclusion: "Agent: sellers set prices, hold inventory and fulfil; Wayfarer arranges the sale (606-10-55-38)."
+        questionnaire:
+          obligation_key: L1-FACILITATION
+          conclusion: AGENT
+          gross_to_net_basis: FIXED_FEE
+          amount: "150000.00"
+timeline:
+  - seq: "1"
+    kind: event
+    contract: WM-01
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: "2"
+    kind: event
+    contract: WM-01
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: "3"
+    kind: event
+    contract: WM-01
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-01-31"
+    payload: {obligation_key: L1-FACILITATION, quantity: "300000", trigger: DELIVERY}
+  - seq: "4"
+    kind: event
+    contract: WM-01
+    event_type: BILLING_RECORDED
+    effective_date: "2026-01-31"
+    payload:
+      invoice_number: GMV-WM01-2026-01
+      line_external_id: GMV-WM01-2026-01-1
+      amount: "300000.00"
+      issue_date: "2026-01-31"
+      obligation_key: L1-FACILITATION
+  - seq: "5"
+    kind: event
+    contract: WM-01
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-01-31"
+    payload: {obligation_key: L2-PAYMENTS, quantity: "300000", trigger: DELIVERY}
+  - seq: "6"
+    kind: event
+    contract: WM-01
+    event_type: BILLING_RECORDED
+    effective_date: "2026-01-31"
+    payload:
+      invoice_number: PAYFEE-WM01-2026-01
+      line_external_id: PAYFEE-WM01-2026-01-1
+      amount: "9000.00"
+      issue_date: "2026-01-31"
+      obligation_key: L2-PAYMENTS
+  - seq: "7"
+    kind: event
+    contract: WM-01
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-02-28"
+    payload: {obligation_key: L1-FACILITATION, quantity: "330000", trigger: DELIVERY}
+  - seq: "8"
+    kind: event
+    contract: WM-01
+    event_type: BILLING_RECORDED
+    effective_date: "2026-02-28"
+    payload:
+      invoice_number: GMV-WM01-2026-02
+      line_external_id: GMV-WM01-2026-02-1
+      amount: "330000.00"
+      issue_date: "2026-02-28"
+      obligation_key: L1-FACILITATION
+  - seq: "9"
+    kind: event
+    contract: WM-01
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-02-28"
+    payload: {obligation_key: L2-PAYMENTS, quantity: "330000", trigger: DELIVERY}
+  - seq: "10"
+    kind: event
+    contract: WM-01
+    event_type: BILLING_RECORDED
+    effective_date: "2026-02-28"
+    payload:
+      invoice_number: PAYFEE-WM01-2026-02
+      line_external_id: PAYFEE-WM01-2026-02-1
+      amount: "9900.00"
+      issue_date: "2026-02-28"
+      obligation_key: L2-PAYMENTS
+  - seq: "11"
+    kind: event
+    contract: WM-01
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-03-31"
+    payload: {obligation_key: L1-FACILITATION, quantity: "370000", trigger: DELIVERY}
+  - seq: "12"
+    kind: event
+    contract: WM-01
+    event_type: BILLING_RECORDED
+    effective_date: "2026-03-31"
+    payload:
+      invoice_number: GMV-WM01-2026-03
+      line_external_id: GMV-WM01-2026-03-1
+      amount: "370000.00"
+      issue_date: "2026-03-31"
+      obligation_key: L1-FACILITATION
+  - seq: "13"
+    kind: event
+    contract: WM-01
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-03-31"
+    payload: {obligation_key: L2-PAYMENTS, quantity: "370000", trigger: DELIVERY}
+  - seq: "14"
+    kind: event
+    contract: WM-01
+    event_type: BILLING_RECORDED
+    effective_date: "2026-03-31"
+    payload:
+      invoice_number: PAYFEE-WM01-2026-03
+      line_external_id: PAYFEE-WM01-2026-03-1
+      amount: "11100.00"
+      issue_date: "2026-03-31"
+      obligation_key: L2-PAYMENTS
+checkpoints:
+  - name: january
+    after_seq: "6"
+    as_of: "2026-01-31"
+    book: ASC606
+    contracts:
+      - contract: WM-01
+        version: {revenue_cum: "54000.00", billed_cum: "309000.00", transaction_price: "180000.00"}
+        obligations:
+          - obligation_key: L1-FACILITATION
+            principal_agent: AGENT
+            revenue_cum: "45000.00"
+            gross_amount_memo: "300000.00"
+          - {obligation_key: L2-PAYMENTS, principal_agent: PRINCIPAL, revenue_cum: "9000.00"}
+        balances: [{entity: WM-US, contract_liability: "0.00", contract_asset: "0.00", unbilled_receivable: "0.00"}]
+    subledger:
+      - period_key: FY2026-P01
+        entity: WM-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: BILLING_CLEARING, clearing_purpose: AP_SUPPLIER, account: "2050", cr: "255000.00"}
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "309000.00"}
+          - {account_role: REVENUE, account: "4010", cr: "54000.00"}
+  - name: quarter-end
+    after_seq: "14"
+    as_of: "2026-03-31"
+    book: ASC606
+    contracts:
+      - contract: WM-01
+        version: {revenue_cum: "180000.00", billed_cum: "1030000.00", transaction_price: "180000.00"}
+        obligations:
+          - obligation_key: L1-FACILITATION
+            principal_agent: AGENT
+            revenue_cum: "150000.00"
+            gross_amount_memo: "1000000.00"
+          - {obligation_key: L2-PAYMENTS, principal_agent: PRINCIPAL, revenue_cum: "30000.00"}
+        balances: [{entity: WM-US, contract_liability: "0.00", contract_asset: "0.00", unbilled_receivable: "0.00"}]
+    subledger:
+      - period_key: FY2026-P03
+        entity: WM-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: BILLING_CLEARING, clearing_purpose: AP_SUPPLIER, account: "2050", cr: "314500.00"}
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "381100.00"}
+          - {account_role: REVENUE, account: "4010", cr: "66600.00"}

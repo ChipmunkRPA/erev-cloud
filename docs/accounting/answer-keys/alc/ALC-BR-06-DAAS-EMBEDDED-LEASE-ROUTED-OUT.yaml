@@ -1,0 +1,229 @@
+schema: erev-answer-key/1
+id: ALC-BR-06-DAAS-EMBEDDED-LEASE-ROUTED-OUT
+title: "Device-as-a-service with an embedded equipment lease routed to ASC 842 after allocation"
+status: active
+families: [ALC, ONB, REC]
+tags: []
+summary: "A 36-month robot-as-a-service arrangement (2026 to 2028) charges 3,000.00 a month (108,000.00). The customer controls the use of an identified robot (lease component, SSP 90,000.00) and receives fleet software and maintenance (Topic 606 service, SSP 30,000.00). The lessor allocates the consideration on relative SSP (842-10-15-38 to 15-42, using 606-10-32-28 to 32-41): lease 81,000.00, service 27,000.00. The lease allocation is out of scope (scope flag LEASE_842, REQ-CON-016): no revenue, schedule or journal line for it, and an entry in the scope exclusion register (POLICIES PT-09; REQ-03 §12 rule 1). The service is recognised 750.00 a month. The service share of the monthly fee is invoiced quarterly in advance (2,250.00); the lease share belongs to the lease system."
+authority:
+  codification:
+    - "606-10-15-2"
+    - "606-10-32-28"
+    - "606-10-32-29"
+    - "842-10-15-38"
+    - "842-10-15-39"
+    - "842-10-15-40"
+    - "842-10-15-42"
+  ifrs: ["IFRS 16.B32", "IFRS 16.B33"]
+  practice: ["POLICIES PT-09"]
+  urls: []
+derived_from: {research04: [], research05: [BR-06], chk: [], golden: [], dev: []}
+requirements: [REQ-CON-016, REQ-ALC-001, REQ-REC-003]
+policy_refs: [POL-231, POL-090]
+review: {author: answer-keys-industries, authored_on: "2026-09-12", reviewer: null, reviewed_on: null, status: pending}
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: BR-US
+      name: "Bracken Robotics US (Demo)"
+      functional_currency: USD
+      time_zone: America/Chicago
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: "1"}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2026-12"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4010", name: "Revenue - services and subscriptions", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, product: DAAS-SVC-36M, account: "4010"}
+  customers: [{code: CUST-BR06, name: "Pellworth Logistics Inc. (Demo)"}]
+  pob_templates:
+    - code: TPL-LEASE-COMPONENT
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: POINT_IN_TIME
+      over_time_criterion: NOT_APPLICABLE
+      recognition_method: MANUAL
+      policy_values: {balance.right_to_consideration: CONDITIONAL}
+    - code: TPL-DAAS-SVC
+      obligation_kind: STANDARD
+      distinctness: series
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_A
+      recognition_method: TIME_ELAPSED
+      ratable_convention: MONTHLY_EVEN
+      series_increment_unit: month
+      policy_values: {balance.right_to_consideration: CONDITIONAL}
+  products:
+    - code: ROBOT-LEASE-36M
+      name: "Robot equipment lease component, 36 months"
+      pob_template: TPL-LEASE-COMPONENT
+      revenue_category: LEASE
+    - code: DAAS-SVC-36M
+      name: "Fleet software and maintenance, 36 months"
+      pob_template: TPL-DAAS-SVC
+      revenue_category: SERVICES
+  ssp_books:
+    - code: SSP-BR-US-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2025-01-01"
+          methodology_label: "Observable standalone prices (demo study)"
+          entries:
+            - product: ROBOT-LEASE-36M
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges: [{point_value: "90000.00"}]
+            - product: DAAS-SVC-36M
+              currency: USD
+              method: observable
+              value_basis: AMOUNT  # D-93 (4): declared remaining-increments reading (the reading the key's oracle embodies); no value change
+              distinctness: distinct
+              ranges: [{point_value: "30000.00"}]
+  fx_rate_sets: []
+  rule_sets: []
+  policies:
+    tenant: {billing.posting: ERP, recognition.time_convention: MONTHLY_EVEN}
+    entities: {}
+    books: {}
+contracts:
+  - external_id: BR-06
+    customer: CUST-BR06
+    contracting_entity: BR-US
+    transaction_currency: USD
+    inception_date: "2026-01-01"
+    lines:
+      - obligation_key: L1-LEASE
+        product_code: ROBOT-LEASE-36M
+        quantity: "1"
+        total_price: "72000.00"
+        start_date: "2026-01-01"
+        end_date: "2028-12-31"
+        scope_flag: LEASE_842
+        out_of_scope_amount: "81000.00"
+      - obligation_key: L2-SERVICE
+        product_code: DAAS-SVC-36M
+        quantity: "1"
+        total_price: "36000.00"
+        start_date: "2026-01-01"
+        end_date: "2028-12-31"
+timeline:
+  - seq: "1"
+    kind: event
+    contract: BR-06
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: "2"
+    kind: event
+    contract: BR-06
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: "3"
+    kind: event
+    contract: BR-06
+    event_type: BILLING_RECORDED
+    effective_date: "2026-01-01"
+    payload:
+      invoice_number: INV-BR06-Q1
+      line_external_id: INV-BR06-Q1-1
+      amount: "2250.00"
+      issue_date: "2026-01-01"
+      obligation_key: L2-SERVICE
+  - seq: "4"
+    kind: event
+    contract: BR-06
+    event_type: BILLING_RECORDED
+    effective_date: "2026-04-01"
+    payload:
+      invoice_number: INV-BR06-Q2
+      line_external_id: INV-BR06-Q2-1
+      amount: "2250.00"
+      issue_date: "2026-04-01"
+      obligation_key: L2-SERVICE
+  - seq: "5"
+    kind: event
+    contract: BR-06
+    event_type: BILLING_RECORDED
+    effective_date: "2026-07-01"
+    payload:
+      invoice_number: INV-BR06-Q3
+      line_external_id: INV-BR06-Q3-1
+      amount: "2250.00"
+      issue_date: "2026-07-01"
+      obligation_key: L2-SERVICE
+  - seq: "6"
+    kind: event
+    contract: BR-06
+    event_type: BILLING_RECORDED
+    effective_date: "2026-10-01"
+    payload:
+      invoice_number: INV-BR06-Q4
+      line_external_id: INV-BR06-Q4-1
+      amount: "2250.00"
+      issue_date: "2026-10-01"
+      obligation_key: L2-SERVICE
+checkpoints:
+  - name: first-month
+    after_seq: "3"
+    as_of: "2026-01-31"
+    book: ASC606
+    contracts:
+      - contract: BR-06
+        version:
+          transaction_price: "27000.00"
+          out_of_scope_amount: "81000.00"
+          revenue_cum: "750.00"
+          billed_cum: "2250.00"
+        obligations:
+          - {obligation_key: L1-LEASE, scope_flag: LEASE_842, revenue_cum: "0.00"}
+          - obligation_key: L2-SERVICE
+            scope_flag: IN_SCOPE_606
+            allocated_amount: "27000.00"
+            revenue_cum: "750.00"
+        balances: [{entity: BR-US, contract_liability: "1500.00", contract_asset: "0.00", unbilled_receivable: "0.00"}]
+    subledger:
+      - period_key: FY2026-P01
+        entity: BR-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "750.00"}
+          - {account_role: REVENUE, account: "4010", cr: "750.00"}
+  - name: year-1
+    after_seq: "6"
+    as_of: "2026-12-31"
+    book: ASC606
+    contracts:
+      - contract: BR-06
+        version:
+          transaction_price: "27000.00"
+          out_of_scope_amount: "81000.00"
+          revenue_cum: "9000.00"
+          billed_cum: "9000.00"
+        obligations:
+          - {obligation_key: L1-LEASE, scope_flag: LEASE_842, revenue_cum: "0.00"}
+          - obligation_key: L2-SERVICE
+            scope_flag: IN_SCOPE_606
+            allocated_amount: "27000.00"
+            revenue_cum: "9000.00"
+        balances: [{entity: BR-US, contract_liability: "0.00", contract_asset: "0.00", unbilled_receivable: "0.00"}]
+    subledger:
+      - period_key: FY2026-P12
+        entity: BR-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "750.00"}
+          - {account_role: REVENUE, account: "4010", cr: "750.00"}

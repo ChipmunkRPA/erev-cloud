@@ -1,0 +1,192 @@
+# docs/accounting/answer-keys/pob/POB-S2-FUNCTIONAL-IP-55-62-ONE-CRITERION.yaml
+# Authored by lane ENG-D1 from the D-91 rules; every figure derived with Fraction arithmetic in .run/l9/d91-gaps-d1/derive.py before the engine ran the key.
+schema: "erev-answer-key/1"
+id: "POB-S2-FUNCTIONAL-IP-55-62-ONE-CRITERION"
+title: "Functional IP meeting only one 606-10-55-62 criterion stays a right to use recognised at availability (D-91 (viii))"
+status: "active"
+families: ["POB", "REC"]
+summary: "A 12,000.00 annual licence of functional intellectual property invoiced at inception, available 1 January 2026. The reviewed ASC606 LICENCE_NATURE record answers 606-10-55-62(a) true (the functionality is expected to change substantively) but (b) false (the customer is not required to use the updated IP), so the exception does not apply (S03-R-10 rev 1.6; D-91 gaps (viii)): the licence is a right to use, POINT_IN_TIME, and the whole 12,000.00 is recognised in January when the copy is available (606-10-55-58B, 55-63). The stored members are read, never ignored; with both true the same licence would be a right to access (POB-S2-FUNCTIONAL-IP-55-62-ACCESS)."
+authority:
+  codification: ["606-10-55-58", "606-10-55-58B", "606-10-55-62", "606-10-55-63"]
+  ifrs: ["IFRS 15.B56", "IFRS 15.B61"]
+  practice: []
+  urls: []
+derived_from:
+  research04: []
+  research05: []
+  chk: []
+  golden: []
+  dev: []
+requirements: ["REQ-POB-010"]
+policy_refs: ["POL-024"]
+review: {author: "lane ENG-D1 (D-91 gaps; ENA-2b, END-4b, ENA-4b)", authored_on: "2026-09-19", reviewer: null, reviewed_on: null, status: "pending"}
+runner: "engine"
+books: ["ASC606"]
+world:
+  tenant: {reporting_currency: "USD", preset: "DEFAULT"}
+  currencies: ["USD"]
+  entities:
+    - code: "US01"
+      name: "Example US (Demo)"
+      functional_currency: "USD"
+      time_zone: "America/New_York"
+      calendar: {pattern: "MONTHLY", fiscal_year_start_month: "1"}
+      books: ["ASC606"]
+  periods: {from: "2026-01", to: "2026-12"}
+  period_states: []
+  gl_accounts:
+    - {code: "1100", name: "Accounts receivable (billed)", account_type: "ASSET"}
+    - {code: "1101", name: "AR contra - implicit price concession", account_type: "ASSET"}
+    - {code: "1105", name: "Unbilled receivable", account_type: "ASSET"}
+    - {code: "1200", name: "Contract asset", account_type: "ASSET"}
+    - {code: "1210", name: "Customer incentive asset", account_type: "ASSET"}
+    - {code: "1310", name: "Asset for right to recover returned products", account_type: "ASSET"}
+    - {code: "1400", name: "Capitalised costs to obtain a contract", account_type: "ASSET"}
+    - {code: "1410", name: "Capitalised costs to fulfil a contract", account_type: "ASSET"}
+    - {code: "1500", name: "Noncash consideration received", account_type: "ASSET"}
+    - {code: "1800", name: "Intercompany due from", account_type: "ASSET"}
+    - {code: "1900", name: "Clearing - unapplied cash", account_type: "ASSET"}
+    - {code: "1910", name: "Clearing - inventory", account_type: "ASSET"}
+    - {code: "1920", name: "Clearing - investments", account_type: "ASSET"}
+    - {code: "2020", name: "Commissions payable (contract cost clearing)", account_type: "LIABILITY"}
+    - {code: "2050", name: "Clearing - supplier payables", account_type: "LIABILITY"}
+    - {code: "2060", name: "Clearing - billing", account_type: "LIABILITY"}
+    - {code: "2100", name: "Contract liability", account_type: "LIABILITY"}
+    - {code: "2105", name: "Deposit liability (Step 1 not met)", account_type: "LIABILITY"}
+    - {code: "2110", name: "Refund liability", account_type: "LIABILITY"}
+    - {code: "2200", name: "Sales tax payable", account_type: "LIABILITY"}
+    - {code: "2300", name: "Provision for anticipated losses on contracts", account_type: "LIABILITY"}
+    - {code: "2400", name: "Consideration payable to customer", account_type: "LIABILITY"}
+    - {code: "2600", name: "Assurance-type warranty provision", account_type: "LIABILITY"}
+    - {code: "2800", name: "Intercompany due to", account_type: "LIABILITY"}
+    - {code: "3100", name: "Clearing - equity", account_type: "EQUITY"}
+    - {code: "4000", name: "Revenue - products", account_type: "REVENUE"}
+    - {code: "4010", name: "Revenue - services / subscriptions", account_type: "REVENUE"}
+    - {code: "4020", name: "Revenue - licences / royalties", account_type: "REVENUE"}
+    - {code: "4030", name: "Revenue - material rights / loyalty / breakage", account_type: "REVENUE"}
+    - {code: "4900", name: "Pre-standard revenue", account_type: "REVENUE"}
+    - {code: "5000", name: "Cost of revenue", account_type: "EXPENSE"}
+    - {code: "5100", name: "Amortisation of contract costs", account_type: "EXPENSE"}
+    - {code: "5200", name: "Warranty expense", account_type: "EXPENSE"}
+    - {code: "5300", name: "Loss on contracts", account_type: "EXPENSE"}
+    - {code: "6000", name: "Impairment of contract cost assets", account_type: "EXPENSE"}
+    - {code: "7000", name: "Interest income", account_type: "REVENUE"}
+    - {code: "7100", name: "Interest expense", account_type: "EXPENSE"}
+    - {code: "7200", name: "Foreign exchange gain or loss", account_type: "EXPENSE"}
+    - {code: "7900", name: "Rounding", account_type: "EXPENSE"}
+  account_mapping:
+    - {account_role: "REVENUE", account: "4000"}
+    - {account_role: "CONTRACT_LIABILITY", account: "2100"}
+    - {account_role: "CONTRACT_ASSET", account: "1200"}
+    - {account_role: "UNBILLED_RECEIVABLE", account: "1105"}
+    - {account_role: "ACCOUNTS_RECEIVABLE", account: "1100"}
+    - {account_role: "BILLING_CLEARING", clearing_purpose: "BILLING", account: "2060"}
+    - {account_role: "BILLING_CLEARING", clearing_purpose: "UNAPPLIED_CASH", account: "1900"}
+    - {account_role: "BILLING_CLEARING", clearing_purpose: "AP_SUPPLIER", account: "2050"}
+    - {account_role: "BILLING_CLEARING", clearing_purpose: "INVENTORY", account: "1910"}
+    - {account_role: "BILLING_CLEARING", clearing_purpose: "EQUITY", account: "3100"}
+    - {account_role: "BILLING_CLEARING", clearing_purpose: "INVESTMENTS", account: "1920"}
+    - {account_role: "REFUND_LIABILITY", account: "2110"}
+    - {account_role: "RETURN_ASSET", account: "1310"}
+    - {account_role: "DEPOSIT_LIABILITY", account: "2105"}
+    - {account_role: "CONSIDERATION_PAYABLE", account: "2400"}
+    - {account_role: "CUSTOMER_INCENTIVE_ASSET", account: "1210"}
+    - {account_role: "COST_TO_OBTAIN_ASSET", account: "1400"}
+    - {account_role: "COST_TO_FULFILL_ASSET", account: "1410"}
+    - {account_role: "CONTRACT_COST_AMORTIZATION", account: "5100"}
+    - {account_role: "CONTRACT_COST_IMPAIRMENT", account: "6000"}
+    - {account_role: "LOSS_PROVISION", account: "2300"}
+    - {account_role: "LOSS_EXPENSE", account: "5300"}
+    - {account_role: "WARRANTY_PROVISION", account: "2600"}
+    - {account_role: "WARRANTY_EXPENSE", account: "5200"}
+    - {account_role: "INTEREST_INCOME", account: "7000"}
+    - {account_role: "INTEREST_EXPENSE", account: "7100"}
+    - {account_role: "FX_GAIN_LOSS", account: "7200"}
+    - {account_role: "INTERCOMPANY_DUE_TO", account: "2800"}
+    - {account_role: "INTERCOMPANY_DUE_FROM", account: "1800"}
+    - {account_role: "NONCASH_CONSIDERATION_ASSET", account: "1500"}
+    - {account_role: "SALES_TAX_PAYABLE", account: "2200"}
+    - {account_role: "PRE_STANDARD_REVENUE", account: "4900"}
+    - {account_role: "ROUNDING", account: "7900"}
+    - {account_role: "COST_OF_REVENUE", account: "5000"}
+    - {account_role: "CONTRACT_COST_CLEARING", account: "2020"}
+    - {account_role: "RECEIVABLE_CONTRA", account: "1101"}
+    - {account_role: "REVENUE", product: "LICENCE", account: "4020"}
+  customers:
+    - {code: "CUST-1", name: "Example Customer (Demo)"}
+  pob_templates:
+    - code: "TPL-LIC"
+      obligation_kind: "LICENCE"
+      distinctness: "distinct"
+      satisfaction_pattern: "POINT_IN_TIME"
+      over_time_criterion: "NOT_APPLICABLE"
+      recognition_method: "POINT_IN_TIME"
+      ratable_convention: "MONTHLY_EVEN"
+      licence_nature: "FUNCTIONAL"
+  products:
+    - {code: "LICENCE", name: "Software licence (Demo)", pob_template: "TPL-LIC"}
+  ssp_books:
+    - code: "SSP-MAIN"
+      resolution_mode: "EFFECTIVE_DATE"
+      versions:
+        - effective_from_date: "2026-01-01"
+          methodology_label: "Observable standalone prices"
+          entries:
+            - product: "LICENCE"
+              currency: "USD"
+              method: "observable"
+              distinctness: "distinct"
+              ranges:
+                - {point_value: "12000"}
+  fx_rate_sets: []
+  rule_sets: []
+  policies: {tenant: {recognition.time_convention: "MONTHLY_EVEN"}, entities: {}, books: {}}
+contracts:
+  - external_id: "C-LIC-ONE"
+    customer: "CUST-1"
+    contracting_entity: "US01"
+    transaction_currency: "USD"
+    inception_date: "2026-01-01"
+    judgements:
+      - handle: "J-LIC"
+        topic: "LICENCE_NATURE"
+        book_code: "ASC606"
+        conclusion: "Functional IP whose functionality is expected to change substantively, but the customer may keep using the prior version (606-10-55-62(b) not met): a right to use."
+        questionnaire: {obligation_key: "L1-LIC", nature: "FUNCTIONAL", functionality_expected_to_change_substantively: true, customer_required_to_use_updated_ip: false}
+    lines:
+      - {obligation_key: "L1-LIC", product_code: "LICENCE", quantity: "1", total_price: "12000.00", start_date: "2026-01-01", end_date: "2026-12-31"}
+timeline:
+  - {seq: 1, kind: "event", contract: "C-LIC-ONE", event_type: "CONTRACT_BOOKED", effective_date: "2026-01-01", payload: {}}
+  - {seq: 2, kind: "event", contract: "C-LIC-ONE", event_type: "CONTRACT_ACTIVATED", effective_date: "2026-01-01", payload: {}}
+  - seq: 3
+    kind: "event"
+    contract: "C-LIC-ONE"
+    event_type: "BILLING_RECORDED"
+    effective_date: "2026-01-01"
+    payload: {invoice_number: "INV-C-LIC-ONE", line_external_id: "INV-C-LIC-ONE-1", obligation_key: "L1-LIC", amount: "12000.00", issue_date: "2026-01-01"}
+  - seq: 4
+    kind: "event"
+    contract: "C-LIC-ONE"
+    event_type: "DELIVERY_RECORDED"
+    effective_date: "2026-01-01"
+    payload: {obligation_key: "L1-LIC", quantity: "1", trigger: "DELIVERY"}
+checkpoints:
+  - name: "january"
+    after_seq: 4
+    as_of: "2026-01-31"
+    book: "ASC606"
+    contracts:
+      - contract: "C-LIC-ONE"
+        status_in_book: "ACTIVE"
+        version: {revenue_cum: "12000.00", rpo_amount: "0.00"}
+        obligations:
+          - {obligation_key: "L1-LIC", revenue_cum: "12000.00", scheduled_amount: "0.00", awaiting_trigger_amount: "0.00", satisfaction_status: "SATISFIED"}
+    subledger:
+      - period_key: "FY2026-P01"
+        entity: "US01"
+        match: "exact"
+        contract: "C-LIC-ONE"
+        grain: "role_account"
+        lines:
+          - {account_role: "CONTRACT_LIABILITY", account: "2100", dr: "12000.00"}
+          - {account_role: "REVENUE", account: "4020", cr: "12000.00"}

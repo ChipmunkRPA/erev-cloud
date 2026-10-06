@@ -1,0 +1,142 @@
+# docs/accounting/answer-keys/je/JE-CHK-131-S8-EXPEDIENT-ONE-YEAR-COMMISSION-EXPENSED.yaml
+schema: "erev-answer-key/1"
+id: JE-CHK-131-S8-EXPEDIENT-ONE-YEAR-COMMISSION-EXPENSED
+title: >-
+  POL-140 one-year expedient: a commission with a 12-month amortisation period is not capitalised
+status: active
+families: [JE, COST]
+tags: [r04-s8]
+summary: >-
+  Research 04 S8-CONTRACT-COSTS expedient case re-anchored to 2026. Entity US01, USD, ERP billing, POL-140 APPLY. A
+  12-month subscription (12,000.00) with a 1,200.00 incremental commission and a commensurate renewal commission, so
+  the amortisation period is the 12-month term. The cost stays in the ERP expense account: no JET-09 line and no cost
+  asset (CHK-131 expedient case; 340-40-25-4). Cross-slice variants with distinct inputs, kept:
+  COST-S8-CONTRACT-COSTS-EXPEDIENT (different contract and events) (ADJUDICATION.md R-DUP-02).
+authority: {codification: ["340-40-25-4", "340-40-50-5"], ifrs: ["IFRS 15.94"], practice: [], urls: []}
+derived_from: {research04: [S8-CONTRACT-COSTS], research05: [], chk: [CHK-131], golden: [], dev: []}
+requirements: [REQ-CST-002]
+policy_refs: [POL-140, POL-141, POL-142]
+review:
+  author: answer-keys-fx-entity-books
+  authored_on: "2026-09-12"
+  reviewer: null
+  reviewed_on: null
+  status: pending
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: US01
+      name: "Avenmoor Systems Inc. (Demo)"
+      functional_currency: USD
+      time_zone: "America/New_York"
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: 1}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2026-01"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "1400", name: "Capitalised costs to obtain a contract", account_type: ASSET}
+    - {code: "1410", name: "Capitalised costs to fulfil a contract", account_type: ASSET}
+    - {code: "2020", name: "Commissions payable (contract cost clearing)", account_type: LIABILITY}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4010", name: "Revenue - services and subscriptions", account_type: REVENUE}
+    - {code: "5100", name: "Amortisation of contract costs", account_type: EXPENSE}
+    - {code: "6000", name: "Impairment of contract cost assets", account_type: EXPENSE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, account: "4010", product: SUB-12M}
+    - {account_role: COST_TO_OBTAIN_ASSET, account: "1400"}
+    - {account_role: COST_TO_FULFILL_ASSET, account: "1410"}
+    - {account_role: CONTRACT_COST_AMORTIZATION, account: "5100"}
+    - {account_role: CONTRACT_COST_IMPAIRMENT, account: "6000"}
+    - {account_role: CONTRACT_COST_CLEARING, account: "2020"}
+  customers:
+    - {code: CUST-1, name: "Pellworth Logistics Inc. (Demo)"}
+  pob_templates:
+    - code: TPL-RAT-ME
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_A
+      recognition_method: TIME_ELAPSED
+      ratable_convention: MONTHLY_EVEN
+  products:
+    - {code: SUB-12M, name: "Subscription, 12 months", pob_template: TPL-RAT-ME}
+  ssp_books:
+    - code: SSP-US-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2026-01-01"
+          methodology_label: "Observable standalone prices"
+          entries:
+            - product: SUB-12M
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "12000.00"}
+  fx_rate_sets: []
+  rule_sets: []
+  policies: {tenant: {billing.posting: ERP}, entities: {}, books: {}}
+contracts:
+  - external_id: C-JE-131X
+    customer: CUST-1
+    contracting_entity: US01
+    transaction_currency: USD
+    inception_date: "2026-01-01"
+    lines:
+      - obligation_key: L1-SUBSCRIPTION
+        product_code: SUB-12M
+        quantity: "1"
+        total_price: "12000.00"
+        start_date: "2026-01-01"
+        end_date: "2026-12-31"
+timeline:
+  - {seq: 1, kind: event, contract: C-JE-131X, event_type: CONTRACT_BOOKED, effective_date: "2026-01-01", payload: {}}
+  - seq: 2
+    kind: event
+    contract: C-JE-131X
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: 3
+    kind: event
+    contract: C-JE-131X
+    event_type: BILLING_RECORDED
+    effective_date: "2026-01-01"
+    payload: {invoice_number: INV-SUB-1, line_external_id: INV-SUB-1-1, amount: "12000.00", issue_date: "2026-01-01"}
+  - seq: 4
+    kind: event
+    contract: C-JE-131X
+    event_type: COST_INCURRED
+    effective_date: "2026-01-01"
+    payload:
+      purpose: COST_TO_OBTAIN
+      obligation_key: L1-SUBSCRIPTION
+      amount: "1200.00"
+      payee: SALES-REP-0023
+      plan_code: FY26-SMB
+      is_incremental: true
+checkpoints:
+  - name: january-close
+    after_seq: 4
+    as_of: "2026-01-31"
+    book: ASC606
+    contracts:
+      - contract: C-JE-131X
+        balances:
+          - {entity: US01, cost_asset_carrying: "0.00", contract_liability: "11000.00"}
+    subledger:
+      - period_key: FY2026-P01
+        entity: US01
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "1000.00"}
+          - {account_role: REVENUE, account: "4010", cr: "1000.00"}

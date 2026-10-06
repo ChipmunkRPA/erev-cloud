@@ -1,0 +1,231 @@
+schema: erev-answer-key/1
+id: REC-FS-07-FIXED-FEE-EAC-HOURS-REVISION
+title: "Fixed-fee implementation on labour hours with an EAC-hours revision and milestone billing"
+status: active
+families: [REC, VC, POS]
+tags: []
+summary: "research 05 §21 worked example. Fixed-fee implementation for 120,000.00 measured on labour hours; EAC 600 hours at inception, revised to 650 hours in month 2 (estimate version 2). Cumulative hours 150, 450 and 650 give revenue 30,000.00, 53,076.92 and 36,923.08; the month-2 amount includes a catch-up of −2,307.69 on month-1 hours because their progress falls from 25.00% to 23.08%. The customer is invoiced 60,000.00 at design sign-off (28 February) and 60,000.00 at go-live (31 March). Revenue ahead of milestone billing is conditional on further performance, so it is a contract asset (30,000.00 at 31 January; 23,076.92 at 28 February), never an unbilled receivable."
+authority:
+  codification: ["606-10-25-31", "606-10-55-20", "606-10-55-21", "606-10-32-43", "606-10-45-3", "250-10-45-17"]
+  ifrs: ["IFRS 15.B18", "IFRS 15.B19"]
+  practice: ["BDO Blueprint pp.176-178 (input methods for fixed-fee services)"]
+  urls: []
+derived_from: {research04: [], research05: [FS-07], chk: [], golden: [], dev: []}
+requirements: [REQ-REC-008, REQ-REC-019, REQ-TP-004, REQ-BIL-004, REQ-BIL-005]
+policy_refs: [POL-091, POL-122, POL-182, POL-183]
+review: {author: answer-keys-industries, authored_on: "2026-09-12", reviewer: null, reviewed_on: null, status: pending}
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: FS-US
+      name: "Fernhill Software US (Demo)"
+      functional_currency: USD
+      time_zone: America/Los_Angeles
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: "1"}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2026-03"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4010", name: "Revenue - services and subscriptions", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, product: IMPL-FIXED, account: "4010"}
+  customers: [{code: CUST-FS07, name: "Castellan Build Group Inc. (Demo)"}]
+  pob_templates:
+    - code: TPL-IMPL-FF
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_B
+      recognition_method: LABOUR_HOURS
+      policy_values: {balance.right_to_consideration: CONDITIONAL}
+  products:
+    - {code: IMPL-FIXED, name: "Fixed-fee implementation", pob_template: TPL-IMPL-FF, revenue_category: SERVICES}
+  ssp_books:
+    - code: SSP-FS-US-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2025-01-01"
+          methodology_label: "Observable standalone prices (demo study)"
+          entries:
+            - product: IMPL-FIXED
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges: [{point_value: "120000.00"}]
+  fx_rate_sets: []
+  rule_sets: []
+  policies:
+    tenant: {billing.posting: ERP, recognition.time_convention: MONTHLY_EVEN}
+    entities: {}
+    books: {}
+contracts:
+  - external_id: FS-07
+    customer: CUST-FS07
+    contracting_entity: FS-US
+    transaction_currency: USD
+    inception_date: "2026-01-01"
+    lines:
+      - obligation_key: L1-IMPL
+        product_code: IMPL-FIXED
+        quantity: "1"
+        total_price: "120000.00"
+        start_date: "2026-01-01"
+        end_date: "2026-03-31"
+    estimates:
+      - element_code: EAC-FS07-HOURS
+        estimate_kind: EAC
+        method: COST_BUILDUP
+        obligation_key: L1-IMPL
+        versions:
+          - version_no: "1"
+            effective_date: "2026-01-01"
+            expected_quantity: "600"
+            rationale: "Statement of work plan: 600 hours."
+          - version_no: "2"
+            effective_date: "2026-02-28"
+            expected_quantity: "650"
+            rationale: "Data migration rework adds 50 hours; information not available at inception (change in estimate)."
+timeline:
+  - seq: "1"
+    kind: event
+    contract: FS-07
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: "2"
+    kind: event
+    contract: FS-07
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: "3"
+    kind: event
+    contract: FS-07
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-01-01"
+    payload: {estimate: EAC-FS07-HOURS, version_no: "1"}
+  - seq: "4"
+    kind: event
+    contract: FS-07
+    event_type: PROGRESS_RECORDED
+    effective_date: "2026-01-31"
+    payload: {obligation_key: L1-IMPL, cumulative_progress_ratio: "0.25", measure: LABOUR_HOURS, hours_to_date: "150"}
+  - seq: "5"
+    kind: event
+    contract: FS-07
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-02-28"
+    payload: {estimate: EAC-FS07-HOURS, version_no: "2"}
+  - seq: "6"
+    kind: event
+    contract: FS-07
+    event_type: PROGRESS_RECORDED
+    effective_date: "2026-02-28"
+    payload:
+      obligation_key: L1-IMPL
+      cumulative_progress_ratio: "0.692307692307692308"
+      measure: LABOUR_HOURS
+      hours_to_date: "450"
+  - seq: "7"
+    kind: event
+    contract: FS-07
+    event_type: BILLING_RECORDED
+    effective_date: "2026-02-28"
+    payload:
+      invoice_number: INV-FS07-M1
+      line_external_id: INV-FS07-M1-1
+      amount: "60000.00"
+      issue_date: "2026-02-28"
+      obligation_key: L1-IMPL
+  - seq: "8"
+    kind: event
+    contract: FS-07
+    event_type: PROGRESS_RECORDED
+    effective_date: "2026-03-31"
+    payload: {obligation_key: L1-IMPL, cumulative_progress_ratio: "1", measure: LABOUR_HOURS, hours_to_date: "650"}
+  - seq: "9"
+    kind: event
+    contract: FS-07
+    event_type: BILLING_RECORDED
+    effective_date: "2026-03-31"
+    payload:
+      invoice_number: INV-FS07-M2
+      line_external_id: INV-FS07-M2-1
+      amount: "60000.00"
+      issue_date: "2026-03-31"
+      obligation_key: L1-IMPL
+checkpoints:
+  - name: month-1
+    after_seq: "4"
+    as_of: "2026-01-31"
+    book: ASC606
+    contracts:
+      - contract: FS-07
+        version: {transaction_price: "120000.00", revenue_cum: "30000.00", billed_cum: "0.00"}
+        obligations:
+          - obligation_key: L1-IMPL
+            allocated_amount: "120000.00"
+            revenue_cum: "30000.00"
+            satisfaction_status: PARTIALLY_SATISFIED
+        balances: [{entity: FS-US, contract_liability: "0.00", contract_asset: "30000.00", unbilled_receivable: "0.00"}]
+    subledger:
+      - period_key: FY2026-P01
+        entity: FS-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_ASSET, account: "1200", dr: "30000.00"}
+          - {account_role: REVENUE, account: "4010", cr: "30000.00"}
+  - name: month-2-eac-revision
+    after_seq: "7"
+    as_of: "2026-02-28"
+    book: ASC606
+    contracts:
+      - contract: FS-07
+        version: {transaction_price: "120000.00", revenue_cum: "83076.92", billed_cum: "60000.00"}
+        obligations:
+          - obligation_key: L1-IMPL
+            allocated_amount: "120000.00"
+            revenue_cum: "83076.92"
+            satisfaction_status: PARTIALLY_SATISFIED
+        balances: [{entity: FS-US, contract_liability: "0.00", contract_asset: "23076.92", unbilled_receivable: "0.00"}]
+    subledger:
+      - period_key: FY2026-P02
+        entity: FS-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_ASSET, account: "1200", cr: "6923.08"}
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "60000.00"}
+          - {account_role: REVENUE, account: "4010", cr: "53076.92"}
+  - name: go-live
+    after_seq: "9"
+    as_of: "2026-03-31"
+    book: ASC606
+    contracts:
+      - contract: FS-07
+        version: {transaction_price: "120000.00", revenue_cum: "120000.00", billed_cum: "120000.00"}
+        obligations:
+          - obligation_key: L1-IMPL
+            allocated_amount: "120000.00"
+            revenue_cum: "120000.00"
+            satisfaction_status: SATISFIED
+        balances: [{entity: FS-US, contract_liability: "0.00", contract_asset: "0.00", unbilled_receivable: "0.00"}]
+    subledger:
+      - period_key: FY2026-P03
+        entity: FS-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_ASSET, account: "1200", cr: "23076.92"}
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "60000.00"}
+          - {account_role: REVENUE, account: "4010", cr: "36923.08"}

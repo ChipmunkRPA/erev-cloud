@@ -1,0 +1,284 @@
+# docs/accounting/answer-keys/rnd/RND-CHK-004-CHK-006-S2-EX11-CASEA-OWNPRICES.yaml
+schema: "erev-answer-key/1"
+id: RND-CHK-004-CHK-006-S2-EX11-CASEA-OWNPRICES
+title: >-
+  Research 04 S2-EX11 re-baselined: 35,000.00 ratable over 24 months by cumulative rounding, no plug
+status: active
+families: [RND, ALC, REC, POS]
+tags: [r04-s2, subscription]
+summary: >-
+  FASB Example 11 Case A with the research 04 assumption SSPs (licence 100,000, installation 20,000, updates 30,000,
+  support 10,000) and a 140,000.00 price invoiced at inception; stated prices [A] 90,000 / 15,000 / 25,000 / 10,000.
+  Allocation 87,500.00 / 17,500.00 / 26,250.00 / 8,750.00. The licence transfers on 2026-01-01, installation completes
+  in January (output 100% on 2026-01-31), and updates and support run 2026-01-01 to 2027-12-31 under MONTHLY_EVEN
+  (whole months, ALG-11). The combined ratable amount 35,000.00 posts 1,458.33 / 1,458.34 / 1,458.33 in months 1 to 3
+  and 1,458.33 in month 24 (CHK-004), with 1,458.34 in months 2, 5, 8, 11, 14, 17, 20 and 23 (CHK-006 row S2-EX11).
+  Month-1 revenue 106,458.33 and the month-1 contract liability 33,541.67 are unchanged from research 04. Cross-slice
+  variants with distinct inputs, kept: POB-S2-EX11-CASEA-OWNPRICES (different events and policies) (ADJUDICATION.md
+  R-DUP-02).
+authority:
+  codification: ["606-10-25-19", "606-10-25-21", "606-10-32-28", "606-10-32-31", "606-10-25-31", "606-10-45-1"]
+  ifrs: ["IFRS 15.22", "IFRS 15.74", "IFRS 15.39"]
+  practice: []
+  urls: []
+derived_from: {research04: [S2-EX11-CASEA-OWNPRICES], research05: [], chk: [CHK-004, CHK-006], golden: [], dev: []}
+requirements: [REQ-ALC-001, REQ-REC-003, REQ-REC-019, REQ-BIL-003]
+policy_refs: [POL-002, POL-003, POL-090, POL-004]
+review:
+  author: answer-keys-fx-entity-books
+  authored_on: "2026-09-12"
+  reviewer: null
+  reviewed_on: null
+  status: pending
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: US01
+      name: "Avenmoor Systems Inc. (Demo)"
+      functional_currency: USD
+      time_zone: "America/New_York"
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: 1}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2027-12"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4010", name: "Revenue - services and subscriptions", account_type: REVENUE}
+    - {code: "4020", name: "Revenue - licences and royalties", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, account: "4020", product: LIC-SW}
+    - {account_role: REVENUE, account: "4010", product: INSTALL}
+    - {account_role: REVENUE, account: "4010", product: UPDATES-24}
+    - {account_role: REVENUE, account: "4010", product: SUPPORT-24}
+  customers:
+    - {code: CUST-1, name: "Pellworth Logistics Inc. (Demo)"}
+  pob_templates:
+    - code: TPL-PCT
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_B
+      recognition_method: OUTPUT_PERCENT
+    - code: TPL-PIT
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: POINT_IN_TIME
+      over_time_criterion: NOT_APPLICABLE
+      recognition_method: POINT_IN_TIME
+    - code: TPL-RAT-ME
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_A
+      recognition_method: TIME_ELAPSED
+      ratable_convention: MONTHLY_EVEN
+  products:
+    - {code: LIC-SW, name: "Software licence", pob_template: TPL-PIT}
+    - {code: INSTALL, name: Installation, pob_template: TPL-PCT}
+    - {code: UPDATES-24, name: "When-and-if-available updates, 24 months", pob_template: TPL-RAT-ME}
+    - {code: SUPPORT-24, name: "Technical support, 24 months", pob_template: TPL-RAT-ME}
+  ssp_books:
+    - code: SSP-US01-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2026-01-01"
+          methodology_label: "Observable standalone prices"
+          entries:
+            - product: LIC-SW
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "100000.00"}
+            - product: INSTALL
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "20000.00"}
+            - product: UPDATES-24
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "30000.00"}
+            - product: SUPPORT-24
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "10000.00"}
+  fx_rate_sets: []
+  rule_sets: []
+  policies: {tenant: {billing.posting: ERP}, entities: {}, books: {}}
+contracts:
+  - external_id: C-S2-EX11
+    customer: CUST-1
+    contracting_entity: US01
+    transaction_currency: USD
+    inception_date: "2026-01-01"
+    lines:
+      - {obligation_key: L1-LICENCE, product_code: LIC-SW, quantity: "1", total_price: "90000.00"}
+      - {obligation_key: L2-INSTALL, product_code: INSTALL, quantity: "1", total_price: "15000.00"}
+      - obligation_key: L3-UPDATES
+        product_code: UPDATES-24
+        quantity: "1"
+        total_price: "25000.00"
+        start_date: "2026-01-01"
+        end_date: "2027-12-31"
+      - obligation_key: L4-SUPPORT
+        product_code: SUPPORT-24
+        quantity: "1"
+        total_price: "10000.00"
+        start_date: "2026-01-01"
+        end_date: "2027-12-31"
+timeline:
+  - {seq: 1, kind: event, contract: C-S2-EX11, event_type: CONTRACT_BOOKED, effective_date: "2026-01-01", payload: {}}
+  - seq: 2
+    kind: event
+    contract: C-S2-EX11
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: 3
+    kind: event
+    contract: C-S2-EX11
+    event_type: BILLING_RECORDED
+    effective_date: "2026-01-01"
+    payload:
+      invoice_number: INV-EX11-1
+      line_external_id: INV-EX11-1-1
+      amount: "140000.00"
+      issue_date: "2026-01-01"
+  - seq: 4
+    kind: event
+    contract: C-S2-EX11
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-01-01"
+    payload: {obligation_key: L1-LICENCE, quantity: "1", trigger: CONTROL_TRANSFER}
+  - seq: 5
+    kind: event
+    contract: C-S2-EX11
+    event_type: PROGRESS_RECORDED
+    effective_date: "2026-01-31"
+    payload: {obligation_key: L2-INSTALL, cumulative_progress_ratio: "1", measure: OUTPUT_PERCENT}
+checkpoints:
+  - name: end-of-month-1
+    after_seq: 5
+    as_of: "2026-01-31"
+    book: ASC606
+    contracts:
+      - contract: C-S2-EX11
+        version: {transaction_price: "140000.00", revenue_cum: "106458.33", rpo_amount: "33541.67"}
+        obligations:
+          - {obligation_key: L1-LICENCE, allocated_amount: "87500.00", allocated_exact: "87500.000000"}
+          - {obligation_key: L2-INSTALL, allocated_amount: "17500.00", allocated_exact: "17500.000000"}
+          - {obligation_key: L3-UPDATES, allocated_amount: "26250.00", allocated_exact: "26250.000000"}
+          - {obligation_key: L4-SUPPORT, allocated_amount: "8750.00", allocated_exact: "8750.000000"}
+        balances:
+          - {entity: US01, contract_liability: "33541.67", contract_asset: "0.00", unbilled_receivable: "0.00"}
+    subledger:
+      - period_key: FY2026-P01
+        entity: US01
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "106458.33"}
+          - {account_role: REVENUE, account: "4010", cr: "18958.33"}
+          - {account_role: REVENUE, account: "4020", cr: "87500.00"}
+  - name: end-of-month-24
+    after_seq: 5
+    as_of: "2027-12-31"
+    book: ASC606
+    contracts:
+      - contract: C-S2-EX11
+        version: {revenue_cum: "140000.00", rpo_amount: "0.00"}
+        balances:
+          - {entity: US01, contract_liability: "0.00"}
+        schedule:
+          - obligation_key: L3-UPDATES
+            schedule_kind: REVENUE
+            line_type: NORMAL
+            amounts:
+              FY2026-P01: "1093.75"
+              FY2026-P02: "1093.75"
+              FY2026-P03: "1093.75"
+              FY2026-P04: "1093.75"
+              FY2026-P05: "1093.75"
+              FY2026-P06: "1093.75"
+              FY2026-P07: "1093.75"
+              FY2026-P08: "1093.75"
+              FY2026-P09: "1093.75"
+              FY2026-P10: "1093.75"
+              FY2026-P11: "1093.75"
+              FY2026-P12: "1093.75"
+              FY2027-P01: "1093.75"
+              FY2027-P02: "1093.75"
+              FY2027-P03: "1093.75"
+              FY2027-P04: "1093.75"
+              FY2027-P05: "1093.75"
+              FY2027-P06: "1093.75"
+              FY2027-P07: "1093.75"
+              FY2027-P08: "1093.75"
+              FY2027-P09: "1093.75"
+              FY2027-P10: "1093.75"
+              FY2027-P11: "1093.75"
+              FY2027-P12: "1093.75"
+          - obligation_key: L4-SUPPORT
+            schedule_kind: REVENUE
+            line_type: NORMAL
+            amounts:
+              FY2026-P01: "364.58"
+              FY2026-P02: "364.59"
+              FY2026-P03: "364.58"
+              FY2026-P04: "364.58"
+              FY2026-P05: "364.59"
+              FY2026-P06: "364.58"
+              FY2026-P07: "364.58"
+              FY2026-P08: "364.59"
+              FY2026-P09: "364.58"
+              FY2026-P10: "364.58"
+              FY2026-P11: "364.59"
+              FY2026-P12: "364.58"
+              FY2027-P01: "364.58"
+              FY2027-P02: "364.59"
+              FY2027-P03: "364.58"
+              FY2027-P04: "364.58"
+              FY2027-P05: "364.59"
+              FY2027-P06: "364.58"
+              FY2027-P07: "364.58"
+              FY2027-P08: "364.59"
+              FY2027-P09: "364.58"
+              FY2027-P10: "364.58"
+              FY2027-P11: "364.59"
+              FY2027-P12: "364.58"
+    subledger:
+      - period_key: FY2026-P02
+        entity: US01
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "1458.34"}
+          - {account_role: REVENUE, account: "4010", cr: "1458.34"}
+      - period_key: FY2027-P11
+        entity: US01
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "1458.34"}
+          - {account_role: REVENUE, account: "4010", cr: "1458.34"}
+      - period_key: FY2027-P12
+        entity: US01
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "1458.33"}
+          - {account_role: REVENUE, account: "4010", cr: "1458.33"}

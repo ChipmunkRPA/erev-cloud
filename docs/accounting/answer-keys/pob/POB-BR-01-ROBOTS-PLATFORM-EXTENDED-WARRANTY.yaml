@@ -1,0 +1,304 @@
+schema: erev-answer-key/1
+id: POB-BR-01-ROBOTS-PLATFORM-EXTENDED-WARRANTY
+title: "Robots with embedded firmware, platform subscription and a service-type extended warranty"
+status: active
+families: [POB, ALC, REC]
+tags: []
+summary: "research 05 §4 worked example. On 1 January 2026 a customer buys 100 robots with essential embedded firmware (one combined POB, delivered 5 January), a 24-month platform subscription (2026 to 2027) and, in the same negotiation, an extended warranty for years 2 and 3 that provides services beyond assurance (service-type POB, 2027 to 2028). Everything is invoiced 118,000.00 on delivery. Stated prices 85,000.00 / 25,000.00 / 8,000.00; SSPs 90,000.00 / 30,000.00 / 8,000.00. The warranty order is combined with the robot order (606-10-25-9(a)) and booked as one contract, so the discount is allocated over all three POBs by relative SSP: 82,968.75 / 27,656.25 / 7,375.00. Research 05 kept 82,500 / 27,500 / 8,000, which requires an approved 32-37 discount exception (discrepancy recorded in the coverage file). The assurance-type warranty accrual is an ERP posting here (POL-022 EXTERNAL at entity level)."
+authority:
+  codification:
+    - "606-10-25-9"
+    - "606-10-25-21"
+    - "606-10-55-30"
+    - "606-10-55-32"
+    - "606-10-32-28"
+    - "606-10-32-29"
+    - "606-10-32-31"
+    - "606-10-25-31"
+  ifrs: ["IFRS 15.B29", "IFRS 15.74"]
+  practice: ["Deloitte, Smart devices (embedded software essential to functionality)"]
+  urls: []
+derived_from: {research04: [], research05: [BR-01], chk: [], golden: [], dev: []}
+requirements: [REQ-POB-001, REQ-POB-008, REQ-ALC-001, REQ-ALC-002, REQ-CON-009, REQ-REC-001, REQ-REC-003]
+policy_refs: [POL-002, POL-022, POL-076, POL-090]
+review: {author: answer-keys-industries, authored_on: "2026-09-12", reviewer: null, reviewed_on: null, status: pending}
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: BR-US
+      name: "Bracken Robotics US (Demo)"
+      functional_currency: USD
+      time_zone: America/Chicago
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: "1"}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2028-12"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4000", name: "Revenue - products", account_type: REVENUE}
+    - {code: "4010", name: "Revenue - services and subscriptions", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, product: ROBOT-FW-LOT100, account: "4000"}
+    - {account_role: REVENUE, product: PLATFORM-24M, account: "4010"}
+    - {account_role: REVENUE, product: EXT-WARRANTY-Y2Y3, account: "4010"}
+  customers: [{code: CUST-BR01, name: "Fenwright Logistik AG (Demo)"}]
+  pob_templates:
+    - code: TPL-ROBOT
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: POINT_IN_TIME
+      over_time_criterion: NOT_APPLICABLE
+      recognition_method: POINT_IN_TIME
+      warranty_type: ASSURANCE
+      policy_values: {balance.right_to_consideration: UNCONDITIONAL}
+    - code: TPL-PLATFORM
+      obligation_kind: STANDARD
+      distinctness: series
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_A
+      recognition_method: TIME_ELAPSED
+      ratable_convention: MONTHLY_EVEN
+      series_increment_unit: month
+      policy_values: {balance.right_to_consideration: CONDITIONAL}
+    - code: TPL-EXT-WARRANTY
+      obligation_kind: SERVICE_WARRANTY
+      distinctness: distinct
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_A
+      recognition_method: TIME_ELAPSED
+      ratable_convention: MONTHLY_EVEN
+      warranty_type: SERVICE
+      policy_values: {balance.right_to_consideration: CONDITIONAL}
+  products:
+    - code: ROBOT-FW-LOT100
+      name: "Robots with embedded firmware, lot of 100"
+      pob_template: TPL-ROBOT
+      revenue_category: PRODUCTS
+    - code: PLATFORM-24M
+      name: "Fleet platform subscription, 24 months"
+      pob_template: TPL-PLATFORM
+      revenue_category: SUBSCRIPTION
+    - code: EXT-WARRANTY-Y2Y3
+      name: "Extended warranty, years 2 and 3"
+      pob_template: TPL-EXT-WARRANTY
+      revenue_category: SERVICES
+  ssp_books:
+    - code: SSP-BR-US-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2025-01-01"
+          methodology_label: "Observable standalone prices (demo study)"
+          entries:
+            - product: ROBOT-FW-LOT100
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges: [{point_value: "90000.00"}]
+            - product: PLATFORM-24M
+              currency: USD
+              method: observable
+              value_basis: AMOUNT  # D-93 (4): declared remaining-increments reading (the reading the key's oracle embodies); no value change
+              distinctness: distinct
+              ranges: [{point_value: "30000.00"}]
+            - product: EXT-WARRANTY-Y2Y3
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges: [{point_value: "8000.00"}]
+  fx_rate_sets: []
+  rule_sets: []
+  policies:
+    tenant: {billing.posting: ERP, recognition.time_convention: MONTHLY_EVEN}
+    entities:
+      BR-US: {pob.assurance_warranty_accrual: EXTERNAL}
+    books: {}
+contracts:
+  - external_id: BR-01
+    customer: CUST-BR01
+    contracting_entity: BR-US
+    transaction_currency: USD
+    inception_date: "2026-01-01"
+    lines:
+      - {obligation_key: L1-ROBOTS, product_code: ROBOT-FW-LOT100, quantity: "1", total_price: "85000.00"}
+      - obligation_key: L2-PLATFORM
+        product_code: PLATFORM-24M
+        quantity: "1"
+        total_price: "25000.00"
+        start_date: "2026-01-01"
+        end_date: "2027-12-31"
+      - obligation_key: L3-EXT-WARRANTY
+        product_code: EXT-WARRANTY-Y2Y3
+        quantity: "1"
+        total_price: "8000.00"
+        start_date: "2027-01-01"
+        end_date: "2028-12-31"
+    judgements:
+      - handle: JDG-BR01-COMBINE
+        topic: COMBINATION
+        conclusion: "Robot order and extended warranty order negotiated as a package (606-10-25-9(a)); booked as one contract."
+      - handle: JDG-BR01-WARRANTY
+        topic: WARRANTY_TYPE
+        subject_obligation_key: L3-EXT-WARRANTY
+        conclusion: "Years 2-3 coverage is optional, separately priced and adds on-site maintenance: service-type warranty (606-10-55-30, 55-33)."
+        questionnaire: {obligation_key: L3-EXT-WARRANTY, warranty_type: SERVICE}
+timeline:
+  - seq: "1"
+    kind: event
+    contract: BR-01
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: "2"
+    kind: event
+    contract: BR-01
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: "3"
+    kind: event
+    contract: BR-01
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-01-05"
+    payload: {obligation_key: L1-ROBOTS, quantity: "1", trigger: CONTROL_TRANSFER}
+  - seq: "4"
+    kind: event
+    contract: BR-01
+    event_type: BILLING_RECORDED
+    effective_date: "2026-01-05"
+    payload:
+      invoice_number: INV-BR01-001
+      line_external_id: INV-BR01-001-1
+      amount: "118000.00"
+      issue_date: "2026-01-05"
+checkpoints:
+  - name: delivery-month
+    after_seq: "4"
+    as_of: "2026-01-31"
+    book: ASC606
+    contracts:
+      - contract: BR-01
+        version:
+          transaction_price: "118000.00"
+          revenue_cum: "84121.09"
+          billed_cum: "118000.00"
+          total_ssp: "128000.00"
+        obligations:
+          - obligation_key: L1-ROBOTS
+            allocated_amount: "82968.75"
+            revenue_cum: "82968.75"
+            satisfaction_status: SATISFIED
+          - obligation_key: L2-PLATFORM
+            allocated_amount: "27656.25"
+            revenue_cum: "1152.34"
+            satisfaction_status: PARTIALLY_SATISFIED
+          - obligation_key: L3-EXT-WARRANTY
+            allocated_amount: "7375.00"
+            revenue_cum: "0.00"
+            satisfaction_status: UNSATISFIED
+            obligation_kind: SERVICE_WARRANTY
+        balances: [{entity: BR-US, contract_liability: "33878.91", contract_asset: "0.00", unbilled_receivable: "0.00"}]
+        schedule:
+          - obligation_key: L3-EXT-WARRANTY
+            schedule_kind: REVENUE
+            line_type: NORMAL
+            amounts:
+              FY2027-P01: "307.29"
+              FY2027-P02: "307.29"
+              FY2027-P03: "307.30"
+              FY2027-P04: "307.29"
+              FY2027-P05: "307.29"
+              FY2027-P06: "307.29"
+              FY2027-P07: "307.29"
+              FY2027-P08: "307.29"
+              FY2027-P09: "307.30"
+              FY2027-P10: "307.29"
+              FY2027-P11: "307.29"
+              FY2027-P12: "307.29"
+    subledger:
+      - period_key: FY2026-P01
+        entity: BR-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "84121.09"}
+          - {account_role: REVENUE, account: "4000", cr: "82968.75"}
+          - {account_role: REVENUE, account: "4010", cr: "1152.34"}
+  - name: year-1
+    after_seq: "4"
+    as_of: "2026-12-31"
+    book: ASC606
+    contracts:
+      - contract: BR-01
+        version: {transaction_price: "118000.00", revenue_cum: "96796.88", billed_cum: "118000.00"}
+        obligations:
+          - obligation_key: L1-ROBOTS
+            allocated_amount: "82968.75"
+            revenue_cum: "82968.75"
+            satisfaction_status: SATISFIED
+          - obligation_key: L2-PLATFORM
+            allocated_amount: "27656.25"
+            revenue_cum: "13828.13"
+            satisfaction_status: PARTIALLY_SATISFIED
+          - obligation_key: L3-EXT-WARRANTY
+            allocated_amount: "7375.00"
+            revenue_cum: "0.00"
+            satisfaction_status: UNSATISFIED
+        balances: [{entity: BR-US, contract_liability: "21203.12", contract_asset: "0.00", unbilled_receivable: "0.00"}]
+  - name: year-2
+    after_seq: "4"
+    as_of: "2027-12-31"
+    book: ASC606
+    contracts:
+      - contract: BR-01
+        version: {transaction_price: "118000.00", revenue_cum: "114312.50", billed_cum: "118000.00"}
+        obligations:
+          - obligation_key: L1-ROBOTS
+            allocated_amount: "82968.75"
+            revenue_cum: "82968.75"
+            satisfaction_status: SATISFIED
+          - obligation_key: L2-PLATFORM
+            allocated_amount: "27656.25"
+            revenue_cum: "27656.25"
+            satisfaction_status: SATISFIED
+          - obligation_key: L3-EXT-WARRANTY
+            allocated_amount: "7375.00"
+            revenue_cum: "3687.50"
+            satisfaction_status: PARTIALLY_SATISFIED
+        balances: [{entity: BR-US, contract_liability: "3687.50", contract_asset: "0.00", unbilled_receivable: "0.00"}]
+    subledger:
+      - period_key: FY2027-P01
+        entity: BR-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "1459.63"}
+          - {account_role: REVENUE, account: "4010", cr: "1459.63"}
+  - name: year-3
+    after_seq: "4"
+    as_of: "2028-12-31"
+    book: ASC606
+    contracts:
+      - contract: BR-01
+        version: {transaction_price: "118000.00", revenue_cum: "118000.00", billed_cum: "118000.00"}
+        obligations:
+          - obligation_key: L1-ROBOTS
+            allocated_amount: "82968.75"
+            revenue_cum: "82968.75"
+            satisfaction_status: SATISFIED
+          - obligation_key: L2-PLATFORM
+            allocated_amount: "27656.25"
+            revenue_cum: "27656.25"
+            satisfaction_status: SATISFIED
+          - obligation_key: L3-EXT-WARRANTY
+            allocated_amount: "7375.00"
+            revenue_cum: "7375.00"
+            satisfaction_status: SATISFIED
+        balances: [{entity: BR-US, contract_liability: "0.00", contract_asset: "0.00", unbilled_receivable: "0.00"}]

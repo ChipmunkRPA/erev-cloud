@@ -1,0 +1,268 @@
+# docs/accounting/answer-keys/pos/POS-CHK-012-S9-PRESENTATION-NETTING-PER-CONTRACT.yaml
+schema: "erev-answer-key/1"
+id: POS-CHK-012-S9-PRESENTATION-NETTING-PER-CONTRACT
+title: >-
+  Netting within a contract only: contract X presents a 30,000.00 asset, contract Y a separate liability
+status: active
+families: [POS, DISC]
+tags: [r04-s9]
+summary: >-
+  Research 04 worked example 9-C (own example). Entity US01, USD, ERP billing, runner platform because two independent
+  contracts are computed. Contract X: licence 60,000.00 transferred in P1 (January 2026) and services 40,000.00
+  performed 50% in P1 and 50% in P2; noncancellable invoices P1 10,000.00 (licence) and 40,000.00 (services), P2
+  50,000.00 (licence). End P1: R 60,000 / 20,000, B 10,000 / 40,000, NP = −30,000.00, presented as a 30,000.00
+  contract asset and no contract liability, not a 50,000.00 asset and a 20,000.00 liability. Contract Y with the same
+  customer, not combined, holds a 5,000.00 advance: contract liability 5,000.00, never netted with X (POL-120,
+  CHK-012). End P2: X position nil. [A] Both X obligations carry the CONDITIONAL class. Cross-slice variants with
+  distinct inputs, kept: POS-CHK-012-S9-PRESENTATION-NETTING (different contracts and dates; platform runner)
+  (ADJUDICATION.md R-DUP-02).
+authority:
+  codification: ["606-10-45-1", "606-10-45-2", "606-10-45-3", "606-10-45-4", "606-10-25-9"]
+  ifrs: ["IFRS 15.105", "IFRS 15.107"]
+  practice: ["Deloitte Roadmap: Revenue Recognition 14.1 (netting within a contract)"]
+  urls: []
+derived_from: {research04: [S9-PRESENTATION], research05: [], chk: [CHK-012], golden: [], dev: []}
+requirements: [REQ-BIL-003, REQ-BIL-005, REQ-BIL-007]
+policy_refs: [POL-120, POL-121, POL-122]
+review:
+  author: answer-keys-fx-entity-books
+  authored_on: "2026-09-12"
+  reviewer: null
+  reviewed_on: null
+  status: pending
+runner: platform
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: US01
+      name: "Avenmoor Systems Inc. (Demo)"
+      functional_currency: USD
+      time_zone: "America/New_York"
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: 1}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2026-02"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4010", name: "Revenue - services and subscriptions", account_type: REVENUE}
+    - {code: "4020", name: "Revenue - licences and royalties", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, account: "4020", product: LICENCE-X}
+    - {account_role: REVENUE, account: "4010", product: SERVICES-X}
+    - {account_role: REVENUE, account: "4010", product: SUPPORT-Y}
+  customers:
+    - {code: CUST-1, name: "Pellworth Logistics Inc. (Demo)"}
+  pob_templates:
+    - code: TPL-PCT
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_B
+      recognition_method: OUTPUT_PERCENT
+    - code: TPL-PIT
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: POINT_IN_TIME
+      over_time_criterion: NOT_APPLICABLE
+      recognition_method: POINT_IN_TIME
+    - code: TPL-RAT-ME
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_A
+      recognition_method: TIME_ELAPSED
+      ratable_convention: MONTHLY_EVEN
+  products:
+    - {code: LICENCE-X, name: "Software licence", pob_template: TPL-PIT}
+    - {code: SERVICES-X, name: "Implementation services", pob_template: TPL-PCT}
+    - {code: SUPPORT-Y, name: "Support plan", pob_template: TPL-RAT-ME}
+  ssp_books:
+    - code: SSP-US01-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2026-01-01"
+          methodology_label: "Observable standalone prices"
+          entries:
+            - product: LICENCE-X
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "60000.00"}
+            - product: SERVICES-X
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "40000.00"}
+            - product: SUPPORT-Y
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "5000.00"}
+  fx_rate_sets: []
+  rule_sets: []
+  policies: {tenant: {billing.posting: ERP}, entities: {}, books: {}}
+contracts:
+  - external_id: C-POS-012-X
+    customer: CUST-1
+    contracting_entity: US01
+    transaction_currency: USD
+    inception_date: "2026-01-02"
+    lines:
+      - {obligation_key: X1-LICENCE, product_code: LICENCE-X, quantity: "1", total_price: "60000.00"}
+      - {obligation_key: X2-SERVICES, product_code: SERVICES-X, quantity: "1", total_price: "40000.00"}
+    policy_overrides:
+      - policy_key: balance.right_to_consideration
+        value: CONDITIONAL
+        obligation_key: X1-LICENCE
+        rationale: "Consideration depends on completing the services (FASB Example 39 pattern)"
+      - policy_key: balance.right_to_consideration
+        value: CONDITIONAL
+        obligation_key: X2-SERVICES
+        rationale: "Consideration depends on completing the services (FASB Example 39 pattern)"
+  - external_id: C-POS-012-Y
+    customer: CUST-1
+    contracting_entity: US01
+    transaction_currency: USD
+    inception_date: "2026-01-20"
+    lines:
+      - obligation_key: Y1-SUPPORT
+        product_code: SUPPORT-Y
+        quantity: "1"
+        total_price: "5000.00"
+        start_date: "2026-03-01"
+        end_date: "2027-02-28"
+timeline:
+  - seq: 1
+    kind: event
+    contract: C-POS-012-X
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-01-02"
+    payload: {}
+  - seq: 2
+    kind: event
+    contract: C-POS-012-X
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-02"
+    payload: {}
+  - seq: 3
+    kind: event
+    contract: C-POS-012-Y
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-01-20"
+    payload: {}
+  - seq: 4
+    kind: event
+    contract: C-POS-012-Y
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-20"
+    payload: {}
+  - seq: 5
+    kind: event
+    contract: C-POS-012-X
+    event_type: BILLING_RECORDED
+    effective_date: "2026-01-10"
+    payload:
+      invoice_number: INV-X-001
+      line_external_id: INV-X-001-1
+      obligation_key: X1-LICENCE
+      amount: "10000.00"
+      issue_date: "2026-01-10"
+  - seq: 6
+    kind: event
+    contract: C-POS-012-X
+    event_type: BILLING_RECORDED
+    effective_date: "2026-01-10"
+    payload:
+      invoice_number: INV-X-002
+      line_external_id: INV-X-002-1
+      obligation_key: X2-SERVICES
+      amount: "40000.00"
+      issue_date: "2026-01-10"
+  - seq: 7
+    kind: event
+    contract: C-POS-012-X
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-01-15"
+    payload: {obligation_key: X1-LICENCE, quantity: "1", trigger: CONTROL_TRANSFER}
+  - seq: 8
+    kind: event
+    contract: C-POS-012-Y
+    event_type: BILLING_RECORDED
+    effective_date: "2026-01-20"
+    payload:
+      invoice_number: INV-Y-001
+      line_external_id: INV-Y-001-1
+      obligation_key: Y1-SUPPORT
+      amount: "5000.00"
+      issue_date: "2026-01-20"
+  - seq: 9
+    kind: event
+    contract: C-POS-012-X
+    event_type: PROGRESS_RECORDED
+    effective_date: "2026-01-31"
+    payload: {obligation_key: X2-SERVICES, cumulative_progress_ratio: "0.5", measure: OUTPUT_PERCENT}
+  - seq: 10
+    kind: event
+    contract: C-POS-012-X
+    event_type: BILLING_RECORDED
+    effective_date: "2026-02-10"
+    payload:
+      invoice_number: INV-X-003
+      line_external_id: INV-X-003-1
+      obligation_key: X1-LICENCE
+      amount: "50000.00"
+      issue_date: "2026-02-10"
+  - seq: 11
+    kind: event
+    contract: C-POS-012-X
+    event_type: PROGRESS_RECORDED
+    effective_date: "2026-02-28"
+    payload: {obligation_key: X2-SERVICES, cumulative_progress_ratio: "1", measure: OUTPUT_PERCENT}
+checkpoints:
+  - name: end-of-p1
+    after_seq: 9
+    as_of: "2026-01-31"
+    book: ASC606
+    contracts:
+      - contract: C-POS-012-X
+        version: {revenue_cum: "80000.00", billed_cum: "50000.00"}
+        obligations:
+          - {obligation_key: X1-LICENCE, position_obligation: "-50000.00", netting_reclass_amount: "30000.00"}
+          - {obligation_key: X2-SERVICES, position_obligation: "20000.00", netting_reclass_amount: "0.00"}
+        balances:
+          - {entity: US01, contract_liability: "0.00", contract_asset: "30000.00", unbilled_receivable: "0.00"}
+      - contract: C-POS-012-Y
+        balances:
+          - {entity: US01, contract_liability: "5000.00", contract_asset: "0.00", unbilled_receivable: "0.00"}
+    subledger:
+      - period_key: FY2026-P01
+        entity: US01
+        match: exact
+        grain: role_account
+        contract: C-POS-012-X
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "50000.00"}
+          - {account_role: CONTRACT_ASSET, account: "1200", dr: "30000.00"}
+          - {account_role: REVENUE, account: "4010", cr: "20000.00"}
+          - {account_role: REVENUE, account: "4020", cr: "60000.00"}
+  - name: end-of-p2
+    after_seq: 11
+    as_of: "2026-02-28"
+    book: ASC606
+    contracts:
+      - contract: C-POS-012-X
+        balances:
+          - {entity: US01, contract_liability: "0.00", contract_asset: "0.00", unbilled_receivable: "0.00"}
+      - contract: C-POS-012-Y
+        balances:
+          - {entity: US01, contract_liability: "5000.00"}

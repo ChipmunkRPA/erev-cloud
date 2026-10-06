@@ -1,0 +1,14 @@
+step,phase,seq,category,kind,title,text,answer
+12,handler:browse_file_RetroMod,138,file,QFileDialog.getOpenFileName,Select File,ops/Example UATs/Contract Mod UAT/Contract Modification Template 08.15.2023 - retrospective POB reduction.xlsx,selected
+12,handler:browse_file_RetroMod,139,input,QInputDialog.getText,Date Input,Enter the retrospective contract mod date in this format (YYYY-MM-DD):,2023-08-15
+12,handler:browse_file_RetroMod,140,popup,QMessageBox.information,Mod Success,Retrospective Mod has been processed with uploaded modifications for the current date :),Ok
+12,report:latest_contracts,141,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+12,report:je_gross,142,input,QInputDialog.getText,Start Date Input,Enter the start date of the date range to retrieve the revenue journal entries (YYYY-MM-DD):,2023-08-01
+12,report:je_gross,143,input,QInputDialog.getText,Date Input,Enter the end date of the date range to retrieve the revenue journal entries (YYYY-MM-DD):,2023-08-15
+12,report:je_gross,144,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+12,report:je_delta,145,input,QInputDialog.getText,Start Date Input,Enter the start date of the date range to retrieve the revenue journal entries (YYYY-MM-DD):,2023-08-01
+12,report:je_delta,146,input,QInputDialog.getText,Date Input,Enter the end date of the date range to retrieve the revenue journal entries (YYYY-MM-DD):,2023-08-15
+12,report:je_delta,147,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+12,report:contract_history,148,input,QInputDialog.getText,Start Date Input,Enter the start date of the date range to retrieve the revenue contract history (YYYY-MM-DD):,2023-08-01
+12,report:contract_history,149,input,QInputDialog.getText,Date Input,Enter the end date of the date range to retrieve the revenue contract history (YYYY-MM-DD):,2023-08-15
+12,report:contract_history,150,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok

@@ -1,0 +1,117 @@
+schema: erev-answer-key/1
+id: ONB-RB-06-RELIEF-GRANT-ROUTED-OUT
+title: "Provider relief grant routed out of Topic 606: no revenue, schedule or journal line"
+status: active
+families: [ONB, STP1]
+tags: []
+summary: "On 15 May 2026 Riverbend receives a 250,000.00 provider relief grant from a government programme. The government is not a customer and receives no goods or services; the grant is outside Topic 606 (606-10-15-2; ASC 958-605 contributions for the nonprofit health system). The line is flagged CONTRIBUTION_958_605 with its out-of-scope amount measured first (REQ-CON-016): the contract has no in-scope obligation, no revenue, no schedule and no journal line, and appears in the scope exclusion register (03 §12 rule 1). The grant income is recorded in the ERP."
+authority:
+  codification: ["606-10-15-2", "606-10-15-3", "958-605-15-2", "958-605-25-2"]
+  ifrs: ["IAS 20.12"]
+  practice: ["AICPA Health Care Entities guide (provider relief funds)"]
+  urls: []
+derived_from: {research04: [], research05: [RB-06], chk: [], golden: [], dev: []}
+requirements: [REQ-CON-016]
+policy_refs: [POL-230]
+review: {author: answer-keys-industries, authored_on: "2026-09-12", reviewer: null, reviewed_on: null, status: pending}
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: RB-US
+      name: "Riverbend Health System (Demo)"
+      functional_currency: USD
+      time_zone: America/New_York
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: "1"}
+      books: [ASC606]
+  periods: {from: "2026-05", to: "2026-06"}
+  period_states: []
+  gl_accounts:
+    - {code: "1100", name: "Accounts receivable", account_type: ASSET}
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4010", name: "Revenue - services and subscriptions", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: ACCOUNTS_RECEIVABLE, account: "1100"}
+    - {account_role: REVENUE, product: RELIEF-GRANT, account: "4010"}
+  customers: [{code: CUST-RB06, name: "Federal provider relief programme (Demo)"}]
+  pob_templates:
+    - code: TPL-GRANT
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: POINT_IN_TIME
+      over_time_criterion: NOT_APPLICABLE
+      recognition_method: MANUAL
+      policy_values: {balance.right_to_consideration: CONDITIONAL}
+  products:
+    - code: RELIEF-GRANT
+      name: "Provider relief grant (not a customer contract)"
+      pob_template: TPL-GRANT
+      revenue_category: GRANT
+  ssp_books:
+    - code: SSP-RB-US-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2025-01-01"
+          methodology_label: "Observable standalone prices (demo study)"
+          entries:
+            - product: RELIEF-GRANT
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges: [{point_value: "250000.00"}]
+  fx_rate_sets: []
+  rule_sets: []
+  policies:
+    tenant: {billing.posting: ENGINE, recognition.time_convention: MONTHLY_EVEN}
+    entities: {}
+    books: {}
+contracts:
+  - external_id: RB-06
+    customer: CUST-RB06
+    contracting_entity: RB-US
+    transaction_currency: USD
+    inception_date: "2026-05-15"
+    lines:
+      - obligation_key: L1-GRANT
+        product_code: RELIEF-GRANT
+        quantity: "1"
+        total_price: "250000.00"
+        scope_flag: CONTRIBUTION_958_605
+        out_of_scope_amount: "250000.00"
+timeline:
+  - seq: "1"
+    kind: event
+    contract: RB-06
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-05-15"
+    payload: {}
+  - seq: "2"
+    kind: event
+    contract: RB-06
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-05-15"
+    payload: {}
+checkpoints:
+  - name: grant-received
+    after_seq: "2"
+    as_of: "2026-05-31"
+    book: ASC606
+    contracts:
+      - contract: RB-06
+        version: {transaction_price: "0.00", out_of_scope_amount: "250000.00", revenue_cum: "0.00"}
+        obligations: [{obligation_key: L1-GRANT, scope_flag: CONTRIBUTION_958_605, revenue_cum: "0.00"}]
+        balances:
+          - entity: RB-US
+            contract_liability: "0.00"
+            contract_asset: "0.00"
+            unbilled_receivable: "0.00"
+            accounts_receivable: "0.00"
+    subledger:
+      - {period_key: FY2026-P05, entity: RB-US, match: exact, grain: role_account, lines: []}

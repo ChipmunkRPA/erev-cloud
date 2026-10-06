@@ -1,0 +1,94 @@
+{
+  "nn": "10",
+  "slug": "prospective-mod-2023-06-15-reduction",
+  "handler": "browse_file_ProsMod",
+  "button": "button4",
+  "button_label": "Prospective Contract Mod",
+  "file": "ops/Example UATs/Contract Mod UAT/Contract Modification Template 06.15.2023 - prospective reduction.xlsx",
+  "file_sha256": "6b080069d18c82e9fd914646d411998b2e5b78366a9115639fb927e43bfd1b82",
+  "date_input": "2023-06-15",
+  "report_window": [
+    "2023-06-01",
+    "2023-06-15"
+  ],
+  "contract_live_table_exists": true,
+  "sku_ssp_table_exists": true,
+  "rows_before": 64,
+  "rows_after": 68,
+  "rows_appended": 4,
+  "new_version_tokens": [
+    "step-10"
+  ],
+  "sku_ssp_rows": 7,
+  "handler_success": true,
+  "handler_popups": [
+    {
+      "kind": "QMessageBox.information",
+      "title": "Mod Success",
+      "text": "Prospective Mod has been processed with uploaded modifications for the current date :)"
+    }
+  ],
+  "report_popups": 4,
+  "unused_queued_inputs": [],
+  "report_unused_inputs": {
+    "latest_contracts": [],
+    "je_gross": [],
+    "je_delta": [],
+    "contract_history": []
+  },
+  "reports_captured": {
+    "latest_contracts": true,
+    "je_gross": true,
+    "je_delta": true,
+    "contract_history": true
+  },
+  "je_gross_totals": {
+    "lines": 2,
+    "by_account": [
+      {
+        "account": "5003",
+        "debit": 5.3,
+        "credit": -0.0,
+        "net": 5.3
+      },
+      {
+        "account": "21001",
+        "debit": 0.0,
+        "credit": 5.3,
+        "net": -5.3
+      }
+    ],
+    "total_debit": 5.3,
+    "total_credit": 5.3,
+    "net": 0.0
+  },
+  "je_delta_totals": {
+    "lines": 2,
+    "by_account": [
+      {
+        "account": "5003",
+        "debit": 5.3,
+        "credit": -0.0,
+        "net": 5.3
+      },
+      {
+        "account": "21001",
+        "debit": 0.0,
+        "credit": 5.3,
+        "net": -5.3
+      }
+    ],
+    "total_debit": 5.3,
+    "total_credit": 5.3,
+    "net": 0.0
+  },
+  "contract_history_rows": 4,
+  "latest_contract_rows": 16,
+  "app_excel_exports": [
+    "Contract History between 2023-06-01 and 2023-06-15.xlsx",
+    "Latest Contract Details.xlsx",
+    "Revenue Adj. Summary between 2023-06-01 and 2023-06-15.xlsx",
+    "Revenue JE Summary between 2023-06-01 and 2023-06-15.xlsx"
+  ],
+  "python_warnings": []
+}

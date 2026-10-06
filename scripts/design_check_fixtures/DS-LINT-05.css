@@ -1,0 +1,4 @@
+/* design-check fixture DS-LINT-05: a gradient. */
+.banner {
+  background: linear-gradient(var(--accent-solid), var(--bg-canvas));
+}

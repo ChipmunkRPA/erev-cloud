@@ -1,0 +1,229 @@
+# docs/accounting/answer-keys/sfc/SFC-CHK-136-S3-EX29-ENGINE-PARTIAL-RECEIPT-APPLIED.yaml
+# Authored by lane ENG-C6 under D-97 (4) v2/v3 (the supervisor's 2026-09-19 ruling set; ENGINE_SPEC S04-R-10a [J] rev 1.10,
+# ENGINE_SPEC_B S10-R-06, S10-R-19). ASSUMPTION FIRST: the key assumes the unpaid remainder is expected at transfer — an explicit
+# pending accounting premise (PROVISIONAL pending AD-8), not a fact encoded by the absence of a payment date; the engine's result
+# confers no independent accounting authority. The figures are implementation observations under that assumption, re-derived
+# with Fraction arithmetic in .run/eng-c6/derive.py (section E) before authoring; never generated from engine output.
+schema: "erev-answer-key/1"
+id: "SFC-CHK-136-S3-EX29-ENGINE-PARTIAL-RECEIPT-APPLIED"
+title: "Cancellable ENGINE invoice partly paid, receipt applied: the receipt is the only payment point and the unpaid remainder carries no financing (D-97 (4), A18)"
+status: "active"
+families: ["SFC", "JE"]
+tags: ["r04-s3"]
+summary: "SFC-S3-EX29 derivative for D-97 (4) (the A18 question of lane ENG-C6; G12 AD-8). ASSUMPTION FIRST — assuming the unpaid remainder is expected at transfer: this key rests on the explicit pending accounting PREMISE of D-97 (4) v2/v3 that a memo-only document creates no unconditional right and that, absent a stated promised payment date before transfer, payment of the unpaid remainder is expected at transfer, so that the remainder carries no financing component (606-10-32-15/16) and enters the transaction price at its stated amount. The premise is a pending accounting judgement, not a fact encoded by the absence of a payment date; the engine treatment is PROVISIONAL pending AD-8; the engine's result confers no independent accounting authority; this key stays review-pending until the reviewing accountant resolves the premise, any stated or contradictory payment timing in the inputs, and the applied / unapplied scope. World: the customer is to pay 4,000.00 at signing for an asset delivered two years later; the entity's incremental borrowing rate of 6% applies (sfc.discount_rate_basis override ENTITY_BORROWING_RATE, annual rate 0.06, compounding MONTHLY) and the reviewed SFC_ASSESSMENT judges the financing component significant with no payment schedule in force (ENGINE_SPEC S04-R-10a). Billing posts in ENGINE mode (POL-004 ENGINE): the 4,000.00 invoice INV-ADV-1 / INV-ADV-1-1 of 1 January 2026 is cancellable and is never made noncancellable; the customer pays 1,000.00 on 1 January 2026 (applied to the invoice). Figures, which are implementation observations under the assumption above, re-derived with Fraction arithmetic in .run/eng-c6/derive.py (section E) before authoring and never generated from engine output: under the receipts-first fallback (D-87 L5-3-Q-8, D-91 05g) the receipt is the only payment point; interest accretes on it alone, 1,000 x 0.005 = 5.00 in January (balance 1,005.00), 1,061.68 at the end of 2026, 1,127.16 at transfer (the cash selling price of the receipt; financing adjustment 127.16); the transaction price and revenue at transfer are 4,127.16 = 4,000.00 + 127.16 (1,127.16 is never total contract revenue; the combined reading 4,508.64 is rejected for ENGINE mode and remains the ERP / noncancellable result). Applying the receipt to INV-ADV-1 makes the line unconditional on 1 January (S10-R-06): JET-03 posts Dr ACCOUNTS_RECEIVABLE 4,000.00 / Cr CONTRACT_LIABILITY 4,000.00, `billed_cum` is 4,000.00 from January, AR is 4,000.00 less the 1,000.00 applied = 3,000.00 (S10-R-19), and the contract liability is 4,000.00 plus the accretion on the receipt (4,005.00 at 31 January, 4,061.68 at 31 December 2026), relieved at transfer with the December interest: Dr CONTRACT_LIABILITY 4,121.55 / Dr INTEREST_EXPENSE 5.61 / Cr REVENUE 4,127.16."
+authority:
+  codification: ["606-10-32-15", "606-10-32-16", "606-10-32-19", "606-10-32-20", "606-10-45-4", "606-10-55-240", "606-10-55-241", "606-10-55-242", "606-10-55-243", "606-10-55-286"]
+  ifrs: ["IFRS 15.60", "IFRS 15.64", "IFRS 15.65", "IFRS 15.108"]
+  practice: []
+  urls: []
+derived_from:
+  research04: ["S3-EX29"]
+  research05: []
+  chk: ["CHK-136"]
+  golden: []
+  dev: []
+requirements: ["REQ-TP-011", "REQ-BIL-008"]
+policy_refs: ["POL-004", "POL-046", "POL-047"]
+review: {author: "lane ENG-C6 (D-97 (4), A18)", authored_on: "2026-09-19", reviewer: null, reviewed_on: null, status: "pending"}
+runner: "engine"
+books: ["ASC606"]
+world:
+  tenant: {reporting_currency: "USD", preset: "DEFAULT"}
+  currencies: ["USD"]
+  entities:
+    - code: "US01"
+      name: "Example US (Demo)"
+      functional_currency: "USD"
+      time_zone: "America/New_York"
+      calendar: {pattern: "MONTHLY", fiscal_year_start_month: "1"}
+      books: ["ASC606"]
+  periods: {from: "2026-01", to: "2027-12"}
+  period_states: []
+  gl_accounts:
+    - {code: "1100", name: "Accounts receivable (billed)", account_type: "ASSET"}
+    - {code: "1101", name: "AR contra - implicit price concession", account_type: "ASSET"}
+    - {code: "1105", name: "Unbilled receivable", account_type: "ASSET"}
+    - {code: "1200", name: "Contract asset", account_type: "ASSET"}
+    - {code: "1210", name: "Customer incentive asset", account_type: "ASSET"}
+    - {code: "1310", name: "Asset for right to recover returned products", account_type: "ASSET"}
+    - {code: "1400", name: "Capitalised costs to obtain a contract", account_type: "ASSET"}
+    - {code: "1410", name: "Capitalised costs to fulfil a contract", account_type: "ASSET"}
+    - {code: "1500", name: "Noncash consideration received", account_type: "ASSET"}
+    - {code: "1800", name: "Intercompany due from", account_type: "ASSET"}
+    - {code: "1900", name: "Clearing - unapplied cash", account_type: "ASSET"}
+    - {code: "1910", name: "Clearing - inventory", account_type: "ASSET"}
+    - {code: "1920", name: "Clearing - investments", account_type: "ASSET"}
+    - {code: "2020", name: "Commissions payable (contract cost clearing)", account_type: "LIABILITY"}
+    - {code: "2050", name: "Clearing - supplier payables", account_type: "LIABILITY"}
+    - {code: "2060", name: "Clearing - billing", account_type: "LIABILITY"}
+    - {code: "2100", name: "Contract liability", account_type: "LIABILITY"}
+    - {code: "2105", name: "Deposit liability (Step 1 not met)", account_type: "LIABILITY"}
+    - {code: "2110", name: "Refund liability", account_type: "LIABILITY"}
+    - {code: "2200", name: "Sales tax payable", account_type: "LIABILITY"}
+    - {code: "2300", name: "Provision for anticipated losses on contracts", account_type: "LIABILITY"}
+    - {code: "2400", name: "Consideration payable to customer", account_type: "LIABILITY"}
+    - {code: "2600", name: "Assurance-type warranty provision", account_type: "LIABILITY"}
+    - {code: "2800", name: "Intercompany due to", account_type: "LIABILITY"}
+    - {code: "3100", name: "Clearing - equity", account_type: "EQUITY"}
+    - {code: "4000", name: "Revenue - products", account_type: "REVENUE"}
+    - {code: "4010", name: "Revenue - services / subscriptions", account_type: "REVENUE"}
+    - {code: "4020", name: "Revenue - licences / royalties", account_type: "REVENUE"}
+    - {code: "4030", name: "Revenue - material rights / loyalty / breakage", account_type: "REVENUE"}
+    - {code: "4900", name: "Pre-standard revenue", account_type: "REVENUE"}
+    - {code: "5000", name: "Cost of revenue", account_type: "EXPENSE"}
+    - {code: "5100", name: "Amortisation of contract costs", account_type: "EXPENSE"}
+    - {code: "5200", name: "Warranty expense", account_type: "EXPENSE"}
+    - {code: "5300", name: "Loss on contracts", account_type: "EXPENSE"}
+    - {code: "6000", name: "Impairment of contract cost assets", account_type: "EXPENSE"}
+    - {code: "7000", name: "Interest income", account_type: "REVENUE"}
+    - {code: "7100", name: "Interest expense", account_type: "EXPENSE"}
+    - {code: "7200", name: "Foreign exchange gain or loss", account_type: "EXPENSE"}
+    - {code: "7900", name: "Rounding", account_type: "EXPENSE"}
+  account_mapping:
+    - {account_role: "REVENUE", account: "4000"}
+    - {account_role: "CONTRACT_LIABILITY", account: "2100"}
+    - {account_role: "CONTRACT_ASSET", account: "1200"}
+    - {account_role: "UNBILLED_RECEIVABLE", account: "1105"}
+    - {account_role: "ACCOUNTS_RECEIVABLE", account: "1100"}
+    - {account_role: "BILLING_CLEARING", clearing_purpose: "BILLING", account: "2060"}
+    - {account_role: "BILLING_CLEARING", clearing_purpose: "UNAPPLIED_CASH", account: "1900"}
+    - {account_role: "BILLING_CLEARING", clearing_purpose: "AP_SUPPLIER", account: "2050"}
+    - {account_role: "BILLING_CLEARING", clearing_purpose: "INVENTORY", account: "1910"}
+    - {account_role: "BILLING_CLEARING", clearing_purpose: "EQUITY", account: "3100"}
+    - {account_role: "BILLING_CLEARING", clearing_purpose: "INVESTMENTS", account: "1920"}
+    - {account_role: "REFUND_LIABILITY", account: "2110"}
+    - {account_role: "RETURN_ASSET", account: "1310"}
+    - {account_role: "DEPOSIT_LIABILITY", account: "2105"}
+    - {account_role: "CONSIDERATION_PAYABLE", account: "2400"}
+    - {account_role: "CUSTOMER_INCENTIVE_ASSET", account: "1210"}
+    - {account_role: "COST_TO_OBTAIN_ASSET", account: "1400"}
+    - {account_role: "COST_TO_FULFILL_ASSET", account: "1410"}
+    - {account_role: "CONTRACT_COST_AMORTIZATION", account: "5100"}
+    - {account_role: "CONTRACT_COST_IMPAIRMENT", account: "6000"}
+    - {account_role: "LOSS_PROVISION", account: "2300"}
+    - {account_role: "LOSS_EXPENSE", account: "5300"}
+    - {account_role: "WARRANTY_PROVISION", account: "2600"}
+    - {account_role: "WARRANTY_EXPENSE", account: "5200"}
+    - {account_role: "INTEREST_INCOME", account: "7000"}
+    - {account_role: "INTEREST_EXPENSE", account: "7100"}
+    - {account_role: "FX_GAIN_LOSS", account: "7200"}
+    - {account_role: "INTERCOMPANY_DUE_TO", account: "2800"}
+    - {account_role: "INTERCOMPANY_DUE_FROM", account: "1800"}
+    - {account_role: "NONCASH_CONSIDERATION_ASSET", account: "1500"}
+    - {account_role: "SALES_TAX_PAYABLE", account: "2200"}
+    - {account_role: "PRE_STANDARD_REVENUE", account: "4900"}
+    - {account_role: "ROUNDING", account: "7900"}
+    - {account_role: "COST_OF_REVENUE", account: "5000"}
+    - {account_role: "CONTRACT_COST_CLEARING", account: "2020"}
+    - {account_role: "RECEIVABLE_CONTRA", account: "1101"}
+  customers:
+    - {code: "CUST-1", name: "Example Customer (Demo)"}
+  pob_templates:
+    - code: "TPL-PIT"
+      obligation_kind: "STANDARD"
+      distinctness: "distinct"
+      satisfaction_pattern: "POINT_IN_TIME"
+      over_time_criterion: "NOT_APPLICABLE"
+      recognition_method: "POINT_IN_TIME"
+      sfc_assessment_required: true
+  products:
+    - {code: "ASSET-ADV", name: "Asset delivered in two years (Demo)", pob_template: "TPL-PIT"}
+  ssp_books:
+    - code: "SSP-MAIN"
+      resolution_mode: "EFFECTIVE_DATE"
+      versions:
+        - effective_from_date: "2026-01-01"
+          methodology_label: "Cash price at transfer"
+          entries:
+            - product: "ASSET-ADV"
+              currency: "USD"
+              method: "observable"
+              distinctness: "distinct"
+              ranges:
+                - {point_value: "5000"}
+  fx_rate_sets: []
+  rule_sets: []
+  policies: {tenant: {sfc.one_year_expedient: "APPLY", billing.posting: "ENGINE"}, entities: {}, books: {}}
+contracts:
+  - external_id: "C-FIN-PR"
+    customer: "CUST-1"
+    contracting_entity: "US01"
+    transaction_currency: "USD"
+    inception_date: "2026-01-01"
+    policy_overrides:
+      - policy_key: "sfc.discount_rate_basis"
+        value: {basis: "ENTITY_BORROWING_RATE", annual_rate: "0.06", compounding: "MONTHLY"}
+        rationale: "Advance payment: entity's incremental borrowing rate at inception (606-10-32-19; FASB Example 29)"
+    judgements:
+      - handle: "J-SFC-PR"
+        topic: "SFC_ASSESSMENT"
+        conclusion: "Two-year gap between the advance received and transfer at the customer's choice of payment option: significant financing component on the consideration received in advance."
+        questionnaire: {obligation_key: "", significant: true, exception_32_17: "NONE"}
+    lines:
+      - {obligation_key: "L1-ASSET", product_code: "ASSET-ADV", quantity: "1", total_price: "4000.00"}
+timeline:
+  - {seq: 1, kind: "event", contract: "C-FIN-PR", event_type: "CONTRACT_BOOKED", effective_date: "2026-01-01", payload: {}}
+  - {seq: 2, kind: "event", contract: "C-FIN-PR", event_type: "CONTRACT_ACTIVATED", effective_date: "2026-01-01", payload: {}}
+  - seq: 3
+    kind: "event"
+    contract: "C-FIN-PR"
+    event_type: "BILLING_RECORDED"
+    effective_date: "2026-01-01"
+    payload: {invoice_number: "INV-ADV-1", line_external_id: "INV-ADV-1-1", obligation_key: "L1-ASSET", amount: "4000.00", issue_date: "2026-01-01", is_cancellable: true}
+  - seq: 4
+    kind: "event"
+    contract: "C-FIN-PR"
+    event_type: "PAYMENT_RECEIVED"
+    effective_date: "2026-01-01"
+    payload: {receipt_reference: "RCPT-1", amount: "1000.00", receipt_date: "2026-01-01", applied_invoice_numbers: ["INV-ADV-1"]}
+  - seq: 5
+    kind: "event"
+    contract: "C-FIN-PR"
+    event_type: "DELIVERY_RECORDED"
+    effective_date: "2027-12-31"
+    payload: {obligation_key: "L1-ASSET", quantity: "1", trigger: "CONTROL_TRANSFER"}
+checkpoints:
+  - name: "end-of-january-2026"
+    after_seq: 4
+    as_of: "2026-01-31"
+    book: "ASC606"
+    contracts:
+      - contract: "C-FIN-PR"
+        version: {billed_cum: "4000.00", revenue_cum: "0.00"}
+        balances:
+          - {entity: "US01", contract_liability: "4005.00", accounts_receivable: "3000.00"}
+    subledger:
+      - period_key: "FY2026-P01"
+        entity: "US01"
+        match: "subset"
+        grain: "role_account"
+        lines:
+          - {account_role: "CONTRACT_LIABILITY", account: "2100", cr: "4005.00"}
+          - {account_role: "INTEREST_EXPENSE", account: "7100", dr: "5.00"}
+  - name: "end-of-2026"
+    after_seq: 4
+    as_of: "2026-12-31"
+    book: "ASC606"
+    contracts:
+      - contract: "C-FIN-PR"
+        version: {billed_cum: "4000.00"}
+        balances:
+          - {entity: "US01", contract_liability: "4061.68"}
+  - name: "transfer"
+    after_seq: 5
+    as_of: "2027-12-31"
+    book: "ASC606"
+    contracts:
+      - contract: "C-FIN-PR"
+        version: {transaction_price: "4127.16", revenue_cum: "4127.16", billed_cum: "4000.00"}
+        balances:
+          - {entity: "US01", contract_liability: "0.00"}
+    subledger:
+      - period_key: "FY2027-P12"
+        entity: "US01"
+        match: "subset"
+        grain: "role_account"
+        lines:
+          - {account_role: "CONTRACT_LIABILITY", account: "2100", dr: "4121.55"}
+          - {account_role: "INTEREST_EXPENSE", account: "7100", dr: "5.61"}
+          - {account_role: "REVENUE", account: "4000", cr: "4127.16"}

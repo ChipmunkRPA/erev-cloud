@@ -1,0 +1,7 @@
+step,phase,seq,category,kind,title,text,answer
+P3-over-delivery-validation,P3-over-delivery-validation:00:!Reset Database Completely!,38,popup,QMessageBox.question,Confirmation,Do you want to proceed wiping out the current database?,Yes
+P3-over-delivery-validation,P3-over-delivery-validation:00:!Reset Database Completely!,39,popup,QMessageBox.information,ASC606 database reset,ASC606 Database has been wiped out and reset!,Ok
+P3-over-delivery-validation,P3-over-delivery-validation:01:Load SSPs,42,popup,QMessageBox.information,SSPs are set up,"All company SSPs for the uploaded file are set up. To add or update, re-upload SSPs to refresh.",Ok
+P3-over-delivery-validation,P3-over-delivery-validation:02:Load Contracts,44,popup,QMessageBox.information,Contracts are set up,All contracts(s) within the uploaded file are successfully set up!,Ok
+P3-over-delivery-validation,P3-over-delivery-validation:03:Load Delivery and Billing,47,popup,QMessageBox.information,Delivery/Billing load failed,Qty or billing loaded are greater than the remaining of the POBs. Check your uploads please.,Ok
+P3-over-delivery-validation,P3-over-delivery-validation:03:Load Delivery and Billing,48,popup,QMessageBox.critical,Error Notification,The process is stopped for users to fix the file,Ok

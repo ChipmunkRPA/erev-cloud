@@ -1,0 +1,178 @@
+schema: erev-answer-key/1
+id: SFC-FS-11-CASEB-UPFRONT-ADVANCE-ACCRETION
+title: "Three-year upfront payment at a discount: advance-payment financing accreted monthly"
+status: active
+families: [SFC, REC, POS]
+tags: [subscription]
+summary: "Same subscription paid 270,000.00 upfront instead of 100,000.00 a year. The discount compensates the customer for financing the entity, so the SFC is significant. Rate: POL-047 advance payment, entity incremental borrowing rate 6.00% a year, monthly 0.50%, held in the contract policy override (05 EMOD-18). The cash selling price is the level monthly amount P that settles the 270,000.00 advance with monthly effective interest: B_t = B_(t-1) × 1.005 − P, B_36 = 0. Revenue = round(P × months) cumulative (TIME_ELAPSED, MONTHLY_EVEN); interest expense = cumulative-rounded exact effective interest on the opening advance balance (JET-11b, Dr INTEREST_EXPENSE / Cr CONTRACT_LIABILITY). The transaction price is round(36P); financing adjustment = round(36P) − 270,000.00; contract liability reaches 0.00 on 31 December 2028."
+authority:
+  codification:
+    - "606-10-32-15"
+    - "606-10-32-16"
+    - "606-10-32-17"
+    - "606-10-32-18"
+    - "606-10-32-19"
+    - "606-10-32-20"
+    - "835-30-35-2"
+  ifrs: ["IFRS 15.60", "IFRS 15.64"]
+  practice: ["FASB Example 29 (advance payment)", "05-ARCHITECTURE EMOD-18"]
+  urls: []
+derived_from: {research04: [], research05: [FS-11], chk: [], golden: [], dev: []}
+requirements: [REQ-TP-011, REQ-TP-001, REQ-REC-003, REQ-REC-019]
+policy_refs: [POL-046, POL-047, POL-090]
+review: {author: answer-keys-industries, authored_on: "2026-09-12", reviewer: null, reviewed_on: null, status: pending}
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: FS-US
+      name: "Fernhill Software US (Demo)"
+      functional_currency: USD
+      time_zone: America/Los_Angeles
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: "1"}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2028-12"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4010", name: "Revenue - services and subscriptions", account_type: REVENUE}
+    - {code: "7100", name: "Interest expense", account_type: EXPENSE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: INTEREST_EXPENSE, account: "7100"}
+    - {account_role: REVENUE, product: SAAS-36M, account: "4010"}
+  customers: [{code: CUST-FS11, name: "Drossel Fahrzeugtechnik GmbH (Demo)"}]
+  pob_templates:
+    - code: TPL-SUB
+      obligation_kind: STANDARD
+      distinctness: series
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_A
+      recognition_method: TIME_ELAPSED
+      ratable_convention: MONTHLY_EVEN
+      series_increment_unit: month
+      policy_values: {balance.right_to_consideration: CONDITIONAL}
+  products: [{code: SAAS-36M, name: "Hosted service, 36 months", pob_template: TPL-SUB, revenue_category: SUBSCRIPTION}]
+  ssp_books:
+    - code: SSP-FS-US-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2025-01-01"
+          methodology_label: "Observable standalone prices (demo study)"
+          entries:
+            - product: SAAS-36M
+              currency: USD
+              method: observable
+              value_basis: AMOUNT  # D-93 (4): declared remaining-increments reading (the reading the key's oracle embodies); no value change
+              distinctness: distinct
+              ranges: [{point_value: "300000.00"}]
+  fx_rate_sets: []
+  rule_sets: []
+  policies:
+    tenant: {billing.posting: ERP, recognition.time_convention: MONTHLY_EVEN}
+    entities: {}
+    books: {}
+contracts:
+  - external_id: FS-11
+    customer: CUST-FS11
+    contracting_entity: FS-US
+    transaction_currency: USD
+    inception_date: "2026-01-01"
+    lines:
+      - obligation_key: L1-SUB
+        product_code: SAAS-36M
+        quantity: "1"
+        total_price: "270000.00"
+        start_date: "2026-01-01"
+        end_date: "2028-12-31"
+    judgements:
+      - handle: JDG-FS11-SFC
+        topic: SFC_ASSESSMENT
+        subject_obligation_key: L1-SUB
+        conclusion: "Significant financing component: 10% discount for upfront payment of a three-year service; entity borrowing rate 6.00%."
+        questionnaire: {obligation_key: L1-SUB, significant: true, exception_32_17: NONE}
+    policy_overrides:
+      - policy_key: sfc.discount_rate_basis
+        value: {basis: ENTITY_BORROWING_RATE, annual_rate: "0.06", compounding: MONTHLY}
+        rationale: "Advance payment; entity incremental borrowing rate for a three-year unsecured facility (treasury memo 2026-01)."
+timeline:
+  - seq: "1"
+    kind: event
+    contract: FS-11
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: "2"
+    kind: event
+    contract: FS-11
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: "3"
+    kind: event
+    contract: FS-11
+    event_type: BILLING_RECORDED
+    effective_date: "2026-01-01"
+    payload:
+      invoice_number: INV-FS11-001
+      line_external_id: INV-FS11-001-1
+      amount: "270000.00"
+      issue_date: "2026-01-01"
+      obligation_key: L1-SUB
+  - seq: "4"
+    kind: event
+    contract: FS-11
+    event_type: PAYMENT_RECEIVED
+    effective_date: "2026-01-01"
+    payload: {receipt_reference: RCPT-FS11-001, amount: "270000.00", receipt_date: "2026-01-01"}
+checkpoints:
+  - name: first-year-end
+    after_seq: "4"
+    as_of: "2026-12-31"
+    book: ASC606
+    contracts:
+      - contract: FS-11
+        version:
+          transaction_price: "295701.23"
+          financing_adjustment_amount: "25701.23"
+          revenue_cum: "98567.08"
+          billed_cum: "270000.00"
+        obligations: [{obligation_key: L1-SUB, allocated_amount: "295701.23", revenue_cum: "98567.08"}]
+        balances:
+          - {entity: FS-US, contract_liability: "185329.65", contract_asset: "0.00", unbilled_receivable: "0.00"}
+    subledger:
+      - period_key: FY2026-P01
+        entity: FS-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "6863.92"}
+          - {account_role: INTEREST_EXPENSE, account: "7100", dr: "1350.00"}
+          - {account_role: REVENUE, account: "4010", cr: "8213.92"}
+      - period_key: FY2026-P12
+        entity: FS-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "7251.02"}
+          - {account_role: INTEREST_EXPENSE, account: "7100", dr: "962.91"}
+          - {account_role: REVENUE, account: "4010", cr: "8213.93"}
+  - name: term-complete
+    after_seq: "4"
+    as_of: "2028-12-31"
+    book: ASC606
+    contracts:
+      - contract: FS-11
+        version:
+          transaction_price: "295701.23"
+          financing_adjustment_amount: "25701.23"
+          revenue_cum: "295701.23"
+          billed_cum: "270000.00"
+        obligations: [{obligation_key: L1-SUB, allocated_amount: "295701.23", revenue_cum: "295701.23"}]
+        balances: [{entity: FS-US, contract_liability: "0.00", contract_asset: "0.00", unbilled_receivable: "0.00"}]

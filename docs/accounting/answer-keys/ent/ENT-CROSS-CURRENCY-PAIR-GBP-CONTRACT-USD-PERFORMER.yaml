@@ -1,0 +1,315 @@
+# docs/accounting/answer-keys/ent/ENT-CROSS-CURRENCY-PAIR-GBP-CONTRACT-USD-PERFORMER.yaml
+schema: "erev-answer-key/1"
+id: ENT-CROSS-CURRENCY-PAIR-GBP-CONTRACT-USD-PERFORMER
+title: >-
+  GBP contract of a UK entity performed partly by a US entity: pair in GBP, performer revenue at its average rate
+status: active
+families: [ENT, FX, JE]
+tags: [multi-entity, fx]
+summary: >-
+  PRD world contract WLD-K-04 re-anchored. UK01 (functional GBP) contracts GBP 68,000.00 on 2026-04-01: O1 platform
+  subscription 60,000.00 (SSP 60,000.00, DAILY over 2026-04-01 to 2027-03-31) performed by US01 (functional USD), and
+  O2 implementation 8,000.00 (SSP 10,000.00) performed by UK01, 50% on 2026-04-30 and 100% on 2026-05-31; invoiced
+  68,000.00 upfront (ERP). Allocation 58,285.71 / 9,714.29. Every O1 period amount posts JET-13 in GBP: UK01 Dr
+  CONTRACT_LIABILITY / Cr INTERCOMPANY_DUE_TO (US01) with functional = the GBP relief, and US01 Dr
+  INTERCOMPANY_DUE_FROM (UK01) / Cr REVENUE with functional USD at US01's average GBP/USD rate for the period
+  (POL-162, POL-171; ALG-07 step 5). September 2026: O1 schedule 29,222.70 − 24,432.09 = 4,790.61, the pair GBP
+  4,790.61 = USD 6,155.93 at 1.2850. Remeasurement of the intercompany balances belongs to the ERP (ALG-07 step 5).
+authority:
+  codification:
+    - "606-10-25-19"
+    - "606-10-32-28"
+    - "606-10-45-1"
+    - "810-10-45-1"
+    - "606-10-55-36"
+    - "830-10-55-10"
+    - "606-10-25-31"
+  ifrs: ["IAS 21.21", "IAS 21.22", "IFRS 15.74"]
+  practice: ["Research 06 §9.1 (currency roles) and §10.2"]
+  urls: []
+derived_from: {research04: [], research05: [], chk: [], golden: [], dev: []}
+requirements: [REQ-ENT-001, REQ-ENT-002, REQ-ENT-003, REQ-JE-001, REQ-FX-001]
+policy_refs: [POL-162, POL-170, POL-171, POL-090]
+review:
+  author: answer-keys-fx-entity-books
+  authored_on: "2026-09-12"
+  reviewer: null
+  reviewed_on: null
+  status: pending
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [GBP, USD]
+  entities:
+    - code: UK01
+      name: "Avenmoor Systems Ltd (Demo)"
+      functional_currency: GBP
+      time_zone: "Europe/London"
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: 1}
+      books: [ASC606]
+    - code: US01
+      name: "Avenmoor Systems Inc. (Demo)"
+      functional_currency: USD
+      time_zone: "America/New_York"
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: 1}
+      books: [ASC606]
+  periods: {from: "2026-04", to: "2026-09"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "1800", name: "Intercompany due from", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "2800", name: "Intercompany due to", account_type: LIABILITY}
+    - {code: "4010", name: "Revenue - services and subscriptions", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: INTERCOMPANY_DUE_TO, account: "2800"}
+    - {account_role: INTERCOMPANY_DUE_FROM, account: "1800"}
+    - {account_role: REVENUE, account: "4010", product: AVM-PLAT-UK}
+    - {account_role: REVENUE, account: "4010", product: AVM-IMPL-UK}
+  customers:
+    - {code: CUST-UK-1, name: "Saltmarsh Freight Ltd (Demo)"}
+  pob_templates:
+    - code: TPL-PCT
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_B
+      recognition_method: OUTPUT_PERCENT
+    - code: TPL-RAT-DAILY
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_A
+      recognition_method: TIME_ELAPSED
+      ratable_convention: DAILY
+  products:
+    - {code: AVM-PLAT-UK, name: "Platform, enterprise tier, 12 months (UK)", pob_template: TPL-RAT-DAILY}
+    - {code: AVM-IMPL-UK, name: "Implementation, UK standard", pob_template: TPL-PCT}
+  ssp_books:
+    - code: SSP-GBP-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2026-01-01"
+          methodology_label: "Observable standalone prices"
+          entries:
+            - product: AVM-PLAT-UK
+              currency: GBP
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "60000.00"}
+            - product: AVM-IMPL-UK
+              currency: GBP
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "10000.00"}
+  fx_rate_sets:
+    - code: SPOT-GBPUSD
+      rate_type: spot
+      rates:
+        - {base_currency: GBP, quote_currency: USD, effective_date: "2026-04-01", rate: "1.2580"}
+    - code: AVG-GBPUSD
+      rate_type: average
+      rates:
+        - base_currency: GBP
+          quote_currency: USD
+          effective_date: "2026-04-30"
+          period_key: FY2026-P04
+          rate: "1.2600"
+        - base_currency: GBP
+          quote_currency: USD
+          effective_date: "2026-05-31"
+          period_key: FY2026-P05
+          rate: "1.2650"
+        - base_currency: GBP
+          quote_currency: USD
+          effective_date: "2026-06-30"
+          period_key: FY2026-P06
+          rate: "1.2700"
+        - base_currency: GBP
+          quote_currency: USD
+          effective_date: "2026-07-31"
+          period_key: FY2026-P07
+          rate: "1.2750"
+        - base_currency: GBP
+          quote_currency: USD
+          effective_date: "2026-08-31"
+          period_key: FY2026-P08
+          rate: "1.2800"
+        - base_currency: GBP
+          quote_currency: USD
+          effective_date: "2026-09-30"
+          period_key: FY2026-P09
+          rate: "1.2850"
+    - code: CLOSE-GBPUSD
+      rate_type: closing
+      rates:
+        - base_currency: GBP
+          quote_currency: USD
+          effective_date: "2026-04-30"
+          period_key: FY2026-P04
+          rate: "1.2620"
+        - base_currency: GBP
+          quote_currency: USD
+          effective_date: "2026-05-31"
+          period_key: FY2026-P05
+          rate: "1.2680"
+        - base_currency: GBP
+          quote_currency: USD
+          effective_date: "2026-06-30"
+          period_key: FY2026-P06
+          rate: "1.2720"
+        - base_currency: GBP
+          quote_currency: USD
+          effective_date: "2026-07-31"
+          period_key: FY2026-P07
+          rate: "1.2770"
+        - base_currency: GBP
+          quote_currency: USD
+          effective_date: "2026-08-31"
+          period_key: FY2026-P08
+          rate: "1.2830"
+        - base_currency: GBP
+          quote_currency: USD
+          effective_date: "2026-09-30"
+          period_key: FY2026-P09
+          rate: "1.2870"
+  rule_sets: []
+  policies: {tenant: {billing.posting: ERP}, entities: {}, books: {}}
+contracts:
+  - external_id: SF-ORD-UK-2001
+    customer: CUST-UK-1
+    contracting_entity: UK01
+    transaction_currency: GBP
+    inception_date: "2026-04-01"
+    lines:
+      - obligation_key: O1
+        product_code: AVM-PLAT-UK
+        quantity: "1"
+        total_price: "60000.00"
+        start_date: "2026-04-01"
+        end_date: "2027-03-31"
+        performing_entity_code: US01
+      - obligation_key: O2
+        product_code: AVM-IMPL-UK
+        quantity: "1"
+        total_price: "8000.00"
+        performing_entity_code: UK01
+timeline:
+  - seq: 1
+    kind: event
+    contract: SF-ORD-UK-2001
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-04-01"
+    payload: {}
+  - seq: 2
+    kind: event
+    contract: SF-ORD-UK-2001
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-04-01"
+    payload: {}
+  - seq: 3
+    kind: event
+    contract: SF-ORD-UK-2001
+    event_type: BILLING_RECORDED
+    effective_date: "2026-04-01"
+    payload:
+      invoice_number: INV-UK-0501
+      line_external_id: INV-UK-0501-1
+      amount: "68000.00"
+      issue_date: "2026-04-01"
+  - seq: 4
+    kind: event
+    contract: SF-ORD-UK-2001
+    event_type: PROGRESS_RECORDED
+    effective_date: "2026-04-30"
+    payload: {obligation_key: O2, cumulative_progress_ratio: "0.5", measure: OUTPUT_PERCENT}
+  - seq: 5
+    kind: event
+    contract: SF-ORD-UK-2001
+    event_type: PROGRESS_RECORDED
+    effective_date: "2026-05-31"
+    payload: {obligation_key: O2, cumulative_progress_ratio: "1", measure: OUTPUT_PERCENT}
+checkpoints:
+  - name: april-close
+    after_seq: 4
+    as_of: "2026-04-30"
+    book: ASC606
+    contracts:
+      - contract: SF-ORD-UK-2001
+        obligations:
+          - obligation_key: O1
+            allocated_amount: "58285.71"
+            allocated_exact: "58285.714286"
+            revenue_cum: "4790.61"
+          - {obligation_key: O2, allocated_amount: "9714.29", allocated_exact: "9714.285714", revenue_cum: "4857.14"}
+        balances:
+          - {entity: UK01, contract_liability: "58352.25", contract_asset: "0.00", unbilled_receivable: "0.00"}
+          - {entity: US01, contract_liability: "0.00", contract_asset: "0.00", unbilled_receivable: "0.00"}
+    subledger:
+      - period_key: FY2026-P04
+        entity: UK01
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "9647.75"}
+          - {account_role: REVENUE, account: "4010", cr: "4857.14"}
+          - {account_role: INTERCOMPANY_DUE_TO, account: "2800", counterparty_entity: US01, cr: "4790.61"}
+      - period_key: FY2026-P04
+        entity: US01
+        match: exact
+        grain: role_account
+        lines:
+          - account_role: INTERCOMPANY_DUE_FROM
+            account: "1800"
+            counterparty_entity: UK01
+            dr: "4790.61"
+            functional_dr: "6036.17"
+          - {account_role: REVENUE, account: "4010", cr: "4790.61", functional_cr: "6036.17"}
+  - name: september-close
+    after_seq: 5
+    as_of: "2026-09-30"
+    book: ASC606
+    contracts:
+      - contract: SF-ORD-UK-2001
+        obligations:
+          - {obligation_key: O1, revenue_cum: "29222.70"}
+          - {obligation_key: O2, revenue_cum: "9714.29"}
+        balances:
+          - {entity: UK01, contract_liability: "29063.01", contract_asset: "0.00", unbilled_receivable: "0.00"}
+        schedule:
+          - obligation_key: O1
+            schedule_kind: REVENUE
+            line_type: NORMAL
+            amounts:
+              FY2026-P04: "4790.61"
+              FY2026-P05: "4950.29"
+              FY2026-P06: "4790.61"
+              FY2026-P07: "4950.29"
+              FY2026-P08: "4950.29"
+              FY2026-P09: "4790.61"
+    subledger:
+      - period_key: FY2026-P09
+        entity: UK01
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "4790.61"}
+          - {account_role: INTERCOMPANY_DUE_TO, account: "2800", counterparty_entity: US01, cr: "4790.61"}
+      - period_key: FY2026-P09
+        entity: US01
+        match: exact
+        grain: role_account
+        lines:
+          - account_role: INTERCOMPANY_DUE_FROM
+            account: "1800"
+            counterparty_entity: UK01
+            dr: "4790.61"
+            functional_dr: "6155.93"
+          - {account_role: REVENUE, account: "4010", cr: "4790.61", functional_cr: "6155.93"}

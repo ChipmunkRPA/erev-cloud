@@ -1,0 +1,4 @@
+Self-test fixture for PRIVATE_KEY (DG-MK-secrets-check). Not a real key.
+-----BEGIN OPENSSH PRIVATE KEY-----
+fixture body without key material
+-----END OPENSSH PRIVATE KEY-----

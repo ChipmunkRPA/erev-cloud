@@ -1,0 +1,170 @@
+schema: erev-answer-key/1
+id: SFC-FS-11-CASEA-UPFRONT-NO-FINANCING
+title: "Three-year upfront payment tested for financing: cash selling price equals promised consideration"
+status: active
+families: [SFC, REC]
+tags: [subscription]
+summary: "A three-year hosted subscription (2026 to 2028) is paid 300,000.00 upfront on 1 January 2026; the list price for annual billing is 100,000.00 a year. The gap between payment and the midpoint of performance exceeds 12 months, so POL-046 raises an SFC review. The promised consideration equals the cash selling price, so no significant financing component exists (606-10-32-16(a)); the SFC_ASSESSMENT judgement clears the flag. Revenue 300,000.00 on time elapsed (8,333.33 / 8,333.34 a month); financing adjustment 0.00."
+authority:
+  codification:
+    - "606-10-32-15"
+    - "606-10-32-16"
+    - "606-10-32-17"
+    - "606-10-32-18"
+    - "606-10-32-19"
+    - "606-10-32-20"
+    - "835-30-35-2"
+  ifrs: ["IFRS 15.60", "IFRS 15.64"]
+  practice: ["FASB Example 29 (advance payment)", "05-ARCHITECTURE EMOD-18"]
+  urls: []
+derived_from: {research04: [], research05: [FS-11], chk: [], golden: [], dev: []}
+requirements: [REQ-TP-011, REQ-POL-008, REQ-REC-003]
+policy_refs: [POL-046, POL-047, POL-090]
+review: {author: answer-keys-industries, authored_on: "2026-09-12", reviewer: null, reviewed_on: null, status: pending}
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: FS-US
+      name: "Fernhill Software US (Demo)"
+      functional_currency: USD
+      time_zone: America/Los_Angeles
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: "1"}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2028-12"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4010", name: "Revenue - services and subscriptions", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, product: SAAS-36M, account: "4010"}
+  customers: [{code: CUST-FS11, name: "Drossel Fahrzeugtechnik GmbH (Demo)"}]
+  pob_templates:
+    - code: TPL-SUB
+      obligation_kind: STANDARD
+      distinctness: series
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_A
+      recognition_method: TIME_ELAPSED
+      ratable_convention: MONTHLY_EVEN
+      series_increment_unit: month
+      policy_values: {balance.right_to_consideration: CONDITIONAL}
+  products: [{code: SAAS-36M, name: "Hosted service, 36 months", pob_template: TPL-SUB, revenue_category: SUBSCRIPTION}]
+  ssp_books:
+    - code: SSP-FS-US-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2025-01-01"
+          methodology_label: "Observable standalone prices (demo study)"
+          entries:
+            - product: SAAS-36M
+              currency: USD
+              method: observable
+              value_basis: AMOUNT  # D-93 (4): declared remaining-increments reading (the reading the key's oracle embodies); no value change
+              distinctness: distinct
+              ranges: [{point_value: "300000.00"}]
+  fx_rate_sets: []
+  rule_sets: []
+  policies:
+    tenant: {billing.posting: ERP, recognition.time_convention: MONTHLY_EVEN}
+    entities: {}
+    books: {}
+contracts:
+  - external_id: FS-11
+    customer: CUST-FS11
+    contracting_entity: FS-US
+    transaction_currency: USD
+    inception_date: "2026-01-01"
+    lines:
+      - obligation_key: L1-SUB
+        product_code: SAAS-36M
+        quantity: "1"
+        total_price: "300000.00"
+        start_date: "2026-01-01"
+        end_date: "2028-12-31"
+    judgements:
+      - handle: JDG-FS11-SFC
+        topic: SFC_ASSESSMENT
+        subject_obligation_key: L1-SUB
+        conclusion: "No significant financing component: promised consideration equals the cash selling price (606-10-32-16(a))."
+        questionnaire: {obligation_key: L1-SUB, significant: false, exception_32_17: NONE}
+timeline:
+  - seq: "1"
+    kind: event
+    contract: FS-11
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: "2"
+    kind: event
+    contract: FS-11
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: "3"
+    kind: event
+    contract: FS-11
+    event_type: BILLING_RECORDED
+    effective_date: "2026-01-01"
+    payload:
+      invoice_number: INV-FS11-001
+      line_external_id: INV-FS11-001-1
+      amount: "300000.00"
+      issue_date: "2026-01-01"
+      obligation_key: L1-SUB
+  - seq: "4"
+    kind: event
+    contract: FS-11
+    event_type: PAYMENT_RECEIVED
+    effective_date: "2026-01-01"
+    payload: {receipt_reference: RCPT-FS11-001, amount: "300000.00", receipt_date: "2026-01-01"}
+checkpoints:
+  - name: first-year-end
+    after_seq: "4"
+    as_of: "2026-12-31"
+    book: ASC606
+    contracts:
+      - contract: FS-11
+        version:
+          transaction_price: "300000.00"
+          financing_adjustment_amount: "0.00"
+          revenue_cum: "100000.00"
+          billed_cum: "300000.00"
+        obligations: [{obligation_key: L1-SUB, allocated_amount: "300000.00", revenue_cum: "100000.00"}]
+        balances:
+          - {entity: FS-US, contract_liability: "200000.00", contract_asset: "0.00", unbilled_receivable: "0.00"}
+    subledger:
+      - period_key: FY2026-P01
+        entity: FS-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "8333.33"}
+          - {account_role: REVENUE, account: "4010", cr: "8333.33"}
+      - period_key: FY2026-P12
+        entity: FS-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "8333.33"}
+          - {account_role: REVENUE, account: "4010", cr: "8333.33"}
+  - name: term-complete
+    after_seq: "4"
+    as_of: "2028-12-31"
+    book: ASC606
+    contracts:
+      - contract: FS-11
+        version:
+          transaction_price: "300000.00"
+          financing_adjustment_amount: "0.00"
+          revenue_cum: "300000.00"
+          billed_cum: "300000.00"
+        obligations: [{obligation_key: L1-SUB, allocated_amount: "300000.00", revenue_cum: "300000.00"}]
+        balances: [{entity: FS-US, contract_liability: "0.00", contract_asset: "0.00", unbilled_receivable: "0.00"}]

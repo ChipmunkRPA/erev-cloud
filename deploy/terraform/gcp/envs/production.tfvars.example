@@ -1,0 +1,112 @@
+# envs/production.tfvars.example — PRODUCTION placeholders for deploy/terraform/gcp (05 DPL-30).
+#
+# Every value below is a placeholder: no real project id, domain, channel id, digest or version.
+# Copy to envs/production.tfvars (untracked) and replace each PLACEHOLDER once the unknown input
+# (UI-n, .run/supervisor/prod/unknown-inputs.md) has been supplied. Production is its own GCP
+# project (05 OPR-07). Promotion rule: image_digests must be the SAME three digests that passed in
+# staging (same-digest promotion; the README describes the flow). Nothing here is a credential.
+
+# UI-1: project and environment
+project_id  = "PLACEHOLDER-erev-production-project" # GCP project id of the production deployment
+environment = "production"
+
+# UI-2: region, Cloud SQL edition/tier, CMEK, PITR
+region                  = "europe-west1" # placeholder region; same region family as staging (PRV-10)
+db_tier                 = "db-custom-4-16384"
+db_edition              = "ENTERPRISE"
+db_availability_type    = "REGIONAL" # required in production (DPL-32; precondition)
+pitr_log_retention_days = 7          # OPR-08 basis; UI-2 confirms
+use_cmek                = true
+db_max_connections      = 600
+
+# 05 §2.7 lock budget: the lock table is max_locks_per_transaction × max_connections slots; the
+# variable refuses less than 3072, and changing it restarts the instance.
+db_max_locks_per_transaction = 4096
+
+# UI-3: bucket names and KMS key ring (null derives erev-files-production / erev-audit-digests-production)
+files_bucket_name  = null
+digest_bucket_name = null
+kms_key_ring_name  = "erev"
+
+# UI-4: Secret Manager prefix and PINNED VERSION NUMBERS (never "latest")
+secret_prefix = "erev-"
+secret_versions = {
+  security_hmac     = "1" # placeholder version number of erev-security-hmac
+  anthropic_api_key = "1" # placeholder version number of erev-anthropic-api-key
+  smtp_password     = "1" # placeholder version number of erev-smtp-password
+  metrics_token     = "1" # placeholder version number of erev-metrics-token
+}
+
+# UI-5: Artifact Registry and the release's image DIGESTS: copy the three digests from the staging
+# tfvars that passed acceptance (all-zero placeholders here; no registry holds them)
+artifact_registry_repository = "erev"
+image_digests = {
+  api    = "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+  worker = "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+  web    = "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+}
+vulnerability_scanning = true
+
+# UI-6: domain and proxy hops
+public_domain      = "erev.example.com" # placeholder host name
+trusted_proxy_hops = 2
+
+# UI-7: IAP and Cloud Armor
+enable_iap             = false
+iap_allowed_principals = [] # e.g. ["domain:example.com"] when enable_iap = true
+iap_healthz_exemption  = false # IAP on: route only /api/v1/healthz around IAP for the uptime check (README "invocation policy")
+invoker_iam_disabled   = false # public invocation without an allUsers binding (domain-restricted sharing, UI-1)
+iap_synthetic_health   = true  # strict IAP: signed-JWT synthetic probe of /api/v1/healthz (false = TCP 443 fallback only)
+iap_probe_period       = "60s"     # 60s | 300s | 600s | 900s; the alert windows follow it
+iap_probe_runtime      = "nodejs22"
+iap_probe_first_execution = null # record after the first synthetic execution (UI-7): { execution_id = "PLACEHOLDER", observed_at = "2026-01-01T00:00:00Z" }
+cloud_armor_preview    = true # flip to false once staging shows no false positives (UI-7)
+
+# UI-8: email relay and AI provider (the SMTP password is the pinned secret erev-smtp-password)
+smtp_host     = "smtp-relay.example.com" # placeholder
+smtp_port     = 587
+smtp_username = "PLACEHOLDER-smtp-user"
+smtp_from     = "erev@example.com" # placeholder
+ai_provider   = "fake"             # "anthropic" injects ANTHROPIC_API_KEY from the pinned KEY-10 secret
+
+# UI-9: monitoring notification channels (created outside this module; SLO-06 must page)
+notification_channel_ids = [
+  "projects/PLACEHOLDER-erev-production-project/notificationChannels/PLACEHOLDER_CHANNEL_ID",
+]
+
+# UI-10 and DPL-31: Cloud Run shapes and the worker timeout
+api_min_instances              = 1
+api_max_instances              = 10
+api_concurrency                = 40
+worker_compute_min_instances   = 1
+worker_compute_max_instances   = 4
+worker_general_min_instances   = 1
+worker_general_max_instances   = 2
+web_min_instances              = 1
+web_max_instances              = 4
+worker_concurrency             = 4
+worker_request_timeout_seconds = 300
+migrate_timeout_seconds        = 1800
+
+# Connection budget inputs (05 §2.7): keep equal to the coded pool sizes until P5 makes them settings
+api_pool_size                  = 10
+api_max_overflow               = 10
+worker_sqlalchemy_pool_size    = 10
+worker_sqlalchemy_max_overflow = 10
+migrate_connection_allowance   = 2
+db_connection_reserve          = 10
+
+# Backup and restore drill (D-95): hosted production has no erev_backup and no pg_dump backup; its backup is the
+# OPR-08 automated backup + PITR and its drill is OPR-12 into a fresh instance in the isolated restore-test project.
+backup_user_enabled         = false # keep false on Cloud SQL (no BYPASSRLS bootstrap path); variables kept for the unestablished path
+backup_user_name            = "erev_backup"
+backup_url_secret_accessors = [] # only when backup_user_enabled; e.g. ["serviceAccount:erev-backup@PLACEHOLDER-project.iam.gserviceaccount.com"]
+restore_test_instance       = null # UI-P6-2 once supplied: { project_id = "PLACEHOLDER-erev-restore-test-project", instance_name = "erev-pg17-restore-test" }
+
+# Network
+vpc_subnet_cidr   = "10.20.0.0/24"
+psa_prefix_length = 16
+
+labels = {
+  cost-centre = "PLACEHOLDER"
+}

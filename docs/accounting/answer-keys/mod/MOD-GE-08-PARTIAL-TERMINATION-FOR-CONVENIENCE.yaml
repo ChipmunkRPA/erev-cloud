@@ -1,0 +1,274 @@
+schema: erev-answer-key/1
+id: MOD-GE-08-PARTIAL-TERMINATION-FOR-CONVENIENCE
+title: "Partial termination for convenience of production units: prospective reallocation of the remaining units"
+status: active
+families: [MOD, REC, ALC]
+tags: [termination, construction]
+summary: "A firm-fixed-price contract signed 1 January 2026: design and prototype (stated 1,800,000.00, SSP 1,500,000.00, cost-to-cost, EAC 1,200,000.00) and 10 production units (stated 120,000.00 each, 1,200,000.00, SSP 1,500,000.00). Allocation by relative SSP: prototype 1,500,000.00; units 1,500,000.00 (150,000.00 each). The prototype completes on 30 June; 2 units are delivered on 30 September. On 31 October the customer terminates 5 of the remaining 8 units for convenience; the contract price falls by 600,000.00 (5 × 120,000.00). A scope reduction is never a separate contract; the remaining units are distinct, so 25-13(a) applies: pool = remaining allocation 1,200,000.00 − 600,000.00 = 600,000.00 for 3 units (200,000.00 each); no catch-up on the satisfied prototype (ALG-04). The last 3 units are delivered on 15 December. Billing: prototype 1,800,000.00 on completion; units 120,000.00 each on delivery."
+authority:
+  codification: ["606-10-25-10", "606-10-25-13", "606-10-32-28", "606-10-25-31", "606-10-25-30"]
+  ifrs: ["IFRS 15.21(a)"]
+  practice: ["DART 9.2.2.7 (scope reductions)"]
+  urls: []
+derived_from: {research04: [], research05: [GE-08], chk: [], golden: [], dev: []}
+requirements: [REQ-MOD-001, REQ-MOD-004, REQ-MOD-009, REQ-MOD-011, REQ-ALC-001]
+policy_refs: [POL-080, POL-081, POL-100, POL-103]
+review: {author: answer-keys-industries, authored_on: "2026-09-12", reviewer: null, reviewed_on: null, status: pending}
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: GE-US
+      name: "Granitefield Engineering US (Demo)"
+      functional_currency: USD
+      time_zone: America/Denver
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: "1"}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2026-12"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4000", name: "Revenue - products", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, product: PROTO-DESIGN, account: "4000"}
+    - {account_role: REVENUE, product: PROD-UNIT, account: "4000"}
+  customers: [{code: CUST-GE08, name: "Federal Transit Systems Office (Demo)"}]
+  pob_templates:
+    - code: TPL-CTC
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_B
+      recognition_method: COST_TO_COST
+      policy_values: {balance.right_to_consideration: CONDITIONAL}
+    - code: TPL-GOODS
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: POINT_IN_TIME
+      over_time_criterion: NOT_APPLICABLE
+      recognition_method: POINT_IN_TIME
+      policy_values: {balance.right_to_consideration: UNCONDITIONAL}
+  products:
+    - {code: PROTO-DESIGN, name: "Design and prototype", pob_template: TPL-CTC, revenue_category: GOVERNMENT}
+    - {code: PROD-UNIT, name: "Production unit", pob_template: TPL-GOODS, revenue_category: GOVERNMENT}
+  ssp_books:
+    - code: SSP-GE-US-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2025-01-01"
+          methodology_label: "Observable standalone prices (demo study)"
+          entries:
+            - product: PROTO-DESIGN
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges: [{point_value: "1500000.00"}]
+            - product: PROD-UNIT
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges: [{point_value: "150000.00"}]
+  fx_rate_sets: []
+  rule_sets: []
+  policies:
+    tenant: {billing.posting: ERP, recognition.time_convention: MONTHLY_EVEN}
+    entities: {}
+    books: {}
+contracts:
+  - external_id: GE-08
+    customer: CUST-GE08
+    contracting_entity: GE-US
+    transaction_currency: USD
+    inception_date: "2026-01-01"
+    contract_type: GOVERNMENT_FFP
+    lines:
+      - obligation_key: L1-PROTO
+        product_code: PROTO-DESIGN
+        quantity: "1"
+        total_price: "1800000.00"
+        start_date: "2026-01-01"
+        end_date: "2026-06-30"
+      - obligation_key: L2-UNITS
+        product_code: PROD-UNIT
+        quantity: "10"
+        total_price: "1200000.00"
+        unit_price: "120000"
+    estimates:
+      - element_code: EAC-GE08-PROTO
+        estimate_kind: EAC
+        method: COST_BUILDUP
+        obligation_key: L1-PROTO
+        versions:
+          - version_no: "1"
+            effective_date: "2026-01-01"
+            expected_total_amount: "1200000.00"
+            currency: USD
+            rationale: "Prototype plan."
+    modifications:
+      - reference: MOD-GE08-T4C
+        effective_date: "2026-10-31"
+        # D-93 (2): a termination for convenience that reduces units within an obligation is a
+        # scope-reducing modification (606-10-25-12/13); the terms line carries the post-modification
+        # terms (5 units in force, 3 remaining after the 2 delivered). CONTRACT_TERMINATED PARTIAL
+        # selects whole obligations (S06-R-21) and is not the event shape here.
+        kind: QUANTITY_CHANGE
+        price_change_amount: "-600000.00"
+        lines:
+          - obligation_key: L2-UNITS
+            product_code: PROD-UNIT
+            quantity: "5"
+            total_price: "600000.00"
+            unit_price: "120000"
+timeline:
+  - seq: "1"
+    kind: event
+    contract: GE-08
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: "2"
+    kind: event
+    contract: GE-08
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: "3"
+    kind: event
+    contract: GE-08
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-01-01"
+    payload: {estimate: EAC-GE08-PROTO, version_no: "1"}
+  - seq: "4"
+    kind: event
+    contract: GE-08
+    event_type: COST_INCURRED
+    effective_date: "2026-06-30"
+    payload: {purpose: PROGRESS_INPUT, obligation_key: L1-PROTO, amount: "1200000.00"}
+  - seq: "5"
+    kind: event
+    contract: GE-08
+    event_type: BILLING_RECORDED
+    effective_date: "2026-06-30"
+    payload:
+      invoice_number: INV-GE08-PROTO
+      line_external_id: INV-GE08-PROTO-1
+      amount: "1800000.00"
+      issue_date: "2026-06-30"
+      obligation_key: L1-PROTO
+  - seq: "6"
+    kind: event
+    contract: GE-08
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-09-30"
+    payload: {obligation_key: L2-UNITS, quantity: "2", trigger: ACCEPTANCE}
+  - seq: "7"
+    kind: event
+    contract: GE-08
+    event_type: BILLING_RECORDED
+    effective_date: "2026-09-30"
+    payload:
+      invoice_number: INV-GE08-U01
+      line_external_id: INV-GE08-U01-1
+      amount: "240000.00"
+      issue_date: "2026-09-30"
+      obligation_key: L2-UNITS
+  - seq: "8"
+    kind: event
+    contract: GE-08
+    event_type: CONTRACT_AMENDED
+    effective_date: "2026-10-31"
+    payload: {modification: MOD-GE08-T4C}
+  - seq: "9"
+    kind: event
+    contract: GE-08
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-12-15"
+    payload: {obligation_key: L2-UNITS, quantity: "3", trigger: ACCEPTANCE}
+  - seq: "10"
+    kind: event
+    contract: GE-08
+    event_type: BILLING_RECORDED
+    effective_date: "2026-12-15"
+    payload:
+      invoice_number: INV-GE08-U02
+      line_external_id: INV-GE08-U02-1
+      amount: "360000.00"
+      issue_date: "2026-12-15"
+      obligation_key: L2-UNITS
+checkpoints:
+  - name: units-delivered
+    after_seq: "7"
+    as_of: "2026-09-30"
+    book: ASC606
+    contracts:
+      - contract: GE-08
+        version: {transaction_price: "3000000.00", revenue_cum: "1800000.00", billed_cum: "2040000.00"}
+        obligations:
+          - obligation_key: L1-PROTO
+            allocated_amount: "1500000.00"
+            revenue_cum: "1500000.00"
+            satisfaction_status: SATISFIED
+          - obligation_key: L2-UNITS
+            allocated_amount: "1500000.00"
+            revenue_cum: "300000.00"
+            quantity: "10"
+            delivered_quantity_cum: "2"
+        balances:
+          - {entity: GE-US, contract_liability: "240000.00", contract_asset: "0.00", unbilled_receivable: "0.00"}
+  - name: partial-termination
+    after_seq: "8"
+    as_of: "2026-10-31"
+    book: ASC606
+    contracts:
+      - contract: GE-08
+        version: {transaction_price: "2400000.00", revenue_cum: "1800000.00", billed_cum: "2040000.00"}
+        obligations:
+          - obligation_key: L1-PROTO
+            allocated_amount: "1500000.00"
+            revenue_cum: "1500000.00"
+            satisfaction_status: SATISFIED
+          - obligation_key: L2-UNITS
+            allocated_amount: "900000.00"
+            revenue_cum: "300000.00"
+            quantity: "5"
+            delivered_quantity_cum: "2"
+        balances:
+          - {entity: GE-US, contract_liability: "240000.00", contract_asset: "0.00", unbilled_receivable: "0.00"}
+        modifications:
+          - reference: MOD-GE08-T4C
+            proposed_treatments: {L2-UNITS: PROSPECTIVE}
+    subledger:
+      - {period_key: FY2026-P10, entity: GE-US, match: exact, grain: role_account, lines: []}
+  - name: complete
+    after_seq: "10"
+    as_of: "2026-12-31"
+    book: ASC606
+    contracts:
+      - contract: GE-08
+        version: {transaction_price: "2400000.00", revenue_cum: "2400000.00", billed_cum: "2400000.00"}
+        obligations:
+          - obligation_key: L1-PROTO
+            allocated_amount: "1500000.00"
+            revenue_cum: "1500000.00"
+            satisfaction_status: SATISFIED
+          - obligation_key: L2-UNITS
+            allocated_amount: "900000.00"
+            revenue_cum: "900000.00"
+            quantity: "5"
+            delivered_quantity_cum: "5"
+        balances: [{entity: GE-US, contract_liability: "0.00", contract_asset: "0.00", unbilled_receivable: "0.00"}]
+    subledger:
+      - period_key: FY2026-P12
+        entity: GE-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "600000.00"}
+          - {account_role: REVENUE, account: "4000", cr: "600000.00"}

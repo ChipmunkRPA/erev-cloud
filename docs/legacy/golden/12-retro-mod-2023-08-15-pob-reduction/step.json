@@ -1,0 +1,130 @@
+{
+  "nn": "12",
+  "slug": "retro-mod-2023-08-15-pob-reduction",
+  "handler": "browse_file_RetroMod",
+  "button": "button5",
+  "button_label": "Retrospective Contract Mod",
+  "file": "ops/Example UATs/Contract Mod UAT/Contract Modification Template 08.15.2023 - retrospective POB reduction.xlsx",
+  "file_sha256": "628d19d6db087248097f2bbdef3b3e3b524fc721d83d2f4e87bfa9c69e97f003",
+  "date_input": "2023-08-15",
+  "report_window": [
+    "2023-08-01",
+    "2023-08-15"
+  ],
+  "contract_live_table_exists": true,
+  "sku_ssp_table_exists": true,
+  "rows_before": 76,
+  "rows_after": 84,
+  "rows_appended": 8,
+  "new_version_tokens": [
+    "step-12"
+  ],
+  "sku_ssp_rows": 7,
+  "handler_success": true,
+  "handler_popups": [
+    {
+      "kind": "QMessageBox.information",
+      "title": "Mod Success",
+      "text": "Retrospective Mod has been processed with uploaded modifications for the current date :)"
+    }
+  ],
+  "report_popups": 4,
+  "unused_queued_inputs": [],
+  "report_unused_inputs": {
+    "latest_contracts": [],
+    "je_gross": [],
+    "je_delta": [],
+    "contract_history": []
+  },
+  "reports_captured": {
+    "latest_contracts": true,
+    "je_gross": true,
+    "je_delta": true,
+    "contract_history": true
+  },
+  "je_gross_totals": {
+    "lines": 6,
+    "by_account": [
+      {
+        "account": "5001",
+        "debit": 0.0,
+        "credit": 8.63,
+        "net": -8.63
+      },
+      {
+        "account": "5002",
+        "debit": 0.0,
+        "credit": 42.55,
+        "net": -42.55
+      },
+      {
+        "account": "5003",
+        "debit": 0.0,
+        "credit": 7.22,
+        "net": -7.22
+      },
+      {
+        "account": "21001",
+        "debit": 42.1,
+        "credit": -0.0,
+        "net": 42.1
+      },
+      {
+        "account": "21002",
+        "debit": 16.3,
+        "credit": -0.0,
+        "net": 16.3
+      }
+    ],
+    "total_debit": 58.4,
+    "total_credit": 58.4,
+    "net": 0.0
+  },
+  "je_delta_totals": {
+    "lines": 6,
+    "by_account": [
+      {
+        "account": "5001",
+        "debit": 0.0,
+        "credit": 8.63,
+        "net": -8.63
+      },
+      {
+        "account": "5002",
+        "debit": 0.0,
+        "credit": 42.55,
+        "net": -42.55
+      },
+      {
+        "account": "5003",
+        "debit": 0.0,
+        "credit": 7.22,
+        "net": -7.22
+      },
+      {
+        "account": "21001",
+        "debit": 42.1,
+        "credit": -0.0,
+        "net": 42.1
+      },
+      {
+        "account": "21002",
+        "debit": 16.3,
+        "credit": -0.0,
+        "net": 16.3
+      }
+    ],
+    "total_debit": 58.4,
+    "total_credit": 58.4,
+    "net": 0.0
+  },
+  "contract_history_rows": 8,
+  "latest_contract_rows": 16,
+  "app_excel_exports": [
+    "Contract History between 2023-08-01 and 2023-08-15.xlsx",
+    "Latest Contract Details.xlsx",
+    "Revenue Adj. Summary between 2023-08-01 and 2023-08-15.xlsx",
+    "Revenue JE Summary between 2023-08-01 and 2023-08-15.xlsx"
+  ],
+  "python_warnings": []
+}

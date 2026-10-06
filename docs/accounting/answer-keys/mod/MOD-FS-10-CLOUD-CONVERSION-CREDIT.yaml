@@ -1,0 +1,267 @@
+schema: erev-answer-key/1
+id: MOD-FS-10-CLOUD-CONVERSION-CREDIT
+title: "Conversion of a term licence with PCS to SaaS with a credit for unused PCS, accounted for prospectively"
+status: active
+families: [MOD, ALC, REC]
+tags: [subscription]
+summary: "On 1 January 2026 the customer buys a three-year term licence (90,000.00, functional, transferred on 1 January 2026) and three years of PCS (30,000.00), invoiced 120,000.00; SSPs equal the prices. On 1 January 2027 the customer converts to the hosted service for 2027 and 2028: SaaS list value 100,000.00 less a conversion credit of 20,000.00 for unused PCS, invoiced 80,000.00. The customer gives up the on-premise rights with no refund; the conversion right was not a material right at inception, so licence revenue is not reversed. The remaining SaaS and the removed PCS are distinct from what was transferred: termination and new contract (606-10-25-13(a)). Pool = unrecognised PCS allocation 20,000.00 + 80,000.00 = 100,000.00, all apportioned to the SaaS POB (the removed PCS has no remaining quantity and weight 0), recognised 4,166.67 / 4,166.66 a month."
+authority:
+  codification: ["606-10-25-10", "606-10-25-13", "606-10-55-54", "606-10-32-28"]
+  ifrs: []
+  practice: ["Deloitte, Cloud conversion rights (Roadmap Revenue 11.7 and cloud-conversion practice)"]
+  urls: []
+derived_from: {research04: [], research05: [FS-10], chk: [], golden: [], dev: []}
+requirements: [REQ-MOD-001, REQ-MOD-002, REQ-MOD-004, REQ-MOD-009, REQ-MOD-012]
+policy_refs: [POL-080, POL-081, POL-100, POL-103, POL-090]
+review: {author: answer-keys-industries, authored_on: "2026-09-12", reviewer: null, reviewed_on: null, status: pending}
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: FS-US
+      name: "Fernhill Software US (Demo)"
+      functional_currency: USD
+      time_zone: America/Los_Angeles
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: "1"}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2028-12"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4010", name: "Revenue - services and subscriptions", account_type: REVENUE}
+    - {code: "4020", name: "Revenue - licences and royalties", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, product: TERM-LIC-3Y, account: "4020"}
+    - {account_role: REVENUE, product: PCS-3Y, account: "4010"}
+    - {account_role: REVENUE, product: SAAS-CONV-24M, account: "4010"}
+  customers: [{code: CUST-FS10, name: "Hollenbrand Medizintechnik GmbH (Demo)"}]
+  pob_templates:
+    - code: TPL-LIC
+      obligation_kind: LICENCE
+      distinctness: distinct
+      satisfaction_pattern: POINT_IN_TIME
+      over_time_criterion: NOT_APPLICABLE
+      recognition_method: POINT_IN_TIME
+      licence_nature: FUNCTIONAL
+      start_date_rule: LICENCE_START_OR_AVAILABLE
+      policy_values: {balance.right_to_consideration: UNCONDITIONAL}
+    - code: TPL-PCS
+      obligation_kind: STANDARD
+      distinctness: series
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_A
+      recognition_method: TIME_ELAPSED
+      ratable_convention: MONTHLY_EVEN
+      series_increment_unit: month
+      policy_values: {balance.right_to_consideration: CONDITIONAL}
+    - code: TPL-SAAS
+      obligation_kind: STANDARD
+      distinctness: series
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_A
+      recognition_method: TIME_ELAPSED
+      ratable_convention: MONTHLY_EVEN
+      series_increment_unit: month
+      policy_values: {balance.right_to_consideration: CONDITIONAL}
+  products:
+    - {code: TERM-LIC-3Y, name: "Term licence, 36 months", pob_template: TPL-LIC, revenue_category: LICENCE}
+    - {code: PCS-3Y, name: "PCS, 36 months", pob_template: TPL-PCS, revenue_category: SUPPORT}
+    - code: SAAS-CONV-24M
+      name: "Hosted service after conversion, 24 months"
+      pob_template: TPL-SAAS
+      revenue_category: SUBSCRIPTION
+  ssp_books:
+    - code: SSP-FS-US-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2025-01-01"
+          methodology_label: "Observable standalone prices (demo study)"
+          entries:
+            - product: TERM-LIC-3Y
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges: [{point_value: "90000.00"}]
+            - product: PCS-3Y
+              currency: USD
+              method: observable
+              value_basis: AMOUNT  # D-93 (4): declared remaining-increments reading (the reading the key's oracle embodies); no value change
+              distinctness: distinct
+              ranges: [{point_value: "30000.00"}]
+            - product: SAAS-CONV-24M
+              currency: USD
+              method: observable
+              value_basis: AMOUNT  # D-93 (4): declared remaining-increments reading (the reading the key's oracle embodies); no value change
+              distinctness: distinct
+              ranges: [{point_value: "100000.00"}]
+  fx_rate_sets: []
+  rule_sets: []
+  policies:
+    tenant: {billing.posting: ERP, recognition.time_convention: MONTHLY_EVEN}
+    entities: {}
+    books: {}
+contracts:
+  - external_id: FS-10
+    customer: CUST-FS10
+    contracting_entity: FS-US
+    transaction_currency: USD
+    inception_date: "2026-01-01"
+    lines:
+      - obligation_key: L1-TLIC
+        product_code: TERM-LIC-3Y
+        quantity: "1"
+        total_price: "90000.00"
+        start_date: "2026-01-01"
+        end_date: "2028-12-31"
+      - obligation_key: L2-PCS
+        product_code: PCS-3Y
+        quantity: "1"
+        total_price: "30000.00"
+        start_date: "2026-01-01"
+        end_date: "2028-12-31"
+    modifications:
+      - reference: MOD-FS10-CONVERT
+        effective_date: "2027-01-01"
+        kind: OTHER
+        lines:
+          - obligation_key: L2-PCS
+            product_code: PCS-3Y
+            quantity: "1"
+            total_price: "10000.00"
+            start_date: "2026-01-01"
+            end_date: "2026-12-31"
+          - obligation_key: L3-SAAS
+            product_code: SAAS-CONV-24M
+            quantity: "1"
+            total_price: "80000.00"
+            start_date: "2027-01-01"
+            end_date: "2028-12-31"
+        price_change_amount: "80000.00"
+timeline:
+  - seq: "1"
+    kind: event
+    contract: FS-10
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: "2"
+    kind: event
+    contract: FS-10
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: "3"
+    kind: event
+    contract: FS-10
+    event_type: BILLING_RECORDED
+    effective_date: "2026-01-01"
+    payload:
+      invoice_number: INV-FS10-001
+      line_external_id: INV-FS10-001-1
+      amount: "120000.00"
+      issue_date: "2026-01-01"
+  - seq: "4"
+    kind: event
+    contract: FS-10
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-01-01"
+    payload: {obligation_key: L1-TLIC, quantity: "1", trigger: CONTROL_TRANSFER}
+  - seq: "5"
+    kind: event
+    contract: FS-10
+    event_type: CONTRACT_AMENDED
+    effective_date: "2027-01-01"
+    payload: {modification: MOD-FS10-CONVERT}
+  - seq: "6"
+    kind: event
+    contract: FS-10
+    event_type: BILLING_RECORDED
+    effective_date: "2027-01-01"
+    payload:
+      invoice_number: INV-FS10-002
+      line_external_id: INV-FS10-002-1
+      amount: "80000.00"
+      issue_date: "2027-01-01"
+      obligation_key: L3-SAAS
+checkpoints:
+  - name: before-conversion
+    after_seq: "4"
+    as_of: "2026-12-31"
+    book: ASC606
+    contracts:
+      - contract: FS-10
+        version: {transaction_price: "120000.00", revenue_cum: "100000.00", billed_cum: "120000.00"}
+        obligations:
+          - obligation_key: L1-TLIC
+            allocated_amount: "90000.00"
+            revenue_cum: "90000.00"
+            satisfaction_status: SATISFIED
+          - obligation_key: L2-PCS
+            allocated_amount: "30000.00"
+            revenue_cum: "10000.00"
+            satisfaction_status: PARTIALLY_SATISFIED
+        balances: [{entity: FS-US, contract_liability: "20000.00", contract_asset: "0.00", unbilled_receivable: "0.00"}]
+  - name: after-conversion
+    after_seq: "6"
+    as_of: "2027-01-31"
+    book: ASC606
+    contracts:
+      - contract: FS-10
+        version:
+          transaction_price: "200000.00"
+          revenue_cum: "104166.67"
+          billed_cum: "200000.00"
+          modification_boundary_no: "1"
+        obligations:
+          - obligation_key: L1-TLIC
+            allocated_amount: "90000.00"
+            revenue_cum: "90000.00"
+            satisfaction_status: SATISFIED
+          - obligation_key: L2-PCS
+            allocated_amount: "10000.00"
+            revenue_cum: "10000.00"
+            satisfaction_status: SATISFIED
+          - obligation_key: L3-SAAS
+            allocated_amount: "100000.00"
+            revenue_cum: "4166.67"
+            satisfaction_status: PARTIALLY_SATISFIED
+        balances: [{entity: FS-US, contract_liability: "95833.33", contract_asset: "0.00", unbilled_receivable: "0.00"}]
+        modifications:
+          - reference: MOD-FS10-CONVERT
+            proposed_treatments: {L2-PCS: PROSPECTIVE, L3-SAAS: PROSPECTIVE}
+    subledger:
+      - period_key: FY2027-P01
+        entity: FS-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "4166.67"}
+          - {account_role: REVENUE, account: "4010", cr: "4166.67"}
+  - name: saas-complete
+    after_seq: "6"
+    as_of: "2028-12-31"
+    book: ASC606
+    contracts:
+      - contract: FS-10
+        version: {transaction_price: "200000.00", revenue_cum: "200000.00", billed_cum: "200000.00"}
+        obligations:
+          - obligation_key: L1-TLIC
+            allocated_amount: "90000.00"
+            revenue_cum: "90000.00"
+            satisfaction_status: SATISFIED
+          - obligation_key: L2-PCS
+            allocated_amount: "10000.00"
+            revenue_cum: "10000.00"
+            satisfaction_status: SATISFIED
+          - obligation_key: L3-SAAS
+            allocated_amount: "100000.00"
+            revenue_cum: "100000.00"
+            satisfaction_status: SATISFIED
+        balances: [{entity: FS-US, contract_liability: "0.00", contract_asset: "0.00", unbilled_receivable: "0.00"}]

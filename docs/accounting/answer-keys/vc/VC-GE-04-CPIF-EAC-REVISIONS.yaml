@@ -1,0 +1,302 @@
+schema: erev-answer-key/1
+id: VC-GE-04-CPIF-EAC-REVISIONS
+title: "Cost-plus-incentive-fee programme: fee re-estimated with EAC revisions and cumulative catch-up"
+status: active
+families: [VC, REC, POS]
+tags: [construction]
+summary: "research 05 §7 worked example in whole dollars. Federal development programme, one integrated POB on cost-to-cost: target cost 10,000,000.00, target fee 800,000.00, 80/20 government/contractor share, fee floor 400,000.00 and ceiling 1,200,000.00: fee = 800,000.00 − 20% × (EAC − 10,000,000.00). Consideration = allowable costs + fee, so the transaction price is target cost + target fee (stated price 10,800,000.00) plus variable consideration of 80% × (EAC − target cost). EAC 10,500,000.00 in Year 1 (fee 700,000.00, TP 11,200,000.00) and 11,000,000.00 from Year 2 (fee 600,000.00, TP 11,600,000.00). Cumulative costs 3,150,000.00 / 7,700,000.00 / 11,000,000.00 give revenue 3,360,000.00 / 4,760,000.00 / 3,480,000.00. Provisional billing at cost plus 8%; the final fee adjustment is credited at completion."
+authority:
+  codification: ["606-10-32-5", "606-10-32-8", "606-10-32-11", "606-10-32-14", "606-10-25-31", "606-10-55-20"]
+  ifrs: ["IFRS 15.53", "IFRS 15.87"]
+  practice: ["BDO Government contractors guide (award and incentive fees)"]
+  urls: []
+derived_from: {research04: [], research05: [GE-04], chk: [], golden: [], dev: []}
+requirements: [REQ-TP-002, REQ-TP-004, REQ-TP-006, REQ-REC-007, REQ-FC-009]
+policy_refs: [POL-040, POL-041, POL-091, POL-182]
+review: {author: answer-keys-industries, authored_on: "2026-09-12", reviewer: null, reviewed_on: null, status: pending}
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: GE-US
+      name: "Granitefield Engineering US (Demo)"
+      functional_currency: USD
+      time_zone: America/Denver
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: "1"}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2028-12"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4000", name: "Revenue - products", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, product: DEV-PROGRAMME, account: "4000"}
+  customers: [{code: CUST-GE04, name: "Federal Systems Command (Demo)"}]
+  pob_templates:
+    - code: TPL-CTC-GOV
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_A
+      recognition_method: COST_TO_COST
+      policy_values: {balance.right_to_consideration: CONDITIONAL}
+  products:
+    - code: DEV-PROGRAMME
+      name: "Development programme (CPIF)"
+      pob_template: TPL-CTC-GOV
+      revenue_category: GOVERNMENT
+  ssp_books:
+    - code: SSP-GE-US-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2025-01-01"
+          methodology_label: "Observable standalone prices (demo study)"
+          entries:
+            - product: DEV-PROGRAMME
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges: [{point_value: "10800000.00"}]
+  fx_rate_sets: []
+  rule_sets: []
+  policies:
+    tenant: {billing.posting: ERP, recognition.time_convention: MONTHLY_EVEN}
+    entities: {}
+    books: {}
+contracts:
+  - external_id: GE-04
+    customer: CUST-GE04
+    contracting_entity: GE-US
+    transaction_currency: USD
+    inception_date: "2026-01-01"
+    contract_type: GOVERNMENT_CPIF
+    lines:
+      - obligation_key: L1-WORK
+        product_code: DEV-PROGRAMME
+        quantity: "1"
+        total_price: "10800000.00"
+        start_date: "2026-01-01"
+        end_date: "2028-12-31"
+    estimates:
+      - element_code: EAC-GE04
+        estimate_kind: EAC
+        method: COST_BUILDUP
+        obligation_key: L1-WORK
+        versions:
+          - version_no: "1"
+            effective_date: "2026-01-01"
+            expected_total_amount: "10500000.00"
+            currency: USD
+            rationale: "Programme baseline."
+          - version_no: "2"
+            effective_date: "2027-12-31"
+            expected_total_amount: "11000000.00"
+            currency: USD
+            rationale: "Integration test failures add 500,000.00."
+      - element_code: VC-GE04-CPIF
+        estimate_kind: VARIABLE_CONSIDERATION
+        method: EXPECTED_VALUE
+        obligation_key: L1-WORK
+        vc_element_type: PERFORMANCE_INCENTIVE
+        allocation_target: OBLIGATIONS
+        target_obligation_keys: [L1-WORK]
+        versions:
+          - version_no: "1"
+            effective_date: "2026-01-01"
+            unconstrained_amount: "400000.00"
+            most_conservative_amount: "400000.00"
+            constrained_amount: "400000.00"
+            expected_quantity: "10500000"
+            currency: USD
+            rationale: "Cost reimbursement above target and incentive fee at EAC 10500000."
+          - version_no: "2"
+            effective_date: "2027-12-31"
+            unconstrained_amount: "800000.00"
+            most_conservative_amount: "800000.00"
+            constrained_amount: "800000.00"
+            expected_quantity: "11000000"
+            currency: USD
+            rationale: "Cost reimbursement above target and incentive fee at EAC 11000000."
+timeline:
+  - seq: "1"
+    kind: event
+    contract: GE-04
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: "2"
+    kind: event
+    contract: GE-04
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: "3"
+    kind: event
+    contract: GE-04
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-01-01"
+    payload: {estimate: EAC-GE04, version_no: "1"}
+  - seq: "4"
+    kind: event
+    contract: GE-04
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-01-01"
+    payload: {estimate: VC-GE04-CPIF, version_no: "1"}
+  - seq: "5"
+    kind: event
+    contract: GE-04
+    event_type: COST_INCURRED
+    effective_date: "2026-12-31"
+    payload: {purpose: PROGRESS_INPUT, obligation_key: L1-WORK, amount: "3150000.00"}
+  - seq: "6"
+    kind: event
+    contract: GE-04
+    event_type: BILLING_RECORDED
+    effective_date: "2026-12-31"
+    payload:
+      invoice_number: VOUCHER-GE04-2026
+      line_external_id: VOUCHER-GE04-2026-1
+      amount: "3402000.00"
+      issue_date: "2026-12-31"
+      obligation_key: L1-WORK
+  - seq: "7"
+    kind: event
+    contract: GE-04
+    event_type: COST_INCURRED
+    effective_date: "2027-12-31"
+    payload: {purpose: PROGRESS_INPUT, obligation_key: L1-WORK, amount: "4550000.00"}
+  - seq: "8"
+    kind: event
+    contract: GE-04
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2027-12-31"
+    payload: {estimate: EAC-GE04, version_no: "2"}
+  - seq: "9"
+    kind: event
+    contract: GE-04
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2027-12-31"
+    payload: {estimate: VC-GE04-CPIF, version_no: "2"}
+  - seq: "10"
+    kind: event
+    contract: GE-04
+    event_type: BILLING_RECORDED
+    effective_date: "2027-12-31"
+    payload:
+      invoice_number: VOUCHER-GE04-2027
+      line_external_id: VOUCHER-GE04-2027-1
+      amount: "4914000.00"
+      issue_date: "2027-12-31"
+      obligation_key: L1-WORK
+  - seq: "11"
+    kind: event
+    contract: GE-04
+    event_type: COST_INCURRED
+    effective_date: "2028-12-31"
+    payload: {purpose: PROGRESS_INPUT, obligation_key: L1-WORK, amount: "3300000.00"}
+  - seq: "12"
+    kind: event
+    contract: GE-04
+    event_type: BILLING_RECORDED
+    effective_date: "2028-12-31"
+    payload:
+      invoice_number: VOUCHER-GE04-2028
+      line_external_id: VOUCHER-GE04-2028-1
+      amount: "3564000.00"
+      issue_date: "2028-12-31"
+      obligation_key: L1-WORK
+  - seq: "13"
+    kind: event
+    contract: GE-04
+    event_type: CREDIT_MEMO_RECORDED
+    effective_date: "2028-12-31"
+    payload:
+      credit_memo_number: CM-GE04-FINALFEE
+      obligation_key: L1-WORK
+      amount: "280000.00"
+      issue_date: "2028-12-31"
+      reason: FINAL_FEE_DETERMINATION
+checkpoints:
+  - name: year-1
+    after_seq: "6"
+    as_of: "2026-12-31"
+    book: ASC606
+    contracts:
+      - contract: GE-04
+        version:
+          transaction_price: "11200000.00"
+          revenue_cum: "3360000.00"
+          billed_cum: "3402000.00"
+          vc_constrained_amount: "400000.00"
+        obligations:
+          - obligation_key: L1-WORK
+            allocated_amount: "11200000.00"
+            revenue_cum: "3360000.00"
+            satisfaction_status: PARTIALLY_SATISFIED
+        balances: [{entity: GE-US, contract_liability: "42000.00", contract_asset: "0.00", unbilled_receivable: "0.00"}]
+    subledger:
+      - period_key: FY2026-P12
+        entity: GE-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "3360000.00"}
+          - {account_role: REVENUE, account: "4000", cr: "3360000.00"}
+  - name: year-2-eac-revision
+    after_seq: "10"
+    as_of: "2027-12-31"
+    book: ASC606
+    contracts:
+      - contract: GE-04
+        version:
+          transaction_price: "11600000.00"
+          revenue_cum: "8120000.00"
+          billed_cum: "8316000.00"
+          vc_constrained_amount: "800000.00"
+        obligations:
+          - obligation_key: L1-WORK
+            allocated_amount: "11600000.00"
+            revenue_cum: "8120000.00"
+            satisfaction_status: PARTIALLY_SATISFIED
+        balances:
+          - {entity: GE-US, contract_liability: "196000.00", contract_asset: "0.00", unbilled_receivable: "0.00"}
+    subledger:
+      - period_key: FY2027-P12
+        entity: GE-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "4760000.00"}
+          - {account_role: REVENUE, account: "4000", cr: "4760000.00"}
+  - name: year-3-complete
+    after_seq: "13"
+    as_of: "2028-12-31"
+    book: ASC606
+    contracts:
+      - contract: GE-04
+        version:
+          transaction_price: "11600000.00"
+          revenue_cum: "11600000.00"
+          billed_cum: "11600000.00"
+          vc_constrained_amount: "800000.00"
+        obligations:
+          - obligation_key: L1-WORK
+            allocated_amount: "11600000.00"
+            revenue_cum: "11600000.00"
+            satisfaction_status: SATISFIED
+        balances: [{entity: GE-US, contract_liability: "0.00", contract_asset: "0.00", unbilled_receivable: "0.00"}]
+    subledger:
+      - period_key: FY2028-P12
+        entity: GE-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "3480000.00"}
+          - {account_role: REVENUE, account: "4000", cr: "3480000.00"}

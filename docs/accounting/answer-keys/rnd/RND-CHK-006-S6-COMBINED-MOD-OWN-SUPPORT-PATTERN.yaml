@@ -1,0 +1,154 @@
+# docs/accounting/answer-keys/rnd/RND-CHK-006-S6-COMBINED-MOD-OWN-SUPPORT-PATTERN.yaml
+schema: "erev-answer-key/1"
+id: RND-CHK-006-S6-COMBINED-MOD-OWN-SUPPORT-PATTERN
+title: "Research 04 S6-COMBINED-MOD-OWN support rounding pattern: 70,000.00 over 36 months"
+status: active
+families: [RND, REC]
+tags: [r04-s6]
+summary: >-
+  Rounding pattern of the post-modification support obligation (allocation 50,000.00 plus the added year at 20,000.00
+  = 70,000.00 over the 36 months after the modification). [A] To isolate ALG-01 the support is booked as one 36-month
+  time-elapsed line of 70,000.00 from 2026-01-01; the modification route and the installation catch-up belong to the
+  MOD family (CHK-042). Cumulative rounding of 70,000 × k ÷ 36 gives month 1 = 1,944.44 and twenty months of 1,944.44
+  against sixteen of 1,944.45 (CHK-006 row S6-COMBINED-MOD-OWN). Cross-slice variants with distinct inputs, kept:
+  MOD-S6-COMBINED-MOD-OWN (different modification inputs) (ADJUDICATION.md R-DUP-02).
+authority:
+  codification: ["606-10-25-13", "606-10-25-31", "606-10-55-20"]
+  ifrs: ["IFRS 15.21", "IFRS 15.39"]
+  practice: []
+  urls: []
+derived_from: {research04: [S6-COMBINED-MOD-OWN], research05: [], chk: [CHK-006], golden: [], dev: []}
+requirements: [REQ-REC-019, REQ-REC-003]
+policy_refs: [POL-003, POL-090]
+review:
+  author: answer-keys-fx-entity-books
+  authored_on: "2026-09-12"
+  reviewer: null
+  reviewed_on: null
+  status: pending
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: US01
+      name: "Avenmoor Systems Inc. (Demo)"
+      functional_currency: USD
+      time_zone: "America/New_York"
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: 1}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2028-12"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4010", name: "Revenue - services and subscriptions", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, account: "4010", product: SUPPORT-36M}
+  customers:
+    - {code: CUST-1, name: "Pellworth Logistics Inc. (Demo)"}
+  pob_templates:
+    - code: TPL-RAT-ME
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_A
+      recognition_method: TIME_ELAPSED
+      ratable_convention: MONTHLY_EVEN
+  products:
+    - {code: SUPPORT-36M, name: "Support, 36 months", pob_template: TPL-RAT-ME}
+  ssp_books:
+    - code: SSP-US01-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2026-01-01"
+          methodology_label: "Observable standalone prices"
+          entries:
+            - product: SUPPORT-36M
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "70000.00"}
+  fx_rate_sets: []
+  rule_sets: []
+  policies: {tenant: {billing.posting: ERP}, entities: {}, books: {}}
+contracts:
+  - external_id: C-S6-COMBINED
+    customer: CUST-1
+    contracting_entity: US01
+    transaction_currency: USD
+    inception_date: "2026-01-01"
+    lines:
+      - obligation_key: L1-SUPPORT
+        product_code: SUPPORT-36M
+        quantity: "1"
+        total_price: "70000.00"
+        start_date: "2026-01-01"
+        end_date: "2028-12-31"
+timeline:
+  - seq: 1
+    kind: event
+    contract: C-S6-COMBINED
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: 2
+    kind: event
+    contract: C-S6-COMBINED
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-01"
+    payload: {}
+checkpoints:
+  - name: full-schedule
+    after_seq: 2
+    as_of: "2026-01-31"
+    book: ASC606
+    contracts:
+      - contract: C-S6-COMBINED
+        schedule:
+          - obligation_key: L1-SUPPORT
+            schedule_kind: REVENUE
+            line_type: NORMAL
+            amounts:
+              FY2026-P01: "1944.44"
+              FY2026-P02: "1944.45"
+              FY2026-P03: "1944.44"
+              FY2026-P04: "1944.45"
+              FY2026-P05: "1944.44"
+              FY2026-P06: "1944.45"
+              FY2026-P07: "1944.44"
+              FY2026-P08: "1944.45"
+              FY2026-P09: "1944.44"
+              FY2026-P10: "1944.44"
+              FY2026-P11: "1944.45"
+              FY2026-P12: "1944.44"
+              FY2027-P01: "1944.45"
+              FY2027-P02: "1944.44"
+              FY2027-P03: "1944.45"
+              FY2027-P04: "1944.44"
+              FY2027-P05: "1944.45"
+              FY2027-P06: "1944.44"
+              FY2027-P07: "1944.44"
+              FY2027-P08: "1944.45"
+              FY2027-P09: "1944.44"
+              FY2027-P10: "1944.45"
+              FY2027-P11: "1944.44"
+              FY2027-P12: "1944.45"
+              FY2028-P01: "1944.44"
+              FY2028-P02: "1944.45"
+              FY2028-P03: "1944.44"
+              FY2028-P04: "1944.44"
+              FY2028-P05: "1944.45"
+              FY2028-P06: "1944.44"
+              FY2028-P07: "1944.45"
+              FY2028-P08: "1944.44"
+              FY2028-P09: "1944.45"
+              FY2028-P10: "1944.44"
+              FY2028-P11: "1944.45"
+              FY2028-P12: "1944.44"

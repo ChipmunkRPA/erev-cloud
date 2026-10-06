@@ -1,0 +1,319 @@
+schema: erev-answer-key/1
+id: SSP-FS-05-PERPETUAL-LICENCE-PCS-RESIDUAL
+title: "Perpetual licence with PCS and training: residual licence SSP; PCS renewal as a separate contract"
+status: active
+families: [SSP, ALC, REC, POB]
+tags: []
+summary: "research 05 §3 worked example. Signed and made available on 31 March 2026: perpetual licence, 12 months of PCS (April 2026 to March 2027) and training delivered in May 2026, invoiced 370,000.00 on 31 March. PCS (54,000.00, observable renewals) and training (12,000.00) have observable SSPs; licence prices are highly variable, so the residual approach applies (606-10-32-34(c)): licence SSP = 370,000.00 − 66,000.00 = 304,000.00. Allocation equals the SSPs. The licence is recognised at transfer, PCS on time elapsed (4,500.00 a month), training on delivery. A PCS renewal for April 2027 to March 2028 at 60,000.00, signed 15 February 2027 and invoiced 15 March 2027, is a separate contract: nothing is recognised at signing; 5,000.00 a month from April 2027."
+authority:
+  codification:
+    - "606-10-32-31"
+    - "606-10-32-32"
+    - "606-10-32-33"
+    - "606-10-32-34"
+    - "606-10-55-58"
+    - "606-10-55-58B"
+    - "606-10-25-31"
+  ifrs: ["IFRS 15.79(c)", "IFRS 15.B61"]
+  practice: ["DART 7.3 (residual approach)", "Deloitte, Term licences: PCS SSP considerations"]
+  urls: []
+derived_from: {research04: [], research05: [FS-05], chk: [], golden: [], dev: []}
+requirements: [REQ-SSP-002, REQ-ALC-006, REQ-ALC-007, REQ-POB-010, REQ-REC-001, REQ-REC-003]
+policy_refs: [POL-074, POL-075, POL-090]
+review: {author: answer-keys-industries, authored_on: "2026-09-12", reviewer: null, reviewed_on: null, status: pending}
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: FS-US
+      name: "Fernhill Software US (Demo)"
+      functional_currency: USD
+      time_zone: America/Los_Angeles
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: "1"}
+      books: [ASC606]
+  periods: {from: "2026-03", to: "2027-04"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4010", name: "Revenue - services and subscriptions", account_type: REVENUE}
+    - {code: "4020", name: "Revenue - licences and royalties", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, product: LIC-PERP, account: "4020"}
+    - {account_role: REVENUE, product: PCS-12M, account: "4010"}
+    - {account_role: REVENUE, product: TRAIN-STD, account: "4010"}
+  customers: [{code: CUST-FS05, name: "Orrin Vale Architects LLP (Demo)"}]
+  pob_templates:
+    - code: TPL-LIC
+      obligation_kind: LICENCE
+      distinctness: distinct
+      satisfaction_pattern: POINT_IN_TIME
+      over_time_criterion: NOT_APPLICABLE
+      recognition_method: POINT_IN_TIME
+      licence_nature: FUNCTIONAL
+      start_date_rule: LICENCE_START_OR_AVAILABLE
+      policy_values: {balance.right_to_consideration: UNCONDITIONAL}
+    - code: TPL-PCS
+      obligation_kind: STANDARD
+      distinctness: series
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_A
+      recognition_method: TIME_ELAPSED
+      ratable_convention: MONTHLY_EVEN
+      series_increment_unit: month
+      policy_values: {balance.right_to_consideration: CONDITIONAL}
+    - code: TPL-TRAIN
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: POINT_IN_TIME
+      over_time_criterion: NOT_APPLICABLE
+      recognition_method: POINT_IN_TIME
+      policy_values: {balance.right_to_consideration: UNCONDITIONAL}
+  products:
+    - {code: LIC-PERP, name: "Perpetual licence", pob_template: TPL-LIC, revenue_category: LICENCE}
+    - code: PCS-12M
+      name: "Post-contract customer support, 12 months"
+      pob_template: TPL-PCS
+      revenue_category: SUPPORT
+    - {code: TRAIN-STD, name: "Administrator training", pob_template: TPL-TRAIN, revenue_category: SERVICES}
+  ssp_books:
+    - code: SSP-FS-US-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2025-01-01"
+          methodology_label: "Observable standalone prices (demo study)"
+          entries:
+            - {product: LIC-PERP, currency: USD, method: residual, distinctness: distinct, ranges: []}
+            - product: PCS-12M
+              currency: USD
+              method: observable
+              value_basis: AMOUNT  # D-93 (4): declared remaining-increments reading (the reading the key's oracle embodies); no value change
+              distinctness: distinct
+              ranges: [{point_value: "54000.00"}]
+            - product: TRAIN-STD
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges: [{point_value: "12000.00"}]
+  fx_rate_sets: []
+  rule_sets: []
+  policies:
+    tenant: {billing.posting: ERP, recognition.time_convention: MONTHLY_EVEN}
+    entities: {}
+    books: {}
+contracts:
+  - external_id: FS-05
+    customer: CUST-FS05
+    contracting_entity: FS-US
+    transaction_currency: USD
+    inception_date: "2026-03-31"
+    lines:
+      - obligation_key: L1-LIC
+        product_code: LIC-PERP
+        quantity: "1"
+        total_price: "310000.00"
+        start_date: "2026-03-31"
+      - obligation_key: L2-PCS
+        product_code: PCS-12M
+        quantity: "1"
+        total_price: "50000.00"
+        start_date: "2026-04-01"
+        end_date: "2027-03-31"
+      - {obligation_key: L3-TRAIN, product_code: TRAIN-STD, quantity: "1", total_price: "10000.00"}
+    judgements:
+      - handle: JDG-FS05-RESIDUAL
+        topic: SSP_OVERRIDE
+        subject_obligation_key: L1-LIC
+        conclusion: "Licence selling prices are highly variable (price study 2025); residual approach permitted under 606-10-32-34(c)."
+  - external_id: FS-05-PCS-RENEWAL
+    customer: CUST-FS05
+    contracting_entity: FS-US
+    transaction_currency: USD
+    inception_date: "2027-02-15"
+    lines:
+      - obligation_key: L1-PCS-R
+        product_code: PCS-12M
+        quantity: "1"
+        total_price: "60000.00"
+        start_date: "2027-04-01"
+        end_date: "2028-03-31"
+timeline:
+  - seq: "1"
+    kind: event
+    contract: FS-05
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-03-31"
+    payload: {}
+  - seq: "2"
+    kind: event
+    contract: FS-05
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-03-31"
+    payload: {}
+  - seq: "3"
+    kind: event
+    contract: FS-05
+    event_type: BILLING_RECORDED
+    effective_date: "2026-03-31"
+    payload:
+      invoice_number: INV-FS05-001
+      line_external_id: INV-FS05-001-1
+      amount: "370000.00"
+      issue_date: "2026-03-31"
+  - seq: "4"
+    kind: event
+    contract: FS-05
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-03-31"
+    payload: {obligation_key: L1-LIC, quantity: "1", trigger: CONTROL_TRANSFER}
+  - seq: "5"
+    kind: event
+    contract: FS-05
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-05-20"
+    payload: {obligation_key: L3-TRAIN, quantity: "1", trigger: CONTROL_TRANSFER}
+  - seq: "6"
+    kind: event
+    contract: FS-05-PCS-RENEWAL
+    event_type: CONTRACT_BOOKED
+    effective_date: "2027-02-15"
+    payload: {}
+  - seq: "7"
+    kind: event
+    contract: FS-05-PCS-RENEWAL
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2027-02-15"
+    payload: {}
+  - seq: "8"
+    kind: event
+    contract: FS-05-PCS-RENEWAL
+    event_type: BILLING_RECORDED
+    effective_date: "2027-03-15"
+    payload:
+      invoice_number: INV-FS05-R01
+      line_external_id: INV-FS05-R01-1
+      amount: "60000.00"
+      issue_date: "2027-03-15"
+      obligation_key: L1-PCS-R
+checkpoints:
+  - name: licence-transferred
+    after_seq: "4"
+    as_of: "2026-03-31"
+    book: ASC606
+    contracts:
+      - contract: FS-05
+        version:
+          transaction_price: "370000.00"
+          revenue_cum: "304000.00"
+          billed_cum: "370000.00"
+          total_ssp: "370000.00"
+        obligations:
+          - obligation_key: L1-LIC
+            allocated_amount: "304000.00"
+            revenue_cum: "304000.00"
+            satisfaction_status: SATISFIED
+            ssp_method: residual
+            original_ssp_selected: "304000.00"
+          - obligation_key: L2-PCS
+            allocated_amount: "54000.00"
+            revenue_cum: "0.00"
+            satisfaction_status: UNSATISFIED
+          - obligation_key: L3-TRAIN
+            allocated_amount: "12000.00"
+            revenue_cum: "0.00"
+            satisfaction_status: UNSATISFIED
+        balances: [{entity: FS-US, contract_liability: "66000.00", contract_asset: "0.00", unbilled_receivable: "0.00"}]
+    subledger:
+      - period_key: FY2026-P03
+        entity: FS-US
+        match: exact
+        contract: FS-05
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "304000.00"}
+          - {account_role: REVENUE, account: "4020", cr: "304000.00"}
+  - name: after-training
+    after_seq: "5"
+    as_of: "2026-06-30"
+    book: ASC606
+    contracts:
+      - contract: FS-05
+        version: {transaction_price: "370000.00", revenue_cum: "329500.00", billed_cum: "370000.00"}
+        obligations:
+          - obligation_key: L1-LIC
+            allocated_amount: "304000.00"
+            revenue_cum: "304000.00"
+            satisfaction_status: SATISFIED
+          - obligation_key: L2-PCS
+            allocated_amount: "54000.00"
+            revenue_cum: "13500.00"
+            satisfaction_status: PARTIALLY_SATISFIED
+          - obligation_key: L3-TRAIN
+            allocated_amount: "12000.00"
+            revenue_cum: "12000.00"
+            satisfaction_status: SATISFIED
+        balances: [{entity: FS-US, contract_liability: "40500.00", contract_asset: "0.00", unbilled_receivable: "0.00"}]
+  - name: pcs-complete-renewal-invoiced
+    after_seq: "8"
+    as_of: "2027-03-31"
+    book: ASC606
+    contracts:
+      - contract: FS-05
+        version: {transaction_price: "370000.00", revenue_cum: "370000.00", billed_cum: "370000.00"}
+        obligations:
+          - obligation_key: L1-LIC
+            allocated_amount: "304000.00"
+            revenue_cum: "304000.00"
+            satisfaction_status: SATISFIED
+          - obligation_key: L2-PCS
+            allocated_amount: "54000.00"
+            revenue_cum: "54000.00"
+            satisfaction_status: SATISFIED
+          - obligation_key: L3-TRAIN
+            allocated_amount: "12000.00"
+            revenue_cum: "12000.00"
+            satisfaction_status: SATISFIED
+        balances: [{entity: FS-US, contract_liability: "0.00", contract_asset: "0.00", unbilled_receivable: "0.00"}]
+      - contract: FS-05-PCS-RENEWAL
+        version: {transaction_price: "60000.00", revenue_cum: "0.00", billed_cum: "60000.00"}
+        obligations:
+          - obligation_key: L1-PCS-R
+            allocated_amount: "60000.00"
+            revenue_cum: "0.00"
+            satisfaction_status: UNSATISFIED
+        balances: [{entity: FS-US, contract_liability: "60000.00", contract_asset: "0.00", unbilled_receivable: "0.00"}]
+    subledger:
+      - period_key: FY2027-P03
+        entity: FS-US
+        match: exact
+        contract: FS-05-PCS-RENEWAL
+        grain: role_account
+        lines: []
+  - name: renewal-first-month
+    after_seq: "8"
+    as_of: "2027-04-30"
+    book: ASC606
+    contracts:
+      - contract: FS-05-PCS-RENEWAL
+        version: {transaction_price: "60000.00", revenue_cum: "5000.00", billed_cum: "60000.00"}
+        obligations:
+          - obligation_key: L1-PCS-R
+            allocated_amount: "60000.00"
+            revenue_cum: "5000.00"
+            satisfaction_status: PARTIALLY_SATISFIED
+        balances: [{entity: FS-US, contract_liability: "55000.00", contract_asset: "0.00", unbilled_receivable: "0.00"}]
+    subledger:
+      - period_key: FY2027-P04
+        entity: FS-US
+        match: exact
+        contract: FS-05-PCS-RENEWAL
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "5000.00"}
+          - {account_role: REVENUE, account: "4010", cr: "5000.00"}

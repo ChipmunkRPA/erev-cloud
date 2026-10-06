@@ -1,0 +1,53 @@
+# Packages whose installed metadata yields no licence (docs/dev-guide.md DG-MK-licence-check).
+# Each entry holds the verified licence and its source URL. The lock file lists most of these
+# packages for other platforms, so backend/.venv on macOS arm64 holds no metadata for them; others
+# publish a free-text licence field that names no SPDX licence.
+
+[[package]]
+ecosystem = "python"
+name = "python-dateutil"
+licence = "Apache-2.0 AND BSD-3-Clause"
+source = "https://github.com/dateutil/dateutil/blob/master/LICENSE"
+reason = "croniter dependency (procrastinate); metadata licence field reads 'Dual License'"
+
+[[package]]
+ecosystem = "python"
+name = "colorama"
+licence = "BSD-3-Clause"
+source = "https://github.com/tartley/colorama/blob/master/LICENSE.txt"
+reason = "typer dependency for sys_platform == 'win32' only"
+
+[[package]]
+ecosystem = "python"
+name = "greenlet"
+licence = "MIT AND PSF-2.0"
+source = "https://github.com/python-greenlet/greenlet/blob/master/LICENSE"
+reason = "sqlalchemy dependency for x86_64, aarch64, amd64, ppc64le and win32 machines only"
+
+[[package]]
+ecosystem = "python"
+name = "tzdata"
+licence = "Apache-2.0"
+source = "https://github.com/python/tzdata/blob/master/LICENSE"
+reason = "psycopg dependency for sys_platform == 'win32' only"
+
+[[package]]
+ecosystem = "python"
+name = "google-crc32c"
+licence = "Apache-2.0"
+source = "https://github.com/googleapis/python-crc32c/blob/main/LICENSE"
+reason = "google-cloud-storage dependency (gcp extra, 05 SAR-21); the wheel metadata carries no licence field"
+
+[[package]]
+ecosystem = "python"
+name = "protobuf"
+licence = "BSD-3-Clause"
+source = "https://github.com/protocolbuffers/protobuf/blob/main/LICENSE"
+reason = "google-api-core dependency (gcp extra); metadata licence field reads '3-Clause BSD License'"
+
+[[package]]
+ecosystem = "python"
+name = "pyasn1-modules"
+licence = "BSD-2-Clause"
+source = "https://github.com/pyasn1/pyasn1-modules/blob/main/LICENSE.txt"
+reason = "google-auth dependency (gcp extra); metadata licence field reads 'BSD' without a clause count"

@@ -1,0 +1,22 @@
+{
+  "users": [
+    {
+      "sub": "mock-maya",
+      "email": "maya@acme.test",
+      "email_verified": true,
+      "name": "Maya Chen"
+    },
+    {
+      "sub": "mock-omar",
+      "email": "omar@acme.test",
+      "email_verified": false,
+      "name": "Omar Haddad"
+    },
+    {
+      "sub": "mock-ines",
+      "email": "ines@contoso.test",
+      "email_verified": true,
+      "name": "Ines Duarte"
+    }
+  ]
+}

@@ -1,0 +1,590 @@
+{
+  "shipped_rows": 24,
+  "shipped_versions": [
+    "2025-05-09 09:11:44.708286",
+    "2025-05-09 09:11:53.453841",
+    "2025-05-09 09:12:33.441992"
+  ],
+  "final_replay_rows": 106,
+  "point_in_time_match_steps": [
+    "04"
+  ],
+  "replay_extra_columns": [],
+  "point_in_time_columns_with_mismatch": [],
+  "schema_shipped": [
+    [
+      "Contract Unique Name",
+      "TEXT"
+    ],
+    [
+      "POB Unique ID",
+      "TEXT"
+    ],
+    [
+      "SKU Name",
+      "TEXT"
+    ],
+    [
+      "POB Start Date",
+      "TIMESTAMP"
+    ],
+    [
+      "POB End Date",
+      "TIMESTAMP"
+    ],
+    [
+      "ASC 606 Stratification",
+      "TEXT"
+    ],
+    [
+      "Original POB Total Selling Price",
+      "INTEGER"
+    ],
+    [
+      "Original POB Total Qty",
+      "INTEGER"
+    ],
+    [
+      "Selling Entity",
+      "TEXT"
+    ],
+    [
+      "SSP Version",
+      "TEXT"
+    ],
+    [
+      "Deferred Revenue Account",
+      "INTEGER"
+    ],
+    [
+      "Unbilled A/R Account",
+      "INTEGER"
+    ],
+    [
+      "Current Period",
+      "TIMESTAMP"
+    ],
+    [
+      "Memo 1",
+      "TEXT"
+    ],
+    [
+      "Memo 2",
+      "TEXT"
+    ],
+    [
+      "Memo 3",
+      "TEXT"
+    ],
+    [
+      "SKU Unique ID",
+      "INTEGER"
+    ],
+    [
+      "Distinct or Nondistinct",
+      "TEXT"
+    ],
+    [
+      "SKU Unit List Price",
+      "INTEGER"
+    ],
+    [
+      "Midpoint Discount Percentage",
+      "REAL"
+    ],
+    [
+      "SSP Range Method (+-)",
+      "REAL"
+    ],
+    [
+      "Revenue Account",
+      "INTEGER"
+    ],
+    [
+      "Original SSP - Midpoint",
+      "REAL"
+    ],
+    [
+      "Original SSP - Higher",
+      "REAL"
+    ],
+    [
+      "Original SSP - Lower",
+      "REAL"
+    ],
+    [
+      "Original Extended SSP",
+      "REAL"
+    ],
+    [
+      "Original Total Contract Price",
+      "INTEGER"
+    ],
+    [
+      "Original Total Contract SSP",
+      "REAL"
+    ],
+    [
+      "Original Allocation",
+      "REAL"
+    ],
+    [
+      "Original Unit SSP",
+      "REAL"
+    ],
+    [
+      "Original Unit Rev Rec",
+      "REAL"
+    ],
+    [
+      "Previous Period",
+      "TIMESTAMP"
+    ],
+    [
+      "Previous Remaining Qty",
+      "INTEGER"
+    ],
+    [
+      "Previous Remaining SSP",
+      "REAL"
+    ],
+    [
+      "Previous Remaining Allocation",
+      "REAL"
+    ],
+    [
+      "Previous Remaining Billing",
+      "INTEGER"
+    ],
+    [
+      "Previous Unit SSP",
+      "REAL"
+    ],
+    [
+      "Previous Remaining Unit Rev Rec",
+      "REAL"
+    ],
+    [
+      "Previous Delivery - Cumulative",
+      "INTEGER"
+    ],
+    [
+      "Previous Rev Rec - Cumulative",
+      "INTEGER"
+    ],
+    [
+      "Previous Pre-ASC606 Revenue (Net Design Only) - Cumulative",
+      "INTEGER"
+    ],
+    [
+      "Previous Billing - Cumulative",
+      "INTEGER"
+    ],
+    [
+      "Previous Cumulative Catchup - Cumulative - Disclosure Only",
+      "INTEGER"
+    ],
+    [
+      "Previous SSP Delivered - Cumulative",
+      "INTEGER"
+    ],
+    [
+      "Previous Contract Position - POB",
+      "INTEGER"
+    ],
+    [
+      "Previous Contract Position - Contract Level",
+      "INTEGER"
+    ],
+    [
+      "Previous Reclass to UAR",
+      "INTEGER"
+    ],
+    [
+      "Current Remaining Qty",
+      "INTEGER"
+    ],
+    [
+      "Current Remaining SSP",
+      "REAL"
+    ],
+    [
+      "Current Remaining Allocation",
+      "REAL"
+    ],
+    [
+      "Current Remaining Billing",
+      "INTEGER"
+    ],
+    [
+      "Current Unit SSP",
+      "REAL"
+    ],
+    [
+      "Current Remaining Unit Rev Rec",
+      "REAL"
+    ],
+    [
+      "Current Delivery",
+      "INTEGER"
+    ],
+    [
+      "Current Rev Rec",
+      "INTEGER"
+    ],
+    [
+      "Current Pre-ASC606 Revenue (Net Design Only)",
+      "INTEGER"
+    ],
+    [
+      "Current Billing",
+      "INTEGER"
+    ],
+    [
+      "Current Cumulative Catchup - Disclosure Only",
+      "INTEGER"
+    ],
+    [
+      "Current SSP Delivered",
+      "INTEGER"
+    ],
+    [
+      "Current Delivery - Cumulative",
+      "INTEGER"
+    ],
+    [
+      "Current Rev Rec - Cumulative",
+      "INTEGER"
+    ],
+    [
+      "Current Pre-ASC606 Revenue (Net Design Only) - Cumulative",
+      "INTEGER"
+    ],
+    [
+      "Current Billing - Cumulative",
+      "INTEGER"
+    ],
+    [
+      "Current Cumulative Catchup - Cumulative - Disclosure Only",
+      "INTEGER"
+    ],
+    [
+      "Current SSP Delivered - Cumulative",
+      "INTEGER"
+    ],
+    [
+      "Current Contract Position - POB",
+      "INTEGER"
+    ],
+    [
+      "Current Contract Position - Contract Level",
+      "INTEGER"
+    ],
+    [
+      "Current Reclass to UAR",
+      "INTEGER"
+    ],
+    [
+      "Processing Time Log",
+      "TIMESTAMP"
+    ],
+    [
+      "Record Unique ID without time",
+      "TEXT"
+    ],
+    [
+      "Record Unique ID",
+      "TEXT"
+    ]
+  ],
+  "schema_replay": [
+    [
+      "Contract Unique Name",
+      "TEXT"
+    ],
+    [
+      "POB Unique ID",
+      "TEXT"
+    ],
+    [
+      "SKU Name",
+      "TEXT"
+    ],
+    [
+      "POB Start Date",
+      "TIMESTAMP"
+    ],
+    [
+      "POB End Date",
+      "TIMESTAMP"
+    ],
+    [
+      "ASC 606 Stratification",
+      "TEXT"
+    ],
+    [
+      "Original POB Total Selling Price",
+      "INTEGER"
+    ],
+    [
+      "Original POB Total Qty",
+      "INTEGER"
+    ],
+    [
+      "Selling Entity",
+      "TEXT"
+    ],
+    [
+      "SSP Version",
+      "TEXT"
+    ],
+    [
+      "Deferred Revenue Account",
+      "INTEGER"
+    ],
+    [
+      "Unbilled A/R Account",
+      "INTEGER"
+    ],
+    [
+      "Current Period",
+      "TIMESTAMP"
+    ],
+    [
+      "Memo 1",
+      "TEXT"
+    ],
+    [
+      "Memo 2",
+      "TEXT"
+    ],
+    [
+      "Memo 3",
+      "TEXT"
+    ],
+    [
+      "SKU Unique ID",
+      "INTEGER"
+    ],
+    [
+      "Distinct or Nondistinct",
+      "TEXT"
+    ],
+    [
+      "SKU Unit List Price",
+      "INTEGER"
+    ],
+    [
+      "Midpoint Discount Percentage",
+      "REAL"
+    ],
+    [
+      "SSP Range Method (+-)",
+      "REAL"
+    ],
+    [
+      "Revenue Account",
+      "INTEGER"
+    ],
+    [
+      "Original SSP - Midpoint",
+      "REAL"
+    ],
+    [
+      "Original SSP - Higher",
+      "REAL"
+    ],
+    [
+      "Original SSP - Lower",
+      "REAL"
+    ],
+    [
+      "Original Extended SSP",
+      "REAL"
+    ],
+    [
+      "Original Total Contract Price",
+      "INTEGER"
+    ],
+    [
+      "Original Total Contract SSP",
+      "REAL"
+    ],
+    [
+      "Original Allocation",
+      "REAL"
+    ],
+    [
+      "Original Unit SSP",
+      "REAL"
+    ],
+    [
+      "Original Unit Rev Rec",
+      "REAL"
+    ],
+    [
+      "Previous Period",
+      "TIMESTAMP"
+    ],
+    [
+      "Previous Remaining Qty",
+      "INTEGER"
+    ],
+    [
+      "Previous Remaining SSP",
+      "REAL"
+    ],
+    [
+      "Previous Remaining Allocation",
+      "REAL"
+    ],
+    [
+      "Previous Remaining Billing",
+      "INTEGER"
+    ],
+    [
+      "Previous Unit SSP",
+      "REAL"
+    ],
+    [
+      "Previous Remaining Unit Rev Rec",
+      "REAL"
+    ],
+    [
+      "Previous Delivery - Cumulative",
+      "INTEGER"
+    ],
+    [
+      "Previous Rev Rec - Cumulative",
+      "INTEGER"
+    ],
+    [
+      "Previous Pre-ASC606 Revenue (Net Design Only) - Cumulative",
+      "INTEGER"
+    ],
+    [
+      "Previous Billing - Cumulative",
+      "INTEGER"
+    ],
+    [
+      "Previous Cumulative Catchup - Cumulative - Disclosure Only",
+      "INTEGER"
+    ],
+    [
+      "Previous SSP Delivered - Cumulative",
+      "INTEGER"
+    ],
+    [
+      "Previous Contract Position - POB",
+      "INTEGER"
+    ],
+    [
+      "Previous Contract Position - Contract Level",
+      "INTEGER"
+    ],
+    [
+      "Previous Reclass to UAR",
+      "INTEGER"
+    ],
+    [
+      "Current Remaining Qty",
+      "INTEGER"
+    ],
+    [
+      "Current Remaining SSP",
+      "REAL"
+    ],
+    [
+      "Current Remaining Allocation",
+      "REAL"
+    ],
+    [
+      "Current Remaining Billing",
+      "INTEGER"
+    ],
+    [
+      "Current Unit SSP",
+      "REAL"
+    ],
+    [
+      "Current Remaining Unit Rev Rec",
+      "REAL"
+    ],
+    [
+      "Current Delivery",
+      "INTEGER"
+    ],
+    [
+      "Current Rev Rec",
+      "INTEGER"
+    ],
+    [
+      "Current Pre-ASC606 Revenue (Net Design Only)",
+      "INTEGER"
+    ],
+    [
+      "Current Billing",
+      "INTEGER"
+    ],
+    [
+      "Current Cumulative Catchup - Disclosure Only",
+      "INTEGER"
+    ],
+    [
+      "Current SSP Delivered",
+      "INTEGER"
+    ],
+    [
+      "Current Delivery - Cumulative",
+      "INTEGER"
+    ],
+    [
+      "Current Rev Rec - Cumulative",
+      "INTEGER"
+    ],
+    [
+      "Current Pre-ASC606 Revenue (Net Design Only) - Cumulative",
+      "INTEGER"
+    ],
+    [
+      "Current Billing - Cumulative",
+      "INTEGER"
+    ],
+    [
+      "Current Cumulative Catchup - Cumulative - Disclosure Only",
+      "INTEGER"
+    ],
+    [
+      "Current SSP Delivered - Cumulative",
+      "INTEGER"
+    ],
+    [
+      "Current Contract Position - POB",
+      "INTEGER"
+    ],
+    [
+      "Current Contract Position - Contract Level",
+      "INTEGER"
+    ],
+    [
+      "Current Reclass to UAR",
+      "INTEGER"
+    ],
+    [
+      "Processing Time Log",
+      "TIMESTAMP"
+    ],
+    [
+      "Record Unique ID without time",
+      "TEXT"
+    ],
+    [
+      "Record Unique ID",
+      "TEXT"
+    ]
+  ],
+  "schema_differences": [],
+  "sku_ssp_equal": true,
+  "final_versions_not_in_shipped": 10,
+  "final_rows_not_in_shipped": 82
+}

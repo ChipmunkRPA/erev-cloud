@@ -1,0 +1,262 @@
+schema: erev-answer-key/1
+id: COST-CAP-COMMISSION-EXPECTED-RENEWALS-IMPAIRMENT
+title: "Commission amortised over expected renewals, then impaired when renewals are no longer expected"
+status: active
+families: [COST, REC]
+tags: [subscription]
+summary: "Capability key for contract costs with expected renewals and impairment (340-40; POL-141 to POL-144; JET-09). A 2026 subscription for 120,000.00 is invoiced upfront. The incremental sales commission of 30,000.00 (capitalised 10 January) relates to the initial term and two expected renewals because renewal commissions are not commensurate, so it is amortised straight line over 36 months (estimate RENEWAL_EXPECTATION version 1): 833.33 / 833.34 a month by cumulative rounding. On 30 June 2026 the customer announces it will not renew (version 2: 12 months). June amortisation completes at the old rate (carrying 25,000.00 after June); the impairment test then compares the carrying amount with remaining expected consideration of 60,000.00 (the unrecognised 2026 fee) less remaining direct costs of 55,000.00 (EAC version for hosting and support): impairment 20,000.00 (JET-09c; 340-40-35-3). The remaining 5,000.00 is amortised over July to December (340-40-35-2, prospective). ASC606 book: no reversal (POL-144). Under JET-09c rev 1.2 the test adds the consideration of renewals still anticipated in the amortisation period; version 2 anticipates none, so that term is nil and the impairment is unchanged (D-76; ADJUDICATION.md R-COST-02)."
+authority:
+  codification:
+    - "340-40-25-1"
+    - "340-40-25-2"
+    - "340-40-35-1"
+    - "340-40-35-2"
+    - "340-40-35-3"
+    - "340-40-35-4"
+    - "340-40-35-6"
+  ifrs: ["IFRS 15.101", "IFRS 15.104"]
+  practice: ["FASB staff Implementation Q&A 71", "DART 13.4 (amortisation period and anticipated renewals)"]
+  urls: []
+derived_from: {research04: [], research05: [], chk: [], golden: [], dev: []}
+requirements: [REQ-CST-001, REQ-CST-002, REQ-CST-003, REQ-CST-004, REQ-CST-007]
+policy_refs: [POL-140, POL-141, POL-142, POL-143, POL-144]
+review: {author: answer-keys-industries, authored_on: "2026-09-12", reviewer: null, reviewed_on: null, status: pending}
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: FS-US
+      name: "Fernhill Software US (Demo)"
+      functional_currency: USD
+      time_zone: America/Los_Angeles
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: "1"}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2026-12"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "1400", name: "Capitalised costs to obtain a contract", account_type: ASSET}
+    - {code: "2020", name: "Contract cost clearing", account_type: LIABILITY}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4010", name: "Revenue - services and subscriptions", account_type: REVENUE}
+    - {code: "5100", name: "Amortisation of contract costs", account_type: EXPENSE}
+    - {code: "6000", name: "Impairment of contract cost assets", account_type: EXPENSE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: COST_TO_OBTAIN_ASSET, account: "1400"}
+    - {account_role: CONTRACT_COST_AMORTIZATION, account: "5100"}
+    - {account_role: CONTRACT_COST_IMPAIRMENT, account: "6000"}
+    - {account_role: CONTRACT_COST_CLEARING, account: "2020"}
+    - {account_role: REVENUE, product: SAAS-PRO-12M, account: "4010"}
+  customers: [{code: CUST-CAP-COST, name: "Orrin Vale Architects LLP (Demo)"}]
+  pob_templates:
+    - code: TPL-SUB
+      obligation_kind: STANDARD
+      distinctness: series
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_A
+      recognition_method: TIME_ELAPSED
+      ratable_convention: MONTHLY_EVEN
+      series_increment_unit: month
+      policy_values: {balance.right_to_consideration: CONDITIONAL}
+  products:
+    - code: SAAS-PRO-12M
+      name: "Professional platform subscription, 12 months"
+      pob_template: TPL-SUB
+      revenue_category: SUBSCRIPTION
+  ssp_books:
+    - code: SSP-FS-US-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2025-01-01"
+          methodology_label: "Observable standalone prices (demo study)"
+          entries:
+            - product: SAAS-PRO-12M
+              currency: USD
+              method: observable
+              value_basis: AMOUNT  # D-93 (4): declared remaining-increments reading (the reading the key's oracle embodies); no value change
+              distinctness: distinct
+              ranges: [{point_value: "120000.00"}]
+  fx_rate_sets: []
+  rule_sets: []
+  policies:
+    tenant: {billing.posting: ERP, recognition.time_convention: MONTHLY_EVEN}
+    entities: {}
+    books: {}
+contracts:
+  - external_id: CAP-COST-IMPAIR
+    customer: CUST-CAP-COST
+    contracting_entity: FS-US
+    transaction_currency: USD
+    inception_date: "2026-01-01"
+    lines:
+      - obligation_key: L1-SUB
+        product_code: SAAS-PRO-12M
+        quantity: "1"
+        total_price: "120000.00"
+        start_date: "2026-01-01"
+        end_date: "2026-12-31"
+    estimates:
+      - element_code: REN-CAP-COST
+        estimate_kind: RENEWAL_EXPECTATION
+        method: ENTERED_AMOUNT
+        obligation_key: L1-SUB
+        versions:
+          - version_no: "1"
+            effective_date: "2026-01-01"
+            amortization_months: "36"
+            rationale: "Two renewals expected; renewal commission 1% versus 25% initially."
+          - version_no: "2"
+            effective_date: "2026-06-30"
+            amortization_months: "12"
+            rationale: "Customer notice of non-renewal received 30 June 2026."
+      - element_code: EAC-CAP-COST
+        estimate_kind: EAC
+        method: COST_BUILDUP
+        obligation_key: L1-SUB
+        versions:
+          - version_no: "1"
+            effective_date: "2026-06-30"
+            expected_total_amount: "55000.00"
+            currency: USD
+            rationale: "Remaining hosting and dedicated support costs July to December 2026."
+timeline:
+  - seq: "1"
+    kind: event
+    contract: CAP-COST-IMPAIR
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: "2"
+    kind: event
+    contract: CAP-COST-IMPAIR
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: "3"
+    kind: event
+    contract: CAP-COST-IMPAIR
+    event_type: BILLING_RECORDED
+    effective_date: "2026-01-01"
+    payload:
+      invoice_number: INV-CAP-COST-2026
+      line_external_id: INV-CAP-COST-2026-1
+      amount: "120000.00"
+      issue_date: "2026-01-01"
+      obligation_key: L1-SUB
+  - seq: "4"
+    kind: event
+    contract: CAP-COST-IMPAIR
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-01-01"
+    payload: {estimate: REN-CAP-COST, version_no: "1"}
+  - seq: "5"
+    kind: event
+    contract: CAP-COST-IMPAIR
+    event_type: COST_INCURRED
+    effective_date: "2026-01-10"
+    payload:
+      purpose: COST_TO_OBTAIN
+      obligation_key: L1-SUB
+      amount: "30000.00"
+      payee: REP-0107
+      plan_code: AE-2026
+      is_incremental: true
+      has_clawback: false
+  - seq: "6"
+    kind: event
+    contract: CAP-COST-IMPAIR
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-06-30"
+    payload: {estimate: REN-CAP-COST, version_no: "2"}
+  - seq: "7"
+    kind: event
+    contract: CAP-COST-IMPAIR
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-06-30"
+    payload: {estimate: EAC-CAP-COST, version_no: "1"}
+checkpoints:
+  - name: capitalised
+    after_seq: "5"
+    as_of: "2026-01-31"
+    book: ASC606
+    contracts:
+      - contract: CAP-COST-IMPAIR
+        version: {transaction_price: "120000.00", revenue_cum: "10000.00", billed_cum: "120000.00"}
+        obligations: [{obligation_key: L1-SUB, revenue_cum: "10000.00"}]
+        balances:
+          - entity: FS-US
+            contract_liability: "110000.00"
+            contract_asset: "0.00"
+            unbilled_receivable: "0.00"
+            cost_asset_carrying: "29166.67"
+        schedule:
+          - obligation_key: L1-SUB
+            schedule_kind: REVENUE
+            line_type: NORMAL
+            amounts: {FY2026-P01: "10000.00"}
+    subledger:
+      - period_key: FY2026-P01
+        entity: FS-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_COST_AMORTIZATION, account: "5100", dr: "833.33"}
+          - {account_role: CONTRACT_COST_CLEARING, account: "2020", cr: "30000.00"}
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "10000.00"}
+          - {account_role: COST_TO_OBTAIN_ASSET, account: "1400", dr: "29166.67"}
+          - {account_role: REVENUE, account: "4010", cr: "10000.00"}
+  - name: non-renewal-impairment
+    after_seq: "7"
+    as_of: "2026-06-30"
+    book: ASC606
+    contracts:
+      - contract: CAP-COST-IMPAIR
+        version: {transaction_price: "120000.00", revenue_cum: "60000.00", billed_cum: "120000.00"}
+        obligations: [{obligation_key: L1-SUB, revenue_cum: "60000.00"}]
+        balances:
+          - entity: FS-US
+            contract_liability: "60000.00"
+            contract_asset: "0.00"
+            unbilled_receivable: "0.00"
+            cost_asset_carrying: "5000.00"
+    subledger:
+      - period_key: FY2026-P06
+        entity: FS-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_COST_AMORTIZATION, account: "5100", dr: "833.33"}
+          - {account_role: CONTRACT_COST_IMPAIRMENT, account: "6000", dr: "20000.00"}
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "10000.00"}
+          - {account_role: COST_TO_OBTAIN_ASSET, account: "1400", cr: "20833.33"}
+          - {account_role: REVENUE, account: "4010", cr: "10000.00"}
+  - name: year-end
+    after_seq: "7"
+    as_of: "2026-12-31"
+    book: ASC606
+    contracts:
+      - contract: CAP-COST-IMPAIR
+        version: {transaction_price: "120000.00", revenue_cum: "120000.00", billed_cum: "120000.00"}
+        obligations: [{obligation_key: L1-SUB, revenue_cum: "120000.00"}]
+        balances:
+          - entity: FS-US
+            contract_liability: "0.00"
+            contract_asset: "0.00"
+            unbilled_receivable: "0.00"
+            cost_asset_carrying: "0.00"
+    subledger:
+      - period_key: FY2026-P12
+        entity: FS-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_COST_AMORTIZATION, account: "5100", dr: "833.33"}
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "10000.00"}
+          - {account_role: COST_TO_OBTAIN_ASSET, account: "1400", cr: "833.33"}
+          - {account_role: REVENUE, account: "4010", cr: "10000.00"}

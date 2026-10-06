@@ -1,0 +1,223 @@
+schema: erev-answer-key/1
+id: MOD-JS-06-AREA-DEVELOPMENT-SCHEDULE-REVISION
+title: "Area development agreement: fee is a prepayment for future store licences; schedule revision accounted for prospectively"
+status: active
+families: [MOD, POB, REC, ALC]
+tags: []
+summary: "An area developer signs on 1 January 2026 for the exclusive right and obligation to open three stores (July 2026, July 2027, July 2028) and pays a nonrefundable development fee of 90,000.00; each store's franchise agreement also requires 10,000.00 at opening, so each 10-year store licence carries 40,000.00 (the standard initial fee and SSP). The development right transfers nothing on its own: the fee is a prepayment for the future licences, recognised over each licence term from opening (research 05 §13 pitfall 3). Store 1 opens 1 July 2026 (333.33 a month). On 1 October 2026 the schedule is revised to two stores: store 3 is removed and its 10,000.00 opening fee falls away; the development fee is not refunded. The remaining store-1 increments and store 2 are distinct: 25-13(a). Pool = (40,000.00 − 1,000.00) + 40,000.00 + 40,000.00 − 10,000.00 = 109,000.00 over modification-date SSPs of the remaining increments (39,000.00 and 40,000.00): 53,810.13 and 55,189.87."
+authority:
+  codification: ["606-10-25-10", "606-10-25-13", "606-10-55-51", "606-10-55-58", "606-10-55-60", "952-606-25-1"]
+  ifrs: ["IFRS 15.21(a)"]
+  practice: ["Deloitte, Franchisors: area development fees"]
+  urls: []
+derived_from: {research04: [], research05: [JS-06], chk: [], golden: [], dev: []}
+requirements: [REQ-MOD-001, REQ-MOD-004, REQ-MOD-009, REQ-POB-010, REQ-REC-017]
+policy_refs: [POL-080, POL-081, POL-100, POL-103, POL-090]
+review: {author: answer-keys-industries, authored_on: "2026-09-12", reviewer: null, reviewed_on: null, status: pending}
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: JS-US
+      name: "Juniper Street US (Demo)"
+      functional_currency: USD
+      time_zone: America/Los_Angeles
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: "1"}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2026-12"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4020", name: "Revenue - licences and royalties", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, product: FRANCHISE-LIC-10Y, account: "4020"}
+  customers: [{code: CUST-JS06, name: "Cascade Hospitality Developers LLC (Demo)"}]
+  pob_templates:
+    - code: TPL-FRANCHISE-LIC
+      obligation_kind: LICENCE
+      distinctness: distinct
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_A
+      recognition_method: TIME_ELAPSED
+      ratable_convention: MONTHLY_EVEN
+      licence_nature: SYMBOLIC
+      start_date_rule: LICENCE_START_OR_AVAILABLE
+      policy_values: {balance.right_to_consideration: CONDITIONAL}
+  products:
+    - code: FRANCHISE-LIC-10Y
+      name: "Franchise store licence, 10 years"
+      pob_template: TPL-FRANCHISE-LIC
+      revenue_category: FRANCHISE
+  ssp_books:
+    - code: SSP-JS-US-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2025-01-01"
+          methodology_label: "Observable standalone prices (demo study)"
+          entries:
+            - product: FRANCHISE-LIC-10Y
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges: [{point_value: "40000.00"}]
+  fx_rate_sets: []
+  rule_sets: []
+  policies:
+    tenant: {billing.posting: ERP, recognition.time_convention: MONTHLY_EVEN}
+    entities: {}
+    books: {}
+contracts:
+  - external_id: JS-06
+    customer: CUST-JS06
+    contracting_entity: JS-US
+    transaction_currency: USD
+    inception_date: "2026-01-01"
+    lines:
+      - obligation_key: L1-STORE1
+        product_code: FRANCHISE-LIC-10Y
+        quantity: "1"
+        total_price: "40000.00"
+        start_date: "2026-07-01"
+        end_date: "2036-06-30"
+      - obligation_key: L2-STORE2
+        product_code: FRANCHISE-LIC-10Y
+        quantity: "1"
+        total_price: "40000.00"
+        start_date: "2027-07-01"
+        end_date: "2037-06-30"
+      - obligation_key: L3-STORE3
+        product_code: FRANCHISE-LIC-10Y
+        quantity: "1"
+        total_price: "40000.00"
+        start_date: "2028-07-01"
+        end_date: "2038-06-30"
+    modifications:
+      - reference: MOD-JS06-SCHEDULE
+        effective_date: "2026-10-01"
+        kind: REMOVE_OBLIGATION
+        price_change_amount: "-10000.00"
+        lines:
+          - obligation_key: L3-STORE3
+            product_code: FRANCHISE-LIC-10Y
+            quantity: "1"
+            total_price: "30000.00"
+            start_date: "2028-07-01"
+            end_date: "2038-06-30"
+timeline:
+  - seq: "1"
+    kind: event
+    contract: JS-06
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: "2"
+    kind: event
+    contract: JS-06
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: "3"
+    kind: event
+    contract: JS-06
+    event_type: BILLING_RECORDED
+    effective_date: "2026-01-01"
+    payload:
+      invoice_number: INV-JS06-ADA
+      line_external_id: INV-JS06-ADA-1
+      amount: "90000.00"
+      issue_date: "2026-01-01"
+  - seq: "4"
+    kind: event
+    contract: JS-06
+    event_type: BILLING_RECORDED
+    effective_date: "2026-07-01"
+    payload:
+      invoice_number: INV-JS06-STORE1
+      line_external_id: INV-JS06-STORE1-1
+      amount: "10000.00"
+      issue_date: "2026-07-01"
+      obligation_key: L1-STORE1
+  - seq: "5"
+    kind: event
+    contract: JS-06
+    event_type: CONTRACT_AMENDED
+    effective_date: "2026-10-01"
+    payload: {modification: MOD-JS06-SCHEDULE}
+checkpoints:
+  - name: store-1-open
+    after_seq: "4"
+    as_of: "2026-09-30"
+    book: ASC606
+    contracts:
+      - contract: JS-06
+        version: {transaction_price: "120000.00", revenue_cum: "1000.00", billed_cum: "100000.00"}
+        obligations:
+          - obligation_key: L1-STORE1
+            allocated_amount: "40000.00"
+            revenue_cum: "1000.00"
+            satisfaction_status: PARTIALLY_SATISFIED
+          - obligation_key: L2-STORE2
+            allocated_amount: "40000.00"
+            revenue_cum: "0.00"
+            satisfaction_status: UNSATISFIED
+          - obligation_key: L3-STORE3
+            allocated_amount: "40000.00"
+            revenue_cum: "0.00"
+            satisfaction_status: UNSATISFIED
+        balances: [{entity: JS-US, contract_liability: "99000.00", contract_asset: "0.00", unbilled_receivable: "0.00"}]
+  - name: schedule-revised
+    after_seq: "5"
+    as_of: "2026-10-31"
+    book: ASC606
+    contracts:
+      - contract: JS-06
+        version:
+          transaction_price: "110000.00"
+          revenue_cum: "1459.92"
+          billed_cum: "100000.00"
+          modification_boundary_no: "1"
+        obligations:
+          - obligation_key: L1-STORE1
+            allocated_amount: "54810.13"
+            revenue_cum: "1459.92"
+            satisfaction_status: PARTIALLY_SATISFIED
+          - obligation_key: L2-STORE2
+            allocated_amount: "55189.87"
+            revenue_cum: "0.00"
+            satisfaction_status: UNSATISFIED
+        balances: [{entity: JS-US, contract_liability: "98540.08", contract_asset: "0.00", unbilled_receivable: "0.00"}]
+        modifications:
+          - reference: MOD-JS06-SCHEDULE
+            proposed_treatments: {L1-STORE1: PROSPECTIVE, L2-STORE2: PROSPECTIVE}
+    subledger:
+      - period_key: FY2026-P10
+        entity: JS-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "459.92"}
+          - {account_role: REVENUE, account: "4020", cr: "459.92"}
+  - name: year-end
+    after_seq: "5"
+    as_of: "2026-12-31"
+    book: ASC606
+    contracts:
+      - contract: JS-06
+        version: {transaction_price: "110000.00", revenue_cum: "2379.75", billed_cum: "100000.00"}
+        obligations:
+          - obligation_key: L1-STORE1
+            allocated_amount: "54810.13"
+            revenue_cum: "2379.75"
+            satisfaction_status: PARTIALLY_SATISFIED
+          - obligation_key: L2-STORE2
+            allocated_amount: "55189.87"
+            revenue_cum: "0.00"
+            satisfaction_status: UNSATISFIED
+        balances: [{entity: JS-US, contract_liability: "97620.25", contract_asset: "0.00", unbilled_receivable: "0.00"}]

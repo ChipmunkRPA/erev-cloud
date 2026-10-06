@@ -1,0 +1,18 @@
+{
+  "name": "erev-iap-healthz-probe",
+  "version": "1.0.0",
+  "private": true,
+  "description": "eRev strict-IAP health probe: Cloud Monitoring synthetic monitor runner that calls the IAP-protected /api/v1/healthz with a short-lived service-account JWT (lane P3c; 05 DPL-37).",
+  "license": "PolyForm-Noncommercial-1.0.0",
+  "main": "index.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test probe.test.mjs"
+  },
+  "dependencies": {
+    "@google-cloud/functions-framework": "5.0.5",
+    "@google-cloud/synthetics-sdk-api": "0.7.0"
+  }
+}

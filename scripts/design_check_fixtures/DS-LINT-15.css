@@ -1,0 +1,12 @@
+/* design-check fixture DS-LINT-15: the two dark theme blocks disagree. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg-canvas: var(--dark-canvas-a);
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg-canvas: var(--dark-canvas-b);
+}

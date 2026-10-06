@@ -1,0 +1,169 @@
+# docs/accounting/answer-keys/rnd/RND-CHK-006-S2-WARRANTY-OWN-EXTENDED-WARRANTY.yaml
+schema: "erev-answer-key/1"
+id: RND-CHK-006-S2-WARRANTY-OWN-EXTENDED-WARRANTY
+title: "Research 04 S2-WARRANTY-OWN re-baselined under D-11a: 954.55 over months 13 to 24"
+status: active
+families: [RND, REC, POB]
+tags: [r04-s2]
+summary: >-
+  Equipment (SSP 10,000) and a service-type extended warranty (SSP 1,000) sold for 10,500.00 [A stated 10,000.00 and
+  500.00]. Exact allocation of the warranty X = 10,500 × 1,000 ÷ 11,000 = 954.5454…; posted A = 954.55 (larger
+  fractional remainder). The warranty runs months 13 to 24 (2027-01-01 to 2027-12-31, MONTHLY_EVEN). Cumulative
+  posting rounds X × k ÷ 12 (D-11a, ALG-01 §2.1.3) and aligns month 24 to A. This key asserts 79.55 in months 13, 15,
+  17, 19, 21, 23 and 24 and 79.54 in months 14, 16, 18, 20 and 22. POLICIES CHK-006 lists 79.55 in months 13, 15, 17,
+  18, 20, 22, 24 and 79.54 in 14, 16, 19, 21, 23, which is round(A × k ÷ 12), the rule D-11a rejects; see discrepancy
+  D-AK-02 in the coverage file. Cross-slice variants with distinct inputs, kept: POB-CHK-134-S2-WARRANTY-OWN
+  (assurance accrual under POL-022 ENGINE versus the schedule pattern only) (ADJUDICATION.md R-DUP-02).
+authority:
+  codification: ["606-10-55-30", "606-10-55-31", "606-10-55-32", "606-10-32-28", "606-10-25-31"]
+  ifrs: ["IFRS 15.B28", "IFRS 15.B29"]
+  practice: []
+  urls: []
+derived_from: {research04: [S2-WARRANTY-OWN], research05: [], chk: [CHK-006], golden: [], dev: []}
+requirements: [REQ-POB-008, REQ-REC-019, REQ-ALC-002]
+policy_refs: [POL-003, POL-022, POL-090]
+review:
+  author: answer-keys-fx-entity-books
+  authored_on: "2026-09-12"
+  reviewer: null
+  reviewed_on: null
+  status: pending
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: US01
+      name: "Avenmoor Systems Inc. (Demo)"
+      functional_currency: USD
+      time_zone: "America/New_York"
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: 1}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2027-12"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4000", name: "Revenue - products", account_type: REVENUE}
+    - {code: "4010", name: "Revenue - services and subscriptions", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, account: "4000", product: EQUIP-10}
+    - {account_role: REVENUE, account: "4010", product: EXT-WARRANTY}
+  customers:
+    - {code: CUST-1, name: "Pellworth Logistics Inc. (Demo)"}
+  pob_templates:
+    - code: TPL-PIT
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: POINT_IN_TIME
+      over_time_criterion: NOT_APPLICABLE
+      recognition_method: POINT_IN_TIME
+    - code: TPL-RAT-ME
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_A
+      recognition_method: TIME_ELAPSED
+      ratable_convention: MONTHLY_EVEN
+  products:
+    - {code: EQUIP-10, name: "Industrial equipment", pob_template: TPL-PIT}
+    - {code: EXT-WARRANTY, name: "Extended warranty, months 13 to 24", pob_template: TPL-RAT-ME}
+  ssp_books:
+    - code: SSP-US01-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2026-01-01"
+          methodology_label: "Observable standalone prices"
+          entries:
+            - product: EQUIP-10
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "10000.00"}
+            - product: EXT-WARRANTY
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "1000.00"}
+  fx_rate_sets: []
+  rule_sets: []
+  policies: {tenant: {billing.posting: ERP}, entities: {}, books: {}}
+contracts:
+  - external_id: C-S2-WARRANTY
+    customer: CUST-1
+    contracting_entity: US01
+    transaction_currency: USD
+    inception_date: "2026-01-01"
+    lines:
+      - {obligation_key: L1-EQUIPMENT, product_code: EQUIP-10, quantity: "1", total_price: "10000.00"}
+      - obligation_key: L2-EXT-WARRANTY
+        product_code: EXT-WARRANTY
+        quantity: "1"
+        total_price: "500.00"
+        start_date: "2027-01-01"
+        end_date: "2027-12-31"
+timeline:
+  - seq: 1
+    kind: event
+    contract: C-S2-WARRANTY
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: 2
+    kind: event
+    contract: C-S2-WARRANTY
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: 3
+    kind: event
+    contract: C-S2-WARRANTY
+    event_type: BILLING_RECORDED
+    effective_date: "2026-01-01"
+    payload: {invoice_number: INV-WAR-1, line_external_id: INV-WAR-1-1, amount: "10500.00", issue_date: "2026-01-01"}
+  - seq: 4
+    kind: event
+    contract: C-S2-WARRANTY
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-01-01"
+    payload: {obligation_key: L1-EQUIPMENT, quantity: "1", trigger: CONTROL_TRANSFER}
+checkpoints:
+  - name: end-of-month-24
+    after_seq: 4
+    as_of: "2027-12-31"
+    book: ASC606
+    contracts:
+      - contract: C-S2-WARRANTY
+        obligations:
+          - obligation_key: L1-EQUIPMENT
+            allocated_amount: "9545.45"
+            allocated_exact: "9545.454545"
+            revenue_cum: "9545.45"
+          - obligation_key: L2-EXT-WARRANTY
+            allocated_amount: "954.55"
+            allocated_exact: "954.545455"
+            revenue_cum: "954.55"
+        schedule:
+          - obligation_key: L2-EXT-WARRANTY
+            schedule_kind: REVENUE
+            line_type: NORMAL
+            amounts:
+              FY2027-P01: "79.55"
+              FY2027-P02: "79.54"
+              FY2027-P03: "79.55"
+              FY2027-P04: "79.54"
+              FY2027-P05: "79.55"
+              FY2027-P06: "79.54"
+              FY2027-P07: "79.55"
+              FY2027-P08: "79.54"
+              FY2027-P09: "79.55"
+              FY2027-P10: "79.54"
+              FY2027-P11: "79.55"
+              FY2027-P12: "79.55"

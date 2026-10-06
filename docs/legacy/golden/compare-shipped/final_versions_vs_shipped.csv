@@ -1,0 +1,14 @@
+version,current_period,rows,contracts,present_in_shipped
+step-02,2023-01-01 00:00:00,8,"Contract 1, Contract 2",True
+step-03,2023-02-01 00:00:00,8,"Contract 3, Contract 4",True
+step-04,2023-01-31 00:00:00,8,"Contract 1, Contract 2",True
+step-05,2023-02-28 00:00:00,12,"Contract 1, Contract 3, Contract 4",False
+step-06,2023-03-31 00:00:00,12,"Contract 2, Contract 3, Contract 4",False
+step-07,2023-04-30 00:00:00,8,"Contract 1, Contract 2",False
+step-08,2023-05-15 00:00:00,4,Contract 2,False
+step-09,2023-05-31 00:00:00,4,Contract 2,False
+step-10,2023-06-15 00:00:00,4,Contract 1,False
+step-11,2023-07-15 00:00:00,8,"Contract 3, Contract 4",False
+step-12,2023-08-15 00:00:00,8,"Contract 3, Contract 4",False
+step-13,2023-09-15 00:00:00,5,Contract 3,False
+step-14,2023-10-31 00:00:00,17,"Contract 1, Contract 2, Contract 3, Contract 4",False

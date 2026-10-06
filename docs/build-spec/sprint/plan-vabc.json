@@ -1,0 +1,4525 @@
+{
+  "generated_at": "2026-09-14T00:21:58Z",
+  "generator": "python3 -B .scratch/sprint-vabc/evaluate.py emit (slug replan-vabc; hand layout checked by check and verify)",
+  "variant": "V-ABC",
+  "decision": "D-82",
+  "source": {
+    "build_spec_sha256": "2ec8424e087b1a33aaa2c2dc67f257b74aa22189310444b29136ff175191358c",
+    "items": 427,
+    "done": 80,
+    "base_plan": "docs/build-spec/sprint/plan.json",
+    "base_plan_generated_at": "2026-09-13T23:09:01Z"
+  },
+  "parameters": {
+    "level_box_minutes": 240,
+    "batch_box_minutes": 75,
+    "batch_max_items": 4,
+    "max_lanes": 5,
+    "max_migration_lanes": 2,
+    "merge_minutes": 35,
+    "merge_e2e_minutes": 25,
+    "cost_minutes": {
+      "engine": 30,
+      "aks": 60,
+      "parity": 45,
+      "deploy": 25,
+      "journey": 70,
+      "migration": 40,
+      "seed": 50,
+      "screen": 55,
+      "frontend": 40,
+      "backend": 35,
+      "gate": 30
+    },
+    "cost_overrides": {
+      "WEB-11": 70,
+      "END-9": 45,
+      "ENA-13": 40,
+      "ENB-13": 40,
+      "GPA-1": 60,
+      "CTR-2": 50,
+      "CTR-3": 45,
+      "CTR-20": 60,
+      "CLO-22": 60,
+      "RFD-16": 60,
+      "RPS-2": 45,
+      "CLO-19": 45,
+      "CLO-20": 50,
+      "SUP-RC-SMOKE": 70
+    },
+    "integration_merge_minutes": 10,
+    "reparent_merge_minutes": 10,
+    "lane_box_exceptions": {
+      "L5-1": 245
+    },
+    "estimate_formula": "longest lane + merge 35 + 25 when screens or journeys merge + 10 per integration-after-merge item + 10 when a second migration lane is re-parented"
+  },
+  "done": [
+    "FND-1",
+    "FND-2",
+    "FND-3",
+    "FND-4",
+    "FND-5",
+    "FND-6",
+    "FND-7",
+    "FND-8",
+    "FND-9",
+    "FND-10",
+    "FND-11",
+    "FND-12",
+    "FND-13",
+    "FND-14",
+    "FND-15",
+    "FND-16",
+    "FND-17",
+    "FND-18",
+    "GATE-FND",
+    "EKC-1",
+    "EKC-2",
+    "EKC-3",
+    "EKC-4",
+    "EKC-5",
+    "EKC-6",
+    "EKC-7",
+    "EKC-7a",
+    "EKC-7b",
+    "EKC-7c",
+    "EKC-8",
+    "EKC-9",
+    "EKC-10",
+    "EKC-11",
+    "EKC-12",
+    "GATE-EKC",
+    "PLF-1",
+    "PLF-2",
+    "PLF-3",
+    "PLF-3a",
+    "PLF-3b",
+    "PLF-3c",
+    "PLF-4",
+    "PLF-5",
+    "PLF-6",
+    "PLF-7",
+    "PLF-8",
+    "PLF-9",
+    "PLF-10",
+    "PLF-11",
+    "PLF-12",
+    "PLF-13",
+    "PLF-14",
+    "PLF-15",
+    "PLF-16",
+    "PLF-17",
+    "PLF-18",
+    "PLF-19",
+    "PLF-20",
+    "PLF-21",
+    "PLF-22",
+    "PLF-23",
+    "PLF-24",
+    "PLF-25",
+    "PLF-26",
+    "PLF-27",
+    "PLF-28",
+    "PLF-29",
+    "PLF-30",
+    "GATE-PLF",
+    "WEB-1",
+    "WEB-2",
+    "WEB-3",
+    "WEB-3a",
+    "WEB-3b",
+    "WEB-3c",
+    "WEB-3d",
+    "WEB-4",
+    "WEB-5",
+    "WEB-6",
+    "WEB-7"
+  ],
+  "l1_assumed": [
+    "RFD-1",
+    "RFD-6",
+    "RFD-2",
+    "RFD-3",
+    "RFD-8",
+    "ENA-1",
+    "ENA-2",
+    "ENA-3",
+    "ENA-5",
+    "ENB-1",
+    "ENA-6",
+    "ENA-10",
+    "ENA-11",
+    "ENC-1",
+    "ENC-2",
+    "ENC-3",
+    "ENC-4",
+    "ENC-7",
+    "ENC-9",
+    "ENB-9",
+    "ENB-10",
+    "RFD-4",
+    "RFD-5",
+    "WEB-8",
+    "WEB-9",
+    "DEP-1",
+    "DEP-2",
+    "WEB-10"
+  ],
+  "l1_reference": {
+    "plan": "docs/build-spec/sprint/plan.json",
+    "level": "L1",
+    "estimate_minutes": 275,
+    "cumulative_hours": 4.6,
+    "merge_order": [
+      "L1-1",
+      "L1-2",
+      "L1-3",
+      "L1-4",
+      "L1-5"
+    ],
+    "lanes": [
+      {
+        "id": "L1-1",
+        "items": [
+          "RFD-1",
+          "RFD-6",
+          "RFD-2",
+          "RFD-3",
+          "RFD-8"
+        ],
+        "adds_migrations": true
+      },
+      {
+        "id": "L1-2",
+        "items": [
+          "ENA-1",
+          "ENA-2",
+          "ENA-3",
+          "ENA-5",
+          "ENB-1",
+          "ENA-6",
+          "ENA-10",
+          "ENA-11"
+        ],
+        "adds_migrations": false
+      },
+      {
+        "id": "L1-3",
+        "items": [
+          "ENC-1",
+          "ENC-2",
+          "ENC-3",
+          "ENC-4",
+          "ENC-7",
+          "ENC-9",
+          "ENB-9",
+          "ENB-10"
+        ],
+        "adds_migrations": false
+      },
+      {
+        "id": "L1-4",
+        "items": [
+          "RFD-4",
+          "RFD-5",
+          "WEB-8",
+          "WEB-9",
+          "DEP-1",
+          "DEP-2"
+        ],
+        "adds_migrations": false
+      },
+      {
+        "id": "L1-5",
+        "items": [
+          "WEB-10"
+        ],
+        "adds_migrations": false
+      }
+    ]
+  },
+  "levels": [
+    {
+      "id": "L2",
+      "estimate_minutes": 285,
+      "cumulative_hours": 9.3,
+      "lanes": [
+        {
+          "id": "L2-1",
+          "worktree": "~/dev/erev-wt/l1",
+          "name": "Schema chain A: reference data revisions",
+          "family": "mig",
+          "minutes": 240,
+          "adds_migrations": true,
+          "file_scope": [
+            "backend/erev_api/api/v1/accounts.py",
+            "backend/erev_api/api/v1/pob_templates.py",
+            "backend/erev_api/api/v1/products.py",
+            "backend/erev_api/api/v1/ssp_books.py",
+            "backend/erev_api/api/v1/ssp_calculator.py",
+            "backend/erev_api/db/migrations/versions/NNNN_rfd_10_pob_templates.py",
+            "backend/erev_api/db/migrations/versions/NNNN_rfd_12_ssp_books.py",
+            "backend/erev_api/db/migrations/versions/NNNN_rfd_15_ssp_calculator.py",
+            "backend/erev_api/db/migrations/versions/NNNN_rfd_7_account_mapping.py",
+            "backend/erev_api/db/migrations/versions/NNNN_rfd_9_products.py",
+            "backend/erev_api/domain/demo/fixtures.py",
+            "backend/erev_api/domain/policies/templates.py",
+            "backend/erev_api/domain/reference/mapping.py",
+            "backend/erev_api/domain/reference/products.py",
+            "backend/erev_api/domain/ssp/books.py",
+            "backend/erev_api/domain/ssp/calculator.py",
+            "backend/erev_api/domain/ssp/commands.py",
+            "backend/erev_api/domain/ssp/publication.py",
+            "backend/erev_api/domain/ssp/queries.py",
+            "backend/erev_api/domain/ssp/range_validation.py",
+            "backend/erev_api/schemas/account_mappings.py",
+            "backend/erev_api/schemas/pob_templates.py",
+            "backend/erev_api/schemas/products.py",
+            "backend/erev_api/schemas/ssp_books.py",
+            "backend/erev_api/schemas/ssp_calculator.py",
+            "backend/tests/api/test_account_mappings_api.py",
+            "backend/tests/domain/policies/test_templates.py",
+            "backend/tests/domain/reference/test_bundles.py",
+            "backend/tests/domain/reference/test_mapping.py",
+            "backend/tests/domain/reference/test_products.py",
+            "backend/tests/domain/ssp/test_calculator.py",
+            "backend/tests/domain/ssp/test_publication.py",
+            "backend/tests/domain/ssp/test_ssp_books.py",
+            "backend/tests/support/answer_keys/runners.py",
+            "backend/tests/unit/answer_keys/test_runner_range_validation.py",
+            "backend/tests/unit/ssp/test_range_validation.py"
+          ],
+          "shared_hotspots": [
+            "backend/erev_api/api/router.py",
+            "backend/erev_api/approvals/subjects.py",
+            "backend/tests/architecture/test_registries_complete.py",
+            "backend/tests/pg/test_db_invariants.py",
+            "backend/tests/pg/test_rls_isolation.py",
+            "docs/api/openapi.json",
+            "frontend/src/lib/api/schema.d.ts"
+          ],
+          "batches": [
+            {
+              "id": "L2-1-B1",
+              "items": [
+                "RFD-7"
+              ],
+              "minutes": 40,
+              "notes": "RFD-7 adds a revision (make revision ITEM=RFD-7)"
+            },
+            {
+              "id": "L2-1-B2",
+              "items": [
+                "RFD-9"
+              ],
+              "minutes": 40,
+              "notes": "RFD-9 adds a revision (make revision ITEM=RFD-9)"
+            },
+            {
+              "id": "L2-1-B3",
+              "items": [
+                "RFD-12"
+              ],
+              "minutes": 40,
+              "notes": "RFD-12 adds a revision (make revision ITEM=RFD-12)"
+            },
+            {
+              "id": "L2-1-B4",
+              "items": [
+                "RFD-13"
+              ],
+              "minutes": 40,
+              "notes": "RFD-13 adds a revision (make revision ITEM=RFD-13)"
+            },
+            {
+              "id": "L2-1-B5",
+              "items": [
+                "RFD-10"
+              ],
+              "minutes": 40,
+              "notes": "RFD-10 adds a revision (make revision ITEM=RFD-10)"
+            },
+            {
+              "id": "L2-1-B6",
+              "items": [
+                "RFD-15"
+              ],
+              "minutes": 40,
+              "notes": "RFD-15 adds a revision (make revision ITEM=RFD-15)"
+            }
+          ]
+        },
+        {
+          "id": "L2-2",
+          "worktree": "~/dev/erev-wt/l2",
+          "name": "Engine: stages 03 to 05 and the inception fold",
+          "family": "eng-alloc",
+          "minutes": 190,
+          "adds_migrations": false,
+          "file_scope": [
+            "backend/erev_engine/stages/s03_pob_builder/agent.py",
+            "backend/erev_engine/stages/s03_pob_builder/licences.py",
+            "backend/erev_engine/stages/s03_pob_builder/options.py",
+            "backend/erev_engine/stages/s03_pob_builder/warranties.py",
+            "backend/erev_engine/stages/s04_transaction_price/concessions.py",
+            "backend/erev_engine/stages/s04_transaction_price/customer_consideration.py",
+            "backend/erev_engine/stages/s04_transaction_price/financing.py",
+            "backend/erev_engine/stages/s04_transaction_price/noncash.py",
+            "backend/erev_engine/stages/s04_transaction_price/returns.py",
+            "backend/erev_engine/stages/s04_transaction_price/specialist.py",
+            "backend/erev_engine/stages/s04_transaction_price/taxes.py",
+            "backend/erev_engine/stages/s04_transaction_price/unconstrained.py",
+            "backend/erev_engine/stages/s05_allocation/__init__.py",
+            "backend/erev_engine/stages/s05_allocation/exceptions.py",
+            "backend/erev_engine/stages/s05_allocation/targeted.py",
+            "backend/tests/engine/s03_pob_builder/test_s03_specialist.py",
+            "backend/tests/engine/s04_transaction_price/test_s04_financing.py",
+            "backend/tests/engine/s04_transaction_price/test_s04_reductions.py",
+            "backend/tests/engine/s04_transaction_price/test_s04_specialist.py",
+            "backend/tests/engine/s05_allocation/test_ctl_012.py",
+            "backend/tests/engine/s05_allocation/test_inception_fold.py",
+            "backend/tests/engine/s05_allocation/test_s05_exceptions.py"
+          ],
+          "shared_hotspots": [
+            "backend/erev_engine/stages/__init__.py",
+            "backend/tests/engine/kernel/test_stage_registry.py",
+            "backend/tests/properties/test_prop_p01_allocation_sum.py",
+            "backend/tests/support/fold.py"
+          ],
+          "batches": [
+            {
+              "id": "L2-2-B1",
+              "items": [
+                "ENA-4",
+                "ENA-7"
+              ],
+              "minutes": 60,
+              "notes": ""
+            },
+            {
+              "id": "L2-2-B2",
+              "items": [
+                "ENA-8",
+                "ENA-9"
+              ],
+              "minutes": 60,
+              "notes": ""
+            },
+            {
+              "id": "L2-2-B3",
+              "items": [
+                "ENA-12",
+                "ENA-13"
+              ],
+              "minutes": 70,
+              "notes": ""
+            }
+          ]
+        },
+        {
+          "id": "L2-3",
+          "worktree": "~/dev/erev-wt/l3",
+          "name": "Engine: stage 06 modifications",
+          "family": "eng-mod",
+          "minutes": 210,
+          "adds_migrations": false,
+          "file_scope": [
+            "backend/erev_engine/stages/s06_modifications/__init__.py",
+            "backend/erev_engine/stages/s06_modifications/attributes.py",
+            "backend/erev_engine/stages/s06_modifications/change_orders.py",
+            "backend/erev_engine/stages/s06_modifications/exercise.py",
+            "backend/erev_engine/stages/s06_modifications/inception_basis.py",
+            "backend/erev_engine/stages/s06_modifications/integrity.py",
+            "backend/erev_engine/stages/s06_modifications/legacy_templates.py",
+            "backend/erev_engine/stages/s06_modifications/lineage.py",
+            "backend/erev_engine/stages/s06_modifications/pool.py",
+            "backend/erev_engine/stages/s06_modifications/regroup.py",
+            "backend/erev_engine/stages/s06_modifications/satisfied.py",
+            "backend/erev_engine/stages/s06_modifications/segments.py",
+            "backend/erev_engine/stages/s06_modifications/subscriptions.py",
+            "backend/erev_engine/stages/s06_modifications/terminations.py",
+            "backend/erev_engine/stages/s06_modifications/weights.py",
+            "backend/tests/engine/s06_modifications/test_s06_catch_up.py",
+            "backend/tests/engine/s06_modifications/test_s06_exercise.py",
+            "backend/tests/engine/s06_modifications/test_s06_legacy_prospective.py",
+            "backend/tests/engine/s06_modifications/test_s06_legacy_retro.py",
+            "backend/tests/engine/s06_modifications/test_s06_lifecycle.py",
+            "backend/tests/engine/s06_modifications/test_s06_prospective.py",
+            "backend/tests/engine/s06_modifications/test_tc_pob_vc.py",
+            "backend/tests/engine/s06_modifications/test_tc_prospective.py",
+            "backend/tests/engine/s06_modifications/test_tc_prospective_reductions.py",
+            "backend/tests/engine/s06_modifications/test_tc_rm.py"
+          ],
+          "shared_hotspots": [],
+          "batches": [
+            {
+              "id": "L2-3-B1",
+              "items": [
+                "ENB-2",
+                "ENB-3"
+              ],
+              "minutes": 60,
+              "notes": ""
+            },
+            {
+              "id": "L2-3-B2",
+              "items": [
+                "ENB-4",
+                "ENB-5"
+              ],
+              "minutes": 60,
+              "notes": ""
+            },
+            {
+              "id": "L2-3-B3",
+              "items": [
+                "ENB-6",
+                "ENB-7"
+              ],
+              "minutes": 60,
+              "notes": ""
+            },
+            {
+              "id": "L2-3-B4",
+              "items": [
+                "ENB-8"
+              ],
+              "minutes": 30,
+              "notes": ""
+            }
+          ]
+        },
+        {
+          "id": "L2-4",
+          "worktree": "~/dev/erev-wt/l4",
+          "name": "Engine: stages 09 to 11",
+          "family": "eng-rec",
+          "minutes": 210,
+          "adds_migrations": false,
+          "file_scope": [
+            "backend/erev_engine/stages/s09_recognition/schedule.py",
+            "backend/erev_engine/stages/s10_billing_balances/__init__.py",
+            "backend/erev_engine/stages/s10_billing_balances/billing.py",
+            "backend/erev_engine/stages/s10_billing_balances/classification.py",
+            "backend/erev_engine/stages/s10_billing_balances/current_split.py",
+            "backend/erev_engine/stages/s10_billing_balances/position.py",
+            "backend/erev_engine/stages/s10_billing_balances/reclass.py",
+            "backend/erev_engine/stages/s10_billing_balances/refund_liability.py",
+            "backend/erev_engine/stages/s11_costs_loss/__init__.py",
+            "backend/erev_engine/stages/s11_costs_loss/amortise.py",
+            "backend/erev_engine/stages/s11_costs_loss/capitalise.py",
+            "backend/erev_engine/stages/s11_costs_loss/impair.py",
+            "backend/erev_engine/stages/s11_costs_loss/loss.py",
+            "backend/tests/engine/s09_recognition/test_s09_measures.py",
+            "backend/tests/engine/s10_billing_balances/test_chk_alg02_alg03.py",
+            "backend/tests/engine/s10_billing_balances/test_chk_alg06.py",
+            "backend/tests/engine/s10_billing_balances/test_s10_billing.py",
+            "backend/tests/engine/s10_billing_balances/test_s10_position.py",
+            "backend/tests/engine/s10_billing_balances/test_tc_reclass.py",
+            "backend/tests/engine/s11_costs_loss/test_s11_costs.py",
+            "backend/tests/engine/s11_costs_loss/test_s11_loss.py",
+            "backend/tests/properties/test_prop_p04_schedule_bounds.py",
+            "backend/tests/properties/test_prop_p10_split_invariance.py"
+          ],
+          "shared_hotspots": [
+            "backend/erev_engine/stages/__init__.py",
+            "backend/tests/engine/kernel/test_stage_registry.py"
+          ],
+          "batches": [
+            {
+              "id": "L2-4-B1",
+              "items": [
+                "ENC-10",
+                "ENC-11"
+              ],
+              "minutes": 60,
+              "notes": ""
+            },
+            {
+              "id": "L2-4-B2",
+              "items": [
+                "ENC-12",
+                "ENC-13"
+              ],
+              "minutes": 60,
+              "notes": ""
+            },
+            {
+              "id": "L2-4-B3",
+              "items": [
+                "ENC-14",
+                "ENC-15"
+              ],
+              "minutes": 60,
+              "notes": ""
+            },
+            {
+              "id": "L2-4-B4",
+              "items": [
+                "ENC-16"
+              ],
+              "minutes": 30,
+              "notes": ""
+            }
+          ]
+        },
+        {
+          "id": "L2-5",
+          "worktree": "~/dev/erev-wt/l5",
+          "name": "Engine: stage 08 late events and stages 12 to 14",
+          "family": "eng-post",
+          "minutes": 240,
+          "adds_migrations": false,
+          "file_scope": [
+            "backend/erev_engine/stages/s08_estimates_late_events/assign.py",
+            "backend/erev_engine/stages/s08_estimates_late_events/decompose.py",
+            "backend/erev_engine/stages/s08_estimates_late_events/late.py",
+            "backend/erev_engine/stages/s12_fx_entities/__init__.py",
+            "backend/erev_engine/stages/s12_fx_entities/intercompany.py",
+            "backend/erev_engine/stages/s12_fx_entities/layers.py",
+            "backend/erev_engine/stages/s12_fx_entities/monetary.py",
+            "backend/erev_engine/stages/s12_fx_entities/rates.py",
+            "backend/erev_engine/stages/s12_fx_entities/remeasure.py",
+            "backend/erev_engine/stages/s12_fx_entities/reporting.py",
+            "backend/erev_engine/stages/s14_posting/__init__.py",
+            "backend/erev_engine/stages/s14_posting/accounts.py",
+            "backend/erev_engine/stages/s14_posting/amount_classes.py",
+            "backend/erev_engine/stages/s14_posting/assign.py",
+            "backend/erev_engine/stages/s14_posting/intents.py",
+            "backend/erev_engine/stages/s14_posting/targets.py",
+            "backend/erev_engine/stages/s14_posting/templates.py",
+            "backend/tests/engine/s08_estimates_late_events/test_s08_decompose.py",
+            "backend/tests/engine/s08_estimates_late_events/test_s08_late_events.py",
+            "backend/tests/engine/s12_fx_entities/test_s12_entities.py",
+            "backend/tests/engine/s12_fx_entities/test_s12_layers.py",
+            "backend/tests/engine/s12_fx_entities/test_s12_remeasurement.py",
+            "backend/tests/engine/s14_posting/test_s14_deltas.py",
+            "backend/tests/engine/s14_posting/test_s14_entries.py",
+            "backend/tests/engine/s14_posting/test_s14_templates.py",
+            "backend/tests/properties/test_prop_p05_journal_balance.py",
+            "backend/tests/properties/test_prop_p12_fx_layers.py"
+          ],
+          "shared_hotspots": [
+            "backend/erev_engine/stages/__init__.py",
+            "backend/tests/engine/kernel/test_stage_registry.py"
+          ],
+          "batches": [
+            {
+              "id": "L2-5-B1",
+              "items": [
+                "ENB-11",
+                "ENB-12"
+              ],
+              "minutes": 60,
+              "notes": ""
+            },
+            {
+              "id": "L2-5-B2",
+              "items": [
+                "END-1",
+                "END-2"
+              ],
+              "minutes": 60,
+              "notes": "END-1 integration-after-merge: codes against the contract of ENC-15 (s12 consumes the CostLossState type of s11)"
+            },
+            {
+              "id": "L2-5-B3",
+              "items": [
+                "END-3",
+                "END-4"
+              ],
+              "minutes": 60,
+              "notes": ""
+            },
+            {
+              "id": "L2-5-B4",
+              "items": [
+                "END-5",
+                "END-6"
+              ],
+              "minutes": 60,
+              "notes": ""
+            }
+          ]
+        }
+      ],
+      "merge_order": [
+        "L2-1",
+        "L2-2",
+        "L2-3",
+        "L2-4",
+        "L2-5"
+      ],
+      "merge_gates": [
+        "git status --porcelain  # empty after the merge commits",
+        "make openapi && git diff --exit-code docs/api/openapi.json frontend/src/lib/api/schema.d.ts",
+        "make ci",
+        "make test-pg",
+        "make properties K=\"p01 or p04 or p10 or p12 or p05\""
+      ]
+    },
+    {
+      "id": "L3",
+      "estimate_minutes": 330,
+      "cumulative_hours": 14.8,
+      "lanes": [
+        {
+          "id": "L3-1",
+          "worktree": "~/dev/erev-wt/l1",
+          "name": "Schema chain A: policy set, SSP resolution and the contracts core",
+          "family": "mig",
+          "minutes": 240,
+          "adds_migrations": true,
+          "file_scope": [
+            "backend/erev_api/api/v1/contracts.py",
+            "backend/erev_api/api/v1/policies.py",
+            "backend/erev_api/api/v1/ssp_books.py",
+            "backend/erev_api/api/v1/subledger.py",
+            "backend/erev_api/db/migrations/versions/NNNN_ctr_1_contracts_streams.py",
+            "backend/erev_api/db/migrations/versions/NNNN_ctr_2_versions_schedules_traces.py",
+            "backend/erev_api/db/migrations/versions/NNNN_ctr_3_subledger.py",
+            "backend/erev_api/db/tables/contracts.py",
+            "backend/erev_api/db/tables/engine_output.py",
+            "backend/erev_api/db/tables/subledger.py",
+            "backend/erev_api/domain/contracts/bundles.py",
+            "backend/erev_api/domain/contracts/commands.py",
+            "backend/erev_api/domain/contracts/computation.py",
+            "backend/erev_api/domain/contracts/queries.py",
+            "backend/erev_api/domain/contracts/repo.py",
+            "backend/erev_api/domain/journals/subledger.py",
+            "backend/erev_api/domain/policies/registry_versions.py",
+            "backend/erev_api/domain/policies/simulation.py",
+            "backend/erev_api/domain/ssp/calculator.py",
+            "backend/erev_api/domain/ssp/resolution.py",
+            "backend/erev_api/events/payloads.py",
+            "backend/erev_api/events/stream.py",
+            "backend/erev_api/explain/store.py",
+            "backend/erev_api/registry/presets.py",
+            "backend/erev_api/schemas/contracts.py",
+            "backend/erev_api/schemas/policies.py",
+            "backend/erev_api/schemas/ssp_books.py",
+            "backend/erev_api/schemas/subledger.py",
+            "backend/tests/api/test_contracts_api.py",
+            "backend/tests/api/test_subledger_api.py",
+            "backend/tests/domain/contracts/test_computation.py",
+            "backend/tests/domain/contracts/test_contract_reads.py",
+            "backend/tests/domain/contracts/test_streams.py",
+            "backend/tests/domain/journals/test_subledger.py",
+            "backend/tests/domain/platform/test_provisioning.py",
+            "backend/tests/domain/policies/test_presets.py",
+            "backend/tests/domain/policies/test_registry_versions.py",
+            "backend/tests/domain/ssp/test_calculator.py",
+            "backend/tests/domain/ssp/test_resolution.py",
+            "backend/tests/pg/test_chains.py",
+            "backend/tests/support/factories.py",
+            "backend/tests/unit/events/test_payloads.py"
+          ],
+          "shared_hotspots": [
+            "backend/erev_api/api/router.py",
+            "backend/erev_api/approvals/subjects.py",
+            "backend/erev_api/db/tables/__init__.py",
+            "backend/erev_api/domain/platform/provisioning.py",
+            "backend/tests/architecture/test_registries_complete.py",
+            "backend/tests/pg/test_db_invariants.py",
+            "backend/tests/pg/test_immutability_and_grants.py",
+            "backend/tests/pg/test_rls_isolation.py",
+            "backend/tests/support/rows.py",
+            "docs/api/openapi.json",
+            "frontend/src/lib/api/schema.d.ts"
+          ],
+          "batches": [
+            {
+              "id": "L3-1-B1",
+              "items": [
+                "RFD-11",
+                "RFD-14"
+              ],
+              "minutes": 70,
+              "notes": ""
+            },
+            {
+              "id": "L3-1-B2",
+              "items": [
+                "CTR-1"
+              ],
+              "minutes": 40,
+              "notes": "CTR-1 adds a revision (make revision ITEM=CTR-1)"
+            },
+            {
+              "id": "L3-1-B3",
+              "items": [
+                "CTR-2"
+              ],
+              "minutes": 50,
+              "notes": "CTR-2 integration-after-merge: codes against the contract of END-10 (computation.persist stores compute output bundles (DG-CMD-10)) (V-C: ENGINE_SPEC \u00a70.5 with fakes); CTR-2 integration-after-merge: codes against the contract of EDS-1 (contract_version.rpo_amount comes from stage 15) (V-C: ENGINE_SPEC \u00a70.5 with fakes); CTR-2 integration-after-merge: codes against the contract of END-9 (computed versions persist(uow, bundle, output) the result of erev_engine.compute (END-9)) (V-C: ENGINE_SPEC \u00a70.5 with fakes); CTR-2 adds a revision (make revision ITEM=CTR-2); CTR-2 V-C: persists the ENGINE_SPEC \u00a70.5 OutputBundle through a fake of erev_engine.compute until the L3 merge; its number-asserting tests turn green in the L3 merge gate"
+            },
+            {
+              "id": "L3-1-B4",
+              "items": [
+                "CTR-3"
+              ],
+              "minutes": 45,
+              "notes": "CTR-3 integration-after-merge: codes against the contract of END-9 (persists the postings of a computed K-11 (O1 53,504.59 EUR)) (V-C: ENGINE_SPEC \u00a70.5 with fakes); CTR-3 V-C: its number-asserting tests turn green in the L3 merge gate; CTR-3 adds a revision (make revision ITEM=CTR-3)"
+            },
+            {
+              "id": "L3-1-B5",
+              "items": [
+                "CTR-4"
+              ],
+              "minutes": 35,
+              "notes": "CTR-4 integration-after-merge: codes against the contract of END-9 (reads computed versions, KPIs and the allocation walk (97,627.12)) (V-C: ENGINE_SPEC \u00a70.5 with fakes); CTR-4 V-C: its number-asserting tests turn green in the L3 merge gate"
+            }
+          ]
+        },
+        {
+          "id": "L3-2",
+          "worktree": "~/dev/erev-wt/l2",
+          "name": "Engine: boundary fold, books and compute, stage 15",
+          "family": "eng-post",
+          "minutes": 235,
+          "adds_migrations": false,
+          "file_scope": [
+            "backend/erev_engine/__init__.py",
+            "backend/erev_engine/stages/s06_modifications/integrity.py",
+            "backend/erev_engine/stages/s13_books/__init__.py",
+            "backend/erev_engine/stages/s13_books/legacy_book.py",
+            "backend/erev_engine/stages/s13_books/memo.py",
+            "backend/erev_engine/stages/s13_books/switches.py",
+            "backend/erev_engine/stages/s15_disclosures/__init__.py",
+            "backend/erev_engine/stages/s15_disclosures/rpo.py",
+            "backend/erev_engine/stages/s15_disclosures/waterfall.py",
+            "backend/tests/architecture/test_engine_purity.py",
+            "backend/tests/engine/kernel/test_boundary_fold.py",
+            "backend/tests/engine/kernel/test_compute.py",
+            "backend/tests/engine/kernel/test_ctl_012_compute.py",
+            "backend/tests/engine/kernel/test_module_state.py",
+            "backend/tests/engine/s06_modifications/test_integrity.py",
+            "backend/tests/engine/s13_books/test_s13_books.py",
+            "backend/tests/engine/s13_books/test_s13_legacy.py",
+            "backend/tests/engine/s14_posting/test_chk_delta.py",
+            "backend/tests/engine/s14_posting/test_tc_je.py",
+            "backend/tests/engine/s15_disclosures/test_s15_rpo.py",
+            "backend/tests/engine/s15_disclosures/test_s15_waterfall.py",
+            "backend/tests/properties/test_prop_p07_rpo.py",
+            "backend/tests/properties/test_prop_p13_book_equivalence.py",
+            "backend/tests/support/intent_totals.py"
+          ],
+          "shared_hotspots": [
+            "backend/erev_engine/stages/__init__.py",
+            "backend/tests/engine/kernel/test_stage_registry.py",
+            "backend/tests/properties/test_prop_p01_allocation_sum.py",
+            "backend/tests/support/fold.py"
+          ],
+          "batches": [
+            {
+              "id": "L3-2-B1",
+              "items": [
+                "ENB-13",
+                "END-7"
+              ],
+              "minutes": 70,
+              "notes": ""
+            },
+            {
+              "id": "L3-2-B2",
+              "items": [
+                "END-8",
+                "END-9"
+              ],
+              "minutes": 75,
+              "notes": ""
+            },
+            {
+              "id": "L3-2-B3",
+              "items": [
+                "END-10",
+                "EDS-1"
+              ],
+              "minutes": 60,
+              "notes": ""
+            },
+            {
+              "id": "L3-2-B4",
+              "items": [
+                "EDS-2"
+              ],
+              "minutes": 30,
+              "notes": ""
+            }
+          ]
+        },
+        {
+          "id": "L3-3",
+          "worktree": "~/dev/erev-wt/l3",
+          "name": "Frontend: e2e harness, sign-in, MFA, approvals and settings",
+          "family": "web",
+          "minutes": 235,
+          "adds_migrations": false,
+          "file_scope": [
+            "backend/tests/unit/test_e2e_script.py",
+            "frontend/e2e/playwright.config.ts",
+            "frontend/e2e/projects/avenmoor-serial.spec.ts",
+            "frontend/e2e/projects/design.spec.ts",
+            "frontend/e2e/projects/fresh-tenant.spec.ts",
+            "frontend/e2e/projects/industry.spec.ts",
+            "frontend/e2e/support/api.ts",
+            "frontend/e2e/support/auth.ts",
+            "frontend/e2e/support/axe.ts",
+            "frontend/e2e/support/fixtures.ts",
+            "frontend/e2e/support/mail.ts",
+            "frontend/e2e/support/network.ts",
+            "frontend/e2e/support/screens.ts",
+            "frontend/e2e/support/tenants.ts",
+            "frontend/e2e/support/totp.ts",
+            "frontend/src/lib/api/queries/approvals.ts",
+            "frontend/src/routes/approvals/inbox.test.tsx",
+            "frontend/src/routes/approvals/inbox.tsx",
+            "frontend/src/routes/approvals/request.test.tsx",
+            "frontend/src/routes/approvals/request.tsx",
+            "frontend/src/routes/auth/mfa-challenge.test.tsx",
+            "frontend/src/routes/auth/mfa-challenge.tsx",
+            "frontend/src/routes/auth/sign-in.test.tsx",
+            "frontend/src/routes/auth/sign-in.tsx",
+            "frontend/src/routes/onboarding/select-workspace.test.tsx",
+            "frontend/src/routes/onboarding/select-workspace.tsx",
+            "frontend/src/routes/settings/index.test.tsx",
+            "frontend/src/routes/settings/notifications.test.tsx",
+            "frontend/src/routes/settings/notifications.tsx",
+            "frontend/src/routes/settings/profile.test.tsx",
+            "frontend/src/routes/settings/profile.tsx",
+            "scripts/e2e.sh"
+          ],
+          "shared_hotspots": [
+            "Makefile",
+            "backend/tests/unit/test_makefile_targets.py",
+            "frontend/e2e/projects/screens.spec.ts",
+            "frontend/src/app/router.tsx",
+            "frontend/src/messages/en.json",
+            "frontend/src/routes/settings/index.tsx"
+          ],
+          "batches": [
+            {
+              "id": "L3-3-B1",
+              "items": [
+                "WEB-11"
+              ],
+              "minutes": 70,
+              "notes": ""
+            },
+            {
+              "id": "L3-3-B2",
+              "items": [
+                "WEB-12"
+              ],
+              "minutes": 55,
+              "notes": ""
+            },
+            {
+              "id": "L3-3-B3",
+              "items": [
+                "WEB-15"
+              ],
+              "minutes": 55,
+              "notes": ""
+            },
+            {
+              "id": "L3-3-B4",
+              "items": [
+                "WEB-17"
+              ],
+              "minutes": 55,
+              "notes": ""
+            }
+          ]
+        }
+      ],
+      "merge_order": [
+        "L3-1",
+        "L3-2",
+        "L3-3"
+      ],
+      "merge_gates": [
+        "git status --porcelain  # empty after the merge commits",
+        "make openapi && git diff --exit-code docs/api/openapi.json frontend/src/lib/api/schema.d.ts",
+        "make ci",
+        "make test-pg",
+        "make properties K=\"p01 or p04 or p10 or p12 or p05 or p13 or p07\"",
+        "make answer-keys ID=RND-CHK-001,RND-CHK-001-USD-EQUAL-SSP-THIRDS,RND-CHK-003A,RND-CHK-005-USD-100-OVER-THREE-MONTHS  # 4 keys named by merged items must pass",
+        "make e2e SPEC=frontend/e2e/projects/screens.spec.ts"
+      ]
+    },
+    {
+      "id": "L4",
+      "estimate_minutes": 300,
+      "cumulative_hours": 19.8,
+      "lanes": [
+        {
+          "id": "L4-1",
+          "worktree": "~/dev/erev-wt/l1",
+          "name": "Schema chain A: contract events, Step 1, combination, activation, holds and the import registry",
+          "family": "mig",
+          "minutes": 230,
+          "adds_migrations": true,
+          "file_scope": [
+            "backend/erev_api/api/v1/combinations.py",
+            "backend/erev_api/api/v1/contracts.py",
+            "backend/erev_api/api/v1/events.py",
+            "backend/erev_api/api/v1/imports.py",
+            "backend/erev_api/api/v1/judgements.py",
+            "backend/erev_api/api/v1/schedules.py",
+            "backend/erev_api/db/migrations/versions/NNNN_ctr_10_contract_holds.py",
+            "backend/erev_api/db/migrations/versions/NNNN_ctr_5_exception_items.py",
+            "backend/erev_api/db/migrations/versions/NNNN_ctr_7_judgement_records.py",
+            "backend/erev_api/db/migrations/versions/NNNN_din_1_import_uploads.py",
+            "backend/erev_api/db/tables/imports.py",
+            "backend/erev_api/domain/contracts/activation.py",
+            "backend/erev_api/domain/contracts/combination.py",
+            "backend/erev_api/domain/contracts/compute_job.py",
+            "backend/erev_api/domain/contracts/events.py",
+            "backend/erev_api/domain/contracts/holds.py",
+            "backend/erev_api/domain/contracts/locks.py",
+            "backend/erev_api/domain/imports/commands.py",
+            "backend/erev_api/domain/imports/exceptions.py",
+            "backend/erev_api/domain/imports/parse.py",
+            "backend/erev_api/domain/imports/queries.py",
+            "backend/erev_api/domain/imports/templates.py",
+            "backend/erev_api/domain/imports/upload.py",
+            "backend/erev_api/domain/imports/validate.py",
+            "backend/erev_api/domain/policies/judgements.py",
+            "backend/erev_api/schemas/combinations.py",
+            "backend/erev_api/schemas/db_json.py",
+            "backend/erev_api/schemas/events.py",
+            "backend/erev_api/schemas/imports.py",
+            "backend/erev_api/schemas/judgements.py",
+            "backend/tests/api/test_events_api.py",
+            "backend/tests/api/test_imports_api.py",
+            "backend/tests/api/test_schedules_api.py",
+            "backend/tests/domain/contracts/test_activation.py",
+            "backend/tests/domain/contracts/test_combination.py",
+            "backend/tests/domain/contracts/test_compute_job.py",
+            "backend/tests/domain/contracts/test_field_locks.py",
+            "backend/tests/domain/contracts/test_holds.py",
+            "backend/tests/domain/contracts/test_step1.py",
+            "backend/tests/domain/imports/test_upload_validate.py",
+            "backend/tests/domain/policies/test_judgements.py",
+            "backend/tests/pg/test_late_events.py",
+            "backend/tests/support/factories.py"
+          ],
+          "shared_hotspots": [
+            "backend/erev_api/api/router.py",
+            "backend/erev_api/approvals/subjects.py",
+            "backend/erev_api/db/tables/__init__.py",
+            "backend/erev_api/db/transitions.py",
+            "backend/tests/architecture/test_registries_complete.py",
+            "backend/tests/pg/test_catalogue_lint.py",
+            "backend/tests/pg/test_db_invariants.py",
+            "backend/tests/pg/test_rls_isolation.py",
+            "docs/api/openapi.json",
+            "frontend/src/lib/api/schema.d.ts"
+          ],
+          "batches": [
+            {
+              "id": "L4-1-B1",
+              "items": [
+                "CTR-5"
+              ],
+              "minutes": 40,
+              "notes": "CTR-5 adds a revision (make revision ITEM=CTR-5)"
+            },
+            {
+              "id": "L4-1-B2",
+              "items": [
+                "CTR-7",
+                "CTR-8"
+              ],
+              "minutes": 75,
+              "notes": "CTR-7 adds a revision (make revision ITEM=CTR-7); CTR-7 partial: 6 of 7 named keys runnable; the rest wait for deferred ENC-5; tick only when every key passes"
+            },
+            {
+              "id": "L4-1-B3",
+              "items": [
+                "CTR-9",
+                "CTR-10"
+              ],
+              "minutes": 75,
+              "notes": "CTR-10 adds a revision (make revision ITEM=CTR-10)"
+            },
+            {
+              "id": "L4-1-B4",
+              "items": [
+                "DIN-1"
+              ],
+              "minutes": 40,
+              "notes": "DIN-1 adds a revision (make revision ITEM=DIN-1)"
+            }
+          ]
+        },
+        {
+          "id": "L4-2",
+          "worktree": "~/dev/erev-wt/l2",
+          "name": "Schema chain B (re-parented onto L4-1 at merge): obligation overrides, journal, close and report tables",
+          "family": "mig-b",
+          "minutes": 160,
+          "adds_migrations": true,
+          "file_scope": [
+            "backend/erev_api/api/v1/obligations.py",
+            "backend/erev_api/api/v1/policies.py",
+            "backend/erev_api/db/migrations/versions/NNNN_close_tables.py",
+            "backend/erev_api/db/migrations/versions/NNNN_ctr_15_policy_overrides.py",
+            "backend/erev_api/db/migrations/versions/NNNN_journal_tables.py",
+            "backend/erev_api/db/migrations/versions/NNNN_report_tables.py",
+            "backend/erev_api/db/tables/close.py",
+            "backend/erev_api/db/tables/reports.py",
+            "backend/erev_api/db/tables/subledger.py",
+            "backend/erev_api/domain/contracts/obligations.py",
+            "backend/erev_api/domain/policies/overrides.py",
+            "backend/erev_api/domain/reports/catalogue.py",
+            "backend/erev_api/schemas/obligations.py",
+            "backend/tests/api/test_obligations_api.py",
+            "backend/tests/domain/platform/test_provisioning.py",
+            "backend/tests/domain/policies/test_policy_overrides.py",
+            "backend/tests/pg/test_close_tables.py",
+            "backend/tests/pg/test_journal_tables.py",
+            "backend/tests/pg/test_report_tables.py",
+            "backend/tests/unit/reports/test_catalogue.py"
+          ],
+          "shared_hotspots": [
+            "backend/erev_api/api/router.py",
+            "backend/erev_api/approvals/subjects.py",
+            "backend/erev_api/db/tables/__init__.py",
+            "backend/erev_api/db/transitions.py",
+            "backend/erev_api/domain/platform/provisioning.py",
+            "backend/tests/architecture/test_registries_complete.py",
+            "backend/tests/pg/test_catalogue_lint.py",
+            "backend/tests/pg/test_db_invariants.py",
+            "backend/tests/pg/test_immutability_and_grants.py",
+            "backend/tests/pg/test_migrations.py",
+            "backend/tests/pg/test_rls_isolation.py",
+            "backend/tests/support/rows.py",
+            "docs/api/openapi.json",
+            "frontend/src/lib/api/schema.d.ts"
+          ],
+          "batches": [
+            {
+              "id": "L4-2-B1",
+              "items": [
+                "CTR-15"
+              ],
+              "minutes": 40,
+              "notes": "CTR-15 adds a revision (make revision ITEM=CTR-15); re-parented onto L4-1 at merge"
+            },
+            {
+              "id": "L4-2-B2",
+              "items": [
+                "CLO-1"
+              ],
+              "minutes": 40,
+              "notes": "CLO-1 adds a revision (make revision ITEM=CLO-1); re-parented onto L4-1 at merge"
+            },
+            {
+              "id": "L4-2-B3",
+              "items": [
+                "CLO-2"
+              ],
+              "minutes": 40,
+              "notes": "CLO-2 adds a revision (make revision ITEM=CLO-2); re-parented onto L4-1 at merge"
+            },
+            {
+              "id": "L4-2-B4",
+              "items": [
+                "RPS-1"
+              ],
+              "minutes": 40,
+              "notes": "RPS-1 adds a revision (make revision ITEM=RPS-1); re-parented onto L4-1 at merge"
+            }
+          ],
+          "reparented_onto": "L4-1",
+          "notes": "revisions re-parented onto the head of L4-1 at merge (V-A, SPRINT-vabc.md \u00a75.2)"
+        },
+        {
+          "id": "L4-3",
+          "worktree": "~/dev/erev-wt/l3",
+          "name": "Engine: stage 15 rollforward and answer-key sweeps 1 to 3",
+          "family": "eng-keys",
+          "minutes": 210,
+          "adds_migrations": false,
+          "file_scope": [
+            "backend/erev_engine/stages/",
+            "backend/erev_engine/stages/s15_disclosures/rollforward.py",
+            "backend/tests/answer_keys/test_answer_keys.py",
+            "backend/tests/engine/s15_disclosures/test_s15_rollforward.py",
+            "backend/tests/support/answer_keys/runners.py",
+            "backend/tests/unit/answer_keys/test_runner_range_validation.py"
+          ],
+          "shared_hotspots": [],
+          "batches": [
+            {
+              "id": "L4-3-B1",
+              "items": [
+                "EDS-3"
+              ],
+              "minutes": 30,
+              "notes": ""
+            },
+            {
+              "id": "L4-3-B2",
+              "items": [
+                "AKS-1"
+              ],
+              "minutes": 60,
+              "notes": ""
+            },
+            {
+              "id": "L4-3-B3",
+              "items": [
+                "AKS-2"
+              ],
+              "minutes": 60,
+              "notes": "AKS-2 partial: 36 of 40 named keys runnable; the rest wait for deferred ENC-6; tick only when every key passes"
+            },
+            {
+              "id": "L4-3-B4",
+              "items": [
+                "AKS-3"
+              ],
+              "minutes": 60,
+              "notes": "AKS-3 partial: 24 of 38 named keys runnable; the rest wait for deferred EDS-4, ENC-5, ENC-6, ENC-8; tick only when every key passes"
+            }
+          ]
+        },
+        {
+          "id": "L4-4",
+          "worktree": "~/dev/erev-wt/l4",
+          "name": "Platform: calculation trace store and explain routes",
+          "family": "api-ctr",
+          "minutes": 35,
+          "adds_migrations": false,
+          "file_scope": [
+            "backend/erev_api/api/v1/explain.py",
+            "backend/erev_api/explain/narratives.py",
+            "backend/erev_api/explain/service.py",
+            "backend/erev_api/schemas/explain.py",
+            "backend/tests/api/test_explain_api.py"
+          ],
+          "shared_hotspots": [
+            "backend/erev_api/api/router.py",
+            "docs/api/openapi.json",
+            "frontend/src/lib/api/schema.d.ts"
+          ],
+          "batches": [
+            {
+              "id": "L4-4-B1",
+              "items": [
+                "CTR-19"
+              ],
+              "minutes": 35,
+              "notes": "CTR-19 R-RC-1: explain history estimate-pair test moves with CTR-12 (CTR-12 post-rc; SPEC-Q under XR-14)"
+            }
+          ]
+        },
+        {
+          "id": "L4-5",
+          "worktree": "~/dev/erev-wt/l5",
+          "name": "Platform and frontend: reference seed and reference-data screens",
+          "family": "web",
+          "minutes": 225,
+          "adds_migrations": false,
+          "file_scope": [
+            "backend/erev_api/domain/demo/avenmoor/policies.py",
+            "backend/erev_api/domain/demo/avenmoor/reference.py",
+            "backend/erev_api/domain/demo/avenmoor/ssp.py",
+            "backend/erev_api/domain/platform/setup.py",
+            "backend/tests/domain/demo/test_seed_avenmoor_reference.py",
+            "backend/tests/domain/platform/test_setup_completion.py",
+            "frontend/src/app/shell/ContextPill.test.tsx",
+            "frontend/src/app/shell/ContextPill.tsx",
+            "frontend/src/lib/api/queries/accounts.ts",
+            "frontend/src/lib/api/queries/config-test-cases.ts",
+            "frontend/src/lib/api/queries/dimensions.ts",
+            "frontend/src/lib/api/queries/rule-sets.ts",
+            "frontend/src/lib/api/queries/ssp-books.ts",
+            "frontend/src/lib/api/queries/ssp-calculator.ts",
+            "frontend/src/lib/api/queries/tenant.ts",
+            "frontend/src/routes/policies/control-rules.tsx",
+            "frontend/src/routes/policies/revenue.tsx",
+            "frontend/src/routes/policies/rule-set-version.test.tsx",
+            "frontend/src/routes/policies/rule-set-version.tsx",
+            "frontend/src/routes/policies/ssp-book-version.test.tsx",
+            "frontend/src/routes/policies/ssp-book-version.tsx",
+            "frontend/src/routes/policies/ssp-books.tsx",
+            "frontend/src/routes/policies/ssp-calculator-run.test.tsx",
+            "frontend/src/routes/policies/ssp-calculator-run.tsx",
+            "frontend/src/routes/policies/ssp-calculator.tsx",
+            "frontend/src/routes/settings/chart-of-accounts.tsx",
+            "frontend/src/routes/settings/setup.tsx",
+            "frontend/src/routes/settings/workspace.test.tsx",
+            "frontend/src/routes/settings/workspace.tsx"
+          ],
+          "shared_hotspots": [
+            "backend/erev_api/domain/demo/builders.py",
+            "frontend/e2e/projects/screens.spec.ts",
+            "frontend/src/app/router.tsx",
+            "frontend/src/messages/en.json"
+          ],
+          "batches": [
+            {
+              "id": "L4-5-B1",
+              "items": [
+                "RFD-16"
+              ],
+              "minutes": 60,
+              "notes": ""
+            },
+            {
+              "id": "L4-5-B2",
+              "items": [
+                "RFD-19"
+              ],
+              "minutes": 55,
+              "notes": ""
+            },
+            {
+              "id": "L4-5-B3",
+              "items": [
+                "RFD-22"
+              ],
+              "minutes": 55,
+              "notes": ""
+            },
+            {
+              "id": "L4-5-B4",
+              "items": [
+                "RFD-24"
+              ],
+              "minutes": 55,
+              "notes": ""
+            }
+          ]
+        }
+      ],
+      "merge_order": [
+        "L4-1",
+        "L4-2",
+        "L4-3",
+        "L4-4",
+        "L4-5"
+      ],
+      "merge_gates": [
+        "make test-pg K=\"test_single_head or test_upgrade_downgrade_upgrade or test_lint_after_upgrade\"  # right after merging L4-2 re-parented onto L4-1, before L4-3",
+        "git status --porcelain  # empty after the merge commits",
+        "make openapi && git diff --exit-code docs/api/openapi.json frontend/src/lib/api/schema.d.ts",
+        "make ci",
+        "make test-pg",
+        "make properties K=\"p01 or p04 or p10 or p12 or p05 or p13 or p07\"",
+        "make answer-keys ID=RND-CHK-001,RND-CHK-001-USD-EQUAL-SSP-THIRDS,RND-CHK-003A,RND-CHK-005-USD-100-OVER-THREE-MONTHS,RND-CHK-002-CHK-007-GT01-CONTRACT1,RND-CHK-003A-JPY-EQUAL-SSP-THIRDS,RND-CHK-003B,RND-CHK-003B-BHD-WEIGHTS-ONE-TWO,RND-CHK-003C,RND-CHK-003C-USD-NEGATIVE-CREDIT-MEMO-APPORTIONMENT,RND-CHK-003D,RND-CHK-003D-TIE-BROKEN-BY-LARGER-WEIGHT,RND-CHK-004-CHK-006-S2-EX11-CASEA-OWNPRICES,RND-CHK-006-S12-FRANCHISOR-OWN-LICENCE-TEN-YEARS,RND-CHK-006-S2-WARRANTY-OWN-EXTENDED-WARRANTY,RND-CHK-006-S5-EX63-OWNSSP-CUSTODY,RND-CHK-006-S5-UPFRONTFEE-OWN-OPTION-B-PATTERN,RND-CHK-006-S6-COMBINED-MOD-OWN-SUPPORT-PATTERN,RND-CHK-006-S6-EX5-CASEB-UNITS-PATTERN,RND-CHK-140-DAILY-365-DAY-TERM,RND-CHK-141-MONTHLY-EVEN-PARTIAL-MONTHS,RND-CHK-142-MID-MONTH-DAY-15-RULE,RND-CHK-143-MONTHLY-EVEN-WHOLE-AND-PARTIAL-TERMS,RND-CHK-144-MID-MONTH-LATE-START-EARLY-END,RND-CHK-145-MID-MONTH-EDGE-CASES,SSP-CHK-030-S4-SSPRANGE-OWN-HIGHPOINT,SSP-CHK-030-S4-SSPRANGE-OWN-LOWPOINT,SSP-CHK-030-S4-SSPRANGE-OWN-MIDPOINT,SSP-CHK-030-S4-SSPRANGE-OWN-NEAREST,SSP-CHK-030-S4-SSPRANGE-OWN-OBSERVABLE-POINT,SSP-CHK-031-RANGE-VALIDATION-AT-PUBLICATION,SSP-CHK-035-TC-SETUP,SSP-FS-05-PERPETUAL-LICENCE-PCS-RESIDUAL,ALC-BR-06-DAAS-EMBEDDED-LEASE-ROUTED-OUT,ALC-CHK-002-GT01-GT03,ALC-CHK-032-S4-EX34-CASEC-ESTIMATED,ALC-CHK-032-S4-EX34-CASEC-REJECTED,ALC-CHK-033-S4-EX34-CASEB,ALC-CHK-034-S4-EX34-CASEA,ALC-CHK-118,ALC-S4-EX33,ALC-S4-EX35-CASEB,ALC-S4-EX6,STP1-S1-COMBINATION-OWN,STP1-S1-EX1-CASEA,STP1-S1-EX1-CASEB-C-VARB,STP1-S1-EX1-CASEB-C-VARC,STP1-S1-EX2,POB-BR-01-ROBOTS-PLATFORM-EXTENDED-WARRANTY,POB-CHK-134-S2-WARRANTY-OWN,POB-S12-FRANCHISOR-OWN,POB-S2-EX11-CASEA-OWNPRICES,POB-S2-EX45-AGENT-AGENT,POB-S2-EX45-AGENT-PRINCIPAL,POB-S2-EX59,POB-S2-SHIPPING-OWN-OFF,POB-S2-SHIPPING-OWN-ON,POB-WM-01-THIRD-PARTY-COMMISSIONS-NET,POB-WM-02-FIRST-PARTY-INVENTORY-GROSS,POB-WM-05-HOTEL-MERCHANT-VERSUS-AGENCY,TAX-S3-SALESTAX-OWN,TAX-WM-08-TAXES-AND-FEES-GROSS-OR-NET,NCC-CHK-135-S3-EX31,CPC-BR-07-CASEA-MDF-DISTINCT-SERVICE-FAIR-VALUE,CPC-BR-07-CASEB-MDF-EXCESS-OVER-FAIR-VALUE,CPC-CHK-120-SHARE-BASED-WARRANTS-NOT-PROBABLE,CPC-CHK-120-SHARE-BASED-WARRANTS-PROBABLE,CPC-CHK-133-S3-EX32,CPC-WM-03-BUYER-PROMOTIONS-NEGATIVE-REVENUE-TEST,VC-BR-02-DISTRIBUTOR-RETRO-REBATE,VC-CHK-101-S3-EX23-CASEB,VC-CHK-110,VC-CHK-113-TC-POBVC-16,VC-RB-01-SELF-PAY-IMPLICIT-CONCESSION-CREDIT-LOSS,VC-RB-02-COMMERCIAL-PAYOR-CONTRACTUAL-QUALITY-BONUS,VC-RB-04-COST-REPORT-SETTLEMENT,VC-S3-EX23-CASEA,VC-S3-EX24,RET-BR-03-PRICE-PROTECTION-STOCK-ROTATION,RET-CHK-029-S3-EX22,RET-CHK-060-S3-EX22-REVISED,RET-CHK-061-GT08,RET-CHK-116,RET-JS-03-ECOMMERCE-REFUND-RETURN-ASSET,RET-WM-04-REFUNDS-AND-CHARGEBACKS,SFC-CAP-DEFERRED-PAYMENT-ROBOT-SALE,SFC-CHK-136-S3-EX29-ANNUAL,SFC-CHK-137-S3-EX28-CASEB,SFC-FS-11-CASEA-UPFRONT-NO-FINANCING,SFC-FS-11-CASEB-UPFRONT-ADVANCE-ACCRETION,SFC-S3-EX26,SFC-S3-EX26-RETURN-RIGHT,SFC-S3-EX29,LATE-CHK-090-GOLDEN-CONTRACT1-DELIVERY-AFTER-JANUARY-LOCK,LATE-CHK-091-TC-JE-11-EVENTS-RECORDED-OUT-OF-ORDER,LATE-POL-181-FX-LATE-DELIVERY-AT-EFFECTIVE-DATE-RATES,JE-CHK-021-S1-EX1-CASEC-DEPOSIT-TO-CONTRACT-LIABILITY,IFRS-SW01-COLLECTIBILITY-THRESHOLD-PER-BOOK,ENT-PER-ENTITY-NETTING-IN-A-COMBINED-GROUP  # 99 keys named by merged items must pass",
+        "make e2e SPEC=frontend/e2e/projects/screens.spec.ts"
+      ],
+      "reparent": {
+        "base_lane": "L4-1",
+        "reparented_lane": "L4-2",
+        "base_revisions_in_order": [
+          "CTR-5",
+          "CTR-7",
+          "CTR-10",
+          "DIN-1"
+        ],
+        "reparented_revisions_in_order": [
+          "CTR-15",
+          "CLO-1",
+          "CLO-2",
+          "RPS-1"
+        ],
+        "rule": "SPRINT-vabc.md \u00a75.2: keep the base lane's numbers; renumber the second lane's NNNN_ files and revision ids after the base head, point its first down_revision at the base head, set the test_single_head literal to the new head and the function count to base plus both lanes' additions",
+        "gate": "make test-pg K=\"test_single_head or test_upgrade_downgrade_upgrade or test_lint_after_upgrade\""
+      }
+    },
+    {
+      "id": "L5",
+      "estimate_minutes": 315,
+      "cumulative_hours": 25.1,
+      "lanes": [
+        {
+          "id": "L5-1",
+          "worktree": "~/dev/erev-wt/l1",
+          "name": "Schema chain A: source records, dry-run diff, legacy v1 templates and the first parity replay",
+          "family": "mig",
+          "minutes": 245,
+          "adds_migrations": true,
+          "file_scope": [
+            "backend/erev_api/api/v1/contracts.py",
+            "backend/erev_api/api/v1/imports.py",
+            "backend/erev_api/api/v1/source_records.py",
+            "backend/erev_api/db/migrations/versions/NNNN_din_2_source_store.py",
+            "backend/erev_api/db/migrations/versions/NNNN_din_4_contract_source_links.py",
+            "backend/erev_api/db/tables/source.py",
+            "backend/erev_api/domain/imports/commit.py",
+            "backend/erev_api/domain/imports/csv_v2/contracts.py",
+            "backend/erev_api/domain/imports/csv_v2/customers.py",
+            "backend/erev_api/domain/imports/csv_v2/framework.py",
+            "backend/erev_api/domain/imports/diff.py",
+            "backend/erev_api/domain/imports/legacy_v1/contract_setup.py",
+            "backend/erev_api/domain/imports/legacy_v1/headers.py",
+            "backend/erev_api/domain/imports/legacy_v1/modification.py",
+            "backend/erev_api/domain/imports/legacy_v1/progress.py",
+            "backend/erev_api/domain/imports/legacy_v1/sku_ssp.py",
+            "backend/erev_api/domain/integrations/normalise.py",
+            "backend/erev_api/domain/integrations/tokenise.py",
+            "backend/erev_api/schemas/source_records.py",
+            "backend/tests/api/test_contracts_api.py",
+            "backend/tests/api/test_source_records_api.py",
+            "backend/tests/domain/imports/legacy_v1/test_contract_setup.py",
+            "backend/tests/domain/imports/legacy_v1/test_headers.py",
+            "backend/tests/domain/imports/legacy_v1/test_modification.py",
+            "backend/tests/domain/imports/legacy_v1/test_progress.py",
+            "backend/tests/domain/imports/legacy_v1/test_sku_ssp.py",
+            "backend/tests/domain/imports/test_commit.py",
+            "backend/tests/domain/imports/test_diff.py",
+            "backend/tests/domain/integrations/test_normalise.py",
+            "backend/tests/parity/test_golden_parity.py",
+            "backend/tests/support/legacy_replay.py",
+            "backend/tests/support/parity/__init__.py",
+            "backend/tests/support/parity/compare.py",
+            "backend/tests/support/parity/integrity.py",
+            "backend/tests/support/parity/report.py",
+            "backend/tests/support/parity/scenario.py",
+            "backend/tests/support/parity/values.py",
+            "backend/tests/unit/parity/test_parity_support.py",
+            "docs/legacy/golden/golden-tests.json"
+          ],
+          "shared_hotspots": [
+            "Makefile",
+            "backend/erev_api/api/router.py",
+            "backend/erev_api/approvals/subjects.py",
+            "backend/erev_api/db/tables/__init__.py",
+            "backend/tests/architecture/test_registries_complete.py",
+            "backend/tests/pg/test_immutability_and_grants.py",
+            "backend/tests/pg/test_rls_isolation.py",
+            "docs/api/openapi.json",
+            "frontend/src/lib/api/schema.d.ts"
+          ],
+          "batches": [
+            {
+              "id": "L5-1-B1",
+              "items": [
+                "DIN-2",
+                "DIN-3"
+              ],
+              "minutes": 75,
+              "notes": "DIN-2 adds a revision (make revision ITEM=DIN-2)"
+            },
+            {
+              "id": "L5-1-B2",
+              "items": [
+                "DIN-4",
+                "DIN-9",
+                "DIN-5"
+              ],
+              "minutes": 135,
+              "notes": "DIN-4 adds a revision (make revision ITEM=DIN-4)"
+            },
+            {
+              "id": "L5-1-B3",
+              "items": [
+                "DIN-6"
+              ],
+              "minutes": 35,
+              "notes": ""
+            },
+            {
+              "id": "L5-1-B4",
+              "items": [
+                "GPA-1"
+              ],
+              "minutes": 60,
+              "notes": ""
+            }
+          ],
+          "notes": "245 minutes: 5 minutes above the lane box, declared exception (SPRINT-vabc.md \u00a74.3 fallback)"
+        },
+        {
+          "id": "L5-2",
+          "worktree": "~/dev/erev-wt/l2",
+          "name": "Schema chain B (re-parented onto L5-1 at merge): estimates and the report run framework",
+          "family": "mig-b",
+          "minutes": 85,
+          "adds_migrations": true,
+          "file_scope": [
+            "backend/erev_api/api/v1/estimates.py",
+            "backend/erev_api/api/v1/reports.py",
+            "backend/erev_api/db/migrations/versions/NNNN_ctr_12_estimates.py",
+            "backend/erev_api/domain/contracts/estimates.py",
+            "backend/erev_api/domain/reports/builders/api_client_inventory.py",
+            "backend/erev_api/domain/reports/framework.py",
+            "backend/erev_api/domain/reports/outputs/csv.py",
+            "backend/erev_api/domain/reports/outputs/manifest.py",
+            "backend/erev_api/domain/reports/outputs/pdf.py",
+            "backend/erev_api/domain/reports/outputs/sanitise.py",
+            "backend/erev_api/domain/reports/outputs/xlsx.py",
+            "backend/erev_api/jobs/",
+            "backend/erev_api/schemas/db_json.py",
+            "backend/erev_api/schemas/estimates.py",
+            "backend/erev_api/schemas/reports.py",
+            "backend/tests/api/test_report_runs.py",
+            "backend/tests/domain/contracts/test_estimates.py",
+            "backend/tests/domain/reports/test_framework.py"
+          ],
+          "shared_hotspots": [
+            "backend/erev_api/api/router.py",
+            "backend/erev_api/approvals/subjects.py",
+            "backend/tests/architecture/test_registries_complete.py",
+            "backend/tests/pg/test_rls_isolation.py",
+            "docs/api/openapi.json",
+            "docs/guides/user-guide.md",
+            "frontend/src/lib/api/schema.d.ts"
+          ],
+          "batches": [
+            {
+              "id": "L5-2-B1",
+              "items": [
+                "CTR-12"
+              ],
+              "minutes": 40,
+              "notes": "CTR-12 adds a revision (make revision ITEM=CTR-12); re-parented onto L5-1 at merge; CTR-12 partial: 2 of 3 named keys runnable; the rest wait for deferred ENC-5; tick only when every key passes"
+            },
+            {
+              "id": "L5-2-B2",
+              "items": [
+                "RPS-2"
+              ],
+              "minutes": 45,
+              "notes": ""
+            }
+          ],
+          "reparented_onto": "L5-1",
+          "notes": "revisions re-parented onto the head of L5-1 at merge (V-A, SPRINT-vabc.md \u00a75.2)"
+        },
+        {
+          "id": "L5-3",
+          "worktree": "~/dev/erev-wt/l3",
+          "name": "Engine: answer-key sweeps 4 to 7",
+          "family": "eng-keys",
+          "minutes": 240,
+          "adds_migrations": false,
+          "file_scope": [
+            "backend/erev_engine/stages/",
+            "backend/tests/answer_keys/test_answer_keys.py"
+          ],
+          "shared_hotspots": [],
+          "batches": [
+            {
+              "id": "L5-3-B1",
+              "items": [
+                "AKS-4"
+              ],
+              "minutes": 60,
+              "notes": "AKS-4 partial: 20 of 33 named keys runnable; the rest wait for deferred ENC-5, ENC-6; tick only when every key passes"
+            },
+            {
+              "id": "L5-3-B2",
+              "items": [
+                "AKS-5"
+              ],
+              "minutes": 60,
+              "notes": "AKS-5 partial: 21 of 34 named keys runnable; the rest wait for deferred ENC-5, ENC-8; tick only when every key passes"
+            },
+            {
+              "id": "L5-3-B3",
+              "items": [
+                "AKS-6"
+              ],
+              "minutes": 60,
+              "notes": "AKS-6 partial: 22 of 27 named keys runnable; the rest wait for deferred EDS-4, ENC-5; tick only when every key passes"
+            },
+            {
+              "id": "L5-3-B4",
+              "items": [
+                "AKS-7"
+              ],
+              "minutes": 60,
+              "notes": ""
+            }
+          ]
+        },
+        {
+          "id": "L5-4",
+          "worktree": "~/dev/erev-wt/l4",
+          "name": "Platform and frontend: Avenmoor key contracts seed and the contracts screens",
+          "family": "web",
+          "minutes": 225,
+          "adds_migrations": false,
+          "file_scope": [
+            "backend/erev_api/domain/demo/avenmoor/background.py",
+            "backend/erev_api/domain/demo/avenmoor/contracts.py",
+            "backend/tests/domain/demo/test_seed_avenmoor_contracts.py",
+            "frontend/src/components/record/FiveStepTracker.tsx",
+            "frontend/src/components/record/KpiStrip.tsx",
+            "frontend/src/components/record/RecordHeader.tsx",
+            "frontend/src/lib/api/queries/contracts.ts",
+            "frontend/src/lib/api/queries/cost-assets.ts",
+            "frontend/src/lib/api/queries/obligations.ts",
+            "frontend/src/lib/api/queries/saved-views.ts",
+            "frontend/src/lib/api/queries/schedule-lines.ts",
+            "frontend/src/lib/api/queries/subledger-lines.ts",
+            "frontend/src/routes/contracts/drawers/",
+            "frontend/src/routes/contracts/list.test.tsx",
+            "frontend/src/routes/contracts/list.tsx",
+            "frontend/src/routes/contracts/obligation-pane.tsx",
+            "frontend/src/routes/contracts/tabs/billing.test.tsx",
+            "frontend/src/routes/contracts/tabs/billing.tsx",
+            "frontend/src/routes/contracts/tabs/journals.tsx",
+            "frontend/src/routes/contracts/tabs/schedules.tsx",
+            "frontend/src/routes/contracts/workbench.test.tsx",
+            "frontend/src/routes/contracts/workbench.tsx"
+          ],
+          "shared_hotspots": [
+            "backend/erev_api/domain/demo/builders.py",
+            "frontend/e2e/projects/screens.spec.ts",
+            "frontend/src/app/router.tsx",
+            "frontend/src/messages/en.json"
+          ],
+          "batches": [
+            {
+              "id": "L5-4-B1",
+              "items": [
+                "CTR-20"
+              ],
+              "minutes": 60,
+              "notes": "CTR-20 R-RC-1: K-06 estimate versions seeded post-rc (CTR-12 post-rc; SPEC-Q under XR-14); CTR-20 R-RC-1: K-09 commission cost seeded post-rc (CTR-14 post-rc; SPEC-Q under XR-14)"
+            },
+            {
+              "id": "L5-4-B2",
+              "items": [
+                "CTR-21"
+              ],
+              "minutes": 55,
+              "notes": ""
+            },
+            {
+              "id": "L5-4-B3",
+              "items": [
+                "CTR-22"
+              ],
+              "minutes": 55,
+              "notes": "CTR-22 R-RC-1: void drawer hidden (XR-14) (CTR-11 post-rc; SPEC-Q under XR-14); CTR-22 R-RC-1: regroup drawer hidden (XR-14) (CTR-17 post-rc; SPEC-Q under XR-14)"
+            },
+            {
+              "id": "L5-4-B4",
+              "items": [
+                "CTR-23"
+              ],
+              "minutes": 55,
+              "notes": "CTR-23 R-RC-1: billing tab without billing plan and usage commitments; costs panel hidden (CTR-14 post-rc; SPEC-Q under XR-14)"
+            }
+          ]
+        }
+      ],
+      "merge_order": [
+        "L5-1",
+        "L5-2",
+        "L5-3",
+        "L5-4"
+      ],
+      "merge_gates": [
+        "make test-pg K=\"test_single_head or test_upgrade_downgrade_upgrade or test_lint_after_upgrade\"  # right after merging L5-2 re-parented onto L5-1, before L5-3",
+        "git status --porcelain  # empty after the merge commits",
+        "make openapi && git diff --exit-code docs/api/openapi.json frontend/src/lib/api/schema.d.ts",
+        "make ci",
+        "make test-pg",
+        "make properties K=\"p01 or p04 or p10 or p12 or p05 or p13 or p07\"",
+        "make answer-keys ID=RND-CHK-001,RND-CHK-001-USD-EQUAL-SSP-THIRDS,RND-CHK-003A,RND-CHK-005-USD-100-OVER-THREE-MONTHS,RND-CHK-002-CHK-007-GT01-CONTRACT1,RND-CHK-003A-JPY-EQUAL-SSP-THIRDS,RND-CHK-003B,RND-CHK-003B-BHD-WEIGHTS-ONE-TWO,RND-CHK-003C,RND-CHK-003C-USD-NEGATIVE-CREDIT-MEMO-APPORTIONMENT,RND-CHK-003D,RND-CHK-003D-TIE-BROKEN-BY-LARGER-WEIGHT,RND-CHK-004-CHK-006-S2-EX11-CASEA-OWNPRICES,RND-CHK-006-S12-FRANCHISOR-OWN-LICENCE-TEN-YEARS,RND-CHK-006-S2-WARRANTY-OWN-EXTENDED-WARRANTY,RND-CHK-006-S5-EX63-OWNSSP-CUSTODY,RND-CHK-006-S5-UPFRONTFEE-OWN-OPTION-B-PATTERN,RND-CHK-006-S6-COMBINED-MOD-OWN-SUPPORT-PATTERN,RND-CHK-006-S6-EX5-CASEB-UNITS-PATTERN,RND-CHK-140-DAILY-365-DAY-TERM,RND-CHK-141-MONTHLY-EVEN-PARTIAL-MONTHS,RND-CHK-142-MID-MONTH-DAY-15-RULE,RND-CHK-143-MONTHLY-EVEN-WHOLE-AND-PARTIAL-TERMS,RND-CHK-144-MID-MONTH-LATE-START-EARLY-END,RND-CHK-145-MID-MONTH-EDGE-CASES,SSP-CHK-030-S4-SSPRANGE-OWN-HIGHPOINT,SSP-CHK-030-S4-SSPRANGE-OWN-LOWPOINT,SSP-CHK-030-S4-SSPRANGE-OWN-MIDPOINT,SSP-CHK-030-S4-SSPRANGE-OWN-NEAREST,SSP-CHK-030-S4-SSPRANGE-OWN-OBSERVABLE-POINT,SSP-CHK-031-RANGE-VALIDATION-AT-PUBLICATION,SSP-CHK-035-TC-SETUP,SSP-FS-05-PERPETUAL-LICENCE-PCS-RESIDUAL,ALC-BR-06-DAAS-EMBEDDED-LEASE-ROUTED-OUT,ALC-CHK-002-GT01-GT03,ALC-CHK-032-S4-EX34-CASEC-ESTIMATED,ALC-CHK-032-S4-EX34-CASEC-REJECTED,ALC-CHK-033-S4-EX34-CASEB,ALC-CHK-034-S4-EX34-CASEA,ALC-CHK-118,ALC-S4-EX33,ALC-S4-EX35-CASEB,ALC-S4-EX6,STP1-S1-COMBINATION-OWN,STP1-S1-EX1-CASEA,STP1-S1-EX1-CASEB-C-VARB,STP1-S1-EX1-CASEB-C-VARC,STP1-S1-EX2,POB-BR-01-ROBOTS-PLATFORM-EXTENDED-WARRANTY,POB-CHK-134-S2-WARRANTY-OWN,POB-S12-FRANCHISOR-OWN,POB-S2-EX11-CASEA-OWNPRICES,POB-S2-EX45-AGENT-AGENT,POB-S2-EX45-AGENT-PRINCIPAL,POB-S2-EX59,POB-S2-SHIPPING-OWN-OFF,POB-S2-SHIPPING-OWN-ON,POB-WM-01-THIRD-PARTY-COMMISSIONS-NET,POB-WM-02-FIRST-PARTY-INVENTORY-GROSS,POB-WM-05-HOTEL-MERCHANT-VERSUS-AGENCY,TAX-S3-SALESTAX-OWN,TAX-WM-08-TAXES-AND-FEES-GROSS-OR-NET,NCC-CHK-135-S3-EX31,CPC-BR-07-CASEA-MDF-DISTINCT-SERVICE-FAIR-VALUE,CPC-BR-07-CASEB-MDF-EXCESS-OVER-FAIR-VALUE,CPC-CHK-120-SHARE-BASED-WARRANTS-NOT-PROBABLE,CPC-CHK-120-SHARE-BASED-WARRANTS-PROBABLE,CPC-CHK-133-S3-EX32,CPC-WM-03-BUYER-PROMOTIONS-NEGATIVE-REVENUE-TEST,VC-BR-02-DISTRIBUTOR-RETRO-REBATE,VC-CHK-101-S3-EX23-CASEB,VC-CHK-110,VC-CHK-113-TC-POBVC-16,VC-RB-01-SELF-PAY-IMPLICIT-CONCESSION-CREDIT-LOSS,VC-RB-02-COMMERCIAL-PAYOR-CONTRACTUAL-QUALITY-BONUS,VC-RB-04-COST-REPORT-SETTLEMENT,VC-S3-EX23-CASEA,VC-S3-EX24,RET-BR-03-PRICE-PROTECTION-STOCK-ROTATION,RET-CHK-029-S3-EX22,RET-CHK-060-S3-EX22-REVISED,RET-CHK-061-GT08,RET-CHK-116,RET-JS-03-ECOMMERCE-REFUND-RETURN-ASSET,RET-WM-04-REFUNDS-AND-CHARGEBACKS,SFC-CAP-DEFERRED-PAYMENT-ROBOT-SALE,SFC-CHK-136-S3-EX29-ANNUAL,SFC-CHK-137-S3-EX28-CASEB,SFC-FS-11-CASEA-UPFRONT-NO-FINANCING,SFC-FS-11-CASEB-UPFRONT-ADVANCE-ACCRETION,SFC-S3-EX26,SFC-S3-EX26-RETURN-RIGHT,SFC-S3-EX29,REC-BR-04-BILL-AND-HOLD-CUSTODIAL,REC-BR-05-CONSIGNMENT-SELL-THROUGH,REC-FS-01-SAAS-RAMP-ANNUAL-BILLING,REC-FS-06-TERM-LICENCE-RENEWAL-START-GATE,REC-JS-04-PAID-MEMBERSHIP-DAILY,REC-RB-03-DRG-IN-HOUSE-PATIENT-MONTH-END,REC-S5-ACCEPTANCE-OWN-OBJ,REC-S5-ACCEPTANCE-OWN-SUBJ,REC-S5-CONSIGNMENT-OWN,REC-S5-EX62-CASEB,REC-S5-EX63-OWNSSP,REC-S5-OVERTIME-OWN-PIT,REC-S5-UPFRONTFEE-OWN-A,REC-S5-UPFRONTFEE-OWN-B,POS-CHK-010-UNBILLED-RECEIVABLE-AND-CONTRACT-ASSET-SPLIT,POS-CHK-011-GT06,POS-CHK-011-GT06-CONTRACT2-SSP-DELIVERED-RECLASS,POS-CHK-012-S9-PRESENTATION-NETTING,POS-CHK-013-EXAMPLE-39-CONDITIONAL-RIGHT-ENGINE-BILLING,POS-CHK-013-S9-PRESENTATION-EX39,MOD-CHK-028-S6-EX5-CASEB,MOD-CHK-043-S6-EX7,MOD-CHK-112,MOD-FS-09-CANCELLATION-REFUND-COMMISSION,MOD-FS-10-CLOUD-CONVERSION-CREDIT,MOD-JS-06-AREA-DEVELOPMENT-SCHEDULE-REVISION,MOD-LEGACY-POBVC-GT11,MOD-LEGACY-PROS-GT12,MOD-LEGACY-RETRO-GT10,MOD-S6-EX5-CASEA,MR-CHK-050-CONTINUATION,MR-CHK-050-MODIFICATION,MR-CHK-051-S2-EX49-REDEEM,MR-CHK-052-GT15-CONTINUATION,MR-CHK-052-GT15-MODIFICATION,MR-CHK-054-S2-EX49,MR-FS-04-EARLY-RENEWAL-PRICE-CAP,MR-S2-EX51,LATE-CHK-090-GOLDEN-CONTRACT1-DELIVERY-AFTER-JANUARY-LOCK,LATE-CHK-091-TC-JE-11-EVENTS-RECORDED-OUT-OF-ORDER,LATE-POL-181-FX-LATE-DELIVERY-AT-EFFECTIVE-DATE-RATES,JE-CHK-021-S1-EX1-CASEC-DEPOSIT-TO-CONTRACT-LIABILITY,JE-CHK-023-S3-SALESTAX-OWN-ENGINE-BILLING,JE-CHK-024-S9-PRESENTATION-EX38-CASEA-CANCELLABLE,JE-CHK-024-S9-PRESENTATION-EX38-CASEB-NONCANCELLABLE,JE-CHK-025-S3-EX24-VOLUME-REBATE-REFUND-LIABILITY,JE-CHK-130-S8-CONTRACT-COSTS-EX2-AMORTISATION,JE-CHK-131-S8-EXPEDIENT-ONE-YEAR-COMMISSION-EXPENSED,JE-CHK-131-S8-IMPAIRMENT-AND-IFRS15-REVERSAL,JE-CHK-136-S3-EX29-ADVANCE-PAYMENT-ACCRETION,JE-CHK-138-S1-EX2-IMPLICIT-PRICE-CONCESSION-RECEIVABLE-CONTRA,DLT-NATIVE-SUBSCRIPTION-PRE-STANDARD-UPFRONT,COST-CAP-COMMISSION-EXPECTED-RENEWALS-IMPAIRMENT,COST-S8-CONTRACT-COSTS-EX1,COST-S8-CONTRACT-COSTS-EX2,COST-S8-CONTRACT-COSTS-EXPEDIENT,COST-S8-CONTRACT-COSTS-IMPAIRMENT,IFRS-S13-SWITCH-SHIPPING,IFRS-SW01-COLLECTIBILITY-THRESHOLD-PER-BOOK,IFRS-SW04-SHIPPING-FULFILMENT-ELECTION-VS-SEPARATE-OBLIGATION,ONB-CHK-121-BUSINESS-COMBINATION-SUBSCRIPTION,ONB-RB-06-RELIEF-GRANT-ROUTED-OUT,ONB-S11-MODRETRO-OWN,FX-BHD-FUNCTIONAL-USD-CONTRACT-MINOR-UNITS,FX-CHK-080-LIABILITY-LAYERS-AT-HISTORICAL-RATES,FX-CHK-081-CONTRACT-ASSET-REMEASURED-TO-CLOSING-RATE,FX-CHK-082-REFUNDABLE-ADVANCE-MONETARY-OVERRIDE-VS-IFRIC22,FX-CHK-083-ENGINE-RECEIVABLE-REMEASUREMENT,FX-CHK-084-A-REFUND-LIABILITY-REMEASURED,FX-CHK-084-B-DEPOSIT-LIABILITY-REMEASURED,FX-CHK-084-C-CONSIDERATION-PAYABLE-REMEASURED,FX-JPY-CONTRACT-USD-FUNCTIONAL-MINOR-UNITS,FX-POL-160-IFRIC22-LAYER-DATE-ASC606-VS-IFRS15,FX-POL-161-FIFO-TWO-LAYERS-IN-ONE-PERIOD,ENT-CHK-070-CONTRACTING-ENTITY-RECOGNISES-REVENUE,ENT-CHK-070-INTERCOMPANY-PAIR-PERFORMING-ENTITY,ENT-CHK-071-CONTRACT-ASSET-HELD-BY-CONTRACTING-ENTITY,ENT-CROSS-CURRENCY-PAIR-GBP-CONTRACT-USD-PERFORMER,ENT-PER-ENTITY-NETTING-IN-A-COMBINED-GROUP  # 172 keys named by merged items must pass",
+        "make parity K=\"(initial_allocation)\"",
+        "make e2e SPEC=frontend/e2e/projects/screens.spec.ts"
+      ],
+      "reparent": {
+        "base_lane": "L5-1",
+        "reparented_lane": "L5-2",
+        "base_revisions_in_order": [
+          "DIN-2",
+          "DIN-4"
+        ],
+        "reparented_revisions_in_order": [
+          "CTR-12"
+        ],
+        "rule": "SPRINT-vabc.md \u00a75.2: keep the base lane's numbers; renumber the second lane's NNNN_ files and revision ids after the base head, point its first down_revision at the base head, set the test_single_head literal to the new head and the function count to base plus both lanes' additions",
+        "gate": "make test-pg K=\"test_single_head or test_upgrade_downgrade_upgrade or test_lint_after_upgrade\""
+      }
+    },
+    {
+      "id": "L6",
+      "estimate_minutes": 320,
+      "cumulative_hours": 30.4,
+      "lanes": [
+        {
+          "id": "L6-1",
+          "worktree": "~/dev/erev-wt/l1",
+          "name": "Schema chain A: template defects, mapping profiles and exception queue",
+          "family": "mig",
+          "minutes": 145,
+          "adds_migrations": true,
+          "file_scope": [
+            "backend/erev_api/api/v1/exceptions.py",
+            "backend/erev_api/api/v1/imports.py",
+            "backend/erev_api/db/migrations/versions/NNNN_din_10_mapping_profiles.py",
+            "backend/erev_api/domain/imports/exceptions.py",
+            "backend/erev_api/domain/imports/findings.py",
+            "backend/erev_api/domain/imports/mapping_profiles.py",
+            "backend/erev_api/domain/integrations/grouping.py",
+            "backend/erev_api/schemas/exceptions.py",
+            "backend/tests/domain/imports/legacy_v1/test_defects.py",
+            "backend/tests/domain/imports/test_exception_queue.py",
+            "backend/tests/domain/imports/test_mapping_profiles.py",
+            "backend/tests/domain/integrations/test_grouping.py"
+          ],
+          "shared_hotspots": [
+            "backend/erev_api/api/router.py",
+            "backend/erev_api/approvals/subjects.py",
+            "backend/tests/architecture/test_registries_complete.py",
+            "backend/tests/pg/test_rls_isolation.py",
+            "docs/api/openapi.json",
+            "frontend/src/lib/api/schema.d.ts"
+          ],
+          "batches": [
+            {
+              "id": "L6-1-B1",
+              "items": [
+                "DIN-7",
+                "DIN-10"
+              ],
+              "minutes": 75,
+              "notes": "DIN-10 adds a revision (make revision ITEM=DIN-10)"
+            },
+            {
+              "id": "L6-1-B2",
+              "items": [
+                "DIN-8",
+                "DIN-11"
+              ],
+              "minutes": 70,
+              "notes": ""
+            }
+          ]
+        },
+        {
+          "id": "L6-2",
+          "worktree": "~/dev/erev-wt/l2",
+          "name": "Golden parity: steps 04 to 14 and the legacy journal views",
+          "family": "parity",
+          "minutes": 215,
+          "adds_migrations": false,
+          "file_scope": [
+            "backend/erev_api/domain/journals/views.py",
+            "backend/erev_engine/stages/",
+            "backend/tests/domain/journals/test_legacy_views.py",
+            "backend/tests/support/parity/scenario.py",
+            "backend/tests/support/parity/values.py"
+          ],
+          "shared_hotspots": [],
+          "batches": [
+            {
+              "id": "L6-2-B1",
+              "items": [
+                "GPA-2"
+              ],
+              "minutes": 45,
+              "notes": ""
+            },
+            {
+              "id": "L6-2-B2",
+              "items": [
+                "GPA-3"
+              ],
+              "minutes": 45,
+              "notes": ""
+            },
+            {
+              "id": "L6-2-B3",
+              "items": [
+                "GPA-4"
+              ],
+              "minutes": 45,
+              "notes": ""
+            },
+            {
+              "id": "L6-2-B4",
+              "items": [
+                "GPA-5"
+              ],
+              "minutes": 45,
+              "notes": ""
+            },
+            {
+              "id": "L6-2-B5",
+              "items": [
+                "CLO-9"
+              ],
+              "minutes": 35,
+              "notes": ""
+            }
+          ]
+        },
+        {
+          "id": "L6-3",
+          "worktree": "~/dev/erev-wt/l3",
+          "name": "Platform: soft close, journal runs, CSV export, waterfall and RPO reports",
+          "family": "api-clo",
+          "minutes": 210,
+          "adds_migrations": false,
+          "file_scope": [
+            "backend/erev_api/adapters/gl/csv.py",
+            "backend/erev_api/api/v1/explain.py",
+            "backend/erev_api/api/v1/journal_runs.py",
+            "backend/erev_api/api/v1/periods.py",
+            "backend/erev_api/domain/close/commands.py",
+            "backend/erev_api/domain/close/queries.py",
+            "backend/erev_api/domain/close/reconciliations.py",
+            "backend/erev_api/domain/close/snapshots.py",
+            "backend/erev_api/domain/imports/commands.py",
+            "backend/erev_api/domain/journals/commands.py",
+            "backend/erev_api/domain/journals/export.py",
+            "backend/erev_api/domain/journals/ports.py",
+            "backend/erev_api/domain/journals/queries.py",
+            "backend/erev_api/domain/journals/summarise.py",
+            "backend/erev_api/domain/reports/builders/contract_balance_rollforward.py",
+            "backend/erev_api/domain/reports/builders/contract_balances.py",
+            "backend/erev_api/domain/reports/builders/disaggregation.py",
+            "backend/erev_api/domain/reports/builders/revenue_from_opening_liability.py",
+            "backend/erev_api/domain/reports/builders/revenue_from_prior_period_obligations.py",
+            "backend/erev_api/domain/reports/builders/revenue_waterfall.py",
+            "backend/erev_api/domain/reports/builders/rpo.py",
+            "backend/erev_api/domain/reports/builders/rpo_rollforward.py",
+            "backend/erev_api/domain/reports/elections.py",
+            "backend/erev_api/domain/reports/tie_outs.py",
+            "backend/erev_api/events/outbox.py",
+            "backend/erev_api/jobs/",
+            "backend/erev_api/schemas/journals.py",
+            "backend/erev_api/schemas/periods.py",
+            "backend/tests/api/test_journal_runs.py",
+            "backend/tests/api/test_periods_close.py",
+            "backend/tests/domain/close/test_period_states.py",
+            "backend/tests/domain/journals/test_export.py",
+            "backend/tests/domain/journals/test_run_states.py",
+            "backend/tests/domain/journals/test_summarise.py",
+            "backend/tests/domain/reports/test_balances_reports.py",
+            "backend/tests/domain/reports/test_rpo_disaggregation.py",
+            "backend/tests/support/worlds.py",
+            "backend/tests/unit/adapters/test_gl_adapters.py"
+          ],
+          "shared_hotspots": [
+            "backend/erev_api/api/router.py",
+            "backend/erev_api/approvals/subjects.py",
+            "backend/erev_api/jobs/registry.py",
+            "backend/tests/pg/test_db_invariants.py",
+            "docs/api/openapi.json",
+            "docs/guides/runbook.md",
+            "docs/guides/user-guide.md",
+            "frontend/src/lib/api/schema.d.ts"
+          ],
+          "batches": [
+            {
+              "id": "L6-3-B1",
+              "items": [
+                "CLO-3",
+                "CLO-8"
+              ],
+              "minutes": 70,
+              "notes": ""
+            },
+            {
+              "id": "L6-3-B2",
+              "items": [
+                "CLO-11",
+                "CLO-13"
+              ],
+              "minutes": 70,
+              "notes": "CLO-11 R-RC-1: reopened-period approval test moves with CLO-7 (CLO-7 post-rc; SPEC-Q under XR-14); CLO-13 creates backend/erev_api/adapters/gl/__init__.py beside csv.py (DIN-14 deferred; reviewed edge)"
+            },
+            {
+              "id": "L6-3-B3",
+              "items": [
+                "RPS-3",
+                "RPS-4"
+              ],
+              "minutes": 70,
+              "notes": "RPS-3 partial: 2 of 4 named keys runnable; the rest wait for deferred EDS-4; tick only when every key passes; RPS-3 R-RC-1: contract balances test uses k01 only; k03_castellan moves with CLO-7 (CLO-7 post-rc; SPEC-Q under XR-14); RPS-3 R-RC-1: revenue_from_prior_period_obligations (RPT-05) and its DISC keys move to post-rc (EDS-4 post-rc; SPEC-Q under XR-14); RPS-3 R-RC-1: as-locked run test moves with CLO-6; worlds.py k01 is created by RPS-3 (CLO-6 post-rc; SPEC-Q under XR-14); RPS-3 R-RC-1: CONTRACT_BALANCE_ROLLFORWARD reconciliation moves with CLO-16 (CLO-16 post-rc; SPEC-Q under XR-14); RPS-4 R-RC-1: worlds.py is created by RPS-3 in this variant (CLO-6 post-rc; SPEC-Q under XR-14); RPS-4 R-RC-1: rpo k02 test without the CR-MARROWBY-2026-09 modification (CTR-17 post-rc; SPEC-Q under XR-14); RPS-4 R-RC-1: k09 commission world moves with CTR-14 (CTR-14 post-rc; SPEC-Q under XR-14)"
+            }
+          ]
+        },
+        {
+          "id": "L6-4",
+          "worktree": "~/dev/erev-wt/l4",
+          "name": "Frontend: explain panel and data-in screens",
+          "family": "web",
+          "minutes": 220,
+          "adds_migrations": false,
+          "file_scope": [
+            "backend/erev_api/domain/demo/avenmoor/imports.py",
+            "backend/tests/domain/demo/test_seed_avenmoor_imports.py",
+            "frontend/src/components/explain/ExplainPanel.test.tsx",
+            "frontend/src/components/explain/ExplainPanel.tsx",
+            "frontend/src/components/explain/ExplainTrigger.tsx",
+            "frontend/src/lib/api/queries/exceptions.ts",
+            "frontend/src/lib/api/queries/explain.ts",
+            "frontend/src/lib/api/queries/import-templates.ts",
+            "frontend/src/lib/api/queries/imports.ts",
+            "frontend/src/lib/api/queries/mapping-profiles.ts",
+            "frontend/src/routes/data/exceptions.test.tsx",
+            "frontend/src/routes/data/exceptions.tsx",
+            "frontend/src/routes/data/import-detail.test.tsx",
+            "frontend/src/routes/data/import-detail.tsx",
+            "frontend/src/routes/data/import-new.tsx",
+            "frontend/src/routes/data/import-row-drawer.tsx",
+            "frontend/src/routes/data/imports.test.tsx",
+            "frontend/src/routes/data/imports.tsx",
+            "frontend/src/routes/data/templates.tsx",
+            "frontend/src/routes/trace/trace.tsx"
+          ],
+          "shared_hotspots": [
+            "frontend/e2e/projects/screens.spec.ts",
+            "frontend/src/app/router.tsx",
+            "frontend/src/messages/en.json"
+          ],
+          "batches": [
+            {
+              "id": "L6-4-B1",
+              "items": [
+                "CTR-26"
+              ],
+              "minutes": 55,
+              "notes": ""
+            },
+            {
+              "id": "L6-4-B2",
+              "items": [
+                "DIN-15"
+              ],
+              "minutes": 55,
+              "notes": "DIN-15 integration-after-merge: codes against the contract of DIN-10 (queries/mapping-profiles.ts binds API-R-43 mapping profiles); DIN-15 partial: the WLD-B-04 seed test and the SF-10 grid row of the WLD-B-04 import wait for deferred DIN-9 (avm-us-progress-2026-09-invalid.csv is a Progress events (CSV v2) import, SCREENS \u00a712.2); record a SPEC-Q; tick only when every step passes"
+            },
+            {
+              "id": "L6-4-B3",
+              "items": [
+                "DIN-16"
+              ],
+              "minutes": 55,
+              "notes": "DIN-16 integration-after-merge: codes against the contract of DIN-10 (validator [api-bind]: binds API-R-43 produced by DIN-10); DIN-16 partial: the REQ-UX-021 step on WLD-F-21 (Progress events (CSV v2), PRD J-04.1) and the SF-10:detail WLD-B-04 capture wait for deferred DIN-9; record a SPEC-Q; tick only when every step passes"
+            },
+            {
+              "id": "L6-4-B4",
+              "items": [
+                "DIN-17"
+              ],
+              "minutes": 55,
+              "notes": "DIN-17 integration-after-merge: codes against the contract of DIN-11 (binds API-R-44); DIN-17 partial: the SF-11:item capture of a WLD-B-04 item (seeded by DIN-15) waits for deferred DIN-9; record a SPEC-Q; tick only when every step passes"
+            }
+          ]
+        },
+        {
+          "id": "L6-5",
+          "worktree": "~/dev/erev-wt/l5",
+          "name": "Frontend: journal run screens",
+          "family": "web-clo",
+          "minutes": 55,
+          "adds_migrations": false,
+          "file_scope": [
+            "backend/erev_api/domain/demo/close_history.py",
+            "frontend/src/routes/journals/__tests__/run.test.tsx",
+            "frontend/src/routes/journals/journal-runs.tsx",
+            "frontend/src/routes/journals/run-batches.tsx",
+            "frontend/src/routes/journals/run-lines.tsx",
+            "frontend/src/routes/journals/run.tsx"
+          ],
+          "shared_hotspots": [
+            "frontend/e2e/projects/screens.spec.ts",
+            "frontend/src/app/router.tsx",
+            "frontend/src/messages/en.json"
+          ],
+          "batches": [
+            {
+              "id": "L6-5-B1",
+              "items": [
+                "CLO-26"
+              ],
+              "minutes": 55,
+              "notes": "CLO-26 integration-after-merge: codes against the contract of CLO-8 (binds API-R-38); CLO-26 integration-after-merge: codes against the contract of CLO-11 (approved runs); CLO-26 integration-after-merge: codes against the contract of CLO-13 (validator [api-bind]: binds API-R-38 produced by CLO-13); CLO-26 R-RC-1: SF-06 captures a run created in beforeAll through the API instead of seeded history (CLO-22 post-rc; SPEC-Q under XR-14); CLO-26 R-RC-1: run-batches capture shows CSV export without NetSuite acknowledgements (CLO-14 post-rc; SPEC-Q under XR-14); CLO-26 R-RC-1: no NetSuite mock acknowledgements (CLO-15 post-rc; SPEC-Q under XR-14)"
+            }
+          ]
+        }
+      ],
+      "merge_order": [
+        "L6-1",
+        "L6-2",
+        "L6-3",
+        "L6-4",
+        "L6-5"
+      ],
+      "merge_gates": [
+        "git status --porcelain  # empty after the merge commits",
+        "make openapi && git diff --exit-code docs/api/openapi.json frontend/src/lib/api/schema.d.ts",
+        "make ci",
+        "make test-pg",
+        "make properties K=\"p01 or p04 or p10 or p12 or p05 or p13 or p07\"",
+        "make answer-keys ID=RND-CHK-001,RND-CHK-001-USD-EQUAL-SSP-THIRDS,RND-CHK-003A,RND-CHK-005-USD-100-OVER-THREE-MONTHS,RND-CHK-002-CHK-007-GT01-CONTRACT1,RND-CHK-003A-JPY-EQUAL-SSP-THIRDS,RND-CHK-003B,RND-CHK-003B-BHD-WEIGHTS-ONE-TWO,RND-CHK-003C,RND-CHK-003C-USD-NEGATIVE-CREDIT-MEMO-APPORTIONMENT,RND-CHK-003D,RND-CHK-003D-TIE-BROKEN-BY-LARGER-WEIGHT,RND-CHK-004-CHK-006-S2-EX11-CASEA-OWNPRICES,RND-CHK-006-S12-FRANCHISOR-OWN-LICENCE-TEN-YEARS,RND-CHK-006-S2-WARRANTY-OWN-EXTENDED-WARRANTY,RND-CHK-006-S5-EX63-OWNSSP-CUSTODY,RND-CHK-006-S5-UPFRONTFEE-OWN-OPTION-B-PATTERN,RND-CHK-006-S6-COMBINED-MOD-OWN-SUPPORT-PATTERN,RND-CHK-006-S6-EX5-CASEB-UNITS-PATTERN,RND-CHK-140-DAILY-365-DAY-TERM,RND-CHK-141-MONTHLY-EVEN-PARTIAL-MONTHS,RND-CHK-142-MID-MONTH-DAY-15-RULE,RND-CHK-143-MONTHLY-EVEN-WHOLE-AND-PARTIAL-TERMS,RND-CHK-144-MID-MONTH-LATE-START-EARLY-END,RND-CHK-145-MID-MONTH-EDGE-CASES,SSP-CHK-030-S4-SSPRANGE-OWN-HIGHPOINT,SSP-CHK-030-S4-SSPRANGE-OWN-LOWPOINT,SSP-CHK-030-S4-SSPRANGE-OWN-MIDPOINT,SSP-CHK-030-S4-SSPRANGE-OWN-NEAREST,SSP-CHK-030-S4-SSPRANGE-OWN-OBSERVABLE-POINT,SSP-CHK-031-RANGE-VALIDATION-AT-PUBLICATION,SSP-CHK-035-TC-SETUP,SSP-FS-05-PERPETUAL-LICENCE-PCS-RESIDUAL,ALC-BR-06-DAAS-EMBEDDED-LEASE-ROUTED-OUT,ALC-CHK-002-GT01-GT03,ALC-CHK-032-S4-EX34-CASEC-ESTIMATED,ALC-CHK-032-S4-EX34-CASEC-REJECTED,ALC-CHK-033-S4-EX34-CASEB,ALC-CHK-034-S4-EX34-CASEA,ALC-CHK-118,ALC-S4-EX33,ALC-S4-EX35-CASEB,ALC-S4-EX6,STP1-S1-COMBINATION-OWN,STP1-S1-EX1-CASEA,STP1-S1-EX1-CASEB-C-VARB,STP1-S1-EX1-CASEB-C-VARC,STP1-S1-EX2,POB-BR-01-ROBOTS-PLATFORM-EXTENDED-WARRANTY,POB-CHK-134-S2-WARRANTY-OWN,POB-S12-FRANCHISOR-OWN,POB-S2-EX11-CASEA-OWNPRICES,POB-S2-EX45-AGENT-AGENT,POB-S2-EX45-AGENT-PRINCIPAL,POB-S2-EX59,POB-S2-SHIPPING-OWN-OFF,POB-S2-SHIPPING-OWN-ON,POB-WM-01-THIRD-PARTY-COMMISSIONS-NET,POB-WM-02-FIRST-PARTY-INVENTORY-GROSS,POB-WM-05-HOTEL-MERCHANT-VERSUS-AGENCY,TAX-S3-SALESTAX-OWN,TAX-WM-08-TAXES-AND-FEES-GROSS-OR-NET,NCC-CHK-135-S3-EX31,CPC-BR-07-CASEA-MDF-DISTINCT-SERVICE-FAIR-VALUE,CPC-BR-07-CASEB-MDF-EXCESS-OVER-FAIR-VALUE,CPC-CHK-120-SHARE-BASED-WARRANTS-NOT-PROBABLE,CPC-CHK-120-SHARE-BASED-WARRANTS-PROBABLE,CPC-CHK-133-S3-EX32,CPC-WM-03-BUYER-PROMOTIONS-NEGATIVE-REVENUE-TEST,VC-BR-02-DISTRIBUTOR-RETRO-REBATE,VC-CHK-101-S3-EX23-CASEB,VC-CHK-110,VC-CHK-113-TC-POBVC-16,VC-RB-01-SELF-PAY-IMPLICIT-CONCESSION-CREDIT-LOSS,VC-RB-02-COMMERCIAL-PAYOR-CONTRACTUAL-QUALITY-BONUS,VC-RB-04-COST-REPORT-SETTLEMENT,VC-S3-EX23-CASEA,VC-S3-EX24,RET-BR-03-PRICE-PROTECTION-STOCK-ROTATION,RET-CHK-029-S3-EX22,RET-CHK-060-S3-EX22-REVISED,RET-CHK-061-GT08,RET-CHK-116,RET-JS-03-ECOMMERCE-REFUND-RETURN-ASSET,RET-WM-04-REFUNDS-AND-CHARGEBACKS,SFC-CAP-DEFERRED-PAYMENT-ROBOT-SALE,SFC-CHK-136-S3-EX29-ANNUAL,SFC-CHK-137-S3-EX28-CASEB,SFC-FS-11-CASEA-UPFRONT-NO-FINANCING,SFC-FS-11-CASEB-UPFRONT-ADVANCE-ACCRETION,SFC-S3-EX26,SFC-S3-EX26-RETURN-RIGHT,SFC-S3-EX29,REC-BR-04-BILL-AND-HOLD-CUSTODIAL,REC-BR-05-CONSIGNMENT-SELL-THROUGH,REC-FS-01-SAAS-RAMP-ANNUAL-BILLING,REC-FS-06-TERM-LICENCE-RENEWAL-START-GATE,REC-JS-04-PAID-MEMBERSHIP-DAILY,REC-RB-03-DRG-IN-HOUSE-PATIENT-MONTH-END,REC-S5-ACCEPTANCE-OWN-OBJ,REC-S5-ACCEPTANCE-OWN-SUBJ,REC-S5-CONSIGNMENT-OWN,REC-S5-EX62-CASEB,REC-S5-EX63-OWNSSP,REC-S5-OVERTIME-OWN-PIT,REC-S5-UPFRONTFEE-OWN-A,REC-S5-UPFRONTFEE-OWN-B,POS-CHK-010-UNBILLED-RECEIVABLE-AND-CONTRACT-ASSET-SPLIT,POS-CHK-011-GT06,POS-CHK-011-GT06-CONTRACT2-SSP-DELIVERED-RECLASS,POS-CHK-012-S9-PRESENTATION-NETTING,POS-CHK-013-EXAMPLE-39-CONDITIONAL-RIGHT-ENGINE-BILLING,POS-CHK-013-S9-PRESENTATION-EX39,MOD-CHK-028-S6-EX5-CASEB,MOD-CHK-043-S6-EX7,MOD-CHK-112,MOD-FS-09-CANCELLATION-REFUND-COMMISSION,MOD-FS-10-CLOUD-CONVERSION-CREDIT,MOD-JS-06-AREA-DEVELOPMENT-SCHEDULE-REVISION,MOD-LEGACY-POBVC-GT11,MOD-LEGACY-PROS-GT12,MOD-LEGACY-RETRO-GT10,MOD-S6-EX5-CASEA,MR-CHK-050-CONTINUATION,MR-CHK-050-MODIFICATION,MR-CHK-051-S2-EX49-REDEEM,MR-CHK-052-GT15-CONTINUATION,MR-CHK-052-GT15-MODIFICATION,MR-CHK-054-S2-EX49,MR-FS-04-EARLY-RENEWAL-PRICE-CAP,MR-S2-EX51,LATE-CHK-090-GOLDEN-CONTRACT1-DELIVERY-AFTER-JANUARY-LOCK,LATE-CHK-091-TC-JE-11-EVENTS-RECORDED-OUT-OF-ORDER,LATE-POL-181-FX-LATE-DELIVERY-AT-EFFECTIVE-DATE-RATES,JE-CHK-021-S1-EX1-CASEC-DEPOSIT-TO-CONTRACT-LIABILITY,JE-CHK-023-S3-SALESTAX-OWN-ENGINE-BILLING,JE-CHK-024-S9-PRESENTATION-EX38-CASEA-CANCELLABLE,JE-CHK-024-S9-PRESENTATION-EX38-CASEB-NONCANCELLABLE,JE-CHK-025-S3-EX24-VOLUME-REBATE-REFUND-LIABILITY,JE-CHK-130-S8-CONTRACT-COSTS-EX2-AMORTISATION,JE-CHK-131-S8-EXPEDIENT-ONE-YEAR-COMMISSION-EXPENSED,JE-CHK-131-S8-IMPAIRMENT-AND-IFRS15-REVERSAL,JE-CHK-136-S3-EX29-ADVANCE-PAYMENT-ACCRETION,JE-CHK-138-S1-EX2-IMPLICIT-PRICE-CONCESSION-RECEIVABLE-CONTRA,DLT-NATIVE-SUBSCRIPTION-PRE-STANDARD-UPFRONT,COST-CAP-COMMISSION-EXPECTED-RENEWALS-IMPAIRMENT,COST-S8-CONTRACT-COSTS-EX1,COST-S8-CONTRACT-COSTS-EX2,COST-S8-CONTRACT-COSTS-EXPEDIENT,COST-S8-CONTRACT-COSTS-IMPAIRMENT,IFRS-S13-SWITCH-SHIPPING,IFRS-SW01-COLLECTIBILITY-THRESHOLD-PER-BOOK,IFRS-SW04-SHIPPING-FULFILMENT-ELECTION-VS-SEPARATE-OBLIGATION,ONB-CHK-121-BUSINESS-COMBINATION-SUBSCRIPTION,ONB-RB-06-RELIEF-GRANT-ROUTED-OUT,ONB-S11-MODRETRO-OWN,FX-BHD-FUNCTIONAL-USD-CONTRACT-MINOR-UNITS,FX-CHK-080-LIABILITY-LAYERS-AT-HISTORICAL-RATES,FX-CHK-081-CONTRACT-ASSET-REMEASURED-TO-CLOSING-RATE,FX-CHK-082-REFUNDABLE-ADVANCE-MONETARY-OVERRIDE-VS-IFRIC22,FX-CHK-083-ENGINE-RECEIVABLE-REMEASUREMENT,FX-CHK-084-A-REFUND-LIABILITY-REMEASURED,FX-CHK-084-B-DEPOSIT-LIABILITY-REMEASURED,FX-CHK-084-C-CONSIDERATION-PAYABLE-REMEASURED,FX-JPY-CONTRACT-USD-FUNCTIONAL-MINOR-UNITS,FX-POL-160-IFRIC22-LAYER-DATE-ASC606-VS-IFRS15,FX-POL-161-FIFO-TWO-LAYERS-IN-ONE-PERIOD,ENT-CHK-070-CONTRACTING-ENTITY-RECOGNISES-REVENUE,ENT-CHK-070-INTERCOMPANY-PAIR-PERFORMING-ENTITY,ENT-CHK-071-CONTRACT-ASSET-HELD-BY-CONTRACTING-ENTITY,ENT-CROSS-CURRENCY-PAIR-GBP-CONTRACT-USD-PERFORMER,ENT-PER-ENTITY-NETTING-IN-A-COMBINED-GROUP,DISC-S10-DISCLOSURES-ROLLFORWARD-EX21,DISC-CHK-006-S10-DISCLOSURES-ROLLFORWARD-EX21,DISC-S10-DISCLOSURES-RPO-EX42,DISC-GE-06-IDIQ-TASK-ORDERS-OPTIONS-RPO  # 176 keys named by merged items must pass",
+        "make parity K=\"(initial_allocation) or (contract_position and (rollforward-02 or rollforward-03 or rollforward-04 or rollforward-05 or rollforward-06 or rollforward-07)) or (catchup-08 or catchup-09 or rollforward-08 or rollforward-09) or (catchup-10 or catchup-11 or catchup-12 or catchup-13 or rollforward-10 or rollforward-11 or rollforward-12 or rollforward-13) or (pob_position or rollforward-14)\"",
+        "make e2e SPEC=frontend/e2e/projects/screens.spec.ts"
+      ]
+    },
+    {
+      "id": "L7",
+      "estimate_minutes": 280,
+      "cumulative_hours": 35.1,
+      "lanes": [
+        {
+          "id": "L7-1",
+          "worktree": "~/dev/erev-wt/l1",
+          "name": "Parity and reports: GATE-GPA selection, legacy exports and journal totals",
+          "family": "parity",
+          "minutes": 170,
+          "adds_migrations": false,
+          "file_scope": [
+            "backend/erev_api/domain/reports/builders/contract_history.py",
+            "backend/erev_api/domain/reports/builders/latest_contract_status.py",
+            "backend/erev_api/domain/reports/builders/legacy_contract_history_export.py",
+            "backend/erev_api/domain/reports/builders/legacy_je_summary.py",
+            "backend/erev_api/domain/reports/builders/legacy_latest_contract_export.py",
+            "backend/erev_api/domain/reports/legacy_columns.py",
+            "backend/erev_engine/stages/",
+            "backend/tests/domain/reports/test_legacy_reports.py",
+            "backend/tests/support/parity/probes.py",
+            "backend/tests/support/parity/values.py",
+            "backend/tests/unit/parity/test_probe_support.py"
+          ],
+          "shared_hotspots": [],
+          "batches": [
+            {
+              "id": "L7-1-B1",
+              "items": [
+                "GPA-6"
+              ],
+              "minutes": 45,
+              "notes": ""
+            },
+            {
+              "id": "L7-1-B2",
+              "items": [
+                "RPS-5"
+              ],
+              "minutes": 35,
+              "notes": ""
+            },
+            {
+              "id": "L7-1-B3",
+              "items": [
+                "GPB-1"
+              ],
+              "minutes": 45,
+              "notes": ""
+            },
+            {
+              "id": "L7-1-B4",
+              "items": [
+                "GPB-2"
+              ],
+              "minutes": 45,
+              "notes": ""
+            }
+          ]
+        },
+        {
+          "id": "L7-2",
+          "worktree": "~/dev/erev-wt/l2",
+          "name": "Platform and frontend: close cockpit, home read model and home screen",
+          "family": "api-clo",
+          "minutes": 180,
+          "adds_migrations": false,
+          "file_scope": [
+            "backend/erev_api/api/v1/close_checklist_templates.py",
+            "backend/erev_api/api/v1/dashboard.py",
+            "backend/erev_api/api/v1/periods.py",
+            "backend/erev_api/domain/close/commands.py",
+            "backend/erev_api/domain/close/gates.py",
+            "backend/erev_api/domain/close/queries.py",
+            "backend/erev_api/domain/reports/dashboard.py",
+            "backend/erev_api/schemas/dashboard.py",
+            "backend/tests/api/test_cockpit.py",
+            "backend/tests/api/test_dashboard_home.py",
+            "backend/tests/api/test_drill_chain.py",
+            "backend/tests/domain/close/test_gates.py",
+            "frontend/src/app/__tests__/router.test.tsx",
+            "frontend/src/routes/close/__tests__/cockpit.test.tsx",
+            "frontend/src/routes/close/cockpit.tsx",
+            "frontend/src/routes/close/journal-preview.tsx",
+            "frontend/src/routes/close/lock-drawer.tsx",
+            "frontend/src/routes/close/reopen-drawer.tsx",
+            "frontend/src/routes/home/__tests__/home.test.tsx",
+            "frontend/src/routes/home/home.tsx"
+          ],
+          "shared_hotspots": [
+            "backend/erev_api/api/router.py",
+            "backend/erev_api/approvals/subjects.py",
+            "docs/api/openapi.json",
+            "frontend/e2e/projects/screens.spec.ts",
+            "frontend/src/app/router.tsx",
+            "frontend/src/lib/api/schema.d.ts",
+            "frontend/src/messages/en.json"
+          ],
+          "batches": [
+            {
+              "id": "L7-2-B1",
+              "items": [
+                "CLO-4"
+              ],
+              "minutes": 35,
+              "notes": ""
+            },
+            {
+              "id": "L7-2-B2",
+              "items": [
+                "CLO-23"
+              ],
+              "minutes": 55,
+              "notes": "CLO-23 R-RC-1: SF-05 captures the FY2026-P09 open cockpit only; the seeded locked FY2026-P08 capture moves to DMO (CLO-22 post-rc; SPEC-Q under XR-14); CLO-23 R-RC-1: no Locked chip capture until CLO-6 lands (CLO-6 post-rc; SPEC-Q under XR-14)"
+            },
+            {
+              "id": "L7-2-B3",
+              "items": [
+                "RPS-17"
+              ],
+              "minutes": 35,
+              "notes": ""
+            },
+            {
+              "id": "L7-2-B4",
+              "items": [
+                "RPS-22"
+              ],
+              "minutes": 55,
+              "notes": "RPS-22 integration-after-merge: codes against the contract of RPS-6 (rail destination Reports); RPS-22 integration-after-merge: codes against the contract of RPS-7 (rail destination Schedules)"
+            }
+          ]
+        },
+        {
+          "id": "L7-3",
+          "worktree": "~/dev/erev-wt/l3",
+          "name": "Frontend: report viewer, schedules and the rc smoke journey",
+          "family": "web",
+          "minutes": 180,
+          "adds_migrations": false,
+          "file_scope": [
+            "frontend/e2e/journeys/rc-smoke.journey.ts",
+            "frontend/e2e/projects/avenmoor-serial.spec.ts",
+            "frontend/src/routes/journals/entries.tsx",
+            "frontend/src/routes/reports/__tests__/viewer.test.tsx",
+            "frontend/src/routes/reports/catalogue.tsx",
+            "frontend/src/routes/reports/report.tsx",
+            "frontend/src/routes/reports/viewer/",
+            "frontend/src/routes/schedules/__tests__/schedules.test.tsx",
+            "frontend/src/routes/schedules/schedules.tsx"
+          ],
+          "shared_hotspots": [
+            "frontend/e2e/projects/screens.spec.ts",
+            "frontend/src/app/router.tsx",
+            "frontend/src/messages/en.json"
+          ],
+          "batches": [
+            {
+              "id": "L7-3-B1",
+              "items": [
+                "RPS-6"
+              ],
+              "minutes": 55,
+              "notes": "RPS-6 integration-after-merge: codes against the contract of RPS-5 (legacy export capture); RPS-6 R-RC-1: the rpo as-locked capture moves to DMO (CLO-22 post-rc; SPEC-Q under XR-14)"
+            },
+            {
+              "id": "L7-3-B2",
+              "items": [
+                "RPS-7"
+              ],
+              "minutes": 55,
+              "notes": "RPS-7 integration-after-merge: codes against the contract of RPS-5 (binds legacy_je_summary); RPS-7 integration-after-merge: codes against the contract of CLO-4 (GET /periods with blockers); RPS-7 R-RC-1: the SF-04 as-locked capture moves to DMO (CLO-22 post-rc; SPEC-Q under XR-14); RPS-7 under R-RC-1: the SF-06:entries step reads a journal run created in beforeAll through the API, not seeded Aug 2026 history"
+            },
+            {
+              "id": "L7-3-B3",
+              "items": [
+                "SUP-RC-SMOKE"
+              ],
+              "minutes": 70,
+              "notes": "SUP-RC-SMOKE integration-after-merge: codes against the contract of RPS-22 (supervisor item: landing route /home and the completed rail (BS-D-08; SCREENS SCR-IA-01)); SUP-RC-SMOKE supervisor item (D-82): text in docs/build-spec/sprint/sup-rc-smoke.md, appended by the supervisor before L7 starts; gate make e2e SPEC=frontend/e2e/projects/avenmoor-serial.spec.ts; SUP-RC-SMOKE partial: RC-SMOKE.4 (WLD-B-04 findings) waits for deferred DIN-9; the other steps do not depend on it"
+            }
+          ]
+        }
+      ],
+      "merge_order": [
+        "L7-1",
+        "L7-2",
+        "L7-3"
+      ],
+      "merge_gates": [
+        "git status --porcelain  # empty after the merge commits",
+        "make openapi && git diff --exit-code docs/api/openapi.json frontend/src/lib/api/schema.d.ts",
+        "make ci",
+        "make test-pg",
+        "make properties K=\"p01 or p04 or p10 or p12 or p05 or p13 or p07\"",
+        "make answer-keys ID=RND-CHK-001,RND-CHK-001-USD-EQUAL-SSP-THIRDS,RND-CHK-003A,RND-CHK-005-USD-100-OVER-THREE-MONTHS,RND-CHK-002-CHK-007-GT01-CONTRACT1,RND-CHK-003A-JPY-EQUAL-SSP-THIRDS,RND-CHK-003B,RND-CHK-003B-BHD-WEIGHTS-ONE-TWO,RND-CHK-003C,RND-CHK-003C-USD-NEGATIVE-CREDIT-MEMO-APPORTIONMENT,RND-CHK-003D,RND-CHK-003D-TIE-BROKEN-BY-LARGER-WEIGHT,RND-CHK-004-CHK-006-S2-EX11-CASEA-OWNPRICES,RND-CHK-006-S12-FRANCHISOR-OWN-LICENCE-TEN-YEARS,RND-CHK-006-S2-WARRANTY-OWN-EXTENDED-WARRANTY,RND-CHK-006-S5-EX63-OWNSSP-CUSTODY,RND-CHK-006-S5-UPFRONTFEE-OWN-OPTION-B-PATTERN,RND-CHK-006-S6-COMBINED-MOD-OWN-SUPPORT-PATTERN,RND-CHK-006-S6-EX5-CASEB-UNITS-PATTERN,RND-CHK-140-DAILY-365-DAY-TERM,RND-CHK-141-MONTHLY-EVEN-PARTIAL-MONTHS,RND-CHK-142-MID-MONTH-DAY-15-RULE,RND-CHK-143-MONTHLY-EVEN-WHOLE-AND-PARTIAL-TERMS,RND-CHK-144-MID-MONTH-LATE-START-EARLY-END,RND-CHK-145-MID-MONTH-EDGE-CASES,SSP-CHK-030-S4-SSPRANGE-OWN-HIGHPOINT,SSP-CHK-030-S4-SSPRANGE-OWN-LOWPOINT,SSP-CHK-030-S4-SSPRANGE-OWN-MIDPOINT,SSP-CHK-030-S4-SSPRANGE-OWN-NEAREST,SSP-CHK-030-S4-SSPRANGE-OWN-OBSERVABLE-POINT,SSP-CHK-031-RANGE-VALIDATION-AT-PUBLICATION,SSP-CHK-035-TC-SETUP,SSP-FS-05-PERPETUAL-LICENCE-PCS-RESIDUAL,ALC-BR-06-DAAS-EMBEDDED-LEASE-ROUTED-OUT,ALC-CHK-002-GT01-GT03,ALC-CHK-032-S4-EX34-CASEC-ESTIMATED,ALC-CHK-032-S4-EX34-CASEC-REJECTED,ALC-CHK-033-S4-EX34-CASEB,ALC-CHK-034-S4-EX34-CASEA,ALC-CHK-118,ALC-S4-EX33,ALC-S4-EX35-CASEB,ALC-S4-EX6,STP1-S1-COMBINATION-OWN,STP1-S1-EX1-CASEA,STP1-S1-EX1-CASEB-C-VARB,STP1-S1-EX1-CASEB-C-VARC,STP1-S1-EX2,POB-BR-01-ROBOTS-PLATFORM-EXTENDED-WARRANTY,POB-CHK-134-S2-WARRANTY-OWN,POB-S12-FRANCHISOR-OWN,POB-S2-EX11-CASEA-OWNPRICES,POB-S2-EX45-AGENT-AGENT,POB-S2-EX45-AGENT-PRINCIPAL,POB-S2-EX59,POB-S2-SHIPPING-OWN-OFF,POB-S2-SHIPPING-OWN-ON,POB-WM-01-THIRD-PARTY-COMMISSIONS-NET,POB-WM-02-FIRST-PARTY-INVENTORY-GROSS,POB-WM-05-HOTEL-MERCHANT-VERSUS-AGENCY,TAX-S3-SALESTAX-OWN,TAX-WM-08-TAXES-AND-FEES-GROSS-OR-NET,NCC-CHK-135-S3-EX31,CPC-BR-07-CASEA-MDF-DISTINCT-SERVICE-FAIR-VALUE,CPC-BR-07-CASEB-MDF-EXCESS-OVER-FAIR-VALUE,CPC-CHK-120-SHARE-BASED-WARRANTS-NOT-PROBABLE,CPC-CHK-120-SHARE-BASED-WARRANTS-PROBABLE,CPC-CHK-133-S3-EX32,CPC-WM-03-BUYER-PROMOTIONS-NEGATIVE-REVENUE-TEST,VC-BR-02-DISTRIBUTOR-RETRO-REBATE,VC-CHK-101-S3-EX23-CASEB,VC-CHK-110,VC-CHK-113-TC-POBVC-16,VC-RB-01-SELF-PAY-IMPLICIT-CONCESSION-CREDIT-LOSS,VC-RB-02-COMMERCIAL-PAYOR-CONTRACTUAL-QUALITY-BONUS,VC-RB-04-COST-REPORT-SETTLEMENT,VC-S3-EX23-CASEA,VC-S3-EX24,RET-BR-03-PRICE-PROTECTION-STOCK-ROTATION,RET-CHK-029-S3-EX22,RET-CHK-060-S3-EX22-REVISED,RET-CHK-061-GT08,RET-CHK-116,RET-JS-03-ECOMMERCE-REFUND-RETURN-ASSET,RET-WM-04-REFUNDS-AND-CHARGEBACKS,SFC-CAP-DEFERRED-PAYMENT-ROBOT-SALE,SFC-CHK-136-S3-EX29-ANNUAL,SFC-CHK-137-S3-EX28-CASEB,SFC-FS-11-CASEA-UPFRONT-NO-FINANCING,SFC-FS-11-CASEB-UPFRONT-ADVANCE-ACCRETION,SFC-S3-EX26,SFC-S3-EX26-RETURN-RIGHT,SFC-S3-EX29,REC-BR-04-BILL-AND-HOLD-CUSTODIAL,REC-BR-05-CONSIGNMENT-SELL-THROUGH,REC-FS-01-SAAS-RAMP-ANNUAL-BILLING,REC-FS-06-TERM-LICENCE-RENEWAL-START-GATE,REC-JS-04-PAID-MEMBERSHIP-DAILY,REC-RB-03-DRG-IN-HOUSE-PATIENT-MONTH-END,REC-S5-ACCEPTANCE-OWN-OBJ,REC-S5-ACCEPTANCE-OWN-SUBJ,REC-S5-CONSIGNMENT-OWN,REC-S5-EX62-CASEB,REC-S5-EX63-OWNSSP,REC-S5-OVERTIME-OWN-PIT,REC-S5-UPFRONTFEE-OWN-A,REC-S5-UPFRONTFEE-OWN-B,POS-CHK-010-UNBILLED-RECEIVABLE-AND-CONTRACT-ASSET-SPLIT,POS-CHK-011-GT06,POS-CHK-011-GT06-CONTRACT2-SSP-DELIVERED-RECLASS,POS-CHK-012-S9-PRESENTATION-NETTING,POS-CHK-013-EXAMPLE-39-CONDITIONAL-RIGHT-ENGINE-BILLING,POS-CHK-013-S9-PRESENTATION-EX39,MOD-CHK-028-S6-EX5-CASEB,MOD-CHK-043-S6-EX7,MOD-CHK-112,MOD-FS-09-CANCELLATION-REFUND-COMMISSION,MOD-FS-10-CLOUD-CONVERSION-CREDIT,MOD-JS-06-AREA-DEVELOPMENT-SCHEDULE-REVISION,MOD-LEGACY-POBVC-GT11,MOD-LEGACY-PROS-GT12,MOD-LEGACY-RETRO-GT10,MOD-S6-EX5-CASEA,MR-CHK-050-CONTINUATION,MR-CHK-050-MODIFICATION,MR-CHK-051-S2-EX49-REDEEM,MR-CHK-052-GT15-CONTINUATION,MR-CHK-052-GT15-MODIFICATION,MR-CHK-054-S2-EX49,MR-FS-04-EARLY-RENEWAL-PRICE-CAP,MR-S2-EX51,LATE-CHK-090-GOLDEN-CONTRACT1-DELIVERY-AFTER-JANUARY-LOCK,LATE-CHK-091-TC-JE-11-EVENTS-RECORDED-OUT-OF-ORDER,LATE-POL-181-FX-LATE-DELIVERY-AT-EFFECTIVE-DATE-RATES,JE-CHK-021-S1-EX1-CASEC-DEPOSIT-TO-CONTRACT-LIABILITY,JE-CHK-023-S3-SALESTAX-OWN-ENGINE-BILLING,JE-CHK-024-S9-PRESENTATION-EX38-CASEA-CANCELLABLE,JE-CHK-024-S9-PRESENTATION-EX38-CASEB-NONCANCELLABLE,JE-CHK-025-S3-EX24-VOLUME-REBATE-REFUND-LIABILITY,JE-CHK-130-S8-CONTRACT-COSTS-EX2-AMORTISATION,JE-CHK-131-S8-EXPEDIENT-ONE-YEAR-COMMISSION-EXPENSED,JE-CHK-131-S8-IMPAIRMENT-AND-IFRS15-REVERSAL,JE-CHK-136-S3-EX29-ADVANCE-PAYMENT-ACCRETION,JE-CHK-138-S1-EX2-IMPLICIT-PRICE-CONCESSION-RECEIVABLE-CONTRA,DLT-NATIVE-SUBSCRIPTION-PRE-STANDARD-UPFRONT,COST-CAP-COMMISSION-EXPECTED-RENEWALS-IMPAIRMENT,COST-S8-CONTRACT-COSTS-EX1,COST-S8-CONTRACT-COSTS-EX2,COST-S8-CONTRACT-COSTS-EXPEDIENT,COST-S8-CONTRACT-COSTS-IMPAIRMENT,IFRS-S13-SWITCH-SHIPPING,IFRS-SW01-COLLECTIBILITY-THRESHOLD-PER-BOOK,IFRS-SW04-SHIPPING-FULFILMENT-ELECTION-VS-SEPARATE-OBLIGATION,ONB-CHK-121-BUSINESS-COMBINATION-SUBSCRIPTION,ONB-RB-06-RELIEF-GRANT-ROUTED-OUT,ONB-S11-MODRETRO-OWN,FX-BHD-FUNCTIONAL-USD-CONTRACT-MINOR-UNITS,FX-CHK-080-LIABILITY-LAYERS-AT-HISTORICAL-RATES,FX-CHK-081-CONTRACT-ASSET-REMEASURED-TO-CLOSING-RATE,FX-CHK-082-REFUNDABLE-ADVANCE-MONETARY-OVERRIDE-VS-IFRIC22,FX-CHK-083-ENGINE-RECEIVABLE-REMEASUREMENT,FX-CHK-084-A-REFUND-LIABILITY-REMEASURED,FX-CHK-084-B-DEPOSIT-LIABILITY-REMEASURED,FX-CHK-084-C-CONSIDERATION-PAYABLE-REMEASURED,FX-JPY-CONTRACT-USD-FUNCTIONAL-MINOR-UNITS,FX-POL-160-IFRIC22-LAYER-DATE-ASC606-VS-IFRS15,FX-POL-161-FIFO-TWO-LAYERS-IN-ONE-PERIOD,ENT-CHK-070-CONTRACTING-ENTITY-RECOGNISES-REVENUE,ENT-CHK-070-INTERCOMPANY-PAIR-PERFORMING-ENTITY,ENT-CHK-071-CONTRACT-ASSET-HELD-BY-CONTRACTING-ENTITY,ENT-CROSS-CURRENCY-PAIR-GBP-CONTRACT-USD-PERFORMER,ENT-PER-ENTITY-NETTING-IN-A-COMBINED-GROUP,DISC-S10-DISCLOSURES-ROLLFORWARD-EX21,DISC-CHK-006-S10-DISCLOSURES-ROLLFORWARD-EX21,DISC-S10-DISCLOSURES-RPO-EX42,DISC-GE-06-IDIQ-TASK-ORDERS-OPTIONS-RPO  # 176 keys named by merged items must pass",
+        "make parity K=\"(initial_allocation) or (contract_position and (rollforward-02 or rollforward-03 or rollforward-04 or rollforward-05 or rollforward-06 or rollforward-07)) or (catchup-08 or catchup-09 or rollforward-08 or rollforward-09) or (catchup-10 or catchup-11 or catchup-12 or catchup-13 or rollforward-10 or rollforward-11 or rollforward-12 or rollforward-13) or (pob_position or rollforward-14) or (initial_allocation or pob_position or contract_position or cumulative_catchup or probe-P3-over-delivery-validation) or (je-step-02 or je-step-03 or je-step-04 or je-step-05 or je-step-06 or je-step-07 or je-month-2023-01 or je-month-2023-02 or je-month-2023-03 or je-month-2023-04 or probe-P1-blank-memo-drops-progress-rows or probe-P2-mod-reposts-pre-asc606-in-delta-je or probe-P4-duplicate-upload-double-counts) or (je-step-08 or je-step-09 or je-step-10 or je-step-11 or je-step-12 or je-step-13 or je-step-14 or je-month-2023-05 or je-month-2023-06 or je-month-2023-07 or je-month-2023-08 or je-month-2023-09 or je-month-2023-10 or je-month-2023-full-year)\"",
+        "make e2e SPEC=frontend/e2e/projects/screens.spec.ts",
+        "make e2e SPEC=frontend/e2e/projects/avenmoor-serial.spec.ts  # SUP-RC-SMOKE, RC-SMOKE.1 to RC-SMOKE.10"
+      ]
+    }
+  ],
+  "estimate_hours": 35.1,
+  "horizon_9h": {
+    "levels_complete": 2,
+    "boundary_hours": 9.3,
+    "items_merged": [
+      "RFD-1",
+      "RFD-6",
+      "RFD-2",
+      "RFD-3",
+      "RFD-8",
+      "ENA-1",
+      "ENA-2",
+      "ENA-3",
+      "ENA-5",
+      "ENB-1",
+      "ENA-6",
+      "ENA-10",
+      "ENA-11",
+      "ENC-1",
+      "ENC-2",
+      "ENC-3",
+      "ENC-4",
+      "ENC-7",
+      "ENC-9",
+      "ENB-9",
+      "ENB-10",
+      "RFD-4",
+      "RFD-5",
+      "WEB-8",
+      "WEB-9",
+      "DEP-1",
+      "DEP-2",
+      "WEB-10",
+      "RFD-7",
+      "RFD-9",
+      "RFD-12",
+      "RFD-13",
+      "RFD-10",
+      "RFD-15",
+      "ENA-4",
+      "ENA-7",
+      "ENA-8",
+      "ENA-9",
+      "ENA-12",
+      "ENA-13",
+      "ENB-2",
+      "ENB-3",
+      "ENB-4",
+      "ENB-5",
+      "ENB-6",
+      "ENB-7",
+      "ENB-8",
+      "ENC-10",
+      "ENC-11",
+      "ENC-12",
+      "ENC-13",
+      "ENC-14",
+      "ENC-15",
+      "ENC-16",
+      "ENB-11",
+      "ENB-12",
+      "END-1",
+      "END-2",
+      "END-3",
+      "END-4",
+      "END-5",
+      "END-6"
+    ]
+  },
+  "in_scope": [
+    "WEB-8",
+    "WEB-9",
+    "WEB-10",
+    "WEB-11",
+    "WEB-12",
+    "WEB-15",
+    "WEB-17",
+    "ENA-1",
+    "ENA-2",
+    "ENA-3",
+    "ENA-4",
+    "ENA-5",
+    "ENA-6",
+    "ENA-7",
+    "ENA-8",
+    "ENA-9",
+    "ENA-10",
+    "ENA-11",
+    "ENA-12",
+    "ENA-13",
+    "RFD-1",
+    "RFD-2",
+    "RFD-3",
+    "RFD-4",
+    "RFD-5",
+    "RFD-6",
+    "RFD-7",
+    "RFD-8",
+    "RFD-9",
+    "RFD-10",
+    "RFD-11",
+    "RFD-12",
+    "RFD-13",
+    "RFD-14",
+    "RFD-15",
+    "RFD-16",
+    "RFD-19",
+    "RFD-22",
+    "RFD-24",
+    "ENB-1",
+    "ENB-2",
+    "ENB-3",
+    "ENB-4",
+    "ENB-5",
+    "ENB-6",
+    "ENB-7",
+    "ENB-8",
+    "ENB-9",
+    "ENB-10",
+    "ENB-11",
+    "ENB-12",
+    "ENB-13",
+    "ENC-1",
+    "ENC-2",
+    "ENC-3",
+    "ENC-4",
+    "ENC-7",
+    "ENC-9",
+    "ENC-10",
+    "ENC-11",
+    "ENC-12",
+    "ENC-13",
+    "ENC-14",
+    "ENC-15",
+    "ENC-16",
+    "END-1",
+    "END-2",
+    "END-3",
+    "END-4",
+    "END-5",
+    "END-6",
+    "END-7",
+    "END-8",
+    "END-9",
+    "END-10",
+    "AKS-1",
+    "AKS-2",
+    "AKS-3",
+    "AKS-4",
+    "AKS-5",
+    "AKS-6",
+    "AKS-7",
+    "CTR-1",
+    "CTR-2",
+    "CTR-3",
+    "CTR-4",
+    "CTR-5",
+    "CTR-7",
+    "CTR-8",
+    "CTR-9",
+    "CTR-10",
+    "CTR-12",
+    "CTR-15",
+    "CTR-19",
+    "CTR-20",
+    "CTR-21",
+    "CTR-22",
+    "CTR-23",
+    "CTR-26",
+    "DIN-1",
+    "DIN-2",
+    "DIN-3",
+    "DIN-4",
+    "DIN-5",
+    "DIN-6",
+    "DIN-7",
+    "DIN-8",
+    "DIN-10",
+    "DIN-11",
+    "DIN-15",
+    "DIN-16",
+    "DIN-17",
+    "GPA-1",
+    "GPA-2",
+    "GPA-3",
+    "GPA-4",
+    "GPA-5",
+    "GPA-6",
+    "EDS-1",
+    "EDS-2",
+    "EDS-3",
+    "CLO-1",
+    "CLO-2",
+    "CLO-3",
+    "CLO-4",
+    "CLO-8",
+    "CLO-9",
+    "CLO-11",
+    "CLO-13",
+    "CLO-23",
+    "CLO-26",
+    "RPS-1",
+    "RPS-2",
+    "RPS-3",
+    "RPS-4",
+    "RPS-5",
+    "RPS-6",
+    "RPS-7",
+    "RPS-17",
+    "RPS-22",
+    "GPB-1",
+    "GPB-2",
+    "DEP-1",
+    "DEP-2",
+    "DIN-9"
+  ],
+  "scope_counts": {
+    "in_scope": 145,
+    "l1_assumed": 28,
+    "scheduled_l2_onward": 117,
+    "supervisor_items": 1,
+    "deferred": 202,
+    "done": 80
+  },
+  "deferred": [
+    "WEB-13",
+    "WEB-14",
+    "WEB-16",
+    "WEB-18",
+    "WEB-19",
+    "WEB-20",
+    "WEB-21",
+    "WEB-22",
+    "WEB-23",
+    "WEB-24",
+    "GATE-WEB",
+    "GATE-ENA",
+    "RFD-17",
+    "RFD-18",
+    "RFD-20",
+    "RFD-21",
+    "RFD-23",
+    "RFD-25",
+    "GATE-RFD",
+    "GATE-ENB",
+    "ENC-5",
+    "ENC-6",
+    "ENC-8",
+    "GATE-ENC",
+    "END-11",
+    "END-12",
+    "END-13",
+    "END-14",
+    "GATE-END",
+    "AKS-8",
+    "GATE-AKS",
+    "CTR-6",
+    "CTR-11",
+    "CTR-13",
+    "CTR-14",
+    "CTR-16",
+    "CTR-17",
+    "CTR-18",
+    "CTR-24",
+    "CTR-25",
+    "CTR-27",
+    "CTR-28",
+    "GATE-CTR",
+    "DIN-12",
+    "DIN-13",
+    "DIN-14",
+    "DIN-18",
+    "GATE-DIN",
+    "GATE-GPA",
+    "EDS-4",
+    "EDS-5",
+    "EDS-6",
+    "EDS-7",
+    "GATE-EDS",
+    "CLO-5",
+    "CLO-6",
+    "CLO-7",
+    "CLO-10",
+    "CLO-12",
+    "CLO-14",
+    "CLO-15",
+    "CLO-16",
+    "CLO-17",
+    "CLO-18",
+    "CLO-19",
+    "CLO-20",
+    "CLO-21",
+    "CLO-22",
+    "CLO-24",
+    "CLO-25",
+    "CLO-27",
+    "GATE-CLO",
+    "RPS-8",
+    "RPS-9",
+    "RPS-10",
+    "RPS-11",
+    "RPS-12",
+    "RPS-13",
+    "RPS-14",
+    "RPS-15",
+    "RPS-16",
+    "RPS-18",
+    "RPS-19",
+    "RPS-20",
+    "RPS-21",
+    "RPS-23",
+    "RPS-24",
+    "GATE-RPS",
+    "SNP-1",
+    "SNP-2",
+    "SNP-3",
+    "SNP-4",
+    "SNP-5",
+    "GATE-SNP",
+    "LMG-1",
+    "LMG-2",
+    "LMG-3",
+    "LMG-4",
+    "LMG-5",
+    "LMG-6",
+    "LMG-7",
+    "LMG-8",
+    "LMG-9",
+    "LMG-10",
+    "LMG-11",
+    "GATE-LMG",
+    "GPB-3",
+    "GPB-4",
+    "GATE-GPB",
+    "PRP-1",
+    "PRP-2",
+    "PRP-3",
+    "PRP-4",
+    "PRP-5",
+    "PRP-6",
+    "PRP-7",
+    "PRP-8",
+    "GATE-PRP",
+    "FCS-1",
+    "FCS-2",
+    "FCS-3",
+    "FCS-4",
+    "FCS-5",
+    "FCS-6",
+    "FCS-7",
+    "FCS-8",
+    "GATE-FCS",
+    "AIX-1",
+    "AIX-2",
+    "AIX-3",
+    "AIX-4",
+    "AIX-5",
+    "AIX-6",
+    "AIX-7",
+    "AIX-8",
+    "AIX-9",
+    "AIX-10",
+    "AIX-11",
+    "AIX-12",
+    "GATE-AIX",
+    "SOP-1",
+    "SOP-2",
+    "SOP-3",
+    "SOP-4",
+    "SOP-5",
+    "SOP-6",
+    "SOP-7",
+    "SOP-8",
+    "SOP-9",
+    "GATE-SOP",
+    "DMO-1",
+    "DMO-2",
+    "DMO-3",
+    "DMO-4",
+    "DMO-5",
+    "DMO-6",
+    "DMO-7",
+    "DMO-8",
+    "DMO-9",
+    "DMO-10",
+    "DMO-11",
+    "DMO-12",
+    "DMO-13",
+    "DMO-14",
+    "DMO-15",
+    "DMO-16",
+    "DMO-17",
+    "DMO-18",
+    "DMO-19",
+    "DMO-20",
+    "DMO-21",
+    "DMO-22",
+    "DMO-23",
+    "DMO-24",
+    "DMO-25",
+    "DMO-26",
+    "DMO-27",
+    "DMO-28",
+    "DMO-29",
+    "DMO-30",
+    "DMO-31",
+    "DMO-32",
+    "DMO-33",
+    "DMO-34",
+    "GATE-DMO",
+    "PRF-1",
+    "PRF-2",
+    "PRF-3",
+    "PRF-4",
+    "PRF-5",
+    "PRF-6",
+    "GATE-PRF",
+    "DEP-3",
+    "DEP-4",
+    "DEP-5",
+    "DEP-6",
+    "DEP-7",
+    "DEP-8",
+    "GATE-DEP",
+    "REL-1",
+    "REL-2",
+    "REL-3"
+  ],
+  "deferred_notes": {
+    "ENC-5": {
+      "capability": "C2, C3",
+      "note": "input measures (cost to cost, labour hours, cost recovery, uninstalled materials): keys with those recognition methods fail closed"
+    },
+    "ENC-6": {
+      "capability": "C2, C3",
+      "note": "right to invoice, usage and minimum commitments: usage and RTI keys fail"
+    },
+    "ENC-8": {
+      "capability": "C2, C3",
+      "note": "breakage, material-right recognition and royalties: BRK, ROY and redemption-pattern MR keys fail"
+    },
+    "END-11": {
+      "capability": "C2",
+      "note": "JET check tests part 1 only; the templates are built by END-4 to END-6"
+    },
+    "END-12": {
+      "capability": "C2",
+      "note": "JET check tests part 2 only"
+    },
+    "END-13": {
+      "capability": "C2",
+      "note": "P8 and P14 properties; trace re-evaluation stays covered by CTR-19 verify"
+    },
+    "END-14": {
+      "capability": "C2",
+      "note": "metamorphic suite"
+    },
+    "EDS-7": {
+      "capability": "C3",
+      "note": "DISC closure item; DISC keys stay green through the RPS-3 and RPS-4 selections"
+    },
+    "AKS-8": {
+      "capability": "C3",
+      "note": "C3: the 221-key sweep cannot pass while ENC-5, ENC-6 and ENC-8 are deferred"
+    },
+    "GPB-3": {
+      "capability": "C3",
+      "note": "point_in_time_equivalence needs LMG-4 and SNP-1 to SNP-3"
+    },
+    "GPB-4": {
+      "capability": "C3",
+      "note": "C3: full G3 needs GPB-3 point_in_time_equivalence, which replays into a sandbox through LMG-4 and SNP-1 to SNP-3 (deferred); 121 of 122 cases are the rc selection"
+    },
+    "RPS-23": {
+      "capability": "C10",
+      "note": "C10: J-01 part 1 needs WEB-13, WEB-19, RFD-18, RFD-23 and the fresh-tenant invitation flow; replaced tonight by the proposed SUP-RC-SMOKE journey"
+    },
+    "RPS-24": {
+      "capability": "C10",
+      "note": "C10: J-01 part 2 needs RPS-21 and DIN-18 and the QuickBooks Online realm of CLO-15; replaced tonight by SUP-RC-SMOKE"
+    },
+    "CTR-13": {
+      "capability": "C5",
+      "note": "portfolio-scoped estimates; estimate.portfolio_id keeps no foreign key"
+    },
+    "CTR-16": {
+      "capability": "C5",
+      "note": "policy impact simulation over contracts"
+    },
+    "CTR-18": {
+      "capability": "C5",
+      "note": "subscription-change commands; MOD-FS keys still run through the engine runner"
+    },
+    "DIN-9": {
+      "capability": "C6",
+      "note": "modern CSV v2 templates other than customers and contracts; its progress_events emitter is needed by the WLD-B-04 seed of DIN-15 and the DIN-16 REQ-UX-021 step, so DIN-15, DIN-16, DIN-17 and SUP-RC-SMOKE run as partial items (validate-vabc)"
+    },
+    "DIN-13": {
+      "capability": "C6",
+      "note": "Stripe mock adapter and the inbound adapter contract suite"
+    },
+    "CLO-10": {
+      "capability": "C7",
+      "note": "journal line validation and completeness gates fail closed on the cockpit"
+    },
+    "CLO-12": {
+      "capability": "C7",
+      "note": "manual adjustments; the MANUAL_ADJUSTMENTS_CLEARED gate fails closed"
+    },
+    "CLO-21": {
+      "capability": "C7",
+      "note": "multi-entity close command"
+    },
+    "WEB-13": {
+      "capability": "C1, C10",
+      "note": "invitation acceptance and MFA enrolment screens; fresh-tenant journeys wait"
+    },
+    "WEB-19": {
+      "capability": "C10",
+      "note": "users screens visited by J-01"
+    },
+    "RFD-18": {
+      "capability": "C10",
+      "note": "entities, calendars and currencies settings screens visited by J-01"
+    },
+    "RFD-23": {
+      "capability": "C10",
+      "note": "accounting policy screens visited by J-01"
+    },
+    "DIN-18": {
+      "capability": "C10",
+      "note": "integrations screens visited by J-01 part 2"
+    },
+    "RPS-21": {
+      "capability": "C10",
+      "note": "audit log screen visited by J-01 part 2"
+    },
+    "DEP-5": {
+      "capability": "C11",
+      "note": "supervisor target scripts; the supervisor validates the images and compose file by hand"
+    },
+    "CTR-11": {
+      "capability": "R-RC-1",
+      "note": "contract void; the CTR-22 void drawer is hidden (XR-14)"
+    },
+    "CTR-14": {
+      "capability": "R-RC-1",
+      "note": "costs, material rights, loss provisions, FX layers and billing plans; CTR-20 K-09 commission, the CTR-23 billing-plan and costs panels and the RPS-4 k09 world move post-rc"
+    },
+    "CTR-17": {
+      "capability": "R-RC-1",
+      "note": "modifications; the CTR-22 regroup drawer is hidden and RPS-4 tests k02 without CR-MARROWBY-2026-09"
+    },
+    "DIN-12": {
+      "capability": "R-RC-1",
+      "note": "integration connections and the Salesforce mock; consumed only by DIN-14 and CLO-15, both post-rc"
+    },
+    "DIN-14": {
+      "capability": "R-RC-1",
+      "note": "NetSuite chart-of-accounts mock; CLO-15 is post-rc and CLO-13 creates adapters/gl/ itself"
+    },
+    "EDS-4": {
+      "capability": "R-RC-1",
+      "note": "revenue from prior-period obligations; RPT-05 and the four revenue_prior_period keys move post-rc"
+    },
+    "EDS-5": {
+      "capability": "R-RC-1",
+      "note": "contract-cost rollforward; consumed by EDS-6 and the post-rc cost reports"
+    },
+    "EDS-6": {
+      "capability": "R-RC-1",
+      "note": "lock snapshot content and variance between closes; consumed by CLO-6 and CLO-7 (post-rc)"
+    },
+    "CLO-5": {
+      "capability": "R-RC-1",
+      "note": "data-quality monitors; consumed by CLO-6 and CLO-19 (post-rc)"
+    },
+    "CLO-6": {
+      "capability": "R-RC-1",
+      "note": "lock with certification and lock snapshots; SF-05 locked and SF-04, SF-08 as-locked captures move to DMO"
+    },
+    "CLO-7": {
+      "capability": "R-RC-1",
+      "note": "reopen with dual approval; the CLO-11 reopened-period test and the RPS-3 k03 world move post-rc"
+    },
+    "CLO-14": {
+      "capability": "R-RC-1",
+      "note": "batch acknowledgements and the acknowledgement lock gate; CLO-26 shows CSV export without acknowledgements"
+    },
+    "CLO-15": {
+      "capability": "R-RC-1",
+      "note": "NetSuite and QuickBooks Online mock adapters; no acknowledgement captures in the rc"
+    },
+    "CLO-16": {
+      "capability": "R-RC-1",
+      "note": "billing-to-subledger reconciliation; the RPS-3 CONTRACT_BALANCE_ROLLFORWARD reconciliation moves post-rc"
+    },
+    "CLO-17": {
+      "capability": "R-RC-1",
+      "note": "subledger-to-GL reconciliation; consumed by CLO-20 and CLO-22 (post-rc)"
+    },
+    "CLO-18": {
+      "capability": "R-RC-1",
+      "note": "per-contract AR tie-out; consumed by CLO-19 and CLO-20 (post-rc)"
+    },
+    "CLO-19": {
+      "capability": "R-RC-1",
+      "note": "close run orchestration; consumed by CLO-20 (post-rc)"
+    },
+    "CLO-20": {
+      "capability": "R-RC-1",
+      "note": "close run period-end steps; consumed by CLO-22 (post-rc)"
+    },
+    "CLO-22": {
+      "capability": "R-RC-1",
+      "note": "demo seed close history; seeded-history captures of SF-05, SF-06, SF-04 and SF-08 move to DMO"
+    }
+  },
+  "moved_to_post_rc": [
+    {
+      "item": "CTR-11",
+      "reason": "contract void; the CTR-22 void drawer is hidden (XR-14)"
+    },
+    {
+      "item": "CTR-14",
+      "reason": "costs, material rights, loss provisions, FX layers and billing plans; CTR-20 K-09 commission, the CTR-23 billing-plan and costs panels and the RPS-4 k09 world move post-rc"
+    },
+    {
+      "item": "CTR-17",
+      "reason": "modifications; the CTR-22 regroup drawer is hidden and RPS-4 tests k02 without CR-MARROWBY-2026-09"
+    },
+    {
+      "item": "DIN-12",
+      "reason": "integration connections and the Salesforce mock; consumed only by DIN-14 and CLO-15, both post-rc"
+    },
+    {
+      "item": "DIN-14",
+      "reason": "NetSuite chart-of-accounts mock; CLO-15 is post-rc and CLO-13 creates adapters/gl/ itself"
+    },
+    {
+      "item": "EDS-4",
+      "reason": "revenue from prior-period obligations; RPT-05 and the four revenue_prior_period keys move post-rc"
+    },
+    {
+      "item": "EDS-5",
+      "reason": "contract-cost rollforward; consumed by EDS-6 and the post-rc cost reports"
+    },
+    {
+      "item": "EDS-6",
+      "reason": "lock snapshot content and variance between closes; consumed by CLO-6 and CLO-7 (post-rc)"
+    },
+    {
+      "item": "CLO-5",
+      "reason": "data-quality monitors; consumed by CLO-6 and CLO-19 (post-rc)"
+    },
+    {
+      "item": "CLO-6",
+      "reason": "lock with certification and lock snapshots; SF-05 locked and SF-04, SF-08 as-locked captures move to DMO"
+    },
+    {
+      "item": "CLO-7",
+      "reason": "reopen with dual approval; the CLO-11 reopened-period test and the RPS-3 k03 world move post-rc"
+    },
+    {
+      "item": "CLO-14",
+      "reason": "batch acknowledgements and the acknowledgement lock gate; CLO-26 shows CSV export without acknowledgements"
+    },
+    {
+      "item": "CLO-15",
+      "reason": "NetSuite and QuickBooks Online mock adapters; no acknowledgement captures in the rc"
+    },
+    {
+      "item": "CLO-16",
+      "reason": "billing-to-subledger reconciliation; the RPS-3 CONTRACT_BALANCE_ROLLFORWARD reconciliation moves post-rc"
+    },
+    {
+      "item": "CLO-17",
+      "reason": "subledger-to-GL reconciliation; consumed by CLO-20 and CLO-22 (post-rc)"
+    },
+    {
+      "item": "CLO-18",
+      "reason": "per-contract AR tie-out; consumed by CLO-19 and CLO-20 (post-rc)"
+    },
+    {
+      "item": "CLO-19",
+      "reason": "close run orchestration; consumed by CLO-20 (post-rc)"
+    },
+    {
+      "item": "CLO-20",
+      "reason": "close run period-end steps; consumed by CLO-22 (post-rc)"
+    },
+    {
+      "item": "CLO-22",
+      "reason": "demo seed close history; seeded-history captures of SF-05, SF-06, SF-04 and SF-08 move to DMO"
+    }
+  ],
+  "root_exclusions": {
+    "GPB-4": "C3: full G3 needs GPB-3 point_in_time_equivalence, which replays into a sandbox through LMG-4 and SNP-1 to SNP-3 (deferred); 121 of 122 cases are the rc selection",
+    "AKS-8": "C3: the 221-key sweep cannot pass while ENC-5, ENC-6 and ENC-8 are deferred",
+    "RPS-23": "C10: J-01 part 1 needs WEB-13, WEB-19, RFD-18, RFD-23 and the fresh-tenant invitation flow; replaced tonight by the proposed SUP-RC-SMOKE journey",
+    "RPS-24": "C10: J-01 part 2 needs RPS-21 and DIN-18 and the QuickBooks Online realm of CLO-15; replaced tonight by SUP-RC-SMOKE"
+  },
+  "integration_after_merge": [
+    {
+      "item": "END-1",
+      "consumes": "ENC-15",
+      "level": "L2",
+      "kind": "engine state type",
+      "reason": "s12 consumes the CostLossState type of s11"
+    },
+    {
+      "item": "CTR-2",
+      "consumes": "END-10",
+      "level": "L3",
+      "kind": "V-C engine contract",
+      "reason": "computation.persist stores compute output bundles (DG-CMD-10)"
+    },
+    {
+      "item": "CTR-2",
+      "consumes": "EDS-1",
+      "level": "L3",
+      "kind": "V-C engine contract",
+      "reason": "contract_version.rpo_amount comes from stage 15"
+    },
+    {
+      "item": "CTR-2",
+      "consumes": "END-9",
+      "level": "L3",
+      "kind": "V-C engine contract",
+      "reason": "validator: computed versions persist(uow, bundle, output) the result of erev_engine.compute (END-9)"
+    },
+    {
+      "item": "CTR-3",
+      "consumes": "END-9",
+      "level": "L3",
+      "kind": "V-C engine contract",
+      "reason": "validator: test_active_contract_posts_sealed_balanced_posting persists the postings of erev_engine.compute (K-11 O1 53,504.59 EUR)"
+    },
+    {
+      "item": "CTR-4",
+      "consumes": "END-9",
+      "level": "L3",
+      "kind": "V-C engine contract",
+      "reason": "validator: test_create_draft_computes_provisional_version and test_allocation_walk_sf_ord_20417 read computed versions (97,627.12)"
+    },
+    {
+      "item": "DIN-15",
+      "consumes": "DIN-10",
+      "level": "L6",
+      "kind": "04 API schema",
+      "reason": "queries/mapping-profiles.ts binds API-R-43 mapping profiles"
+    },
+    {
+      "item": "DIN-16",
+      "consumes": "DIN-10",
+      "level": "L6",
+      "kind": "04 API schema",
+      "reason": "validator [api-bind]: binds API-R-43 produced by DIN-10"
+    },
+    {
+      "item": "DIN-17",
+      "consumes": "DIN-11",
+      "level": "L6",
+      "kind": "04 API schema",
+      "reason": "binds API-R-44"
+    },
+    {
+      "item": "CLO-26",
+      "consumes": "CLO-8",
+      "level": "L6",
+      "kind": "04 API schema",
+      "reason": "binds API-R-38"
+    },
+    {
+      "item": "CLO-26",
+      "consumes": "CLO-11",
+      "level": "L6",
+      "kind": "04 API schema",
+      "reason": "approved runs"
+    },
+    {
+      "item": "CLO-26",
+      "consumes": "CLO-13",
+      "level": "L6",
+      "kind": "04 API schema",
+      "reason": "validator [api-bind]: binds API-R-38 produced by CLO-13"
+    },
+    {
+      "item": "RPS-22",
+      "consumes": "RPS-6",
+      "level": "L7",
+      "kind": "04 API schema",
+      "reason": "rail destination Reports"
+    },
+    {
+      "item": "RPS-22",
+      "consumes": "RPS-7",
+      "level": "L7",
+      "kind": "04 API schema",
+      "reason": "rail destination Schedules"
+    },
+    {
+      "item": "RPS-6",
+      "consumes": "RPS-5",
+      "level": "L7",
+      "kind": "04 API schema",
+      "reason": "legacy export capture"
+    },
+    {
+      "item": "RPS-7",
+      "consumes": "RPS-5",
+      "level": "L7",
+      "kind": "04 API schema",
+      "reason": "binds legacy_je_summary"
+    },
+    {
+      "item": "RPS-7",
+      "consumes": "CLO-4",
+      "level": "L7",
+      "kind": "04 API schema",
+      "reason": "GET /periods with blockers"
+    },
+    {
+      "item": "SUP-RC-SMOKE",
+      "consumes": "RPS-22",
+      "level": "L7",
+      "kind": "supervisor",
+      "reason": "supervisor item: landing route /home and the completed rail (BS-D-08; SCREENS SCR-IA-01)"
+    }
+  ],
+  "reviewed_edges": [
+    {
+      "item": "CTR-22",
+      "dependency": "CTR-14",
+      "reason": "API-R-28 has several producers. CTR-22 binds contract reads (CTR-4), API-R-29, API-R-30, API-R-33 and attachments; CTR-14 adds GET /contracts/{id}/usage-commitments and API-R-34 cost assets, which SF-03 frame and obligation pane do not call. Void and regroup drawers are hidden under R-RC-1"
+    },
+    {
+      "item": "CLO-13",
+      "dependency": "DIN-14",
+      "reason": "backend/erev_api/adapters/gl/ does not exist on main; CLO-13 creates the package (__init__.py beside csv.py). DIN-14 (deferred) only adds the NetSuite module. Same ruling as plan_tools.py IGNORED_AUTO_EDGES"
+    },
+    {
+      "item": "RPS-22",
+      "dependency": "CLO-6",
+      "reason": "API-R-09 is the approvals row built in PLF and bound by WEB-15. CLO-6 only adds lock execution on approval of PERIOD_LOCK; SF-01 'Waiting for you' lists WLD-B-01 to WLD-B-03, none a lock"
+    },
+    {
+      "item": "RPS-7",
+      "dependency": "CLO-6",
+      "reason": "RPS-7 binds GET /periods (RFD-1, with blockers from CLO-4). CLO-6 adds request-lock and locks routes; the SF-04 as-locked capture moves to DMO under R-RC-1"
+    },
+    {
+      "item": "RPS-7",
+      "dependency": "CLO-7",
+      "reason": "RPS-7 binds GET /periods (RFD-1, CLO-4). CLO-7 adds request-reopen, which SF-04 does not call"
+    }
+  ],
+  "shared_file_rules_added": {
+    "backend/tests/pg/test_catalogue_lint.py": "union of test functions; most items only run the DB-14 lint after their revision",
+    "backend/tests/pg/test_migrations.py": "V-A re-parenting: head literal of test_single_head = the last re-parented revision; function count of test_upgrade_downgrade_upgrade = base + both lanes' additions; union of comment lines",
+    "backend/erev_api/db/migrations/versions/": "two lanes may add revisions; the merge step re-parents the second (SPRINT-vabc.md \u00a75.2)"
+  },
+  "supervisor_items": [
+    {
+      "id": "SUP-RC-SMOKE",
+      "title": "Release-candidate smoke journey on the Avenmoor demo",
+      "level": "L7",
+      "lane": "L7-3",
+      "batch": "L7-3-B3",
+      "minutes": 70,
+      "text": "docs/build-spec/sprint/sup-rc-smoke.md",
+      "appended_by": "the supervisor, before the L7 lanes start (D-82)",
+      "gate": "make e2e SPEC=frontend/e2e/projects/avenmoor-serial.spec.ts",
+      "partial": "RC-SMOKE.4 waits for deferred DIN-9"
+    }
+  ],
+  "answer_key_support": {
+    "families": {
+      "ALC": {
+        "active": 10,
+        "runnable": 10,
+        "blocked_by": []
+      },
+      "BRK": {
+        "active": 6,
+        "runnable": 0,
+        "blocked_by": [
+          "ENC-8"
+        ]
+      },
+      "COST": {
+        "active": 5,
+        "runnable": 5,
+        "blocked_by": []
+      },
+      "CPC": {
+        "active": 6,
+        "runnable": 6,
+        "blocked_by": []
+      },
+      "DISC": {
+        "active": 8,
+        "runnable": 4,
+        "blocked_by": [
+          "EDS-4",
+          "ENC-6",
+          "PRP-1"
+        ]
+      },
+      "DLT": {
+        "active": 2,
+        "runnable": 1,
+        "blocked_by": [
+          "PRP-1"
+        ]
+      },
+      "ENT": {
+        "active": 5,
+        "runnable": 5,
+        "blocked_by": []
+      },
+      "FX": {
+        "active": 11,
+        "runnable": 11,
+        "blocked_by": []
+      },
+      "IFRS": {
+        "active": 4,
+        "runnable": 3,
+        "blocked_by": [
+          "ENC-5"
+        ]
+      },
+      "JE": {
+        "active": 12,
+        "runnable": 10,
+        "blocked_by": [
+          "EDS-4",
+          "ENC-5"
+        ]
+      },
+      "LATE": {
+        "active": 3,
+        "runnable": 3,
+        "blocked_by": []
+      },
+      "LOSS": {
+        "active": 2,
+        "runnable": 0,
+        "blocked_by": [
+          "ENC-5"
+        ]
+      },
+      "MOD": {
+        "active": 19,
+        "runnable": 10,
+        "blocked_by": [
+          "ENC-5"
+        ]
+      },
+      "MR": {
+        "active": 12,
+        "runnable": 8,
+        "blocked_by": [
+          "ENC-8"
+        ]
+      },
+      "NCC": {
+        "active": 1,
+        "runnable": 1,
+        "blocked_by": []
+      },
+      "ONB": {
+        "active": 3,
+        "runnable": 3,
+        "blocked_by": []
+      },
+      "POB": {
+        "active": 16,
+        "runnable": 12,
+        "blocked_by": [
+          "ENC-6"
+        ]
+      },
+      "POS": {
+        "active": 11,
+        "runnable": 6,
+        "blocked_by": [
+          "ENC-5",
+          "ENC-6",
+          "PRP-1"
+        ]
+      },
+      "REC": {
+        "active": 24,
+        "runnable": 14,
+        "blocked_by": [
+          "ENC-5",
+          "ENC-6"
+        ]
+      },
+      "RET": {
+        "active": 7,
+        "runnable": 7,
+        "blocked_by": []
+      },
+      "RND": {
+        "active": 25,
+        "runnable": 25,
+        "blocked_by": []
+      },
+      "ROY": {
+        "active": 3,
+        "runnable": 0,
+        "blocked_by": [
+          "ENC-6",
+          "ENC-8"
+        ]
+      },
+      "SFC": {
+        "active": 8,
+        "runnable": 8,
+        "blocked_by": []
+      },
+      "SSP": {
+        "active": 8,
+        "runnable": 8,
+        "blocked_by": []
+      },
+      "STP1": {
+        "active": 5,
+        "runnable": 5,
+        "blocked_by": []
+      },
+      "TAX": {
+        "active": 2,
+        "runnable": 2,
+        "blocked_by": []
+      },
+      "VC": {
+        "active": 14,
+        "runnable": 9,
+        "blocked_by": [
+          "EDS-4",
+          "ENC-5",
+          "ENC-6"
+        ]
+      }
+    },
+    "items": {
+      "END-9": {
+        "keys": 4,
+        "runnable": 4,
+        "blocked": {}
+      },
+      "AKS-1": {
+        "keys": 33,
+        "runnable": 33,
+        "blocked": {}
+      },
+      "AKS-2": {
+        "keys": 40,
+        "runnable": 36,
+        "blocked": {
+          "POB-JS-05-CASEA-FRANCHISE-PUBLIC": [
+            "ENC-6"
+          ],
+          "POB-JS-05-CASEB-FRANCHISE-PRIVATE-EXPEDIENT": [
+            "ENC-6"
+          ],
+          "POB-S2-EX12A-OWNVOLUMES": [
+            "ENC-6"
+          ],
+          "POB-S2-EX61": [
+            "ENC-6"
+          ]
+        }
+      },
+      "AKS-3": {
+        "keys": 38,
+        "runnable": 24,
+        "blocked": {
+          "VC-CAP-USAGE-QUARTERLY-MINIMUM-TRUEUP": [
+            "ENC-6"
+          ],
+          "VC-CHK-100-S3-EX21-EXTENDED": [
+            "ENC-5"
+          ],
+          "VC-FS-02-COMMITTED-SPEND-TIERED-OVERAGE": [
+            "EDS-4"
+          ],
+          "VC-GE-04-CPIF-EAC-REVISIONS": [
+            "ENC-5"
+          ],
+          "VC-GE-05-AWARD-FEE-POOL-CONSTRAINT": [
+            "ENC-5"
+          ],
+          "BRK-CAP-CREDITS-ROLLOVER-RENEWAL": [
+            "ENC-8"
+          ],
+          "BRK-CHK-111-LAPSED": [
+            "ENC-8"
+          ],
+          "BRK-CHK-111-RENEWED": [
+            "ENC-8"
+          ],
+          "BRK-JS-02-GIFT-CARDS-BREAKAGE-ESCHEAT": [
+            "ENC-8"
+          ],
+          "BRK-S5-BREAKAGE-OWN": [
+            "ENC-8"
+          ],
+          "BRK-WM-06-PLATFORM-CREDITS-BREAKAGE-RE-ESTIMATE": [
+            "ENC-8"
+          ],
+          "ROY-JS-07-ADVERTISING-FUND-GROSS": [
+            "ENC-6",
+            "ENC-8"
+          ],
+          "ROY-JS-08-ROYALTIES-LAGGING-REPORTS": [
+            "ENC-6",
+            "ENC-8"
+          ],
+          "ROY-S5-EX60": [
+            "ENC-6"
+          ]
+        }
+      },
+      "AKS-4": {
+        "keys": 33,
+        "runnable": 20,
+        "blocked": {
+          "REC-BR-08-CUSTOMISED-TOOLING-COST-TO-COST": [
+            "ENC-5"
+          ],
+          "REC-CHK-014-S5-PROGRESS-VARIANTS-RTI": [
+            "ENC-6"
+          ],
+          "REC-FS-07-FIXED-FEE-EAC-HOURS-REVISION": [
+            "ENC-5"
+          ],
+          "REC-FS-08-TM-RIGHT-TO-INVOICE": [
+            "ENC-6"
+          ],
+          "REC-GE-01-EPC-UNINSTALLED-MATERIALS-ZERO-MARGIN": [
+            "ENC-5"
+          ],
+          "REC-RB-05-CAPITATION-PMPM-RATE-AMENDMENT": [
+            "ENC-6"
+          ],
+          "REC-S5-EX19": [
+            "ENC-5"
+          ],
+          "REC-S5-OVERTIME-OWN-OT": [
+            "ENC-5"
+          ],
+          "REC-S5-PROGRESS-VARIANTS-COSTRECOVERY": [
+            "ENC-5"
+          ],
+          "REC-S5-PROGRESS-VARIANTS-WASTE": [
+            "ENC-5"
+          ],
+          "POS-CHK-010": [
+            "ENC-6"
+          ],
+          "POS-CHK-014-S5-PROGRESS-VARIANTS-RIGHT-TO-INVOICE": [
+            "ENC-6"
+          ],
+          "POS-GE-07-RETAINAGE-PRESENTATION": [
+            "ENC-5"
+          ]
+        }
+      },
+      "AKS-5": {
+        "keys": 34,
+        "runnable": 21,
+        "blocked": {
+          "MOD-CHK-027-S6-EX8": [
+            "ENC-5"
+          ],
+          "MOD-CHK-042-D18": [
+            "ENC-5"
+          ],
+          "MOD-CHK-042-INCEPTION": [
+            "ENC-5"
+          ],
+          "MOD-CHK-115": [
+            "ENC-5"
+          ],
+          "MOD-FS-03-CASEA-UPSELL-AT-SSP-SEPARATE": [
+            "ENC-5"
+          ],
+          "MOD-FS-03-CASEB-UPSELL-DISCOUNT-PROSPECTIVE": [
+            "ENC-5"
+          ],
+          "MOD-GE-02-CHANGE-ORDERS-UNPRICED-AND-CLAIM": [
+            "ENC-5"
+          ],
+          "MOD-GE-08-PARTIAL-TERMINATION-FOR-CONVENIENCE": [
+            "ENC-5"
+          ],
+          "MOD-S6-COMBINED-MOD-OWN": [
+            "ENC-5"
+          ],
+          "MR-CHK-051-S2-EX49-EXPIRY": [
+            "ENC-8"
+          ],
+          "MR-CHK-053-S2-EX52": [
+            "ENC-8"
+          ],
+          "MR-JS-01-POS-PORTFOLIO-POINTS-REDEMPTION": [
+            "ENC-8"
+          ],
+          "MR-WM-07-PARTNER-AIRLINE-TICKETS-WITH-MILES": [
+            "ENC-8"
+          ]
+        }
+      },
+      "AKS-6": {
+        "keys": 27,
+        "runnable": 22,
+        "blocked": {
+          "JE-CHK-026-CHK-100-S3-EX21-EXTENDED-BONUS-CATCH-UP": [
+            "EDS-4"
+          ],
+          "JE-CHK-132-S7-LOSS-OWN-PROVISION-AND-RELEASE": [
+            "ENC-5"
+          ],
+          "LOSS-GE-03-LOSS-CONTRACT-PROVISION": [
+            "ENC-5"
+          ],
+          "LOSS-S7-LOSS-OWN": [
+            "ENC-5"
+          ],
+          "IFRS-SW11-ONEROUS-CONTRACT-SCOPE-IFRS15-ONLY": [
+            "ENC-5"
+          ]
+        }
+      },
+      "AKS-7": {
+        "keys": 16,
+        "runnable": 16,
+        "blocked": {}
+      },
+      "CTR-5": {
+        "keys": 3,
+        "runnable": 3,
+        "blocked": {}
+      },
+      "CTR-7": {
+        "keys": 7,
+        "runnable": 6,
+        "blocked": {
+          "MOD-GE-08-PARTIAL-TERMINATION-FOR-CONVENIENCE": [
+            "ENC-5"
+          ]
+        }
+      },
+      "CTR-8": {
+        "keys": 3,
+        "runnable": 3,
+        "blocked": {}
+      },
+      "CTR-12": {
+        "keys": 3,
+        "runnable": 2,
+        "blocked": {
+          "VC-CHK-100-S3-EX21-EXTENDED": [
+            "ENC-5"
+          ]
+        }
+      },
+      "DIN-4": {
+        "keys": 2,
+        "runnable": 2,
+        "blocked": {}
+      },
+      "DIN-5": {
+        "keys": 2,
+        "runnable": 2,
+        "blocked": {}
+      },
+      "DIN-6": {
+        "keys": 4,
+        "runnable": 4,
+        "blocked": {}
+      },
+      "RPS-3": {
+        "keys": 4,
+        "runnable": 2,
+        "blocked": {
+          "DISC-CHK-101-S3-EX23-CASEB-PRIOR-PERIOD-POB-REVENUE": [
+            "EDS-4"
+          ],
+          "DISC-CATCH-UP-BY-CAUSE-ESTIMATE-CHANGE-AND-MODIFICATION": [
+            "EDS-4"
+          ]
+        }
+      },
+      "RPS-4": {
+        "keys": 2,
+        "runnable": 2,
+        "blocked": {}
+      }
+    }
+  },
+  "variants": [
+    {
+      "id": "V-ABC",
+      "description": "V-A, V-B and V-C together, re-derived for L2 onward on the validated L1 with the validator edges V-01 to V-10",
+      "in_scope": 144,
+      "migration_items": 26,
+      "levels": 7,
+      "estimate_hours": 35.1,
+      "level_hours": [
+        4.6,
+        4.8,
+        5.5,
+        5.0,
+        5.2,
+        5.3,
+        4.7
+      ],
+      "items_merged_by_9h": 62,
+      "integration_after_merge_items": 12,
+      "items_moved_to_post_rc": [
+        "CTR-11",
+        "CTR-14",
+        "CTR-17",
+        "DIN-12",
+        "DIN-14",
+        "EDS-4",
+        "EDS-5",
+        "EDS-6",
+        "CLO-5",
+        "CLO-6",
+        "CLO-7",
+        "CLO-14",
+        "CLO-15",
+        "CLO-16",
+        "CLO-17",
+        "CLO-18",
+        "CLO-19",
+        "CLO-20",
+        "CLO-22"
+      ],
+      "scheduler": "hand layout from the planner's packers",
+      "superseded_estimate": {
+        "levels": 8,
+        "estimate_hours": 39.2,
+        "note": "plan.json variants V-ABC, packed on the pre-validation L1"
+      },
+      "levels_compact": [
+        [
+          {
+            "items": [
+              "RFD-1",
+              "RFD-6",
+              "RFD-2",
+              "RFD-3",
+              "RFD-8"
+            ],
+            "adds_migrations": true,
+            "minutes": 200
+          },
+          {
+            "items": [
+              "ENA-1",
+              "ENA-2",
+              "ENA-3",
+              "ENA-5",
+              "ENB-1",
+              "ENA-6",
+              "ENA-10",
+              "ENA-11"
+            ],
+            "adds_migrations": false,
+            "minutes": 240
+          },
+          {
+            "items": [
+              "ENC-1",
+              "ENC-2",
+              "ENC-3",
+              "ENC-4",
+              "ENC-7",
+              "ENC-9",
+              "ENB-9",
+              "ENB-10"
+            ],
+            "adds_migrations": false,
+            "minutes": 240
+          },
+          {
+            "items": [
+              "RFD-4",
+              "RFD-5",
+              "WEB-8",
+              "WEB-9",
+              "DEP-1",
+              "DEP-2"
+            ],
+            "adds_migrations": false,
+            "minutes": 200
+          },
+          {
+            "items": [
+              "WEB-10"
+            ],
+            "adds_migrations": false,
+            "minutes": 50
+          }
+        ],
+        [
+          {
+            "items": [
+              "RFD-7",
+              "RFD-9",
+              "RFD-12",
+              "RFD-13",
+              "RFD-10",
+              "RFD-15"
+            ],
+            "adds_migrations": true,
+            "minutes": 240
+          },
+          {
+            "items": [
+              "ENA-4",
+              "ENA-7",
+              "ENA-8",
+              "ENA-9",
+              "ENA-12",
+              "ENA-13"
+            ],
+            "adds_migrations": false,
+            "minutes": 190
+          },
+          {
+            "items": [
+              "ENB-2",
+              "ENB-3",
+              "ENB-4",
+              "ENB-5",
+              "ENB-6",
+              "ENB-7",
+              "ENB-8"
+            ],
+            "adds_migrations": false,
+            "minutes": 210
+          },
+          {
+            "items": [
+              "ENC-10",
+              "ENC-11",
+              "ENC-12",
+              "ENC-13",
+              "ENC-14",
+              "ENC-15",
+              "ENC-16"
+            ],
+            "adds_migrations": false,
+            "minutes": 210
+          },
+          {
+            "items": [
+              "ENB-11",
+              "ENB-12",
+              "END-1",
+              "END-2",
+              "END-3",
+              "END-4",
+              "END-5",
+              "END-6"
+            ],
+            "adds_migrations": false,
+            "minutes": 240
+          }
+        ],
+        [
+          {
+            "items": [
+              "RFD-11",
+              "RFD-14",
+              "CTR-1",
+              "CTR-2",
+              "CTR-3",
+              "CTR-4"
+            ],
+            "adds_migrations": true,
+            "minutes": 240
+          },
+          {
+            "items": [
+              "ENB-13",
+              "END-7",
+              "END-8",
+              "END-9",
+              "END-10",
+              "EDS-1",
+              "EDS-2"
+            ],
+            "adds_migrations": false,
+            "minutes": 235
+          },
+          {
+            "items": [
+              "WEB-11",
+              "WEB-12",
+              "WEB-15",
+              "WEB-17"
+            ],
+            "adds_migrations": false,
+            "minutes": 235
+          }
+        ],
+        [
+          {
+            "items": [
+              "CTR-5",
+              "CTR-7",
+              "CTR-8",
+              "CTR-9",
+              "CTR-10",
+              "DIN-1"
+            ],
+            "adds_migrations": true,
+            "minutes": 230
+          },
+          {
+            "items": [
+              "CTR-15",
+              "CLO-1",
+              "CLO-2",
+              "RPS-1"
+            ],
+            "adds_migrations": true,
+            "minutes": 160
+          },
+          {
+            "items": [
+              "EDS-3",
+              "AKS-1",
+              "AKS-2",
+              "AKS-3"
+            ],
+            "adds_migrations": false,
+            "minutes": 210
+          },
+          {
+            "items": [
+              "CTR-19"
+            ],
+            "adds_migrations": false,
+            "minutes": 35
+          },
+          {
+            "items": [
+              "RFD-16",
+              "RFD-19",
+              "RFD-22",
+              "RFD-24"
+            ],
+            "adds_migrations": false,
+            "minutes": 225
+          }
+        ],
+        [
+          {
+            "items": [
+              "DIN-2",
+              "DIN-3",
+              "DIN-4",
+              "DIN-5",
+              "DIN-6",
+              "GPA-1"
+            ],
+            "adds_migrations": true,
+            "minutes": 245
+          },
+          {
+            "items": [
+              "CTR-12",
+              "RPS-2"
+            ],
+            "adds_migrations": true,
+            "minutes": 85
+          },
+          {
+            "items": [
+              "AKS-4",
+              "AKS-5",
+              "AKS-6",
+              "AKS-7"
+            ],
+            "adds_migrations": false,
+            "minutes": 240
+          },
+          {
+            "items": [
+              "CTR-20",
+              "CTR-21",
+              "CTR-22",
+              "CTR-23"
+            ],
+            "adds_migrations": false,
+            "minutes": 225
+          }
+        ],
+        [
+          {
+            "items": [
+              "DIN-7",
+              "DIN-10",
+              "DIN-8",
+              "DIN-11"
+            ],
+            "adds_migrations": true,
+            "minutes": 145
+          },
+          {
+            "items": [
+              "GPA-2",
+              "GPA-3",
+              "GPA-4",
+              "GPA-5",
+              "CLO-9"
+            ],
+            "adds_migrations": false,
+            "minutes": 215
+          },
+          {
+            "items": [
+              "CLO-3",
+              "CLO-8",
+              "CLO-11",
+              "CLO-13",
+              "RPS-3",
+              "RPS-4"
+            ],
+            "adds_migrations": false,
+            "minutes": 210
+          },
+          {
+            "items": [
+              "CTR-26",
+              "DIN-15",
+              "DIN-16",
+              "DIN-17"
+            ],
+            "adds_migrations": false,
+            "minutes": 220
+          },
+          {
+            "items": [
+              "CLO-26"
+            ],
+            "adds_migrations": false,
+            "minutes": 55
+          }
+        ],
+        [
+          {
+            "items": [
+              "GPA-6",
+              "RPS-5",
+              "GPB-1",
+              "GPB-2"
+            ],
+            "adds_migrations": false,
+            "minutes": 170
+          },
+          {
+            "items": [
+              "CLO-4",
+              "CLO-23",
+              "RPS-17",
+              "RPS-22"
+            ],
+            "adds_migrations": false,
+            "minutes": 180
+          },
+          {
+            "items": [
+              "RPS-6",
+              "RPS-7",
+              "SUP-RC-SMOKE"
+            ],
+            "adds_migrations": false,
+            "minutes": 180
+          }
+        ]
+      ]
+    }
+  ],
+  "release_gate": {
+    "tree": "git status --porcelain empty after the last merge commit on main",
+    "commands": [
+      "make openapi && git diff --exit-code docs/api/openapi.json frontend/src/lib/api/schema.d.ts",
+      "make ci",
+      "make test-pg",
+      "make properties K=\"p01 or p04 or p10 or p12 or p05 or p13 or p07\"",
+      "make answer-keys ID=<answer_keys.runnable_engine_runner_ids>  # 176 keys",
+      "make parity K=\"not point_in_time_equivalence\"  # 121 of 122 cases",
+      "make e2e SPEC=frontend/e2e/projects/screens.spec.ts",
+      "make e2e SPEC=frontend/e2e/projects/avenmoor-serial.spec.ts  # SUP-RC-SMOKE"
+    ],
+    "answer_keys": {
+      "runnable_engine_runner_ids": [
+        "ALC-BR-06-DAAS-EMBEDDED-LEASE-ROUTED-OUT",
+        "ALC-CHK-002-GT01-GT03",
+        "ALC-CHK-032-S4-EX34-CASEC-ESTIMATED",
+        "ALC-CHK-032-S4-EX34-CASEC-REJECTED",
+        "ALC-CHK-033-S4-EX34-CASEB",
+        "ALC-CHK-034-S4-EX34-CASEA",
+        "ALC-CHK-118",
+        "ALC-S4-EX33",
+        "ALC-S4-EX35-CASEB",
+        "ALC-S4-EX6",
+        "COST-CAP-COMMISSION-EXPECTED-RENEWALS-IMPAIRMENT",
+        "COST-S8-CONTRACT-COSTS-EX1",
+        "COST-S8-CONTRACT-COSTS-EX2",
+        "COST-S8-CONTRACT-COSTS-EXPEDIENT",
+        "COST-S8-CONTRACT-COSTS-IMPAIRMENT",
+        "CPC-BR-07-CASEA-MDF-DISTINCT-SERVICE-FAIR-VALUE",
+        "CPC-BR-07-CASEB-MDF-EXCESS-OVER-FAIR-VALUE",
+        "CPC-CHK-120-SHARE-BASED-WARRANTS-NOT-PROBABLE",
+        "CPC-CHK-120-SHARE-BASED-WARRANTS-PROBABLE",
+        "CPC-CHK-133-S3-EX32",
+        "CPC-WM-03-BUYER-PROMOTIONS-NEGATIVE-REVENUE-TEST",
+        "DISC-CHK-006-S10-DISCLOSURES-ROLLFORWARD-EX21",
+        "DISC-GE-06-IDIQ-TASK-ORDERS-OPTIONS-RPO",
+        "DISC-S10-DISCLOSURES-ROLLFORWARD-EX21",
+        "DISC-S10-DISCLOSURES-RPO-EX42",
+        "DLT-NATIVE-SUBSCRIPTION-PRE-STANDARD-UPFRONT",
+        "ENT-CHK-070-CONTRACTING-ENTITY-RECOGNISES-REVENUE",
+        "ENT-CHK-070-INTERCOMPANY-PAIR-PERFORMING-ENTITY",
+        "ENT-CHK-071-CONTRACT-ASSET-HELD-BY-CONTRACTING-ENTITY",
+        "ENT-CROSS-CURRENCY-PAIR-GBP-CONTRACT-USD-PERFORMER",
+        "ENT-PER-ENTITY-NETTING-IN-A-COMBINED-GROUP",
+        "FX-BHD-FUNCTIONAL-USD-CONTRACT-MINOR-UNITS",
+        "FX-CHK-080-LIABILITY-LAYERS-AT-HISTORICAL-RATES",
+        "FX-CHK-081-CONTRACT-ASSET-REMEASURED-TO-CLOSING-RATE",
+        "FX-CHK-082-REFUNDABLE-ADVANCE-MONETARY-OVERRIDE-VS-IFRIC22",
+        "FX-CHK-083-ENGINE-RECEIVABLE-REMEASUREMENT",
+        "FX-CHK-084-A-REFUND-LIABILITY-REMEASURED",
+        "FX-CHK-084-B-DEPOSIT-LIABILITY-REMEASURED",
+        "FX-CHK-084-C-CONSIDERATION-PAYABLE-REMEASURED",
+        "FX-JPY-CONTRACT-USD-FUNCTIONAL-MINOR-UNITS",
+        "FX-POL-160-IFRIC22-LAYER-DATE-ASC606-VS-IFRS15",
+        "FX-POL-161-FIFO-TWO-LAYERS-IN-ONE-PERIOD",
+        "IFRS-S13-SWITCH-SHIPPING",
+        "IFRS-SW01-COLLECTIBILITY-THRESHOLD-PER-BOOK",
+        "IFRS-SW04-SHIPPING-FULFILMENT-ELECTION-VS-SEPARATE-OBLIGATION",
+        "JE-CHK-021-S1-EX1-CASEC-DEPOSIT-TO-CONTRACT-LIABILITY",
+        "JE-CHK-023-S3-SALESTAX-OWN-ENGINE-BILLING",
+        "JE-CHK-024-S9-PRESENTATION-EX38-CASEA-CANCELLABLE",
+        "JE-CHK-024-S9-PRESENTATION-EX38-CASEB-NONCANCELLABLE",
+        "JE-CHK-025-S3-EX24-VOLUME-REBATE-REFUND-LIABILITY",
+        "JE-CHK-130-S8-CONTRACT-COSTS-EX2-AMORTISATION",
+        "JE-CHK-131-S8-EXPEDIENT-ONE-YEAR-COMMISSION-EXPENSED",
+        "JE-CHK-131-S8-IMPAIRMENT-AND-IFRS15-REVERSAL",
+        "JE-CHK-136-S3-EX29-ADVANCE-PAYMENT-ACCRETION",
+        "JE-CHK-138-S1-EX2-IMPLICIT-PRICE-CONCESSION-RECEIVABLE-CONTRA",
+        "LATE-CHK-090-GOLDEN-CONTRACT1-DELIVERY-AFTER-JANUARY-LOCK",
+        "LATE-CHK-091-TC-JE-11-EVENTS-RECORDED-OUT-OF-ORDER",
+        "LATE-POL-181-FX-LATE-DELIVERY-AT-EFFECTIVE-DATE-RATES",
+        "MOD-CHK-028-S6-EX5-CASEB",
+        "MOD-CHK-043-S6-EX7",
+        "MOD-CHK-112",
+        "MOD-FS-09-CANCELLATION-REFUND-COMMISSION",
+        "MOD-FS-10-CLOUD-CONVERSION-CREDIT",
+        "MOD-JS-06-AREA-DEVELOPMENT-SCHEDULE-REVISION",
+        "MOD-LEGACY-POBVC-GT11",
+        "MOD-LEGACY-PROS-GT12",
+        "MOD-LEGACY-RETRO-GT10",
+        "MOD-S6-EX5-CASEA",
+        "MR-CHK-050-CONTINUATION",
+        "MR-CHK-050-MODIFICATION",
+        "MR-CHK-051-S2-EX49-REDEEM",
+        "MR-CHK-052-GT15-CONTINUATION",
+        "MR-CHK-052-GT15-MODIFICATION",
+        "MR-CHK-054-S2-EX49",
+        "MR-FS-04-EARLY-RENEWAL-PRICE-CAP",
+        "MR-S2-EX51",
+        "NCC-CHK-135-S3-EX31",
+        "ONB-CHK-121-BUSINESS-COMBINATION-SUBSCRIPTION",
+        "ONB-RB-06-RELIEF-GRANT-ROUTED-OUT",
+        "ONB-S11-MODRETRO-OWN",
+        "POB-BR-01-ROBOTS-PLATFORM-EXTENDED-WARRANTY",
+        "POB-CHK-134-S2-WARRANTY-OWN",
+        "POB-S12-FRANCHISOR-OWN",
+        "POB-S2-EX11-CASEA-OWNPRICES",
+        "POB-S2-EX45-AGENT-AGENT",
+        "POB-S2-EX45-AGENT-PRINCIPAL",
+        "POB-S2-EX59",
+        "POB-S2-SHIPPING-OWN-OFF",
+        "POB-S2-SHIPPING-OWN-ON",
+        "POB-WM-01-THIRD-PARTY-COMMISSIONS-NET",
+        "POB-WM-02-FIRST-PARTY-INVENTORY-GROSS",
+        "POB-WM-05-HOTEL-MERCHANT-VERSUS-AGENCY",
+        "POS-CHK-010-UNBILLED-RECEIVABLE-AND-CONTRACT-ASSET-SPLIT",
+        "POS-CHK-011-GT06",
+        "POS-CHK-011-GT06-CONTRACT2-SSP-DELIVERED-RECLASS",
+        "POS-CHK-012-S9-PRESENTATION-NETTING",
+        "POS-CHK-013-EXAMPLE-39-CONDITIONAL-RIGHT-ENGINE-BILLING",
+        "POS-CHK-013-S9-PRESENTATION-EX39",
+        "REC-BR-04-BILL-AND-HOLD-CUSTODIAL",
+        "REC-BR-05-CONSIGNMENT-SELL-THROUGH",
+        "REC-FS-01-SAAS-RAMP-ANNUAL-BILLING",
+        "REC-FS-06-TERM-LICENCE-RENEWAL-START-GATE",
+        "REC-JS-04-PAID-MEMBERSHIP-DAILY",
+        "REC-RB-03-DRG-IN-HOUSE-PATIENT-MONTH-END",
+        "REC-S5-ACCEPTANCE-OWN-OBJ",
+        "REC-S5-ACCEPTANCE-OWN-SUBJ",
+        "REC-S5-CONSIGNMENT-OWN",
+        "REC-S5-EX62-CASEB",
+        "REC-S5-EX63-OWNSSP",
+        "REC-S5-OVERTIME-OWN-PIT",
+        "REC-S5-UPFRONTFEE-OWN-A",
+        "REC-S5-UPFRONTFEE-OWN-B",
+        "RET-BR-03-PRICE-PROTECTION-STOCK-ROTATION",
+        "RET-CHK-029-S3-EX22",
+        "RET-CHK-060-S3-EX22-REVISED",
+        "RET-CHK-061-GT08",
+        "RET-CHK-116",
+        "RET-JS-03-ECOMMERCE-REFUND-RETURN-ASSET",
+        "RET-WM-04-REFUNDS-AND-CHARGEBACKS",
+        "RND-CHK-001",
+        "RND-CHK-001-USD-EQUAL-SSP-THIRDS",
+        "RND-CHK-002-CHK-007-GT01-CONTRACT1",
+        "RND-CHK-003A",
+        "RND-CHK-003A-JPY-EQUAL-SSP-THIRDS",
+        "RND-CHK-003B",
+        "RND-CHK-003B-BHD-WEIGHTS-ONE-TWO",
+        "RND-CHK-003C",
+        "RND-CHK-003C-USD-NEGATIVE-CREDIT-MEMO-APPORTIONMENT",
+        "RND-CHK-003D",
+        "RND-CHK-003D-TIE-BROKEN-BY-LARGER-WEIGHT",
+        "RND-CHK-004-CHK-006-S2-EX11-CASEA-OWNPRICES",
+        "RND-CHK-005-USD-100-OVER-THREE-MONTHS",
+        "RND-CHK-006-S12-FRANCHISOR-OWN-LICENCE-TEN-YEARS",
+        "RND-CHK-006-S2-WARRANTY-OWN-EXTENDED-WARRANTY",
+        "RND-CHK-006-S5-EX63-OWNSSP-CUSTODY",
+        "RND-CHK-006-S5-UPFRONTFEE-OWN-OPTION-B-PATTERN",
+        "RND-CHK-006-S6-COMBINED-MOD-OWN-SUPPORT-PATTERN",
+        "RND-CHK-006-S6-EX5-CASEB-UNITS-PATTERN",
+        "RND-CHK-140-DAILY-365-DAY-TERM",
+        "RND-CHK-141-MONTHLY-EVEN-PARTIAL-MONTHS",
+        "RND-CHK-142-MID-MONTH-DAY-15-RULE",
+        "RND-CHK-143-MONTHLY-EVEN-WHOLE-AND-PARTIAL-TERMS",
+        "RND-CHK-144-MID-MONTH-LATE-START-EARLY-END",
+        "RND-CHK-145-MID-MONTH-EDGE-CASES",
+        "SFC-CAP-DEFERRED-PAYMENT-ROBOT-SALE",
+        "SFC-CHK-136-S3-EX29-ANNUAL",
+        "SFC-CHK-137-S3-EX28-CASEB",
+        "SFC-FS-11-CASEA-UPFRONT-NO-FINANCING",
+        "SFC-FS-11-CASEB-UPFRONT-ADVANCE-ACCRETION",
+        "SFC-S3-EX26",
+        "SFC-S3-EX26-RETURN-RIGHT",
+        "SFC-S3-EX29",
+        "SSP-CHK-030-S4-SSPRANGE-OWN-HIGHPOINT",
+        "SSP-CHK-030-S4-SSPRANGE-OWN-LOWPOINT",
+        "SSP-CHK-030-S4-SSPRANGE-OWN-MIDPOINT",
+        "SSP-CHK-030-S4-SSPRANGE-OWN-NEAREST",
+        "SSP-CHK-030-S4-SSPRANGE-OWN-OBSERVABLE-POINT",
+        "SSP-CHK-031-RANGE-VALIDATION-AT-PUBLICATION",
+        "SSP-CHK-035-TC-SETUP",
+        "SSP-FS-05-PERPETUAL-LICENCE-PCS-RESIDUAL",
+        "STP1-S1-COMBINATION-OWN",
+        "STP1-S1-EX1-CASEA",
+        "STP1-S1-EX1-CASEB-C-VARB",
+        "STP1-S1-EX1-CASEB-C-VARC",
+        "STP1-S1-EX2",
+        "TAX-S3-SALESTAX-OWN",
+        "TAX-WM-08-TAXES-AND-FEES-GROSS-OR-NET",
+        "VC-BR-02-DISTRIBUTOR-RETRO-REBATE",
+        "VC-CHK-101-S3-EX23-CASEB",
+        "VC-CHK-110",
+        "VC-CHK-113-TC-POBVC-16",
+        "VC-RB-01-SELF-PAY-IMPLICIT-CONCESSION-CREDIT-LOSS",
+        "VC-RB-02-COMMERCIAL-PAYOR-CONTRACTUAL-QUALITY-BONUS",
+        "VC-RB-04-COST-REPORT-SETTLEMENT",
+        "VC-S3-EX23-CASEA",
+        "VC-S3-EX24"
+      ],
+      "count": 176,
+      "families_not_fully_runnable": {
+        "BRK": {
+          "active": 6,
+          "runnable": 0,
+          "blocked_by": [
+            "ENC-8"
+          ]
+        },
+        "DISC": {
+          "active": 8,
+          "runnable": 4,
+          "blocked_by": [
+            "EDS-4",
+            "ENC-6",
+            "PRP-1"
+          ]
+        },
+        "DLT": {
+          "active": 2,
+          "runnable": 1,
+          "blocked_by": [
+            "PRP-1"
+          ]
+        },
+        "IFRS": {
+          "active": 4,
+          "runnable": 3,
+          "blocked_by": [
+            "ENC-5"
+          ]
+        },
+        "JE": {
+          "active": 12,
+          "runnable": 10,
+          "blocked_by": [
+            "EDS-4",
+            "ENC-5"
+          ]
+        },
+        "LOSS": {
+          "active": 2,
+          "runnable": 0,
+          "blocked_by": [
+            "ENC-5"
+          ]
+        },
+        "MOD": {
+          "active": 19,
+          "runnable": 10,
+          "blocked_by": [
+            "ENC-5"
+          ]
+        },
+        "MR": {
+          "active": 12,
+          "runnable": 8,
+          "blocked_by": [
+            "ENC-8"
+          ]
+        },
+        "POB": {
+          "active": 16,
+          "runnable": 12,
+          "blocked_by": [
+            "ENC-6"
+          ]
+        },
+        "POS": {
+          "active": 11,
+          "runnable": 6,
+          "blocked_by": [
+            "ENC-5",
+            "ENC-6",
+            "PRP-1"
+          ]
+        },
+        "REC": {
+          "active": 24,
+          "runnable": 14,
+          "blocked_by": [
+            "ENC-5",
+            "ENC-6"
+          ]
+        },
+        "ROY": {
+          "active": 3,
+          "runnable": 0,
+          "blocked_by": [
+            "ENC-6",
+            "ENC-8"
+          ]
+        },
+        "VC": {
+          "active": 14,
+          "runnable": 9,
+          "blocked_by": [
+            "EDS-4",
+            "ENC-5",
+            "ENC-6"
+          ]
+        }
+      },
+      "blocked_keys": {
+        "BRK-CAP-CREDITS-ROLLOVER-RENEWAL": [
+          "ENC-8"
+        ],
+        "BRK-CHK-111-LAPSED": [
+          "ENC-8"
+        ],
+        "BRK-CHK-111-RENEWED": [
+          "ENC-8"
+        ],
+        "BRK-JS-02-GIFT-CARDS-BREAKAGE-ESCHEAT": [
+          "ENC-8"
+        ],
+        "BRK-S5-BREAKAGE-OWN": [
+          "ENC-8"
+        ],
+        "BRK-WM-06-PLATFORM-CREDITS-BREAKAGE-RE-ESTIMATE": [
+          "ENC-8"
+        ],
+        "DISC-S10-DISCLOSURES-REPORTS-EX21-ROLLFORWARD-AND-TIMING": [
+          "PRP-1"
+        ],
+        "DISC-S10-DISCLOSURES-RPO-EX42-TIME-BANDS-AND-EXPEDIENT": [
+          "ENC-6",
+          "PRP-1"
+        ],
+        "DLT-CHK-020-CHK-022-GT07-JANUARY-2023-GROSS-AND-DELTA-JOURNALS": [
+          "PRP-1"
+        ],
+        "IFRS-SW11-ONEROUS-CONTRACT-SCOPE-IFRS15-ONLY": [
+          "ENC-5"
+        ],
+        "JE-CHK-132-S7-LOSS-OWN-PROVISION-AND-RELEASE": [
+          "ENC-5"
+        ],
+        "LOSS-GE-03-LOSS-CONTRACT-PROVISION": [
+          "ENC-5"
+        ],
+        "LOSS-S7-LOSS-OWN": [
+          "ENC-5"
+        ],
+        "MOD-CHK-027-S6-EX8": [
+          "ENC-5"
+        ],
+        "MOD-CHK-042-D18": [
+          "ENC-5"
+        ],
+        "MOD-CHK-042-INCEPTION": [
+          "ENC-5"
+        ],
+        "MOD-CHK-115": [
+          "ENC-5"
+        ],
+        "MOD-FS-03-CASEA-UPSELL-AT-SSP-SEPARATE": [
+          "ENC-5"
+        ],
+        "MOD-FS-03-CASEB-UPSELL-DISCOUNT-PROSPECTIVE": [
+          "ENC-5"
+        ],
+        "MOD-GE-02-CHANGE-ORDERS-UNPRICED-AND-CLAIM": [
+          "ENC-5"
+        ],
+        "MOD-GE-08-PARTIAL-TERMINATION-FOR-CONVENIENCE": [
+          "ENC-5"
+        ],
+        "MOD-S6-COMBINED-MOD-OWN": [
+          "ENC-5"
+        ],
+        "MR-CHK-051-S2-EX49-EXPIRY": [
+          "ENC-8"
+        ],
+        "MR-CHK-053-S2-EX52": [
+          "ENC-8"
+        ],
+        "MR-JS-01-POS-PORTFOLIO-POINTS-REDEMPTION": [
+          "ENC-8"
+        ],
+        "MR-WM-07-PARTNER-AIRLINE-TICKETS-WITH-MILES": [
+          "ENC-8"
+        ],
+        "POB-JS-05-CASEA-FRANCHISE-PUBLIC": [
+          "ENC-6"
+        ],
+        "POB-JS-05-CASEB-FRANCHISE-PRIVATE-EXPEDIENT": [
+          "ENC-6"
+        ],
+        "POB-S2-EX12A-OWNVOLUMES": [
+          "ENC-6"
+        ],
+        "POB-S2-EX61": [
+          "ENC-6"
+        ],
+        "POS-CHK-010": [
+          "ENC-6"
+        ],
+        "POS-CHK-012-S9-PRESENTATION-NETTING-PER-CONTRACT": [
+          "PRP-1"
+        ],
+        "POS-CHK-014-S5-PROGRESS-VARIANTS-RIGHT-TO-INVOICE": [
+          "ENC-6"
+        ],
+        "POS-CHK-117-BALANCE-AGING-EXPORT-TIES-TO-RECLASS": [
+          "PRP-1"
+        ],
+        "POS-GE-07-RETAINAGE-PRESENTATION": [
+          "ENC-5"
+        ],
+        "REC-BR-08-CUSTOMISED-TOOLING-COST-TO-COST": [
+          "ENC-5"
+        ],
+        "REC-CHK-014-S5-PROGRESS-VARIANTS-RTI": [
+          "ENC-6"
+        ],
+        "REC-FS-07-FIXED-FEE-EAC-HOURS-REVISION": [
+          "ENC-5"
+        ],
+        "REC-FS-08-TM-RIGHT-TO-INVOICE": [
+          "ENC-6"
+        ],
+        "REC-GE-01-EPC-UNINSTALLED-MATERIALS-ZERO-MARGIN": [
+          "ENC-5"
+        ],
+        "REC-RB-05-CAPITATION-PMPM-RATE-AMENDMENT": [
+          "ENC-6"
+        ],
+        "REC-S5-EX19": [
+          "ENC-5"
+        ],
+        "REC-S5-OVERTIME-OWN-OT": [
+          "ENC-5"
+        ],
+        "REC-S5-PROGRESS-VARIANTS-COSTRECOVERY": [
+          "ENC-5"
+        ],
+        "REC-S5-PROGRESS-VARIANTS-WASTE": [
+          "ENC-5"
+        ],
+        "ROY-JS-07-ADVERTISING-FUND-GROSS": [
+          "ENC-6",
+          "ENC-8"
+        ],
+        "ROY-JS-08-ROYALTIES-LAGGING-REPORTS": [
+          "ENC-6",
+          "ENC-8"
+        ],
+        "ROY-S5-EX60": [
+          "ENC-6"
+        ],
+        "VC-CAP-USAGE-QUARTERLY-MINIMUM-TRUEUP": [
+          "ENC-6"
+        ],
+        "VC-CHK-100-S3-EX21-EXTENDED": [
+          "ENC-5"
+        ],
+        "VC-GE-04-CPIF-EAC-REVISIONS": [
+          "ENC-5"
+        ],
+        "VC-GE-05-AWARD-FEE-POOL-CONSTRAINT": [
+          "ENC-5"
+        ],
+        "DISC-CATCH-UP-BY-CAUSE-ESTIMATE-CHANGE-AND-MODIFICATION": [
+          "EDS-4"
+        ],
+        "DISC-CHK-101-S3-EX23-CASEB-PRIOR-PERIOD-POB-REVENUE": [
+          "EDS-4"
+        ],
+        "JE-CHK-026-CHK-100-S3-EX21-EXTENDED-BONUS-CATCH-UP": [
+          "EDS-4"
+        ],
+        "VC-FS-02-COMMITTED-SPEND-TIERED-OVERAGE": [
+          "EDS-4"
+        ]
+      },
+      "changed_from_v0": {
+        "removed": [
+          "DISC-CATCH-UP-BY-CAUSE-ESTIMATE-CHANGE-AND-MODIFICATION",
+          "DISC-CHK-101-S3-EX23-CASEB-PRIOR-PERIOD-POB-REVENUE",
+          "JE-CHK-026-CHK-100-S3-EX21-EXTENDED-BONUS-CATCH-UP",
+          "VC-FS-02-COMMITTED-SPEND-TIERED-OVERAGE"
+        ],
+        "reason": "measure revenue_prior_period (ENGINE_SPEC_B \u00a715.2.4) is produced by EDS-4, moved post-rc by R-RC-1"
+      }
+    },
+    "golden": {
+      "kinds_green": {
+        "initial_allocation": 16,
+        "pob_position": 17,
+        "contract_position": 50,
+        "cumulative_catchup": 10,
+        "legacy_probe": 4,
+        "journal_entry_totals": 24
+      },
+      "cases": 121,
+      "not_green": {
+        "point_in_time_equivalence": "GPB-3 deferred (LMG-4, SNP-1 to SNP-3)"
+      }
+    },
+    "e2e": {
+      "screens_spec": "every screens.spec.ts row of the in-scope screen items passes with no serious or critical axe violation, both themes read against SCREENS, except the fragments hidden under R-RC-1",
+      "hidden_under_r_rc_1": [
+        "sf-05-locked (CLO-23)",
+        "sf-06 seeded runs, sf-06-run-batches acknowledged batches (CLO-26: run created in beforeAll, CSV export only)",
+        "sf-04-locked (RPS-7)",
+        "sf-06-entries seeded Aug 2026 (RPS-7: run from beforeAll)",
+        "sf-08-report-rpo-locked (RPS-6)",
+        "SF-03 void and regroup drawers (CTR-22)",
+        "SF-03:billing billing plan and SF-03:schedules contract costs panel (CTR-23)"
+      ],
+      "smoke": "SUP-RC-SMOKE (docs/build-spec/sprint/sup-rc-smoke.md), RC-SMOKE.1 to RC-SMOKE.10; RC-SMOKE.4 waits for DIN-9",
+      "not_green": [
+        "J-01 (RPS-23, RPS-24 deferred)",
+        "J-02 to J-19, J-22, J-24 to J-26 (DMO)",
+        "J-20, J-21 (LMG)",
+        "J-23 (CLO-27)",
+        "DMO captures of seeded close history, locks and as-locked views (R-RC-1)",
+        "WLD-B-04 import captures and RC-SMOKE.4 until DIN-9 (CSV v2 progress_events) lands"
+      ],
+      "partial_waiting_for_deferred_items": [
+        "DIN-15: WLD-B-04 seed test and SF-10 grid row (waits for DIN-9, CSV v2 progress_events)",
+        "DIN-16: REQ-UX-021 job-progress step on WLD-F-21 and the SF-10:detail WLD-B-04 capture (waits for DIN-9)",
+        "DIN-17: SF-11:item WLD-B-04 capture (waits for DIN-9)",
+        "SUP-RC-SMOKE: RC-SMOKE.4 (waits for DIN-9)"
+      ]
+    },
+    "supervisor_verification": [
+      "docker build of the three deploy/docker Dockerfiles and docker compose -f deploy/compose.yaml config, by hand (DEP-5 scripts deferred)",
+      "multi-role browser QA of the rc screens as maya, priya, marcus and robert (G12)"
+    ]
+  },
+  "validation": {
+    "validator": "validate-vabc (independent validator)",
+    "script": "python3 -B docs/build-spec/sprint/validate_vabc.py check",
+    "run_at": "2026-09-14T01:02:42Z",
+    "build_spec_sha256": "2ec8424e087b1a33aaa2c2dc67f257b74aa22189310444b29136ff175191358c",
+    "checks": [
+      {
+        "name": "(f) every in-scope item exactly once; done, in scope and deferred partition the items",
+        "ok": true,
+        "failures": [],
+        "waived": []
+      },
+      {
+        "name": "(e) batches 1-4 items and <=75 min; <=5 lanes; lane ids, worktrees and merge order; lane box",
+        "ok": true,
+        "failures": [],
+        "waived": [
+          "declared lane-box exception: L5-1 245 min, with a fallback"
+        ]
+      },
+      {
+        "name": "(a) ordering: edges done, in L1, earlier, or a flagged contract; integration notes match",
+        "ok": true,
+        "failures": [],
+        "waived": [
+          "contract END-1 -> ENC-15 in L2 (engine state type)",
+          "contract CTR-2 -> END-9 in L3 (V-C engine contract)",
+          "contract CTR-2 -> END-10 in L3 (V-C engine contract)",
+          "contract CTR-2 -> EDS-1 in L3 (V-C engine contract)",
+          "contract CTR-3 -> END-9 in L3 (V-C engine contract)",
+          "contract CTR-4 -> END-9 in L3 (V-C engine contract)",
+          "contract DIN-15 -> DIN-10 in L6 (04 API schema)",
+          "contract DIN-16 -> DIN-10 in L6 (04 API schema)",
+          "contract DIN-17 -> DIN-11 in L6 (04 API schema)",
+          "contract CLO-26 -> CLO-8 in L6 (04 API schema)",
+          "contract CLO-26 -> CLO-11 in L6 (04 API schema)",
+          "contract CLO-26 -> CLO-13 in L6 (04 API schema)",
+          "contract RPS-22 -> RPS-6 in L7 (04 API schema)",
+          "contract RPS-22 -> RPS-7 in L7 (04 API schema)",
+          "contract RPS-6 -> RPS-5 in L7 (04 API schema)",
+          "contract RPS-7 -> CLO-4 in L7 (04 API schema)",
+          "contract RPS-7 -> RPS-5 in L7 (04 API schema)",
+          "contract SUP-RC-SMOKE -> RPS-22 in L7 (supervisor)"
+        ]
+      },
+      {
+        "name": "(b) no in-scope item depends on a deferred item (R-RC-1, reviews and partial fragments excepted)",
+        "ok": true,
+        "failures": [],
+        "waived": [
+          "partial DIN-15 -> DIN-9: the WLD-B-04 seed test and the SF-10 grid row of the WLD-B-04 import",
+          "partial DIN-16 -> DIN-9: the REQ-UX-021 job-progress step on WLD-F-21 and the SF-10:detail WLD-B-04 capture",
+          "partial DIN-17 -> DIN-9: the SF-11:item capture of a WLD-B-04 item",
+          "partial SUP-RC-SMOKE -> DIN-9: RC-SMOKE.4 (WLD-B-04 findings)"
+        ]
+      },
+      {
+        "name": "(c) MVP capabilities of SPRINT-1.0rc.md \u00a71 and \u00a73 covered; forced prerequisites; J-01 fallback",
+        "ok": true,
+        "failures": [],
+        "waived": []
+      },
+      {
+        "name": "(d) <=2 migration lanes, re-parenting order, no edge between them; overlaps only on \u00a74.3 or V-A files",
+        "ok": true,
+        "failures": [],
+        "waived": [
+          "V-A L4: L4-2 re-parented onto L4-1",
+          "V-A L5: L5-2 re-parented onto L5-1"
+        ]
+      },
+      {
+        "name": "(g) minutes, level estimates and cumulative hours; merge gates; release key list",
+        "ok": true,
+        "failures": [],
+        "waived": []
+      }
+    ],
+    "serial_edges_not_satisfied_by_position": 3,
+    "verified_edges": [
+      {
+        "item": "CTR-3",
+        "dependency": "END-9",
+        "evidence": "test_active_contract_posts_sealed_balanced_posting computes an activated K-11 and asserts O1 revenue 53,504.59 EUR; postings are persisted from the erev_engine.compute output (END-9)"
+      },
+      {
+        "item": "CTR-4",
+        "dependency": "END-9",
+        "evidence": "test_create_draft_computes_provisional_version and test_allocation_walk_sf_ord_20417 assert the KPIs and allocation walk (97,627.12) of a computed version (erev_engine.compute, END-9)"
+      },
+      {
+        "item": "DIN-15",
+        "dependency": "DIN-9",
+        "evidence": "the WLD-B-04 seed uploads avm-us-progress-2026-09-invalid.csv, a Progress events (CSV v2) import (SCREENS \u00a712.2 validate wireframe), then commits the corrected file; DIN-3 creates only the customers and contracts emitters, progress_events.py is DIN-9"
+      },
+      {
+        "item": "DIN-16",
+        "dependency": "DIN-9",
+        "evidence": "the REQ-UX-021 step uploads avm-de-progress-2026-09.csv (WLD-F-21), uploaded with template Progress events (CSV v2) (PRD J-04.1; DIN-9 test_progress_events_k11); the SF-10:detail capture reads the WLD-B-04 import seeded by DIN-15"
+      },
+      {
+        "item": "DIN-17",
+        "dependency": "DIN-9",
+        "evidence": "SF-11:item captures a WLD-B-04 exception item, created by the DIN-15 seed through the CSV v2 progress_events template (DIN-9)"
+      }
+    ],
+    "partial_fragments": [
+      {
+        "item": "DIN-15",
+        "waits_for": "DIN-9",
+        "fragment": "the WLD-B-04 seed test and the SF-10 grid row of the WLD-B-04 import"
+      },
+      {
+        "item": "DIN-16",
+        "waits_for": "DIN-9",
+        "fragment": "the REQ-UX-021 job-progress step on WLD-F-21 and the SF-10:detail WLD-B-04 capture"
+      },
+      {
+        "item": "DIN-17",
+        "waits_for": "DIN-9",
+        "fragment": "the SF-11:item capture of a WLD-B-04 item"
+      },
+      {
+        "item": "SUP-RC-SMOKE",
+        "waits_for": "DIN-9",
+        "fragment": "RC-SMOKE.4 (WLD-B-04 findings)"
+      }
+    ],
+    "note": "independent validation; the planner self-check of evaluate.py is superseded"
+  },
+  "supervisor_amendments": [
+    {
+      "id": "D-82a",
+      "change": "DIN-9 moved from deferred into L5-1 after DIN-4",
+      "validator_note": "validate_vabc.py checks (b), (f), (g) compare with V-0 less D-82 moved items; D-82a addition is intentional. Ordering (a), capabilities (c), migrations and overlaps (d), batch rules (e) pass"
+    }
+  ]
+}

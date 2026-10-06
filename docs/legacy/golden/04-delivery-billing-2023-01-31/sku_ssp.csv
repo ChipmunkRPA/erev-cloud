@@ -1,0 +1,8 @@
+SKU Unique ID,SKU Name,Distinct or Nondistinct,SKU Unit List Price,ASC 606 Stratification,Midpoint Discount Percentage,SSP Range Method (+-),SSP Version,Revenue Account
+1,Hardware 1,Distinct,100,Hardware 1,0.1,0.15,2023-01-01,5001
+2,Software 1,Distinct,200,Software 1,0.2,0.15,2023-01-01,5002
+3,Consulting 1,Nondistinct,300,Consulting 1,0.5,0.0,2023-01-01,5003
+4,Material Right - Hardware,Distinct,1,Material Right - Hardware,0.0,0.0,2023-01-01,5001
+5,Material Right - Software,Distinct,1,Material Right - Software,0.0,0.0,2023-01-01,5002
+6,Material Right - Services,Nondistinct,1,Material Right - Services,0.0,0.0,2023-01-01,5003
+7,Variable Consideration,Nondistinct,0,VC,0.0,0.0,2023-01-01,5004

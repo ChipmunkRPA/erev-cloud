@@ -1,0 +1,268 @@
+# docs/accounting/answer-keys/vc/VC-D91-01-TARGETED-THEN-UNTARGETED-CHANGE.yaml
+# Authored by engine lane ENG-B2 from POLICIES §2.1.2 and ENGINE_SPEC S08-R-07 (rev 1.6), decision D-91; never from engine output.
+schema: "erev-answer-key/1"
+id: "VC-D91-01-TARGETED-THEN-UNTARGETED-CHANGE"
+title: "Targeted variable consideration survives later untargeted price changes: the carried quota is spread by inception SSP and posted as one apportionment (D-91 S08-R-07)"
+status: "active"
+families: ["VC", "ALC", "DISC"]
+tags: ["targeted-vc", "estimate-change"]
+summary: "Two point-in-time products A and B with standalone selling prices of 100.00 each are sold for 50.00 each on 1 January 2026. A variable consideration element of 100.00 is allocated entirely to A under 606-10-32-40 (attested criteria, POL-044), so the inception allocation is A 150.00 / B 50.00; A transfers on 10 January (revenue 150.00). A contract-wide variable element then moves 0 -> 100.00 (1 February) -> 0 (1 March) -> 100.00 (1 April). Under 606-10-32-43 the later changes are allocated on the same basis as at inception without undoing the 32-40 allocation: each change is spread by relative SSP (50/50) over the carried quotas, x_A = 150 + U/2 and x_B = 50 + U/2, and the posted allocations are one apportionment of the price over those exact quotas. February: A 200.00 / B 100.00, revenue +50.00 on the satisfied A; March: A 150.00 / B 50.00, revenue -50.00; April: A 200.00 / B 100.00, revenue +50.00. B is wholly unsatisfied and carries no targeted quota, so the RPO under POL-200 APPLY is B's allocation: 50.00, 100.00, 50.00, 100.00. Before D-91 the engine re-derived every quota from raw SSP (150/150, 100/100, 150/150) and posted no February catch-up."
+authority:
+  codification: ["606-10-32-39", "606-10-32-40", "606-10-32-41", "606-10-32-42", "606-10-32-43", "606-10-32-44", "606-10-50-14A"]
+  ifrs: []
+  practice: ["docs/accounting/POLICIES.md section 2.1.2 largest remainder, Uses", "docs/accounting/ENGINE_SPEC.md S08-R-04, S08-R-06, S08-R-07 (rev 1.6, D-91)"]
+  urls: []
+derived_from:
+  research04: []
+  research05: []
+  chk: []
+  golden: []
+  dev: []
+requirements: ["REQ-ALC-005", "REQ-TP-003", "REQ-REC-021"]
+policy_refs: ["POL-044", "POL-200"]
+review: {author: "engine lane ENG-B2 (D-91)", authored_on: "2026-09-18", reviewer: null, reviewed_on: null, status: "pending"}
+runner: "engine"
+books: ["ASC606"]
+world:
+  tenant: {reporting_currency: "USD", preset: "DEFAULT"}
+  currencies: ["USD"]
+  entities:
+    - code: "US01"
+      name: "Example US (Demo)"
+      functional_currency: "USD"
+      time_zone: "America/New_York"
+      calendar: {pattern: "MONTHLY", fiscal_year_start_month: "1"}
+      books: ["ASC606"]
+  periods: {from: "2026-01", to: "2026-04"}
+  period_states: []
+  gl_accounts:
+    - {code: "1100", name: "Accounts receivable (billed)", account_type: "ASSET"}
+    - {code: "1101", name: "AR contra - implicit price concession", account_type: "ASSET"}
+    - {code: "1105", name: "Unbilled receivable", account_type: "ASSET"}
+    - {code: "1200", name: "Contract asset", account_type: "ASSET"}
+    - {code: "1210", name: "Customer incentive asset", account_type: "ASSET"}
+    - {code: "1310", name: "Asset for right to recover returned products", account_type: "ASSET"}
+    - {code: "1400", name: "Capitalised costs to obtain a contract", account_type: "ASSET"}
+    - {code: "1410", name: "Capitalised costs to fulfil a contract", account_type: "ASSET"}
+    - {code: "1500", name: "Noncash consideration received", account_type: "ASSET"}
+    - {code: "1800", name: "Intercompany due from", account_type: "ASSET"}
+    - {code: "1900", name: "Clearing - unapplied cash", account_type: "ASSET"}
+    - {code: "1910", name: "Clearing - inventory", account_type: "ASSET"}
+    - {code: "1920", name: "Clearing - investments", account_type: "ASSET"}
+    - {code: "2020", name: "Commissions payable (contract cost clearing)", account_type: "LIABILITY"}
+    - {code: "2050", name: "Clearing - supplier payables", account_type: "LIABILITY"}
+    - {code: "2060", name: "Clearing - billing", account_type: "LIABILITY"}
+    - {code: "2100", name: "Contract liability", account_type: "LIABILITY"}
+    - {code: "2105", name: "Deposit liability (Step 1 not met)", account_type: "LIABILITY"}
+    - {code: "2110", name: "Refund liability", account_type: "LIABILITY"}
+    - {code: "2200", name: "Sales tax payable", account_type: "LIABILITY"}
+    - {code: "2300", name: "Provision for anticipated losses on contracts", account_type: "LIABILITY"}
+    - {code: "2400", name: "Consideration payable to customer", account_type: "LIABILITY"}
+    - {code: "2600", name: "Assurance-type warranty provision", account_type: "LIABILITY"}
+    - {code: "2800", name: "Intercompany due to", account_type: "LIABILITY"}
+    - {code: "3100", name: "Clearing - equity", account_type: "EQUITY"}
+    - {code: "4000", name: "Revenue - products", account_type: "REVENUE"}
+    - {code: "4010", name: "Revenue - services / subscriptions", account_type: "REVENUE"}
+    - {code: "4020", name: "Revenue - licences / royalties", account_type: "REVENUE"}
+    - {code: "4030", name: "Revenue - material rights / loyalty / breakage", account_type: "REVENUE"}
+    - {code: "4900", name: "Pre-standard revenue", account_type: "REVENUE"}
+    - {code: "5000", name: "Cost of revenue", account_type: "EXPENSE"}
+    - {code: "5100", name: "Amortisation of contract costs", account_type: "EXPENSE"}
+    - {code: "5200", name: "Warranty expense", account_type: "EXPENSE"}
+    - {code: "5300", name: "Loss on contracts", account_type: "EXPENSE"}
+    - {code: "6000", name: "Impairment of contract cost assets", account_type: "EXPENSE"}
+    - {code: "7000", name: "Interest income", account_type: "REVENUE"}
+    - {code: "7100", name: "Interest expense", account_type: "EXPENSE"}
+    - {code: "7200", name: "Foreign exchange gain or loss", account_type: "EXPENSE"}
+    - {code: "7900", name: "Rounding", account_type: "EXPENSE"}
+  account_mapping:
+    - {account_role: "REVENUE", account: "4000"}
+    - {account_role: "CONTRACT_LIABILITY", account: "2100"}
+    - {account_role: "CONTRACT_ASSET", account: "1200"}
+    - {account_role: "UNBILLED_RECEIVABLE", account: "1105"}
+    - {account_role: "ACCOUNTS_RECEIVABLE", account: "1100"}
+    - {account_role: "BILLING_CLEARING", clearing_purpose: "BILLING", account: "2060"}
+    - {account_role: "BILLING_CLEARING", clearing_purpose: "UNAPPLIED_CASH", account: "1900"}
+    - {account_role: "BILLING_CLEARING", clearing_purpose: "AP_SUPPLIER", account: "2050"}
+    - {account_role: "BILLING_CLEARING", clearing_purpose: "INVENTORY", account: "1910"}
+    - {account_role: "BILLING_CLEARING", clearing_purpose: "EQUITY", account: "3100"}
+    - {account_role: "BILLING_CLEARING", clearing_purpose: "INVESTMENTS", account: "1920"}
+    - {account_role: "REFUND_LIABILITY", account: "2110"}
+    - {account_role: "RETURN_ASSET", account: "1310"}
+    - {account_role: "DEPOSIT_LIABILITY", account: "2105"}
+    - {account_role: "CONSIDERATION_PAYABLE", account: "2400"}
+    - {account_role: "CUSTOMER_INCENTIVE_ASSET", account: "1210"}
+    - {account_role: "COST_TO_OBTAIN_ASSET", account: "1400"}
+    - {account_role: "COST_TO_FULFILL_ASSET", account: "1410"}
+    - {account_role: "CONTRACT_COST_AMORTIZATION", account: "5100"}
+    - {account_role: "CONTRACT_COST_IMPAIRMENT", account: "6000"}
+    - {account_role: "LOSS_PROVISION", account: "2300"}
+    - {account_role: "LOSS_EXPENSE", account: "5300"}
+    - {account_role: "WARRANTY_PROVISION", account: "2600"}
+    - {account_role: "WARRANTY_EXPENSE", account: "5200"}
+    - {account_role: "INTEREST_INCOME", account: "7000"}
+    - {account_role: "INTEREST_EXPENSE", account: "7100"}
+    - {account_role: "FX_GAIN_LOSS", account: "7200"}
+    - {account_role: "INTERCOMPANY_DUE_TO", account: "2800"}
+    - {account_role: "INTERCOMPANY_DUE_FROM", account: "1800"}
+    - {account_role: "NONCASH_CONSIDERATION_ASSET", account: "1500"}
+    - {account_role: "SALES_TAX_PAYABLE", account: "2200"}
+    - {account_role: "PRE_STANDARD_REVENUE", account: "4900"}
+    - {account_role: "ROUNDING", account: "7900"}
+    - {account_role: "COST_OF_REVENUE", account: "5000"}
+    - {account_role: "CONTRACT_COST_CLEARING", account: "2020"}
+    - {account_role: "RECEIVABLE_CONTRA", account: "1101"}
+  customers:
+    - {code: "CUST-1", name: "Example Customer (Demo)"}
+  pob_templates:
+    - code: "TPL-PIT"
+      obligation_kind: "STANDARD"
+      distinctness: "distinct"
+      satisfaction_pattern: "POINT_IN_TIME"
+      over_time_criterion: "NOT_APPLICABLE"
+      recognition_method: "POINT_IN_TIME"
+  products:
+    - {code: "PROD-A", name: "Product A (Demo)", pob_template: "TPL-PIT"}
+    - {code: "PROD-B", name: "Product B (Demo)", pob_template: "TPL-PIT"}
+  ssp_books:
+    - code: "SSP-MAIN"
+      resolution_mode: "EFFECTIVE_DATE"
+      versions:
+        - effective_from_date: "2026-01-01"
+          methodology_label: "Observable standalone prices"
+          entries:
+            - product: "PROD-A"
+              currency: "USD"
+              method: "observable"
+              distinctness: "distinct"
+              ranges:
+                - {point_value: "100"}
+            - product: "PROD-B"
+              currency: "USD"
+              method: "observable"
+              distinctness: "distinct"
+              ranges:
+                - {point_value: "100"}
+  fx_rate_sets: []
+  rule_sets: []
+  policies: {tenant: {}, entities: {US01: {rpo.exemption_vc_wholly_unsatisfied: "APPLY"}}, books: {}}
+contracts:
+  - external_id: "K-01"
+    customer: "CUST-1"
+    contracting_entity: "US01"
+    transaction_currency: "USD"
+    inception_date: "2026-01-01"
+    estimates:
+      - element_code: "VC-1"
+        estimate_kind: "VARIABLE_CONSIDERATION"
+        method: "ENTERED_AMOUNT"
+        allocation_target: "OBLIGATIONS"
+        target_obligation_keys: ["A"]
+        allocation_criteria_evidence: "Reviewer attested 606-10-32-40(a) and (b): the variable terms relate specifically to product A and the allocation is consistent with the allocation objective"
+        versions:
+          - version_no: "1"
+            effective_date: "2026-01-01"
+            constrained_amount: "100.00"
+            rationale: "Performance-based consideration that relates specifically to product A (32-40); constrained estimate 100.00"
+      - element_code: "BASE"
+        estimate_kind: "VARIABLE_CONSIDERATION"
+        method: "ENTERED_AMOUNT"
+        allocation_target: "CONTRACT"
+        versions:
+          - version_no: "1"
+            effective_date: "2026-01-01"
+            constrained_amount: "0.00"
+            rationale: "Contract-wide variable consideration; nothing expected at inception"
+          - version_no: "2"
+            effective_date: "2026-02-01"
+            constrained_amount: "100.00"
+            rationale: "Reassessment: 100.00 now expected (32-42 to 32-44; allocated on the inception basis, 32-43)"
+          - version_no: "3"
+            effective_date: "2026-03-01"
+            constrained_amount: "0.00"
+            rationale: "Reassessment: the contract-wide consideration is no longer expected"
+          - version_no: "4"
+            effective_date: "2026-04-01"
+            constrained_amount: "100.00"
+            rationale: "Reassessment: 100.00 expected again"
+    lines:
+      - {obligation_key: "A", product_code: "PROD-A", quantity: "1", total_price: "50.00", start_date: "2026-01-01", end_date: "2026-12-31"}
+      - {obligation_key: "B", product_code: "PROD-B", quantity: "1", total_price: "50.00", start_date: "2026-01-01", end_date: "2026-12-31"}
+timeline:
+  - {seq: 1, kind: "event", contract: "K-01", event_type: "CONTRACT_BOOKED", effective_date: "2026-01-01", payload: {}}
+  - {seq: 2, kind: "event", contract: "K-01", event_type: "CONTRACT_ACTIVATED", effective_date: "2026-01-01", payload: {}}
+  - {seq: 3, kind: "event", contract: "K-01", event_type: "ESTIMATE_CHANGED", effective_date: "2026-01-01", payload: {estimate: "BASE", version_no: "1"}}
+  - {seq: 4, kind: "event", contract: "K-01", event_type: "ESTIMATE_CHANGED", effective_date: "2026-01-01", payload: {estimate: "VC-1", version_no: "1"}}
+  - {seq: 5, kind: "event", contract: "K-01", event_type: "DELIVERY_RECORDED", effective_date: "2026-01-10", payload: {obligation_key: "A", quantity: "1", trigger: "DELIVERY"}}
+  - {seq: 6, kind: "event", contract: "K-01", event_type: "ESTIMATE_CHANGED", effective_date: "2026-02-01", payload: {estimate: "BASE", version_no: "2"}}
+  - {seq: 7, kind: "event", contract: "K-01", event_type: "ESTIMATE_CHANGED", effective_date: "2026-03-01", payload: {estimate: "BASE", version_no: "3"}}
+  - {seq: 8, kind: "event", contract: "K-01", event_type: "ESTIMATE_CHANGED", effective_date: "2026-04-01", payload: {estimate: "BASE", version_no: "4"}}
+checkpoints:
+  - name: "january"
+    after_seq: 5
+    as_of: "2026-01-31"
+    book: "ASC606"
+    contracts:
+      - contract: "K-01"
+        version: {transaction_price: "200.00", revenue_cum: "150.00", rpo_amount: "50.00"}
+        obligations:
+          - {obligation_key: "A", allocated_amount: "150.00", revenue_cum: "150.00"}
+          - {obligation_key: "B", allocated_amount: "50.00", revenue_cum: "0.00"}
+    subledger:
+      - period_key: "FY2026-P01"
+        entity: "US01"
+        match: "subset"
+        grain: "role_account"
+        lines:
+          - {account_role: "REVENUE", account: "4000", cr: "150.00"}
+  - name: "february"
+    after_seq: 6
+    as_of: "2026-02-28"
+    book: "ASC606"
+    contracts:
+      - contract: "K-01"
+        version: {transaction_price: "300.00", revenue_cum: "200.00", rpo_amount: "100.00"}
+        obligations:
+          - {obligation_key: "A", allocated_amount: "200.00", revenue_cum: "200.00"}
+          - {obligation_key: "B", allocated_amount: "100.00", revenue_cum: "0.00"}
+    subledger:
+      - period_key: "FY2026-P02"
+        entity: "US01"
+        match: "subset"
+        grain: "role_account"
+        lines:
+          - {account_role: "REVENUE", account: "4000", cr: "50.00"}
+  - name: "march"
+    after_seq: 7
+    as_of: "2026-03-31"
+    book: "ASC606"
+    contracts:
+      - contract: "K-01"
+        version: {transaction_price: "200.00", revenue_cum: "150.00", rpo_amount: "50.00"}
+        obligations:
+          - {obligation_key: "A", allocated_amount: "150.00", revenue_cum: "150.00"}
+          - {obligation_key: "B", allocated_amount: "50.00", revenue_cum: "0.00"}
+    subledger:
+      - period_key: "FY2026-P03"
+        entity: "US01"
+        match: "subset"
+        grain: "role_account"
+        lines:
+          - {account_role: "REVENUE", account: "4000", dr: "50.00"}
+  - name: "april"
+    after_seq: 8
+    as_of: "2026-04-30"
+    book: "ASC606"
+    contracts:
+      - contract: "K-01"
+        version: {transaction_price: "300.00", revenue_cum: "200.00", rpo_amount: "100.00"}
+        obligations:
+          - {obligation_key: "A", allocated_amount: "200.00", revenue_cum: "200.00"}
+          - {obligation_key: "B", allocated_amount: "100.00", revenue_cum: "0.00"}
+    subledger:
+      - period_key: "FY2026-P04"
+        entity: "US01"
+        match: "subset"
+        grain: "role_account"
+        lines:
+          - {account_role: "REVENUE", account: "4000", cr: "50.00"}

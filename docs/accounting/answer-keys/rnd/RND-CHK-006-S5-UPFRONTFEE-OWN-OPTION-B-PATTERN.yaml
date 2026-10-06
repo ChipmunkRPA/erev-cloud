@@ -1,0 +1,154 @@
+# docs/accounting/answer-keys/rnd/RND-CHK-006-S5-UPFRONTFEE-OWN-OPTION-B-PATTERN.yaml
+schema: "erev-answer-key/1"
+id: RND-CHK-006-S5-UPFRONTFEE-OWN-OPTION-B-PATTERN
+title: "Research 04 S5-UPFRONTFEE-OWN option B rounding pattern: 3,000.00 over 36 months"
+status: active
+families: [RND, REC]
+tags: [r04-s5]
+summary: >-
+  Rounding pattern of option B: a 12-month subscription of 12,000.00 and a nonrefundable set-up fee of 3,000.00
+  recognised over the 36-month expected benefit period (POL-029), invoiced together at inception. [A] To isolate the
+  ALG-01 pattern the fee's benefit period is booked as a distinct time-elapsed line with SSP equal to its price; the
+  material-right analysis itself belongs to the MR family. Cumulative fee revenue round(3,000 × k ÷ 36) gives 83.34 in
+  months 2, 5, 8 and 11 and 83.33 otherwise in year 1; year-1 revenue 13,000.00 and the year-end contract liability
+  2,000.00. Cross-slice variants with distinct inputs, kept: REC-S5-UPFRONTFEE-OWN-B (different lines and policies)
+  (ADJUDICATION.md R-DUP-02).
+authority:
+  codification: ["606-10-55-50", "606-10-55-51", "606-10-55-53", "606-10-25-31"]
+  ifrs: ["IFRS 15.B48", "IFRS 15.B49"]
+  practice: []
+  urls: []
+derived_from: {research04: [S5-UPFRONTFEE-OWN], research05: [], chk: [CHK-006], golden: [], dev: []}
+requirements: [REQ-REC-019, REQ-REC-003]
+policy_refs: [POL-003, POL-029, POL-090]
+review:
+  author: answer-keys-fx-entity-books
+  authored_on: "2026-09-12"
+  reviewer: null
+  reviewed_on: null
+  status: pending
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: US01
+      name: "Avenmoor Systems Inc. (Demo)"
+      functional_currency: USD
+      time_zone: "America/New_York"
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: 1}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2028-12"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4010", name: "Revenue - services and subscriptions", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, account: "4010", product: SUB-12M}
+    - {account_role: REVENUE, account: "4010", product: SETUP-36M}
+  customers:
+    - {code: CUST-1, name: "Pellworth Logistics Inc. (Demo)"}
+  pob_templates:
+    - code: TPL-RAT-ME
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_A
+      recognition_method: TIME_ELAPSED
+      ratable_convention: MONTHLY_EVEN
+  products:
+    - {code: SUB-12M, name: "Subscription, 12 months", pob_template: TPL-RAT-ME}
+    - {code: SETUP-36M, name: "Set-up fee, expected benefit period 36 months", pob_template: TPL-RAT-ME}
+  ssp_books:
+    - code: SSP-US01-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2026-01-01"
+          methodology_label: "Observable standalone prices"
+          entries:
+            - product: SUB-12M
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "12000.00"}
+            - product: SETUP-36M
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "3000.00"}
+  fx_rate_sets: []
+  rule_sets: []
+  policies: {tenant: {billing.posting: ERP}, entities: {}, books: {}}
+contracts:
+  - external_id: C-S5-UPFRONT
+    customer: CUST-1
+    contracting_entity: US01
+    transaction_currency: USD
+    inception_date: "2026-01-01"
+    lines:
+      - obligation_key: L1-SUBSCRIPTION
+        product_code: SUB-12M
+        quantity: "1"
+        total_price: "12000.00"
+        start_date: "2026-01-01"
+        end_date: "2026-12-31"
+      - obligation_key: L2-SETUP
+        product_code: SETUP-36M
+        quantity: "1"
+        total_price: "3000.00"
+        start_date: "2026-01-01"
+        end_date: "2028-12-31"
+timeline:
+  - seq: 1
+    kind: event
+    contract: C-S5-UPFRONT
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: 2
+    kind: event
+    contract: C-S5-UPFRONT
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: 3
+    kind: event
+    contract: C-S5-UPFRONT
+    event_type: BILLING_RECORDED
+    effective_date: "2026-01-01"
+    payload: {invoice_number: INV-UF-1, line_external_id: INV-UF-1-1, amount: "15000.00", issue_date: "2026-01-01"}
+checkpoints:
+  - name: year-end-2026
+    after_seq: 3
+    as_of: "2026-12-31"
+    book: ASC606
+    contracts:
+      - contract: C-S5-UPFRONT
+        version: {revenue_cum: "13000.00"}
+        balances:
+          - {entity: US01, contract_liability: "2000.00"}
+        schedule:
+          - obligation_key: L2-SETUP
+            schedule_kind: REVENUE
+            line_type: NORMAL
+            amounts:
+              FY2026-P01: "83.33"
+              FY2026-P02: "83.34"
+              FY2026-P03: "83.33"
+              FY2026-P04: "83.33"
+              FY2026-P05: "83.34"
+              FY2026-P06: "83.33"
+              FY2026-P07: "83.33"
+              FY2026-P08: "83.34"
+              FY2026-P09: "83.33"
+              FY2026-P10: "83.33"
+              FY2026-P11: "83.34"
+              FY2026-P12: "83.33"

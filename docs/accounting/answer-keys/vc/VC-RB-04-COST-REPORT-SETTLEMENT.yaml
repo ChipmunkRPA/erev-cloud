@@ -1,0 +1,245 @@
+schema: erev-answer-key/1
+id: VC-RB-04-COST-REPORT-SETTLEMENT
+title: "Medicare cost-report settlement estimated as variable consideration with a refund liability until settled"
+status: active
+families: [VC, RET, JE, POS]
+tags: []
+summary: "Riverbend bills 1,200,000.00 of 2026 Medicare outpatient services at interim rates (aggregated here at 31 December 2026). Based on the draft cost report, the final settlement is expected to require repayment of 60,000.00, so the transaction price is 1,140,000.00 and the expected repayment on billed consideration is a refund liability (JET-04b; 606-10-32-10). When the cost report is filed on 31 May 2027 the estimate falls to 45,000.00 (revenue +15,000.00, refund liability 45,000.00). The final settlement on 30 November 2027 is 50,000.00: revenue −5,000.00; the settlement credit memo reduces the receivable (JET-03 credit memo, ENGINE mode) and the refund liability is released to 0.00."
+authority:
+  codification: ["606-10-32-5", "606-10-32-8", "606-10-32-10", "606-10-32-14", "606-10-55-22"]
+  ifrs: ["IFRS 15.55"]
+  practice: ["PwC Health care industry guide 3.3 (settlements with third-party payors)"]
+  urls: []
+derived_from: {research04: [], research05: [RB-04], chk: [], golden: [], dev: []}
+requirements: [REQ-TP-002, REQ-TP-004, REQ-TP-018, REQ-BIL-002, REQ-BIL-007]
+policy_refs: [POL-004, POL-040, POL-127, POL-182]
+review: {author: answer-keys-industries, authored_on: "2026-09-12", reviewer: null, reviewed_on: null, status: pending}
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: RB-US
+      name: "Riverbend Health System (Demo)"
+      functional_currency: USD
+      time_zone: America/New_York
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: "1"}
+      books: [ASC606]
+  periods: {from: "2026-12", to: "2027-11"}
+  period_states: []
+  gl_accounts:
+    - {code: "1100", name: "Accounts receivable", account_type: ASSET}
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "2110", name: "Refund liability", account_type: LIABILITY}
+    - {code: "4010", name: "Revenue - services and subscriptions", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: ACCOUNTS_RECEIVABLE, account: "1100"}
+    - {account_role: REFUND_LIABILITY, account: "2110"}
+    - {account_role: REVENUE, product: OP-MEDICARE-2026, account: "4010"}
+  customers: [{code: CUST-RB04, name: "Medicare administrative contractor (Demo)"}]
+  pob_templates:
+    - code: TPL-OUTPATIENT
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: POINT_IN_TIME
+      over_time_criterion: NOT_APPLICABLE
+      recognition_method: POINT_IN_TIME
+      policy_values: {balance.right_to_consideration: CONDITIONAL}
+  products:
+    - code: OP-MEDICARE-2026
+      name: "2026 Medicare outpatient services"
+      pob_template: TPL-OUTPATIENT
+      revenue_category: PATIENT_SERVICE
+  ssp_books:
+    - code: SSP-RB-US-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2025-01-01"
+          methodology_label: "Observable standalone prices (demo study)"
+          entries:
+            - product: OP-MEDICARE-2026
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges: [{point_value: "1200000.00"}]
+  fx_rate_sets: []
+  rule_sets: []
+  policies:
+    tenant: {billing.posting: ENGINE, recognition.time_convention: MONTHLY_EVEN}
+    entities: {}
+    books: {}
+contracts:
+  - external_id: RB-04
+    customer: CUST-RB04
+    contracting_entity: RB-US
+    transaction_currency: USD
+    inception_date: "2026-12-31"
+    contract_type: PORTFOLIO
+    lines: [{obligation_key: L1-SERVICES, product_code: OP-MEDICARE-2026, quantity: "1", total_price: "1200000.00"}]
+    estimates:
+      - element_code: VC-RB04-SETTLEMENT
+        estimate_kind: VARIABLE_CONSIDERATION
+        method: MOST_LIKELY_AMOUNT
+        obligation_key: L1-SERVICES
+        vc_element_type: REFUND
+        allocation_target: OBLIGATIONS
+        target_obligation_keys: [L1-SERVICES]
+        versions:
+          - version_no: "1"
+            effective_date: "2026-12-31"
+            unconstrained_amount: "60000.00"
+            most_conservative_amount: "60000.00"
+            constrained_amount: "60000.00"
+            currency: USD
+            rationale: "Draft cost report: interim payments exceed allowable costs by 60,000.00."
+          - version_no: "2"
+            effective_date: "2027-05-31"
+            unconstrained_amount: "45000.00"
+            most_conservative_amount: "45000.00"
+            constrained_amount: "45000.00"
+            currency: USD
+            rationale: "Filed cost report."
+          - version_no: "3"
+            effective_date: "2027-11-30"
+            unconstrained_amount: "50000.00"
+            most_conservative_amount: "50000.00"
+            constrained_amount: "50000.00"
+            currency: USD
+            rationale: "Notice of program reimbursement: final settlement."
+timeline:
+  - seq: "1"
+    kind: event
+    contract: RB-04
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-12-31"
+    payload: {}
+  - seq: "2"
+    kind: event
+    contract: RB-04
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-12-31"
+    payload: {}
+  - seq: "3"
+    kind: event
+    contract: RB-04
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-12-31"
+    payload: {estimate: VC-RB04-SETTLEMENT, version_no: "1"}
+  - seq: "4"
+    kind: event
+    contract: RB-04
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-12-31"
+    payload: {obligation_key: L1-SERVICES, quantity: "1", trigger: DELIVERY}
+  - seq: "5"
+    kind: event
+    contract: RB-04
+    event_type: BILLING_RECORDED
+    effective_date: "2026-12-31"
+    payload:
+      invoice_number: INTERIM-RB04-2026
+      line_external_id: INTERIM-RB04-2026-1
+      amount: "1200000.00"
+      issue_date: "2026-12-31"
+      obligation_key: L1-SERVICES
+  - seq: "6"
+    kind: event
+    contract: RB-04
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2027-05-31"
+    payload: {estimate: VC-RB04-SETTLEMENT, version_no: "2"}
+  - seq: "7"
+    kind: event
+    contract: RB-04
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2027-11-30"
+    payload: {estimate: VC-RB04-SETTLEMENT, version_no: "3"}
+  - seq: "8"
+    kind: event
+    contract: RB-04
+    event_type: CREDIT_MEMO_RECORDED
+    effective_date: "2027-11-30"
+    payload:
+      credit_memo_number: NPR-RB04-2026
+      obligation_key: L1-SERVICES
+      amount: "50000.00"
+      issue_date: "2027-11-30"
+      reason: COST_REPORT_SETTLEMENT
+checkpoints:
+  - name: interim-billed
+    after_seq: "5"
+    as_of: "2026-12-31"
+    book: ASC606
+    contracts:
+      - contract: RB-04
+        version: {revenue_cum: "1140000.00", billed_cum: "1200000.00", transaction_price: "1140000.00"}
+        obligations: [{obligation_key: L1-SERVICES, allocated_amount: "1140000.00", revenue_cum: "1140000.00"}]
+        balances:
+          - entity: RB-US
+            contract_liability: "0.00"
+            contract_asset: "0.00"
+            unbilled_receivable: "0.00"
+            refund_liability: "60000.00"
+            accounts_receivable: "1200000.00"
+    subledger:
+      - period_key: FY2026-P12
+        entity: RB-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: ACCOUNTS_RECEIVABLE, account: "1100", dr: "1200000.00"}
+          - {account_role: REFUND_LIABILITY, account: "2110", cr: "60000.00"}
+          - {account_role: REVENUE, account: "4010", cr: "1140000.00"}
+  - name: cost-report-filed
+    after_seq: "6"
+    as_of: "2027-05-31"
+    book: ASC606
+    contracts:
+      - contract: RB-04
+        version: {revenue_cum: "1155000.00", billed_cum: "1200000.00", transaction_price: "1155000.00"}
+        obligations: [{obligation_key: L1-SERVICES, allocated_amount: "1155000.00", revenue_cum: "1155000.00"}]
+        balances:
+          - entity: RB-US
+            contract_liability: "0.00"
+            contract_asset: "0.00"
+            unbilled_receivable: "0.00"
+            refund_liability: "45000.00"
+            accounts_receivable: "1200000.00"
+    subledger:
+      - period_key: FY2027-P05
+        entity: RB-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: REFUND_LIABILITY, account: "2110", dr: "15000.00"}
+          - {account_role: REVENUE, account: "4010", cr: "15000.00"}
+  - name: final-settlement
+    after_seq: "8"
+    as_of: "2027-11-30"
+    book: ASC606
+    contracts:
+      - contract: RB-04
+        version: {revenue_cum: "1150000.00", billed_cum: "1150000.00", transaction_price: "1150000.00"}
+        obligations: [{obligation_key: L1-SERVICES, allocated_amount: "1150000.00", revenue_cum: "1150000.00"}]
+        balances:
+          - entity: RB-US
+            contract_liability: "0.00"
+            contract_asset: "0.00"
+            unbilled_receivable: "0.00"
+            refund_liability: "0.00"
+            accounts_receivable: "1150000.00"
+    subledger:
+      - period_key: FY2027-P11
+        entity: RB-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: ACCOUNTS_RECEIVABLE, account: "1100", cr: "50000.00"}
+          - {account_role: REFUND_LIABILITY, account: "2110", dr: "45000.00"}
+          - {account_role: REVENUE, account: "4010", dr: "5000.00"}

@@ -1,0 +1,132 @@
+# Design-check configuration (docs/design/DESIGN_SYSTEM.md §12 path table; docs/dev-guide.md §0.5).
+# Paths are repository-relative; directories end with "/". Scan paths resolve against --root, the
+# fixtures against the repository that holds scripts/design_check.py.
+
+[paths]
+scan_root = "frontend/src/"
+token_copy = "frontend/src/styles/tokens.css"
+token_source = "docs/design/tokens.css"
+icon_registry = "frontend/src/components/icons/registry.ts"
+icon_directory = "frontend/src/components/icons/"
+chart_directory = "frontend/src/components/charts/"
+ai_directory = "frontend/src/components/ai/"
+format_module = "frontend/src/lib/format/"
+api_types = "frontend/src/lib/api/schema.d.ts"
+fixtures = "scripts/design_check_fixtures/"
+# Theme and density bootstrap (DS-DEN-01); not scanned.
+theme_bootstrap = "frontend/public/theme-init.js"
+
+# DS-LINT-21 self-test: each fixture is scanned as `path` and must yield exactly `expect`.
+
+[[fixture]]
+file = "DS-LINT-01.ts"
+path = "frontend/src/design-check-fixture/DS-LINT-01.ts"
+expect = ["DS-LINT-01"]
+
+[[fixture]]
+file = "DS-LINT-02.tsx"
+path = "frontend/src/design-check-fixture/DS-LINT-02.tsx"
+expect = ["DS-LINT-02"]
+
+[[fixture]]
+file = "DS-LINT-03.tsx"
+path = "frontend/src/design-check-fixture/DS-LINT-03.tsx"
+expect = ["DS-LINT-03"]
+
+[[fixture]]
+file = "DS-LINT-04.tsx"
+path = "frontend/src/design-check-fixture/DS-LINT-04.tsx"
+expect = ["DS-LINT-04"]
+
+[[fixture]]
+file = "DS-LINT-05.css"
+path = "frontend/src/design-check-fixture/DS-LINT-05.css"
+expect = ["DS-LINT-05"]
+
+[[fixture]]
+file = "DS-LINT-06.tsx"
+path = "frontend/src/design-check-fixture/DS-LINT-06.tsx"
+expect = ["DS-LINT-06"]
+
+[[fixture]]
+file = "DS-LINT-07.tsx"
+path = "frontend/src/design-check-fixture/DS-LINT-07.tsx"
+expect = ["DS-LINT-07"]
+
+[[fixture]]
+file = "DS-LINT-08.tsx"
+path = "frontend/src/design-check-fixture/DS-LINT-08.tsx"
+expect = ["DS-LINT-08"]
+
+# The date literal also constructs a Date outside the format module (DS-LINT-23).
+[[fixture]]
+file = "DS-LINT-09.tsx"
+path = "frontend/src/design-check-fixture/DS-LINT-09.tsx"
+expect = ["DS-LINT-09", "DS-LINT-23"]
+
+[[fixture]]
+file = "DS-LINT-10.tsx"
+path = "frontend/src/design-check-fixture/DS-LINT-10.tsx"
+expect = ["DS-LINT-10"]
+
+[[fixture]]
+file = "DS-LINT-11.tsx"
+path = "frontend/src/design-check-fixture/DS-LINT-11.tsx"
+expect = ["DS-LINT-11"]
+
+[[fixture]]
+file = "DS-LINT-12.tsx"
+path = "frontend/src/design-check-fixture/DS-LINT-12.tsx"
+expect = ["DS-LINT-12"]
+
+[[fixture]]
+file = "DS-LINT-13.tsx"
+path = "frontend/src/design-check-fixture/DS-LINT-13.tsx"
+expect = ["DS-LINT-13"]
+
+# Scanned as the token copy and compared with docs/design/tokens.css.
+[[fixture]]
+file = "DS-LINT-14.css"
+path = "frontend/src/styles/tokens.css"
+expect = ["DS-LINT-14"]
+
+# Scanned as the normative token file.
+[[fixture]]
+file = "DS-LINT-15.css"
+path = "docs/design/tokens.css"
+expect = ["DS-LINT-15"]
+
+[[fixture]]
+file = "DS-LINT-16.tsx"
+path = "frontend/src/design-check-fixture/DS-LINT-16.tsx"
+expect = ["DS-LINT-16"]
+
+[[fixture]]
+file = "DS-LINT-17.css"
+path = "frontend/src/design-check-fixture/DS-LINT-17.css"
+expect = ["DS-LINT-17"]
+
+[[fixture]]
+file = "DS-LINT-18.json"
+path = "frontend/src/messages/DS-LINT-18.json"
+expect = ["DS-LINT-18"]
+
+[[fixture]]
+file = "DS-LINT-20.css"
+path = "frontend/src/design-check-fixture/DS-LINT-20.css"
+expect = ["DS-LINT-20"]
+
+[[fixture]]
+file = "DS-LINT-22.tsx"
+path = "frontend/src/design-check-fixture/DS-LINT-22.tsx"
+expect = ["DS-LINT-22"]
+
+[[fixture]]
+file = "DS-LINT-23.ts"
+path = "frontend/src/design-check-fixture/DS-LINT-23.ts"
+expect = ["DS-LINT-23"]
+
+[[fixture]]
+file = "clean.tsx"
+path = "frontend/src/design-check-fixture/clean.tsx"
+expect = []

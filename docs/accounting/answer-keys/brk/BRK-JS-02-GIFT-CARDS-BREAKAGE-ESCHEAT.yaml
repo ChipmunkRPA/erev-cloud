@@ -1,0 +1,260 @@
+schema: erev-answer-key/1
+id: BRK-JS-02-GIFT-CARDS-BREAKAGE-ESCHEAT
+title: "Gift cards: breakage in proportion to redemptions, and no breakage where unclaimed-property law applies"
+status: active
+families: [BRK, REC]
+tags: []
+summary: "research 05 §9 worked example. Gift cards of 50,000.00 sold in December 2025 in a jurisdiction without escheat: expected breakage 10% (5,000.00), constrained estimate approved, expected redemptions 45,000.00. Revenue = card value × cumulative redemptions ÷ expected redemptions (POL-055 PROPORTIONAL_TO_EXERCISE): redemptions 27,000.00 in Q1 2026 give revenue 30,000.00 (breakage 3,000.00) and contract liability 20,000.00; redemptions 18,000.00 in Q2 give 20,000.00 (breakage 2,000.00) and liability 0.00. A second cohort of 50,000.00 sold in a jurisdiction whose unclaimed-property law requires remittance of unredeemed balances: the unredeemed 5,000.00 is never breakage (606-10-55-49), the breakage rate is 0 and expected redemptions are 50,000.00, so revenue equals redemptions and 5,000.00 stays a liability after Q2."
+authority:
+  codification: ["606-10-55-46", "606-10-55-47", "606-10-55-48", "606-10-55-49", "606-10-25-25"]
+  ifrs: ["IFRS 15.B44", "IFRS 15.B46"]
+  practice: ["DART 8.8 (breakage)", "RH breakage practice note (research 05 [RH-Breakage])"]
+  urls: []
+derived_from: {research04: [], research05: [JS-02], chk: [], golden: [], dev: []}
+requirements: [REQ-REC-016, REQ-TP-004, REQ-POB-006]
+policy_refs: [POL-055, POL-182]
+review: {author: answer-keys-industries, authored_on: "2026-09-12", reviewer: null, reviewed_on: null, status: pending}
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: JS-US
+      name: "Juniper Street US (Demo)"
+      functional_currency: USD
+      time_zone: America/Los_Angeles
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: "1"}
+      books: [ASC606]
+  periods: {from: "2025-12", to: "2026-06"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4030", name: "Revenue - material rights, loyalty and breakage", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, product: GIFT-CARD, account: "4030"}
+  customers:
+    - {code: CUST-JS02-A, name: "December 2025 gift card cohort, no escheat (Demo)"}
+    - {code: CUST-JS02-B, name: "December 2025 gift card cohort, escheat state (Demo)"}
+  pob_templates:
+    - code: TPL-GIFT-CARD
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_A
+      recognition_method: REDEMPTION_PATTERN
+      policy_values: {balance.right_to_consideration: CONDITIONAL}
+  products:
+    - {code: GIFT-CARD, name: "Gift card (face value units)", pob_template: TPL-GIFT-CARD, revenue_category: PREPAID}
+  ssp_books:
+    - code: SSP-JS-US-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2025-01-01"
+          methodology_label: "Observable standalone prices (demo study)"
+          entries:
+            - product: GIFT-CARD
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges: [{point_value: "1.00"}]
+  fx_rate_sets: []
+  rule_sets: []
+  policies:
+    tenant: {billing.posting: ERP, recognition.time_convention: MONTHLY_EVEN}
+    entities: {}
+    books: {}
+contracts:
+  - external_id: JS-02-GC-NO-ESCHEAT
+    customer: CUST-JS02-A
+    contracting_entity: JS-US
+    transaction_currency: USD
+    inception_date: "2025-12-31"
+    contract_type: PORTFOLIO
+    lines: [{obligation_key: L1-CARDS, product_code: GIFT-CARD, quantity: "50000", total_price: "50000.00"}]
+    estimates:
+      - element_code: BRK-JS-02-GC-NO-ESCHEAT
+        estimate_kind: BREAKAGE
+        method: RATE
+        obligation_key: L1-CARDS
+        versions:
+          - version_no: "1"
+            effective_date: "2025-12-31"
+            rate: "0.10"
+            expected_quantity: "45000"
+            rationale: "Redemption history of prior cohorts: 10% never redeemed; not subject to escheat."
+  - external_id: JS-02-GC-ESCHEAT
+    customer: CUST-JS02-B
+    contracting_entity: JS-US
+    transaction_currency: USD
+    inception_date: "2025-12-31"
+    contract_type: PORTFOLIO
+    lines: [{obligation_key: L1-CARDS, product_code: GIFT-CARD, quantity: "50000", total_price: "50000.00"}]
+    estimates:
+      - element_code: BRK-JS-02-GC-ESCHEAT
+        estimate_kind: BREAKAGE
+        method: RATE
+        obligation_key: L1-CARDS
+        versions:
+          - version_no: "1"
+            effective_date: "2025-12-31"
+            rate: "0"
+            expected_quantity: "50000"
+            rationale: "Unredeemed balances are remitted under state unclaimed-property law (606-10-55-49); no breakage."
+timeline:
+  - seq: "1"
+    kind: event
+    contract: JS-02-GC-NO-ESCHEAT
+    event_type: CONTRACT_BOOKED
+    effective_date: "2025-12-31"
+    payload: {}
+  - seq: "2"
+    kind: event
+    contract: JS-02-GC-NO-ESCHEAT
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2025-12-31"
+    payload: {}
+  - seq: "3"
+    kind: event
+    contract: JS-02-GC-NO-ESCHEAT
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2025-12-31"
+    payload: {estimate: BRK-JS-02-GC-NO-ESCHEAT, version_no: "1"}
+  - seq: "4"
+    kind: event
+    contract: JS-02-GC-NO-ESCHEAT
+    event_type: BILLING_RECORDED
+    effective_date: "2025-12-31"
+    payload:
+      invoice_number: GC-SALES-O-ESCHEAT
+      line_external_id: GC-SALES-O-ESCHEAT-1
+      amount: "50000.00"
+      issue_date: "2025-12-31"
+      obligation_key: L1-CARDS
+  - seq: "5"
+    kind: event
+    contract: JS-02-GC-ESCHEAT
+    event_type: CONTRACT_BOOKED
+    effective_date: "2025-12-31"
+    payload: {}
+  - seq: "6"
+    kind: event
+    contract: JS-02-GC-ESCHEAT
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2025-12-31"
+    payload: {}
+  - seq: "7"
+    kind: event
+    contract: JS-02-GC-ESCHEAT
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2025-12-31"
+    payload: {estimate: BRK-JS-02-GC-ESCHEAT, version_no: "1"}
+  - seq: "8"
+    kind: event
+    contract: JS-02-GC-ESCHEAT
+    event_type: BILLING_RECORDED
+    effective_date: "2025-12-31"
+    payload:
+      invoice_number: GC-SALES-C-ESCHEAT
+      line_external_id: GC-SALES-C-ESCHEAT-1
+      amount: "50000.00"
+      issue_date: "2025-12-31"
+      obligation_key: L1-CARDS
+  - seq: "9"
+    kind: event
+    contract: JS-02-GC-NO-ESCHEAT
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-03-31"
+    payload: {obligation_key: L1-CARDS, quantity: "27000", trigger: DELIVERY}
+  - seq: "10"
+    kind: event
+    contract: JS-02-GC-ESCHEAT
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-03-31"
+    payload: {obligation_key: L1-CARDS, quantity: "27000", trigger: DELIVERY}
+  - seq: "11"
+    kind: event
+    contract: JS-02-GC-NO-ESCHEAT
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-06-30"
+    payload: {obligation_key: L1-CARDS, quantity: "18000", trigger: DELIVERY}
+  - seq: "12"
+    kind: event
+    contract: JS-02-GC-ESCHEAT
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-06-30"
+    payload: {obligation_key: L1-CARDS, quantity: "18000", trigger: DELIVERY}
+checkpoints:
+  - name: q1
+    after_seq: "10"
+    as_of: "2026-03-31"
+    book: ASC606
+    contracts:
+      - contract: JS-02-GC-NO-ESCHEAT
+        version: {transaction_price: "50000.00", revenue_cum: "30000.00", billed_cum: "50000.00"}
+        obligations:
+          - obligation_key: L1-CARDS
+            allocated_amount: "50000.00"
+            revenue_cum: "30000.00"
+            satisfaction_status: PARTIALLY_SATISFIED
+        balances: [{entity: JS-US, contract_liability: "20000.00", contract_asset: "0.00", unbilled_receivable: "0.00"}]
+      - contract: JS-02-GC-ESCHEAT
+        version: {transaction_price: "50000.00", revenue_cum: "27000.00", billed_cum: "50000.00"}
+        obligations:
+          - obligation_key: L1-CARDS
+            allocated_amount: "50000.00"
+            revenue_cum: "27000.00"
+            satisfaction_status: PARTIALLY_SATISFIED
+        balances: [{entity: JS-US, contract_liability: "23000.00", contract_asset: "0.00", unbilled_receivable: "0.00"}]
+    subledger:
+      - period_key: FY2026-P03
+        entity: JS-US
+        match: exact
+        contract: JS-02-GC-NO-ESCHEAT
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "30000.00"}
+          - {account_role: REVENUE, account: "4030", cr: "30000.00"}
+  - name: q2
+    after_seq: "12"
+    as_of: "2026-06-30"
+    book: ASC606
+    contracts:
+      - contract: JS-02-GC-NO-ESCHEAT
+        version: {transaction_price: "50000.00", revenue_cum: "50000.00", billed_cum: "50000.00"}
+        obligations:
+          - obligation_key: L1-CARDS
+            allocated_amount: "50000.00"
+            revenue_cum: "50000.00"
+            satisfaction_status: SATISFIED
+        balances: [{entity: JS-US, contract_liability: "0.00", contract_asset: "0.00", unbilled_receivable: "0.00"}]
+      - contract: JS-02-GC-ESCHEAT
+        version: {transaction_price: "50000.00", revenue_cum: "45000.00", billed_cum: "50000.00"}
+        obligations:
+          - obligation_key: L1-CARDS
+            allocated_amount: "50000.00"
+            revenue_cum: "45000.00"
+            satisfaction_status: PARTIALLY_SATISFIED
+        balances: [{entity: JS-US, contract_liability: "5000.00", contract_asset: "0.00", unbilled_receivable: "0.00"}]
+    subledger:
+      - period_key: FY2026-P06
+        entity: JS-US
+        match: exact
+        contract: JS-02-GC-NO-ESCHEAT
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "20000.00"}
+          - {account_role: REVENUE, account: "4030", cr: "20000.00"}
+      - period_key: FY2026-P06
+        entity: JS-US
+        match: exact
+        contract: JS-02-GC-ESCHEAT
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "18000.00"}
+          - {account_role: REVENUE, account: "4030", cr: "18000.00"}

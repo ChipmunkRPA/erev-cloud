@@ -1,0 +1,162 @@
+# docs/accounting/answer-keys/rnd/RND-CHK-145-MID-MONTH-EDGE-CASES.yaml
+schema: "erev-answer-key/1"
+id: RND-CHK-145-MID-MONTH-EDGE-CASES
+title: "ALG-11 MID_MONTH edge cases: fallback period and inclusive thresholds"
+status: active
+families: [RND, REC]
+tags: [subscription]
+summary: >-
+  (a) 500.00 over 2026-01-20 to 2026-02-10 counts no period by the rule, so the fallback counts February 2026: January
+  0.00, February 500.00. (b) 500.00 over 2026-01-05 to 2026-01-10 falls back to January 2026. (c) 1,300.00 over
+  2026-01-15 to 2027-01-15: both thresholds are inclusive, m = 13, 100.00 in every period from January 2026 to January
+  2027.
+authority:
+  codification: ["606-10-25-27", "606-10-25-31", "606-10-55-17", "606-10-55-20"]
+  ifrs: ["IFRS 15.35", "IFRS 15.39", "IFRS 15.B15"]
+  practice: []
+  urls: []
+derived_from: {research04: [], research05: [], chk: [CHK-145], golden: [], dev: []}
+requirements: [REQ-REC-003, REQ-REC-019]
+policy_refs: [POL-003, POL-090]
+review:
+  author: answer-keys-fx-entity-books
+  authored_on: "2026-09-12"
+  reviewer: null
+  reviewed_on: null
+  status: pending
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: US01
+      name: "Avenmoor Systems Inc. (Demo)"
+      functional_currency: USD
+      time_zone: "America/New_York"
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: 1}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2027-01"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4010", name: "Revenue - services and subscriptions", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, account: "4010", product: SUB-MM-A}
+    - {account_role: REVENUE, account: "4010", product: SUB-MM-B}
+    - {account_role: REVENUE, account: "4010", product: SUB-MM-C}
+  customers:
+    - {code: CUST-1, name: "Pellworth Logistics Inc. (Demo)"}
+  pob_templates:
+    - code: TPL-RAT-MM
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_A
+      recognition_method: TIME_ELAPSED
+      ratable_convention: MID_MONTH
+  products:
+    - {code: SUB-MM-A, name: "Subscription SUB-MM-A", pob_template: TPL-RAT-MM}
+    - {code: SUB-MM-B, name: "Subscription SUB-MM-B", pob_template: TPL-RAT-MM}
+    - {code: SUB-MM-C, name: "Subscription SUB-MM-C", pob_template: TPL-RAT-MM}
+  ssp_books:
+    - code: SSP-US01-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2026-01-01"
+          methodology_label: "Observable standalone prices"
+          entries:
+            - product: SUB-MM-A
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "500.00"}
+            - product: SUB-MM-B
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "500.00"}
+            - product: SUB-MM-C
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "1300.00"}
+  fx_rate_sets: []
+  rule_sets: []
+  policies: {tenant: {billing.posting: ERP}, entities: {}, books: {}}
+contracts:
+  - external_id: C-RND-CHK-145-MID-MONTH-EDGE-CASES
+    customer: CUST-1
+    contracting_entity: US01
+    transaction_currency: USD
+    inception_date: "2026-01-05"
+    lines:
+      - obligation_key: POB-A
+        product_code: SUB-MM-A
+        quantity: "1"
+        total_price: "500.00"
+        start_date: "2026-01-20"
+        end_date: "2026-02-10"
+      - obligation_key: POB-B
+        product_code: SUB-MM-B
+        quantity: "1"
+        total_price: "500.00"
+        start_date: "2026-01-05"
+        end_date: "2026-01-10"
+      - obligation_key: POB-C
+        product_code: SUB-MM-C
+        quantity: "1"
+        total_price: "1300.00"
+        start_date: "2026-01-15"
+        end_date: "2027-01-15"
+timeline:
+  - seq: 1
+    kind: event
+    contract: C-RND-CHK-145-MID-MONTH-EDGE-CASES
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-01-05"
+    payload: {}
+  - seq: 2
+    kind: event
+    contract: C-RND-CHK-145-MID-MONTH-EDGE-CASES
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-05"
+    payload: {}
+checkpoints:
+  - name: full-schedule
+    after_seq: 2
+    as_of: "2027-01-31"
+    book: ASC606
+    contracts:
+      - contract: C-RND-CHK-145-MID-MONTH-EDGE-CASES
+        schedule:
+          - obligation_key: POB-A
+            schedule_kind: REVENUE
+            line_type: NORMAL
+            amounts: {FY2026-P01: "0.00", FY2026-P02: "500.00"}
+          - {obligation_key: POB-B, schedule_kind: REVENUE, line_type: NORMAL, amounts: {FY2026-P01: "500.00"}}
+          - obligation_key: POB-C
+            schedule_kind: REVENUE
+            line_type: NORMAL
+            amounts:
+              FY2026-P01: "100.00"
+              FY2026-P02: "100.00"
+              FY2026-P03: "100.00"
+              FY2026-P04: "100.00"
+              FY2026-P05: "100.00"
+              FY2026-P06: "100.00"
+              FY2026-P07: "100.00"
+              FY2026-P08: "100.00"
+              FY2026-P09: "100.00"
+              FY2026-P10: "100.00"
+              FY2026-P11: "100.00"
+              FY2026-P12: "100.00"
+              FY2027-P01: "100.00"

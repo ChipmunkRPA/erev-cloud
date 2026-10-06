@@ -1,0 +1,1787 @@
+{
+  "standard": "OWASP ASVS",
+  "version": "5.0.0",
+  "commit": "5cf9b032440be53ce345ab3c130fda46ba1ce7a2",
+  "catalogue_sha256": "bcdbec214d70abcfad9284a31d4f9e5134305831d628aad3aa85d7e26626cb35",
+  "all_requirement_count": 345,
+  "level_counts": {
+    "2": 183,
+    "1": 70,
+    "3": 92
+  },
+  "l2_inventory_count": 253,
+  "selection": "Every L1 and L2 requirement; applicability and test acceptance not determined.",
+  "requirements": [
+    {
+      "id": "V1.1.1",
+      "version_qualified_id": "v5.0.0-1.1.1",
+      "level": 2,
+      "chapter": "V1",
+      "section": "V1.1"
+    },
+    {
+      "id": "V1.1.2",
+      "version_qualified_id": "v5.0.0-1.1.2",
+      "level": 2,
+      "chapter": "V1",
+      "section": "V1.1"
+    },
+    {
+      "id": "V1.2.1",
+      "version_qualified_id": "v5.0.0-1.2.1",
+      "level": 1,
+      "chapter": "V1",
+      "section": "V1.2"
+    },
+    {
+      "id": "V1.2.2",
+      "version_qualified_id": "v5.0.0-1.2.2",
+      "level": 1,
+      "chapter": "V1",
+      "section": "V1.2"
+    },
+    {
+      "id": "V1.2.3",
+      "version_qualified_id": "v5.0.0-1.2.3",
+      "level": 1,
+      "chapter": "V1",
+      "section": "V1.2"
+    },
+    {
+      "id": "V1.2.4",
+      "version_qualified_id": "v5.0.0-1.2.4",
+      "level": 1,
+      "chapter": "V1",
+      "section": "V1.2"
+    },
+    {
+      "id": "V1.2.5",
+      "version_qualified_id": "v5.0.0-1.2.5",
+      "level": 1,
+      "chapter": "V1",
+      "section": "V1.2"
+    },
+    {
+      "id": "V1.2.6",
+      "version_qualified_id": "v5.0.0-1.2.6",
+      "level": 2,
+      "chapter": "V1",
+      "section": "V1.2"
+    },
+    {
+      "id": "V1.2.7",
+      "version_qualified_id": "v5.0.0-1.2.7",
+      "level": 2,
+      "chapter": "V1",
+      "section": "V1.2"
+    },
+    {
+      "id": "V1.2.8",
+      "version_qualified_id": "v5.0.0-1.2.8",
+      "level": 2,
+      "chapter": "V1",
+      "section": "V1.2"
+    },
+    {
+      "id": "V1.2.9",
+      "version_qualified_id": "v5.0.0-1.2.9",
+      "level": 2,
+      "chapter": "V1",
+      "section": "V1.2"
+    },
+    {
+      "id": "V1.3.1",
+      "version_qualified_id": "v5.0.0-1.3.1",
+      "level": 1,
+      "chapter": "V1",
+      "section": "V1.3"
+    },
+    {
+      "id": "V1.3.2",
+      "version_qualified_id": "v5.0.0-1.3.2",
+      "level": 1,
+      "chapter": "V1",
+      "section": "V1.3"
+    },
+    {
+      "id": "V1.3.3",
+      "version_qualified_id": "v5.0.0-1.3.3",
+      "level": 2,
+      "chapter": "V1",
+      "section": "V1.3"
+    },
+    {
+      "id": "V1.3.4",
+      "version_qualified_id": "v5.0.0-1.3.4",
+      "level": 2,
+      "chapter": "V1",
+      "section": "V1.3"
+    },
+    {
+      "id": "V1.3.5",
+      "version_qualified_id": "v5.0.0-1.3.5",
+      "level": 2,
+      "chapter": "V1",
+      "section": "V1.3"
+    },
+    {
+      "id": "V1.3.6",
+      "version_qualified_id": "v5.0.0-1.3.6",
+      "level": 2,
+      "chapter": "V1",
+      "section": "V1.3"
+    },
+    {
+      "id": "V1.3.7",
+      "version_qualified_id": "v5.0.0-1.3.7",
+      "level": 2,
+      "chapter": "V1",
+      "section": "V1.3"
+    },
+    {
+      "id": "V1.3.8",
+      "version_qualified_id": "v5.0.0-1.3.8",
+      "level": 2,
+      "chapter": "V1",
+      "section": "V1.3"
+    },
+    {
+      "id": "V1.3.9",
+      "version_qualified_id": "v5.0.0-1.3.9",
+      "level": 2,
+      "chapter": "V1",
+      "section": "V1.3"
+    },
+    {
+      "id": "V1.3.10",
+      "version_qualified_id": "v5.0.0-1.3.10",
+      "level": 2,
+      "chapter": "V1",
+      "section": "V1.3"
+    },
+    {
+      "id": "V1.3.11",
+      "version_qualified_id": "v5.0.0-1.3.11",
+      "level": 2,
+      "chapter": "V1",
+      "section": "V1.3"
+    },
+    {
+      "id": "V1.4.1",
+      "version_qualified_id": "v5.0.0-1.4.1",
+      "level": 2,
+      "chapter": "V1",
+      "section": "V1.4"
+    },
+    {
+      "id": "V1.4.2",
+      "version_qualified_id": "v5.0.0-1.4.2",
+      "level": 2,
+      "chapter": "V1",
+      "section": "V1.4"
+    },
+    {
+      "id": "V1.4.3",
+      "version_qualified_id": "v5.0.0-1.4.3",
+      "level": 2,
+      "chapter": "V1",
+      "section": "V1.4"
+    },
+    {
+      "id": "V1.5.1",
+      "version_qualified_id": "v5.0.0-1.5.1",
+      "level": 1,
+      "chapter": "V1",
+      "section": "V1.5"
+    },
+    {
+      "id": "V1.5.2",
+      "version_qualified_id": "v5.0.0-1.5.2",
+      "level": 2,
+      "chapter": "V1",
+      "section": "V1.5"
+    },
+    {
+      "id": "V2.1.1",
+      "version_qualified_id": "v5.0.0-2.1.1",
+      "level": 1,
+      "chapter": "V2",
+      "section": "V2.1"
+    },
+    {
+      "id": "V2.1.2",
+      "version_qualified_id": "v5.0.0-2.1.2",
+      "level": 2,
+      "chapter": "V2",
+      "section": "V2.1"
+    },
+    {
+      "id": "V2.1.3",
+      "version_qualified_id": "v5.0.0-2.1.3",
+      "level": 2,
+      "chapter": "V2",
+      "section": "V2.1"
+    },
+    {
+      "id": "V2.2.1",
+      "version_qualified_id": "v5.0.0-2.2.1",
+      "level": 1,
+      "chapter": "V2",
+      "section": "V2.2"
+    },
+    {
+      "id": "V2.2.2",
+      "version_qualified_id": "v5.0.0-2.2.2",
+      "level": 1,
+      "chapter": "V2",
+      "section": "V2.2"
+    },
+    {
+      "id": "V2.2.3",
+      "version_qualified_id": "v5.0.0-2.2.3",
+      "level": 2,
+      "chapter": "V2",
+      "section": "V2.2"
+    },
+    {
+      "id": "V2.3.1",
+      "version_qualified_id": "v5.0.0-2.3.1",
+      "level": 1,
+      "chapter": "V2",
+      "section": "V2.3"
+    },
+    {
+      "id": "V2.3.2",
+      "version_qualified_id": "v5.0.0-2.3.2",
+      "level": 2,
+      "chapter": "V2",
+      "section": "V2.3"
+    },
+    {
+      "id": "V2.3.3",
+      "version_qualified_id": "v5.0.0-2.3.3",
+      "level": 2,
+      "chapter": "V2",
+      "section": "V2.3"
+    },
+    {
+      "id": "V2.3.4",
+      "version_qualified_id": "v5.0.0-2.3.4",
+      "level": 2,
+      "chapter": "V2",
+      "section": "V2.3"
+    },
+    {
+      "id": "V2.4.1",
+      "version_qualified_id": "v5.0.0-2.4.1",
+      "level": 2,
+      "chapter": "V2",
+      "section": "V2.4"
+    },
+    {
+      "id": "V3.2.1",
+      "version_qualified_id": "v5.0.0-3.2.1",
+      "level": 1,
+      "chapter": "V3",
+      "section": "V3.2"
+    },
+    {
+      "id": "V3.2.2",
+      "version_qualified_id": "v5.0.0-3.2.2",
+      "level": 1,
+      "chapter": "V3",
+      "section": "V3.2"
+    },
+    {
+      "id": "V3.3.1",
+      "version_qualified_id": "v5.0.0-3.3.1",
+      "level": 1,
+      "chapter": "V3",
+      "section": "V3.3"
+    },
+    {
+      "id": "V3.3.2",
+      "version_qualified_id": "v5.0.0-3.3.2",
+      "level": 2,
+      "chapter": "V3",
+      "section": "V3.3"
+    },
+    {
+      "id": "V3.3.3",
+      "version_qualified_id": "v5.0.0-3.3.3",
+      "level": 2,
+      "chapter": "V3",
+      "section": "V3.3"
+    },
+    {
+      "id": "V3.3.4",
+      "version_qualified_id": "v5.0.0-3.3.4",
+      "level": 2,
+      "chapter": "V3",
+      "section": "V3.3"
+    },
+    {
+      "id": "V3.4.1",
+      "version_qualified_id": "v5.0.0-3.4.1",
+      "level": 1,
+      "chapter": "V3",
+      "section": "V3.4"
+    },
+    {
+      "id": "V3.4.2",
+      "version_qualified_id": "v5.0.0-3.4.2",
+      "level": 1,
+      "chapter": "V3",
+      "section": "V3.4"
+    },
+    {
+      "id": "V3.4.3",
+      "version_qualified_id": "v5.0.0-3.4.3",
+      "level": 2,
+      "chapter": "V3",
+      "section": "V3.4"
+    },
+    {
+      "id": "V3.4.4",
+      "version_qualified_id": "v5.0.0-3.4.4",
+      "level": 2,
+      "chapter": "V3",
+      "section": "V3.4"
+    },
+    {
+      "id": "V3.4.5",
+      "version_qualified_id": "v5.0.0-3.4.5",
+      "level": 2,
+      "chapter": "V3",
+      "section": "V3.4"
+    },
+    {
+      "id": "V3.4.6",
+      "version_qualified_id": "v5.0.0-3.4.6",
+      "level": 2,
+      "chapter": "V3",
+      "section": "V3.4"
+    },
+    {
+      "id": "V3.5.1",
+      "version_qualified_id": "v5.0.0-3.5.1",
+      "level": 1,
+      "chapter": "V3",
+      "section": "V3.5"
+    },
+    {
+      "id": "V3.5.2",
+      "version_qualified_id": "v5.0.0-3.5.2",
+      "level": 1,
+      "chapter": "V3",
+      "section": "V3.5"
+    },
+    {
+      "id": "V3.5.3",
+      "version_qualified_id": "v5.0.0-3.5.3",
+      "level": 1,
+      "chapter": "V3",
+      "section": "V3.5"
+    },
+    {
+      "id": "V3.5.4",
+      "version_qualified_id": "v5.0.0-3.5.4",
+      "level": 2,
+      "chapter": "V3",
+      "section": "V3.5"
+    },
+    {
+      "id": "V3.5.5",
+      "version_qualified_id": "v5.0.0-3.5.5",
+      "level": 2,
+      "chapter": "V3",
+      "section": "V3.5"
+    },
+    {
+      "id": "V3.7.1",
+      "version_qualified_id": "v5.0.0-3.7.1",
+      "level": 2,
+      "chapter": "V3",
+      "section": "V3.7"
+    },
+    {
+      "id": "V3.7.2",
+      "version_qualified_id": "v5.0.0-3.7.2",
+      "level": 2,
+      "chapter": "V3",
+      "section": "V3.7"
+    },
+    {
+      "id": "V4.1.1",
+      "version_qualified_id": "v5.0.0-4.1.1",
+      "level": 1,
+      "chapter": "V4",
+      "section": "V4.1"
+    },
+    {
+      "id": "V4.1.2",
+      "version_qualified_id": "v5.0.0-4.1.2",
+      "level": 2,
+      "chapter": "V4",
+      "section": "V4.1"
+    },
+    {
+      "id": "V4.1.3",
+      "version_qualified_id": "v5.0.0-4.1.3",
+      "level": 2,
+      "chapter": "V4",
+      "section": "V4.1"
+    },
+    {
+      "id": "V4.2.1",
+      "version_qualified_id": "v5.0.0-4.2.1",
+      "level": 2,
+      "chapter": "V4",
+      "section": "V4.2"
+    },
+    {
+      "id": "V4.3.1",
+      "version_qualified_id": "v5.0.0-4.3.1",
+      "level": 2,
+      "chapter": "V4",
+      "section": "V4.3"
+    },
+    {
+      "id": "V4.3.2",
+      "version_qualified_id": "v5.0.0-4.3.2",
+      "level": 2,
+      "chapter": "V4",
+      "section": "V4.3"
+    },
+    {
+      "id": "V4.4.1",
+      "version_qualified_id": "v5.0.0-4.4.1",
+      "level": 1,
+      "chapter": "V4",
+      "section": "V4.4"
+    },
+    {
+      "id": "V4.4.2",
+      "version_qualified_id": "v5.0.0-4.4.2",
+      "level": 2,
+      "chapter": "V4",
+      "section": "V4.4"
+    },
+    {
+      "id": "V4.4.3",
+      "version_qualified_id": "v5.0.0-4.4.3",
+      "level": 2,
+      "chapter": "V4",
+      "section": "V4.4"
+    },
+    {
+      "id": "V4.4.4",
+      "version_qualified_id": "v5.0.0-4.4.4",
+      "level": 2,
+      "chapter": "V4",
+      "section": "V4.4"
+    },
+    {
+      "id": "V5.1.1",
+      "version_qualified_id": "v5.0.0-5.1.1",
+      "level": 2,
+      "chapter": "V5",
+      "section": "V5.1"
+    },
+    {
+      "id": "V5.2.1",
+      "version_qualified_id": "v5.0.0-5.2.1",
+      "level": 1,
+      "chapter": "V5",
+      "section": "V5.2"
+    },
+    {
+      "id": "V5.2.2",
+      "version_qualified_id": "v5.0.0-5.2.2",
+      "level": 1,
+      "chapter": "V5",
+      "section": "V5.2"
+    },
+    {
+      "id": "V5.2.3",
+      "version_qualified_id": "v5.0.0-5.2.3",
+      "level": 2,
+      "chapter": "V5",
+      "section": "V5.2"
+    },
+    {
+      "id": "V5.3.1",
+      "version_qualified_id": "v5.0.0-5.3.1",
+      "level": 1,
+      "chapter": "V5",
+      "section": "V5.3"
+    },
+    {
+      "id": "V5.3.2",
+      "version_qualified_id": "v5.0.0-5.3.2",
+      "level": 1,
+      "chapter": "V5",
+      "section": "V5.3"
+    },
+    {
+      "id": "V5.4.1",
+      "version_qualified_id": "v5.0.0-5.4.1",
+      "level": 2,
+      "chapter": "V5",
+      "section": "V5.4"
+    },
+    {
+      "id": "V5.4.2",
+      "version_qualified_id": "v5.0.0-5.4.2",
+      "level": 2,
+      "chapter": "V5",
+      "section": "V5.4"
+    },
+    {
+      "id": "V5.4.3",
+      "version_qualified_id": "v5.0.0-5.4.3",
+      "level": 2,
+      "chapter": "V5",
+      "section": "V5.4"
+    },
+    {
+      "id": "V6.1.1",
+      "version_qualified_id": "v5.0.0-6.1.1",
+      "level": 1,
+      "chapter": "V6",
+      "section": "V6.1"
+    },
+    {
+      "id": "V6.1.2",
+      "version_qualified_id": "v5.0.0-6.1.2",
+      "level": 2,
+      "chapter": "V6",
+      "section": "V6.1"
+    },
+    {
+      "id": "V6.1.3",
+      "version_qualified_id": "v5.0.0-6.1.3",
+      "level": 2,
+      "chapter": "V6",
+      "section": "V6.1"
+    },
+    {
+      "id": "V6.2.1",
+      "version_qualified_id": "v5.0.0-6.2.1",
+      "level": 1,
+      "chapter": "V6",
+      "section": "V6.2"
+    },
+    {
+      "id": "V6.2.2",
+      "version_qualified_id": "v5.0.0-6.2.2",
+      "level": 1,
+      "chapter": "V6",
+      "section": "V6.2"
+    },
+    {
+      "id": "V6.2.3",
+      "version_qualified_id": "v5.0.0-6.2.3",
+      "level": 1,
+      "chapter": "V6",
+      "section": "V6.2"
+    },
+    {
+      "id": "V6.2.4",
+      "version_qualified_id": "v5.0.0-6.2.4",
+      "level": 1,
+      "chapter": "V6",
+      "section": "V6.2"
+    },
+    {
+      "id": "V6.2.5",
+      "version_qualified_id": "v5.0.0-6.2.5",
+      "level": 1,
+      "chapter": "V6",
+      "section": "V6.2"
+    },
+    {
+      "id": "V6.2.6",
+      "version_qualified_id": "v5.0.0-6.2.6",
+      "level": 1,
+      "chapter": "V6",
+      "section": "V6.2"
+    },
+    {
+      "id": "V6.2.7",
+      "version_qualified_id": "v5.0.0-6.2.7",
+      "level": 1,
+      "chapter": "V6",
+      "section": "V6.2"
+    },
+    {
+      "id": "V6.2.8",
+      "version_qualified_id": "v5.0.0-6.2.8",
+      "level": 1,
+      "chapter": "V6",
+      "section": "V6.2"
+    },
+    {
+      "id": "V6.2.9",
+      "version_qualified_id": "v5.0.0-6.2.9",
+      "level": 2,
+      "chapter": "V6",
+      "section": "V6.2"
+    },
+    {
+      "id": "V6.2.10",
+      "version_qualified_id": "v5.0.0-6.2.10",
+      "level": 2,
+      "chapter": "V6",
+      "section": "V6.2"
+    },
+    {
+      "id": "V6.2.11",
+      "version_qualified_id": "v5.0.0-6.2.11",
+      "level": 2,
+      "chapter": "V6",
+      "section": "V6.2"
+    },
+    {
+      "id": "V6.2.12",
+      "version_qualified_id": "v5.0.0-6.2.12",
+      "level": 2,
+      "chapter": "V6",
+      "section": "V6.2"
+    },
+    {
+      "id": "V6.3.1",
+      "version_qualified_id": "v5.0.0-6.3.1",
+      "level": 1,
+      "chapter": "V6",
+      "section": "V6.3"
+    },
+    {
+      "id": "V6.3.2",
+      "version_qualified_id": "v5.0.0-6.3.2",
+      "level": 1,
+      "chapter": "V6",
+      "section": "V6.3"
+    },
+    {
+      "id": "V6.3.3",
+      "version_qualified_id": "v5.0.0-6.3.3",
+      "level": 2,
+      "chapter": "V6",
+      "section": "V6.3"
+    },
+    {
+      "id": "V6.3.4",
+      "version_qualified_id": "v5.0.0-6.3.4",
+      "level": 2,
+      "chapter": "V6",
+      "section": "V6.3"
+    },
+    {
+      "id": "V6.4.1",
+      "version_qualified_id": "v5.0.0-6.4.1",
+      "level": 1,
+      "chapter": "V6",
+      "section": "V6.4"
+    },
+    {
+      "id": "V6.4.2",
+      "version_qualified_id": "v5.0.0-6.4.2",
+      "level": 1,
+      "chapter": "V6",
+      "section": "V6.4"
+    },
+    {
+      "id": "V6.4.3",
+      "version_qualified_id": "v5.0.0-6.4.3",
+      "level": 2,
+      "chapter": "V6",
+      "section": "V6.4"
+    },
+    {
+      "id": "V6.4.4",
+      "version_qualified_id": "v5.0.0-6.4.4",
+      "level": 2,
+      "chapter": "V6",
+      "section": "V6.4"
+    },
+    {
+      "id": "V6.5.1",
+      "version_qualified_id": "v5.0.0-6.5.1",
+      "level": 2,
+      "chapter": "V6",
+      "section": "V6.5"
+    },
+    {
+      "id": "V6.5.2",
+      "version_qualified_id": "v5.0.0-6.5.2",
+      "level": 2,
+      "chapter": "V6",
+      "section": "V6.5"
+    },
+    {
+      "id": "V6.5.3",
+      "version_qualified_id": "v5.0.0-6.5.3",
+      "level": 2,
+      "chapter": "V6",
+      "section": "V6.5"
+    },
+    {
+      "id": "V6.5.4",
+      "version_qualified_id": "v5.0.0-6.5.4",
+      "level": 2,
+      "chapter": "V6",
+      "section": "V6.5"
+    },
+    {
+      "id": "V6.5.5",
+      "version_qualified_id": "v5.0.0-6.5.5",
+      "level": 2,
+      "chapter": "V6",
+      "section": "V6.5"
+    },
+    {
+      "id": "V6.6.1",
+      "version_qualified_id": "v5.0.0-6.6.1",
+      "level": 2,
+      "chapter": "V6",
+      "section": "V6.6"
+    },
+    {
+      "id": "V6.6.2",
+      "version_qualified_id": "v5.0.0-6.6.2",
+      "level": 2,
+      "chapter": "V6",
+      "section": "V6.6"
+    },
+    {
+      "id": "V6.6.3",
+      "version_qualified_id": "v5.0.0-6.6.3",
+      "level": 2,
+      "chapter": "V6",
+      "section": "V6.6"
+    },
+    {
+      "id": "V6.8.1",
+      "version_qualified_id": "v5.0.0-6.8.1",
+      "level": 2,
+      "chapter": "V6",
+      "section": "V6.8"
+    },
+    {
+      "id": "V6.8.2",
+      "version_qualified_id": "v5.0.0-6.8.2",
+      "level": 2,
+      "chapter": "V6",
+      "section": "V6.8"
+    },
+    {
+      "id": "V6.8.3",
+      "version_qualified_id": "v5.0.0-6.8.3",
+      "level": 2,
+      "chapter": "V6",
+      "section": "V6.8"
+    },
+    {
+      "id": "V6.8.4",
+      "version_qualified_id": "v5.0.0-6.8.4",
+      "level": 2,
+      "chapter": "V6",
+      "section": "V6.8"
+    },
+    {
+      "id": "V7.1.1",
+      "version_qualified_id": "v5.0.0-7.1.1",
+      "level": 2,
+      "chapter": "V7",
+      "section": "V7.1"
+    },
+    {
+      "id": "V7.1.2",
+      "version_qualified_id": "v5.0.0-7.1.2",
+      "level": 2,
+      "chapter": "V7",
+      "section": "V7.1"
+    },
+    {
+      "id": "V7.1.3",
+      "version_qualified_id": "v5.0.0-7.1.3",
+      "level": 2,
+      "chapter": "V7",
+      "section": "V7.1"
+    },
+    {
+      "id": "V7.2.1",
+      "version_qualified_id": "v5.0.0-7.2.1",
+      "level": 1,
+      "chapter": "V7",
+      "section": "V7.2"
+    },
+    {
+      "id": "V7.2.2",
+      "version_qualified_id": "v5.0.0-7.2.2",
+      "level": 1,
+      "chapter": "V7",
+      "section": "V7.2"
+    },
+    {
+      "id": "V7.2.3",
+      "version_qualified_id": "v5.0.0-7.2.3",
+      "level": 1,
+      "chapter": "V7",
+      "section": "V7.2"
+    },
+    {
+      "id": "V7.2.4",
+      "version_qualified_id": "v5.0.0-7.2.4",
+      "level": 1,
+      "chapter": "V7",
+      "section": "V7.2"
+    },
+    {
+      "id": "V7.3.1",
+      "version_qualified_id": "v5.0.0-7.3.1",
+      "level": 2,
+      "chapter": "V7",
+      "section": "V7.3"
+    },
+    {
+      "id": "V7.3.2",
+      "version_qualified_id": "v5.0.0-7.3.2",
+      "level": 2,
+      "chapter": "V7",
+      "section": "V7.3"
+    },
+    {
+      "id": "V7.4.1",
+      "version_qualified_id": "v5.0.0-7.4.1",
+      "level": 1,
+      "chapter": "V7",
+      "section": "V7.4"
+    },
+    {
+      "id": "V7.4.2",
+      "version_qualified_id": "v5.0.0-7.4.2",
+      "level": 1,
+      "chapter": "V7",
+      "section": "V7.4"
+    },
+    {
+      "id": "V7.4.3",
+      "version_qualified_id": "v5.0.0-7.4.3",
+      "level": 2,
+      "chapter": "V7",
+      "section": "V7.4"
+    },
+    {
+      "id": "V7.4.4",
+      "version_qualified_id": "v5.0.0-7.4.4",
+      "level": 2,
+      "chapter": "V7",
+      "section": "V7.4"
+    },
+    {
+      "id": "V7.4.5",
+      "version_qualified_id": "v5.0.0-7.4.5",
+      "level": 2,
+      "chapter": "V7",
+      "section": "V7.4"
+    },
+    {
+      "id": "V7.5.1",
+      "version_qualified_id": "v5.0.0-7.5.1",
+      "level": 2,
+      "chapter": "V7",
+      "section": "V7.5"
+    },
+    {
+      "id": "V7.5.2",
+      "version_qualified_id": "v5.0.0-7.5.2",
+      "level": 2,
+      "chapter": "V7",
+      "section": "V7.5"
+    },
+    {
+      "id": "V7.6.1",
+      "version_qualified_id": "v5.0.0-7.6.1",
+      "level": 2,
+      "chapter": "V7",
+      "section": "V7.6"
+    },
+    {
+      "id": "V7.6.2",
+      "version_qualified_id": "v5.0.0-7.6.2",
+      "level": 2,
+      "chapter": "V7",
+      "section": "V7.6"
+    },
+    {
+      "id": "V8.1.1",
+      "version_qualified_id": "v5.0.0-8.1.1",
+      "level": 1,
+      "chapter": "V8",
+      "section": "V8.1"
+    },
+    {
+      "id": "V8.1.2",
+      "version_qualified_id": "v5.0.0-8.1.2",
+      "level": 2,
+      "chapter": "V8",
+      "section": "V8.1"
+    },
+    {
+      "id": "V8.2.1",
+      "version_qualified_id": "v5.0.0-8.2.1",
+      "level": 1,
+      "chapter": "V8",
+      "section": "V8.2"
+    },
+    {
+      "id": "V8.2.2",
+      "version_qualified_id": "v5.0.0-8.2.2",
+      "level": 1,
+      "chapter": "V8",
+      "section": "V8.2"
+    },
+    {
+      "id": "V8.2.3",
+      "version_qualified_id": "v5.0.0-8.2.3",
+      "level": 2,
+      "chapter": "V8",
+      "section": "V8.2"
+    },
+    {
+      "id": "V8.3.1",
+      "version_qualified_id": "v5.0.0-8.3.1",
+      "level": 1,
+      "chapter": "V8",
+      "section": "V8.3"
+    },
+    {
+      "id": "V8.4.1",
+      "version_qualified_id": "v5.0.0-8.4.1",
+      "level": 2,
+      "chapter": "V8",
+      "section": "V8.4"
+    },
+    {
+      "id": "V9.1.1",
+      "version_qualified_id": "v5.0.0-9.1.1",
+      "level": 1,
+      "chapter": "V9",
+      "section": "V9.1"
+    },
+    {
+      "id": "V9.1.2",
+      "version_qualified_id": "v5.0.0-9.1.2",
+      "level": 1,
+      "chapter": "V9",
+      "section": "V9.1"
+    },
+    {
+      "id": "V9.1.3",
+      "version_qualified_id": "v5.0.0-9.1.3",
+      "level": 1,
+      "chapter": "V9",
+      "section": "V9.1"
+    },
+    {
+      "id": "V9.2.1",
+      "version_qualified_id": "v5.0.0-9.2.1",
+      "level": 1,
+      "chapter": "V9",
+      "section": "V9.2"
+    },
+    {
+      "id": "V9.2.2",
+      "version_qualified_id": "v5.0.0-9.2.2",
+      "level": 2,
+      "chapter": "V9",
+      "section": "V9.2"
+    },
+    {
+      "id": "V9.2.3",
+      "version_qualified_id": "v5.0.0-9.2.3",
+      "level": 2,
+      "chapter": "V9",
+      "section": "V9.2"
+    },
+    {
+      "id": "V9.2.4",
+      "version_qualified_id": "v5.0.0-9.2.4",
+      "level": 2,
+      "chapter": "V9",
+      "section": "V9.2"
+    },
+    {
+      "id": "V10.1.1",
+      "version_qualified_id": "v5.0.0-10.1.1",
+      "level": 2,
+      "chapter": "V10",
+      "section": "V10.1"
+    },
+    {
+      "id": "V10.1.2",
+      "version_qualified_id": "v5.0.0-10.1.2",
+      "level": 2,
+      "chapter": "V10",
+      "section": "V10.1"
+    },
+    {
+      "id": "V10.2.1",
+      "version_qualified_id": "v5.0.0-10.2.1",
+      "level": 2,
+      "chapter": "V10",
+      "section": "V10.2"
+    },
+    {
+      "id": "V10.2.2",
+      "version_qualified_id": "v5.0.0-10.2.2",
+      "level": 2,
+      "chapter": "V10",
+      "section": "V10.2"
+    },
+    {
+      "id": "V10.3.1",
+      "version_qualified_id": "v5.0.0-10.3.1",
+      "level": 2,
+      "chapter": "V10",
+      "section": "V10.3"
+    },
+    {
+      "id": "V10.3.2",
+      "version_qualified_id": "v5.0.0-10.3.2",
+      "level": 2,
+      "chapter": "V10",
+      "section": "V10.3"
+    },
+    {
+      "id": "V10.3.3",
+      "version_qualified_id": "v5.0.0-10.3.3",
+      "level": 2,
+      "chapter": "V10",
+      "section": "V10.3"
+    },
+    {
+      "id": "V10.3.4",
+      "version_qualified_id": "v5.0.0-10.3.4",
+      "level": 2,
+      "chapter": "V10",
+      "section": "V10.3"
+    },
+    {
+      "id": "V10.4.1",
+      "version_qualified_id": "v5.0.0-10.4.1",
+      "level": 1,
+      "chapter": "V10",
+      "section": "V10.4"
+    },
+    {
+      "id": "V10.4.2",
+      "version_qualified_id": "v5.0.0-10.4.2",
+      "level": 1,
+      "chapter": "V10",
+      "section": "V10.4"
+    },
+    {
+      "id": "V10.4.3",
+      "version_qualified_id": "v5.0.0-10.4.3",
+      "level": 1,
+      "chapter": "V10",
+      "section": "V10.4"
+    },
+    {
+      "id": "V10.4.4",
+      "version_qualified_id": "v5.0.0-10.4.4",
+      "level": 1,
+      "chapter": "V10",
+      "section": "V10.4"
+    },
+    {
+      "id": "V10.4.5",
+      "version_qualified_id": "v5.0.0-10.4.5",
+      "level": 1,
+      "chapter": "V10",
+      "section": "V10.4"
+    },
+    {
+      "id": "V10.4.6",
+      "version_qualified_id": "v5.0.0-10.4.6",
+      "level": 2,
+      "chapter": "V10",
+      "section": "V10.4"
+    },
+    {
+      "id": "V10.4.7",
+      "version_qualified_id": "v5.0.0-10.4.7",
+      "level": 2,
+      "chapter": "V10",
+      "section": "V10.4"
+    },
+    {
+      "id": "V10.4.8",
+      "version_qualified_id": "v5.0.0-10.4.8",
+      "level": 2,
+      "chapter": "V10",
+      "section": "V10.4"
+    },
+    {
+      "id": "V10.4.9",
+      "version_qualified_id": "v5.0.0-10.4.9",
+      "level": 2,
+      "chapter": "V10",
+      "section": "V10.4"
+    },
+    {
+      "id": "V10.4.10",
+      "version_qualified_id": "v5.0.0-10.4.10",
+      "level": 2,
+      "chapter": "V10",
+      "section": "V10.4"
+    },
+    {
+      "id": "V10.4.11",
+      "version_qualified_id": "v5.0.0-10.4.11",
+      "level": 2,
+      "chapter": "V10",
+      "section": "V10.4"
+    },
+    {
+      "id": "V10.5.1",
+      "version_qualified_id": "v5.0.0-10.5.1",
+      "level": 2,
+      "chapter": "V10",
+      "section": "V10.5"
+    },
+    {
+      "id": "V10.5.2",
+      "version_qualified_id": "v5.0.0-10.5.2",
+      "level": 2,
+      "chapter": "V10",
+      "section": "V10.5"
+    },
+    {
+      "id": "V10.5.3",
+      "version_qualified_id": "v5.0.0-10.5.3",
+      "level": 2,
+      "chapter": "V10",
+      "section": "V10.5"
+    },
+    {
+      "id": "V10.5.4",
+      "version_qualified_id": "v5.0.0-10.5.4",
+      "level": 2,
+      "chapter": "V10",
+      "section": "V10.5"
+    },
+    {
+      "id": "V10.5.5",
+      "version_qualified_id": "v5.0.0-10.5.5",
+      "level": 2,
+      "chapter": "V10",
+      "section": "V10.5"
+    },
+    {
+      "id": "V10.6.1",
+      "version_qualified_id": "v5.0.0-10.6.1",
+      "level": 2,
+      "chapter": "V10",
+      "section": "V10.6"
+    },
+    {
+      "id": "V10.6.2",
+      "version_qualified_id": "v5.0.0-10.6.2",
+      "level": 2,
+      "chapter": "V10",
+      "section": "V10.6"
+    },
+    {
+      "id": "V10.7.1",
+      "version_qualified_id": "v5.0.0-10.7.1",
+      "level": 2,
+      "chapter": "V10",
+      "section": "V10.7"
+    },
+    {
+      "id": "V10.7.2",
+      "version_qualified_id": "v5.0.0-10.7.2",
+      "level": 2,
+      "chapter": "V10",
+      "section": "V10.7"
+    },
+    {
+      "id": "V10.7.3",
+      "version_qualified_id": "v5.0.0-10.7.3",
+      "level": 2,
+      "chapter": "V10",
+      "section": "V10.7"
+    },
+    {
+      "id": "V11.1.1",
+      "version_qualified_id": "v5.0.0-11.1.1",
+      "level": 2,
+      "chapter": "V11",
+      "section": "V11.1"
+    },
+    {
+      "id": "V11.1.2",
+      "version_qualified_id": "v5.0.0-11.1.2",
+      "level": 2,
+      "chapter": "V11",
+      "section": "V11.1"
+    },
+    {
+      "id": "V11.2.1",
+      "version_qualified_id": "v5.0.0-11.2.1",
+      "level": 2,
+      "chapter": "V11",
+      "section": "V11.2"
+    },
+    {
+      "id": "V11.2.2",
+      "version_qualified_id": "v5.0.0-11.2.2",
+      "level": 2,
+      "chapter": "V11",
+      "section": "V11.2"
+    },
+    {
+      "id": "V11.2.3",
+      "version_qualified_id": "v5.0.0-11.2.3",
+      "level": 2,
+      "chapter": "V11",
+      "section": "V11.2"
+    },
+    {
+      "id": "V11.3.1",
+      "version_qualified_id": "v5.0.0-11.3.1",
+      "level": 1,
+      "chapter": "V11",
+      "section": "V11.3"
+    },
+    {
+      "id": "V11.3.2",
+      "version_qualified_id": "v5.0.0-11.3.2",
+      "level": 1,
+      "chapter": "V11",
+      "section": "V11.3"
+    },
+    {
+      "id": "V11.3.3",
+      "version_qualified_id": "v5.0.0-11.3.3",
+      "level": 2,
+      "chapter": "V11",
+      "section": "V11.3"
+    },
+    {
+      "id": "V11.4.1",
+      "version_qualified_id": "v5.0.0-11.4.1",
+      "level": 1,
+      "chapter": "V11",
+      "section": "V11.4"
+    },
+    {
+      "id": "V11.4.2",
+      "version_qualified_id": "v5.0.0-11.4.2",
+      "level": 2,
+      "chapter": "V11",
+      "section": "V11.4"
+    },
+    {
+      "id": "V11.4.3",
+      "version_qualified_id": "v5.0.0-11.4.3",
+      "level": 2,
+      "chapter": "V11",
+      "section": "V11.4"
+    },
+    {
+      "id": "V11.4.4",
+      "version_qualified_id": "v5.0.0-11.4.4",
+      "level": 2,
+      "chapter": "V11",
+      "section": "V11.4"
+    },
+    {
+      "id": "V11.5.1",
+      "version_qualified_id": "v5.0.0-11.5.1",
+      "level": 2,
+      "chapter": "V11",
+      "section": "V11.5"
+    },
+    {
+      "id": "V11.6.1",
+      "version_qualified_id": "v5.0.0-11.6.1",
+      "level": 2,
+      "chapter": "V11",
+      "section": "V11.6"
+    },
+    {
+      "id": "V12.1.1",
+      "version_qualified_id": "v5.0.0-12.1.1",
+      "level": 1,
+      "chapter": "V12",
+      "section": "V12.1"
+    },
+    {
+      "id": "V12.1.2",
+      "version_qualified_id": "v5.0.0-12.1.2",
+      "level": 2,
+      "chapter": "V12",
+      "section": "V12.1"
+    },
+    {
+      "id": "V12.1.3",
+      "version_qualified_id": "v5.0.0-12.1.3",
+      "level": 2,
+      "chapter": "V12",
+      "section": "V12.1"
+    },
+    {
+      "id": "V12.2.1",
+      "version_qualified_id": "v5.0.0-12.2.1",
+      "level": 1,
+      "chapter": "V12",
+      "section": "V12.2"
+    },
+    {
+      "id": "V12.2.2",
+      "version_qualified_id": "v5.0.0-12.2.2",
+      "level": 1,
+      "chapter": "V12",
+      "section": "V12.2"
+    },
+    {
+      "id": "V12.3.1",
+      "version_qualified_id": "v5.0.0-12.3.1",
+      "level": 2,
+      "chapter": "V12",
+      "section": "V12.3"
+    },
+    {
+      "id": "V12.3.2",
+      "version_qualified_id": "v5.0.0-12.3.2",
+      "level": 2,
+      "chapter": "V12",
+      "section": "V12.3"
+    },
+    {
+      "id": "V12.3.3",
+      "version_qualified_id": "v5.0.0-12.3.3",
+      "level": 2,
+      "chapter": "V12",
+      "section": "V12.3"
+    },
+    {
+      "id": "V12.3.4",
+      "version_qualified_id": "v5.0.0-12.3.4",
+      "level": 2,
+      "chapter": "V12",
+      "section": "V12.3"
+    },
+    {
+      "id": "V13.1.1",
+      "version_qualified_id": "v5.0.0-13.1.1",
+      "level": 2,
+      "chapter": "V13",
+      "section": "V13.1"
+    },
+    {
+      "id": "V13.2.1",
+      "version_qualified_id": "v5.0.0-13.2.1",
+      "level": 2,
+      "chapter": "V13",
+      "section": "V13.2"
+    },
+    {
+      "id": "V13.2.2",
+      "version_qualified_id": "v5.0.0-13.2.2",
+      "level": 2,
+      "chapter": "V13",
+      "section": "V13.2"
+    },
+    {
+      "id": "V13.2.3",
+      "version_qualified_id": "v5.0.0-13.2.3",
+      "level": 2,
+      "chapter": "V13",
+      "section": "V13.2"
+    },
+    {
+      "id": "V13.2.4",
+      "version_qualified_id": "v5.0.0-13.2.4",
+      "level": 2,
+      "chapter": "V13",
+      "section": "V13.2"
+    },
+    {
+      "id": "V13.2.5",
+      "version_qualified_id": "v5.0.0-13.2.5",
+      "level": 2,
+      "chapter": "V13",
+      "section": "V13.2"
+    },
+    {
+      "id": "V13.3.1",
+      "version_qualified_id": "v5.0.0-13.3.1",
+      "level": 2,
+      "chapter": "V13",
+      "section": "V13.3"
+    },
+    {
+      "id": "V13.3.2",
+      "version_qualified_id": "v5.0.0-13.3.2",
+      "level": 2,
+      "chapter": "V13",
+      "section": "V13.3"
+    },
+    {
+      "id": "V13.4.1",
+      "version_qualified_id": "v5.0.0-13.4.1",
+      "level": 1,
+      "chapter": "V13",
+      "section": "V13.4"
+    },
+    {
+      "id": "V13.4.2",
+      "version_qualified_id": "v5.0.0-13.4.2",
+      "level": 2,
+      "chapter": "V13",
+      "section": "V13.4"
+    },
+    {
+      "id": "V13.4.3",
+      "version_qualified_id": "v5.0.0-13.4.3",
+      "level": 2,
+      "chapter": "V13",
+      "section": "V13.4"
+    },
+    {
+      "id": "V13.4.4",
+      "version_qualified_id": "v5.0.0-13.4.4",
+      "level": 2,
+      "chapter": "V13",
+      "section": "V13.4"
+    },
+    {
+      "id": "V13.4.5",
+      "version_qualified_id": "v5.0.0-13.4.5",
+      "level": 2,
+      "chapter": "V13",
+      "section": "V13.4"
+    },
+    {
+      "id": "V14.1.1",
+      "version_qualified_id": "v5.0.0-14.1.1",
+      "level": 2,
+      "chapter": "V14",
+      "section": "V14.1"
+    },
+    {
+      "id": "V14.1.2",
+      "version_qualified_id": "v5.0.0-14.1.2",
+      "level": 2,
+      "chapter": "V14",
+      "section": "V14.1"
+    },
+    {
+      "id": "V14.2.1",
+      "version_qualified_id": "v5.0.0-14.2.1",
+      "level": 1,
+      "chapter": "V14",
+      "section": "V14.2"
+    },
+    {
+      "id": "V14.2.2",
+      "version_qualified_id": "v5.0.0-14.2.2",
+      "level": 2,
+      "chapter": "V14",
+      "section": "V14.2"
+    },
+    {
+      "id": "V14.2.3",
+      "version_qualified_id": "v5.0.0-14.2.3",
+      "level": 2,
+      "chapter": "V14",
+      "section": "V14.2"
+    },
+    {
+      "id": "V14.2.4",
+      "version_qualified_id": "v5.0.0-14.2.4",
+      "level": 2,
+      "chapter": "V14",
+      "section": "V14.2"
+    },
+    {
+      "id": "V14.3.1",
+      "version_qualified_id": "v5.0.0-14.3.1",
+      "level": 1,
+      "chapter": "V14",
+      "section": "V14.3"
+    },
+    {
+      "id": "V14.3.2",
+      "version_qualified_id": "v5.0.0-14.3.2",
+      "level": 2,
+      "chapter": "V14",
+      "section": "V14.3"
+    },
+    {
+      "id": "V14.3.3",
+      "version_qualified_id": "v5.0.0-14.3.3",
+      "level": 2,
+      "chapter": "V14",
+      "section": "V14.3"
+    },
+    {
+      "id": "V15.1.1",
+      "version_qualified_id": "v5.0.0-15.1.1",
+      "level": 1,
+      "chapter": "V15",
+      "section": "V15.1"
+    },
+    {
+      "id": "V15.1.2",
+      "version_qualified_id": "v5.0.0-15.1.2",
+      "level": 2,
+      "chapter": "V15",
+      "section": "V15.1"
+    },
+    {
+      "id": "V15.1.3",
+      "version_qualified_id": "v5.0.0-15.1.3",
+      "level": 2,
+      "chapter": "V15",
+      "section": "V15.1"
+    },
+    {
+      "id": "V15.2.1",
+      "version_qualified_id": "v5.0.0-15.2.1",
+      "level": 1,
+      "chapter": "V15",
+      "section": "V15.2"
+    },
+    {
+      "id": "V15.2.2",
+      "version_qualified_id": "v5.0.0-15.2.2",
+      "level": 2,
+      "chapter": "V15",
+      "section": "V15.2"
+    },
+    {
+      "id": "V15.2.3",
+      "version_qualified_id": "v5.0.0-15.2.3",
+      "level": 2,
+      "chapter": "V15",
+      "section": "V15.2"
+    },
+    {
+      "id": "V15.3.1",
+      "version_qualified_id": "v5.0.0-15.3.1",
+      "level": 1,
+      "chapter": "V15",
+      "section": "V15.3"
+    },
+    {
+      "id": "V15.3.2",
+      "version_qualified_id": "v5.0.0-15.3.2",
+      "level": 2,
+      "chapter": "V15",
+      "section": "V15.3"
+    },
+    {
+      "id": "V15.3.3",
+      "version_qualified_id": "v5.0.0-15.3.3",
+      "level": 2,
+      "chapter": "V15",
+      "section": "V15.3"
+    },
+    {
+      "id": "V15.3.4",
+      "version_qualified_id": "v5.0.0-15.3.4",
+      "level": 2,
+      "chapter": "V15",
+      "section": "V15.3"
+    },
+    {
+      "id": "V15.3.5",
+      "version_qualified_id": "v5.0.0-15.3.5",
+      "level": 2,
+      "chapter": "V15",
+      "section": "V15.3"
+    },
+    {
+      "id": "V15.3.6",
+      "version_qualified_id": "v5.0.0-15.3.6",
+      "level": 2,
+      "chapter": "V15",
+      "section": "V15.3"
+    },
+    {
+      "id": "V15.3.7",
+      "version_qualified_id": "v5.0.0-15.3.7",
+      "level": 2,
+      "chapter": "V15",
+      "section": "V15.3"
+    },
+    {
+      "id": "V16.1.1",
+      "version_qualified_id": "v5.0.0-16.1.1",
+      "level": 2,
+      "chapter": "V16",
+      "section": "V16.1"
+    },
+    {
+      "id": "V16.2.1",
+      "version_qualified_id": "v5.0.0-16.2.1",
+      "level": 2,
+      "chapter": "V16",
+      "section": "V16.2"
+    },
+    {
+      "id": "V16.2.2",
+      "version_qualified_id": "v5.0.0-16.2.2",
+      "level": 2,
+      "chapter": "V16",
+      "section": "V16.2"
+    },
+    {
+      "id": "V16.2.3",
+      "version_qualified_id": "v5.0.0-16.2.3",
+      "level": 2,
+      "chapter": "V16",
+      "section": "V16.2"
+    },
+    {
+      "id": "V16.2.4",
+      "version_qualified_id": "v5.0.0-16.2.4",
+      "level": 2,
+      "chapter": "V16",
+      "section": "V16.2"
+    },
+    {
+      "id": "V16.2.5",
+      "version_qualified_id": "v5.0.0-16.2.5",
+      "level": 2,
+      "chapter": "V16",
+      "section": "V16.2"
+    },
+    {
+      "id": "V16.3.1",
+      "version_qualified_id": "v5.0.0-16.3.1",
+      "level": 2,
+      "chapter": "V16",
+      "section": "V16.3"
+    },
+    {
+      "id": "V16.3.2",
+      "version_qualified_id": "v5.0.0-16.3.2",
+      "level": 2,
+      "chapter": "V16",
+      "section": "V16.3"
+    },
+    {
+      "id": "V16.3.3",
+      "version_qualified_id": "v5.0.0-16.3.3",
+      "level": 2,
+      "chapter": "V16",
+      "section": "V16.3"
+    },
+    {
+      "id": "V16.3.4",
+      "version_qualified_id": "v5.0.0-16.3.4",
+      "level": 2,
+      "chapter": "V16",
+      "section": "V16.3"
+    },
+    {
+      "id": "V16.4.1",
+      "version_qualified_id": "v5.0.0-16.4.1",
+      "level": 2,
+      "chapter": "V16",
+      "section": "V16.4"
+    },
+    {
+      "id": "V16.4.2",
+      "version_qualified_id": "v5.0.0-16.4.2",
+      "level": 2,
+      "chapter": "V16",
+      "section": "V16.4"
+    },
+    {
+      "id": "V16.4.3",
+      "version_qualified_id": "v5.0.0-16.4.3",
+      "level": 2,
+      "chapter": "V16",
+      "section": "V16.4"
+    },
+    {
+      "id": "V16.5.1",
+      "version_qualified_id": "v5.0.0-16.5.1",
+      "level": 2,
+      "chapter": "V16",
+      "section": "V16.5"
+    },
+    {
+      "id": "V16.5.2",
+      "version_qualified_id": "v5.0.0-16.5.2",
+      "level": 2,
+      "chapter": "V16",
+      "section": "V16.5"
+    },
+    {
+      "id": "V16.5.3",
+      "version_qualified_id": "v5.0.0-16.5.3",
+      "level": 2,
+      "chapter": "V16",
+      "section": "V16.5"
+    },
+    {
+      "id": "V17.1.1",
+      "version_qualified_id": "v5.0.0-17.1.1",
+      "level": 2,
+      "chapter": "V17",
+      "section": "V17.1"
+    },
+    {
+      "id": "V17.2.1",
+      "version_qualified_id": "v5.0.0-17.2.1",
+      "level": 2,
+      "chapter": "V17",
+      "section": "V17.2"
+    },
+    {
+      "id": "V17.2.2",
+      "version_qualified_id": "v5.0.0-17.2.2",
+      "level": 2,
+      "chapter": "V17",
+      "section": "V17.2"
+    },
+    {
+      "id": "V17.2.3",
+      "version_qualified_id": "v5.0.0-17.2.3",
+      "level": 2,
+      "chapter": "V17",
+      "section": "V17.2"
+    },
+    {
+      "id": "V17.2.4",
+      "version_qualified_id": "v5.0.0-17.2.4",
+      "level": 2,
+      "chapter": "V17",
+      "section": "V17.2"
+    },
+    {
+      "id": "V17.3.1",
+      "version_qualified_id": "v5.0.0-17.3.1",
+      "level": 2,
+      "chapter": "V17",
+      "section": "V17.3"
+    },
+    {
+      "id": "V17.3.2",
+      "version_qualified_id": "v5.0.0-17.3.2",
+      "level": 2,
+      "chapter": "V17",
+      "section": "V17.3"
+    }
+  ]
+}

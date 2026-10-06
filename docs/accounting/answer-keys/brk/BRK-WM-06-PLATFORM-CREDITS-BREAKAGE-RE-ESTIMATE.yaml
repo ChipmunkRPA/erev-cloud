@@ -1,0 +1,210 @@
+schema: erev-answer-key/1
+id: BRK-WM-06-PLATFORM-CREDITS-BREAKAGE-RE-ESTIMATE
+title: "Prepaid platform credits: breakage recognised with redemptions and re-estimated with a cumulative catch-up"
+status: active
+families: [BRK, REC, VC]
+tags: [portfolio]
+summary: "Wayfarer Marketplace UK sells GBP 200,000.00 of nonrefundable platform credits in January 2026, spendable on first-party goods for 12 months. Credits not expected to be redeemed: 8% at sale (expected redemptions 184,000.00); on 30 June the estimate moves to 10% (180,000.00). UK law imposes no unclaimed-property remittance. Revenue = credits sold × cumulative redemptions ÷ expected redemptions (POL-055 PROPORTIONAL_TO_EXERCISE): redemptions 46,000.00 (Q1), 50,000.00 (Q2), 54,000.00 (Q3) and 30,000.00 (Q4) give cumulative revenue 50,000.00, 106,666.67, 166,666.67 and 200,000.00; the Q2 amount includes the catch-up from the breakage re-estimate (ALG-10)."
+authority:
+  codification: ["606-10-55-46", "606-10-55-47", "606-10-55-48", "606-10-32-14"]
+  ifrs: ["IFRS 15.B46"]
+  practice: ["DART 8.8 (breakage)"]
+  urls: []
+derived_from: {research04: [], research05: [WM-06], chk: [], golden: [], dev: []}
+requirements: [REQ-REC-016, REQ-TP-004]
+policy_refs: [POL-055, POL-182]
+review: {author: answer-keys-industries, authored_on: "2026-09-12", reviewer: null, reviewed_on: null, status: pending}
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: GBP, preset: DEFAULT}
+  currencies: [GBP]
+  entities:
+    - code: WM-UK
+      name: "Wayfarer Marketplace UK (Demo)"
+      functional_currency: GBP
+      time_zone: Europe/London
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: "1"}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2026-12"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4030", name: "Revenue - material rights, loyalty and breakage", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, product: PLATFORM-CREDITS, account: "4030"}
+  customers: [{code: CUST-WM06, name: "January 2026 platform-credit purchasers (Demo)"}]
+  pob_templates:
+    - code: TPL-CREDITS
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_A
+      recognition_method: REDEMPTION_PATTERN
+      policy_values: {balance.right_to_consideration: CONDITIONAL}
+  products:
+    - code: PLATFORM-CREDITS
+      name: "Wayfarer prepaid platform credits"
+      pob_template: TPL-CREDITS
+      revenue_category: PREPAID
+  ssp_books:
+    - code: SSP-WM-UK-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2025-01-01"
+          methodology_label: "Observable standalone prices (demo study)"
+          entries:
+            - product: PLATFORM-CREDITS
+              currency: GBP
+              method: observable
+              distinctness: distinct
+              ranges: [{point_value: "1.00"}]
+  fx_rate_sets: []
+  rule_sets: []
+  policies:
+    tenant: {billing.posting: ERP, recognition.time_convention: MONTHLY_EVEN}
+    entities: {}
+    books: {}
+contracts:
+  - external_id: WM-06
+    customer: CUST-WM06
+    contracting_entity: WM-UK
+    transaction_currency: GBP
+    inception_date: "2026-01-31"
+    contract_type: PORTFOLIO
+    lines:
+      - obligation_key: L1-CREDITS
+        product_code: PLATFORM-CREDITS
+        quantity: "200000"
+        total_price: "200000.00"
+        end_date: "2027-01-31"
+    estimates:
+      - element_code: BRK-WM06-2026-01
+        estimate_kind: BREAKAGE
+        method: RATE
+        obligation_key: L1-CREDITS
+        versions:
+          - version_no: "1"
+            effective_date: "2026-01-31"
+            rate: "0.08"
+            expected_quantity: "184000"
+            rationale: "Prior cohorts: 8% of credits unused."
+          - version_no: "2"
+            effective_date: "2026-06-30"
+            rate: "0.10"
+            expected_quantity: "180000"
+            rationale: "Cohort redemption curve flattening."
+timeline:
+  - seq: "1"
+    kind: event
+    contract: WM-06
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-01-31"
+    payload: {}
+  - seq: "2"
+    kind: event
+    contract: WM-06
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-31"
+    payload: {}
+  - seq: "3"
+    kind: event
+    contract: WM-06
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-01-31"
+    payload: {estimate: BRK-WM06-2026-01, version_no: "1"}
+  - seq: "4"
+    kind: event
+    contract: WM-06
+    event_type: BILLING_RECORDED
+    effective_date: "2026-01-31"
+    payload:
+      invoice_number: CREDITS-WM06-2026-01
+      line_external_id: CREDITS-WM06-2026-01-1
+      amount: "200000.00"
+      issue_date: "2026-01-31"
+      obligation_key: L1-CREDITS
+  - seq: "5"
+    kind: event
+    contract: WM-06
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-03-31"
+    payload: {obligation_key: L1-CREDITS, quantity: "46000", trigger: DELIVERY}
+  - seq: "6"
+    kind: event
+    contract: WM-06
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-06-30"
+    payload: {estimate: BRK-WM06-2026-01, version_no: "2"}
+  - seq: "7"
+    kind: event
+    contract: WM-06
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-06-30"
+    payload: {obligation_key: L1-CREDITS, quantity: "50000", trigger: DELIVERY}
+  - seq: "8"
+    kind: event
+    contract: WM-06
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-09-30"
+    payload: {obligation_key: L1-CREDITS, quantity: "54000", trigger: DELIVERY}
+  - seq: "9"
+    kind: event
+    contract: WM-06
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-12-31"
+    payload: {obligation_key: L1-CREDITS, quantity: "30000", trigger: DELIVERY}
+checkpoints:
+  - name: q1
+    after_seq: "5"
+    as_of: "2026-03-31"
+    book: ASC606
+    contracts:
+      - contract: WM-06
+        version: {revenue_cum: "50000.00", billed_cum: "200000.00", transaction_price: "200000.00"}
+        obligations:
+          - obligation_key: L1-CREDITS
+            allocated_amount: "200000.00"
+            revenue_cum: "50000.00"
+            satisfaction_status: PARTIALLY_SATISFIED
+        balances:
+          - {entity: WM-UK, contract_liability: "150000.00", contract_asset: "0.00", unbilled_receivable: "0.00"}
+  - name: q2-re-estimate
+    after_seq: "7"
+    as_of: "2026-06-30"
+    book: ASC606
+    contracts:
+      - contract: WM-06
+        version: {revenue_cum: "106666.67", billed_cum: "200000.00", transaction_price: "200000.00"}
+        obligations:
+          - obligation_key: L1-CREDITS
+            allocated_amount: "200000.00"
+            revenue_cum: "106666.67"
+            satisfaction_status: PARTIALLY_SATISFIED
+        balances: [{entity: WM-UK, contract_liability: "93333.33", contract_asset: "0.00", unbilled_receivable: "0.00"}]
+    subledger:
+      - period_key: FY2026-P06
+        entity: WM-UK
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "56666.67"}
+          - {account_role: REVENUE, account: "4030", cr: "56666.67"}
+  - name: q4-complete
+    after_seq: "9"
+    as_of: "2026-12-31"
+    book: ASC606
+    contracts:
+      - contract: WM-06
+        version: {revenue_cum: "200000.00", billed_cum: "200000.00", transaction_price: "200000.00"}
+        obligations:
+          - obligation_key: L1-CREDITS
+            allocated_amount: "200000.00"
+            revenue_cum: "200000.00"
+            satisfaction_status: SATISFIED
+        balances: [{entity: WM-UK, contract_liability: "0.00", contract_asset: "0.00", unbilled_receivable: "0.00"}]

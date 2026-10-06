@@ -1,0 +1,6 @@
+step,phase,seq,category,kind,title,text,answer
+03,handler:browse_file_Contracts,23,popup,QMessageBox.information,Contracts are set up,All contracts(s) within the uploaded file are successfully set up!,Ok
+03,report:latest_contracts,24,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+03,report:je_gross,27,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+03,report:je_delta,30,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+03,report:contract_history,33,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok

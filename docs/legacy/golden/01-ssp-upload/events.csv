@@ -1,0 +1,13 @@
+step,phase,seq,category,kind,title,text,answer
+01,handler:browse_file_SSPs,6,file,QFileDialog.getOpenFileName,Select File,ops/Example UATs/SSP Upload UAT/SKU SSP Template.xlsx,selected
+01,handler:browse_file_SSPs,7,platform,ctypes.WinDLL,Advapi32.EncryptFileW,ops/libnew/libwarm/db/ASC606.db,"1 (stubbed success, no encryption)"
+01,handler:browse_file_SSPs,8,popup,QMessageBox.information,SSPs are set up,"All company SSPs for the uploaded file are set up. To add or update, re-upload SSPs to refresh.",Ok
+01,report:latest_contracts,9,popup,QMessageBox.critical,Error Notification,"Execution failed on sql '
+                                SELECT t1.*
+                                FROM Contract_Live t1
+                                JOIN (
+                                        SELECT ""Record Unique ID without time"", MAX(""Processing Time Log"") AS max_timestamp
+                                        FROM Contract_Live
+                                        GROUP BY ""Record Unique ID without time""
+                                ) t2 ON t1.""Record Unique ID without time"" = t2.""Record Unique ID without time"" AND t1.""Processing Time Log"" = t2.max_timestamp;
+                                ': no such table: Contract_Live",Ok

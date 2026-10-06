@@ -1,0 +1,211 @@
+# docs/accounting/answer-keys/disc/DISC-CATCH-UP-BY-CAUSE-ESTIMATE-CHANGE-AND-MODIFICATION.yaml
+schema: "erev-answer-key/1"
+id: DISC-CATCH-UP-BY-CAUSE-ESTIMATE-CHANGE-AND-MODIFICATION
+title: >-
+  Rollforward drivers: an estimate catch-up and a modification catch-up in one period, reported separately
+status: active
+families: [DISC, MOD, VC]
+tags: [r04-s10, r04-s6]
+summary: >-
+  Own example [A]. Entity US01, USD, ERP billing. A single construction obligation (fixed 100,000.00, output measure)
+  is 50% complete on 2026-03-31 (revenue 50,000.00). In April: (1) a completion bonus estimate moves from 0.00 to
+  10,000.00 (version 2 effective 2026-04-10) while progress is 50%: JET-04a 5,000.00, catch_up_estimate_cum 5,000.00;
+  (2) the customer agrees a 20,000.00 price increase for the same scope (modification MOD-DISC-01 effective
+  2026-04-20; the obligation is partially satisfied and its remaining goods are not distinct, so ALG-04 proposes
+  CUMULATIVE_CATCH_UP): JET-05a round(130,000 × 50%) − 55,000.00 = 10,000.00, catch_up_modification_cum 10,000.00; (3)
+  progress reaches 60% on 2026-04-30: progress revenue 13,000.00. April revenue 28,000.00, of which 15,000.00 relates
+  to performance satisfied in previous periods (ALG-10 §2.11.3: ΔX × f(s) = 10,000 × 50% + 20,000 × 50%). Invoices
+  60,000.00 (March) and 40,000.00 (April) leave a 22,000.00 contract liability. The contract-balance rollforward and
+  50-10 narrative separate the two causes (REQ-MOD-015, REQ-RPT-006).
+notes:
+  - >-
+    Input-corrected key (D-97 (1), 2026-09-19). Exact field diff against the original bytes: contracts[0]
+    (C-DISC-CAUSE).modifications[0] (MOD-DISC-01).lines[0].quantity "0" -> "1" (the quantity of L1-BUILD in force
+    after the price-only modification); total_price 20000.00 and every other member unchanged; no expected value
+    changed. The original quantity "0" was an input authoring defect (a removal of every unit prices 0; the loader
+    rule of D-97 (1c) v3 refuses a terms-form CHANGE line of that shape). The original bytes (SHA-256
+    89755696abde70c676bc1ffdcfffcded2ab34fbb02395bad0b7e2d89f4430022) are kept outside the corpus as that rule's
+    negative control: backend/tests/unit/answer_keys/negative/disc/ (not an active key). Provenance: supervisor
+    ruling D-97 (1) and (1c) v3; lane ENG-C4; Codex loader review PRODUCTION-C4-AD22-LOADER-REVIEW-4a42914.
+authority:
+  codification: ["606-10-25-13", "606-10-32-14", "606-10-32-43", "606-10-50-10", "606-10-50-12A"]
+  ifrs: ["IFRS 15.21", "IFRS 15.59", "IFRS 15.118"]
+  practice: []
+  urls: []
+derived_from: {research04: [], research05: [], chk: [], golden: [], dev: []}
+requirements: [REQ-MOD-015, REQ-RPT-006, REQ-RPT-008, REQ-TP-004]
+policy_refs: [POL-102, POL-103, POL-182, POL-204]
+review:
+  author: answer-keys-fx-entity-books
+  authored_on: "2026-09-12"
+  reviewer: null
+  reviewed_on: null
+  status: pending
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: US01
+      name: "Avenmoor Systems Inc. (Demo)"
+      functional_currency: USD
+      time_zone: "America/New_York"
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: 1}
+      books: [ASC606]
+  periods: {from: "2026-03", to: "2026-04"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4010", name: "Revenue - services and subscriptions", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, account: "4010", product: BUILD-100}
+  customers:
+    - {code: CUST-1, name: "Pellworth Logistics Inc. (Demo)"}
+  pob_templates:
+    - code: TPL-PCT
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_B
+      recognition_method: OUTPUT_PERCENT
+  products:
+    - {code: BUILD-100, name: "Warehouse fit-out", pob_template: TPL-PCT}
+  ssp_books:
+    - code: SSP-US-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2026-01-01"
+          methodology_label: "Observable standalone prices"
+          entries:
+            - product: BUILD-100
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "100000.00"}
+  fx_rate_sets: []
+  rule_sets: []
+  policies: {tenant: {billing.posting: ERP}, entities: {}, books: {}}
+contracts:
+  - external_id: C-DISC-CAUSE
+    customer: CUST-1
+    contracting_entity: US01
+    transaction_currency: USD
+    inception_date: "2026-03-01"
+    lines:
+      - {obligation_key: L1-BUILD, product_code: BUILD-100, quantity: "1", total_price: "100000.00"}
+    estimates:
+      - element_code: BONUS-FITOUT
+        estimate_kind: VARIABLE_CONSIDERATION
+        method: MOST_LIKELY_AMOUNT
+        vc_element_type: BONUS
+        allocation_target: CONTRACT
+        versions:
+          - version_no: "1"
+            effective_date: "2026-03-01"
+            unconstrained_amount: "10000.00"
+            most_conservative_amount: "0.00"
+            constrained_amount: "0.00"
+            rationale: "Early-completion bonus uncertain"
+          - version_no: "2"
+            effective_date: "2026-04-10"
+            unconstrained_amount: "10000.00"
+            most_conservative_amount: "10000.00"
+            constrained_amount: "10000.00"
+            rationale: "Completion date secured"
+    modifications:
+      - reference: MOD-DISC-01
+        effective_date: "2026-04-20"
+        kind: PRICE_CHANGE
+        lines:
+          - {obligation_key: L1-BUILD, product_code: BUILD-100, quantity: "1", total_price: "20000.00"}
+        price_change_amount: "20000.00"
+timeline:
+  - seq: 1
+    kind: event
+    contract: C-DISC-CAUSE
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-03-01"
+    payload: {}
+  - seq: 2
+    kind: event
+    contract: C-DISC-CAUSE
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-03-01"
+    payload: {}
+  - seq: 3
+    kind: event
+    contract: C-DISC-CAUSE
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-03-01"
+    payload: {estimate: BONUS-FITOUT, version_no: "1"}
+  - seq: 4
+    kind: event
+    contract: C-DISC-CAUSE
+    event_type: PROGRESS_RECORDED
+    effective_date: "2026-03-31"
+    payload: {obligation_key: L1-BUILD, cumulative_progress_ratio: "0.5", measure: OUTPUT_PERCENT}
+  - seq: 5
+    kind: event
+    contract: C-DISC-CAUSE
+    event_type: BILLING_RECORDED
+    effective_date: "2026-03-31"
+    payload: {invoice_number: INV-FIT-1, line_external_id: INV-FIT-1-1, amount: "60000.00", issue_date: "2026-03-31"}
+  - seq: 6
+    kind: event
+    contract: C-DISC-CAUSE
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-04-10"
+    payload: {estimate: BONUS-FITOUT, version_no: "2"}
+  - seq: 7
+    kind: event
+    contract: C-DISC-CAUSE
+    event_type: CONTRACT_AMENDED
+    effective_date: "2026-04-20"
+    payload: {modification: MOD-DISC-01}
+  - seq: 8
+    kind: event
+    contract: C-DISC-CAUSE
+    event_type: PROGRESS_RECORDED
+    effective_date: "2026-04-30"
+    payload: {obligation_key: L1-BUILD, cumulative_progress_ratio: "0.6", measure: OUTPUT_PERCENT}
+  - seq: 9
+    kind: event
+    contract: C-DISC-CAUSE
+    event_type: BILLING_RECORDED
+    effective_date: "2026-04-30"
+    payload: {invoice_number: INV-FIT-2, line_external_id: INV-FIT-2-1, amount: "40000.00", issue_date: "2026-04-30"}
+checkpoints:
+  - name: april-close
+    after_seq: 9
+    as_of: "2026-04-30"
+    book: ASC606
+    contracts:
+      - contract: C-DISC-CAUSE
+        version: {transaction_price: "130000.00", revenue_cum: "78000.00"}
+        obligations:
+          - obligation_key: L1-BUILD
+            allocated_amount: "130000.00"
+            revenue_cum: "78000.00"
+            catch_up_estimate_cum: "5000.00"
+            catch_up_modification_cum: "10000.00"
+        balances:
+          - {entity: US01, contract_liability: "22000.00", contract_asset: "0.00", unbilled_receivable: "0.00"}
+        trace:
+          - {measure: revenue_prior_period, subject_key: L1-BUILD, period_key: FY2026-P04, value: "15000.00"}
+        modifications:
+          - {reference: MOD-DISC-01, proposed_treatments: {L1-BUILD: CUMULATIVE_CATCH_UP}}
+    subledger:
+      - period_key: FY2026-P04
+        entity: US01
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "28000.00"}
+          - {account_role: REVENUE, account: "4010", cr: "28000.00"}

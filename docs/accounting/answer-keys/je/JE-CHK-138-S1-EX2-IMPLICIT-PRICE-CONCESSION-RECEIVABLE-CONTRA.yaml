@@ -1,0 +1,155 @@
+# docs/accounting/answer-keys/je/JE-CHK-138-S1-EX2-IMPLICIT-PRICE-CONCESSION-RECEIVABLE-CONTRA.yaml
+schema: "erev-answer-key/1"
+id: JE-CHK-138-S1-EX2-IMPLICIT-PRICE-CONCESSION-RECEIVABLE-CONTRA
+title: >-
+  JET-04c: implicit price concession on invoiced consideration posted to RECEIVABLE_CONTRA under ENGINE billing
+status: active
+families: [JE, STP1, VC]
+tags: [r04-s1]
+summary: >-
+  FASB Example 2 (research 04 S1-EX2) re-anchored to 2026. Entity US01, USD, billing.posting ENGINE (D-14a). 1,000
+  units are transferred and invoiced 1,000,000.00 on 2026-03-15; the entity expects to collect 400,000.00, an implicit
+  price concession (estimate kind IMPLICIT_PRICE_CONCESSION, rate κ = 0.6). The transaction price is 400,000.00.
+  JET-03 Dr ACCOUNTS_RECEIVABLE / Cr CONTRACT_LIABILITY 1,000,000.00; JET-02 Dr CONTRACT_LIABILITY / Cr REVENUE
+  400,000.00; JET-04c Dr CONTRACT_LIABILITY / Cr RECEIVABLE_CONTRA round(1,000,000 × 0.6) = 600,000.00. Revenue
+  400,000.00, net receivable 400,000.00, contract liability 0.00 and no credit-loss line (CHK-138; POL-125).
+  Cross-slice variants with distinct inputs, kept: STP1-S1-EX2 (different estimate inputs and events) (ADJUDICATION.md
+  R-DUP-02).
+authority:
+  codification: ["606-10-25-1", "606-10-32-7", "606-10-55-99", "606-10-55-100", "606-10-55-101"]
+  ifrs: ["IFRS 15.52", "IFRS 15.IE7"]
+  practice: []
+  urls: []
+derived_from: {research04: [S1-EX2], research05: [], chk: [CHK-138], golden: [], dev: []}
+requirements: [REQ-TP-015, REQ-BIL-002, REQ-CON-004]
+policy_refs: [POL-004, POL-125, POL-040]
+review:
+  author: answer-keys-fx-entity-books
+  authored_on: "2026-09-12"
+  reviewer: null
+  reviewed_on: null
+  status: pending
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: US01
+      name: "Avenmoor Systems Inc. (Demo)"
+      functional_currency: USD
+      time_zone: "America/New_York"
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: 1}
+      books: [ASC606]
+  periods: {from: "2026-03", to: "2026-03"}
+  period_states: []
+  gl_accounts:
+    - {code: "1100", name: "Accounts receivable", account_type: ASSET}
+    - {code: "1101", name: "Accounts receivable contra", account_type: ASSET}
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4000", name: "Revenue - products", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, account: "4000", product: DRUG-UNIT}
+    - {account_role: ACCOUNTS_RECEIVABLE, account: "1100"}
+    - {account_role: RECEIVABLE_CONTRA, account: "1101"}
+  customers:
+    - {code: CUST-1, name: "Pellworth Logistics Inc. (Demo)"}
+  pob_templates:
+    - code: TPL-UNITS
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: POINT_IN_TIME
+      over_time_criterion: NOT_APPLICABLE
+      recognition_method: UNITS_DELIVERED
+  products:
+    - {code: DRUG-UNIT, name: "Prescription drug, per unit", pob_template: TPL-UNITS}
+  ssp_books:
+    - code: SSP-US-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2026-01-01"
+          methodology_label: "Observable standalone prices"
+          entries:
+            - product: DRUG-UNIT
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "1000.00"}
+  fx_rate_sets: []
+  rule_sets: []
+  policies: {tenant: {billing.posting: ENGINE}, entities: {}, books: {}}
+contracts:
+  - external_id: C-JE-138
+    customer: CUST-1
+    contracting_entity: US01
+    transaction_currency: USD
+    inception_date: "2026-03-01"
+    lines:
+      - {obligation_key: L1-UNITS, product_code: DRUG-UNIT, quantity: "1000", total_price: "1000000.00"}
+    estimates:
+      - element_code: IPC-138
+        estimate_kind: IMPLICIT_PRICE_CONCESSION
+        method: RATE
+        versions:
+          - version_no: "1"
+            effective_date: "2026-03-01"
+            rate: "0.6"
+            rationale: "Customer's region in economic difficulty; expected entitlement 40%"
+timeline:
+  - {seq: 1, kind: event, contract: C-JE-138, event_type: CONTRACT_BOOKED, effective_date: "2026-03-01", payload: {}}
+  - seq: 2
+    kind: event
+    contract: C-JE-138
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-03-01"
+    payload: {}
+  - seq: 3
+    kind: event
+    contract: C-JE-138
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-03-01"
+    payload: {estimate: IPC-138, version_no: "1"}
+  - seq: 4
+    kind: event
+    contract: C-JE-138
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-03-15"
+    payload: {obligation_key: L1-UNITS, quantity: "1000", trigger: CONTROL_TRANSFER}
+  - seq: 5
+    kind: event
+    contract: C-JE-138
+    event_type: BILLING_RECORDED
+    effective_date: "2026-03-15"
+    payload:
+      invoice_number: INV-IPC-1
+      line_external_id: INV-IPC-1-1
+      obligation_key: L1-UNITS
+      amount: "1000000.00"
+      issue_date: "2026-03-15"
+      due_date: "2026-04-14"
+      is_cancellable: false
+checkpoints:
+  - name: march-close
+    after_seq: 5
+    as_of: "2026-03-31"
+    book: ASC606
+    contracts:
+      - contract: C-JE-138
+        version: {transaction_price: "400000.00", revenue_cum: "400000.00"}
+        balances:
+          - {entity: US01, contract_liability: "0.00", contract_asset: "0.00", accounts_receivable: "1000000.00"}
+    subledger:
+      - period_key: FY2026-P03
+        entity: US01
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: ACCOUNTS_RECEIVABLE, account: "1100", dr: "1000000.00"}
+          - {account_role: REVENUE, account: "4000", cr: "400000.00"}
+          - {account_role: RECEIVABLE_CONTRA, account: "1101", cr: "600000.00"}

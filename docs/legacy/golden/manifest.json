@@ -1,0 +1,218 @@
+{
+  "harness": "legacy-harness/replay.py",
+  "legacy_repo": "~/dev/erev-legacy",
+  "legacy_commit": "5ec25ffed763b561e86ac733d6583e762178791d",
+  "erev_py_sha256": "7fb658fbd72b9d7f8ca5dafa58ba34fabde9d101250b53f57ec45023e5e2bc14",
+  "erev_py_unmodified": true,
+  "shipped_db_sha256": "6e35b508218420c670f3f19d0fb1df83b32ff498bb45e6bd47df68cbdf1aafc2",
+  "environment": {
+    "python": "3.12.13",
+    "platform": "macOS-26.6.2-arm64-arm-64bit",
+    "pandas": "2.2.3",
+    "numpy": "1.26.4",
+    "PySide6": "6.7.3",
+    "openpyxl": "3.1.5",
+    "python_dotenv": "1.0.1",
+    "sqlite": "3.50.4",
+    "QT_QPA_PLATFORM": "offscreen"
+  },
+  "init_events": [
+    {
+      "step": "init",
+      "phase": "FileBrowserWindow.__init__",
+      "seq": 1,
+      "category": "platform",
+      "kind": "license",
+      "title": "load_license_key",
+      "text": "stubbed: no .env read, no LicenseKeyDialog",
+      "answer": "None"
+    },
+    {
+      "step": "init",
+      "phase": "FileBrowserWindow.__init__",
+      "seq": 2,
+      "category": "platform",
+      "kind": "license",
+      "title": "show_notification_and_disable",
+      "text": "stubbed: premium notice suppressed, premium buttons left enabled",
+      "answer": ""
+    }
+  ],
+  "steps": [
+    {
+      "nn": "00",
+      "slug": "reset",
+      "handler": "db_reset",
+      "button_label": "!Reset Database Completely!",
+      "file": null,
+      "date_input": null,
+      "report_window": null
+    },
+    {
+      "nn": "01",
+      "slug": "ssp-upload",
+      "handler": "browse_file_SSPs",
+      "button_label": "Load SSPs",
+      "file": "ops/Example UATs/SSP Upload UAT/SKU SSP Template.xlsx",
+      "date_input": null,
+      "report_window": null
+    },
+    {
+      "nn": "02",
+      "slug": "contract-setup-2023-01-01",
+      "handler": "browse_file_Contracts",
+      "button_label": "Load Contracts",
+      "file": "ops/Example UATs/Contract Setup UAT/Contract Setup Template 1.1.2023.xlsx",
+      "date_input": null,
+      "report_window": [
+        "2023-01-01",
+        "2023-01-01"
+      ]
+    },
+    {
+      "nn": "03",
+      "slug": "contract-setup-2023-02-01",
+      "handler": "browse_file_Contracts",
+      "button_label": "Load Contracts",
+      "file": "ops/Example UATs/Contract Setup UAT/Contract Setup Template 2.1.2023.xlsx",
+      "date_input": null,
+      "report_window": [
+        "2023-02-01",
+        "2023-02-01"
+      ]
+    },
+    {
+      "nn": "04",
+      "slug": "delivery-billing-2023-01-31",
+      "handler": "browse_file_Deliveries",
+      "button_label": "Load Delivery and Billing",
+      "file": "ops/Example UATs/Delivery and Billing UAT/Contract Progress Tracking Template 1.31.2023.xlsx",
+      "date_input": "2023-01-31",
+      "report_window": [
+        "2023-01-02",
+        "2023-01-31"
+      ]
+    },
+    {
+      "nn": "05",
+      "slug": "delivery-billing-2023-02-28",
+      "handler": "browse_file_Deliveries",
+      "button_label": "Load Delivery and Billing",
+      "file": "ops/Example UATs/Delivery and Billing UAT/Contract Progress Tracking Template 2.28.2023.xlsx",
+      "date_input": "2023-02-28",
+      "report_window": [
+        "2023-02-02",
+        "2023-02-28"
+      ]
+    },
+    {
+      "nn": "06",
+      "slug": "delivery-billing-2023-03-31",
+      "handler": "browse_file_Deliveries",
+      "button_label": "Load Delivery and Billing",
+      "file": "ops/Example UATs/Delivery and Billing UAT/Contract Progress Tracking Template 3.31.2023.xlsx",
+      "date_input": "2023-03-31",
+      "report_window": [
+        "2023-03-01",
+        "2023-03-31"
+      ]
+    },
+    {
+      "nn": "07",
+      "slug": "delivery-billing-2023-04-30-return-zero",
+      "handler": "browse_file_Deliveries",
+      "button_label": "Load Delivery and Billing",
+      "file": "ops/Example UATs/Delivery and Billing UAT/Contract Progress Tracking Template 4.30.2023 - Return & Zero delivery billing.xlsx",
+      "date_input": "2023-04-30",
+      "report_window": [
+        "2023-04-01",
+        "2023-04-30"
+      ]
+    },
+    {
+      "nn": "08",
+      "slug": "retro-mod-2023-05-15-vc-pob-increase",
+      "handler": "browse_file_RetroMod",
+      "button_label": "Retrospective Contract Mod",
+      "file": "ops/Example UATs/Contract Mod UAT/Contract Modification Template 05.15.2023 - retrospective vc + POB increases.xlsx",
+      "date_input": "2023-05-15",
+      "report_window": [
+        "2023-05-01",
+        "2023-05-15"
+      ]
+    },
+    {
+      "nn": "09",
+      "slug": "pob-specific-vc-2023-05-31",
+      "handler": "browse_file_POB_specific_VC",
+      "button_label": "POB Specific VC",
+      "file": "ops/Example UATs/Contract Mod UAT/Contract Modification Template 05.31.2023 - retrospective POB specific VC.xlsx",
+      "date_input": "2023-05-31",
+      "report_window": [
+        "2023-05-16",
+        "2023-05-31"
+      ]
+    },
+    {
+      "nn": "10",
+      "slug": "prospective-mod-2023-06-15-reduction",
+      "handler": "browse_file_ProsMod",
+      "button_label": "Prospective Contract Mod",
+      "file": "ops/Example UATs/Contract Mod UAT/Contract Modification Template 06.15.2023 - prospective reduction.xlsx",
+      "date_input": "2023-06-15",
+      "report_window": [
+        "2023-06-01",
+        "2023-06-15"
+      ]
+    },
+    {
+      "nn": "11",
+      "slug": "prospective-mod-2023-07-15-pob-increase",
+      "handler": "browse_file_ProsMod",
+      "button_label": "Prospective Contract Mod",
+      "file": "ops/Example UATs/Contract Mod UAT/Contract Modification Template 07.15.2023 - prospective POB increases.xlsx",
+      "date_input": "2023-07-15",
+      "report_window": [
+        "2023-07-01",
+        "2023-07-15"
+      ]
+    },
+    {
+      "nn": "12",
+      "slug": "retro-mod-2023-08-15-pob-reduction",
+      "handler": "browse_file_RetroMod",
+      "button_label": "Retrospective Contract Mod",
+      "file": "ops/Example UATs/Contract Mod UAT/Contract Modification Template 08.15.2023 - retrospective POB reduction.xlsx",
+      "date_input": "2023-08-15",
+      "report_window": [
+        "2023-08-01",
+        "2023-08-15"
+      ]
+    },
+    {
+      "nn": "13",
+      "slug": "prospective-mod-2023-09-15-material-right-new-pob",
+      "handler": "browse_file_ProsMod",
+      "button_label": "Prospective Contract Mod",
+      "file": "ops/Example UATs/Contract Mod UAT/Contract Modification Template 09.15.2023 - material right exericse with new POB added (propsective).xlsx",
+      "date_input": "2023-09-15",
+      "report_window": [
+        "2023-09-01",
+        "2023-09-15"
+      ]
+    },
+    {
+      "nn": "14",
+      "slug": "full-delivery-2023-10-31",
+      "handler": "browse_file_Deliveries",
+      "button_label": "Load Delivery and Billing",
+      "file": "ops/Example UATs/Delivery and Billing UAT/Full delivery 10.31.2023.xlsx",
+      "date_input": "2023-10-31",
+      "report_window": [
+        "2023-10-01",
+        "2023-10-31"
+      ]
+    }
+  ],
+  "time_token_note": "Processing Time Log and the timestamp prefix of Record Unique ID are replaced by step-NN (the step that wrote the row); raw wall-clock values are in out/."
+}

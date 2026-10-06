@@ -1,0 +1,960 @@
+diff --git a/backend/erev_engine/formulas.py b/backend/erev_engine/formulas.py
+index 22da6687..4f97efad 100644
+--- a/backend/erev_engine/formulas.py
++++ b/backend/erev_engine/formulas.py
+@@ -2721,6 +2721,19 @@ def _refund_consumption(inputs: Sequence[Fraction], params: Mapping[str, str]) -
+     return Fraction(take, 10**minor_unit)
+ 
+ 
++def _refund_concession_total(inputs: Sequence[Fraction], params: Mapping[str, str]) -> Fraction:
++    """``rl.concession_total.v1`` (D-98 candidate 109, draft): an obligation's aggregate
++    ``concession_created_cum`` at a period end as the Σ of its dated ``CONCESSION`` components'
++    own ``concession_created_cum`` nodes (inputs 0..n, one per component); mode ``sum`` only, so
++    the aggregate preserves each component's lineage instead of citing one event at the total."""
++    formula_id = "rl.concession_total.v1"
++    if _param(params, "mode") != "sum":
++        raise ValueError(f"{formula_id} knows the mode sum only")
++    if not inputs:
++        raise ValueError(f"{formula_id} needs at least one component node")
++    return sum(inputs, Fraction(0))
++
++
+ def _return_asset(inputs: Sequence[Fraction], params: Mapping[str, str]) -> Fraction:
+     """``returns.return_asset.v1`` (S10-R-16): mode ``balance``: round(``unit`` × ``expected``),
+     with unit = max(0, k − c_rec); mode ``derecognised``: Σ round(``unit`` × q_i) over params
+@@ -3847,6 +3860,7 @@ FORMULAS: Final[Mapping[str, Formula]] = MappingProxyType(
+         "returns.return_asset.v1": _return_asset,
+         "returns.revenue_target.v1": _revenue_target,
+         "rl.concession.v1": _refund_event_component("rl.concession.v1"),
++        "rl.concession_total.v1": _refund_concession_total,
+         "rl.consumption.v1": _refund_consumption,
+         "rl.return.v1": _refund_return,
+         "rl.termination.v1": _refund_event_component("rl.termination.v1"),
+diff --git a/backend/erev_engine/stages/s10_billing_balances/__init__.py b/backend/erev_engine/stages/s10_billing_balances/__init__.py
+index efb42358..2342f456 100644
+--- a/backend/erev_engine/stages/s10_billing_balances/__init__.py
++++ b/backend/erev_engine/stages/s10_billing_balances/__init__.py
+@@ -91,6 +91,7 @@ FORMULA_IDS: Final[tuple[str, ...]] = (
+     "pos.split_ca_ur.v1",
+     "returns.return_asset.v1",
+     "rl.concession.v1",
++    "rl.concession_total.v1",
+     "rl.consumption.v1",
+     "rl.return.v1",
+     "rl.return.v2",
+@@ -171,7 +172,13 @@ def run(ctx: BookContext, st: RecognitionState, tb: TraceBuilder) -> BalanceStat
+     # S10-R-26 runs last: it reads the stage 09 revenue targets and the JET-05c concessions.
+     listed = allocated.specialist_targets.customer_consideration
+     consideration = customer_consideration.measure(
+-        ctx, st, refunds.components, refunds.concessions, listed, tb
++        ctx,
++        st,
++        refunds.components,
++        refunds.concessions,
++        listed,
++        tb,
++        aggregate_nodes=refunds.concession_aggregates,
+     )
+     members = (
+         *presentation.members,
+diff --git a/backend/erev_engine/stages/s10_billing_balances/customer_consideration.py b/backend/erev_engine/stages/s10_billing_balances/customer_consideration.py
+index c777755b..e2873fa2 100644
+--- a/backend/erev_engine/stages/s10_billing_balances/customer_consideration.py
++++ b/backend/erev_engine/stages/s10_billing_balances/customer_consideration.py
+@@ -46,6 +46,7 @@ to stage 10. Standard library only (DG-ARC-02).
+ 
+ from __future__ import annotations
+ 
++import dataclasses
+ from collections.abc import Mapping, Sequence
+ from dataclasses import dataclass
+ from datetime import date
+@@ -127,6 +128,7 @@ def measure(
+     concessions: Sequence[Target],
+     listed: Sequence[Target],
+     tb: TraceBuilder,
++    aggregate_nodes: Mapping[tuple[str, str], str] | None = None,
+ ) -> CustomerConsideration:
+     """S10-R-26 over the stage 04 EMOD-22 series ``listed`` (payable, ordinary release, asset);
+     ``components`` are the stage 10 refund components (the CONCESSION ones name the aggregate
+@@ -142,6 +144,12 @@ def measure(
+     for target in concessions:
+         if target.cause in concession_keys:
+             aggregates[(target.subject_key, target.period_key)] = target
++    # D-98 candidate 109 (draft): with several dated components on one obligation the targets name
++    # per-component nodes; ``aggregate_nodes`` names the obligation's one aggregate node per period.
++    for (subject_key, period_key), node_id in (aggregate_nodes or {}).items():
++        existing = aggregates.get((subject_key, period_key))
++        if existing is not None and existing.node_id != node_id:
++            aggregates[(subject_key, period_key)] = dataclasses.replace(existing, node_id=node_id)
+     portion_nodes: dict[tuple[str, str, str], str] = {}
+     minor_unit = ctx.currencies[ctx.txn_currency].minor_unit
+     scale: int = 10**minor_unit
+diff --git a/backend/erev_engine/stages/s10_billing_balances/refund_liability.py b/backend/erev_engine/stages/s10_billing_balances/refund_liability.py
+index 80461949..3089cf46 100644
+--- a/backend/erev_engine/stages/s10_billing_balances/refund_liability.py
++++ b/backend/erev_engine/stages/s10_billing_balances/refund_liability.py
+@@ -45,7 +45,7 @@ from types import MappingProxyType
+ from typing import Final
+ 
+ from erev_engine import money
+-from erev_engine.bundle import DECREASE, EstimateVersionInput
++from erev_engine.bundle import DECREASE, EstimateVersionInput, PeriodInput
+ from erev_engine.errors import EngineError
+ from erev_engine.formulas import rational_param
+ from erev_engine.stages.s01_canonicalize import (
+@@ -59,10 +59,12 @@ from erev_engine.stages.s10_billing_balances.billing import Billed, BillingDocum
+ from erev_engine.stages.state import (
+     AllocatedState,
+     BookContext,
++    ConcessionAddition,
+     ConcessionQuota,
+     ContractView,
+     EventView,
+     ObligationState,
++    OrderKey,
+     SegmentCause,
+     Target,
+ )
+@@ -112,6 +114,9 @@ FORMULA_OF_KIND: Final[Mapping[str, str]] = MappingProxyType(
+     }
+ )
+ CONSUMPTION_FORMULA: Final = "rl.consumption.v1"
++# D-98 candidate 109 (draft): the obligation aggregate over several dated components is the Σ of
++# their own concession_created_cum nodes (each cited as an input), never one event at the total.
++CONCESSION_TOTAL_FORMULA: Final = "rl.concession_total.v1"
+ RETURN_FORMULA_V1: Final = "rl.return.v1"  # stored traces; states without an E_b node (D-91)
+ _CONCESSION_CREATED: Final = "concession_created_cum"  # the JET-05c target (Table 14-A)
+ RETURN_ASSET_FORMULA: Final = "returns.return_asset.v1"
+@@ -172,6 +177,9 @@ class RefundComponent:
+     # UNCLAIMED_PROPERTY only: the stage 09 ``unclaimed_property_cum`` node the component was
+     # created from, cited as input 0 in place of a source reference (S09-R-28; ENC-8).
+     created_node: str | None = None
++    # D-98 candidate 109 (draft): the ENG-06 position of the creating event of a component built
++    # from a dated ``concession_history`` addition; None for an inferred or remeasured component.
++    created_order: OrderKey | None = None
+ 
+     @property
+     def created_input(self) -> str | SourceRef | None:
+@@ -192,6 +200,10 @@ class Refunds:
+     balances: Mapping[tuple[str, str], Target]  # (component key, period key) -> balance target
+     return_assets: tuple[Target, ...]  # return_asset, return_asset_derecognised_cum per obligation
+     concessions: tuple[Target, ...] = ()  # concession_created_cum (JET-05c)
++    # D-98 candidate 109 (draft): (obligation subject key, period key) -> the id of the one
++    # ``concession_created_cum`` node per obligation and period end (Σ of the dated components
++    # created by then) that S10-R-26 cites as ``aggregate_node``.
++    concession_aggregates: Mapping[tuple[str, str], str] = MappingProxyType({})
+ 
+     def concession_total(self, subject_key: str, t: date) -> int:
+         """Σ ``CONCESSION`` amounts created on obligation ``subject_key`` by ``t`` (S10-R-09)."""
+@@ -374,11 +386,43 @@ def _unclaimed_property(recognition: RecognitionState, mu: int) -> list[RefundCo
+     return out
+ 
+ 
++def _dated_concession(
++    st: AllocatedState, ob: ObligationState, addition: ConcessionAddition, mu: int
++) -> RefundComponent:
++    """One ``CONCESSION`` component per dated addition (D-98 candidate 109, draft): created on the
++    producing event's effective date, cited to that event, ordered by its ENG-06 position."""
++    detail = {"member": "refund_component", "value": money.format_money(addition.posted, mu)}
++    source_key = f"{addition.event_key}/{ob.subject_key}"
++    return RefundComponent(
++        kind=CONCESSION,
++        key=_key(st, ob.contracting_entity, CONCESSION, source_key),
++        entity=ob.contracting_entity,
++        contract_key=ob.contract_key,
++        subject_key=ob.subject_key,
++        source_key=source_key,
++        created_on=addition.effective_date,
++        created_amount=addition.posted,
++        created_ref=SourceRef("contract_event", addition.event_key, detail),
++        revenue_basis=addition.revenue_basis,
++        created_order=addition.order_key,
++    )
++
++
+ def _concessions(st: AllocatedState, mu: int) -> list[RefundComponent]:
+     """``CONCESSION`` components from ``AllocatedState.refund_components`` (S06-R-09; JET-05c).
+ 
++    D-98 candidate 109 (draft): when the obligation's quota is conserved by its dated
++    ``concession_history`` (every addition posted ≥ 0 and Σ posted = quota.a_posted), one
++    component per addition keeps the actual producing event as its origin, so a credit memo
++    consumes only concessions whose origin precedes it (S10-R-14 "oldest first" read as dated
++    origin in ENG-06 order); a zero-posted addition (deferred targeted cent) creates no component.
++    Without conserving dated history (a producer that writes none) the aggregate quota keeps the
++    boundary inference of ``_concession_event`` — the fallback, not the rule.
+     A termination refund key (S06-R-21) is skipped: ``_terminations`` creates that component."""
+     obligations = {ob.subject_key: ob for ob in st.obligations}
++    history: dict[str, list[ConcessionAddition]] = {}
++    for addition in sorted(st.concession_history, key=lambda item: item.order_key):
++        history.setdefault(addition.subject_key, []).append(addition)
+     out: list[RefundComponent] = []
+     for subject_key, quota in sorted(st.refund_components.items()):
+         if quota.a_posted == 0 or _is_termination_key(st, subject_key):
+@@ -394,6 +438,18 @@ def _concessions(st: AllocatedState, mu: int) -> list[RefundComponent]:
+             raise _invariant(
+                 "a concession refund quota is negative", subject_key, rule="S10-INV-02"
+             )
++        additions = history.get(subject_key, [])
++        if (
++            additions
++            and all(item.posted >= 0 for item in additions)
++            and sum(item.posted for item in additions) == quota.a_posted
++        ):
++            out.extend(
++                _dated_concession(st, ob, addition, mu)
++                for addition in additions
++                if addition.posted != 0
++            )
++            continue
+         ev = _concession_event(st, ob)
+         detail = {"member": "refund_component", "value": money.format_money(quota.a_posted, mu)}
+         source_key = f"{ev.event_key}/{subject_key}"
+@@ -420,13 +476,19 @@ def _consume(
+     components: Sequence[RefundComponent],
+     memos: Sequence[BillingDocumentOut],
+     mu: int,
++    orders: Mapping[str, OrderKey] | None = None,
+ ) -> list[RefundComponent]:
+-    """``consume_credit_memos`` of §10.2.4 (S10-R-14; S10-INV-07)."""
++    """``consume_credit_memos`` of §10.2.4 (S10-R-14; S10-INV-07). D-98 candidate 109 (draft):
++    ``orders`` maps event keys to ENG-06 positions; a component created from a dated addition is
++    consumed only by a memo that follows its producing event in that order (a same-day memo
++    recorded before the addition consumes nothing); without ``orders`` the date rule alone
++    applies."""
+     order = sorted(
+         (component for component in components if component.kind in KIND_ORDER),
+         key=lambda component: (
+             KIND_ORDER[component.kind],
+             component.created_on,
++            component.created_order or (component.created_on, 0, ""),
+             component.source_key,
+         ),
+     )
+@@ -445,6 +507,13 @@ def _consume(
+                 continue
+             if component.created_on is None or component.created_on > memo.effective_date:
+                 continue
++            memo_order = None if orders is None else orders.get(memo.document_key)
++            if (
++                component.created_order is not None
++                and memo_order is not None
++                and component.created_order > memo_order
++            ):
++                continue  # the memo precedes the addition's producing event (ENG-06 order)
+             take = min(open_amounts[component.key], amount - taken)
+             node_id = tb.node(
+                 measure=f"refund_liability_consumed@{memo.document_key}",
+@@ -686,8 +755,10 @@ def measure(
+         *_concessions(st, mu),
+         *_unclaimed_property(recognition, mu),
+     ]
++    orders = {ev.event_key: ev.order_key for ev in (*st.events, *st.measure_events)}
+     components = [
+-        _attribute(ctx, st, tb, item, mu) for item in _consume(ctx, tb, created, memos, mu)
++        _attribute(ctx, st, tb, item, mu)
++        for item in _consume(ctx, tb, created, memos, mu, orders=orders)
+     ]
+     targets: list[Target] = []
+     balances: dict[tuple[str, str], Target] = {}
+@@ -741,39 +812,89 @@ def measure(
+     # JET-05c creates each CONCESSION component: its created amount per obligation and period end
+     # from creation on, unchanged by consumption, which JET-04b carries (Table 14-A; L4-3-Q-42).
+     concessions: list[Target] = []
++    aggregates: dict[tuple[str, str], str] = {}
++    by_obligation: dict[tuple[str, str], list[RefundComponent]] = {}
+     for component in sorted(components, key=lambda item: item.key):
+         if component.kind != CONCESSION or component.created_on is None:
+             continue
+         if component.created_ref is None:
+             raise _invariant("a concession has no creating event", component.key, rule="S10-R-14")
+-        formula_id = FORMULA_OF_KIND[CONCESSION]
+-        for period in billing.periods(ctx, st, component.entity):
+-            if component.created_on > period.end_date:
++        by_obligation.setdefault((component.subject_key, component.entity), []).append(component)
++    formula_id = FORMULA_OF_KIND[CONCESSION]
++
++    def created_node(
++        subject: str, component: RefundComponent, period: PeriodInput, ref: SourceRef
++    ) -> str:
++        return tb.node(
++            measure=_CONCESSION_CREATED,
++            subject_key=subject,
++            period_key=period.period_key,
++            value=component.created_amount,
++            currency=ctx.txn_currency,
++            minor_unit=mu,
++            formula_id=formula_id,
++            inputs=[ref],
++            params={"as_of": period.end_date.isoformat(), "mode": "open"},
++            narrative_key=_narrative(formula_id),
++        )
++
++    def created_target(component: RefundComponent, period: PeriodInput, node_id: str) -> Target:
++        return Target(
++            ctx.book_code,
++            component.entity,
++            component.subject_key,
++            _CONCESSION_CREATED,
++            period.period_key,
++            component.key,  # stage 14 nets JET-04b by component (D-88 L7-5-Q-4 (2))
++            component.created_amount,
++            None,
++            node_id,
++        )
++
++    for (subject_key, entity), group in sorted(by_obligation.items()):
++        for period in billing.periods(ctx, st, entity):
++            created = [
++                item
++                for item in group
++                if item.created_on is not None and item.created_on <= period.end_date
++            ]
++            if not created:
+                 continue
+-            node_id = tb.node(
++            if len(created) == 1:
++                # One dated component: the obligation's node is the component's node (unchanged).
++                [component] = created
++                assert component.created_ref is not None  # checked when grouped
++                node_id = created_node(subject_key, component, period, component.created_ref)
++                concessions.append(created_target(component, period, node_id))
++                aggregates[(subject_key, period.period_key)] = node_id
++                continue
++            # D-98 candidate 109 (draft): several dated components on one obligation. Each carries
++            # its own ``concession_created_cum`` node (subject = component key) for JET-05c and the
++            # JET-04b netting by component; the obligation keeps one aggregate node per period end
++            # (the Σ of the component nodes it cites, `rl.concession_total.v1`) for
++            # S10-R-26's ``aggregate_node`` param — never an element input (count-once numerator).
++            # Component nodes first; the aggregate cites exactly their ids (Codex 1510 lineage).
++            component_nodes: list[str] = []
++            for component in created:
++                assert component.created_ref is not None  # checked when grouped
++                node_id = created_node(component.key, component, period, component.created_ref)
++                concessions.append(created_target(component, period, node_id))
++                component_nodes.append(node_id)
++            aggregates[(subject_key, period.period_key)] = tb.node(
+                 measure=_CONCESSION_CREATED,
+-                subject_key=component.subject_key,
++                subject_key=subject_key,
+                 period_key=period.period_key,
+-                value=component.created_amount,
++                value=sum(item.created_amount for item in created),
+                 currency=ctx.txn_currency,
+                 minor_unit=mu,
+-                formula_id=formula_id,
+-                inputs=[component.created_ref],
+-                params={"as_of": period.end_date.isoformat(), "mode": "open"},
+-                narrative_key=_narrative(formula_id),
+-            )
+-            concessions.append(
+-                Target(
+-                    ctx.book_code,
+-                    component.entity,
+-                    component.subject_key,
+-                    _CONCESSION_CREATED,
+-                    period.period_key,
+-                    component.key,  # stage 14 nets JET-04b by component (D-88 L7-5-Q-4 (2))
+-                    component.created_amount,
+-                    None,
+-                    node_id,
+-                )
++                formula_id=CONCESSION_TOTAL_FORMULA,
++                inputs=list(component_nodes),
++                params={
++                    "as_of": period.end_date.isoformat(),
++                    "mode": "sum",
++                    "components": "|".join(item.key for item in created),
++                },
++                narrative_key=_narrative(CONCESSION_TOTAL_FORMULA),
+             )
+ 
+     remeasured: dict[str, RefundComponent] = {}
+@@ -966,4 +1087,5 @@ def measure(
+         balances=MappingProxyType(balances),
+         return_assets=tuple(assets),
+         concessions=tuple(concessions),
++        concession_aggregates=MappingProxyType(aggregates),
+     )
+diff --git a/backend/erev_engine/stages/s14_posting/targets.py b/backend/erev_engine/stages/s14_posting/targets.py
+index 408b5608..cbc02f33 100644
+--- a/backend/erev_engine/stages/s14_posting/targets.py
++++ b/backend/erev_engine/stages/s14_posting/targets.py
+@@ -781,6 +781,10 @@ def _refund_liabilities(
+     )
+     created: dict[tuple[str, str, str], Target] = {}
+     out: list[PartTarget] = []
++    # D-98 candidate 109 (draft): stage 10 may name several dated CONCESSION components on one
++    # obligation; JET-04b nets each by its component cause, JET-05c stays one part per obligation
++    # and period end — the Σ of the components created by then, citing every component's node.
++    grouped: dict[tuple[str, str, str], list[Target]] = {}
+     for target in inputs.concessions:
+         _require(target, CONCESSION_MEASURE, ctx)
+         if target.cause is None:
+@@ -788,8 +792,14 @@ def _refund_liabilities(
+                 f"a concession of {target.subject_key} names no component as cause (§10.2.4)"
+             )
+         created[(target.entity, target.cause, target.period_key)] = target
+-        values: tuple[NodeInput, ...] = ((target.node_id, 1),)
+-        out.append(_plain(ctx, target, "JET-05c", None, target.value, values))
++        grouped.setdefault((target.entity, target.subject_key, target.period_key), []).append(
++            target
++        )
++    for group in grouped.values():
++        values: tuple[NodeInput, ...] = tuple((item.node_id, 1) for item in group)
++        out.append(
++            _plain(ctx, group[0], "JET-05c", None, sum(item.value for item in group), values)
++        )
+     for target in inputs.refund_liabilities:
+         _require(target, REFUND_LIABILITY_MEASURE, ctx)
+         if target.cause not in COMPONENT_KINDS:
+diff --git a/backend/tests/engine/s10_billing_balances/test_s10_share_based.py b/backend/tests/engine/s10_billing_balances/test_s10_share_based.py
+index 67b07a26..b518e28a 100644
+--- a/backend/tests/engine/s10_billing_balances/test_s10_share_based.py
++++ b/backend/tests/engine/s10_billing_balances/test_s10_share_based.py
+@@ -797,9 +797,10 @@ def test_cross_month_concessions_july_portion_then_august_portion() -> None:
+         "2026-07-04",
+         "0",
+     )
+-    # No aggregate concession_created_cum target exists at P07: the aggregate is dated by its latest
+-    # event (30 Aug), the legacy posting path the ruling preserves.
+-    assert f"{CONCESSION_NODE}:{P(7)}" not in found
++    # D-98 candidate 109 (DRAFT, lane F-CTR): the aggregate node is dated by the components' own
++    # producing events, so P07 shows the 15 Jul 20,000.00 and P08 the Σ 50,000.00 (before the
++    # candidate: no P07 node — the aggregate was dated by its latest event, 30 Aug).
++    assert found[f"{CONCESSION_NODE}:{P(7)}"].value == "20000.00"
+     assert found[f"{CONCESSION_NODE}:{P(8)}"].value == "50000.00"
+     august = found[f"{ELEMENT_NODE}:{P(8)}"]
+     cited = [item for item in august.inputs if isinstance(item, str)]
+@@ -918,9 +919,10 @@ def test_mixed_producers_stage_06_july_then_stage_08_august() -> None:
+         "2026-07-04",
+         "0",
+     )
+-    # Legacy aggregate dating preserved (not this lane's to change): the final 50,000.00 quota is
+-    # dated by the settled modification, so the aggregate node already shows 50,000.00 at P07.
+-    assert found[f"{CONCESSION_NODE}:{P(7)}"].value == "50000.00"
++    # D-98 candidate 109 (DRAFT, lane F-CTR): dated origins — P07 carries the stage 06 July
++    # 20,000.00 only, P08 the Σ 50,000.00 once the stage 08 August 30,000.00 exists (before the
++    # candidate: the aggregate was dated by the settled modification and showed 50,000.00 at P07).
++    assert found[f"{CONCESSION_NODE}:{P(7)}"].value == "20000.00"
+     assert found[f"{CONCESSION_NODE}:{P(8)}"].value == "50000.00"
+     august = found[f"{ELEMENT_NODE}:{P(8)}"]
+     cited = [item for item in august.inputs if isinstance(item, str)]
+diff --git a/backend/tests/engine/s10_billing_balances/test_s10_cand109_dated_concession_origin.py b/backend/tests/engine/s10_billing_balances/test_s10_cand109_dated_concession_origin.py
+new file mode 100644
+index 00000000..d8543c68
+--- /dev/null
++++ b/backend/tests/engine/s10_billing_balances/test_s10_cand109_dated_concession_origin.py
+@@ -0,0 +1,512 @@
++"""D-98 candidate 109 (DRAFT; lane F-CTR VC113-CAND109-DRAFT): a ``CONCESSION`` refund component
++keeps the actual dated producing event of each aggregated addition (``AllocatedState.
++concession_history``) as its origin — created on that event's date, cited to that event, ordered
++for consumption by that event's ENG-06 position — and the stage-10 boundary inference
++(``_concession_event``: latest MODIFICATION, else TP_CHANGE) is only the fallback for a quota
++without conserving dated history. A credit memo consumes only quotas whose origin precedes it
++(S10-R-14 "oldest first", read as dated origin in ENG-06 order). CPU only.
++"""
++
++from __future__ import annotations
++
++import dataclasses
++from datetime import date
++from fractions import Fraction
++from types import MappingProxyType
++
++from erev_engine import ENGINE_VERSION
++from erev_engine.stages.s10_billing_balances import customer_consideration as cc
++from erev_engine.stages.s10_billing_balances import refund_liability as rl
++from erev_engine.stages.s10_billing_balances.billing import BillingDocumentOut
++from erev_engine.stages.s10_billing_balances.classification import Line
++from erev_engine.stages.state import (
++    AllocatedState,
++    ConcessionAddition,
++    ConcessionQuota,
++    EventView,
++    Quota,
++    SegmentCause,
++)
++from erev_engine.trace import TraceBuilder
++from support import bundles
++from support import cpc_worlds as w
++from support.cpc_worlds import KEY, SUPPLY, WARRANT, Y1
++from support.recognition import (
++    CONTRACT_KEY,
++    allocated_state,
++    book_context,
++    event_view,
++    obligation,
++    segment,
++)
++
++MU = 2
++START, END = date(2023, 1, 1), date(2023, 12, 31)
++POB = "POB-1"
++
++
++def _ctx():  # type: ignore[no-untyped-def]
++    return book_context(bundles.entity(start=START, months=12), book_code="ASC606", currency="USD")
++
++
++def _memo(event: EventView, amount: int) -> BillingDocumentOut:
++    line = Line(
++        event=event,
++        kind="CREDIT_MEMO",
++        number=f"CM-{event.record_seq}",
++        line_external_id=None,
++        obligation_key=None,
++        amount=amount,
++        tax_amount=0,
++        is_cancellable=False,
++        credited_invoice_number=None,
++        mode="ERP",
++        unconditional_date=None,
++        in_position=True,
++        unconditional_source=event,
++    )
++    return BillingDocumentOut(
++        document_key=event.event_key,
++        contract_key=CONTRACT_KEY,
++        kind="CREDIT_MEMO",
++        number=line.number,
++        effective_date=event.effective_date,
++        lines=(line,),
++        attribution=MappingProxyType({}),
++    )
++
++
++def _state(
++    additions: list[tuple[EventView, int]],
++    *,
++    modification: EventView | None = None,
++    history: bool = True,
++    quota_posted: int | None = None,
++) -> tuple[AllocatedState, str]:
++    """One complete obligation with a MODIFICATION segment (when given) and one TP_CHANGE segment
++    per addition; the CONCESSION quota is the aggregate of the additions unless ``quota_posted``
++    overrides it; the dated history is written when ``history``."""
++    segments = [segment(Fraction(400), 40_000, start=START, end=END)]
++    if modification is not None:
++        segments.append(
++            segment(
++                Fraction(400),
++                40_000,
++                start=START,
++                end=END,
++                effective=modification.effective_date,
++                basis="PROSPECTIVE",
++                cause=SegmentCause.MODIFICATION,
++                event_key=modification.event_key,
++            )
++        )
++    running = 40_000
++    for event, posted in additions:
++        running -= posted
++        segments.append(
++            segment(
++                Fraction(running, 100),
++                running,
++                start=START,
++                end=END,
++                effective=event.effective_date,
++                basis="PROSPECTIVE",
++                cause=SegmentCause.TP_CHANGE,
++                event_key=event.event_key,
++            )
++        )
++    ob = obligation(POB, segments, start=START, end=END)
++    events = [event for event, _ in additions] + ([] if modification is None else [modification])
++    base = allocated_state([ob], events=sorted(events, key=lambda ev: ev.order_key))
++    total = sum(posted for _, posted in additions) if quota_posted is None else quota_posted
++    quota = ConcessionQuota(Fraction(total, 100), total, revenue_basis="EMBEDDED")
++    dated = tuple(
++        ConcessionAddition(
++            ob.subject_key,
++            event.event_key,
++            event.effective_date,
++            event.order_key,
++            Fraction(posted, 100),
++            posted,
++            "08",
++            "EMBEDDED",
++        )
++        for event, posted in additions
++    )
++    st = dataclasses.replace(
++        base,
++        refund_components=MappingProxyType({ob.subject_key: quota}),
++        concession_history=dated if history else (),
++    )
++    return st, ob.subject_key
++
++
++def _orders(st: AllocatedState, *memo_events: EventView) -> dict[str, tuple[date, int, str]]:
++    return {ev.event_key: ev.order_key for ev in (*st.events, *memo_events)}
++
++
++def _consumed(components: list[rl.RefundComponent]) -> dict[str, list[tuple[str, int]]]:
++    return {
++        component.source_key: [(item.document_key, item.amount) for item in component.consumptions]
++        for component in components
++        if component.kind == rl.CONCESSION
++    }
++
++
++def test_cand109_vc_chk_113_shape_origin_is_the_november_producer_not_the_may_boundary() -> None:
++    """The VC-CHK-113 shape: a May 31 MODIFICATION segment on the software obligation, a November
++    15 targeted DISCOUNT that adds the 60.00 quota (one dated history entry), an unreferenced
++    October 31 credit of 100.00 and the December 10 concession credit of 60.00. The component is
++    created on November 15 from the producing ESTIMATE_CHANGED event; October consumes nothing
++    (its origin follows the memo); December consumes the 60.00 (JET-04b release)."""
++    may = event_view(
++        CONTRACT_KEY,
++        8,
++        "CONTRACT_AMENDED",
++        date(2023, 5, 31),
++        {"modification": "MOD-0531"},
++        obligation_keys=(POB,),
++    )
++    nov = event_view(
++        CONTRACT_KEY,
++        15,
++        "ESTIMATE_CHANGED",
++        date(2023, 11, 15),
++        {"estimate": "VC-CONC-2", "version_no": "1"},
++        obligation_keys=(POB,),
++    )
++    st, subject = _state([(nov, 6_000)], modification=may)
++    assert (
++        rl._concession_event(st, st.obligations[0]) is may
++    )  # the inference alone would date it May 31
++    components = rl._concessions(st, MU)
++    assert [
++        (
++            c.kind,
++            c.created_on,
++            c.created_amount,
++            c.created_ref.ref_id if c.created_ref else None,
++            c.created_order,
++        )
++        for c in components
++    ] == [(rl.CONCESSION, date(2023, 11, 15), 6_000, nov.event_key, nov.order_key)]
++    assert components[0].source_key == f"{nov.event_key}/{subject}"
++    october = event_view(
++        CONTRACT_KEY,
++        14,
++        "CREDIT_MEMO_RECORDED",
++        date(2023, 10, 31),
++        {"credit_memo_number": "CM-VC"},
++    )
++    december = event_view(
++        CONTRACT_KEY,
++        16,
++        "CREDIT_MEMO_RECORDED",
++        date(2023, 12, 10),
++        {"credit_memo_number": "CM-CONC"},
++        obligation_keys=(POB,),
++    )
++    consumed = rl._consume(
++        _ctx(),
++        TraceBuilder(engine_version=ENGINE_VERSION),
++        components,
++        [_memo(october, 10_000), _memo(december, 6_000)],
++        MU,
++        orders=_orders(st, october, december),
++    )
++    assert _consumed(consumed) == {f"{nov.event_key}/{subject}": [(december.event_key, 6_000)]}
++    refunds = rl.Refunds(
++        components=tuple(consumed), refund_liabilities=(), balances={}, return_assets=()
++    )
++    assert (
++        refunds.concession_total(subject, date(2023, 10, 31)),
++        refunds.concession_total(subject, date(2023, 11, 30)),
++    ) == (0, 6_000)
++    [component] = consumed
++    assert (
++        component.consumed_by(date(2023, 11, 30)),
++        [item.amount for item in component.consumed_by(date(2023, 12, 31))],
++    ) == ((), [6_000])
++
++
++def test_cand109_two_additions_on_one_obligation_with_a_credit_between_them() -> None:
++    """Two dated additions on one POB (March 3,000; September 4,000): a May credit of 5,000 may
++    consume the March addition only (3,000 — September's origin follows it); an October credit of
++    5,000 consumes September's 4,000. Under the aggregate-origin inference the May credit would
++    have taken 5,000 of a single 7,000 component."""
++    march = event_view(
++        CONTRACT_KEY,
++        3,
++        "ESTIMATE_CHANGED",
++        date(2023, 3, 1),
++        {"estimate": "VC-A", "version_no": "1"},
++        obligation_keys=(POB,),
++    )
++    september = event_view(
++        CONTRACT_KEY,
++        9,
++        "ESTIMATE_CHANGED",
++        date(2023, 9, 1),
++        {"estimate": "VC-A", "version_no": "2"},
++        obligation_keys=(POB,),
++    )
++    st, subject = _state([(march, 3_000), (september, 4_000)])
++    components = rl._concessions(st, MU)
++    assert [(c.created_on, c.created_amount) for c in components] == [
++        (date(2023, 3, 1), 3_000),
++        (date(2023, 9, 1), 4_000),
++    ]
++    assert sum(c.created_amount for c in components) == st.refund_components[subject].a_posted
++    may = event_view(
++        CONTRACT_KEY, 5, "CREDIT_MEMO_RECORDED", date(2023, 5, 1), {"credit_memo_number": "CM-MAY"}
++    )
++    october = event_view(
++        CONTRACT_KEY,
++        10,
++        "CREDIT_MEMO_RECORDED",
++        date(2023, 10, 1),
++        {"credit_memo_number": "CM-OCT"},
++    )
++    consumed = rl._consume(
++        _ctx(),
++        TraceBuilder(engine_version=ENGINE_VERSION),
++        components,
++        [_memo(may, 5_000), _memo(october, 5_000)],
++        MU,
++        orders=_orders(st, may, october),
++    )
++    assert _consumed(consumed) == {
++        f"{march.event_key}/{subject}": [(may.event_key, 3_000)],
++        f"{september.event_key}/{subject}": [(october.event_key, 4_000)],
++    }
++    refunds = rl.Refunds(
++        components=tuple(consumed), refund_liabilities=(), balances={}, return_assets=()
++    )
++    assert [
++        refunds.concession_total(subject, d)
++        for d in (date(2023, 2, 28), date(2023, 4, 30), date(2023, 9, 30))
++    ] == [0, 3_000, 7_000]
++
++
++def test_cand109_same_day_credit_consumes_only_an_addition_that_precedes_it_in_eng_06_order() -> (
++    None
++):
++    """The defined event ordering (ENG-06: effective date, record_seq, event key): a credit memo
++    recorded on the addition's day but before it (record_seq 4 < 5) consumes nothing; one recorded
++    after it (record_seq 6) consumes the addition."""
++    june = event_view(
++        CONTRACT_KEY,
++        5,
++        "ESTIMATE_CHANGED",
++        date(2023, 6, 10),
++        {"estimate": "VC-A", "version_no": "1"},
++        obligation_keys=(POB,),
++        record_seq=5,
++    )
++    st, subject = _state([(june, 2_500)])
++    before = event_view(
++        CONTRACT_KEY,
++        4,
++        "CREDIT_MEMO_RECORDED",
++        date(2023, 6, 10),
++        {"credit_memo_number": "CM-4"},
++        record_seq=4,
++    )
++    after = event_view(
++        CONTRACT_KEY,
++        6,
++        "CREDIT_MEMO_RECORDED",
++        date(2023, 6, 10),
++        {"credit_memo_number": "CM-6"},
++        record_seq=6,
++    )
++    components = rl._concessions(st, MU)
++    consumed = rl._consume(
++        _ctx(),
++        TraceBuilder(engine_version=ENGINE_VERSION),
++        components,
++        [_memo(before, 2_500), _memo(after, 2_500)],
++        MU,
++        orders=_orders(st, before, after),
++    )
++    assert _consumed(consumed) == {f"{june.event_key}/{subject}": [(after.event_key, 2_500)]}
++    # Without the event order (a caller that passes none) the date rule alone applies, as before.
++    dated_only = rl._consume(
++        _ctx(),
++        TraceBuilder(engine_version=ENGINE_VERSION),
++        components,
++        [_memo(before, 2_500), _memo(after, 2_500)],
++        MU,
++    )
++    assert _consumed(dated_only) == {f"{june.event_key}/{subject}": [(before.event_key, 2_500)]}
++
++
++def test_cand109_fallback_without_conserving_dated_history_keeps_the_boundary_inference() -> None:
++    """A quota without dated history (an older producer) or whose history does not conserve the
++    quota keeps today's aggregate component from ``_concession_event`` — created on the inferred
++    boundary — so nothing changes for producers that write no history."""
++    may = event_view(
++        CONTRACT_KEY,
++        8,
++        "CONTRACT_AMENDED",
++        date(2023, 5, 31),
++        {"modification": "MOD-0531"},
++        obligation_keys=(POB,),
++    )
++    nov = event_view(
++        CONTRACT_KEY,
++        15,
++        "ESTIMATE_CHANGED",
++        date(2023, 11, 15),
++        {"estimate": "VC-CONC-2", "version_no": "1"},
++        obligation_keys=(POB,),
++    )
++    without, subject = _state([(nov, 6_000)], modification=may, history=False)
++    [aggregate] = rl._concessions(without, MU)
++    assert (
++        aggregate.created_on,
++        aggregate.created_amount,
++        aggregate.created_order,
++        aggregate.source_key,
++    ) == (date(2023, 5, 31), 6_000, None, f"{may.event_key}/{subject}")
++    short, _ = _state(
++        [(nov, 6_000)], modification=may, quota_posted=7_000
++    )  # history 6,000 ≠ quota 7,000
++    [aggregate] = rl._concessions(short, MU)
++    assert (aggregate.created_on, aggregate.created_amount) == (date(2023, 5, 31), 7_000)
++
++
++def test_cand109_dated_components_conserve_the_quota_and_the_history_check_is_unchanged() -> None:
++    """Σ component created amounts = quota.a_posted per obligation; the exact / posted history
++    conservation (``check_history``) is untouched; a zero-posted addition (deferred targeted cent)
++    creates no component and no money."""
++    a = event_view(
++        CONTRACT_KEY,
++        3,
++        "ESTIMATE_CHANGED",
++        date(2023, 3, 1),
++        {"estimate": "VC-A", "version_no": "1"},
++        obligation_keys=(POB,),
++    )
++    b = event_view(
++        CONTRACT_KEY,
++        9,
++        "ESTIMATE_CHANGED",
++        date(2023, 9, 1),
++        {"estimate": "VC-A", "version_no": "2"},
++        obligation_keys=(POB,),
++    )
++    zero = event_view(
++        CONTRACT_KEY,
++        11,
++        "ESTIMATE_CHANGED",
++        date(2023, 11, 1),
++        {"estimate": "VC-A", "version_no": "3"},
++        obligation_keys=(POB,),
++    )
++    st, subject = _state([(a, 3_000), (b, 4_000), (zero, 0)])
++    components = rl._concessions(st, MU)
++    assert [c.created_amount for c in components] == [3_000, 4_000]
++    assert (
++        sum(c.created_amount for c in components) == st.refund_components[subject].a_posted == 7_000
++    )
++    history = {subject: sorted(st.concession_history, key=lambda item: item.order_key)}
++    cc.check_history(st, history)  # unchanged and still satisfied
++    quota = st.refund_components[subject]
++    assert isinstance(quota, Quota) and quota.x_exact == Fraction(70)
++    # Codex 1438 (c): a negative-exact, zero-posted deferred-cent portion the state contract permits
++    # is neither dropped nor re-rounded — exact conservation holds and it creates no component.
++    cent = ConcessionAddition(
++        subject,
++        zero.event_key,
++        zero.effective_date,
++        zero.order_key,
++        Fraction(-1, 300),
++        0,
++        "08",
++        "EMBEDDED",
++    )
++    dated = tuple(item for item in st.concession_history if item.event_key != zero.event_key)
++    shifted = dataclasses.replace(
++        st,
++        concession_history=(*dated, cent),
++        refund_components=MappingProxyType(
++            {
++                subject: ConcessionQuota(
++                    quota.x_exact - Fraction(1, 300), 7_000, revenue_basis="EMBEDDED"
++                )
++            }
++        ),
++    )
++    cc.check_history(
++        shifted, {subject: sorted(shifted.concession_history, key=lambda i: i.order_key)}
++    )
++    assert [c.created_amount for c in rl._concessions(shifted, MU)] == [3_000, 4_000]
++
++
++def test_cand109_same_period_two_additions_keep_distinct_component_nodes_and_one_aggregate() -> (
++    None
++):
++    """Codex 1438 (a): two dated additions in ONE period (15 Aug 20,000.00 and 30 Aug 30,000.00 on
++    the same obligation; Codex's two-concession fixture) keep distinct ``concession_created_cum``
++    nodes per component (no duplicate node id; the TraceBuilder check untouched), one obligation
++    aggregate node per period end valued at their Σ that every node replays (``w.checked``
++    re-evaluates the whole trace), the share-based element's ``aggregate_node`` param naming that
++    aggregate, JET-05c posting the Σ once in the period, and every intent balanced."""
++    inception = date(2026, 1, 4)
++    version = w.sbc_version(1, inception, True, "1000000.00", grant=inception.isoformat())
++    first = w.concession("-20000.00", date(2026, 8, 15), reference="MOD-FIRST-20000", named=False)
++    second = w.concession("-30000.00", date(2026, 8, 30), reference="MOD-SECOND-30000", named=False)
++    steps = [
++        ("D", Y1, "400000"),
++        ("I", Y1, "400000.00"),
++        ("A", first.effective_date, first.modification_key),
++        ("A", second.effective_date, second.modification_key),
++    ]
++    bundle = w.with_performing_445(
++        w.units_world(
++            steps, [version], modifications=[first, second], quantity="400000", inception=inception
++        )
++    )
++    book = w.checked(bundle)  # every trace node reproduced by reevaluate
++    assert w.balanced(book)
++    found = w.nodes(book)
++    aggregate_id = f"concession_created_cum:{WARRANT}/{SUPPLY}:FY2026-P08"
++    aggregate = found[aggregate_id]
++    component_nodes = {
++        node_id: node
++        for node_id, node in found.items()
++        if node_id.startswith("concession_created_cum:")
++        and "/CONCESSION/" in node_id
++        and node_id.endswith(":FY2026-P08")
++    }
++    assert aggregate.value == "50000.00"
++    # Codex 1510: the aggregate cites exactly the component nodes (lineage) through the explicit
++    # sum formula — never one event at the total; each component node cites its producing event.
++    assert aggregate.formula_id == "rl.concession_total.v1" and aggregate.params["mode"] == "sum"
++    assert list(aggregate.inputs) == sorted(component_nodes)
++    assert all(isinstance(item, str) for item in aggregate.inputs)
++    for node in component_nodes.values():
++        [source] = node.inputs
++        assert not isinstance(source, str) and source.ref_type == "contract_event"
++        assert source.ref_id.startswith(f"{WARRANT}/EV-") and node.formula_id == "rl.concession.v1"
++    assert sorted(node.value for node in component_nodes.values()) == ["20000.00", "30000.00"]
++    assert len(component_nodes) == 2 and sorted(
++        aggregate.params["components"].split("|")
++    ) == sorted(node_id.split(":")[1] for node_id in component_nodes)
++    assert (
++        f"concession_created_cum:{WARRANT}/{SUPPLY}:FY2026-P07" not in found
++    )  # nothing before 15 Aug
++    element = found[f"share_based_reduction_element_cum:{KEY}:FY2026-P08"]
++    cited = [item for item in element.inputs if isinstance(item, str)]
++    assert aggregate_id not in cited  # never an element input (count-once numerator)
++    portion = next(found[item] for item in cited if item.startswith("concession_portion@"))
++    assert portion.params["aggregate_node"] == aggregate_id
++    assert w.role_net(book, "REFUND_LIABILITY", credit=True) == {
++        "FY2026-P08": 5_000_000
++    }  # JET-05c Σ once
++    assert all(
++        sum(1 for line in intent.lines if line.account_role == "REFUND_LIABILITY") <= 1
++        for intent in book.posting_intents
++        if intent.posting_period_key == "FY2026-P08"
++    )

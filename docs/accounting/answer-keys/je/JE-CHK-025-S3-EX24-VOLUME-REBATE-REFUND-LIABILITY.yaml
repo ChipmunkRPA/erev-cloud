@@ -1,0 +1,208 @@
+# docs/accounting/answer-keys/je/JE-CHK-025-S3-EX24-VOLUME-REBATE-REFUND-LIABILITY.yaml
+schema: "erev-answer-key/1"
+id: JE-CHK-025-S3-EX24-VOLUME-REBATE-REFUND-LIABILITY
+title: >-
+  JET-04a and JET-04b: retrospective volume rebate becomes expected in Q2; catch-up and refund liability
+status: active
+families: [JE, VC, POS]
+tags: [r04-s3]
+summary: >-
+  FASB Example 24 re-anchored to 2026 (research 04 S3-EX24). Entity US01, USD, ERP billing. Product at 100.00 per
+  unit, retrospectively re-priced to 90.00 if the customer buys more than 1,000 units in the year. [A] The key books
+  the 575 units ordered so far as one line of 57,500.00. Q1: 75 units ship on 2026-02-15 and are invoiced 7,500.00;
+  the rebate estimate v1 (MOST_LIKELY_AMOUNT) is 0.00, so revenue is 7,500.00. Q2: 500 units ship and are invoiced
+  50,000.00 on 2026-05-20, and estimate v2 now expects the threshold: the rebate of 10.00 on all 575 units billed
+  (5,750.00) reduces the transaction price to 51,750.00; the estimate version is recorded before the May shipment. May
+  posts JET-02 at the revised unit allocation 90.00 (45,000.00), JET-04a for the 75 Q1 units (Dr REVENUE 750.00) and
+  JET-04b Dr CONTRACT_LIABILITY 5,750.00 / Cr REFUND_LIABILITY 5,750.00; the aggregated May lines are Dr
+  CONTRACT_LIABILITY 50,000.00 / Cr REVENUE 44,250.00, Cr REFUND_LIABILITY 5,750.00 (CHK-025). End of Q2: revenue
+  51,750.00, refund liability 5,750.00, position nil. Cross-slice variants with distinct inputs, kept: VC-S3-EX24
+  (VOLUME_TIER versus REBATE element; different dates and invoices) (ADJUDICATION.md R-DUP-02).
+authority:
+  codification: ["606-10-32-5", "606-10-32-8", "606-10-32-10", "606-10-32-14", "606-10-32-43", "606-10-55-216"]
+  ifrs: ["IFRS 15.51", "IFRS 15.55", "IFRS 15.IE124"]
+  practice: []
+  urls: []
+derived_from: {research04: [S3-EX24], research05: [], chk: [CHK-025], golden: [], dev: []}
+requirements: [REQ-TP-004, REQ-TP-010, REQ-BIL-007]
+policy_refs: [POL-040, POL-041, POL-182]
+review:
+  author: answer-keys-fx-entity-books
+  authored_on: "2026-09-12"
+  reviewer: null
+  reviewed_on: null
+  status: pending
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: US01
+      name: "Avenmoor Systems Inc. (Demo)"
+      functional_currency: USD
+      time_zone: "America/New_York"
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: 1}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2026-06"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "2110", name: "Refund liability", account_type: LIABILITY}
+    - {code: "4000", name: "Revenue - products", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, account: "4000", product: PART-100}
+    - {account_role: REFUND_LIABILITY, account: "2110"}
+  customers:
+    - {code: CUST-1, name: "Pellworth Logistics Inc. (Demo)"}
+  pob_templates:
+    - code: TPL-UNITS
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: POINT_IN_TIME
+      over_time_criterion: NOT_APPLICABLE
+      recognition_method: UNITS_DELIVERED
+  products:
+    - {code: PART-100, name: "Industrial part", pob_template: TPL-UNITS}
+  ssp_books:
+    - code: SSP-US-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2026-01-01"
+          methodology_label: "Observable standalone prices"
+          entries:
+            - product: PART-100
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "100.00"}
+  fx_rate_sets: []
+  rule_sets: []
+  policies: {tenant: {billing.posting: ERP}, entities: {}, books: {}}
+contracts:
+  - external_id: C-JE-025
+    customer: CUST-1
+    contracting_entity: US01
+    transaction_currency: USD
+    inception_date: "2026-01-02"
+    lines:
+      - {obligation_key: L1-PARTS, product_code: PART-100, quantity: "575", total_price: "57500.00"}
+    estimates:
+      - element_code: REBATE-VOL-1
+        estimate_kind: VARIABLE_CONSIDERATION
+        method: MOST_LIKELY_AMOUNT
+        vc_element_type: REBATE
+        allocation_target: CONTRACT
+        versions:
+          - version_no: "1"
+            effective_date: "2026-01-02"
+            unconstrained_amount: "0.00"
+            most_conservative_amount: "0.00"
+            constrained_amount: "0.00"
+            rationale: "Threshold of 1,000 units not expected at inception"
+          - version_no: "2"
+            effective_date: "2026-05-20"
+            unconstrained_amount: "5750.00"
+            most_conservative_amount: "5750.00"
+            constrained_amount: "5750.00"
+            rationale: "Customer's purchase plan now exceeds 1,000 units for the year"
+timeline:
+  - {seq: 1, kind: event, contract: C-JE-025, event_type: CONTRACT_BOOKED, effective_date: "2026-01-02", payload: {}}
+  - seq: 2
+    kind: event
+    contract: C-JE-025
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-02"
+    payload: {}
+  - seq: 3
+    kind: event
+    contract: C-JE-025
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-01-02"
+    payload: {estimate: REBATE-VOL-1, version_no: "1"}
+  - seq: 4
+    kind: event
+    contract: C-JE-025
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-02-15"
+    payload: {obligation_key: L1-PARTS, quantity: "75", trigger: DELIVERY}
+  - seq: 5
+    kind: event
+    contract: C-JE-025
+    event_type: BILLING_RECORDED
+    effective_date: "2026-02-15"
+    payload:
+      invoice_number: INV-REB-0001
+      line_external_id: INV-REB-0001-1
+      amount: "7500.00"
+      issue_date: "2026-02-15"
+  - seq: 6
+    kind: event
+    contract: C-JE-025
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-05-20"
+    payload: {estimate: REBATE-VOL-1, version_no: "2"}
+  - seq: 7
+    kind: event
+    contract: C-JE-025
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-05-20"
+    payload: {obligation_key: L1-PARTS, quantity: "500", trigger: DELIVERY}
+  - seq: 8
+    kind: event
+    contract: C-JE-025
+    event_type: BILLING_RECORDED
+    effective_date: "2026-05-20"
+    payload:
+      invoice_number: INV-REB-0002
+      line_external_id: INV-REB-0002-1
+      amount: "50000.00"
+      issue_date: "2026-05-20"
+checkpoints:
+  - name: q1-close
+    after_seq: 5
+    as_of: "2026-03-31"
+    book: ASC606
+    contracts:
+      - contract: C-JE-025
+        version: {transaction_price: "57500.00", revenue_cum: "7500.00"}
+        balances:
+          - {entity: US01, contract_liability: "0.00", contract_asset: "0.00", refund_liability: "0.00"}
+    subledger:
+      - period_key: FY2026-P02
+        entity: US01
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "7500.00"}
+          - {account_role: REVENUE, account: "4000", cr: "7500.00"}
+  - name: q2-close
+    after_seq: 8
+    as_of: "2026-06-30"
+    book: ASC606
+    contracts:
+      - contract: C-JE-025
+        version: {transaction_price: "51750.00", revenue_cum: "51750.00"}
+        obligations:
+          - {obligation_key: L1-PARTS, allocated_amount: "51750.00", catch_up_estimate_cum: "-750.00"}
+        balances:
+          - entity: US01
+            contract_liability: "0.00"
+            contract_asset: "0.00"
+            unbilled_receivable: "0.00"
+            refund_liability: "5750.00"
+    subledger:
+      - period_key: FY2026-P05
+        entity: US01
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "50000.00"}
+          - {account_role: REVENUE, account: "4000", cr: "44250.00"}
+          - {account_role: REFUND_LIABILITY, account: "2110", cr: "5750.00"}

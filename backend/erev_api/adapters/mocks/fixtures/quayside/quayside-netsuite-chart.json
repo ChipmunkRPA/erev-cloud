@@ -1,0 +1,19 @@
+{
+  "$schema": "erev mock scenario v1 (05 ADP-20 to ADP-23; PRD J-23.7; BUILD_SPEC DIN-14)",
+  "tenant_code": "quayside",
+  "subsidiaries": [{"id": "1", "name": "Quayside Analytics US", "erev_entity": "QUAY-US"}],
+  "accounts": [
+    {"id": "101", "acctNumber": "1100", "acctName": "Cash", "acctType": "Bank", "isInactive": false},
+    {"id": "102", "acctNumber": "2100", "acctName": "Deferred revenue - current", "acctType": "DeferRevenue", "isInactive": false},
+    {"id": "103", "acctNumber": "4050", "acctName": "Platform subscription revenue", "acctType": "Income", "isInactive": false}
+  ],
+  "departments": [
+    {"id": "11", "name": "Sales", "isInactive": false},
+    {"id": "12", "name": "Customer Success", "isInactive": false},
+    {"id": "13", "name": "Legacy Services", "isInactive": true}
+  ],
+  "scenario_notes": {
+    "coa_sync": "1100 and 2100 exist in the workspace (2100 under an older name); 4050 is new and inserted with source_system NETSUITE; a workspace account absent from this chart is deactivated, never deleted (DIN-14)",
+    "dimension_values": "department values are inserted as dimension_value rows of the built-in `department` definition"
+  }
+}

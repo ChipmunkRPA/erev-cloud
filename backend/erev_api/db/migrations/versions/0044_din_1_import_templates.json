@@ -1,0 +1,450 @@
+[
+  {
+    "code": "legacy_sku_ssp",
+    "name": "SKU SSP",
+    "target_object": "ssp_book_version",
+    "headers": [
+      {
+        "name": "SKU Unique ID",
+        "type": "identifier",
+        "required": false,
+        "rule_ids": []
+      },
+      {
+        "name": "SKU Name",
+        "type": "identifier",
+        "required": true,
+        "rule_ids": [
+          "REQUIRED_VALUE_BLANK"
+        ]
+      },
+      {
+        "name": "Distinct or Nondistinct",
+        "type": "text",
+        "required": true,
+        "rule_ids": [
+          "REQUIRED_VALUE_BLANK",
+          "SSP_DISTINCT_FLAG_INVALID"
+        ]
+      },
+      {
+        "name": "SKU Unit List Price",
+        "type": "amount",
+        "required": true,
+        "rule_ids": [
+          "REQUIRED_VALUE_BLANK",
+          "VALUE_NOT_NUMERIC"
+        ]
+      },
+      {
+        "name": "ASC 606 Stratification",
+        "type": "identifier",
+        "required": true,
+        "rule_ids": [
+          "REQUIRED_VALUE_BLANK"
+        ]
+      },
+      {
+        "name": "Midpoint Discount Percentage",
+        "type": "ratio",
+        "required": true,
+        "rule_ids": [
+          "REQUIRED_VALUE_BLANK",
+          "VALUE_NOT_NUMERIC",
+          "SSP_PERCENT_OUT_OF_RANGE"
+        ]
+      },
+      {
+        "name": "SSP Range Method (+-)",
+        "type": "ratio",
+        "required": true,
+        "rule_ids": [
+          "REQUIRED_VALUE_BLANK",
+          "VALUE_NOT_NUMERIC",
+          "SSP_PERCENT_OUT_OF_RANGE"
+        ]
+      },
+      {
+        "name": "SSP Version",
+        "type": "label",
+        "required": true,
+        "rule_ids": [
+          "REQUIRED_VALUE_BLANK"
+        ]
+      },
+      {
+        "name": "Revenue Account",
+        "type": "identifier",
+        "required": false,
+        "rule_ids": []
+      }
+    ],
+    "required_parameters": [],
+    "row_model": "erev_api.domain.imports.validate.LegacySkuSspRow",
+    "aggregation_rule": null
+  },
+  {
+    "code": "legacy_contract_setup",
+    "name": "Contract Setup",
+    "target_object": "contract",
+    "headers": [
+      {
+        "name": "Contract Unique Name",
+        "type": "identifier",
+        "required": true,
+        "rule_ids": [
+          "REQUIRED_VALUE_BLANK"
+        ]
+      },
+      {
+        "name": "POB Unique ID",
+        "type": "identifier",
+        "required": true,
+        "rule_ids": [
+          "REQUIRED_VALUE_BLANK"
+        ]
+      },
+      {
+        "name": "SKU Name",
+        "type": "identifier",
+        "required": true,
+        "rule_ids": [
+          "REQUIRED_VALUE_BLANK"
+        ]
+      },
+      {
+        "name": "POB Start Date",
+        "type": "date",
+        "required": true,
+        "rule_ids": [
+          "REQUIRED_VALUE_BLANK",
+          "DATE_INVALID",
+          "DATE_RANGE_INVERTED"
+        ]
+      },
+      {
+        "name": "POB End Date",
+        "type": "date",
+        "required": true,
+        "rule_ids": [
+          "REQUIRED_VALUE_BLANK",
+          "DATE_INVALID",
+          "DATE_RANGE_INVERTED"
+        ]
+      },
+      {
+        "name": "ASC 606 Stratification",
+        "type": "identifier",
+        "required": true,
+        "rule_ids": [
+          "REQUIRED_VALUE_BLANK"
+        ]
+      },
+      {
+        "name": "Original POB Total Selling Price",
+        "type": "amount",
+        "required": true,
+        "rule_ids": [
+          "REQUIRED_VALUE_BLANK",
+          "VALUE_NOT_NUMERIC"
+        ]
+      },
+      {
+        "name": "Original POB Total Qty",
+        "type": "quantity",
+        "required": true,
+        "rule_ids": [
+          "REQUIRED_VALUE_BLANK",
+          "VALUE_NOT_NUMERIC",
+          "SETUP_QUANTITY_ZERO",
+          "NEGATIVE_BOOKING_LINE"
+        ]
+      },
+      {
+        "name": "Selling Entity",
+        "type": "identifier",
+        "required": true,
+        "rule_ids": [
+          "REQUIRED_VALUE_BLANK"
+        ]
+      },
+      {
+        "name": "SSP Version",
+        "type": "label",
+        "required": true,
+        "rule_ids": [
+          "REQUIRED_VALUE_BLANK"
+        ]
+      },
+      {
+        "name": "Deferred Revenue Account",
+        "type": "identifier",
+        "required": false,
+        "rule_ids": []
+      },
+      {
+        "name": "Unbilled A/R Account",
+        "type": "identifier",
+        "required": false,
+        "rule_ids": []
+      },
+      {
+        "name": "Current Period",
+        "type": "date",
+        "required": true,
+        "rule_ids": [
+          "REQUIRED_VALUE_BLANK",
+          "DATE_INVALID"
+        ]
+      },
+      {
+        "name": "Memo 1",
+        "type": "text",
+        "required": false,
+        "rule_ids": []
+      },
+      {
+        "name": "Memo 2",
+        "type": "text",
+        "required": false,
+        "rule_ids": []
+      },
+      {
+        "name": "Memo 3",
+        "type": "text",
+        "required": false,
+        "rule_ids": []
+      }
+    ],
+    "required_parameters": [],
+    "row_model": "erev_api.domain.imports.validate.LegacyContractSetupRow",
+    "aggregation_rule": null
+  },
+  {
+    "code": "legacy_progress_tracking",
+    "name": "Contract Progress Tracking",
+    "target_object": "contract_event",
+    "headers": [
+      {
+        "name": "Contract Unique Name",
+        "type": "identifier",
+        "required": true,
+        "rule_ids": [
+          "REQUIRED_VALUE_BLANK"
+        ]
+      },
+      {
+        "name": "POB Unique ID",
+        "type": "identifier",
+        "required": true,
+        "rule_ids": [
+          "REQUIRED_VALUE_BLANK"
+        ]
+      },
+      {
+        "name": "SKU Name",
+        "type": "identifier",
+        "required": true,
+        "rule_ids": [
+          "REQUIRED_VALUE_BLANK"
+        ]
+      },
+      {
+        "name": "Current Delivery",
+        "type": "quantity",
+        "required": true,
+        "rule_ids": [
+          "REQUIRED_VALUE_BLANK",
+          "VALUE_NOT_NUMERIC"
+        ]
+      },
+      {
+        "name": "Current Billing",
+        "type": "amount",
+        "required": true,
+        "rule_ids": [
+          "REQUIRED_VALUE_BLANK",
+          "VALUE_NOT_NUMERIC"
+        ]
+      },
+      {
+        "name": "Current Pre-ASC606 Revenue (Net Design Only)",
+        "type": "amount",
+        "required": true,
+        "rule_ids": [
+          "REQUIRED_VALUE_BLANK",
+          "VALUE_NOT_NUMERIC"
+        ]
+      },
+      {
+        "name": "Memo 1",
+        "type": "text",
+        "required": false,
+        "rule_ids": [
+          "PROGRESS_MEMO_BLANK"
+        ]
+      },
+      {
+        "name": "Memo 2",
+        "type": "text",
+        "required": false,
+        "rule_ids": [
+          "PROGRESS_MEMO_BLANK"
+        ]
+      },
+      {
+        "name": "Memo 3",
+        "type": "text",
+        "required": false,
+        "rule_ids": [
+          "PROGRESS_MEMO_BLANK"
+        ]
+      }
+    ],
+    "required_parameters": [
+      {
+        "name": "effective_date",
+        "type": "date",
+        "allowed_values": null
+      }
+    ],
+    "row_model": "erev_api.domain.imports.validate.LegacyProgressTrackingRow",
+    "aggregation_rule": "SUM_BY_KEY"
+  },
+  {
+    "code": "legacy_contract_modification",
+    "name": "Contract Modification",
+    "target_object": "modification",
+    "headers": [
+      {
+        "name": "Contract Unique Name",
+        "type": "identifier",
+        "required": true,
+        "rule_ids": [
+          "REQUIRED_VALUE_BLANK"
+        ]
+      },
+      {
+        "name": "POB Unique ID",
+        "type": "identifier",
+        "required": true,
+        "rule_ids": [
+          "REQUIRED_VALUE_BLANK"
+        ]
+      },
+      {
+        "name": "SKU Name",
+        "type": "identifier",
+        "required": true,
+        "rule_ids": [
+          "REQUIRED_VALUE_BLANK"
+        ]
+      },
+      {
+        "name": "Mod Start Date",
+        "type": "date",
+        "required": false,
+        "rule_ids": [
+          "DATE_INVALID",
+          "DATE_RANGE_INVERTED"
+        ]
+      },
+      {
+        "name": "Mod End Date",
+        "type": "date",
+        "required": false,
+        "rule_ids": [
+          "DATE_INVALID",
+          "DATE_RANGE_INVERTED"
+        ]
+      },
+      {
+        "name": "ASC 606 Stratification",
+        "type": "identifier",
+        "required": false,
+        "rule_ids": []
+      },
+      {
+        "name": "Mod Billing",
+        "type": "amount",
+        "required": true,
+        "rule_ids": [
+          "REQUIRED_VALUE_BLANK",
+          "VALUE_NOT_NUMERIC",
+          "MOD_SIGN_MISMATCH"
+        ]
+      },
+      {
+        "name": "Mod Qty",
+        "type": "quantity",
+        "required": true,
+        "rule_ids": [
+          "REQUIRED_VALUE_BLANK",
+          "VALUE_NOT_NUMERIC",
+          "MOD_SIGN_MISMATCH",
+          "VC_QUANTITY_NOT_ALLOWED"
+        ]
+      },
+      {
+        "name": "Selling Entity",
+        "type": "identifier",
+        "required": false,
+        "rule_ids": []
+      },
+      {
+        "name": "Deferred Revenue Account",
+        "type": "identifier",
+        "required": false,
+        "rule_ids": []
+      },
+      {
+        "name": "Unbilled A/R Account",
+        "type": "identifier",
+        "required": false,
+        "rule_ids": []
+      },
+      {
+        "name": "SSP Version",
+        "type": "label",
+        "required": false,
+        "rule_ids": []
+      },
+      {
+        "name": "Memo 1",
+        "type": "text",
+        "required": false,
+        "rule_ids": []
+      },
+      {
+        "name": "Memo 2",
+        "type": "text",
+        "required": false,
+        "rule_ids": []
+      },
+      {
+        "name": "Memo 3",
+        "type": "text",
+        "required": false,
+        "rule_ids": []
+      }
+    ],
+    "required_parameters": [
+      {
+        "name": "effective_date",
+        "type": "date",
+        "allowed_values": null
+      },
+      {
+        "name": "mode",
+        "type": "text",
+        "allowed_values": [
+          "prospective",
+          "retrospective",
+          "pob_price_change"
+        ]
+      }
+    ],
+    "row_model": "erev_api.domain.imports.validate.LegacyContractModificationRow",
+    "aggregation_rule": null
+  }
+]

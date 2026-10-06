@@ -1,0 +1,161 @@
+# docs/accounting/answer-keys/pos/POS-CHK-014-S5-PROGRESS-VARIANTS-RIGHT-TO-INVOICE.yaml
+schema: "erev-answer-key/1"
+id: POS-CHK-014-S5-PROGRESS-VARIANTS-RIGHT-TO-INVOICE
+title: >-
+  Right to invoice: December hours presented as unbilled receivable until the January invoice
+status: active
+families: [POS, REC]
+tags: [r04-s5]
+summary: >-
+  Research 04 worked example 5.2-B item 2 (FASB Example 42 Contract A rate). Entity US01, USD, ERP billing. Cleaning
+  services of 120 hours at 25.00 per hour (3,000.00) performed in December 2026 and measured by RIGHT_TO_INVOICE; the
+  class defaults to UNCONDITIONAL (table 2.4-A). December revenue 3,000.00, NP = −3,000.00, unbilled receivable
+  3,000.00 and contract asset 0.00. The invoice issued on 2027-01-10 settles the position: unbilled receivable 0.00
+  and contract liability 0.00 at 31 January (CHK-014). Cross-slice variants with distinct inputs, kept:
+  REC-CHK-014-S5-PROGRESS-VARIANTS-RTI (delivery events versus usage reports; different terms) (ADJUDICATION.md
+  R-DUP-02).
+authority:
+  codification: ["606-10-55-18", "606-10-45-4", "606-10-45-3"]
+  ifrs: ["IFRS 15.B16", "IFRS 15.108"]
+  practice: []
+  urls: []
+derived_from: {research04: [S5-PROGRESS-VARIANTS], research05: [], chk: [CHK-014], golden: [], dev: []}
+requirements: [REQ-BIL-004, REQ-BIL-005, REQ-REC-001]
+policy_refs: [POL-091, POL-092, POL-122]
+review:
+  author: answer-keys-fx-entity-books
+  authored_on: "2026-09-12"
+  reviewer: null
+  reviewed_on: null
+  status: pending
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: US01
+      name: "Avenmoor Systems Inc. (Demo)"
+      functional_currency: USD
+      time_zone: "America/New_York"
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: 1}
+      books: [ASC606]
+  periods: {from: "2026-12", to: "2027-01"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4010", name: "Revenue - services and subscriptions", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, account: "4010", product: CLEANING-HRS}
+  customers:
+    - {code: CUST-1, name: "Pellworth Logistics Inc. (Demo)"}
+  pob_templates:
+    - code: TPL-RTI
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_A
+      recognition_method: RIGHT_TO_INVOICE
+  products:
+    - {code: CLEANING-HRS, name: "Cleaning services per hour", pob_template: TPL-RTI}
+  ssp_books:
+    - code: SSP-US01-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2026-01-01"
+          methodology_label: "Observable standalone prices"
+          entries:
+            - product: CLEANING-HRS
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "25.00"}
+  fx_rate_sets: []
+  rule_sets: []
+  policies: {tenant: {billing.posting: ERP}, entities: {}, books: {}}
+contracts:
+  - external_id: C-POS-014
+    customer: CUST-1
+    contracting_entity: US01
+    transaction_currency: USD
+    inception_date: "2026-12-01"
+    lines:
+      - obligation_key: L1-CLEANING
+        product_code: CLEANING-HRS
+        quantity: "120"
+        total_price: "3000.00"
+        unit_price: "25"
+        start_date: "2026-12-01"
+        end_date: "2026-12-31"
+timeline:
+  - {seq: 1, kind: event, contract: C-POS-014, event_type: CONTRACT_BOOKED, effective_date: "2026-12-01", payload: {}}
+  - seq: 2
+    kind: event
+    contract: C-POS-014
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-12-01"
+    payload: {}
+  - seq: 3
+    kind: event
+    contract: C-POS-014
+    event_type: USAGE_REPORTED
+    effective_date: "2026-12-31"
+    payload:
+      obligation_key: L1-CLEANING
+      usage_period_start: "2026-12-01"
+      usage_period_end: "2026-12-31"
+      metric: HOURS
+      quantity: "120"
+      rated_amount: "3000.00"
+  - seq: 4
+    kind: event
+    contract: C-POS-014
+    event_type: BILLING_RECORDED
+    effective_date: "2027-01-10"
+    payload:
+      invoice_number: INV-CLN-0001
+      line_external_id: INV-CLN-0001-1
+      obligation_key: L1-CLEANING
+      amount: "3000.00"
+      issue_date: "2027-01-10"
+checkpoints:
+  - name: december-close
+    after_seq: 3
+    as_of: "2026-12-31"
+    book: ASC606
+    contracts:
+      - contract: C-POS-014
+        obligations:
+          - {obligation_key: L1-CLEANING, revenue_cum: "3000.00", netting_reclass_amount: "3000.00"}
+        balances:
+          - {entity: US01, contract_liability: "0.00", contract_asset: "0.00", unbilled_receivable: "3000.00"}
+    subledger:
+      - period_key: FY2026-P12
+        entity: US01
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: UNBILLED_RECEIVABLE, account: "1105", dr: "3000.00"}
+          - {account_role: REVENUE, account: "4010", cr: "3000.00"}
+  - name: january-close
+    after_seq: 4
+    as_of: "2027-01-31"
+    book: ASC606
+    contracts:
+      - contract: C-POS-014
+        balances:
+          - {entity: US01, contract_liability: "0.00", contract_asset: "0.00", unbilled_receivable: "0.00"}
+    subledger:
+      - period_key: FY2027-P01
+        entity: US01
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "3000.00"}
+          - {account_role: UNBILLED_RECEIVABLE, account: "1105", cr: "3000.00"}

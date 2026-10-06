@@ -1,0 +1,209 @@
+# docs/accounting/answer-keys/fx/FX-BHD-FUNCTIONAL-USD-CONTRACT-MINOR-UNITS.yaml
+schema: "erev-answer-key/1"
+id: FX-BHD-FUNCTIONAL-USD-CONTRACT-MINOR-UNITS
+title: "USD contract in a BHD entity: three-decimal functional layer shares"
+status: active
+families: [FX, RND]
+tags: [fx]
+summary: >-
+  Entity BH01 (functional BHD, ISO 4217 exponent 3) sells a USD 10,000.00 three-month service (2026-01-01 to
+  2026-03-31, MONTHLY_EVEN) invoiced upfront at spot USD/BHD 0.376000 (layer BHD 3,760.000), ERP billing. Transaction
+  revenue 3,333.33 / 3,333.34 / 3,333.33. Functional relief rounds the layer share to the fils: January round(3,760 ×
+  0.333333) = 1,253.332, February 1,253.336 (cumulative 2,506.668), March 1,253.332, ending at exactly zero (C-06).
+authority:
+  codification:
+    - "830-10-45-18"
+    - "830-10-55-10"
+    - "830-10-55-11"
+    - "830-20-35-2"
+    - "606-10-45-1"
+    - "606-10-45-2"
+    - "606-10-45-3"
+  ifrs: ["IAS 21.23", "IFRIC 22.8", "IFRIC 22.9", "IFRS 15.105"]
+  practice:
+    - "PwC Viewpoint: Foreign currency guide 2.5 (contract liabilities nonmonetary; research 06 S31)"
+    - "Deloitte Roadmap: Foreign Currency Matters, contract assets and liabilities (research 06 S32)"
+  urls: []
+derived_from: {research04: [], research05: [], chk: [], golden: [], dev: []}
+requirements: [REQ-FX-001, REQ-FX-002, REQ-REC-019]
+policy_refs: [POL-001, POL-003, POL-161]
+review:
+  author: answer-keys-fx-entity-books
+  authored_on: "2026-09-12"
+  reviewer: null
+  reviewed_on: null
+  status: pending
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [BHD, USD]
+  entities:
+    - code: BH01
+      name: "Avenmoor Systems W.L.L. (Demo)"
+      functional_currency: BHD
+      time_zone: "Asia/Bahrain"
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: 1}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2026-03"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4010", name: "Revenue - services and subscriptions", account_type: REVENUE}
+    - {code: "7200", name: "Foreign exchange gain or loss", account_type: EXPENSE}
+    - {code: "7900", name: Rounding, account_type: EXPENSE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: FX_GAIN_LOSS, account: "7200"}
+    - {account_role: ROUNDING, account: "7900"}
+    - {account_role: REVENUE, account: "4010", product: SERVICE-3M}
+  customers:
+    - {code: CUST-1, name: "Pellworth Logistics Inc. (Demo)"}
+  pob_templates:
+    - code: TPL-RAT-ME
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_A
+      recognition_method: TIME_ELAPSED
+      ratable_convention: MONTHLY_EVEN
+  products:
+    - {code: SERVICE-3M, name: "Managed service, three months (USD)", pob_template: TPL-RAT-ME}
+  ssp_books:
+    - code: SSP-USD-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2026-01-01"
+          methodology_label: "Observable standalone prices"
+          entries:
+            - product: SERVICE-3M
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "10000.00"}
+  fx_rate_sets:
+    - code: SPOT-USDBHD
+      rate_type: spot
+      rates:
+        - {base_currency: USD, quote_currency: BHD, effective_date: "2026-01-01", rate: "0.376000"}
+    - code: AVG-USDBHD
+      rate_type: average
+      rates:
+        - base_currency: USD
+          quote_currency: BHD
+          effective_date: "2026-01-31"
+          period_key: FY2026-P01
+          rate: "0.376000"
+        - base_currency: USD
+          quote_currency: BHD
+          effective_date: "2026-02-28"
+          period_key: FY2026-P02
+          rate: "0.376000"
+        - base_currency: USD
+          quote_currency: BHD
+          effective_date: "2026-03-31"
+          period_key: FY2026-P03
+          rate: "0.376000"
+    - code: CLOSE-USDBHD
+      rate_type: closing
+      rates:
+        - base_currency: USD
+          quote_currency: BHD
+          effective_date: "2026-01-31"
+          period_key: FY2026-P01
+          rate: "0.376000"
+        - base_currency: USD
+          quote_currency: BHD
+          effective_date: "2026-02-28"
+          period_key: FY2026-P02
+          rate: "0.376000"
+        - base_currency: USD
+          quote_currency: BHD
+          effective_date: "2026-03-31"
+          period_key: FY2026-P03
+          rate: "0.376000"
+  rule_sets: []
+  policies: {tenant: {billing.posting: ERP}, entities: {}, books: {}}
+contracts:
+  - external_id: C-FX-BHD
+    customer: CUST-1
+    contracting_entity: BH01
+    transaction_currency: USD
+    inception_date: "2026-01-01"
+    lines:
+      - obligation_key: L1-SERVICE
+        product_code: SERVICE-3M
+        quantity: "1"
+        total_price: "10000.00"
+        start_date: "2026-01-01"
+        end_date: "2026-03-31"
+timeline:
+  - {seq: 1, kind: event, contract: C-FX-BHD, event_type: CONTRACT_BOOKED, effective_date: "2026-01-01", payload: {}}
+  - seq: 2
+    kind: event
+    contract: C-FX-BHD
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: 3
+    kind: event
+    contract: C-FX-BHD
+    event_type: BILLING_RECORDED
+    effective_date: "2026-01-01"
+    payload:
+      invoice_number: INV-BH-0001
+      line_external_id: INV-BH-0001-1
+      amount: "10000.00"
+      issue_date: "2026-01-01"
+checkpoints:
+  - name: end-of-term
+    after_seq: 3
+    as_of: "2026-03-31"
+    book: ASC606
+    contracts:
+      - contract: C-FX-BHD
+        balances:
+          - entity: BH01
+            contract_liability: "0.00"
+            contract_asset: "0.00"
+            unbilled_receivable: "0.00"
+            functional: {contract_liability: "0.000", contract_asset: "0.000", unbilled_receivable: "0.000"}
+    subledger:
+      - period_key: FY2026-P01
+        entity: BH01
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "3333.33", functional_dr: "1253.332"}
+          - {account_role: REVENUE, account: "4010", cr: "3333.33", functional_cr: "1253.332"}
+      - period_key: FY2026-P02
+        entity: BH01
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "3333.34", functional_dr: "1253.336"}
+          - {account_role: REVENUE, account: "4010", cr: "3333.34", functional_cr: "1253.336"}
+      - period_key: FY2026-P03
+        entity: BH01
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "3333.33", functional_dr: "1253.332"}
+          - {account_role: REVENUE, account: "4010", cr: "3333.33", functional_cr: "1253.332"}
+  - name: january-close
+    after_seq: 3
+    as_of: "2026-01-31"
+    book: ASC606
+    contracts:
+      - contract: C-FX-BHD
+        balances:
+          - entity: BH01
+            contract_liability: "6666.67"
+            contract_asset: "0.00"
+            unbilled_receivable: "0.00"
+            functional: {contract_liability: "2506.668", contract_asset: "0.000", unbilled_receivable: "0.000"}

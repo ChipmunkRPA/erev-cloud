@@ -1,0 +1,170 @@
+# docs/accounting/answer-keys/je/JE-CHK-024-S9-PRESENTATION-EX38-CASEA-CANCELLABLE.yaml
+schema: "erev-answer-key/1"
+id: JE-CHK-024-S9-PRESENTATION-EX38-CASEA-CANCELLABLE
+title: "Example 38 Case A:cancellable advance invoice memo-only until cash"
+status: active
+families: [JE, POS]
+tags: [r04-s9]
+summary: >-
+  FASB Example 38 (606-10-55-284 to 55-286) re-anchored to 2026. Entity US01, USD, billing.posting ENGINE. A product
+  is to transfer on 31 March for 1,000.00 payable in advance on 31 January; the customer pays on 1 March; control
+  transfers on 31 March. Case A, cancellable contract: the invoice issued on 31 January is memo-only until cash is
+  received (POL-123): no receivable and no contract liability at 31 January. On 1 March JET-03 posts Dr
+  ACCOUNTS_RECEIVABLE / Cr CONTRACT_LIABILITY 1,000.00; on 31 March JET-02 Dr CONTRACT_LIABILITY / Cr REVENUE 1,000.00
+  (CHK-024 Case A). The ERP's cash application clears the receivable outside the engine. This key also carries the
+  assertions of POS-S9-PRESENTATION-EX38-CASEA, withdrawn as its true duplicate (ADJUDICATION.md R-DUP-01).
+authority:
+  codification: ["606-10-45-2", "606-10-45-4", "606-10-55-284", "606-10-55-285", "606-10-55-286"]
+  ifrs: ["IFRS 15.106", "IFRS 15.IE198"]
+  practice: []
+  urls: []
+derived_from: {research04: [S9-PRESENTATION], research05: [], chk: [CHK-024], golden: [], dev: []}
+requirements: [REQ-BIL-002, REQ-BIL-008, REQ-BIL-003]
+policy_refs: [POL-004, POL-123]
+review:
+  author: answer-keys-fx-entity-books
+  authored_on: "2026-09-12"
+  reviewer: null
+  reviewed_on: null
+  status: pending
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: US01
+      name: "Avenmoor Systems Inc. (Demo)"
+      functional_currency: USD
+      time_zone: "America/New_York"
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: 1}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2026-03"}
+  period_states: []
+  gl_accounts:
+    - {code: "1100", name: "Accounts receivable", account_type: ASSET}
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4000", name: "Revenue - products", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, account: "4000", product: PRODUCT-38}
+    - {account_role: ACCOUNTS_RECEIVABLE, account: "1100"}
+  customers:
+    - {code: CUST-1, name: "Pellworth Logistics Inc. (Demo)"}
+  pob_templates:
+    - code: TPL-PIT
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: POINT_IN_TIME
+      over_time_criterion: NOT_APPLICABLE
+      recognition_method: POINT_IN_TIME
+  products:
+    - {code: PRODUCT-38, name: Product, pob_template: TPL-PIT}
+  ssp_books:
+    - code: SSP-US-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2026-01-01"
+          methodology_label: "Observable standalone prices"
+          entries:
+            - product: PRODUCT-38
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "1000.00"}
+  fx_rate_sets: []
+  rule_sets: []
+  policies: {tenant: {billing.posting: ENGINE}, entities: {}, books: {}}
+contracts:
+  - external_id: C-JE-024-A
+    customer: CUST-1
+    contracting_entity: US01
+    transaction_currency: USD
+    inception_date: "2026-01-01"
+    lines:
+      - {obligation_key: L1-PRODUCT, product_code: PRODUCT-38, quantity: "1", total_price: "1000.00"}
+timeline:
+  - seq: 1
+    kind: event
+    contract: C-JE-024-A
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: 2
+    kind: event
+    contract: C-JE-024-A
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: 3
+    kind: event
+    contract: C-JE-024-A
+    event_type: BILLING_RECORDED
+    effective_date: "2026-01-31"
+    payload:
+      invoice_number: INV-38A-1
+      line_external_id: INV-38A-1-1
+      obligation_key: L1-PRODUCT
+      amount: "1000.00"
+      issue_date: "2026-01-31"
+      due_date: "2026-01-31"
+      is_cancellable: true
+  - seq: 4
+    kind: event
+    contract: C-JE-024-A
+    event_type: PAYMENT_RECEIVED
+    effective_date: "2026-03-01"
+    payload:
+      receipt_reference: RCPT-38A-1
+      amount: "1000.00"
+      receipt_date: "2026-03-01"
+      applied_invoice_numbers: [INV-38A-1]
+  - seq: 5
+    kind: event
+    contract: C-JE-024-A
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-03-31"
+    payload: {obligation_key: L1-PRODUCT, quantity: "1", trigger: CONTROL_TRANSFER}
+checkpoints:
+  - name: january-close
+    after_seq: 3
+    as_of: "2026-01-31"
+    book: ASC606
+    contracts:
+      - contract: C-JE-024-A
+        version: {billed_cum: "0.00"}
+        balances:
+          - {entity: US01, contract_liability: "0.00", accounts_receivable: "0.00", contract_asset: "0.00"}
+    subledger:
+      - {period_key: FY2026-P01, entity: US01, match: exact, grain: role_account, lines: []}
+  - name: receipt-1-march
+    after_seq: 4
+    as_of: "2026-03-01"
+    book: ASC606
+    contracts:
+      - contract: C-JE-024-A
+        version: {billed_cum: "1000.00", revenue_cum: "0.00"}
+        balances:
+          - {entity: US01, contract_liability: "1000.00"}
+  - name: march-close
+    after_seq: 5
+    as_of: "2026-03-31"
+    book: ASC606
+    contracts:
+      - contract: C-JE-024-A
+        version: {revenue_cum: "1000.00"}
+        balances:
+          - {entity: US01, contract_liability: "0.00", contract_asset: "0.00"}
+    subledger:
+      - period_key: FY2026-P03
+        entity: US01
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: ACCOUNTS_RECEIVABLE, account: "1100", dr: "1000.00"}
+          - {account_role: REVENUE, account: "4000", cr: "1000.00"}

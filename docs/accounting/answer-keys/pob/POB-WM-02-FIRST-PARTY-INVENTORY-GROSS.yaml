@@ -1,0 +1,186 @@
+schema: erev-answer-key/1
+id: POB-WM-02-FIRST-PARTY-INVENTORY-GROSS
+title: "First-party sales from own inventory presented gross, with orders in transit at month end"
+status: active
+families: [POB, REC, POS]
+tags: [portfolio]
+summary: "research 05 §17 worked example. Wayfarer Marketplace Ireland sells from its own inventory: it holds inventory risk, sets prices and is responsible for fulfilment, so it controls the goods before transfer and is principal (606-10-55-37A(a)); revenue is gross. First-quarter 2026 orders of EUR 300,000.00 are paid at checkout (90,000.00 / 100,000.00 / 110,000.00). Control transfers on delivery: EUR 6,000.00 of March orders are still in transit on 31 March and are delivered on 2 April, so they remain a contract liability at quarter end. No supplier-clearing line exists."
+authority:
+  codification: ["606-10-55-37", "606-10-55-37A", "606-10-55-37B", "606-10-25-30"]
+  ifrs: ["IFRS 15.B35A"]
+  practice: ["DART 10.2 (inventory risk and pricing discretion)", "FASB Example 46"]
+  urls: []
+derived_from: {research04: [], research05: [WM-02], chk: [], golden: [], dev: []}
+requirements: [REQ-POB-009, REQ-REC-001, REQ-BIL-003]
+policy_refs: [POL-030, POL-021]
+review: {author: answer-keys-industries, authored_on: "2026-09-12", reviewer: null, reviewed_on: null, status: pending}
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: EUR, preset: DEFAULT}
+  currencies: [EUR]
+  entities:
+    - code: WM-IE
+      name: "Wayfarer Marketplace Ireland (Demo)"
+      functional_currency: EUR
+      time_zone: Europe/Dublin
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: "1"}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2026-04"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4000", name: "Revenue - products", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, product: "1P-GOODS", account: "4000"}
+  customers: [{code: CUST-WM02, name: "Q1 2026 first-party buyer cohort (Demo)"}]
+  pob_templates:
+    - code: TPL-GOODS
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: POINT_IN_TIME
+      over_time_criterion: NOT_APPLICABLE
+      recognition_method: POINT_IN_TIME
+      policy_values: {balance.right_to_consideration: UNCONDITIONAL}
+  products:
+    - code: "1P-GOODS"
+      name: "First-party household goods"
+      pob_template: TPL-GOODS
+      revenue_category: PRODUCTS
+      principal_agent: PRINCIPAL
+  ssp_books:
+    - code: SSP-WM-IE-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2025-01-01"
+          methodology_label: "Observable standalone prices (demo study)"
+          entries:
+            - product: "1P-GOODS"
+              currency: EUR
+              method: observable
+              distinctness: distinct
+              ranges: [{point_value: "1.00"}]
+  fx_rate_sets: []
+  rule_sets: []
+  policies:
+    tenant: {billing.posting: ERP, recognition.time_convention: MONTHLY_EVEN}
+    entities: {}
+    books: {}
+contracts:
+  - external_id: WM-02
+    customer: CUST-WM02
+    contracting_entity: WM-IE
+    transaction_currency: EUR
+    inception_date: "2026-01-01"
+    contract_type: PORTFOLIO
+    lines: [{obligation_key: L1-GOODS, product_code: "1P-GOODS", quantity: "300000", total_price: "300000.00"}]
+timeline:
+  - seq: "1"
+    kind: event
+    contract: WM-02
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: "2"
+    kind: event
+    contract: WM-02
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: "3"
+    kind: event
+    contract: WM-02
+    event_type: BILLING_RECORDED
+    effective_date: "2026-01-31"
+    payload:
+      invoice_number: ORD-WM02-2026-01
+      line_external_id: ORD-WM02-2026-01-1
+      amount: "90000.00"
+      issue_date: "2026-01-31"
+      obligation_key: L1-GOODS
+  - seq: "4"
+    kind: event
+    contract: WM-02
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-01-31"
+    payload: {obligation_key: L1-GOODS, quantity: "90000", trigger: DELIVERY}
+  - seq: "5"
+    kind: event
+    contract: WM-02
+    event_type: BILLING_RECORDED
+    effective_date: "2026-02-28"
+    payload:
+      invoice_number: ORD-WM02-2026-02
+      line_external_id: ORD-WM02-2026-02-1
+      amount: "100000.00"
+      issue_date: "2026-02-28"
+      obligation_key: L1-GOODS
+  - seq: "6"
+    kind: event
+    contract: WM-02
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-02-28"
+    payload: {obligation_key: L1-GOODS, quantity: "100000", trigger: DELIVERY}
+  - seq: "7"
+    kind: event
+    contract: WM-02
+    event_type: BILLING_RECORDED
+    effective_date: "2026-03-31"
+    payload:
+      invoice_number: ORD-WM02-2026-03
+      line_external_id: ORD-WM02-2026-03-1
+      amount: "110000.00"
+      issue_date: "2026-03-31"
+      obligation_key: L1-GOODS
+  - seq: "8"
+    kind: event
+    contract: WM-02
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-03-31"
+    payload: {obligation_key: L1-GOODS, quantity: "104000", trigger: DELIVERY}
+  - seq: "9"
+    kind: event
+    contract: WM-02
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-04-02"
+    payload: {obligation_key: L1-GOODS, quantity: "6000", trigger: DELIVERY}
+checkpoints:
+  - name: quarter-end-in-transit
+    after_seq: "8"
+    as_of: "2026-03-31"
+    book: ASC606
+    contracts:
+      - contract: WM-02
+        version: {revenue_cum: "294000.00", billed_cum: "300000.00", transaction_price: "300000.00"}
+        obligations: [{obligation_key: L1-GOODS, principal_agent: PRINCIPAL, revenue_cum: "294000.00"}]
+        balances: [{entity: WM-IE, contract_liability: "6000.00", contract_asset: "0.00", unbilled_receivable: "0.00"}]
+    subledger:
+      - period_key: FY2026-P03
+        entity: WM-IE
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "104000.00"}
+          - {account_role: REVENUE, account: "4000", cr: "104000.00"}
+  - name: delivered
+    after_seq: "9"
+    as_of: "2026-04-30"
+    book: ASC606
+    contracts:
+      - contract: WM-02
+        version: {revenue_cum: "300000.00", billed_cum: "300000.00", transaction_price: "300000.00"}
+        obligations: [{obligation_key: L1-GOODS, principal_agent: PRINCIPAL, revenue_cum: "300000.00"}]
+        balances: [{entity: WM-IE, contract_liability: "0.00", contract_asset: "0.00", unbilled_receivable: "0.00"}]
+    subledger:
+      - period_key: FY2026-P04
+        entity: WM-IE
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "6000.00"}
+          - {account_role: REVENUE, account: "4000", cr: "6000.00"}

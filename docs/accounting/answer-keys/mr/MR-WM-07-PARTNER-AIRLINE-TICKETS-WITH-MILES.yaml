@@ -1,0 +1,265 @@
+schema: erev-answer-key/1
+id: MR-WM-07-PARTNER-AIRLINE-TICKETS-WITH-MILES
+title: "Block-space airline tickets with loyalty miles: no-show breakage at departure, miles released on redemption"
+status: active
+families: [MR, BRK, POB, REC]
+tags: [portfolio]
+summary: "research 05 §18 worked example. Wayfarer's charter brand buys block space on a partner airline and resells seats, bearing inventory risk and setting fares, so it is principal for the flights (judgement). In January 2026 it sells 10,000 non-refundable tickets at 500.00 for March departures; each ticket earns 1,000 Wayfarer miles worth 0.012 each with an expected redemption rate of 80%. Option SSP = expected purchase amount 120,000.00 × 100% × 0.80 = 96,000.00 (9.60 a ticket). Allocation: flights 4,905,808.48, miles 94,191.52 (490.58 and 9.42 a ticket). The 2% of passengers who do not show lose their rights at departure, so their share is recognised then. Miles: 4,000,000 redeemed in Q3 against 8,000,000 expected (47,095.76); cumulative 7,200,000 in Q4 with the expected total revised to 7,500,000 (Q4 43,328.10; contract liability 3,767.66)."
+authority:
+  codification: ["606-10-55-41", "606-10-55-42", "606-10-55-44", "606-10-55-48", "606-10-32-28", "606-10-55-37A"]
+  ifrs: ["IFRS 15.B40"]
+  practice: ["RH airline revenue practice (research 05 [RH-Airline])", "FASB Example 52"]
+  urls: []
+derived_from: {research04: [], research05: [WM-07], chk: [], golden: [], dev: []}
+requirements: [REQ-POB-006, REQ-POB-009, REQ-REC-016, REQ-ALC-001, REQ-ALC-002]
+policy_refs: [POL-026, POL-028, POL-030, POL-055]
+review: {author: answer-keys-industries, authored_on: "2026-09-12", reviewer: null, reviewed_on: null, status: pending}
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: WM-US
+      name: "Wayfarer Marketplace US (Demo)"
+      functional_currency: USD
+      time_zone: America/New_York
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: "1"}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2026-12"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4010", name: "Revenue - services and subscriptions", account_type: REVENUE}
+    - {code: "4030", name: "Revenue - material rights, loyalty and breakage", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, product: FLIGHT-SEATS-MAR, account: "4010"}
+    - {account_role: REVENUE, product: WAYFARER-MILES, account: "4030"}
+  customers: [{code: CUST-WM07, name: "January 2026 ticket purchasers (Demo)"}]
+  pob_templates:
+    - code: TPL-FLIGHT
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: POINT_IN_TIME
+      over_time_criterion: NOT_APPLICABLE
+      recognition_method: POINT_IN_TIME
+      policy_values: {balance.right_to_consideration: UNCONDITIONAL}
+    - code: TPL-MILES
+      obligation_kind: MATERIAL_RIGHT
+      distinctness: distinct
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_A
+      recognition_method: REDEMPTION_PATTERN
+      policy_values: {balance.right_to_consideration: CONDITIONAL}
+  products:
+    - code: FLIGHT-SEATS-MAR
+      name: "Charter seats, March 2026 departures"
+      pob_template: TPL-FLIGHT
+      revenue_category: TRAVEL
+      principal_agent: PRINCIPAL
+    - {code: WAYFARER-MILES, name: "Wayfarer miles", pob_template: TPL-MILES, revenue_category: LOYALTY}
+  ssp_books:
+    - code: SSP-WM-US-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2025-01-01"
+          methodology_label: "Observable standalone prices (demo study)"
+          entries:
+            - product: FLIGHT-SEATS-MAR
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges: [{point_value: "5000000.00"}]
+  fx_rate_sets: []
+  rule_sets: []
+  policies:
+    tenant: {billing.posting: ERP, recognition.time_convention: MONTHLY_EVEN, material_right.exercise: CONTINUATION}
+    entities: {}
+    books: {}
+contracts:
+  - external_id: WM-07
+    customer: CUST-WM07
+    contracting_entity: WM-US
+    transaction_currency: USD
+    inception_date: "2026-01-31"
+    contract_type: PORTFOLIO
+    lines:
+      - obligation_key: L1-FLIGHTS
+        product_code: FLIGHT-SEATS-MAR
+        quantity: "1"
+        total_price: "5000000.00"
+        start_date: "2026-03-01"
+        end_date: "2026-03-31"
+      - {obligation_key: L2-MILES, product_code: WAYFARER-MILES, quantity: "10000000", total_price: "0.00"}
+    estimates:
+      - element_code: EXL-WM07-MILES
+        estimate_kind: EXERCISE_LIKELIHOOD
+        method: RATE
+        obligation_key: L2-MILES
+        versions:
+          - {version_no: "1", effective_date: "2026-01-31", rate: "0.80", rationale: "Programme redemption history."}
+      - element_code: BRK-WM07-MILES
+        estimate_kind: BREAKAGE
+        method: RATE
+        obligation_key: L2-MILES
+        versions:
+          - version_no: "1"
+            effective_date: "2026-01-31"
+            rate: "0.20"
+            expected_quantity: "8000000"
+            rationale: "Expected redemptions 80% of miles issued."
+          - version_no: "2"
+            effective_date: "2026-12-31"
+            rate: "0.25"
+            expected_quantity: "7500000"
+            rationale: "Redemption curve revised."
+    material_rights:
+      - obligation_key: L2-MILES
+        option_type: LOYALTY_POINTS
+        incremental_discount_ratio: "1"
+        is_discount_available_without_contract: false
+        expected_purchase_amount: "120000.00"
+        ssp_method: DISCOUNT_X_LIKELIHOOD
+        likelihood_estimate: EXL-WM07-MILES
+timeline:
+  - seq: "1"
+    kind: event
+    contract: WM-07
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-01-31"
+    payload: {}
+  - seq: "2"
+    kind: event
+    contract: WM-07
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-31"
+    payload: {}
+  - seq: "3"
+    kind: event
+    contract: WM-07
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-01-31"
+    payload: {estimate: EXL-WM07-MILES, version_no: "1"}
+  - seq: "4"
+    kind: event
+    contract: WM-07
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-01-31"
+    payload: {estimate: BRK-WM07-MILES, version_no: "1"}
+  - seq: "5"
+    kind: event
+    contract: WM-07
+    event_type: BILLING_RECORDED
+    effective_date: "2026-01-31"
+    payload:
+      invoice_number: TKT-WM07-2026-01
+      line_external_id: TKT-WM07-2026-01-1
+      amount: "5000000.00"
+      issue_date: "2026-01-31"
+  - seq: "6"
+    kind: event
+    contract: WM-07
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-03-31"
+    payload: {obligation_key: L1-FLIGHTS, quantity: "1", trigger: CONTROL_TRANSFER}
+  - seq: "7"
+    kind: event
+    contract: WM-07
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-09-30"
+    payload: {obligation_key: L2-MILES, quantity: "4000000", trigger: DELIVERY}
+  - seq: "8"
+    kind: event
+    contract: WM-07
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-12-31"
+    payload: {estimate: BRK-WM07-MILES, version_no: "2"}
+  - seq: "9"
+    kind: event
+    contract: WM-07
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-12-31"
+    payload: {obligation_key: L2-MILES, quantity: "3200000", trigger: DELIVERY}
+checkpoints:
+  - name: tickets-sold
+    after_seq: "5"
+    as_of: "2026-01-31"
+    book: ASC606
+    contracts:
+      - contract: WM-07
+        version:
+          revenue_cum: "0.00"
+          billed_cum: "5000000.00"
+          transaction_price: "5000000.00"
+          total_ssp: "5096000.00"
+        obligations:
+          - {obligation_key: L1-FLIGHTS, allocated_amount: "4905808.48", revenue_cum: "0.00"}
+          - {obligation_key: L2-MILES, allocated_amount: "94191.52", revenue_cum: "0.00"}
+        balances:
+          - {entity: WM-US, contract_liability: "5000000.00", contract_asset: "0.00", unbilled_receivable: "0.00"}
+  - name: departures
+    after_seq: "6"
+    as_of: "2026-03-31"
+    book: ASC606
+    contracts:
+      - contract: WM-07
+        version:
+          revenue_cum: "4905808.48"
+          billed_cum: "5000000.00"
+          transaction_price: "5000000.00"
+          total_ssp: "5096000.00"
+        obligations:
+          - {obligation_key: L1-FLIGHTS, allocated_amount: "4905808.48", revenue_cum: "4905808.48"}
+          - {obligation_key: L2-MILES, allocated_amount: "94191.52", revenue_cum: "0.00"}
+        balances: [{entity: WM-US, contract_liability: "94191.52", contract_asset: "0.00", unbilled_receivable: "0.00"}]
+    subledger:
+      - period_key: FY2026-P03
+        entity: WM-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "4905808.48"}
+          - {account_role: REVENUE, account: "4010", cr: "4905808.48"}
+  - name: q3-redemptions
+    after_seq: "7"
+    as_of: "2026-09-30"
+    book: ASC606
+    contracts:
+      - contract: WM-07
+        version:
+          revenue_cum: "4952904.24"
+          billed_cum: "5000000.00"
+          transaction_price: "5000000.00"
+          total_ssp: "5096000.00"
+        obligations:
+          - {obligation_key: L1-FLIGHTS, allocated_amount: "4905808.48", revenue_cum: "4905808.48"}
+          - {obligation_key: L2-MILES, allocated_amount: "94191.52", revenue_cum: "47095.76"}
+        balances: [{entity: WM-US, contract_liability: "47095.76", contract_asset: "0.00", unbilled_receivable: "0.00"}]
+  - name: q4-re-estimate
+    after_seq: "9"
+    as_of: "2026-12-31"
+    book: ASC606
+    contracts:
+      - contract: WM-07
+        version:
+          revenue_cum: "4996232.34"
+          billed_cum: "5000000.00"
+          transaction_price: "5000000.00"
+          total_ssp: "5096000.00"
+        obligations:
+          - {obligation_key: L1-FLIGHTS, allocated_amount: "4905808.48", revenue_cum: "4905808.48"}
+          - {obligation_key: L2-MILES, allocated_amount: "94191.52", revenue_cum: "90423.86"}
+        balances: [{entity: WM-US, contract_liability: "3767.66", contract_asset: "0.00", unbilled_receivable: "0.00"}]
+    subledger:
+      - period_key: FY2026-P12
+        entity: WM-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "43328.10"}
+          - {account_role: REVENUE, account: "4030", cr: "43328.10"}

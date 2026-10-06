@@ -1,0 +1,264 @@
+# docs/accounting/answer-keys/pos/POS-CHK-010-UNBILLED-RECEIVABLE-AND-CONTRACT-ASSET-SPLIT.yaml
+schema: "erev-answer-key/1"
+id: POS-CHK-010-UNBILLED-RECEIVABLE-AND-CONTRACT-ASSET-SPLIT
+title: >-
+  Debit position split into unbilled receivable (unconditional) and contract asset (conditional)
+status: active
+families: [POS, JE]
+tags: [r04-s9]
+summary: >-
+  One contract, entity US01, USD, ERP billing. P1 field-service visit (3,000.00, unconditional right: only invoicing
+  remains), P2 milestone deliverable (10,000.00, conditional) and P3 survey work over time (5,000.00, conditional);
+  SSPs equal stated prices. In March 2026 P1 and P2 transfer and P3 reaches 20%; invoices 4,000.00 reference P2 and
+  5,000.00 reference P3. R = 3,000 / 10,000 / 1,000 and B = 0 / 4,000 / 5,000, so NP = −5,000.00, U = 3,000.00, UR =
+  3,000.00 and CA = 2,000.00, all attributed to P2 under POB_DEBIT_POSITIONS (CHK-010); JET-06 books Dr UR 3,000.00
+  and Dr CA 2,000.00 against Cr CL 5,000.00 and reverses on 1 April. In April P1 is invoiced 3,000.00 and P3 reaches
+  60%: NP = −4,000.00, UR 0.00 and CA 4,000.00 (P2). Cross-slice variants with distinct inputs, kept: POS-CHK-010
+  (different obligations, prices and events) (ADJUDICATION.md R-DUP-02).
+authority:
+  codification: ["606-10-45-1", "606-10-45-2", "606-10-45-3", "606-10-45-4", "606-10-55-284"]
+  ifrs: ["IFRS 15.105", "IFRS 15.107", "IFRS 15.108"]
+  practice: ["Deloitte Roadmap: Revenue Recognition 14.4 (unbilled receivables)"]
+  urls: []
+derived_from: {research04: [], research05: [], chk: [CHK-010], golden: [], dev: []}
+requirements: [REQ-BIL-003, REQ-BIL-004, REQ-BIL-005]
+policy_refs: [POL-120, POL-121, POL-122, POL-004]
+review:
+  author: answer-keys-fx-entity-books
+  authored_on: "2026-09-12"
+  reviewer: null
+  reviewed_on: null
+  status: pending
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: US01
+      name: "Avenmoor Systems Inc. (Demo)"
+      functional_currency: USD
+      time_zone: "America/New_York"
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: 1}
+      books: [ASC606]
+  periods: {from: "2026-03", to: "2026-04"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4010", name: "Revenue - services and subscriptions", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, account: "4010", product: FIELD-VISIT}
+    - {account_role: REVENUE, account: "4010", product: MILESTONE-DLV}
+    - {account_role: REVENUE, account: "4010", product: SURVEY}
+  customers:
+    - {code: CUST-1, name: "Pellworth Logistics Inc. (Demo)"}
+  pob_templates:
+    - code: TPL-PCT
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_B
+      recognition_method: OUTPUT_PERCENT
+    - code: TPL-PIT
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: POINT_IN_TIME
+      over_time_criterion: NOT_APPLICABLE
+      recognition_method: POINT_IN_TIME
+  products:
+    - {code: FIELD-VISIT, name: "Field service visit", pob_template: TPL-PIT}
+    - {code: MILESTONE-DLV, name: "Milestone deliverable", pob_template: TPL-PIT}
+    - {code: SURVEY, name: "Survey work", pob_template: TPL-PCT}
+  ssp_books:
+    - code: SSP-US01-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2026-01-01"
+          methodology_label: "Observable standalone prices"
+          entries:
+            - product: FIELD-VISIT
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "3000.00"}
+            - product: MILESTONE-DLV
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "10000.00"}
+            - product: SURVEY
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "5000.00"}
+  fx_rate_sets: []
+  rule_sets: []
+  policies: {tenant: {billing.posting: ERP}, entities: {}, books: {}}
+contracts:
+  - external_id: C-POS-010
+    customer: CUST-1
+    contracting_entity: US01
+    transaction_currency: USD
+    inception_date: "2026-03-01"
+    lines:
+      - {obligation_key: P1, product_code: FIELD-VISIT, quantity: "1", total_price: "3000.00"}
+      - {obligation_key: P2, product_code: MILESTONE-DLV, quantity: "1", total_price: "10000.00"}
+      - {obligation_key: P3, product_code: SURVEY, quantity: "1", total_price: "5000.00"}
+    policy_overrides:
+      - policy_key: balance.right_to_consideration
+        value: UNCONDITIONAL
+        obligation_key: P1
+        rationale: "Visit billed in arrears at a fixed rate; only invoicing and time remain (table 2.4-A)"
+      - policy_key: balance.right_to_consideration
+        value: CONDITIONAL
+        obligation_key: P2
+        rationale: "Payment conditional on acceptance of the remaining deliverables"
+      - policy_key: balance.right_to_consideration
+        value: CONDITIONAL
+        obligation_key: P3
+        rationale: "Payment conditional on acceptance of the remaining deliverables"
+timeline:
+  - {seq: 1, kind: event, contract: C-POS-010, event_type: CONTRACT_BOOKED, effective_date: "2026-03-01", payload: {}}
+  - seq: 2
+    kind: event
+    contract: C-POS-010
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-03-01"
+    payload: {}
+  - seq: 3
+    kind: event
+    contract: C-POS-010
+    event_type: BILLING_RECORDED
+    effective_date: "2026-03-05"
+    payload:
+      invoice_number: INV-POS-P3
+      line_external_id: INV-POS-P3-1
+      obligation_key: P3
+      amount: "5000.00"
+      issue_date: "2026-03-05"
+  - seq: 4
+    kind: event
+    contract: C-POS-010
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-03-10"
+    payload: {obligation_key: P1, quantity: "1", trigger: DELIVERY}
+  - seq: 5
+    kind: event
+    contract: C-POS-010
+    event_type: BILLING_RECORDED
+    effective_date: "2026-03-15"
+    payload:
+      invoice_number: INV-POS-P2
+      line_external_id: INV-POS-P2-1
+      obligation_key: P2
+      amount: "4000.00"
+      issue_date: "2026-03-15"
+  - seq: 6
+    kind: event
+    contract: C-POS-010
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-03-20"
+    payload: {obligation_key: P2, quantity: "1", trigger: ACCEPTANCE}
+  - seq: 7
+    kind: event
+    contract: C-POS-010
+    event_type: PROGRESS_RECORDED
+    effective_date: "2026-03-31"
+    payload: {obligation_key: P3, cumulative_progress_ratio: "0.2", measure: OUTPUT_PERCENT}
+  - seq: 8
+    kind: event
+    contract: C-POS-010
+    event_type: BILLING_RECORDED
+    effective_date: "2026-04-10"
+    payload:
+      invoice_number: INV-POS-P1
+      line_external_id: INV-POS-P1-1
+      obligation_key: P1
+      amount: "3000.00"
+      issue_date: "2026-04-10"
+  - seq: 9
+    kind: event
+    contract: C-POS-010
+    event_type: PROGRESS_RECORDED
+    effective_date: "2026-04-30"
+    payload: {obligation_key: P3, cumulative_progress_ratio: "0.6", measure: OUTPUT_PERCENT}
+checkpoints:
+  - name: march-close
+    after_seq: 7
+    as_of: "2026-03-31"
+    book: ASC606
+    contracts:
+      - contract: C-POS-010
+        obligations:
+          - obligation_key: P1
+            revenue_cum: "3000.00"
+            billed_cum: "0.00"
+            position_obligation: "-3000.00"
+            netting_reclass_amount: "3000.00"
+          - obligation_key: P2
+            revenue_cum: "10000.00"
+            billed_cum: "4000.00"
+            position_obligation: "-6000.00"
+            netting_reclass_amount: "2000.00"
+          - obligation_key: P3
+            revenue_cum: "1000.00"
+            billed_cum: "5000.00"
+            position_obligation: "4000.00"
+            netting_reclass_amount: "0.00"
+        balances:
+          - {entity: US01, contract_liability: "0.00", contract_asset: "2000.00", unbilled_receivable: "3000.00"}
+    subledger:
+      - period_key: FY2026-P03
+        entity: US01
+        match: exact
+        grain: role_account_obligation
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", obligation_key: P2, dr: "8000.00"}
+          - {account_role: CONTRACT_LIABILITY, account: "2100", obligation_key: P3, dr: "1000.00"}
+          - {account_role: CONTRACT_ASSET, account: "1200", obligation_key: P2, dr: "2000.00"}
+          - {account_role: UNBILLED_RECEIVABLE, account: "1105", obligation_key: P1, dr: "3000.00"}
+          - {account_role: REVENUE, account: "4010", obligation_key: P1, cr: "3000.00"}
+          - {account_role: REVENUE, account: "4010", obligation_key: P2, cr: "10000.00"}
+          - {account_role: REVENUE, account: "4010", obligation_key: P3, cr: "1000.00"}
+  - name: april-close
+    after_seq: 9
+    as_of: "2026-04-30"
+    book: ASC606
+    contracts:
+      - contract: C-POS-010
+        obligations:
+          - obligation_key: P1
+            revenue_cum: "3000.00"
+            billed_cum: "3000.00"
+            position_obligation: "0.00"
+            netting_reclass_amount: "0.00"
+          - obligation_key: P2
+            revenue_cum: "10000.00"
+            billed_cum: "4000.00"
+            position_obligation: "-6000.00"
+            netting_reclass_amount: "4000.00"
+          - obligation_key: P3
+            revenue_cum: "3000.00"
+            billed_cum: "5000.00"
+            position_obligation: "2000.00"
+            netting_reclass_amount: "0.00"
+        balances:
+          - {entity: US01, contract_liability: "0.00", contract_asset: "4000.00", unbilled_receivable: "0.00"}
+    subledger:
+      - period_key: FY2026-P04
+        entity: US01
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "3000.00"}
+          - {account_role: CONTRACT_ASSET, account: "1200", dr: "2000.00"}
+          - {account_role: REVENUE, account: "4010", cr: "2000.00"}
+          - {account_role: UNBILLED_RECEIVABLE, account: "1105", cr: "3000.00"}

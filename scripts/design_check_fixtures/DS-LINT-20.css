@@ -1,0 +1,4 @@
+/* design-check fixture DS-LINT-20: !important outside tokens.css. */
+.pinned {
+  display: block !important;
+}

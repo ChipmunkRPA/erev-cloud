@@ -1,0 +1,333 @@
+# docs/accounting/answer-keys/fx/FX-POL-160-IFRIC22-LAYER-DATE-ASC606-VS-IFRS15.yaml
+schema: "erev-answer-key/1"
+id: FX-POL-160-IFRIC22-LAYER-DATE-ASC606-VS-IFRS15
+title: >-
+  Layer date: invoice issue date elected in the ASC606 book, IFRIC 22 earlier of receipt and due in IFRS15
+status: active
+families: [FX, IFRS]
+tags: [fx, r04-s13]
+summary: >-
+  Entity US01 (functional USD), ERP billing. A EUR 12,000 subscription for 2026 is invoiced on 1 January (spot
+  1.0900), due 31 January and noncancellable; the customer pays on 10 January (spot 1.1000). US01 elects POL-160
+  fx.cl_layer_date = INVOICE_ISSUE_DATE, which the IFRS15 book cannot use (FORCED
+  EARLIER_OF_RECEIPT_AND_UNCONDITIONAL_DUE). ASC606: layer USD 13,080.00, monthly revenue USD 1,090.00. IFRS15 (IFRIC
+  22.8, the date the advance is first recognised = earlier of payment and due date): layer USD 13,200.00, monthly
+  revenue USD 1,100.00. Contract liability at 31 March: EUR 9,000 in both books, USD 9,810.00 (ASC606) against
+  9,900.00 (IFRS15). No FX line in either book.
+authority:
+  codification:
+    - "830-10-45-18"
+    - "830-10-55-10"
+    - "830-10-55-11"
+    - "830-20-35-2"
+    - "606-10-45-1"
+    - "606-10-45-2"
+    - "606-10-45-3"
+  ifrs: ["IAS 21.23", "IFRIC 22.8", "IFRIC 22.9", "IFRS 15.105"]
+  practice:
+    - "PwC Viewpoint: Foreign currency guide 2.5 (contract liabilities nonmonetary; research 06 S31)"
+    - "Deloitte Roadmap: Foreign Currency Matters, contract assets and liabilities (research 06 S32)"
+  urls: []
+derived_from: {research04: [], research05: [], chk: [], golden: [], dev: []}
+requirements: [REQ-FX-002, REQ-FX-004, REQ-BIL-012, REQ-BK-002]
+policy_refs: [POL-160, POL-161, POL-163]
+review:
+  author: answer-keys-fx-entity-books
+  authored_on: "2026-09-12"
+  reviewer: null
+  reviewed_on: null
+  status: pending
+runner: engine
+books: [ASC606, IFRS15]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [EUR, USD]
+  entities:
+    - code: US01
+      name: "Avenmoor Systems Inc. (Demo)"
+      functional_currency: USD
+      time_zone: "America/New_York"
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: 1}
+      books: [ASC606, IFRS15]
+  periods: {from: "2026-01", to: "2026-03"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4010", name: "Revenue - services and subscriptions", account_type: REVENUE}
+    - {code: "7200", name: "Foreign exchange gain or loss", account_type: EXPENSE}
+    - {code: "7900", name: Rounding, account_type: EXPENSE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: FX_GAIN_LOSS, account: "7200"}
+    - {account_role: ROUNDING, account: "7900"}
+    - {account_role: REVENUE, account: "4010", product: PLATFORM-EUR}
+  customers:
+    - {code: CUST-1, name: "Pellworth Logistics Inc. (Demo)"}
+  pob_templates:
+    - code: TPL-RAT-ME
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_A
+      recognition_method: TIME_ELAPSED
+      ratable_convention: MONTHLY_EVEN
+  products:
+    - {code: PLATFORM-EUR, name: "Platform subscription, 12 months (EUR)", pob_template: TPL-RAT-ME}
+  ssp_books:
+    - code: SSP-EUR-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2026-01-01"
+          methodology_label: "Observable standalone prices"
+          entries:
+            - product: PLATFORM-EUR
+              currency: EUR
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "12000.00"}
+  fx_rate_sets:
+    - code: SPOT-EURUSD
+      rate_type: spot
+      rates:
+        - {base_currency: EUR, quote_currency: USD, effective_date: "2026-01-01", rate: "1.0900"}
+        - {base_currency: EUR, quote_currency: USD, effective_date: "2026-01-10", rate: "1.1000"}
+        - {base_currency: EUR, quote_currency: USD, effective_date: "2026-01-31", rate: "1.1050"}
+    - code: AVG-EURUSD
+      rate_type: average
+      rates:
+        - base_currency: EUR
+          quote_currency: USD
+          effective_date: "2026-01-31"
+          period_key: FY2026-P01
+          rate: "1.1100"
+        - base_currency: EUR
+          quote_currency: USD
+          effective_date: "2026-02-28"
+          period_key: FY2026-P02
+          rate: "1.1300"
+        - base_currency: EUR
+          quote_currency: USD
+          effective_date: "2026-03-31"
+          period_key: FY2026-P03
+          rate: "1.1500"
+        - base_currency: EUR
+          quote_currency: USD
+          effective_date: "2026-04-30"
+          period_key: FY2026-P04
+          rate: "1.1400"
+        - base_currency: EUR
+          quote_currency: USD
+          effective_date: "2026-05-31"
+          period_key: FY2026-P05
+          rate: "1.1600"
+        - base_currency: EUR
+          quote_currency: USD
+          effective_date: "2026-06-30"
+          period_key: FY2026-P06
+          rate: "1.1700"
+        - base_currency: EUR
+          quote_currency: USD
+          effective_date: "2026-07-31"
+          period_key: FY2026-P07
+          rate: "1.1900"
+        - base_currency: EUR
+          quote_currency: USD
+          effective_date: "2026-08-31"
+          period_key: FY2026-P08
+          rate: "1.1800"
+        - base_currency: EUR
+          quote_currency: USD
+          effective_date: "2026-09-30"
+          period_key: FY2026-P09
+          rate: "1.1750"
+        - base_currency: EUR
+          quote_currency: USD
+          effective_date: "2026-10-31"
+          period_key: FY2026-P10
+          rate: "1.1650"
+        - base_currency: EUR
+          quote_currency: USD
+          effective_date: "2026-11-30"
+          period_key: FY2026-P11
+          rate: "1.1550"
+        - base_currency: EUR
+          quote_currency: USD
+          effective_date: "2026-12-31"
+          period_key: FY2026-P12
+          rate: "1.1450"
+    - code: CLOSE-EURUSD
+      rate_type: closing
+      rates:
+        - base_currency: EUR
+          quote_currency: USD
+          effective_date: "2026-01-31"
+          period_key: FY2026-P01
+          rate: "1.1200"
+        - base_currency: EUR
+          quote_currency: USD
+          effective_date: "2026-02-28"
+          period_key: FY2026-P02
+          rate: "1.1400"
+        - base_currency: EUR
+          quote_currency: USD
+          effective_date: "2026-03-31"
+          period_key: FY2026-P03
+          rate: "1.1600"
+        - base_currency: EUR
+          quote_currency: USD
+          effective_date: "2026-04-30"
+          period_key: FY2026-P04
+          rate: "1.1500"
+        - base_currency: EUR
+          quote_currency: USD
+          effective_date: "2026-05-31"
+          period_key: FY2026-P05
+          rate: "1.1650"
+        - base_currency: EUR
+          quote_currency: USD
+          effective_date: "2026-06-30"
+          period_key: FY2026-P06
+          rate: "1.1800"
+        - base_currency: EUR
+          quote_currency: USD
+          effective_date: "2026-07-31"
+          period_key: FY2026-P07
+          rate: "1.1950"
+        - base_currency: EUR
+          quote_currency: USD
+          effective_date: "2026-08-31"
+          period_key: FY2026-P08
+          rate: "1.1850"
+        - base_currency: EUR
+          quote_currency: USD
+          effective_date: "2026-09-30"
+          period_key: FY2026-P09
+          rate: "1.1700"
+        - base_currency: EUR
+          quote_currency: USD
+          effective_date: "2026-10-31"
+          period_key: FY2026-P10
+          rate: "1.1600"
+        - base_currency: EUR
+          quote_currency: USD
+          effective_date: "2026-11-30"
+          period_key: FY2026-P11
+          rate: "1.1500"
+        - base_currency: EUR
+          quote_currency: USD
+          effective_date: "2026-12-31"
+          period_key: FY2026-P12
+          rate: "1.1400"
+  rule_sets: []
+  policies:
+    tenant: {billing.posting: ERP}
+    entities: {US01: {fx.cl_layer_date: INVOICE_ISSUE_DATE}}
+    books: {}
+contracts:
+  - external_id: C-FX-IFRIC22
+    customer: CUST-1
+    contracting_entity: US01
+    transaction_currency: EUR
+    inception_date: "2026-01-01"
+    lines:
+      - obligation_key: L1-PLATFORM
+        product_code: PLATFORM-EUR
+        quantity: "1"
+        total_price: "12000.00"
+        start_date: "2026-01-01"
+        end_date: "2026-12-31"
+timeline:
+  - seq: 1
+    kind: event
+    contract: C-FX-IFRIC22
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: 2
+    kind: event
+    contract: C-FX-IFRIC22
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: 3
+    kind: event
+    contract: C-FX-IFRIC22
+    event_type: BILLING_RECORDED
+    effective_date: "2026-01-01"
+    payload:
+      invoice_number: INV-EU-0401
+      line_external_id: INV-EU-0401-1
+      amount: "12000.00"
+      issue_date: "2026-01-01"
+      due_date: "2026-01-31"
+      is_cancellable: false
+  - seq: 4
+    kind: event
+    contract: C-FX-IFRIC22
+    event_type: PAYMENT_RECEIVED
+    effective_date: "2026-01-10"
+    payload:
+      receipt_reference: RCPT-EU-0401
+      amount: "12000.00"
+      receipt_date: "2026-01-10"
+      applied_invoice_numbers: [INV-EU-0401]
+checkpoints:
+  - name: asc606-march-close
+    after_seq: 4
+    as_of: "2026-03-31"
+    book: ASC606
+    contracts:
+      - contract: C-FX-IFRIC22
+        balances:
+          - entity: US01
+            contract_liability: "9000.00"
+            contract_asset: "0.00"
+            unbilled_receivable: "0.00"
+            functional: {contract_liability: "9810.00", contract_asset: "0.00", unbilled_receivable: "0.00"}
+    subledger:
+      - period_key: FY2026-P01
+        entity: US01
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "1000.00", functional_dr: "1090.00"}
+          - {account_role: REVENUE, account: "4010", cr: "1000.00", functional_cr: "1090.00"}
+      - period_key: FY2026-P03
+        entity: US01
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "1000.00", functional_dr: "1090.00"}
+          - {account_role: REVENUE, account: "4010", cr: "1000.00", functional_cr: "1090.00"}
+  - name: ifrs15-march-close
+    after_seq: 4
+    as_of: "2026-03-31"
+    book: IFRS15
+    contracts:
+      - contract: C-FX-IFRIC22
+        balances:
+          - entity: US01
+            contract_liability: "9000.00"
+            contract_asset: "0.00"
+            unbilled_receivable: "0.00"
+            functional: {contract_liability: "9900.00", contract_asset: "0.00", unbilled_receivable: "0.00"}
+    subledger:
+      - period_key: FY2026-P01
+        entity: US01
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "1000.00", functional_dr: "1100.00"}
+          - {account_role: REVENUE, account: "4010", cr: "1000.00", functional_cr: "1100.00"}
+      - period_key: FY2026-P03
+        entity: US01
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "1000.00", functional_dr: "1100.00"}
+          - {account_role: REVENUE, account: "4010", cr: "1000.00", functional_cr: "1100.00"}

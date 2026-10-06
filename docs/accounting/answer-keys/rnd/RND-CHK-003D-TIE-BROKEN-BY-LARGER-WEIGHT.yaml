@@ -1,0 +1,129 @@
+# docs/accounting/answer-keys/rnd/RND-CHK-003D-TIE-BROKEN-BY-LARGER-WEIGHT.yaml
+schema: "erev-answer-key/1"
+id: RND-CHK-003D-TIE-BROKEN-BY-LARGER-WEIGHT
+title: "Largest remainder tie on fractional remainder resolved by the larger SSP weight"
+status: active
+families: [RND, ALC]
+tags: []
+summary: >-
+  Entity US01, USD. A promotional sample bundle priced 0.03 in total (three lines of 0.01) with observable SSPs 10.00,
+  20.00 and 30.00. The exact quotas are 0.5, 1 and 1.5 minor units; the base allocation 0 / 1 / 1 leaves one cent;
+  POB-001 and POB-003 tie on the remainder 1/2 and POB-003 wins by the larger weight, giving 0.00 / 0.01 / 0.02
+  (CHK-003d). A $0 obligation stays an obligation. Cross-slice variants with distinct inputs, kept: RND-CHK-003D
+  (different contract, prices and events) (ADJUDICATION.md R-DUP-02).
+authority:
+  codification: ["606-10-32-28", "606-10-32-29", "606-10-32-31"]
+  ifrs: ["IFRS 15.74"]
+  practice: []
+  urls: []
+derived_from: {research04: [], research05: [], chk: [CHK-003d], golden: [], dev: []}
+requirements: [REQ-ALC-001, REQ-ALC-002]
+policy_refs: [POL-002]
+review:
+  author: answer-keys-fx-entity-books
+  authored_on: "2026-09-12"
+  reviewer: null
+  reviewed_on: null
+  status: pending
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: US01
+      name: "Avenmoor Systems Inc. (Demo)"
+      functional_currency: USD
+      time_zone: "America/New_York"
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: 1}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2026-01"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4000", name: "Revenue - products", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, account: "4000", product: SAMPLE-S}
+    - {account_role: REVENUE, account: "4000", product: SAMPLE-M}
+    - {account_role: REVENUE, account: "4000", product: SAMPLE-L}
+  customers:
+    - {code: CUST-1, name: "Pellworth Logistics Inc. (Demo)"}
+  pob_templates:
+    - code: TPL-PIT
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: POINT_IN_TIME
+      over_time_criterion: NOT_APPLICABLE
+      recognition_method: POINT_IN_TIME
+  products:
+    - {code: SAMPLE-S, name: "Sample small", pob_template: TPL-PIT}
+    - {code: SAMPLE-M, name: "Sample medium", pob_template: TPL-PIT}
+    - {code: SAMPLE-L, name: "Sample large", pob_template: TPL-PIT}
+  ssp_books:
+    - code: SSP-US01-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2026-01-01"
+          methodology_label: "Observable standalone prices"
+          entries:
+            - product: SAMPLE-S
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "10.00"}
+            - product: SAMPLE-M
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "20.00"}
+            - product: SAMPLE-L
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges:
+                - {point_value: "30.00"}
+  fx_rate_sets: []
+  rule_sets: []
+  policies: {tenant: {billing.posting: ERP}, entities: {}, books: {}}
+contracts:
+  - external_id: C-RND-003D
+    customer: CUST-1
+    contracting_entity: US01
+    transaction_currency: USD
+    inception_date: "2026-01-12"
+    lines:
+      - {obligation_key: POB-001, product_code: SAMPLE-S, quantity: "1", total_price: "0.01"}
+      - {obligation_key: POB-002, product_code: SAMPLE-M, quantity: "1", total_price: "0.01"}
+      - {obligation_key: POB-003, product_code: SAMPLE-L, quantity: "1", total_price: "0.01"}
+timeline:
+  - seq: 1
+    kind: event
+    contract: C-RND-003D
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-01-12"
+    payload: {}
+  - seq: 2
+    kind: event
+    contract: C-RND-003D
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-12"
+    payload: {}
+checkpoints:
+  - name: allocation-at-activation
+    after_seq: 2
+    as_of: "2026-01-12"
+    book: ASC606
+    contracts:
+      - contract: C-RND-003D
+        version: {transaction_price: "0.03", total_ssp: "60"}
+        obligations:
+          - {obligation_key: POB-001, allocated_amount: "0.00", allocated_exact: "0.005000"}
+          - {obligation_key: POB-002, allocated_amount: "0.01", allocated_exact: "0.010000"}
+          - {obligation_key: POB-003, allocated_amount: "0.02", allocated_exact: "0.015000"}

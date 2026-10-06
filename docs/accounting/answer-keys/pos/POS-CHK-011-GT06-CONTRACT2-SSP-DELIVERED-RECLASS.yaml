@@ -1,0 +1,280 @@
+# docs/accounting/answer-keys/pos/POS-CHK-011-GT06-CONTRACT2-SSP-DELIVERED-RECLASS.yaml
+schema: "erev-answer-key/1"
+id: POS-CHK-011-GT06-CONTRACT2-SSP-DELIVERED-RECLASS
+title: >-
+  Golden Contract 2: unbilled A/R reclass apportioned by cumulative SSP delivered (parity preset)
+status: active
+families: [POS, PAR, JE]
+tags: []
+summary: >-
+  Legacy-parity preset (POL-121 CUMULATIVE_SSP_DELIVERED), entity ME2, USD, ERP billing. Golden Contract 2: Hardware 1
+  8 units stated 600 (clamped to SSP 612), Software 1 3 units stated 400 (clamped to 408), Consulting 1 stated 0 (SSP
+  150) and the VC row −100 (SSP 0); transaction price 900.00 allocates 470.77 / 313.85 / 115.38 / 0.00. One hardware
+  unit transfers on 2023-01-31 (58.85) and consulting reaches 40% on 2023-03-31 (46.15); nothing is billed. At 31
+  March NP = −105.00 and the reclass apportions it by SSP delivered 76.5 and 60: 58.85 and 46.15 (CHK-011). The March
+  entity batch nets to Dr 15002 46.15 / Cr 5003 46.15, as legacy TC-delivery-04 reports. [A] All three priced lines
+  carry an approved UNCONDITIONAL class (payment due on delivery), so the reclass role is UNBILLED_RECEIVABLE; both
+  presentation roles map to 15002 under the preset. Cross-slice variants with distinct inputs, kept: POS-CHK-011-GT06
+  (different golden steps and contract scope) (ADJUDICATION.md R-DUP-02).
+authority:
+  codification: ["606-10-45-1", "606-10-45-2", "606-10-45-3", "606-10-45-4"]
+  ifrs: ["IFRS 15.105"]
+  practice: []
+  urls: []
+derived_from: {research04: [], research05: [], chk: [CHK-011], golden: [GT-02, GT-05, GT-06], dev: []}
+requirements: [REQ-BIL-003, REQ-BIL-005, REQ-BIL-006, REQ-ENT-002]
+policy_refs: [POL-121, POL-122, POL-072, POL-213]
+review:
+  author: answer-keys-fx-entity-books
+  authored_on: "2026-09-12"
+  reviewer: null
+  reviewed_on: null
+  status: pending
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: LEGACY_PARITY}
+  currencies: [USD]
+  entities:
+    - code: ME2
+      name: "Mock Entity 2"
+      functional_currency: USD
+      time_zone: "America/New_York"
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: 1}
+      books: [ASC606]
+  periods: {from: "2023-01", to: "2023-03"}
+  period_states: []
+  gl_accounts:
+    - {code: "15002", name: "Unbilled A/R - Mock Entity 2", account_type: ASSET}
+    - {code: "21002", name: "Deferred revenue - Mock Entity 2", account_type: LIABILITY}
+    - {code: "5001", name: "Revenue - Hardware 1", account_type: REVENUE}
+    - {code: "5002", name: "Revenue - Software 1", account_type: REVENUE}
+    - {code: "5003", name: "Revenue - Consulting 1", account_type: REVENUE}
+    - {code: "5004", name: "Revenue - Variable consideration", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "21002", entity: ME2}
+    - {account_role: CONTRACT_ASSET, account: "15002", entity: ME2}
+    - {account_role: UNBILLED_RECEIVABLE, account: "15002", entity: ME2}
+    - {account_role: REVENUE, account: "5001", product: HARDWARE-1}
+    - {account_role: REVENUE, account: "5002", product: SOFTWARE-1}
+    - {account_role: REVENUE, account: "5003", product: CONSULTING-1}
+    - {account_role: REVENUE, account: "5001", product: MR-HARDWARE}
+    - {account_role: REVENUE, account: "5004", product: VC}
+  customers:
+    - {code: CUST-1, name: "Legacy UAT customer (Demo)"}
+  pob_templates:
+    - code: TPL-PAR-UNITS
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: POINT_IN_TIME
+      over_time_criterion: NOT_APPLICABLE
+      recognition_method: UNITS_DELIVERED
+    - code: TPL-PAR-UNITS-ND
+      obligation_kind: STANDARD
+      distinctness: nondistinct
+      satisfaction_pattern: POINT_IN_TIME
+      over_time_criterion: NOT_APPLICABLE
+      recognition_method: UNITS_DELIVERED
+    - code: TPL-PAR-MR
+      obligation_kind: MATERIAL_RIGHT
+      distinctness: distinct
+      satisfaction_pattern: POINT_IN_TIME
+      over_time_criterion: NOT_APPLICABLE
+      recognition_method: UNITS_DELIVERED
+    - code: TPL-PAR-VC
+      obligation_kind: VC_LINE
+      distinctness: nondistinct
+      satisfaction_pattern: POINT_IN_TIME
+      over_time_criterion: NOT_APPLICABLE
+      recognition_method: UNITS_DELIVERED
+      is_excluded_from_netting_attribution: true
+  products:
+    - {code: HARDWARE-1, name: "Hardware 1", pob_template: TPL-PAR-UNITS}
+    - {code: SOFTWARE-1, name: "Software 1", pob_template: TPL-PAR-UNITS}
+    - {code: CONSULTING-1, name: "Consulting 1", pob_template: TPL-PAR-UNITS-ND}
+    - {code: MR-HARDWARE, name: "Material Right - Hardware", pob_template: TPL-PAR-MR}
+    - {code: VC, name: "Variable Consideration", pob_template: TPL-PAR-VC}
+  ssp_books:
+    - code: LEGACY-SKU-SSP
+      resolution_mode: BY_LABEL
+      versions:
+        - legacy_version_label: "2023-01-01"
+          methodology_label: "Legacy SKU SSP upload (golden step 01)"
+          entries:
+            - product: HARDWARE-1
+              currency: USD
+              method: legacy_range
+              unit_list_price: "100"
+              midpoint_discount_ratio: "0.1"
+              range_ratio: "0.15"
+              distinctness: distinct
+              revenue_account: "5001"
+              ranges: []
+            - product: SOFTWARE-1
+              currency: USD
+              method: legacy_range
+              unit_list_price: "200"
+              midpoint_discount_ratio: "0.2"
+              range_ratio: "0.15"
+              distinctness: distinct
+              revenue_account: "5002"
+              ranges: []
+            - product: CONSULTING-1
+              currency: USD
+              method: legacy_range
+              unit_list_price: "300"
+              midpoint_discount_ratio: "0.5"
+              range_ratio: "0.0"
+              distinctness: nondistinct
+              revenue_account: "5003"
+              ranges: []
+            - product: MR-HARDWARE
+              currency: USD
+              method: legacy_range
+              unit_list_price: "1"
+              midpoint_discount_ratio: "0.0"
+              range_ratio: "0.0"
+              distinctness: distinct
+              revenue_account: "5001"
+              ranges: []
+            - product: VC
+              currency: USD
+              method: legacy_range
+              unit_list_price: "0"
+              midpoint_discount_ratio: "0.0"
+              range_ratio: "0.0"
+              distinctness: nondistinct
+              revenue_account: "5004"
+              ranges: []
+  fx_rate_sets: []
+  rule_sets: []
+  policies: {tenant: {billing.posting: ERP}, entities: {}, books: {}}
+contracts:
+  - external_id: CONTRACT-2
+    customer: CUST-1
+    contracting_entity: ME2
+    transaction_currency: USD
+    inception_date: "2023-01-01"
+    lines:
+      - obligation_key: "POB #1"
+        product_code: HARDWARE-1
+        quantity: "8"
+        total_price: "600.00"
+        ssp_version_label: "2023-01-01"
+        account_overrides: {CONTRACT_LIABILITY: "21002", UNBILLED_RECEIVABLE: "15002", CONTRACT_ASSET: "15002"}
+      - obligation_key: "POB #2"
+        product_code: SOFTWARE-1
+        quantity: "3"
+        total_price: "400.00"
+        ssp_version_label: "2023-01-01"
+        account_overrides: {CONTRACT_LIABILITY: "21002", UNBILLED_RECEIVABLE: "15002", CONTRACT_ASSET: "15002"}
+      - obligation_key: "POB #3"
+        product_code: CONSULTING-1
+        quantity: "1"
+        total_price: "0.00"
+        ssp_version_label: "2023-01-01"
+        account_overrides: {CONTRACT_LIABILITY: "21002", UNBILLED_RECEIVABLE: "15002", CONTRACT_ASSET: "15002"}
+      - obligation_key: "VC #1"
+        product_code: VC
+        quantity: "1"
+        total_price: "-100.00"
+        ssp_version_label: "2023-01-01"
+        account_overrides: {CONTRACT_LIABILITY: "21002", UNBILLED_RECEIVABLE: "15002", CONTRACT_ASSET: "15002"}
+    policy_overrides:
+      - policy_key: balance.right_to_consideration
+        value: UNCONDITIONAL
+        obligation_key: "POB #1"
+        rationale: "Legacy parity: priced lines are presented as unbilled A/R; payment is due on delivery [A]"
+      - policy_key: balance.right_to_consideration
+        value: UNCONDITIONAL
+        obligation_key: "POB #2"
+        rationale: "Legacy parity: priced lines are presented as unbilled A/R; payment is due on delivery [A]"
+      - policy_key: balance.right_to_consideration
+        value: UNCONDITIONAL
+        obligation_key: "POB #3"
+        rationale: "Legacy parity: priced lines are presented as unbilled A/R; payment is due on delivery [A]"
+timeline:
+  - seq: 1
+    kind: event
+    contract: CONTRACT-2
+    event_type: CONTRACT_BOOKED
+    effective_date: "2023-01-01"
+    payload: {}
+  - seq: 2
+    kind: event
+    contract: CONTRACT-2
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2023-01-01"
+    payload: {}
+  - seq: 3
+    kind: event
+    contract: CONTRACT-2
+    event_type: DELIVERY_RECORDED
+    effective_date: "2023-01-31"
+    payload: {obligation_key: "POB #1", quantity: "1", trigger: DELIVERY}
+  - seq: 4
+    kind: event
+    contract: CONTRACT-2
+    event_type: DELIVERY_RECORDED
+    effective_date: "2023-03-31"
+    payload: {obligation_key: "POB #3", quantity: "0.4", trigger: DELIVERY}
+checkpoints:
+  - name: setup-allocation
+    after_seq: 2
+    as_of: "2023-01-01"
+    book: ASC606
+    contracts:
+      - contract: CONTRACT-2
+        version: {transaction_price: "900.00", total_ssp: "1170.0000"}
+        obligations:
+          - {obligation_key: "POB #1", allocated_exact: "470.769231", allocated_amount: "470.77"}
+          - {obligation_key: "POB #2", allocated_exact: "313.846154", allocated_amount: "313.85"}
+          - {obligation_key: "POB #3", allocated_exact: "115.384615", allocated_amount: "115.38"}
+          - {obligation_key: "VC #1", allocated_exact: "0.000000", allocated_amount: "0.00"}
+  - name: january-close
+    after_seq: 3
+    as_of: "2023-01-31"
+    book: ASC606
+    contracts:
+      - contract: CONTRACT-2
+        obligations:
+          - {obligation_key: "POB #1", revenue_cum: "58.85", netting_reclass_amount: "58.85"}
+        balances:
+          - {entity: ME2, contract_liability: "0.00", unbilled_receivable: "58.85", contract_asset: "0.00"}
+    subledger:
+      - period_key: FY2023-P01
+        entity: ME2
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: UNBILLED_RECEIVABLE, account: "15002", dr: "58.85"}
+          - {account_role: REVENUE, account: "5001", cr: "58.85"}
+  - name: march-close
+    after_seq: 4
+    as_of: "2023-03-31"
+    book: ASC606
+    contracts:
+      - contract: CONTRACT-2
+        obligations:
+          - {obligation_key: "POB #1", revenue_cum: "58.85", netting_reclass_amount: "58.85"}
+          - {obligation_key: "POB #2", revenue_cum: "0.00", netting_reclass_amount: "0.00"}
+          - {obligation_key: "POB #3", revenue_cum: "46.15", netting_reclass_amount: "46.15"}
+          - {obligation_key: "VC #1", revenue_cum: "0.00", netting_reclass_amount: "0.00"}
+        balances:
+          - {entity: ME2, contract_liability: "0.00", unbilled_receivable: "105.00", contract_asset: "0.00"}
+    subledger:
+      - {period_key: FY2023-P02, entity: ME2, match: exact, grain: role_account, lines: []}
+      - period_key: FY2023-P03
+        entity: ME2
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: UNBILLED_RECEIVABLE, account: "15002", dr: "46.15"}
+          - {account_role: REVENUE, account: "5003", cr: "46.15"}
+      - period_key: FY2023-P03
+        entity: ME2
+        match: exact
+        grain: role_account_obligation
+        lines:
+          - {account_role: UNBILLED_RECEIVABLE, account: "15002", obligation_key: "POB #3", dr: "46.15"}
+          - {account_role: REVENUE, account: "5003", obligation_key: "POB #3", cr: "46.15"}

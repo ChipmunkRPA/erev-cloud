@@ -1,0 +1,198 @@
+schema: erev-answer-key/1
+id: SFC-CAP-DEFERRED-PAYMENT-ROBOT-SALE
+title: "Robot cell sold with payment deferred 24 months: revenue at the cash selling price and interest income accreted"
+status: active
+families: [SFC, REC, POS]
+tags: []
+summary: "Capability key for significant financing with deferred payment (POL-046, POL-047 CUSTOMER_CREDIT_RATE; JET-11a; 05 EMOD-18), Bracken Robotics. A robot cell is delivered on 1 January 2026 for 500,000.00 payable in one amount on 31 December 2027. The 24-month gap exceeds the one-year expedient and the terms reflect financing: customer credit rate 6.00% a year (0.50% a month), locked at inception in the contract policy override. Cash selling price = 500,000.00 ÷ 1.005^24, recognised as revenue at transfer (rounded to the cent); interest income is the cumulative-rounded exact effective interest on the financed balance (JET-11a, Dr CONTRACT_LIABILITY / Cr INTEREST_INCOME), so that revenue plus interest equals the 500,000.00 invoiced on 31 December 2027. The right to payment depends only on the passage of time, so the debit position is presented as an unbilled receivable."
+authority:
+  codification:
+    - "606-10-32-15"
+    - "606-10-32-16"
+    - "606-10-32-18"
+    - "606-10-32-19"
+    - "606-10-32-20"
+    - "835-30-35-2"
+    - "606-10-45-4"
+  ifrs: ["IFRS 15.61", "IFRS 15.65"]
+  practice: ["FASB Example 28 Case B (deferred payment)", "05-ARCHITECTURE EMOD-18"]
+  urls: []
+derived_from: {research04: [], research05: [], chk: [], golden: [], dev: []}
+requirements: [REQ-TP-011, REQ-TP-001, REQ-BIL-004, REQ-REC-001]
+policy_refs: [POL-046, POL-047, POL-122]
+review: {author: answer-keys-industries, authored_on: "2026-09-12", reviewer: null, reviewed_on: null, status: pending}
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: BR-US
+      name: "Bracken Robotics US (Demo)"
+      functional_currency: USD
+      time_zone: America/Chicago
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: "1"}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2027-12"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4000", name: "Revenue - products", account_type: REVENUE}
+    - {code: "7000", name: "Interest income", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: INTEREST_INCOME, account: "7000"}
+    - {account_role: REVENUE, product: ROBOT-CELL, account: "4000"}
+  customers: [{code: CUST-CAP-SFC, name: "Kinsley Marrow Foods Inc. (Demo)"}]
+  pob_templates:
+    - code: TPL-GOODS
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: POINT_IN_TIME
+      over_time_criterion: NOT_APPLICABLE
+      recognition_method: POINT_IN_TIME
+      policy_values: {balance.right_to_consideration: UNCONDITIONAL}
+  products: [{code: ROBOT-CELL, name: "Robot cell", pob_template: TPL-GOODS, revenue_category: PRODUCTS}]
+  ssp_books:
+    - code: SSP-BR-US-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2025-01-01"
+          methodology_label: "Observable standalone prices (demo study)"
+          entries:
+            - product: ROBOT-CELL
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges: [{point_value: "500000.00"}]
+  fx_rate_sets: []
+  rule_sets: []
+  policies:
+    tenant: {billing.posting: ERP, recognition.time_convention: MONTHLY_EVEN}
+    entities: {}
+    books: {}
+contracts:
+  - external_id: CAP-SFC-DEFERRED
+    customer: CUST-CAP-SFC
+    contracting_entity: BR-US
+    transaction_currency: USD
+    inception_date: "2026-01-01"
+    payment_terms: DUE_2027-12-31
+    lines: [{obligation_key: L1-CELL, product_code: ROBOT-CELL, quantity: "1", total_price: "500000.00"}]
+    judgements:
+      - handle: JDG-CAP-SFC
+        topic: SFC_ASSESSMENT
+        subject_obligation_key: L1-CELL
+        conclusion: "Significant financing component: 24-month deferral; customer credit rate 6.00%."
+        questionnaire: {obligation_key: L1-CELL, significant: true, exception_32_17: NONE}
+    payment_schedule: [{date: "2027-12-31", amount: "500000.00"}]
+    policy_overrides:
+      - policy_key: sfc.discount_rate_basis
+        value: {basis: CUSTOMER_CREDIT_RATE, annual_rate: "0.06", compounding: MONTHLY}
+        rationale: "Customer's secured borrowing rate for a 24-month facility (credit memo 2025-12)."
+timeline:
+  - seq: "1"
+    kind: event
+    contract: CAP-SFC-DEFERRED
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: "2"
+    kind: event
+    contract: CAP-SFC-DEFERRED
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: "3"
+    kind: event
+    contract: CAP-SFC-DEFERRED
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-01-01"
+    payload: {obligation_key: L1-CELL, quantity: "1", trigger: CONTROL_TRANSFER}
+  - seq: "4"
+    kind: event
+    contract: CAP-SFC-DEFERRED
+    event_type: BILLING_RECORDED
+    effective_date: "2027-12-31"
+    payload:
+      invoice_number: INV-CAP-SFC-001
+      line_external_id: INV-CAP-SFC-001-1
+      amount: "500000.00"
+      issue_date: "2027-12-31"
+      obligation_key: L1-CELL
+checkpoints:
+  - name: transfer-month
+    after_seq: "3"
+    as_of: "2026-01-31"
+    book: ASC606
+    contracts:
+      - contract: CAP-SFC-DEFERRED
+        version:
+          transaction_price: "443592.83"
+          financing_adjustment_amount: "-56407.17"
+          revenue_cum: "443592.83"
+          billed_cum: "0.00"
+        obligations:
+          - obligation_key: L1-CELL
+            allocated_amount: "443592.83"
+            revenue_cum: "443592.83"
+            satisfaction_status: SATISFIED
+        balances:
+          - {entity: BR-US, contract_liability: "0.00", contract_asset: "0.00", unbilled_receivable: "445810.79"}
+    subledger:
+      - period_key: FY2026-P01
+        entity: BR-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: INTEREST_INCOME, account: "7000", cr: "2217.96"}
+          - {account_role: REVENUE, account: "4000", cr: "443592.83"}
+          - {account_role: UNBILLED_RECEIVABLE, account: "1105", dr: "445810.79"}
+  - name: year-1
+    after_seq: "3"
+    as_of: "2026-12-31"
+    book: ASC606
+    contracts:
+      - contract: CAP-SFC-DEFERRED
+        version:
+          transaction_price: "443592.83"
+          financing_adjustment_amount: "-56407.17"
+          revenue_cum: "443592.83"
+          billed_cum: "0.00"
+        obligations:
+          - obligation_key: L1-CELL
+            allocated_amount: "443592.83"
+            revenue_cum: "443592.83"
+            satisfaction_status: SATISFIED
+        balances:
+          - {entity: BR-US, contract_liability: "0.00", contract_asset: "0.00", unbilled_receivable: "470952.67"}
+  - name: settlement
+    after_seq: "4"
+    as_of: "2027-12-31"
+    book: ASC606
+    contracts:
+      - contract: CAP-SFC-DEFERRED
+        version:
+          transaction_price: "443592.83"
+          financing_adjustment_amount: "-56407.17"
+          revenue_cum: "443592.83"
+          billed_cum: "500000.00"
+        obligations:
+          - obligation_key: L1-CELL
+            allocated_amount: "443592.83"
+            revenue_cum: "443592.83"
+            satisfaction_status: SATISFIED
+        balances: [{entity: BR-US, contract_liability: "0.00", contract_asset: "0.00", unbilled_receivable: "0.00"}]
+    subledger:
+      - period_key: FY2027-P12
+        entity: BR-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "500000.00"}
+          - {account_role: INTEREST_INCOME, account: "7000", cr: "2487.57"}
+          - {account_role: UNBILLED_RECEIVABLE, account: "1105", cr: "497512.43"}

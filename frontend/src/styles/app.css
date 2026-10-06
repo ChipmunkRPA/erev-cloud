@@ -1,0 +1,5 @@
+/* Application stylesheet (docs/dev-guide.md DG-FE-09): Tailwind CSS 4, then the design tokens
+ * (byte copy written by make tokens) and the vendored fonts (DS-TYP-05). */
+@import "tailwindcss";
+@import "./tokens.css";
+@import "./fonts.css";

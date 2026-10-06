@@ -1,0 +1,14 @@
+step,phase,seq,category,kind,title,text,answer
+13,handler:browse_file_ProsMod,151,file,QFileDialog.getOpenFileName,Select File,ops/Example UATs/Contract Mod UAT/Contract Modification Template 09.15.2023 - material right exericse with new POB added (propsective).xlsx,selected
+13,handler:browse_file_ProsMod,152,input,QInputDialog.getText,Date Input,Enter the prospective contract mod date in this format (YYYY-MM-DD):,2023-09-15
+13,handler:browse_file_ProsMod,153,popup,QMessageBox.information,Mod Success,Prospective Mod has been processed with uploaded modifications for the current date :),Ok
+13,report:latest_contracts,154,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+13,report:je_gross,155,input,QInputDialog.getText,Start Date Input,Enter the start date of the date range to retrieve the revenue journal entries (YYYY-MM-DD):,2023-09-01
+13,report:je_gross,156,input,QInputDialog.getText,Date Input,Enter the end date of the date range to retrieve the revenue journal entries (YYYY-MM-DD):,2023-09-15
+13,report:je_gross,157,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+13,report:je_delta,158,input,QInputDialog.getText,Start Date Input,Enter the start date of the date range to retrieve the revenue journal entries (YYYY-MM-DD):,2023-09-01
+13,report:je_delta,159,input,QInputDialog.getText,Date Input,Enter the end date of the date range to retrieve the revenue journal entries (YYYY-MM-DD):,2023-09-15
+13,report:je_delta,160,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+13,report:contract_history,161,input,QInputDialog.getText,Start Date Input,Enter the start date of the date range to retrieve the revenue contract history (YYYY-MM-DD):,2023-09-01
+13,report:contract_history,162,input,QInputDialog.getText,Date Input,Enter the end date of the date range to retrieve the revenue contract history (YYYY-MM-DD):,2023-09-15
+13,report:contract_history,163,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok

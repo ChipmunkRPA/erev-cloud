@@ -1,0 +1,265 @@
+schema: erev-answer-key/1
+id: RET-WM-04-REFUNDS-AND-CHARGEBACKS
+title: "Refunds and chargebacks on first-party orders estimated as refund liabilities and re-estimated"
+status: active
+families: [RET, VC, POS]
+tags: [portfolio]
+summary: "January 2026 first-party orders of perishable goods: 500,000.00 paid at checkout and delivered in January; goods are not returned. Wayfarer refunds customers for late or damaged deliveries and absorbs card chargebacks, so part of the consideration is expected to be refunded: variable consideration reducing revenue with a refund liability for the consideration received (606-10-32-10, 55-22). Estimate version 1 (31 January): 4% = 20,000.00; version 2 (28 February): 3.5% = 17,500.00 (revenue +2,500.00); final version 3 (31 March, dispute window closed): 18,200.00. Credit memos: refunds 12,000.00 in February and chargebacks 6,200.00 in March. Revenue 480,000.00 / 482,500.00 / 481,800.00; refund liability 20,000.00 / 5,500.00 / 0.00. The refund liability is never netted into the contract position (POL-127)."
+authority:
+  codification: ["606-10-32-5", "606-10-32-10", "606-10-55-22", "606-10-32-14"]
+  ifrs: ["IFRS 15.55"]
+  practice: ["DART 14.3 (refund liabilities)"]
+  urls: []
+derived_from: {research04: [], research05: [WM-04], chk: [], golden: [], dev: []}
+requirements: [REQ-TP-002, REQ-TP-004, REQ-TP-018, REQ-BIL-007]
+policy_refs: [POL-040, POL-127, POL-182]
+review: {author: answer-keys-industries, authored_on: "2026-09-12", reviewer: null, reviewed_on: null, status: pending}
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: WM-US
+      name: "Wayfarer Marketplace US (Demo)"
+      functional_currency: USD
+      time_zone: America/New_York
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: "1"}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2026-03"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "2110", name: "Refund liability", account_type: LIABILITY}
+    - {code: "4000", name: "Revenue - products", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REFUND_LIABILITY, account: "2110"}
+    - {account_role: REVENUE, product: "1P-PERISHABLE", account: "4000"}
+  customers: [{code: CUST-WM04, name: "January 2026 first-party buyer cohort (Demo)"}]
+  pob_templates:
+    - code: TPL-GOODS
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: POINT_IN_TIME
+      over_time_criterion: NOT_APPLICABLE
+      recognition_method: POINT_IN_TIME
+      policy_values: {balance.right_to_consideration: UNCONDITIONAL}
+  products:
+    - code: "1P-PERISHABLE"
+      name: "First-party perishable goods"
+      pob_template: TPL-GOODS
+      revenue_category: PRODUCTS
+      principal_agent: PRINCIPAL
+  ssp_books:
+    - code: SSP-WM-US-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2025-01-01"
+          methodology_label: "Observable standalone prices (demo study)"
+          entries:
+            - product: "1P-PERISHABLE"
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges: [{point_value: "500000.00"}]
+  fx_rate_sets: []
+  rule_sets: []
+  policies:
+    tenant: {billing.posting: ERP, recognition.time_convention: MONTHLY_EVEN}
+    entities: {}
+    books: {}
+contracts:
+  - external_id: WM-04
+    customer: CUST-WM04
+    contracting_entity: WM-US
+    transaction_currency: USD
+    inception_date: "2026-01-31"
+    contract_type: PORTFOLIO
+    lines: [{obligation_key: L1-ORDERS, product_code: "1P-PERISHABLE", quantity: "1", total_price: "500000.00"}]
+    estimates:
+      - element_code: VC-WM04-REFUNDS
+        estimate_kind: VARIABLE_CONSIDERATION
+        method: EXPECTED_VALUE
+        obligation_key: L1-ORDERS
+        vc_element_type: REFUND
+        allocation_target: OBLIGATIONS
+        target_obligation_keys: [L1-ORDERS]
+        versions:
+          - version_no: "1"
+            effective_date: "2026-01-31"
+            unconstrained_amount: "20000.00"
+            most_conservative_amount: "20000.00"
+            constrained_amount: "20000.00"
+            currency: USD
+            rationale: "Refund and chargeback history 4.0%."
+          - version_no: "2"
+            effective_date: "2026-02-28"
+            unconstrained_amount: "17500.00"
+            most_conservative_amount: "17500.00"
+            constrained_amount: "17500.00"
+            currency: USD
+            rationale: "February claims trend 3.5%."
+          - version_no: "3"
+            effective_date: "2026-03-31"
+            unconstrained_amount: "18200.00"
+            most_conservative_amount: "18200.00"
+            constrained_amount: "18200.00"
+            currency: USD
+            rationale: "Dispute window closed: actual refunds and chargebacks."
+timeline:
+  - seq: "1"
+    kind: event
+    contract: WM-04
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-01-31"
+    payload: {}
+  - seq: "2"
+    kind: event
+    contract: WM-04
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-31"
+    payload: {}
+  - seq: "3"
+    kind: event
+    contract: WM-04
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-01-31"
+    payload: {estimate: VC-WM04-REFUNDS, version_no: "1"}
+  - seq: "4"
+    kind: event
+    contract: WM-04
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-01-31"
+    payload: {obligation_key: L1-ORDERS, quantity: "1", trigger: CONTROL_TRANSFER}
+  - seq: "5"
+    kind: event
+    contract: WM-04
+    event_type: BILLING_RECORDED
+    effective_date: "2026-01-31"
+    payload:
+      invoice_number: ORD-WM04-2026-01
+      line_external_id: ORD-WM04-2026-01-1
+      amount: "500000.00"
+      issue_date: "2026-01-31"
+      obligation_key: L1-ORDERS
+  - seq: "6"
+    kind: event
+    contract: WM-04
+    event_type: CREDIT_MEMO_RECORDED
+    effective_date: "2026-02-20"
+    payload:
+      credit_memo_number: RF-WM04-02
+      obligation_key: L1-ORDERS
+      amount: "12000.00"
+      issue_date: "2026-02-20"
+      reason: LATE_DELIVERY_REFUNDS
+  - seq: "7"
+    kind: event
+    contract: WM-04
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-02-28"
+    payload: {estimate: VC-WM04-REFUNDS, version_no: "2"}
+  - seq: "8"
+    kind: event
+    contract: WM-04
+    event_type: CREDIT_MEMO_RECORDED
+    effective_date: "2026-03-25"
+    payload:
+      credit_memo_number: CB-WM04-03
+      obligation_key: L1-ORDERS
+      amount: "6200.00"
+      issue_date: "2026-03-25"
+      reason: CHARGEBACKS
+  - seq: "9"
+    kind: event
+    contract: WM-04
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-03-31"
+    payload: {estimate: VC-WM04-REFUNDS, version_no: "3"}
+checkpoints:
+  - name: orders-delivered
+    after_seq: "5"
+    as_of: "2026-01-31"
+    book: ASC606
+    contracts:
+      - contract: WM-04
+        version:
+          revenue_cum: "480000.00"
+          billed_cum: "500000.00"
+          transaction_price: "480000.00"
+          vc_constrained_amount: "20000.00"
+        obligations: [{obligation_key: L1-ORDERS, allocated_amount: "480000.00", revenue_cum: "480000.00"}]
+        balances:
+          - entity: WM-US
+            contract_liability: "0.00"
+            contract_asset: "0.00"
+            unbilled_receivable: "0.00"
+            refund_liability: "20000.00"
+    subledger:
+      - period_key: FY2026-P01
+        entity: WM-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "500000.00"}
+          - {account_role: REFUND_LIABILITY, account: "2110", cr: "20000.00"}
+          - {account_role: REVENUE, account: "4000", cr: "480000.00"}
+  - name: re-estimate
+    after_seq: "7"
+    as_of: "2026-02-28"
+    book: ASC606
+    contracts:
+      - contract: WM-04
+        version:
+          revenue_cum: "482500.00"
+          billed_cum: "488000.00"
+          transaction_price: "482500.00"
+          vc_constrained_amount: "17500.00"
+        obligations: [{obligation_key: L1-ORDERS, allocated_amount: "482500.00", revenue_cum: "482500.00"}]
+        balances:
+          - entity: WM-US
+            contract_liability: "0.00"
+            contract_asset: "0.00"
+            unbilled_receivable: "0.00"
+            refund_liability: "5500.00"
+    subledger:
+      - period_key: FY2026-P02
+        entity: WM-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", cr: "12000.00"}
+          - {account_role: REFUND_LIABILITY, account: "2110", dr: "14500.00"}
+          - {account_role: REVENUE, account: "4000", cr: "2500.00"}
+  - name: window-closed
+    after_seq: "9"
+    as_of: "2026-03-31"
+    book: ASC606
+    contracts:
+      - contract: WM-04
+        version:
+          revenue_cum: "481800.00"
+          billed_cum: "481800.00"
+          transaction_price: "481800.00"
+          vc_constrained_amount: "18200.00"
+        obligations: [{obligation_key: L1-ORDERS, allocated_amount: "481800.00", revenue_cum: "481800.00"}]
+        balances:
+          - entity: WM-US
+            contract_liability: "0.00"
+            contract_asset: "0.00"
+            unbilled_receivable: "0.00"
+            refund_liability: "0.00"
+    subledger:
+      - period_key: FY2026-P03
+        entity: WM-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", cr: "6200.00"}
+          - {account_role: REFUND_LIABILITY, account: "2110", dr: "5500.00"}
+          - {account_role: REVENUE, account: "4000", dr: "700.00"}

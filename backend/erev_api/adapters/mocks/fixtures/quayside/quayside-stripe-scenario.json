@@ -1,0 +1,196 @@
+{
+  "$schema": "erev mock scenario v1 (05 ADP-22; PRD WLD-F-31, J-23.6)",
+  "tenant_code": "quayside",
+  "webhook_signature_header": "Stripe-Signature",
+  "subscriptions": [
+    {
+      "id": "sub_DEMO0001",
+      "object": "subscription",
+      "version": "1",
+      "customer": "cus_DEMO0001",
+      "status": "active",
+      "currency": "usd",
+      "created": 1788220800,
+      "start_date": 1788220800,
+      "current_period_start": 1788220800,
+      "current_period_end": 1819756800,
+      "metadata": {
+        "legal_entity": "QUAY-US",
+        "acceptance_clause": "false",
+        "side_letter": "false"
+      },
+      "items": {
+        "data": [
+          {
+            "id": "si_DEMO0001",
+            "object": "subscription_item",
+            "quantity": 1,
+            "price": {
+              "id": "price_DEMO_PLAT_Y",
+              "object": "price",
+              "unit_amount": 120000,
+              "currency": "usd",
+              "recurring": {
+                "interval": "year"
+              },
+              "metadata": {
+                "erev_product_code": "QUAY-PLAT"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "invoices": [
+    {
+      "id": "in_DEMO0001",
+      "object": "invoice",
+      "customer": "cus_DEMO0001",
+      "subscription": "sub_DEMO0001",
+      "number": "QUAY-0001",
+      "currency": "usd",
+      "created": 1788220800,
+      "due_date": 1790812800,
+      "metadata": {
+        "legal_entity": "QUAY-US"
+      },
+      "versions": {
+        "1": {
+          "status": "open",
+          "amount_due": 120000,
+          "lines": {
+            "data": [
+              {
+                "id": "il_DEMO0001",
+                "object": "line_item",
+                "amount": 120000,
+                "quantity": 1,
+                "subscription": "sub_DEMO0001",
+                "period": {
+                  "start": 1788220800,
+                  "end": 1819670400
+                },
+                "price": {
+                  "id": "price_DEMO_PLAT_Y",
+                  "metadata": {
+                    "erev_product_code": "QUAY-PLAT"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "2": {
+          "status": "paid",
+          "amount_due": 120000,
+          "amount_paid": 120000,
+          "lines": {
+            "data": [
+              {
+                "id": "il_DEMO0001",
+                "object": "line_item",
+                "amount": 120000,
+                "quantity": 1,
+                "subscription": "sub_DEMO0001",
+                "period": {
+                  "start": 1788220800,
+                  "end": 1819670400
+                },
+                "price": {
+                  "id": "price_DEMO_PLAT_Y",
+                  "metadata": {
+                    "erev_product_code": "QUAY-PLAT"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "credit_notes": [
+    {
+      "id": "cn_DEMO0001",
+      "object": "credit_note",
+      "version": "1",
+      "customer": "cus_DEMO0001",
+      "invoice": "in_DEMO0001",
+      "number": "QUAY-CN-0001",
+      "currency": "usd",
+      "created": 1788652800,
+      "metadata": {
+        "legal_entity": "QUAY-US"
+      },
+      "lines": {
+        "data": [
+          {
+            "id": "cnli_DEMO0001",
+            "object": "credit_note_line_item",
+            "amount": 10000,
+            "quantity": 1,
+            "period": {
+              "start": 1788220800,
+              "end": 1788652800
+            },
+            "price": {
+              "id": "price_DEMO_PLAT_Y",
+              "metadata": {
+                "erev_product_code": "QUAY-PLAT"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "events": [
+    {
+      "ordinal": 1,
+      "id": "evt_DEMO0001",
+      "type": "customer.subscription.created",
+      "object": "subscription",
+      "object_id": "sub_DEMO0001",
+      "version": "1"
+    },
+    {
+      "ordinal": 2,
+      "id": "evt_DEMO0002",
+      "type": "invoice.paid",
+      "object": "invoice",
+      "object_id": "in_DEMO0001",
+      "version": "2"
+    },
+    {
+      "ordinal": 3,
+      "id": "evt_DEMO0003",
+      "type": "invoice.finalized",
+      "object": "invoice",
+      "object_id": "in_DEMO0001",
+      "version": "1"
+    },
+    {
+      "ordinal": 4,
+      "id": "evt_DEMO0004",
+      "type": "credit_note.created",
+      "object": "credit_note",
+      "object_id": "cn_DEMO0001",
+      "version": "1"
+    },
+    {
+      "ordinal": 5,
+      "id": "evt_DEMO0002",
+      "type": "invoice.paid",
+      "object": "invoice",
+      "object_id": "in_DEMO0001",
+      "version": "2"
+    }
+  ],
+  "scenario_notes": {
+    "duplicate_event": "ordinal 5 repeats event id evt_DEMO0002 (created nothing twice)",
+    "out_of_order_version": "ordinal 3 delivers in_DEMO0001 version 1 (finalized) after version 2 (paid)",
+    "service_period": "in_DEMO0001 line period 01 Sep 2026 \u2013 31 Aug 2027 \u2192 BILLING_RECORDED hint",
+    "control_totals": "3 unique objects: subscription USD 1200.00, invoice USD 1200.00, credit note USD -100.00 \u2192 USD 2300.00"
+  }
+}

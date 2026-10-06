@@ -1,0 +1,223 @@
+schema: erev-answer-key/1
+id: REC-FS-08-TM-RIGHT-TO-INVOICE
+title: "Time-and-materials services under the right-to-invoice expedient: unbilled receivable at month end"
+status: active
+families: [REC, POS]
+tags: []
+summary: "research 05 §21 worked example. A time-and-materials statement of work bills 200.00 per hour with no cap, minimum or upfront fee, so the invoice corresponds directly to the value transferred (606-10-55-18; POL-092 guard passes). 180 hours are performed in each of January, February and March 2026 and invoiced on the 5th of the following month. Revenue is 36,000.00 a month as performed; the right to invoice is unconditional, so the uninvoiced month is presented as an unbilled receivable (ALG-03 table 2.4-A), not a contract asset."
+authority:
+  codification: ["606-10-55-18", "606-10-25-31", "606-10-45-4", "606-10-32-40"]
+  ifrs: ["IFRS 15.B16"]
+  practice: ["FASB Example 42 Contract A (hourly services)"]
+  urls: []
+derived_from: {research04: [], research05: [FS-08], chk: [], golden: [], dev: []}
+requirements: [REQ-REC-009, REQ-BIL-004, REQ-BIL-005, REQ-POB-002]
+policy_refs: [POL-091, POL-092, POL-122, POL-198]
+review: {author: answer-keys-industries, authored_on: "2026-09-12", reviewer: null, reviewed_on: null, status: pending}
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: FS-US
+      name: "Fernhill Software US (Demo)"
+      functional_currency: USD
+      time_zone: America/Los_Angeles
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: "1"}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2026-04"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4010", name: "Revenue - services and subscriptions", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, product: TM-CONSULT, account: "4010"}
+  customers: [{code: CUST-FS08, name: "Marrowby Health Partners LLC (Demo)"}]
+  pob_templates:
+    - code: TPL-TM
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_A
+      recognition_method: RIGHT_TO_INVOICE
+      policy_values: {balance.right_to_consideration: UNCONDITIONAL}
+  products:
+    - {code: TM-CONSULT, name: "Consulting, time and materials", pob_template: TPL-TM, revenue_category: SERVICES}
+  ssp_books:
+    - code: SSP-FS-US-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2025-01-01"
+          methodology_label: "Observable standalone prices (demo study)"
+          entries:
+            - product: TM-CONSULT
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges: [{point_value: "108000.00"}]
+  fx_rate_sets: []
+  rule_sets: []
+  policies:
+    tenant: {billing.posting: ERP, recognition.time_convention: MONTHLY_EVEN}
+    entities: {}
+    books: {}
+contracts:
+  - external_id: FS-08
+    customer: CUST-FS08
+    contracting_entity: FS-US
+    transaction_currency: USD
+    inception_date: "2026-01-01"
+    lines:
+      - obligation_key: L1-TM
+        product_code: TM-CONSULT
+        quantity: "1"
+        total_price: "0.00"
+        unit_price: "200"
+        start_date: "2026-01-01"
+        end_date: "2026-03-31"
+timeline:
+  - seq: "1"
+    kind: event
+    contract: FS-08
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: "2"
+    kind: event
+    contract: FS-08
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: "3"
+    kind: event
+    contract: FS-08
+    event_type: USAGE_REPORTED
+    effective_date: "2026-01-31"
+    payload:
+      obligation_key: L1-TM
+      usage_period_start: "2026-01-01"
+      usage_period_end: "2026-01-31"
+      metric: HOURS
+      quantity: "180"
+      rated_amount: "36000.00"
+  - seq: "4"
+    kind: event
+    contract: FS-08
+    event_type: BILLING_RECORDED
+    effective_date: "2026-02-05"
+    payload:
+      invoice_number: INV-FS08-202601
+      line_external_id: INV-FS08-202601-1
+      amount: "36000.00"
+      issue_date: "2026-02-05"
+      obligation_key: L1-TM
+      service_period_start: "2026-01-01"
+  - seq: "5"
+    kind: event
+    contract: FS-08
+    event_type: USAGE_REPORTED
+    effective_date: "2026-02-28"
+    payload:
+      obligation_key: L1-TM
+      usage_period_start: "2026-02-01"
+      usage_period_end: "2026-02-28"
+      metric: HOURS
+      quantity: "180"
+      rated_amount: "36000.00"
+  - seq: "6"
+    kind: event
+    contract: FS-08
+    event_type: BILLING_RECORDED
+    effective_date: "2026-03-05"
+    payload:
+      invoice_number: INV-FS08-202602
+      line_external_id: INV-FS08-202602-1
+      amount: "36000.00"
+      issue_date: "2026-03-05"
+      obligation_key: L1-TM
+      service_period_start: "2026-02-01"
+  - seq: "7"
+    kind: event
+    contract: FS-08
+    event_type: USAGE_REPORTED
+    effective_date: "2026-03-31"
+    payload:
+      obligation_key: L1-TM
+      usage_period_start: "2026-03-01"
+      usage_period_end: "2026-03-31"
+      metric: HOURS
+      quantity: "180"
+      rated_amount: "36000.00"
+  - seq: "8"
+    kind: event
+    contract: FS-08
+    event_type: BILLING_RECORDED
+    effective_date: "2026-04-05"
+    payload:
+      invoice_number: INV-FS08-202603
+      line_external_id: INV-FS08-202603-1
+      amount: "36000.00"
+      issue_date: "2026-04-05"
+      obligation_key: L1-TM
+      service_period_start: "2026-03-01"
+checkpoints:
+  - name: january-unbilled
+    after_seq: "3"
+    as_of: "2026-01-31"
+    book: ASC606
+    contracts:
+      - contract: FS-08
+        version: {transaction_price: "36000.00", revenue_cum: "36000.00", billed_cum: "0.00"}
+        # ENC6-R3 (Codex review at 4b87200; supervisor ruling 2026-09-19): oracles ADDED, none changed —
+        # a T&M rate line (stated price 0) is satisfied at its term end (31 Mar), never at inception;
+        # the zero FIXED component carries no completion signal (ENGINE_SPEC_B §9.2.4 / S09-R-46 rev 1.16).
+        obligations: [{obligation_key: L1-TM, allocated_amount: "36000.00", revenue_cum: "36000.00", satisfaction_status: PARTIALLY_SATISFIED, satisfied_date: null}]
+        balances: [{entity: FS-US, contract_liability: "0.00", contract_asset: "0.00", unbilled_receivable: "36000.00"}]
+    subledger:
+      - period_key: FY2026-P01
+        entity: FS-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: REVENUE, account: "4010", cr: "36000.00"}
+          - {account_role: UNBILLED_RECEIVABLE, account: "1105", dr: "36000.00"}
+  - name: february-unbilled
+    after_seq: "5"
+    as_of: "2026-02-28"
+    book: ASC606
+    contracts:
+      - contract: FS-08
+        version: {transaction_price: "72000.00", revenue_cum: "72000.00", billed_cum: "36000.00"}
+        obligations: [{obligation_key: L1-TM, allocated_amount: "72000.00", revenue_cum: "72000.00", satisfaction_status: PARTIALLY_SATISFIED, satisfied_date: null}]
+        balances: [{entity: FS-US, contract_liability: "0.00", contract_asset: "0.00", unbilled_receivable: "36000.00"}]
+    subledger:
+      - period_key: FY2026-P02
+        entity: FS-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "36000.00"}
+          - {account_role: REVENUE, account: "4010", cr: "36000.00"}
+  - name: april-all-invoiced
+    after_seq: "8"
+    as_of: "2026-04-30"
+    book: ASC606
+    contracts:
+      - contract: FS-08
+        version: {transaction_price: "108000.00", revenue_cum: "108000.00", billed_cum: "108000.00"}
+        obligations: [{obligation_key: L1-TM, allocated_amount: "108000.00", revenue_cum: "108000.00", satisfaction_status: SATISFIED, satisfied_date: "2026-03-31"}]
+        balances: [{entity: FS-US, contract_liability: "0.00", contract_asset: "0.00", unbilled_receivable: "0.00"}]
+    subledger:
+      - period_key: FY2026-P04
+        entity: FS-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "36000.00"}
+          - {account_role: UNBILLED_RECEIVABLE, account: "1105", cr: "36000.00"}

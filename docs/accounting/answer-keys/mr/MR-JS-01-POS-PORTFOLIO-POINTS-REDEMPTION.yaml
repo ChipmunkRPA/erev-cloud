@@ -1,0 +1,304 @@
+schema: erev-answer-key/1
+id: MR-JS-01-POS-PORTFOLIO-POINTS-REDEMPTION
+title: "Point-of-sale portfolio with loyalty points: material right released on redemption with a re-estimate and expiry"
+status: active
+families: [MR, BRK, VC, REC]
+tags: [portfolio]
+summary: "research 05 §9 worked example. Juniper Street's January 2026 point-of-sale sales of 1,000,000.00 are processed as one portfolio (606-10-10-4; POL-015) and earn 1,000,000 points redeemable for free drinks worth 0.01 per point. Option SSP = expected purchase amount 10,000.00 × incremental discount 100% × likelihood 80% = 8,000.00 (D-21a). Allocation over SSPs 1,000,000.00 and 8,000.00 by largest remainder: goods 992,063.49, points 7,936.51. Points revenue = allocation × cumulative redemptions ÷ expected total redemptions (POL-055, ALG-05 §2.6.2): 400,000 of 800,000 in Q1 (3,968.25); 700,000 of a re-estimated 900,000 in Q2 (cumulative 6,172.84; Q2 2,204.59); unredeemed points expire on 30 September after 880,000 redemptions and the remaining 1,763.67 is recognised (JET-08). The inception allocation is not redone when the redemption estimate changes; only the cumulative measure moves."
+authority:
+  codification: ["606-10-10-4", "606-10-55-41", "606-10-55-42", "606-10-55-44", "606-10-55-48", "606-10-32-28"]
+  ifrs: ["IFRS 15.B40", "IFRS 15.B42"]
+  practice: ["FASB Example 52 (606-10-55-353 to 55-356)", "PwC Revenue guide 7.2 (customer loyalty programmes)"]
+  urls: []
+derived_from: {research04: [], research05: [JS-01], chk: [], golden: [], dev: []}
+requirements: [REQ-POB-006, REQ-POB-007, REQ-REC-016, REQ-TP-017, REQ-ALC-001, REQ-ALC-002]
+policy_refs: [POL-015, POL-026, POL-028, POL-055, POL-182]
+review: {author: answer-keys-industries, authored_on: "2026-09-12", reviewer: null, reviewed_on: null, status: pending}
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: JS-US
+      name: "Juniper Street US (Demo)"
+      functional_currency: USD
+      time_zone: America/Los_Angeles
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: "1"}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2026-09"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4000", name: "Revenue - products", account_type: REVENUE}
+    - {code: "4030", name: "Revenue - material rights, loyalty and breakage", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, product: POS-SALES, account: "4000"}
+    - {account_role: REVENUE, product: LOYALTY-POINTS, account: "4030"}
+  customers: [{code: CUST-JS01, name: "January 2026 point-of-sale cohort (Demo)"}]
+  pob_templates:
+    - code: TPL-GOODS
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: POINT_IN_TIME
+      over_time_criterion: NOT_APPLICABLE
+      recognition_method: POINT_IN_TIME
+      policy_values: {balance.right_to_consideration: UNCONDITIONAL}
+    - code: TPL-POINTS
+      obligation_kind: MATERIAL_RIGHT
+      distinctness: distinct
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_A
+      recognition_method: REDEMPTION_PATTERN
+      policy_values: {balance.right_to_consideration: CONDITIONAL}
+  products:
+    - code: POS-SALES
+      name: "Point-of-sale food and beverage sales (portfolio)"
+      pob_template: TPL-GOODS
+      revenue_category: PRODUCTS
+    - {code: LOYALTY-POINTS, name: "Loyalty points", pob_template: TPL-POINTS, revenue_category: LOYALTY}
+  ssp_books:
+    - code: SSP-JS-US-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2025-01-01"
+          methodology_label: "Observable standalone prices (demo study)"
+          entries:
+            - product: POS-SALES
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges: [{point_value: "1000000.00"}]
+  fx_rate_sets: []
+  rule_sets: []
+  policies:
+    tenant:
+      billing.posting: ERP
+      recognition.time_convention: MONTHLY_EVEN
+      step1.portfolio_approach: ENABLED
+      material_right.exercise: CONTINUATION
+    entities: {}
+    books: {}
+contracts:
+  - external_id: JS-01
+    customer: CUST-JS01
+    contracting_entity: JS-US
+    transaction_currency: USD
+    inception_date: "2026-01-31"
+    contract_type: PORTFOLIO
+    lines:
+      - {obligation_key: L1-GOODS, product_code: POS-SALES, quantity: "1", total_price: "1000000.00"}
+      - obligation_key: L2-POINTS
+        product_code: LOYALTY-POINTS
+        quantity: "1000000"
+        total_price: "0.00"
+        end_date: "2026-09-30"
+    estimates:
+      - element_code: EXL-JS01-POINTS
+        estimate_kind: EXERCISE_LIKELIHOOD
+        method: RATE
+        obligation_key: L2-POINTS
+        versions:
+          - version_no: "1"
+            effective_date: "2026-01-31"
+            rate: "0.80"
+            rationale: "Programme history: 80% of points redeemed."
+      - element_code: BRK-JS01-POINTS
+        estimate_kind: BREAKAGE
+        method: RATE
+        obligation_key: L2-POINTS
+        versions:
+          - version_no: "1"
+            effective_date: "2026-01-31"
+            rate: "0.20"
+            expected_quantity: "800000"
+            rationale: "Expected total redemptions 800,000 points."
+          - version_no: "2"
+            effective_date: "2026-06-30"
+            rate: "0.10"
+            expected_quantity: "900000"
+            rationale: "Double-points promotion raised redemption behaviour."
+    material_rights:
+      - obligation_key: L2-POINTS
+        option_type: LOYALTY_POINTS
+        incremental_discount_ratio: "1"
+        is_discount_available_without_contract: false
+        expected_purchase_amount: "10000.00"
+        ssp_method: DISCOUNT_X_LIKELIHOOD
+        expiry_date: "2026-09-30"
+        likelihood_estimate: EXL-JS01-POINTS
+timeline:
+  - seq: "1"
+    kind: event
+    contract: JS-01
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-01-31"
+    payload: {}
+  - seq: "2"
+    kind: event
+    contract: JS-01
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-31"
+    payload: {}
+  - seq: "3"
+    kind: event
+    contract: JS-01
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-01-31"
+    payload: {estimate: EXL-JS01-POINTS, version_no: "1"}
+  - seq: "4"
+    kind: event
+    contract: JS-01
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-01-31"
+    payload: {estimate: BRK-JS01-POINTS, version_no: "1"}
+  - seq: "5"
+    kind: event
+    contract: JS-01
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-01-31"
+    payload: {obligation_key: L1-GOODS, quantity: "1", trigger: CONTROL_TRANSFER}
+  - seq: "6"
+    kind: event
+    contract: JS-01
+    event_type: BILLING_RECORDED
+    effective_date: "2026-01-31"
+    payload:
+      invoice_number: POS-JS01-2026-01
+      line_external_id: POS-JS01-2026-01-1
+      amount: "1000000.00"
+      issue_date: "2026-01-31"
+  - seq: "7"
+    kind: event
+    contract: JS-01
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-03-31"
+    payload: {obligation_key: L2-POINTS, quantity: "400000", trigger: DELIVERY}
+  - seq: "8"
+    kind: event
+    contract: JS-01
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-06-30"
+    payload: {estimate: BRK-JS01-POINTS, version_no: "2"}
+  - seq: "9"
+    kind: event
+    contract: JS-01
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-06-30"
+    payload: {obligation_key: L2-POINTS, quantity: "300000", trigger: DELIVERY}
+  - seq: "10"
+    kind: event
+    contract: JS-01
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-09-15"
+    payload: {obligation_key: L2-POINTS, quantity: "180000", trigger: DELIVERY}
+  - seq: "11"
+    kind: event
+    contract: JS-01
+    event_type: MATERIAL_RIGHT_EXPIRED
+    effective_date: "2026-09-30"
+    payload: {obligation_key: L2-POINTS}
+checkpoints:
+  - name: sales-month
+    after_seq: "6"
+    as_of: "2026-01-31"
+    book: ASC606
+    contracts:
+      - contract: JS-01
+        version:
+          transaction_price: "1000000.00"
+          revenue_cum: "992063.49"
+          billed_cum: "1000000.00"
+          total_ssp: "1008000.00"
+        obligations:
+          - obligation_key: L1-GOODS
+            allocated_amount: "992063.49"
+            revenue_cum: "992063.49"
+            satisfaction_status: SATISFIED
+            allocated_exact: "992063.492063"
+          - obligation_key: L2-POINTS
+            allocated_amount: "7936.51"
+            revenue_cum: "0.00"
+            satisfaction_status: UNSATISFIED
+            allocated_exact: "7936.507937"
+        balances: [{entity: JS-US, contract_liability: "7936.51", contract_asset: "0.00", unbilled_receivable: "0.00"}]
+    subledger:
+      - period_key: FY2026-P01
+        entity: JS-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "992063.49"}
+          - {account_role: REVENUE, account: "4000", cr: "992063.49"}
+  - name: q1-redemptions
+    after_seq: "7"
+    as_of: "2026-03-31"
+    book: ASC606
+    contracts:
+      - contract: JS-01
+        version: {transaction_price: "1000000.00", revenue_cum: "996031.74", billed_cum: "1000000.00"}
+        obligations:
+          - obligation_key: L1-GOODS
+            allocated_amount: "992063.49"
+            revenue_cum: "992063.49"
+            satisfaction_status: SATISFIED
+          - obligation_key: L2-POINTS
+            allocated_amount: "7936.51"
+            revenue_cum: "3968.25"
+            satisfaction_status: PARTIALLY_SATISFIED
+        balances: [{entity: JS-US, contract_liability: "3968.26", contract_asset: "0.00", unbilled_receivable: "0.00"}]
+  - name: q2-re-estimate
+    after_seq: "9"
+    as_of: "2026-06-30"
+    book: ASC606
+    contracts:
+      - contract: JS-01
+        version: {transaction_price: "1000000.00", revenue_cum: "998236.33", billed_cum: "1000000.00"}
+        obligations:
+          - obligation_key: L1-GOODS
+            allocated_amount: "992063.49"
+            revenue_cum: "992063.49"
+            satisfaction_status: SATISFIED
+          - obligation_key: L2-POINTS
+            allocated_amount: "7936.51"
+            revenue_cum: "6172.84"
+            satisfaction_status: PARTIALLY_SATISFIED
+        balances: [{entity: JS-US, contract_liability: "1763.67", contract_asset: "0.00", unbilled_receivable: "0.00"}]
+    subledger:
+      - period_key: FY2026-P06
+        entity: JS-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "2204.59"}
+          - {account_role: REVENUE, account: "4030", cr: "2204.59"}
+  - name: q3-expiry
+    after_seq: "11"
+    as_of: "2026-09-30"
+    book: ASC606
+    contracts:
+      - contract: JS-01
+        version: {transaction_price: "1000000.00", revenue_cum: "1000000.00", billed_cum: "1000000.00"}
+        obligations:
+          - obligation_key: L1-GOODS
+            allocated_amount: "992063.49"
+            revenue_cum: "992063.49"
+            satisfaction_status: SATISFIED
+          - obligation_key: L2-POINTS
+            allocated_amount: "7936.51"
+            revenue_cum: "7936.51"
+            satisfaction_status: SATISFIED
+        balances: [{entity: JS-US, contract_liability: "0.00", contract_asset: "0.00", unbilled_receivable: "0.00"}]
+    subledger:
+      - period_key: FY2026-P09
+        entity: JS-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "1763.67"}
+          - {account_role: REVENUE, account: "4030", cr: "1763.67"}

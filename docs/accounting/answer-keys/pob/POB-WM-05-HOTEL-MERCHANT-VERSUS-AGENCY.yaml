@@ -1,0 +1,239 @@
+schema: erev-answer-key/1
+id: POB-WM-05-HOTEL-MERCHANT-VERSUS-AGENCY
+title: "Hotel bookings under the merchant and agency models: agent revenue net in both, timing at check-in"
+status: active
+families: [POB, REC, POS]
+tags: []
+summary: "Wayfarer sells hotel stays for March 2026. Merchant model: travellers prepay 120,000.00 to Wayfarer in February and Wayfarer pays the hotels net rates of 100,800.00. Wayfarer does not control the rooms before the stay (no committed inventory, the hotel provides the service and bears cancellation risk under the programme terms), so even as merchant of record it is an agent: revenue is the 19,200.00 margin, and the hotel payable goes to BILLING_CLEARING (AP_SUPPLIER) (606-10-55-38; research 05 §18 pitfall 4). Agency model: hotels collect 80,000.00 directly and pay Wayfarer a 10% commission of 8,000.00, invoiced to the hotels on 10 April. Under both programmes bookings can be cancelled free of charge until check-in, so Wayfarer's service is complete at check-in (judgement): revenue in March. The agency commission earned but not invoiced at 31 March is an unconditional right, presented as an unbilled receivable."
+authority:
+  codification: ["606-10-55-36", "606-10-55-37A", "606-10-55-38", "606-10-55-39", "606-10-45-4"]
+  ifrs: ["IFRS 15.B37"]
+  practice: ["DART 10.3 (online travel agencies)", "RH airline and travel revenue practice (research 05 [RH-Airline])"]
+  urls: []
+derived_from: {research04: [], research05: [WM-05], chk: [], golden: [], dev: []}
+requirements: [REQ-POB-009, REQ-REC-001, REQ-BIL-004, REQ-BIL-005]
+policy_refs: [POL-030, POL-122]
+review: {author: answer-keys-industries, authored_on: "2026-09-12", reviewer: null, reviewed_on: null, status: pending}
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: WM-US
+      name: "Wayfarer Marketplace US (Demo)"
+      functional_currency: USD
+      time_zone: America/New_York
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: "1"}
+      books: [ASC606]
+  periods: {from: "2026-02", to: "2026-04"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "2050", name: "Payable to suppliers clearing", account_type: LIABILITY}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "4010", name: "Revenue - services and subscriptions", account_type: REVENUE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REVENUE, product: HOTEL-MERCHANT, account: "4010"}
+    - {account_role: REVENUE, product: HOTEL-AGENCY, account: "4010"}
+    - {account_role: BILLING_CLEARING, clearing_purpose: AP_SUPPLIER, account: "2050"}
+  customers:
+    - {code: CUST-WM05-TRAVELLERS, name: "March 2026 merchant-model travellers (Demo)"}
+    - {code: CUST-WM05-HOTELS, name: "Tamsin Row Hotels Inc. (Demo)"}
+  pob_templates:
+    - code: TPL-HOTEL-AGENT
+      obligation_kind: STANDARD
+      distinctness: distinct
+      satisfaction_pattern: POINT_IN_TIME
+      over_time_criterion: NOT_APPLICABLE
+      recognition_method: POINT_IN_TIME
+      principal_agent: AGENT
+      policy_values: {balance.right_to_consideration: UNCONDITIONAL}
+  products:
+    - code: HOTEL-MERCHANT
+      name: "Hotel stays, merchant model"
+      pob_template: TPL-HOTEL-AGENT
+      revenue_category: TRAVEL
+      principal_agent: AGENT
+    - code: HOTEL-AGENCY
+      name: "Hotel stays, agency commission"
+      pob_template: TPL-HOTEL-AGENT
+      revenue_category: TRAVEL
+      principal_agent: AGENT
+  ssp_books:
+    - code: SSP-WM-US-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2025-01-01"
+          methodology_label: "Observable standalone prices (demo study)"
+          entries:
+            - product: HOTEL-MERCHANT
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges: [{point_value: "0.16"}]
+            - product: HOTEL-AGENCY
+              currency: USD
+              method: observable
+              distinctness: distinct
+              ranges: [{point_value: "1.00"}]
+  fx_rate_sets: []
+  rule_sets: []
+  policies:
+    tenant: {billing.posting: ERP, recognition.time_convention: MONTHLY_EVEN}
+    entities: {}
+    books: {}
+contracts:
+  - external_id: WM-05-MERCHANT
+    customer: CUST-WM05-TRAVELLERS
+    contracting_entity: WM-US
+    transaction_currency: USD
+    inception_date: "2026-02-20"
+    contract_type: PORTFOLIO
+    lines:
+      - obligation_key: L1-STAYS
+        product_code: HOTEL-MERCHANT
+        quantity: "120000"
+        total_price: "19200.00"
+        start_date: "2026-03-01"
+        end_date: "2026-03-31"
+  - external_id: WM-05-AGENCY
+    customer: CUST-WM05-HOTELS
+    contracting_entity: WM-US
+    transaction_currency: USD
+    inception_date: "2026-02-20"
+    contract_type: PORTFOLIO
+    lines:
+      - obligation_key: L1-STAYS
+        product_code: HOTEL-AGENCY
+        quantity: "8000"
+        total_price: "8000.00"
+        start_date: "2026-03-01"
+        end_date: "2026-03-31"
+timeline:
+  - seq: "1"
+    kind: event
+    contract: WM-05-MERCHANT
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-02-20"
+    payload: {}
+  - seq: "2"
+    kind: event
+    contract: WM-05-MERCHANT
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-02-20"
+    payload: {}
+  - seq: "3"
+    kind: event
+    contract: WM-05-AGENCY
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-02-20"
+    payload: {}
+  - seq: "4"
+    kind: event
+    contract: WM-05-AGENCY
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-02-20"
+    payload: {}
+  - seq: "5"
+    kind: event
+    contract: WM-05-MERCHANT
+    event_type: BILLING_RECORDED
+    effective_date: "2026-02-20"
+    payload:
+      invoice_number: PREPAY-WM05-MAR
+      line_external_id: PREPAY-WM05-MAR-1
+      amount: "120000.00"
+      issue_date: "2026-02-20"
+      obligation_key: L1-STAYS
+  - seq: "6"
+    kind: event
+    contract: WM-05-MERCHANT
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-03-31"
+    payload: {obligation_key: L1-STAYS, quantity: "120000", trigger: DELIVERY}
+  - seq: "7"
+    kind: event
+    contract: WM-05-AGENCY
+    event_type: DELIVERY_RECORDED
+    effective_date: "2026-03-31"
+    payload: {obligation_key: L1-STAYS, quantity: "8000", trigger: DELIVERY}
+  - seq: "8"
+    kind: event
+    contract: WM-05-AGENCY
+    event_type: BILLING_RECORDED
+    effective_date: "2026-04-10"
+    payload:
+      invoice_number: COMM-WM05-MAR
+      line_external_id: COMM-WM05-MAR-1
+      amount: "8000.00"
+      issue_date: "2026-04-10"
+      obligation_key: L1-STAYS
+checkpoints:
+  - name: prepaid-before-stay
+    after_seq: "5"
+    as_of: "2026-02-28"
+    book: ASC606
+    contracts:
+      - contract: WM-05-MERCHANT
+        version: {revenue_cum: "0.00", billed_cum: "120000.00"}
+        obligations: [{obligation_key: L1-STAYS, principal_agent: AGENT, revenue_cum: "0.00"}]
+        balances:
+          - {entity: WM-US, contract_liability: "120000.00", contract_asset: "0.00", unbilled_receivable: "0.00"}
+      - contract: WM-05-AGENCY
+        version: {revenue_cum: "0.00", billed_cum: "0.00"}
+        obligations: [{obligation_key: L1-STAYS, principal_agent: AGENT, revenue_cum: "0.00"}]
+        balances: [{entity: WM-US, contract_liability: "0.00", contract_asset: "0.00", unbilled_receivable: "0.00"}]
+  - name: check-in-month
+    after_seq: "7"
+    as_of: "2026-03-31"
+    book: ASC606
+    contracts:
+      - contract: WM-05-MERCHANT
+        version: {revenue_cum: "19200.00", billed_cum: "120000.00"}
+        obligations: [{obligation_key: L1-STAYS, principal_agent: AGENT, revenue_cum: "19200.00"}]
+        balances: [{entity: WM-US, contract_liability: "0.00", contract_asset: "0.00", unbilled_receivable: "0.00"}]
+      - contract: WM-05-AGENCY
+        version: {revenue_cum: "8000.00", billed_cum: "0.00"}
+        obligations: [{obligation_key: L1-STAYS, principal_agent: AGENT, revenue_cum: "8000.00"}]
+        balances: [{entity: WM-US, contract_liability: "0.00", contract_asset: "0.00", unbilled_receivable: "8000.00"}]
+    subledger:
+      - period_key: FY2026-P03
+        entity: WM-US
+        match: exact
+        contract: WM-05-MERCHANT
+        grain: role_account
+        lines:
+          - {account_role: BILLING_CLEARING, clearing_purpose: AP_SUPPLIER, account: "2050", cr: "100800.00"}
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "120000.00"}
+          - {account_role: REVENUE, account: "4010", cr: "19200.00"}
+      - period_key: FY2026-P03
+        entity: WM-US
+        match: exact
+        contract: WM-05-AGENCY
+        grain: role_account
+        lines:
+          - {account_role: REVENUE, account: "4010", cr: "8000.00"}
+          - {account_role: UNBILLED_RECEIVABLE, account: "1105", dr: "8000.00"}
+  - name: commission-invoiced
+    after_seq: "8"
+    as_of: "2026-04-30"
+    book: ASC606
+    contracts:
+      - contract: WM-05-AGENCY
+        version: {revenue_cum: "8000.00", billed_cum: "8000.00"}
+        obligations: [{obligation_key: L1-STAYS, principal_agent: AGENT, revenue_cum: "8000.00"}]
+        balances: [{entity: WM-US, contract_liability: "0.00", contract_asset: "0.00", unbilled_receivable: "0.00"}]
+    subledger:
+      - period_key: FY2026-P04
+        entity: WM-US
+        match: exact
+        contract: WM-05-AGENCY
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "8000.00"}
+          - {account_role: UNBILLED_RECEIVABLE, account: "1105", cr: "8000.00"}

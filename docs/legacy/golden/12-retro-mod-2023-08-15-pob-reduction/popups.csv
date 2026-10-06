@@ -1,0 +1,6 @@
+step,phase,seq,category,kind,title,text,answer
+12,handler:browse_file_RetroMod,140,popup,QMessageBox.information,Mod Success,Retrospective Mod has been processed with uploaded modifications for the current date :),Ok
+12,report:latest_contracts,141,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+12,report:je_gross,144,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+12,report:je_delta,147,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok
+12,report:contract_history,150,popup,QMessageBox.information,File Saved,Details are exported to an Excel within the folder :),Ok

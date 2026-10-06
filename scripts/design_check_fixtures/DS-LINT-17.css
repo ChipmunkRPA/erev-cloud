@@ -1,0 +1,4 @@
+/* design-check fixture DS-LINT-17: text below 12 px. */
+.caption {
+  font-size: 11px;
+}

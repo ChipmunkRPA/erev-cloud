@@ -1,0 +1,277 @@
+schema: erev-answer-key/1
+id: MOD-FS-09-CANCELLATION-REFUND-COMMISSION
+title: "Customer cancellation with refund of prepaid service and write-off of the commission asset"
+status: active
+families: [MOD, COST, RET, POS]
+tags: [termination, subscription]
+summary: "A 24-month subscription (2026 to 2027, 192,000.00) is invoiced 96,000.00 on 1 January of each year. The sales commission of 14,400.00 is incremental and capitalised; the renewal commission is not commensurate, so the asset is amortised over the initial term plus one expected renewal, 36 months straight line (POL-141, estimate RENEWAL_EXPECTATION), 400.00 a month. The customer terminates for convenience effective 31 March 2027 and is owed a refund of 72,000.00 for April to December 2027. The termination is a modification that removes the remaining service (POLICIES PT-03): pool = 72,000.00 − 72,000.00 = 0.00. JET-04b records the refund liability until the credit memo of 10 April 2027 (POL-242). The remaining commission asset has no remaining benefit and is expensed (JET-09e, POL-145): 8,400.00 in March 2027. The modification lines show the post-termination terms (term to 31 March 2027, price 120,000.00)."
+authority:
+  codification:
+    - "606-10-25-10"
+    - "606-10-25-13"
+    - "606-10-32-10"
+    - "340-40-25-1"
+    - "340-40-35-1"
+    - "340-40-35-2"
+    - "340-40-35-3"
+  ifrs: ["IFRS 15.99", "IFRS 15.101"]
+  practice:
+    - "FASB staff Implementation Q&A 71 (commensurate commissions)"
+    - "DART 9.2.2.7 (scope reduction)"
+    - "POLICIES PT-03"
+  urls: []
+derived_from: {research04: [], research05: [FS-09], chk: [], golden: [], dev: []}
+requirements: [REQ-MOD-011, REQ-CST-001, REQ-CST-002, REQ-CST-003, REQ-CST-005, REQ-BIL-007]
+policy_refs: [POL-014, POL-140, POL-141, POL-142, POL-143, POL-145, POL-242]
+review: {author: answer-keys-industries, authored_on: "2026-09-12", reviewer: null, reviewed_on: null, status: pending}
+runner: engine
+books: [ASC606]
+world:
+  tenant: {reporting_currency: USD, preset: DEFAULT}
+  currencies: [USD]
+  entities:
+    - code: FS-US
+      name: "Fernhill Software US (Demo)"
+      functional_currency: USD
+      time_zone: America/Los_Angeles
+      calendar: {pattern: MONTHLY, fiscal_year_start_month: "1"}
+      books: [ASC606]
+  periods: {from: "2026-01", to: "2027-04"}
+  period_states: []
+  gl_accounts:
+    - {code: "1105", name: "Unbilled receivable", account_type: ASSET}
+    - {code: "1200", name: "Contract asset", account_type: ASSET}
+    - {code: "1400", name: "Capitalised costs to obtain a contract", account_type: ASSET}
+    - {code: "2020", name: "Contract cost clearing", account_type: LIABILITY}
+    - {code: "2100", name: "Contract liability", account_type: LIABILITY}
+    - {code: "2110", name: "Refund liability", account_type: LIABILITY}
+    - {code: "4010", name: "Revenue - services and subscriptions", account_type: REVENUE}
+    - {code: "5100", name: "Amortisation of contract costs", account_type: EXPENSE}
+  account_mapping:
+    - {account_role: CONTRACT_LIABILITY, account: "2100"}
+    - {account_role: CONTRACT_ASSET, account: "1200"}
+    - {account_role: UNBILLED_RECEIVABLE, account: "1105"}
+    - {account_role: REFUND_LIABILITY, account: "2110"}
+    - {account_role: COST_TO_OBTAIN_ASSET, account: "1400"}
+    - {account_role: CONTRACT_COST_AMORTIZATION, account: "5100"}
+    - {account_role: CONTRACT_COST_CLEARING, account: "2020"}
+    - {account_role: REVENUE, product: SAAS-24M, account: "4010"}
+  customers: [{code: CUST-FS09, name: "Tamsin Row Hotels Inc. (Demo)"}]
+  pob_templates:
+    - code: TPL-SUB
+      obligation_kind: STANDARD
+      distinctness: series
+      satisfaction_pattern: OVER_TIME
+      over_time_criterion: OT_A
+      recognition_method: TIME_ELAPSED
+      ratable_convention: MONTHLY_EVEN
+      series_increment_unit: month
+      policy_values: {balance.right_to_consideration: CONDITIONAL}
+  products:
+    - code: SAAS-24M
+      name: "Platform subscription, 24 months"
+      pob_template: TPL-SUB
+      revenue_category: SUBSCRIPTION
+  ssp_books:
+    - code: SSP-FS-US-2026
+      resolution_mode: EFFECTIVE_DATE
+      versions:
+        - effective_from_date: "2025-01-01"
+          methodology_label: "Observable standalone prices (demo study)"
+          entries:
+            - product: SAAS-24M
+              currency: USD
+              method: observable
+              value_basis: AMOUNT  # D-93 (4): declared remaining-increments reading (the reading the key's oracle embodies); no value change
+              distinctness: distinct
+              ranges: [{point_value: "192000.00"}]
+  fx_rate_sets: []
+  rule_sets: []
+  policies:
+    tenant: {billing.posting: ERP, recognition.time_convention: MONTHLY_EVEN}
+    entities: {}
+    books: {}
+contracts:
+  - external_id: FS-09
+    customer: CUST-FS09
+    contracting_entity: FS-US
+    transaction_currency: USD
+    inception_date: "2026-01-01"
+    lines:
+      - obligation_key: L1-SUB
+        product_code: SAAS-24M
+        quantity: "1"
+        total_price: "192000.00"
+        start_date: "2026-01-01"
+        end_date: "2027-12-31"
+    estimates:
+      - element_code: REN-FS09-COMM
+        estimate_kind: RENEWAL_EXPECTATION
+        method: ENTERED_AMOUNT
+        obligation_key: L1-SUB
+        versions:
+          - version_no: "1"
+            effective_date: "2026-01-01"
+            amortization_months: "36"
+            rationale: "One renewal expected (renewal history 70%); renewal commission 2% of contract value versus 7.5% initially, not commensurate."
+    modifications:
+      - reference: MOD-FS09-TERM
+        effective_date: "2027-03-31"
+        kind: TERMINATION
+        lines:
+          - obligation_key: L1-SUB
+            product_code: SAAS-24M
+            quantity: "1"
+            total_price: "120000.00"
+            start_date: "2026-01-01"
+            end_date: "2027-03-31"
+        price_change_amount: "-72000.00"
+timeline:
+  - seq: "1"
+    kind: event
+    contract: FS-09
+    event_type: CONTRACT_BOOKED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: "2"
+    kind: event
+    contract: FS-09
+    event_type: CONTRACT_ACTIVATED
+    effective_date: "2026-01-01"
+    payload: {}
+  - seq: "3"
+    kind: event
+    contract: FS-09
+    event_type: BILLING_RECORDED
+    effective_date: "2026-01-01"
+    payload:
+      invoice_number: INV-FS09-2026
+      line_external_id: INV-FS09-2026-1
+      amount: "96000.00"
+      issue_date: "2026-01-01"
+      obligation_key: L1-SUB
+  - seq: "4"
+    kind: event
+    contract: FS-09
+    event_type: ESTIMATE_CHANGED
+    effective_date: "2026-01-01"
+    payload: {estimate: REN-FS09-COMM, version_no: "1"}
+  - seq: "5"
+    kind: event
+    contract: FS-09
+    event_type: COST_INCURRED
+    effective_date: "2026-01-15"
+    payload:
+      purpose: COST_TO_OBTAIN
+      obligation_key: L1-SUB
+      amount: "14400.00"
+      payee: REP-0042
+      plan_code: AE-2026
+      is_incremental: true
+      has_clawback: false
+  - seq: "6"
+    kind: event
+    contract: FS-09
+    event_type: BILLING_RECORDED
+    effective_date: "2027-01-01"
+    payload:
+      invoice_number: INV-FS09-2027
+      line_external_id: INV-FS09-2027-1
+      amount: "96000.00"
+      issue_date: "2027-01-01"
+      obligation_key: L1-SUB
+  - seq: "7"
+    kind: event
+    contract: FS-09
+    event_type: CONTRACT_TERMINATED
+    effective_date: "2027-03-31"
+    payload: {modification: MOD-FS09-TERM, termination_kind: FULL, refund_amount: "72000.00"}
+  - seq: "8"
+    kind: event
+    contract: FS-09
+    event_type: CREDIT_MEMO_RECORDED
+    effective_date: "2027-04-10"
+    payload:
+      credit_memo_number: CM-FS09-001
+      credited_invoice_number: INV-FS09-2027
+      obligation_key: L1-SUB
+      amount: "72000.00"
+      issue_date: "2027-04-10"
+      reason: TERMINATION_REFUND
+checkpoints:
+  - name: first-year-end
+    after_seq: "5"
+    as_of: "2026-12-31"
+    book: ASC606
+    contracts:
+      - contract: FS-09
+        version: {transaction_price: "192000.00", revenue_cum: "96000.00", billed_cum: "96000.00"}
+        obligations: [{obligation_key: L1-SUB, allocated_amount: "192000.00", revenue_cum: "96000.00"}]
+        balances:
+          - entity: FS-US
+            contract_liability: "0.00"
+            contract_asset: "0.00"
+            unbilled_receivable: "0.00"
+            refund_liability: "0.00"
+            cost_asset_carrying: "9600.00"
+    subledger:
+      - period_key: FY2026-P01
+        entity: FS-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_COST_AMORTIZATION, account: "5100", dr: "400.00"}
+          - {account_role: CONTRACT_COST_CLEARING, account: "2020", cr: "14400.00"}
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "8000.00"}
+          - {account_role: COST_TO_OBTAIN_ASSET, account: "1400", dr: "14000.00"}
+          - {account_role: REVENUE, account: "4010", cr: "8000.00"}
+  - name: termination
+    after_seq: "7"
+    as_of: "2027-03-31"
+    book: ASC606
+    contracts:
+      - contract: FS-09
+        status_in_book: TERMINATED
+        version: {transaction_price: "120000.00", revenue_cum: "120000.00", billed_cum: "192000.00"}
+        obligations: [{obligation_key: L1-SUB, allocated_amount: "120000.00", revenue_cum: "120000.00"}]
+        balances:
+          - entity: FS-US
+            contract_liability: "0.00"
+            contract_asset: "0.00"
+            unbilled_receivable: "0.00"
+            refund_liability: "72000.00"
+            cost_asset_carrying: "0.00"
+    subledger:
+      - period_key: FY2027-P03
+        entity: FS-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_COST_AMORTIZATION, account: "5100", dr: "8800.00"}
+          - {account_role: CONTRACT_LIABILITY, account: "2100", dr: "80000.00"}
+          - {account_role: COST_TO_OBTAIN_ASSET, account: "1400", cr: "8800.00"}
+          - {account_role: REFUND_LIABILITY, account: "2110", cr: "72000.00"}
+          - {account_role: REVENUE, account: "4010", cr: "8000.00"}
+  - name: credit-memo
+    after_seq: "8"
+    as_of: "2027-04-30"
+    book: ASC606
+    contracts:
+      - contract: FS-09
+        version: {transaction_price: "120000.00", revenue_cum: "120000.00", billed_cum: "120000.00"}
+        obligations: [{obligation_key: L1-SUB, allocated_amount: "120000.00", revenue_cum: "120000.00"}]
+        balances:
+          - entity: FS-US
+            contract_liability: "0.00"
+            contract_asset: "0.00"
+            unbilled_receivable: "0.00"
+            refund_liability: "0.00"
+            cost_asset_carrying: "0.00"
+    subledger:
+      - period_key: FY2027-P04
+        entity: FS-US
+        match: exact
+        grain: role_account
+        lines:
+          - {account_role: CONTRACT_LIABILITY, account: "2100", cr: "72000.00"}
+          - {account_role: REFUND_LIABILITY, account: "2110", dr: "72000.00"}
