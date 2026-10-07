@@ -1,5 +1,29 @@
 # PROGRESS — eRev Cloud build loop notebook (under 20 KB)
 
+## Continuation — October 7, 2026 (America/Los_Angeles)
+
+- Branch `codex/import-job-recovery`, based on public main `43631fc`. Closed the implementation
+  of B5-3 / C-1 on this branch: a failed import commit waits for a competing upload-row lock;
+  if cleanup times out or fails, its required failure hook rolls settlement back for the job
+  sweeper to retry. Cancelling a queued import commit now ends its upload atomically, releasing
+  its source for a fresh upload. A late dispatch cannot commit the cancelled job.
+- Added four PostgreSQL regression tests covering held rows, queued cancellation/re-upload,
+  cancellation rollback and cleanup-timeout recovery. Both original bug cases reproduced on
+  unmodified application source before the fix. Actual verification: 52 tests passed across
+  import transient-failure, job domain/API and registry unit suites; the expanded re-upload test
+  passed separately. All 267 architecture tests passed. Mypy passed for all four changed source
+  files; Ruff lint/format and git whitespace checks passed.
+- Tests used a newly initialized, disposable PostgreSQL 17 cluster on localhost port 55437 and
+  database `erev_rv_cont`, with separate unprivileged owner/app roles and ignored fresh local keys.
+  No existing database, deployment or external provider was used. Dependencies installed from
+  the frozen backend lockfile. No schema migration or accounting calculation changes.
+- This prevents new stranded commits; it does not bulk-repair historical terminal jobs. All other
+  limitations and October 3 test failures remain historical and unresolved unless stated here.
+  Full backend/CI, live deployment, accounting review and volume performance were not rerun.
+- Next implementation item: C-2, policy overrides that actually reach calculation, including
+  POL-122 and the significant-financing rate path. Independent accounting decisions and hosted
+  inputs remain owner/reviewer work. Research folders and removed website references stay excluded.
+
 ## Public repository publication — October 5, 2026 (America/Los_Angeles)
 
 - Owner requested public publication with commercial use prohibited. Prepared the supplied directory

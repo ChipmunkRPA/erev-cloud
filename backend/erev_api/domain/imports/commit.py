@@ -773,14 +773,13 @@ def commit_job_failed(
     could be neither cancelled nor submitted again.
 
     An import in any other status is left alone: the handler ended it, or the commit's
-    transaction committed before the worker died. So is an import whose row another transaction
-    holds (``job_hooks.held_status``): it is not waited for, and the import is that
-    transaction's to end. The holder is never the job's own commit — while the commit's
-    transaction is open, the job is not settled and this hook is not reached (05 JOB-06 rev
-    1.200)."""
+    transaction committed before the worker died. A competing command may hold the upload
+    only to refuse it, so settlement waits for that row instead of silently skipping it.
+    The job's own work has already ended before this hook runs (05 JOB-06).
+    """
     import_id = UUID(str(params["import_upload_id"]))
     found = job_hooks.held_status(
-        uow.session, import_id, (ImportStatus.APPROVED, ImportStatus.COMMITTING)
+        uow.session, import_id, (ImportStatus.APPROVED, ImportStatus.COMMITTING), wait=True
     )
     if found is None:
         return
@@ -816,7 +815,22 @@ def _commit_after_a_lock(ctx: JobContext, import_id: UUID) -> Committed | None:
     return committed
 
 
-@task(JobKind.IMPORT_COMMIT, retry=COMMIT_RETRY, on_failure=commit_job_failed)
+def commit_job_cancelled(uow: UnitOfWork, params: Mapping[str, Any], job_id: UUID) -> None:
+    """End an unstarted commit's upload so its source can be uploaded again.
+
+    The caller holds the QUEUED job row: dispatch cannot start it. Cleanup and cancellation
+    commit together; a failure of cleanup rolls back the cancellation as well.
+    """
+    commit_job_failed(uow, params, {"instance": f"/api/v1/jobs/{job_id}"})
+
+
+@task(
+    JobKind.IMPORT_COMMIT,
+    retry=COMMIT_RETRY,
+    on_failure=commit_job_failed,
+    on_cancel=commit_job_cancelled,
+    failure_hook_required=True,
+)
 def import_commit(ctx: JobContext, params: Mapping[str, Any]) -> JobOutcome:
     """``IMPORT_COMMIT`` (05 §5.6 queue ``imports``): commit one approved import."""
     import_id = UUID(str(params["import_upload_id"]))
