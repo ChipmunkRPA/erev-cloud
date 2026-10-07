@@ -13,6 +13,7 @@ import secrets
 from collections import Counter
 from dataclasses import replace
 from datetime import UTC, datetime
+from decimal import Decimal
 from fractions import Fraction
 from uuid import UUID
 
@@ -335,3 +336,28 @@ def test_small_scale_through_commands(
         for row in versions
         if str(row.estimate_kind) != "VARIABLE_CONSIDERATION"
     )
+
+
+def test_delivery_schedule_never_exceeds_contracted_quantity(full: volume.VolumeManifest) -> None:
+    """Delivery prefixes stay within the contract; completed schedules tie exactly."""
+    obligations = {
+        (contract.seq, ob.key): ob
+        for contract in full.contracts
+        for ob in contract.obligations
+        if ob.mix_class == "UNITS_DELIVERED"
+    }
+    delivered: dict[tuple[int, str | None], Decimal] = {}
+    counts: Counter[tuple[int, str | None]] = Counter()
+    for event in full.events():
+        key = (event.contract_seq, event.obligation_key)
+        if event.event_type != "DELIVERY_RECORDED" or key not in obligations:
+            continue
+        quantity = Decimal(dict(event.detail)["quantity"])
+        assert quantity > 0
+        delivered[key] = delivered.get(key, Decimal(0)) + quantity
+        counts[key] += 1
+        assert delivered[key] <= Decimal(obligations[key].quantity), key
+    complete = [key for key, count in counts.items() if count == obligations[key].units]
+    assert complete
+    for key in complete:
+        assert delivered[key] == Decimal(obligations[key].quantity), key

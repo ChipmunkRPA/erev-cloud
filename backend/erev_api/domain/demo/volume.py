@@ -136,7 +136,9 @@ KEY_PREFIX: Final = "perf"
 # those of version 3.
 # Bumps when the recipe OR the seeded state changes (MANIFEST-BINDING-1; supervisor ruling):
 # the same manifest with a different seeded state must not share one perf:<16 hex> identity.
-GENERATOR_VERSION: Final = 14
+# 14 → 15 (2026-10-07): retain the exact two-decimal delivery split. Independently rounding
+# each batch to an integer could exceed (or undershoot) the contracted quantity.
+GENERATOR_VERSION: Final = 15
 TENANT_CODE: Final = "perf-volume"
 CALENDAR_CODE: Final = "VOL-JAN"
 SSP_BOOK_CODE: Final = "VOL-SSP"
@@ -975,7 +977,7 @@ def _schedule(contract: VolumeContract, seed: int, months: int) -> list[_Schedul
                         key,
                         ContractEventType.DELIVERY_RECORDED.value,
                         (
-                            ("quantity", str(batches[n].quantize(Decimal(1)))),
+                            ("quantity", str(batches[n])),
                             ("trigger", "DELIVERY"),
                         ),
                     )

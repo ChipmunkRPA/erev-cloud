@@ -347,6 +347,12 @@ four historical numeric mismatches: 103 steps applied, zero refused, contract an
 blocks clean; its balance-aging report is still unavailable. The canonical full answer-key gate
 already selects PostgreSQL via `AK_SCOPE=full`; ordinary pytest defaults to memory.
 
+October 7 volume continuation: historical standing failure 8 is closed. Generator version 15
+keeps each delivery's exact two-decimal share instead of independently rounding every batch to
+a whole number. The corrected 1/1000 PostgreSQL seed passes with its original assertions;
+46 pure volume/performance tests also pass, including delivery bounds and exact completed totals
+across the full manifest. This does not establish full-scale database performance; C-10 remains open.
+
 ## The fifteen standing names
 
 Fifteen tests of the backend suite do not pass in release 1.0. They are the same fifteen in every whole run on the day of the freeze, by name, and none passes when it is run again alone; the release candidate's suite shows these and no other (R-125 (n); R-126 (e)). None is skipped, loosened or marked: each fails at full strength until its cause is closed. Two gate targets fail by them, as the supervisor measured on `783f340ea`: `make answer-keys` by the six keys and `make test-pg` by the three capture witnesses. The causes below are read from the failure each test records and from the test: for names 3 to 5 as the suite takes them since index 308's part for the answer keys' runner is on the branch, for the others in the run of record on `5c3b5347c`. Names 1 to 5 are platform keys, which the suite takes on the in-memory platform. On the database platform a lane measured them on 2026-10-03 with that part: the two DISC keys pass; POS-CHK-012 compares clean in every block and is failed by its finding alone; the GT07 key is not run; POS-CHK-117 has four mismatches.

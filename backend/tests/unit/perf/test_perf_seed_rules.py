@@ -673,9 +673,11 @@ def test_generator_version_3_binds_the_chart_and_keeps_the_event_set(
     ENGINE_SPEC_B S09-R-45 rev 1.126; 05 PERF-15 rev 1.212): the engine calls the fixed fee of a
     usage obligation deterministic, so a seed stores every usage obligation with its remainder
     scheduled, with schedule lines to its term end and with those lines flagged as released at
-    close; the manifest, the recipe's other members and the event set stay."""
+    close; the manifest, the recipe's other members and the event set stay. Version 15 preserves
+    exact fractional delivery quantities instead of independently rounding the batches to whole
+    units. Event counts stay the same; event facts and the dataset identity change."""
     assert SENT_BY_DATE_VERSION < volume.GENERATOR_VERSION
-    assert volume.GENERATOR_VERSION == 14 == full.recipe.generator_version
+    assert volume.GENERATOR_VERSION == 15 == full.recipe.generator_version
     assert full.counts.events == 1_262_407
     assert full.industry_cluster == f"perf:{full.sha256[:16]}"
     encoded = full.to_json().decode("ascii")
