@@ -23,8 +23,12 @@ remain open. The workbench now supports draft creation, submission and status fo
 optional reviewed-judgement attachment is still API-only. Historical statements
 below that *no computation reads an override* describe the October 3 release, not this continuation.
 The contract-period isolation foundation for POL-163 now preserves entity defaults, historical
-approval cutoffs and forced IFRS15 treatment. Its liability-layer consumption and remeasurement
-readers are not yet connected, so POL-163 public creation remains disabled.
+approval cutoffs and forced IFRS15 treatment. Liability layers now retain their originating
+contract and use that contract's period policy for consumption and remeasurement. A real close-pass
+regression verifies the persisted FX journal and repeat-run idempotency. POL-163 public creation
+remains disabled: monetary-to-historical transitions can discard a residual functional carrying
+amount when a layer is fully relieved. This transition, close invalidation and authoring remain
+unresolved; this continuation does not certify the full policy workflow.
 The owner has limited current work to repository completion and explicitly excluded deployment.
 
 The file has three classes and two tables beside them:

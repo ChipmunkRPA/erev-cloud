@@ -968,3 +968,103 @@ def test_s12_inv_08_monetary_layers_equal_balances() -> None:
             )
             out = sum(m.amount_functional for m in consumed)
             assert created.amount_functional + remeasured - out == 0
+
+
+def _contract_period_policy(ctx: BookContext, contract: str, period: str) -> BookContext:
+    from erev_engine.bundle import ResolvedPolicyInput, contract_period_key
+
+    exception = ResolvedPolicyInput(
+        "fx.cl_historical_layering",
+        "CONTRACT_PERIOD",
+        contract_period_key(contract, ENTITY, period),
+        "DISABLED_REMEASURE_AS_MONETARY",
+        "C",
+        "OVR-MEMBER",
+        "P",
+    )
+    return dataclasses.replace(
+        ctx,
+        policies=PolicyResolver(
+            tuple(
+                sorted(
+                    (*ctx.policies.all(), exception),
+                    key=lambda p: (p.code, p.scope, p.subject_key),
+                )
+            )
+        ),
+    )
+
+
+@pytest.mark.parametrize(
+    "book,monetary_member,revenue,fx",
+    [
+        ("ASC606", "first", 111000, 23000),
+        ("ASC606", "second", 110000, 24000),
+        ("IFRS15", "first", 110000, 0),
+        ("IFRS15", "second", 110000, 0),
+    ],
+)
+@pytest.mark.parametrize("first", ["A", "A/part@entity#item:%2F"])
+def test_member_exception_follows_originating_layer_not_revenue_member(
+    book: str,
+    monetary_member: str,
+    revenue: int,
+    fx: int,
+    first: str,
+) -> None:
+    from erev_engine.stages.s01_canonicalize import contract_entity_subject_key, encode_key
+
+    second = "B"
+    chosen = first if monetary_member == "first" else second
+    ctx = _contract_period_policy(_context(book=book, months=1), chosen, "FY2026-P01")
+    first_event, second_event = f"{encode_key(first)}/EV-2", f"{encode_key(second)}/EV-3"
+    subject = f"{encode_key(second)}/S"
+    control = [
+        dataclasses.replace(
+            _invoice(2, date(2026, 1, 1), "12000.00"),
+            subject_key=contract_entity_subject_key(first, ENTITY),
+            source_key=first_event,
+        ),
+        dataclasses.replace(
+            _invoice(3, date(2026, 1, 1), "12000.00"),
+            subject_key=contract_entity_subject_key(second, ENTITY),
+            source_key=second_event,
+        ),
+        _release(subject, date(2026, 1, 31), "1000.00"),
+    ]
+    case = _run(
+        ctx,
+        [
+            _spot(date(2026, 1, 1), "1.1000"),
+            _period_rate("average", 1, "1.1100"),
+            _period_rate("closing", 1, "1.1200"),
+        ],
+        control=control,
+    )
+    state = case.state
+    assert _targets(state.functional_targets, subject) == {"FY2026-P01": revenue}
+    assert _remeasured(state, "JET-10b", "CONTRACT_LIABILITY").get("FY2026-P01", 0) == fx
+    first_carrying = 1232000 if book == "ASC606" and monetary_member == "first" else 1210000
+    second_carrying = 1344000 if book == "ASC606" and monetary_member == "second" else 1320000
+    assert _open(state, "FY2026-P01") == [
+        (f"CONTRACT_LIABILITY:{first_event}", 1100000, first_carrying),
+        (f"CONTRACT_LIABILITY:{second_event}", 1200000, second_carrying),
+    ]
+    assert revenue + first_carrying + second_carrying - fx == 2640000
+
+
+def test_later_period_exception_does_not_remeasure_prior_period_layer_balance() -> None:
+    ctx = _contract_period_policy(_context(months=2), CONTRACT_KEY, "FY2026-P02")
+    state = _run(
+        ctx,
+        [
+            _spot(date(2026, 1, 1), "1.1000"),
+            _period_rate("closing", 1, "1.1200"),
+            _period_rate("closing", 2, "1.1500"),
+        ],
+        control=[_invoice(2, date(2026, 1, 1), "12000.00")],
+    ).state
+    layer = f"CONTRACT_LIABILITY:{_event(2)}"
+    assert _open(state, "FY2026-P01") == [(layer, 1200000, 1320000)]
+    assert _open(state, "FY2026-P02") == [(layer, 1200000, 1380000)]
+    assert _remeasured(state, "JET-10b", "CONTRACT_LIABILITY") == {"FY2026-P02": 60000}
