@@ -341,7 +341,7 @@ def test_single_head() -> None:
     # 68863f956, ruling R-68 (e)): T-CON-03 dirty_trigger — one nullable column with its check
     # and column grant, and tg_combination_group__transition() re-rendered on 0126's body so
     # that the application may move it.
-    assert lines[0].split()[0] == "0131"
+    assert lines[0].split()[0] == "0132"
 
 
 def test_upgrade_downgrade_upgrade(test_database: TestDatabase) -> None:

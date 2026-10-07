@@ -1,66 +1,34 @@
-"""RPT-36 ``balance_aging`` Balance aging (SCREENS_B §5.6.1 RPT-36; POLICIES §5.7 CHK-117, POL-125;
-03 REQ-BIL-013; BUILD_SPEC RPS-12).
+"""RPT-36 balance aging (REQ-BIL-013; CHK-117; POL-125/POL-126).
 
-One row per contract and balance role with a non-zero balance at the end of ``period_key``,
-``row_key`` ``contract:<external id>:<role>``, the amount by age bucket (0 to 30, 31 to 90, 91 to
-180, 181 to 365, over 365 days) and its total. The age of an amount is the number of days from
-the effective date of the layer it belongs to (T-CON-18 layer movements) to the period end.
+Liabilities use immutable T-CON-18 movements of the versions selected by the report binding.
+Asset and unbilled balances use those versions' period-end engine attributions in T-ENG-03,
+including the revenue date and the separate presentation-role amounts. No close journal is
+required, including with ERP billing. Each contract/entity/role/currency reconciles separately.
 
-The pure half (``bucket_of``, ``open_layers``, ``aged_rows``, ``aging_tie``) is what the tests
-prove: first in, first out consumption of layers, the bucket boundaries and the tie-out
-``TO_AGING_EQ_BALANCES`` (Σ aged amounts per currency equal the presented balances of
-``tie_outs.balances_at``).
-
-INTERIM SOURCE (supervisor ruling Q-2, `docs/reviews/loop/prod/F-RPS-ENG-E1-prep.md` §9): ``build``
-reads the layers from what main persists today. T-CON-18 ``fx_layer_movement`` (the catalogue
-source) is not persisted until CTR-14; until then the source is the T-SL-04 subledger: for
-``CONTRACT_LIABILITY`` the credit lines create layers dated by their effective date and the debits
-consume them first in first out; for ``CONTRACT_ASSET`` and ``UNBILLED_RECEIVABLE`` the JET-06
-``NETTING_RECLASS`` debits are the attributions, each dated by the latest ``REVENUE_RECOGNITION``
-line of its obligation (CHK-117: "the effective date of the latest revenue event of its
-obligation"), and the credits (the S10-R-22 reversals) consume them. Totals per role and
-currency are the rows ``TOTAL:<role>:<ISO>`` (accepted, ruling Q-2). This builder is not registered
-in ``framework.BUILDERS`` until its database tests have passed in an admitted run (registration is
-user-visible; ruling Q-2); the swap of the source to ``fx_layer_movement`` follows CTR-14.
-
-NOT REGISTERED (BUILD_SPEC RPS-12, lane F-RPS-REG, 2026-09-30): the database acceptance
-``tests/domain/reports/test_analysis_reports.py::test_balance_aging_chk_010`` builds the CHK-010
-contract through the product's commands and cannot pass on the interim source. (1) The JET-06
-netting reclass is a time-driven amount of the close run's ``NETTING_RECLASS`` pass (05 RCP-08
-(b)); no command creates a close run before CLO-19 / CLO-20, so the subledger holds no
-``NETTING_RECLASS`` line and the asset roles have no attribution to age. (2) Under
-``billing.posting = ERP`` (POL-004) the engine posts no invoice, so the subledger's
-``CONTRACT_LIABILITY`` lines are the revenue debits alone and the liability layers come out
-negative. On that contract ``build`` returns one row "Contract liability (14,000.00)" and
-``TO_AGING_EQ_BALANCES`` fails (expected 5,000.00). The presented balances, the JET-06 targets per
-obligation and period (``netting_reclass_amount``) and the liability layers
-(``fx_layer_created``, ``fx_layer_consumed``) are in the calc trace (T-ENG-03); reading them would
-replace the source ruling Q-2 accepted and waits for the supervisor.
-
-October 7, 2026: revision 0131 persists T-CON-18 for new computations. This builder now uses
-persisted, version-bound movements for liability aging. Asset/unbilled presentation still uses
-the interim source, so the report remains unregistered pending its replacement and verification.
-Earlier source limitations above are dated history.
+Older versions without aging attributions refuse rather than reconstructing presentation or
+ages from today's configuration. This report currently supports transaction currency; functional
+view is accepted only when transaction and functional currencies coincide.
 """
 
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date
 from decimal import Decimal
 from typing import Any, Final
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from erev_api.db.tables import fx_layer_movement, subledger_line
+from erev_api.db.tables import fx_layer_movement
 from erev_api.domain.reports import tie_outs
-from erev_api.domain.reports.builders import ReportParams
+from erev_api.domain.reports.builders import ReportParams, aging_attributions
 from erev_api.domain.reports.builders.contract_balance_rollforward import FUNCTIONAL_ONLY
 from erev_api.domain.reports.outputs import Column, ReportData
 from erev_api.domain.reports.tie_outs import ZERO, BalanceRow, EntityRef, PeriodRef, add
+from erev_api.explain import store
 from erev_api.uow import UnitOfWork
 
 CODE: Final = "balance_aging"
@@ -86,9 +54,6 @@ BUCKETS: Final[tuple[tuple[str, int, int | None], ...]] = (
 )
 BUCKET_FIELDS: Final = tuple(field for field, _, _ in BUCKETS)
 TOTAL_PREFIX: Final = "TOTAL:"
-REVENUE_KIND: Final = "REVENUE_RECOGNITION"
-NETTING_RECLASS: Final = "NETTING_RECLASS"
-NETTING_REVERSAL: Final = "NETTING_RECLASS_REVERSAL"
 COLUMNS: Final = (
     Column("contract_external_id", "Contract", "code"),
     Column("customer_name", "Customer", "text"),
@@ -273,25 +238,6 @@ def aging_tie(rows: Sequence[AgedRow], balances: Sequence[BalanceRow]) -> dict[s
     return result
 
 
-def _revenue_dates(
-    session: Session, entity_ids: Sequence[UUID], book_code: str, known_at: datetime, last_end: date
-) -> dict[UUID, date]:
-    """Latest ``REVENUE_RECOGNITION`` effective date per obligation through ``last_end``."""
-    statement = (
-        select(subledger_line.c.obligation_id, func.max(subledger_line.c.effective_date))
-        .where(
-            subledger_line.c.book_code == book_code,
-            subledger_line.c.entity_id.in_(list(entity_ids)),
-            subledger_line.c.entry_kind == REVENUE_KIND,
-            subledger_line.c.recorded_at <= known_at,
-            subledger_line.c.effective_date <= last_end,
-            subledger_line.c.obligation_id.is_not(None),
-        )
-        .group_by(subledger_line.c.obligation_id)
-    )
-    return {UUID(str(row[0])): row[1] for row in session.execute(statement) if row[1] is not None}
-
-
 def _liability_layers(
     session: Session,
     *,
@@ -357,82 +303,38 @@ def _liability_layers(
 def _layers(
     session: Session,
     *,
-    entity_ids: Sequence[UUID],
     book_code: str,
     period_ends: Mapping[UUID, date],
-    known_at: datetime,
     balances: Sequence[BalanceRow],
 ) -> list[Layer]:
-    """Combine persisted liability layers with interim asset/unbilled subledger attributions.
-
-    This incomplete projection remains unavailable through the report registry.
-    """
-    if not entity_ids or not period_ends:
-        return []
-    last_end = max(period_ends.values())
-    revenue_dates = _revenue_dates(session, entity_ids, book_code, known_at, last_end)
-    names = {(row.contract_id, row.entity_id): row for row in balances}
-    statement = (
-        select(
-            subledger_line.c.contract_id,
-            subledger_line.c.entity_id,
-            subledger_line.c.obligation_id,
-            subledger_line.c.account_role,
-            subledger_line.c.entry_kind,
-            subledger_line.c.effective_date,
-            subledger_line.c.period_end_date,
-            subledger_line.c.dr_cr,
-            subledger_line.c.amount_txn,
-            subledger_line.c.txn_currency,
-        )
-        .where(
-            subledger_line.c.book_code == book_code,
-            subledger_line.c.entity_id.in_(list(entity_ids)),
-            subledger_line.c.account_role.in_(["CONTRACT_ASSET", "UNBILLED_RECEIVABLE"]),
-            subledger_line.c.recorded_at <= known_at,
-            subledger_line.c.period_end_date <= last_end,
-        )
-        .order_by(
-            subledger_line.c.effective_date,
-            subledger_line.c.period_end_date,
-            subledger_line.c.recorded_at,
-            subledger_line.c.entry_no,
-            subledger_line.c.id,
-        )
-    )
-    flows: dict[tuple[UUID, UUID, str, str], list[tuple[date, Decimal]]] = {}
-    for row in session.execute(statement).mappings():
-        entity_id = UUID(str(row["entity_id"]))
-        if row["period_end_date"] > period_ends[entity_id]:
-            continue
-        role = str(row["account_role"])
-        amount = Decimal(row["amount_txn"])
-        # Liability layers grow with credits; asset layers grow with debits.
-        sign = 1 if (str(row["dr_cr"]) == "C") == (role == "CONTRACT_LIABILITY") else -1
-        day = row["effective_date"]
-        if role != "CONTRACT_LIABILITY" and str(row["entry_kind"]) == NETTING_RECLASS:
-            obligation = row["obligation_id"]
-            if obligation is not None:
-                day = revenue_dates.get(UUID(str(obligation)), day)
-        key = (UUID(str(row["contract_id"])), entity_id, role, str(row["txn_currency"]).strip())
-        flows.setdefault(key, []).append((day, sign * amount))
+    """Version-bound liability movements and engine asset/unbilled presentation shares."""
     layers = _liability_layers(
         session, book_code=book_code, period_ends=period_ends, balances=balances
     )
-    for (contract_id, entity_id, role, currency), items in flows.items():
-        named = names.get((contract_id, entity_id))
-        for day, amount in open_layers(items):
-            if amount == 0:
-                continue
+    traces = {
+        version_id: store.load_trace(session, version_id)
+        for version_id in {row.version_id for row in balances}
+    }
+    for row in balances:
+        end = period_ends.get(row.entity_id)
+        if end is None:
+            continue
+        for day, role, amount in aging_attributions.attributions(
+            traces[row.version_id],
+            contract=row.external_id,
+            entity=row.entity_code,
+            currency=row.currency,
+            end=end,
+        ):
             layers.append(
                 Layer(
-                    contract_id=contract_id,
-                    external_id=named.external_id if named else str(contract_id),
-                    customer_name=named.customer_name if named else None,
-                    entity_id=entity_id,
-                    entity_code=named.entity_code if named else str(entity_id),
+                    contract_id=row.contract_id,
+                    external_id=row.external_id,
+                    customer_name=row.customer_name,
+                    entity_id=row.entity_id,
+                    entity_code=row.entity_code,
                     balance_role=role,
-                    currency=currency,
+                    currency=row.currency,
                     amount=amount,
                     effective_date=day,
                 )
@@ -450,8 +352,8 @@ def _check_view(params: ReportParams, found: Sequence[EntityRef], rows: Sequence
 def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     session = uow.session
     book_code = tie_outs.book_of(session, params)
-    found = tie_outs.entities(session, params.entity_ids)
-    calendars = tie_outs.calendars(session, found)
+    found = tie_outs.entities(session, params.entity_ids, params=params)
+    calendars = tie_outs.calendars(session, found, params=params)
     at: dict[UUID, PeriodRef | None] = {
         entity.id: tie_outs.period_of(params, calendars[entity.id], entity) for entity in found
     }
@@ -467,10 +369,8 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     )
     layers = _layers(
         session,
-        entity_ids=params.entity_ids,
         book_code=book_code,
         period_ends=period_ends,
-        known_at=params.known_at,
         balances=balances,
     )
     role_filter = str(params.parameters.get("balance_role") or "ALL")

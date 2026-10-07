@@ -133,6 +133,9 @@ from erev_api.domain.reports.builders import (
 from erev_api.domain.reports.builders import api_client_inventory as api_client_inventory_builder
 from erev_api.domain.reports.builders import approvals_register as approvals_register_builder
 from erev_api.domain.reports.builders import audit_log_export as audit_log_export_builder
+from erev_api.domain.reports.builders import (
+    balance_aging as balance_aging_builder,
+)
 from erev_api.domain.reports.builders import book_bridge as book_bridge_builder
 from erev_api.domain.reports.builders import (
     chain_verification_report as chain_verification_report_builder,
@@ -341,6 +344,7 @@ BUILDERS: Final[Mapping[str, Builder]] = MappingProxyType(
         contract_balances_builder.CODE: contract_balances_builder.build,
         contract_balance_rollforward_builder.CODE: contract_balance_rollforward_builder.build,
         contract_cost_rollforward_builder.CODE: contract_cost_rollforward_builder.build,
+        balance_aging_builder.CODE: balance_aging_builder.build,
         revenue_from_opening_liability_builder.CODE: revenue_from_opening_liability_builder.build,
         revenue_from_prior_period_obligations_builder.CODE: (
             revenue_from_prior_period_obligations_builder.build
@@ -385,10 +389,7 @@ BUILDERS: Final[Mapping[str, Builder]] = MappingProxyType(
         estimate_change_listing_builder.CODE: estimate_change_listing_builder.build,
         scope_exclusion_register_builder.CODE: scope_exclusion_register_builder.build,
         # BUILD_SPEC RPS-12 (SCREENS_B §5.6.6 RPT-33 to RPT-35; lane F-RPS-REG): the book bridge,
-        # the adoption bridge and the intercompany pairs (33 → 36). RPT-36 balance_aging stays
-        # unregistered: its interim subledger source holds no JET-06 line before the close run
-        # posts the netting reclass (CLO-19). Revision 0131 stores layers for new computations;
-        # the builder still needs to read them and handle historical versions.
+        # the adoption bridge, intercompany pairs and balance aging.
         book_bridge_builder.CODE: book_bridge_builder.build,
         adoption_bridge_builder.CODE: adoption_bridge_builder.build,
         intercompany_pairs_builder.CODE: intercompany_pairs_builder.build,
@@ -610,6 +611,17 @@ SOURCE_CONTRACTS: Final[Mapping[str, SourceContract]] = MappingProxyType(
                 _CUSTOMERS,
                 _LINES,
                 _BILLING_EVENTS,
+            ),
+            (),
+        ),
+        balance_aging_builder.CODE: SourceContract(
+            ADAPTER,
+            (
+                _CUTOFF,
+                _VERSIONS,
+                "immutable layer movements and aging traces of bound versions",
+                _CONFIGURATION,
+                _CUSTOMERS,
             ),
             (),
         ),

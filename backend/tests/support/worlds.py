@@ -3326,6 +3326,24 @@ def chk_010_position(
         activate=True,
     )
     contract_id = UUID(str(booked.contract["id"]))
+    # POL-122 is an obligation override; product-level pins do not authorize this treatment.
+    override = post(
+        app,
+        "/api/v1/policy-overrides",
+        maya,
+        {
+            "contract_id": str(contract_id),
+            "obligation_key": "P1-TM",
+            "policy_key": "balance.right_to_consideration",
+            "value": "UNCONDITIONAL",
+            "rationale": "CHK-010: the right to consideration for P1-TM is unconditional.",
+        },
+    )
+    assert override.status_code == 201, override.text
+    submitted = post(app, f"/api/v1/policy-overrides/{override.json()['id']}/submit", maya, {})
+    assert submitted.status_code == 200, submitted.text
+    decision = approve(app, str(submitted.json()["approval_request_id"]), marcus)
+    assert decision.status_code == 200, decision.text
     day = CHK_010_DAY.isoformat()
     # BUILD_SPEC CTR-6: a delivery, a milestone and a progress event of a person wait for
     # another user; Maya submits the batch with one evidence file and Priya approves it.

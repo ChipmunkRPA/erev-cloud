@@ -896,8 +896,17 @@ class _Emitter:
                 if amount == 0
                 else (UNBILLED_RECEIVABLE if receivable > asset else CONTRACT_ASSET)
             )
-            params = {**plan.params, "as_of": t.isoformat(), "key": key}
             revenue_on = revenue_date(self.st, ob, t)
+            params = {
+                **plan.params,
+                "as_of": t.isoformat(),
+                "key": key,
+                "aging_contract": ob.contract_key,
+                "aging_entity": ob.contracting_entity,
+                "aging_revenue_date": revenue_on.isoformat(),
+                "aging_receivable": money.format_money(receivable, self.mu),
+                "aging_asset": money.format_money(asset, self.mu),
+            }
             for period_key in (
                 (point.period.period_key, None) if version else (point.period.period_key,)
             ):

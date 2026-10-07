@@ -202,9 +202,7 @@ EXCEPTIONS_GAP: Final = "PRP-2: the exceptions block reads the exception registe
 # code leaves this table when its builder is registered (``framework.BUILDERS``):
 # ``revenue_from_prior_period_obligations`` with EDS-4 / RPS-3 (lane ENG-C4) and
 # ``contract_cost_rollforward`` with RPS-12 (lane F-RPS-REG) have left it.
-REPORT_GAPS: Final[Mapping[str, str]] = {
-    "balance_aging": "RPS-12: balance_aging builder is not registered",
-}
+REPORT_GAPS: Final[Mapping[str, str]] = {}
 
 # --- handlers (dotted paths; ``handler_exists`` resolves each) ----------------------------------
 SUPPORTED_OVERRIDES: Final = SUPPORTED_KEYS

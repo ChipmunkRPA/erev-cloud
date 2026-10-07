@@ -3,7 +3,7 @@ specification grids are parsed from SCREENS_B, so a specification edit or a buil
 fails here; the row shaping, the driver rule and the tie-outs are proven on pure inputs. The
 acceptance over worlds built through the product's commands is
 ``tests/domain/reports/test_analysis_reports.py`` (database). RPT-32 and RPT-36 have their own CPU
-modules; RPT-36 ``balance_aging`` stays unregistered until its source exists.
+modules; RPT-36 reads persisted liability layers and engine presentation attributions.
 """
 
 from __future__ import annotations
@@ -94,8 +94,8 @@ def test_tie_out_literals_and_defaults() -> None:
     assert "| Currency view | yes; default `functional` |" in report_specs.section(33, bridge.CODE)
     assert "| Currency view | yes; default `transaction` |" in report_specs.section(35, pairs.CODE)
     assert "| Currency view | no |" in report_specs.section(34, adoption.CODE)
-    # RPT-36 stays out of the framework until its source exists (ruling Q-2; CLO-19, CTR-14)
-    assert aging.CODE not in framework.BUILDERS
+    # RPT-36 is enabled with persisted layers and trace presentation attributions.
+    assert framework.BUILDERS[aging.CODE] is aging.build
 
 
 def test_specification_literals() -> None:

@@ -365,6 +365,14 @@ October 7 aging continuation: the unregistered draft now reads liability aging f
 versions' persisted movements and reconciles each contract/entity/role/currency independently.
 Asset/unbilled presentation still reads the interim subledger source; RPS-12 and POS117 remain open.
 
+October 7 balance-aging completion: RPT-36 is now registered. It reads liability movements and
+engine trace presentation attributions, with version-bound historical and rerun reads. The database
+POS117 key and CHK-010 report acceptance pass; historical standing names 5, 7 and 10 are closed.
+There are now 18 unavailable report definitions; balance aging is removed from the current B4-6/C-11
+backlog. The rows below retain their October 3 evidence. Old versions without the new aging payload
+refuse and are not backfilled; foreign-currency functional aging remains unsupported. Other report
+builders, full-backend verification and accounting sign-off remain open.
+
 ## The fifteen standing names
 
 Fifteen tests of the backend suite do not pass in release 1.0. They are the same fifteen in every whole run on the day of the freeze, by name, and none passes when it is run again alone; the release candidate's suite shows these and no other (R-125 (n); R-126 (e)). None is skipped, loosened or marked: each fails at full strength until its cause is closed. Two gate targets fail by them, as the supervisor measured on `783f340ea`: `make answer-keys` by the six keys and `make test-pg` by the three capture witnesses. The causes below are read from the failure each test records and from the test: for names 3 to 5 as the suite takes them since index 308's part for the answer keys' runner is on the branch, for the others in the run of record on `5c3b5347c`. Names 1 to 5 are platform keys, which the suite takes on the in-memory platform. On the database platform a lane measured them on 2026-10-03 with that part: the two DISC keys pass; POS-CHK-012 compares clean in every block and is failed by its finding alone; the GT07 key is not run; POS-CHK-117 has four mismatches.
