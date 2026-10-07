@@ -290,7 +290,11 @@ class _Decision:
     def __init__(self) -> None:
         self.session = _Approving()
         self.now = CUTOFF
-        self.principal = type("P", (), {"id": UUID(int=3), "kind": type("K", (), {"value": "U"})})
+        self.principal = type(
+            "P",
+            (),
+            {"id": UUID(int=3), "tenant_id": UUID(int=1), "kind": type("K", (), {"value": "U"})},
+        )
         self.audited: list[Any] = []
 
     def audit(self, **event: Any) -> None:

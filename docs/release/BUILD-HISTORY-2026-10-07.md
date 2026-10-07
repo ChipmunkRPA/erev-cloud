@@ -646,3 +646,24 @@ in [BUILD-HISTORY-2026-10-07.md](docs/release/BUILD-HISTORY-2026-10-07.md).
 
 Earlier October 7 policy-isolation and workbench evidence is archived verbatim in
 [BUILD-HISTORY-2026-10-07.md](docs/release/BUILD-HISTORY-2026-10-07.md).
+
+## Supported overrides in database answer keys — October 7, 2026
+
+- Continued from merged PR #9 (`88bd20b`). The answer-key plan still omitted all policy
+  overrides under the October 3 withdrawal, although POL-122 and POL-047 are now supported.
+- Plans use the product's supported-key set, native request validation, committed override IDs,
+  route permissions and separate preparer/approver personas. Each supported declaration is
+  created, submitted and approved after booking and before activation. Unsupported declarations
+  retain a named failure alongside numeric mismatches; in-memory runs cannot pass as database
+  evidence. No answer-key files, expected figures or oracle hashes changed.
+- Real PostgreSQL POS012 now creates both declared POL-122 rows and approval requests, verifies
+  independent approval, compares every checkpoint clean and passes the complete key verdict.
+  Existing close-job, posting, reversal and journal assertions remain intact.
+- Verification: **379 tests passed** (the complete answer-key unit suite plus the PostgreSQL
+  POS012 regression; two warnings), Ruff lint/format, whitespace and design checks passed.
+  A standalone strict Mypy invocation of test-support files failed with 119 import/typing errors;
+  it is not passing type-check evidence. This is targeted verification, not a full-backend run.
+- C-12 remains open: default suite selection still uses memory, GT07's nondistinct review mapping
+  is missing, and POS117 needs its balance-aging builder and fresh database verification.
+  FX transition accounting review and the other documented repository backlog remain open.
+  Repository work only; no deployment.

@@ -2794,8 +2794,9 @@ def exception_waiver_content(session: Session, item_id: UUID) -> dict[str, Any]:
     hashes its template code and kind, gate check code, entity, book, period and whether it is
     still not cleared, so a gate that passes voids a pending waiver (BS4-D-07) — and the count
     and the sentence its gate stored (04 T-CLS-03 rev 1.305; item CLO-WAIVER-COVERS-LATER-1): a
-    waiver covers the count it was approved for, so a count that moves before the decision makes
-    the request stale. A manual task stores no result and hashes neither."""
+    waiver also binds the stored member identities, so a replacement at the same count makes
+    the request stale. The close hook refreshes this basis at the decision. A manual task
+    stores no result and hashes neither."""
     checklist = checklist_waiver_row(session, item_id)
     if checklist is not None:
         stored = checklist["result"] or {}
@@ -2810,6 +2811,11 @@ def exception_waiver_content(session: Session, item_id: UUID) -> dict[str, Any]:
             "open": _literal(checklist["status"]) in CHECKLIST_WAIVABLE,
             "count": stored.get("count"),
             "detail": stored.get("detail"),
+            **(
+                {"members": stored.get("members")}
+                if _literal(checklist["gate_kind"]) == "AUTOMATIC"
+                else {}
+            ),
         }
     row = _exception_row(session, item_id)
     return {

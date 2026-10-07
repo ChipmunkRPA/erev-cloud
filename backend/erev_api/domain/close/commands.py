@@ -515,6 +515,7 @@ def _item(uow: UnitOfWork, scope: gates.PeriodScope, item_id: UUID) -> dict[str,
             select(
                 close_checklist_item.c.id,
                 close_checklist_item.c.status,
+                close_checklist_item.c.result,
                 close_checklist_item.c.row_version,
                 close_checklist_template.c.code,
                 close_checklist_template.c.name,
@@ -712,7 +713,8 @@ def waive_checklist_item(
         object_id=item_id,
         object_version=str(int(item["row_version"]) + 1),
         before={"status": status, "waiver_approval_request_id": None},
-        after={"status": status, "waiver_approval_request_id": str(request_id)},
+        after={"status": status, "waiver_approval_request_id": str(request_id)}
+        | ({"members": item["result"].get("members")} if item["result"] else {}),
         comment=body.reason,
         approval_request_id=request_id,
     )
@@ -725,6 +727,7 @@ def _locked_item_row(uow: UnitOfWork, item_id: UUID) -> Mapping[Any, Any]:
             select(
                 close_checklist_item.c.id,
                 close_checklist_item.c.status,
+                close_checklist_item.c.result,
                 close_checklist_item.c.waiver_approval_request_id,
                 close_checklist_item.c.row_version,
             )
@@ -742,7 +745,26 @@ def _locked_item_row(uow: UnitOfWork, item_id: UUID) -> Mapping[Any, Any]:
 def _checklist_waived(uow: UnitOfWork, item_id: UUID, approval_request_id: UUID) -> None:
     """``EXCEPTION_WAIVER`` of a checklist item approved: WAIVED with the request and its
     comment."""
+    item = subjects.checklist_waiver_row(uow.session, item_id)
+    if item is None:
+        raise Problem("not-found")
+    scope = gates.scope_of_period(
+        uow.session, item["entity_id"], _text(item["book_code"]), item["period_id"], share=True
+    )
+    if scope is None or scope.state not in gates.EVALUATED_STATES:
+        raise approvals.StaleBasis()
+    if _text(item["gate_kind"]) == ChecklistGateKind.AUTOMATIC.value:
+        # Refresh even when nobody opened the cockpit since this waiver was requested.
+        # The period precedes checklist rows in the lock order. The approval kernel runs
+        # this hook under tenant scope and rolls these writes back on a stale basis.
+        gates.evaluate_gates(uow, scope.entity_id, scope.book_code, scope.period_id)
     row = _locked_item_row(uow, item_id)
+    approvals.assert_own_fresh_basis(
+        uow,
+        approval_request_id,
+        subject_type=ApprovalSubjectType.EXCEPTION_WAIVER,
+        subject_id=item_id,
+    )
     status = _text(row["status"])
     if status in CLEARED:
         raise _refused(NOT_WAIVABLE)
@@ -758,6 +780,7 @@ def _checklist_waived(uow: UnitOfWork, item_id: UUID, approval_request_id: UUID)
         set_values={
             "waiver_approval_request_id": approval_request_id,
             "comment": None if comment is None else str(comment),
+            "result": None if row["result"] is None else gates.renewed_waiver_result(row["result"]),
             **_stamps(uow),
         },
     )
