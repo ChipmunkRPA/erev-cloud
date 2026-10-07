@@ -72,6 +72,7 @@ from erev_api.approvals.subjects import (
     THRESHOLD_CURRENCY,
     SubjectLifecycle,
     estimate_version_content,
+    judgement_record_content,
     register_lifecycle,
 )
 from erev_api.auth.dependencies import require_for_entity
@@ -318,7 +319,7 @@ ATTESTATION_FLAG: Final = "no_change_attestation"
 CONSTRAINT_RECORD: Final = "ESTIMATE_CONSTRAINT_RECORD"
 CONSTRAINT_RECORD_MESSAGE: Final = (
     "Name the CONSTRAINT judgement record of this element: a record of this contract for "
-    "{element_code}, sent for review or reviewed."
+    "{element_code}, sent for review or reviewed for this version’s current figures."
 )
 RECORD_NOT_REVIEWED: Final = (
     "Judgement record {judgement_no} of this estimate version is not reviewed. It is reviewed "
@@ -864,7 +865,8 @@ def _constraint_record(
     topic CONSTRAINT, of the version's contract, its ``estimate_key`` naming the element by its
     code or by one of the engine's two keys (``erev_engine`` reads the same three: the estimate
     key and the version key) — else None. The record's subject is not asked: the version, its
-    modification, the contract or an obligation, all of the version's contract."""
+    modification, the contract or an obligation, all of the version's contract. Its submitted
+    content hash must also bind this version and its current financial figures."""
     if row["judgement_record_id"] is None:
         return None
     found = session.execute(
@@ -874,6 +876,7 @@ def _constraint_record(
             judgement_record.c.status,
             judgement_record.c.contract_id,
             judgement_record.c.questionnaire,
+            judgement_record.c.content_sha256,
         ).where(judgement_record.c.id == row["judgement_record_id"])
     ).one_or_none()
     if found is None or _text(found.topic) != JudgementTopic.CONSTRAINT.value:
@@ -883,7 +886,15 @@ def _constraint_record(
     named = (found.questionnaire or {}).get("estimate_key")
     estimate_key = obligation_subject_key(str(current["external_id"]), str(element["element_code"]))
     keys = (str(element["element_code"]), estimate_key, f"{estimate_key}@v{int(row['version_no'])}")
-    return found if named in keys else None
+    if named not in keys or found.content_sha256 is None:
+        return None
+    content = judgement_record_content(session, _uuid(row["judgement_record_id"]))
+    basis = content.get("constraint_estimate_basis")
+    if not isinstance(basis, Mapping) or basis.get("version_id") != str(row["id"]):
+        return None
+    # A review of another version, or of figures changed after submission, is not
+    # evidence for this amount. Pre-binding records fail closed without rewriting history.
+    return found if sha256_hex(content) == str(found.content_sha256).strip() else None
 
 
 def _submission_errors(

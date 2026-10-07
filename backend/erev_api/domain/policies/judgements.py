@@ -838,6 +838,11 @@ def submit_judgement(
         JudgementStatus.DRAFT.value,
         JudgementStatus.SUBMITTED.value,
         approval_request_id=str(request_id),
+        **(
+            {"constraint_estimate_basis": content["constraint_estimate_basis"]}
+            if "constraint_estimate_basis" in content
+            else {}
+        ),
     )
     return get_judgement(session, judgement_id)
 

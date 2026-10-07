@@ -1,5 +1,41 @@
 # PROGRESS — eRev Cloud build loop notebook (under 20 KB)
 
+## Constraint review basis — October 7, 2026
+
+- Continued from main `72aaa2b`. Reproduced both B1-5 paths: a changed version accepted an
+  earlier version's reviewed constraint, and a draft accepted figures edited after review.
+  The two new API regressions failed against the prior implementation with HTTP 200 submissions.
+- Constraint judgement content now includes the specific estimate version and financial inputs.
+  Its existing submitted hash seals that basis; the submission audit retains the figures.
+  Estimate submission and approval verify the binding. Editing figures during a pending review
+  makes that review stale. No-change attestations retain their existing path; no posted history
+  is rewritten. Older unbound pending requests need a fresh review and resubmission.
+- The drawer offers a replacement conclusion after the API refuses an outdated review, even
+  while the old record remains REVIEWED. API copy and the data-model contract describe the new
+  requirement. B1-5 is closed for estimate-version submission/approval; other limitations remain.
+- **55 distinct database workflow checks verified across scoped runs**: 26 estimate tests,
+  19 judgement tests, two amendment integration tests and eight judgement/estimate/loss report
+  tests. Five new CTL-049 cases cover both reuse paths, pending edits with version/contract
+  subjects, recorded basis figures, and refusal of an old-release pending request without
+  changing its history. Fresh independent reviews restore the ordinary approval path.
+- The K-03 report fixture previously reviewed the constraint before creating its target version.
+  It now creates the draft first, then reviews and links the record. All original accounting
+  expectations are retained. An intermediate rerun also caught a missing fixture import; the
+  final eight-report rerun passed. This is scoped evidence, not a green whole-backend gate.
+- Architecture verification found PR #27's missing declaration for the authorized, same-tenant
+  `product_reference_date` scope entry. Added its explicit reason and developer-guide contract;
+  all six scope checks passed. The broader rerun passed **274 architecture/unit checks** and
+  caught the changed error copy's stale PRD row; after synchronizing it, that check passed too
+  (**267 architecture plus eight focused unit checks verified across these runs**).
+- **61 frontend drawer/form tests passed**, including recovery from a refused reviewed record.
+  TypeScript, ESLint, Vite build (existing chunk-size warning), source Mypy, Ruff, whitespace and
+  design checks (500 files) pass. Control markers validate (434 tagged tests). Secret scan:
+  3,391 files, zero findings. Publication exclusions and noncommercial licensing are preserved.
+- The broader backend verification remains live in the detached `ed6ea75` checkout and its own
+  loopback database. It excludes specialist markers and does not cover these later changes.
+  Full-backend/specialist verification, other release gaps and independent accounting sign-off
+  remain open. No deployment or external accounting contact.
+
 ## Mandatory product disaggregation — October 7, 2026
 
 - Continued from merged PR #26 (`ed6ea75`). The product usability warning is now enforced at
@@ -60,45 +96,6 @@
   puts `layer_key` behind the non-leakproof `book_code` enum comparison under RLS. This was not
   waived; the next schema fix must reorder its keys and rerun the index audit. No whole-backend
   pass is claimed. Other release gaps and independent accounting review remain open. No deployment.
-
-## Volume delivery quantities — October 7, 2026
-
-- Continued from merged PR #11 (`cf727a1`). Reproduced LIMITS standing failure 8: the 1/1000
-  database seed refused a delivery of 7 with only 3 remaining. The generator split total quantity
-  exactly to two decimals, then rounded every batch independently to a whole number.
-- Retained the exact fractional quantities accepted by the command schema. Every batch is
-  positive, every prefix stays within its contracted quantity, and completed schedules sum to
-  exactly that quantity. Generator version 15 gives the changed event facts a new dataset identity;
-  the full manifest still has 1,262,407 events. No delivery validation or expected accounting
-  amount was loosened.
-- Verification so far: **46 pure volume/performance tests passed**, including the new full-scale
-  delivery invariant; Ruff lint/format, source Mypy and design/whitespace checks passed.
-  The corrected PostgreSQL seed **passed**, with original assertions for all groups, event
-  totals, estimate approvals and evidence attachments. No full-volume database performance claim.
-- Balance-aging investigation: stage 12 already emits `BookOutput.fx_layer_movements`, but
-  computation persistence writes no T-CON-18 rows. The current report draft reads subledger lines
-  and is incorrect under ERP billing. Persisting immutable layer movements with source-event and
-  FX-rate lineage is a prerequisite to exposing that report. It remains unregistered.
-- Broader repository gaps and independent accounting sign-off remain open. No deployment.
-
-## Migration capture calendar and POS117 recheck — October 7, 2026
-
-- Continued from merged PR #10 (`8876bd8`). Reproduced all three migration-capture failures
-  listed as names 13–15 in LIMITS: each refused Contract 3 because its February inception had
-  no accounting period. The fixture only supplied January despite importing the complete source.
-- The two full-source fixture setups now supply January and February 2023. Source databases,
-  expected amounts, product validation and worker behavior are unchanged. All existing exact
-  balance, entity mapping, SSP reuse, approval/audit, capture count and immutability checks remain.
-- **7 PostgreSQL capture tests passed**, closing all three named failures; **3 related PostgreSQL
-  reconciliation/report tests passed**. Ruff lint/format and whitespace checks passed. These are
-  targeted results, not evidence of a green whole backend or completed migration functionality.
-- Also ran the real database POS117 answer key: **103 steps applied, 0 refused**, contract and
-  subledger blocks compared clean. Its former four numeric mismatches are resolved by the policy
-  work. The key still does not pass because balance aging lacks its persisted layer source and
-  registered builder. The canonical `make answer-keys AK_SCOPE=full` already selects the database;
-  ordinary pytest defaults to memory. Do not treat that default as the canonical gate's behavior.
-- Remaining work includes balance-aging layers/reporting, GT07 nondistinct review mapping, the
-  broader release backlog and independent accounting sign-off. No deployment.
 
 ## Supported overrides in database answer keys — October 7, 2026
 
