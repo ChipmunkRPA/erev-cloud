@@ -1376,8 +1376,8 @@ def test_adapter_routes_the_reads_through_the_ledger_stamps_and_the_job_runner()
     pos = _ran(POS_117, reads=PersistedReads(tables), jobs=jobs)
     aging = pos.key.checkpoints[0]
     assert aging.reports is not None
-    with pytest.raises(NotProvisioned, match="RPS-12"):  # the gap keeps refusing
-        pos.report_rows(aging, aging.reports[0])
+    assert pos.report_rows(aging, aging.reports[0]) == rows
+    assert jobs.calls[-1][0] == "report"
 
 
 class _Horizon:

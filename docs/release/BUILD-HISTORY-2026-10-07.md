@@ -243,3 +243,61 @@ claims and evidence below retain their original meaning; this archive is not a f
   answer-key coverage, and an optional reviewed-judgement attachment selector in this drawer (the
   API already accepts and validates that link). Wider outstanding items remain in LIMITS-1.0.md.
   Current scope remains repository completion; no deployment or provisioning.
+
+## Balance-aging liability reader and reconciliation — October 7, 2026
+
+- Continued from merged PR #14 (`5d48cb0`). Replaced the aging draft's liability subledger
+  reader with T-CON-18 movements for exactly the versions selected by its balance report binding.
+  The original creation date survives partial consumption; transaction amounts exclude FX
+  remeasurement, future movements and other books. A remaining layer without a creation date
+  refuses rather than assigning a guessed age.
+- Strengthened `TO_AGING_EQ_BALANCES`: agreement is required per contract, entity, role and currency,
+  as well as currency grand totals. Misclassified or misattributed amounts can no longer offset
+  each other and produce a passing tie-out. The existing public money-result shape is preserved.
+- Verification: **495 report unit tests passed**, plus **13 targeted tests** including a PostgreSQL
+  layer projection regression. Source Mypy, Ruff lint/format, design and whitespace checks passed.
+- The report remains unregistered. Asset/unbilled attributions still require replacing the interim
+  subledger source, and pre-0131 versions lack movement coverage. This change does not close RPS-12,
+  POS117, full-backend verification or accounting sign-off. No deployment.
+
+## Per-layer liability close monitor — October 7, 2026
+
+- Continued from merged PR #13 (`5b45532`). The negative-liability monitor now projects
+  current-version T-CON-18 movements through the period end, separately for each originating
+  contract/layer. Consumption reduces both currencies; remeasurement changes functional carrying
+  only. Either currency below zero raises a blocking finding without netting against positive layers.
+- Regression coverage exercises transaction and functional deficits, future movements, other books
+  and entities, repeat-run deduplication, and resolution after a corrected version replaces obsolete
+  movements. The data-quality gate fails for a deficit and passes after the correction.
+- Verification: **68 PostgreSQL monitor and pure-rule tests passed**; source Mypy, Ruff lint/format,
+  design and whitespace checks passed. This is targeted evidence, not a full-backend pass.
+- Versions predating revision 0131 still lack movement coverage. Balance aging remains unregistered
+  pending its projection, presentation and historical reads. Full-backend verification and independent
+  accounting review remain open. Repository work only; no deployment.
+
+## Immutable FX layer persistence — October 7, 2026
+
+- Continued from merged PR #12 (`afefe85`). Revision 0131 follows the actual prior head 0128
+  and adds T-CON-18 `fx_layer_movement`: immutable rows, tenant/entity RLS, role/kind checks,
+  tenant-bound version/contract/entity/event/rate foreign keys and currency references.
+- New computations persist their complete engine movement set atomically with the version and
+  audit facts. Each movement retains its layer owner's contract, including cross-member consumption,
+  independent of the consuming event. Asset, receivable and monetary-liability creation now carry
+  ownership through the engine output. No ownership is guessed from encoded layer-key strings.
+- The writer preserves transaction/functional currency minor units, signed remeasurement amounts,
+  applied rates, pinned rate IDs and trace nodes; a real source event is linked when present.
+  Synthetic time/estimate sources remain trace-linked. Unknown owners/rates, mismatched rate versions,
+  floats and boolean amounts refuse before movement insertion. Existing versions are never rewritten.
+- Registered the table in audit ownership, privacy classification and regenerated snapshot data;
+  moved it out of the unbuilt table/enum inventories. Demo/volume generator versions are now 11/16
+  because persisted seed state changes. Historical seed and performance evidence stays dated.
+- Verification: **433 engine/architecture tests passed**, with the existing Q-11 accounting-review
+  xfail unchanged; **107 persistence/privacy/snapshot/demo-policy tests passed**; **47 combined
+  migration-head/performance/persistence tests passed**. Source Mypy and Ruff lint/format pass.
+  **66 PostgreSQL calculation, isolation, immutability and migration tests passed**, including
+  upgrade/downgrade/upgrade and schema lint. These are targeted checks, not a whole-backend pass.
+- Balance aging remains unavailable: its builder still uses the interim subledger source and needs
+  a layer projection, asset/unbilled presentation and historical-version handling. Prior versions have
+  no backfilled movement set. The negative-liability monitor still uses aggregate balances and needs
+  a layer-level collector. Full-backend verification and independent accounting sign-off remain open.
+  Repository work only; no deployment.

@@ -88,10 +88,10 @@ def test_every_handler_resolves_on_main(plans: dict[str, CommandPlan]) -> None:
 
 def test_every_plan_starts_at_the_wired_runner(plans: dict[str, CommandPlan]) -> None:
     """PLAT-G4-1: the RUNNER marker names the built ``platform_runner.run_platform`` and carries no
-    gap; four keys stop nowhere before the database, POS-CHK-117 at its report gap."""
+    gap; all five supported keys reach the database."""
     for item in plans.values():
         assert item.steps[0].phase == "RUNNER" and item.steps[0].gap is None
-        assert item.first_stop == ("none" if item.key_id != POS_117 else item.gaps[0])
+        assert item.first_stop == "none"
         assert (
             item.steps[1].phase == "PROVISION" and item.steps[1].detail["database"] == "erev_test"
         )
@@ -501,16 +501,13 @@ def test_checkpoint_blocks_name_their_reads_and_runs(plans: dict[str, CommandPla
 
 
 def test_gaps_per_key(plans: dict[str, CommandPlan]) -> None:
-    """Where each key stops (PLAT-G4-1: the runner gap is retired): four keys have no gap before
-    the database; POS-CHK-117 needs the balance_aging builder (RPS-12) over persisted layers
-    (CTR-14); no plan needs lock, reopen or close-run commands."""
+    """All five supported keys have no implementation gap before database execution."""
     assert plans[POS_012].gaps == ()
     assert plans[DLT].gaps == ()
     assert plans[EX21].gaps == ()
     assert plans[EX42].gaps == ()
-    assert len(plans[POS_117].gaps) == 1
-    assert plans[POS_117].gaps == ("RPS-12: balance_aging builder is not registered",)
-    assert "balance_aging" not in framework.BUILDERS
+    assert plans[POS_117].gaps == ()
+    assert "balance_aging" in framework.BUILDERS
     for item in plans.values():
         assert not any("CLO-6" in gap or "CLO-7" in gap or "CLO-19" in gap for gap in item.gaps)
 
@@ -521,7 +518,7 @@ def test_report_gaps_name_unregistered_builders_only() -> None:
     entry to its refusal without asking the framework). ``contract_cost_rollforward`` (RPS-12) and
     ``revenue_from_prior_period_obligations`` (EDS-4 / RPS-3) are registered and have none."""
     assert not set(REPORT_GAPS) & set(framework.BUILDERS)
-    assert set(REPORT_GAPS) == {"balance_aging"}
+    assert not REPORT_GAPS
     for code in ("contract_cost_rollforward", "revenue_from_prior_period_obligations"):
         assert code in framework.BUILDERS
         assert code not in REPORT_GAPS

@@ -297,13 +297,13 @@ def test_every_registered_live_builder_states_its_source_contract() -> None:
     strategy, what its adapter binds and what stays OPEN; an empty capture is never 'complete'."""
     assert set(framework.SOURCE_CONTRACTS) == set(framework.BUILDERS)
     assert (
-        len(framework.BUILDERS) == 37
+        len(framework.BUILDERS) == 38
     )  # 15 at the design + ENG-C6's two E-64 producers (7bf044a5) + F-CTR's modification_register
     # (CTR-17 slice 1, D-98 140-A1) + F-CLO's manual_adjustment_register (RPS-8 RPT-18; S15-R-20d)
     # + the four SSP reports of BUILD_SPEC RPS-9 (RPT-19 to RPT-22; lane F-RPS-REG) + the six
     # registers of BUILD_SPEC RPS-10 (RPT-23 to RPT-26, RPT-43, RPT-44; lane F-RPS-REG) + the
     # three registers of BUILD_SPEC RPS-11 (RPT-28 to RPT-30; RPT-31 waits for CTR-14) + the
-    # three analysis reports of BUILD_SPEC RPS-12 (RPT-33 to RPT-35; RPT-36 waits for its source)
+    # three analysis reports of BUILD_SPEC RPS-12 (RPT-33 to RPT-36, including persisted aging)
     # + the late-entry report of BUILD_SPEC RPS-8 (RPT-17; lane F-RPS-REG)
     for code in ("je_population", "out_of_period_register", "modification_register"):
         assert framework.SOURCE_CONTRACTS[code].strategy == OPEN, code

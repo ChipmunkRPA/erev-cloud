@@ -643,12 +643,8 @@ def test_balance_aging_chk_010(
     contract asset 2,000.00, both in the 0 to 30 day bucket (the revenue arose in the period);
     the totals equal the balances, ``TO_AGING_EQ_BALANCES`` passes (REQ-BIL-013).
 
-    BLOCKED (lane F-RPS-REG, 2026-09-30): the contract is built through the product's commands
-    and carries the balances, but ``balance_aging`` is not registered, so the run is refused with
-    "This report is not available yet." Its interim source, the T-SL-04 subledger (ruling Q-2),
-    holds no JET-06 line before a close run posts the netting reclass (05 RCP-08 (b); CLO-19,
-    CLO-20) and no invoice credit under ``billing.posting = ERP``; T-CON-18 is not persisted
-    before CTR-14. The assertions are the acceptance in full and stand until the source exists."""
+    October 7: the registered builder reads persisted liability movements and engine
+    presentation attributions without requiring a close-run journal."""
     world = chk_010_position(app, keyring, clock, files)
     run, rows = report_run(
         world,
@@ -680,3 +676,63 @@ def test_balance_aging_chk_010(
     assert tie["result"] == "PASS"
     assert tie["expected"] == tie["actual"] == [usd("5000.00")]
     assert run["control_totals"] == {"total": {"USD": "5000.00"}}
+    headers = file_outputs(
+        world,
+        "balance_aging",
+        {"entity_codes": [US01], "book": "ASC606", "period_key": "FY2026-P01"},
+    )
+    assert headers[:5] == ["Contract", "Customer", "Entity", "Balance", "Currency"]
+
+
+def test_balance_aging_rerun_keeps_versions_after_later_billing(
+    app: FastAPI, keyring: KeyRing, clock: FrozenClock, files: LocalFileStore
+) -> None:
+    from erev_api.db.tables import contract
+    from erev_api.enums import ContractEventType
+    from erev_api.events.payloads import BillingRecordedV1
+    from erev_api.events.stream import EventIn
+    from support.factories import appended, computed
+    from support.reference import get, post
+    from support.worlds import REPORT_RUN_ID_HEADER, run_now
+
+    world = chk_010_position(app, keyring, clock, files)
+    parameters = {"entity_codes": [US01], "book": "ASC606", "period_key": "FY2026-P01"}
+    original, rows = report_run(world, "balance_aging", parameters)
+    booked = world.contracts[C_POS]
+    contract_id = UUID(str(booked.contract["id"]))
+    head = world.place.scalar(
+        select(contract.c.head_stream_version).where(contract.c.id == contract_id)
+    )
+    appended(
+        world.place,
+        contract_id,
+        int(head),
+        [
+            EventIn(
+                event_type=ContractEventType.BILLING_RECORDED,
+                effective_date=date(2026, 1, 31),
+                payload=BillingRecordedV1.model_validate(
+                    {
+                        "invoice_number": "INV-AGING-LATER",
+                        "line_external_id": "INV-AGING-LATER-1",
+                        "obligation_key": "P1-TM",
+                        "amount": {"amount": "5000.00", "currency": "USD"},
+                        "issue_date": "2026-01-31",
+                    }
+                ),
+            )
+        ],
+    )
+    computed(world.place, UUID(str(booked.combination_group["id"])))
+    current, current_rows = report_run(world, "balance_aging", parameters)
+    assert current_rows != rows
+    assert tie_of(current, "TO_AGING_EQ_BALANCES")["result"] == "PASS"
+    started = post(app, f"{REPORT_RUNS}/{original['id']}/rerun", world.maya, {})
+    assert started.status_code == 202, started.text
+    finished = run_now(world, UUID(str(started.json()["id"])))
+    assert finished["state"] == "SUCCEEDED", finished
+    assert finished["result"]["output_sha256_equal"] is True
+    rerun_id = started.headers[REPORT_RUN_ID_HEADER]
+    data = get(app, f"{REPORT_RUNS}/{rerun_id}/data", world.maya, {"limit": "200"})
+    assert data.status_code == 200, data.text
+    assert data.json()["items"] == rows

@@ -115,7 +115,7 @@ def test_catalogue_definitions_match_the_builders() -> None:
     # CTR-14 has not persisted the catalogue sources: the interim subledger source stands
     # (ruling Q-2).
 
-    # Revision 0131 supplies liability layers; asset presentation remains a registration gap.
+    # Revision 0131 supplies liability layers; T-ENG-03 supplies asset presentation.
     assert hasattr(tables, "fx_layer_movement")
     for name in ("contract_cost_asset", "cost_asset_version"):
         assert not hasattr(tables, name), (
@@ -125,8 +125,8 @@ def test_catalogue_definitions_match_the_builders() -> None:
 
 
 def test_registration_readiness() -> None:
-    """Both builders satisfy the RPS-2 contract shape. `balance_aging` stays out of
-    `framework.BUILDERS` until its database tests pass in an admitted run (ruling Q-2);
+    """Both builders satisfy the RPS-2 contract shape. Balance aging is registered after
+    its database source and acceptance verification;
     `contract_cost_rollforward` is registered by the supervisor's RPS-12 dispatch (D-98 85, lane
     ENG-C8; its DB path is exercised by the admitted database test) with its non-false default
     named in PARAMETER_DEFAULTS (D-87 L6-3-Q-29)."""
@@ -138,6 +138,6 @@ def test_registration_readiness() -> None:
         assert module.CODE in DEFINITIONS_BY_CODE
         keys = [column.key for column in module.COLUMNS]
         assert len(set(keys)) == len(keys) and "row_key" not in keys
-    assert aging.CODE not in framework.BUILDERS
+    assert framework.BUILDERS[aging.CODE] is aging.build
     assert framework.BUILDERS[costs.CODE] is costs.build
     assert framework.PARAMETER_DEFAULTS[costs.CODE] == {"currency_view": "functional"}

@@ -209,7 +209,7 @@ def test_report_blocks_are_db_bound(results: dict[str, PlatformRunResult]) -> No
     (aging,) = [
         block for block in pos_117.checkpoints[0].blocks if block.block.startswith("reports")
     ]
-    assert "RPS-12" in (aging.reason or "") and "CTR-14" in (aging.reason or "")
+    assert "databases not provisioned" in (aging.reason or "")
 
 
 def test_ex42_compares_clean_and_its_rpo_report_is_db_bound(

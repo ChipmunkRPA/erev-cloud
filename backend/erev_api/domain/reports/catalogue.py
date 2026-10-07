@@ -1610,6 +1610,7 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
         },
         sources=(
             "fx_layer_movement",
+            "calc_trace",
             "contract_version_balance",
             "contract",
             "customer",
@@ -1625,7 +1626,8 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             _SCOPE,
             _BOOK,
             "non-zero balances at the end of period_key",
-            "age: days from fx_layer_movement.effective_date to the end of period_key",
+            "liability age: layer creation date to period end",
+            "asset/unbilled age: engine attribution revenue date to period end",
             "balance_role when not ALL",
         ),
         tie_outs=("TO_AGING_EQ_BALANCES",),
