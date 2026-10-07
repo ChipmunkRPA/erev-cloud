@@ -1268,7 +1268,7 @@ def _pinned(book: BookInput) -> Mapping[str, Mapping[str, str]]:
     """T-CON-08 ``pinned_policies``: POL key -> {value, level, source_id} of the widest scope."""
     found: dict[str, Mapping[str, str]] = {}
     for policy in book.policies:
-        if policy.scope == "PRODUCT":
+        if policy.scope in {"PRODUCT", "CONTRACT_PERIOD"}:
             continue
         if policy.code in found and policy.scope != "GROUP":
             continue

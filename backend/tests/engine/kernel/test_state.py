@@ -207,3 +207,52 @@ def test_finding_order_cv_43() -> None:
         (5, "SSP_KEY_NOT_FOUND", None, {"sku": "A"}),
         (5, "SSP_KEY_NOT_FOUND", None, {"sku": "B"}),
     ]
+
+
+def test_contract_period_exception_is_isolated_and_falls_back_to_entity() -> None:
+    from erev_engine.bundle import contract_period_key
+
+    code = "fx.cl_historical_layering"
+    resolver = PolicyResolver(
+        _sorted(
+            _policy(code, "PERIOD", "US@SEP", "ENABLED", pin="P"),
+            _policy(code, "PERIOD", "US@OCT", "ENABLED", pin="P"),
+            _policy(code, "PERIOD", "UK@SEP", "ENABLED", pin="P"),
+            _policy(
+                code,
+                "CONTRACT_PERIOD",
+                contract_period_key("A", "US", "SEP"),
+                "DISABLED_REMEASURE_AS_MONETARY",
+                pin="P",
+                level="C",
+            ),
+        )
+    )
+    assert (
+        resolver.value(code, contract="A", entity="US", period="SEP")
+        == "DISABLED_REMEASURE_AS_MONETARY"
+    )
+    for contract, entity, period in [("B", "US", "SEP"), ("A", "UK", "SEP"), ("A", "US", "OCT")]:
+        assert resolver.value(code, contract=contract, entity=entity, period=period) == "ENABLED"
+    assert resolver.value(code, entity="US", period="SEP") == "ENABLED"
+    with pytest.raises(ValueError, match="period-scoped"):
+        resolver.value(code, contract="A")
+    assert contract_period_key("A@B", "C", "D") != contract_period_key("A", "B@C", "D")
+    assert contract_period_key('A", "B', "C", "D") != contract_period_key("A", 'B", "C', "D")
+
+
+@pytest.mark.parametrize("pin,level", [("K", "C"), ("P", "E")])
+def test_contract_period_scope_rejects_wrong_pin_or_authority(pin: str, level: str) -> None:
+    with pytest.raises(ValueError):
+        PolicyResolver(
+            (
+                _policy(
+                    "fx.cl_historical_layering",
+                    "CONTRACT_PERIOD",
+                    "scope",
+                    "ENABLED",
+                    pin=pin,
+                    level=level,
+                ),
+            )
+        )

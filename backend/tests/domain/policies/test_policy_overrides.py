@@ -1144,3 +1144,41 @@ def test_financing_override_changes_real_deferred_payment_calculation(
         assert before.contract_version.columns["transaction_price"] == 9_000_000
         assert 0 < after.contract_version.columns["transaction_price"] < 9_000_000
     assert any(p.source_ref == override_id for book in bundle.books for p in book.policies)
+
+
+def test_period_override_bundle_retains_entity_default_and_framework_force(
+    app: FastAPI, keyring: KeyRing, clock: FrozenClock, files: LocalFileStore
+) -> None:
+    # Authoring remains disabled until the FX layer reader uses the contract scope.
+    world = k11_world(app, keyring, clock, files)
+    booked = delivered_k11(world)
+    code = "fx.cl_historical_layering"
+    identifier = drafted_override(
+        world.place, booked.contract["id"], code, "DISABLED_REMEASURE_AS_MONETARY"
+    )
+    sent = post(app, f"{POLICY_OVERRIDES}/{identifier}/submit", world.place.author, {})
+    assert sent.status_code == 200, sent.text
+    approved = approve(app, str(sent.json()["approval_request_id"]), world.marcus)
+    assert approved.status_code == 200, approved.text
+    bundle, result, _ = computed(world.place, booked.combination_group["id"])
+    for output in result.books:
+        assert output.contract_version is not None
+        pinned = output.contract_version.columns["pinned_policies"]
+        assert pinned[code]["source_id"] != str(identifier)
+    for book in bundle.books:
+        scoped = [p for p in book.policies if p.code == code and p.scope == "CONTRACT_PERIOD"]
+        defaults = [p for p in book.policies if p.code == code and p.scope == "PERIOD"]
+        assert defaults and all(p.value == "ENABLED" for p in defaults)
+        if book.book_code == "ASC606":
+            assert scoped and all(p.source_ref == str(identifier) for p in scoped)
+            assert all(p.pin == "P" and p.level == "C" for p in scoped)
+        else:
+            assert not scoped
+    refused = post(
+        app,
+        POLICY_OVERRIDES,
+        world.place.author,
+        _override(booked.contract["id"], code, "DISABLED_REMEASURE_AS_MONETARY"),
+    )
+    assert refused.status_code == 422, refused.text
+    assert any(e["rule_id"] == NOT_OFFERED_RULE for e in refused.json()["errors"])

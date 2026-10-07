@@ -22,6 +22,9 @@ contract exception, broader product readers and platform answer-key coverage
 remain open. The workbench now supports draft creation, submission and status for these two keys;
 optional reviewed-judgement attachment is still API-only. Historical statements
 below that *no computation reads an override* describe the October 3 release, not this continuation.
+The contract-period isolation foundation for POL-163 now preserves entity defaults, historical
+approval cutoffs and forced IFRS15 treatment. Its liability-layer consumption and remeasurement
+readers are not yet connected, so POL-163 public creation remains disabled.
 The owner has limited current work to repository completion and explicitly excluded deployment.
 
 The file has three classes and two tables beside them:

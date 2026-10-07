@@ -3154,12 +3154,35 @@ def _assemble(
             entities=entities,
             entity_ids={code: UUID(str(row["id"])) for code, row in entity_rows.items()},
             known=known_versions,
-            overrides=policy_inputs.scoped_inputs(
-                override_rows,
-                book_code=book_code,
-                contracts=external_ids,
-                obligations=obligation_rows,
-                lines=lines,
+            overrides=(
+                *policy_inputs.scoped_inputs(
+                    override_rows,
+                    book_code=book_code,
+                    contracts=external_ids,
+                    obligations=obligation_rows,
+                    lines=lines,
+                ),
+                *policy_inputs.period_scoped_inputs(
+                    override_rows,
+                    book_code=book_code,
+                    contracts={
+                        UUID(str(member["id"])): (
+                            str(member["external_id"]),
+                            entity_codes[UUID(str(member["contracting_entity_id"]))],
+                        )
+                        for member in members
+                    },
+                    period_cutoffs=[
+                        (
+                            entity.code,
+                            item.period_key,
+                            period_end_instant(item.end_date, entity.time_zone),
+                        )
+                        for entity in entities
+                        for item in entity.periods
+                    ],
+                    known_at=known_at,
+                ),
             ),
             known_at=known_at,
             pinned=(
