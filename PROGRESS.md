@@ -1,5 +1,28 @@
 # PROGRESS — eRev Cloud build loop notebook (under 20 KB)
 
+## Backend baseline and supported override fixture — October 7, 2026
+
+- Continued from main `3281f29`. The detached `ed6ea75` backend run finished with
+  **2,959 passed, one failed, one expected Q11 failure and 640 deselected**, stopping at
+  the first failure after 3,649.31 seconds. It excluded parity, answer-key and performance
+  markers and did not cover PRs #27–29. This supersedes the earlier “still live” notes below;
+  it is not a completed passing backend gate.
+- The failed computation-cutoff case directly inserted an expected-returns override without
+  a return estimate. Approved overrides now reach the engine, which correctly quarantined
+  the fresh retry with `RETURN_ESTIMATE_MISSING`. The fixture now creates a supported
+  POL-122 conditional-right override through the public API and obtains independent approval.
+  It retains the stale-computation refusal and clean successful retry checks, and adds an
+  unchanged-ledger assertion. No application behavior or accounting oracle was changed.
+- **15 PostgreSQL computation-cutoff tests passed** in 76.47 seconds on the current source.
+  Ruff lint/format with the repository configuration and whitespace checks pass. Secret scan:
+  3,391 files, zero findings. This is scoped verification, not a green whole-backend gate.
+- Repository settings enable automatic merge and deletion of merged branches. At the start
+  of this slice, GitHub had only main and no open PRs. Verified changes continue through a
+  temporary PR branch, merged into main and removed after review. No deployment.
+- Remaining work includes the broader backend/specialist verification, B1-10 identity-bound
+  close-gate waivers, the other documented limitations and independent accounting sign-off.
+  Archived the earlier originating-contract FX section verbatim to keep this file under 20 KB.
+
 ## Estimate FX approval drift — October 7, 2026
 
 - Continued from main `252c5d9`. Reproduced B1-7: EUR 46,000 was routed with one reviewer
@@ -165,35 +188,6 @@
   or accounting sign-off occurred. This packet is not an approval.
 - Earlier continuation entries were moved unchanged to the dated build history to keep this
   notebook below 20 KB. Publication exclusions and PolyForm Noncommercial licensing are retained.
-
-## Originating-contract FX layers — October 7, 2026
-
-- GitHub writes recovered. PR #6 merged into main (`5e74ea3`); its temporary branch was removed.
-  The next slice connects the scoped policy input to the layer readers. No deployment.
-- Liability layers retain the originating contract through ordinary credits and monetary releases.
-  Consumption and period-end remeasurement resolve that contract's policy, even when another
-  member's revenue consumes the layer through group FIFO. Encoded external identifiers are decoded
-  after structural separators, preserving literal escape-like text.
-- Mixed-member regressions cover either member's exception, ordinary/encoded identifiers, ASC606
-  and IFRS15, and transaction/functional tie-outs. A later-period approval leaves the earlier
-  historical period intact. The database regression uses real approval, computation and the real
-  close FX pass: GBP 5,400 liability remeasurement is sealed once at the September closing rate;
-  repeated passes and a recomputation add no duplicate. COMMAND correctly leaves TIME journals to
-  the close pass. The test does not claim the whole close job or all gates were exercised.
-- Actual verification: **571 FX, posting and architecture tests passed**, plus **4 PostgreSQL
-  FX journal regressions**. Mypy passed for all three changed source files; Ruff lint/format and
-  whitespace checks passed. These are targeted checks, not full-backend readiness evidence.
-- Both excluded research directories remain absent from tracked files; root ignore rules now
-  cover the whole directories, preventing accidental republication of more than just screenshots.
-- Known transition defect reproduced locally: EUR 12,000 credited at 1.10 is carried at USD 13,440
-  after a monetary January closing rate of 1.12. Returning to historical treatment and fully
-  releasing in February recognizes USD 13,200, removes the open layer and leaves USD 240 of
-  cumulative FX unreconciled. No accounting treatment has been invented for this transition.
-  Public POL-163 creation remains disabled pending its correction, close invalidation checks,
-  authoring validation and independent accounting review. C-2 remains partial.
-
-Earlier October 7 policy-isolation and workbench evidence is archived verbatim in
-[BUILD-HISTORY-2026-10-07.md](docs/release/BUILD-HISTORY-2026-10-07.md).
 
 ## Public repository publication — October 5, 2026 (America/Los_Angeles)
 
