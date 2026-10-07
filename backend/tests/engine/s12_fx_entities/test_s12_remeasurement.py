@@ -21,6 +21,7 @@ from erev_engine import ENGINE_VERSION
 from erev_engine.bundle import FxRateInput
 from erev_engine.dates import month_end
 from erev_engine.enums import BookCode
+from erev_engine.errors import EngineError
 from erev_engine.money import round_half_up
 from erev_engine.stages import s12_fx_entities
 from erev_engine.stages.s12_fx_entities import (
@@ -1068,3 +1069,36 @@ def test_later_period_exception_does_not_remeasure_prior_period_layer_balance() 
     assert _open(state, "FY2026-P01") == [(layer, 1200000, 1320000)]
     assert _open(state, "FY2026-P02") == [(layer, 1200000, 1380000)]
     assert _remeasured(state, "JET-10b", "CONTRACT_LIABILITY") == {"FY2026-P02": 60000}
+
+
+@pytest.mark.parametrize("released", ["0.00", "6000.00", "12000.00"])
+@pytest.mark.parametrize("closing", ["1.1200", "1.0800"])
+def test_return_to_historical_basis_cannot_hide_a_carrying_residue(
+    released: str, closing: str
+) -> None:
+    ctx = _contract_period_policy(_context(months=2), CONTRACT_KEY, "FY2026-P01")
+    control = [_invoice(2, date(2026, 1, 1), "12000.00")]
+    if released != "0.00":
+        control.append(_release(SERVICES, date(2026, 2, 28), released))
+    with pytest.raises(EngineError) as refused:
+        _run(
+            ctx,
+            [
+                _spot(date(2026, 1, 1), "1.1000"),
+                _period_rate("closing", 1, closing),
+                _period_rate("average", 2, "1.1500"),
+            ],
+            control=control,
+        )
+    error = refused.value
+    expected = 1320000 - usd(released) * 11 // 10
+    residue = 24000 if closing == "1.1200" else -24000
+    assert error.code == "ENGINE_INVARIANT_VIOLATED"
+    assert error.subject_key == f"CONTRACT_LIABILITY:{_event(2)}"
+    assert error.detail == {
+        "rule": "S12-INV-01" if released == "12000.00" else "S12-R-05",
+        "period_key": "FY2026-P02",
+        "txn_open": str(1200000 - usd(released)),
+        "carrying": str(expected + residue),
+        "expected_carrying": str(expected),
+    }

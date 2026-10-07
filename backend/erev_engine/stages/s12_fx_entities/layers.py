@@ -33,6 +33,7 @@ from typing import Final
 
 from erev_engine import dates
 from erev_engine.enums import BookCode
+from erev_engine.errors import EngineError
 from erev_engine.formulas import rational_param
 from erev_engine.money import cumulative_posted, largest_remainder
 from erev_engine.stages.s01_canonicalize import group_entity_subject_key
@@ -1051,6 +1052,34 @@ class UnitBook:
         """Snapshot open layers, check S12-INV-03 and publish the cumulative targets."""
         net = 0
         for layer in self.layers.values():
+            # A zero transaction balance cannot hide a functional residue. Historical
+            # liability relief also needs the historical basis of its remaining quantity;
+            # a prior monetary period may have left a different carrying amount.
+            expected_carrying: int | None = None
+            if layer.txn_open == 0:
+                expected_carrying = 0
+            elif layer.role == CONTRACT_LIABILITY and not self.cl_monetary(
+                period.end_date, layer.contract_key
+            ):
+                expected_carrying = layer.fn_original - cumulative_posted(
+                    Fraction(layer.fn_original, 10**self.mu_fn),
+                    layer.fn_original,
+                    Fraction(layer.consumed, layer.txn_original),
+                    self.mu_fn,
+                )
+            if expected_carrying is not None and layer.fn_carrying != expected_carrying:
+                raise EngineError(
+                    "ENGINE_INVARIANT_VIOLATED",
+                    "FX layer carrying amount does not reconcile; review the policy transition",
+                    subject_key=layer.key,
+                    detail={
+                        "rule": "S12-INV-01" if layer.txn_open == 0 else "S12-R-05",
+                        "period_key": period.period_key,
+                        "txn_open": str(layer.txn_open),
+                        "carrying": str(layer.fn_carrying),
+                        "expected_carrying": str(expected_carrying),
+                    },
+                )
             if layer.txn_open == 0:
                 continue
             self.balances.append(

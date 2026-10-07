@@ -1,5 +1,34 @@
 # PROGRESS — eRev Cloud build loop notebook (under 20 KB)
 
+## FX transition refusal and close-policy inputs — October 7, 2026
+
+- PR #7 merged into main (`dc1c116`). Current work continues from that revision; no deployment.
+- Added the missing functional-layer validation before a calculation can emit output. A fully
+  consumed layer must carry zero; an open historical contract-liability layer must carry its
+  remaining original historical basis. Positive and negative residues, partial releases and no
+  release all refuse with the layer, period and expected/actual amounts identified.
+- The reproduced monetary-to-historical defect is now blocked, **not implemented as a supported
+  transition**. A PostgreSQL regression verifies the refused recomputation leaves the previous
+  calculation head and journal lines intact and keeps the group dirty. Public POL-163 authoring
+  remains disabled pending reviewed transition treatment and remaining approval/close validation.
+- Close-run policy digests now include effective contract exceptions through the same period-scoped
+  resolver used by bundles, under tenant scope. Drafts, same-value approvals, approvals after the
+  entity-local period end and IFRS-forced treatment do not alter the digest. Existing digests are
+  unchanged when no exception differs from the entity default.
+- A real database close job records the old inputs, an effective approval makes its gate fail,
+  and the next close job recomputes and records the new inputs. The prior period remains valid;
+  the asset-position fixture needs no monetary adjustment or duplicate journal. Approval/lock
+  concurrency still needs focused review; these tests do not certify the whole close workflow.
+- Actual verification: **578 FX engine, posting, property and architecture tests passed**;
+  **22 database and close-input unit tests passed**. Mypy passed both source files. Ruff lint,
+  formatting and whitespace checks passed. No full-backend or production-readiness claim.
+- Added `docs/release/ACCOUNTING-REVIEW.md` with the measured case, required decisions about
+  correction versus a change in refund rights, economic timing, basis/rates and closed periods,
+  and a pending independent-sign-off record. Reviewer identity was requested; no external contact
+  or accounting sign-off occurred. This packet is not an approval.
+- Earlier continuation entries were moved unchanged to the dated build history to keep this
+  notebook below 20 KB. Publication exclusions and PolyForm Noncommercial licensing are retained.
+
 ## Originating-contract FX layers — October 7, 2026
 
 - GitHub writes recovered. PR #6 merged into main (`5e74ea3`); its temporary branch was removed.
@@ -78,115 +107,6 @@
   answer-key coverage, and an optional reviewed-judgement attachment selector in this drawer (the
   API already accepts and validates that link). Wider outstanding items remain in LIMITS-1.0.md.
   Current scope remains repository completion; no deployment or provisioning.
-
-## Validated policy override API — October 7, 2026
-
-- PR #3 merged into public main (`6bca309`). Work continues on
-  `codex/policy-override-authoring` from that merge.
-- Enabled public draft creation for POL-122 (`balance.right_to_consideration`) at obligation scope
-  and POL-047 (`sfc.discount_rate_basis`) at contract scope. Validate the registry schema, obligation
-  ownership, nonblank rationale, mathematically valid periodic rate, and any linked reviewed
-  same-contract judgement before storing a draft. Other policy keys retain the named refusal.
-- Submission and approval recheck linked judgement validity. Approval locks group, contract and
-  override before superseding the prior approval; creator/editor exclusions from PR #3 apply.
-- Regressions use public creation through approval and calculation: POL-122 reclassifies balances
-  and an approved successor reverses it; POL-047 reaches a real deferred-payment calculation
-  following a reviewed financing assessment, activation and delivery. A successor corrects the
-  inception rate and changes transaction price. Validation failures store no draft or approval;
-  unsupported keys and entity-permission boundaries remain covered.
-- Actual local verification: 304 policy, product-pinning, unit and architecture tests passed.
-  All 15 final policy-domain tests passed again after adding entity-permission and valid judgement-link
-  assertions. Mypy passed for both source files; Ruff lint/format, OpenAPI staleness and whitespace
-  checks passed. Refreshed OpenAPI and generated frontend types. These are targeted checks, not a
-  full-backend or production-readiness claim.
-- C-2 remains partial: frontend authoring, POL-163 period-scoped exceptions, broader product
-  readers and the database answer-key runner remain open. The wider C-3–C-17 backlog remains in
-  `docs/release/LIMITS-1.0.md`. Repository completion only: no deployment, provisioning or live
-  release certification is part of this work.
-
-## Draft authors excluded from approval — October 7, 2026
-
-- PR #2 was merged into public main (`4eecb0f`). The next work is on
-  `codex/approval-author-exclusions`, addressing B1-14 / the authorship part of C-6.
-- Approval subjects now exclude their draft's creator and successful content editors in addition
-  to the submitter. The shared kernel applies the same exclusions to direct decisions, delegated
-  authority, eligibility reads and notifications. SYSTEM writes preserve the human recorded in
-  audit `on_behalf_of_id`; denied/failed audit events do not establish authorship.
-- Attribution reviewed against each named subject:
-
-  | Subject | Author evidence |
-  | --- | --- |
-  | Estimate version | Creator plus successful create/update audit actors and represented users |
-  | Policy override | Creator plus successful creation audit attribution |
-  | Modification | Creator plus successful create/update/classify audit attribution |
-  | Manual event / attribute-change submission | Stored submission creator; inline author is also submitter |
-  | Direct FX rate version | Creator plus successful version edits; imported versions retain uploader exclusion |
-  | Principal/agent proposal | Authored and submitted in one command; request preparer is the proposal author |
-  | SSP override proposal | Authored and submitted in one command; request preparer is the proposal author |
-
-- Initial domain verification: 130 tests passed, one existing parity-entry-point skip, across policy
-  overrides, FX, FX imports, estimates, modifications, manual events and the approval engine.
-  Architecture plus approval-unit suites: 505 passed. After SYSTEM-attribution hardening,
-  23 focused domain/product/SSP tests passed, including separate draft authors and submitters,
-  delegated decisions and direct-entry FX editors. All 238 approval-unit tests passed again on the
-  final source. Mypy passed for both source files; Ruff
-  lint/format and whitespace checks passed. This closes B1-14; the other C-6 controls remain open.
-- Next: validated policy-override authoring and its real calculation workflows (C-2). No
-  independent accounting sign-off or full-backend/CI claim is made by these targeted checks.
-- Archived the earlier build-loop record unchanged into
-  `docs/release/BUILD-HISTORY-2026-10-07.md`; the active progress file is again below 20 KB.
-  Historical evidence remains dated. No deployment or provisioning.
-
-## Repository-only scope and policy calculation continuation — October 7, 2026
-
-- Owner clarified the scope: finish the repository; do not deploy or provision anything. Cloud
-  project/domain inputs are not needed for this work. Independent accounting review and operational
-  release gates remain documented requirements for an eventual operator, not tasks to perform here.
-- Import recovery PR #1 was merged into public main (`a83b1dd`). Work continues on
-  `codex/policy-override-calculation` from that merge.
-- C-2 calculation foundation: approved contract-pinned overrides now reach bundle assembly as of
-  its cutoff, with obligation > contract > product precedence and member isolation. Draft and
-  future approvals are excluded; superseded rows support historical cutoffs. Current approval
-  wins deterministic timestamp ties in both the resolver API and bundle reader.
-- Fixed two pinning hazards: a scoped value is never promoted to a group default on recomputation;
-  a shadowed product default is retained as PRODUCT-scope bundle metadata for subsequent product
-  pinning. PRODUCT metadata is not a contract lookup candidate and is not a group policy pin.
-- A PostgreSQL regression uses the real submit/approve/compute/persist path: POL-122 changes earned
-  unbilled balances from contract assets to receivables without changing their sum; repeated
-  computation preserves scope, and an approved successor restores the conditional classification.
-  The draft row is seeded by the fixture because public creation remains disabled.
-- Actual verification: 50 tests passed across policy domain, product-pin domain/unit, scoped-input
-  unit and engine kernel suites; all 267 architecture tests passed. Mypy passed for six changed
-  source files; Ruff lint/format and git whitespace checks passed. An additional 346 transaction-price,
-  balance-engine and scoped-input tests passed. All checks were local; no cloud services used.
-- C-2 remains open: public authoring validation and approval controls, POL-163 period-scoped
-  exception handling, a full significant-financing workflow and the platform answer-key runner
-  still need completion. This is calculation infrastructure, not a claim that policy overrides
-  are available in the UI or that the repository is production-ready. No deployment performed.
-
-## Continuation — October 7, 2026 (America/Los_Angeles)
-
-- Branch `codex/import-job-recovery`, based on public main `43631fc`. Closed the implementation
-  of B5-3 / C-1 on this branch: a failed import commit waits for a competing upload-row lock;
-  if cleanup times out or fails, its required failure hook rolls settlement back for the job
-  sweeper to retry. Cancelling a queued import commit now ends its upload atomically, releasing
-  its source for a fresh upload. A late dispatch cannot commit the cancelled job.
-- Added four PostgreSQL regression tests covering held rows, queued cancellation/re-upload,
-  cancellation rollback and cleanup-timeout recovery. Both original bug cases reproduced on
-  unmodified application source before the fix. Actual verification: 52 tests passed across
-  import transient-failure, job domain/API and registry unit suites; the expanded re-upload test
-  passed separately. All 267 architecture tests passed. Mypy passed for all four changed source
-  files; Ruff lint/format and git whitespace checks passed.
-- Tests used a newly initialized, disposable PostgreSQL 17 cluster on localhost port 55437 and
-  database `erev_rv_cont`, with separate unprivileged owner/app roles and ignored fresh local keys.
-  No existing database, deployment or external provider was used. Dependencies installed from
-  the frozen backend lockfile. No schema migration or accounting calculation changes.
-- This prevents new stranded commits; it does not bulk-repair historical terminal jobs. All other
-  limitations and October 3 test failures remain historical and unresolved unless stated here.
-  Full backend/CI, live deployment, accounting review and volume performance were not rerun.
-- Next implementation item: C-2, policy overrides that actually reach calculation, including
-  POL-122 and the significant-financing rate path. Independent accounting decisions remain reviewer work; hosted inputs are outside the
-  owner's clarified repository-only scope. Research folders and removed website references stay excluded.
 
 ## Public repository publication — October 5, 2026 (America/Los_Angeles)
 

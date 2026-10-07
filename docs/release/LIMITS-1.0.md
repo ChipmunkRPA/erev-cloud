@@ -26,9 +26,11 @@ The contract-period isolation foundation for POL-163 now preserves entity defaul
 approval cutoffs and forced IFRS15 treatment. Liability layers now retain their originating
 contract and use that contract's period policy for consumption and remeasurement. A real close-pass
 regression verifies the persisted FX journal and repeat-run idempotency. POL-163 public creation
-remains disabled: monetary-to-historical transitions can discard a residual functional carrying
-amount when a layer is fully relieved. This transition, close invalidation and authoring remain
-unresolved; this continuation does not certify the full policy workflow.
+remains disabled: monetary-to-historical transitions require a reviewed treatment and effective-date
+model. Unreconciled carrying amounts now refuse calculation before changing the stored calculation
+or ledger. Close-run policy comparisons include effective contract exceptions, with real close-job
+coverage; approval/lock concurrency and authoring remain to verify. See `ACCOUNTING-REVIEW.md`
+for the pending accounting decision and sign-off record. This is not a complete policy workflow.
 The owner has limited current work to repository completion and explicitly excluded deployment.
 
 The file has three classes and two tables beside them:
