@@ -384,7 +384,7 @@ BUILDERS: Final[Mapping[str, Builder]] = MappingProxyType(
         chain_verification_report_builder.CODE: chain_verification_report_builder.build,
         # BUILD_SPEC RPS-11 (SCREENS_B §5.6.2 RPT-28 to RPT-30; lane F-RPS-REG): the judgement,
         # estimate-change and scope-exclusion registers (30 → 33). RPT-31 loss_provision_register
-        # stays unregistered: its source T-CON-17 is not persisted before CTR-14.
+        # stays unregistered pending its projection and the loss-test modification discrepancy.
         judgement_register_builder.CODE: judgement_register_builder.build,
         estimate_change_listing_builder.CODE: estimate_change_listing_builder.build,
         scope_exclusion_register_builder.CODE: scope_exclusion_register_builder.build,

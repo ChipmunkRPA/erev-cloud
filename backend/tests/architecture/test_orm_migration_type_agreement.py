@@ -118,6 +118,8 @@ SKIPPED_HEADS = (
 )
 # ``ALTER TABLE`` verbs that never change a column's tuple.
 SKIPPED_ALTER_VERBS = (
+    "DISABLE TRIGGER ",  # no column/type change; guard enforcement has PostgreSQL tests
+    "ENABLE TRIGGER ",
     "ENABLE ROW LEVEL SECURITY",
     "FORCE ROW LEVEL SECURITY",
     "NO FORCE ROW LEVEL SECURITY",
@@ -157,7 +159,6 @@ UNBUILT_04_TABLES: frozenset[str] = frozenset(
         "deal_preview",
         "forecast_event_set",
         "forecast_run",
-        "loss_provision_version",
         "material_right",
         # "modification" left this set with 0068_ctr_17_modifications (CTR-17, D-98 140): 17 → 16
         # pinned names; the table is now compared (ORM / migration / 04) like every built table.

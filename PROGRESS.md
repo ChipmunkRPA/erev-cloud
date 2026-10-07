@@ -1,5 +1,32 @@
 # PROGRESS — eRev Cloud build loop notebook (under 20 KB)
 
+## Period loss-test persistence — October 7, 2026
+
+- Continued from merged PR #16 (`4a845d0`). Revision 0133 persists T-CON-17 loss tests per
+  calculation, owning contract/unit and accounting period. Rows retain scope, measurement basis,
+  transaction-currency amounts and trace-node mappings, under immutable tenant/entity isolation.
+  The earlier draft key omitted period identity even though the engine emits multiple periods.
+- T-CON-25 `loss_provision_eac` retains every contributing EAC version with tenant-bound foreign
+  keys. The parent convenience reference is set only for a single contributor. The writer refuses
+  unresolved/foreign-owner EAC references, invalid unit/period identities and inexact numeric types
+  before inserting results; all rows and audit facts commit with the calculation.
+- Updated privacy, schema/type, enum and snapshot inventories, row fixtures and audit ownership.
+  Loss rows are regenerated on snapshot replay. Demo/volume generator versions are now 13/18.
+  Historical versions are not backfilled; the loss register remains unregistered.
+- Newly reproduced calculation discrepancy: after K03's September change order, the persisted
+  engine loss test states consideration 1,200,000 and margin 350,000, while the existing RPT-31
+  acceptance requires 1,350,000 and 500,000. EAC 850,000, costs 502,000, revenue 797,294.12 and
+  zero provision are preserved correctly. The original register acceptance is unchanged; storage
+  tests compare against emitted engine results and do not certify those discrepant amounts.
+  Next: trace the stale unconstrained-price view (`s04_transaction_price/unconstrained.py`, consumed
+  by `s11_costs_loss/loss.py::_consideration`) through modifications before enabling the report.
+- Verification: **7 PostgreSQL persistence/migration/grant tests**, **4 tenant/entity isolation tests**
+  and **9 computation regressions passed**. **86 persistence/privacy/snapshot unit tests**,
+  **26 final schema/type/persistence checks** and **32 report/demo/generator checks passed**.
+  The broad architecture run passed 351 checks; its sole column-order failure was corrected and
+  verified by the final schema checks. Source Mypy, Ruff and design checks passed.
+- Full-backend verification and independent accounting sign-off remain open. No deployment.
+
 ## Balance aging enabled — October 7, 2026
 
 - Continued from merged PR #15 (`cde41c8`). Stage 10 now retains each obligation's separate

@@ -557,3 +557,69 @@ def test_scope_exclusion_register(
         f"{BR06_EXTERNAL_ID} L1-LEASE",
     )
     assert (record["status"], record["reviewer"]) == ("REVIEWED", "Priya")
+
+
+def test_loss_tests_persist_periods_and_eac_lineage(k03: K03World, clock: FrozenClock) -> None:
+    from erev_api.db.tables import estimate_version, loss_provision_eac, loss_provision_version
+    from erev_api.domain.contracts import bundles
+    from erev_engine import compute
+    from erev_engine.money import minor_to_decimal
+
+    k03_change_order(k03, clock)
+    k03_september(k03, clock)
+    with k03.report.place.uow() as uow:
+        latest = uow.session.execute(
+            select(contract_version.c.id)
+            .where(
+                contract_version.c.combination_group_id == k03.group_id,
+                contract_version.c.book_code == "ASC606",
+            )
+            .order_by(contract_version.c.version_no.desc())
+            .limit(1)
+        ).scalar_one()
+        rows = (
+            uow.session.execute(
+                select(loss_provision_version)
+                .where(
+                    loss_provision_version.c.contract_version_id == latest,
+                )
+                .order_by(loss_provision_version.c.as_of)
+            )
+            .mappings()
+            .all()
+        )
+        assert len(rows) > 1 and len({row["period_key"] for row in rows}) == len(rows)
+        september = next(row for row in rows if row["period_key"] == SEPTEMBER_2026)
+        assert september["contract_id"] == k03.contract_id
+        assert september["in_scope"] is True
+        # Storage is checked against the complete engine output, not a substituted calculation.
+        # The register's original 1,350,000 / 500,000 acceptance above remains unchanged; the
+        # engine's stale unconstrained price after the modification is a separate open defect.
+        bundle = bundles.build(uow.session, k03.group_id, uow.now)
+        book = next(item for item in compute(bundle).books if item.book_code == "ASC606")
+        emitted = next(
+            item for item in book.loss_provision_versions if item.period_key == SEPTEMBER_2026
+        )
+        for name in (
+            "expected_consideration",
+            "expected_total_costs",
+            "costs_to_date",
+            "revenue_to_date",
+            "expected_margin",
+            "provision_balance",
+            "provision_movement",
+        ):
+            assert september[name] == minor_to_decimal(int(str(emitted.columns[name])), 2)
+        assert september["expected_total_costs"] == Decimal("850000")
+        assert september["costs_to_date"] == Decimal("502000")
+        assert september["revenue_to_date"] == Decimal("797294.12")
+        assert september["trace_nodes"]
+        sources = uow.session.execute(
+            select(estimate_version.c.id, estimate_version.c.version_no)
+            .join(
+                loss_provision_eac,
+                estimate_version.c.id == loss_provision_eac.c.estimate_version_id,
+            )
+            .where(loss_provision_eac.c.loss_provision_version_id == september["id"])
+        ).all()
+        assert sources == [(september["eac_estimate_version_id"], 3)]

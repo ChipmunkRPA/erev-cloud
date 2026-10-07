@@ -46,6 +46,7 @@ from erev_api.enums import (
     ContractStatus,
     FxLayerMovementKind,
     HoldType,
+    LossUnit,
     SatisfactionStatus,
     ScheduleKind,
     ScheduleLineType,
@@ -379,5 +380,52 @@ fx_layer_movement: Final = Table(
     Column("rate", FxRateType(), nullable=True),
     Column("source_event_id", Uuid(), nullable=True),
     Column("trace_node_id", Text(), nullable=True),
+    *_sc_c(),
+)
+
+
+loss_provision_version: Final = Table(
+    "loss_provision_version",
+    metadata,
+    Column("tenant_id", Uuid(), primary_key=True),
+    Column("id", Uuid(), primary_key=True),
+    Column("contract_version_id", Uuid(), nullable=False),
+    Column("contract_id", Uuid(), nullable=False),
+    Column("entity_id", Uuid(), nullable=False),
+    Column("book_code", book_code_type, nullable=False),
+    Column("unit", _enum(LossUnit, "loss_unit"), nullable=False),
+    Column("unit_key", Text(), nullable=False),
+    Column("obligation_id", Uuid(), nullable=True),
+    Column("period_id", Uuid(), nullable=False),
+    Column("period_key", Text(), nullable=False),
+    Column("as_of", Date(), nullable=False),
+    Column("measurement_basis", Text(), nullable=False),
+    Column("eac_estimate_version_id", Uuid(), nullable=True),
+    Column("currency", CHAR(3), nullable=False),
+    *(
+        _money(name)
+        for name in (
+            "expected_consideration",
+            "expected_total_costs",
+            "costs_to_date",
+            "revenue_to_date",
+            "expected_margin",
+            "provision_balance",
+            "provision_movement",
+        )
+    ),
+    Column("in_scope", Boolean(), nullable=False),
+    Column("trace_nodes", JSONB(), nullable=False),
+    *_sc_c(),
+)
+
+loss_provision_eac: Final = Table(
+    "loss_provision_eac",
+    metadata,
+    Column("tenant_id", Uuid(), primary_key=True),
+    Column("id", Uuid(), primary_key=True),
+    Column("loss_provision_version_id", Uuid(), nullable=False),
+    Column("estimate_version_id", Uuid(), nullable=False),
+    Column("entity_id", Uuid(), nullable=False),
     *_sc_c(),
 )

@@ -67,6 +67,8 @@ ALWAYS: Final = frozenset(
         "obligation_version",
         "contract_version_balance",
         "fx_layer_movement",
+        "loss_provision_version",
+        "loss_provision_eac",
         "schedule",
         "schedule_line",
         "calc_trace",

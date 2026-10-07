@@ -3196,6 +3196,58 @@ def contract_version_balance_row(ctx: RowContext, session: Session) -> dict[str,
     )
 
 
+def loss_provision_version_row(ctx: RowContext, session: Session) -> dict[str, Any]:
+    rows = insert_version_rows(session, ctx.tenant_id)
+    period_id = _insert_visible(session, period, period_row(ctx, session))
+    return {
+        "tenant_id": ctx.tenant_id,
+        "id": new_id(),
+        "contract_version_id": rows.version_id,
+        "contract_id": rows.chain.contract_id,
+        "entity_id": rows.chain.entity_id,
+        "book_code": "ASC606",
+        "unit": "CONTRACT",
+        "unit_key": "probe",
+        "obligation_id": None,
+        "period_id": period_id,
+        "period_key": "FY2026-P01",
+        "as_of": date(2026, 1, 31),
+        "measurement_basis": "ASC_605_35",
+        "currency": "USD",
+        "in_scope": False,
+        "trace_nodes": {},
+        **dict.fromkeys(
+            (
+                "expected_consideration",
+                "expected_total_costs",
+                "costs_to_date",
+                "revenue_to_date",
+                "expected_margin",
+                "provision_balance",
+                "provision_movement",
+            ),
+            Decimal(0),
+        ),
+        **_CREATED,
+    }
+
+
+def loss_provision_eac_row(ctx: RowContext, session: Session) -> dict[str, Any]:
+    from erev_api.db.tables import estimate_version, loss_provision_version
+
+    parent = loss_provision_version_row(ctx, session)
+    _insert_visible(session, loss_provision_version, parent)
+    eac_id = _insert_visible(session, estimate_version, estimate_version_row(ctx, session))
+    return {
+        "tenant_id": ctx.tenant_id,
+        "id": new_id(),
+        "loss_provision_version_id": parent["id"],
+        "estimate_version_id": eac_id,
+        "entity_id": parent["entity_id"],
+        **_CREATED,
+    }
+
+
 def fx_layer_movement_row(ctx: RowContext, session: Session) -> dict[str, Any]:
     """T-CON-18: a same-currency layer of an immutable calculation version."""
     rows = insert_version_rows(session, ctx.tenant_id)
@@ -4886,6 +4938,8 @@ ROW_BUILDERS: Final[Mapping[str, RowBuilder]] = MappingProxyType(
         "schedule": schedule_row,
         "schedule_line": schedule_line_row,
         "fx_layer_movement": fx_layer_movement_row,
+        "loss_provision_version": loss_provision_version_row,
+        "loss_provision_eac": loss_provision_eac_row,
         "signoff": signoff_row,
         "sod_exception": sod_exception_row,
         "sod_rule": sod_rule_row,
