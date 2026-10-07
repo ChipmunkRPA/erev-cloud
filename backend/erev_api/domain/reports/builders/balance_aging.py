@@ -37,9 +37,10 @@ obligation and period (``netting_reclass_amount``) and the liability layers
 (``fx_layer_created``, ``fx_layer_consumed``) are in the calc trace (T-ENG-03); reading them would
 replace the source ruling Q-2 accepted and waits for the supervisor.
 
-October 7, 2026: revision 0131 persists T-CON-18 for new computations. This builder still uses
-its interim subledger source and remains unregistered until its projection and historical-version
-handling are implemented and verified. Earlier source limitations above are dated history.
+October 7, 2026: revision 0131 persists T-CON-18 for new computations. This builder now uses
+persisted, version-bound movements for liability aging. Asset/unbilled presentation still uses
+the interim source, so the report remains unregistered pending its replacement and verification.
+Earlier source limitations above are dated history.
 """
 
 from __future__ import annotations
@@ -54,7 +55,7 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from erev_api.db.tables import subledger_line
+from erev_api.db.tables import fx_layer_movement, subledger_line
 from erev_api.domain.reports import tie_outs
 from erev_api.domain.reports.builders import ReportParams
 from erev_api.domain.reports.builders.contract_balance_rollforward import FUNCTIONAL_ONLY
@@ -243,7 +244,8 @@ def total_rows(rows: Sequence[AgedRow]) -> list[dict[str, Any]]:
 
 def aging_tie(rows: Sequence[AgedRow], balances: Sequence[BalanceRow]) -> dict[str, Any]:
     """``TO_AGING_EQ_BALANCES``: Σ aged totals per currency equal Σ presented balances of the three
-    roles per currency (SCREENS_B RPT-R-08 "Aging totals equal contract balances")."""
+    roles per currency, with agreement also required per contract, entity and role
+    (SCREENS_B RPT-R-08 "Aging totals equal contract balances")."""
     expected: dict[str, Decimal] = {}
     for balance in balances:
         for role in ROLES:
@@ -251,7 +253,24 @@ def aging_tie(rows: Sequence[AgedRow], balances: Sequence[BalanceRow]) -> dict[s
     actual: dict[str, Decimal] = {}
     for row in rows:
         add(actual, row.currency, row.total)
-    return tie_outs.compared(TO_AGING_EQ_BALANCES, expected, actual)
+    result = tie_outs.compared(TO_AGING_EQ_BALANCES, expected, actual)
+    # A grand-total match must not hide misclassification or attribution to the wrong owner.
+    expected_parts: dict[tuple[UUID, UUID, str, str], Decimal] = {}
+    actual_parts: dict[tuple[UUID, UUID, str, str], Decimal] = {}
+    for balance in balances:
+        for role in ROLES:
+            key = (balance.contract_id, balance.entity_id, role, balance.currency)
+            expected_parts[key] = expected_parts.get(key, ZERO) + balance.value(ROLE_MEASURES[role])
+    for row in rows:
+        key = (row.contract_id, row.entity_id, row.balance_role, row.currency)
+        actual_parts[key] = actual_parts.get(key, ZERO) + row.total
+    if any(
+        tie_outs.quantized(expected_parts.get(key, ZERO), key[3])
+        != tie_outs.quantized(actual_parts.get(key, ZERO), key[3])
+        for key in expected_parts.keys() | actual_parts.keys()
+    ):
+        result["result"] = tie_outs.FAIL
+    return result
 
 
 def _revenue_dates(
@@ -273,6 +292,68 @@ def _revenue_dates(
     return {UUID(str(row[0])): row[1] for row in session.execute(statement) if row[1] is not None}
 
 
+def _liability_layers(
+    session: Session,
+    *,
+    book_code: str,
+    period_ends: Mapping[UUID, date],
+    balances: Sequence[BalanceRow],
+) -> list[Layer]:
+    """Age the exact remaining layers of the versions selected by the report binding.
+
+    A layer's creation date survives partial consumption; movement IDs determine its identity,
+    so the reader must not replay FIFO across contracts or independently select a newer version.
+    Remeasurements do not change the transaction-currency amount aged by this report.
+    """
+    if not balances or not period_ends:
+        return []
+    names = {(row.contract_id, row.entity_id, row.version_id): row for row in balances}
+    movement = fx_layer_movement.c
+    statement = select(fx_layer_movement).where(
+        movement.contract_version_id.in_({row.version_id for row in balances}),
+        movement.entity_id.in_(period_ends),
+        movement.book_code == book_code,
+        movement.balance_role == "CONTRACT_LIABILITY",
+        movement.effective_date <= max(period_ends.values()),
+    )
+    grouped: dict[tuple[UUID, UUID, UUID, str, str], tuple[date | None, Decimal]] = {}
+    for row in session.execute(statement).mappings():
+        owner = (row["contract_id"], row["entity_id"], row["contract_version_id"])
+        if owner not in names or row["effective_date"] > period_ends[row["entity_id"]]:
+            continue
+        key = (*owner, str(row["layer_key"]), str(row["txn_currency"]).strip())
+        created_on, amount = grouped.get(key, (None, ZERO))
+        kind = row["movement_kind"]
+        if kind == "LIABILITY_LAYER_CREATED":
+            day = row["effective_date"]
+            created_on = day if created_on is None else min(created_on, day)
+            amount += Decimal(row["amount_txn"])
+        elif kind == "LIABILITY_LAYER_CONSUMED":
+            amount -= Decimal(row["amount_txn"])
+        grouped[key] = (created_on, amount)
+    result: list[Layer] = []
+    for (contract_id, entity_id, version_id, _, currency), (created_on, amount) in grouped.items():
+        if amount == ZERO:
+            continue
+        if created_on is None:
+            raise tie_outs.invalid("period_key", "A liability layer has no creation date.")
+        named = names[(contract_id, entity_id, version_id)]
+        result.append(
+            Layer(
+                contract_id=contract_id,
+                external_id=named.external_id,
+                customer_name=named.customer_name,
+                entity_id=entity_id,
+                entity_code=named.entity_code,
+                balance_role="CONTRACT_LIABILITY",
+                currency=currency,
+                amount=amount,
+                effective_date=created_on,
+            )
+        )
+    return result
+
+
 def _layers(
     session: Session,
     *,
@@ -282,8 +363,10 @@ def _layers(
     known_at: datetime,
     balances: Sequence[BalanceRow],
 ) -> list[Layer]:
-    """Open layers per (contract, entity, role) from the subledger through each entity's period
-    end (interim source; see the module docstring)."""
+    """Combine persisted liability layers with interim asset/unbilled subledger attributions.
+
+    This incomplete projection remains unavailable through the report registry.
+    """
     if not entity_ids or not period_ends:
         return []
     last_end = max(period_ends.values())
@@ -305,7 +388,7 @@ def _layers(
         .where(
             subledger_line.c.book_code == book_code,
             subledger_line.c.entity_id.in_(list(entity_ids)),
-            subledger_line.c.account_role.in_(list(ROLES)),
+            subledger_line.c.account_role.in_(["CONTRACT_ASSET", "UNBILLED_RECEIVABLE"]),
             subledger_line.c.recorded_at <= known_at,
             subledger_line.c.period_end_date <= last_end,
         )
@@ -333,7 +416,9 @@ def _layers(
                 day = revenue_dates.get(UUID(str(obligation)), day)
         key = (UUID(str(row["contract_id"])), entity_id, role, str(row["txn_currency"]).strip())
         flows.setdefault(key, []).append((day, sign * amount))
-    layers: list[Layer] = []
+    layers = _liability_layers(
+        session, book_code=book_code, period_ends=period_ends, balances=balances
+    )
     for (contract_id, entity_id, role, currency), items in flows.items():
         named = names.get((contract_id, entity_id))
         for day, amount in open_layers(items):

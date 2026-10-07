@@ -115,7 +115,9 @@ def test_catalogue_definitions_match_the_builders() -> None:
     # CTR-14 has not persisted the catalogue sources: the interim subledger source stands
     # (ruling Q-2).
 
-    for name in ("fx_layer_movement", "contract_cost_asset", "cost_asset_version"):
+    # Revision 0131 supplies liability layers; asset presentation remains a registration gap.
+    assert hasattr(tables, "fx_layer_movement")
+    for name in ("contract_cost_asset", "cost_asset_version"):
         assert not hasattr(tables, name), (
             f"{name} exists: switch the builder off the interim source"
         )

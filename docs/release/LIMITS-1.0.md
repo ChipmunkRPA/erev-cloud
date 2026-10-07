@@ -361,6 +361,10 @@ checks individual current-version layers through the close date, in both currenc
 aggregate balances. Pre-0131 versions still have no movement coverage. C-11 and the remaining CTR-14 tables are not complete. Demo/volume generator
 versions 11/16 identify the changed stored state; no full-volume seed or deployment is claimed.
 
+October 7 aging continuation: the unregistered draft now reads liability aging from the selected
+versions' persisted movements and reconciles each contract/entity/role/currency independently.
+Asset/unbilled presentation still reads the interim subledger source; RPS-12 and POS117 remain open.
+
 ## The fifteen standing names
 
 Fifteen tests of the backend suite do not pass in release 1.0. They are the same fifteen in every whole run on the day of the freeze, by name, and none passes when it is run again alone; the release candidate's suite shows these and no other (R-125 (n); R-126 (e)). None is skipped, loosened or marked: each fails at full strength until its cause is closed. Two gate targets fail by them, as the supervisor measured on `783f340ea`: `make answer-keys` by the six keys and `make test-pg` by the three capture witnesses. The causes below are read from the failure each test records and from the test: for names 3 to 5 as the suite takes them since index 308's part for the answer keys' runner is on the branch, for the others in the run of record on `5c3b5347c`. Names 1 to 5 are platform keys, which the suite takes on the in-memory platform. On the database platform a lane measured them on 2026-10-03 with that part: the two DISC keys pass; POS-CHK-012 compares clean in every block and is failed by its finding alone; the GT07 key is not run; POS-CHK-117 has four mismatches.
