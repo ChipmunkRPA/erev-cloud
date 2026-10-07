@@ -471,9 +471,9 @@ const STANDING_OVERRIDE: ReadonlySet<string> = new Set(["SUBMITTED", "APPROVED"]
 
 /**
  * The ids of the judgement records that an override in force or waiting for approval names (SCREENS
- * §4.9.8, rev 1.76). The override's approval certifies the record's id and nothing of its state, so
- * such a record is not discarded on a screen: the override would keep naming a record that can
- * never be reviewed. An override that was rejected, withdrawn, superseded or never submitted names
+ * §4.9.8, rev 1.76). Submission and approval now recheck that the linked record is reviewed.
+ * A record used by a standing override is not discarded on a screen: the override must retain
+ * its reviewed evidence. An override that was rejected, withdrawn, superseded or never submitted names
  * a record that is free again.
  */
 export function recordsOfStandingOverrides(
@@ -819,6 +819,7 @@ export const CONTRACT_RECORD_KEYS: readonly QueryKey[] = [
   queryKey("contract-history", "tenant"),
   queryKey("contract-audit-events", "tenant"),
   queryKey("contract-modifications", "tenant"),
+  queryKey("contract-policy-overrides", "tenant"),
 ];
 
 // --- SF-03:new, SF-03:edit and SF-03:history (04 API-R-28 `POST /contracts`, `POST

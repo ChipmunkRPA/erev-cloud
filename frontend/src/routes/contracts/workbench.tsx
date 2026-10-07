@@ -148,6 +148,7 @@ import { CombineDrawer, DismissSuggestionModal } from "./drawers/combine";
 import { DistinctReviewDrawer } from "./drawers/distinct-review";
 import { DocumentsDrawer } from "./drawers/documents";
 import { ApplyHoldDrawer, ReleaseHoldDrawer } from "./drawers/holds";
+import { PolicyOverridesDrawer } from "./drawers/policy-overrides";
 import { EditMemosDrawer } from "./drawers/memos";
 import { type EventKind, EVENT_KINDS, RecordEventDrawer } from "./drawers/record-event";
 import { Step1AssessmentDrawer } from "./drawers/step1-assessment";
@@ -1372,6 +1373,7 @@ function Step5Evidence({
 }
 
 type OpenDrawer =
+  | { readonly kind: "policyOverrides" }
   | { readonly kind: "step1" }
   | {
       readonly kind: "assessment";
@@ -2379,9 +2381,6 @@ function WorkbenchPage({ me }: { readonly me: Me }) {
             });
           }
         }
-        // The commands of a holder of `contract.create`. "Request policy override" is not one of
-        // them (SCREENS §4.9.7 rev 1.80; supervisor ruling R-126 (c)): release 1.0 takes no policy
-        // override, and the API refuses its creation.
         if (canCreate) {
           overflow.push(
             {
@@ -2418,6 +2417,13 @@ function WorkbenchPage({ me }: { readonly me: Me }) {
         id: "release-hold",
         label: t("contracts.drawer.release.title"),
         onSelect: () => setDrawer({ kind: "release" }),
+      });
+    }
+    if (!hidden && access.holds("config.read", data.contracting_entity)) {
+      overflow.push({
+        id: "policy-overrides",
+        label: t("contracts.policyOverrides.title"),
+        onSelect: () => setDrawer({ kind: "policyOverrides" }),
       });
     }
     overflow.push(copyLink);
@@ -3099,6 +3105,9 @@ function WorkbenchPage({ me }: { readonly me: Me }) {
             obligations={items}
             books={books}
             canUpload={!hidden && canCreate}
+            canOverride={
+              !hidden && access.holds(CONTRACT_CREATE_PERMISSION, data.contracting_entity)
+            }
             onClose={() => setDrawer(null)}
             onNewReview={() => setDrawer({ kind: "step1" })}
           />
@@ -3123,6 +3132,7 @@ function WorkbenchDrawer({
   obligations,
   books,
   canUpload,
+  canOverride,
   onClose,
   onNewReview,
 }: {
@@ -3131,11 +3141,21 @@ function WorkbenchDrawer({
   readonly obligations: readonly Obligation[];
   readonly books: readonly string[];
   readonly canUpload: boolean;
+  readonly canOverride: boolean;
   readonly onClose: () => void;
   /** SCREENS §4.9.1 (rev 1.72): the review drawer in place of the assessment the API refused. */
   readonly onNewReview: () => void;
 }) {
   switch (drawer.kind) {
+    case "policyOverrides":
+      return (
+        <PolicyOverridesDrawer
+          contract={contract}
+          obligations={obligations}
+          canAuthor={canOverride}
+          onClose={onClose}
+        />
+      );
     case "step1":
       return <Step1ReviewDrawer contract={contract} onClose={onClose} />;
     case "assessment":

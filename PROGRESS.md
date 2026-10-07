@@ -1,5 +1,28 @@
 # PROGRESS — eRev Cloud build loop notebook (under 20 KB)
 
+## Policy override workbench — October 7, 2026
+
+- PR #4 merged into public main (`51aa535`). Work continues on `codex/policy-override-ui`.
+- The contract workbench now offers Policy overrides to users with entity-scoped `config.read`.
+  Authoring additionally requires `contract.create` for the contract's entity. Historical views
+  expose no command. Drafts can be authored before activation, including financing rates.
+- Added POL-122 obligation/right and POL-047 contract/rate forms. Rates remain decimal strings;
+  the screen explains inception rates and corrections. Saving creates a durable draft; submission
+  is a separate action on that saved record. Reopening or retrying submission reuses the draft.
+  The list displays scope, value, rationale, status and an approval-request link where present.
+- Commands invalidate the contract override list along with the existing contract reads. Required
+  fields, server refusals, network failures, list retry and read-only access have explicit behavior.
+  Existing API validation and independent-approval controls remain authoritative.
+- Actual verification: all **2,040 frontend tests across 191 files passed**, including six new drawer
+  tests and the 66 workbench tests. TypeScript project build, changed-file ESLint, production frontend
+  build, formatting and whitespace checks passed. Design check scanned 499 files with no findings.
+  Local Chromium screenshots of both forms were inspected with mocked records and no runtime errors;
+  this is UI verification, not live-service or accounting sign-off evidence.
+- Remaining C-2: POL-163 period-scoped contract exceptions, broader product readers, database
+  answer-key coverage, and an optional reviewed-judgement attachment selector in this drawer (the
+  API already accepts and validates that link). Wider outstanding items remain in LIMITS-1.0.md.
+  Current scope remains repository completion; no deployment or provisioning.
+
 ## Validated policy override API — October 7, 2026
 
 - PR #3 merged into public main (`6bca309`). Work continues on
