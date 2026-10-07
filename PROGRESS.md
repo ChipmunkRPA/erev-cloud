@@ -1,5 +1,20 @@
 # PROGRESS — eRev Cloud build loop notebook (under 20 KB)
 
+## Per-layer liability close monitor — October 7, 2026
+
+- Continued from merged PR #13 (`5b45532`). The negative-liability monitor now projects
+  current-version T-CON-18 movements through the period end, separately for each originating
+  contract/layer. Consumption reduces both currencies; remeasurement changes functional carrying
+  only. Either currency below zero raises a blocking finding without netting against positive layers.
+- Regression coverage exercises transaction and functional deficits, future movements, other books
+  and entities, repeat-run deduplication, and resolution after a corrected version replaces obsolete
+  movements. The data-quality gate fails for a deficit and passes after the correction.
+- Verification: **68 PostgreSQL monitor and pure-rule tests passed**; source Mypy, Ruff lint/format,
+  design and whitespace checks passed. This is targeted evidence, not a full-backend pass.
+- Versions predating revision 0131 still lack movement coverage. Balance aging remains unregistered
+  pending its projection, presentation and historical reads. Full-backend verification and independent
+  accounting review remain open. Repository work only; no deployment.
+
 ## Immutable FX layer persistence — October 7, 2026
 
 - Continued from merged PR #12 (`afefe85`). Revision 0131 follows the actual prior head 0128
