@@ -515,3 +515,29 @@ and frontend evidence retains its own source/date.
 
 Earlier October 7 liability-reader, close-monitor and layer-persistence evidence is archived verbatim
 in [BUILD-HISTORY-2026-10-07.md](docs/release/BUILD-HISTORY-2026-10-07.md).
+
+## Modification questionnaire confirmation — October 7, 2026
+
+- Continued from main at PR #23 (`b570edb`). Submit now requires explicit boolean answers to
+  every retained classification proposal on every paired row. Approval rechecks older pending
+  requests before application. Classification/preview never confirm proposals themselves.
+  Invalid non-boolean answers are refused; drafts remain editable and edits invalidate old previews.
+- Synthetic preparers and fixtures explicitly save answers, reclassify and preview through the
+  commands. Volume generator 20 identifies that flow. No expected accounting figures changed.
+  Closed B1-6 in LIMITS; the other C-6 controls remain open.
+- Verification across split runs: **61 modification database tests passed, 1 existing skip**;
+  **20 related integration/report/scope/audit tests passed**. Earlier fixture failures were resolved
+  by explicit confirmation and including its audit entry; the final remainder passed 25/25.
+  Both the linked J-06 calculation and older pending-request refusal/revision passed. **123 combined
+  unit/volume checks passed**, including the 1/1000 database seed; this does not establish full-volume
+  modification coverage. Ruff, source Mypy, whitespace and design checks (500 files) pass.
+- A refused concurrent database run is not counted. Baseline `b570edb` open-world browser harness:
+  **189 passed**, zero failures/flaky/skipped; fresh-tenant, industry and design projects have no
+  tests. Baseline dependency/license/secret scans have zero findings; dated details are archived.
+- Baseline backend verification was intentionally interrupted to advance main: JUnit records
+  **824 completed cases, zero failures/errors/skips**; interrupt teardown raised a pytest stash
+  KeyError. This is incomplete evidence, not a green backend gate. Full-backend/specialist gates,
+  remaining release limitations and independent accounting review remain open. No deployment.
+- Owner requested automatic PR merging and only main retained. GitHub auto-merge and automatic
+  branch deletion are enabled; verified changes are merged before completed branches are removed.
+  Dated evidence: [BUILD-HISTORY-2026-10-07.md](docs/release/BUILD-HISTORY-2026-10-07.md).

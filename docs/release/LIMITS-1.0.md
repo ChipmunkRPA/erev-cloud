@@ -10,8 +10,9 @@ October 7 close-task continuation: B1-9 is closed for the command flow. Signing 
 configured owner role for the period's entity; closed periods refuse signing. An approved reopen
 clears current manual-task signatures and requires fresh attestations, preserving immutable history.
 Revision 0135 allows repeated close-cycle signatures and refuses lossy downgrade. It does not
-rewrite existing tenant rows. The continuation index audit also found that 0131's FX-layer index
-places a key behind a non-leakproof enum comparison under RLS; this remains an open schema finding.
+rewrite existing tenant rows. The continuation index audit found that 0131's FX-layer index
+placed a key behind a non-leakproof enum comparison under RLS. Revision 0136 reorders it; all
+17 migration/index/doctor checks pass. This is not full-volume performance evidence.
 See PROGRESS.md for actual scoped verification; no full-backend pass is asserted.
 
 October 7 modification continuation: B1-6 is closed. Submit requires explicit boolean answers

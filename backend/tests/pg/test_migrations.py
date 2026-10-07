@@ -342,7 +342,8 @@ def test_single_head() -> None:
     # and column grant, and tg_combination_group__transition() re-rendered on 0126's body so
     # that the application may move it.
     # 0135: fresh manual close-task signatures after an approved reopen.
-    assert lines[0].split()[0] == "0135"
+    # 0136: move the non-leakproof book enum behind the FX layer lookup keys.
+    assert lines[0].split()[0] == "0136"
 
 
 def test_upgrade_downgrade_upgrade(test_database: TestDatabase) -> None:

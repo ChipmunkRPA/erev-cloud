@@ -4055,7 +4055,9 @@ The movements alone do not constitute the balance-aging presentation or implemen
 | `trace_node_id` | text | Y | | |
 | SC-C | | | | |
 
-Keys: `PRIMARY KEY (tenant_id, id)`; `ix_fx_layer_movement__version (tenant_id, contract_version_id)`; `ix_fx_layer_movement__layer (tenant_id, contract_id, book_code, layer_key)`.
+Keys: `PRIMARY KEY (tenant_id, id)`; `ix_fx_layer_movement__version (tenant_id, contract_version_id)`; `ix_fx_layer_movement__layer (tenant_id, contract_id, layer_key, book_code)`.
+Revision 0136 puts the non-leakproof enum comparison last so it cannot prevent `layer_key`
+from being used as an index condition under row-level security.
 
 ### T-CON-19 `judgement_record`
 
