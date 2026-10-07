@@ -580,3 +580,40 @@ in [BUILD-HISTORY-2026-10-07.md](docs/release/BUILD-HISTORY-2026-10-07.md).
   ordinary pytest defaults to memory. Do not treat that default as the canonical gate's behavior.
 - Remaining work includes balance-aging layers/reporting, GT07 nondistinct review mapping, the
   broader release backlog and independent accounting sign-off. No deployment.
+
+## Close task sign-offs — October 7, 2026
+
+- Continued from merged PR #24 (`383ef03`). Manual task signing now enforces the template's
+  owner role for the period's entity, in addition to permission and MFA. Closed/permanently
+  locked periods refuse new signatures. Signing locks the template as well as the item.
+- An approved reopen resets passed manual tasks to NOT_STARTED and clears the current signature
+  pointer, with an audit event linked to the reopen request. Immutable historical signatures stay.
+  A fresh signature binds the close cycle and owner role; revision 0135 permits that history while
+  preserving uniqueness for other sign-off subjects. A lossy downgrade explicitly refuses.
+- **60 database checks passed across scoped runs**: 53 close/cockpit/waiver/lock/transition-drift
+  tests, five migration checks (including complete downgrade/upgrade), and two signoff invariant
+  checks. The six new workflow cases cover missing/other-entity/exact/all-entity owner roles,
+  reopen/re-sign with immutable history, and closed-period refusal. Lossy downgrade refusal is
+  verified with the real owner lacking BYPASSRLS; rollback preserves all signatures and forced RLS.
+- **33 transition/locking unit tests passed**; source Mypy, Ruff and the 500-file design check pass.
+  A stale migration-head test pin was corrected to 0135. No accounting amounts changed. Closed B1-9;
+  the other C-6 controls remain open. Existing rows are not rewritten by the migration: task resets
+  occur on an approved reopen through the new command path.
+- The separate index audit found an existing 0131 index defect: `ix_fx_layer_movement__layer`
+  puts `layer_key` behind the non-leakproof `book_code` enum comparison under RLS. This was not
+  waived; the next schema fix must reorder its keys and rerun the index audit. No whole-backend
+  pass is claimed. Other release gaps and independent accounting review remain open. No deployment.
+
+## FX layer index under RLS — October 7, 2026
+
+- Continued from merged PR #25 (`7b4eb69`). The index audit reproduced an existing 0131 schema
+  defect: `layer_key` followed `book_code`, whose enum equality is not leakproof under RLS.
+  Revision 0136 moves the enum to the final key, preserving the tenant/contract/layer prefix.
+  Accounting data, grants and policies are unchanged; downgrade restores the prior key order.
+- **17 PostgreSQL checks passed**: complete migration downgrade/upgrade, schema lint, all index
+  condition checks and database-doctor checks, including a clean migrated catalogue. Ruff and
+  whitespace checks pass. The earlier recorded FX-index finding is resolved; this establishes
+  index-key eligibility under policy, not a full-volume performance result.
+- Close-task and modification controls are merged; older dated evidence is archived below.
+  Full-backend/specialist verification, other release gaps and independent accounting review
+  remain open. No deployment.
