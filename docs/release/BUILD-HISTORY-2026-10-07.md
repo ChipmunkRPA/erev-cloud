@@ -617,3 +617,32 @@ in [BUILD-HISTORY-2026-10-07.md](docs/release/BUILD-HISTORY-2026-10-07.md).
 - Close-task and modification controls are merged; older dated evidence is archived below.
   Full-backend/specialist verification, other release gaps and independent accounting review
   remain open. No deployment.
+
+## Originating-contract FX layers — October 7, 2026
+
+- GitHub writes recovered. PR #6 merged into main (`5e74ea3`); its temporary branch was removed.
+  The next slice connects the scoped policy input to the layer readers. No deployment.
+- Liability layers retain the originating contract through ordinary credits and monetary releases.
+  Consumption and period-end remeasurement resolve that contract's policy, even when another
+  member's revenue consumes the layer through group FIFO. Encoded external identifiers are decoded
+  after structural separators, preserving literal escape-like text.
+- Mixed-member regressions cover either member's exception, ordinary/encoded identifiers, ASC606
+  and IFRS15, and transaction/functional tie-outs. A later-period approval leaves the earlier
+  historical period intact. The database regression uses real approval, computation and the real
+  close FX pass: GBP 5,400 liability remeasurement is sealed once at the September closing rate;
+  repeated passes and a recomputation add no duplicate. COMMAND correctly leaves TIME journals to
+  the close pass. The test does not claim the whole close job or all gates were exercised.
+- Actual verification: **571 FX, posting and architecture tests passed**, plus **4 PostgreSQL
+  FX journal regressions**. Mypy passed for all three changed source files; Ruff lint/format and
+  whitespace checks passed. These are targeted checks, not full-backend readiness evidence.
+- Both excluded research directories remain absent from tracked files; root ignore rules now
+  cover the whole directories, preventing accidental republication of more than just screenshots.
+- Known transition defect reproduced locally: EUR 12,000 credited at 1.10 is carried at USD 13,440
+  after a monetary January closing rate of 1.12. Returning to historical treatment and fully
+  releasing in February recognizes USD 13,200, removes the open layer and leaves USD 240 of
+  cumulative FX unreconciled. No accounting treatment has been invented for this transition.
+  Public POL-163 creation remains disabled pending its correction, close invalidation checks,
+  authoring validation and independent accounting review. C-2 remains partial.
+
+Earlier October 7 policy-isolation and workbench evidence is archived verbatim in
+[BUILD-HISTORY-2026-10-07.md](docs/release/BUILD-HISTORY-2026-10-07.md).

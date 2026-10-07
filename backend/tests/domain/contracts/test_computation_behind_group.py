@@ -95,7 +95,6 @@ from support.factories import (
     Workspace,
     activated_contract,
     booked_contract,
-    drafted_override,
     k09_body,
     open_periods,
     seat_world,
@@ -418,18 +417,25 @@ def test_an_event_appended_after_the_cutoff_and_not_yet_computed_refuses_the_com
 
 
 def _override_approved(world: FxWorld, maya: Actor, marcus: Actor, contract_id: UUID) -> None:
-    """A policy override of ``returns.model`` on O1 — the value both books resolve already, so
-    that it moves no amount — submitted by Maya and approved by Marcus: 05 RCP-17 marks the
-    group. Release 1.0 creates no override (04 T-CON-23 rev 1.322): the DRAFT row is the
-    fixture's, and the approval, whose mark the case is about, is the product's own."""
-    override_id = drafted_override(
-        world.place,
-        contract_id,
-        "returns.model",
-        "EXPECTED_RETURNS",
-        obligation_key="O1",
-        rationale="Returns are expected under this reseller agreement.",
+    """Create and independently approve a supported conditional-right override.
+
+    The gateway already uses conditional consideration, so this changes no amount. Its
+    approval still marks the group, which is the concurrency behavior under test.
+    """
+    created = post(
+        world.app,
+        POLICY_OVERRIDES,
+        maya,
+        {
+            "contract_id": str(contract_id),
+            "policy_key": "balance.right_to_consideration",
+            "value": "CONDITIONAL",
+            "obligation_key": "O1",
+            "rationale": "The reviewed order retains a conditional right before invoicing.",
+        },
     )
+    assert created.status_code == 201, created.text
+    override_id = created.json()["id"]
     submitted = post(
         world.app, f"{POLICY_OVERRIDES}/{override_id}/submit", maya, {"comment": "Ready"}
     )
@@ -465,10 +471,12 @@ def test_an_override_approved_after_the_cutoff_refuses_the_computation(fx: FxWor
     computation that began before the approval admits no override approved after its cutoff:
     stored, it would end the mark of an override it had not read."""
     contract_id, group_id = delivered(fx)
+    ledger = _ledger(fx.place, contract_id)
     maya, marcus = _on_record_clock(fx)
     _mark_refuses_and_its_repetition_clears(
         fx, contract_id, group_id, lambda: _override_approved(fx, maya, marcus, contract_id)
     )
+    assert _ledger(fx.place, contract_id) == ledger
 
 
 def test_a_period_opened_after_the_cutoff_refuses_the_computation_once(fx: FxWorld) -> None:  # noqa: F811
