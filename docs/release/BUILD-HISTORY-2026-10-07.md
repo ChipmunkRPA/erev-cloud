@@ -413,3 +413,21 @@ claims and evidence below retain their original meaning; this archive is not a f
 - Full-backend verification, remaining release limitations and independent accounting sign-off
   remain open. Repository work only; no deployment. Previous dated evidence is archived in
   [BUILD-HISTORY-2026-10-07.md](docs/release/BUILD-HISTORY-2026-10-07.md).
+
+## Frontend verification commands — October 7, 2026
+
+Source: `30a42456841bc7bbda48edb9a1c8160e46fd7975` (PR #22), Node 24.5.
+
+- From `frontend/`, `./node_modules/.bin/vitest run --bail=1`: 192 files and 2,042 tests
+  passed in 64.57 seconds. jsdom logged its unsupported full-page navigation warning;
+  this was not a failed test and does not prove real-browser navigation.
+- From `frontend/`, `./node_modules/.bin/tsc --noEmit`: exit 0.
+- From the repository root, `frontend/node_modules/.bin/eslint --config
+  frontend/eslint.config.js --max-warnings 0 frontend/src frontend/config frontend/e2e`:
+  exit 0. This is the Makefile's frontend lint scope. An earlier exploratory `eslint .`
+  also scanned the ignored `.run/policy-preview.tsx` and failed its non-null assertion;
+  that local scratch file is not published and was left unchanged.
+- From `frontend/`, `./node_modules/.bin/vite build`: exit 0 in 3.83 seconds. The initial
+  chunk was 1,149.57 kB (300.49 kB gzip), above Vite's warning threshold. No bundle-budget,
+  browser-performance, end-to-end or deployment claim follows from the build.
+- Full backend verification continues separately; production readiness remains unproven.

@@ -1,5 +1,15 @@
 # PROGRESS — eRev Cloud build loop notebook (under 20 KB)
 
+## Frontend verification — October 7, 2026
+
+- Verified source at merged PR #22 (`30a4245`): all **2,042 frontend tests across 192 files**
+  pass; TypeScript, the Makefile-defined ESLint gate and the production Vite build pass.
+- Vite warns that the initial chunk is 1,149.57 kB (300.49 kB gzip). Build success does not
+  establish browser performance or end-to-end behavior. Browser gates remain to be verified.
+- The remaining backend run (excluding the already verified engine/architecture suites and
+  separate parity/answer-key/performance gates) is still running. No whole-backend pass is
+  claimed. Implementation limits and independent accounting review remain open; no deployment.
+
 ## Consideration history across fiscal calendars — October 7, 2026
 
 - Continued from merged PR #21 (`ee00858`). A broader backend run selected 9,975 tests,
