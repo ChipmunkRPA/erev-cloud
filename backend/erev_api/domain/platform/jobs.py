@@ -40,7 +40,7 @@ from erev_api.db.tables import job
 from erev_api.db.transitions import apply
 from erev_api.domain.platform import approval_queries, file_access
 from erev_api.enums import ApprovalSubjectType, JobKind, JobState
-from erev_api.jobs.registry import CANCEL_ACTION, JOB_SUBJECT
+from erev_api.jobs.registry import CANCEL_ACTION, HANDLERS, JOB_SUBJECT, handler_params
 from erev_api.problems import Problem
 from erev_api.schemas.common import JobOut, job_out
 
@@ -241,6 +241,9 @@ def cancel_job(uow: UnitOfWork, job_id: UUID) -> JobOut:
             set_values={"cancel_requested_at": uow.now, "finished_at": uow.now, **stamp},
             expected_status=JobState.QUEUED.value,
         )
+        spec = HANDLERS.get(JobKind(current["kind"]))
+        if spec is not None and spec.on_cancel is not None:
+            spec.on_cancel(uow, handler_params(current["params"] or {}), job_id)
         after = JobState.CANCELLED
     elif state == JobState.RUNNING:
         if current["cancel_requested_at"] is not None:

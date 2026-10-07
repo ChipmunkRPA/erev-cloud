@@ -39,12 +39,28 @@ from __future__ import annotations
 import csv
 import io
 from collections.abc import Callable, Sequence
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
+from threading import Event
 from types import ModuleType
 from typing import Any
 from uuid import UUID, uuid4
 
 import pytest
+from fastapi import FastAPI
+from sqlalchemy import exc, select, text
+from support.db import TestDatabase
+from support.factories import (
+    IMPORTS_PATH,
+    ImportWorld,
+    create_import,
+    import_world,
+    upload_import_source,
+)
+from support.http import call
+from support.principals import Actor, colleague, cookie_headers, enrolled
+from support.reference import approve, assign, get, post
+
 from erev_api.auth.keyring import KeyRing
 from erev_api.auth.principal import system_principal
 from erev_api.clock import FrozenClock
@@ -65,19 +81,6 @@ from erev_api.jobs import registry
 from erev_api.jobs.context import system_unit_of_work
 from erev_api.jobs.registry import RetryPolicy, run_job
 from erev_api.main import create_app
-from fastapi import FastAPI
-from sqlalchemy import exc, select, text
-from support.db import TestDatabase
-from support.factories import (
-    IMPORTS_PATH,
-    ImportWorld,
-    create_import,
-    import_world,
-    upload_import_source,
-)
-from support.http import call
-from support.principals import Actor, colleague, cookie_headers, enrolled
-from support.reference import approve, assign, get, post
 
 _FETCHED = text("UPDATE procrastinate_jobs SET status = 'doing' WHERE id = :id")
 # The server raises the code itself, as it does when two transactions meet.
@@ -273,7 +276,7 @@ def _validated(world: ImportWorld) -> tuple[str, UUID]:
     return import_id, _job_of(world, import_id, "IMPORT_DIFF")
 
 
-def _approved(world: ImportWorld) -> tuple[str, UUID, UUID]:
+def _approved_by(world: ImportWorld) -> tuple[str, UUID, UUID, Actor]:
     """The file validated, diffed, submitted by Maya and approved by Priya: the import, its
     commit job, not yet run, and Priya's membership — Priya's decision started that job."""
     someone = colleague(world.tenant_id, "priya")
@@ -296,7 +299,12 @@ def _approved(world: ImportWorld) -> tuple[str, UUID, UUID]:
     decided = approve(world.app, str(submitted.json()["approval_request_id"]), priya)
     assert decided.status_code == 200, decided.text
     assert _shown(world, import_id)["status"] == "APPROVED"
-    return import_id, _job_of(world, import_id, "IMPORT_COMMIT"), someone.membership_id
+    return import_id, _job_of(world, import_id, "IMPORT_COMMIT"), someone.membership_id, priya
+
+
+def _approved(world: ImportWorld) -> tuple[str, UUID, UUID]:
+    import_id, job_id, membership_id, _ = _approved_by(world)
+    return import_id, job_id, membership_id
 
 
 def _ended_invalid(world: ImportWorld, import_id: str, job_id: UUID) -> dict[str, Any]:
@@ -730,3 +738,119 @@ def test_a_hook_leaves_an_upload_whose_row_the_handlers_own_stage_holds(
         "told": [],
         "still held": True,
     }
+
+
+def test_failed_commit_waits_for_a_concurrent_upload_reader(
+    world: ImportWorld, fault: Arm, attempts: Policy, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A refused command's row lock must not strand an approved import after job failure."""
+    attempts(JobKind.IMPORT_COMMIT, 1)
+    import_id, job_id, _ = _approved(world)
+    fault(commit, "start_commit", _defect, 1)
+    reached = Event()
+    original = commit.job_hooks.held_status
+
+    def observed(*args: Any, **kwargs: Any) -> Any:
+        reached.set()
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(commit.job_hooks, "held_status", observed)
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        with tenant_session(DbContext(world.tenant_id, user_id=None, entity_scope="*")) as holder:
+            holder.execute(
+                select(import_upload.c.id)
+                .where(import_upload.c.id == UUID(import_id))
+                .with_for_update()
+            ).one()
+            pending = pool.submit(_work, world, job_id, attempt=1)
+            assert reached.wait(timeout=10), "failure hook never reached the held upload"
+            # Keep the competing lock long enough to reproduce the old SKIP LOCKED loss.
+            assert not Event().wait(0.15)
+        pending.result(timeout=15)
+    assert _job(world, job_id)["state"] == "FAILED"
+    assert _stored(world, import_id) == "FAILED"
+    assert _loaded(world) == []
+    assert [item["code"] for item in _items(world, import_id)] == [PROCESSING_FAILED]
+
+
+def test_cancelling_a_queued_commit_releases_its_import(world: ImportWorld) -> None:
+    """Cancellation before dispatch must end the upload and release duplicate-file protection."""
+    import_id, job_id, _, priya = _approved_by(world)
+    response = post(world.app, f"/api/v1/jobs/{job_id}/cancel", priya, {})
+    assert response.status_code == 200, response.text
+    assert response.json()["state"] == "CANCELLED"
+    assert _stored(world, import_id) == "FAILED"
+    assert _loaded(world) == []
+    assert [item["code"] for item in _items(world, import_id)] == [PROCESSING_FAILED]
+    # A stale queued dispatch cannot commit after cancellation, and the exact bytes can be retried.
+    _work(world, job_id, attempt=1)
+    assert _loaded(world) == []
+    replacement_id, _ = _uploaded(world)
+    assert replacement_id != import_id
+
+
+def test_queued_commit_cancellation_rolls_back_when_cleanup_fails(
+    world: ImportWorld, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import_id, job_id, _, priya = _approved_by(world)
+    spec = registry.HANDLERS[JobKind.IMPORT_COMMIT]
+    assert spec.on_cancel is not None
+
+    def refuse_after_cleanup(*args: Any, **kwargs: Any) -> None:
+        assert spec.on_cancel is not None
+        spec.on_cancel(*args, **kwargs)
+        raise RuntimeError("cleanup could not finish")
+
+    monkeypatch.setitem(
+        registry.HANDLERS,
+        JobKind.IMPORT_COMMIT,
+        replace(spec, on_cancel=refuse_after_cleanup),
+    )
+    response = post(world.app, f"/api/v1/jobs/{job_id}/cancel", priya, {})
+    assert response.status_code == 500, response.text
+    assert _job(world, job_id)["state"] == "QUEUED"
+    assert _stored(world, import_id) == "APPROVED"
+    assert _items(world, import_id) == []
+    # Rollback leaves the original queued job usable, not a cancelled job with a held import.
+    monkeypatch.setitem(registry.HANDLERS, JobKind.IMPORT_COMMIT, spec)
+    response = post(world.app, f"/api/v1/jobs/{job_id}/cancel", priya, {})
+    assert response.status_code == 200, response.text
+    assert _stored(world, import_id) == "FAILED"
+
+
+def test_commit_failure_settlement_can_retry_after_cleanup_timeout(
+    world: ImportWorld, fault: Arm, attempts: Policy, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    attempts(JobKind.IMPORT_COMMIT, 1)
+    import_id, job_id, _ = _approved(world)
+    fault(commit, "start_commit", _defect, 1)
+    original = commit.job_hooks.held_status
+
+    def timeout(session: Any, *args: Any, **kwargs: Any) -> Any:
+        session.execute(text("SET LOCAL lock_timeout = '50ms'"))
+        return original(session, *args, **kwargs)
+
+    monkeypatch.setattr(commit.job_hooks, "held_status", timeout)
+    with tenant_session(DbContext(world.tenant_id, user_id=None, entity_scope="*")) as holder:
+        holder.execute(
+            select(import_upload.c.id)
+            .where(import_upload.c.id == UUID(import_id))
+            .with_for_update()
+        ).one()
+        with pytest.raises(exc.OperationalError) as refused:
+            _work(world, job_id, attempt=1)
+        assert getattr(refused.value.orig, "sqlstate", None) == "55P03"
+    assert _job(world, job_id)["state"] == "RUNNING"
+    assert _stored(world, import_id) == "APPROVED"
+    assert _items(world, import_id) == []
+    # This is the settlement entry point also used by the stalled-job sweeper.
+    registry.fail_attempt(
+        job_id,
+        world.tenant_id,
+        attempt=1,
+        error=RuntimeError("worker stopped"),
+        runtime=world.runtime,
+    )
+    assert _job(world, job_id)["state"] == "FAILED"
+    assert _stored(world, import_id) == "FAILED"
+    assert [item["code"] for item in _items(world, import_id)] == [PROCESSING_FAILED]

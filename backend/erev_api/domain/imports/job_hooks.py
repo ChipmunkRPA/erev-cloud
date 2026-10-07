@@ -14,9 +14,10 @@ state with a failed job behind it and nothing said, whether it has a way out or 
 left ``APPROVED`` had none — it could be neither cancelled nor submitted again.
 
 The hook runs in the transaction that ends the job (``jobs.registry._fail_job``), inside a
-savepoint of the unit of work. It never waits: an upload whose row another transaction holds is
-that transaction's to end. Since 05 JOB-06 rev 1.200 the holder is never the job's own work —
-no job is settled while a unit of work of its attempt is open — so it is another actor's.
+savepoint of the unit of work. Validation and diff skip held rows. Commit settlement waits
+for a competing command, which may refuse without ending the upload. Since 05 JOB-06 rev 1.200
+the holder is never the job's own work: no job is settled while its attempt has an open unit
+of work.
 """
 
 from __future__ import annotations
@@ -34,18 +35,18 @@ __all__ = ["held_status"]
 
 
 def held_status(
-    session: Session, import_id: UUID, statuses: Collection[ImportStatus]
+    session: Session, import_id: UUID, statuses: Collection[ImportStatus], *, wait: bool = False
 ) -> str | None:
     """The status of the upload, now locked by this transaction, when it is one of ``statuses``
-    and its row could be locked at once (``FOR UPDATE SKIP LOCKED``). None otherwise: the upload
+    and its row could be locked (waiting only when requested). None otherwise: the upload
     has ended or moved on — the handler ended it, or its result was committed before the job
-    failed — or another transaction holds the row."""
+    failed — or, when ``wait`` is false, another transaction holds the row."""
     found = session.execute(
         select(import_upload.c.status)
         .where(
             import_upload.c.id == import_id,
             import_upload.c.status.in_([status.value for status in statuses]),
         )
-        .with_for_update(skip_locked=True)
+        .with_for_update(skip_locked=not wait)
     ).scalar_one_or_none()
     return None if found is None else str(getattr(found, "value", found))

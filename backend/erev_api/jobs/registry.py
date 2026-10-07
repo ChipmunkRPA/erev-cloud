@@ -114,6 +114,7 @@ Handler = Callable[[JobContext, Mapping[str, Any]], JobOutcome]
 # The record a job works on ends with the job: called with the unit of work that ends the job
 # FAILED, the job's params and its problem, after the last attempt (BUILD_SPEC RPS-2; RV-14).
 type FailureHook = Callable[[UnitOfWork, Mapping[str, Any], Mapping[str, Any]], None]
+type CancellationHook = Callable[[UnitOfWork, Mapping[str, Any], UUID], None]
 
 
 @dataclass(frozen=True, slots=True)
@@ -411,6 +412,8 @@ class HandlerSpec:
     retry: RetryPolicy
     on_failure: FailureHook | None = None
     failed_item: FailedItem | None = None
+    on_cancel: CancellationHook | None = None
+    failure_hook_required: bool = False
 
 
 # One handler per E-14 kind (DG-KRN-JOB-01), filled by ``task`` when handler modules are imported.
@@ -423,9 +426,15 @@ def task(
     retry: RetryPolicy = DEFAULT_RETRY,
     on_failure: FailureHook | None = None,
     failed_item: FailedItem | None = None,
+    on_cancel: CancellationHook | None = None,
+    failure_hook_required: bool = False,
 ) -> Callable[[Handler], Handler]:
     """Register the handler of ``kind``; its queue is ``JOB_QUEUE[kind]``. ``on_failure`` runs in
     the transaction that ends the job FAILED after its last attempt (BUILD_SPEC RPS-2).
+    ``failure_hook_required`` rolls back settlement if subject cleanup fails, so the sweeper
+    can retry instead of leaving a terminal job with an unfinished subject.
+    ``on_cancel`` settles the subject when a queued job is cancelled, atomically with the job.
+    A hook error aborts cancellation rather than stranding the subject.
     ``failed_item`` makes such a job leave the exception item ``JOB_FAILED`` when its record
     names one legal entity (05 JOB-07 rev 1.165); a kind whose failure hook raises an item of
     its own registers none."""
@@ -434,7 +443,12 @@ def task(
         if kind in HANDLERS:
             raise ValueError(f"job kind {kind.value} already has a handler (DG-KRN-JOB-01)")
         HANDLERS[kind] = HandlerSpec(
-            handler=handler, retry=retry, on_failure=on_failure, failed_item=failed_item
+            handler=handler,
+            retry=retry,
+            on_failure=on_failure,
+            failed_item=failed_item,
+            on_cancel=on_cancel,
+            failure_hook_required=failure_hook_required,
         )
         return handler
 
@@ -1603,7 +1617,8 @@ def _fail_job(
         try:
             # A failing hook leaves its record unchanged, and nothing it buffered in the unit of
             # work - an audit event, a notification's dispatch - outlives its rows: the savepoint
-            # is the unit of work's (DG-KRN-UOW-03), not the session's. The job still ends FAILED.
+            # is the unit of work's (DG-KRN-UOW-03), not the session's. Optional hooks allow
+            # FAILED; required hooks abort settlement so the sweeper can retry cleanup.
             with uow.savepoint():
                 spec.on_failure(uow, handler_params(current.params or {}), problem)
         except Exception as hook_error:
@@ -1614,6 +1629,8 @@ def _fail_job(
                 attempt=attempt,
                 error_class=type(hook_error).__name__,
             )
+            if spec.failure_hook_required:
+                raise
     if failed:
         _raise_failed_item(uow, job_id, current, kind=kind, attempt=attempt, problem=problem)
     uow.commit()
