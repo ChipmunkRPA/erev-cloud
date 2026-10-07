@@ -30,6 +30,7 @@ from typing import Final
 from erev_engine import dates
 from erev_engine.errors import EngineError
 from erev_engine.money import cumulative_posted
+from erev_engine.stages.s01_canonicalize.convert import contract_key_from_subject
 from erev_engine.stages.s12_fx_entities.layers import (
     ACCOUNTS_RECEIVABLE,
     CONTRACT_ASSET,
@@ -106,6 +107,7 @@ def receivable(book: UnitBook, flow: ReceivableFlow, when: date) -> None:
             formula_id="fx.asset_layer.create.v1",
             movement_kind="ASSET_LAYER_CREATED",
             component_key=flow.invoice_key,
+            contract_key=contract_key_from_subject(flow.subject_key),
         )
         return
     items = [

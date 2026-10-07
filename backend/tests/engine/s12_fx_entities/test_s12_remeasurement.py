@@ -1052,6 +1052,12 @@ def test_member_exception_follows_originating_layer_not_revenue_member(
         (f"CONTRACT_LIABILITY:{second_event}", 1200000, second_carrying),
     ]
     assert revenue + first_carrying + second_carrying - fx == 2640000
+    # Cross-member consumption retains the layer owner's identity in persistence output.
+    assert {
+        movement.contract_key
+        for movement in state.layer_movements
+        if movement.layer_key == f"CONTRACT_LIABILITY:{first_event}"
+    } == {first}
 
 
 def test_later_period_exception_does_not_remeasure_prior_period_layer_balance() -> None:

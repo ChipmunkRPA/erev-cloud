@@ -39,11 +39,12 @@ from erev_api.db.tables.reference import (
     ssp_method,
     warranty_type,
 )
-from erev_api.db.types import ExactType, MoneyType
+from erev_api.db.types import ExactType, FxRateType, MoneyType
 from erev_api.enums import (
     ComputationStatus,
     ComputationTrigger,
     ContractStatus,
+    FxLayerMovementKind,
     HoldType,
     SatisfactionStatus,
     ScheduleKind,
@@ -352,5 +353,31 @@ calc_trace: Final = Table(
     Column("node_count", Integer(), nullable=False),
     Column("root_measures", JSONB(), nullable=False),
     Column("trace", JSONB(), nullable=False),
+    *_sc_c(),
+)
+
+
+# T-CON-18: movements of one immutable computation version; revision 0131.
+fx_layer_movement: Final = Table(
+    "fx_layer_movement",
+    metadata,
+    Column("tenant_id", Uuid(), primary_key=True),
+    Column("id", Uuid(), primary_key=True),
+    Column("contract_version_id", Uuid(), nullable=False),
+    Column("contract_id", Uuid(), nullable=False),
+    Column("book_code", book_code_type, nullable=False),
+    Column("entity_id", Uuid(), nullable=False),
+    Column("layer_key", Text(), nullable=False),
+    Column("movement_kind", _enum(FxLayerMovementKind, "fx_layer_movement_kind"), nullable=False),
+    Column("balance_role", account_role, nullable=False),
+    Column("effective_date", Date(), nullable=False),
+    Column("txn_currency", CHAR(3), nullable=False),
+    _money("amount_txn"),
+    Column("functional_currency", CHAR(3), nullable=False),
+    _money("amount_functional"),
+    Column("fx_rate_id", Uuid(), nullable=True),
+    Column("rate", FxRateType(), nullable=True),
+    Column("source_event_id", Uuid(), nullable=True),
+    Column("trace_node_id", Text(), nullable=True),
     *_sc_c(),
 )

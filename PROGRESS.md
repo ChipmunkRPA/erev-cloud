@@ -1,5 +1,32 @@
 # PROGRESS — eRev Cloud build loop notebook (under 20 KB)
 
+## Immutable FX layer persistence — October 7, 2026
+
+- Continued from merged PR #12 (`afefe85`). Revision 0131 follows the actual prior head 0128
+  and adds T-CON-18 `fx_layer_movement`: immutable rows, tenant/entity RLS, role/kind checks,
+  tenant-bound version/contract/entity/event/rate foreign keys and currency references.
+- New computations persist their complete engine movement set atomically with the version and
+  audit facts. Each movement retains its layer owner's contract, including cross-member consumption,
+  independent of the consuming event. Asset, receivable and monetary-liability creation now carry
+  ownership through the engine output. No ownership is guessed from encoded layer-key strings.
+- The writer preserves transaction/functional currency minor units, signed remeasurement amounts,
+  applied rates, pinned rate IDs and trace nodes; a real source event is linked when present.
+  Synthetic time/estimate sources remain trace-linked. Unknown owners/rates, mismatched rate versions,
+  floats and boolean amounts refuse before movement insertion. Existing versions are never rewritten.
+- Registered the table in audit ownership, privacy classification and regenerated snapshot data;
+  moved it out of the unbuilt table/enum inventories. Demo/volume generator versions are now 11/16
+  because persisted seed state changes. Historical seed and performance evidence stays dated.
+- Verification: **433 engine/architecture tests passed**, with the existing Q-11 accounting-review
+  xfail unchanged; **107 persistence/privacy/snapshot/demo-policy tests passed**; **47 combined
+  migration-head/performance/persistence tests passed**. Source Mypy and Ruff lint/format pass.
+  **66 PostgreSQL calculation, isolation, immutability and migration tests passed**, including
+  upgrade/downgrade/upgrade and schema lint. These are targeted checks, not a whole-backend pass.
+- Balance aging remains unavailable: its builder still uses the interim subledger source and needs
+  a layer projection, asset/unbilled presentation and historical-version handling. Prior versions have
+  no backfilled movement set. The negative-liability monitor still uses aggregate balances and needs
+  a layer-level collector. Full-backend verification and independent accounting sign-off remain open.
+  Repository work only; no deployment.
+
 ## Volume delivery quantities — October 7, 2026
 
 - Continued from merged PR #11 (`cf727a1`). Reproduced LIMITS standing failure 8: the 1/1000
@@ -141,58 +168,8 @@
   Public POL-163 creation remains disabled pending its correction, close invalidation checks,
   authoring validation and independent accounting review. C-2 remains partial.
 
-## Contract-period policy isolation — October 7, 2026
-
-- PR #5 merged into main (`be91991`), completing the two-policy workbench slice. The owner
-  instructed automatic merging after verification and retention of **main only**. GitHub automatic
-  merged-branch deletion is enabled; the four older merged branches were deleted locally/remotely.
-  Future implementation branches are temporary and must be removed after merge.
-- Work continues on `codex/contract-period-policy-scope`. POL-163 needs more than admitting another
-  key: the FX engine currently treats the whole group/entity as one liability unit. A contract's
-  exception must not change neighboring contracts in that unit.
-- Added a CONTRACT_PERIOD bundle identity and resolver precedence over the entity PERIOD default.
-  Identity encodes contract, entity and period unambiguously. Pin P and level C are required; both
-  entity and period are required to read it. Existing readers without a contract still receive the
-  entity default.
-- Bundle assembly resolves approved POL-163 rows separately for each member and entity period,
-  using the earlier of the known-at cutoff and the entity-local period end. Prior approvals remain
-  eligible for their historical periods after supersession; later approvals cannot rewrite an
-  earlier period. Forced IFRS15 treatment excludes these rows. Scoped exceptions never become the
-  widest-scope persisted policy pin.
-- Actual verification: 48 scoped-policy, period-row, resolver and PostgreSQL policy-domain tests
-  passed. A further 590 kernel, FX engine, architecture and database period-policy tests passed,
-  including the final persisted-pin assertion. Mypy passed for five source files; Ruff lint/format
-  and whitespace checks passed. No full-backend or live-release claim is made.
-- Initial publication attempts on October 7 returned GitHub internal server errors for both Git
-  pushes and PR creation. The local commit is preserved; check the remote PR and main before
-  treating this slice as published. Repository metadata confirms push/admin access and no archive.
-- This is the isolation foundation, not completion of POL-163. Public authoring stays refused until
-  FX liability layers carry their originating contract and use its period-scoped treatment for
-  consumption and remeasurement, with monetary/historical transitions and mixed-member tie-outs
-  verified. Those readers, actual FX journals, close behavior and UI remain next. No deployment.
-
-## Policy override workbench — October 7, 2026
-
-- PR #4 merged into public main (`51aa535`). Work continues on `codex/policy-override-ui`.
-- The contract workbench now offers Policy overrides to users with entity-scoped `config.read`.
-  Authoring additionally requires `contract.create` for the contract's entity. Historical views
-  expose no command. Drafts can be authored before activation, including financing rates.
-- Added POL-122 obligation/right and POL-047 contract/rate forms. Rates remain decimal strings;
-  the screen explains inception rates and corrections. Saving creates a durable draft; submission
-  is a separate action on that saved record. Reopening or retrying submission reuses the draft.
-  The list displays scope, value, rationale, status and an approval-request link where present.
-- Commands invalidate the contract override list along with the existing contract reads. Required
-  fields, server refusals, network failures, list retry and read-only access have explicit behavior.
-  Existing API validation and independent-approval controls remain authoritative.
-- Actual verification: all **2,040 frontend tests across 191 files passed**, including six new drawer
-  tests and the 66 workbench tests. TypeScript project build, changed-file ESLint, production frontend
-  build, formatting and whitespace checks passed. Design check scanned 499 files with no findings.
-  Local Chromium screenshots of both forms were inspected with mocked records and no runtime errors;
-  this is UI verification, not live-service or accounting sign-off evidence.
-- Remaining C-2: POL-163 period-scoped contract exceptions, broader product readers, database
-  answer-key coverage, and an optional reviewed-judgement attachment selector in this drawer (the
-  API already accepts and validates that link). Wider outstanding items remain in LIMITS-1.0.md.
-  Current scope remains repository completion; no deployment or provisioning.
+Earlier October 7 policy-isolation and workbench evidence is archived verbatim in
+[BUILD-HISTORY-2026-10-07.md](docs/release/BUILD-HISTORY-2026-10-07.md).
 
 ## Public repository publication — October 5, 2026 (America/Los_Angeles)
 

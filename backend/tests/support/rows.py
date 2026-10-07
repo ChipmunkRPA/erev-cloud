@@ -3196,6 +3196,29 @@ def contract_version_balance_row(ctx: RowContext, session: Session) -> dict[str,
     )
 
 
+def fx_layer_movement_row(ctx: RowContext, session: Session) -> dict[str, Any]:
+    """T-CON-18: a same-currency layer of an immutable calculation version."""
+    rows = insert_version_rows(session, ctx.tenant_id)
+    return {
+        "tenant_id": ctx.tenant_id,
+        "id": new_id(),
+        "contract_version_id": rows.version_id,
+        "contract_id": rows.chain.contract_id,
+        "book_code": "ASC606",
+        "entity_id": rows.chain.entity_id,
+        "layer_key": "CONTRACT_ASSET:fixture",
+        "movement_kind": "ASSET_LAYER_CREATED",
+        "balance_role": "CONTRACT_ASSET",
+        "effective_date": date(2026, 1, 1),
+        "txn_currency": "USD",
+        "functional_currency": "USD",
+        "amount_txn": Decimal("1"),
+        "amount_functional": Decimal("1"),
+        "rate": Decimal("1"),
+        **_CREATED,
+    }
+
+
 def schedule_row(ctx: RowContext, session: Session) -> dict[str, Any]:
     """T-ENG-01: a schedule of a version."""
     rows = insert_version_rows(session, ctx.tenant_id)
@@ -4862,6 +4885,7 @@ ROW_BUILDERS: Final[Mapping[str, RowBuilder]] = MappingProxyType(
         "saved_view": saved_view_row,
         "schedule": schedule_row,
         "schedule_line": schedule_line_row,
+        "fx_layer_movement": fx_layer_movement_row,
         "signoff": signoff_row,
         "sod_exception": sod_exception_row,
         "sod_rule": sod_rule_row,

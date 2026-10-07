@@ -94,7 +94,8 @@ GENERATOR_SEED: Final = 20260912  # WLD-R-01
 # the consumer-brands workspace (WLD-T-05) states no POL-029 ``upfront_fee.recognition_period``:
 # a product or a template states no value of it but the default (04 T-REF-23 rev 1.323), and
 # the template held ``CONTRACT_TERM``, which no computation read).
-GENERATOR_VERSION: Final = 10
+# 11: computation also persists immutable FX layer movements (T-CON-18).
+GENERATOR_VERSION: Final = 11
 COMPLETE_ACTION: Final = "demo_seed.complete"
 TENANT_OBJECT: Final = "tenant"
 CREDENTIALS_FILE: Final = "demo-credentials.txt"  # DG-RUN-32, under the run directory

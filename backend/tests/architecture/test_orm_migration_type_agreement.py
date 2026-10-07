@@ -157,7 +157,6 @@ UNBUILT_04_TABLES: frozenset[str] = frozenset(
         "deal_preview",
         "forecast_event_set",
         "forecast_run",
-        "fx_layer_movement",
         "loss_provision_version",
         "material_right",
         # "modification" left this set with 0068_ctr_17_modifications (CTR-17, D-98 140): 17 → 16

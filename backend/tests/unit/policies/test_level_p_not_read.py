@@ -354,13 +354,13 @@ def test_no_industry_template_states_a_value_the_door_refuses() -> None:
 
 
 def test_the_demo_generator_moves_with_what_the_seed_stores() -> None:
-    """``demo.seed.GENERATOR_VERSION`` is 10: the draft template of WLD-T-05 no longer holds the
+    """Version 11 persists FX layers; the draft template of WLD-T-05 no longer holds the
     POL-029 value, so a workspace seeded at 9 is not the one this generator builds — it is
     refused by name and seeded again."""
-    assert seed.GENERATOR_VERSION == 10
+    assert seed.GENERATOR_VERSION == 11
     earlier = seed._DirectoryEntry(tenant_id=UUID(int=0x7E), is_demo=True, generator_version=9)
     assert seed._refusal("juniper-street", earlier) == (
         "Refusing to seed juniper-street: generator version 9 built it; run make seed RESET=1"
     )
-    current = seed._DirectoryEntry(tenant_id=UUID(int=0x7E), is_demo=True, generator_version=10)
+    current = seed._DirectoryEntry(tenant_id=UUID(int=0x7E), is_demo=True, generator_version=11)
     assert seed._refusal("juniper-street", current) is None

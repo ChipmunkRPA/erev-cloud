@@ -401,6 +401,7 @@ RULES: Final[Mapping[str, TableRule]] = MappingProxyType(
         "contract_computation": _regenerated(_K.DERIVED, "recomputed on load (SBX-04 RCP-19)"),
         "contract_version": _regenerated(_K.DERIVED, "recomputed on load (SBX-04)"),
         "contract_version_balance": _regenerated(_K.DERIVED, "recomputed on load (SBX-04)"),
+        "fx_layer_movement": _regenerated(_K.DERIVED, "recomputed on load (SBX-04)"),
         "obligation_version": _regenerated(_K.DERIVED, "recomputed on load (SBX-04)"),
         "schedule": _regenerated(_K.DERIVED, "recomputed on load (SBX-04)"),
         "schedule_line": _regenerated(_K.DERIVED, "recomputed on load (SBX-04)"),
@@ -528,7 +529,6 @@ PENDING: Final[Mapping[str, PendingTable]] = MappingProxyType(
             ),
             _pending("cost_asset_version", _C.REGENERATED, _K.DERIVED, "CST", "engine state"),
             _pending("loss_provision_version", _C.REGENERATED, _K.DERIVED, "LOS", "engine state"),
-            _pending("fx_layer_movement", _C.REGENERATED, _K.DERIVED, "ENG", "engine layers"),
             _pending("portfolio", _C.COPIED, _K.CONFIGURATION, "CTR", "portfolios (T-CON-21)"),
             _pending("portfolio_member", _C.COPIED, _K.CONFIGURATION, "CTR", "T-CON-22"),
             _pending(

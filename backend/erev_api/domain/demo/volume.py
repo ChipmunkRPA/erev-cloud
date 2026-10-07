@@ -138,7 +138,8 @@ KEY_PREFIX: Final = "perf"
 # the same manifest with a different seeded state must not share one perf:<16 hex> identity.
 # 14 → 15 (2026-10-07): retain the exact two-decimal delivery split. Independently rounding
 # each batch to an integer could exceed (or undershoot) the contracted quantity.
-GENERATOR_VERSION: Final = 15
+# 16: computation also persists immutable FX layer movements (T-CON-18).
+GENERATOR_VERSION: Final = 16
 TENANT_CODE: Final = "perf-volume"
 CALENDAR_CODE: Final = "VOL-JAN"
 SSP_BOOK_CODE: Final = "VOL-SSP"

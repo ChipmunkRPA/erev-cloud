@@ -387,7 +387,8 @@ BUILDERS: Final[Mapping[str, Builder]] = MappingProxyType(
         # BUILD_SPEC RPS-12 (SCREENS_B §5.6.6 RPT-33 to RPT-35; lane F-RPS-REG): the book bridge,
         # the adoption bridge and the intercompany pairs (33 → 36). RPT-36 balance_aging stays
         # unregistered: its interim subledger source holds no JET-06 line before the close run
-        # posts the netting reclass (CLO-19) and no T-CON-18 layer before CTR-14 (ruling Q-2).
+        # posts the netting reclass (CLO-19). Revision 0131 stores layers for new computations;
+        # the builder still needs to read them and handle historical versions.
         book_bridge_builder.CODE: book_bridge_builder.build,
         adoption_bridge_builder.CODE: adoption_bridge_builder.build,
         intercompany_pairs_builder.CODE: intercompany_pairs_builder.build,

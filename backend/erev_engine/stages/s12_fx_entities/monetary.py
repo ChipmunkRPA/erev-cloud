@@ -38,6 +38,7 @@ from types import MappingProxyType
 from typing import Final
 
 from erev_engine.errors import EngineError
+from erev_engine.stages.s01_canonicalize.convert import contract_key_from_subject
 from erev_engine.stages.s12_fx_entities.layers import (
     MONETARY_ROLES,
     ControlFlow,
@@ -158,6 +159,7 @@ def _increase(book: UnitBook, flow: MonetaryFlow, when: date) -> None:
         formula_id="fx.monetary_liability.create.v1",
         movement_kind="LIABILITY_LAYER_CREATED",
         component_key=flow.component_key,
+        contract_key=contract_key_from_subject(flow.subject_key),
     )
     if flow.role == "CONSIDERATION_PAYABLE":
         _functional(book, flow, flow.subject_key, 1, [created])  # JET-14 promised at spot
