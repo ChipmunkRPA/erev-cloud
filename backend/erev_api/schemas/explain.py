@@ -39,6 +39,7 @@ ExplainObjectType = Literal[
     "subledger_line",
     "journal_line",
     "contract_version_balance",
+    "loss_provision_version",
 ]
 
 

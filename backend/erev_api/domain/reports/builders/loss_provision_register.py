@@ -15,6 +15,7 @@ from uuid import UUID
 from erev_engine.stages.s01_canonicalize import encode_key
 from erev_engine.trace import Trace
 from sqlalchemy import and_, select
+from sqlalchemy.orm import Session
 
 from erev_api.db.tables import (
     contract,
@@ -132,9 +133,8 @@ def dataset_rows(found: Sequence[Mapping[str, Any]]) -> ReportData:
     )
 
 
-def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
+def sources(session: Session, params: ReportParams) -> list[dict[str, Any]]:
     refuse_locked_source(params)
-    session = uow.session
     book = tie_outs.book_of(session, params)
     entities = tie_outs.entities(session, params.entity_ids, params=params)
     calendars = tie_outs.calendars(session, entities, params=params)
@@ -280,4 +280,30 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                     "eac_versions": sorted(lineage.get(row["id"], [])),
                 }
             )
-    return dataset_rows(found)
+    return found
+
+
+def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
+    return dataset_rows(sources(uow.session, params))
+
+
+def cell(
+    session: Session, params: ReportParams, row_key: str, column_key: str
+) -> tuple[Mapping[str, str], list[dict[str, Any]]]:
+    """Explain the original register's provision through its exact immutable period test."""
+    if column_key != "provision_balance":
+        raise tie_outs.invalid("column_key", "Only the provision balance has an Explain drill.")
+    for source in sources(session, params):
+        row = dataset_rows([source]).rows[0]
+        if row["row_key"] == row_key:
+            value = tie_outs.money(Decimal(source[column_key]), str(source["currency"]).strip())
+            return value, [
+                {
+                    "object_type": "loss_provision_version",
+                    "id": source["id"],
+                    "measure": column_key,
+                    "value": value,
+                    "href": f"/api/v1/explain/loss_provision_version/{source['id']}/{column_key}",
+                }
+            ]
+    raise tie_outs.invalid("row_key", "The bound loss register has no such row.")

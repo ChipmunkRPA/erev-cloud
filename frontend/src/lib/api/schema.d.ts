@@ -12429,7 +12429,8 @@ export interface components {
         | "schedule_line"
         | "subledger_line"
         | "journal_line"
-        | "contract_version_balance";
+        | "contract_version_balance"
+        | "loss_provision_version";
     };
     /**
      * ExplainOut
@@ -32370,7 +32371,8 @@ export interface operations {
           | "schedule_line"
           | "subledger_line"
           | "journal_line"
-          | "contract_version_balance";
+          | "contract_version_balance"
+          | "loss_provision_version";
         object_id: string;
         measure: string;
       };
@@ -32453,7 +32455,8 @@ export interface operations {
           | "schedule_line"
           | "subledger_line"
           | "journal_line"
-          | "contract_version_balance";
+          | "contract_version_balance"
+          | "loss_provision_version";
         object_id: string;
         measure: string;
       };

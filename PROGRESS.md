@@ -1,28 +1,22 @@
 # PROGRESS — eRev Cloud build loop notebook (under 20 KB)
 
-## Loss provision register enabled — October 7, 2026
+## Loss provision Explain drill — October 7, 2026
 
-- Continued from merged PR #18 (`4d79cfd`). RPT-31 now reads period loss-test rows and every EAC
-  contributor from the report-bound contract versions. It filters by book, entity, owning member,
-  accounting period, loss scope and optional nonzero provision. Row keys distinguish contract
-  and obligation units; totals retain separate currencies. Multiple EAC contributors are listed
-  explicitly, with no arbitrary single version selected.
-- The adapter retains calendars, selected versions and contract/obligation/EAC labels for reruns.
-  Trace coverage refuses missing persisted period tests, including zero provisions from older
-  versions. No historical backfill. Revision 0134 updates the previously unavailable report's IPE
-  metadata and restores its immutability guard in the migration transaction.
-- The original K03 public report acceptance passes. A second PostgreSQL regression verifies a
-  changed fresh report, identical same-source rerun rows/hash after later changes, August's
-  unchanged 1,200,000 consideration, zero-provision filtering, empty entity scope and JSON/CSV/
-  XLSX/PDF generation. The report unit suite passes all 507 tests; six migration/report-schema
-  tests pass, including upgrade/downgrade/upgrade and the report-definition immutability check.
-  Source Mypy, Ruff and design checks pass.
-- Remaining RPT-31 work: provision-cell Explain drill and functional/reporting currency when
-  currencies differ. Explicit locked-source reads remain refused; ordinary bound reruns work.
-  There are now 39 registered builders and 17 unavailable definitions. Standing acceptance 12
-  is closed; broader C-11 work, full-backend verification and independent accounting sign-off
-  remain open. No deployment.
-- Previous loss storage and calculation evidence is archived in
+- Continued from PR #19 (`f6d3ffe`). The RPT-31 provision cell now names its immutable T-CON-17
+  contributor using the original report's bound versions, calendars and labels. The viewer opens
+  the existing contributor/Explain flow only for the supported provision-balance column.
+- Explain and Verify resolve the stored loss-test trace node, amount, period and entity. A different
+  explicit period or unsupported measure is refused. Added the contributor's entity-reach rule,
+  the typed API object and frontend parser support; regenerated OpenAPI and TypeScript types.
+- PostgreSQL verification: the cell and contributor resolve, verification matches the saved amount,
+  later calculations preserve the original contributor while a fresh report names a new one, and
+  an outside-entity reader receives 404 from both Explain and Verify. The report/Explain unit
+  suite passes all 515 checks; all 11 existing Explain API/entity-scope tests pass.
+  The 42 existing viewer tests and the new loss-column drill test pass.
+  Source Mypy, frontend TypeScript, Ruff, ESLint and design checks pass.
+- Foreign-currency functional/reporting loss views and explicit locked-source reads remain open,
+  as do the broader release backlog, full-backend verification and independent accounting sign-off.
+  No deployment. Previous loss-register evidence is archived in
   [BUILD-HISTORY-2026-10-07.md](docs/release/BUILD-HISTORY-2026-10-07.md).
 
 ## Balance aging enabled — October 7, 2026

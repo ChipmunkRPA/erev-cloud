@@ -673,3 +673,59 @@ def test_loss_register_rerun_and_exports(k03: K03World, clock: FrozenClock) -> N
             ),
         )
     assert empty_scope.rows == ()
+
+
+def test_loss_register_explain_stays_bound_and_refuses_other_entity(
+    k03: K03World, clock: FrozenClock
+) -> None:
+    from support.principals import colleague
+    from support.reference import entity, holding
+
+    world = k03.report
+    parameters = {"entity_codes": [AVM_US], "book": "ASC606", "period_key": SEPTEMBER_2026}
+    original, _ = report_run(world, "loss_provision_register", parameters)
+    path = f"/api/v1/explain/report-runs/{original['id']}/cell"
+    cell_params = {"row_key": f"contract:{K03_EXTERNAL_ID}", "column_key": "provision_balance"}
+    response = get(world.app, path, world.maya, cell_params)
+    assert response.status_code == 200, response.text
+    (contributor,) = response.json()["contributors"]["items"]
+    assert contributor["object_type"] == "loss_provision_version"
+    assert contributor["value"] == usd("0.00")
+    explanation = get(world.app, contributor["href"], world.maya)
+    assert explanation.status_code == 200, explanation.text
+    assert explanation.json()["root_node_id"].endswith(f":{K03_EXTERNAL_ID}:{SEPTEMBER_2026}")
+    verified = post(world.app, contributor["href"] + "/verify", world.maya, {})
+    assert verified.status_code == 200, verified.text
+    assert verified.json()["matches"] is True
+    wrong_period = get(world.app, contributor["href"], world.maya, {"period": "FY2026-P08"})
+    assert wrong_period.status_code == 404
+    unsupported = get(
+        world.app, path, world.maya, {**cell_params, "column_key": "expected_total_costs"}
+    )
+    assert unsupported.status_code == 422
+
+    k03_change_order(k03, clock)
+    k03_september(k03, clock)
+    repeated = get(world.app, path, world.maya, cell_params)
+    assert repeated.status_code == 200 and repeated.json() == response.json(), repeated.text
+    current, _ = report_run(world, "loss_provision_register", parameters)
+    fresh = get(
+        world.app, f"/api/v1/explain/report-runs/{current['id']}/cell", world.maya, cell_params
+    )
+    assert fresh.status_code == 200, fresh.text
+    assert fresh.json()["contributors"]["items"][0]["id"] != contributor["id"]
+    calendar_id = world.place.scalar(
+        select(legal_entity.c.calendar_id).where(legal_entity.c.id == world.entity_id)
+    )
+    other = entity(world.app, world.marcus, code="EXPLAIN-OTHER", calendar_id=str(calendar_id))
+    reader = holding(
+        world.app,
+        colleague(world.tenant_id, "loss-other"),
+        "revenue_accountant",
+        entity_ids=[UUID(other["id"])],
+    )
+    for hidden in (
+        get(world.app, contributor["href"], reader),
+        post(world.app, contributor["href"] + "/verify", reader, {}),
+    ):
+        assert hidden.status_code == 404, hidden.text

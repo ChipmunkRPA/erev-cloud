@@ -75,6 +75,7 @@ from erev_api.db.tables import (
     contract_version,
     contract_version_balance,
     legal_entity,
+    loss_provision_version,
     obligation,
     obligation_version,
     period,
@@ -695,6 +696,34 @@ def _balance(session: Session, object_id: UUID, measure: str, period_key: str | 
     )
 
 
+def _loss_provision(
+    session: Session, object_id: UUID, measure: str, period_key: str | None
+) -> _Figure:
+    row = _one(
+        session, select(loss_provision_version).where(loss_provision_version.c.id == object_id)
+    )
+    if measure != "provision_balance" or period_key not in (None, row["period_key"]):
+        raise Problem("not-found", "The loss test explains its own period's provision balance.")
+    version = _version(session, row["contract_version_id"])
+    trace_id = _uuid(version["calc_trace_id"])
+    _, trace = _trace(session, trace_id)
+    return _figure(
+        "loss_provision_version",
+        object_id,
+        measure,
+        period_key=str(row["period_key"]),
+        version=version,
+        trace_id=trace_id,
+        trace=trace,
+        node=_node(trace, row["trace_nodes"].get("loss_provision_required")),
+        stored=Decimal(row["provision_balance"]),
+        currency=row["currency"],
+        entity_id=row["entity_id"],
+        contract_id=row["contract_id"],
+        obligation_id=row["obligation_id"],
+    )
+
+
 def _resolve(
     session: Session,
     *,
@@ -705,6 +734,8 @@ def _resolve(
     known_at: datetime | None,
     period_key: str | None,
 ) -> _Figure:
+    if object_type == "loss_provision_version":
+        return _loss_provision(session, object_id, measure, period_key)
     if object_type == "schedule_line":
         return _schedule_line(session, object_id, measure)
     if object_type == "subledger_line":
