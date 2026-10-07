@@ -8,6 +8,7 @@ the scope is "not visible" exactly as a missing row is (REQ-PLT-012).
 from __future__ import annotations
 
 from collections.abc import Sequence
+from datetime import date
 from typing import Any, Final
 from uuid import UUID
 
@@ -31,6 +32,7 @@ from sqlalchemy.orm import Session
 # 1.36; D-98 101a / 101b) lives in the kernel so that approval hooks share it; re-exported here.
 from erev_api.db.locking import REGROUPED as REGROUPED
 from erev_api.db.locking import lock_group_then_contract as lock_group_then_contract
+from erev_api.db.session import system_entity_scope
 from erev_api.db.tables import (
     combination_group,
     combination_group_member,
@@ -76,6 +78,33 @@ def get_group(session: Session, group_id: UUID) -> dict[str, Any]:
     if row is None:
         raise Problem("not-found")
     return dict(row)
+
+
+def product_reference_date(session: Session, group_id: UUID) -> date:
+    """Current members' minimum inception, the calculation bundle's product reference date.
+
+    Called after visibility/command authorization. This scalar includes other entities of the
+    same tenant group, as the calculation does; no contract or entity data is returned.
+    """
+    member = combination_group_member
+    with system_entity_scope(session):
+        found = session.execute(
+            select(func.min(contract.c.inception_date))
+            .select_from(
+                member.join(
+                    contract,
+                    and_(
+                        contract.c.tenant_id == member.c.tenant_id,
+                        contract.c.id == member.c.contract_id,
+                    ),
+                )
+            )
+            .where(member.c.combination_group_id == group_id, member.c.valid_to_known_at.is_(None))
+        ).scalar_one()
+    if found is None:
+        raise Problem("not-found")
+    assert isinstance(found, date)
+    return found
 
 
 def current_member(session: Session, contract_id: UUID) -> dict[str, Any] | None:

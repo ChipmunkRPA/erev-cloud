@@ -1,5 +1,29 @@
 # PROGRESS — eRev Cloud build loop notebook (under 20 KB)
 
+## Mandatory product disaggregation — October 7, 2026
+
+- Continued from merged PR #26 (`ed6ea75`). The product usability warning is now enforced at
+  booking/draft replacement, activation submission and approval, native modification additions,
+  and legacy amendment application. Missing attributes name the product and required codes.
+  Catalogue drafts remain editable. Bundle components follow the minimum inception of current
+  group members, matching the calculation reference date rather than the group's retained old date.
+- **108 database workflow tests passed, one existing parity-entry-point skip** across activation,
+  native modification, products, bundles, legacy amendments and mixed amendment integration.
+  **Five final database checks passed** after the reference-date refinement: booking/activation,
+  native additions, legacy quarantine with rollback, dated bundle components and entity-scoped
+  modification approval. No expected accounting amounts changed. CTL-028 tags cover the new
+  activation and modification witnesses; B1-16 is closed in LIMITS.
+- **267 architecture checks passed** during the change. The final focused run passed **194 tests**
+  (147 unit checks plus 47 layer/import-cycle checks). Final source Mypy, Ruff, whitespace and
+  design checks (500 files) pass. Initial test failures were fixture expectations/setup: error
+  rule/status, a second contract's legitimate combination suggestion, legacy replay prerequisite,
+  and the unmapped-product unit's newly required empty-setting/group-date context. They were
+  corrected without weakening the existing controls.
+- The broader backend run remains pinned to `ed6ea75` in a detached checkout and a dedicated
+  loopback database, with passing tests and the existing expected Q11 failure. It is still live,
+  not a completed gate, and does not cover this later change. Full-backend/specialist verification,
+  other release limitations and independent accounting review remain open. No deployment.
+
 ## FX layer index under RLS — October 7, 2026
 
 - Continued from merged PR #25 (`7b4eb69`). The index audit reproduced an existing 0131 schema

@@ -3848,3 +3848,40 @@ def test_legacy_unconfirmed_request_cannot_be_approved(
     revised = _patch(k02, created["id"], {"questionnaire": classified["questionnaire"]})
     assert revised["status"] == "DRAFT"
     assert get(k02.app, f"/api/v1/approvals/{request_id}", k02.priya).json()["status"] == "VOIDED"
+
+
+@pytest.mark.control("CTL-028")
+def test_required_product_attributes_block_added_obligations_at_create_and_approval(
+    k02: K02World, runtime: JobRuntime, clock: FrozenClock
+) -> None:
+    from support.reference import fields
+    from support.rows import publish_registry_version
+
+    contract_id = _k02_contract(k02)
+    created = _create(k02, contract_id, _upgrade_body())
+    _classify(k02, created["id"])
+    _preview(k02, created["id"], runtime)
+    request_id = _submit(k02, created["id"])
+    with k02.place.uow() as uow:
+        publish_registry_version(
+            uow.session,
+            tenant_id=k02.place.tenant_id,
+            category=RegistryCategory.DISCLOSURE_ELECTION,
+            values={"disclosure.mandatory_disaggregation_attributes": ["review_channel"]},
+            at=clock.now(),
+        )
+        uow.commit()
+    refused = post(
+        k02.app,
+        f"{CONTRACTS}/{contract_id}/modifications",
+        k02.place.author,
+        _upgrade_body(reference="MISSING-ATTR-NEW"),
+    )
+    assert refused.status_code == 422, refused.text
+    assert ("lines", "REQ-REF-012") in fields(refused)
+    request = get(k02.app, f"/api/v1/approvals/{request_id}", k02.priya).json()
+    blocked = _approve_with(k02.app, request_id, k02.priya, request["subject"]["content_sha256"])
+    assert blocked.status_code == 422, blocked.text
+    assert ("lines", "REQ-REF-012") in fields(blocked)
+    assert str(_row(k02, created["id"])["status"]) == "SUBMITTED"
+    assert _events(k02, contract_id, ContractEventType.CONTRACT_AMENDED) == []

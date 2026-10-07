@@ -104,6 +104,7 @@ from erev_api.domain.contracts.compute_job import MODIFICATION_PREVIEW_MODE
 from erev_api.domain.contracts.events import DRY_RUN, dry_run_summary, impact_summary
 from erev_api.domain.platform import approval_queries, file_access
 from erev_api.domain.platform.jobs import JOB_COLUMNS, job_outs
+from erev_api.domain.reference.products import required_attribute_errors
 from erev_api.enums import (
     ApprovalDecisionKind,
     ApprovalRequestStatus,
@@ -585,7 +586,7 @@ def s06_r19_refusal(error: ValueError, row: Mapping[str, Any]) -> Problem | None
 
 
 def _line_errors(
-    session: Session, current: Mapping[str, Any], lines: Sequence[Any]
+    session: Session, current: Mapping[str, Any], lines: Sequence[Any], *, at: date
 ) -> list[ProblemError]:
     """REMOVE and CHANGE lines name an obligation of the contract (T-CON-10); an ADD line names its
     product (S06-R-07). The engine judges the treatment (S06-R-04 / S06-R-05). The S06-R-19 line
@@ -602,7 +603,11 @@ def _line_errors(
             )
         )
     }
-    errors: list[ProblemError] = []
+    errors = required_attribute_errors(
+        session,
+        {str(line.product_code) for line in lines if line.action == "ADD" and line.product_code},
+        at=at,
+    )
     for index, line in enumerate(lines):
         field = f"lines[{index}]"
         if line.action != "ADD" and str(line.obligation_key) not in known:
@@ -758,7 +763,12 @@ def create_modification(
     status = _text(current["status"])
     if status != ContractStatus.ACTIVE.value:
         raise _invalid(NOT_ACTIVE.format(external_id=current["external_id"], status=status))
-    errors = _line_errors(session, current, body.lines)
+    errors = _line_errors(
+        session,
+        current,
+        body.lines,
+        at=repo.product_reference_date(session, _uuid(current["combination_group_id"])),
+    )
     errors += questionnaire_value_errors(body.questionnaire)
     errors += _member_currency_errors(body, str(current["transaction_currency"]).strip())
     repeated = _reference_error(session, contract_id, body.reference, except_id=None)
@@ -829,7 +839,12 @@ def update_modification(
     values = _authored_values(body)
     errors: list[ProblemError] = []
     if body.lines is not None:
-        errors += _line_errors(session, current, body.lines)
+        errors += _line_errors(
+            session,
+            current,
+            body.lines,
+            at=repo.product_reference_date(session, _uuid(current["combination_group_id"])),
+        )
     errors += questionnaire_value_errors(body.questionnaire)
     errors += _member_currency_errors(body, str(current["transaction_currency"]).strip())
     if body.reference is not None:
@@ -2361,6 +2376,24 @@ def submit(
     errors += [
         error
         for item in pair
+        for error in required_attribute_errors(
+            session,
+            {
+                str(line["product_code"])
+                for line in item["lines"]
+                if line.get("action") == "ADD" and line.get("product_code")
+            },
+            at=repo.product_reference_date(
+                session,
+                _uuid(
+                    repo.get_contract(session, _uuid(item["contract_id"]))["combination_group_id"]
+                ),
+            ),
+        )
+    ]
+    errors += [
+        error
+        for item in pair
         for error in _ssp_basis_errors(
             session, item, uow.now, document=documents[_uuid(item["id"])]
         )
@@ -2613,6 +2646,13 @@ def _insert_created_obligations(
             select(obligation.c.obligation_key).where(obligation.c.contract_id == current["id"])
         )
     }
+    errors = required_attribute_errors(
+        uow.session,
+        {product_codes[key] for key in keys if key not in known},
+        at=repo.product_reference_date(uow.session, _uuid(current["combination_group_id"])),
+    )
+    if errors:
+        raise _failed(*errors)
     sequence = _next_line_sequence(uow.session, _uuid(current["id"]))
     principal = uow.principal
     rows: list[dict[str, Any]] = []

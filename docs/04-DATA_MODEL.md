@@ -2782,6 +2782,21 @@ Legacy note: legacy eRev has no customer. Legacy template imports create one cus
 
 ### T-REF-20 `product`
 
+October 7 continuation (REQ-REF-012, CTL-028): mandatory disaggregation attributes are enforced
+at contract use. Booking and draft replacement refuse missing attributes with 422,
+`errors[].field = "lines"`, `rule_id = "REQ-REF-012"`, and a message naming the product and
+missing attribute codes. Native modification creation/update/submission and obligation application
+apply the same rule; legacy amendment application raises the finding through its import pipeline.
+Activation includes this check in `PRODUCT_TEMPLATE_SSP`, at submission and again at approval.
+Thus a newly published requirement or a product edited after preparation cannot bypass approval.
+
+The check uses the published `disclosure.mandatory_disaggregation_attributes` setting and follows
+bundle components at the contract group's inception, matching the calculation bundle's reference
+date. Products may still be maintained as incomplete drafts in the catalogue. A refusal leaves
+no newly booked contract, applied amendment or activation event. Existing immutable events and
+accounting amounts are not rewritten.
+
+
 - **Purpose.** Product or SKU master (REQ-REF-012).
 - **Class.** IM-M (DELETE forbidden; `principal_agent` changes need an approved `PRINCIPAL_AGENT_CHANGE` request, and so do changes of `policy_values` — rev 1.110; `code` is frozen once the product is in use, DB-05 — rev 1.160); RLS-T; PT-N; AUD-CMD.
 - **REQ areas.** REF (REQ-REF-012 to -014), SSP, POB, RPT.
