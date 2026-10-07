@@ -139,6 +139,7 @@ from sqlalchemy import RowMapping, Table, and_, delete, func, insert, or_, selec
 from sqlalchemy.orm import Session
 
 from erev_api.approvals import delegations, preview
+from erev_api.approvals.authorship import AUTHOR_DETAIL, draft_authors
 from erev_api.auth import sod
 from erev_api.auth.permissions import role_content_sha256
 from erev_api.auth.principal import system_principal
@@ -2841,8 +2842,8 @@ def fx_rate_set_version_uploader(session: Session, subject_id: UUID) -> frozense
     supervisor ruling R-98; REQ-PLT-011). The commit of an ``fx_rates`` import creates the version
     and submits it as SYSTEM on behalf of its uploader, so the request names no preparer; the
     uploader wrote its rates all the same and may not decide it, in person or as the delegator of
-    whoever decides. Nobody is excluded for a version no import created, nor for a file an API
-    client uploaded — a client never decides."""
+    whoever decides. Direct-entry creators and successful editors are excluded as well. API clients
+    are not human deciders."""
     row = session.execute(
         select(import_upload.c.created_by, import_upload.c.created_by_kind)
         .select_from(
@@ -2856,10 +2857,13 @@ def fx_rate_set_version_uploader(session: Session, subject_id: UUID) -> frozense
         )
         .where(fx_rate_set_version.c.id == subject_id)
     ).one_or_none()
+    authors = draft_authors(fx_rate_set_version, edit_actions=("fx_rate_set_version.update",))(
+        session, subject_id
+    )
     if row is None or row.created_by is None:
-        return frozenset()
+        return authors
     kind = str(getattr(row.created_by_kind, "value", row.created_by_kind))
-    return frozenset({UUID(str(row.created_by))}) if kind == "USER" else frozenset()
+    return authors | (frozenset({UUID(str(row.created_by))}) if kind == "USER" else frozenset())
 
 
 # What the approval of a rate set version means for the periods already closed is the close
@@ -4188,6 +4192,8 @@ SUBJECTS: Final[dict[ApprovalSubjectType, SubjectSpec]] = {
     ),
     ApprovalSubjectType.MANUAL_EVENT: SubjectSpec(
         subject_type=ApprovalSubjectType.MANUAL_EVENT,
+        excluded_deciders=draft_authors(event_submission, edit_actions=()),
+        excluded_detail=AUTHOR_DETAIL,
         table="event_submission",
         required_permission="event.approve",  # PRD §2.5 routing row MANUAL_EVENT
         revenue_affecting=False,
@@ -4282,6 +4288,10 @@ SUBJECTS: Final[dict[ApprovalSubjectType, SubjectSpec]] = {
     ),
     ApprovalSubjectType.MODIFICATION: SubjectSpec(
         subject_type=ApprovalSubjectType.MODIFICATION,
+        excluded_deciders=draft_authors(
+            modification, edit_actions=("modification.update", "modification.classify")
+        ),
+        excluded_detail=AUTHOR_DETAIL,
         table=MODIFICATION_OBJECT,
         required_permission="modification.approve",  # PRD §2.5 routing row MODIFICATION
         revenue_affecting=True,  # the stored impact preview is the request's preview (REQ-PLT-015)
@@ -4322,6 +4332,8 @@ SUBJECTS: Final[dict[ApprovalSubjectType, SubjectSpec]] = {
     ),
     ApprovalSubjectType.ATTRIBUTE_CHANGE: SubjectSpec(
         subject_type=ApprovalSubjectType.ATTRIBUTE_CHANGE,
+        excluded_deciders=draft_authors(event_submission, edit_actions=()),
+        excluded_detail=AUTHOR_DETAIL,
         table="event_submission",
         required_permission="event.approve",  # PRD §2.5 routing row ATTRIBUTE_CHANGE
         revenue_affecting=False,  # [J] L4-1-Q-23: no dry-run preview of an attribute change yet
@@ -4338,6 +4350,8 @@ SUBJECTS: Final[dict[ApprovalSubjectType, SubjectSpec]] = {
     ),
     ApprovalSubjectType.POLICY_OVERRIDE: SubjectSpec(
         subject_type=ApprovalSubjectType.POLICY_OVERRIDE,
+        excluded_deciders=draft_authors(policy_override, edit_actions=()),
+        excluded_detail=AUTHOR_DETAIL,
         table="policy_override",
         required_permission="contract.approve",  # PRD §2.5 routing row POLICY_OVERRIDE
         revenue_affecting=False,  # L4-2-Q-4
@@ -4369,6 +4383,10 @@ SUBJECTS: Final[dict[ApprovalSubjectType, SubjectSpec]] = {
     ),
     ApprovalSubjectType.ESTIMATE_VERSION: SubjectSpec(
         subject_type=ApprovalSubjectType.ESTIMATE_VERSION,
+        excluded_deciders=draft_authors(
+            estimate_version, edit_actions=("estimate_version.update",)
+        ),
+        excluded_detail=AUTHOR_DETAIL,
         table="estimate_version",
         required_permission="estimate.approve",  # PRD §2.5 routing row ESTIMATE_VERSION
         revenue_affecting=True,  # the submission's dry run is the impact preview (REQ-PLT-015)

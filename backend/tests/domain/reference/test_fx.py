@@ -31,6 +31,7 @@ from sqlalchemy import select
 from support.db import TestDatabase
 from support.http import HttpResponse
 from support.principals import Actor, colleague, enrolled, member
+from support.reference import approve as decide_approval
 from support.reference import assign, calendar, fields, get, holding, patch, post, slug
 
 RATE_SETS = "/api/v1/fx-rate-sets"
@@ -657,3 +658,40 @@ def test_l7_6_contract_bundle_carries_the_rate_set_versions_in_force_at_known_at
     # As of the first publication version 2 is not yet in force.
     assert pinned(world, first_known) == [v1_april, v1_may]
     assert pinned(world, first_known - timedelta(seconds=1)) == []
+
+
+@pytest.mark.parametrize("mode", ["creator", "editor"])
+def test_rate_author_cannot_approve_another_users_submission(
+    app: FastAPI, world: World, clock: FrozenClock, mode: str
+) -> None:
+    assign(world.carmen.member, "revenue_accountant")
+    created = rate_set(app, world.maya, code="AUTHOR-RATES", rate_type="closing")
+    draft = version(
+        app,
+        world.carmen if mode == "creator" else world.maya,
+        created["id"],
+        coverage=("2026-09-01", "2026-09-30"),
+        rates=[closing("EUR", "1.10", "FY2026-P09")],
+    )
+    if mode == "editor":
+        changed = patch(
+            app,
+            f"{VERSIONS}/{draft['id']}",
+            world.carmen,
+            {"rates": [closing("EUR", "1.12", "FY2026-P09")]},
+            if_match=f'"r{draft["row_version"]}"',
+        )
+        assert changed.status_code == 200, changed.text
+        draft = changed.json()
+    submitted = submit(app, world.maya, draft)
+    assert submitted.status_code == 200, submitted.text
+    request_id = str(submitted.json()["pending_approval_request_id"])
+    detail = get(app, f"{APPROVALS}/{request_id}", world.carmen)
+    assert detail.status_code == 200, detail.text
+    assert detail.json()["can_decide"] is False
+    refused = decide_approval(app, request_id, world.carmen)
+    assert (refused.status_code, slug(refused)) == (403, "self-approval"), refused.text
+    reviewer = colleague(world.tenant_id, "independent-fx-reviewer")
+    assign(reviewer, "controller")
+    accepted = approve(app, request_id, enrolled(app, clock, reviewer))
+    assert accepted.status_code == 200, accepted.text
