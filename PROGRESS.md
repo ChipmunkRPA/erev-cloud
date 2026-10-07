@@ -1,23 +1,23 @@
 # PROGRESS — eRev Cloud build loop notebook (under 20 KB)
 
-## Password-change lockout — October 7, 2026
+## Consideration history across fiscal calendars — October 7, 2026
 
-- Continued from PR #20 (`762666b`). Closed release limitation B1-34: incorrect current passwords
-  during password changes now consume the identity's shared sign-in failure budget. The fifth
-  consecutive failure locks for 15 minutes; an active lock refuses even a correct password.
-- Password verification, counter updates and a successful change hold the same identity-row
-  write lock. Refused attempts commit their counter and security evidence before returning the
-  error. LOGIN_FAILED evidence carries purpose `password_change`; ACCOUNT_LOCKED records the
-  threshold. A correct verification clears consecutive failures, including when the proposed
-  new password is rejected by policy. Existing session rotation and reset-token invalidation stay.
-- Four PostgreSQL password-change tests pass, including concurrent attempts sharing earlier
-  sign-in failures, audit persistence, expiry, successful retry and session-rotation behavior.
-  All 33 surrounding sign-in/invitation/reset/CSRF and password-race regressions pass. Three
-  password-change viewer tests pass, including the lockout banner. Mypy, TypeScript, Ruff,
-  ESLint and design checks pass; OpenAPI and generated types include the 423 response.
-- Full-backend verification, remaining release limitations and independent accounting sign-off
-  remain open. Repository work only; no deployment. Previous dated evidence is archived in
-  [BUILD-HISTORY-2026-10-07.md](docs/release/BUILD-HISTORY-2026-10-07.md).
+- Continued from merged PR #21 (`ee00858`). A broader backend run selected 9,975 tests,
+  excluding parity, answer-key and performance gates. It stopped after 1,096 passes at the
+  mixed Stage-06/08 share-based consideration case: a performing 4-4-5 year ended January 1,
+  2028, beyond the contracting calendar, and the new consideration history requested a VC
+  policy for that uncovered date. This run is not a whole-backend pass.
+- Incidental period-end measurements now require coverage in the contracting calendars.
+  Covered performing cutoffs remain in the history for impairment; actual boundary-event dates
+  retain their existing validation. The original mixed-producer accounting figures and trace
+  assertions remain unchanged. The regression also checks that August 29 is retained and
+  the uncovered January 1 is excluded.
+- All 96 targeted share-based consideration, book-fold and cost/loss checks pass. Ruff and
+  source Mypy and design checks pass. The complete engine/architecture run passed **1,996**
+  tests with one existing Q-11 expected failure; there were no unexpected failures.
+- Remaining backend and specialist gates, documented release gaps and independent accounting
+  sign-off remain open. Repository work only; no deployment. Earlier dated evidence is preserved
+  in [BUILD-HISTORY-2026-10-07.md](docs/release/BUILD-HISTORY-2026-10-07.md).
 
 ## Balance aging enabled — October 7, 2026
 
