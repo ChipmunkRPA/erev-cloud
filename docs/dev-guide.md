@@ -884,6 +884,21 @@ def settings_override(**values: object) -> Iterator[Settings]: ...   # tests onl
 
 ### 5.2 Database sessions and tenant context (KRN-DB)
 
+October 7, 2026 continuation — policy approval and period locks: after locking the combination
+group and contract, approval of an override on a non-draft contract calls
+`period_ends.refuse_policy_change_a_lock_met`. Under tenant entity scope it shares the close-window
+rows of the contracting and performing entities, before publishing an approval or superseding
+another one. The period-lock decision then waits and reads the committed dirty-group mark.
+If a lock has already overtaken the approval transaction's record cutoff, the approval rolls back
+with `PERIOD_STATE_MOVED` in its decision form; the reviewer can retry after the lock. An approval
+that began after the lock's cutoff may complete after waiting for that lock. Draft contracts skip
+the check because their policy has no calculated or frozen output yet. The scope widening is
+limited to these control reads and is listed in the architecture test's closed allowlist.
+
+This applies even when the pending-approvals gate has an approved waiver. That waiver permits
+pending decisions; it does not authorize publishing an in-flight policy change behind a lock's
+read. The API concurrency tests use the real waiver, lock and policy-approval workflows.
+
 ```python
 # Binding signature: backend/erev_api/db/session.py
 @dataclass(frozen=True, slots=True)

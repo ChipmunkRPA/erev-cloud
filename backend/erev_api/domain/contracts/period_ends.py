@@ -147,6 +147,7 @@ __all__ = [
     "hold_windows",
     "passed",
     "refuse_appends_a_lock_met",
+    "refuse_policy_change_a_lock_met",
     "scope_key",
     "unposted",
     "window_held",
@@ -440,6 +441,35 @@ def hold_windows(uow: UnitOfWork, group_ids: Iterable[UUID]) -> None:
         return
     with system_entity_scope(uow.session):
         _window_rows_held(uow, bundles.entity_codes(uow.session, wanted))
+
+
+def refuse_policy_change_a_lock_met(uow: UnitOfWork, group_id: UUID) -> None:
+    """Serialize an approved policy change with locks of the group's entities.
+
+    An override has no stream append, so the appender's check cannot see it. Share the
+    close windows before publishing the approval. A lock decided after this transaction's
+    record cutoff makes the decision stale; retry records the approval after the lock.
+    The caller holds the group and contract rows, and skips contracts still in DRAFT.
+    """
+    session = uow.session
+    with system_entity_scope(session):
+        codes = bundles.entity_codes(session, [group_id])
+        _window_rows_held(uow, codes)
+        met = session.execute(
+            select(period_lock.c.id)
+            .join(
+                legal_entity,
+                (legal_entity.c.tenant_id == period_lock.c.tenant_id)
+                & (legal_entity.c.id == period_lock.c.entity_id),
+            )
+            .where(
+                legal_entity.c.code.in_(codes),
+                period_lock.c.cutoff_known_at > bundles.record_cutoff(session, uow.now),
+            )
+            .limit(1)
+        ).first()
+    if met is not None:
+        raise period_state_moved()
 
 
 def refuse_appends_a_lock_met(uow: UnitOfWork, group_ids: Iterable[UUID]) -> None:

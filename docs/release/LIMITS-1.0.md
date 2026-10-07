@@ -29,7 +29,9 @@ regression verifies the persisted FX journal and repeat-run idempotency. POL-163
 remains disabled: monetary-to-historical transitions require a reviewed treatment and effective-date
 model. Unreconciled carrying amounts now refuse calculation before changing the stored calculation
 or ledger. Close-run policy comparisons include effective contract exceptions, with real close-job
-coverage; approval/lock concurrency and authoring remain to verify. See `ACCOUNTING-REVIEW.md`
+coverage. Policy approvals now serialize with period locks, including waived pending-approval
+gates and stale-decision rollback; transition treatment and public authoring remain open.
+See `ACCOUNTING-REVIEW.md`
 for the pending accounting decision and sign-off record. This is not a complete policy workflow.
 The owner has limited current work to repository completion and explicitly excluded deployment.
 

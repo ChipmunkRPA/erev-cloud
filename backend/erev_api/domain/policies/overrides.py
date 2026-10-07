@@ -461,7 +461,14 @@ def _mark_dirty(uow: UnitOfWork, group_id: UUID) -> None:
 def _approve_override(uow: UnitOfWork, subject_id: UUID, approval_request_id: UUID) -> None:
     session = uow.session
     initial = _row(session, subject_id)
-    repo.lock_group_then_contract(session, UUID(str(initial["contract_id"])))
+    group_id, current_contract = repo.lock_group_then_contract(
+        session, UUID(str(initial["contract_id"]))
+    )
+    if str(current_contract["status"]) != "DRAFT":
+        # Local import: period_ends reaches this module through the approvals registry.
+        from erev_api.domain.contracts import period_ends
+
+        period_ends.refuse_policy_change_a_lock_met(uow, group_id)
     row = _row(session, subject_id, for_update=True)
     _judgement(session, row["judgement_record_id"], UUID(str(row["contract_id"])))
     if str(row["status"]) != SUBMITTED:
