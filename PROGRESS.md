@@ -1,5 +1,35 @@
 # PROGRESS — eRev Cloud build loop notebook (under 20 KB)
 
+## Estimate FX approval drift — October 7, 2026
+
+- Continued from main `252c5d9`. Reproduced B1-7: EUR 46,000 was routed with one reviewer
+  at USD 49,910 (1.085), then the same request approved after a rate of 1.09 made its impact
+  USD 50,140. The unpublished-rate and unchanged-rate controls already passed.
+- Final estimate approval now repeats its dry run and compares current functional amount,
+  currency and threshold flags with the stored request before any version/event changes.
+  Drift uses the existing stale-request rollback/void path: the version is WITHDRAWN and a
+  fresh submission routes the Controller step. No accounting expectations were changed.
+- A tenant-specific transaction gate prevents an FX publication between that check and posting.
+  Estimate submission/final approval take its shared side before group/contract locks; FX
+  publication takes its exclusive side before mutation and group/period hooks. It covers new
+  rate sets as well. Current routing reads also include a committed publication whose application
+  timestamp is later than the decision transaction's start. Historical bundle reads keep their
+  time cutoffs. Automatic approval inside submission holds the gate too; a stale refusal there
+  rolls back the submission. The final dry run adds work; no full-volume latency claim is made.
+- **53 PostgreSQL workflow checks passed**: 51 across the complete estimate, FX-reference and
+  rate-change-after-lock files, plus the linked J-06 modification journey and its K-03 report.
+  Six new CTL-013 cases cover the threshold crossing, unpublished and unchanged controls, both
+  ordering races observed waiting in PostgreSQL, and a publication overtaking an earlier-started
+  decision. A refused request appends no estimate event; resubmission needs the Controller and
+  applies once. The original J-06 monetary assertions remain intact.
+- **273 architecture/routing-unit checks passed**. Four-source Mypy, Ruff lint/format, whitespace
+  and design checks (500 files) pass. Control markers validate (440 tagged tests); secret scan:
+  3,391 files, zero findings. B1-7 is closed in LIMITS, with the lock and API behavior documented.
+- The broader backend run is still live on detached `ed6ea75` with its separate loopback database;
+  it excludes specialist markers and does not cover these later changes. Full-backend/specialist
+  verification, remaining limitations and independent accounting sign-off stay open. Publication
+  exclusions and noncommercial licensing are preserved. No deployment.
+
 ## Constraint review basis — October 7, 2026
 
 - Continued from main `72aaa2b`. Reproduced both B1-5 paths: a changed version accepted an
@@ -59,43 +89,6 @@
   loopback database, with passing tests and the existing expected Q11 failure. It is still live,
   not a completed gate, and does not cover this later change. Full-backend/specialist verification,
   other release limitations and independent accounting review remain open. No deployment.
-
-## FX layer index under RLS — October 7, 2026
-
-- Continued from merged PR #25 (`7b4eb69`). The index audit reproduced an existing 0131 schema
-  defect: `layer_key` followed `book_code`, whose enum equality is not leakproof under RLS.
-  Revision 0136 moves the enum to the final key, preserving the tenant/contract/layer prefix.
-  Accounting data, grants and policies are unchanged; downgrade restores the prior key order.
-- **17 PostgreSQL checks passed**: complete migration downgrade/upgrade, schema lint, all index
-  condition checks and database-doctor checks, including a clean migrated catalogue. Ruff and
-  whitespace checks pass. The earlier recorded FX-index finding is resolved; this establishes
-  index-key eligibility under policy, not a full-volume performance result.
-- Close-task and modification controls are merged; older dated evidence is archived below.
-  Full-backend/specialist verification, other release gaps and independent accounting review
-  remain open. No deployment.
-
-## Close task sign-offs — October 7, 2026
-
-- Continued from merged PR #24 (`383ef03`). Manual task signing now enforces the template's
-  owner role for the period's entity, in addition to permission and MFA. Closed/permanently
-  locked periods refuse new signatures. Signing locks the template as well as the item.
-- An approved reopen resets passed manual tasks to NOT_STARTED and clears the current signature
-  pointer, with an audit event linked to the reopen request. Immutable historical signatures stay.
-  A fresh signature binds the close cycle and owner role; revision 0135 permits that history while
-  preserving uniqueness for other sign-off subjects. A lossy downgrade explicitly refuses.
-- **60 database checks passed across scoped runs**: 53 close/cockpit/waiver/lock/transition-drift
-  tests, five migration checks (including complete downgrade/upgrade), and two signoff invariant
-  checks. The six new workflow cases cover missing/other-entity/exact/all-entity owner roles,
-  reopen/re-sign with immutable history, and closed-period refusal. Lossy downgrade refusal is
-  verified with the real owner lacking BYPASSRLS; rollback preserves all signatures and forced RLS.
-- **33 transition/locking unit tests passed**; source Mypy, Ruff and the 500-file design check pass.
-  A stale migration-head test pin was corrected to 0135. No accounting amounts changed. Closed B1-9;
-  the other C-6 controls remain open. Existing rows are not rewritten by the migration: task resets
-  occur on an approved reopen through the new command path.
-- The separate index audit found an existing 0131 index defect: `ix_fx_layer_movement__layer`
-  puts `layer_key` behind the non-leakproof `book_code` enum comparison under RLS. This was not
-  waived; the next schema fix must reorder its keys and rerun the index audit. No whole-backend
-  pass is claimed. Other release gaps and independent accounting review remain open. No deployment.
 
 ## Supported overrides in database answer keys — October 7, 2026
 

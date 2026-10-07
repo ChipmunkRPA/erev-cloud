@@ -78,9 +78,11 @@ from erev_api.approvals.subjects import (
 from erev_api.auth.dependencies import require_for_entity
 from erev_api.auth.principal import system_principal
 from erev_api.db import new_id, transitions
+from erev_api.db.locking import hold_fx_publication
 from erev_api.db.session import system_entity_scope
 from erev_api.db.tables import (
     approval_decision,
+    approval_request,
     contract,
     contract_event,
     contract_version_balance,
@@ -1342,13 +1344,13 @@ def routing_facts(
 
 def _routing_facts(
     session: Session,
-    known_at: datetime,
+    known_at: datetime | None,
     current: Mapping[str, Any],
     row: Mapping[str, Any],
     summary: ImpactSummaryOut,
     group_impact: Decimal | None,
 ) -> tuple[tuple[Decimal, str] | None, frozenset[str]]:
-    """``routing_facts`` of the version from its dry run and the pinned FX rows in force."""
+    """Routing facts at a cutoff, or with current committed rates when known_at is None."""
     currency = str(summary.catch_up_total.currency).strip()
     functional = str(
         session.execute(
@@ -1387,6 +1389,7 @@ def submit_version(
     dry run read is the head the content states; and the version's evidence and its CONSTRAINT
     record are asked under them (``_submission_errors``)."""
     session = uow.session
+    hold_fx_publication(session, uow.principal.tenant_id)
     row = _version_row(session, version_id, lock=True)
     element = _estimate_row(session, _uuid(row["estimate_id"]))
     linked = row["modification_id"] is not None
@@ -1596,9 +1599,51 @@ def _system_unit(uow: UnitOfWork) -> UnitOfWork:
     return system
 
 
+def _assert_current_routing(
+    uow: UnitOfWork,
+    request_id: UUID,
+    current: Mapping[str, Any],
+    element: Mapping[str, Any],
+    row: Mapping[str, Any],
+) -> None:
+    """Recheck the economic routing facts under the final approval's subject locks.
+
+    FX publication does not change the estimate's content hash. A fresh dry run and the
+    current rates must still yield the submitted functional amount and threshold flags.
+    Refusing through the kernel's stale-basis path rolls back the deciding step, voids the
+    request and leaves the estimate withdrawn for a new preview and appropriately routed review.
+    """
+    session = uow.session
+    try:
+        summary, group_impact = _dry_run(session, uow.now, current, element, row)
+    except EngineError as error:
+        raise engine_problem(error) from error
+    # A publication that overtook this transaction is already effective, even if its
+    # application timestamp is later than uow.now. The shared gate keeps this read stable.
+    amount, flags = _routing_facts(session, None, current, row, summary, group_impact)
+    requested = session.execute(
+        select(
+            approval_request.c.amount_functional,
+            approval_request.c.amount_currency,
+            approval_request.c.flags,
+        ).where(approval_request.c.id == request_id)
+    ).one()
+    prior_amount = (
+        None
+        if requested.amount_functional is None
+        else (
+            Decimal(requested.amount_functional),
+            str(requested.amount_currency).strip(),
+        )
+    )
+    if amount != prior_amount or flags != frozenset(requested.flags):
+        raise approvals.StaleBasis()
+
+
 def _approve_version(uow: UnitOfWork, version_id: UUID, approval_request_id: UUID) -> None:
     """``on_approved`` of ``ESTIMATE_VERSION`` (module docstring; DG-CMD-09)."""
     session = uow.session
+    hold_fx_publication(session, uow.principal.tenant_id)
     row = _version_row(session, version_id, lock=True)
     if _text(row["status"]) != SUBMITTED:
         raise LookupError(f"estimate version {version_id} is not submitted")
@@ -1619,6 +1664,7 @@ def _approve_version(uow: UnitOfWork, version_id: UUID, approval_request_id: UUI
         raise Problem(
             "invalid-transition", errors=[ProblemError(rule_id=RULE_LIFECYCLE, message=refusal)]
         )
+    _assert_current_routing(uow, approval_request_id, current, element, row)
     for item in previous:
         earlier = _uuid(item["id"])
         transitions.apply(

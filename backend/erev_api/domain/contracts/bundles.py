@@ -540,11 +540,12 @@ def _pending_applied(pending: Sequence[EventIn]) -> frozenset[str]:
 
 
 def fx_rate_inputs(
-    session: Session, currencies: Iterable[str], known_at: datetime
+    session: Session, currencies: Iterable[str], known_at: datetime | None
 ) -> tuple[FxRateInput, ...]:
     """The pinned FX rate rows of ``currencies`` in force at ``known_at`` — the rows a bundle of
     these currencies carries (``_fx_rates``); CTR-17 retains the modification preview's rate basis
-    from them (04 §16.14 ``fx_basis``)."""
+    from them (04 §16.14 ``fx_basis``). None reads every committed version now in force,
+    for controls whose decision must not miss a publication that overtook their transaction."""
     return _fx_rates(session, currencies, known_at)
 
 
@@ -1991,7 +1992,7 @@ def fx_version_key(code: str, version_no: int) -> str:
 
 
 def _fx_rates(
-    session: Session, currencies: Iterable[str], known_at: datetime
+    session: Session, currencies: Iterable[str], known_at: datetime | None
 ) -> tuple[FxRateInput, ...]:
     return tuple(rate for rate, _ in _fx_rate_rows(session, currencies, known_at))
 
@@ -2164,7 +2165,7 @@ def fx_rates_in_force(known_at: datetime | None, *, without: UUID | None = None)
 
 
 def _fx_rate_rows(
-    session: Session, currencies: Iterable[str], known_at: datetime
+    session: Session, currencies: Iterable[str], known_at: datetime | None
 ) -> tuple[tuple[FxRateInput, tuple[UUID, UUID, Decimal]], ...]:
     codes = sorted(set(currencies))
     if len(codes) < 2:

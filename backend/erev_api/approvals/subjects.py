@@ -145,7 +145,7 @@ from erev_api.auth import sod
 from erev_api.auth.permissions import role_content_sha256
 from erev_api.auth.principal import system_principal
 from erev_api.db import transitions
-from erev_api.db.locking import lock_group_then_contract
+from erev_api.db.locking import hold_fx_publication, lock_group_then_contract
 from erev_api.db.session import of_session_tenant
 from erev_api.db.tables import (
     account_mapping_rule,
@@ -2999,6 +2999,7 @@ def _approve_fx_rate_set_version(
     """
     session = uow.session
     principal = uow.principal
+    hold_fx_publication(session, principal.tenant_id, exclusive=True)
     status = session.execute(
         select(fx_rate_set_version.c.status)
         .where(fx_rate_set_version.c.id == version_id)

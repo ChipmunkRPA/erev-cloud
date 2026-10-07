@@ -19,7 +19,7 @@ from collections.abc import Callable, Iterable
 from typing import Any, Final
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from erev_api.db.tables import combination_group, contract
@@ -27,6 +27,7 @@ from erev_api.problems import Problem
 
 __all__ = [
     "REGROUPED",
+    "hold_fx_publication",
     "holds_chain_head",
     "lock_group_then_contract",
     "lock_groups_then_contracts",
@@ -60,6 +61,19 @@ def holds_chain_head(session: Session) -> bool:
     """Whether ``mark_chain_head`` was called in the transaction the session is in."""
     held = session.info.get(_CHAIN_HEAD)
     return held is not None and held is session.get_transaction()
+
+
+def hold_fx_publication(session: Session, tenant_id: UUID, *, exclusive: bool = False) -> None:
+    """Transaction gate for FX publication and estimate decisions (B1-7).
+
+    Estimate submission and final approval take a shared lock before group/contract locks;
+    FX publication takes the exclusive side before changing status or touching groups.
+    This also covers a new rate set, for which a reader could lock no existing parent row.
+    Multiple estimates proceed together; tenants have separate keys.
+    """
+    key = func.hashtextextended(f"erev:fx-publication:{tenant_id}", 0)
+    lock = func.pg_advisory_xact_lock if exclusive else func.pg_advisory_xact_lock_shared
+    session.execute(select(lock(key)))
 
 
 def lock_group_then_contract(

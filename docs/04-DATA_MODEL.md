@@ -3850,6 +3850,21 @@ Keys: `PRIMARY KEY (tenant_id, id)`; `ux_estimate__code (tenant_id, coalesce(con
 
 ### T-CON-13 `estimate_version`
 
+**Final routing check (October 7, 2026; B1-7).** Before the final estimate approval appends any
+event or supersedes a version, it repeats the dry run and recomputes the functional amount and
+USD-threshold flag against rates currently in force. A difference from the request's stored
+amount/currency or flags voids that request as stale and leaves the version WITHDRAWN. Revise
+and resubmit for a fresh preview and routing; a threshold crossing then requires the Controller
+step. A stale refusal during automatic approval rolls back its whole submission instead.
+Unpublished rates and publications with unchanged routing facts do not force a new request.
+A publication that committed after the decision transaction began still counts in this check.
+Estimate submission and final approval hold the shared side of the tenant's FX-publication gate,
+before group/contract locks; rate publication holds the exclusive side before changing its status
+or acquiring group/period locks. The gate lasts through commit, including an automatic estimate
+approval inside submission, so a rate cannot change between the check and posting. This adds a
+final dry run; it does not establish full-volume approval latency or backfill prior approvals.
+
+
 - **Purpose.** Immutable approved estimate with preparer, approver, rationale and evidence; a reassessment is a new version (D-20; REQ-TP-004, -005).
 - **Class.** IM-S (editable while DRAFT; afterwards UPDATE `status`, `approval_request_id`, `applied_event_ids`, SC-M only); RLS-T; PT-N; AUD-CMD.
 - **REQ areas.** TP, REC, CST, LOS, RPT (REQ-RPT-023).

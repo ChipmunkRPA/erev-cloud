@@ -2109,3 +2109,296 @@ def test_pre_binding_pending_estimate_requires_a_fresh_constraint_review(
         get(world.app, f"{CONTRACTS}/{contract_id}", maya).json()["head_stream_version"] == before
     )
     assert get(world.app, f"/api/v1/judgements/{record['id']}", maya).json()["status"] == "REVIEWED"
+
+
+@pytest.mark.control("CTL-013")
+@pytest.mark.parametrize("rate,publish", [("1.0900", True), ("1.0900", False), ("1.0850", True)])
+def test_fx_rate_change_cannot_bypass_estimate_controller_review(
+    app: FastAPI,
+    keyring: KeyRing,
+    clock: FrozenClock,
+    files: LocalFileStore,
+    rate: str,
+    publish: bool,
+) -> None:
+    """B1-7: EUR 46,000 crosses USD 50,000 when spot moves from 1.085 to 1.09."""
+    from erev_api.db.tables import fx_rate_set
+
+    world = k06_world(app, keyring, clock, files)
+    maya = world.place.author
+    k06 = _k06_with_v1(world)
+    version_id = _draft(
+        world.app,
+        maya,
+        k06.estimate_id,
+        _rebate_version(
+            "2026-09-30",
+            "46000.00",
+            V2_OUTCOME,
+            V2_RATIONALE,
+            parameters={"refund_liability_target": "46000.00"},
+        ),
+    )
+    request_id = _submitted(world, version_id)
+    assert _routed(world, request_id) == (
+        [],
+        (Decimal("46000.00"), "EUR"),
+        [(1, "estimate.approve", None, "ACTIVE")],
+    )
+    events_before = len(_estimate_events(world, k06.contract_id))
+    (rate_set,) = world.place.rows(
+        select(fx_rate_set.c.id).where(fx_rate_set.c.code == "AVM-RATES-SPOT")
+    )
+    clock.advance(timedelta(seconds=1))
+    draft = post(
+        app,
+        f"/api/v1/fx-rate-sets/{rate_set['id']}/versions",
+        maya,
+        {
+            "coverage_from": "2026-01-01",
+            "coverage_to": "2026-12-31",
+            "rates": [
+                {
+                    "base_currency": "EUR",
+                    "quote_currency": "USD",
+                    "rate": rate,
+                    "effective_date": "2026-01-01",
+                }
+            ],
+        },
+    )
+    assert draft.status_code == 201, draft.text
+    if publish:
+        sent = post(
+            app,
+            f"/api/v1/fx-rate-set-versions/{draft.json()['id']}/submit",
+            maya,
+            {},
+            if_match=f'"r{draft.json()["row_version"]}"',
+        )
+        assert sent.status_code == 200, sent.text
+        decided = approve(app, sent.json()["pending_approval_request_id"], world.marcus)
+        assert decided.status_code == 200, decided.text
+    clock.advance(timedelta(seconds=1))
+    decided = approve(app, request_id, world.priya)
+    if not publish or rate == "1.0850":
+        assert (decided.status_code, decided.json()["status"]) == (200, "APPROVED"), decided.text
+        assert len(_estimate_events(world, k06.contract_id)) == events_before + 1
+        return
+    _stale(app, world.priya, decided, request_id)
+    assert _version(app, maya, version_id)["status"] == "WITHDRAWN"
+    assert len(_estimate_events(world, k06.contract_id)) == events_before
+    revised = patch(
+        app, f"{VERSIONS}/{version_id}", maya, {"rationale": V2_RATIONALE}, if_match=None
+    )
+    assert revised.status_code == 200, revised.text
+    fresh_request = _submitted(world, version_id, ready=False)
+    flags, amount, steps = _routed(world, fresh_request)
+    assert flags == ["PL_IMPACT_GE_50K"]
+    assert amount == (Decimal("46000.00"), "EUR")
+    assert len(steps) == 2
+    first = approve(app, fresh_request, world.priya)
+    assert (first.status_code, first.json()["status"]) == (200, "PENDING"), first.text
+    assert len(_estimate_events(world, k06.contract_id)) == events_before
+    final = approve(app, fresh_request, world.marcus)
+    assert (final.status_code, final.json()["status"]) == (200, "APPROVED"), final.text
+    assert len(_estimate_events(world, k06.contract_id)) == events_before + 1
+
+
+def _pending_fx_crossing(
+    app: FastAPI,
+    keyring: KeyRing,
+    clock: FrozenClock,
+    files: LocalFileStore,
+) -> tuple[K06World, K06Contract, str, str, str]:
+    from erev_api.db.tables import fx_rate_set
+
+    world = k06_world(app, keyring, clock, files)
+    maya = world.place.author
+    k06 = _k06_with_v1(world)
+    version_id = _draft(
+        app,
+        maya,
+        k06.estimate_id,
+        _rebate_version(
+            "2026-09-30",
+            "46000.00",
+            V2_OUTCOME,
+            V2_RATIONALE,
+            parameters={"refund_liability_target": "46000.00"},
+        ),
+    )
+    estimate_request = _submitted(world, version_id)
+    (rate_set,) = world.place.rows(
+        select(fx_rate_set.c.id).where(fx_rate_set.c.code == "AVM-RATES-SPOT")
+    )
+    draft = post(
+        app,
+        f"/api/v1/fx-rate-sets/{rate_set['id']}/versions",
+        maya,
+        {
+            "coverage_from": "2026-01-01",
+            "coverage_to": "2026-12-31",
+            "rates": [
+                {
+                    "base_currency": "EUR",
+                    "quote_currency": "USD",
+                    "rate": "1.0900",
+                    "effective_date": "2026-01-01",
+                }
+            ],
+        },
+    )
+    assert draft.status_code == 201, draft.text
+    sent = post(
+        app,
+        f"/api/v1/fx-rate-set-versions/{draft.json()['id']}/submit",
+        maya,
+        {},
+        if_match=f'"r{draft.json()["row_version"]}"',
+    )
+    assert sent.status_code == 200, sent.text
+    return world, k06, version_id, estimate_request, str(sent.json()["pending_approval_request_id"])
+
+
+@pytest.mark.control("CTL-013")
+@pytest.mark.parametrize("estimate_first", [True, False])
+def test_estimate_decision_and_fx_publication_are_serialized(
+    app: FastAPI,
+    keyring: KeyRing,
+    clock: FrozenClock,
+    files: LocalFileStore,
+    monkeypatch: pytest.MonkeyPatch,
+    estimate_first: bool,
+) -> None:
+    """Observe the other real API transaction waiting on the publication gate in PostgreSQL."""
+    import threading
+
+    from erev_api.approvals import subjects
+    from erev_api.domain.contracts import estimates as commands
+    from support.interleave import await_lock_wait, backend_pid, observing_checkouts
+
+    world, k06, version_id, estimate_request, fx_request = _pending_fx_crossing(
+        app, keyring, clock, files
+    )
+    events_before = len(_estimate_events(world, k06.contract_id))
+    outcome: dict[str, Any] = {}
+    observed: dict[str, Any] = {}
+
+    def other_decision() -> None:
+        try:
+            outcome["response"] = approve(
+                app,
+                fx_request if estimate_first else estimate_request,
+                world.marcus if estimate_first else world.priya,
+            )
+        except Exception as error:  # noqa: BLE001 - surfaced below
+            outcome["error"] = error
+
+    other = threading.Thread(target=other_decision, name="estimate-fx-publication")
+
+    def observe_wait(uow: Any) -> None:
+        with observing_checkouts() as backends:
+            holder = backend_pid(uow.session)
+            other.start()
+            _, observed["statement"] = await_lock_wait(
+                uow.session,
+                holder_pid=holder,
+                backends=backends,
+                timeout=10,
+                expect="pg_advisory_xact_lock",
+            )
+        assert other.is_alive() and not outcome, outcome
+
+    if estimate_first:
+        original = commands._assert_current_routing
+
+        def checked_then_wait(uow: Any, *args: Any) -> None:
+            original(uow, *args)
+            observe_wait(uow)
+
+        monkeypatch.setattr(commands, "_assert_current_routing", checked_then_wait)
+    else:
+        hooks = list(subjects.FX_RATE_VERSION_APPROVED)
+
+        def published_then_wait(uow: Any, *args: Any) -> None:
+            for hook in hooks:
+                hook(uow, *args)
+            observe_wait(uow)
+
+        monkeypatch.setattr(subjects, "FX_RATE_VERSION_APPROVED", [published_then_wait])
+    try:
+        first = approve(
+            app,
+            estimate_request if estimate_first else fx_request,
+            world.priya if estimate_first else world.marcus,
+        )
+    finally:
+        if other.ident is not None:
+            other.join(timeout=30)
+    assert not other.is_alive(), outcome
+    assert "error" not in outcome, outcome
+    assert (first.status_code, first.json()["status"]) == (200, "APPROVED"), first.text
+    if estimate_first:
+        assert outcome["response"].status_code == 200, outcome["response"].text
+        assert _version(app, world.place.author, version_id)["status"] == "APPROVED"
+        assert len(_estimate_events(world, k06.contract_id)) == events_before + 1
+    else:
+        _stale(app, world.priya, outcome["response"], estimate_request)
+        assert _version(app, world.place.author, version_id)["status"] == "WITHDRAWN"
+        assert len(_estimate_events(world, k06.contract_id)) == events_before
+    assert "pg_advisory_xact_lock" in observed["statement"]
+
+
+@pytest.mark.control("CTL-013")
+def test_fx_publication_overtaking_an_estimate_decision_uses_current_rates(
+    app: FastAPI,
+    keyring: KeyRing,
+    clock: FrozenClock,
+    files: LocalFileStore,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The publication may have a later application timestamp than the deciding transaction."""
+    import threading
+
+    from erev_api.approvals import subjects
+    from erev_api.enums import ApprovalSubjectType
+
+    world, k06, version_id, estimate_request, fx_request = _pending_fx_crossing(
+        app, keyring, clock, files
+    )
+    events_before = len(_estimate_events(world, k06.contract_id))
+    begun, go = threading.Event(), threading.Event()
+    outcome: dict[str, Any] = {}
+    kind = ApprovalSubjectType.ESTIMATE_VERSION
+    lifecycle = subjects.LIFECYCLES[kind]
+
+    def pause(uow: Any, *args: Any) -> None:
+        begun.set()
+        assert go.wait(20), "FX publication did not finish"
+        lifecycle.on_approved(uow, *args)
+
+    monkeypatch.setitem(
+        subjects.LIFECYCLES, kind, dataclasses.replace(lifecycle, on_approved=pause)
+    )
+
+    def decide() -> None:
+        try:
+            outcome["response"] = approve(app, estimate_request, world.priya)
+        except Exception as error:  # noqa: BLE001 - surfaced below
+            outcome["error"] = error
+
+    thread = threading.Thread(target=decide, name="estimate-before-fx-publication")
+    thread.start()
+    try:
+        assert begun.wait(10)
+        clock.advance(timedelta(seconds=1))
+        published = approve(app, fx_request, world.marcus)
+        assert published.status_code == 200, published.text
+    finally:
+        go.set()
+        thread.join(timeout=30)
+    assert not thread.is_alive() and "error" not in outcome, outcome
+    _stale(app, world.priya, outcome["response"], estimate_request)
+    assert _version(app, world.place.author, version_id)["status"] == "WITHDRAWN"
+    assert len(_estimate_events(world, k06.contract_id)) == events_before
