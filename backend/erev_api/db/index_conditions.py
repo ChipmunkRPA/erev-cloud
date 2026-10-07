@@ -114,7 +114,8 @@ ALLOWED: Final[Mapping[str, str]] = MappingProxyType(
             "one schedule and one subject select the rows; line_type and period_id keep them unique"
         ),
         "ux_signoff__signer": (
-            "one subject selects the rows; role and signer keep a signature unique"
+            "one subject selects the rows; role and signer keep a signature unique, with the "
+            "close-cycle content hash for repeated checklist attestations"
         ),
         "ux_ssp_range__band": (
             "an expression that keeps the bands of an entry unique; never a read condition"

@@ -1,5 +1,28 @@
 # PROGRESS — eRev Cloud build loop notebook (under 20 KB)
 
+## Close task sign-offs — October 7, 2026
+
+- Continued from merged PR #24 (`383ef03`). Manual task signing now enforces the template's
+  owner role for the period's entity, in addition to permission and MFA. Closed/permanently
+  locked periods refuse new signatures. Signing locks the template as well as the item.
+- An approved reopen resets passed manual tasks to NOT_STARTED and clears the current signature
+  pointer, with an audit event linked to the reopen request. Immutable historical signatures stay.
+  A fresh signature binds the close cycle and owner role; revision 0135 permits that history while
+  preserving uniqueness for other sign-off subjects. A lossy downgrade explicitly refuses.
+- **60 database checks passed across scoped runs**: 53 close/cockpit/waiver/lock/transition-drift
+  tests, five migration checks (including complete downgrade/upgrade), and two signoff invariant
+  checks. The six new workflow cases cover missing/other-entity/exact/all-entity owner roles,
+  reopen/re-sign with immutable history, and closed-period refusal. Lossy downgrade refusal is
+  verified with the real owner lacking BYPASSRLS; rollback preserves all signatures and forced RLS.
+- **33 transition/locking unit tests passed**; source Mypy, Ruff and the 500-file design check pass.
+  A stale migration-head test pin was corrected to 0135. No accounting amounts changed. Closed B1-9;
+  the other C-6 controls remain open. Existing rows are not rewritten by the migration: task resets
+  occur on an approved reopen through the new command path.
+- The separate index audit found an existing 0131 index defect: `ix_fx_layer_movement__layer`
+  puts `layer_key` behind the non-leakproof `book_code` enum comparison under RLS. This was not
+  waived; the next schema fix must reorder its keys and rerun the index audit. No whole-backend
+  pass is claimed. Other release gaps and independent accounting review remain open. No deployment.
+
 ## Modification questionnaire confirmation — October 7, 2026
 
 - Continued from main at PR #23 (`b570edb`). Submit now requires explicit boolean answers to
@@ -25,35 +48,6 @@
 - Owner requested automatic PR merging and only main retained. GitHub auto-merge and automatic
   branch deletion are enabled; verified changes are merged before completed branches are removed.
   Dated evidence: [BUILD-HISTORY-2026-10-07.md](docs/release/BUILD-HISTORY-2026-10-07.md).
-
-## Balance aging enabled — October 7, 2026
-
-- Continued from merged PR #15 (`cde41c8`). Stage 10 now retains each obligation's separate
-  contract-asset/unbilled share, revenue date and owner in the immutable calculation trace.
-  The report reads those period-end attributions and T-CON-18 liability layers from the exact
-  selected versions, including historical cutoffs and retained rerun bindings. It no longer
-  depends on close journals or ERP invoice postings. Earlier periods never read later attributions.
-- Registered RPT-36 and its source contract. Entities, calendars, labels and version selections
-  follow the report's retained inputs. Revision 0132 corrects the previously unavailable report's
-  source description; its migration restores the schema's immutability guard within the transaction.
-  Demo/volume generator versions 12/17 identify the changed persisted trace content.
-- The CHK-010 test setup now obtains P1's unconditional-right policy through the public POL-122
-  override and independent approval path instead of relying on an ignored product-level pin.
-  POS117 passes on the database platform with its original expected figures. The historical
-  direct-builder witness also passes after later April calculations. A new rerun regression proves
-  later billing changes a fresh report but leaves the original report's rows and output hash intact.
-- Verification: **554 report/answer-key unit tests passed**, **8 PostgreSQL report tests passed**,
-  and **10 migration/report-schema tests passed** (including upgrade/downgrade/upgrade and the
-  immutability guard). The final historical/acceptance/rerun check passed all **4 tests**, including
-  JSON, CSV, XLSX and PDF generation. Stage-10, reclass-FX, demo-policy and volume checks passed
-  in the broader targeted run; this is not a full-backend pass. Source Mypy and Ruff checks pass.
-- Versions without the new aging payload refuse rather than guessing dates or presentation.
-  No historical data is backfilled; an unchanged-input recomputation may reuse an older version.
-  Foreign-currency functional aging is still unsupported; transaction view is available. Independent
-  accounting sign-off, other report builders and full-backend verification remain open. No deployment.
-
-Earlier October 7 liability-reader, close-monitor and layer-persistence evidence is archived verbatim
-in [BUILD-HISTORY-2026-10-07.md](docs/release/BUILD-HISTORY-2026-10-07.md).
 
 ## Volume delivery quantities — October 7, 2026
 

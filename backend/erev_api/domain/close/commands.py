@@ -157,6 +157,7 @@ START_FROM: Final[frozenset[PeriodState]] = frozenset({PeriodState.OPEN, PeriodS
 ITEM_OBJECT: Final = "close_checklist_item"
 TEMPLATE_OBJECT: Final = "close_checklist_template"
 SIGN_ACTION: Final = "close_checklist_item.sign"
+SIGNOFF_CLEARED_ACTION: Final = "close_checklist_item.signoff_cleared"
 REQUEST_WAIVER_ACTION: Final = "close_checklist_item.request_waiver"
 WAIVE_ACTION: Final = "close_checklist_item.waive"
 WAIVER_CLEARED_ACTION: Final = "close_checklist_item.waiver_cleared"
@@ -519,6 +520,7 @@ def _item(uow: UnitOfWork, scope: gates.PeriodScope, item_id: UUID) -> dict[str,
                 close_checklist_template.c.name,
                 close_checklist_template.c.gate_kind,
                 close_checklist_template.c.gate_check_code,
+                close_checklist_template.c.owner_role_id,
             )
             .join(
                 close_checklist_template,
@@ -530,7 +532,7 @@ def _item(uow: UnitOfWork, scope: gates.PeriodScope, item_id: UUID) -> dict[str,
                 close_checklist_item.c.book_code == scope.book_code,
                 close_checklist_item.c.period_id == scope.period_id,
             )
-            .with_for_update(of=close_checklist_item)
+            .with_for_update(of=(close_checklist_item, close_checklist_template))
         )
         .mappings()
         .first()
@@ -583,11 +585,32 @@ def sign_checklist_item(
         raise _refused(NOT_MANUAL.format(name=name))
     if status in CLEARED:
         raise _refused(ALREADY_CLEARED.format(name=name, status=status))
+    if scope.state not in {
+        PeriodState.OPEN.value,
+        PeriodState.CLOSING.value,
+        PeriodState.REOPENED.value,
+    }:
+        raise _refused(
+            "Close tasks cannot be signed while the period is closed or permanently locked."
+        )
     principal = uow.principal
+    owner_role_id = item["owner_role_id"]
+    if owner_role_id is not None:
+        owner = uow.session.execute(
+            select(role.c.code, role.c.name).where(role.c.id == owner_role_id)
+        ).one()
+        role_scope = principal.role_scopes.get(str(owner.code))
+        if role_scope != "*" and (role_scope is None or scope.entity_id not in role_scope):
+            raise Problem(
+                "forbidden",
+                f"Signing this close task requires the {owner.name} role for {scope.entity_code}.",
+            )
     assert principal.id is not None and principal.mfa_verified_at is not None  # _require_mfa
     statement = SIGN_STATEMENT.format(entity=scope.entity_code, period=scope.period_name)
     content = {
         "close_checklist_item_id": str(item_id),
+        "period_lock_id": None if scope.current_lock_id is None else str(scope.current_lock_id),
+        "owner_role_id": None if owner_role_id is None else str(owner_role_id),
         "code": str(item["code"]),
         "name": name,
         "entity_code": scope.entity_code,
@@ -1549,6 +1572,55 @@ def _end_waivers(uow: UnitOfWork, scope: gates.PeriodScope, approval_request_id:
     return len(rows)
 
 
+def _end_task_signoffs(uow: UnitOfWork, scope: gates.PeriodScope, request_id: UUID) -> int:
+    """Reopened periods require fresh manual-task attestations; immutable signoffs remain."""
+    rows = list(
+        uow.session.execute(
+            select(
+                close_checklist_item.c.id,
+                close_checklist_item.c.signoff_id,
+                close_checklist_item.c.row_version,
+            )
+            .join(
+                close_checklist_template,
+                close_checklist_template.c.id == close_checklist_item.c.close_checklist_template_id,
+            )
+            .where(
+                close_checklist_item.c.entity_id == scope.entity_id,
+                close_checklist_item.c.book_code == scope.book_code,
+                close_checklist_item.c.period_id == scope.period_id,
+                close_checklist_template.c.gate_kind == ChecklistGateKind.MANUAL.value,
+                close_checklist_item.c.status == ChecklistStatus.PASSED.value,
+            )
+            .order_by(close_checklist_item.c.id)
+            .with_for_update(of=close_checklist_item)
+        ).mappings()
+    )
+    for row in rows:
+        item_id = UUID(str(row["id"]))
+        transitions.apply(
+            uow.session,
+            ITEM_OBJECT,
+            item_id,
+            to_status=ChecklistStatus.NOT_STARTED.value,
+            expected_status=ChecklistStatus.PASSED.value,
+            set_values={"signoff_id": None, "result": None, **_stamps(uow)},
+        )
+        uow.audit(
+            action=SIGNOFF_CLEARED_ACTION,
+            object_type=ITEM_OBJECT,
+            object_id=item_id,
+            object_version=str(int(row["row_version"]) + 1),
+            before={
+                "status": ChecklistStatus.PASSED.value,
+                "signoff_id": None if row["signoff_id"] is None else str(row["signoff_id"]),
+            },
+            after={"status": ChecklistStatus.NOT_STARTED.value, "signoff_id": None},
+            approval_request_id=request_id,
+        )
+    return len(rows)
+
+
 def _period_reopen_approved(uow: UnitOfWork, subject_id: UUID, approval_request_id: UUID) -> None:
     """The ``PERIOD_REOPEN`` decision that completes the step executes the reopen (BUILD_SPEC CLO-7;
     SM-07 ``closed → reopened``; REQ-CLS-011).
@@ -1636,6 +1708,7 @@ def _period_reopen_approved(uow: UnitOfWork, subject_id: UUID, approval_request_
     # 04 T-CLS-03 rev 1.305 (item CLO-WAIVER-COVERS-LATER-1): a waiver accepts what stood before
     # ONE certification; the lock reopened keeps what it certified
     waivers_ended = _end_waivers(uow, scope, approval_request_id)
+    task_signoffs_ended = _end_task_signoffs(uow, scope, approval_request_id)
     # 04 T-REF-11 "A rate changed after a lock" (rev 1.291): the period is no longer closed, and
     # its next lock needs a close run that read the rates in force; each item settled has its
     # own audit event
@@ -1674,6 +1747,7 @@ def _period_reopen_approved(uow: UnitOfWork, subject_id: UUID, approval_request_
             "approvers": [str(approver) for approver in approvers],
             "reconciliations_reopened": reconciliations_reopened,
             "waivers_ended": waivers_ended,
+            "task_signoffs_ended": task_signoffs_ended,
             "snapshots": "kept",
         },
         reason_code=None if reason is None else reason.value,
