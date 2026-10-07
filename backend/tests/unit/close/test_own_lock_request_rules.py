@@ -110,13 +110,16 @@ def test_the_count_of_pending_approvals_leaves_it_out_and_no_other_count_reads_a
 def test_every_reader_of_the_count_goes_through_the_one_statement() -> None:
     """One definition for every reader. The period read and the home's close panel
     (``blocker_counts``) and every evaluation of the gates (``signals`` to ``gate_results``)
-    read the row of ``blocker_statement``; the gate reads the row's count. ``request_of_entity``
-    has three more readers, and they keep the lock request: the cockpit's ``pending_requests``,
+    share ``_blocker_populations``; counts and member identities use the same predicates.
+    ``request_of_entity`` has three more readers, and they keep the lock request: the cockpit's
+    ``pending_requests``,
     which asks two other types; the approvals list's entity filter and the home's
     ``pending_approvals`` — there the lock request is a request someone has to decide."""
     assert "blocker_statement(scope)" in inspect.getsource(gates._counts_row)
-    for reader in (gates.blocker_counts, gates.signals):
-        assert "_counts_row(session, scope)" in inspect.getsource(reader), reader.__name__
+    assert "_counts_row(session, scope)" in inspect.getsource(gates.blocker_counts)
+    assert "_population_members(session, scope)" in inspect.getsource(gates.signals)
+    for reader in (gates.blocker_statement, gates._population_members):
+        assert "_blocker_populations(scope)" in inspect.getsource(reader), reader.__name__
     assert 'blockers["approvals_pending"]' in inspect.getsource(gates.gate_results)
     assert inspect.getsource(gates).count("own_lock_request(scope)") == 1
     assert inspect.getsource(gates).count("own_gate_waiver_request(scope)") == 1

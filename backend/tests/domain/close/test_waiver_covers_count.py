@@ -30,11 +30,11 @@ import pytest
 from erev_api.auth.keyring import KeyRing
 from erev_api.clock import FrozenClock
 from erev_api.config import Settings
-from erev_api.db.tables import audit_event, exception_item
+from erev_api.db.tables import audit_event, close_checklist_item, exception_item, reconciliation
 from erev_api.files.store import LocalFileStore
 from erev_api.main import create_app
 from fastapi import FastAPI
-from sqlalchemy import insert, select
+from sqlalchemy import insert, select, update
 from support.close_world import (
     CloseWorld,
     acknowledged_run,
@@ -48,7 +48,7 @@ from support.close_world import (
 from support.db import TestDatabase
 from support.principals import Actor
 from support.reference import PERIODS, approve, get, periods, post, slug
-from support.rows import exception_item_values
+from support.rows import exception_item_values, reconciliation_values
 
 GATE = "EXCEPTIONS_CLEARED"
 SEPTEMBER = "FY2026-P09"
@@ -100,13 +100,11 @@ def _in_soft_close_with_every_other_gate_green(world: CloseWorld) -> None:
         close_run_succeeded(session, world)
 
 
-def _exception(world: CloseWorld) -> None:
+def _exception(world: CloseWorld) -> UUID:
+    values = exception_item_values(world.tenant_id, entity_id=world.entity_id)
     with system_session(world) as session:
-        session.execute(
-            insert(exception_item).values(
-                **exception_item_values(world.tenant_id, entity_id=world.entity_id)
-            )
-        )
+        session.execute(insert(exception_item).values(**values))
+    return UUID(str(values["id"]))
 
 
 def _gate(world: CloseWorld) -> dict[str, Any]:
@@ -276,7 +274,9 @@ def _trail(world: CloseWorld, item_id: UUID) -> list[tuple[Any, ...]]:
     ]
 
 
-def _lapse(waiver_id: str, covered: str) -> tuple[dict[str, Any], dict[str, Any], str]:
+def _lapse(
+    waiver_id: str, covered: str, first: UUID, second: UUID
+) -> tuple[dict[str, Any], dict[str, Any], str]:
     """What the event of a lapse states: the item ``WAIVED`` at 1 under its request, then
     ``FAILED`` at 2 with the sentence and no request; linked to the request that lapsed."""
     return (
@@ -285,8 +285,15 @@ def _lapse(waiver_id: str, covered: str) -> tuple[dict[str, Any], dict[str, Any]
             "count": 1,
             "detail": "Open exceptions: 1",
             "waiver_approval_request_id": waiver_id,
+            "members": [f"exceptions_open:{first}"],
         },
-        {"status": "FAILED", "count": 2, "detail": covered, "waiver_approval_request_id": None},
+        {
+            "status": "FAILED",
+            "count": 2,
+            "detail": covered,
+            "waiver_approval_request_id": None,
+            "members": sorted([f"exceptions_open:{first}", f"exceptions_open:{second}"]),
+        },
         waiver_id,
     )
 
@@ -307,7 +314,7 @@ def test_a_waivers_lapse_is_audited_when_a_read_is_the_first_to_count_more(
     app = world.app
     _in_soft_close_with_every_other_gate_green(world)
     priya = actor_with_role(app, clock, world.tenant_id, "revenue_reviewer", name="priya")
-    _exception(world)
+    first = _exception(world)
     item_id = UUID(str(_gate(world)["id"]))
     waiver = _waiver_asked(world)
     assert approve(app, str(waiver["approval_request_id"]), priya).status_code == 200
@@ -316,11 +323,11 @@ def test_a_waivers_lapse_is_audited_when_a_read_is_the_first_to_count_more(
     # the first result, FAILED at 1, was stored by the read: no ``evaluate`` event of it
     assert [(action, who) for action, who, *_ in before] == [(ASKED, "USER"), (WAIVE, "USER")]
 
-    _exception(world)
+    second = _exception(world)
     covered = f"Open exceptions: 2 The waiver {waiver['request_no']} covered 1."
     assert _read(_gate(world)) == ("FAILED", 2, covered, False)
     assert _trail(world, item_id)[len(before) :] == [
-        (EVALUATE, "SYSTEM", *_lapse(waiver_id, covered))
+        (EVALUATE, "SYSTEM", *_lapse(waiver_id, covered, first, second))
     ]
 
     assert _read(_gate(world)) == ("FAILED", 2, covered, False)  # a second read
@@ -340,20 +347,20 @@ def test_a_waivers_lapse_is_audited_when_a_command_is_the_first_to_count_more(
     app = world.app
     _in_soft_close_with_every_other_gate_green(world)
     priya = actor_with_role(app, clock, world.tenant_id, "revenue_reviewer", name="priya")
-    _exception(world)
+    first = _exception(world)
     item_id = UUID(str(_gate(world)["id"]))
     waiver = _waiver_asked(world)
     assert approve(app, str(waiver["approval_request_id"]), priya).status_code == 200
     waiver_id = str(UUID(str(waiver["approval_request_id"])))
     before = _trail(world, item_id)
 
-    _exception(world)  # no read: the waive command is the first to evaluate
+    second = _exception(world)  # no read: the waive command is the first to evaluate
     covered = f"Open exceptions: 2 The waiver {waiver['request_no']} covered 1."
     asked = _command(world, world.maya, f"checklist/{item_id}/waive", {"reason": REASON})
     assert asked.status_code == 200, asked.text
     added = _trail(world, item_id)[len(before) :]
     assert [(action, who) for action, who, *_ in added] == [(EVALUATE, "USER"), (ASKED, "USER")]
-    assert added[0][2:] == _lapse(waiver_id, covered)
+    assert added[0][2:] == _lapse(waiver_id, covered, first, second)
     assert _read(_gate(world)) == ("FAILED", 2, covered, True)
 
 
@@ -411,3 +418,146 @@ def test_a_reopen_ends_the_waivers_of_the_close_it_reopens(
         if row["gate_check_code"] == GATE
     ]
     assert certified == ("WAIVED", 1, 1, str(UUID(str(waiver["approval_request_id"]))))
+
+
+def _resolve_first_exception(world: CloseWorld) -> None:
+    with system_session(world) as session:
+        identifier = session.execute(
+            select(exception_item.c.id)
+            .where(exception_item.c.status == "OPEN")
+            .order_by(exception_item.c.id)
+            .limit(1)
+        ).scalar_one()
+        session.execute(
+            update(exception_item)
+            .where(exception_item.c.id == identifier)
+            .values(status="RESOLVED")
+        )
+
+
+@pytest.mark.parametrize("refresh_before_decision", [False, True])
+@pytest.mark.control("CTL-016")
+def test_replacing_an_item_voids_a_pending_waiver(
+    world: CloseWorld, clock: FrozenClock, refresh_before_decision: bool
+) -> None:
+    _in_soft_close_with_every_other_gate_green(world)
+    priya = actor_with_role(world.app, clock, world.tenant_id, "revenue_reviewer", name="priya")
+    _exception(world)
+    waiver = _waiver_asked(world)
+    _resolve_first_exception(world)
+    _exception(world)
+    if refresh_before_decision:
+        assert _gate(world)["result"]["count"] == 1
+    decided = approve(world.app, str(waiver["approval_request_id"]), priya)
+    assert decided.status_code == 409, decided.text
+    assert slug(decided) == "stale-approval"
+    assert _read(_gate(world)) == ("FAILED", 1, "Open exceptions: 1", False)
+
+
+@pytest.mark.control("CTL-016")
+def test_an_approved_waiver_cannot_cover_a_replacement_at_the_same_count(
+    world: CloseWorld, clock: FrozenClock
+) -> None:
+    _in_soft_close_with_every_other_gate_green(world)
+    priya = actor_with_role(world.app, clock, world.tenant_id, "revenue_reviewer", name="priya")
+    _exception(world)
+    _exception(world)
+    waiver = _waiver_asked(world)
+    assert approve(world.app, str(waiver["approval_request_id"]), priya).status_code == 200
+    _resolve_first_exception(world)
+    # Resolving a covered member leaves the remaining approved member covered.
+    assert _gate(world)["status"] == "WAIVED"
+    _exception(world)
+    gate = _gate(world)
+    assert (gate["status"], gate["result"]["count"]) == ("FAILED", 2)
+    assert gate["waiver_approval_request_id"] is None
+    assert gate["result"]["detail"].endswith("New items require a new waiver.")
+    _resolve_first_exception(world)
+    # A spent waiver never revives when the count falls again.
+    assert _gate(world)["status"] == "FAILED"
+    renewed = _waiver_asked(world)
+    assert approve(world.app, str(renewed["approval_request_id"]), priya).status_code == 200
+    assert _read(_gate(world)) == ("WAIVED", 1, "Open exceptions: 1", True)
+
+
+@pytest.mark.control("CTL-016")
+def test_legacy_count_only_waiver_requires_a_new_review(
+    world: CloseWorld, clock: FrozenClock
+) -> None:
+    _in_soft_close_with_every_other_gate_green(world)
+    priya = actor_with_role(world.app, clock, world.tenant_id, "revenue_reviewer", name="priya")
+    _exception(world)
+    waiver = _waiver_asked(world)
+    assert approve(world.app, str(waiver["approval_request_id"]), priya).status_code == 200
+    gate = _gate(world)
+    # Simulate a previously approved row from a release which stored only the count.
+    with system_session(world) as session:
+        session.execute(
+            update(close_checklist_item)
+            .where(close_checklist_item.c.id == UUID(gate["id"]))
+            .values(result=gate["result"])
+        )
+    assert _gate(world)["status"] == "FAILED"
+    assert "no recorded item identities" in _gate(world)["result"]["detail"]
+    with system_session(world) as session:
+        asked = session.execute(
+            select(audit_event.c.after).where(
+                audit_event.c.action == ASKED,
+                audit_event.c.approval_request_id == UUID(waiver["approval_request_id"]),
+            )
+        ).scalar_one()
+    assert len(asked["members"]) == 1
+    assert asked["members"][0].startswith("exceptions_open:")
+
+
+@pytest.mark.control("CTL-016")
+def test_lock_decision_refuses_same_count_replacement_without_a_cockpit_refresh(
+    world: CloseWorld, clock: FrozenClock
+) -> None:
+    _in_soft_close_with_every_other_gate_green(world)
+    priya = actor_with_role(world.app, clock, world.tenant_id, "revenue_reviewer", name="priya")
+    _exception(world)
+    waiver = _waiver_asked(world)
+    assert approve(world.app, str(waiver["approval_request_id"]), priya).status_code == 200
+    requested = _command(
+        world, world.maya, "request-lock", {"certification_comment": "September 2026 complete"}
+    )
+    assert requested.status_code == 200, requested.text
+    _resolve_first_exception(world)
+    _exception(world)
+    cora = actor_with_role(world.app, clock, world.tenant_id, "controller", name="cora")
+    decided = approve(world.app, requested.json()["approval_request_id"], cora)
+    assert decided.status_code == 409, decided.text
+    assert slug(decided) == "close-gates-failed"
+    assert GATE in {error["rule_id"] for error in decided.json()["errors"]}
+    assert _state(world)["state"] == "closing"
+
+
+@pytest.mark.control("CTL-016")
+def test_missing_reconciliation_waiver_does_not_cover_a_new_unreviewed_report(
+    world: CloseWorld, clock: FrozenClock
+) -> None:
+    code = "RECONCILIATIONS_GENERATED"
+    priya = actor_with_role(world.app, clock, world.tenant_id, "revenue_reviewer", name="priya")
+    cockpit = get(world.app, f"{PERIODS}/{world.state_id}/cockpit", world.maya)
+    item = next(row for row in cockpit.json()["checklist"] if row["code"] == code)
+    assert item["result"]["count"] == 2
+    asked = _command(world, world.maya, f"checklist/{item['id']}/waive", {"reason": REASON})
+    assert asked.status_code == 200, asked.text
+    assert approve(world.app, asked.json()["approval_request_id"], priya).status_code == 200
+    with system_session(world) as session:
+        for kind in ("BILLING_TO_SUBLEDGER", "SUBLEDGER_TO_GL"):
+            session.execute(
+                insert(reconciliation).values(
+                    **reconciliation_values(
+                        world.tenant_id,
+                        entity_id=world.entity_id,
+                        period_id=world.period_id,
+                        kind=kind,
+                    )
+                )
+            )
+    cockpit = get(world.app, f"{PERIODS}/{world.state_id}/cockpit", world.maya)
+    item = next(row for row in cockpit.json()["checklist"] if row["code"] == code)
+    assert (item["status"], item["result"]["count"]) == ("FAILED", 2)
+    assert item["waiver_approval_request_id"] is None

@@ -4826,6 +4826,25 @@ Keys: `PRIMARY KEY (tenant_id, id)`; `ux_close_checklist_template__code (tenant_
 
 ### T-CLS-03 `close_checklist_item`
 
+**October 7 continuation — identity-bound waivers (B1-10).** This supersedes the historical
+count-only waiver rule below. Automatic results retain a sorted `members` list alongside
+`count`, `detail` and `evaluated_at`. The existing JSONB column needs no migration. Each token
+names its source population and row identity. The batches gate also represents a missing run;
+the reconciliation gate names each missing kind or current reconciliation ID and its failed
+review/freshness condition. Counts and row identities use the same population predicates;
+reconciliation status, identity and freshness are read together.
+
+A pending waiver hashes this population and refreshes the gate at final approval even without
+a cockpit visit. A changed basis voids the request through the approval savepoint. An approved
+waiver covers only a subset of the stored identities. New or replacement members lapse it,
+even at the same or a smaller count; resolving members leaves the remaining covered set valid.
+The request audit retains the submitted identities. A spent waiver never revives. Active
+count-only legacy waivers with blockers need a new review; immutable historical lock records
+remain unchanged. This binds membership, not arbitrary edits to fields of an existing member.
+Manual-task waivers keep their separate non-population basis. The never-waivable gates stay
+non-waivable, and reopen still ends the previous close's waivers.
+
+
 October 7 continuation (B1-9): an approved period reopen returns every passed manual task
 of that entity/book/period to `NOT_STARTED`, clears its current `signoff_id` and result,
 and audits the reset under the reopen request. Historical signoff rows remain immutable.
@@ -4850,7 +4869,7 @@ The item and template are locked while signing so an owner-role edit cannot race
 | `status` | erev.checklist_status | N | `'NOT_STARTED'` | |
 | `owner_membership_id` | uuid | Y | | |
 | `due_date` | date | Y | | |
-| `result` | jsonb | Y | | `{count, detail, evaluated_at}` for automatic gates. `count` is null where the gate has no count: `NO_DIRTY_GROUPS` while the period's re-marking has not succeeded (§16.8 `request-lock`; rev 1.164). |
+| `result` | jsonb | Y | | `{count, detail, evaluated_at, members}` for waivable automatic gates (October 7 continuation above); non-waivable gates omit `members`. `count` is null where the gate has no count: `NO_DIRTY_GROUPS` while the period's re-marking has not succeeded (§16.8 `request-lock`; rev 1.164). |
 | `control_execution_id` | uuid | Y | | |
 | `signoff_id` | uuid | Y | | Manual tasks. |
 | `waiver_approval_request_id` | uuid | Y | | Required for WAIVED. Rev 1.305 (item CLO-WAIVER-COVERS-LATER-1; the supervisor's ruling of 2026-10-02 17:32 on the lane's line; revision 0130). Measured before the revision: in a first close `EXCEPTIONS_CLEARED` failed at count 1 and its waiver was asked for; a second exception arrived and the waiver was approved all the same; two more arrived and the item read `WAIVED`, 2; the lock was requested and approved, and its certification stores the gate `WAIVED` with count 4 and waived count 2. And a waiver given before a lock stayed `WAIVED` through the period's reopen, whatever arrived after it. A waiver covers the COUNT it was approved for, with the gate's sentence: the request's content (the hash its approver decides on) carries the item's stored count and detail, so a count that moves before the decision makes the request stale by the approval kernel's own rule — 409 `stale-approval`, the request void (NTF-04), the requester asks again. A gate that later counts MORE than its waiver covered fails again, with the count that stands and its sentence followed by "The waiver <request no> covered <m>.", at every evaluation, the lock request and the decision among them: the item leaves `WAIVED` for `FAILED`, names no request until another is asked for, and its stored result keeps the spent waiver's number and count (`waiver_outgrown`); the earlier request stays in the audit trail and in any certification that holds it. A count at or below the waived one stays `WAIVED`, both counts stated as before. The reopen of a period ends the waivers of the close it reopens: the `PERIOD_REOPEN` decision returns every `WAIVED` item of the period to `NOT_STARTED`, in its transaction, and the lock that was reopened keeps what it certified — a waiver accepts what stood before one certification. Limit, stated: a count does not see one item replaced by another; where the rows a gate counts have an identity — exception items — the waiver of the item itself is the exact road, and a waived item stops counting. A waiver approved for an item that stored no count covers the gate as before. A signed close task is not touched by a reopen, and `NOT_APPLICABLE` stays final. A spent waiver does not cover again when the count falls back to what it covered: the item stays `FAILED`, with the sentence, until a new waiver is approved or the gate passes. The lapse is audited whoever stores it (Class, above). |

@@ -105,6 +105,13 @@ def _evaluated(world: CloseWorld) -> dict[str, gates.GateResult]:
         results = gates.evaluate_gates(uow, world.entity_id, BOOK, world.period_id)
         uow.commit()
     assert [result.gate_check_code for result in results] == list(gates.GATE_CHECK_CODES)
+    for result in results:
+        if result.gate_check_code in gates.NEVER_WAIVABLE:
+            continue
+        assert result.members is not None, result.gate_check_code
+        if result.count is not None:
+            assert len(result.members) == result.count, result.gate_check_code
+            assert len(set(result.members)) == result.count, result.gate_check_code
     return {result.gate_check_code: result for result in results}
 
 

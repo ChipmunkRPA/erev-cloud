@@ -136,7 +136,7 @@ active template first.
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping, Sequence
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from datetime import date, datetime, timedelta
 from typing import TYPE_CHECKING, Any, Final
 from uuid import UUID
@@ -438,8 +438,10 @@ class GateResult:
     # the number of its request and the count it was approved for (``outgrown``).
     waiver_outgrown: Mapping[str, Any] | None = None
 
+    members: tuple[str, ...] | None = None
+
     def result(self) -> dict[str, Any]:
-        """The stored ``result`` member: ``{count, detail, evaluated_at}`` — and, for a gate that
+        """Stored count, detail, evaluation time and optional member identities; for a gate that
         failed over a waiver it outgrew, ``waiver_outgrown`` (``{request_no, count}``; item
         CLO-WAIVER-COVERS-LATER-1), so that every later evaluation states the same sentence."""
         stored: dict[str, Any] = {
@@ -447,6 +449,8 @@ class GateResult:
             "detail": self.detail,
             "evaluated_at": self.evaluated_at.isoformat(),
         }
+        if self.members is not None:
+            stored["members"] = list(self.members)
         if self.waiver_outgrown is not None:
             stored[OUTGROWN] = dict(self.waiver_outgrown)
         return stored
@@ -519,6 +523,7 @@ class CloseSignals:
     remark_pending: bool = False
     # CLO-GATE-RUN-1: the latest close run of the period; None without one.
     close_run: CloseRunFacts | None = None
+    members: Mapping[str, tuple[str, ...]] = field(default_factory=dict)
 
 
 def _text(value: Any) -> str:
@@ -615,6 +620,34 @@ def scope_of_period(
 
 def _count(table: Any, *conditions: ColumnElement[bool]) -> Any:
     return select(func.count()).select_from(table).where(*conditions).scalar_subquery()
+
+
+def _population(table: Any, *conditions: ColumnElement[bool]) -> Select[Any]:
+    return select(table.c.id).select_from(table).where(*conditions)
+
+
+def _population_members(session: Session, scope: PeriodScope) -> dict[str, tuple[str, ...]]:
+    populations = _blocker_populations(scope)
+    populations["data_quality_blocking"] = _population(exception_item, *_quality_conditions(scope))
+    row = (
+        session.execute(
+            select(
+                *(
+                    query.with_only_columns(func.array_agg(query.selected_columns[0]))
+                    .scalar_subquery()
+                    .label(key)
+                    for key, query in populations.items()
+                )
+            )
+        )
+        .mappings()
+        .one()
+    )
+    # Typed identifiers distinguish two different source populations with the same UUID.
+    return {
+        key: tuple(sorted(f"{key}:{identifier}" for identifier in (row[key] or ())))
+        for key in populations
+    }
 
 
 def _entity_contracts(entity_id: UUID) -> Select[Any]:
@@ -964,8 +997,8 @@ def failing_connections(session: Session, scope: PeriodScope) -> tuple[str, ...]
     return tuple(str(name) for name in names)
 
 
-def blocker_statement(scope: PeriodScope) -> Select[Any]:
-    """One row of the twelve API-S-Period counts (REQ-CLS-008) and the gate-only counts."""
+def _blocker_populations(scope: PeriodScope) -> dict[str, Select[Any]]:
+    """Shared populations for cockpit counts and identity-bound gate waivers."""
     runs = select(journal_run.c.id).where(_of_period(journal_run, scope))
     close_jobs = or_(
         and_(job.c.subject_type == "journal_run", job.c.subject_id.in_(runs)),
@@ -986,7 +1019,7 @@ def blocker_statement(scope: PeriodScope) -> Select[Any]:
     # R-121 (i): a failed import holds the interface gate of the entities its upload names
     # (every entity while it names none or is not resolved), as its findings hold the
     # exceptions gate; before, it held the gate of every entity.
-    imports_failed = _count(
+    imports_failed = _population(
         import_upload,
         import_upload.c.status == ImportStatus.FAILED.value,
         mismatch_open,
@@ -999,17 +1032,17 @@ def blocker_statement(scope: PeriodScope) -> Select[Any]:
             contract.c.contracting_entity_id == scope.entity_id,
         ),
     )
-    return select(
-        _count(exception_item, _open_exceptions(scope)).label("exceptions_open"),
-        _count(
+    return {
+        "exceptions_open": _population(exception_item, _open_exceptions(scope)),
+        "holds_open": _population(
             contract_hold,
             contract_hold.c.released_at.is_(None),
             contract_hold.c.contract_id.in_(_entity_contracts(scope.entity_id)),
-        ).label("holds_open"),
-        _count(
+        ),
+        "unmapped_products": _population(
             exception_item, _open_exceptions(scope), exception_item.c.code == PRODUCT_UNMAPPED
-        ).label("unmapped_products"),
-        _count(
+        ),
+        "judgements_unreviewed": _population(
             judgement_record,
             judgement_record.c.status == JudgementStatus.SUBMITTED.value,
             judgement_record.c.contract_id.in_(_entity_contracts(scope.entity_id)),
@@ -1017,8 +1050,8 @@ def blocker_statement(scope: PeriodScope) -> Select[Any]:
                 judgement_record.c.book_code.is_(None),
                 judgement_record.c.book_code == scope.book_code,
             ),
-        ).label("judgements_unreviewed"),
-        _count(
+        ),
+        "approvals_pending": _population(
             approval_request,
             approval_request.c.status == ApprovalRequestStatus.PENDING.value,
             request_of_entity(scope.entity_id),
@@ -1026,24 +1059,24 @@ def blocker_statement(scope: PeriodScope) -> Select[Any]:
             ~own_lock_request(scope),
             # rev 1.318: nor is the request that asks to waive this very count
             ~own_gate_waiver_request(scope),
-        ).label("approvals_pending"),
-        (imports_failed + _count(sync_run, uncleared_sync_runs(scope))).label("interface_failures"),
-        imports_failed.label("imports_failed"),
-        _count(job, job.c.state == JobState.FAILED.value, close_jobs, newest_job).label(
-            "jobs_failed"
         ),
-        _count(combination_group, dirty_group).label("groups_dirty"),
-        _count(
+        "sync_failed": _population(sync_run, uncleared_sync_runs(scope)),
+        "imports_failed": imports_failed,
+        "jobs_failed": _population(
+            job, job.c.state == JobState.FAILED.value, close_jobs, newest_job
+        ),
+        "groups_dirty": _population(combination_group, dirty_group),
+        "batches_unexported": _population(
             journal_batch,
             _of_period(journal_batch, scope),
             journal_batch.c.state == JournalState.APPROVED.value,
-        ).label("batches_unexported"),
-        _count(
+        ),
+        "batches_unacknowledged": _population(
             journal_batch,
             _of_period(journal_batch, scope),
             journal_batch.c.state.in_((JournalState.EXPORTED.value, JournalState.FAILED.value)),
-        ).label("batches_unacknowledged"),
-        _count(
+        ),
+        "reconciliations_unsigned": _population(
             reconciliation,
             _of_period(reconciliation, scope),
             or_(
@@ -1051,8 +1084,8 @@ def blocker_statement(scope: PeriodScope) -> Select[Any]:
                 overtaken(scope),
             ),
             ~superseded(),
-        ).label("reconciliations_unsigned"),
-        _count(
+        ),
+        "manual_adjustments_pending": _population(
             manual_adjustment,
             _of_period(manual_adjustment, scope),
             manual_adjustment.c.status.in_(
@@ -1060,16 +1093,26 @@ def blocker_statement(scope: PeriodScope) -> Select[Any]:
             ),
             # CLO-12 (REQ-JE-019): an adjustment deferred past lock with approval does not count.
             manual_adjustment.c.is_deferred_past_lock.is_(False),
-        ).label("manual_adjustments_pending"),
-        _count(journal_run, journal_run.c.id.in_(_live_runs(scope))).label("runs_live"),
-        _count(
+        ),
+        "runs_live": _population(journal_run, journal_run.c.id.in_(_live_runs(scope))),
+        "batches_not_acknowledged": _population(
             journal_batch,
             journal_batch.c.journal_run_id.in_(_live_runs(scope)),
             journal_batch.c.state.not_in(
                 (JournalState.ACKNOWLEDGED.value, JournalState.CANCELLED.value)
             ),
-        ).label("batches_not_acknowledged"),
-    )
+        ),
+    }
+
+
+def blocker_statement(scope: PeriodScope) -> Select[Any]:
+    """One row of cockpit and gate-only counts, using the same predicates as members."""
+    counts: dict[str, ColumnElement[Any]] = {
+        key: query.with_only_columns(func.count()).scalar_subquery()
+        for key, query in _blocker_populations(scope).items()
+    }
+    counts["interface_failures"] = counts["imports_failed"] + counts.pop("sync_failed")
+    return select(*(value.label(key) for key, value in counts.items()))
 
 
 def _close_runs(scope: PeriodScope) -> Select[Any]:
@@ -1423,6 +1466,21 @@ def _reconciliation_statuses(session: Session, scope: PeriodScope) -> dict[str, 
     return found
 
 
+def _reconciliation_members(
+    identifiers: Mapping[str, UUID],
+    missing: tuple[str, ...],
+    unreviewed: tuple[str, ...],
+    outdated: tuple[str, ...],
+) -> tuple[str, ...]:
+    return tuple(
+        sorted(
+            [f"reconciliation:{kind}:missing" for kind in missing]
+            + [f"reconciliation:{kind}:{identifiers.get(kind)}:unreviewed" for kind in unreviewed]
+            + [f"reconciliation:{kind}:{identifiers.get(kind)}:outdated" for kind in outdated]
+        )
+    )
+
+
 def derived_counts(
     session: Session,
     scope: PeriodScope,
@@ -1447,21 +1505,20 @@ def derived_counts(
     }
 
 
+def _quality_conditions(scope: PeriodScope) -> tuple[ColumnElement[bool], ...]:
+    return (
+        exception_item.c.source == ExceptionSource.DATA_QUALITY.value,
+        exception_item.c.severity == ExceptionSeverity.BLOCKING.value,
+        exception_item.c.status.in_(OPEN_EXCEPTIONS),
+        exception_item.c.entity_id == scope.entity_id,
+        exception_item.c.period_id == scope.period_id,
+    )
+
+
 def data_quality_blocking(session: Session, scope: PeriodScope) -> int:
-    """CLO-5 (REQ-CLS-019): the open ``BLOCKING`` ``DATA_QUALITY`` exception items of the entity and
-    period; ``WARNING`` items never block a lock."""
+    """Open blocking data-quality findings of this entity and period."""
     return int(
-        session.execute(
-            select(func.count())
-            .select_from(exception_item)
-            .where(
-                exception_item.c.source == ExceptionSource.DATA_QUALITY.value,
-                exception_item.c.severity == ExceptionSeverity.BLOCKING.value,
-                exception_item.c.status.in_(OPEN_EXCEPTIONS),
-                exception_item.c.entity_id == scope.entity_id,
-                exception_item.c.period_id == scope.period_id,
-            )
-        ).scalar_one()
+        session.execute(select(_count(exception_item, *_quality_conditions(scope)))).scalar_one()
     )
 
 
@@ -1532,7 +1589,9 @@ def signals(
     """Everything the gates read, in a few statements. ``files`` / ``keyring`` let the completeness
     assertion read a run's held detail file when its audit event predates
     ``held_subledger_line_ids`` (CLO-10; Codex 1317 R5-ORDER-1)."""
-    row = _counts_row(session, scope)
+    members = _population_members(session, scope)
+    row = {key: len(values) for key, values in members.items()}
+    row["interface_failures"] = row["imports_failed"] + row["sync_failed"]
     runs_live = int(row["runs_live"])
     imports_failed = int(row["imports_failed"])
     interfaces = (
@@ -1555,14 +1614,23 @@ def signals(
         .order_by(journal_batch.c.txn_currency)
     ).scalars()
     kinds = required_kinds(session, scope, known_at=known_at)
-    generated = _reconciliation_statuses(session, scope)
+    reconciliation_rows = session.execute(
+        select(
+            reconciliation.c.kind,
+            reconciliation.c.status,
+            reconciliation.c.id,
+            overtaken(scope).label("overtaken"),
+        ).where(_of_period(reconciliation, scope), ~superseded())
+    ).all()
+    generated = {_text(found.kind): {_text(found.status)} for found in reconciliation_rows}
+    identifiers = {_text(found.kind): UUID(str(found.id)) for found in reconciliation_rows}
     missing = tuple(kind for kind in kinds if kind not in generated)
     unreviewed = tuple(
         kind
         for kind in kinds
         if kind in generated and not generated[kind] & REVIEWED_RECONCILIATIONS
     )
-    overtaken_kinds = _overtaken_kinds(session, scope)
+    overtaken_kinds = {_text(found.kind) for found in reconciliation_rows if found.overtaken}
     outdated = tuple(kind for kind in kinds if kind in overtaken_kinds)
     return CloseSignals(
         blockers={key: int(row[key]) for key in BLOCKER_KEYS},
@@ -1577,7 +1645,22 @@ def signals(
         outdated_kinds=outdated,
         remark_pending=period_redirty_job.remark_pending(session, scope.state_id),
         close_run=close_run_facts(session, scope, known_at=known_at),
-        data_quality_blocking=data_quality_blocking(session, scope),
+        data_quality_blocking=row["data_quality_blocking"],
+        members={
+            INTERFACES_COMPLETE: tuple(sorted(members["imports_failed"] + members["sync_failed"])),
+            APPROVALS_CLEARED: members["approvals_pending"],
+            EXCEPTIONS_CLEARED: members["exceptions_open"],
+            HOLDS_REVIEWED: members["holds_open"],
+            BATCHES_ACKNOWLEDGED: members["batches_not_acknowledged"]
+            + (() if runs_live else ("journal_run:missing",)),
+            RECONCILIATIONS_GENERATED: _reconciliation_members(
+                identifiers, missing, unreviewed, outdated
+            ),
+            JUDGEMENTS_REVIEWED: members["judgements_unreviewed"],
+            DATA_QUALITY_CLEAR: members["data_quality_blocking"],
+            NO_DIRTY_GROUPS: members["groups_dirty"],
+            MANUAL_ADJUSTMENTS_CLEARED: members["manual_adjustments_pending"],
+        },
         failing_interfaces=interfaces,
         completeness=(
             completeness_rules.completeness_of(
@@ -1717,7 +1800,7 @@ def gate_results(facts: CloseSignals, *, at: datetime) -> tuple[GateResult, ...]
         if problems
         else GateResult(RECONCILIATIONS_GENERATED, ChecklistStatus.PASSED, 0, None, at)
     )
-    return (
+    results = (
         interface,
         balanced,
         _completeness_result(facts, run_missing=bool(run_missing), at=at),
@@ -1737,6 +1820,9 @@ def gate_results(facts: CloseSignals, *, at: datetime) -> tuple[GateResult, ...]
         ),
         _close_run_result(facts, at=at),
         GateResult(CONTROLLER_CERTIFIED, ChecklistStatus.FAILED, None, CERTIFICATION_DETAIL, at),
+    )
+    return tuple(
+        replace(result, members=facts.members.get(result.gate_check_code)) for result in results
     )
 
 
@@ -1863,33 +1949,64 @@ def _automatic_items(scope: PeriodScope, *, lock: bool) -> Select[Any]:
 
 
 def outgrown(row: Mapping[Any, Any], result: GateResult) -> GateResult:
-    """``result`` as the item of ``row`` must state it when a waiver no longer covers what the
-    gate counts (item CLO-WAIVER-COVERS-LATER-1; 04 T-CLS-03 rev 1.305). A waiver covers the
-    COUNT it was approved for — the item's stored count while it is ``WAIVED``. A gate that
-    counts more is ``FAILED`` again, with the count that stands and its sentence followed by
-    ``WAIVER_COVERED``; the stored result keeps the waiver's number and count
-    (``waiver_outgrown``), and every later evaluation that still fails states the same. A count
-    at or below the waived one, a gate without a count and a waiver approved without a stored
-    count leave ``result`` as it is."""
+    """A waiver only covers its recorded member identities; a spent waiver never revives.
+
+    Legacy count-only waivers fail closed when blockers remain. A shrinking covered set is
+    permitted, but a new member lapses the waiver even when the count is unchanged.
+    """
     stored = row["result"] or {}
     spent = stored.get(OUTGROWN)
     if _text(row["status"]) == ChecklistStatus.WAIVED.value:
         waived = stored.get("count")
-        if result.count is None or waived is None or result.count <= int(waived):
+        covered = stored.get("members")
+        if result.status is ChecklistStatus.PASSED:
             return result
-        spent = {"request_no": row[WAIVER_REQUEST_NO], "count": int(waived)}
+        if (
+            covered is not None
+            and result.members is not None
+            and set(result.members).issubset(covered)
+            and waived is not None
+            and result.count is not None
+            and result.count <= int(waived)
+        ):
+            return result
+        spent = {"request_no": row[WAIVER_REQUEST_NO], "count": waived}
+        if covered is None or result.members is None:
+            spent["reason"] = "unbound"
+        elif result.count is not None and waived is not None and result.count <= int(waived):
+            spent["reason"] = "new_members"
     if spent is None or result.status is not ChecklistStatus.FAILED:
         return result
-    sentence = WAIVER_COVERED.format(request_no=spent["request_no"], count=spent["count"])
+    sentence = waiver_lapse_detail(spent)
     detail = sentence if result.detail is None else f"{result.detail} {sentence}"
     return replace(result, status=ChecklistStatus.FAILED, detail=detail, waiver_outgrown=spent)
+
+
+def waiver_lapse_detail(spent: Mapping[str, Any]) -> str:
+    if spent.get("reason") == "unbound":
+        return "This waiver has no recorded item identities. Request a new waiver."
+    sentence = WAIVER_COVERED.format(request_no=spent["request_no"], count=spent["count"])
+    if spent.get("reason") == "new_members":
+        sentence += " New items require a new waiver."
+    return sentence
+
+
+def renewed_waiver_result(stored: Mapping[str, Any]) -> dict[str, Any]:
+    """A fresh approval ends the prior lapse annotation, retaining its approved population."""
+    result = dict(stored)
+    spent = result.pop(OUTGROWN, None)
+    if spent is not None and result.get("detail") is not None:
+        sentence = waiver_lapse_detail(spent)
+        detail = str(result["detail"])
+        result["detail"] = None if detail == sentence else detail.removesuffix(f" {sentence}")
+    return result
 
 
 def _to_store(row: Mapping[Any, Any], by_code: Mapping[str, GateResult]) -> GateResult | None:
     """The result to store on an automatic item, or None when the item keeps what it holds: a
     final item (not applicable, whatever its stored result remembers; waived, while the gate
-    counts no more than the waiver covered — ``outgrown``), a gate without a result, or an
-    unchanged status, count and detail (``evaluated_at`` alone is no change)."""
+    contains only members the waiver covered — ``outgrown``), a gate without a result, or an
+    unchanged status, count, detail and members (``evaluated_at`` alone is no change)."""
     computed = by_code.get(str(row["gate_check_code"]))
     status = _text(row["status"])
     if computed is None or status == ChecklistStatus.NOT_APPLICABLE.value:
@@ -1902,6 +2019,7 @@ def _to_store(row: Mapping[Any, Any], by_code: Mapping[str, GateResult]) -> Gate
         status == result.status.value
         and stored.get("count") == result.count
         and stored.get("detail") == result.detail
+        and stored.get("members") == (None if result.members is None else list(result.members))
     )
     return None if unchanged else result
 
@@ -1912,8 +2030,8 @@ def _store(
     """Store each automatic gate's result on its item when the status, count or detail changed;
     the number of items written. ``audited=False`` writes the rows without an audit event (the
     materialisation for a reader, ``materialise_for_view``) — but for one move: an item that
-    leaves ``WAIVED`` because its gate counts more than the waiver covered. A waiver's lapse is
-    a change of a control's state and is on the trail whoever stores it, a reader's
+    leaves ``WAIVED`` because its gate contains members the waiver did not cover. A waiver's
+    lapse is a change of a control's state and is on the trail whoever stores it, a reader's
     materialisation included, as SYSTEM (item CLO-WAIVER-COVERS-LATER-1; the supervisor's ruling
     of 2026-10-02 20:22; 04 T-CLS-03 rev 1.305; dev guide DG-CMD-13). It is bounded: once per
     approved waiver — the item then names no request, and a second lapse needs a second
@@ -1947,9 +2065,15 @@ def _store(
         if not audited and not lapsed:
             continue
         before = {"status": status, "count": stored.get("count"), "detail": stored.get("detail")}
-        after = {"status": result.status.value, "count": result.count, "detail": result.detail}
+        after: dict[str, Any] = {
+            "status": result.status.value,
+            "count": result.count,
+            "detail": result.detail,
+        }
         waiver = row["waiver_approval_request_id"] if lapsed else None
         if lapsed:
+            before["members"] = stored.get("members")
+            after["members"] = None if result.members is None else list(result.members)
             before["waiver_approval_request_id"] = None if waiver is None else str(waiver)
             after["waiver_approval_request_id"] = None
         uow.audit(

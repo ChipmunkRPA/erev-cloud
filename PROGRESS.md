@@ -1,5 +1,34 @@
 # PROGRESS — eRev Cloud build loop notebook (under 20 KB)
 
+## Close-gate waiver identities — October 7, 2026
+
+- Continued from main `e9cae63`. Reproduced B1-10 in pending and approved waivers: resolving
+  one exception and introducing another at the same count let the replacement inherit review.
+- Automatic gate results now retain sorted, typed member identities. Count and membership
+  queries share their predicates; reconciliation identity, status and freshness are read together.
+  Missing reconciliation kinds and a missing journal run have explicit identities. All ten
+  waivable automatic gates carry a population; the four never-waivable gates remain protected.
+- Approval refreshes the gates under the period/checklist locks and checks its own request's
+  content hash. It refuses a changed population even without a cockpit visit. An approved
+  waiver may cover a shrinking subset; additions or replacements lapse it at any count, and
+  a spent waiver never revives. Legacy count-only waivers with blockers require a fresh review.
+  This binds membership, not every mutable field of an existing member. B1-11 remains open.
+- Submission audits retain the submitted population; lapse audits retain before/after identities.
+  Same-count replacements and missing legacy scope have explicit lapse messages. A renewed
+  approval removes the old lapse annotation. Existing historical lock records are unchanged.
+  The existing JSONB result column is sufficient; no migration or financial-oracle change.
+- **49 PostgreSQL close/lock checks passed** in 170.54 seconds, including all 11 waiver cases:
+  lock-decision replacement, missing-to-unreviewed reconciliations, legacy scope, subset
+  retention, renewal and reopen/audit behavior. Earlier runs also verified the fail-first cases.
+- **678 close-unit and architecture checks passed**; a final focused rerun passed 37 checks.
+  Updated the shared-predicate structural test and PR #29's FX unit principal fixture, which
+  lacked the tenant ID required by the publication lock. Source Mypy, Ruff, whitespace and
+  design checks (500 files) pass; 446 control tags validate; secret scan: 3,391 files, no findings.
+- B1-10 is closed for automatic gate membership. Full-backend/specialist verification, other
+  release limitations and independent accounting sign-off remain open. A new pinned backend
+  run is needed after merge. Publication exclusions and noncommercial licensing are preserved.
+  Archived the earlier database answer-key section verbatim. Repository work only; no deployment.
+
 ## Backend baseline and supported override fixture — October 7, 2026
 
 - Continued from main `3281f29`. The detached `ed6ea75` backend run finished with
@@ -112,28 +141,6 @@
   loopback database, with passing tests and the existing expected Q11 failure. It is still live,
   not a completed gate, and does not cover this later change. Full-backend/specialist verification,
   other release limitations and independent accounting review remain open. No deployment.
-
-## Supported overrides in database answer keys — October 7, 2026
-
-- Continued from merged PR #9 (`88bd20b`). The answer-key plan still omitted all policy
-  overrides under the October 3 withdrawal, although POL-122 and POL-047 are now supported.
-- Plans use the product's supported-key set, native request validation, committed override IDs,
-  route permissions and separate preparer/approver personas. Each supported declaration is
-  created, submitted and approved after booking and before activation. Unsupported declarations
-  retain a named failure alongside numeric mismatches; in-memory runs cannot pass as database
-  evidence. No answer-key files, expected figures or oracle hashes changed.
-- Real PostgreSQL POS012 now creates both declared POL-122 rows and approval requests, verifies
-  independent approval, compares every checkpoint clean and passes the complete key verdict.
-  Existing close-job, posting, reversal and journal assertions remain intact.
-- Verification: **379 tests passed** (the complete answer-key unit suite plus the PostgreSQL
-  POS012 regression; two warnings), Ruff lint/format, whitespace and design checks passed.
-  A standalone strict Mypy invocation of test-support files failed with 119 import/typing errors;
-  it is not passing type-check evidence. This is targeted verification, not a full-backend run.
-- C-12 remains open: default suite selection still uses memory, GT07's nondistinct review mapping
-  is missing, and POS117 needs its balance-aging builder and fresh database verification.
-  FX transition accounting review and the other documented repository backlog remain open.
-  Repository work only; no deployment.
-
 
 ## Policy approvals serialized with period locks — October 7, 2026
 

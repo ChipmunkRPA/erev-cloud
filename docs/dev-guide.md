@@ -3070,3 +3070,21 @@ Rev 1.1: D-75 closes DG-OQ-01 to DG-OQ-10. It also closes B1-consistency §8 Q5,
 | DG-OQ-12 | Each `make perf` run restores a new sandbox and archives the previous one. Archived tenants are never deleted (05 SBX-07, DB-01), so `erev` grows by one copy of the volume dataset per run. | Accept for 1.0; the runbook documents `make db-reset` followed by `make perf-seed` to reclaim space (DG-PERF-07). | **Resolved by D-76 (rev 1.2):** default adopted. Accepted for 1.0; the runbook documents `make db-reset` followed by `make perf-seed` (DG-PERF-07). |
 | DG-OQ-13 | D-48a says loop targets run offline, but `make setup` downloads packages and browsers, and DG-ENV-08 allows `uv add` and `npm install <pkg>` for new dependencies. | Read D-48a as governing target behaviour: dependency installation in `make setup` and under DG-ENV-08 is the loop's only network use (DG-MK-00f). | **Resolved by D-76 (rev 1.2):** dependency installation in `make setup` is the only network use permitted to the loop. A new dependency is added by editing the manifest and running `make setup LOCK=1` (DG-ENV-08, DG-MK-setup, DG-MK-00f, DG-FORBID-08). |
 
+
+
+### October 7 continuation: close-gate waiver identities
+
+`close.gates._blocker_populations` owns the predicates for both cockpit counts and waiver
+members. Gate evaluation aggregates their IDs from one statement; reconciliations read kind,
+current row ID, status and overtaken state together. Do not reintroduce separate count and
+membership filters. A waived gate retains its approved member set, while each evaluation
+compares the current set. Additions or replacements lapse the waiver; a subset remains covered.
+Legacy count-only waivers fail closed when blockers remain. This is membership coverage,
+not a seal of every mutable field of each source record.
+
+The checklist waiver approval hook holds the period before checklist rows, refreshes the
+automatic gates under tenant scope and checks its own request's content hash before applying.
+A stale basis rolls the decision and refresh back through the kernel savepoint and voids the
+request. This also protects decisions made without an intervening cockpit refresh. Submitted
+identities are retained in the request audit; lapse events retain the before/after identities.
+The existing bounded lapse audit applies to identity changes as well as growth, and historical lock certifications are not rewritten.
