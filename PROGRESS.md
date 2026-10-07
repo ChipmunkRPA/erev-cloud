@@ -27,7 +27,7 @@
   lacked the tenant ID required by the publication lock. Source Mypy, Ruff, whitespace and
   design checks (500 files) pass; 446 control tags validate; secret scan: 3,391 files, no findings.
 - B1-10 is closed for automatic gate membership. Other limitations and accounting sign-off
-  remain open. A backend run started on detached `7c9b22d` with a dedicated loopback database,
+  remain open. A backend run started on detached `7c9b22d` with a local database,
   excluding parity/answer-key/performance markers; no completed result yet. Exclusions and
   noncommercial licensing are preserved. Archived the earlier answer-key section verbatim.
   Repository only; no deployment.
