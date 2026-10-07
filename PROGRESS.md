@@ -1,5 +1,25 @@
 # PROGRESS — eRev Cloud build loop notebook (under 20 KB)
 
+## Volume delivery quantities — October 7, 2026
+
+- Continued from merged PR #11 (`cf727a1`). Reproduced LIMITS standing failure 8: the 1/1000
+  database seed refused a delivery of 7 with only 3 remaining. The generator split total quantity
+  exactly to two decimals, then rounded every batch independently to a whole number.
+- Retained the exact fractional quantities accepted by the command schema. Every batch is
+  positive, every prefix stays within its contracted quantity, and completed schedules sum to
+  exactly that quantity. Generator version 15 gives the changed event facts a new dataset identity;
+  the full manifest still has 1,262,407 events. No delivery validation or expected accounting
+  amount was loosened.
+- Verification so far: **46 pure volume/performance tests passed**, including the new full-scale
+  delivery invariant; Ruff lint/format, source Mypy and design/whitespace checks passed.
+  The corrected PostgreSQL seed **passed**, with original assertions for all groups, event
+  totals, estimate approvals and evidence attachments. No full-volume database performance claim.
+- Balance-aging investigation: stage 12 already emits `BookOutput.fx_layer_movements`, but
+  computation persistence writes no T-CON-18 rows. The current report draft reads subledger lines
+  and is incorrect under ERP billing. Persisting immutable layer movements with source-event and
+  FX-rate lineage is a prerequisite to exposing that report. It remains unregistered.
+- Broader repository gaps and independent accounting sign-off remain open. No deployment.
+
 ## Migration capture calendar and POS117 recheck — October 7, 2026
 
 - Continued from merged PR #10 (`8876bd8`). Reproduced all three migration-capture failures
