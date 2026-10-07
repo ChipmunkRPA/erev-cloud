@@ -24,7 +24,13 @@ import erev_engine
 import pytest
 from erev_api.domain.contracts import bundles
 from erev_api.registry.resolve import ResolvedValue
-from erev_engine.bundle import BundleComponentInput, InputBundle, OutputBundle, ProductInput
+from erev_engine.bundle import (
+    BundleComponentInput,
+    InputBundle,
+    OutputBundle,
+    ProductInput,
+    ResolvedPolicyInput,
+)
 from erev_engine.canonical import sha256_hex
 from erev_engine.stages.s01_canonicalize import obligation_subject_key
 from support.answer_keys import runners
@@ -234,3 +240,39 @@ def test_pin_k_a_parameter_the_recorded_values_do_not_hold_resolves_at_the_compu
     )
     assert (at_group[missing].value, at_group[missing].level) == ("RESOLVED-NOW", "T")
     assert held not in asked and missing in asked
+
+
+def test_override_preserves_shadowed_product_default_in_pin(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    bundle, output = _computed("alc/ALC-CHK-002-GT01-GT03")[0]
+    contract_key, line = bundles._lines(bundle.events)[0]
+    code = str(line["product_code"])
+    subject = obligation_subject_key(contract_key, str(line["obligation_key"]))
+    key = "balance.right_to_consideration"
+    monkeypatch.setattr(
+        bundles.registry, "resolve", lambda _s, c, **_kw: ResolvedValue(c, None, "DEFAULT", None)
+    )
+    policies = bundles._policies(
+        None,
+        book_code="ASC606",
+        entity_id=None,
+        entities=(),  # type: ignore[arg-type]
+        known_at=bundle.known_at,
+        pinned=None,
+        lines=[(contract_key, line)],
+        product_rows={code: {"policy_values": {key: "CONDITIONAL"}}},
+        template_values={},
+        overrides=[
+            ResolvedPolicyInput(key, "OBLIGATION", subject, "UNCONDITIONAL", "O", "override", "K")
+        ],
+    )
+    changed = dataclasses.replace(
+        bundle, books=(dataclasses.replace(bundle.books[0], policies=policies),)
+    )
+    pin = bundles.product_pin_members(changed, output)[code][bundles.OBLIGATION_POLICIES]
+    assert pin[key] == {"value": "CONDITIONAL", "source": code}
+    assert [(p.scope, p.value) for p in policies] == [
+        ("OBLIGATION", "UNCONDITIONAL"),
+        ("PRODUCT", "CONDITIONAL"),
+    ]

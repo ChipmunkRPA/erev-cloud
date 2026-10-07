@@ -174,7 +174,11 @@ def override_in_force(
         table.c.status.in_(_OVERRIDE_IN_FORCE),
         table.c.approved_at <= known_at,
     )
-    ordered = statement.order_by(table.c.approved_at.desc()).limit(1)
+    ordered = statement.order_by(
+        table.c.approved_at.desc(),
+        (table.c.status == ConfigStatus.APPROVED.value).desc(),
+        table.c.id.desc(),
+    ).limit(1)
     return session.execute(ordered).mappings().one_or_none()
 
 

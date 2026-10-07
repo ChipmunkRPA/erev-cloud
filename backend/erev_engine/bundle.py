@@ -87,9 +87,9 @@ class ResolvedPolicyInput:
     """A policy value resolved by the orchestrator (DG-KRN-REG-03); stages read it (CV-17)."""
 
     code: str  # POLICIES §1 key, for example "mod.ssp_basis"
-    scope: str  # "GROUP" | "CONTRACT" | "OBLIGATION" | "ENTITY" | "PERIOD"
+    scope: str  # "GROUP" | "CONTRACT" | "OBLIGATION" | "ENTITY" | "PERIOD" | "PRODUCT"
     # "" for GROUP; contract external_id; obligation subject key; entity code;
-    # "<entity code>@<period_key>" for PERIOD
+    # "<entity code>@<period_key>" for PERIOD; product code for a shadowed PRODUCT default
     subject_key: str
     value: str | tuple[str, ...] | Mapping[str, str]  # POLICIES §1 literals; decimals as strings
     level: str  # "O" | "C" | "P" | "B" | "E" | "T" | "DEFAULT" (DG-KRN-REG-01)
