@@ -37,6 +37,7 @@ from erev_engine.bundle import (
     SspVersionInput,
     TemplateInput,
     TimeTrigger,
+    contract_period_key,
 )
 from erev_engine.canonical import canonical_bytes
 from erev_engine.currencies import CurrencyTable
@@ -118,7 +119,15 @@ EntityView = EntityInput  # functional currency, time zone, calendar periods and
 AccountMappingView = AccountMappingInput  # T-REF-15 PUBLISHED version pinned for the computation
 OpeningBalanceView = Mapping[str, object]  # OPENING_BALANCE_ESTABLISHED payload values (POL-210)
 
-POLICY_SCOPES: Final = ("GROUP", "CONTRACT", "OBLIGATION", "ENTITY", "PERIOD", "PRODUCT")
+POLICY_SCOPES: Final = (
+    "GROUP",
+    "CONTRACT",
+    "OBLIGATION",
+    "ENTITY",
+    "PERIOD",
+    "CONTRACT_PERIOD",
+    "PRODUCT",
+)
 
 OrderKey = tuple[date, int, str]  # ENG-06: (effective_date, record_seq, event_key)
 
@@ -132,8 +141,8 @@ class PolicyResolver:
 
     Pin ``K`` codes resolve to the most specific scope present: OBLIGATION, CONTRACT, ENTITY, then
     GROUP. PRODUCT rows preserve shadowed defaults for product pinning and are not lookup
-    candidates. Pin ``P`` codes resolve only through PERIOD scope
-    ``<entity code>@<period_key>``.
+    candidates. Pin ``P`` codes resolve a supplied contract's CONTRACT_PERIOD exception first,
+    then the entity's PERIOD default. Both require entity and period.
     The orchestrator resolved every value (DG-KRN-REG-03), so an absent value is a bundle-assembly
     error and raises ``ValueError`` (CV-17, CV-45).
     """
@@ -158,8 +167,10 @@ class PolicyResolver:
                 raise ValueError(f"policy {code}: PRODUCT defaults require level P and pin K")
             if policy.pin not in ("K", "P"):
                 raise ValueError(f"policy {code} has unknown pin {policy.pin!r}")
-            if (policy.pin == "P") != (policy.scope == "PERIOD"):
-                raise ValueError(f"policy {code}: pin P values and only they use the PERIOD scope")
+            if (policy.pin == "P") != (policy.scope in {"PERIOD", "CONTRACT_PERIOD"}):
+                raise ValueError(f"policy {code}: pin P values require a period scope")
+            if policy.scope == "CONTRACT_PERIOD" and policy.level != "C":
+                raise ValueError(f"policy {code}: CONTRACT_PERIOD requires level C")
             if (policy.scope == "GROUP") != (policy.subject_key == ""):
                 raise ValueError(f"policy {code}: only the GROUP scope has an empty subject key")
             if pins.setdefault(code, policy.pin) != policy.pin:
@@ -184,7 +195,12 @@ class PolicyResolver:
         if pin == "P":
             if entity is None or period is None:
                 raise ValueError(f"policy {code} is period-scoped: pass entity and period")
-            candidates = [("PERIOD", f"{entity}@{period}")]
+            candidates = []
+            if contract is not None:
+                candidates.append(
+                    ("CONTRACT_PERIOD", contract_period_key(contract, entity, period))
+                )
+            candidates.append(("PERIOD", f"{entity}@{period}"))
         else:
             scopes = (("OBLIGATION", obligation), ("CONTRACT", contract), ("ENTITY", entity))
             candidates = [(scope, key) for scope, key in scopes if key is not None]

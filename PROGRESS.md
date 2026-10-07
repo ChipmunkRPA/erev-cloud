@@ -1,5 +1,35 @@
 # PROGRESS — eRev Cloud build loop notebook (under 20 KB)
 
+## Contract-period policy isolation — October 7, 2026
+
+- PR #5 merged into main (`be91991`), completing the two-policy workbench slice. The owner
+  instructed automatic merging after verification and retention of **main only**. GitHub automatic
+  merged-branch deletion is enabled; the four older merged branches were deleted locally/remotely.
+  Future implementation branches are temporary and must be removed after merge.
+- Work continues on `codex/contract-period-policy-scope`. POL-163 needs more than admitting another
+  key: the FX engine currently treats the whole group/entity as one liability unit. A contract's
+  exception must not change neighboring contracts in that unit.
+- Added a CONTRACT_PERIOD bundle identity and resolver precedence over the entity PERIOD default.
+  Identity encodes contract, entity and period unambiguously. Pin P and level C are required; both
+  entity and period are required to read it. Existing readers without a contract still receive the
+  entity default.
+- Bundle assembly resolves approved POL-163 rows separately for each member and entity period,
+  using the earlier of the known-at cutoff and the entity-local period end. Prior approvals remain
+  eligible for their historical periods after supersession; later approvals cannot rewrite an
+  earlier period. Forced IFRS15 treatment excludes these rows. Scoped exceptions never become the
+  widest-scope persisted policy pin.
+- Actual verification: 48 scoped-policy, period-row, resolver and PostgreSQL policy-domain tests
+  passed. A further 590 kernel, FX engine, architecture and database period-policy tests passed,
+  including the final persisted-pin assertion. Mypy passed for five source files; Ruff lint/format
+  and whitespace checks passed. No full-backend or live-release claim is made.
+- Initial publication attempts on October 7 returned GitHub internal server errors for both Git
+  pushes and PR creation. The local commit is preserved; check the remote PR and main before
+  treating this slice as published. Repository metadata confirms push/admin access and no archive.
+- This is the isolation foundation, not completion of POL-163. Public authoring stays refused until
+  FX liability layers carry their originating contract and use its period-scoped treatment for
+  consumption and remeasurement, with monetary/historical transitions and mixed-member tie-outs
+  verified. Those readers, actual FX journals, close behavior and UI remain next. No deployment.
+
 ## Policy override workbench — October 7, 2026
 
 - PR #4 merged into public main (`51aa535`). Work continues on `codex/policy-override-ui`.

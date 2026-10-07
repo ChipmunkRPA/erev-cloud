@@ -1,8 +1,8 @@
-"""Approved contract-pinned policy exceptions for calculation bundles.
+"""Approved scoped policy exceptions for calculation bundles.
 
 Read once per combination group, under its tenant scope. Product inputs are installed first;
-these rows replace them in O > C > P order. Period-pinned exceptions require a separate
-effective-period representation and are deliberately not admitted here.
+contract-pinned rows replace them in O > C > P order. Period-pinned exceptions use a
+separate contract/entity/period identity and never replace the entity default.
 """
 
 from collections.abc import Mapping, Sequence
@@ -10,7 +10,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from erev_engine.bundle import ResolvedPolicyInput
+from erev_engine.bundle import ResolvedPolicyInput, contract_period_key
 from erev_engine.stages.s01_canonicalize import obligation_subject_key
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -109,4 +109,59 @@ def scoped_inputs(
                 contracts[contract_id], obligation_keys[(contract_id, obligation_id)]
             )
             add(row, "OBLIGATION", subject, "O")
+    return tuple(resolved[key] for key in sorted(resolved))
+
+
+def period_scoped_inputs(
+    rows: Sequence[Mapping[str, Any]],
+    *,
+    book_code: str,
+    contracts: Mapping[UUID, tuple[str, str]],
+    period_cutoffs: Sequence[tuple[str, str, datetime]],
+    known_at: datetime,
+) -> tuple[ResolvedPolicyInput, ...]:
+    """Resolve POL-163 per contract and entity period without replacing entity defaults.
+
+    ``period_cutoffs`` supplies each period's last instant in its entity's time zone.
+    Approval is the effective instant: a later approval cannot change an earlier period.
+    Superseded approvals remain eligible for the periods in which they were current.
+    """
+    code = "fx.cl_historical_layering"
+    spec = POLICY_PARAMETERS[code]
+    if registry.is_forced(spec, BookCode(book_code)):
+        return ()
+    eligible = [
+        row
+        for row in rows
+        if row["policy_key"] == code
+        and row["level"] == "CONTRACT"
+        and row["obligation_id"] is None
+        and row["status"] in {"APPROVED", "SUPERSEDED"}
+        and row["approved_at"] is not None
+        and UUID(str(row["contract_id"])) in contracts
+    ]
+    eligible.sort(
+        key=lambda row: (row["approved_at"], row["status"] == "APPROVED", str(row["id"])),
+        reverse=True,
+    )
+    resolved: dict[str, ResolvedPolicyInput] = {}
+    for entity, period, end in period_cutoffs:
+        cutoff = min(known_at, end)
+        for row in eligible:
+            contract, owner_entity = contracts[UUID(str(row["contract_id"]))]
+            if owner_entity != entity or row["approved_at"] > cutoff:
+                continue
+            subject = contract_period_key(contract, entity, period)
+            resolved.setdefault(
+                subject,
+                ResolvedPolicyInput(
+                    code,
+                    "CONTRACT_PERIOD",
+                    subject,
+                    engine_policy_value(row["value"]),
+                    "C",
+                    str(row["id"]),
+                    "P",
+                ),
+            )
     return tuple(resolved[key] for key in sorted(resolved))

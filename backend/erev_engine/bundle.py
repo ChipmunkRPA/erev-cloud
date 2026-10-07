@@ -14,6 +14,7 @@ a mapping by column name. Standard library only (DG-ARC-02).
 
 from __future__ import annotations
 
+import json
 from collections.abc import Mapping
 from dataclasses import dataclass, fields, replace
 from datetime import date, datetime
@@ -82,14 +83,20 @@ _Date = date
 # --- Input bundle (ENGINE_SPEC §0.4) -------------------------------------------------------------
 
 
+def contract_period_key(contract: str, entity: str, period: str) -> str:
+    """Unambiguous identity for one contract's exception in one entity period."""
+    return json.dumps([contract, entity, period], ensure_ascii=True, separators=(",", ":"))
+
+
 @dataclass(frozen=True, slots=True)
 class ResolvedPolicyInput:
     """A policy value resolved by the orchestrator (DG-KRN-REG-03); stages read it (CV-17)."""
 
     code: str  # POLICIES §1 key, for example "mod.ssp_basis"
-    scope: str  # "GROUP" | "CONTRACT" | "OBLIGATION" | "ENTITY" | "PERIOD" | "PRODUCT"
+    scope: str  # GROUP, CONTRACT, OBLIGATION, ENTITY, PERIOD, CONTRACT_PERIOD, PRODUCT
     # "" for GROUP; contract external_id; obligation subject key; entity code;
-    # "<entity code>@<period_key>" for PERIOD; product code for a shadowed PRODUCT default
+    # "<entity code>@<period_key>" for PERIOD; contract_period_key for CONTRACT_PERIOD;
+    # product code for a shadowed PRODUCT default
     subject_key: str
     value: str | tuple[str, ...] | Mapping[str, str]  # POLICIES §1 literals; decimals as strings
     level: str  # "O" | "C" | "P" | "B" | "E" | "T" | "DEFAULT" (DG-KRN-REG-01)
