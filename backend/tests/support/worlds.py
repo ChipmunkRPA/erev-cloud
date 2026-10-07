@@ -1804,7 +1804,7 @@ def k03_change_order(world: K03World, clock: FrozenClock) -> K03ChangeOrder:
     ``tests/domain/contracts/test_modifications.py::test_j_06_…``."""
     from datetime import timedelta
 
-    from support.reference import approve
+    from support.reference import approve, patch
 
     step = timedelta(seconds=K03_STEP_SECONDS)
     app, report = world.app, world.report
@@ -1825,6 +1825,25 @@ def k03_change_order(world: K03World, clock: FrozenClock) -> K03ChangeOrder:
         controller=marcus,
     )
     clock.advance(step)
+    # B1-5: the record reviews the actual draft's figures, which must exist first.
+    bonus = post(
+        app,
+        f"/api/v1/estimates/{world.bonus_id}/versions",
+        maya,
+        {
+            "effective_date": "2026-09-10",
+            "scenarios": [
+                {"outcome": "Completion bonus earned", "amount": "200000.00"},
+                {"outcome": "Not earned", "amount": "0.00"},
+            ],
+            "unconstrained_amount": "200000.00",
+            "most_conservative_amount": "0.00",
+            "constrained_amount": "200000.00",
+            "rationale": "Completion within the extended window is highly likely.",
+        },
+    )
+    assert bonus.status_code == 201, bonus.text
+    bonus_v2_id = str(bonus.json()["id"])
     judgement = judgement_submitted(
         app,
         maya,
@@ -1846,25 +1865,14 @@ def k03_change_order(world: K03World, clock: FrozenClock) -> K03ChangeOrder:
     clock.advance(step)
     reviewed = approve(app, str(judgement["approval_request_id"]), priya)
     assert (reviewed.status_code, reviewed.json()["status"]) == (200, "APPROVED"), reviewed.text
-    bonus = post(
+    linked = patch(
         app,
-        f"/api/v1/estimates/{world.bonus_id}/versions",
+        f"/api/v1/estimate-versions/{bonus_v2_id}",
         maya,
-        {
-            "effective_date": "2026-09-10",
-            "scenarios": [
-                {"outcome": "Completion bonus earned", "amount": "200000.00"},
-                {"outcome": "Not earned", "amount": "0.00"},
-            ],
-            "unconstrained_amount": "200000.00",
-            "most_conservative_amount": "0.00",
-            "constrained_amount": "200000.00",
-            "rationale": "Completion within the extended window is highly likely.",
-            "judgement_record_id": judgement["id"],
-        },
+        {"judgement_record_id": judgement["id"]},
+        if_match=None,
     )
-    assert bonus.status_code == 201, bonus.text
-    bonus_v2_id = str(bonus.json()["id"])
+    assert linked.status_code == 200, linked.text
     estimate_version_ready(app, maya, bonus_v2_id)  # its evidence; the record is named above
     sent = post(app, f"/api/v1/estimate-versions/{bonus_v2_id}/submit", maya, {"comment": "Review"})
     assert sent.status_code == 200, sent.text

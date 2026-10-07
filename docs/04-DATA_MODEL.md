@@ -4104,6 +4104,19 @@ from being used as an index condition under row-level security.
 
 Keys: `PRIMARY KEY (tenant_id, id)`; `ux_judgement_record__no (tenant_id, judgement_no)`; `ix_judgement_record__subject (tenant_id, subject_type, subject_id)`; `ix_judgement_record__status (tenant_id, status)`.
 
+**Constraint review basis (October 7, 2026; B1-5).** For a contract variable-consideration
+estimate, submitted judgement content includes `constraint_estimate_basis`: version and element
+identity, effective date, method, direction, allocation targets, amounts, scenarios, parameters,
+rate, quantity, currency, amortization months and constraint checklist. A version subject binds
+that version; other contract-bound subjects resolve the named element's latest version or its
+explicit version key. The existing content hash seals this basis, and the submission audit keeps
+the figures. Linking the record, evidence attachments and lifecycle status do not change it.
+An edit while review is pending makes the review stale. Estimate submission and approval compare
+the current basis with the sealed hash and refuse another version or changed figures. No-change
+attestations without a new record retain their existing path. Older unbound reviewed records are
+retained as history but cannot support a new estimate approval; withdraw a pending estimate,
+prepare and review a new constraint record, and resubmit. No past posted estimate is rewritten.
+
 **Questionnaire schemas by topic (rev 1.2; ENGINE_SPEC Table 0.4-A, OQ-A-21; ENGINE_SPEC_B OQ-B-04).** Each schema is a JSON Schema 2020-12 object. Booleans are JSON booleans, dates are `YYYY-MM-DD` strings, and rates and amounts are decimal strings (API-C-06). The orchestrator renders every member read by the engine as a string in `JudgementInput.outcome` (`true` or `false` for booleans). A record whose questionnaire fails its schema cannot be submitted (422 `validation-failed` with field errors).
 
 | Topic (E-56) | Members read by the engine | Required |

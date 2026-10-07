@@ -158,6 +158,11 @@ DOOR: Final = {
         (BUNDLES, "build"): "a bundle holds every member, entity, period state and posted line",
         (BUNDLES, "index"): "the rows behind the bundle's keys, read as the bundle was",
         (
+            "backend/erev_api/domain/contracts/repo.py",
+            "product_reference_date",
+        ): "authorized product validation uses the current same-tenant group's minimum inception; "
+        "only the scalar date is returned, matching bundle component selection",
+        (
             "backend/erev_api/domain/contracts/queries.py",
             "_entity_refs",
         ): "id, code and name of an obligation's performing entity (R-85 (d))",

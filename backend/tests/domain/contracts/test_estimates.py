@@ -1371,7 +1371,7 @@ ATTESTATION_VALUES: Final = (
 )
 CONSTRAINT_RECORD: Final = (
     "Name the CONSTRAINT judgement record of this element: a record of this contract for "
-    "{code}, sent for review or reviewed."
+    "{code}, sent for review or reviewed for this version’s current figures."
 )
 RECORD_NOT_REVIEWED: Final = (
     "Judgement record {no} of this estimate version is not reviewed. It is reviewed before the "
@@ -1952,3 +1952,160 @@ def test_est_evidence_at_submit_1_a_shredded_file_is_no_evidence(
     supported("forecast-3.csv", b"forecast,units\nframework year,1452\n")
     decided = approve(world.app, request_id, priya)
     assert (decided.status_code, decided.json()["status"]) == (200, "APPROVED"), decided.text
+
+
+@pytest.mark.control("CTL-049")
+@pytest.mark.parametrize("reuse_previous", [False, True])
+def test_constraint_review_cannot_support_changed_estimate_figures(
+    app: FastAPI,
+    keyring: KeyRing,
+    clock: FrozenClock,
+    files: LocalFileStore,
+    reuse_previous: bool,
+) -> None:
+    """B1-5: a reviewed constraint belongs to the version and figures reviewed."""
+    world = k06_world(app, keyring, clock, files)
+    maya = world.place.author
+    k06 = _k06_with_v1(world, approved=True, shipped=False)
+    version_id = _draft(world.app, maya, k06.estimate_id, _v2_body())
+    if reuse_previous:
+        previous = _version(world.app, maya, k06.v1_id)
+        _named(world.app, maya, version_id, str(previous["judgement_record_id"]))
+        _attached(world.app, maya, version_id)
+    else:
+        _ready(world, version_id)
+        changed = patch(
+            world.app,
+            f"{VERSIONS}/{version_id}",
+            maya,
+            _rebate_version(
+                "2026-09-30",
+                "9000.00",
+                V2_OUTCOME,
+                V2_RATIONALE,
+                parameters={"refund_liability_target": "9000.00"},
+            ),
+            if_match=None,
+        )
+        assert changed.status_code == 200, changed.text
+    before = get(world.app, f"{CONTRACTS}/{k06.contract_id}", maya).json()["head_stream_version"]
+    sent = post(world.app, f"{VERSIONS}/{version_id}/submit", maya, {"comment": "Review"})
+    assert _findings(sent) == [NO_RECORD]
+    assert _version(world.app, maya, version_id)["status"] == "DRAFT"
+    assert (
+        get(world.app, f"{CONTRACTS}/{k06.contract_id}", maya).json()["head_stream_version"]
+        == before
+    )
+    # A new independent review of the actual figures permits the ordinary path again.
+    _named(
+        world.app,
+        maya,
+        version_id,
+        str(
+            _record(
+                world.app,
+                maya,
+                ("estimate_version", version_id),
+                submit=False,
+            )["id"]
+        ),
+    )
+    record_id = _version(world.app, maya, version_id)["judgement_record_id"]
+    reviewed = post(world.app, f"/api/v1/judgements/{record_id}/submit", maya, {})
+    assert reviewed.status_code == 200, reviewed.text
+    decision = approve(world.app, reviewed.json()["approval_request_id"], world.priya)
+    assert decision.status_code == 200, decision.text
+    request_id = _submitted(world, version_id, ready=False)
+    decision = approve(world.app, request_id, world.priya)
+    assert decision.status_code == 200, decision.text
+    assert _version(world.app, maya, version_id)["status"] == "APPROVED"
+
+
+@pytest.mark.control("CTL-049")
+@pytest.mark.parametrize("subject_type", ["estimate_version", "contract"])
+def test_constraint_review_pending_when_figures_change_is_stale(
+    app: FastAPI,
+    keyring: KeyRing,
+    clock: FrozenClock,
+    files: LocalFileStore,
+    subject_type: str,
+) -> None:
+    """The review itself pins the figures, including a contract-scoped constraint."""
+    world = k06_world(app, keyring, clock, files)
+    maya = world.place.author
+    contract_id, element_id = _k06_rebate(world)
+    version_id = _draft(world.app, maya, element_id, _rebate_version(*V1_BODY))
+    subject_id = version_id if subject_type == "estimate_version" else str(contract_id)
+    record = _record(world.app, maya, (subject_type, subject_id))
+    (submitted_audit,) = world.place.rows(
+        select(audit_event.c.after).where(
+            audit_event.c.object_id == UUID(str(record["id"])),
+            audit_event.c.action == "judgement_record.submitted",
+        )
+    )
+    basis = submitted_audit["after"]["constraint_estimate_basis"]
+    assert (basis["version_id"], basis["constrained_amount"]) == (version_id, "0")
+    changed = patch(world.app, f"{VERSIONS}/{version_id}", maya, _v2_body(), if_match=None)
+    assert changed.status_code == 200, changed.text
+    decision = approve(world.app, str(record["approval_request_id"]), world.priya)
+    assert (decision.status_code, slug(decision)) == (409, "stale-approval"), decision.text
+    assert get(world.app, f"/api/v1/judgements/{record['id']}", maya).json()["status"] == "REJECTED"
+    # A replacement contract-scoped record is also valid: scope alone is not refused.
+    fresh = _record(world.app, maya, (subject_type, subject_id))
+    decision = approve(world.app, str(fresh["approval_request_id"]), world.priya)
+    assert decision.status_code == 200, decision.text
+    _named(world.app, maya, version_id, str(fresh["id"]))
+    _attached(world.app, maya, version_id)
+    sent = post(world.app, f"{VERSIONS}/{version_id}/submit", maya, {})
+    assert sent.status_code == 200, sent.text
+    decision = approve(world.app, str(sent.json()["approval_request_id"]), world.priya)
+    assert decision.status_code == 200, decision.text
+
+
+@pytest.mark.control("CTL-049")
+def test_pre_binding_pending_estimate_requires_a_fresh_constraint_review(
+    app: FastAPI,
+    keyring: KeyRing,
+    clock: FrozenClock,
+    files: LocalFileStore,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Upgrade fixture: emulate the previous content/validation when creating a pending request.
+
+    Restore both production checks before the decision. No stored history is rewritten and
+    no new command may apply that old unbound judgement.
+    """
+    from types import SimpleNamespace
+
+    from erev_api.approvals import subjects
+    from erev_api.domain.contracts import estimates as commands
+
+    world = k06_world(app, keyring, clock, files)
+    maya = world.place.author
+    contract_id, element_id = _k06_rebate(world)
+    version_id = _draft(world.app, maya, element_id, _rebate_version(*V1_BODY))
+    with monkeypatch.context() as old_release:
+        old_release.setattr(subjects, "_constraint_estimate_basis", lambda *_: None)
+        record = _record(world.app, maya, ("estimate_version", version_id))
+        reviewed = approve(world.app, str(record["approval_request_id"]), world.priya)
+        assert reviewed.status_code == 200, reviewed.text
+        _named(world.app, maya, version_id, str(record["id"]))
+        _attached(world.app, maya, version_id)
+        old_release.setattr(
+            commands,
+            "_constraint_record",
+            lambda *_: SimpleNamespace(
+                status="REVIEWED",
+                judgement_no=record["judgement_no"],
+            ),
+        )
+        request_id = _submitted(world, version_id, ready=False)
+    before = get(world.app, f"{CONTRACTS}/{contract_id}", maya).json()["head_stream_version"]
+    _lifecycle_refusal(
+        approve(world.app, request_id, world.priya), CONSTRAINT_RECORD.format(code=REBATE)
+    )
+    assert _version(world.app, maya, version_id)["status"] == "SUBMITTED"
+    assert (
+        get(world.app, f"{CONTRACTS}/{contract_id}", maya).json()["head_stream_version"] == before
+    )
+    assert get(world.app, f"/api/v1/judgements/{record['id']}", maya).json()["status"] == "REVIEWED"

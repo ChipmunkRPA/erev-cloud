@@ -196,6 +196,7 @@ export function VersionDrawer({
   );
   // The record this drawer created and sent for review, as its submission answered it.
   const [made, setMade] = useState<Judgement | null>(null);
+  const [needsFreshRecord, setNeedsFreshRecord] = useState(false);
   const [draftRecord, setDraftRecord] = useState<Judgement | null>(null);
   const [attempted, setAttempted] = useState<"save" | "submit" | null>(null);
   const [focusTick, setFocusTick] = useState(0);
@@ -232,7 +233,7 @@ export function VersionDrawer({
   const replaced = record !== null && !recordStands(record.status);
   // The version needs a conclusion: it names no record, or one that does not stand. While the read
   // of a named record has not answered, or failed, the API alone says whether it stands.
-  const asksConclusion = variable && (recordId === null || replaced);
+  const asksConclusion = variable && (recordId === null || replaced || needsFreshRecord);
   const conclusionShown = asksConclusion && canJudge;
   const conclusionOwed = conclusionShown && conclusion.trim() === "";
 
@@ -351,6 +352,11 @@ export function VersionDrawer({
     const result = await sendCommand<T>(keys, send, path, body);
     if (!result.ok) {
       setFailure(result.problem);
+      if (result.problem.errors.some((error) => error.rule_id === ESTIMATE_CONSTRAINT_RECORD)) {
+        // A reviewed record can still describe an earlier version or earlier figures.
+        // Keep the replacement field available even when its status remains REVIEWED.
+        setNeedsFreshRecord(true);
+      }
       return null;
     }
     return { data: result.data };
@@ -436,6 +442,7 @@ export function VersionDrawer({
         return null;
       }
       row = linkedRow.data;
+      setNeedsFreshRecord(false);
       setMade(submitted.data);
       setRecordId(record.id);
       setDraftRecord(null);

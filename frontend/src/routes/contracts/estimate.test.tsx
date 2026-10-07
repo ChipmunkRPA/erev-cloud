@@ -1833,10 +1833,44 @@ describe("SF-03:estimate, the constraint's judgement record and the open version
     }
   });
 
+  it("a reviewed constraint refused for changed figures can be replaced without changing its history", async () => {
+    serveWorkbench();
+    const { world, id } = withSecond(LINKED, { record: "REVIEWED" });
+    world.refuse.submit = () =>
+      problemResponse("validation-failed", 422, "Check the highlighted fields", {
+        errors: [
+          {
+            field: "judgement_record_id",
+            rule_id: "ESTIMATE_CONSTRAINT_RECORD",
+            message: "Obtain a constraint review for this version's current figures.",
+          },
+        ],
+      });
+    open(`${LIST}/${REBATE_ID}`);
+    const banner = await draftBanner();
+    fireEvent.click(await within(banner).findByRole("button", { name: "Edit draft" }));
+    const drawer = await screen.findByRole("dialog", { name: "Edit version 2 · REBATE-DR-01" });
+    await within(drawer).findByText("JDG-000061 · A significant reversal is not probable.");
+    expect(within(drawer).queryByLabelText("Constraint conclusion")).toBeNull();
+    fireEvent.click(within(drawer).getByRole("button", { name: "Submit for approval" }));
+    const conclusion = await within(drawer).findByLabelText("Constraint conclusion");
+    type(conclusion, "The updated forecast supports the revised constrained amount.");
+    world.refuse.submit = null;
+    fireEvent.click(within(drawer).getByRole("button", { name: "Submit for approval" }));
+    await waitFor(() =>
+      expect(world.sent("POST", `/estimate-versions/${id}/submit`)).toHaveLength(2),
+    );
+    expect(world.sent("PATCH", id).at(-1)?.body).toEqual({ judgement_record_id: NEW_JUDGEMENT_ID });
+    expect(world.judgements.get(id)?.find((item) => item.id === CONSTRAINT_RECORD_ID)?.status).toBe(
+      "REVIEWED",
+    );
+    expect(world.sent("POST", `${CONSTRAINT_RECORD_ID}/discard`)).toHaveLength(0);
+  });
+
   it("the findings of a submission stand on the fields they are about, the evidence and the constraint conclusion", async () => {
     const EVIDENCE = "Attach the evidence of this estimate version before it is submitted.";
     const RECORD =
-      "Name the CONSTRAINT judgement record of this element: a record of this contract for REBATE-DR-01, sent for review or reviewed.";
+      "Name the CONSTRAINT judgement record of this element: a record of this contract for REBATE-DR-01, sent for review or reviewed for this version’s current figures.";
     serveWorkbench();
     const { world, id } = withSecond(LINKED, { record: "SUBMITTED" });
     world.refuse.submit = () => {

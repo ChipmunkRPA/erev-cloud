@@ -541,3 +541,42 @@ in [BUILD-HISTORY-2026-10-07.md](docs/release/BUILD-HISTORY-2026-10-07.md).
 - Owner requested automatic PR merging and only main retained. GitHub auto-merge and automatic
   branch deletion are enabled; verified changes are merged before completed branches are removed.
   Dated evidence: [BUILD-HISTORY-2026-10-07.md](docs/release/BUILD-HISTORY-2026-10-07.md).
+
+## Volume delivery quantities — October 7, 2026
+
+- Continued from merged PR #11 (`cf727a1`). Reproduced LIMITS standing failure 8: the 1/1000
+  database seed refused a delivery of 7 with only 3 remaining. The generator split total quantity
+  exactly to two decimals, then rounded every batch independently to a whole number.
+- Retained the exact fractional quantities accepted by the command schema. Every batch is
+  positive, every prefix stays within its contracted quantity, and completed schedules sum to
+  exactly that quantity. Generator version 15 gives the changed event facts a new dataset identity;
+  the full manifest still has 1,262,407 events. No delivery validation or expected accounting
+  amount was loosened.
+- Verification so far: **46 pure volume/performance tests passed**, including the new full-scale
+  delivery invariant; Ruff lint/format, source Mypy and design/whitespace checks passed.
+  The corrected PostgreSQL seed **passed**, with original assertions for all groups, event
+  totals, estimate approvals and evidence attachments. No full-volume database performance claim.
+- Balance-aging investigation: stage 12 already emits `BookOutput.fx_layer_movements`, but
+  computation persistence writes no T-CON-18 rows. The current report draft reads subledger lines
+  and is incorrect under ERP billing. Persisting immutable layer movements with source-event and
+  FX-rate lineage is a prerequisite to exposing that report. It remains unregistered.
+- Broader repository gaps and independent accounting sign-off remain open. No deployment.
+
+## Migration capture calendar and POS117 recheck — October 7, 2026
+
+- Continued from merged PR #10 (`8876bd8`). Reproduced all three migration-capture failures
+  listed as names 13–15 in LIMITS: each refused Contract 3 because its February inception had
+  no accounting period. The fixture only supplied January despite importing the complete source.
+- The two full-source fixture setups now supply January and February 2023. Source databases,
+  expected amounts, product validation and worker behavior are unchanged. All existing exact
+  balance, entity mapping, SSP reuse, approval/audit, capture count and immutability checks remain.
+- **7 PostgreSQL capture tests passed**, closing all three named failures; **3 related PostgreSQL
+  reconciliation/report tests passed**. Ruff lint/format and whitespace checks passed. These are
+  targeted results, not evidence of a green whole backend or completed migration functionality.
+- Also ran the real database POS117 answer key: **103 steps applied, 0 refused**, contract and
+  subledger blocks compared clean. Its former four numeric mismatches are resolved by the policy
+  work. The key still does not pass because balance aging lacks its persisted layer source and
+  registered builder. The canonical `make answer-keys AK_SCOPE=full` already selects the database;
+  ordinary pytest defaults to memory. Do not treat that default as the canonical gate's behavior.
+- Remaining work includes balance-aging layers/reporting, GT07 nondistinct review mapping, the
+  broader release backlog and independent accounting sign-off. No deployment.

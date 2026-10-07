@@ -135,6 +135,7 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Final, Literal
 from uuid import UUID
 
+from erev_engine.stages.s01_canonicalize import obligation_subject_key
 from sqlalchemy import RowMapping, Table, and_, delete, func, insert, or_, select, update
 from sqlalchemy.orm import Session
 
@@ -1700,8 +1701,109 @@ void_event_submission: Final = _void_event_submission
 # --- JUDGEMENT_RECORD (04 T-CON-19; PRD SM-10, §2.5; BUILD_SPEC CTR-7) ----------------------------
 
 
+def _constraint_estimate_basis(
+    session: Session, record: Mapping[str, Any]
+) -> dict[str, Any] | None:
+    """Bind a constraint review to a specific version and its financial inputs.
+
+    Version subjects resolve directly. Other contract-bound subjects resolve the named
+    element's latest version (or its explicitly named version key). The binding is part of
+    the existing immutable submitted-content hash, not a caller-supplied questionnaire value.
+    Linking the record, adding evidence, or advancing lifecycle status does not change it.
+    """
+    if str(getattr(record["topic"], "value", record["topic"])) != "CONSTRAINT":
+        return None
+    if record["contract_id"] is None:
+        return None
+    named = (record["questionnaire"] or {}).get("estimate_key")
+    statement = (
+        select(
+            estimate_version,
+            estimate.c.element_code,
+            estimate.c.method,
+            estimate.c.direction,
+            estimate.c.vc_element_type,
+            estimate.c.allocation_target,
+            estimate.c.target_obligation_ids,
+            estimate.c.obligation_id,
+            contract.c.external_id,
+        )
+        .select_from(
+            estimate_version.join(
+                estimate,
+                and_(
+                    estimate.c.tenant_id == estimate_version.c.tenant_id,
+                    estimate.c.id == estimate_version.c.estimate_id,
+                ),
+            ).join(
+                contract,
+                and_(
+                    contract.c.tenant_id == estimate.c.tenant_id,
+                    contract.c.id == estimate.c.contract_id,
+                ),
+            )
+        )
+        .where(
+            estimate.c.contract_id == record["contract_id"],
+            estimate.c.estimate_kind == "VARIABLE_CONSIDERATION",
+        )
+        .order_by(estimate_version.c.version_no.desc(), estimate_version.c.id)
+    )
+    if str(record["subject_type"]) == "estimate_version":
+        statement = statement.where(estimate_version.c.id == record["subject_id"])
+    for row in session.execute(statement).mappings():
+        key = obligation_subject_key(str(row["external_id"]), str(row["element_code"]))
+        if named not in (str(row["element_code"]), key, f"{key}@v{int(row['version_no'])}"):
+            continue
+        return {
+            "version_id": str(row["id"]),
+            "estimate_id": str(row["estimate_id"]),
+            "version_no": int(row["version_no"]),
+            "effective_date": row["effective_date"].isoformat(),
+            **{
+                name: None if row[name] is None else str(getattr(row[name], "value", row[name]))
+                for name in (
+                    "method",
+                    "direction",
+                    "vc_element_type",
+                    "allocation_target",
+                    "obligation_id",
+                )
+            },
+            "target_obligation_ids": sorted(
+                str(value) for value in row["target_obligation_ids"] or ()
+            ),
+            **{
+                name: _decimal_text(row[name])
+                for name in (
+                    "unconstrained_amount",
+                    "most_conservative_amount",
+                    "constrained_amount",
+                    "expected_total_amount",
+                    "rate",
+                    "expected_quantity",
+                )
+            },
+            **{
+                name: row[name]
+                for name in (
+                    "scenarios",
+                    "parameters",
+                    "amortization_months",
+                    "constraint_checklist",
+                )
+            },
+            "currency": None if row["currency"] is None else str(row["currency"]).strip(),
+        }
+    return None
+
+
 def judgement_record_content(session: Session, subject_id: UUID) -> Mapping[str, Any]:
-    """The reviewed content of a judgement record: its subject, conclusion and questionnaire."""
+    """The reviewed conclusion and questionnaire, including a constraint's estimate basis.
+
+    The stored hash binds the current version and figures at submission. Subsequent figure
+    changes make a pending review stale and invalidate its use at estimate approval.
+    """
     row = (
         session.execute(select(judgement_record).where(judgement_record.c.id == subject_id))
         .mappings()
@@ -1710,7 +1812,9 @@ def judgement_record_content(session: Session, subject_id: UUID) -> Mapping[str,
     if row is None:
         raise SubjectNotVisible(f"judgement record {subject_id} is not visible")
     book = row["book_code"]
+    basis = _constraint_estimate_basis(session, dict(row))
     return {
+        **({"constraint_estimate_basis": basis} if basis is not None else {}),
         "object_type": "judgement_record",
         "judgement_no": str(row["judgement_no"]),
         "topic": str(getattr(row["topic"], "value", row["topic"])),
