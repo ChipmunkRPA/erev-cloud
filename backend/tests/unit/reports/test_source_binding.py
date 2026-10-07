@@ -297,7 +297,7 @@ def test_every_registered_live_builder_states_its_source_contract() -> None:
     strategy, what its adapter binds and what stays OPEN; an empty capture is never 'complete'."""
     assert set(framework.SOURCE_CONTRACTS) == set(framework.BUILDERS)
     assert (
-        len(framework.BUILDERS) == 38
+        len(framework.BUILDERS) == 39
     )  # 15 at the design + ENG-C6's two E-64 producers (7bf044a5) + F-CTR's modification_register
     # (CTR-17 slice 1, D-98 140-A1) + F-CLO's manual_adjustment_register (RPS-8 RPT-18; S15-R-20d)
     # + the four SSP reports of BUILD_SPEC RPS-9 (RPT-19 to RPT-22; lane F-RPS-REG) + the six

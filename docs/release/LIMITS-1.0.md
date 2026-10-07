@@ -386,6 +386,13 @@ expectations and preserves August consideration 1,200,000. This closes the calcu
 above; the register projection/registration and standing name 12 remain open. Existing stored
 versions are not backfilled. Demo/volume generator versions are 14/19.
 
+October 7 loss-register availability: RPT-31 is registered over bound period loss tests and EAC
+lineage. K03's original acceptance (standing name 12), same-source reruns after later changes,
+period filtering and all four exports pass. There are now 17 unavailable definitions. Missing
+stored tests are refused against trace coverage; no historical backfill. Provision-cell Explain,
+foreign-currency functional/reporting views and explicit locked-source reads remain open for
+RPT-31. Other C-11 work, full-backend verification and accounting sign-off remain open.
+
 ## The fifteen standing names
 
 Fifteen tests of the backend suite do not pass in release 1.0. They are the same fifteen in every whole run on the day of the freeze, by name, and none passes when it is run again alone; the release candidate's suite shows these and no other (R-125 (n); R-126 (e)). None is skipped, loosened or marked: each fails at full strength until its cause is closed. Two gate targets fail by them, as the supervisor measured on `783f340ea`: `make answer-keys` by the six keys and `make test-pg` by the three capture witnesses. The causes below are read from the failure each test records and from the test: for names 3 to 5 as the suite takes them since index 308's part for the answer keys' runner is on the branch, for the others in the run of record on `5c3b5347c`. Names 1 to 5 are platform keys, which the suite takes on the in-memory platform. On the database platform a lane measured them on 2026-10-03 with that part: the two DISC keys pass; POS-CHK-012 compares clean in every block and is failed by its finding alone; the GT07 key is not run; POS-CHK-117 has four mismatches.
