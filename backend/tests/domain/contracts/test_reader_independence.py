@@ -105,6 +105,7 @@ from support.factories import (
     open_periods,
     step1_criteria,
 )
+from support.modifications import confirm_answers
 from support.principals import Actor, Member, colleague, enrolled
 from support.reference import approve, assign, entity, get, holding, post
 from support.rows import insert_custom_role, revoke_role_assignments
@@ -1520,6 +1521,7 @@ def test_a_modification_prepared_and_decided_by_people_of_one_entity_reallocates
     assert set(classified.json()["proposed_treatments"].values()) == {"PROSPECTIVE"}, (
         classified.text
     )
+    confirm_answers(app, modification_id, una)
     queued = post(app, f"{MODIFICATIONS}/{modification_id}/preview", una, {})
     assert queued.status_code == 202, queued.text
     finished = run_now(k04.report, UUID(str(queued.json()["id"])))
@@ -1593,6 +1595,7 @@ def _classified(app: FastAPI, actor: Actor, contract_id: UUID, reference: str) -
     modification_id = str(created.json()["id"])
     classified = post(app, f"{MODIFICATIONS}/{modification_id}/classify", actor, {})
     assert classified.status_code == 200, classified.text
+    confirm_answers(app, modification_id, actor)
     return modification_id
 
 

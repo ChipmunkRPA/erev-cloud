@@ -133,6 +133,7 @@ from support.factories import (
 from support.http import HttpResponse, asgi_client, call
 from support.legacy_replay import workbook_rows
 from support.links import emailed_token
+from support.modifications import confirm_answers
 from support.operators import create_operator, operator_services
 from support.principals import (
     LOGIN,
@@ -2467,6 +2468,7 @@ def s_modifications_update(w: World) -> HttpResponse:
 def s_modifications_preview(w: World) -> HttpResponse:
     e = _engine(w)
     path = f"{API}/modifications/{w.ids['k02.modification']}"
+    confirm_answers(e.app, str(w.ids["k02.modification"]), e.place.author)
     queued = post(e.app, f"{path}/preview", e.place.author, {})
     if queued.status_code < 400:
         # Codex 0223 MODIFICATION-1: the POST only defers the job; the worker run (the K-02

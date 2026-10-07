@@ -80,6 +80,7 @@ from support.factories import (
     world_calendar,
 )
 from support.legacy_replay import LegacyWorld, legacy_world, replayed
+from support.modifications import confirm_answers
 from support.parity import scenario as parity_scenario
 from support.principals import Actor, colleague, enrolled, member, sign_in
 from support.principals import workspace as signed_workspace
@@ -1899,6 +1900,7 @@ def k03_change_order(world: K03World, clock: FrozenClock) -> K03ChangeOrder:
     classified = post(app, f"/api/v1/modifications/{modification_id}/classify", maya, {})
     assert classified.status_code == 200, classified.text
     assert classified.json()["treatment_summary"] == "CUMULATIVE_CATCH_UP", classified.text
+    confirm_answers(app, modification_id, maya)
     queued = post(app, f"/api/v1/modifications/{modification_id}/preview", maya, {})
     assert queued.status_code == 202, queued.text
     assert run_now(report, UUID(str(queued.json()["id"])))["state"] == "SUCCEEDED"

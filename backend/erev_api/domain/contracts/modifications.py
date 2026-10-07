@@ -348,6 +348,8 @@ LINKED_UNAPPROVED: Final = frozenset(
     }
 )
 UNCLASSIFIED: Final = "Classify the modification before submitting it; the proposal is required."
+ANSWER_REQUIRED: Final = "Confirm this questionnaire answer before submitting the modification."
+ANSWER_BOOLEAN: Final = "Answer this questionnaire question with true or false."
 PREVIEW_STALE: Final = (
     "The stored preview is not of this modification as it stands; run the preview again."
 )
@@ -757,6 +759,7 @@ def create_modification(
     if status != ContractStatus.ACTIVE.value:
         raise _invalid(NOT_ACTIVE.format(external_id=current["external_id"], status=status))
     errors = _line_errors(session, current, body.lines)
+    errors += questionnaire_value_errors(body.questionnaire)
     errors += _member_currency_errors(body, str(current["transaction_currency"]).strip())
     repeated = _reference_error(session, contract_id, body.reference, except_id=None)
     if repeated is not None:
@@ -827,6 +830,7 @@ def update_modification(
     errors: list[ProblemError] = []
     if body.lines is not None:
         errors += _line_errors(session, current, body.lines)
+    errors += questionnaire_value_errors(body.questionnaire)
     errors += _member_currency_errors(body, str(current["transaction_currency"]).strip())
     if body.reference is not None:
         repeated = _reference_error(
@@ -965,7 +969,41 @@ def _answered(row: Mapping[str, Any], key: str, question: str) -> bool:
     a per-obligation object) — the answer the engine reads as the preparer's (S06-R-04,
     S06-R-05)."""
     section = (row.get("questionnaire") or {}).get(key)
-    return isinstance(section, Mapping) and section.get(question) is not None
+    return isinstance(section, Mapping) and isinstance(section.get(question), bool)
+
+
+def questionnaire_value_errors(questionnaire: Mapping[str, Any] | None) -> list[ProblemError]:
+    """Classification answers are explicit booleans; unrelated contract-level members remain."""
+    errors: list[ProblemError] = []
+    for key, section in (questionnaire or {}).items():
+        if not isinstance(section, Mapping):
+            continue
+        for question in (QUESTION_ADDED, QUESTION_PRICED, QUESTION_REMAINING):
+            value = section.get(question)
+            if value is not None and not isinstance(value, bool):
+                errors.append(
+                    _error(f"questionnaire.{key}.{question}", RULE_TREATMENT, ANSWER_BOOLEAN)
+                )
+    return errors
+
+
+def questionnaire_confirmation_errors(row: Mapping[str, Any]) -> list[ProblemError]:
+    """BR-MOD-01: proposals are not the preparer's answers, including a proposed false.
+
+    Use the retained classification, never derive accounting answers in the command. A
+    pre-existing classification whose shape is no longer readable must be regenerated.
+    """
+    detail, proposed, _ = stored_classification(row.get("classification"))
+    if not detail:
+        return [_error("classification", RULE_CLASSIFIED, UNCLASSIFIED)]
+    errors = questionnaire_value_errors(row.get("questionnaire"))
+    for key, questions in sorted(proposed.items()):
+        for question in sorted(questions):
+            if not _answered(row, key, question):
+                errors.append(
+                    _error(f"questionnaire.{key}.{question}", RULE_TREATMENT, ANSWER_REQUIRED)
+                )
+    return errors
 
 
 def _price_reason(params: Mapping[str, str]) -> tuple[str, dict[str, str]]:
@@ -2319,6 +2357,7 @@ def submit(
         raise _failed(*structural)
     documents = {_uuid(item["id"]): _stored_preview(uow, item) for item in pair}
     errors = [error for item in pair for error in _override_errors(session, item)]
+    errors += [error for item in pair for error in questionnaire_confirmation_errors(item)]
     errors += [
         error
         for item in pair
@@ -3152,6 +3191,10 @@ def _approved(uow: UnitOfWork, modification_id: UUID, approval_request_id: UUID)
     if unreviewed:
         raise Problem("invalid-transition", errors=unreviewed)
     on_behalf_of = _preparer(session, approval_request_id)
+    # Requests submitted before BR-MOD-01 was enforced must not apply unanswered proposals.
+    unanswered = [error for row in locked for error in questionnaire_confirmation_errors(row)]
+    if unanswered:
+        raise _failed(*unanswered)
     # A regroup pair applies OUT (the REMOVE row) before IN (the ADD row): the IN event copies the
     # moved obligations' products from the source contract.
     ordered = sorted(

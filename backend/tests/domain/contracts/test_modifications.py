@@ -46,7 +46,7 @@ from erev_api.db.tables import (
     obligation,
     obligation_version,
 )
-from erev_api.domain.contracts import repo
+from erev_api.domain.contracts import modifications, repo
 from erev_api.domain.reference import period_auto_open
 from erev_api.enums import ContractEventType, ModificationTreatment, RegistryCategory
 from erev_api.events.payloads import BillingRecordedV1, ContractAmendedV1, MoneyIn
@@ -82,6 +82,7 @@ from support.factories import (
     ssp_book,
 )
 from support.interleave import await_lock_wait, backend_pid, observing_checkouts
+from support.modifications import confirm_answers as confirm_modification_answers
 from support.principals import Actor, colleague, enrolled, member, sign_in
 from support.principals import workspace as signed_workspace
 from support.reference import approve, assign, get, patch, periods, post, reject, slug
@@ -206,8 +207,20 @@ def _work(place: Workspace, job_id: UUID, runtime: JobRuntime) -> None:
     run_job(job_id, place.tenant_id, attempt=1, runtime=runtime)
 
 
-def _preview(world: K02World, modification_id: str, runtime: JobRuntime) -> dict[str, Any]:
+def _preview(
+    world: K02World,
+    modification_id: str,
+    runtime: JobRuntime,
+    *,
+    confirm_answers: bool = True,
+) -> dict[str, Any]:
     """``POST /modifications/{id}/preview`` (202), the worker run, the finished job."""
+    if confirm_answers:
+        shown = get(world.app, f"{MODIFICATIONS}/{modification_id}", world.place.author).json()
+        if shown["prefill_reasons"]:
+            # The fixture's preparer explicitly accepts the displayed proposal through PATCH.
+            # Classify then reads those answers; no database row or engine oracle is rewritten.
+            confirm_modification_answers(world.app, modification_id, world.place.author)
     queued = post(world.app, f"{MODIFICATIONS}/{modification_id}/preview", world.place.author, {})
     assert queued.status_code == 202, queued.text
     job_id = queued.json()["id"]
@@ -216,6 +229,41 @@ def _preview(world: K02World, modification_id: str, runtime: JobRuntime) -> dict
     finished = get(world.app, f"{JOBS}/{job_id}", world.place.author).json()
     assert finished["state"] == "SUCCEEDED", finished
     return dict(finished)
+
+
+def test_submission_requires_confirmed_questionnaire(k02: K02World, runtime: JobRuntime) -> None:
+    contract_id = _k02_contract(k02)
+    created = _create(k02, contract_id, _upgrade_body())
+    classified = _classify(k02, created["id"])
+    _preview(k02, created["id"], runtime, confirm_answers=False)
+    refused = post(
+        k02.app,
+        f"{MODIFICATIONS}/{created['id']}/submit",
+        k02.place.author,
+        {"comment": "Submit without confirming the proposals."},
+    )
+    assert refused.status_code == 422, refused.text
+    assert {error["field"] for error in refused.json()["errors"]} == {
+        "questionnaire.O1.remaining_goods_distinct_from_transferred",
+        "questionnaire.O2.added_goods_distinct",
+        "questionnaire.O2.priced_at_ssp",
+    }
+    assert all(error["rule_id"] == "REQ-MOD-002" for error in refused.json()["errors"])
+    row = _row(k02, created["id"])
+    assert str(row["status"]) == "DRAFT"
+    assert row["approval_request_id"] is None
+    assert row["questionnaire"] == {}
+
+    _patch(k02, created["id"], {"questionnaire": classified["questionnaire"]})
+    confirmed = _classify(k02, created["id"])
+    assert confirmed["prefill_reasons"] == {}
+    assert confirmed["questionnaire"]["O2"]["priced_at_ssp"] is False
+    _preview(k02, created["id"], runtime)
+    request_id = _submit(k02, created["id"])
+    request = get(k02.app, f"/api/v1/approvals/{request_id}", k02.priya).json()
+    approved = _approve_with(k02.app, request_id, k02.priya, request["subject"]["content_sha256"])
+    assert approved.status_code == 200, approved.text
+    assert str(_row(k02, created["id"])["status"]) == "APPLIED"
 
 
 def _submit(world: K02World, modification_id: str, actor: Actor | None = None) -> str:
@@ -2468,12 +2516,14 @@ def test_mod_prefill_read_1_a_read_answers_the_classification(
     )
     assert len(_audit_versions(k02, created["id"])) == audits
 
-    # --- the commands answer it too; it outlives the preview and the submission ---
-    _preview(k02, created["id"], runtime)
+    # --- a preview retains proposals; submission requires the preparer to confirm them ---
+    _preview(k02, created["id"], runtime, confirm_answers=False)
     assert get(k02.app, path, maya).json()["prefill_reasons"] == reasons
+    confirm_modification_answers(k02.app, created["id"], maya)
+    _preview(k02, created["id"], runtime)
     _submit(k02, created["id"])
     submitted = get(k02.app, path, maya).json()
-    assert (submitted["status"], submitted["prefill_reasons"]) == ("SUBMITTED", reasons)
+    assert (submitted["status"], submitted["prefill_reasons"]) == ("SUBMITTED", {})
     assert submitted["impact_preview"] is not None
 
     # --- an edit clears it with the proposal ---
@@ -3383,6 +3433,7 @@ def test_j_06_the_change_order_and_its_linked_versions_in_the_built_order(
 
     # J-06.5 — the modification: the catch-up of its date, and the entries for what is left
     clock.advance(step)
+    confirm_modification_answers(app, change_id, maya)
     queued = post(app, f"{change}/preview", maya, {})
     assert queued.status_code == 202, queued.text
     finished = run_now(world.report, UUID(str(queued.json()["id"])))
@@ -3469,6 +3520,7 @@ def test_mod_rejected_revise_1_a_rejected_modification_is_revised_and_approved(
     maya = k02.place.author
     contract_id = _k02_contract(k02)
     created, first_request = _rejected(k02, contract_id, runtime, clock)
+    prior_updates = _update_audits(k02, created["id"])
     change = f"{MODIFICATIONS}/{created['id']}"
 
     revised = _patch(
@@ -3483,7 +3535,7 @@ def test_mod_rejected_revise_1_a_rejected_modification_is_revised_and_approved(
         row["content_sha256"],
     ) == ({}, None, None, None)
     assert str(row["approval_request_id"]) == first_request  # the request's history stays
-    assert _update_audits(k02, created["id"]) == [
+    assert _update_audits(k02, created["id"]) == prior_updates + [
         (
             {"status": "REJECTED"},
             {
@@ -3772,3 +3824,27 @@ def test_mod_linked_judgements_1_a_departure_without_its_reviewed_record_still_a
         ("REQ-MOD-002", "chosen_treatments.O1")
     ]
     assert str(_row(k02, created["id"])["status"]) == "DRAFT"
+
+
+def test_legacy_unconfirmed_request_cannot_be_approved(
+    k02: K02World, runtime: JobRuntime, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A request created before BR-MOD-01 enforcement must be revised before it can apply."""
+    created = _create(k02, _k02_contract(k02), _upgrade_body())
+    classified = _classify(k02, created["id"])
+    _preview(k02, created["id"], runtime, confirm_answers=False)
+    # Reproduce the historical submission behavior only while preparing the legacy request.
+    # The approval uses the real current guard, transaction and independent reviewer.
+    with monkeypatch.context() as historical:
+        historical.setattr(modifications, "questionnaire_confirmation_errors", lambda row: [])
+        request_id = _submit(k02, created["id"])
+    request = get(k02.app, f"/api/v1/approvals/{request_id}", k02.priya).json()
+    refused = _approve_with(k02.app, request_id, k02.priya, request["subject"]["content_sha256"])
+    assert refused.status_code == 422, refused.text
+    row = _row(k02, created["id"])
+    assert str(row["status"]) == "SUBMITTED"
+    assert row["applied_event_id"] is None
+    assert get(k02.app, f"/api/v1/approvals/{request_id}", k02.priya).json()["status"] == "PENDING"
+    revised = _patch(k02, created["id"], {"questionnaire": classified["questionnaire"]})
+    assert revised["status"] == "DRAFT"
+    assert get(k02.app, f"/api/v1/approvals/{request_id}", k02.priya).json()["status"] == "VOIDED"
