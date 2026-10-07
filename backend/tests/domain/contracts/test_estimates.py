@@ -713,8 +713,13 @@ def test_list_version_summaries(
 
 
 @pytest.mark.control("CTL-013")
+@pytest.mark.parametrize("different_submitter", [False, True])
 def test_ctl_013_estimate_preparer_cannot_approve(
-    app: FastAPI, keyring: KeyRing, clock: FrozenClock, files: LocalFileStore
+    app: FastAPI,
+    keyring: KeyRing,
+    clock: FrozenClock,
+    files: LocalFileStore,
+    different_submitter: bool,
 ) -> None:
     world = k06_world(app, keyring, clock, files)
     k06 = _k06_with_v1(world)
@@ -724,7 +729,9 @@ def test_ctl_013_estimate_preparer_cannot_approve(
     rosa = enrolled(app, clock, rosa_member)
     v2 = post(app, f"{ESTIMATES}/{k06.estimate_id}/versions", rosa, _v2_body())
     assert v2.status_code == 201, v2.text
-    request_id = _submitted(world, str(v2.json()["id"]), rosa)
+    request_id = _submitted(
+        world, str(v2.json()["id"]), world.place.author if different_submitter else rosa
+    )
 
     refused = approve(app, request_id, rosa)
     assert (refused.status_code, slug(refused)) == (403, "self-approval"), refused.text

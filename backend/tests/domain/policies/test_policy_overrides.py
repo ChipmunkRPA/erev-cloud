@@ -31,10 +31,12 @@ import pytest
 from erev_api.approvals import subjects
 from erev_api.approvals.preview import read_preview
 from erev_api.auth.keyring import KeyRing
+from erev_api.auth.principal import system_principal
 from erev_api.clock import FrozenClock
 from erev_api.config import Settings
 from erev_api.db.session import DbContext, tenant_session
 from erev_api.db.tables import (
+    approval_delegation,
     approval_request,
     audit_event,
     combination_group,
@@ -52,7 +54,7 @@ from erev_api.events.stream import EventIn
 from erev_api.files.store import LocalFileStore
 from erev_api.main import create_app
 from fastapi import FastAPI
-from sqlalchemy import func, select
+from sqlalchemy import func, insert, select
 from support.db import TestDatabase
 from support.factories import (
     SEAT_MONTH,
@@ -76,7 +78,12 @@ from support.factories import (
 from support.http import HttpResponse
 from support.principals import Actor, colleague, enrolled, member
 from support.reference import approve, assert_approval_hidden, assign, fields, get, post, slug
-from support.rows import insert_contract_rows, insert_policy_override, insert_role_assignment
+from support.rows import (
+    approval_delegation_values,
+    insert_contract_rows,
+    insert_policy_override,
+    insert_role_assignment,
+)
 
 POLICY_OVERRIDES = "/api/v1/policy-overrides"
 RESOLVE = "/api/v1/policies/resolve"
@@ -922,3 +929,69 @@ def test_approved_right_override_changes_computed_balances(
         {"key": "balance.right_to_consideration", "contract": str(contract_id), "obligation": "O1"},
     )
     assert shown.json()["source"]["id"] == str(successor)
+
+
+@pytest.mark.parametrize("system_authored", [False, True])
+def test_policy_draft_author_cannot_approve_when_someone_else_submits(
+    app: FastAPI, keyring: KeyRing, clock: FrozenClock, files: LocalFileStore, system_authored: bool
+) -> None:
+    world = k11_world(app, keyring, clock, files)
+    booked = delivered_k11(world)
+    context = DbContext(tenant_id=world.place.tenant_id, user_id=None, entity_scope="*")
+    with tenant_session(context) as session:
+        override_id = insert_policy_override(
+            session,
+            world.place.tenant_id,
+            contract_id=booked.contract["id"],
+            obligation_key="O1",
+            created_by=None if system_authored else world.marcus.member.user_id,
+            policy_key="balance.right_to_consideration",
+            value="UNCONDITIONAL",
+        )
+    if system_authored:
+        system = system_principal(
+            world.place.tenant_id, on_behalf_of_id=world.marcus.member.user_id
+        )
+        with world.place.uow(system) as uow:
+            uow.audit(
+                action="policy_override.create",
+                object_type="policy_override",
+                object_id=override_id,
+                after={"value": "UNCONDITIONAL"},
+                contract_id=booked.contract["id"],
+            )
+            uow.commit()
+    submitted = post(app, f"{POLICY_OVERRIDES}/{override_id}/submit", world.place.author, {})
+    assert submitted.status_code == 200, submitted.text
+    request_id = str(submitted.json()["approval_request_id"])
+    detail = get(app, f"/api/v1/approvals/{request_id}", world.marcus)
+    assert detail.status_code == 200, detail.text
+    assert detail.json()["can_decide"] is False
+    refused = approve(app, request_id, world.marcus)
+    assert (refused.status_code, slug(refused)) == (403, "self-approval"), refused.text
+    assert "authored this draft" in refused.json()["detail"]
+    assert (
+        get(app, f"{POLICY_OVERRIDES}/{override_id}", world.place.author).json()["status"]
+        == "SUBMITTED"
+    )
+    # A delegate cannot use the author's approval authority to bypass the same exclusion.
+    delegate_member = colleague(world.place.tenant_id, "policy-author-delegate")
+    assign(delegate_member, "revenue_accountant")
+    delegate = enrolled(app, clock, delegate_member)
+    with tenant_session(context) as session:
+        values = approval_delegation_values(
+            world.place.tenant_id,
+            delegator_membership_id=world.marcus.member.membership_id,
+            delegate_membership_id=delegate_member.membership_id,
+            valid_from=clock.now() - timedelta(days=1),
+            valid_to=clock.now() + timedelta(days=1),
+        )
+        values["permissions"] = ["contract.approve"]
+        session.execute(insert(approval_delegation).values(**values))
+    delegated = approve(app, request_id, delegate)
+    assert (delegated.status_code, slug(delegated)) == (403, "self-approval"), delegated.text
+    reviewer = colleague(world.place.tenant_id, "independent-policy-reviewer")
+    assign(reviewer, "controller")
+    independent = enrolled(app, clock, reviewer)
+    accepted = approve(app, request_id, independent)
+    assert accepted.status_code == 200, accepted.text

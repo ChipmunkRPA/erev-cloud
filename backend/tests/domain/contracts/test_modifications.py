@@ -1012,8 +1012,9 @@ def test_tc_rep_01_shipped_state_sixteen_obligation_versions(k02: K02World) -> N
 
 
 @pytest.mark.control("CTL-007")
+@pytest.mark.parametrize("different_submitter", [False, True])
 def test_ctl_007_stale_or_self_approved_modification_not_applied(
-    k02: K02World, runtime: JobRuntime, clock: FrozenClock
+    k02: K02World, runtime: JobRuntime, clock: FrozenClock, different_submitter: bool
 ) -> None:
     """BUILD_SPEC CTR-17 CTL-007 (REQ-PLT-014), reworked per D-98 140-A7 TEST-CTL007-1:
     (1) self-approval is isolated with an otherwise AUTHORIZED, MFA-enrolled preparer (Nadia holds
@@ -1040,7 +1041,7 @@ def test_ctl_007_stale_or_self_approved_modification_not_applied(
         post(k02.app, f"{MODIFICATIONS}/{modification_id}/classify", nadia, {}).status_code == 200
     )
     _preview(k02, modification_id, runtime)
-    request_id = _submit(k02, modification_id, nadia)
+    request_id = _submit(k02, modification_id, k02.place.author if different_submitter else nadia)
     before = k02.place.rows(
         select(contract.c.head_stream_version).where(contract.c.id == contract_id)
     )[0]
