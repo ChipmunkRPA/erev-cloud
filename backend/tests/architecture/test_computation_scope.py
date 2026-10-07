@@ -195,6 +195,10 @@ DOOR: Final = {
             "refuse_appends_a_lock_met",
         ): "the period pin of an appender that computes nothing, whoever asks (R-122 (j))",
         (
+            "backend/erev_api/domain/contracts/period_ends.py",
+            "refuse_policy_change_a_lock_met",
+        ): "a policy approval pins every entity its calculation can change, whoever approves",
+        (
             "backend/erev_api/domain/close/run_inputs.py",
             "read",
         ): "what a close run read is the same for the step that records it and for the gate",

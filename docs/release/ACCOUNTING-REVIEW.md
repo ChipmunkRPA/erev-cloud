@@ -58,6 +58,9 @@ entries, then validate it against reviewer-supplied examples.
 - `backend/tests/domain/close/test_close_run_inputs.py`: a real close job becomes out of date
   after an effective contract exception; same-value, unapproved and later-period changes do not
   change the policy digest. The following run records the effective value.
+- `backend/tests/domain/close/test_policy_approval_lock_race.py`: real approved waivers,
+  policy approvals and period-lock decisions in both orders; an approval overtaken by a lock
+  rolls back and remains available for a later decision.
 - `PROGRESS.md`: dated test results and publication record.
 - `LIMITS-1.0.md`: broader outstanding system limitations. This packet covers the FX decision;
   final sign-off must review the full implemented ASC606 scope and remaining limitations.
