@@ -509,9 +509,7 @@ def test_gaps_per_key(plans: dict[str, CommandPlan]) -> None:
     assert plans[EX21].gaps == ()
     assert plans[EX42].gaps == ()
     assert len(plans[POS_117].gaps) == 1
-    assert (
-        plans[POS_117].gaps[0].startswith("RPS-12: balance_aging builder is not registered; CTR-14")
-    )
+    assert plans[POS_117].gaps == ("RPS-12: balance_aging builder is not registered",)
     assert "balance_aging" not in framework.BUILDERS
     for item in plans.values():
         assert not any("CLO-6" in gap or "CLO-7" in gap or "CLO-19" in gap for gap in item.gaps)

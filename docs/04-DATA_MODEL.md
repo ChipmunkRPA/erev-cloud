@@ -999,7 +999,7 @@ Event payloads are versioned Pydantic models `erev_api.events.payloads.<PascalCa
 | E-83 | `cost_kind` | `OBTAIN`, `FULFILL` | ASC 340-40-25-1, 25-5. PostgreSQL type pending (owed by CTR-14, `NNNN_ctr_14_costs_material_rights_loss_fx.py`; D-98 66, rev 1.29). |
 | E-84 | `amortization_pattern` | `STRAIGHT_LINE`, `PROPORTIONAL_TO_RELATED_REVENUE` | POL-143. PostgreSQL type pending (owed by CTR-14, `NNNN_ctr_14_costs_material_rights_loss_fx.py`; D-98 66, rev 1.29). |
 | E-85 | `loss_unit` | `CONTRACT`, `POB` | POL-150. PostgreSQL type pending (owed by CTR-14, `NNNN_ctr_14_costs_material_rights_loss_fx.py`; D-98 66, rev 1.29). |
-| E-86 | `fx_layer_movement_kind` | `LIABILITY_LAYER_CREATED`, `LIABILITY_LAYER_CONSUMED`, `ASSET_LAYER_CREATED`, `ASSET_LAYER_SETTLED`, `ASSET_LAYER_REMEASURED`, `LIABILITY_LAYER_REMEASURED` | Research 06 §9.4; D-25. `LIABILITY_LAYER_REMEASURED` appended in rev 1.2 (D-25b; ENGINE_SPEC_B OQ-B-14): remeasurement to the closing rate of a monetary liability layer (`REFUND_LIABILITY`, `DEPOSIT_LIABILITY`, `CONSIDERATION_PAYABLE`) in every book, and of a contract-liability layer under the approved D-25a override in the ASC606 book. The S12-R-12 interim storage (`ASSET_LAYER_REMEASURED` with `balance_role = CONTRACT_LIABILITY`) is not used. PostgreSQL type pending (owed by CTR-14, `NNNN_ctr_14_costs_material_rights_loss_fx.py`; D-98 66, rev 1.29). |
+| E-86 | `fx_layer_movement_kind` | `LIABILITY_LAYER_CREATED`, `LIABILITY_LAYER_CONSUMED`, `ASSET_LAYER_CREATED`, `ASSET_LAYER_SETTLED`, `ASSET_LAYER_REMEASURED`, `LIABILITY_LAYER_REMEASURED` | Research 06 §9.4; D-25. `LIABILITY_LAYER_REMEASURED` appended in rev 1.2 (D-25b; ENGINE_SPEC_B OQ-B-14): remeasurement to the closing rate of a monetary liability layer (`REFUND_LIABILITY`, `DEPOSIT_LIABILITY`, `CONSIDERATION_PAYABLE`) in every book, and of a contract-liability layer under the approved D-25a override in the ASC606 book. The S12-R-12 interim storage (`ASSET_LAYER_REMEASURED` with `balance_role = CONTRACT_LIABILITY`) is not used. PostgreSQL type created with T-CON-18 in revision 0131 (October 7, 2026). |
 | E-87 | `computation_trigger` | `COMMAND`, `REPLAY_VERIFY`, `RESTATE`, `UPGRADE_VALIDATE`, `FX_REPUBLISH`, `POLICY_RERUN`, `CLOSE_RELEASE`, `MIGRATION` | Research 06 §5.2, §12.3. |
 | E-88 | `computation_status` | `SUCCEEDED`, `FAILED`, `QUARANTINED` | Research 06 §12.4. |
 | E-89 | `principal_agent` | `PRINCIPAL`, `AGENT`, `NOT_ASSESSED` | Research 04 §2.5. |
@@ -3988,6 +3988,17 @@ Keys: `PRIMARY KEY (tenant_id, id)`; `ux_cost_asset_version (tenant_id, contract
 Keys: `PRIMARY KEY (tenant_id, id)`; `ux_loss_provision_version (tenant_id, contract_version_id, unit, coalesce(obligation_id, '00000000-0000-0000-0000-000000000000'::uuid))`.
 
 ### T-CON-18 `fx_layer_movement`
+
+October 7, 2026 implementation: revision 0131 adds this table. Every new successful computation
+persists its complete engine movement set atomically with its version and audit facts. Existing
+versions are not backfilled or rewritten. Movement ownership is the originating layer's contract,
+including consumption by another group member. The engine supplies that decoded contract key;
+the writer does not infer ownership from a delimited layer key. `layer_key` is retained verbatim,
+including generated source keys and repeat suffixes. A real source event is linked when supplied;
+time-driven and estimate-driven synthetic sources retain their calculation trace instead.
+The rate value is the engine's applied conversion rate, rounded to the column's 12 decimal places;
+its `fx_rate_id` identifies the pinned rate row, including an inverse rate when applicable.
+The movements alone do not constitute the balance-aging presentation or implement the report.
 
 - **Purpose.** Contract liability layers at historical rates, remeasured contract asset layers and, from rev 1.2, the monetary liability layers of D-25b, as computed by a version (D-25, D-25a, D-25b; REQ-FX-002 to -004). Refund liabilities, deposit liabilities and consideration payable denominated in a currency other than the entity's functional currency are remeasured at the closing rate at every period end and at settlement, against `FX_GAIN_LOSS`, in every book (ASC 830-20-35-1; IAS 21.16, 21.23(a)). Contract liabilities stay non-monetary except under the approved D-25a override.
 - **Class.** IM-A (a later version's movements supersede an earlier version's; layer balances are projections); RLS-TE (`entity_id`); PT-N; AUD-FACT.

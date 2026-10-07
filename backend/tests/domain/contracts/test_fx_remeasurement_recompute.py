@@ -706,3 +706,91 @@ def test_unreconciled_policy_transition_keeps_the_persisted_calculation_unchange
         )
         is not None
     )
+
+
+def test_layer_movements_are_persisted_with_version_owner_rates_and_immutability(
+    world: World,
+) -> None:
+    from uuid import uuid4
+
+    from erev_api.db.session import DbContext, tenant_session
+    from erev_api.db.tables import contract_event, contract_version, fx_layer_movement
+    from erev_api.explain import store
+    from sqlalchemy import insert, update
+    from sqlalchemy.exc import DBAPIError, IntegrityError
+
+    contract_id, group_id = delivered(world)
+    _recorded(world, contract_id, 3, _invoice("INV-LAYERS", "2026-08-20", "54000.00"))
+    rows = world.place.rows(
+        select(fx_layer_movement).where(fx_layer_movement.c.contract_id == contract_id)
+    )
+    assert rows
+    versions = world.place.rows(select(contract_version).order_by(contract_version.c.version_no))
+    latest = versions[-1]["id"]
+    current = [row for row in rows if row["contract_version_id"] == latest]
+    created = [row for row in current if row["movement_kind"] == "ASSET_LAYER_CREATED"]
+    assert len(created) == 1
+    assert (created[0]["amount_txn"], created[0]["amount_functional"], created[0]["rate"]) == (
+        Decimal("54000"),
+        Decimal("43740"),
+        Decimal("0.81"),
+    )
+    assert {row["contract_id"] for row in current} == {contract_id}
+    assert {row["txn_currency"].strip() for row in current} == {"USD"}
+    assert {row["functional_currency"].strip() for row in current} == {"GBP"}
+    assert all(row["fx_rate_id"] and row["trace_node_id"] for row in current)
+    assert {row["movement_kind"] for row in current} >= {
+        "ASSET_LAYER_CREATED",
+        "ASSET_LAYER_SETTLED",
+        "ASSET_LAYER_REMEASURED",
+    }
+    # Remeasurements retain signed differences; settlement consumes the remeasured carrying.
+    settled = [row for row in current if row["movement_kind"] == "ASSET_LAYER_SETTLED"]
+    assert sum(row["amount_functional"] for row in settled) == Decimal("45360")
+    invoice_ids = {
+        row["id"]
+        for row in world.place.rows(
+            select(contract_event.c.id).where(
+                contract_event.c.contract_id == contract_id,
+                contract_event.c.event_type == "BILLING_RECORDED",
+            )
+        )
+    }
+    assert len(invoice_ids) == 1
+    assert {row["source_event_id"] for row in settled} == invoice_ids
+    with world.place.uow() as uow:
+        trace = store.load_trace(uow.session, latest)
+    assert trace is not None
+    assert {row["trace_node_id"] for row in current} <= {node.id for node in trace.nodes}
+    before = {row["id"]: row for row in rows}
+    with world.place.uow() as uow:
+        computation.recompute(uow, group_id)
+        uow.commit()
+    after = world.place.rows(select(fx_layer_movement))
+    assert {row["id"]: row for row in after if row["id"] in before} == before
+    with pytest.raises(DBAPIError):
+        with world.place.uow() as uow:
+            uow.session.execute(
+                update(fx_layer_movement)
+                .where(fx_layer_movement.c.id == created[0]["id"])
+                .values(amount_txn=Decimal("1"))
+            )
+            uow.commit()
+    for changes, constraint in (
+        ({"fx_rate_id": None}, "ck_fx_layer_movement__foreign_rate"),
+        ({"movement_kind": "LIABILITY_LAYER_CREATED"}, "ck_fx_layer_movement__liability_kinds"),
+    ):
+        with pytest.raises(IntegrityError, match=constraint):
+            with world.place.uow() as uow:
+                uow.session.execute(
+                    insert(fx_layer_movement).values(**{**created[0], "id": uuid4(), **changes})
+                )
+                uow.commit()
+    hidden = DbContext(tenant_id=UUID(int=0), user_id=None, entity_scope="*")
+    with tenant_session(hidden, read_only=True) as session:
+        assert session.execute(select(fx_layer_movement)).all() == []
+    hidden_entity = DbContext(
+        tenant_id=world.place.tenant_id, user_id=None, entity_scope=(UUID(int=0),)
+    )
+    with tenant_session(hidden_entity, read_only=True) as session:
+        assert session.execute(select(fx_layer_movement)).all() == []

@@ -197,6 +197,7 @@ class LayerMovement:
     source_key: str | None  # None for a period-end remeasurement
     reason: str | None  # remeasurements: SETTLEMENT | PERIOD_END
     trace_node_id: str
+    contract_key: str | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -602,6 +603,7 @@ class UnitBook:
                     period,
                     formula_id="fx.asset_layer.create.v1",
                     movement_kind="ASSET_LAYER_CREATED",
+                    contract_key=flow.contract_key,
                 )
             )
         if flow.kind == "CREDIT_MEMO" and reliefs:
@@ -1032,6 +1034,7 @@ class UnitBook:
                 source_key=source_key,
                 reason=reason,
                 trace_node_id=node,
+                contract_key=self.layers[key].contract_key,
             )
         )
 

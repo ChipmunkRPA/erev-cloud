@@ -36,6 +36,10 @@ negative. On that contract ``build`` returns one row "Contract liability (14,000
 obligation and period (``netting_reclass_amount``) and the liability layers
 (``fx_layer_created``, ``fx_layer_consumed``) are in the calc trace (T-ENG-03); reading them would
 replace the source ruling Q-2 accepted and waits for the supervisor.
+
+October 7, 2026: revision 0131 persists T-CON-18 for new computations. This builder still uses
+its interim subledger source and remains unregistered until its projection and historical-version
+handling are implemented and verified. Earlier source limitations above are dated history.
 """
 
 from __future__ import annotations

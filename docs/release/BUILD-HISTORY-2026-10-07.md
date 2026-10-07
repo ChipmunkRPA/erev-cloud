@@ -190,3 +190,56 @@ claims and evidence below retain their original meaning; this archive is not a f
 - Next implementation item: C-2, policy overrides that actually reach calculation, including
   POL-122 and the significant-financing rate path. Independent accounting decisions remain reviewer work; hosted inputs are outside the
   owner's clarified repository-only scope. Research folders and removed website references stay excluded.
+
+## Contract-period policy isolation — October 7, 2026
+
+- PR #5 merged into main (`be91991`), completing the two-policy workbench slice. The owner
+  instructed automatic merging after verification and retention of **main only**. GitHub automatic
+  merged-branch deletion is enabled; the four older merged branches were deleted locally/remotely.
+  Future implementation branches are temporary and must be removed after merge.
+- Work continues on `codex/contract-period-policy-scope`. POL-163 needs more than admitting another
+  key: the FX engine currently treats the whole group/entity as one liability unit. A contract's
+  exception must not change neighboring contracts in that unit.
+- Added a CONTRACT_PERIOD bundle identity and resolver precedence over the entity PERIOD default.
+  Identity encodes contract, entity and period unambiguously. Pin P and level C are required; both
+  entity and period are required to read it. Existing readers without a contract still receive the
+  entity default.
+- Bundle assembly resolves approved POL-163 rows separately for each member and entity period,
+  using the earlier of the known-at cutoff and the entity-local period end. Prior approvals remain
+  eligible for their historical periods after supersession; later approvals cannot rewrite an
+  earlier period. Forced IFRS15 treatment excludes these rows. Scoped exceptions never become the
+  widest-scope persisted policy pin.
+- Actual verification: 48 scoped-policy, period-row, resolver and PostgreSQL policy-domain tests
+  passed. A further 590 kernel, FX engine, architecture and database period-policy tests passed,
+  including the final persisted-pin assertion. Mypy passed for five source files; Ruff lint/format
+  and whitespace checks passed. No full-backend or live-release claim is made.
+- Initial publication attempts on October 7 returned GitHub internal server errors for both Git
+  pushes and PR creation. The local commit is preserved; check the remote PR and main before
+  treating this slice as published. Repository metadata confirms push/admin access and no archive.
+- This is the isolation foundation, not completion of POL-163. Public authoring stays refused until
+  FX liability layers carry their originating contract and use its period-scoped treatment for
+  consumption and remeasurement, with monetary/historical transitions and mixed-member tie-outs
+  verified. Those readers, actual FX journals, close behavior and UI remain next. No deployment.
+
+## Policy override workbench — October 7, 2026
+
+- PR #4 merged into public main (`51aa535`). Work continues on `codex/policy-override-ui`.
+- The contract workbench now offers Policy overrides to users with entity-scoped `config.read`.
+  Authoring additionally requires `contract.create` for the contract's entity. Historical views
+  expose no command. Drafts can be authored before activation, including financing rates.
+- Added POL-122 obligation/right and POL-047 contract/rate forms. Rates remain decimal strings;
+  the screen explains inception rates and corrections. Saving creates a durable draft; submission
+  is a separate action on that saved record. Reopening or retrying submission reuses the draft.
+  The list displays scope, value, rationale, status and an approval-request link where present.
+- Commands invalidate the contract override list along with the existing contract reads. Required
+  fields, server refusals, network failures, list retry and read-only access have explicit behavior.
+  Existing API validation and independent-approval controls remain authoritative.
+- Actual verification: all **2,040 frontend tests across 191 files passed**, including six new drawer
+  tests and the 66 workbench tests. TypeScript project build, changed-file ESLint, production frontend
+  build, formatting and whitespace checks passed. Design check scanned 499 files with no findings.
+  Local Chromium screenshots of both forms were inspected with mocked records and no runtime errors;
+  this is UI verification, not live-service or accounting sign-off evidence.
+- Remaining C-2: POL-163 period-scoped contract exceptions, broader product readers, database
+  answer-key coverage, and an optional reviewed-judgement attachment selector in this drawer (the
+  API already accepts and validates that link). Wider outstanding items remain in LIMITS-1.0.md.
+  Current scope remains repository completion; no deployment or provisioning.

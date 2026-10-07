@@ -26,10 +26,10 @@ Sources (record ``docs/reviews/loop/prod/F-CLO-prep.md`` §16.1):
 - ``DQ_REVENUE_WITHOUT_BILLING``: ``subledger_line`` of the entity and book up to the period end,
   the first ``REVENUE_RECOGNITION`` date against the first ``BILLING`` date per obligation (a
   contract-level billing line covers every obligation of the contract);
-- ``DQ_NEGATIVE_LIABILITY_LAYER``: T-CON-18 ``fx_layer_movement`` is not built yet (BUILD_SPEC
-  CTR-14), so until it lands the source is the current ``contract_version_balance``
+- ``DQ_NEGATIVE_LIABILITY_LAYER``: T-CON-18 is now persisted by revision 0131, but the collector
+  still uses the current ``contract_version_balance``
   ``contract_liability_txn`` per contract, one layer ``CONTRACT_LIABILITY:<contract external_id>``;
-  CTR-14 replaces the collector with the layer table;
+  replacing this interim collector with layer-level checks remains outstanding;
 - ``DQ_RECOGNITION_AFTER_POB_END``: revenue ``schedule_line`` rows of the period on the current
   version whose ``obligation_version.end_date`` precedes the period start;
 - ``DQ_INACTIVE_CONTRACT``: ``ACTIVE`` contracts of the entity with the latest

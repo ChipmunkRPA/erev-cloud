@@ -2359,7 +2359,6 @@ TABLES: Final[tuple[TableClassification, ...]] = (
                 "functional_currency amount_functional rate"
             ),
         },
-        status=Status.PENDING,
     ),
     _table(
         "judgement_record",

@@ -71,9 +71,6 @@ PENDING_ENUM_TYPES: Final[Mapping[str, ReconciledEnumType]] = {
         "E-84", "T-CON-15 contract_cost_asset.amortization_pattern", *_CTR_14
     ),
     "loss_unit": ReconciledEnumType("E-85", "T-CON-17 loss_provision_version.unit", *_CTR_14),
-    "fx_layer_movement_kind": ReconciledEnumType(
-        "E-86", "T-CON-18 fx_layer_movement.movement_kind", *_CTR_14
-    ),
     "option_type": ReconciledEnumType("E-92", "T-CON-14 material_right.option_type", *_CTR_14),
     "scenario_status": ReconciledEnumType(
         "E-100", "T-FC-01 scenario.status", "FCS-1", "NNNN_forecast_tables.py"
