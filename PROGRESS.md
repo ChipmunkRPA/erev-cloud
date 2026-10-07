@@ -1,5 +1,24 @@
 # PROGRESS — eRev Cloud build loop notebook (under 20 KB)
 
+## Migration capture calendar and POS117 recheck — October 7, 2026
+
+- Continued from merged PR #10 (`8876bd8`). Reproduced all three migration-capture failures
+  listed as names 13–15 in LIMITS: each refused Contract 3 because its February inception had
+  no accounting period. The fixture only supplied January despite importing the complete source.
+- The two full-source fixture setups now supply January and February 2023. Source databases,
+  expected amounts, product validation and worker behavior are unchanged. All existing exact
+  balance, entity mapping, SSP reuse, approval/audit, capture count and immutability checks remain.
+- **7 PostgreSQL capture tests passed**, closing all three named failures; **3 related PostgreSQL
+  reconciliation/report tests passed**. Ruff lint/format and whitespace checks passed. These are
+  targeted results, not evidence of a green whole backend or completed migration functionality.
+- Also ran the real database POS117 answer key: **103 steps applied, 0 refused**, contract and
+  subledger blocks compared clean. Its former four numeric mismatches are resolved by the policy
+  work. The key still does not pass because balance aging lacks its persisted layer source and
+  registered builder. The canonical `make answer-keys AK_SCOPE=full` already selects the database;
+  ordinary pytest defaults to memory. Do not treat that default as the canonical gate's behavior.
+- Remaining work includes balance-aging layers/reporting, GT07 nondistinct review mapping, the
+  broader release backlog and independent accounting sign-off. No deployment.
+
 ## Supported overrides in database answer keys — October 7, 2026
 
 - Continued from merged PR #9 (`88bd20b`). The answer-key plan still omitted all policy

@@ -40,6 +40,11 @@ inception and receives no opening balance; T-MIG-04 requires an opening event pe
 (five NOT NULL columns), so its capture shape is with the supervisor. All three witnesses and (2c)
 assert the captured balances PRD WLD-X-27 / ENGINE_SPEC EX-07-A state for Contracts 1 and 2
 (FLMG-ONBOARDING-METHOD-PIN-1: POL-210's mode (a) method at contract level).
+
+October 7, 2026 continuation: the full-source witnesses below now provision both January and
+February 2023. Their post-cutover contracts begin in February, so the engine correctly refused
+capture when only January existed. All seven capture tests pass with the complete calendar;
+the dated failures above describe earlier runs, not the current result.
 """
 
 from __future__ import annotations
@@ -606,7 +611,8 @@ def test_import_job_creates_the_confirmed_prerequisites_over_wld_f_15(
 ) -> None:
     """LM-CL-09 / LM-CL-03 (04 §17.2 rev 1.64; D-98 candidate 133; Codex 1106 R1 / C1): the import
     over the shipped WLD-F-15 with NO provisioned selling entity and NO product — only a fiscal
-    calendar with a period and the published parity templates — through the REGISTERED worker path
+    calendar with January/February periods and the published parity templates — through the
+    registered worker path
     (``registry.run_job``, the plain SYSTEM job principal): the import phase's outer unit of work
     carries the limited migration writer authority, the confirmed writers create the two entities
     (tenant reporting currency, the confirmed calendar / time zone) and the six products (their
@@ -633,22 +639,25 @@ def test_import_job_creates_the_confirmed_prerequisites_over_wld_f_15(
                 original_filename=FIXTURE.name,
                 media_type="application/vnd.sqlite3",
             )
-        # the ONLY provisioning: a calendar with one period (the entity writer keeps the primary
+        # the ONLY provisioning: a calendar (the entity writer keeps the primary
         # book from the calendar's earliest period); no entity, no product
         calendar = fiscal_calendar_values(tenant_id)
         uow.session.execute(insert(fiscal_calendar).values(**calendar))
-        uow.session.execute(
-            insert(period).values(
-                **period_values(
-                    tenant_id,
-                    calendar_id=calendar["id"],
-                    fiscal_year=2023,
-                    period_no=1,
-                    start_date=date(2023, 1, 1),
-                    end_date=date(2023, 1, 31),
+        # The source includes January cutover balances and contracts beginning in February.
+        # The dry-run calculation validates every captured contract's inception period.
+        for month, last_day in ((1, 31), (2, 28)):
+            uow.session.execute(
+                insert(period).values(
+                    **period_values(
+                        tenant_id,
+                        calendar_id=calendar["id"],
+                        fiscal_year=2023,
+                        period_no=month,
+                        start_date=date(2023, month, 1),
+                        end_date=date(2023, month, last_day),
+                    )
                 )
             )
-        )
         currency = str(
             uow.session.execute(
                 select(tenant.c.reporting_currency).where(tenant.c.id == tenant_id)
@@ -998,18 +1007,21 @@ def test_import_keeps_an_existing_ssp_only_product_over_a_second_label(
             )
         calendar = fiscal_calendar_values(tenant_id)
         uow.session.execute(insert(fiscal_calendar).values(**calendar))
-        uow.session.execute(
-            insert(period).values(
-                **period_values(
-                    tenant_id,
-                    calendar_id=calendar["id"],
-                    fiscal_year=2023,
-                    period_no=1,
-                    start_date=date(2023, 1, 1),
-                    end_date=date(2023, 1, 31),
+        # The source includes January cutover balances and contracts beginning in February.
+        # The dry-run calculation validates every captured contract's inception period.
+        for month, last_day in ((1, 31), (2, 28)):
+            uow.session.execute(
+                insert(period).values(
+                    **period_values(
+                        tenant_id,
+                        calendar_id=calendar["id"],
+                        fiscal_year=2023,
+                        period_no=month,
+                        start_date=date(2023, month, 1),
+                        end_date=date(2023, month, last_day),
+                    )
                 )
             )
-        )
         currency = str(
             uow.session.execute(
                 select(tenant.c.reporting_currency).where(tenant.c.id == tenant_id)
