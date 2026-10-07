@@ -22,6 +22,9 @@
   passed. A further 590 kernel, FX engine, architecture and database period-policy tests passed,
   including the final persisted-pin assertion. Mypy passed for five source files; Ruff lint/format
   and whitespace checks passed. No full-backend or live-release claim is made.
+- Initial publication attempts on October 7 returned GitHub internal server errors for both Git
+  pushes and PR creation. The local commit is preserved; check the remote PR and main before
+  treating this slice as published. Repository metadata confirms push/admin access and no archive.
 - This is the isolation foundation, not completion of POL-163. Public authoring stays refused until
   FX liability layers carry their originating contract and use its period-scoped treatment for
   consumption and remeasurement, with monetary/historical transitions and mixed-member tie-outs
