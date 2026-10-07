@@ -528,13 +528,10 @@ def policy_overrides_create(
     cmd: Annotated[CommandContext, Depends(command(OVERRIDE_AUTHOR))],
     deps: Annotated[KernelDeps, Depends(kernel_deps)],
 ) -> Response:
-    """Not offered in release 1.0: every creation of a contract-level or obligation-level
-    override is refused by name — 422 ``policy-level-not-allowed`` under rule id
-    ``POLICY_OVERRIDE_NOT_OFFERED``, with what decides the parameter instead. Nothing is stored
-    (T-CON-23; POLICIES §0.5 rule 5; PRD ERR-102)."""
+    """Create a draft for an enabled policy/scope; other keys remain explicitly unavailable."""
 
     def handle(uow: UnitOfWork) -> PolicyOverrideOut:
-        overrides.create_override(uow, contract_id=body.contract_id, policy_key=body.policy_key)
+        return PolicyOverrideOut.model_validate(overrides.create_override(uow, **body.model_dump()))
 
     return run_command(cmd, deps, handle, status_code=201)
 

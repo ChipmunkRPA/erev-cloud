@@ -5218,10 +5218,7 @@ export interface paths {
     put?: never;
     /**
      * Policy Overrides Create
-     * @description Not offered in release 1.0: every creation of a contract-level or obligation-level
-     *     override is refused by name — 422 ``policy-level-not-allowed`` under rule id
-     *     ``POLICY_OVERRIDE_NOT_OFFERED``, with what decides the parameter instead. Nothing is stored
-     *     (T-CON-23; POLICIES §0.5 rule 5; PRD ERR-102).
+     * @description Create a draft for an enabled policy/scope; other keys remain explicitly unavailable.
      */
     post: operations["policy_overrides_create"];
     delete?: never;

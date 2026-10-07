@@ -1,5 +1,30 @@
 # PROGRESS — eRev Cloud build loop notebook (under 20 KB)
 
+## Validated policy override API — October 7, 2026
+
+- PR #3 merged into public main (`6bca309`). Work continues on
+  `codex/policy-override-authoring` from that merge.
+- Enabled public draft creation for POL-122 (`balance.right_to_consideration`) at obligation scope
+  and POL-047 (`sfc.discount_rate_basis`) at contract scope. Validate the registry schema, obligation
+  ownership, nonblank rationale, mathematically valid periodic rate, and any linked reviewed
+  same-contract judgement before storing a draft. Other policy keys retain the named refusal.
+- Submission and approval recheck linked judgement validity. Approval locks group, contract and
+  override before superseding the prior approval; creator/editor exclusions from PR #3 apply.
+- Regressions use public creation through approval and calculation: POL-122 reclassifies balances
+  and an approved successor reverses it; POL-047 reaches a real deferred-payment calculation
+  following a reviewed financing assessment, activation and delivery. A successor corrects the
+  inception rate and changes transaction price. Validation failures store no draft or approval;
+  unsupported keys and entity-permission boundaries remain covered.
+- Actual local verification: 304 policy, product-pinning, unit and architecture tests passed.
+  All 15 final policy-domain tests passed again after adding entity-permission and valid judgement-link
+  assertions. Mypy passed for both source files; Ruff lint/format, OpenAPI staleness and whitespace
+  checks passed. Refreshed OpenAPI and generated frontend types. These are targeted checks, not a
+  full-backend or production-readiness claim.
+- C-2 remains partial: frontend authoring, POL-163 period-scoped exceptions, broader product
+  readers and the database answer-key runner remain open. The wider C-3–C-17 backlog remains in
+  `docs/release/LIMITS-1.0.md`. Repository completion only: no deployment, provisioning or live
+  release certification is part of this work.
+
 ## Draft authors excluded from approval — October 7, 2026
 
 - PR #2 was merged into public main (`4eecb0f`). The next work is on

@@ -78187,7 +78187,7 @@
         "x-erev-permission": "config.read"
       },
       "post": {
-        "description": "Not offered in release 1.0: every creation of a contract-level or obligation-level\noverride is refused by name — 422 ``policy-level-not-allowed`` under rule id\n``POLICY_OVERRIDE_NOT_OFFERED``, with what decides the parameter instead. Nothing is stored\n(T-CON-23; POLICIES §0.5 rule 5; PRD ERR-102).",
+        "description": "Create a draft for an enabled policy/scope; other keys remain explicitly unavailable.",
         "operationId": "policy_overrides_create",
         "parameters": [
           {

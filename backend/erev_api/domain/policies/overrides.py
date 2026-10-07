@@ -4,23 +4,10 @@ POLICIES §0.5, §0.6 OVR; dev-guide DG-KRN-REG-01, DG-KRN-REG-06; 05 RCP-17; PR
 rows ``SSP_OVERRIDE`` and ``POLICY_OVERRIDE``, BR-SSP-03, ACT-21, ACT-55; 03 REQ-SSP-006,
 REQ-POL-004; CTL-010; BUILD_SPEC CTR-15, BS3-D-04, BS3-D-06).
 
-``create_override`` stores nothing: policy overrides are not offered in release 1.0 (04
-T-CON-23 "Not offered in release 1.0" rev 1.322; PRD ERR-102; POLICIES §0.5 rule 5; item
-POLICY-OVERRIDE-WITHDRAW-1, supervisor ruling R-126), because the original release loaded no
-override into calculation. The October 7 continuation now loads approved contract-pinned rows;
-creation remains withdrawn until the authoring validation and approval controls are completed.
-For a visible contract whose contracting entity the preparer holds ``contract.create`` for (404
-``not-found`` otherwise, in either case; the 403 is the route's, for a caller without the
-permission), every creation is refused by one rule before anything the request names is
-validated: 422 ``policy-level-not-allowed`` with one error on ``policy_key`` under rule id
-``POLICY_OVERRIDE_NOT_OFFERED``, whose message — the problem's detail as well — is
-``NOT_OFFERED`` and ``decided_instead(policy_key)``, the sentence of what decides the parameter
-instead. ``DECIDED_BY`` holds that sentence for each of the 23 parameters that list level
-CONTRACT or OBLIGATION, each read against the code that takes the parameter; every other
-parameter is told the catalogue and no more (DG-KRN-REG-06).
-
-The functions below keep their code and, in a workspace of the release, meet no row: no command
-writes one.
+``create_override`` validates and stores drafts for POL-122 obligation-level right to
+consideration and POL-047 contract-level financing rates. Both have calculation readers.
+Other parameters retain their named release refusal until their reader and workflow are
+implemented. Scope, value, rationale and optional reviewed judgement are checked before insertion.
 
 ``submit_override`` moves DRAFT → SUBMITTED with ``content_sha256`` and requests approval of
 subject ``POLICY_OVERRIDE`` (``contract.approve``). Approval supersedes the APPROVED override of
@@ -44,12 +31,13 @@ from __future__ import annotations
 
 import dataclasses
 from collections.abc import Callable, Mapping, Sequence
+from decimal import Decimal
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Any, Final, NoReturn, Protocol
+from typing import TYPE_CHECKING, Any, Final, Protocol
 from uuid import UUID
 
 from erev_engine.canonical import sha256_hex
-from sqlalchemy import Select, and_, func, select, update
+from sqlalchemy import Select, and_, func, insert, select, update
 from sqlalchemy.orm import Session
 
 from erev_api.approvals import engine as approvals
@@ -57,11 +45,12 @@ from erev_api.approvals import preview, subjects
 from erev_api.auth.dependencies import require_for_entity
 from erev_api.auth.principal import system_principal
 from erev_api.clock import to_entity_date
-from erev_api.db import transitions
+from erev_api.db import new_id, transitions
 from erev_api.db.session import tenant_session
 from erev_api.db.tables import (
     combination_group,
     contract,
+    judgement_record,
     legal_entity,
     obligation,
     policy_override,
@@ -75,6 +64,7 @@ from erev_api.events.payloads import LineAttributeChangesV1, LineAttributesChang
 from erev_api.events.stream import EventIn, append_events
 from erev_api.problems import Problem, ProblemError
 from erev_api.registry import resolve as registry
+from erev_api.registry.versions import schema_errors
 from erev_api.uow import UnitOfWork
 
 if TYPE_CHECKING:
@@ -255,19 +245,137 @@ def decided_instead(policy_key: str) -> str:
     return SET_ONLY_AT.format(levels=listed)
 
 
-def create_override(uow: UnitOfWork, *, contract_id: UUID, policy_key: str) -> NoReturn:
-    """``POST /policy-overrides``: refused by name, whatever the request names (the module
-    docstring; 04 T-CON-23 "Not offered in release 1.0"). The contract's 404 comes first, as it
-    did — for an id that names none and for an entity the permission does not cover; nothing
-    is validated, stored or audited."""
-    current = repo.get_contract(uow.session, contract_id)
+SUPPORTED_KEYS: Final = frozenset({"balance.right_to_consideration", "sfc.discount_rate_basis"})
+
+
+def _judgement(session: Session, record_id: UUID | None, contract_id: UUID) -> None:
+    if record_id is None:
+        return
+    found = session.execute(
+        select(judgement_record.c.id).where(
+            judgement_record.c.id == record_id,
+            judgement_record.c.contract_id == contract_id,
+            judgement_record.c.status == "REVIEWED",
+        )
+    ).scalar_one_or_none()
+    if found is None:
+        raise Problem(
+            "validation-failed",
+            errors=[
+                _error(
+                    "judgement_record_id",
+                    "Choose a reviewed judgement of this contract.",
+                    "POLICY_OVERRIDE_JUDGEMENT_INVALID",
+                )
+            ],
+        )
+
+
+def create_override(
+    uow: UnitOfWork,
+    *,
+    contract_id: UUID,
+    policy_key: str,
+    value: Any = None,
+    obligation_key: str | None = None,
+    rationale: str = "",
+    judgement_record_id: UUID | None = None,
+) -> dict[str, Any]:
+    """Create a validated draft for a policy with a verified calculation reader."""
+    session = uow.session
+    current = repo.get_contract(session, contract_id)
     require_for_entity(uow.ctx, CREATE_PERMISSION, _entity_of(current))
-    message = f"{NOT_OFFERED} {decided_instead(policy_key)}"
-    raise Problem(
-        "policy-level-not-allowed",
-        message,
-        errors=[_error("policy_key", message, RULE_NOT_OFFERED)],
+    if policy_key not in SUPPORTED_KEYS:
+        message = f"{NOT_OFFERED} {decided_instead(policy_key)}"
+        raise Problem(
+            "policy-level-not-allowed",
+            message,
+            errors=[_error("policy_key", message, RULE_NOT_OFFERED)],
+        )
+    spec = registry.parameter(policy_key)
+    level = RegistryScope.CONTRACT if obligation_key is None else RegistryScope.OBLIGATION
+    if level not in spec.allowed_levels:
+        raise Problem(
+            "policy-level-not-allowed",
+            errors=[
+                _error(
+                    "obligation_key",
+                    "Choose a scope allowed by this policy.",
+                    "POLICY_LEVEL_NOT_ALLOWED",
+                )
+            ],
+        )
+    obligation_id = None
+    if obligation_key is not None:
+        obligation_id = session.execute(
+            select(obligation.c.id).where(
+                obligation.c.contract_id == contract_id,
+                obligation.c.obligation_key == obligation_key,
+            )
+        ).scalar_one_or_none()
+        if obligation_id is None:
+            raise Problem(
+                "validation-failed",
+                errors=[
+                    _error(
+                        "obligation_key",
+                        "Choose an obligation of this contract.",
+                        "POLICY_OBLIGATION_INVALID",
+                    )
+                ],
+            )
+    errors = [
+        _error("value", message, "POLICY_VALUE_INVALID")
+        for message in schema_errors(spec.value_schema, value)
+    ]
+    if not errors and policy_key == "sfc.discount_rate_basis":
+        lower_bound = (
+            Decimal("-1") if value.get("compounding", "MONTHLY") == "ANNUAL" else Decimal("-12")
+        )
+        if Decimal(value["annual_rate"]) <= lower_bound:
+            errors.append(
+                _error(
+                    "value.annual_rate",
+                    "The periodic discount rate must exceed -1.",
+                    "POLICY_VALUE_INVALID",
+                )
+            )
+    if not rationale.strip():
+        errors.append(
+            _error("rationale", "Explain the policy exception.", "POLICY_RATIONALE_REQUIRED")
+        )
+    if errors:
+        raise Problem("validation-failed", errors=errors)
+    _judgement(session, judgement_record_id, contract_id)
+    principal = uow.principal
+    override_id = new_id()
+    session.execute(
+        insert(policy_override).values(
+            tenant_id=principal.tenant_id,
+            id=override_id,
+            contract_id=contract_id,
+            obligation_id=obligation_id,
+            level=level.value,
+            policy_key=policy_key,
+            value=value,
+            rationale=rationale.strip(),
+            judgement_record_id=judgement_record_id,
+            status=DRAFT,
+            created_at=uow.now,
+            updated_at=uow.now,
+            created_by=principal.id,
+            created_by_kind=principal.kind.value,
+            **_modified(uow),
+        )
     )
+    uow.audit(
+        action="policy_override.create",
+        object_type=OBJECT_TYPE,
+        object_id=override_id,
+        after={"policy_key": policy_key, "value": value, "level": level.value},
+        contract_id=contract_id,
+    )
+    return override_out(session, override_id)
 
 
 def _summary(session: Session, row: Mapping[str, Any], current: Mapping[str, Any]) -> str:
@@ -291,6 +399,7 @@ def submit_override(uow: UnitOfWork, override_id: UUID, *, comment: str | None) 
         raise Problem(
             "invalid-transition", errors=[_error("status", NOT_DRAFT, transitions.RULE_ID)]
         )
+    _judgement(session, row["judgement_record_id"], UUID(str(row["contract_id"])))
     digest = sha256_hex(subjects.policy_override_content(session, override_id))
     transitions.apply(
         session,
@@ -351,15 +460,20 @@ def _mark_dirty(uow: UnitOfWork, group_id: UUID) -> None:
 
 def _approve_override(uow: UnitOfWork, subject_id: UUID, approval_request_id: UUID) -> None:
     session = uow.session
+    initial = _row(session, subject_id)
+    repo.lock_group_then_contract(session, UUID(str(initial["contract_id"])))
     row = _row(session, subject_id, for_update=True)
+    _judgement(session, row["judgement_record_id"], UUID(str(row["contract_id"])))
     if str(row["status"]) != SUBMITTED:
         raise LookupError(f"policy override {subject_id} is not submitted")
     previous = session.execute(
         select(policy_override.c.id)
         .where(*_same_scope(row), policy_override.c.status == APPROVED)
+        .order_by(policy_override.c.approved_at.desc(), policy_override.c.id.desc())
         .with_for_update()
     ).scalars()
-    for previous_id in [UUID(str(value)) for value in previous]:
+    previous_ids = [UUID(str(value)) for value in previous]
+    for previous_id in previous_ids:
         transitions.apply(
             session,
             OBJECT_TYPE,
