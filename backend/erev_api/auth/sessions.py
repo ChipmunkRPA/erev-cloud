@@ -647,7 +647,12 @@ def _password_valid(user: RowMapping, password: str) -> bool:
 
 
 def _record_failure(
-    db: Session, user: RowMapping, facts: RequestFacts, keyring: KeyRing
+    db: Session,
+    user: RowMapping,
+    facts: RequestFacts,
+    keyring: KeyRing,
+    *,
+    purpose: str | None = None,
 ) -> Problem:
     """Count a consecutive failure; the fifth locks the account for 15 minutes (REQ-PLT-004)."""
     # A lock that has run out starts a new run of failures.
@@ -671,7 +676,7 @@ def _record_failure(
         SecurityEventKind.LOGIN_FAILED,
         AuditOutcome.FAILED,
         user_id=user["id"],
-        detail={FAILED_LOGIN_COUNT: failures},
+        detail={FAILED_LOGIN_COUNT: failures, **({"purpose": purpose} if purpose else {})},
     )
     if locked_until is None:
         return Problem("unauthenticated", WRONG_CREDENTIALS)
@@ -1042,22 +1047,39 @@ def check_password(
             .mappings()
             .one()
         )
-        if user["locked_until"] is not None and user["locked_until"] > facts.now:
-            refusal = Problem("account-locked", ACCOUNT_LOCKED)
-        elif not _password_valid(user, password):
-            refusal = _record_failure(db, user, facts, keyring)
-        else:
-            db.execute(
-                update(app_user)
-                .where(app_user.c.id == user_id)
-                .values(
-                    failed_login_count=0,
-                    locked_until=None,
-                    updated_by=user_id,
-                    updated_by_kind=PrincipalKind.USER.value,
-                )
-            )
+        refusal = check_locked_password(db, user, password, facts=facts, keyring=keyring)
     return refusal
+
+
+def check_locked_password(
+    db: Session,
+    user: RowMapping,
+    password: str,
+    *,
+    facts: RequestFacts,
+    keyring: KeyRing,
+    purpose: str | None = None,
+) -> Problem | None:
+    """Verify under the caller's identity-row write lock; return a refusal without raising.
+
+    The caller must commit failure evidence before raising the returned problem. Holding the
+    lock through a successful password mutation prevents another check/reset interleaving.
+    """
+    if user["locked_until"] is not None and user["locked_until"] > facts.now:
+        return Problem("account-locked", ACCOUNT_LOCKED)
+    if not _password_valid(user, password):
+        return _record_failure(db, user, facts, keyring, purpose=purpose)
+    db.execute(
+        update(app_user)
+        .where(app_user.c.id == user["id"])
+        .values(
+            failed_login_count=0,
+            locked_until=None,
+            updated_by=user["id"],
+            updated_by_kind=PrincipalKind.USER.value,
+        )
+    )
+    return None
 
 
 def hold_password(db: Session, user_id: UUID, password: str) -> bool:

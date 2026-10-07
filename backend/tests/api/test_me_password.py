@@ -173,3 +173,114 @@ def test_sar_10_a_rotation_in_flight_does_not_outlive_a_password_change(
             ).scalars()
         )
     assert still_open == [renewed]
+
+
+def test_wrong_current_password_locks_and_expiry_restarts_count(
+    app: FastAPI, keyring: KeyRing, clock: FrozenClock
+) -> None:
+    lena = member(keyring, clock)
+    current = workspace(app, lena, sign_in(app, lena.email))
+
+    def change(password: str, new: str = NEW_PASSWORD_VALUE) -> HttpResponse:
+        return call(
+            app,
+            "POST",
+            PASSWORD_PATH,
+            json={"current_password": password, "new_password": new},
+            headers=cookie_headers(current.token, current.csrf_token),
+        )
+
+    for expected in (422, 422, 422, 422, 423):
+        answer = change(WRONG_CURRENT)
+        assert answer.status_code == expected, answer.text
+    locked = change(PASSWORD)
+    assert (locked.status_code, slug(locked)) == (423, "account-locked")
+    with identity_session(request_id="tests-change-lockout") as db:
+        row = db.execute(select(app_user).where(app_user.c.id == lena.user_id)).mappings().one()
+        assert row["failed_login_count"] == 5
+        assert row["locked_until"] == clock.now() + sessions.LOCKOUT
+        events = db.execute(
+            select(security_event.c.kind, security_event.c.detail)
+            .where(
+                security_event.c.user_id == lena.user_id,
+                security_event.c.kind.in_(["LOGIN_FAILED", "ACCOUNT_LOCKED", "PASSWORD_CHANGED"]),
+            )
+            .order_by(security_event.c.chain_seq)
+        ).all()
+    assert [kind for kind, _ in events] == ["LOGIN_FAILED"] * 5 + ["ACCOUNT_LOCKED"]
+    assert [detail["failed_login_count"] for kind, detail in events if kind == "LOGIN_FAILED"] == [
+        1,
+        2,
+        3,
+        4,
+        5,
+    ]
+    assert all(
+        detail.get("purpose") == "password_change"
+        for kind, detail in events
+        if kind == "LOGIN_FAILED"
+    )
+    clock.advance(sessions.LOCKOUT)
+    assert change(WRONG_CURRENT).status_code == 422
+    with identity_session(request_id="tests-change-expired-lock") as db:
+        assert db.execute(
+            select(app_user.c.failed_login_count, app_user.c.locked_until).where(
+                app_user.c.id == lena.user_id
+            )
+        ).one() == (1, None)
+    # A correct current password breaks consecutive failures even if the proposed password
+    # is rejected by policy. That rejection must not roll back the successful verification.
+    assert change(PASSWORD, lena.email).status_code == 422
+    with identity_session(request_id="tests-change-correct-check") as db:
+        assert (
+            db.execute(
+                select(app_user.c.failed_login_count).where(app_user.c.id == lena.user_id)
+            ).scalar_one()
+            == 0
+        )
+    changed = change(PASSWORD)
+    assert changed.status_code == 204, changed.text
+    assert sign_in(app, lena.email, NEW_PASSWORD_VALUE).body["authenticated"] is True
+
+
+def test_concurrent_password_changes_share_the_login_failure_budget(
+    app: FastAPI, keyring: KeyRing, clock: FrozenClock
+) -> None:
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Barrier
+
+    lena = member(keyring, clock)
+    current = workspace(app, lena, sign_in(app, lena.email))
+    for _ in range(3):
+        assert (
+            call(
+                app, "POST", LOGIN, json={"email": lena.email, "password": WRONG_CURRENT}
+            ).status_code
+            == 401
+        )
+    ready = Barrier(2)
+
+    def attempt() -> int:
+        ready.wait(timeout=10)
+        return call(
+            app,
+            "POST",
+            PASSWORD_PATH,
+            json={"current_password": WRONG_CURRENT, "new_password": NEW_PASSWORD_VALUE},
+            headers=cookie_headers(current.token, current.csrf_token),
+        ).status_code
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        answers = list(pool.map(lambda _: attempt(), range(2)))
+    assert sorted(answers) == [422, 423]
+    with identity_session(request_id="tests-change-concurrent-budget") as db:
+        assert (
+            db.execute(
+                select(app_user.c.failed_login_count).where(app_user.c.id == lena.user_id)
+            ).scalar_one()
+            == 5
+        )
+    assert (
+        call(app, "POST", LOGIN, json={"email": lena.email, "password": PASSWORD}).status_code
+        == 423
+    )

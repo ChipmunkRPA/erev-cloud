@@ -81,6 +81,22 @@ describe("SF-22:password-change", () => {
     expect(bodies).toEqual([{ current_password: "wrong-old", new_password: "Maya!Revenue2026" }]);
   });
 
+  it("shows the account lockout without reporting a successful password change", async () => {
+    const message =
+      "Too many failed sign-in attempts. Try again in 15 minutes or ask a workspace administrator.";
+    server.use(
+      http.post(apiUrl("/api/v1/me/password"), () =>
+        problemResponse("account-locked", 423, "Account locked", { detail: message }),
+      ),
+    );
+    const { router } = renderChange();
+    await screen.findByRole("heading", { level: 1, name: "Change password" });
+    fill("wrong-old", "Maya!Revenue2026");
+    expect(await screen.findByText(message)).toBeTruthy();
+    expect(screen.queryByText("Password changed. Your other sessions were signed out.")).toBeNull();
+    expect(router.state.location.pathname).toBe("/password/change");
+  });
+
   it("success shows the toast Password changed. Your other sessions were signed out.", async () => {
     server.use(
       http.post(apiUrl("/api/v1/me/password"), () => new HttpResponse(null, { status: 204 })),

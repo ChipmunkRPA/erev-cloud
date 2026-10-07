@@ -70225,6 +70225,21 @@
               }
             },
             "description": "Problem: validation-failed, password-policy"
+          },
+          "423": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: account-locked"
           }
         },
         "summary": "Me Change Password",

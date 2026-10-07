@@ -90,71 +90,87 @@ def change_password(
     auth: AuthenticatedSession, *, current_password: str, new_password: str, keyring: KeyRing
 ) -> AuthenticatedSession:
     """``POST /me/password``: a wrong current password is 422 ``validation-failed`` on
-    ``current_password``, a weak new one 422 ``password-policy``. Success ends the other sessions
+    ``current_password`` until the shared fifth failure or an active lock answers 423.
+    Failure evidence commits before refusal. A weak new password is 422 ``password-policy``.
+    Success ends the other sessions
     with ``PASSWORD_CHANGED`` and keeps the user signed in under a rotated token: the presented
     session ends ``REVOKED`` and its successor is returned (04 §16.12; 05 SAR-09; D-80). The
     user's open password-reset tokens are superseded: a link issued before the change stops
     working (04 T-PLT-42 rule 4, rev 1.151)."""
     facts = auth.facts
+    refusal: Problem | None = None
     with identity_session(request_id=facts.request_id, user_id=auth.user.id) as db:
         user = (
             db.execute(
-                select(app_user.c.email, app_user.c.password_hash)
+                select(
+                    app_user.c.id,
+                    app_user.c.email,
+                    app_user.c.password_hash,
+                    app_user.c.status,
+                    app_user.c.failed_login_count,
+                    app_user.c.locked_until,
+                )
                 .where(app_user.c.id == auth.user.id)
                 .with_for_update(key_share=True)
             )
             .mappings()
             .one()
         )
-        stored = user["password_hash"]
-        valid = (
-            passwords.verify_dummy(current_password)
-            if stored is None
-            else passwords.verify_password(str(stored), current_password)
+        refusal = sessions.check_locked_password(
+            db, user, current_password, facts=facts, keyring=keyring, purpose="password_change"
         )
-        if not valid:
-            raise Problem(
+        if refusal is not None and refusal.spec.slug == "unauthenticated":
+            refusal = Problem(
                 "validation-failed",
                 WRONG_CURRENT_PASSWORD,
                 errors=[ProblemError(field=CURRENT_PASSWORD_FIELD, message=WRONG_CURRENT_PASSWORD)],
             )
-        passwords.check_policy(new_password, email=str(user["email"]), field=NEW_PASSWORD_FIELD)
-        db.execute(
-            update(app_user)
-            .where(app_user.c.id == auth.user.id)
-            .values(**_new_password_values(new_password, user_id=auth.user.id, now=facts.now))
-        )
-        db.execute(
-            update(password_reset_token)
-            .where(
-                password_reset_token.c.user_id == auth.user.id,
-                password_reset_token.c.used_at.is_(None),
-                password_reset_token.c.superseded_at.is_(None),
+        if refusal is None:
+            try:
+                passwords.check_policy(
+                    new_password, email=str(user["email"]), field=NEW_PASSWORD_FIELD
+                )
+            except Problem as exc:
+                refusal = exc
+        if refusal is None:
+            db.execute(
+                update(app_user)
+                .where(app_user.c.id == auth.user.id)
+                .values(**_new_password_values(new_password, user_id=auth.user.id, now=facts.now))
             )
-            .values(superseded_at=facts.now)
-        )
-        sessions.end_user_sessions(
-            db,
-            auth.user.id,
-            reason=SessionEndReason.PASSWORD_CHANGED,
-            now=facts.now,
-            keep_session_id=auth.session.id,
-        )
-        row, token = sessions.reissue(
-            db,
-            auth,
-            active_tenant_id=auth.session.active_tenant_id,
-            mfa_verified_at=auth.session.mfa_verified_at,
-        )
-        _record(
-            db,
-            keyring,
-            facts,
-            SecurityEventKind.PASSWORD_CHANGED,
-            AuditOutcome.SUCCESS,
-            user_id=auth.user.id,
-            session_id=row.id,
-        )
+            db.execute(
+                update(password_reset_token)
+                .where(
+                    password_reset_token.c.user_id == auth.user.id,
+                    password_reset_token.c.used_at.is_(None),
+                    password_reset_token.c.superseded_at.is_(None),
+                )
+                .values(superseded_at=facts.now)
+            )
+            sessions.end_user_sessions(
+                db,
+                auth.user.id,
+                reason=SessionEndReason.PASSWORD_CHANGED,
+                now=facts.now,
+                keep_session_id=auth.session.id,
+            )
+            row, token = sessions.reissue(
+                db,
+                auth,
+                active_tenant_id=auth.session.active_tenant_id,
+                mfa_verified_at=auth.session.mfa_verified_at,
+            )
+            _record(
+                db,
+                keyring,
+                facts,
+                SecurityEventKind.PASSWORD_CHANGED,
+                AuditOutcome.SUCCESS,
+                user_id=auth.user.id,
+                session_id=row.id,
+            )
+    if refusal is not None:
+        raise refusal
     return AuthenticatedSession(
         session=row, token=token, user=auth.user, active_tenant=auth.active_tenant, facts=facts
     )
