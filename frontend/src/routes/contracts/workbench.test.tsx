@@ -1241,9 +1241,8 @@ describe("SF-03 contract workbench", () => {
     expect(within(reader).queryByRole("button", { name: "Change price" })).toBeNull();
   });
 
-  // SCREENS §4.9.7 (rev 1.80; supervisor ruling R-126 (c), register index 308): policy overrides are
-  // not in release 1.0, and "Request policy override" stands in neither menu that held it.
-  it("the header's overflow of an active and of a completed contract holds no policy override: the five events, Apply hold, Edit memos, Combine with another contract, Copy link", async () => {
+  // The continuation exposes supported overrides to users with config.read.
+  it("the header offers policy overrides for active and completed contracts", async () => {
     for (const status of ["ACTIVE", "COMPLETED"]) {
       serve(newRecorded(), contract({ status }));
       renderApp(`/contracts/${CONTRACT_ID}/obligations?${CONTEXT}`, {
@@ -1266,6 +1265,7 @@ describe("SF-03 contract workbench", () => {
         "Apply hold",
         "Edit memos",
         "Combine with another contract",
+        "Policy overrides",
         "Copy link",
       ]);
       cleanup();
@@ -3027,7 +3027,11 @@ describe("SF-03 Step 1 path", () => {
     expect(screen.getByTestId("SF-03-tracker-step-1").getAttribute("aria-label")).toBe(
       "Step 1, Contract, in review, Review JDG-000412 waiting for review",
     );
-    expect(await overflow()).toEqual(["Combine with another contract", "Copy link"]);
+    expect(await overflow()).toEqual([
+      "Combine with another contract",
+      "Policy overrides",
+      "Copy link",
+    ]);
   });
 
   it("a reviewed record on a draft: Record assessment cites it for every enabled book at the inception date", async () => {
@@ -3043,6 +3047,7 @@ describe("SF-03 Step 1 path", () => {
       "Record assessment",
       "Record Step 1 review",
       "Combine with another contract",
+      "Policy overrides",
       "Copy link",
     ]);
 
@@ -3347,6 +3352,7 @@ describe("SF-03 Step 1 path", () => {
         "Record assessment",
         "Record Step 1 review",
         "Combine with another contract",
+        "Policy overrides",
         "Copy link",
       ]);
       fireEvent.click(within(menu).getByRole("menuitem", { name: "Record Step 1 review" }));
@@ -3733,7 +3739,11 @@ describe("SF-03 Release hold", () => {
         me: MAYA,
         screenRoutes: SCREEN_ROUTES,
       });
-      expect(items(await menu()).slice(-2)).toEqual(["Release hold", "Copy link"]);
+      expect(items(await menu()).slice(-3)).toEqual([
+        "Release hold",
+        "Policy overrides",
+        "Copy link",
+      ]);
       cleanup();
       server.resetHandlers();
     }
