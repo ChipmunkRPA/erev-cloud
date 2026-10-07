@@ -29,8 +29,10 @@ natural-key order stage 01 asserts (S01-R-02):
   first computation after an approved combination keeps the pin of the member with the earliest
   inception date, then external id; item PIN-K-COMBINATION-1) — pin P per entity period, and the
   level P values of each line's product and template at the OBLIGATION scope, pinned with the
-  product;
-  and, at the CONTRACT scope
+  product. Approved contract-pinned overrides are loaded at their own scope as of the
+  cutoff, with obligation > contract > product precedence. Shadowed product defaults remain
+  in PRODUCT-scope metadata for pinning; scoped pins are never promoted to GROUP.
+  At the CONTRACT scope
   (level C), POL-210 ``onboarding.method`` of a contract a D-31 mode (a) migration opened
   (``onboarding_pins``; 05 RCP-15 rev 1.36);
 - the stream heads of the group's previous SUCCEEDED computation.
@@ -139,7 +141,7 @@ from erev_api.db.tables import (
     subledger_line,
     subledger_posting,
 )
-from erev_api.domain.contracts import repo
+from erev_api.domain.contracts import policy_inputs, repo
 from erev_api.domain.journals.subledger import POSTING_CLASSES
 from erev_api.domain.policies import templates
 from erev_api.domain.policies.templates import CONVENTION_POLICY, engine_policy_value
@@ -1704,6 +1706,13 @@ def product_pin_members(bundle: InputBundle, output: OutputBundle) -> dict[str, 
         for contract_key, line in lines
     ):
         policies.setdefault(code, by_subject.get(subject_key, {}))
+    for book_input in bundle.books:
+        for policy in book_input.policies:
+            if policy.scope == "PRODUCT" and policy.level == "P":
+                policies[policy.subject_key] = {
+                    **policies.get(policy.subject_key, {}),
+                    policy.code: {"value": _json_value(policy.value), "source": policy.source_ref},
+                }
     by_code = {item.code: item for item in bundle.group.products}
     return {code: product_pin(by_code[code], policies.get(code)) for code in sorted(carried)}
 
@@ -2679,6 +2688,7 @@ def _policies(
     recorded: Mapping[str, Mapping[str, str]] | None = None,
     entity_ids: Mapping[str, UUID] | None = None,
     known: Sequence[Mapping[str, Any]] | None = None,
+    overrides: Sequence[ResolvedPolicyInput] = (),
 ) -> tuple[ResolvedPolicyInput, ...]:
     """The resolved parameters of one book. ``entity_id`` is the entity a contract-pinned
     parameter is first resolved for (the member with the earliest inception); ``entity_ids`` maps
@@ -2700,7 +2710,12 @@ def _policies(
                 )
             )
             continue
-        if spec.pin == "K" and pinned is not None and code in pinned:
+        if (
+            spec.pin == "K"
+            and pinned is not None
+            and code in pinned
+            and pinned[code]["level"] in {"B", "E", "T", "DEFAULT"}
+        ):
             stored = pinned[code]
             resolved.append(
                 _policy(
@@ -2786,6 +2801,30 @@ def _policies(
             _policy(code, "OBLIGATION", subject_key, engine_policy_value(value), "P", source, "K")
             for code, value in sorted(merged.items())
         )
+    # Preserve shadowed product defaults in the bundle so product pinning cannot turn
+    # one member's exception into a missing default for another member in a later run.
+    overridden = {(item.code, item.scope, item.subject_key) for item in overrides}
+    products_by_subject = {
+        obligation_subject_key(contract_key, str(line["obligation_key"])): str(line["product_code"])
+        for contract_key, line in lines
+    }
+    preserved = [
+        _policy(
+            item.code,
+            "PRODUCT",
+            products_by_subject[item.subject_key],
+            item.value,
+            "P",
+            item.source_ref,
+            "K",
+        )
+        for item in resolved
+        if item.scope == "OBLIGATION"
+        and item.level == "P"
+        and (item.code, item.scope, item.subject_key) in overridden
+    ]
+    resolved.extend(preserved)
+    resolved.extend(overrides)
     unique: dict[tuple[str, str, str], ResolvedPolicyInput] = {}
     for item in resolved:
         unique[(item.code, item.scope, item.subject_key)] = item
@@ -3103,6 +3142,7 @@ def _assemble(
     books: list[BookInput] = []
     onboarding = onboarding_pins(events)
     known_versions = registry.known_versions(session, known_at=known_at)
+    override_rows = policy_inputs.approved_rows(session, contract_ids, known_at)
     for book_code in BOOK_ORDER:
         if book_code not in book_rows or not kept.get(book_code):
             continue
@@ -3114,6 +3154,13 @@ def _assemble(
             entities=entities,
             entity_ids={code: UUID(str(row["id"])) for code, row in entity_rows.items()},
             known=known_versions,
+            overrides=policy_inputs.scoped_inputs(
+                override_rows,
+                book_code=book_code,
+                contracts=external_ids,
+                obligations=obligation_rows,
+                lines=lines,
+            ),
             known_at=known_at,
             pinned=(
                 former_pinned_policies(session, group_id, book_code, members)

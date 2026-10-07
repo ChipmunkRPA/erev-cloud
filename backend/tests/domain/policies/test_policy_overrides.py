@@ -23,6 +23,7 @@ go on through the product's own submit and approval.
 from __future__ import annotations
 
 from datetime import date, timedelta
+from decimal import Decimal
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -44,6 +45,7 @@ from erev_api.db.tables import (
     obligation_version,
     policy_override,
 )
+from erev_api.domain.contracts import bundles, policy_inputs
 from erev_api.enums import ContractEventType
 from erev_api.events.payloads import BillingRecordedV1, MoneyIn
 from erev_api.events.stream import EventIn
@@ -823,3 +825,100 @@ def test_policy_override_withdraw_1_the_404_and_the_403_come_first(
     with tenant_session(context, read_only=True) as session:
         stored = session.execute(select(func.count()).select_from(policy_override)).scalar_one()
     assert stored == 0
+
+
+def test_approved_right_override_changes_computed_balances(
+    app: FastAPI, keyring: KeyRing, clock: FrozenClock, files: LocalFileStore
+) -> None:
+    """A real approval moves earned, unbilled amounts from assets to receivables."""
+    world = k11_world(app, keyring, clock, files)
+    booked = delivered_k11(world)
+    group_id = booked.combination_group["id"]
+    contract_id = booked.contract["id"]
+    _, before, _ = computed(world.place, group_id)
+    override_id = drafted_override(
+        world.place,
+        contract_id,
+        "balance.right_to_consideration",
+        "UNCONDITIONAL",
+        obligation_key="O1",
+    )
+    with world.place.uow() as uow:
+        draft_bundle = bundles.build(uow.session, group_id, uow.now)
+    assert not any(
+        row.source_ref == str(override_id) for book in draft_bundle.books for row in book.policies
+    )
+    submitted = post(app, f"{POLICY_OVERRIDES}/{override_id}/submit", world.place.author, {})
+    assert submitted.status_code == 200, submitted.text
+    approved = approve(app, str(submitted.json()["approval_request_id"]), world.marcus)
+    assert approved.status_code == 200, approved.text
+    with world.place.uow() as uow:
+        assert (
+            policy_inputs.approved_rows(
+                uow.session, [contract_id], clock.now() - timedelta(microseconds=1)
+            )
+            == []
+        )
+    bundle, after, _ = computed(world.place, group_id)
+    for book in bundle.books:
+        rows = [row for row in book.policies if row.source_ref == str(override_id)]
+        assert len(rows) == 1
+        assert (rows[0].scope, rows[0].level, rows[0].value) == ("OBLIGATION", "O", "UNCONDITIONAL")
+    for first, second in zip(before.books, after.books, strict=True):
+        before_balances = {
+            (row.subject_key, row.period_key): {
+                key: Decimal(str(value))
+                for key, value in row.columns.items()
+                if key
+                in {"unbilled_receivable_txn", "contract_asset_txn", "contract_liability_txn"}
+            }
+            for row in first.balances
+        }
+        changed = False
+        for row in second.balances:
+            old = before_balances[(row.subject_key, row.period_key)]
+            new = {key: Decimal(str(value)) for key, value in row.columns.items() if key in old}
+            if new["unbilled_receivable_txn"] != old["unbilled_receivable_txn"]:
+                changed = True
+                assert new["unbilled_receivable_txn"] > old["unbilled_receivable_txn"]
+                assert new["contract_asset_txn"] < old["contract_asset_txn"]
+                assert new["contract_liability_txn"] == old["contract_liability_txn"]
+                assert new["unbilled_receivable_txn"] + new["contract_asset_txn"] == (
+                    old["unbilled_receivable_txn"] + old["contract_asset_txn"]
+                )
+        assert changed
+
+    # A scoped pin must never be promoted to GROUP on the next computation.
+    repeated_bundle, repeated, _ = computed(world.place, group_id)
+    assert [book.balances for book in repeated.books] == [book.balances for book in after.books]
+    assert not any(
+        row.code == "balance.right_to_consideration" and row.scope == "GROUP"
+        for book in repeated_bundle.books
+        for row in book.policies
+    )
+    successor = drafted_override(
+        world.place,
+        contract_id,
+        "balance.right_to_consideration",
+        "CONDITIONAL",
+        obligation_key="O1",
+    )
+    submitted = post(app, f"{POLICY_OVERRIDES}/{successor}/submit", world.place.author, {})
+    assert submitted.status_code == 200, submitted.text
+    approved = approve(app, str(submitted.json()["approval_request_id"]), world.marcus)
+    assert approved.status_code == 200, approved.text
+    # Both approvals share the frozen timestamp; the current approval wins deterministically.
+    restored_bundle, restored, _ = computed(world.place, group_id)
+    assert [book.balances for book in restored.books] == [book.balances for book in before.books]
+    assert not any(
+        row.source_ref == str(override_id)
+        for book in restored_bundle.books
+        for row in book.policies
+    )
+    shown = get(
+        app,
+        RESOLVE,
+        world.place.author,
+        {"key": "balance.right_to_consideration", "contract": str(contract_id), "obligation": "O1"},
+    )
+    assert shown.json()["source"]["id"] == str(successor)

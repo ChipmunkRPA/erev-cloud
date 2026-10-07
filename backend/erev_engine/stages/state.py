@@ -118,7 +118,7 @@ EntityView = EntityInput  # functional currency, time zone, calendar periods and
 AccountMappingView = AccountMappingInput  # T-REF-15 PUBLISHED version pinned for the computation
 OpeningBalanceView = Mapping[str, object]  # OPENING_BALANCE_ESTABLISHED payload values (POL-210)
 
-POLICY_SCOPES: Final = ("GROUP", "CONTRACT", "OBLIGATION", "ENTITY", "PERIOD")
+POLICY_SCOPES: Final = ("GROUP", "CONTRACT", "OBLIGATION", "ENTITY", "PERIOD", "PRODUCT")
 
 OrderKey = tuple[date, int, str]  # ENG-06: (effective_date, record_seq, event_key)
 
@@ -131,7 +131,9 @@ class PolicyResolver:
     """Policy reads of one book over ``BookInput.policies`` (CV-17; EMOD-03).
 
     Pin ``K`` codes resolve to the most specific scope present: OBLIGATION, CONTRACT, ENTITY, then
-    GROUP. Pin ``P`` codes resolve only through the PERIOD scope ``<entity code>@<period_key>``.
+    GROUP. PRODUCT rows preserve shadowed defaults for product pinning and are not lookup
+    candidates. Pin ``P`` codes resolve only through PERIOD scope
+    ``<entity code>@<period_key>``.
     The orchestrator resolved every value (DG-KRN-REG-03), so an absent value is a bundle-assembly
     error and raises ``ValueError`` (CV-17, CV-45).
     """
@@ -152,6 +154,8 @@ class PolicyResolver:
             code = policy.code
             if policy.scope not in POLICY_SCOPES:
                 raise ValueError(f"policy {code} has unknown scope {policy.scope!r}")
+            if policy.scope == "PRODUCT" and (policy.level != "P" or policy.pin != "K"):
+                raise ValueError(f"policy {code}: PRODUCT defaults require level P and pin K")
             if policy.pin not in ("K", "P"):
                 raise ValueError(f"policy {code} has unknown pin {policy.pin!r}")
             if (policy.pin == "P") != (policy.scope == "PERIOD"):

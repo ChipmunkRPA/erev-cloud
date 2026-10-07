@@ -4,14 +4,15 @@ POLICIES §0.5, §0.6 OVR; dev-guide DG-KRN-REG-01, DG-KRN-REG-06; 05 RCP-17; PR
 rows ``SSP_OVERRIDE`` and ``POLICY_OVERRIDE``, BR-SSP-03, ACT-21, ACT-55; 03 REQ-SSP-006,
 REQ-POL-004; CTL-010; BUILD_SPEC CTR-15, BS3-D-04, BS3-D-06).
 
-``create_override`` stores nothing: policy overrides are not offered in release 1.0 (04 T-CON-23
-"Not offered in release 1.0" rev 1.322; PRD ERR-102; POLICIES §0.5 rule 5; item
-POLICY-OVERRIDE-WITHDRAW-1, supervisor ruling R-126), because no computation reads one — bundle
-assembly loads no override, so an approved one changed no figure. For a visible contract whose
-contracting entity the preparer holds ``contract.create`` for (404 ``not-found`` otherwise, in
-either case; the 403 is the route's, for a caller without the permission), every creation is
-refused by one rule before anything the request names is validated: 422
-``policy-level-not-allowed`` with one error on ``policy_key`` under rule id
+``create_override`` stores nothing: policy overrides are not offered in release 1.0 (04
+T-CON-23 "Not offered in release 1.0" rev 1.322; PRD ERR-102; POLICIES §0.5 rule 5; item
+POLICY-OVERRIDE-WITHDRAW-1, supervisor ruling R-126), because the original release loaded no
+override into calculation. The October 7 continuation now loads approved contract-pinned rows;
+creation remains withdrawn until the authoring validation and approval controls are completed.
+For a visible contract whose contracting entity the preparer holds ``contract.create`` for (404
+``not-found`` otherwise, in either case; the 403 is the route's, for a caller without the
+permission), every creation is refused by one rule before anything the request names is
+validated: 422 ``policy-level-not-allowed`` with one error on ``policy_key`` under rule id
 ``POLICY_OVERRIDE_NOT_OFFERED``, whose message — the problem's detail as well — is
 ``NOT_OFFERED`` and ``decided_instead(policy_key)``, the sentence of what decides the parameter
 instead. ``DECIDED_BY`` holds that sentence for each of the 23 parameters that list level

@@ -1,5 +1,32 @@
 # PROGRESS — eRev Cloud build loop notebook (under 20 KB)
 
+## Repository-only scope and policy calculation continuation — October 7, 2026
+
+- Owner clarified the scope: finish the repository; do not deploy or provision anything. Cloud
+  project/domain inputs are not needed for this work. Independent accounting review and operational
+  release gates remain documented requirements for an eventual operator, not tasks to perform here.
+- Import recovery PR #1 was merged into public main (`a83b1dd`). Work continues on
+  `codex/policy-override-calculation` from that merge.
+- C-2 calculation foundation: approved contract-pinned overrides now reach bundle assembly as of
+  its cutoff, with obligation > contract > product precedence and member isolation. Draft and
+  future approvals are excluded; superseded rows support historical cutoffs. Current approval
+  wins deterministic timestamp ties in both the resolver API and bundle reader.
+- Fixed two pinning hazards: a scoped value is never promoted to a group default on recomputation;
+  a shadowed product default is retained as PRODUCT-scope bundle metadata for subsequent product
+  pinning. PRODUCT metadata is not a contract lookup candidate and is not a group policy pin.
+- A PostgreSQL regression uses the real submit/approve/compute/persist path: POL-122 changes earned
+  unbilled balances from contract assets to receivables without changing their sum; repeated
+  computation preserves scope, and an approved successor restores the conditional classification.
+  The draft row is seeded by the fixture because public creation remains disabled.
+- Actual verification: 50 tests passed across policy domain, product-pin domain/unit, scoped-input
+  unit and engine kernel suites; all 267 architecture tests passed. Mypy passed for six changed
+  source files; Ruff lint/format and git whitespace checks passed. An additional 346 transaction-price,
+  balance-engine and scoped-input tests passed. All checks were local; no cloud services used.
+- C-2 remains open: public authoring validation and approval controls, POL-163 period-scoped
+  exception handling, a full significant-financing workflow and the platform answer-key runner
+  still need completion. This is calculation infrastructure, not a claim that policy overrides
+  are available in the UI or that the repository is production-ready. No deployment performed.
+
 ## Continuation — October 7, 2026 (America/Los_Angeles)
 
 - Branch `codex/import-job-recovery`, based on public main `43631fc`. Closed the implementation
@@ -21,8 +48,8 @@
   limitations and October 3 test failures remain historical and unresolved unless stated here.
   Full backend/CI, live deployment, accounting review and volume performance were not rerun.
 - Next implementation item: C-2, policy overrides that actually reach calculation, including
-  POL-122 and the significant-financing rate path. Independent accounting decisions and hosted
-  inputs remain owner/reviewer work. Research folders and removed website references stay excluded.
+  POL-122 and the significant-financing rate path. Independent accounting decisions remain reviewer work; hosted inputs are outside the
+  owner's clarified repository-only scope. Research folders and removed website references stay excluded.
 
 ## Public repository publication — October 5, 2026 (America/Los_Angeles)
 

@@ -6,6 +6,14 @@ October 7 continuation: B5-3 and C-1 were closed on `codex/import-job-recovery` 
 import-job cleanup, lock-wait recovery and queued-cancellation handling. See `PROGRESS.md` for
 new verification; all remaining release evidence below retains its original date.
 
+October 7 policy continuation: C-2 is partially implemented. Approved contract-pinned rows now
+reach calculation, with scope precedence, historical approval cutoffs and preserved product
+pins. A real PostgreSQL approval/computation regression verifies POL-122 balance classification.
+Public override creation remains disabled while authoring controls are completed; POL-163's
+period-scoped contract exception and the full financing workflow remain open. Historical statements
+below that *no computation reads an override* describe the October 3 release, not this continuation.
+The owner has limited current work to repository completion and explicitly excluded deployment.
+
 The file has three classes and two tables beside them:
 
 - **A. What stands before production use** — matters that are not the build programme's to close.
