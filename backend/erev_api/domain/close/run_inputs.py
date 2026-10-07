@@ -52,6 +52,13 @@ no version takes effect at a past instant (04 §16.5) — and a later period's i
 Every legal entity, because a pass over a group that another entity contracts or performs reads
 that entity's row; each at the run's last day in its own time zone.
 
+Contract exceptions are included by effective value as well (October 7 continuation). The
+same period-scoped reader used by calculation bundles supplies approved POL-163 exceptions,
+including superseded rows for historical cutoffs. Only exceptions that differ from the entity
+default enter the digest. Drafts, same-value successors, approvals after the entity-local period
+end and framework-forced IFRS treatment leave it unchanged. An approval in the period that
+changes a value asks for another close run, even when the amount in this particular run is zero.
+
 Both reads run under the tenant's SYSTEM entity scope (supervisor ruling R-42 (d)): what a
 control reads must not depend on who reads it, and a version at the level of an entity is a row
 of that entity (T-PLT-32 is RLS-TE).
@@ -70,8 +77,8 @@ from sqlalchemy import Select, Text, cast, func, literal, select
 from sqlalchemy.dialects.postgresql import aggregate_order_by
 
 from erev_api.db.session import system_entity_scope
-from erev_api.db.tables import fx_rate, legal_entity
-from erev_api.domain.contracts import bundles
+from erev_api.db.tables import contract, fx_rate, legal_entity, policy_override
+from erev_api.domain.contracts import bundles, policy_inputs
 from erev_api.enums import BookCode
 from erev_api.registry import resolve as registry
 
@@ -178,10 +185,78 @@ def _registry_digest(values: dict[UUID, dict[str, Any]], own: UUID) -> str:
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
+def _contract_period_values(
+    session: Session,
+    scope: PeriodScope,
+    cutoff: datetime,
+    defaults: dict[UUID, dict[str, Any]],
+) -> dict[str, Any]:
+    """Effective contract exceptions by value, using the calculation reader's cutoffs.
+
+    Read all tenant contracts, like the entity defaults, so the digest is independent of
+    the caller's entity permissions or a close step's changing group population. A
+    same-value successor, an unapproved row or an exception after period end changes nothing.
+    """
+    rows = (
+        session.execute(
+            select(
+                policy_override,
+                contract.c.external_id.label("contract_key"),
+                legal_entity.c.id.label("owner_entity_id"),
+                legal_entity.c.code.label("entity_code"),
+                legal_entity.c.time_zone,
+            )
+            .join(
+                contract,
+                (contract.c.tenant_id == policy_override.c.tenant_id)
+                & (contract.c.id == policy_override.c.contract_id),
+            )
+            .join(
+                legal_entity,
+                (legal_entity.c.tenant_id == contract.c.tenant_id)
+                & (legal_entity.c.id == contract.c.contracting_entity_id),
+            )
+            .where(
+                policy_override.c.policy_key == "fx.cl_historical_layering",
+                policy_override.c.status.in_(("APPROVED", "SUPERSEDED")),
+                policy_override.c.approved_at <= cutoff,
+            )
+        )
+        .mappings()
+        .all()
+    )
+    contracts = {
+        UUID(str(row["contract_id"])): (str(row["contract_key"]), str(row["entity_code"]))
+        for row in rows
+    }
+    entities = {
+        str(row["entity_code"]): (UUID(str(row["owner_entity_id"])), str(row["time_zone"]))
+        for row in rows
+    }
+    resolved = policy_inputs.period_scoped_inputs(
+        [dict(row) for row in rows],
+        book_code=scope.book_code,
+        contracts=contracts,
+        period_cutoffs=[
+            (code, scope.period_key, bundles.period_end_instant(scope.end_date, zone))
+            for code, (_, zone) in sorted(entities.items())
+        ],
+        known_at=cutoff,
+    )
+    found: dict[str, Any] = {}
+    for item in resolved:
+        # The key uses the same unambiguous contract/entity/period identity as the bundle.
+        _, entity_code, _ = json.loads(item.subject_key)
+        entity_id, _ = entities[entity_code]
+        if item.value != defaults[entity_id][item.code]:
+            found[item.subject_key] = item.value
+    return found
+
+
 def read(
     session: Session, scope: PeriodScope, known_at: datetime, *, whenever_published: bool = False
 ) -> RunInputs:
-    """What a period-end pass of ``scope`` can read at ``known_at``, in three statements (module
+    """What a period-end pass of ``scope`` can read at ``known_at`` (module
     docstring): what the run's first period-end step records. The cutoff is the bundle's — the
     later of ``known_at`` and the transaction timestamp. With ``whenever_published`` the rates
     are those in force whenever their version was published: the gate's read (``standing``)."""
@@ -191,7 +266,12 @@ def read(
             rates_statement(None if whenever_published else cutoff, scope.end_date)
         ).scalar_one()
         values = period_values(session, scope, cutoff)
-    return RunInputs(rates=str(rates), registry=_registry_digest(values, scope.entity_id))
+        exceptions = _contract_period_values(session, scope, cutoff, values)
+    digest = _registry_digest(values, scope.entity_id)
+    if exceptions:
+        canonical = json.dumps([digest, exceptions], sort_keys=True, separators=(",", ":"))
+        digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+    return RunInputs(rates=str(rates), registry=digest)
 
 
 def standing(session: Session, scope: PeriodScope, known_at: datetime) -> RunInputs:

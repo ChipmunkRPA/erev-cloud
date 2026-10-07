@@ -26,7 +26,7 @@ remeasurement of 50.00 — and at 1.115000 USD 11,150.00: 150.00, of which a sec
 from __future__ import annotations
 
 import dataclasses
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
@@ -37,14 +37,14 @@ from erev_api.auth.keyring import KeyRing
 from erev_api.clock import FrozenClock
 from erev_api.config import Settings
 from erev_api.db.tables import close_run, combination_group, fx_rate_set_version
-from erev_api.domain.close import close_runs, gates
+from erev_api.domain.close import close_runs, gates, run_inputs
 from erev_api.enums import ApprovalSubjectType
 from erev_api.files.store import LocalFileStore
 from erev_api.main import create_app
 from erev_api.schemas.close_runs import CloseRunCreateIn
 from fastapi import FastAPI
 from sqlalchemy import func, select
-from support import close_run_worlds, worlds
+from support import close_run_worlds, principals, worlds
 from support import close_runs as runs
 from support.db import TestDatabase
 from support.reference import PERIODS, approve, get, post, slug
@@ -436,3 +436,89 @@ def test_a_period_pinned_policy_value_that_comes_into_force_after_the_period_ask
     assert None not in _digests(world, first)
     assert _posted(world, second) == []
     assert _gate(world) == ("PASSED", 0, None)
+
+
+def test_contract_period_policy_change_invalidates_only_the_period_that_reads_it(
+    app: FastAPI,
+    keyring: KeyRing,
+    clock: FrozenClock,
+    files: LocalFileStore,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from support.factories import drafted_override
+
+    world = close_run_worlds.august_in_soft_close(app, keyring, clock, files)
+    august = runs.closed(world, monkeypatch, entity_code=AVM_US, period_key=AUGUST)
+    assert august["status"] == "SUCCEEDED", august
+    state = worlds.period_state(world, AVM_US, SEPTEMBER)
+    closing = post(
+        app,
+        f"{PERIODS}/{state['id']}/start-close",
+        world.maya,
+        {"comment": "September close"},
+        if_match=f'"r{state["row_version"]}"',
+    )
+    assert closing.status_code == 200, closing.text
+    first = runs.closed(world, monkeypatch, entity_code=AVM_US, period_key=SEPTEMBER)
+    assert first["status"] == "SUCCEEDED", first
+    assert _gate(world, SEPTEMBER) == ("PASSED", 0, None)
+    contract_id = next(iter(world.contracts.values())).contract["id"]
+
+    def ifrs_inputs() -> run_inputs.RunInputs:
+        with world.place.uow() as uow:
+            scope = gates.period_scope(uow.session, UUID(str(state["id"])))
+            assert scope is not None
+            return run_inputs.standing(
+                uow.session, dataclasses.replace(scope, book_code="IFRS15"), uow.now
+            )
+
+    ifrs_before = ifrs_inputs()
+
+    def draft(value: str) -> UUID:
+        return drafted_override(world.place, contract_id, "fx.cl_historical_layering", value)
+
+    def approve_override(identifier: UUID) -> None:
+        sent = post(app, f"/api/v1/policy-overrides/{identifier}/submit", world.maya, {})
+        assert sent.status_code == 200, sent.text
+        decided = approve(app, sent.json()["approval_request_id"], world.marcus)
+        assert decided.status_code == 200, decided.text
+
+    # A draft cannot invalidate a close; a same-default approval also changes no input value.
+    approve_override(draft("ENABLED"))
+    assert _gate(world, SEPTEMBER) == ("PASSED", 0, None)
+    monetary = draft("DISABLED_REMEASURE_AS_MONETARY")
+    assert _gate(world, SEPTEMBER) == ("PASSED", 0, None)
+    clock.advance(timedelta(minutes=1))
+    approve_override(monetary)
+    assert _gate(world, AUGUST) == ("PASSED", 0, None)
+    assert _gate(world, SEPTEMBER) == ("FAILED", 1, POLICIES_CHANGED)
+    assert ifrs_inputs() == ifrs_before  # framework-forced treatment ignores the exception
+
+    # Recompute and the actual close job acknowledge the new input. This fixture has an
+    # asset position, so the liability policy changes no amount and the second run posts none.
+    second = runs.closed(world, monkeypatch, entity_code=AVM_US, period_key=SEPTEMBER)
+    assert second["status"] == "SUCCEEDED", second
+    assert _digests(world, second) != _digests(world, first)
+    assert _posted(world, second) == []
+    assert _gate(world, SEPTEMBER) == ("PASSED", 0, None)
+    clock.advance(timedelta(minutes=1))
+    approve_override(draft("DISABLED_REMEASURE_AS_MONETARY"))
+    assert _gate(world, SEPTEMBER) == ("PASSED", 0, None)
+
+    # A successor approved after September's local period end leaves its effective value.
+    clock.set(datetime(2026, 10, 2, 12, tzinfo=UTC))
+    author = principals.workspace(
+        app, world.maya.member, principals.sign_in(app, world.maya.member.email)
+    )
+    approver = principals.workspace(
+        app,
+        world.marcus.member,
+        principals.sign_in(app, world.marcus.member.email),
+        world.marcus.secret,
+    )
+    world = dataclasses.replace(
+        world, place=dataclasses.replace(world.place, author=author), marcus=approver
+    )
+    approve_override(draft("ENABLED"))
+    assert _gate(world, SEPTEMBER) == ("PASSED", 0, None)
+    assert _gate(world, AUGUST) == ("PASSED", 0, None)

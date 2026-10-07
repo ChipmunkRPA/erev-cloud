@@ -40,6 +40,7 @@ read-back for a line without a key), so the next computations post nothing.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
@@ -60,10 +61,11 @@ from erev_api.domain.close import gates, period_end
 from erev_api.domain.contracts import computation
 from erev_api.files.store import LocalFileStore
 from erev_api.main import create_app
+from erev_engine.errors import EngineError
 from erev_engine.stages.s01_canonicalize import group_entity_subject_key
 from fastapi import FastAPI
 from sqlalchemy import and_, func, select
-from support import close_runs
+from support import close_runs, principals
 from support.db import TestDatabase
 from support.factories import (
     GATEWAY,
@@ -76,6 +78,7 @@ from support.factories import (
     booked_contract,
     computed,
     customer_id,
+    open_periods,
     product_with_template,
     published_mapping,
     published_template,
@@ -561,11 +564,7 @@ def test_a_settlement_stored_without_a_subject_key_answers_the_group_subject(
     assert _unstamped_foreign_lines(world, contract_id) == 0
 
 
-def test_contract_period_override_close_pass_posts_liability_fx_once(
-    world: World,
-) -> None:
-    from support.factories import drafted_override
-
+def _advance_received(world: World) -> tuple[UUID, UUID]:
     booked = activated_contract(
         world.place,
         booked_contract(
@@ -591,6 +590,15 @@ def test_contract_period_override_close_pass_posts_liability_fx_once(
     contract_id, group_id = booked.contract["id"], booked.combination_group["id"]
     _recorded(world, contract_id, 2, _invoice("ADV-1", "2026-07-01", "90000.00"))
     assert _fx_lines(world, contract_id) == []
+    return contract_id, group_id
+
+
+def test_contract_period_override_close_pass_posts_liability_fx_once(
+    world: World,
+) -> None:
+    from support.factories import drafted_override
+
+    contract_id, group_id = _advance_received(world)
     # Seed the still-disabled public authoring path; approval and calculation are real commands.
     identifier = drafted_override(
         world.place, contract_id, "fx.cl_historical_layering", "DISABLED_REMEASURE_AS_MONETARY"
@@ -639,3 +647,62 @@ def test_contract_period_override_close_pass_posts_liability_fx_once(
     assert _fx_lines(world, contract_id) == expected
     assert _line_count(world, contract_id) == count
     assert _unstamped_foreign_lines(world, contract_id) == 0
+
+
+def test_unreconciled_policy_transition_keeps_the_persisted_calculation_unchanged(
+    world: World,
+) -> None:
+    from support.factories import drafted_override
+
+    contract_id, group_id = _advance_received(world)
+
+    def approve_policy(value: str, author: Actor, approver: Actor) -> None:
+        identifier = drafted_override(world.place, contract_id, "fx.cl_historical_layering", value)
+        sent = post(world.app, f"/api/v1/policy-overrides/{identifier}/submit", author, {})
+        assert sent.status_code == 200, sent.text
+        decision = approve(world.app, sent.json()["approval_request_id"], approver)
+        assert decision.status_code == 200, decision.text
+
+    approve_policy("DISABLED_REMEASURE_AS_MONETARY", world.maya, world.marcus)
+    computed(world.place, group_id)
+    before_lines = _line_count(world, contract_id)
+    before_head = world.place.scalar(
+        select(combination_group.c.head_computation_id).where(combination_group.c.id == group_id)
+    )
+    world.place.clock.set(datetime(2026, 10, 2, 12, tzinfo=UTC))
+    author = principals.workspace(
+        world.app,
+        world.maya.member,
+        principals.sign_in(world.app, world.maya.member.email),
+        world.maya.secret,
+    )
+    approver = principals.workspace(
+        world.app,
+        world.marcus.member,
+        principals.sign_in(world.app, world.marcus.member.email),
+        world.marcus.secret,
+    )
+    open_periods(world.app, author, entity_code=ENTITY, keys=["FY2026-P10"])
+    approve_policy("ENABLED", author, approver)
+    with pytest.raises(EngineError) as refused, world.place.uow() as uow:
+        computation.recompute(uow, group_id)
+        uow.commit()
+    assert refused.value.code == "ENGINE_INVARIANT_VIOLATED"
+    assert refused.value.detail["period_key"] == "FY2026-P10"
+    assert refused.value.detail["carrying"] == "7740000"
+    assert refused.value.detail["expected_carrying"] == "7200000"
+    assert _line_count(world, contract_id) == before_lines
+    assert (
+        world.place.scalar(
+            select(combination_group.c.head_computation_id).where(
+                combination_group.c.id == group_id
+            )
+        )
+        == before_head
+    )
+    assert (
+        world.place.scalar(
+            select(combination_group.c.dirty_since).where(combination_group.c.id == group_id)
+        )
+        is not None
+    )

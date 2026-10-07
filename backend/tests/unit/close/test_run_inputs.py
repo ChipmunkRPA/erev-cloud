@@ -10,8 +10,8 @@ of ``close.run_inputs`` as statements and as rules. The database witnesses are
   run is the one a bundle hands to the run's period: the same versions, the same instant — the
   earlier of the cutoff and the period's last instant in the entity's zone — the same resolver
   (third row of rev 1.291, with item PINP-PERIOD-VALUE-1).
-- ``read`` costs a caller under the tenant's scope five statements: the scope, the transaction
-  timestamp, the rates, the registry's versions, the legal entities.
+- ``read`` costs a caller under the tenant's scope six statements: the scope, the transaction
+  timestamp, the rates, the registry's versions, the legal entities, the contract exceptions.
 - ``standing``, the gate's read, takes the rates whenever their version was published.
 """
 
@@ -404,13 +404,15 @@ class _Recording:
             return None
         if "FROM erev.legal_entity" in text:
             return type("R", (), {"all": lambda s: [(ENTITY, ZONE)]})()
+        if "FROM erev.policy_override" in text:
+            return type("R", (), {"mappings": lambda s: s, "all": lambda s: []})()
         return type("R", (), {"mappings": lambda s: []})()
 
 
-def test_a_read_under_the_tenants_scope_costs_five_statements() -> None:
+def test_a_read_under_the_tenants_scope_costs_six_statements() -> None:
     """The scope it finds, the transaction timestamp of the cutoff, the rates, the registry's
-    versions and the legal entities — in that order, the cutoff being the bundle's: the later of
-    the instant and the timestamp."""
+    versions, the legal entities and the contract exceptions — in that order. The cutoff is
+    the bundle's: the later of the instant and the timestamp."""
     session = _Recording("*")
     found = run_inputs.read(session, SCOPE, CUTOFF)  # type: ignore[arg-type]
     assert found.rates == "r" * 64 and len(found.registry) == 64
@@ -425,10 +427,12 @@ def test_a_read_under_the_tenants_scope_costs_five_statements() -> None:
         if "FROM erev.registry_version" in text
         else "entities"
         if "FROM erev.legal_entity" in text
+        else "exceptions"
+        if "FROM erev.policy_override" in text
         else text
         for text in session.statements
     ]
-    assert kinds == ["timestamp", "scope", "rates", "registry", "entities"]
+    assert kinds == ["timestamp", "scope", "rates", "registry", "entities", "exceptions"]
 
 
 def test_a_read_under_a_narrower_scope_widens_for_its_statements_and_gives_it_back() -> None:
@@ -445,6 +449,8 @@ def test_a_read_under_a_narrower_scope_widens_for_its_statements_and_gives_it_ba
         if "FROM erev.registry_version" in text
         else "entities"
         if "FROM erev.legal_entity" in text
+        else "exceptions"
+        if "FROM erev.policy_override" in text
         else "-"
         for text in session.statements
     ]
@@ -453,6 +459,7 @@ def test_a_read_under_a_narrower_scope_widens_for_its_statements_and_gives_it_ba
         "rates",
         "registry",
         "entities",
+        "exceptions",
         "set",
     ]
 
@@ -468,7 +475,7 @@ def test_the_gates_read_takes_the_rates_whenever_published_and_the_versions_by_i
     session = _Recording("*")
     found = run_inputs.standing(session, SCOPE, CUTOFF)  # type: ignore[arg-type]
     assert found.rates == "r" * 64 and len(found.registry) == 64
-    assert len(session.statements) == 5  # as ``read``: timestamp, scope, rates, registry, entities
+    assert len(session.statements) == 6  # timestamp, scope, rates, registry, entities, exceptions
     (rates,) = [text for text in session.statements if text.startswith("SELECT encode(sha256(")]
     (policies,) = [text for text in session.statements if "FROM erev.registry_version" in text]
     assert "published_at" not in rates

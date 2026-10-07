@@ -1668,6 +1668,15 @@ def ic_pair(o: ObligationState, flow: RevenueFlow, reliefs_fn_ec: int) -> IcPair
 | S12-INV-07 | For every (contracting entity, performing entity, period): Σ due-to txn = Σ due-from txn | REQ-ENT-005 |
 | S12-INV-08 | For each monetary-liability role and (c, e, b, t): Σ open layers (txn) = the open balance of that role (refund-liability components, deposit liability, consideration payable); after period-end remeasurement each open layer's carrying = round(txn open × closing rate); a fully consumed layer ends at functional 0 (rev 1.2; D-25b) | unit test; CHK-084 |
 
+October 7, 2026 continuation: period close validates the functional balance of every layer
+before emitting an output. A layer with no transaction quantity must carry functional zero
+(S12-INV-01); an open historical contract-liability layer must carry its original functional
+amount less cumulatively rounded historical consumption (S12-R-05). A mismatch stops calculation
+with `ENGINE_INVARIANT_VIOLATED`, identifying the layer, period, actual and expected carrying
+amounts. This detects an unreconciled monetary-to-historical transition; it does not select an
+accounting treatment for that transition. Public POL-163 authoring remains disabled pending that
+decision and the remaining workflow validation.
+
 ### 12.4 Findings and codes
 
 | Code (04 §15.4) | Severity | Condition |
