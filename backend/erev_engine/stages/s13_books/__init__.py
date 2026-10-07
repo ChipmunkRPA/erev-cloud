@@ -669,6 +669,11 @@ def _unconstrained_history(ctx: BookContext, pob: PobState, st: AllocatedState) 
     Re-measure before applying the collectibility cap; adding to a capped total is incorrect.
     """
     end = _stream_end(ctx, st)
+    contracting_calendars = {
+        header.contracting_entity_code: ctx.entities[header.contracting_entity_code].periods
+        for contract in pob.identified.member_contract_keys
+        for header in (pob.identified.canonical.contracts[contract].header,)
+    }
     positions = {st.inception_date}
     positions.update(event.effective_date for event in pob.identified.canonical.boundary_events)
     positions.update(
@@ -676,6 +681,14 @@ def _unconstrained_history(ctx: BookContext, pob: PobState, st: AllocatedState) 
         for entity in ctx.entities.values()
         for period in entity.periods
         if st.inception_date <= period.end_date <= end
+        # A performing calendar can extend beyond the contracting calendar (e.g. a 4-4-5
+        # year ends in January). VC/royalty policy lookup requires a contracting period.
+        # Keep covered performing cutoffs for cost impairment, but do not invent a policy
+        # period for an incidental cutoff. Actual boundary-event dates remain validated.
+        and all(
+            any(p.start_date <= period.end_date <= p.end_date for p in calendar)
+            for calendar in contracting_calendars.values()
+        )
     )
     ordered = sorted(at for at in positions if st.inception_date <= at <= end)
     rates = {at: _rates(st, at, None) for at in ordered}

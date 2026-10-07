@@ -882,6 +882,14 @@ def test_mixed_producers_stage_06_july_then_stage_08_august() -> None:
         known_at=datetime(2026, 8, 30, 23, tzinfo=UTC),
     )
     bundle = w.with_performing_445(bundle)
+    # The performing year extends into 2028, beyond the contracting calendar. Dated
+    # consideration keeps covered performing cutoffs without measuring outside that calendar.
+    from support.fold import fold_trace
+
+    state, _ = fold_trace(bundle, "ASC606")
+    consideration_dates = {build.at for build in state.tp_unconstrained[WARRANT]}
+    assert date(2026, 8, 29) in consideration_dates
+    assert date(2028, 1, 1) not in consideration_dates
     events = {event.event_key: event for event in bundle.events}
     estimate_event = next(
         event.event_key
