@@ -12858,7 +12858,8 @@
               "schedule_line",
               "subledger_line",
               "journal_line",
-              "contract_version_balance"
+              "contract_version_balance",
+              "loss_provision_version"
             ],
             "title": "Type",
             "type": "string"
@@ -58712,7 +58713,8 @@
                 "schedule_line",
                 "subledger_line",
                 "journal_line",
-                "contract_version_balance"
+                "contract_version_balance",
+                "loss_provision_version"
               ],
               "title": "Object Type",
               "type": "string"
@@ -58922,7 +58924,8 @@
                 "schedule_line",
                 "subledger_line",
                 "journal_line",
-                "contract_version_balance"
+                "contract_version_balance",
+                "loss_provision_version"
               ],
               "title": "Object Type",
               "type": "string"

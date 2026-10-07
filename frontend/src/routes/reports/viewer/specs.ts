@@ -854,7 +854,10 @@ export function reportColumns(context: ColumnContext): ReportColumn[] {
       key,
       header: kind === "money" && single !== undefined ? `${header} (${single})` : header,
       kind,
-      drillable: drillable && kind === "money",
+      drillable:
+        (drillable ||
+          (definition.code === "loss_provision_register" && key === "provision_balance")) &&
+        kind === "money",
     };
   });
 }

@@ -104,6 +104,7 @@ from erev_api.db.tables import (
     job,
     ledger_chain_head,
     legal_entity,
+    loss_provision_version,
     obligation_version,
     period,
     period_lock,
@@ -920,6 +921,7 @@ CELL_EXPLAINERS: Final[Mapping[str, CellExplainer]] = MappingProxyType(
     {
         revenue_waterfall_builder.CODE: revenue_waterfall_builder.cell,
         rpo_builder.CODE: rpo_builder.cell,
+        loss_provision_register_builder.CODE: loss_provision_register_builder.cell,
     }
 )
 NO_CELL_EXPLAINER: Final = "The cells of this report name no contributors."
@@ -2553,6 +2555,10 @@ def _reach_statement(kind: str, ids: Sequence[UUID]) -> Select[tuple[UUID, UUID]
     (``explain.service``): a schedule line and a subledger line by the line's entity, an
     obligation version by its contract's row, the contracting entity. A kind without a rule is
     refused, so that a new contributor kind is never named before its reach is stated."""
+    if kind == "loss_provision_version":
+        return select(loss_provision_version.c.id, loss_provision_version.c.entity_id).where(
+            loss_provision_version.c.id.in_(ids)
+        )
     if kind == "schedule_line":
         return select(schedule_line.c.id, schedule_line.c.entity_id).where(
             schedule_line.c.id.in_(ids)

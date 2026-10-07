@@ -37,6 +37,7 @@ export const EXPLAIN_OBJECT_TYPES = [
   "subledger_line",
   "journal_line",
   "contract_version_balance",
+  "loss_provision_version",
 ] as const;
 export type ExplainObjectTypeValue = (typeof EXPLAIN_OBJECT_TYPES)[number];
 
