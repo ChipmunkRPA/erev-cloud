@@ -1160,3 +1160,152 @@ def test_a_line_posted_in_the_soft_close_after_a_reopen_is_a_post_reopen_line(
     with tenant_session(context, read_only=True) as session:
         chain = subledger.verify_ledger_chain(session, book_code="ASC606")
     assert (chain.result, chain.first_failure_seq) == (ControlResult.PASS, None)
+
+
+def _manual_task(
+    world: CloseWorld, admin: Actor, *, owner_role_id: UUID | None = None
+) -> dict[str, Any]:
+    created = post(
+        world.app,
+        "/api/v1/close-checklist-templates",
+        admin,
+        {
+            "code": "CONTROLLER-TASK",
+            "name": "Controller close review",
+            "gate_kind": "MANUAL",
+            "is_blocking": True,
+            "due_offset_days": 1,
+            "owner_role_id": None if owner_role_id is None else str(owner_role_id),
+        },
+    )
+    assert created.status_code == 201, created.text
+    return _shown_task(world)
+
+
+def _shown_task(world: CloseWorld) -> dict[str, Any]:
+    response = get(world.app, f"{PERIODS}/{world.state_id}/cockpit", world.maya)
+    assert response.status_code == 200, response.text
+    return next(item for item in response.json()["checklist"] if item["code"] == "CONTROLLER-TASK")
+
+
+def _sign_task(world: CloseWorld, signer: Actor, task: dict[str, Any]) -> Any:
+    state = _state(world)
+    return post(
+        world.app,
+        f"{PERIODS}/{world.state_id}/checklist/{task['id']}/sign",
+        signer,
+        {"statement_accepted": True},
+        if_match=f'"r{state["row_version"]}"',
+    )
+
+
+@pytest.mark.parametrize("assignment", ["none", "other_entity", "this_entity", "all_entities"])
+def test_task_signer_holds_owner_role_for_period_entity(
+    world: CloseWorld, clock: FrozenClock, assignment: str
+) -> None:
+    from erev_api.db.tables import role, signoff
+
+    admin = actor_with_role(world.app, clock, world.tenant_id, "tenant_admin", name="task-admin")
+    with system_session(world) as session:
+        owner = session.execute(select(role.c.id).where(role.c.code == "controller")).scalar_one()
+        other = other_entity(session, world)
+    task = _manual_task(world, admin, owner_role_id=owner)
+    candidate = colleague(world.tenant_id, "task-signer")
+    assign(candidate, "revenue_accountant")  # permission for the period is insufficient by itself
+    if assignment != "none":
+        ids = {"other_entity": [other], "this_entity": [world.entity_id], "all_entities": []}
+        assign(candidate, "controller", entity_ids=ids[assignment])
+    signer = enrolled(world.app, clock, candidate)
+    result = _sign_task(world, signer, task)
+    expected = 200 if assignment in {"this_entity", "all_entities"} else 403
+    assert result.status_code == expected, result.text
+    with system_session(world) as session:
+        count = session.execute(
+            select(func.count())
+            .select_from(signoff)
+            .where(signoff.c.subject_id == UUID(task["id"]))
+        ).scalar_one()
+    assert count == (1 if expected == 200 else 0)
+    assert _shown_task(world)["status"] == ("PASSED" if expected == 200 else "NOT_STARTED")
+
+
+def test_reopen_requires_new_task_signoff_and_preserves_history(
+    world: CloseWorld, clock: FrozenClock
+) -> None:
+    from erev_api.db.tables import signoff
+
+    admin = actor_with_role(world.app, clock, world.tenant_id, "tenant_admin", name="task-admin")
+    signer = actor_with_role(
+        world.app, clock, world.tenant_id, "revenue_accountant", name="task-signer"
+    )
+    task = _manual_task(world, admin)
+    first = _sign_task(world, signer, task)
+    assert first.status_code == 200, first.text
+    with system_session(world) as session:
+        old = dict(
+            session.execute(select(signoff).where(signoff.c.subject_id == UUID(task["id"])))
+            .mappings()
+            .one()
+        )
+    _lock_by_writer(world)
+    priya = actor_with_role(
+        world.app, clock, world.tenant_id, "revenue_reviewer", name="task-priya"
+    )
+    marcus = actor_with_role(world.app, clock, world.tenant_id, "controller", name="task-marcus")
+    elena = actor_with_role(world.app, clock, world.tenant_id, "controller", name="task-elena")
+    request = _request_reopen(world, priya)
+    assert request.status_code == 200, request.text
+    request_id = str(request.json()["approval_request_id"])
+    assert approve(world.app, request_id, marcus).status_code == 200
+    assert _shown_task(world)["status"] == "PASSED"  # first approval alone does not reopen
+    second = approve(world.app, request_id, elena)
+    assert second.status_code == 200, second.text
+    reset = _shown_task(world)
+    assert (reset["status"], reset["signoff"]) == ("NOT_STARTED", None)
+    with system_session(world) as session:
+        scope = _scope(session, world.state_id)
+        assert "CONTROLLER-TASK" in {
+            item.code for item in gates.unsigned_blocking_tasks(session, scope)
+        }
+        assert (
+            dict(session.execute(select(signoff).where(signoff.c.id == old["id"])).mappings().one())
+            == old
+        )
+        cleared = (
+            session.execute(
+                select(audit_event).where(
+                    audit_event.c.object_id == UUID(task["id"]),
+                    audit_event.c.action == close_commands.SIGNOFF_CLEARED_ACTION,
+                )
+            )
+            .mappings()
+            .one()
+        )
+        assert cleared["approval_request_id"] == UUID(request_id)
+    signed_again = _sign_task(world, signer, reset)
+    assert signed_again.status_code == 200, signed_again.text
+    with system_session(world) as session:
+        rows = list(
+            session.execute(
+                select(signoff).where(signoff.c.subject_id == UUID(task["id"]))
+            ).mappings()
+        )
+        assert len(rows) == 2
+        assert len({row["subject_content_sha256"] for row in rows}) == 2
+        assert {row["signer_id"] for row in rows} == {signer.member.user_id}
+        assert gates.unsigned_blocking_tasks(session, _scope(session, world.state_id)) == ()
+    assert _sign_task(world, signer, reset).status_code == 409
+
+
+def test_closed_period_cannot_receive_a_new_task_signature(
+    world: CloseWorld, clock: FrozenClock
+) -> None:
+    admin = actor_with_role(world.app, clock, world.tenant_id, "tenant_admin", name="task-admin")
+    signer = actor_with_role(
+        world.app, clock, world.tenant_id, "revenue_accountant", name="task-signer"
+    )
+    task = _manual_task(world, admin)
+    _lock_by_writer(world)
+    refused = _sign_task(world, signer, task)
+    assert refused.status_code == 409, refused.text
+    assert _shown_task(world)["signoff"] is None

@@ -264,6 +264,7 @@ TRANSITIONS: Final[Mapping[str, TableTransitions]] = MappingProxyType(
                     ("FAILED", "PASSED"),
                     ("FAILED", "WAIVED"),
                     ("PASSED", "FAILED"),
+                    ("PASSED", "NOT_STARTED"),
                     ("WAIVED", "FAILED"),
                     ("WAIVED", "NOT_STARTED"),
                 }

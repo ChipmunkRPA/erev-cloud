@@ -4644,3 +4644,58 @@ def test_db_15_webhook_endpoint_cannot_become_active_in_sandbox(
         assert session.execute(
             select(webhook_endpoint.c.is_active).where(webhook_endpoint.c.id == live["id"])
         ).scalar_one()
+
+
+def test_task_signature_cycles_preserve_other_uniqueness_and_refuse_lossy_downgrade(
+    committed_db: TestDatabase, keyring: KeyRing
+) -> None:
+    from importlib import import_module
+
+    migration = import_module("erev_api.db.migrations.versions.0135_close_task_signoffs")
+    tenant_id = tenant_id_of(tenant_factory(keyring=keyring))
+    with identity_session(request_id="tests-task-signature-cycles") as session:
+        preparer = insert_app_user(session)
+    context = DbContext(tenant_id=tenant_id, user_id=None, entity_scope="*")
+    subject_id = new_id()
+    with tenant_session(context) as session:
+
+        def signed(subject_type: str, digest: str) -> Executable:
+            return insert(signoff).values(
+                **signoff_values(
+                    tenant_id,
+                    subject_id=subject_id,
+                    signer_id=preparer,
+                    subject_type=subject_type,
+                    subject_content_sha256=digest,
+                )
+            )
+
+        session.execute(signed("close_checklist_item", "a" * 64))
+        assert _fails(session, signed("close_checklist_item", "a" * 64))[0] == "23505"
+        session.execute(signed("close_checklist_item", "b" * 64))
+        session.execute(signed("reconciliation", "a" * 64))
+        assert _fails(session, signed("reconciliation", "b" * 64))[0] == "23505"
+    # The owner has no tenant context and no BYPASSRLS: the migration must see all histories.
+    with committed_db.owner_engine.connect() as connection:
+        transaction = connection.begin()
+        try:
+            with (
+                ops.bound_to(connection),
+                pytest.raises(sa.exc.DBAPIError, match="repeated task signoffs"),
+            ):
+                migration.downgrade()
+        finally:
+            transaction.rollback()
+        assert (
+            connection.exec_driver_sql(
+                "SELECT relforcerowsecurity FROM pg_class WHERE oid = 'erev.signoff'::regclass"
+            ).scalar_one()
+            is True
+        )
+    with tenant_session(context, read_only=True) as session:
+        assert (
+            session.execute(
+                select(func.count()).select_from(signoff).where(signoff.c.subject_id == subject_id)
+            ).scalar_one()
+            == 3
+        )
