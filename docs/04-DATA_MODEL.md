@@ -7509,6 +7509,21 @@ later calculations. The viewer offers the drill only for this column.
 
 ### 16.14 Other read models and commands adopted in rev 1.2 (D-76)
 
+**Modification questionnaire confirmation (October 7 continuation; BR-MOD-01, REQ-MOD-002).**
+`POST /modifications/{id}/submit` requires an explicit boolean answer for every question proposed
+by the retained classification. A proposal returned by `classify` does not count as confirmation,
+including a proposed `false`. The preparer saves answers with `PATCH`, reclassifies and obtains a
+new preview before submission. Missing answers return 422 `validation-failed`, with rule
+`REQ-MOD-002`, field `questionnaire.<obligation key>.<question>`, and message "Confirm this
+questionnaire answer before submitting the modification." Creation and editing reject non-null, non-boolean
+classification answers with "Answer this questionnaire question with true or false." Contract-level
+questionnaire members retain their existing semantics. A classification whose stored shape cannot
+be read must be regenerated (`REQ-MOD-001`). The approval callback repeats the confirmation check
+for requests submitted before enforcement; a refused decision applies nothing. The preparer can
+edit such a request, voiding it through the existing draft transition, then confirm and resubmit.
+For paired regrouping modifications, every row must satisfy the confirmation requirement.
+
+
 **Contract step rule** (API-S-Contract `steps[]`; SCREENS R-05). Codes are assigned to steps as follows; a code not listed belongs to `RECOGNITION`.
 
 | Step (E-112) | Codes |

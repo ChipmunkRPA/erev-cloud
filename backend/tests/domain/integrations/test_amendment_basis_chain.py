@@ -105,6 +105,7 @@ from support.factories import (
 )
 from support.http import asgi_client
 from support.legacy_replay import LegacyWorld, committed, legacy_world, replayed
+from support.modifications import confirm_answers
 from support.reference import approve, assign, get, patch, post
 
 INTEGRATIONS = "/api/v1/integrations"
@@ -377,6 +378,7 @@ def _apply_modification(
     author = world.place.author
     classified = post(world.app, f"{MODIFICATIONS}/{modification_id}/classify", author, {})
     assert classified.status_code == 200, classified.text
+    confirm_answers(world.app, modification_id, author)
     queued = post(world.app, f"{MODIFICATIONS}/{modification_id}/preview", author, {})
     assert queued.status_code == 202, queued.text
     _work(world, UUID(queued.json()["id"]), runtime)

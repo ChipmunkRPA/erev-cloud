@@ -1,33 +1,30 @@
 # PROGRESS — eRev Cloud build loop notebook (under 20 KB)
 
-## Frontend verification — October 7, 2026
+## Modification questionnaire confirmation — October 7, 2026
 
-- Verified source at merged PR #22 (`30a4245`): all **2,042 frontend tests across 192 files**
-  pass; TypeScript, the Makefile-defined ESLint gate and the production Vite build pass.
-- Vite warns that the initial chunk is 1,149.57 kB (300.49 kB gzip). Build success does not
-  establish browser performance or end-to-end behavior. Browser gates remain to be verified.
-- The remaining backend run (excluding the already verified engine/architecture suites and
-  separate parity/answer-key/performance gates) is still running. No whole-backend pass is
-  claimed. Implementation limits and independent accounting review remain open; no deployment.
-
-## Consideration history across fiscal calendars — October 7, 2026
-
-- Continued from merged PR #21 (`ee00858`). A broader backend run selected 9,975 tests,
-  excluding parity, answer-key and performance gates. It stopped after 1,096 passes at the
-  mixed Stage-06/08 share-based consideration case: a performing 4-4-5 year ended January 1,
-  2028, beyond the contracting calendar, and the new consideration history requested a VC
-  policy for that uncovered date. This run is not a whole-backend pass.
-- Incidental period-end measurements now require coverage in the contracting calendars.
-  Covered performing cutoffs remain in the history for impairment; actual boundary-event dates
-  retain their existing validation. The original mixed-producer accounting figures and trace
-  assertions remain unchanged. The regression also checks that August 29 is retained and
-  the uncovered January 1 is excluded.
-- All 96 targeted share-based consideration, book-fold and cost/loss checks pass. Ruff and
-  source Mypy and design checks pass. The complete engine/architecture run passed **1,996**
-  tests with one existing Q-11 expected failure; there were no unexpected failures.
-- Remaining backend and specialist gates, documented release gaps and independent accounting
-  sign-off remain open. Repository work only; no deployment. Earlier dated evidence is preserved
-  in [BUILD-HISTORY-2026-10-07.md](docs/release/BUILD-HISTORY-2026-10-07.md).
+- Continued from main at PR #23 (`b570edb`). Submit now requires explicit boolean answers to
+  every retained classification proposal on every paired row. Approval rechecks older pending
+  requests before application. Classification/preview never confirm proposals themselves.
+  Invalid non-boolean answers are refused; drafts remain editable and edits invalidate old previews.
+- Synthetic preparers and fixtures explicitly save answers, reclassify and preview through the
+  commands. Volume generator 20 identifies that flow. No expected accounting figures changed.
+  Closed B1-6 in LIMITS; the other C-6 controls remain open.
+- Verification across split runs: **61 modification database tests passed, 1 existing skip**;
+  **20 related integration/report/scope/audit tests passed**. Earlier fixture failures were resolved
+  by explicit confirmation and including its audit entry; the final remainder passed 25/25.
+  Both the linked J-06 calculation and older pending-request refusal/revision passed. **123 combined
+  unit/volume checks passed**, including the 1/1000 database seed; this does not establish full-volume
+  modification coverage. Ruff, source Mypy, whitespace and design checks (500 files) pass.
+- A refused concurrent database run is not counted. Baseline `b570edb` open-world browser harness:
+  **189 passed**, zero failures/flaky/skipped; fresh-tenant, industry and design projects have no
+  tests. Baseline dependency/license/secret scans have zero findings; dated details are archived.
+- Baseline backend verification was intentionally interrupted to advance main: JUnit records
+  **824 completed cases, zero failures/errors/skips**; interrupt teardown raised a pytest stash
+  KeyError. This is incomplete evidence, not a green backend gate. Full-backend/specialist gates,
+  remaining release limitations and independent accounting review remain open. No deployment.
+- Owner requested automatic PR merging and only main retained. GitHub auto-merge and automatic
+  branch deletion are enabled; verified changes are merged before completed branches are removed.
+  Dated evidence: [BUILD-HISTORY-2026-10-07.md](docs/release/BUILD-HISTORY-2026-10-07.md).
 
 ## Balance aging enabled — October 7, 2026
 

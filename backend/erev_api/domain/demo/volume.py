@@ -139,7 +139,7 @@ KEY_PREFIX: Final = "perf"
 # 14 → 15 (2026-10-07): retain the exact two-decimal delivery split. Independently rounding
 # each batch to an integer could exceed (or undershoot) the contracted quantity.
 # 16: computation also persists immutable FX layer movements (T-CON-18).
-GENERATOR_VERSION: Final = 19
+GENERATOR_VERSION: Final = 20
 TENANT_CODE: Final = "perf-volume"
 CALENDAR_CODE: Final = "VOL-JAN"
 SSP_BOOK_CODE: Final = "VOL-SSP"
@@ -3368,7 +3368,11 @@ def _apply_modification(
     from erev_api.domain.contracts.compute_job import MODIFICATION_PREVIEW_MODE
     from erev_api.enums import ApprovalSubjectType, JobKind, ModificationStatus
     from erev_api.jobs import registry
-    from erev_api.schemas.modifications import ModificationCreateIn, ModificationSubmitIn
+    from erev_api.schemas.modifications import (
+        ModificationCreateIn,
+        ModificationSubmitIn,
+        ModificationUpdateIn,
+    )
 
     body = modification_body(m, spec, event)
     with ctx.read() as session:
@@ -3406,6 +3410,15 @@ def _apply_modification(
     if status == ModificationStatus.DRAFT.value:
         with ctx.command(cast.accountant, MODIFICATION_CREATE) as uow:
             classified = modifications.classify(uow, modification_id=modification_id)
+            if classified.prefill_reasons:
+                # The synthetic accountant accepts the generated answers explicitly, as the
+                # wizard does. Classification itself must never store a confirmation.
+                modifications.update_modification(
+                    uow,
+                    modification_id=modification_id,
+                    body=ModificationUpdateIn(questionnaire=classified.questionnaire),
+                )
+                classified = modifications.classify(uow, modification_id=modification_id)
             principal = uow.principal
         registry.run_inline(
             JobKind.CONTRACT_COMPUTE,

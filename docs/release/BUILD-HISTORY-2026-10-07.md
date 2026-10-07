@@ -431,3 +431,57 @@ Source: `30a42456841bc7bbda48edb9a1c8160e46fd7975` (PR #22), Node 24.5.
   chunk was 1,149.57 kB (300.49 kB gzip), above Vite's warning threshold. No bundle-budget,
   browser-performance, end-to-end or deployment claim follows from the build.
 - Full backend verification continues separately; production readiness remains unproven.
+
+## Frontend verification — October 7, 2026
+
+- Verified source at merged PR #22 (`30a4245`): all **2,042 frontend tests across 192 files**
+  pass; TypeScript, the Makefile-defined ESLint gate and the production Vite build pass.
+- Vite warns that the initial chunk is 1,149.57 kB (300.49 kB gzip). Build success does not
+  establish browser performance or end-to-end behavior. Browser gates remain to be verified.
+- The remaining backend run (excluding the already verified engine/architecture suites and
+  separate parity/answer-key/performance gates) is still running. No whole-backend pass is
+  claimed. Implementation limits and independent accounting review remain open; no deployment.
+
+## Consideration history across fiscal calendars — October 7, 2026
+
+- Continued from merged PR #21 (`ee00858`). A broader backend run selected 9,975 tests,
+  excluding parity, answer-key and performance gates. It stopped after 1,096 passes at the
+  mixed Stage-06/08 share-based consideration case: a performing 4-4-5 year ended January 1,
+  2028, beyond the contracting calendar, and the new consideration history requested a VC
+  policy for that uncovered date. This run is not a whole-backend pass.
+- Incidental period-end measurements now require coverage in the contracting calendars.
+  Covered performing cutoffs remain in the history for impairment; actual boundary-event dates
+  retain their existing validation. The original mixed-producer accounting figures and trace
+  assertions remain unchanged. The regression also checks that August 29 is retained and
+  the uncovered January 1 is excluded.
+- All 96 targeted share-based consideration, book-fold and cost/loss checks pass. Ruff and
+  source Mypy and design checks pass. The complete engine/architecture run passed **1,996**
+  tests with one existing Q-11 expected failure; there were no unexpected failures.
+- Remaining backend and specialist gates, documented release gaps and independent accounting
+  sign-off remain open. Repository work only; no deployment. Earlier dated evidence is preserved
+  in [BUILD-HISTORY-2026-10-07.md](docs/release/BUILD-HISTORY-2026-10-07.md).
+
+
+## Baseline browser and dependency verification — October 7, 2026
+
+Source: main `b570edbc0448015c769106cc99c7f42e4fc4f592`, before modification-confirmation changes.
+The local `scripts/e2e.sh` open-world harness passed **189 tests**, with zero failures, flaky
+or skipped tests, against a separate disposable UTF-8 PostgreSQL database and local API/worker/web.
+Fresh-tenant, industry and design projects contain no tests. Closed-world and QA-RC were not run.
+The initial database attempt used SQL_ASCII inherited from the local template and failed driver
+initialization; the empty test database was recreated as UTF-8 before the successful run. All
+harness processes were stopped. Nothing was deployed.
+
+`scripts/audit_deps.sh` directly audited 77/77 pinned Python runtime dependencies (five markers
+removed) and production npm dependencies: zero reported vulnerabilities. Combined output digest:
+`29f7238ca4cffab044dd38b70b158f31dd0e3a092e39557ae58d47a6c235c2c6`.
+This was a direct script run, not an immutable gate-context wrapper. License scan: 133 packages
+(77 Python, 56 npm), seven allowlisted, zero findings/allowlist errors. Secret scan: 3,388 files,
+eight allowlisted, zero findings/unused allowlist entries.
+
+The separate backend run excluding engine/architecture and parity/answer-key/performance markers
+was intentionally interrupted to permit main to advance. JUnit contains **824 completed cases,
+zero failures/errors/skips**, over 2,630.614 seconds. Interrupt teardown raised a pytest temporary-path
+stash KeyError. The run is incomplete; it is not a passing full-backend gate. These results apply
+to the baseline SHA above, not the subsequent confirmation change. Earlier engine/architecture
+and frontend evidence retains its own source/date.

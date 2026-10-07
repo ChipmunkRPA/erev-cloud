@@ -687,6 +687,55 @@ def test_mod_classification_keys_1_the_stored_classification_is_read_by_its_thre
     assert modifications.stored_classification(bare) == (_DETAIL, {}, {})
 
 
+def test_questionnaire_proposals_need_explicit_answers_including_false() -> None:
+    row = {
+        "classification": {
+            "proposal": _DETAIL,
+            "obligations": {"O2": _QUESTIONS},
+            "price_tests": {"O2": _TESTED},
+        },
+        "questionnaire": {},
+    }
+    errors = modifications.questionnaire_confirmation_errors(row)
+    assert [(error.field, error.rule_id) for error in errors] == [
+        ("questionnaire.O2.added_goods_distinct", "REQ-MOD-002"),
+        ("questionnaire.O2.priced_at_ssp", "REQ-MOD-002"),
+    ]
+    assert row["questionnaire"] == {}  # Reading the proposal never confirms it.
+    row["questionnaire"] = {"O2": {"added_goods_distinct": True}}
+    assert [error.field for error in modifications.questionnaire_confirmation_errors(row)] == [
+        "questionnaire.O2.priced_at_ssp"
+    ]
+    row["questionnaire"] = {"O2": {"added_goods_distinct": True, "priced_at_ssp": False}}
+    assert modifications.questionnaire_confirmation_errors(row) == []
+
+
+@pytest.mark.parametrize("value", ["true", "false", 0, 1, [], {}])
+def test_questionnaire_answers_do_not_accept_truthy_substitutes(value: Any) -> None:
+    errors = modifications.questionnaire_value_errors({"O2": {"priced_at_ssp": value}})
+    assert [(error.field, error.rule_id) for error in errors] == [
+        ("questionnaire.O2.priced_at_ssp", "REQ-MOD-002")
+    ]
+
+
+def test_questionnaire_confirmation_requires_readable_classification() -> None:
+    assert modifications.questionnaire_confirmation_errors({"classification": None})[0].field == (
+        "classification"
+    )
+    assert (
+        modifications.questionnaire_confirmation_errors(
+            {"classification": {"proposal": _DETAIL, "obligations": {}, "price_tests": {}}}
+        )
+        == []
+    )
+    assert (
+        modifications.questionnaire_value_errors(
+            {"price_change_settlement": "CREDIT_OR_REFUND", "separate_contract_external_id": "NEW"}
+        )
+        == []
+    )
+
+
 def test_mod_classification_keys_1_a_classification_stored_flat_reads_as_none() -> None:
     """The supervisor's ruling of 2026-10-02 (D-99 (3)): what ``classify`` stored before the item
     — the obligations' entries beside ``proposal`` and ``price_tests`` — reads as none, and so
