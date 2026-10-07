@@ -38798,6 +38798,16 @@ export interface operations {
           "application/problem+json": components["schemas"]["ProblemOut"];
         };
       };
+      /** @description Problem: account-locked */
+      423: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
     };
   };
   me_preferences_update: {

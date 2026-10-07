@@ -375,3 +375,22 @@ claims and evidence below retain their original meaning; this archive is not a f
   remain open. No deployment.
 - Previous loss storage and calculation evidence is archived in
   [BUILD-HISTORY-2026-10-07.md](docs/release/BUILD-HISTORY-2026-10-07.md).
+
+## Loss provision Explain drill — October 7, 2026
+
+- Continued from PR #19 (`f6d3ffe`). The RPT-31 provision cell now names its immutable T-CON-17
+  contributor using the original report's bound versions, calendars and labels. The viewer opens
+  the existing contributor/Explain flow only for the supported provision-balance column.
+- Explain and Verify resolve the stored loss-test trace node, amount, period and entity. A different
+  explicit period or unsupported measure is refused. Added the contributor's entity-reach rule,
+  the typed API object and frontend parser support; regenerated OpenAPI and TypeScript types.
+- PostgreSQL verification: the cell and contributor resolve, verification matches the saved amount,
+  later calculations preserve the original contributor while a fresh report names a new one, and
+  an outside-entity reader receives 404 from both Explain and Verify. The report/Explain unit
+  suite passes all 515 checks; all 11 existing Explain API/entity-scope tests pass.
+  The 42 existing viewer tests and the new loss-column drill test pass.
+  Source Mypy, frontend TypeScript, Ruff, ESLint and design checks pass.
+- Foreign-currency functional/reporting loss views and explicit locked-source reads remain open,
+  as do the broader release backlog, full-backend verification and independent accounting sign-off.
+  No deployment. Previous loss-register evidence is archived in
+  [BUILD-HISTORY-2026-10-07.md](docs/release/BUILD-HISTORY-2026-10-07.md).

@@ -7007,7 +7007,8 @@ Authentication pages render outside the shell: a header bar with the wordmark (1
 |---|---|---|
 | all with a new password | Policy failures | "Choose a less common password." / "Use at least 12 characters." / "The password cannot be your email address." (ERR-21) |
 | all with a new password | Mismatch | "The passwords do not match." |
-| SF-22:password-change | Wrong current password | "The current password is incorrect." |
+| SF-22:password-change | Wrong current password before the shared lockout threshold | "The current password is incorrect." |
+| SF-22:password-change | Fifth consecutive failed password check or active lock (423) | "Too many failed sign-in attempts. Try again in 15 minutes or ask a workspace administrator." |
 | SF-22:password-change | Success | Toast "Password changed. Your other sessions were signed out." (SAR-10) |
 | SF-22:accept-invitation | Expired or used token (404) | "This invitation link has expired or was already used. Ask a workspace administrator to resend it." |
 | SF-22:accept-invitation | Existing user with a password (`has_password` true; rev 1.9) | Field "Your eRev password" (`autocomplete="current-password"`, no policy help) instead of the two new-password fields; button "Accept invitation"; a wrong password is the API's 422 `validation-failed` on `password` as the field error |

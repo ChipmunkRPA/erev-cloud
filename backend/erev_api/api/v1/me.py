@@ -144,7 +144,7 @@ def me_preferences_update(
     operation_id="me_change_password",
     status_code=204,
     response_class=Response,
-    responses=problem_responses(*_SESSION_PROBLEMS, "password-policy"),
+    responses=problem_responses(*_SESSION_PROBLEMS, "password-policy", "account-locked"),
 )
 def me_change_password(
     body: PasswordChangeIn,

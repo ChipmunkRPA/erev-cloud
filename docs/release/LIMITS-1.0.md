@@ -6,6 +6,11 @@ October 7 continuation: B5-3 and C-1 were closed on `codex/import-job-recovery` 
 import-job cleanup, lock-wait recovery and queued-cancellation handling. See `PROGRESS.md` for
 new verification; all remaining release evidence below retains its original date.
 
+October 7 password-change continuation: B1-34 is closed. Wrong current-password checks share
+the sign-in failure budget under the identity-row write lock, persist failure/security evidence,
+and enforce the fifth-failure 15-minute lock. Concurrent attempts, expiry and existing password
+rotation/reset races are verified; the frontend displays the 423 lockout response.
+
 October 7 approval continuation: B1-14 is closed for the recorded draft/proposal paths. Stored
 draft creators and successful content editors cannot decide a request submitted by someone else,
 including through delegation. SYSTEM creation on behalf of an uploader retains that attribution.
@@ -114,7 +119,6 @@ These are not limits of the build. They are what a production use of release 1.0
 | B1-31 | A run of a report again reads the first run's sources for 11 of the 37 built reports and evaluates the other 26 afresh. | REQ-RPT-002 has "Re-running with the same snapshot reproduces identical totals and hash"; for the 26 a second run can differ where the data has moved since. The count is a reader's. | For a locked period read the report as locked. | REQ-RPT-002 (CTL-029); read by a reader of the control inventory |
 | B1-32 | A failed tie-out of a report refuses nothing. | A run whose tie-out failed is stored, shown and exported like any other; the tie-out's result stands on the run. | Read a run's tie-outs before using its figures. | R-78 (b) (CTL-030); read |
 | B1-33 | The approver of a configuration version reads "No contracts affected" where nothing was simulated: the impact simulation has no source of contracts. | The sentence says nothing of the version's effect. Applying a version to existing contracts is itself a ruled limit of release 1.0. | The approver reads the version's difference to the version in force. | REQ-POL-006 (CTL-031); R-112 (i); read on the tip |
-| B1-34 | A wrong current password at the change of one's own password is refused and not counted towards the lockout. | A signed-in session can try current passwords without being locked out. | — | CTL-033; read on the tip |
 | B1-35 | The controls that record into the control evidence registry link none of their records to its exceptions, and nothing exports the registry. | The registry is read through its list in the API, and an exception of a control is found by that control's own list. | — | CTL-042; read on the tip |
 | B1-36 | An import that an API client uploaded may commit under a published auto-approval rule, and the control's evidence then records a pass without an approver. | The import approval of such an upload is the rule's, not a person's. | Publish no auto-approval rule for import commits where a person's approval is the control relied on. | R-120 (b) (CTL-044); read on the tip |
 | B1-37 | No judgement record is read for an SSP override — its command asks a justification and an approval — and for the principal-or-agent conclusion, the licence's nature, the repurchase and the series classification and the constraint of breakage a record is asked only where the conclusion departs from the product's or the template's value. | REQ-POL-008 makes a judgement record mandatory for nine conclusions; a command asks for one for three of them — the Step 1 conclusion, the distinct override and the modification treatment override — and for the constraint of an estimate version (row B1-5). | State the judgement of an SSP override in its justification and attach the analysis to the request. | REQ-POL-008 (CTL-049); read |
