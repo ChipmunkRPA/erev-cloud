@@ -470,7 +470,7 @@ def test_prv_01_catalogue_matches_04_tables() -> None:
     # 154 (incl. T-PLT-47, 04 1.59) + T-MIG-04 / T-MIG-05 (04 rev 1.60, lane F-LMG) = 156 literal
     # column tables; + T-PLT-48 audit_event_contract (04 rev 1.154, lane API-GAPS) = 157;
     # + T-PLT-49 file_upload (04 rev 1.189, lane SECFIX-PLT) = 158
-    assert formats == {"literal": 158, "hybrid": 2, "prose": 5}, formats
+    assert formats == {"literal": 159, "hybrid": 2, "prose": 5}, formats
     assert [t.name for t in TABLES] == list(sections), "catalogue follows 04 document order"
 
 

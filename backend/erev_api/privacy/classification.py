@@ -2329,16 +2329,29 @@ TABLES: Final[tuple[TableClassification, ...]] = (
         Retention.AUDIT_RETENTION_YEARS,
         {
             R01: _cols(
-                "tenant_id id contract_version_id obligation_id eac_estimate_version_id "
+                "tenant_id id contract_version_id contract_id entity_id period_id obligation_id "
+                "eac_estimate_version_id trace_nodes "
                 "created_at created_by created_by_kind"
             ),
             SPEC_C2_LEDGER: _cols(
-                "book_code unit measurement_basis currency expected_consideration "
+                "book_code unit unit_key period_key as_of in_scope measurement_basis currency "
+                "expected_consideration "
                 "expected_total_costs costs_to_date revenue_to_date expected_margin "
                 "provision_balance provision_movement"
             ),
         },
-        status=Status.PENDING,
+    ),
+    _table(
+        "loss_provision_eac",
+        "T-CON-25",
+        "Every EAC version contributing to a period loss test.",
+        Retention.AUDIT_RETENTION_YEARS,
+        {
+            R01: _cols(
+                "tenant_id id loss_provision_version_id estimate_version_id entity_id "
+                "created_at created_by created_by_kind"
+            )
+        },
     ),
     _table(
         "fx_layer_movement",

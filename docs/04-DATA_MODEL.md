@@ -604,7 +604,7 @@ Diagrams show tables and relationships only; columns are in §4-§13. Every tena
 | PLT | T-PLT-01 `tenant`, 02 `app_user`, 03 `identity_provider`, 04 `user_mfa_factor`, 05 `user_recovery_code`, 06 `security_event`, 07 `tenant_membership`, 08 `user_session`, 09 `role`, 10 `role_assignment`, 11 `permission`, 12 `role_permission`, 13 `sod_rule`, 14 `sod_exception`, 15 `api_client`, 16 `api_token`, 17 `approval_request`, 18 `approval_step`, 19 `audit_event`, 20 `approval_decision`, 21 `approval_delegation`, 22 `audit_chain_head`, 23 `audit_chain_verification`, 24 `notification`, 25 `notification_preference`, 26 `numbering_series`, 27 `job`, 28 `idempotency_record`, 29 `file_object`, 30 `file_attachment`, 31 `registry_parameter`, 32 `registry_version`, 33 `support_grant`, 34 `tenant_snapshot`, 35 `webhook_endpoint`, 36 `webhook_delivery`, 37 `saved_view`, 38 `engine_release`, 39 `control_execution`, 40 `access_review_campaign`, 41 `access_review_item`, 42 `password_reset_token` (rev 1.2), 47 `registry_parameter_correction` (rev 1.59), 48 `audit_event_contract` (rev 1.154), 49 `file_upload` (rev 1.189) |
 | REF | T-REF-01 `legal_entity`, 02 `book`, 03 `entity_book`, 04 `fiscal_calendar`, 05 `period`, 06 `period_state`, 07 `period_state_transition`, 08 `currency`, 09 `tenant_currency`, 10 `fx_rate_set`, 11 `fx_rate_set_version`, 12 `fx_rate`, 13 `gl_account`, 14 `account_mapping_version`, 15 `account_mapping_rule`, 16 `dimension_definition`, 17 `dimension_value`, 18 `related_party_group`, 19 `customer`, 20 `product`, 21 `product_bundle_component`, 22 `pob_template`, 23 `pob_template_version`, 24 `rule_set`, 25 `rule_set_version`, 26 `rule`, 27 `rule_test_case`, 28 `ssp_book`, 29 `ssp_book_version`, 30 `ssp_entry`, 31 `ssp_range`, 32 `ssp_calculator_run`, 33 `ssp_calculator_result`, 34 `ssp_calculator_exclusion` |
 | SRC | T-SRC-01 `source_record`, 02 `source_order`, 03 `source_order_line`, 04 `source_invoice`, 05 `source_invoice_line`, 06 `source_usage`, 07 `source_payment`, 08 `source_match` |
-| CON | T-CON-01 `contract`, 02 `contract_source_link`, 03 `combination_group`, 04 `combination_group_member`, 05 `contract_event`, 06 `modification`, 07 `contract_computation`, 08 `contract_version`, 09 `contract_version_balance`, 10 `obligation`, 11 `obligation_version`, 12 `estimate`, 13 `estimate_version`, 14 `material_right`, 15 `contract_cost_asset`, 16 `cost_asset_version`, 17 `loss_provision_version`, 18 `fx_layer_movement`, 19 `judgement_record`, 20 `contract_hold`, 21 `portfolio`, 22 `portfolio_member`, 23 `policy_override`, 24 `event_submission` |
+| CON | T-CON-01 `contract`, 02 `contract_source_link`, 03 `combination_group`, 04 `combination_group_member`, 05 `contract_event`, 06 `modification`, 07 `contract_computation`, 08 `contract_version`, 09 `contract_version_balance`, 10 `obligation`, 11 `obligation_version`, 12 `estimate`, 13 `estimate_version`, 14 `material_right`, 15 `contract_cost_asset`, 16 `cost_asset_version`, 17 `loss_provision_version`, 18 `fx_layer_movement`, 19 `judgement_record`, 20 `contract_hold`, 21 `portfolio`, 22 `portfolio_member`, 23 `policy_override`, 24 `event_submission`, 25 `loss_provision_eac` |
 | ENG | T-ENG-01 `schedule`, 02 `schedule_line`, 03 `calc_trace` |
 | SL | T-SL-01 `subledger_posting`, 02 `subledger_posting_seal`, 03 `ledger_chain_head`, 04 `subledger_line`, 05 `manual_adjustment`, 06 `journal_run`, 07 `journal_batch`, 08 `journal_entry`, 09 `journal_line`, 10 `posting_ack`, 11 `posting_attribution` (rev 1.13; listed rev 1.48), 12 `subledger_line_event` (rev 1.48) |
 | CLS | T-CLS-01 `close_run`, 02 `close_checklist_template`, 03 `close_checklist_item`, 04 `period_lock`, 05 `lock_snapshot`, 06 `reconciliation`, 07 `reconciliation_item`, 08 `signoff` |
@@ -3963,16 +3963,22 @@ Keys: `PRIMARY KEY (tenant_id, id)`; `ux_cost_asset_version (tenant_id, contract
 ### T-CON-17 `loss_provision_version`
 
 - **Purpose.** Loss provision test result at a contract version (REQ-LOS-001 to -003).
-- **Class.** IM-A; RLS-T; PT-N; AUD-FACT.
+- **Class.** IM-A; RLS-TE; PT-N; AUD-FACT.
 - **REQ areas.** LOS.
 
 | Column | Type | Null | Default | Constraints and notes |
 |---|---|---|---|---|
 | SC-T | | | | |
 | `contract_version_id` | uuid | N | | |
+| `contract_id` | uuid | N | | Owning contract. |
+| `entity_id` | uuid | N | | Contracting entity. |
 | `book_code` | erev.book_code | N | | |
 | `unit` | erev.loss_unit | N | | |
+| `unit_key` | text | N | | Engine loss-unit identity. |
 | `obligation_id` | uuid | Y | | `CHECK ((unit = 'POB') = (obligation_id IS NOT NULL))` |
+| `period_id` | uuid | N | | Tenant-bound accounting period. |
+| `period_key` | text | N | | Engine period identity. |
+| `as_of` | date | N | | Measured period end. |
 | `measurement_basis` | text | N | | `CHECK (measurement_basis IN ('ASC_605_35','IAS_37'))` |
 | `eac_estimate_version_id` | uuid | Y | | |
 | `currency` | erev.currency_code | N | | |
@@ -3983,9 +3989,33 @@ Keys: `PRIMARY KEY (tenant_id, id)`; `ux_cost_asset_version (tenant_id, contract
 | `expected_margin` | erev.money | N | | |
 | `provision_balance` | erev.money | N | | `CHECK (provision_balance >= 0)` |
 | `provision_movement` | erev.money | N | | |
+| `in_scope` | boolean | N | | Preserve the engine's scope result, including excluded tests. |
+| `trace_nodes` | jsonb | N | | Object mapping each measure to its calculation trace node. |
 | SC-C | | | | |
 
-Keys: `PRIMARY KEY (tenant_id, id)`; `ux_loss_provision_version (tenant_id, contract_version_id, unit, coalesce(obligation_id, '00000000-0000-0000-0000-000000000000'::uuid))`.
+Keys: `PRIMARY KEY (tenant_id, id)`; `ux_loss_provision_version__unit_period (tenant_id, contract_version_id, contract_id, unit_key, period_id)`.
+
+October 7 implementation: revision 0133 stores every period test atomically with its calculation.
+The engine emits several periods per version, so period and owning contract are part of the key.
+All contributing EAC versions are retained in `loss_provision_eac`; the singular
+`eac_estimate_version_id` is populated only when exactly one version contributed. No estimate is
+selected arbitrarily from a multi-estimate test. Old calculations are not backfilled.
+
+### T-CON-25 `loss_provision_eac`
+
+- **Purpose.** Complete EAC lineage of a loss test; tenant-bound foreign keys to both versions.
+- **Class.** IM-A; RLS-TE; PT-N; AUD-FACT.
+
+| Column | Type | Null | Default | Constraints and notes |
+|---|---|---|---|---|
+| SC-T | | | | |
+| `loss_provision_version_id` | uuid | N | | Parent period test. |
+| `estimate_version_id` | uuid | N | | One contributing EAC version. |
+| `entity_id` | uuid | N | | Same contracting entity as the parent. |
+| SC-C | | | | |
+
+Keys: `PRIMARY KEY (tenant_id, id)`;
+`ux_loss_provision_eac__source (tenant_id, loss_provision_version_id, estimate_version_id)`.
 
 ### T-CON-18 `fx_layer_movement`
 

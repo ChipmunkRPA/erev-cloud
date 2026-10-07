@@ -104,7 +104,7 @@ from erev_api.db.tables import (
     subledger_posting,
 )
 from erev_api.db.types import ExactType, MoneyType
-from erev_api.domain.contracts import bundles, fx_layers, period_ends
+from erev_api.domain.contracts import bundles, fx_layers, loss_provisions, period_ends
 from erev_api.domain.journals import subledger
 from erev_api.enums import (
     ComputationStatus,
@@ -758,6 +758,10 @@ def _persist_book(
     _insert_rows(session, schedule, headers)
     _insert_rows(session, schedule_line, lines)
     facts["fx_layer_movement"] += fx_layers.persist(uow, bundle, found, book_output, version_id)
+    for table_name, ids in loss_provisions.persist(
+        uow, bundle, found, book_output, version_id
+    ).items():
+        facts[table_name] += ids
     facts[VERSION_OBJECT].append(version_id)
     facts[TRACE_OBJECT].append(trace_id)
     facts[OBLIGATION_VERSION_OBJECT] += [row["id"] for row in obligation_rows]
@@ -1451,6 +1455,8 @@ def _persist(
             SCHEDULE_OBJECT,
             SCHEDULE_LINE_OBJECT,
             "fx_layer_movement",
+            "loss_provision_version",
+            "loss_provision_eac",
         )
     }
     version_ids: dict[str, str] = {}

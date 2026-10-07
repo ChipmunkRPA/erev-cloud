@@ -803,6 +803,8 @@ ENGINE_OUTPUT_TABLES = (
     "schedule",
     "schedule_line",
     "calc_trace",
+    "loss_provision_version",
+    "loss_provision_eac",
 )
 _ENABLED_TRIGGERS = text(
     "SELECT c.relname, t.tgname FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid "

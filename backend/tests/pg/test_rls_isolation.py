@@ -774,3 +774,30 @@ def test_rls_tm_in_a_tenant_transaction_of_a_user(
             "UPDATE of another table by the membership of B": [],
         },
     }
+
+
+@pytest.mark.parametrize("table_name", ["loss_provision_version", "loss_provision_eac"])
+def test_loss_provision_entity_scope(
+    table_name: str, committed_db: TestDatabase, keyring: KeyRing
+) -> None:
+    tenant_id = tenant_id_of(tenant_factory(keyring=keyring))
+    table = metadata.tables[f"erev.{table_name}"]
+    with tenant_session(_all_entities(tenant_id)) as session:
+        rows = [ROW_BUILDERS[table_name](RowContext(tenant_id, None), session) for _ in range(2)]
+        for row in rows:
+            session.execute(insert(table).values(**row))
+    own, other = rows
+    scoped = DbContext(tenant_id=tenant_id, user_id=None, entity_scope=(own["entity_id"],))
+    with tenant_session(scoped) as session:
+        visible = set(
+            session.scalars(select(table.c.id).where(table.c.id.in_([row["id"] for row in rows])))
+        )
+        assert visible == {own["id"]}
+        assert (
+            _outcome(session, insert(table).values(**{**other, "id": new_id()}))
+            == INSUFFICIENT_PRIVILEGE
+        )
+        assert (
+            _outcome(session, update(table).where(table.c.id == own["id"]).values(id=new_id()))
+            == INSUFFICIENT_PRIVILEGE
+        )
