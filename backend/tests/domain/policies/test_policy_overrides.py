@@ -10,14 +10,10 @@ Approver: ``ssp.approve``; MFA) approves ``US-LIST 2026-H2``. [J] L4-2-Q-1: the 
 resolution uses POL-051 ``returns.model`` (levels P, C, O), because POL-052
 ``returns.reversal_rate`` allows level T only.
 
-Release 1.0 offers no policy override (item POLICY-OVERRIDE-WITHDRAW-1, register index 308;
-supervisor ruling R-126 (b) (4) and (c); 04 T-CON-23 "Not offered in release 1.0" rev 1.322; PRD
-ERR-102; POLICIES §0.5 rule 5): no computation reads one, so ``POST /policy-overrides`` refuses
-every creation by name. The three ``policy_override_withdraw_1`` cases witness the refusal — what
-it says, that it comes after the 404 and the 403 and before any validation, and that nothing is
-stored. The submit, the approval, the resolution and the request's entity scope keep their code;
-their cases stand on a DRAFT row the fixture writes (``support.rows.insert_policy_override``) and
-go on through the product's own submit and approval.
+The October 7 continuation enables public authoring for POL-122 and POL-047. These tests
+exercise public creation, validation, approval and real calculation for both. Unsupported
+parameters retain their named refusal after access checks. Historical generic lifecycle cases
+continue to seed drafts directly to exercise resolution and approval behavior.
 """
 
 from __future__ import annotations
@@ -49,7 +45,7 @@ from erev_api.db.tables import (
 )
 from erev_api.domain.contracts import bundles, policy_inputs
 from erev_api.enums import ContractEventType
-from erev_api.events.payloads import BillingRecordedV1, MoneyIn
+from erev_api.events.payloads import BillingRecordedV1, DeliveryRecordedV1, MoneyIn
 from erev_api.events.stream import EventIn
 from erev_api.files.store import LocalFileStore
 from erev_api.main import create_app
@@ -57,6 +53,7 @@ from fastapi import FastAPI
 from sqlalchemy import func, insert, select
 from support.db import TestDatabase
 from support.factories import (
+    K11_CHART,
     SEAT_MONTH,
     K02World,
     K11World,
@@ -84,6 +81,7 @@ from support.rows import (
     insert_policy_override,
     insert_role_assignment,
 )
+from support.worlds import judgement_submitted
 
 POLICY_OVERRIDES = "/api/v1/policy-overrides"
 RESOLVE = "/api/v1/policies/resolve"
@@ -100,11 +98,6 @@ BY_THE_PRODUCT = "It is set on the product or on its obligation template."
 BY_THE_REGISTRY = "It is set in the policy registry for the workspace."
 BY_A_RECORD = "The method of the element's estimate version decides it."
 BY_THE_DEFAULT = "The framework's default applies to every contract in this release."
-NO_RATE = (
-    "The framework's default basis applies to every contract in this release, and no discount "
-    "rate can be given: a contract whose financing needs an adjustment is not computed "
-    "(SFC_RATE_MISSING)."
-)
 
 
 @pytest.fixture
@@ -194,7 +187,7 @@ def _second_half(world: K02World) -> str:
     )
 
 
-def test_policy_override_withdraw_1_every_creation_is_refused_by_name(
+def test_policy_override_unsupported_creation_is_refused_by_name(
     app: FastAPI, keyring: KeyRing, clock: FrozenClock, files: LocalFileStore
 ) -> None:
     """04 T-CON-23 "Not offered in release 1.0" (rev 1.322; PRD ERR-102; POLICIES §0.5 rule 5):
@@ -219,13 +212,6 @@ def test_policy_override_withdraw_1_every_creation_is_refused_by_name(
         ("concession.allocation_basis", "INCEPTION_BASIS", {}, BY_THE_DEFAULT),
         # POL-240 lists level P as well, where the engine does not read it (register index 309).
         ("usage.tier_minimum_method", "ESTIMATE_MEASUREMENT_PERIOD_TP", {}, BY_THE_DEFAULT),
-        # POL-047: the override was the one road to a discount rate.
-        (
-            "sfc.discount_rate_basis",
-            {"basis": "CUSTOMER_CREDIT_RATE", "annual_rate": "0.06"},
-            {},
-            NO_RATE,
-        ),
         # A parameter that lists neither level is told the catalogue: POL-021 allows T, E and P.
         (
             "pob.shipping_as_fulfilment",
@@ -829,6 +815,14 @@ def test_policy_override_withdraw_1_the_404_and_the_403_come_first(
         assert NOT_OFFERED_RULE not in rule_ids(answered), answered.text
         assert NOT_OFFERED not in answered.text
 
+    # The enabled authoring path must preserve the same entity and permission boundary.
+    supported = _override(
+        outside.contract_id,
+        "sfc.discount_rate_basis",
+        {"basis": "CUSTOMER_CREDIT_RATE", "annual_rate": "0.06"},
+    )
+    assert post(app, POLICY_OVERRIDES, una, supported).status_code == 404
+    assert post(app, POLICY_OVERRIDES, vic, supported).status_code == 403
     with tenant_session(context, read_only=True) as session:
         stored = session.execute(select(func.count()).select_from(policy_override)).scalar_one()
     assert stored == 0
@@ -843,13 +837,16 @@ def test_approved_right_override_changes_computed_balances(
     group_id = booked.combination_group["id"]
     contract_id = booked.contract["id"]
     _, before, _ = computed(world.place, group_id)
-    override_id = drafted_override(
-        world.place,
-        contract_id,
-        "balance.right_to_consideration",
-        "UNCONDITIONAL",
-        obligation_key="O1",
+    created = post(
+        app,
+        POLICY_OVERRIDES,
+        world.place.author,
+        _override(
+            contract_id, "balance.right_to_consideration", "UNCONDITIONAL", obligation_key="O1"
+        ),
     )
+    assert created.status_code == 201, created.text
+    override_id = UUID(created.json()["id"])
     with world.place.uow() as uow:
         draft_bundle = bundles.build(uow.session, group_id, uow.now)
     assert not any(
@@ -903,13 +900,16 @@ def test_approved_right_override_changes_computed_balances(
         for book in repeated_bundle.books
         for row in book.policies
     )
-    successor = drafted_override(
-        world.place,
-        contract_id,
-        "balance.right_to_consideration",
-        "CONDITIONAL",
-        obligation_key="O1",
+    created = post(
+        app,
+        POLICY_OVERRIDES,
+        world.place.author,
+        _override(
+            contract_id, "balance.right_to_consideration", "CONDITIONAL", obligation_key="O1"
+        ),
     )
+    assert created.status_code == 201, created.text
+    successor = UUID(created.json()["id"])
     submitted = post(app, f"{POLICY_OVERRIDES}/{successor}/submit", world.place.author, {})
     assert submitted.status_code == 200, submitted.text
     approved = approve(app, str(submitted.json()["approval_request_id"]), world.marcus)
@@ -929,6 +929,11 @@ def test_approved_right_override_changes_computed_balances(
         {"key": "balance.right_to_consideration", "contract": str(contract_id), "obligation": "O1"},
     )
     assert shown.json()["source"]["id"] == str(successor)
+
+    assert (
+        get(app, f"{POLICY_OVERRIDES}/{override_id}", world.place.author).json()["status"]
+        == "SUPERSEDED"
+    )
 
 
 @pytest.mark.parametrize("system_authored", [False, True])
@@ -995,3 +1000,147 @@ def test_policy_draft_author_cannot_approve_when_someone_else_submits(
     independent = enrolled(app, clock, reviewer)
     accepted = approve(app, request_id, independent)
     assert accepted.status_code == 200, accepted.text
+
+
+def test_supported_override_validation_is_atomic(
+    app: FastAPI, keyring: KeyRing, clock: FrozenClock, files: LocalFileStore
+) -> None:
+    world = k11_world(app, keyring, clock, files)
+    booked = delivered_k11(world)
+    contract_id = booked.contract["id"]
+    rate = {"basis": "CUSTOMER_CREDIT_RATE", "annual_rate": "0.06"}
+    invalid = [
+        _override(contract_id, "balance.right_to_consideration", "UNCONDITIONAL"),
+        _override(contract_id, "balance.right_to_consideration", "INVALID", obligation_key="O1"),
+        _override(
+            contract_id, "balance.right_to_consideration", "UNCONDITIONAL", obligation_key="O9"
+        ),
+        _override(contract_id, "sfc.discount_rate_basis", rate, obligation_key="O1"),
+        _override(contract_id, "sfc.discount_rate_basis", {"basis": "CUSTOMER_CREDIT_RATE"}),
+        _override(contract_id, "sfc.discount_rate_basis", {**rate, "annual_rate": "NaN"}),
+        _override(contract_id, "sfc.discount_rate_basis", {**rate, "annual_rate": 0.06}),
+        _override(contract_id, "sfc.discount_rate_basis", {**rate, "annual_rate": "-12"}),
+        _override(
+            contract_id,
+            "sfc.discount_rate_basis",
+            {**rate, "annual_rate": "-1", "compounding": "ANNUAL"},
+        ),
+        {**_override(contract_id, "sfc.discount_rate_basis", rate), "rationale": "  "},
+        _override(contract_id, "sfc.discount_rate_basis", rate, judgement_record_id=str(uuid4())),
+    ]
+    before = _stored(world.place)
+    for body in invalid:
+        response = post(app, POLICY_OVERRIDES, world.place.author, body)
+        assert response.status_code == 422, response.text
+        assert response.json()["errors"], response.text
+    assert _stored(world.place) == before
+
+
+def test_approved_financing_rate_reaches_contract_calculation_input(
+    app: FastAPI, keyring: KeyRing, clock: FrozenClock, files: LocalFileStore
+) -> None:
+    world = k11_world(app, keyring, clock, files)
+    booked = delivered_k11(world)
+    rate = {"basis": "CUSTOMER_CREDIT_RATE", "annual_rate": "0.06", "compounding": "MONTHLY"}
+    created = post(
+        app,
+        POLICY_OVERRIDES,
+        world.place.author,
+        _override(booked.contract["id"], "sfc.discount_rate_basis", rate),
+    )
+    assert created.status_code == 201, created.text
+    assert (created.json()["level"], created.json()["status"]) == ("CONTRACT", "DRAFT")
+    override_id = created.json()["id"]
+    submitted = post(app, f"{POLICY_OVERRIDES}/{override_id}/submit", world.place.author, {})
+    assert submitted.status_code == 200, submitted.text
+    accepted = approve(app, str(submitted.json()["approval_request_id"]), world.marcus)
+    assert accepted.status_code == 200, accepted.text
+    bundle, _, _ = computed(world.place, booked.combination_group["id"])
+    for book in bundle.books:
+        [found] = [
+            p
+            for p in book.policies
+            if p.code == "sfc.discount_rate_basis" and p.scope == "CONTRACT"
+        ]
+        assert (found.value, found.level, found.source_ref) == (rate, "C", override_id)
+
+
+def test_financing_override_changes_real_deferred_payment_calculation(
+    app: FastAPI, keyring: KeyRing, clock: FrozenClock, files: LocalFileStore
+) -> None:
+    world = k11_world(
+        app,
+        keyring,
+        clock,
+        files,
+        chart=(
+            *K11_CHART,
+            ("7100", "Interest income", "REVENUE", "C", "INTEREST_INCOME"),
+        ),
+    )
+    body = k11_body(world.customer_id)
+    body["lines"] = [body["lines"][0]]
+    body["lines"][0]["start_date"] = "2026-09-12"
+    body["payment_schedule"] = [
+        {"date": "2027-10-01", "amount": {"amount": "90000.00", "currency": "EUR"}}
+    ]
+    booked = booked_contract(world.place, body, activate=False)
+    contract_id = booked.contract["id"]
+
+    def rate(annual: str, judgement_id: str | None = None) -> str:
+        created = post(
+            app,
+            POLICY_OVERRIDES,
+            world.place.author,
+            _override(
+                contract_id,
+                "sfc.discount_rate_basis",
+                {"basis": "CUSTOMER_CREDIT_RATE", "annual_rate": annual, "compounding": "MONTHLY"},
+                rationale="Record or correct the inception rate from the contract evidence.",
+                **({"judgement_record_id": judgement_id} if judgement_id else {}),
+            ),
+        )
+        assert created.status_code == 201, created.text
+        identifier = str(created.json()["id"])
+        sent = post(app, f"{POLICY_OVERRIDES}/{identifier}/submit", world.place.author, {})
+        assert sent.status_code == 200, sent.text
+        approved = approve(app, str(sent.json()["approval_request_id"]), world.marcus)
+        assert approved.status_code == 200, approved.text
+        return identifier
+
+    rate("0")
+    judgement = judgement_submitted(
+        app,
+        world.place.author,
+        {
+            "topic": "SFC_ASSESSMENT",
+            "subject_type": "contract",
+            "subject_id": str(contract_id),
+            "conclusion": "The deferred payment includes a significant financing component.",
+            "rationale": "Payment follows transfer by more than a year; no exception applies.",
+            "questionnaire": {"obligation_key": "", "significant": True, "exception_32_17": "NONE"},
+        },
+    )
+    reviewed = approve(app, str(judgement["approval_request_id"]), world.marcus)
+    assert reviewed.status_code == 200, reviewed.text
+    activated_contract(world.place, booked, compute=False)
+    appended(
+        world.place,
+        contract_id,
+        2,
+        [
+            EventIn(
+                event_type=ContractEventType.DELIVERY_RECORDED,
+                effective_date=date(2026, 9, 12),
+                payload=DeliveryRecordedV1(obligation_key="O1", quantity="200", trigger="DELIVERY"),
+            )
+        ],
+    )
+    _, undiscounted, _ = computed(world.place, booked.combination_group["id"])
+    override_id = rate("0.06", str(judgement["id"]))
+    bundle, discounted, _ = computed(world.place, booked.combination_group["id"])
+    for before, after in zip(undiscounted.books, discounted.books, strict=True):
+        assert before.contract_version is not None and after.contract_version is not None
+        assert before.contract_version.columns["transaction_price"] == 9_000_000
+        assert 0 < after.contract_version.columns["transaction_price"] < 9_000_000
+    assert any(p.source_ref == override_id for book in bundle.books for p in book.policies)
