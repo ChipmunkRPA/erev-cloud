@@ -2,6 +2,29 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Error-correction reopen evidence foundation — October 7, 2026
+
+- Continued from main `4cdf8b7`. The preceding turn made progress: the B1-11 fix was tested
+  and pushed directly to main. Revalidated the separate backend process as live; its pinned
+  run is about 22% through, not a completed gate and not proof for later source changes.
+- Investigated B1-12: the public reopen request has only reason/comment; its form submits
+  the reopen before optionally authoring an unlinked judgement. A checked citation requires
+  storage, approval-basis and form changes. The integration contract and remaining verification
+  are recorded in `docs/release/REOPEN-JUDGEMENT-CONTINUATION.md`.
+- Added `close.reopen_judgements.reviewed_basis`: validates tenant/entity/book, topic,
+  REVIEWED status and independent review metadata, retaining the full accounting content and
+  review identity for approval binding. A NOWAIT share lock avoids waiting in the reverse
+  judgement/period order; its savepoint preserves the caller's transaction after conflict.
+- **14 PostgreSQL evidence checks passed** in 25.44 seconds: valid book/all-book records,
+  missing and out-of-scope records, wrong book/topic, unreviewed/superseded records and both
+  lock orders. **47 layer/import checks passed** in 11.26 seconds. Source Mypy and Ruff
+  lint/format pass. This foundation is not yet connected to the public command or form;
+  B1-12 remains open. Do not describe it as enforcement or a completed control.
+- Next: persist and hash the selected reviewed citation, revalidate at the final decision,
+  retain it in immutable reopen history, update the form and run public workflow/migration
+  tests. Other documented gaps and independent accounting sign-off remain. No deployment.
+  Archived the earlier backend-baseline section verbatim; direct-main workflow retained.
+
 ## Approvals-gate waiver sequencing — October 7, 2026
 
 - Continued on main `88de370`. Reproduced B1-11 with two failing decision-order cases;
@@ -53,29 +76,6 @@
   excluding parity/answer-key/performance markers; no completed result yet. Exclusions and
   noncommercial licensing are preserved. Archived the earlier answer-key section verbatim.
   Repository only; no deployment.
-
-## Backend baseline and supported override fixture — October 7, 2026
-
-- Continued from main `3281f29`. The detached `ed6ea75` backend run finished with
-  **2,959 passed, one failed, one expected Q11 failure and 640 deselected**, stopping at
-  the first failure after 3,649.31 seconds. It excluded parity, answer-key and performance
-  markers and did not cover PRs #27–29. This supersedes the earlier “still live” notes below;
-  it is not a completed passing backend gate.
-- The failed computation-cutoff case directly inserted an expected-returns override without
-  a return estimate. Approved overrides now reach the engine, which correctly quarantined
-  the fresh retry with `RETURN_ESTIMATE_MISSING`. The fixture now creates a supported
-  POL-122 conditional-right override through the public API and obtains independent approval.
-  It retains the stale-computation refusal and clean successful retry checks, and adds an
-  unchanged-ledger assertion. No application behavior or accounting oracle was changed.
-- **15 PostgreSQL computation-cutoff tests passed** in 76.47 seconds on the current source.
-  Ruff lint/format with the repository configuration and whitespace checks pass. Secret scan:
-  3,391 files, zero findings. This is scoped verification, not a green whole-backend gate.
-- Repository settings enable automatic merge and deletion of merged branches. At the start
-  of this slice, GitHub had only main and no open PRs. This slice used a temporary PR branch,
-  merged into main and removed after review. The owner now requests direct main commits.
-- Remaining work includes the broader backend/specialist verification, B1-10 identity-bound
-  close-gate waivers, the other documented limitations and independent accounting sign-off.
-  Archived the earlier originating-contract FX section verbatim to keep this file under 20 KB.
 
 ## Estimate FX approval drift — October 7, 2026
 

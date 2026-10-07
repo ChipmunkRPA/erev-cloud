@@ -691,3 +691,26 @@ Earlier October 7 policy-isolation and workbench evidence is archived verbatim i
   loopback database, with passing tests and the existing expected Q11 failure. It is still live,
   not a completed gate, and does not cover this later change. Full-backend/specialist verification,
   other release limitations and independent accounting review remain open. No deployment.
+
+## Backend baseline and supported override fixture — October 7, 2026
+
+- Continued from main `3281f29`. The detached `ed6ea75` backend run finished with
+  **2,959 passed, one failed, one expected Q11 failure and 640 deselected**, stopping at
+  the first failure after 3,649.31 seconds. It excluded parity, answer-key and performance
+  markers and did not cover PRs #27–29. This supersedes the earlier “still live” notes below;
+  it is not a completed passing backend gate.
+- The failed computation-cutoff case directly inserted an expected-returns override without
+  a return estimate. Approved overrides now reach the engine, which correctly quarantined
+  the fresh retry with `RETURN_ESTIMATE_MISSING`. The fixture now creates a supported
+  POL-122 conditional-right override through the public API and obtains independent approval.
+  It retains the stale-computation refusal and clean successful retry checks, and adds an
+  unchanged-ledger assertion. No application behavior or accounting oracle was changed.
+- **15 PostgreSQL computation-cutoff tests passed** in 76.47 seconds on the current source.
+  Ruff lint/format with the repository configuration and whitespace checks pass. Secret scan:
+  3,391 files, zero findings. This is scoped verification, not a green whole-backend gate.
+- Repository settings enable automatic merge and deletion of merged branches. At the start
+  of this slice, GitHub had only main and no open PRs. This slice used a temporary PR branch,
+  merged into main and removed after review. The owner now requests direct main commits.
+- Remaining work includes the broader backend/specialist verification, B1-10 identity-bound
+  close-gate waivers, the other documented limitations and independent accounting sign-off.
+  Archived the earlier originating-contract FX section verbatim to keep this file under 20 KB.
