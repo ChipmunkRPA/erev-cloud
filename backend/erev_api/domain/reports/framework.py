@@ -170,6 +170,9 @@ from erev_api.domain.reports.builders import (
     legacy_latest_contract_export as legacy_latest_contract_export_builder,
 )
 from erev_api.domain.reports.builders import (
+    loss_provision_register as loss_provision_register_builder,
+)
+from erev_api.domain.reports.builders import (
     manual_adjustment_register as manual_adjustment_register_builder,
 )
 from erev_api.domain.reports.builders import (
@@ -345,6 +348,7 @@ BUILDERS: Final[Mapping[str, Builder]] = MappingProxyType(
         contract_balance_rollforward_builder.CODE: contract_balance_rollforward_builder.build,
         contract_cost_rollforward_builder.CODE: contract_cost_rollforward_builder.build,
         balance_aging_builder.CODE: balance_aging_builder.build,
+        loss_provision_register_builder.CODE: loss_provision_register_builder.build,
         revenue_from_opening_liability_builder.CODE: revenue_from_opening_liability_builder.build,
         revenue_from_prior_period_obligations_builder.CODE: (
             revenue_from_prior_period_obligations_builder.build
@@ -383,8 +387,8 @@ BUILDERS: Final[Mapping[str, Builder]] = MappingProxyType(
         audit_log_export_builder.CODE: audit_log_export_builder.build,
         chain_verification_report_builder.CODE: chain_verification_report_builder.build,
         # BUILD_SPEC RPS-11 (SCREENS_B §5.6.2 RPT-28 to RPT-30; lane F-RPS-REG): the judgement,
-        # estimate-change and scope-exclusion registers (30 → 33). RPT-31 loss_provision_register
-        # stays unregistered pending its projection and the loss-test modification discrepancy.
+        # estimate-change and scope-exclusion registers (30 → 33). RPT-31 is also registered
+        # above over the persisted period tests and EAC lineage.
         judgement_register_builder.CODE: judgement_register_builder.build,
         estimate_change_listing_builder.CODE: estimate_change_listing_builder.build,
         scope_exclusion_register_builder.CODE: scope_exclusion_register_builder.build,
@@ -614,6 +618,17 @@ SOURCE_CONTRACTS: Final[Mapping[str, SourceContract]] = MappingProxyType(
             ),
             (),
         ),
+        loss_provision_register_builder.CODE: SourceContract(
+            ADAPTER,
+            (
+                _CUTOFF,
+                _VERSIONS,
+                "immutable loss tests, EAC lineage and traces of bound versions",
+                _CONFIGURATION,
+                "retained contract, obligation and EAC labels",
+            ),
+            (),
+        ),
         balance_aging_builder.CODE: SourceContract(
             ADAPTER,
             (
@@ -803,6 +818,7 @@ PARAMETER_DEFAULTS: Final[Mapping[str, Mapping[str, Any]]] = MappingProxyType(
         estimate_change_listing_builder.CODE: MappingProxyType(
             {"currency_view": estimate_change_listing_builder.DEFAULT_CURRENCY_VIEW}
         ),
+        loss_provision_register_builder.CODE: MappingProxyType({"currency_view": "transaction"}),
         scope_exclusion_register_builder.CODE: MappingProxyType(
             {"currency_view": scope_exclusion_register_builder.DEFAULT_CURRENCY_VIEW}
         ),

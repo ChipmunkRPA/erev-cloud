@@ -625,3 +625,51 @@ def test_loss_tests_persist_periods_and_eac_lineage(k03: K03World, clock: Frozen
             .where(loss_provision_eac.c.loss_provision_version_id == september["id"])
         ).all()
         assert sources == [(september["eac_estimate_version_id"], 3)]
+
+
+def test_loss_register_rerun_and_exports(k03: K03World, clock: FrozenClock) -> None:
+    from support.worlds import REPORT_RUN_ID_HEADER, REPORT_RUNS, run_now
+    from tests.domain.reports.test_analysis_reports import file_outputs
+
+    world = k03.report
+    parameters = {"entity_codes": [AVM_US], "book": "ASC606", "period_key": SEPTEMBER_2026}
+    original, rows = report_run(world, "loss_provision_register", parameters)
+    k03_change_order(k03, clock)
+    k03_september(k03, clock)
+    current, changed = report_run(world, "loss_provision_register", parameters)
+    assert changed != rows
+    _, august_rows = report_run(
+        world, "loss_provision_register", {**parameters, "period_key": "FY2026-P08"}
+    )
+    assert keyed(august_rows)[f"contract:{K03_EXTERNAL_ID}"]["expected_consideration"] == usd(
+        "1200000.00"
+    )
+    assert keyed(changed)[f"contract:{K03_EXTERNAL_ID}"]["eac_version_no"] == 3
+    started = post(world.app, f"{REPORT_RUNS}/{original['id']}/rerun", world.maya, {})
+    assert started.status_code == 202, started.text
+    finished = run_now(world, UUID(str(started.json()["id"])))
+    assert finished["state"] == "SUCCEEDED", finished
+    assert finished["result"]["output_sha256_equal"] is True
+    rebuilt = get(
+        world.app, f"{REPORT_RUNS}/{started.headers[REPORT_RUN_ID_HEADER]}/data", world.maya
+    )
+    assert rebuilt.status_code == 200, rebuilt.text
+    assert rebuilt.json()["items"] == rows
+    filtered, empty = report_run(
+        world, "loss_provision_register", {**parameters, "only_with_provision": True}
+    )
+    assert empty == [] and filtered["control_totals"]["row_count"] == 0
+    headers = file_outputs(world, "loss_provision_register", parameters)
+    assert headers[:4] == ["Contract", "Obligation", "Unit", "Basis"]
+    with world.place.uow() as uow:
+        empty_scope = framework.BUILDERS["loss_provision_register"](
+            uow,
+            ReportParams(
+                report_code="loss_provision_register",
+                report_version=1,
+                parameters=parameters,
+                entity_ids=(),
+                known_at=uow.now,
+            ),
+        )
+    assert empty_scope.rows == ()

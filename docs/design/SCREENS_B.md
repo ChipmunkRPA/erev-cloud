@@ -2697,7 +2697,8 @@ Rows: one per contract (per obligation when POL-150 = `POB`) tested for losses (
 | Obligation | `obligation_key` | mono; em dash for contract unit | start | SF-03:obligation |
 | Unit | `unit` | "Contract", "Obligation" (E-85) | start | none |
 | Basis | `measurement_basis` | "ASC 605-35", "IAS 37" | start | none |
-| EAC version | `eac_version_no` | "v<n>" link | start | SF-03:estimate |
+| EAC version | `eac_version_no` | "v<n>" link when one contributor; em dash otherwise | start | SF-03:estimate |
+| EAC contributors | `eac_versions` | element code and version for every contributor | start | none |
 | Currency | `currency` | mono | start | none |
 | Expected consideration | `expected_consideration` | money | end | none |
 | Expected total costs | `expected_total_costs` | money | end | none |

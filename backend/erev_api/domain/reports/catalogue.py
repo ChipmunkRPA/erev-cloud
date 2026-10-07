@@ -1448,6 +1448,12 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
         ),
         sources=(
             "loss_provision_version",
+            "loss_provision_eac",
+            "calc_trace",
+            "contract_version_balance",
+            "estimate",
+            "legal_entity",
+            "period",
             "contract_version",
             "contract",
             "obligation",
@@ -1455,9 +1461,12 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
         ),
         joins=(
             "loss_provision_version.contract_version_id = contract_version.id",
-            "contract_version.id = the latest version of contract",
+            "contract_version.id = the report-bound version read for each contract",
+            "loss_provision_version.period_key and as_of = the selected entity period",
             "loss_provision_version.obligation_id = obligation.id",
-            "loss_provision_version.eac_estimate_version_id = estimate_version.id",
+            "loss_provision_eac.loss_provision_version_id = loss_provision_version.id",
+            "loss_provision_eac.estimate_version_id = estimate_version.id",
+            "estimate_version.estimate_id = estimate.id",
         ),
         filters=(
             _SCOPE,

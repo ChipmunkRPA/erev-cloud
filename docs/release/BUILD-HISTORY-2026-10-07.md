@@ -328,3 +328,25 @@ claims and evidence below retain their original meaning; this archive is not a f
   The broad architecture run passed 351 checks; its sole column-order failure was corrected and
   verified by the final schema checks. Source Mypy, Ruff and design checks passed.
 - Full-backend verification and independent accounting sign-off remain open. No deployment.
+
+## Dated loss consideration — October 7, 2026
+
+- Continued from PR #17 (`019d64e`). The book fold now rebuilds each contract's unconstrained
+  consideration at boundary dates and period ends. Approved amendment/exercise amounts are
+  scoped to their owner and included before the collection cap. VC versions, realised amounts
+  and other Stage-04 components are measured at the historical date. Loss and impairment share
+  this corrected view. The fold's cache key now includes the horizon.
+- K03's unchanged September expectations now pass in PostgreSQL: consideration 1,350,000,
+  margin 500,000, costs 502,000, EAC 850,000 and revenue 797,294.12. The same version preserves
+  August consideration 1,200,000. Persistence and EAC-v3 lineage checks remain intact.
+- Verification: 550 engine regressions passed, with one existing expected failure (Q-11 deposit
+  observation). The new price-only concession/collection-cap and VC-date regressions pass.
+  The final book/demo/volume run passed 84 checks and exposed one stale seed-version fixture;
+  that fixture was corrected and all 14 policy tests then passed. All 46 import/purity checks
+  passed. Source Mypy, Ruff and design checks pass.
+  Demo/volume generator versions 14/19 distinguish the changed stored calculations.
+- Historical calculations are not backfilled. The loss-register projection/registration and its
+  public report acceptance remain next; full-backend verification, the broader limitations and
+  independent accounting sign-off remain open. Repository work only; no deployment.
+- Earlier period-loss persistence evidence is archived in
+  [BUILD-HISTORY-2026-10-07.md](docs/release/BUILD-HISTORY-2026-10-07.md).

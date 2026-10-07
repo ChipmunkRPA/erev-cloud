@@ -1,25 +1,28 @@
 # PROGRESS — eRev Cloud build loop notebook (under 20 KB)
 
-## Dated loss consideration — October 7, 2026
+## Loss provision register enabled — October 7, 2026
 
-- Continued from PR #17 (`019d64e`). The book fold now rebuilds each contract's unconstrained
-  consideration at boundary dates and period ends. Approved amendment/exercise amounts are
-  scoped to their owner and included before the collection cap. VC versions, realised amounts
-  and other Stage-04 components are measured at the historical date. Loss and impairment share
-  this corrected view. The fold's cache key now includes the horizon.
-- K03's unchanged September expectations now pass in PostgreSQL: consideration 1,350,000,
-  margin 500,000, costs 502,000, EAC 850,000 and revenue 797,294.12. The same version preserves
-  August consideration 1,200,000. Persistence and EAC-v3 lineage checks remain intact.
-- Verification: 550 engine regressions passed, with one existing expected failure (Q-11 deposit
-  observation). The new price-only concession/collection-cap and VC-date regressions pass.
-  The final book/demo/volume run passed 84 checks and exposed one stale seed-version fixture;
-  that fixture was corrected and all 14 policy tests then passed. All 46 import/purity checks
-  passed. Source Mypy, Ruff and design checks pass.
-  Demo/volume generator versions 14/19 distinguish the changed stored calculations.
-- Historical calculations are not backfilled. The loss-register projection/registration and its
-  public report acceptance remain next; full-backend verification, the broader limitations and
-  independent accounting sign-off remain open. Repository work only; no deployment.
-- Earlier period-loss persistence evidence is archived in
+- Continued from merged PR #18 (`4d79cfd`). RPT-31 now reads period loss-test rows and every EAC
+  contributor from the report-bound contract versions. It filters by book, entity, owning member,
+  accounting period, loss scope and optional nonzero provision. Row keys distinguish contract
+  and obligation units; totals retain separate currencies. Multiple EAC contributors are listed
+  explicitly, with no arbitrary single version selected.
+- The adapter retains calendars, selected versions and contract/obligation/EAC labels for reruns.
+  Trace coverage refuses missing persisted period tests, including zero provisions from older
+  versions. No historical backfill. Revision 0134 updates the previously unavailable report's IPE
+  metadata and restores its immutability guard in the migration transaction.
+- The original K03 public report acceptance passes. A second PostgreSQL regression verifies a
+  changed fresh report, identical same-source rerun rows/hash after later changes, August's
+  unchanged 1,200,000 consideration, zero-provision filtering, empty entity scope and JSON/CSV/
+  XLSX/PDF generation. The report unit suite passes all 507 tests; six migration/report-schema
+  tests pass, including upgrade/downgrade/upgrade and the report-definition immutability check.
+  Source Mypy, Ruff and design checks pass.
+- Remaining RPT-31 work: provision-cell Explain drill and functional/reporting currency when
+  currencies differ. Explicit locked-source reads remain refused; ordinary bound reruns work.
+  There are now 39 registered builders and 17 unavailable definitions. Standing acceptance 12
+  is closed; broader C-11 work, full-backend verification and independent accounting sign-off
+  remain open. No deployment.
+- Previous loss storage and calculation evidence is archived in
   [BUILD-HISTORY-2026-10-07.md](docs/release/BUILD-HISTORY-2026-10-07.md).
 
 ## Balance aging enabled — October 7, 2026

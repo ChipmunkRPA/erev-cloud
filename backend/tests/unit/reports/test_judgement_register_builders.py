@@ -2,8 +2,7 @@
 specification grids are parsed from SCREENS_B, so a specification edit or a builder column drift
 fails here; the row shaping is proven on pure inputs. The acceptance over worlds built through the
 product's commands is ``tests/domain/reports/test_registers_judgement.py`` (database). RPT-31
-``loss_provision_register`` has no builder: its projection and loss-test modification correction
-remain outstanding.
+``loss_provision_register`` now reads persisted period tests and EAC lineage.
 """
 
 from __future__ import annotations
@@ -64,7 +63,7 @@ def test_registration_and_catalogue(number: int, module: Any) -> None:
     assert f"`row_key` `{module.ROW_KEY_PREFIX}" in section
 
 
-def test_specification_literals_and_the_unbuilt_loss_register() -> None:
+def test_specification_literals_and_the_loss_register() -> None:
     section = report_specs.section(29, estimates.CODE)
     for literal in (estimates.CONSTRAINED, estimates.EXPECTED_TOTAL, estimates.RATE):
         assert f'"{literal}"' in section
@@ -77,15 +76,14 @@ def test_specification_literals_and_the_unbuilt_loss_register() -> None:
     assert EstimateKind.EAC.value == "EAC" and EstimateMethod.COST_BUILDUP.value == "COST_BUILDUP"
     assert JudgementTopic.ESTIMATE_VS_ERROR.value == "ESTIMATE_VS_ERROR"
     assert exclusions.LEASE == ScopeFlag.LEASE_842.value
-    # RPT-31: T-CON-17 is persisted; the report projection and calculation fix remain open;
-    # this pin flips when CTR-14 lands and the register can be built on its source
+    # RPT-31 now projects the immutable T-CON-17 tests and T-CON-25 EAC lineage.
     assert "loss_provision_register" in DEFINITIONS_BY_CODE
     assert (
         "loss_provision_version"
         in DEFINITIONS_BY_CODE["loss_provision_register"].ipe_logic["source_tables"]
     )
     assert hasattr(tables, "loss_provision_version")
-    assert "loss_provision_register" not in framework.BUILDERS
+    assert "loss_provision_register" in framework.BUILDERS
 
 
 # --- RPT-28 -----------------------------------------------------------------------------------
