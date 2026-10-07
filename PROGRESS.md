@@ -1,5 +1,7 @@
 # PROGRESS — eRev Cloud build loop notebook (under 20 KB)
 
+**Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
+
 ## Close-gate waiver identities — October 7, 2026
 
 - Continued from main `e9cae63`. Reproduced B1-10 in pending and approved waivers: resolving
@@ -46,8 +48,8 @@
   Ruff lint/format with the repository configuration and whitespace checks pass. Secret scan:
   3,391 files, zero findings. This is scoped verification, not a green whole-backend gate.
 - Repository settings enable automatic merge and deletion of merged branches. At the start
-  of this slice, GitHub had only main and no open PRs. Verified changes continue through a
-  temporary PR branch, merged into main and removed after review. No deployment.
+  of this slice, GitHub had only main and no open PRs. This slice used a temporary PR branch,
+  merged into main and removed after review. The owner now requests direct main commits.
 - Remaining work includes the broader backend/specialist verification, B1-10 identity-bound
   close-gate waivers, the other documented limitations and independent accounting sign-off.
   Archived the earlier originating-contract FX section verbatim to keep this file under 20 KB.
