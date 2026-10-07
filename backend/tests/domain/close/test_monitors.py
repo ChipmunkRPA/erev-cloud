@@ -13,7 +13,7 @@ from collections.abc import Mapping
 from datetime import date, timedelta
 from decimal import Decimal
 from typing import Any
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import pytest
 from erev_api.auth.keyring import KeyRing
@@ -29,6 +29,7 @@ from erev_api.db.tables import (
     contract_version_balance,
     engine_release,
     exception_item,
+    fx_layer_movement,
     fx_rate,
     fx_rate_set,
     fx_rate_set_version,
@@ -304,10 +305,8 @@ def test_dq_revenue_without_billing_threshold(
 def test_dq_negative_liability_layer(world: CloseWorld) -> None:
     """04 T-CON-09: every labelled balance column is non-negative — the CHECK
     ``ck_contract_version_balance__contract_liability_txn`` refuses the interim source's negative
-    seed, so a negative liability layer is not representable on ``contract_version_balance`` (CLO-5
-    read it as the interim T-CON-18 source, CTR-14 pending). The monitor therefore raises nothing
-    from a balance and the gate passes; detection of a negative OPEN layer awaits the T-CON-18
-    layer source — F-CLO record §25.13 (an open question, not a weakened rule or CHECK)."""
+    seed, so aggregate balances cannot represent the negative-layer condition. The monitor now
+    reads T-CON-18; an old version without movement rows provides no layer coverage."""
     with system_session(world) as session:
         contract_id, _, _, version_id = _version(session, world)
         negative = contract_version_balance_values(
@@ -1273,3 +1272,180 @@ def test_repeat_raises_survive_a_generic_plan(world: CloseWorld) -> None:
     assert again.id == raised[7].id
     (item,) = _items(world, "FX_RATE_MISSING")[7:8]
     assert (item["dedupe_key"], item["occurrence_count"]) == ("probe:generic-plan:7", 2)
+
+
+def _layer_movement(
+    session: Session,
+    world: CloseWorld,
+    contract_id: UUID,
+    version_id: UUID,
+    key: str,
+    kind: str,
+    txn: str,
+    functional: str,
+    *,
+    on: date = PERIOD_END,
+    book: str = BOOK,
+    entity_id: UUID | None = None,
+) -> None:
+    session.execute(
+        insert(fx_layer_movement).values(
+            tenant_id=world.tenant_id,
+            id=uuid4(),
+            contract_version_id=version_id,
+            contract_id=contract_id,
+            book_code=book,
+            entity_id=entity_id or world.entity_id,
+            layer_key=key,
+            movement_kind=kind,
+            balance_role="CONTRACT_LIABILITY",
+            effective_date=on,
+            txn_currency="USD",
+            functional_currency="USD",
+            amount_txn=Decimal(txn),
+            amount_functional=Decimal(functional),
+            rate=Decimal("1"),
+            created_by=None,
+            created_by_kind="SYSTEM",
+        )
+    )
+
+
+@pytest.mark.parametrize("functional_deficit", [False, True])
+def test_negative_layer_cannot_hide_in_positive_total_and_blocks_close(
+    world: CloseWorld,
+    functional_deficit: bool,
+) -> None:
+    with system_session(world) as session:
+        contract_id, _, _, version_id = _version(session, world)
+        _layer_movement(
+            session, world, contract_id, version_id, "bad", "LIABILITY_LAYER_CREATED", "100", "100"
+        )
+        _layer_movement(
+            session,
+            world,
+            contract_id,
+            version_id,
+            "bad",
+            "LIABILITY_LAYER_CONSUMED",
+            "50" if functional_deficit else "120",
+            "50" if functional_deficit else "120",
+        )
+        _layer_movement(
+            session,
+            world,
+            contract_id,
+            version_id,
+            "bad",
+            "LIABILITY_LAYER_REMEASURED",
+            "100",
+            "-60" if functional_deficit else "50",
+        )
+        _layer_movement(
+            session, world, contract_id, version_id, "good", "LIABILITY_LAYER_CREATED", "200", "200"
+        )
+        # A future inflow cannot repair the deficit at this close date.
+        _layer_movement(
+            session,
+            world,
+            contract_id,
+            version_id,
+            "bad",
+            "LIABILITY_LAYER_CREATED",
+            "1000",
+            "1000",
+            on=date(2026, 10, 1),
+        )
+        # Neither another book's deficit nor a future deficit belongs to September ASC606.
+        _layer_movement(
+            session,
+            world,
+            contract_id,
+            version_id,
+            "other-book",
+            "LIABILITY_LAYER_CONSUMED",
+            "100",
+            "100",
+            book="IFRS15",
+        )
+        _layer_movement(
+            session,
+            world,
+            contract_id,
+            version_id,
+            "future",
+            "LIABILITY_LAYER_CONSUMED",
+            "100",
+            "100",
+            on=date(2026, 10, 1),
+        )
+    result = _run(world)
+    (item,) = _items(world, "DQ_NEGATIVE_LIABILITY_LAYER")
+    assert item["status"] == "OPEN" and item["contract_id"] == contract_id
+    assert "bad" in item["message"]
+    assert ("-10" if functional_deficit else "-20") in item["message"]
+    assert result.open_blocking == 1
+    assert _gate(world).status is ChecklistStatus.FAILED
+    _run(world)
+    assert len(_items(world, "DQ_NEGATIVE_LIABILITY_LAYER")) == 1
+
+
+def test_corrected_version_resolves_negative_layer_without_recounting_history(
+    world: CloseWorld,
+) -> None:
+    with system_session(world) as session:
+        contract_id, _, group_id, version_id = _version(session, world)
+        _layer_movement(
+            session, world, contract_id, version_id, "layer", "LIABILITY_LAYER_CONSUMED", "20", "20"
+        )
+    _run(world)
+    (finding,) = _items(world, "DQ_NEGATIVE_LIABILITY_LAYER")
+    assert finding["status"] == "OPEN"
+
+    with system_session(world) as session:
+        release_id = session.execute(
+            select(contract_computation.c.engine_release_id).where(
+                contract_computation.c.combination_group_id == group_id
+            )
+        ).scalar_one()
+        computation = contract_computation_values(
+            world.tenant_id, combination_group_id=group_id, engine_release_id=release_id
+        )
+        session.execute(insert(contract_computation).values(**computation))
+        trace = calc_trace_values(
+            world.tenant_id, contract_version_id=UUID(int=0), combination_group_id=group_id
+        )
+        version = contract_version_values(
+            world.tenant_id,
+            combination_group_id=group_id,
+            contract_computation_id=computation["id"],
+            calc_trace_id=trace["id"],
+            version_no=2,
+            known_at=computation["known_at"] + timedelta(seconds=1),
+        )
+        trace["contract_version_id"] = version["id"]
+        session.execute(insert(calc_trace).values(**trace))
+        session.execute(insert(contract_version).values(**version))
+        # A replacement calculation's complete movement set is positive by itself. Adding
+        # the obsolete version's consumption would incorrectly keep the exception open.
+        _layer_movement(
+            session, world, contract_id, version["id"], "layer", "LIABILITY_LAYER_CREATED", "5", "5"
+        )
+        entity_b = other_entity(session, world, "AVM-UK")
+        contract_b, _, _, version_b = _version(session, world, entity_id=entity_b)
+        _layer_movement(
+            session,
+            world,
+            contract_b,
+            version_b,
+            "foreign-layer",
+            "LIABILITY_LAYER_CONSUMED",
+            "100",
+            "100",
+            entity_id=entity_b,
+        )
+    result = _run(world)
+    (resolved,) = _items(world, "DQ_NEGATIVE_LIABILITY_LAYER")
+    assert resolved["id"] == finding["id"] and resolved["status"] == "RESOLVED"
+    assert result.open_blocking == 0 and result.settled == (finding["id"],)
+    assert _gate(world).status is ChecklistStatus.PASSED

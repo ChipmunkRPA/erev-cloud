@@ -356,8 +356,9 @@ across the full manifest. This does not establish full-scale database performanc
 October 7 FX layer continuation: revision 0131 persists immutable T-CON-18 movement rows for
 new computations, including contract ownership and source/rate/trace lineage, under tenant/entity
 RLS. Existing versions are not backfilled. This closes the storage prerequisite only: balance aging
-still requires its projection and historical reads, and the negative-liability monitor still uses
-aggregate balances. C-11 and the remaining CTR-14 tables are not complete. Demo/volume generator
+still requires its projection and historical reads. The subsequent close-monitor continuation
+checks individual current-version layers through the close date, in both currencies, rather than
+aggregate balances. Pre-0131 versions still have no movement coverage. C-11 and the remaining CTR-14 tables are not complete. Demo/volume generator
 versions 11/16 identify the changed stored state; no full-volume seed or deployment is claimed.
 
 ## The fifteen standing names

@@ -26,10 +26,10 @@ Sources (record ``docs/reviews/loop/prod/F-CLO-prep.md`` §16.1):
 - ``DQ_REVENUE_WITHOUT_BILLING``: ``subledger_line`` of the entity and book up to the period end,
   the first ``REVENUE_RECOGNITION`` date against the first ``BILLING`` date per obligation (a
   contract-level billing line covers every obligation of the contract);
-- ``DQ_NEGATIVE_LIABILITY_LAYER``: T-CON-18 is now persisted by revision 0131, but the collector
-  still uses the current ``contract_version_balance``
-  ``contract_liability_txn`` per contract, one layer ``CONTRACT_LIABILITY:<contract external_id>``;
-  replacing this interim collector with layer-level checks remains outstanding;
+- ``DQ_NEGATIVE_LIABILITY_LAYER``: current-version T-CON-18 movements through the period end,
+  grouped by the originating layer. Either transaction or functional carrying below zero raises
+  one finding. Positive layers cannot offset a negative layer; remeasurement changes only the
+  functional carrying. Versions created before T-CON-18 persistence have no layer coverage;
 - ``DQ_RECOGNITION_AFTER_POB_END``: revenue ``schedule_line`` rows of the period on the current
   version whose ``obligation_version.end_date`` precedes the period start;
 - ``DQ_INACTIVE_CONTRACT``: ``ACTIVE`` contracts of the entity with the latest
@@ -54,7 +54,7 @@ from typing import TYPE_CHECKING, Any, Final
 from uuid import UUID
 
 from erev_engine.currencies import ISO_4217
-from sqlalchemy import ColumnElement, Select, Text, and_, cast, func, or_, select
+from sqlalchemy import ColumnElement, Select, Text, and_, case, cast, func, or_, select
 from sqlalchemy.orm import Session
 
 from erev_api.approvals import subjects
@@ -62,7 +62,7 @@ from erev_api.db.tables import (
     contract,
     contract_event,
     contract_version,
-    contract_version_balance,
+    fx_layer_movement,
     legal_entity,
     obligation_version,
     period_state,
@@ -107,7 +107,6 @@ EXCEPTION_OBJECT: Final = "exception_item"
 REVENUE_ACCOUNTANT: Final = "revenue_accountant"  # T-PLT-09 role code; ruling Q-5
 DQ_SYSTEM: Final = "DQ-SYSTEM"  # 04 §14.3 rev 1.21 seeded rule set
 SEVERITY_CAUSE: Final = "DATA_QUALITY rule re-evaluation"  # D-98 58 history entry cause
-LIABILITY_LAYER: Final = "CONTRACT_LIABILITY:{external_id}"  # interim layer key (CTR-14 pending)
 OBLIGATION_SUBJECT: Final = "obligation"
 REVENUE_SCHEDULE: Final = "REVENUE"
 # 04 T-IMP-05 rev 1.185: the resolution of an item whose finding is gone.
@@ -354,49 +353,62 @@ def _unbilled(session: Session, scope: gates.PeriodScope) -> list[monitor_rules.
 def _liability_layers(
     session: Session, scope: gates.PeriodScope
 ) -> list[monitor_rules.LiabilityLayerRef]:
-    """Interim T-CON-18 source (CTR-14 pending): the current version's contract liability."""
+    """Current-version layer balances through the close date, in both currencies.
+
+    Consumption is subtracted from its originating layer. A remeasurement changes only the
+    functional carrying amount; its transaction amount is the amount remeasured, not a new flow.
+    """
+    movement = fx_layer_movement.c
+    created = movement.movement_kind == "LIABILITY_LAYER_CREATED"
+    consumed = movement.movement_kind == "LIABILITY_LAYER_CONSUMED"
     rows = session.execute(
         select(
-            contract_version_balance.c.contract_id,
-            contract.c.external_id,
-            contract_version_balance.c.contract_liability_txn,
-            contract_version_balance.c.txn_currency,
-        )
-        .select_from(
-            contract_version_balance.join(
-                contract_version,
-                and_(
-                    contract_version.c.tenant_id == contract_version_balance.c.tenant_id,
-                    contract_version.c.id == contract_version_balance.c.contract_version_id,
-                ),
-            ).join(
-                contract,
-                and_(
-                    contract.c.tenant_id == contract_version_balance.c.tenant_id,
-                    contract.c.id == contract_version_balance.c.contract_id,
-                ),
-            )
-        )
-        .where(
-            contract_version_balance.c.entity_id == scope.entity_id,
-            contract_version_balance.c.book_code == scope.book_code,
-            _current_version(
-                contract_version_balance.c.contract_id,
-                contract_version_balance.c.contract_version_id,
-                scope.book_code,
+            movement.contract_id,
+            movement.layer_key,
+            movement.txn_currency,
+            movement.functional_currency,
+            func.sum(
+                case((created, movement.amount_txn), (consumed, -movement.amount_txn), else_=0)
+            ),
+            func.sum(
+                case((consumed, -movement.amount_functional), else_=movement.amount_functional)
             ),
         )
-        .order_by(contract.c.external_id)
-    ).tuples()
-    return [
-        monitor_rules.LiabilityLayerRef(
-            contract_id=UUID(str(contract_id)),
-            layer_key=LIABILITY_LAYER.format(external_id=external_id),
-            open_balance=Decimal(balance),
-            currency=str(currency),
+        .where(
+            movement.entity_id == scope.entity_id,
+            movement.book_code == scope.book_code,
+            movement.balance_role == "CONTRACT_LIABILITY",
+            movement.movement_kind.in_(
+                [
+                    "LIABILITY_LAYER_CREATED",
+                    "LIABILITY_LAYER_CONSUMED",
+                    "LIABILITY_LAYER_REMEASURED",
+                ]
+            ),
+            movement.effective_date <= scope.end_date,
+            _current_version(movement.contract_id, movement.contract_version_id, scope.book_code),
         )
-        for contract_id, external_id, balance, currency in rows
-    ]
+        .group_by(
+            movement.contract_id,
+            movement.layer_key,
+            movement.txn_currency,
+            movement.functional_currency,
+        )
+        .order_by(movement.contract_id, movement.layer_key)
+    ).tuples()
+    result = []
+    for contract_id, key, txn_currency, functional_currency, txn, functional in rows:
+        # One finding per layer. Prefer the transaction deficit when both currencies are negative.
+        use_functional = txn >= 0 and functional < 0
+        result.append(
+            monitor_rules.LiabilityLayerRef(
+                contract_id=UUID(str(contract_id)),
+                layer_key=str(key),
+                open_balance=Decimal(functional if use_functional else txn),
+                currency=str(functional_currency if use_functional else txn_currency).strip(),
+            )
+        )
+    return result
 
 
 def _recognitions(session: Session, scope: gates.PeriodScope) -> list[monitor_rules.RecognitionRef]:
