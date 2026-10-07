@@ -62,6 +62,7 @@ from erev_engine.stages.s02_contract_identification import (
     run_deposits,
 )
 from erev_engine.stages.s03_pob_builder import PobState
+from erev_engine.stages.s04_transaction_price.unconstrained import UnconstrainedView, measure
 from erev_engine.stages.s05_allocation import provenance
 from erev_engine.stages.s07_onboarding import baseline_of
 from erev_engine.stages.s09_recognition import RecognitionState
@@ -652,11 +653,51 @@ def _fold(
                 price_node=f"transaction_price@{ev.event_key}:{encode_key(pob.group_key)}:-",
             )
     st = _version_price(ctx, pob, st, tb, price)
+    st = _unconstrained_history(ctx, pob, st)
     proposals.extend(_pending_proposals(ctx, st, tb, identified))
     if not proposals:
         return st
     merged = sorted((*st.proposals, *proposals), key=_proposal_order)
     return dataclasses.replace(st, proposals=tuple(merged))
+
+
+def _unconstrained_history(ctx: BookContext, pob: PobState, st: AllocatedState) -> AllocatedState:
+    """End-of-day consideration at event dates and period ends, before the loss/impairment pass.
+
+    Reuse Stage 04's unconstrained components and the fold's dated amendment consideration.
+    Filtering additions by owner prevents a combined group's members sharing each other's price.
+    Re-measure before applying the collectibility cap; adding to a capped total is incorrect.
+    """
+    end = _stream_end(ctx, st)
+    positions = {st.inception_date}
+    positions.update(event.effective_date for event in pob.identified.canonical.boundary_events)
+    positions.update(
+        period.end_date
+        for entity in ctx.entities.values()
+        for period in entity.periods
+        if st.inception_date <= period.end_date <= end
+    )
+    ordered = sorted(at for at in positions if st.inception_date <= at <= end)
+    rates = {at: _rates(st, at, None) for at in ordered}
+    views = {
+        contract: UnconstrainedView(
+            measure(
+                ctx,
+                pob,
+                contract,
+                at,
+                None,
+                rates[at],
+                added=sum(
+                    (amount for _, amount in _added_references(st, at, None, contract)),
+                    Fraction(0),
+                ),
+            )
+            for at in ordered
+        )
+        for contract in pob.identified.member_contract_keys
+    }
+    return dataclasses.replace(st, tp_unconstrained=views)
 
 
 def _version_price(
@@ -854,7 +895,7 @@ def _added_consideration(st: AllocatedState, at: date, before: EventView | None)
 
 
 def _added_references(
-    st: AllocatedState, at: date, before: EventView | None
+    st: AllocatedState, at: date, before: EventView | None, contract_key: str | None = None
 ) -> tuple[tuple[SourceRef, Fraction], ...]:
     """The consideration the boundary events before the position add, one source reference per
     addition with its value (CV-53): member ``additional_consideration`` of an exercise, member
@@ -869,6 +910,8 @@ def _added_references(
             found.append((SourceRef("contract_event", ev.event_key, members), amount))
 
     for ev in st.events:
+        if contract_key is not None and ev.contract_key != contract_key:
+            continue
         if ev.effective_date > at or (before is not None and ev.order_key >= before.order_key):
             continue
         if ev.event_type == "MATERIAL_RIGHT_EXERCISED":

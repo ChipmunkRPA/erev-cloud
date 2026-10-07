@@ -589,12 +589,12 @@ def test_loss_tests_persist_periods_and_eac_lineage(k03: K03World, clock: Frozen
             .all()
         )
         assert len(rows) > 1 and len({row["period_key"] for row in rows}) == len(rows)
+        august = next(row for row in rows if row["as_of"].isoformat() == "2026-08-31")
+        assert august["expected_consideration"] == Decimal("1200000")
         september = next(row for row in rows if row["period_key"] == SEPTEMBER_2026)
         assert september["contract_id"] == k03.contract_id
         assert september["in_scope"] is True
         # Storage is checked against the complete engine output, not a substituted calculation.
-        # The register's original 1,350,000 / 500,000 acceptance above remains unchanged; the
-        # engine's stale unconstrained price after the modification is a separate open defect.
         bundle = bundles.build(uow.session, k03.group_id, uow.now)
         book = next(item for item in compute(bundle).books if item.book_code == "ASC606")
         emitted = next(
@@ -610,6 +610,8 @@ def test_loss_tests_persist_periods_and_eac_lineage(k03: K03World, clock: Frozen
             "provision_movement",
         ):
             assert september[name] == minor_to_decimal(int(str(emitted.columns[name])), 2)
+        assert september["expected_consideration"] == Decimal("1350000")
+        assert september["expected_margin"] == Decimal("500000")
         assert september["expected_total_costs"] == Decimal("850000")
         assert september["costs_to_date"] == Decimal("502000")
         assert september["revenue_to_date"] == Decimal("797294.12")

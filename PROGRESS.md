@@ -1,31 +1,26 @@
 # PROGRESS — eRev Cloud build loop notebook (under 20 KB)
 
-## Period loss-test persistence — October 7, 2026
+## Dated loss consideration — October 7, 2026
 
-- Continued from merged PR #16 (`4a845d0`). Revision 0133 persists T-CON-17 loss tests per
-  calculation, owning contract/unit and accounting period. Rows retain scope, measurement basis,
-  transaction-currency amounts and trace-node mappings, under immutable tenant/entity isolation.
-  The earlier draft key omitted period identity even though the engine emits multiple periods.
-- T-CON-25 `loss_provision_eac` retains every contributing EAC version with tenant-bound foreign
-  keys. The parent convenience reference is set only for a single contributor. The writer refuses
-  unresolved/foreign-owner EAC references, invalid unit/period identities and inexact numeric types
-  before inserting results; all rows and audit facts commit with the calculation.
-- Updated privacy, schema/type, enum and snapshot inventories, row fixtures and audit ownership.
-  Loss rows are regenerated on snapshot replay. Demo/volume generator versions are now 13/18.
-  Historical versions are not backfilled; the loss register remains unregistered.
-- Newly reproduced calculation discrepancy: after K03's September change order, the persisted
-  engine loss test states consideration 1,200,000 and margin 350,000, while the existing RPT-31
-  acceptance requires 1,350,000 and 500,000. EAC 850,000, costs 502,000, revenue 797,294.12 and
-  zero provision are preserved correctly. The original register acceptance is unchanged; storage
-  tests compare against emitted engine results and do not certify those discrepant amounts.
-  Next: trace the stale unconstrained-price view (`s04_transaction_price/unconstrained.py`, consumed
-  by `s11_costs_loss/loss.py::_consideration`) through modifications before enabling the report.
-- Verification: **7 PostgreSQL persistence/migration/grant tests**, **4 tenant/entity isolation tests**
-  and **9 computation regressions passed**. **86 persistence/privacy/snapshot unit tests**,
-  **26 final schema/type/persistence checks** and **32 report/demo/generator checks passed**.
-  The broad architecture run passed 351 checks; its sole column-order failure was corrected and
-  verified by the final schema checks. Source Mypy, Ruff and design checks passed.
-- Full-backend verification and independent accounting sign-off remain open. No deployment.
+- Continued from PR #17 (`019d64e`). The book fold now rebuilds each contract's unconstrained
+  consideration at boundary dates and period ends. Approved amendment/exercise amounts are
+  scoped to their owner and included before the collection cap. VC versions, realised amounts
+  and other Stage-04 components are measured at the historical date. Loss and impairment share
+  this corrected view. The fold's cache key now includes the horizon.
+- K03's unchanged September expectations now pass in PostgreSQL: consideration 1,350,000,
+  margin 500,000, costs 502,000, EAC 850,000 and revenue 797,294.12. The same version preserves
+  August consideration 1,200,000. Persistence and EAC-v3 lineage checks remain intact.
+- Verification: 550 engine regressions passed, with one existing expected failure (Q-11 deposit
+  observation). The new price-only concession/collection-cap and VC-date regressions pass.
+  The final book/demo/volume run passed 84 checks and exposed one stale seed-version fixture;
+  that fixture was corrected and all 14 policy tests then passed. All 46 import/purity checks
+  passed. Source Mypy, Ruff and design checks pass.
+  Demo/volume generator versions 14/19 distinguish the changed stored calculations.
+- Historical calculations are not backfilled. The loss-register projection/registration and its
+  public report acceptance remain next; full-backend verification, the broader limitations and
+  independent accounting sign-off remain open. Repository work only; no deployment.
+- Earlier period-loss persistence evidence is archived in
+  [BUILD-HISTORY-2026-10-07.md](docs/release/BUILD-HISTORY-2026-10-07.md).
 
 ## Balance aging enabled — October 7, 2026
 
