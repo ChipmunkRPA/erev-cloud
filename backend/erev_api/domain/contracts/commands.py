@@ -58,6 +58,7 @@ from erev_api.db.tables import (
 )
 from erev_api.domain.contracts import computation, compute_job, queries, repo
 from erev_api.domain.reference.commands import create_customer
+from erev_api.domain.reference.products import required_attribute_errors
 from erev_api.enums import (
     CombinationStatus,
     ComputationStatus,
@@ -278,6 +279,7 @@ def _validate(
             errors.append(
                 _error(f"lines.{index}.performing_entity_code", RULE_ENTITY, ENTITY_UNKNOWN)
             )
+    errors += required_attribute_errors(session, product_codes, at=body.inception_date)
     errors += _currency_errors(body)
     if body.renewal_of_contract_id is not None:
         renewal = select(contract.c.id).where(contract.c.id == body.renewal_of_contract_id)

@@ -6,6 +6,12 @@ October 7 continuation: B5-3 and C-1 were closed on `codex/import-job-recovery` 
 import-job cleanup, lock-wait recovery and queued-cancellation handling. See `PROGRESS.md` for
 new verification; all remaining release evidence below retains its original date.
 
+October 7 product continuation: B1-16 is closed for contract admission and new obligations.
+Mandatory disaggregation attributes are checked at booking/draft replacement, activation submission
+and approval, native additions and legacy amendment application, including dated bundle components.
+Incomplete catalogue drafts remain editable. Findings identify the product and missing codes;
+failed application rolls back events/obligations. See PROGRESS.md for scoped verification.
+
 October 7 close-task continuation: B1-9 is closed for the command flow. Signing requires the
 configured owner role for the period's entity; closed periods refuse signing. An approved reopen
 clears current manual-task signatures and requires fresh attestations, preserving immutable history.
@@ -114,7 +120,6 @@ These are not limits of the build. They are what a production use of release 1.0
 | B1-12 | A reopen for an error correction names its judgement record in free text, and nothing checks the text. | The record that justifies the correction may not exist or may not be reviewed. | The two approvers of the reopen open the named record before they approve. | record 16 |
 | B1-13 | A not-probable Step 1 assessment dated inside a period in soft close or reopened is appended by its sender alone, and it posts. | The judgement was reviewed; its date was not. A stated residue of the separation-of-duties rule SoD-6. | — | record 24 (iv) |
 | B1-15 | A request for which nobody but its preparer can decide is not flagged when it is submitted: no access administrator is told and the queue does not mark it. | The request waits unseen. | In a small workspace, check before submitting that another person holds the step's permission for the request's entities. | R-41 (6); R-48 (h); R-124 (l) |
-| B1-16 | Disaggregation attributes configured as mandatory do not have to be set before a product is used: no command refuses a product that lacks them. | The disaggregation report ties to the revenue journals, the detective half; revenue of such a product is posted without the mandatory attributes. | Complete a product's attributes before its first contract: the product's drawer ("New product", "Edit product") says which are missing ("This product cannot be used on contracts until … are set."), and nothing refuses the contract. | record 14 (CTL-028); read |
 | B1-17 | Eleven settings are read by no code, and the workspace settings form offers three of them for approval. | An approved value of such a setting changes nothing. One of them, read on the tip: `close.unacknowledged_export_block_days` is offered on the workspace settings screen and read by no code, so nothing ages an unacknowledged export batch on the close cockpit; the lock's block on an unacknowledged batch is built. | — | record 22; R-123 (k); R-124 (l); read on the tip |
 | B1-18 | A record whose identity is already stored is logged and skipped, whatever its content, and a row of a file takes its identity from its upload, sheet and row number. | The same records sent in a second file are new records, and a changed record under a stored identity is not raised: REQ-DAT-011 has "collisions go to the exception queue before commit". | Read an import's dry-run diff before submitting it, and do not send the same records in two files. | REQ-DAT-011 (CTL-001); read on the tip |
 | B1-19 | A control-total mismatch of an adapter batch raises an exception item and tells nobody, and an import's loaded total is compared with its source by the number of rows. | REQ-DAT-010 has a mismatch notify the integration's owner; the amounts of an import are not totalled against its file. | Read the exception queue after a sync run; compare an import's amounts on its dry-run diff. | REQ-DAT-010 (CTL-002); read on the tip |

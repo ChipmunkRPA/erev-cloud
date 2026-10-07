@@ -59,6 +59,7 @@ from erev_api.registry.versions import (
 )
 
 RULE_PRODUCT: Final = "T-REF-20"
+RULE_USABILITY: Final = "REQ-REF-012"
 RULE_COMPONENT: Final = "T-REF-21"
 RULE_PRINCIPAL_AGENT: Final = "REQ-REF-012"
 RULE_POLICY_VALUES: Final = "REQ-POL-003"
@@ -340,6 +341,48 @@ def mandatory_attributes(session: Session, *, known_at: datetime | None = None) 
     tenant at ``known_at`` (by default the transaction timestamp; DG-KRN-REG-01)."""
     value = setting(session, MANDATORY_ATTRIBUTES, known_at=known_at)
     return [str(code) for code in value]
+
+
+def required_attribute_errors(
+    session: Session, codes: Collection[str], *, at: date
+) -> list[ProblemError]:
+    """Mandatory attributes for named products and their effective bundle components."""
+    if not codes:
+        return []
+    mandatory = mandatory_attributes(session)
+    if not mandatory:
+        return []
+    errors: list[ProblemError] = []
+    seen: set[str] = set()
+    pending = set(codes)
+    while pending:
+        rows = session.execute(
+            select(product.c.id, product.c.code, product.c.is_bundle, product.c.disaggregation)
+            .where(product.c.code.in_(sorted(pending)))
+            .order_by(product.c.code)
+        ).all()
+        seen.update(pending)
+        pending = set()
+        for product_id, code, is_bundle, attributes in rows:
+            missing = usability_of(is_active=True, disaggregation=attributes, mandatory=mandatory)[
+                "missing"
+            ]
+            if missing:
+                errors.append(
+                    _error(
+                        "lines",
+                        f"Product {code} is missing mandatory disaggregation attributes: "
+                        f"{', '.join(missing)}.",
+                        RULE_USABILITY,
+                    )
+                )
+            if is_bundle:
+                pending.update(
+                    component.component_product_code
+                    for component in bundle_components(session, product_id, at=at)
+                    if component.component_product_code not in seen
+                )
+    return errors
 
 
 def series_product_ids(session: Session, product_ids: Collection[UUID]) -> set[UUID]:

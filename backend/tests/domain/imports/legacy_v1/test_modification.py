@@ -568,3 +568,42 @@ def test_tc_delivery_22_return_after_september_modification(legacy: LegacyWorld)
     ]
     assert "NON_FINITE_AMOUNT" in codes
     assert c1["POB #2"]["id"] == before["POB #2"]["id"]
+
+
+def test_added_product_without_mandatory_attributes_is_quarantined(legacy: LegacyWorld) -> None:
+    replayed(legacy, "12")
+    before = _contract(legacy, "Contract 3")
+    context = DbContext(tenant_id=legacy.tenant_id, user_id=None, entity_scope="*")
+    with tenant_session(context) as session:
+        publish_registry_version(
+            session,
+            tenant_id=legacy.tenant_id,
+            category=RegistryCategory.DISCLOSURE_ELECTION,
+            values={"disclosure.mandatory_disaggregation_attributes": ["review_channel"]},
+            at=legacy.imports.clock.now(),
+        )
+    name, content = _workbook("13")
+    import_id = diffed(
+        legacy.imports, name, content, CODE, {"effective_date": "2023-09-15", "mode": "prospective"}
+    )
+    items = legacy.imports.rows(
+        select(exception_item.c.code, exception_item.c.message).where(
+            exception_item.c.import_upload_id == UUID(import_id)
+        )
+    )
+    assert any(
+        item["code"] == "IMPORT_PROCESSING_FAILED"
+        and "Product Consulting 1 is missing mandatory disaggregation attributes: review_channel."
+        in item["message"]
+        for item in items
+    ), items
+    assert _amended(legacy, import_id) == []
+    assert _contract(legacy, "Contract 3")["head_stream_version"] == before["head_stream_version"]
+    assert (
+        legacy.imports.rows(
+            select(obligation.c.id).where(
+                obligation.c.contract_id == before["id"], obligation.c.obligation_key == "POB #5"
+            )
+        )
+        == []
+    )

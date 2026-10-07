@@ -1603,3 +1603,71 @@ def test_activation_pair_1_approved_path_moves_stored_draft_to_active_and_refusa
         )
     assert _header(seats, other_id) == ("DRAFT", other_head)
     assert "CONTRACT_ACTIVATED" not in _event_types(seats, other_id)
+
+
+@pytest.mark.control("CTL-028")
+def test_mandatory_product_attributes_block_booking_and_recheck_activation(
+    seats: SeatWorld, clock: FrozenClock
+) -> None:
+    from erev_api.db.tables import product
+    from erev_api.enums import RegistryCategory
+    from support.reference import patch
+    from support.rows import publish_registry_version
+
+    app, maya = seats.app, seats.place.author
+    body = _seat_contract(seats, "REQUIRED-ATTR-EXISTING", seats="10", price="24000.00")
+    contract_id = _created(app, maya, body)
+    head = _step1(app, maya, seats.marcus, contract_id, 1)
+    sent = _submit(app, maya, contract_id, head)
+    assert sent.status_code == 200, sent.text
+    request_id = sent.headers[APPROVAL_HEADER]
+    context = DbContext(tenant_id=seats.place.tenant_id, user_id=None, entity_scope="*")
+    with tenant_session(context) as session:
+        publish_registry_version(
+            session,
+            tenant_id=seats.place.tenant_id,
+            category=RegistryCategory.DISCLOSURE_ELECTION,
+            values={"disclosure.mandatory_disaggregation_attributes": ["review_channel"]},
+            at=clock.now(),
+        )
+        product_id = session.execute(
+            select(product.c.id).where(product.c.code == body["lines"][0]["product_code"])
+        ).scalar_one()
+    message = (
+        f"Product {body['lines'][0]['product_code']} is missing mandatory "
+        "disaggregation attributes: review_channel."
+    )
+    new_body = {**body, "external_id": "REQUIRED-ATTR-NEW"}
+    refused = post(app, CONTRACTS, maya, new_body)
+    assert refused.status_code == 422, refused.text
+    assert ("lines", "REQ-REF-012") in fields(refused)
+    assert message in [error["message"] for error in refused.json()["errors"]]
+    checklist = {
+        code: (passed, detail) for code, passed, detail in _checklist(app, maya, contract_id)
+    }
+    assert checklist["PRODUCT_TEMPLATE_SSP"] == (False, message)
+    blocked = approve(app, request_id, seats.marcus)
+    assert blocked.status_code == 409, blocked.text
+    assert "PRODUCT_TEMPLATE_SSP" in [rule for _, rule in fields(blocked)]
+    assert "CONTRACT_ACTIVATED" not in _event_types(seats, contract_id)
+    path = f"/api/v1/products/{product_id}"
+    shown = get(app, path, maya)
+    assert shown.status_code == 200, shown.text
+    fixed = patch(
+        app,
+        path,
+        maya,
+        {
+            "disaggregation": {
+                **shown.json()["disaggregation"],
+                "review_channel": "direct",
+            }
+        },
+        if_match=shown.headers["ETag"],
+    )
+    assert fixed.status_code == 200, fixed.text
+    approved = approve(app, request_id, seats.marcus)
+    assert approved.status_code == 200, approved.text
+    assert "CONTRACT_ACTIVATED" in _event_types(seats, contract_id)
+    created = post(app, CONTRACTS, maya, new_body)
+    assert created.status_code == 201, created.text

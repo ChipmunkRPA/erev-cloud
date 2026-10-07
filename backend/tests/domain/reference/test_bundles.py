@@ -282,3 +282,59 @@ def test_bundle_component_findings_and_replacement(app: FastAPI, maya: Actor) ->
     assert (emptied.status_code, emptied.json()["components"]) == (200, []), emptied.text
     cleared = patch(app, f"{PRODUCTS}/{fleet['id']}", maya, {"is_bundle": False}, if_match='"r1"')
     assert (cleared.status_code, cleared.json()["is_bundle"]) == (200, False), cleared.text
+
+
+def test_required_attributes_include_only_effective_bundle_components(
+    app: FastAPI, maya: Actor, clock: FrozenClock
+) -> None:
+    from erev_api.enums import RegistryCategory
+    from support.rows import publish_registry_version
+
+    bundle = new_product(
+        app,
+        maya,
+        code="ATTR-BUNDLE",
+        name="Attribute bundle",
+        is_bundle=True,
+        disaggregation={"review_channel": "direct"},
+    )
+    missing = new_product(app, maya, code="ATTR-MISSING", name="Missing attributes")
+    complete = new_product(
+        app,
+        maya,
+        code="ATTR-COMPLETE",
+        name="Complete attributes",
+        disaggregation={"review_channel": "direct"},
+    )
+    replaced = put(
+        app,
+        components_path(bundle["id"]),
+        maya,
+        {
+            "components": [
+                row(missing, sequence=1),
+                row(complete, sequence=1, valid_from="2026-07-01"),
+            ]
+        },
+    )
+    assert replaced.status_code == 200, replaced.text
+    with tenant_session(tenant_context(maya)) as session:
+        publish_registry_version(
+            session,
+            tenant_id=maya.member.tenant_id,
+            category=RegistryCategory.DISCLOSURE_ELECTION,
+            values={"disclosure.mandatory_disaggregation_attributes": ["review_channel"]},
+            at=clock.now(),
+        )
+    with tenant_session(tenant_context(maya), read_only=True) as session:
+        early = products.required_attribute_errors(session, ["ATTR-BUNDLE"], at=date(2026, 1, 1))
+        assert [(error.rule_id, error.message) for error in early] == [
+            (
+                "REQ-REF-012",
+                "Product ATTR-MISSING is missing mandatory disaggregation attributes: "
+                "review_channel.",
+            )
+        ]
+        assert (
+            products.required_attribute_errors(session, ["ATTR-BUNDLE"], at=date(2026, 7, 1)) == []
+        )

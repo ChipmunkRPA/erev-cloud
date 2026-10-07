@@ -5,15 +5,29 @@ path is unchanged and still covers the SSP codes while a computation was refused
 
 from __future__ import annotations
 
+from datetime import date
 from typing import Any
 from uuid import UUID
 
+import pytest
 from erev_api.domain.contracts import activation
+from erev_api.domain.reference import products
 from sqlalchemy.dialects import postgresql
 
 CONTRACT = UUID(int=0xC0)
 GROUP = UUID(int=0x60)
 PLAT = UUID(int=0xA1)
+
+
+@pytest.fixture(autouse=True)
+def no_required_product_attributes(monkeypatch: pytest.MonkeyPatch) -> None:
+    """These witnesses isolate unmapped/SSP findings in a workspace without required attributes."""
+    monkeypatch.setattr(products, "mandatory_attributes", lambda session: [])
+    monkeypatch.setattr(
+        activation.repo,
+        "product_reference_date",
+        lambda session, group_id: date(2026, 1, 1),
+    )
 
 
 class _Rows:

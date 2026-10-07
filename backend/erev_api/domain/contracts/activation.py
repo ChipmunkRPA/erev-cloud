@@ -129,6 +129,7 @@ from erev_api.domain.contracts import bundles, computation, queries, repo
 from erev_api.domain.contracts.events import impact_summary, step1_catch_up_totals
 from erev_api.domain.imports.exceptions import OPEN_STATUSES, finding_title
 from erev_api.domain.policies import judgements
+from erev_api.domain.reference.products import required_attribute_errors
 from erev_api.enums import (
     ApprovalRequestStatus,
     ApprovalSubjectType,
@@ -720,6 +721,14 @@ def product_template_ssp(
             line = TEMPLATE_MESSAGE.format(key=key, product=code)
             if line not in lines:
                 lines.append(line)
+    lines.extend(
+        error.message
+        for error in required_attribute_errors(
+            session,
+            {str(row["code"]) for row in products.values()},
+            at=repo.product_reference_date(session, _uuid(contract_row["combination_group_id"])),
+        )
+    )
     return _item(PRODUCT_TEMPLATE_SSP, lines)
 
 

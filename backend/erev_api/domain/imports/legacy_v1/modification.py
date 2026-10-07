@@ -83,6 +83,7 @@ from erev_api.domain.imports.csv_v2.framework import (
 from erev_api.domain.imports.legacy_v1 import headers
 from erev_api.domain.imports.legacy_v1.sku_ssp import BOOK_CODE
 from erev_api.domain.integrations.normalise import import_event_key
+from erev_api.domain.reference.products import required_attribute_errors
 from erev_api.domain.ssp import resolution
 from erev_api.enums import (
     ApprovalSubjectType,
@@ -507,6 +508,16 @@ def _insert_added(
     known = {UUID(str(row["id"])) for row in existing}
     sequence = max((int(row["line_sequence"]) for row in existing), default=0)
     codes = sorted({str(line.product_code) for line in added})
+    current = repo.get_contract(session, contract_id)
+    errors = required_attribute_errors(
+        session,
+        codes,
+        at=repo.product_reference_date(session, UUID(str(current["combination_group_id"]))),
+    )
+    if errors:
+        raise Problem(
+            "validation-failed", "; ".join(error.message for error in errors), errors=errors
+        )
     products = {
         str(code): UUID(str(value))
         for code, value in session.execute(
