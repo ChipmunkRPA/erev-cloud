@@ -14,12 +14,8 @@ world that has only what a key's plan made (nothing more), and what it leaves �
 one reclass posting of the entity with its reversal in the next open period, the groups' marks,
 a draft journal run — so that the items after it still meet their checkpoint.
 
-The same run is the database witness of register index 308 (POLICY-OVERRIDE-WITHDRAW-1;
-supervisor ruling R-126 (c)): POS-CHK-012 declares two policy overrides, release 1.0 offers none
-and the plan creates none — no row, no request — and the key is not passed although every block
-compares clean: its verdict carries the one finding (``platform_runner.key_verdict``). Until that
-item the plan created, submitted and approved both overrides here, and the comparison was the
-same: no computation read them.
+The same run verifies both declared POL-122 overrides are created and independently approved
+before activation. Every checkpoint must compare clean and the complete key verdict must pass.
 """
 
 from __future__ import annotations
@@ -207,32 +203,24 @@ def test_pos_012_compares_clean_after_the_close_run_of_its_plan(
         "every block compared clean on the db platform",
     )
 
-    # Register index 308. The key declares two policy overrides — POL-122 for X1-LICENCE and for
-    # X2-SERVICES — and the plan made none: the product's table holds no row and no request of
-    # that subject was opened. The RUN passed, as above; the KEY is not passed, whatever its
-    # figures do: its verdict is failed by the one finding, which stands alone here.
+    # Both declared POL-122 overrides were independently approved before activation.
     declared = [o for c in loaded.key.contracts for o in c.policy_overrides or ()]
     assert [(o.policy_key, o.obligation_key) for o in declared] == [
         ("balance.right_to_consideration", "X1-LICENCE"),
         ("balance.right_to_consideration", "X2-SERVICES"),
     ]
-    assert place.rows(select(policy_override)) == []
-    requests = select(approval_request).where(approval_request.c.subject_type == "POLICY_OVERRIDE")
-    assert place.rows(requests) == []
-    status, mismatches, message = key_verdict(loaded, result)
-    (finding,) = mismatches
-    assert (status, finding.checkpoint, finding.subject, finding.field) == (
-        "failed",
-        "world",
-        "policy overrides",
-        "created",
+    overrides = place.rows(select(policy_override))
+    assert len(overrides) == 2
+    assert all(str(row["status"]) == "APPROVED" for row in overrides)
+    assert all(row["created_by"] != row["updated_by"] for row in overrides)
+    assert sorted(row["value"] for row in overrides) == sorted(o.value for o in declared)
+    requests = place.rows(
+        select(approval_request).where(approval_request.c.subject_type == "POLICY_OVERRIDE")
     )
-    assert finding.expected == (
-        "2 APPROVED at booking (dev-guide §9.5.4): POL-122 balance.right_to_consideration at "
-        "C-POS-012-X/X1-LICENCE, C-POS-012-X/X2-SERVICES"
-    )
-    assert finding.actual.startswith("none: policy overrides are not offered in release 1.0 ")
-    assert message == (
-        "every block compared clean on the db platform; finding: policy overrides created: "
-        f"expected {finding.expected}, actual {finding.actual}"
+    assert len(requests) == 2
+    assert all(str(row["status"]) == "APPROVED" for row in requests)
+    assert key_verdict(loaded, result) == (
+        "passed",
+        (),
+        "every block compared clean on the db platform",
     )

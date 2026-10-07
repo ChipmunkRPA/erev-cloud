@@ -9,10 +9,8 @@ pytest item fails in both cases; `passed` needs every block compared clean on th
 platform (`EREV_AK_PLATFORM=db`). Each outcome reaches the `make answer-keys` report through
 `report.record`, with the run note of the inputs the runner derived from the key (D-85).
 
-A platform key is judged by `platform_runner.key_verdict` (register index 308; supervisor ruling
-R-126 (c); dev-guide §9.5.4 rev 1.299): the run's outcome and, for a key that declares policy
-overrides, one finding beside its figures — release 1.0 offers no policy override, the plan
-creates none, and such a key is not passed whatever its figures are.
+A platform key is judged by `platform_runner.key_verdict`: supported overrides follow the
+approval lifecycle, while unsupported declarations produce a finding beside numeric mismatches.
 """
 
 from __future__ import annotations
@@ -47,8 +45,8 @@ def test_answer_key(loaded: LoadedKey, request: pytest.FixtureRequest) -> None:
 def _platform_key(loaded: LoadedKey, request: pytest.FixtureRequest) -> None:
     """Run and compare a platform key; record its verdict; fail unless it passed on the database
     platform (XR-12 kept honest: an in-memory run is evidence, not closure). The verdict is the
-    key's (``key_verdict``): the run's outcome with, for a key that declares policy overrides,
-    its one finding among the mismatches and at the end of the message (register index 308)."""
+    key's (``key_verdict``): the run's outcome with a finding for unsupported policy overrides
+    among the mismatches and at the end of the message."""
     try:
         result = run_platform(loaded)
     except Exception as error:

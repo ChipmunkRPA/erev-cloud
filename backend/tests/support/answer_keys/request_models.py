@@ -92,6 +92,7 @@ from erev_api.schemas.estimates import (
 from erev_api.schemas.events import EventAppendIn, EventAppendItemIn
 from erev_api.schemas.journals import JournalRunCreateIn
 from erev_api.schemas.judgements import JudgementCreateIn, JudgementSubmitIn
+from erev_api.schemas.obligations import PolicyOverrideIn
 from erev_api.schemas.periods import PeriodOpenIn
 from erev_api.schemas.pob_templates import PobTemplateVersionIn
 from erev_api.schemas.products import ProductIn
@@ -223,6 +224,7 @@ class IdResolver(Protocol):
     def group_id(self, external_id: str) -> UUID: ...
     def estimate_version_id(self, contract: str, element_code: str, version_no: int) -> UUID: ...
     def modification_id(self, contract: str, reference: str) -> UUID: ...
+    def override_id(self, contract: str, policy_key: str, obligation_key: str | None) -> UUID: ...
     def judgement_id(self, contract: str, handle: str) -> UUID: ...
     def pending_approval_id(self) -> UUID: ...
     def impact_preview_sha256(self, approval_request_id: UUID) -> str | None: ...
@@ -292,6 +294,9 @@ class MockResolver:
 
     def modification_id(self, contract: str, reference: str) -> UUID:
         return self._id("modification", contract, reference)
+
+    def override_id(self, contract: str, policy_key: str, obligation_key: str | None) -> UUID:
+        return self._id("override", contract, policy_key, obligation_key)
 
     def judgement_id(self, contract: str, handle: str) -> UUID:
         return self._id("judgement", contract, handle)
@@ -1288,6 +1293,27 @@ def adapt(
                 "body": DistinctReviewIn(distinctness=distinctness, rationale=DISTINCT_RATIONALE),
             }
         ]
+    if handler in (H["override"], H["override_submit"]):
+        contract_key = str(kw["contract"])
+        if handler == H["override_submit"]:
+            return [
+                {
+                    "override_id": resolver.override_id(
+                        contract_key, str(kw["policy_key"]), kw.get("obligation_key")
+                    ),
+                    "comment": None,
+                }
+            ]
+        body = PolicyOverrideIn.model_validate(
+            {
+                "contract_id": resolver.contract_id(contract_key),
+                **{
+                    name: kw[name]
+                    for name in ("policy_key", "value", "rationale", "obligation_key")
+                },
+            }
+        )
+        return [body.model_dump()]
     if handler in (H["judgement"], H["judgement_submit"]):
         contract_key, handle = str(kw["contract"]), str(kw["handle"])
         if handler == H["judgement_submit"]:

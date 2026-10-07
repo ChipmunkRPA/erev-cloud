@@ -50,6 +50,7 @@ from zoneinfo import ZoneInfo
 from erev_api.domain.contracts import estimates as estimate_rules
 from erev_api.domain.contracts import events as contract_events
 from erev_api.domain.platform.provisioning import LABEL_LENGTH, TENANT_CODE_LENGTH
+from erev_api.domain.policies.overrides import SUPPORTED_KEYS
 from erev_api.domain.reports import framework
 from erev_api.registry.policies import POLICY_PARAMETERS
 from erev_api.registry.presets import PRESET_CATEGORY
@@ -209,7 +210,11 @@ REPORT_GAPS: Final[Mapping[str, str]] = {
 }
 
 # --- handlers (dotted paths; ``handler_exists`` resolves each) ----------------------------------
+SUPPORTED_OVERRIDES: Final = SUPPORTED_KEYS
+
 H: Final[Mapping[str, str]] = {
+    "override": "erev_api.domain.policies.overrides.create_override",
+    "override_submit": "erev_api.domain.policies.overrides.submit_override",
     "provision": "erev_api.domain.platform.provisioning.provision_tenant",
     "invite": "erev_api.domain.platform.users.invite_user",
     "accept": "erev_api.domain.platform.memberships.accept_invitation",
@@ -772,13 +777,9 @@ def _contract_configuration(contract: Contract, booking_seq: int) -> list[Step]:
     ``_estimate_prerequisites``): the product keeps at most one version of an element open (04
     T-CON-13 rev 1.241; PRD ERR-93), so the drafts of every version no longer follow the booking.
 
-    A key's ``policy_overrides`` have NO step (register index 308, POLICY-OVERRIDE-WITHDRAW-1;
-    supervisor ruling R-126 (c); dev-guide §9.5.4 rev 1.299). Release 1.0 offers no policy
-    override at contract or obligation level — the product refuses the creation by name
-    (``POLICY_OVERRIDE_NOT_OFFERED``) — so the plan creates none. It does not refuse the key
-    either: every other step runs, and the key is judged with one finding beside its figures
-    (``platform_runner.key_verdict``). Until that item the plan ran create → submit → approve
-    for each override here, and no computation read the row."""
+    Supported policy overrides follow create → submit → independent approval before activation.
+    Unsupported keys retain a named finding; they are never silently treated as implemented.
+    """
     steps: list[Step] = []
     subject = f"contract {contract.external_id}"
     after = {"after_booking": str(booking_seq)}
@@ -796,6 +797,11 @@ def _contract_configuration(contract: Contract, booking_seq: int) -> list[Step]:
                 {"topic": judgement.topic, "handle": judgement.handle},
             )
         )
+    for index, override in enumerate(contract.policy_overrides or ()):
+        if override.policy_key in SUPPORTED_OVERRIDES:
+            steps.extend(
+                lifecycle((H["override"], H["override_submit"]), {"override_index": str(index)})
+            )
     for estimate in contract.estimates or ():
         detail = {"element": estimate.element_code, "kind": estimate.estimate_kind, **after}
         steps.append(Step("CONTRACTS", PREPARER, H["estimate"], subject, detail))
@@ -1153,8 +1159,7 @@ def _timeline_steps(assembler: _Assembler) -> list[Step]:
                         captures_known_at=True,
                     )
                 )
-                # FOLL-1: judgements and estimated elements follow the booking; a key's policy
-                # overrides have no step (register index 308).
+                # Contract-scoped configuration follows booking and precedes activation.
                 steps.extend(_contract_configuration(assembler.contracts[item.contract], item.seq))
                 continue
             if item.event_type == "ESTIMATE_CHANGED":

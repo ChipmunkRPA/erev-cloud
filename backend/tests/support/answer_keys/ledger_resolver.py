@@ -47,6 +47,7 @@ SUBMIT_HANDLERS: Final = frozenset(
         H["ssp_submit"],
         H["policy_submit"],
         H["judgement_submit"],
+        H["override_submit"],
         H["distinct_review"],  # creates and submits the obligation's judgement record at once
         H["estimate_submit"],
         H["rule_set_submit"],
@@ -68,6 +69,7 @@ RESULT_MEMBERS: Final[Mapping[str, tuple[str | None, str | None]]] = {
     H["submit_activation"]: ("approval_request_id", None),
     H["estimate_submit"]: ("approval_request_id", "content_sha256"),
     H["judgement_submit"]: ("approval_request_id", None),
+    H["override_submit"]: (None, None),
     H["distinct_review"]: ("approval_request_id", None),  # DistinctReviewOut: no digest
     H["fx_submit"]: ("pending_approval_request_id", "content_sha256"),
     H["mapping_submit"]: (None, None),
@@ -80,6 +82,7 @@ RESULT_MEMBERS: Final[Mapping[str, tuple[str | None, str | None]]] = {
 SUBJECTS: Final[Mapping[str, ApprovalSubjectType]] = {
     H["submit_activation"]: ApprovalSubjectType.CONTRACT_ACTIVATION,
     H["judgement_submit"]: ApprovalSubjectType.JUDGEMENT_RECORD,
+    H["override_submit"]: ApprovalSubjectType.POLICY_OVERRIDE,
     H["distinct_review"]: ApprovalSubjectType.JUDGEMENT_RECORD,
     H["estimate_submit"]: ApprovalSubjectType.ESTIMATE_VERSION,
     H["template_submit"]: ApprovalSubjectType.POB_TEMPLATE_VERSION,
@@ -261,6 +264,16 @@ class LedgerResolver:
             "platform (read-side slice)",
         )
 
+    def override_id(self, contract: str, policy_key: str, obligation_key: str | None) -> UUID:
+        return self._single(
+            "override",
+            f"{contract}/{policy_key}/{obligation_key}",
+            H["override"],
+            contract=contract,
+            policy_key=policy_key,
+            obligation_key=obligation_key,
+        )
+
     def judgement_id(self, contract: str, handle: str) -> UUID:
         return self._single(
             "judgement", f"{contract}/{handle}", H["judgement"], contract=contract, handle=handle
@@ -342,6 +355,12 @@ class LedgerResolver:
         kw, handler = entry.call.kwargs, entry.call.handler
         if handler == H["submit_activation"]:
             return [self.contract_id(str(kw["contract"]))]
+        if handler == H["override_submit"]:
+            return [
+                self.override_id(
+                    str(kw["contract"]), str(kw["policy_key"]), kw.get("obligation_key")
+                )
+            ]
         if handler == H["judgement_submit"]:
             return [self.judgement_id(str(kw["contract"]), str(kw["handle"]))]
         if handler == H["distinct_review"]:

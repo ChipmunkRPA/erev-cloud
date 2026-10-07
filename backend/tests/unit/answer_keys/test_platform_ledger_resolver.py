@@ -150,6 +150,8 @@ class ShapedFake:
         ):
             key = kw.get("code") or kw.get("entity_code") or kw.get("handle")
             return SimpleNamespace(id=self.uid(handler, key))
+        if handler == H["override"]:
+            return {"id": self.uid(handler, kw["contract"], kw["policy_key"], kw["obligation_key"])}
         if handler == H["estimate"]:
             return SimpleNamespace(id=self.uid(handler, kw["contract"], kw["element_code"]))
         if handler in (H["rule_set"], H["rule_set_version"]):
@@ -297,18 +299,16 @@ def test_ids_come_from_committed_results() -> None:
     assert resolver.pending_approval_id() == latest.result.approval_request_id
     with pytest.raises(UnresolvedHandle, match="returns no subject digest"):
         resolver.subject_sha256()  # RES-4: read side, never a name search or an older entry
-    # Record §18 handles: obligations from the booking result, estimates from their create
-    # results. A policy override has none (register index 308): the key declares two for this
-    # contract, the plan sent no call of the product's override commands, and the resolver
-    # has no handle to read one by. Until that item it read the id from the creation's result.
+    # Handles resolve from committed creation results.
     line = adapter.key.contracts[0].lines[0]
     assert resolver.obligation_id(contract, line.obligation_key) == fake.uid(
         "obligation", contract, line.obligation_key
     )
     assert len(adapter.key.contracts[0].policy_overrides or ()) == 2
-    sent = [entry.call.handler for entry in adapter.ledger]
-    assert [handler for handler in sent if ".policies.overrides." in handler] == []
-    assert not hasattr(resolver, "override_id")
+    for override in adapter.key.contracts[0].policy_overrides:
+        assert resolver.override_id(
+            contract, override.policy_key, override.obligation_key
+        ) == fake.uid(H["override"], contract, override.policy_key, override.obligation_key)
     ex42 = _run(EX42, ShapedFake(EX42))
     ex42_fake = ShapedFake(EX42)
     assert LedgerResolver(ex42.ledger).estimate_id("C-EX42-C", "BONUS-C") == ex42_fake.uid(
@@ -640,9 +640,8 @@ def test_res_4_native_result_members_are_typed_per_handler() -> None:
     ):
         LedgerResolver([_entry(m_call, None)]).pending_approval_id()
     assert set(RESULT_MEMBERS) == SUBMIT_HANDLERS
-    # Register index 308: no submission of the plan opens a POLICY_OVERRIDE request.
-    assert ApprovalSubjectType.POLICY_OVERRIDE not in SUBJECTS.values()
-    assert [handler for handler in SUBMIT_HANDLERS if ".policies.overrides." in handler] == []
+    assert SUBJECTS[H["override_submit"]] == ApprovalSubjectType.POLICY_OVERRIDE
+    assert RESULT_MEMBERS[H["override_submit"]] == (None, None)
 
 
 def test_group_code_comes_from_the_committed_booking() -> None:
