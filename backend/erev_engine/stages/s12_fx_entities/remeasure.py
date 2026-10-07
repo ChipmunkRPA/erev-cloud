@@ -185,11 +185,14 @@ def period_end(book: UnitBook, period: dates.PeriodLike) -> None:
     """Remeasure the open monetary positions of one period end to its closing rate (§12.2.3)."""
     book.policy("fx.monetary_remeasurement", period.end_date, _POL_164)
     book.policy("late_events.fx_rates", period.end_date, _POL_181)
-    override = book.cl_monetary(period.end_date)
     layers = [
         layer
         for layer in book.layers.values()
-        if layer.txn_open > 0 and (layer.role != CONTRACT_LIABILITY or override)
+        if layer.txn_open > 0
+        and (
+            layer.role != CONTRACT_LIABILITY
+            or book.cl_monetary(period.end_date, layer.contract_key)
+        )
     ]
     if not layers:
         return

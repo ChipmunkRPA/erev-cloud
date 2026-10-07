@@ -49,18 +49,21 @@ from erev_api.auth.keyring import KeyRing
 from erev_api.clock import FrozenClock
 from erev_api.config import Settings
 from erev_api.db.tables import (
+    close_run,
     combination_group,
     contract_computation,
     fx_rate,
     subledger_line,
     subledger_posting,
 )
+from erev_api.domain.close import gates, period_end
 from erev_api.domain.contracts import computation
 from erev_api.files.store import LocalFileStore
 from erev_api.main import create_app
 from erev_engine.stages.s01_canonicalize import group_entity_subject_key
 from fastapi import FastAPI
 from sqlalchemy import and_, func, select
+from support import close_runs
 from support.db import TestDatabase
 from support.factories import (
     GATEWAY,
@@ -555,4 +558,84 @@ def test_a_settlement_stored_without_a_subject_key_answers_the_group_subject(
     assert [intent for book in output.books for intent in book.posting_intents] == []
     assert _fx_lines(world, contract_id) == settlement
     assert _line_count(world, contract_id) == posted_lines
+    assert _unstamped_foreign_lines(world, contract_id) == 0
+
+
+def test_contract_period_override_close_pass_posts_liability_fx_once(
+    world: World,
+) -> None:
+    from support.factories import drafted_override
+
+    booked = activated_contract(
+        world.place,
+        booked_contract(
+            world.place,
+            {
+                "external_id": CONTRACT,
+                "customer_id": str(world.customer_id),
+                "contracting_entity_code": ENTITY,
+                "transaction_currency": "USD",
+                "inception_date": "2026-07-01",
+                "lines": [
+                    {
+                        "obligation_key": "O1",
+                        "product_code": GATEWAY,
+                        "quantity": "200",
+                        "total_price": {"amount": "90000.00", "currency": "USD"},
+                    }
+                ],
+            },
+            activate=False,
+        ),
+    )
+    contract_id, group_id = booked.contract["id"], booked.combination_group["id"]
+    _recorded(world, contract_id, 2, _invoice("ADV-1", "2026-07-01", "90000.00"))
+    assert _fx_lines(world, contract_id) == []
+    # Seed the still-disabled public authoring path; approval and calculation are real commands.
+    identifier = drafted_override(
+        world.place, contract_id, "fx.cl_historical_layering", "DISABLED_REMEASURE_AS_MONETARY"
+    )
+    sent = post(world.app, f"/api/v1/policy-overrides/{identifier}/submit", world.maya, {})
+    assert sent.status_code == 200, sent.text
+    decision = approve(world.app, str(sent.json()["approval_request_id"]), world.marcus)
+    assert decision.status_code == 200, decision.text
+    computed(world.place, group_id)
+    # COMMAND leaves period-end TIME journals to the real close pass.
+    assert _fx_lines(world, contract_id) == []
+    run_id, _ = close_runs.started(
+        world.app, world.marcus, entity_code=ENTITY, period_key="FY2026-P09"
+    )
+
+    def post_fx() -> period_end.PassResult:
+        with world.place.uow() as uow:
+            row = (
+                uow.session.execute(select(close_run).where(close_run.c.id == UUID(run_id)))
+                .mappings()
+                .one()
+            )
+            scope = gates.scope_of_period(uow.session, row["entity_id"], BOOK, row["period_id"])
+            assert scope is not None
+            result = period_end.post_pass(
+                uow,
+                close_run_id=UUID(run_id),
+                close_run_no=row["close_run_no"],
+                scope=scope,
+                pass_name=period_end.FX_REMEASUREMENT,
+            )
+            uow.commit()
+            return result
+
+    posted = post_fx()
+    assert (posted.postings, posted.lines, posted.groups_skipped) == (1, 2, 0)
+    expected = [
+        ("CONTRACT_LIABILITY", Decimal("0"), Decimal("-5400.00"), Decimal("0.86")),
+        ("FX_GAIN_LOSS", Decimal("0"), Decimal("5400.00"), Decimal("0.86")),
+    ]
+    assert _fx_lines(world, contract_id) == expected
+    count = _line_count(world, contract_id)
+    assert post_fx().postings == 0
+    computed(world.place, group_id)
+    assert post_fx().postings == 0
+    assert _fx_lines(world, contract_id) == expected
+    assert _line_count(world, contract_id) == count
     assert _unstamped_foreign_lines(world, contract_id) == 0

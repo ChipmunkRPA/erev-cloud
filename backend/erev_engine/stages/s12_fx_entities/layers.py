@@ -36,6 +36,7 @@ from erev_engine.enums import BookCode
 from erev_engine.formulas import rational_param
 from erev_engine.money import cumulative_posted, largest_remainder
 from erev_engine.stages.s01_canonicalize import group_entity_subject_key
+from erev_engine.stages.s01_canonicalize.convert import contract_key_from_subject
 from erev_engine.stages.s12_fx_entities.rates import AVERAGE, Rates, RateView, to_functional
 from erev_engine.stages.state import BookContext, Finding
 from erev_engine.trace import TraceBuilder
@@ -149,6 +150,11 @@ class ControlFlow:
             raise ValueError("a control-role flow amount is a positive integer of minor units")
 
     @property
+    def contract_key(self) -> str:
+        """The originating member, independent of the group/entity netting unit."""
+        return contract_key_from_subject(self.subject_key)
+
+    @property
     def side(self) -> str:
         return SIDES[self.kind]
 
@@ -243,6 +249,7 @@ class Layer:
     fn_carrying: int
     rate: RateView
     created_node: str
+    contract_key: str | None = None
 
     @property
     def consumed(self) -> int:
@@ -348,9 +355,16 @@ class UnitBook:
             raise ValueError(f"policy {code} holds an unknown option {value!r} (CV-17)")
         return value
 
-    def cl_monetary(self, d: date) -> bool:
-        """S12-R-10: the POL-163 contract override, effective in the ASC606 book only (D-25a)."""
-        option = self.policy("fx.cl_historical_layering", d, _POL_163)
+    def cl_monetary(self, d: date, contract_key: str | None = None) -> bool:
+        """S12-R-10: resolve the originating contract's exception in ASC606 only."""
+        option = self.ctx.policies.value(
+            "fx.cl_historical_layering",
+            contract=contract_key,
+            entity=self.entity,
+            period=self.period(d).period_key,
+        )
+        if not isinstance(option, str) or option not in _POL_163:
+            raise ValueError(f"policy fx.cl_historical_layering holds an unknown option {option!r}")
         return self.ctx.framework == BookCode.ASC606 and option == "DISABLED_REMEASURE_AS_MONETARY"
 
     def layer_date(self, flow: ControlFlow) -> date | None:
@@ -461,6 +475,7 @@ class UnitBook:
                     period,
                     formula_id="fx.layer.create.v1",
                     movement_kind="LIABILITY_LAYER_CREATED",
+                    contract_key=flow.contract_key,
                 )
             )
         return pieces
@@ -502,7 +517,16 @@ class UnitBook:
             narrative_key=_narrative(formula_id),
         )
         self.layers[key] = Layer(
-            key, CONTRACT_LIABILITY, None, amount, amount, functional, functional, rate, node
+            key,
+            CONTRACT_LIABILITY,
+            None,
+            amount,
+            amount,
+            functional,
+            functional,
+            rate,
+            node,
+            flow.contract_key,
         )
         self.move(
             key,
@@ -616,6 +640,7 @@ class UnitBook:
         formula_id: str,
         movement_kind: str,
         component_key: str | None = None,
+        contract_key: str | None = None,
     ) -> Piece:
         key = self.new_key(role, source_key)
         functional = to_functional(amount, rate, self.mu_txn, self.mu_fn)
@@ -633,7 +658,16 @@ class UnitBook:
             narrative_key=_narrative(formula_id),
         )
         self.layers[key] = Layer(
-            key, role, component_key, amount, amount, functional, functional, rate, node
+            key,
+            role,
+            component_key,
+            amount,
+            amount,
+            functional,
+            functional,
+            rate,
+            node,
+            contract_key,
         )
         self.move(key, role, movement_kind, when, amount, functional, rate, source_key, None, node)
         return Piece(node, functional, rate, key)
@@ -649,7 +683,7 @@ class UnitBook:
         params: Mapping[str, str],
     ) -> Piece:
         """S12-R-05: the cumulatively rounded share of the historical functional amount."""
-        if self.cl_monetary(when):
+        if self.cl_monetary(when, layer.contract_key):
             return self.relieve_at_rate(layer, take, flow, when, period, formula_id, params)
         before = layer.consumed
         exact_original = Fraction(layer.fn_original, 10**self.mu_fn)

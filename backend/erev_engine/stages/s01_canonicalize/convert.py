@@ -100,6 +100,20 @@ def encode_key(component: str) -> str:
     return component
 
 
+def contract_key_from_subject(subject: str) -> str:
+    """Recover the raw contract id from a CV-21 contract/member/obligation subject.
+
+    Structural separators are removed before decoding, and percent is decoded last so
+    literal escape-like characters in the identifier are not decoded twice.
+    """
+    component = subject.split("/", 1)[0].split("@", 1)[0].split("#", 1)[0]
+    if not component:
+        raise ValueError("a contract subject must have a non-empty contract component")
+    for character, escape in reversed(KEY_ESCAPES):
+        component = component.replace(escape, character)
+    return component
+
+
 def contract_subject_key(contract_key: str) -> str:
     """The subject key of a contract: its encoded external id."""
     return encode_key(contract_key)

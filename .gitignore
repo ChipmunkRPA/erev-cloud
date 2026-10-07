@@ -9,10 +9,6 @@ __pycache__/
 .venv/
 .DS_Store
 .env
-docs/research/rightrev-ui/*.jpg
-docs/research/rightrev-ui/*.png
-docs/research/rightrev-ui/*.jpeg
-docs/research/rightrev-ui/*.webp
 # DG-LAY-08 additions (docs/dev-guide.md §1.2)
 .data/
 backend/.hypothesis/
@@ -29,3 +25,7 @@ deploy/terraform/gcp/.terraform/
 dist/
 coverage/
 release-manifest.json
+
+# Private research is excluded from this public repository.
+/research-harness/
+/docs/research/
