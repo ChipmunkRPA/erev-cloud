@@ -107,11 +107,11 @@ def _exception(world: CloseWorld) -> UUID:
     return UUID(str(values["id"]))
 
 
-def _gate(world: CloseWorld) -> dict[str, Any]:
+def _gate(world: CloseWorld, code: str = GATE) -> dict[str, Any]:
     """The gate's row as the cockpit serves it (the read brings the stored row up to date)."""
     shown = get(world.app, f"{PERIODS}/{world.state_id}/cockpit", world.maya)
     assert shown.status_code == 200, shown.text
-    (row,) = [item for item in shown.json()["checklist"] if item["code"] == GATE]
+    (row,) = [item for item in shown.json()["checklist"] if item["code"] == code]
     return dict(row)
 
 
@@ -124,8 +124,10 @@ def _read(row: dict[str, Any]) -> tuple[Any, ...]:
     )
 
 
-def _waiver_asked(world: CloseWorld) -> dict[str, Any]:
-    asked = _command(world, world.maya, f"checklist/{_gate(world)['id']}/waive", {"reason": REASON})
+def _waiver_asked(world: CloseWorld, code: str = GATE) -> dict[str, Any]:
+    asked = _command(
+        world, world.maya, f"checklist/{_gate(world, code)['id']}/waive", {"reason": REASON}
+    )
     assert asked.status_code == 200, asked.text
     return dict(asked.json())
 
@@ -561,3 +563,84 @@ def test_missing_reconciliation_waiver_does_not_cover_a_new_unreviewed_report(
     item = next(row for row in cockpit.json()["checklist"] if row["code"] == code)
     assert (item["status"], item["result"]["count"]) == ("FAILED", 2)
     assert item["waiver_approval_request_id"] is None
+
+
+APPROVALS_GATE = "APPROVALS_CLEARED"
+
+
+def _individual_waiver(world: CloseWorld, item_id: UUID) -> str:
+    response = post(
+        world.app, f"/api/v1/exceptions/{item_id}/request-waiver", world.maya, {"comment": REASON}
+    )
+    assert response.status_code == 200, response.text
+    return str(response.json()["approval_request_id"])
+
+
+@pytest.mark.control("CTL-016")
+@pytest.mark.parametrize("approvals_first", [False, True])
+@pytest.mark.parametrize("refresh", [False, True])
+def test_approvals_gate_waiver_survives_other_waiver_decisions(
+    world: CloseWorld, clock: FrozenClock, approvals_first: bool, refresh: bool
+) -> None:
+    _in_soft_close_with_every_other_gate_green(world)
+    priya = actor_with_role(world.app, clock, world.tenant_id, "revenue_reviewer", name="priya")
+    first = _exception(world)
+    _exception(world)
+    pending = _individual_waiver(world, first)
+    other = _waiver_asked(world)
+    requested = _waiver_asked(world, APPROVALS_GATE)
+    assert _gate(world, APPROVALS_GATE)["result"]["count"] == 2
+    if approvals_first:
+        approved = approve(world.app, requested["approval_request_id"], priya)
+        assert approved.status_code == 200, approved.text
+    assert approve(world.app, other["approval_request_id"], priya).status_code == 200
+    if refresh:
+        _gate(world, APPROVALS_GATE)
+    if not approvals_first:
+        approved = approve(world.app, requested["approval_request_id"], priya)
+        assert approved.status_code == 200, approved.text
+    locked = _command(
+        world, world.maya, "request-lock", {"certification_comment": "September 2026 complete"}
+    )
+    assert locked.status_code == 200, locked.text
+    gate = next(
+        row for row in locked.json()["gate_results"] if row["gate_check_code"] == APPROVALS_GATE
+    )
+    assert (gate["status"], gate["count"], gate["waived_count"]) == ("WAIVED", 1, 2)
+    assert get(world.app, f"/api/v1/approvals/{pending}", priya).json()["status"] == "PENDING"
+
+
+@pytest.mark.control("CTL-016")
+@pytest.mark.parametrize("refresh", [False, True])
+def test_pending_approvals_waiver_never_inherits_a_new_request(
+    world: CloseWorld, clock: FrozenClock, refresh: bool
+) -> None:
+    _in_soft_close_with_every_other_gate_green(world)
+    priya = actor_with_role(world.app, clock, world.tenant_id, "revenue_reviewer", name="priya")
+    _individual_waiver(world, _exception(world))
+    second = _individual_waiver(world, _exception(world))
+    requested = _waiver_asked(world, APPROVALS_GATE)
+    assert approve(world.app, second, priya).status_code == 200
+    _individual_waiver(world, _exception(world))
+    if refresh:
+        assert _gate(world, APPROVALS_GATE)["result"]["count"] == 2
+    refused = approve(world.app, requested["approval_request_id"], priya)
+    assert refused.status_code == 409, refused.text
+    assert slug(refused) == "stale-approval"
+    renewed = _waiver_asked(world, APPROVALS_GATE)
+    assert approve(world.app, renewed["approval_request_id"], priya).status_code == 200
+
+
+@pytest.mark.control("CTL-016")
+def test_resolving_all_requests_clears_the_gate_and_voids_its_unneeded_waiver(
+    world: CloseWorld, clock: FrozenClock
+) -> None:
+    _in_soft_close_with_every_other_gate_green(world)
+    priya = actor_with_role(world.app, clock, world.tenant_id, "revenue_reviewer", name="priya")
+    other = _individual_waiver(world, _exception(world))
+    requested = _waiver_asked(world, APPROVALS_GATE)
+    assert approve(world.app, other, priya).status_code == 200
+    decided = approve(world.app, requested["approval_request_id"], priya)
+    assert decided.status_code == 409, decided.text
+    assert slug(decided) == "stale-approval"
+    assert _gate(world, APPROVALS_GATE)["status"] == "PASSED"

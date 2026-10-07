@@ -3088,3 +3088,12 @@ A stale basis rolls the decision and refresh back through the kernel savepoint a
 request. This also protects decisions made without an intervening cockpit refresh. Submitted
 identities are retained in the request audit; lapse events retain the before/after identities.
 The existing bounded lapse audit applies to identity changes as well as growth, and historical lock certifications are not rewritten.
+
+For the approvals gate (B1-11), submission also stores the original result as `waiver_basis`
+inside the same JSONB result. Evaluation preserves it while the request is pending, and the
+content hash uses that basis. Final approval refreshes the current pending population and
+requires it to be a subset of the submitted identities. Completed requests may drop out;
+new pending requests cannot inherit review. A fully cleared gate voids its unneeded waiver.
+Approval retains the original covered scope and removes the temporary basis; rejection or
+voiding removes the temporary basis with the request pointer. Other gates keep strict pending
+basis checks. No migration or historical lock rewrite is needed.

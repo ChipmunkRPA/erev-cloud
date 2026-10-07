@@ -162,6 +162,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
+from erev_api.approvals.subjects import CHECKLIST_WAIVER_BASIS
 from erev_api.db import new_id, transitions
 from erev_api.db.session import every_entity_scope
 from erev_api.db.tables import (
@@ -1994,6 +1995,7 @@ def waiver_lapse_detail(spent: Mapping[str, Any]) -> str:
 def renewed_waiver_result(stored: Mapping[str, Any]) -> dict[str, Any]:
     """A fresh approval ends the prior lapse annotation, retaining its approved population."""
     result = dict(stored)
+    result.pop(CHECKLIST_WAIVER_BASIS, None)
     spent = result.pop(OUTGROWN, None)
     if spent is not None and result.get("detail") is not None:
         sentence = waiver_lapse_detail(spent)
@@ -2048,7 +2050,10 @@ def _store(
         item_id = UUID(str(row["id"]))
         moved = status != result.status.value
         lapsed = moved and status == ChecklistStatus.WAIVED.value
-        values: dict[str, Any] = {"result": result.result(), **_stamps(uow)}
+        stored_result = result.result()
+        if row["waiver_approval_request_id"] is not None and CHECKLIST_WAIVER_BASIS in stored:
+            stored_result[CHECKLIST_WAIVER_BASIS] = stored[CHECKLIST_WAIVER_BASIS]
+        values: dict[str, Any] = {"result": stored_result, **_stamps(uow)}
         if lapsed:
             # the waiver is spent: the item names no request until another is asked for; its
             # number and count stay in the stored result and in the sentence

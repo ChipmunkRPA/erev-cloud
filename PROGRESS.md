@@ -2,6 +2,28 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Approvals-gate waiver sequencing — October 7, 2026
+
+- Continued on main `88de370`. Reproduced B1-11 with two failing decision-order cases;
+  five controls already passed. A pending approvals-gate waiver now retains its submitted
+  request identities while other requests complete. Final approval refreshes the gate under
+  the existing locks and requires the live pending population to be a subset of that scope.
+- New or replacement pending requests still void the waiver, including at the same count
+  and without a cockpit refresh. Renewal reviews the new scope. If all requests complete,
+  the gate passes and the unneeded waiver is voided. Other gates keep strict pending-basis
+  checks. Rejection/voiding clears the temporary basis; approval retains reviewed coverage.
+  Existing JSONB storage suffices; no migration or historical lock rewrite.
+- **56 PostgreSQL close/lock checks passed** in 235.98 seconds, including all 18 waiver
+  cases and seven new sequencing controls. **678 close-unit/architecture checks passed**
+  in 171.83 seconds. Source Mypy, Ruff lint/format, whitespace and design checks pass;
+  secret scan: 3,391 files, zero findings. B1-11 is closed for completed-request sequencing.
+- GitHub has no open PRs and only main. Automatic merge and merged-branch deletion are
+  enabled. Following the owner's instruction, this tested change goes directly to main.
+- The separate backend run remains live on `7c9b22d` (about 20% through), excluding parity,
+  answer-key and performance markers. It does not cover this change and is not a completed
+  passing gate. Other limitations, specialist verification and accounting sign-off remain.
+  Archived the mandatory-product section verbatim. Repository only; no deployment.
+
 ## Close-gate waiver identities — October 7, 2026
 
 - Continued from main `e9cae63`. Reproduced B1-10 in pending and approved waivers: resolving
@@ -120,30 +142,6 @@
   loopback database. It excludes specialist markers and does not cover these later changes.
   Full-backend/specialist verification, other release gaps and independent accounting sign-off
   remain open. No deployment or external accounting contact.
-
-## Mandatory product disaggregation — October 7, 2026
-
-- Continued from merged PR #26 (`ed6ea75`). The product usability warning is now enforced at
-  booking/draft replacement, activation submission and approval, native modification additions,
-  and legacy amendment application. Missing attributes name the product and required codes.
-  Catalogue drafts remain editable. Bundle components follow the minimum inception of current
-  group members, matching the calculation reference date rather than the group's retained old date.
-- **108 database workflow tests passed, one existing parity-entry-point skip** across activation,
-  native modification, products, bundles, legacy amendments and mixed amendment integration.
-  **Five final database checks passed** after the reference-date refinement: booking/activation,
-  native additions, legacy quarantine with rollback, dated bundle components and entity-scoped
-  modification approval. No expected accounting amounts changed. CTL-028 tags cover the new
-  activation and modification witnesses; B1-16 is closed in LIMITS.
-- **267 architecture checks passed** during the change. The final focused run passed **194 tests**
-  (147 unit checks plus 47 layer/import-cycle checks). Final source Mypy, Ruff, whitespace and
-  design checks (500 files) pass. Initial test failures were fixture expectations/setup: error
-  rule/status, a second contract's legitimate combination suggestion, legacy replay prerequisite,
-  and the unmapped-product unit's newly required empty-setting/group-date context. They were
-  corrected without weakening the existing controls.
-- The broader backend run remains pinned to `ed6ea75` in a detached checkout and a dedicated
-  loopback database, with passing tests and the existing expected Q11 failure. It is still live,
-  not a completed gate, and does not cover this later change. Full-backend/specialist verification,
-  other release limitations and independent accounting review remain open. No deployment.
 
 ## Policy approvals serialized with period locks — October 7, 2026
 

@@ -2733,6 +2733,7 @@ def _exception_row(session: Session, item_id: UUID) -> Mapping[str, Any]:
 
 
 CHECKLIST_ITEM_TABLE: Final = "close_checklist_item"  # BS4-D-07: EXCEPTION_WAIVER covers it
+CHECKLIST_WAIVER_BASIS: Final = "waiver_basis"
 CHECKLIST_WAIVABLE: Final = ("NOT_STARTED", "IN_PROGRESS", "FAILED")  # E-60 not cleared
 
 
@@ -2787,6 +2788,17 @@ def _membership_user(session: Session, tenant_id: Any, membership_id: Any) -> fr
     return frozenset() if user_id is None else frozenset({UUID(str(user_id))})
 
 
+def checklist_waiver_basis(result: Mapping[str, Any], gate_check_code: Any) -> Mapping[str, Any]:
+    """The submitted approvals-gate scope; other gates retain their current-result basis.
+
+    The close approval hook verifies that the current pending population is a subset before
+    applying this frozen basis. Completed requests need not invalidate the original review.
+    """
+    if gate_check_code == "APPROVALS_CLEARED" and CHECKLIST_WAIVER_BASIS in result:
+        return dict(result[CHECKLIST_WAIVER_BASIS])
+    return result
+
+
 def exception_waiver_content(session: Session, item_id: UUID) -> dict[str, Any]:
     """``EXCEPTION_WAIVER`` hashes what a waiver accepts: the item's number, source, code, severity,
     disposition, message, key and whether it is still open. A resolution or dismissal therefore
@@ -2795,11 +2807,12 @@ def exception_waiver_content(session: Session, item_id: UUID) -> dict[str, Any]:
     still not cleared, so a gate that passes voids a pending waiver (BS4-D-07) — and the count
     and the sentence its gate stored (04 T-CLS-03 rev 1.305; item CLO-WAIVER-COVERS-LATER-1): a
     waiver also binds the stored member identities, so a replacement at the same count makes
-    the request stale. The close hook refreshes this basis at the decision. A manual task
-    stores no result and hashes neither."""
+    the request stale. The close hook refreshes this basis at the decision. For the approvals
+    gate alone, completed requests may leave the submitted population; new pending requests
+    still require a fresh review. A manual task stores no result and hashes neither."""
     checklist = checklist_waiver_row(session, item_id)
     if checklist is not None:
-        stored = checklist["result"] or {}
+        stored = checklist_waiver_basis(checklist["result"] or {}, checklist["gate_check_code"])
         return {
             "subject_table": CHECKLIST_ITEM_TABLE,
             "code": str(checklist["code"]),

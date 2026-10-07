@@ -700,12 +700,17 @@ def waive_checklist_item(
         auto_approval=False,
     )
     request_id = UUID(str(request["id"]))
+    values: dict[str, Any] = {"waiver_approval_request_id": request_id, **_stamps(uow)}
+    if item["gate_check_code"] == gates.APPROVALS_CLEARED:
+        # submit hashed the current result. Retain that same scope across later reads while
+        # other requests are decided; final approval checks the live population is a subset.
+        values["result"] = {**item["result"], subjects.CHECKLIST_WAIVER_BASIS: dict(item["result"])}
     transitions.apply(
         uow.session,
         ITEM_OBJECT,
         item_id,
         to_status=None,
-        set_values={"waiver_approval_request_id": request_id, **_stamps(uow)},
+        set_values=values,
     )
     uow.audit(
         action=REQUEST_WAIVER_ACTION,
@@ -759,6 +764,18 @@ def _checklist_waived(uow: UnitOfWork, item_id: UUID, approval_request_id: UUID)
         # this hook under tenant scope and rolls these writes back on a stale basis.
         gates.evaluate_gates(uow, scope.entity_id, scope.book_code, scope.period_id)
     row = _locked_item_row(uow, item_id)
+    result = row["result"]
+    if item["gate_check_code"] == gates.APPROVALS_CLEARED:
+        basis = subjects.checklist_waiver_basis(result or {}, item["gate_check_code"])
+        current_members = (result or {}).get("members")
+        reviewed_members = basis.get("members")
+        if (
+            current_members is None
+            or reviewed_members is None
+            or not set(current_members).issubset(reviewed_members)
+        ):
+            raise approvals.StaleBasis()
+        result = basis
     approvals.assert_own_fresh_basis(
         uow,
         approval_request_id,
@@ -780,7 +797,7 @@ def _checklist_waived(uow: UnitOfWork, item_id: UUID, approval_request_id: UUID)
         set_values={
             "waiver_approval_request_id": approval_request_id,
             "comment": None if comment is None else str(comment),
-            "result": None if row["result"] is None else gates.renewed_waiver_result(row["result"]),
+            "result": None if result is None else gates.renewed_waiver_result(result),
             **_stamps(uow),
         },
     )
@@ -805,12 +822,15 @@ def _checklist_waiver_cleared(uow: UnitOfWork, item_id: UUID, approval_request_i
         return
     if _text(row["status"]) == ChecklistStatus.WAIVED.value:
         return
+    result = None if row["result"] is None else dict(row["result"])
+    if result is not None:
+        result.pop(subjects.CHECKLIST_WAIVER_BASIS, None)
     transitions.apply(
         uow.session,
         ITEM_OBJECT,
         item_id,
         to_status=None,
-        set_values={"waiver_approval_request_id": None, **_stamps(uow)},
+        set_values={"waiver_approval_request_id": None, "result": result, **_stamps(uow)},
     )
     uow.audit(
         action=WAIVER_CLEARED_ACTION,

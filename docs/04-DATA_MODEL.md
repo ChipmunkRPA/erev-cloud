@@ -4841,6 +4841,12 @@ even at the same or a smaller count; resolving members leaves the remaining cove
 The request audit retains the submitted identities. A spent waiver never revives. Active
 count-only legacy waivers with blockers need a new review; immutable historical lock records
 remain unchanged. This binds membership, not arbitrary edits to fields of an existing member.
+For B1-11, a pending `APPROVALS_CLEARED` waiver stores its submitted result in `waiver_basis`
+within this JSONB column. The live count and members remain current; the request hash uses
+that retained basis. Approval requires the live pending identities to be a subset of the
+submitted set, allowing completed requests to drop out. New pending identities still void
+the request. Approval removes the temporary basis and retains the reviewed coverage;
+rejection or voiding clears it. A fully cleared gate needs no waiver.
 Manual-task waivers keep their separate non-population basis. The never-waivable gates stay
 non-waivable, and reopen still ends the previous close's waivers.
 
