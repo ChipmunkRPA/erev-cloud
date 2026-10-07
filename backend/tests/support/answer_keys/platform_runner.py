@@ -25,14 +25,10 @@ the in-memory evidence in the message and notes; any mismatch is ``failed``. The
 comparison ``runners.assert_checkpoints`` still refuses platform results
 (``PLATFORM_RUNNER_MISSING``).
 
-The key's verdict (register index 308, POLICY-OVERRIDE-WITHDRAW-1; supervisor ruling R-126 (c);
-dev-guide §9.5.4 rev 1.299): ``platform_outcome`` judges the RUN, ``key_verdict`` judges the KEY —
-it is what the key's pytest node fails by and what the report records. Release 1.0 offers no
-policy override at contract or obligation level (the product refuses the creation by name,
-``POLICY_OVERRIDE_NOT_OFFERED``) and the plan has no step for one, so a platform key that declares
-policy overrides is run without them and never passes: its verdict carries ONE finding beside the
-figures' mismatches, whatever the run's outcome — a run that compared clean on the database
-platform is ``failed`` by it, and every message of such a key ends with it.
+The key verdict combines the run's numeric comparisons with unsupported-policy findings.
+Supported overrides use creation, submission and independent approval before activation.
+Unsupported declarations are omitted from the plan and always produce a named failure, even
+when every numeric comparison passes. In-memory evidence never establishes a database pass.
 
 What is not run says why in its first words (item AK-NOT-RUN-REASON-1): a step's or a block's
 reason is ``not run — <its reason>``, and a key's outcome opens with the first of them. One
@@ -75,6 +71,7 @@ from support.answer_keys.platform_plan import (
     COMMAND_HANDLERS,
     PERIOD_STATE_HANDLERS,
     REPORT_GAPS,
+    SUPPORTED_OVERRIDES,
     CommandPlan,
     Step,
     plan,
@@ -143,18 +140,14 @@ LEGACY: Final = "LEGACY"
 GROSS: Final = "GROSS"
 DELTA: Final = "DELTA"
 JOURNAL_MODES: Final = (GROSS, DELTA)
-# Register index 308: the one finding of a key that declares policy overrides
-# (``override_finding``). It stands where the key declares them — its world's contracts
-# (dev-guide §9.5.4) — not at a checkpoint; ``expected`` lists what the key declares, ``actual``
-# says why none is created.
+# Unsupported declarations produce one finding at world configuration, beside numeric failures.
 OVERRIDES_CHECKPOINT: Final = "world"
 OVERRIDES_SUBJECT: Final = "policy overrides"
 OVERRIDES_FIELD: Final = "created"
 OVERRIDES_EXPECTED: Final = "{count} APPROVED at booking (dev-guide §9.5.4): {declared}"
 OVERRIDES_ACTUAL: Final = (
-    "none: policy overrides are not offered in release 1.0 (rule id POLICY_OVERRIDE_NOT_OFFERED; "
-    "register index 308) and the plan creates none; the key waits for the next release's road "
-    "for {policies}"
+    "not created: public authoring is unavailable for {policies} "
+    "(rule id POLICY_OVERRIDE_NOT_OFFERED)"
 )
 
 
@@ -1181,14 +1174,12 @@ def platform_outcome(loaded: LoadedKey, result: PlatformRunResult) -> tuple[str,
 
 
 def override_finding(key: AnswerKey) -> Mismatch | None:
-    """The ONE finding of a key that declares policy overrides, or None for a key that declares
-    none (register index 308; module docstring). ``expected`` counts and names what the key
-    declares — each parameter by its POL id and code, with the contracts and obligations it is
-    declared at, in the key's order; ``actual`` says that the release offers none, by the
-    product's rule id, and which parameters' road the key waits for."""
+    """Count and identify unsupported declarations without masking numeric mismatches."""
     declared: dict[str, list[str]] = {}
     for contract in key.contracts:
         for override in contract.policy_overrides or ():
+            if override.policy_key in SUPPORTED_OVERRIDES:
+                continue
             spec = POLICY_PARAMETERS.get(override.policy_key)
             name = override.policy_key if spec is None else f"{spec.pol_id} {override.policy_key}"
             place = contract.external_id

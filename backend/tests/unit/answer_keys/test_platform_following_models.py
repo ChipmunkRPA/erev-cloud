@@ -7,11 +7,8 @@ Fail-first (`.run/f-rps-e1/fail-first-following.log`, head 89ed360f): 19 ``FOLLO
 over the five keys, every ``CONTRACTS`` step before any booking, EX42 seq 7 ``not_run`` (CONV-2),
 C-EX42-C stream head 2. Mock-executed: ``RecordingInvoker`` and ``MockResolver``; no database.
 
-Policy overrides were the first of these families and are none of them now (register index 308,
-POLICY-OVERRIDE-WITHDRAW-1; supervisor ruling R-126 (c)): release 1.0 offers no policy override,
-so the plan has no step for one and the conversion no request model. The cases under "overrides"
-state that for the three keys that declare them; how such a key is judged is
-``test_platform_override_tie``.
+Supported policy overrides use native request models and the approval lifecycle. Unsupported
+policies remain explicit findings, covered by `test_platform_override_tie`.
 """
 
 from __future__ import annotations
@@ -161,6 +158,7 @@ def test_foll_1_contract_configuration_follows_its_booking(key_id: str) -> None:
     expected = 0
     for contract in loaded.key.contracts:
         expected += 3 * len(contract.judgements or ())
+        expected += 3 * len(contract.policy_overrides or ())
         expected += len(contract.estimates or ())
     contracts_phase = [
         (index, step) for index, step in enumerate(steps) if step.phase == "CONTRACTS"
@@ -241,54 +239,28 @@ def test_foll_2_route_executes_on_the_mock_platform_and_advances_the_stream() ->
 
 
 @pytest.mark.parametrize("key_id", [POS_012, DLT, POS_117])
-def test_a_declared_override_has_no_step_and_no_call(key_id: str) -> None:
-    """Register index 308: the key declares policy overrides and its plan has no step for them —
-    no handler of the product's override commands, no step that carries a ``policy_key`` — and
-    the mock-executed plan sends no call of those commands. The key is not refused either: every
-    step of its plan runs (``_run`` raises on a refusal). Until that item each declared override
-    took three steps — create, submit, approve — whose calls carried the key's values."""
+def test_declared_overrides_are_created_submitted_and_approved(key_id: str) -> None:
     loaded = load_platform_key(key_id)
     declared = [o for c in loaded.key.contracts for o in c.policy_overrides or ()]
     assert len(declared) == OVERRIDES_DECLARED[key_id]
-    assert {o.policy_key for o in declared} == {"balance.right_to_consideration"}
-    assert all(o.obligation_key is not None for o in declared)
-    steps = plan(loaded).steps
-    assert [s for s in steps if s.handler in OVERRIDE_COMMANDS] == []
-    assert [s for s in steps if "policy_key" in s.detail] == []
-    assert [name for name, path in H.items() if path in OVERRIDE_COMMANDS] == []
     _, invoker = _run(loaded)
-    assert [c for c in invoker.calls if c.handler in OVERRIDE_COMMANDS] == []
-
-
-@pytest.mark.parametrize("command", OVERRIDE_COMMANDS)
-def test_a_call_of_an_override_command_has_no_request_model(command: str) -> None:
-    """Register index 308: the conversion knows no override command. A call that names one — no
-    plan builds it — is refused by name as any handler without a request model is, before a
-    keyword is built. Until that item ``adapt`` converted both: the creation with the key's value
-    and rationale, the submission with the override's id."""
-    loaded = load_platform_key(POS_012)
-    step = Step(
-        "CONTRACTS",
-        PREPARER,
-        command,
-        "contract C-POS-012-X",
-        {"policy_key": "balance.right_to_consideration"},
-    )
-    call = Call(
-        command,
-        PREPARER,
-        {
-            "contract": "C-POS-012-X",
-            "policy_key": "balance.right_to_consideration",
-            "value": "CONDITIONAL",
-            "obligation_key": "X1-LICENCE",
-            "rationale": "test",
-        },
-        step,
-    )
-    with pytest.raises(NotProvisioned, match="no request-model conversion") as refused:
-        adapt(call, loaded.key, MockResolver(POS_012))
-    assert refused.value.handler == command
+    created = [c for c in invoker.calls if c.handler == H["override"]]
+    submitted = [c for c in invoker.calls if c.handler == H["override_submit"]]
+    assert len(created) == len(submitted) == len(declared)
+    resolver = MockResolver(key_id)
+    for call, override in zip(created, declared, strict=True):
+        (arguments,) = adapt(call, loaded.key, resolver)
+        assert arguments["contract_id"] == resolver.contract_id(call.kwargs["contract"])
+        assert arguments["policy_key"] == override.policy_key
+        assert arguments["value"] == override.value
+        assert arguments["rationale"] == override.rationale
+        assert arguments["obligation_key"] == override.obligation_key
+    for call in submitted:
+        (arguments,) = adapt(call, loaded.key, resolver)
+        assert arguments["override_id"] == resolver.override_id(
+            call.kwargs["contract"], call.kwargs["policy_key"], call.kwargs["obligation_key"]
+        )
+        assert arguments["comment"] is None
 
 
 # --- estimates ---------------------------------------------------------------------------------

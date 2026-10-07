@@ -166,6 +166,10 @@ PERMISSIONS: Final[Mapping[str, StepPermission]] = MappingProxyType(
         PRESET_HANDLER: _route("POST", "/policies/presets/legacy-parity", "config.author"),
         # CONTRACTS / TIMELINE
         H["book"]: _route("POST", "/contracts", "contract.create"),
+        H["override"]: _route("POST", "/policy-overrides", "contract.create"),
+        H["override_submit"]: _route(
+            "POST", "/policy-overrides/{override_id}/submit", "contract.create"
+        ),
         H["judgement"]: _route("POST", "/judgements", "judgement.create"),
         H["judgement_submit"]: _route(
             "POST", "/judgements/{judgement_id}/submit", "judgement.create"

@@ -250,8 +250,10 @@ def test_gaps_unit_price_string_manual_routing_rule_per_call_and_actual_values()
     ]
     declared = [o for c in pos.key.contracts for o in c.policy_overrides or ()]
     assert len(declared) == 2
-    assert [c.handler for c in invoker.calls if ".policies.overrides." in c.handler] == []
-    assert [c for c in invoker.calls if "policy_key" in c.kwargs] == []
+    calls = [c for c in invoker.calls if c.handler == H["override"]]
+    assert len(calls) == len(declared)
+    assert [c.kwargs["value"] for c in calls] == [o.value for o in declared]
+    assert [c.kwargs["rationale"] for c in calls] == [o.rationale for o in declared]
     ex42_adapter = WorkspaceAdapter(
         ex42, invoker=RecordingInvoker(), clock=_Clock(), fingerprint=_Ticks()
     )

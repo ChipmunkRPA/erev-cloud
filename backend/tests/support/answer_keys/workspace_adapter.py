@@ -488,6 +488,10 @@ class WorkspaceAdapter:
             kwargs = {"approval_request_id": PENDING_APPROVAL, "decision": "APPROVE"}
             if step.detail.get("emits"):  # FOLL-2: the approval appends the event named here
                 kwargs.update({"emits": step.detail["emits"], "contract": step.detail["contract"]})
+        elif handler in (H["override"], H["override_submit"]):
+            contract = self.contracts[step.subject.removeprefix("contract ")]
+            override = (contract.policy_overrides or ())[int(step.detail["override_index"])]
+            kwargs = {"contract": contract.external_id, **override.model_dump()}
         elif handler in (H["judgement"], H["judgement_submit"]):
             kwargs = self._judgement_kwargs(step)
         elif handler == H["distinct_review"]:

@@ -332,6 +332,13 @@ The counts by phase come from the supervisor's scan of the build specification, 
 | C-16 | The rest of the demo world, the onboarding surfaces and the serial journeys. | Phase DMO: 34 items, none full, 4 partial, 8 none, 22 without named tests. | — | R-126 (b) (1); record 1 |
 | C-17 | The facts of the screens and their copy, and the held names (section B.9). | As recorded. | — | R-124 (l); R-125 (l) |
 
+October 7 answer-key continuation: the runner now creates, submits and independently approves
+supported POL-122/POL-047 declarations. The real PostgreSQL POS012 regression passes its full
+key verdict with both declared overrides persisted and approved; its expected numeric figures
+are unchanged. Unsupported policies still fail explicitly. C-12 remains open: the default
+suite still uses memory, GT07's nondistinct mapping is missing, and POS117 needs fresh database
+verification and the balance-aging builder. The October 3 measurements below remain historical.
+
 ## The fifteen standing names
 
 Fifteen tests of the backend suite do not pass in release 1.0. They are the same fifteen in every whole run on the day of the freeze, by name, and none passes when it is run again alone; the release candidate's suite shows these and no other (R-125 (n); R-126 (e)). None is skipped, loosened or marked: each fails at full strength until its cause is closed. Two gate targets fail by them, as the supervisor measured on `783f340ea`: `make answer-keys` by the six keys and `make test-pg` by the three capture witnesses. The causes below are read from the failure each test records and from the test: for names 3 to 5 as the suite takes them since index 308's part for the answer keys' runner is on the branch, for the others in the run of record on `5c3b5347c`. Names 1 to 5 are platform keys, which the suite takes on the in-memory platform. On the database platform a lane measured them on 2026-10-03 with that part: the two DISC keys pass; POS-CHK-012 compares clean in every block and is failed by its finding alone; the GT07 key is not run; POS-CHK-117 has four mismatches.
