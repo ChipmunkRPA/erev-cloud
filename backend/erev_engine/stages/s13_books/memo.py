@@ -249,7 +249,7 @@ STAGE_CONTEXT_MEMBERS: Final[Mapping[str, tuple[str, ...]]] = MappingProxyType(
         "05": ("judgements",),
         "06": (),
         "07": (),
-        "08": ("calendars", "period_states"),
+        "08": ("calendars", "horizon", "period_states"),
         "09": ("calendars", "horizon", "judgements", "period_states"),
         "10": ("calendars", "horizon", "period_states"),
         "11": ("book_code", "calendars", "horizon", "judgements", "period_states"),

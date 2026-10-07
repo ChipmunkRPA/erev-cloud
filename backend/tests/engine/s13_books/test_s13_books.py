@@ -652,3 +652,57 @@ def test_l5_3_fold_publishes_the_proposal_of_a_modification_no_event_applies() -
     assert proposal.detail["modification_key"] == "MOD-5A"
     assert dict(proposal.treatments) == {"L2-ADD": "SEPARATE_CONTRACT"}
     assert state.tp_history[-1].allocation_basis.posted == usd("12000.00")
+
+
+def test_unconstrained_history_tracks_price_only_concession_and_credit_cap() -> None:
+    loaded = load(ANSWER_KEY_ROOT / "rnd" / "RND-CHK-003C.yaml")
+    checkpoint = next(c for c in _build_checkpoint_bundles(loaded) if c.name == "after-credit")
+    (value,) = checkpoint.bundles
+    amendment = next(e for e in value.events if e.event_type == "CONTRACT_AMENDED")
+    contract = amendment.contract_key
+    state, _ = fold_trace(value, "ASC606")
+    assert (
+        sum(
+            amount
+            for _, amount in s13_books._added_references(
+                state, amendment.effective_date, None, contract
+            )
+        )
+        == -100
+    )
+    assert s13_books._added_references(state, amendment.effective_date, None, "OTHER") == ()
+    assert state.tp_unconstrained[contract].at(state.inception_date).total.posted == usd("300")
+    assert state.tp_unconstrained[contract].at(amendment.effective_date).total.posted == usd("200")
+
+    # Apply a lower collection expectation at inception. The later price reduction must be
+    # included before taking the cap: min(300 - 100, 150) = 150, never 150 - 100 = 50.
+    assessed = bundles.event(
+        contract,
+        99,
+        "COLLECTIBILITY_ASSESSED",
+        state.inception_date,
+        {"book": "ASC606", "is_probable": True, "expected_collectible_amount": Decimal("150")},
+    )
+    capped, _ = fold_trace(
+        dataclasses.replace(
+            value,
+            events=tuple(
+                sorted(
+                    (*value.events, assessed),
+                    key=lambda e: (e.effective_date, e.record_seq, e.event_key),
+                )
+            ),
+        ),
+        "ASC606",
+    )
+    assert capped.tp_unconstrained[contract].at(amendment.effective_date).total.posted == usd("150")
+
+
+def test_unconstrained_history_tracks_variable_consideration_reestimate() -> None:
+    loaded = load(ANSWER_KEY_ROOT / "vc" / "VC-CHK-110.yaml")
+    checkpoint = next(c for c in _build_checkpoint_bundles(loaded) if c.name == "end-q2")
+    (value,) = checkpoint.bundles
+    state, _ = fold_trace(value, "ASC606")
+    (contract,) = value.group.member_contract_keys
+    assert state.tp_unconstrained[contract].at(date(2026, 3, 31)).total.posted == usd("140000")
+    assert state.tp_unconstrained[contract].at(date(2026, 6, 30)).total.posted == usd("120000")

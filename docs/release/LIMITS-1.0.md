@@ -379,6 +379,13 @@ its change order: loss-test consideration/margin remain 1,200,000/350,000 instea
 acceptance's 1,350,000/500,000. Storage preserves engine output; it does not close this calculation
 gap or standing name 12. The stale unconstrained-price view and report projection remain open.
 
+October 7 dated loss-consideration correction: the book fold now refreshes the unconstrained
+view at boundary dates and period ends, with owner-specific approved consideration before the
+collection cap. The PostgreSQL K03 regression meets the original September 1,350,000/500,000
+expectations and preserves August consideration 1,200,000. This closes the calculation discrepancy
+above; the register projection/registration and standing name 12 remain open. Existing stored
+versions are not backfilled. Demo/volume generator versions are 14/19.
+
 ## The fifteen standing names
 
 Fifteen tests of the backend suite do not pass in release 1.0. They are the same fifteen in every whole run on the day of the freeze, by name, and none passes when it is run again alone; the release candidate's suite shows these and no other (R-125 (n); R-126 (e)). None is skipped, loosened or marked: each fails at full strength until its cause is closed. Two gate targets fail by them, as the supervisor measured on `783f340ea`: `make answer-keys` by the six keys and `make test-pg` by the three capture witnesses. The causes below are read from the failure each test records and from the test: for names 3 to 5 as the suite takes them since index 308's part for the answer keys' runner is on the branch, for the others in the run of record on `5c3b5347c`. Names 1 to 5 are platform keys, which the suite takes on the in-memory platform. On the database platform a lane measured them on 2026-10-03 with that part: the two DISC keys pass; POS-CHK-012 compares clean in every block and is failed by its finding alone; the GT07 key is not run; POS-CHK-117 has four mismatches.

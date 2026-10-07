@@ -677,7 +677,7 @@ def test_generator_version_3_binds_the_chart_and_keeps_the_event_set(
     exact fractional delivery quantities instead of independently rounding the batches to whole
     units. Event counts stay the same; event facts and the dataset identity change."""
     assert SENT_BY_DATE_VERSION < volume.GENERATOR_VERSION
-    assert volume.GENERATOR_VERSION == 18 == full.recipe.generator_version
+    assert volume.GENERATOR_VERSION == 19 == full.recipe.generator_version
     assert full.counts.events == 1_262_407
     assert full.industry_cluster == f"perf:{full.sha256[:16]}"
     encoded = full.to_json().decode("ascii")

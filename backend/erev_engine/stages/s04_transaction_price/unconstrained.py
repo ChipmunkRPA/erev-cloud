@@ -1,7 +1,7 @@
 """Stage 04 unconstrained, credit-adjusted transaction price view.
 
 ENGINE_SPEC S04-R-21 (EMOD-17); ENGINE_SPEC_B §11.2.5, S11-R-11a; 605-35-25-46A, 340-40-35-4.
-Private to stage 04. Standard library only (DG-ARC-02).
+Stage 04 measurement, also bound by the book fold. Standard library only (DG-ARC-02).
 """
 
 from __future__ import annotations
@@ -86,10 +86,14 @@ def measure(
     at: date,
     before: EventView | None,
     rates: Mapping[str, Fraction],
+    added: Fraction = ZERO,
 ) -> TpBuildUp:
     """``tp_unconstrained[contract].at(d)``: fixed + Σ U + realised + concession + financing
     adjustment + noncash − Σ R + expected-returns memo, replaced by the latest
     ``COLLECTIBILITY_ASSESSED.expected_collectible_amount`` of the book when lower.
+
+    ``added`` is the owning contract's approved boundary consideration, included in fixed
+    before the collection cap. The book fold supplies it for dated loss/impairment measurements.
 
     ``vc_constrained`` holds the unconstrained VC with realised amounts and the concession, and
     ``vc_excluded`` is 0.
@@ -101,7 +105,7 @@ def measure(
 
     scale: int = 10**minor_unit
     fixed_lines = specialist.fixed_lines(st, contract_key)
-    fixed = sum((ob.stated_price for ob in fixed_lines), ZERO)
+    fixed = sum((ob.stated_price for ob in fixed_lines), ZERO) + added
     elements = [e for e in vc.elements(ctx, st, at, before) if e.contract_key == contract_key]
     unconstrained_vc = sum((e.unconstrained for e in elements), ZERO)
     realised = sum(
