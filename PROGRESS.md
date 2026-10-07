@@ -1,5 +1,21 @@
 # PROGRESS — eRev Cloud build loop notebook (under 20 KB)
 
+## Balance-aging liability reader and reconciliation — October 7, 2026
+
+- Continued from merged PR #14 (`5d48cb0`). Replaced the aging draft's liability subledger
+  reader with T-CON-18 movements for exactly the versions selected by its balance report binding.
+  The original creation date survives partial consumption; transaction amounts exclude FX
+  remeasurement, future movements and other books. A remaining layer without a creation date
+  refuses rather than assigning a guessed age.
+- Strengthened `TO_AGING_EQ_BALANCES`: agreement is required per contract, entity, role and currency,
+  as well as currency grand totals. Misclassified or misattributed amounts can no longer offset
+  each other and produce a passing tie-out. The existing public money-result shape is preserved.
+- Verification: **495 report unit tests passed**, plus **13 targeted tests** including a PostgreSQL
+  layer projection regression. Source Mypy, Ruff lint/format, design and whitespace checks passed.
+- The report remains unregistered. Asset/unbilled attributions still require replacing the interim
+  subledger source, and pre-0131 versions lack movement coverage. This change does not close RPS-12,
+  POS117, full-backend verification or accounting sign-off. No deployment.
+
 ## Per-layer liability close monitor — October 7, 2026
 
 - Continued from merged PR #13 (`5b45532`). The negative-liability monitor now projects

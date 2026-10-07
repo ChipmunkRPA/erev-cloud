@@ -198,3 +198,27 @@ def test_r2_fifo_consumption_reaches_the_oldest_positive_layer_past_a_negative_c
         (date(2026, 11, 1), D("-50.00")),
         (date(2027, 1, 31), D("-30.00")),
     ]
+
+
+def test_tie_rejects_wrong_role_even_when_currency_total_matches() -> None:
+    rows = aged_rows(
+        [
+            _layer("CONTRACT_ASSET", "3000.00", MARCH_END),
+            _layer("UNBILLED_RECEIVABLE", "2000.00", MARCH_END),
+        ],
+        {ENTITY: MARCH_END},
+    )
+    tie = aging_tie(rows, [_balance(contract_asset="2000.00", unbilled_receivable="3000.00")])
+    assert tie["expected"] == tie["actual"]
+    assert tie["result"] == "FAIL"
+
+
+def test_tie_rejects_wrong_owner_even_when_currency_and_role_totals_match() -> None:
+    from dataclasses import replace
+
+    for field in ("contract_id", "entity_id"):
+        layer = replace(_layer("CONTRACT_ASSET", "2000.00", MARCH_END), **{field: uuid5(NS, field)})
+        rows = aged_rows([layer], {layer.entity_id: MARCH_END})
+        tie = aging_tie(rows, [_balance(contract_asset="2000.00")])
+        assert tie["expected"] == tie["actual"]
+        assert tie["result"] == "FAIL", field

@@ -1449,3 +1449,42 @@ def test_corrected_version_resolves_negative_layer_without_recounting_history(
     assert resolved["id"] == finding["id"] and resolved["status"] == "RESOLVED"
     assert result.open_blocking == 0 and result.settled == (finding["id"],)
     assert _gate(world).status is ChecklistStatus.PASSED
+
+
+def test_liability_aging_keeps_creation_date_and_selected_version(world: CloseWorld) -> None:
+    from erev_api.domain.reports.builders.balance_aging import _liability_layers
+    from erev_api.domain.reports.tie_outs import BalanceRow
+
+    with system_session(world) as session:
+        contract_id, _, _, version_id = _version(session, world)
+        _, _, _, unselected_version = _version(session, world)
+        for version, key, kind, amount, day, book in (
+            (version_id, "july", "LIABILITY_LAYER_CREATED", "100", date(2026, 7, 1), BOOK),
+            (version_id, "july", "LIABILITY_LAYER_CONSUMED", "40", date(2026, 9, 1), BOOK),
+            (version_id, "july", "LIABILITY_LAYER_REMEASURED", "60", PERIOD_END, BOOK),
+            (version_id, "august", "LIABILITY_LAYER_CREATED", "20", date(2026, 8, 1), BOOK),
+            (version_id, "july", "LIABILITY_LAYER_CONSUMED", "60", date(2026, 10, 1), BOOK),
+            (version_id, "other-book", "LIABILITY_LAYER_CREATED", "999", PERIOD_END, "IFRS15"),
+            (unselected_version, "unselected", "LIABILITY_LAYER_CREATED", "999", PERIOD_END, BOOK),
+        ):
+            _layer_movement(
+                session, world, contract_id, version, key, kind, amount, amount, on=day, book=book
+            )
+        balance = BalanceRow(
+            contract_id=contract_id,
+            external_id="aging-contract",
+            customer_name=None,
+            entity_id=world.entity_id,
+            entity_code=ENTITY_CODE,
+            currency="USD",
+            version_id=version_id,
+            values={"contract_liability": Decimal("80")},
+        )
+        layers = _liability_layers(
+            session, book_code=BOOK, period_ends={world.entity_id: PERIOD_END}, balances=[balance]
+        )
+    assert sorted((layer.effective_date, layer.amount) for layer in layers) == [
+        (date(2026, 7, 1), Decimal("60")),
+        (date(2026, 8, 1), Decimal("20")),
+    ]
+    assert all(layer.external_id == "aging-contract" for layer in layers)
