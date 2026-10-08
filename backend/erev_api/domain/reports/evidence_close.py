@@ -8,7 +8,10 @@ bytes. No live report builder or fallback may supply a missing frozen dataset.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+from dataclasses import dataclass
 from typing import Any, Final
+from uuid import UUID
 
 from erev_engine.canonical import canonical_bytes
 from sqlalchemy import select
@@ -33,8 +36,23 @@ PATHS: Final = {
 }
 
 
-def collect_locked(uow: UnitOfWork, selection: SourceSelection) -> tuple[PackFile, ...]:
-    """Return certification, snapshot identities and guarded CSVs, or refuse the whole read.
+@dataclass(frozen=True, slots=True)
+class FrozenReport:
+    report_code: str
+    snapshot_id: UUID
+    report_run_id: UUID | None
+    dataset: locked.LockedDataset
+
+
+@dataclass(frozen=True, slots=True)
+class FrozenClose:
+    scope: locked.LockScope
+    record: Mapping[str, Any]
+    reports: tuple[FrozenReport, ...]
+
+
+def read_locked(uow: UnitOfWork, selection: SourceSelection) -> FrozenClose:
+    """Read and verify the complete frozen source, also used by re-lock verification.
 
     Recheck permissions and the selected lock in this transaction before opening any
     files. The job integration must use an explicitly scoped reader; SYSTEM is not a
@@ -104,23 +122,33 @@ def collect_locked(uow: UnitOfWork, selection: SourceSelection) -> tuple[PackFil
     by_kind = {str(row["snapshot_kind"]): row for row in rows}
     if set(by_kind) != set(locked.SNAPSHOT_KIND_BY_REPORT.values()):
         raise Problem("validation-failed", "A frozen snapshot has no evidence report mapping.")
-    files = []
-    identities: list[dict[str, Any]] = []
+    reports = []
     for report_code, kind in sorted(locked.SNAPSHOT_KIND_BY_REPORT.items()):
         frozen = locked.locked_dataset(uow, report_code=report_code, lock_id=scope.lock_id)
         # Require the same report row-key contract as ordinary as-locked output.
         locked.report_data(frozen)
+        row = by_kind[kind]
+        reports.append(FrozenReport(report_code, row["id"], row["report_run_id"], frozen))
+    return FrozenClose(scope, dict(lock), tuple(reports))
+
+
+def frozen_payloads(source: FrozenClose) -> tuple[PackFile, ...]:
+    """Render an already verified source; source hashes remain those of the stored raw bytes."""
+    files = []
+    identities: list[dict[str, Any]] = []
+    for report in source.reports:
+        report_code, frozen = report.report_code, report.dataset
+        kind = frozen.kind
         columns = snapshots.declared_kinds(kind, locked.headers_of(frozen), frozen.control_totals)
         content, output_hash = locked.export_csv(frozen, columns)
         path = PATHS.get(report_code, f"reports/{report_code}.csv")
-        row = by_kind[kind]
-        files.append(PackFile(path, content, report_run_id=row["report_run_id"]))
+        files.append(PackFile(path, content, report_run_id=report.report_run_id))
         identities.append(
             {
-                "snapshot_id": row["id"],
+                "snapshot_id": report.snapshot_id,
                 "snapshot_kind": kind,
                 "report_code": report_code,
-                "report_run_id": row["report_run_id"],
+                "report_run_id": report.report_run_id,
                 "file_id": frozen.file_id,
                 "file_sha256": frozen.file_sha256,
                 "row_count": frozen.row_count,
@@ -129,6 +157,7 @@ def collect_locked(uow: UnitOfWork, selection: SourceSelection) -> tuple[PackFil
                 "export_sha256": output_hash,
             }
         )
+    scope = source.scope
     identity = {
         "period_lock_id": scope.lock_id,
         "entity_id": scope.entity_id,
@@ -136,16 +165,21 @@ def collect_locked(uow: UnitOfWork, selection: SourceSelection) -> tuple[PackFil
         "book": scope.book_code,
         "period_id": scope.period_id,
         "period_key": scope.period_key,
-        "cutoff_known_at": selection.lock_known_at,
-        "snapshot_manifest_sha256": manifest_hash,
+        "cutoff_known_at": source.record["cutoff_known_at"],
+        "snapshot_manifest_sha256": source.record["snapshot_manifest_sha256"],
     }
     files.extend(
         (
             PackFile(
                 "certification.json",
-                canonical_bytes({**identity, "certification": lock["certification"]}),
+                canonical_bytes({**identity, "certification": source.record["certification"]}),
             ),
             PackFile("lock/snapshots.json", canonical_bytes({**identity, "snapshots": identities})),
         )
     )
     return tuple(files)
+
+
+def collect_locked(uow: UnitOfWork, selection: SourceSelection) -> tuple[PackFile, ...]:
+    """Return certification, snapshot identities and guarded CSVs, or refuse the whole read."""
+    return frozen_payloads(read_locked(uow, selection))

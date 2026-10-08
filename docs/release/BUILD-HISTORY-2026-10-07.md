@@ -2392,3 +2392,48 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   [dated evidence](docs/release/RECONCILIATION-ROLE-FRESHNESS-2026-10-08.md).
 - Preserve publication exclusions, PolyForm Noncommercial licensing and direct-main workflow.
   No deployment or readiness claim; independent accounting review and other release gaps remain.
+
+## Evidence-pack request contract — October 8, 2026 (RPS-16 continued)
+
+- Continued from clean 4860217. Verified zero open PRs and only remote `main`.
+  Added API-S-EvidencePackCreate as a discriminated request union for CLOSE,
+  CONTRACT_SAMPLE, CHANGE and ACCESS. Each kind requires exactly its documented
+  selectors; unrelated fields (including explicit nulls) are rejected. Sample selection
+  preserves exact business keys and order, rejects blank/duplicate IDs and enforces 1–50.
+  Change ranges permit one day and reject reversed dates. No default lock/book/date.
+- **151 request/archive unit tests passed in 0.17 seconds** (102 request, 49 archive),
+  including the required/unused-field matrix, JSON round trips and schema requirements.
+  Log: `/private/tmp/evidence-request-units.log`. Mypy on the new schema, Ruff and whitespace
+  checks pass. Initial request run: 13 failed, 89 passed because the test fixture used
+  nonexistent book `PRIMARY`; corrected it to the actual E-02 code `ASC606`.
+- Request shape is now available for the forthcoming routes; this does not verify source
+  selection, permissions, HTTP behavior or generation. Next: resolve each selector within
+  tenant and permission scope, bind the generation cutoff/source identities, and implement
+  complete source collection, jobs, audited downloads, automatic lock/re-lock packs and
+  the specified acceptance tests. Keep EVIDENCE_PACK pending and CTL-041 open until then.
+  Full-current release gates and independent accounting sign-off remain outstanding.
+
+## Evidence pack integrity foundation — October 8, 2026 (RPS-16 in progress)
+
+- Continued from clean 8a8cdda. RPS-16 / CTL-041 remains unimplemented at the workflow level.
+  Started its required archive boundary: deterministic ZIP bytes, canonical payload manifest,
+  exact byte counts/report-run IDs, SHA-256 and verification against the separately stored
+  trusted manifest hash. The manifest cannot hash itself; clarified the existing detached
+  `manifest_sha256` contract in T-RPT-04 and the build acceptance wording.
+- `reports/evidence_archive.py` rejects changed/missing/unlisted payloads, altered manifests,
+  self-references, duplicates, file/directory and case collisions, unsafe paths, symlinks,
+  invalid metadata and over-limit payloads. No filesystem extraction or accounting derivation.
+  Export sanitization and authorization remain the caller's responsibilities.
+- **49 pure integrity tests passed in 0.11 seconds**; independent ZIP reads recompute payload
+  hashes, and tampering/reforging is refused against the trusted hash. Mypy, Ruff and whitespace
+  pass. Log: `/private/tmp/evidence-archive-units-final.log`. An earlier command named a
+  nonexistent output-test file and collected no tests; the recorded final command is the real run.
+- Continue the full RPS-16 workflow next: scoped request schemas/routes, job lifecycle, source
+  collection, immutable/as-of reads, encrypted file storage, audited download, automatic lock
+  enqueue and re-lock diff, and contract-sample/change/access packs. Use the archive boundary
+  in that implementation. Keep EVIDENCE_PACK pending and CTL-041 unclaimed until full tests pass.
+  Existing `locked.locked_dataset` verifies frozen bytes; CSV export must use the declared-kind
+  formula guard (`locked.export_csv` / snapshot column kinds), not serve raw frozen CSV.
+- This is a tested prerequisite, not an available evidence-pack product or readiness claim.
+  No deployment; publish reviewed work directly to main. Remaining accounting sign-off and
+  full-current verification requirements are unchanged.

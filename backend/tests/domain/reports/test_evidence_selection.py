@@ -21,9 +21,10 @@ from erev_api.auth.principal import Principal, system_principal
 from erev_api.clock import FrozenClock
 from erev_api.config import Settings
 from erev_api.db import new_id
-from erev_api.db.tables import legal_entity, period_lock
+from erev_api.db.tables import legal_entity, lock_snapshot, period_lock
+from erev_api.domain.close import relock_diff
 from erev_api.domain.close import snapshots as close_snapshots
-from erev_api.domain.reports import evidence_archive, evidence_close, locked
+from erev_api.domain.reports import evidence_archive, evidence_close, evidence_relock, locked
 from erev_api.domain.reports.evidence_selection import resolve
 from erev_api.enums import FilePurpose
 from erev_api.files.store import LocalFileStore, store_file
@@ -433,3 +434,154 @@ def test_close_collector_rechecks_authorization_and_refuses_altered_selection(
     with sources.world.place.uow(revoked) as uow, pytest.raises(Problem) as error:
         evidence_close.collect_locked(uow, selected)
     assert error.value.slug == "not-found"
+
+
+def _relock_for_pack(sources: Sources, *, fault: str | None = None) -> tuple[dict[str, Any], UUID]:
+    """Seed a LOCK→REOPEN→LOCK history with the production stored diff over real frozen files."""
+    first = _freeze_for_pack(sources)
+    first_id = UUID(first["period_lock_id"])
+    with sources.world.place.uow(sources.principal) as uow:
+        original = dict(
+            uow.session.execute(select(period_lock).where(period_lock.c.id == first_id))
+            .mappings()
+            .one()
+        )
+        rows = (
+            uow.session.execute(
+                select(lock_snapshot).where(lock_snapshot.c.period_lock_id == first_id)
+            )
+            .mappings()
+            .all()
+        )
+        datasets = [
+            close_snapshots.DatasetFile(
+                str(row["snapshot_kind"]),
+                row["file_id"],
+                row["file_sha256"],
+                row["row_count"],
+                row["control_totals"],
+            )
+            for row in rows
+        ]
+        reopened_id, current_id = new_id(), new_id()
+        reopened = {
+            **original,
+            "id": reopened_id,
+            "kind": "REOPEN",
+            "cutoff_known_at": None,
+            "reason_code": "ERROR_CORRECTION",
+            "previous_lock_id": first_id,
+        }
+        if fault == "cycle":
+            reopened["previous_lock_id"] = reopened_id
+        if fault == "missing-history":
+            reopened["previous_lock_id"] = None
+        if fault == "other-period":
+            parts = insert_close_parts(uow.session, sources.world.tenant_id)
+            reopened = period_lock_values(
+                sources.world.tenant_id,
+                parts=parts,
+                kind="REOPEN",
+                reason_code="ERROR_CORRECTION",
+                previous_lock_id=first_id,
+            )
+            reopened_id = reopened["id"]
+        uow.session.execute(insert(period_lock).values(**reopened))
+        certification = [{"gate_check_code": "JE_COMPLETE", "status": "PASSED"}]
+        report = relock_diff.report(
+            uow,
+            previous_lock_id=first_id,
+            lock_id=current_id,
+            manifest_sha256=original["snapshot_manifest_sha256"],
+            certification=certification,
+            datasets=datasets,
+        )
+        if fault == "wrong-lock":
+            report["lock_id"] = str(uuid4())
+        if fault == "wrong-manifest":
+            report["manifest"]["previous"] = "0" * 64
+        if fault == "missing-kind":
+            report["kinds"].pop(next(iter(report["kinds"])))
+        if fault == "wrong-difference":
+            report["certification"]["changed"] = []
+        file_id = relock_diff.store_report(uow, report, period_key=first["period_key"])
+        if fault == "wrong-purpose":
+            file_id = store_file(
+                uow,
+                purpose=FilePurpose.AUDIT_DIGEST,
+                stream=BytesIO(relock_diff.encode(report)),
+                original_filename="comparison.json",
+                media_type=relock_diff.MEDIA_TYPE,
+            )["id"]
+        current = {
+            **original,
+            "id": current_id,
+            "previous_lock_id": reopened_id,
+            "certification": certification,
+            "diff_report_file_id": file_id,
+        }
+        if fault == "missing-file":
+            current["diff_report_file_id"] = None
+        if fault == "no-reopen":
+            current["previous_lock_id"] = first_id
+        if fault == "unexpected-first-file":
+            current["previous_lock_id"] = None
+        uow.session.execute(insert(period_lock).values(**current))
+        close_snapshots.write_lock_snapshots(uow, current_id, datasets)
+        uow.commit()
+    return {**first, "period_lock_id": str(current_id)}, first_id
+
+
+def test_relock_collector_includes_original_diff_and_both_lock_identities(sources: Sources) -> None:
+    body, first_id = _relock_for_pack(sources)
+    with sources.world.place.uow(sources.principal) as uow:
+        selection = resolve(uow, ADAPTER.validate_python(body))
+        files = evidence_relock.collect(uow, selection)
+        assert evidence_relock.collect(uow, selection) == files
+        payloads = {file.path: json.loads(file.content) for file in files}
+        diff = payloads["relock/stored_comparison.json"]
+        assert diff["previous_lock_id"] == str(first_id)
+        assert diff["lock_id"] == body["period_lock_id"]
+        assert diff["certification"]["changed"] == [
+            {"gate_check_code": "JE_COMPLETE", "previous_status": None, "current_status": "PASSED"}
+        ]
+        assert len(diff["kinds"]) == 12
+        refs = payloads["relock/sources.json"]
+        assert refs["previous_lock_id"] == str(first_id)
+        assert refs["period_lock_id"] == body["period_lock_id"]
+        assert refs["diff_report_sha256"] == hashlib.sha256(files[0].content).hexdigest()
+        section = evidence_archive.build((*evidence_close.collect_locked(uow, selection), *files))
+        evidence_archive.verify(section.content, expected_manifest_sha256=section.manifest_sha256)
+
+
+@pytest.mark.parametrize(
+    "fault",
+    [
+        "wrong-lock",
+        "wrong-manifest",
+        "missing-kind",
+        "wrong-difference",
+        "missing-file",
+        "cycle",
+        "missing-history",
+        "other-period",
+        "no-reopen",
+        "unexpected-first-file",
+        "wrong-purpose",
+    ],
+)
+def test_relock_collector_refuses_wrong_history_or_saved_comparison(
+    sources: Sources, fault: str
+) -> None:
+    body, _ = _relock_for_pack(sources, fault=fault)
+    with sources.world.place.uow(sources.principal) as uow:
+        selection = resolve(uow, ADAPTER.validate_python(body))
+        with pytest.raises(Problem) as error:
+            evidence_relock.collect(uow, selection)
+        assert error.value.slug == "validation-failed"
+
+
+def test_first_close_has_no_relock_payload(sources: Sources) -> None:
+    request = ADAPTER.validate_python(_freeze_for_pack(sources))
+    with sources.world.place.uow(sources.principal) as uow:
+        assert evidence_relock.collect(uow, resolve(uow, request)) == ()

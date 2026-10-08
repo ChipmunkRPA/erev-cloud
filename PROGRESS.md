@@ -2,6 +2,29 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Stored re-lock evidence — October 8, 2026 (RPS-16 continued)
+
+- Continued from clean 60e2de1. Shared verified frozen-source reads with a new re-lock
+  collector. Follows LOCK → REOPEN history back to the prior LOCK within the same tenant,
+  entity, book and period; refuses cycles, broken/out-of-scope history and missing comparisons.
+  Verifies both twelve-kind frozen sources, file purpose/type/length/hash and the entire saved
+  comparison against the existing CLO-7 comparator over those bytes. Delivers the original
+  file and bound lock/manifest/file identities under `relock/`; never silently repairs evidence.
+- **182 tests passed in 52.05 seconds**: selection/collector/schema/archive cases plus the
+  existing approval-driven close/reopen/re-lock scenario, now also consuming the real stored
+  comparison with this collector. Pack HTTP authorization/download are not exercised; the
+  collector uses an explicit read principal. Other new lock-history cases use seeded rows.
+  Initial DB run: 29 passed, one fixture failure (JSON incorrectly supplied as IMPORT_SOURCE).
+  Corrected the wrong-purpose witness to a valid generated AUDIT_DIGEST file, still refused by
+  the collector as intended. Logs: `/private/tmp/evidence-relock-{db,final}.log`.
+- Two-source mypy, Ruff and whitespace pass. Processes are terminal. Archived request-schema
+  and archive-foundation notes verbatim in the build history to retain the notebook size limit.
+- Remaining: the separate `variance_between_closes` report, all other CLOSE supporting
+  contents, full CONTRACT_SAMPLE/CHANGE/ACCESS collection, persisted bindings, jobs/routes,
+  audited downloads and automatic pack generation. Stored comparison evidence does not replace
+  that broader report. EVIDENCE_PACK stays pending and CTL-041 remains open. Full-current gates
+  and independent accounting sign-off remain outstanding. No deployment; direct-main workflow.
+
 ## Frozen close-pack sources — October 8, 2026 (RPS-16 continued)
 
 - Continued from clean 9c18557. Added `reports/evidence_close.py::collect_locked` for the
@@ -50,51 +73,6 @@
   payload or establish as-of content completeness. EVIDENCE_PACK remains pending, CTL-041
   open, report availability unchanged. Full-current gates and independent accounting sign-off
   remain outstanding. Archived the fixture/freshness notes verbatim to the build history.
-
-## Evidence-pack request contract — October 8, 2026 (RPS-16 continued)
-
-- Continued from clean 4860217. Verified zero open PRs and only remote `main`.
-  Added API-S-EvidencePackCreate as a discriminated request union for CLOSE,
-  CONTRACT_SAMPLE, CHANGE and ACCESS. Each kind requires exactly its documented
-  selectors; unrelated fields (including explicit nulls) are rejected. Sample selection
-  preserves exact business keys and order, rejects blank/duplicate IDs and enforces 1–50.
-  Change ranges permit one day and reject reversed dates. No default lock/book/date.
-- **151 request/archive unit tests passed in 0.17 seconds** (102 request, 49 archive),
-  including the required/unused-field matrix, JSON round trips and schema requirements.
-  Log: `/private/tmp/evidence-request-units.log`. Mypy on the new schema, Ruff and whitespace
-  checks pass. Initial request run: 13 failed, 89 passed because the test fixture used
-  nonexistent book `PRIMARY`; corrected it to the actual E-02 code `ASC606`.
-- Request shape is now available for the forthcoming routes; this does not verify source
-  selection, permissions, HTTP behavior or generation. Next: resolve each selector within
-  tenant and permission scope, bind the generation cutoff/source identities, and implement
-  complete source collection, jobs, audited downloads, automatic lock/re-lock packs and
-  the specified acceptance tests. Keep EVIDENCE_PACK pending and CTL-041 open until then.
-  Full-current release gates and independent accounting sign-off remain outstanding.
-
-## Evidence pack integrity foundation — October 8, 2026 (RPS-16 in progress)
-
-- Continued from clean 8a8cdda. RPS-16 / CTL-041 remains unimplemented at the workflow level.
-  Started its required archive boundary: deterministic ZIP bytes, canonical payload manifest,
-  exact byte counts/report-run IDs, SHA-256 and verification against the separately stored
-  trusted manifest hash. The manifest cannot hash itself; clarified the existing detached
-  `manifest_sha256` contract in T-RPT-04 and the build acceptance wording.
-- `reports/evidence_archive.py` rejects changed/missing/unlisted payloads, altered manifests,
-  self-references, duplicates, file/directory and case collisions, unsafe paths, symlinks,
-  invalid metadata and over-limit payloads. No filesystem extraction or accounting derivation.
-  Export sanitization and authorization remain the caller's responsibilities.
-- **49 pure integrity tests passed in 0.11 seconds**; independent ZIP reads recompute payload
-  hashes, and tampering/reforging is refused against the trusted hash. Mypy, Ruff and whitespace
-  pass. Log: `/private/tmp/evidence-archive-units-final.log`. An earlier command named a
-  nonexistent output-test file and collected no tests; the recorded final command is the real run.
-- Continue the full RPS-16 workflow next: scoped request schemas/routes, job lifecycle, source
-  collection, immutable/as-of reads, encrypted file storage, audited download, automatic lock
-  enqueue and re-lock diff, and contract-sample/change/access packs. Use the archive boundary
-  in that implementation. Keep EVIDENCE_PACK pending and CTL-041 unclaimed until full tests pass.
-  Existing `locked.locked_dataset` verifies frozen bytes; CSV export must use the declared-kind
-  formula guard (`locked.export_csv` / snapshot column kinds), not serve raw frozen CSV.
-- This is a tested prerequisite, not an available evidence-pack product or readiness claim.
-  No deployment; publish reviewed work directly to main. Remaining accounting sign-off and
-  full-current verification requirements are unchanged.
 
 ## Canonical property gate completed — October 8, 2026
 

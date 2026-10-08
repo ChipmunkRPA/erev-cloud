@@ -17,6 +17,7 @@ Owed in slice 7b (record §22): ``test_relock_diff_k03``,
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from datetime import UTC, date
 from io import BytesIO
 from typing import Any
@@ -45,6 +46,7 @@ from erev_api.domain.close import commands as close_commands
 from erev_api.domain.close import gates, posting_guard
 from erev_api.domain.close import snapshots as close_snapshots
 from erev_api.domain.journals import subledger
+from erev_api.domain.reports import evidence_relock, evidence_selection
 from erev_api.domain.reports import snapshots as registry
 from erev_api.enums import (
     ApprovalRequestStatus,
@@ -58,6 +60,7 @@ from erev_api.enums import (
 )
 from erev_api.files.store import LocalFileStore, open_file, store_file
 from erev_api.main import create_app
+from erev_api.schemas.evidence_packs import ClosePackCreateIn
 from erev_api.schemas.periods import PeriodLockRequestIn
 from fastapi import FastAPI
 from sqlalchemy import func, insert, select, update
@@ -634,6 +637,31 @@ def test_relock_writes_diff_report(world: CloseWorld, clock: FrozenClock) -> Non
     assert [row["gate_check_code"] for row in report["certification"]["current"]] == list(
         gates.GATE_CHECK_CODES
     )
+    # RPS-16's collector consumes the real approved re-lock's saved evidence. This
+    # explicit read principal tests collection; pack HTTP guards/download remain separate.
+    reader = replace(
+        world.place.principal,
+        permissions=frozenset({"report.run", "audit.read"}),
+        permission_scopes={"report.run": "*", "audit.read": "*"},
+    )
+    with world.place.uow(reader) as uow:
+        selection = evidence_selection.resolve(
+            uow,
+            ClosePackCreateIn.model_validate(
+                {
+                    "kind": "CLOSE",
+                    "entity_code": "AVM-US",
+                    "book": "ASC606",
+                    "period_key": "FY2026-P09",
+                    "period_lock_id": second_id,
+                }
+            ),
+        )
+        packed = evidence_relock.collect(uow, selection)
+        saved = next(
+            file.content for file in packed if file.path == "relock/stored_comparison.json"
+        )
+        assert json.loads(saved) == report
 
 
 # --- 7b: the SM-07 sweep and the BR-CLS-06 predicate -------------------------------------------
