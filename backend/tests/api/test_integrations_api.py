@@ -44,7 +44,7 @@ from support.db import TestDatabase
 from support.fake_gcp import ServiceUnavailable
 from support.http import HttpResponse, asgi_client, call
 from support.principals import Actor, enrolled, member
-from support.reference import assign, get, patch, post, slug
+from support.reference import assign, fields, get, patch, post, slug
 
 INTEGRATIONS = "/api/v1/integrations"
 SYNC_RUNS = "/api/v1/sync-runs"
@@ -131,6 +131,60 @@ def _activate(world: World, connection: dict[str, Any]) -> dict[str, Any]:
     result: dict[str, Any] = changed.json()
     assert result["status"] == "ACTIVE"
     return result
+
+
+def test_integration_owner_is_explicit_and_tenant_scoped(
+    world: World, keyring: KeyRing, clock: FrozenClock
+) -> None:
+    from support.principals import colleague
+
+    # An explicit null keeps a historical/unassigned connection unassigned.
+    first = _create(world, owner_membership_id=None)
+    assert first["owner_membership_id"] is None
+    unqualified = colleague(world.tenant_id, "unqualified-owner")
+    refused = patch(
+        world.app,
+        f"{INTEGRATIONS}/{first['id']}",
+        world.nikhil,
+        {"owner_membership_id": str(unqualified.membership_id)},
+        if_match='"r1"',
+    )
+    assert refused.status_code == 422, refused.text
+    assert fields(refused) == [("owner_membership_id", "INTEGRATION_OWNER_SCOPE")]
+
+    assign(world.nikhil.member, "revenue_accountant")
+    owned = _create(world, code="sf-owned")
+    assert owned["owner_membership_id"] == str(world.nikhil.member.membership_id)
+    assigned = patch(
+        world.app,
+        f"{INTEGRATIONS}/{first['id']}",
+        world.nikhil,
+        {"owner_membership_id": str(world.nikhil.member.membership_id)},
+        if_match='"r1"',
+    )
+    assert assigned.status_code == 200, assigned.text
+    assert assigned.json()["owner_membership_id"] == owned["owner_membership_id"]
+
+    outsider = member(keyring, clock)
+    assign(outsider, "integration_admin")
+    assign(outsider, "revenue_accountant")
+    cross_tenant = patch(
+        world.app,
+        f"{INTEGRATIONS}/{first['id']}",
+        world.nikhil,
+        {"owner_membership_id": str(outsider.membership_id)},
+        if_match='"r2"',
+    )
+    assert cross_tenant.status_code == 422, cross_tenant.text
+    assert fields(cross_tenant) == fields(refused)
+    assert (
+        world.rows(
+            select(integration_connection.c.owner_membership_id).where(
+                integration_connection.c.id == UUID(first["id"])
+            )
+        )[0]["owner_membership_id"]
+        == world.nikhil.member.membership_id
+    )
 
 
 def test_connection_stores_secret_reference_only(world: World, clock: FrozenClock) -> None:
@@ -495,7 +549,8 @@ def test_a_silent_secret_store_fails_the_probe_and_keeps_the_receivers_5xx(world
         f"the secret store did not answer for secret reference {hosted}@1"
     )
     assert tested.json()["last_sync_run"]["status"] == "FAILED"
-    assert sf_mock.SHARED_SECRET not in tested.text and "503" not in tested.text
+    # The exact safe detail is checked above; arbitrary UUIDs may contain "503".
+    assert sf_mock.SHARED_SECRET not in tested.text
     again = post(world.app, f"{INTEGRATIONS}/{served['id']}/test", world.nikhil, {})
     assert again.status_code == 200, again.text
     assert again.json()["last_test_result"] == "SUCCESS"  # the store answers again
@@ -742,3 +797,28 @@ def test_mock_routes_absent_in_production(
     assert not any(path.startswith(mocks.MOCKS_PREFIX) for path in document["paths"])
     assert f"{INTEGRATIONS}/{{connection_id}}/sync" in document["paths"]
     assert "/api/v1/webhooks/{adapter}/{connection_id}" in document["paths"]
+
+
+def test_owner_assignment_prevents_lossy_downgrade(
+    world: World, committed_db: TestDatabase
+) -> None:
+    import importlib
+
+    from erev_api.db import migration_ops
+    from sqlalchemy.exc import IntegrityError
+
+    created = _create(world)
+    assert created["owner_membership_id"] is not None
+    migration = importlib.import_module("erev_api.db.migrations.versions.0140_integration_owner")
+    # No tenant context: the physical validation must still find the assignment through RLS.
+    with committed_db.owner_engine.connect() as conn:
+        transaction = conn.begin()
+        try:
+            with migration_ops.bound_to(conn), pytest.raises(IntegrityError, match="0140_no_owner"):
+                migration.downgrade()
+        finally:
+            transaction.rollback()
+    assert (
+        world.rows(select(integration_connection.c.owner_membership_id))[0]["owner_membership_id"]
+        == world.nikhil.member.membership_id
+    )

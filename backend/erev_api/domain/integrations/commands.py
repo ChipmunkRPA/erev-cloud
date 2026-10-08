@@ -60,7 +60,7 @@ from erev_api.db.tables import (
     product,
     sync_run,
 )
-from erev_api.domain.integrations import ports, queries
+from erev_api.domain.integrations import owners, ports, queries
 from erev_api.domain.integrations import sync as sync_module
 from erev_api.domain.platform import guards
 from erev_api.enums import JobKind, SyncRunStatus
@@ -171,6 +171,7 @@ RECEIVER_PREFIX: Final = "erevw_"
 RECEIVER_PATTERN: Final = re.compile(r"erevw_([0-9a-f]{32})_([0-9a-f]{32})")
 
 AUDITED_MEMBERS: Final = (
+    "owner_membership_id",
     "code",
     "name",
     "adapter",
@@ -182,7 +183,7 @@ AUDITED_MEMBERS: Final = (
     "status",
 )
 UPDATABLE_MEMBERS: Final = frozenset(
-    {"name", "entity_ids", "base_url", "config", "secret_ref", "status"}
+    {"name", "entity_ids", "base_url", "config", "secret_ref", "status", "owner_membership_id"}
 )
 
 
@@ -508,11 +509,17 @@ def create_connection(
             detail={"code": body.code, "adapter": body.adapter, "direction": body.direction},
         )
     entity_errors, beyond = _entity_findings(uow, body.entity_ids)
+    owner_id = body.owner_membership_id
+    if "owner_membership_id" not in body.model_fields_set:
+        candidate = uow.principal.membership_id
+        if owners.eligible(uow, candidate, body.entity_ids):
+            owner_id = candidate
     errors = (
         _code_errors(uow, body.code)
         + entity_errors
         + _base_url_errors(body.base_url, local_destinations=local_destinations)
         + _secret_ref_errors(uow, body.secret_ref)
+        + owners.errors(uow, owner_id, body.entity_ids)
     )
     if errors:
         raise _refuse(uow, errors, beyond=beyond, action=CREATE_ACTION, connection_id=None)
@@ -523,6 +530,7 @@ def create_connection(
         "name": body.name,
         "adapter": body.adapter,
         "direction": body.direction,
+        "owner_membership_id": owner_id,
         "entity_ids": [UUID(str(value)) for value in body.entity_ids],
         "base_url": body.base_url,
         "config": dict(body.config),
@@ -591,6 +599,12 @@ def update_connection(
         errors += _base_url_errors(changes["base_url"], local_destinations=local_destinations)
     if "secret_ref" in changes:
         errors += _secret_ref_errors(uow, changes["secret_ref"])
+    if "owner_membership_id" in changes or "entity_ids" in changes:
+        errors += owners.errors(
+            uow,
+            changes.get("owner_membership_id", current["owner_membership_id"]),
+            changes.get("entity_ids", current["entity_ids"]) or (),
+        )
     if errors:
         raise _refuse(uow, errors, beyond=beyond, action=UPDATE_ACTION, connection_id=connection_id)
     before = _audited(current)

@@ -1124,3 +1124,58 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   FX/other configuration races, physical large-group performance and final publication checks
   remain open. B1-13/B1-2 and independent accounting sign-off remain open. No deployment,
   publication or readiness claim. Earlier Step 1 implementation evidence archived verbatim.
+
+
+## Draft Step 1 gate review — October 7, 2026
+
+- Previous goal turn made progress with 77 compatibility checks, API-client verification and
+  both SSP publication interleavings. Continued unpublished changes on main `5ca602f`.
+- Added before/after contract status to the retained Step 1 preview and readable contract
+  status labels to the approval screen. A draft's proposed gate is now visible, including
+  Draft remaining unchanged when the existing obligation-budget gate guard withholds it.
+- Two new public-API cases cover a derived draft gate and its size-budget boundary. Initial
+  tests reproduced missing preview status. Subsequent assertions exposed fixture assumptions:
+  draft judgements create no active-contract hold, and counting every job includes unrelated
+  jobs. Corrected the expected event list and scoped the no-deferral assertion to CONTRACT_COMPUTE.
+- Frontend: **59 passed in 2.92 seconds**; source Mypy, TypeScript, ESLint, Ruff and whitespace
+  checks pass. Backend compatibility: **5 passed in 39.64 seconds**, covering draft outcomes,
+  two-book/API-client decisions and existing immediate-append budget behavior. Log:
+  `/private/tmp/step1-date-review-draft-gate-compatibility.log`. Primary test DB erev_rv_cont
+  is free. Lowering the budget exercises the boundary, not real-volume performance.
+- Actual performing-entity behavior, FX/configuration interleavings and physical large-group
+  performance remain open, along with B1-2's other producers and accounting sign-off. No
+  publication/deployment/readiness claim. Earlier preview notes archived verbatim.
+
+## Atomic Step 1 computation — October 7, 2026
+
+- Previous goal turn made progress: all-book previews and 13 backend/58 frontend checks.
+  This turn reproduced deferred approval: with the fact-capture obligation budget forced
+  below the group size, the request approved while its book still had the old ACTIVE state.
+  Regression: **1 failed in 14.28 seconds** (`step1-date-review-deferred-regression.log`).
+- STEP1_EVENT now computes successfully inside the approval transaction, without the ordinary
+  fact-capture deferral budget. It compares the actual persisted-event input bundle with the
+  previously validated proposal before running the engine. Only SYSTEM append attribution,
+  recorded time and assigned record sequence are normalized for this comparison; actual event
+  order and accounting inputs remain checked. The unmodified actual bundle is computed and
+  persisted with its normal hash. Other event approvals retain their existing computation path.
+- Failed calculation rolls back approval, events and hold releases; changed inputs use stale
+  approval handling. The single-book, two-book and forced-deferral cases passed: **3 in 30.37
+  seconds**. Failure/late-input boundary checks passed: **2 in 23.63 seconds**, including a
+  successful retry after engine failure and unchanged computation count on refusals. Their
+  first run only failed the fixture expectation of null instead of an empty applied-id array.
+  The late-input test injects an engine-version change; it is not real publication-race proof.
+- Source Mypy (two files), Ruff and whitespace checks pass. Expanded compatibility finished:
+  **77 passed in 374.20 seconds**, `/private/tmp/step1-date-review-atomic-compatibility.log`.
+  API-client case passed: automated submissions still wait for date approval and retain
+  non-manual attribution. Both real SSP-publication interleavings passed in **23.96 seconds**:
+  before the final input read the decision is stale; after it, actual postings match the reviewed
+  amounts. Initial publication probes stopped at the fixture's old session after MFA enrolment;
+  using the preparer's current enrolled session fixed the fixture. Logs:
+  `/private/tmp/step1-date-review-publication-client.log` (one pass, two fixture failures) and
+  `/private/tmp/step1-date-review-publication-interleavings.log` (two passes). All scoped runs
+  are terminal; primary test DB erev_rv_cont is available. The older baseline PID 36126 remains
+  live on its separate DB with earlier failures. Updated the data-model contract for decisions.
+- Remaining: FX and other configuration interleavings, actual performing-entity coverage,
+  draft-gate and large-group decision verification, final compatibility and publication checks.
+  Synchronous decisions can take longer; no performance claim. B1-13/B1-2 remain open, all
+  changes unpublished. No deployment or production-readiness claim. FX evidence archived.

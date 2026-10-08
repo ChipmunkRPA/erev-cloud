@@ -51,6 +51,7 @@ integration_connection: Final = Table(
     Column("name", Text(), nullable=False),
     Column("adapter", Text(), nullable=False),
     Column("direction", Text(), nullable=False),
+    Column("owner_membership_id", Uuid(), nullable=True),
     Column("entity_ids", ARRAY(Uuid()), nullable=False, server_default=text("'{}'::uuid[]")),
     Column("base_url", Text(), nullable=True),
     Column("config", JSONB(none_as_null=True), nullable=False, server_default=text("'{}'::jsonb")),

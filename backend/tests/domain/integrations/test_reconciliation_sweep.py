@@ -34,18 +34,22 @@ from erev_api.db.tables import (
     exception_item,
     integration_connection,
     job,
+    notification,
     outbox_message,
     period,
     period_state,
+    role_assignment,
     source_record,
     sync_run,
+    tenant_membership,
 )
 from erev_api.domain.close import gates
 from erev_api.domain.integrations import ports, sweeps
+from erev_api.domain.integrations import sync as sync_module
 from erev_api.domain.integrations.outbox import sync_request_key
 from erev_api.main import create_app
 from fastapi import FastAPI
-from sqlalchemy import select
+from sqlalchemy import select, update
 from support.db import TestDatabase
 from support.integrations import (
     INTEGRATIONS,
@@ -445,6 +449,12 @@ def test_control_totals_on_sync_run(world: IntegrationWorld) -> None:
     assert mismatch["sync_run_id"] == row["id"] and mismatch["business_key"] == str(row["id"])
     assert "191000.00" in mismatch["message"] and "190000.00" in mismatch["message"]
     assert str(row["id"]) in mismatch["message"]
+    assert mismatch["owner_membership_id"] == world.nikhil.member.membership_id
+    notes = world.rows(select(notification).where(notification.c.subject_id == mismatch["id"]))
+    assert len(notes) == 1
+    assert notes[0]["recipient_membership_id"] == world.nikhil.member.membership_id
+    assert notes[0]["kind"] == "EXCEPTION_ASSIGNED"
+    assert notes[0]["link_path"] == f"/data/exceptions/{mismatch['id']}"
     # the run's exception count: the out-of-order version, the unmapped product, the mismatch
     assert row["exception_count"] == 3
 
@@ -456,3 +466,108 @@ def test_control_totals_on_sync_run(world: IntegrationWorld) -> None:
     assert body["source_totals"]["amount_by_currency"] == {"USD": "191000.00"}
     assert body["loaded_totals"]["amount_by_currency"] == {"USD": "190000.00"}
     assert len(world.rows(select(contract))) == 3  # the ingestion stands; the mismatch is flagged
+
+
+@pytest.mark.parametrize("owner_state", ["unassigned", "suspended", "revoked"])
+def test_mismatch_does_not_notify_an_ineligible_owner(
+    world: IntegrationWorld, monkeypatch: pytest.MonkeyPatch, owner_state: str
+) -> None:
+    """Authority is checked when the mismatch occurs, after a run was authorized."""
+    ports.register_inbound_adapter("SALESFORCE", _OverstatedSource)
+    crm = connection(world, **SALESFORCE_BODY)
+    original = sync_module._totals_mismatch
+
+    def lose_access(uow: Any, **kwargs: Any) -> None:
+        if owner_state == "unassigned":
+            uow.session.execute(update(integration_connection).values(owner_membership_id=None))
+        elif owner_state == "suspended":
+            uow.session.execute(
+                update(tenant_membership)
+                .where(tenant_membership.c.id == world.nikhil.member.membership_id)
+                .values(status="SUSPENDED")
+            )
+        else:
+            uow.session.execute(
+                update(role_assignment)
+                .where(role_assignment.c.membership_id == world.nikhil.member.membership_id)
+                .values(revoked_at=uow.now)
+            )
+        original(uow, **kwargs)
+
+    monkeypatch.setattr(sync_module, "_totals_mismatch", lose_access)
+    row, _ = sync(world, crm)
+    assert row["status"] == "CONTROL_TOTAL_MISMATCH"
+    [item] = world.rows(
+        select(exception_item).where(exception_item.c.code == "CONTROL_TOTALS_MISMATCH")
+    )
+    assert item["owner_membership_id"] is None
+    assert item["status"] == "OPEN" and item["severity"] == "BLOCKING"
+    assert world.rows(select(notification).where(notification.c.subject_id == item["id"])) == []
+
+
+def test_mismatch_retry_does_not_repeat_owner_notification(
+    world: IntegrationWorld, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    ports.register_inbound_adapter("SALESFORCE", _OverstatedSource)
+    crm = connection(world, **SALESFORCE_BODY)
+    original = sync_module._totals_mismatch
+    send = sync_module.notify
+    deliveries: list[dict[str, Any]] = []
+
+    def track_delivery(uow: Any, **kwargs: Any) -> Any:
+        deliveries.append(kwargs)
+        return send(uow, **kwargs)
+
+    monkeypatch.setattr(sync_module, "notify", track_delivery)
+
+    def repeat(uow: Any, **kwargs: Any) -> None:
+        original(uow, **kwargs)
+        original(uow, **{**kwargs, "counts": sync_module.Counts()})
+
+    monkeypatch.setattr(sync_module, "_totals_mismatch", repeat)
+    sync(world, crm)
+    [item] = world.rows(
+        select(exception_item).where(exception_item.c.code == "CONTROL_TOTALS_MISMATCH")
+    )
+    assert item["owner_membership_id"] == world.nikhil.member.membership_id
+    notes = world.rows(select(notification).where(notification.c.subject_id == item["id"]))
+    assert len(notes) == 1
+    assert len(deliveries) == 1  # Does not rely on the generic ten-minute notification merge.
+
+
+def test_owner_scope_must_cover_expanded_connection(world: IntegrationWorld) -> None:
+    from support.principals import colleague
+    from support.reference import assign, fields, patch
+
+    scoped = colleague(world.tenant_id, "scoped-integration-owner")
+    assign(scoped, "integration_admin", entity_ids=[world.entity_id])
+    crm = connection(
+        world,
+        **{
+            **SALESFORCE_BODY,
+            "entity_ids": [str(world.entity_id)],
+            "owner_membership_id": str(scoped.membership_id),
+        },
+    )
+    before = world.rows(select(integration_connection))[0]
+    response = patch(
+        world.app,
+        f"{INTEGRATIONS}/{crm['id']}",
+        world.nikhil,
+        {"entity_ids": []},
+        if_match=f'"r{before["row_version"]}"',
+    )
+    assert response.status_code == 422, response.text
+    assert fields(response) == [("owner_membership_id", "INTEGRATION_OWNER_SCOPE")]
+    after = world.rows(select(integration_connection))[0]
+    assert after["entity_ids"] == before["entity_ids"]
+    assert after["row_version"] == before["row_version"]
+    changed = patch(
+        world.app,
+        f"{INTEGRATIONS}/{crm['id']}",
+        world.nikhil,
+        {"entity_ids": [], "owner_membership_id": str(world.nikhil.member.membership_id)},
+        if_match=f'"r{before["row_version"]}"',
+    )
+    assert changed.status_code == 200, changed.text
+    assert changed.json()["entity_ids"] == []

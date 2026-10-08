@@ -7082,5 +7082,11 @@
   "close.reopen.evidenceLoading": "Loading reviewed judgements…",
   "close.reopen.evidenceEmpty": "No reviewed judgements are available for this entity and book.",
   "close.reopen.evidenceReviewer": "Reviewed by {name}",
-  "close.reopen.evidenceContract": "Open contract"
+  "close.reopen.evidenceContract": "Open contract",
+  "data.integrations.owner.automatic": "Assign to me if eligible",
+  "data.integrations.owner.current": "Current owner",
+  "data.integrations.owner.help": "Receives control-total mismatch notifications. The owner must be active and able to manage and read every entity of this connection. User administrators can select other members.",
+  "data.integrations.owner.label": "Integration owner",
+  "data.integrations.owner.missing": "No integration owner is assigned. Review the exception queue after each sync; mismatch notifications have no recipient.",
+  "data.integrations.owner.unassigned": "Unassigned"
 }

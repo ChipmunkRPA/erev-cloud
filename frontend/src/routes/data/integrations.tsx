@@ -8,6 +8,7 @@
 // drawer "Add connection" (and "Edit connection" on SF-16:connection) holds Adapter, Name, Code,
 // Direction, Entities, Base URL, Credential reference and Settings; a new connection starts Disabled. The
 // credential reference is the name of a secret: the secret itself is never typed, stored or shown.
+import { useQuery } from "@tanstack/react-query";
 import { type FormEvent, type ReactNode, useId, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";
 
@@ -59,6 +60,11 @@ import {
   type SyncRunKind,
   type SyncRunStatus,
 } from "../../lib/api/queries/integrations";
+import {
+  fetchActiveMembers,
+  membersKey,
+  USER_MANAGE_PERMISSION,
+} from "../../lib/api/queries/exceptions";
 import { useMe } from "../../lib/api/queries/me";
 import { type Entity, rowIfMatch } from "../../lib/api/queries/tenant";
 import { placeProblem } from "../../lib/api/refusals";
@@ -359,6 +365,7 @@ const CONNECTION_MEMBERS = {
   code: ["code"],
   direction: ["direction"],
   entities: ["entity_ids"],
+  owner: ["owner_membership_id"],
   baseUrl: ["base_url"],
   secretRef: ["secret_ref"],
   settings: ["config"],
@@ -386,6 +393,26 @@ export function ConnectionDrawer({
   const namespaceId = useId();
   const entities = useAllEntities();
   const editing = connection !== undefined;
+  const me = useMe();
+  const access = useAccess();
+  const members = useQuery({
+    queryKey: membersKey(),
+    queryFn: fetchActiveMembers,
+    enabled: access.holdsAnywhere(USER_MANAGE_PERMISSION),
+  });
+  const [owner, setOwner] = useState(
+    connection === undefined ? "automatic" : (connection.owner_membership_id ?? "unassigned"),
+  );
+  const ownerOptions = new Map<string, string>([
+    ["unassigned", t("data.integrations.owner.unassigned")],
+  ]);
+  if (!editing) ownerOptions.set("automatic", t("data.integrations.owner.automatic"));
+  if (connection?.owner_membership_id)
+    ownerOptions.set(connection.owner_membership_id, t("data.integrations.owner.current"));
+  if (me.data?.active_membership_id)
+    ownerOptions.set(me.data.active_membership_id, me.data.user.display_name);
+  for (const member of members.data ?? []) ownerOptions.set(member.id, member.display_name);
+
   const [adapter, setAdapter] = useState<Adapter | null>(connection?.adapter ?? null);
   const [name, setName] = useState(connection?.name ?? "");
   const [code, setCode] = useState(connection?.code ?? "");
@@ -449,6 +476,7 @@ export function ConnectionDrawer({
         ? t("data.integrations.drawer.required")
         : placed.fields.direction,
     entities: placed.fields.entities,
+    owner: placed.fields.owner,
     baseUrl: placed.fields.baseUrl,
     secretRef:
       placed.fields.secretRef ??
@@ -473,6 +501,10 @@ export function ConnectionDrawer({
     const shared = {
       name: name.trim(),
       entity_ids: [...entityIds],
+      ...(owner === "automatic" ||
+      (editing && owner === (connection.owner_membership_id ?? "unassigned"))
+        ? {}
+        : { owner_membership_id: owner === "unassigned" ? null : owner }),
       base_url: baseUrl.trim() === "" ? null : baseUrl.trim(),
       ...(storedOutside && !secretChanged
         ? {}
@@ -663,6 +695,29 @@ export function ConnectionDrawer({
               />
             )}
           </Field>
+          <Field
+            name="connection_owner"
+            label={t("data.integrations.owner.label")}
+            help={t("data.integrations.owner.help")}
+            error={errors.owner}
+          >
+            {(control) => (
+              <Select
+                control={control}
+                options={[...ownerOptions].map(([value, label]) => ({ value, label }))}
+                value={owner}
+                invalid={errors.owner !== null}
+                onChange={(value) => {
+                  touch();
+                  setOwner(value);
+                }}
+              />
+            )}
+          </Field>
+          {owner === "unassigned" ? (
+            <Banner tone="warning" title={t("data.integrations.owner.missing")} />
+          ) : null}
+          {members.isError ? <Banner tone="negative" title={members.error.message} /> : null}
           <Field
             name="connection_base_url"
             label={t("data.integrations.drawer.baseUrl")}

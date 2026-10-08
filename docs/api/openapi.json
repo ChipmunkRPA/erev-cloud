@@ -15935,6 +15935,19 @@
             "title": "Name",
             "type": "string"
           },
+          "owner_membership_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Member responsible for integration exceptions",
+            "title": "Owner Membership Id"
+          },
           "secret_ref": {
             "anyOf": [
               {
@@ -16075,6 +16088,18 @@
             "title": "Name",
             "type": "string"
           },
+          "owner_membership_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner Membership Id"
+          },
           "row_version": {
             "title": "Row Version",
             "type": "integer"
@@ -16111,6 +16136,7 @@
           "adapter",
           "direction",
           "entity_ids",
+          "owner_membership_id",
           "base_url",
           "config",
           "secret_ref",
@@ -16181,6 +16207,18 @@
               }
             ],
             "title": "Name"
+          },
+          "owner_membership_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner Membership Id"
           },
           "secret_ref": {
             "anyOf": [

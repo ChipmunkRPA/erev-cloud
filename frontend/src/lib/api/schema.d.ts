@@ -13746,6 +13746,11 @@ export interface components {
       /** Name */
       name: string;
       /**
+       * Owner Membership Id
+       * @description Member responsible for integration exceptions
+       */
+      owner_membership_id?: string | null;
+      /**
        * Secret Ref
        * @description Reference of the adapter secret in the key provider's secret store: `<secret name>@<version>` under the hosted provider. The secret's name begins with `tenant-<tenant id>-`, the workspace's own namespace; any other reference is refused with 422. The value is never stored or returned (REQ-INT-006)
        */
@@ -13800,6 +13805,8 @@ export interface components {
       last_test_result: ("SUCCESS" | "FAILURE") | null;
       /** Name */
       name: string;
+      /** Owner Membership Id */
+      owner_membership_id: string | null;
       /** Row Version */
       row_version: number;
       /** Secret Ref */
@@ -13831,6 +13838,8 @@ export interface components {
       entity_ids?: string[] | null;
       /** Name */
       name?: string | null;
+      /** Owner Membership Id */
+      owner_membership_id?: string | null;
       /**
        * Secret Ref
        * @description Reference of the adapter secret in the key provider's secret store: `<secret name>@<version>` under the hosted provider. The secret's name begins with `tenant-<tenant id>-`, the workspace's own namespace; any other reference is refused with 422. The value is never stored or returned (REQ-INT-006)

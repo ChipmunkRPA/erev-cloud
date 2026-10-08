@@ -59,6 +59,9 @@ class IntegrationConnectionIn(BaseModel):
     name: str = Field(min_length=1, max_length=200)
     adapter: Adapter
     direction: Direction
+    owner_membership_id: uuid.UUID | None = Field(
+        default=None, description="Member responsible for integration exceptions"
+    )
     entity_ids: list[uuid.UUID] = Field(default_factory=list, description="Empty = all entities")
     base_url: str | None = Field(default=None, description="Mock server URL in tests and demos")
     config: dict[str, Any] = Field(default_factory=dict, description="Non-secret settings")
@@ -77,6 +80,7 @@ class IntegrationConnectionUpdateIn(BaseModel):
     config: dict[str, Any] | None = None
     secret_ref: str | None = Field(default=None, description=SECRET_REF_DESCRIPTION)
     status: ConnectionStatus | None = None
+    owner_membership_id: uuid.UUID | None = None
 
 
 class SyncRunResultOut(BaseModel):
@@ -105,6 +109,7 @@ class IntegrationConnectionOut(BaseModel):
     adapter: Adapter
     direction: Direction
     entity_ids: list[uuid.UUID]
+    owner_membership_id: uuid.UUID | None
     base_url: str | None
     config: dict[str, Any]
     secret_ref: str | None

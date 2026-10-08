@@ -84,9 +84,14 @@ from erev_api.db.tables import (
     tenant,
 )
 from erev_api.domain.imports import exceptions as exception_queue
-from erev_api.domain.imports.exceptions import dedupe_key, raise_exception_item, severity_of
+from erev_api.domain.imports.exceptions import (
+    RaisedItem,
+    dedupe_key,
+    raise_exception_item,
+    severity_of,
+)
 from erev_api.domain.imports.job_items import failed_item
-from erev_api.domain.integrations import documents, grouping, normalise, ports, queries
+from erev_api.domain.integrations import documents, grouping, normalise, owners, ports, queries
 from erev_api.domain.integrations.normalise import SourceIdentity, StoreOutcome
 from erev_api.domain.journals import ports as gl_ports
 from erev_api.enums import (
@@ -95,10 +100,12 @@ from erev_api.enums import (
     ExceptionSource,
     JobKind,
     ModificationKind,
+    NotificationKind,
     SourceObjectType,
     SourceSystem,
     SyncRunStatus,
 )
+from erev_api.events.notifications import notify
 from erev_api.events.outbox import Undeliverable as GlUndeliverable
 from erev_api.jobs.context import JobContext, system_unit_of_work
 from erev_api.jobs.registry import FailedSubject, JobOutcome, RetryPolicy, task
@@ -909,12 +916,12 @@ def _failure(
     )
 
 
-def _raise(uow: UnitOfWork, counts: Counts, **item: Any) -> None:
+def _raise(uow: UnitOfWork, counts: Counts, **item: Any) -> RaisedItem:
     """``raise_exception_item`` for this run, remembering the item's dedupe key — the SAME-item
     identity ``_settle_item`` checks (04 §16.14 rev 1.81: a reprocessed item resolves only when its
     code is not raised again for its subject; Codex 0545 §2 R2)."""
     counts.raised_keys.add(str(item["dedupe"]))
-    raise_exception_item(uow, **item)
+    return raise_exception_item(uow, **item)
 
 
 def _stale_notification(
@@ -2248,7 +2255,7 @@ def _totals_mismatch(
     loaded: ports.ControlTotals,
     counts: Counts,
 ) -> None:
-    _raise(
+    item = _raise(
         uow,
         counts,
         source=ExceptionSource.SYNC,
@@ -2263,6 +2270,44 @@ def _totals_mismatch(
         disposition=ExceptionDisposition.REMEDIABLE,
     )
     counts.exceptions += 1
+    connection = (
+        uow.session.execute(
+            select(integration_connection)
+            .join(sync_run, sync_run.c.integration_connection_id == integration_connection.c.id)
+            .where(sync_run.c.id == run_id)
+        )
+        .mappings()
+        .one()
+    )
+    owner_id = connection["owner_membership_id"]
+    if item.created and owners.eligible(uow, owner_id, connection["entity_ids"]):
+        uow.session.execute(
+            update(exception_item)
+            .where(exception_item.c.id == item.id)
+            .values(
+                owner_membership_id=owner_id,
+                row_version=exception_item.c.row_version + 1,
+            )
+        )
+        uow.audit(
+            action=exception_queue.ASSIGN_ACTION,
+            object_type="exception_item",
+            object_id=item.id,
+            before={"owner_membership_id": None},
+            after={"owner_membership_id": str(owner_id)},
+        )
+        notify(
+            uow,
+            recipient_membership_ids=[owner_id],
+            kind=NotificationKind.EXCEPTION_ASSIGNED,
+            title=f"Exception: {CONTROL_TOTALS_MISMATCH}",
+            body=TOTALS_MISMATCH_MESSAGE.format(
+                source=source.as_json(), loaded=loaded.as_json(), run=run_id
+            ),
+            link_path=f"/data/exceptions/{item.id}",
+            subject_type="exception_item",
+            subject_id=item.id,
+        )
 
 
 def _finish(

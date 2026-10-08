@@ -745,6 +745,9 @@ function SettingsPane({ connection, onEdit }: SettingsPaneProps) {
   const scope = entitiesText(connection.entity_ids, entities.data);
   return (
     <div className="flex flex-col gap-4" data-testid="SF-16-pane-settings">
+      {connection.owner_membership_id === null ? (
+        <Banner tone="warning" title={t("data.integrations.owner.missing")} />
+      ) : null}
       <Button variant="secondary" className="self-start" onClick={onEdit}>
         {t("data.integrations.drawer.editTitle")}
       </Button>

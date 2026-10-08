@@ -79,6 +79,7 @@ function connection(overrides: Partial<Connection> = {}): Connection {
     adapter: "SALESFORCE",
     direction: "INBOUND",
     entity_ids: [],
+    owner_membership_id: null,
     base_url: SALESFORCE_MOCK,
     config: { api_version: "v60.0" },
     secret_ref: SALESFORCE_SECRET,
@@ -599,6 +600,23 @@ describe("SF-16:connection", () => {
     expect(
       await screen.findByRole("heading", { level: 1, name: "Salesforce orders (EU)" }),
     ).toBeTruthy();
+  });
+
+  it("assigns an unowned connection to the current member", async () => {
+    const world = serve();
+    open(`/data/integrations/${SALESFORCE_ID}?pane=settings`);
+    const pane = await screen.findByTestId("SF-16-pane-settings");
+    expect(within(pane).getByText(/No integration owner is assigned/)).toBeTruthy();
+    fireEvent.click(within(pane).getByRole("button", { name: "Edit connection" }));
+    const dialog = await screen.findByRole("dialog", { name: "Edit connection" });
+    const owner = within(dialog).getByRole("combobox", { name: /^Integration owner/ });
+    fireEvent.keyDown(owner, { key: "ArrowDown" });
+    fireEvent.mouseDown(await screen.findByRole("option", { name: NIKHIL.user.display_name }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save connection" }));
+    await waitFor(() => expect(world.commands).toHaveLength(1));
+    expect(world.commands[0]?.body).toMatchObject({
+      owner_membership_id: NIKHIL.active_membership_id,
+    });
   });
 
   // docs/dev-guide.md DG-FE-06 (item KIT-UNPLACED-ERRORS-1, head 2): a message that names a member the
