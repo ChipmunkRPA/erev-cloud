@@ -3144,5 +3144,13 @@ Legacy-range bands are independently derived and compared at TY-02 NUMERIC(38,18
 precision with half-away-from-zero rounding. SSP numeric inputs are flattened as
 text columns; their explicit monetary_checks evidence is required even when the
 file's amount_sums map is empty. Bands are grouped by entry in linear time before
-comparison. Contract, estimate and legacy monetary templates still require their
-own independent read-back implementation and are not claimed as covered.
+comparison.
+
+Contract imports compare each stored booking line's total price, out-of-scope amount,
+unit price, quantity and currency against its validated source row, keyed by obligation
+and product. Contract and payload transaction currencies must agree with the file.
+Both new bookings and draft replacements carry the import upload/source-record IDs;
+replacement imports now pass those through the existing replace_draft command. A
+monetary mismatch rolls back the replacement and preserves the previous draft.
+Estimate and legacy monetary templates still need independent read-back and are
+not claimed as covered.

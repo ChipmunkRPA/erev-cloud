@@ -10,6 +10,7 @@ files; Priya, Revenue Reviewer with MFA, approves) and ``support.factories.j03_w
 
 from __future__ import annotations
 
+import copy
 import csv
 import dataclasses
 import io
@@ -812,3 +813,94 @@ def test_equal_count_duplicate_lineage_fails_import_atomically(
         )
     )
     assert item["severity"] == "BLOCKING"
+
+
+@pytest.mark.parametrize("replacement", [False, True])
+@pytest.mark.parametrize("corrupt", [False, True])
+def test_contract_price_readback_reconciles_new_and_replacement_bookings(
+    j03: J03World,
+    contract_importer: ImportWorld,
+    monkeypatch: pytest.MonkeyPatch,
+    replacement: bool,
+    corrupt: bool,
+) -> None:
+    assign(j03.priya.member, "revenue_reviewer")
+    external_id = "SF-ORD-20417"
+    before = None
+    if replacement:
+        booked = booked_contract(j03.place, sf_ord_20417_body(j03.customer_id), activate=False)
+        before = contract_importer.rows(
+            select(contract).where(contract.c.id == UUID(str(booked.contract["id"])))
+        )[0]
+    import_id = diffed(
+        contract_importer,
+        "contract-prices.csv",
+        contracts_csv(j03.customer_id, external_id=external_id),
+        "contracts",
+    )
+    submitted = submit(contract_importer, import_id)
+    assert submitted.status_code == 200
+    assert (
+        approve(j03.app, str(submitted.json()["approval_request_id"]), j03.priya).status_code == 200
+    )
+    template = csv_v2.TEMPLATES["contracts"]
+
+    def changed(uow: Any, plan: Any, *, context: Any) -> Any:
+        body = copy.deepcopy(plan.body)
+        if corrupt:
+            # The same 120,000 total conceals different prices on the two obligations.
+            body["lines"][0]["total_price"]["amount"] = "95000.00"
+            body["lines"][1]["total_price"]["amount"] = "25000.00"
+        return template.apply(uow, dataclasses.replace(plan, body=body), context=context)
+
+    monkeypatch.setattr(
+        csv_v2,
+        "TEMPLATES",
+        {**csv_v2.TEMPLATES, "contracts": dataclasses.replace(template, apply=changed)},
+    )
+    run_import_job(contract_importer, job_of(contract_importer, UUID(import_id), "IMPORT_COMMIT"))
+    done = shown(contract_importer, import_id)
+    assert done["status"] == ("FAILED" if corrupt else "COMMITTED"), done
+    (check,) = done["control_totals"]["loaded"]["monetary_checks"]
+    events = contract_importer.rows(
+        select(contract_event).where(contract_event.c.import_upload_id == UUID(import_id))
+    )
+    if not corrupt:
+        assert check["source"] == check["stored"]
+        assert (
+            done["control_totals"]["loaded"]["amount_sums"]
+            == done["control_totals"]["source"]["amount_sums"]
+        )
+        (event,) = events
+        assert event["origin"] == "IMPORT" and event["source_record_id"] is not None
+        assert event["event_type"] == "CONTRACT_BOOKED"
+    else:
+        assert check["source"] != check["stored"]
+        assert events == []
+        for table in (source_record, import_row_lineage):
+            assert (
+                contract_importer.rows(
+                    select(table.c.id).where(table.c.import_upload_id == UUID(import_id))
+                )
+                == []
+            )
+        assert (
+            contract_importer.rows(
+                select(job.c.id).where(
+                    job.c.kind == "CONTRACT_COMPUTE",
+                    job.c.params["import_upload_id"].astext == import_id,
+                )
+            )
+            == []
+        )
+        current = contract_importer.rows(
+            select(contract).where(contract.c.external_id == external_id)
+        )
+        assert current == ([] if before is None else [before])
+        (finding,) = contract_importer.rows(
+            select(exception_item).where(
+                exception_item.c.import_upload_id == UUID(import_id),
+                exception_item.c.code == "CONTROL_TOTALS_MISMATCH",
+            )
+        )
+        assert finding["severity"] == "BLOCKING"

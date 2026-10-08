@@ -10,13 +10,15 @@ status is refused by the command.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
+from decimal import Decimal, localcontext
 from typing import TYPE_CHECKING, Any, Final
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import and_, select
+from sqlalchemy.orm import Session
 
-from erev_api.db.tables import contract_event
+from erev_api.db.tables import contract, contract_event
 from erev_api.domain.contracts import repo
 from erev_api.domain.contracts.commands import book_contract, provisional_compute, replace_draft
 from erev_api.domain.imports.csv_v2.framework import (
@@ -114,7 +116,22 @@ def apply(uow: UnitOfWork, plan: Plan, *, context: ApplyContext) -> Applied:
         contract_id = UUID(str(existing["id"]))
         group_id = UUID(str(existing["combination_group_id"]))
         head = int(existing["head_stream_version"])
-        replace_draft(uow, contract_id=contract_id, expected_stream_version=head, body=body)
+        replace_draft(
+            uow,
+            contract_id=contract_id,
+            expected_stream_version=head,
+            body=body,
+            origin="IMPORT",
+            import_upload_id=context.import_upload_id,
+            source_record_id=context.record_ids.get(first.id),
+            idempotency_key=import_event_key(
+                file_sha256=context.file_sha256,
+                template_code=context.template_code,
+                template_version=context.template_version,
+                business_key=plan.key,
+                ordinal=1,
+            ),
+        )
         event_id = _booking_event(uow, contract_id)
     applied = Applied()
     # 04 T-IMP-04 ``target_type`` names the event; the contract is reached through it.
@@ -123,6 +140,102 @@ def apply(uow: UnitOfWork, plan: Plan, *, context: ApplyContext) -> Applied:
         applied.row_targets[row.id] = [("contract_event", event_id)]
     applied.contracts.append((str(body.external_id), contract_id, group_id, head))
     return applied
+
+
+def _decimal(value: Any) -> str | None:
+    if value is None:
+        return None
+    with localcontext() as ctx:
+        ctx.prec = 80
+        return format(Decimal(str(value)).normalize(), "f")
+
+
+def _money(value: Mapping[str, Any] | None) -> dict[str, Any] | None:
+    return (
+        None
+        if value is None
+        else {
+            "amount": _decimal(value["amount"]),
+            "currency": str(value["currency"]),
+        }
+    )
+
+
+def _line_amounts(line: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        "obligation_key": line["obligation_key"],
+        "product_code": line["product_code"],
+        "quantity": _decimal(line["quantity"]),
+        "unit_price": _decimal(line.get("unit_price")),
+        "scope_flag": line.get("scope_flag") or "IN_SCOPE_606",
+        "total_price": _money(line.get("total_price")),
+        "out_of_scope_amount": _money(line.get("out_of_scope_amount")),
+    }
+
+
+def reconcile_amounts(
+    session: Session, plan: Plan, applied: Applied, *, context: ApplyContext
+) -> tuple[Mapping[str, Any], Mapping[str, Any]]:
+    """CTL-002: file prices against the actual booking, including draft replacements.
+
+    Match individual obligation/product identities, quantities and unit prices so
+    offsetting line errors cannot pass by leaving the contract total unchanged.
+    """
+    first = plan.rows[0]
+    expected = {
+        "bookings": [
+            {
+                "external_id": first.normalized["external_id"],
+                "transaction_currency": first.normalized["transaction_currency"],
+                "payload_currency": first.normalized["transaction_currency"],
+                "source_record_id": str(context.record_ids[first.id]),
+                "lines": sorted(
+                    [_line_amounts(unflatten(row.normalized)["lines"]) for row in plan.rows],
+                    key=lambda line: line["obligation_key"],
+                ),
+            }
+        ]
+    }
+    rows = session.execute(
+        select(
+            contract.c.external_id,
+            contract.c.transaction_currency,
+            contract_event.c.source_record_id,
+            contract_event.c.payload,
+        )
+        .select_from(
+            contract_event.join(
+                contract,
+                and_(
+                    contract.c.tenant_id == contract_event.c.tenant_id,
+                    contract.c.id == contract_event.c.contract_id,
+                ),
+            )
+        )
+        .where(
+            contract_event.c.id.in_(
+                [key for kind, key in applied.targets if kind == "contract_event"]
+            ),
+            contract_event.c.event_type == "CONTRACT_BOOKED",
+            contract_event.c.import_upload_id == context.import_upload_id,
+        )
+    ).mappings()
+    actual = {
+        "bookings": [
+            {
+                "external_id": row["external_id"],
+                "transaction_currency": str(row["transaction_currency"]).strip(),
+                "payload_currency": row["payload"]["transaction_currency"],
+                "source_record_id": str(row["source_record_id"]),
+                "lines": sorted(
+                    [_line_amounts(line) for line in row["payload"]["lines"]],
+                    key=lambda line: line["obligation_key"],
+                ),
+            }
+            for row in rows
+        ]
+    }
+    return expected, actual
 
 
 TEMPLATE: Final = CsvTemplate(
@@ -135,4 +248,5 @@ TEMPLATE: Final = CsvTemplate(
     apply=apply,
     group_key=KEY,
     repeats=REPEATS,
+    reconcile_amounts=reconcile_amounts,
 )

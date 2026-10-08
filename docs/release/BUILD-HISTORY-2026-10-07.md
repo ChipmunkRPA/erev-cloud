@@ -1562,3 +1562,28 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   close waiver freshness, pending AI audit category, modification audit report expectations,
   and the late-billing out-of-period report. Current full-backend verification and
   implementation gaps remain open, as does independent accounting sign-off. No deployment.
+
+## Post-import computation scheduling — October 7, 2026
+
+- Continued from 3e106e6. AI routes are genuinely absent, so its pending audit category
+  remains open. Investigation of B3-7 confirmed CSV commits collect affected groups but
+  schedule no computation. A new real import regression failed because no child job existed
+  (/private/tmp/import-compute-before.log, 1 failed in 10.27 seconds).
+- Successful CSV commits now insert one CONTRACT_COMPUTE child for each distinct affected
+  group, linked to the import job and upload. Jobs share the import transaction and dispatch
+  after commit. The existing worker computes each group separately; calculation failures
+  cannot roll back committed imported events. The period-lock retry carries the parent ID.
+- The regression verifies two rows for one contract produce one child and the actual worker
+  succeeds. An injected failure after scheduling rolls back both contract and child job;
+  an injected worker failure preserves the COMMITTED upload and event. Existing period-pin
+  instrumentation forwards the new parent argument, retaining its original race assertions.
+- Import commit module plus stream-appender architecture checks: **19 passed in 35.35 seconds**,
+  /private/tmp/import-compute-final.log. Transient-error and import period-pin checks:
+  **13 passed, 4 deselected in 51.20 seconds**, /private/tmp/import-compute-period-pins.log.
+  Final actual lock-race check with exactly-one-child assertion: **1 passed in 43.61 seconds**,
+  /private/tmp/import-compute-retry-child.log. Source Mypy, Ruff/format and whitespace pass.
+- All runs terminal. LIMITS B3-7 records the scheduling improvement; B1-20 distinguishes
+  CSV imports from adapter booking. The zero-posting late-event report (B4-7/K07), general
+  dirty-group sweep, monetary import totals, AI feature, broader verification and independent
+  accounting sign-off remain open. Both original baseline failures remain unresolved.
+  No deployment; publication exclusions and noncommercial licensing are unchanged.

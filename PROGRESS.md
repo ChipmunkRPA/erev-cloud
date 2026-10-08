@@ -2,6 +2,31 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Contract monetary reconciliation — October 7, 2026
+
+- Continued from clean main 3577d81; prior turn published SSP read-back checks (progress).
+  Added the contract template to the transactional monetary gate for new and replacement
+  draft bookings. Reads actual CONTRACT_BOOKED targets bound to the current import.
+- Each obligation/product line's price, out-of-scope amount, quantity, unit price and scope
+  flag is compared against validated source rows. Contract and payload transaction currencies
+  and the source-record identity are checked. Offsetting line errors cannot hide behind a
+  matching aggregate total. Verified file-column totals retain the existing IPL-06 check.
+- Inspection found that replacement imports omitted upload/source-record provenance even
+  though replace_draft already accepts it. They now pass those identifiers, IMPORT origin and
+  the import idempotency key; new and replacement bookings share the provenance contract.
+- Existing shared commit tests: **14 passed in 40.99 seconds**,
+  /private/tmp/contract-reconcile-first.log. New/replacement success and offsetting-error
+  workflows plus layers/import cycles/stream-appender architecture: **56 passed in 32.58 seconds**,
+  /private/tmp/contract-reconcile-final.log. A 1,000 decrease on one line and increase on the
+  other rolls back despite unchanged 120,000 total. No source records, events, lineage or
+  calculation children survive; failed replacements preserve the complete previous contract.
+  Successful replacements carry their import source. Source Mypy, Ruff/format and whitespace
+  pass. All runs terminal; no complete backend pass or deployment claimed.
+- B1-19 and developer guidance reflect contract coverage. Estimate and legacy monetary
+  readers, integration-owner fallback notification, AI, broader current verification,
+  other documented gaps and independent accounting sign-off remain outstanding.
+  Publication exclusions and noncommercial licensing remain unchanged.
+
 ## SSP monetary reconciliation — October 7, 2026
 
 - Continued from clean main 3e5f9dc. The prior turn published cost/revenue/usage event
@@ -107,31 +132,6 @@
   remains: the absent AI lifecycle feature. Monetary import reconciliation, other documented
   gaps, full current verification and independent accounting sign-off remain outstanding.
   No deployment. Publication exclusions and PolyForm Noncommercial licensing are unchanged.
-
-## Post-import computation scheduling — October 7, 2026
-
-- Continued from 3e106e6. AI routes are genuinely absent, so its pending audit category
-  remains open. Investigation of B3-7 confirmed CSV commits collect affected groups but
-  schedule no computation. A new real import regression failed because no child job existed
-  (/private/tmp/import-compute-before.log, 1 failed in 10.27 seconds).
-- Successful CSV commits now insert one CONTRACT_COMPUTE child for each distinct affected
-  group, linked to the import job and upload. Jobs share the import transaction and dispatch
-  after commit. The existing worker computes each group separately; calculation failures
-  cannot roll back committed imported events. The period-lock retry carries the parent ID.
-- The regression verifies two rows for one contract produce one child and the actual worker
-  succeeds. An injected failure after scheduling rolls back both contract and child job;
-  an injected worker failure preserves the COMMITTED upload and event. Existing period-pin
-  instrumentation forwards the new parent argument, retaining its original race assertions.
-- Import commit module plus stream-appender architecture checks: **19 passed in 35.35 seconds**,
-  /private/tmp/import-compute-final.log. Transient-error and import period-pin checks:
-  **13 passed, 4 deselected in 51.20 seconds**, /private/tmp/import-compute-period-pins.log.
-  Final actual lock-race check with exactly-one-child assertion: **1 passed in 43.61 seconds**,
-  /private/tmp/import-compute-retry-child.log. Source Mypy, Ruff/format and whitespace pass.
-- All runs terminal. LIMITS B3-7 records the scheduling improvement; B1-20 distinguishes
-  CSV imports from adapter booking. The zero-posting late-event report (B4-7/K07), general
-  dirty-group sweep, monetary import totals, AI feature, broader verification and independent
-  accounting sign-off remain open. Both original baseline failures remain unresolved.
-  No deployment; publication exclusions and noncommercial licensing are unchanged.
 
 ## Outstanding release verification
 
