@@ -513,6 +513,15 @@ not prove a full operational close. The journal batch register, full reconciliat
 remaining contents and assembly/job/API/download integration are outstanding. Full assembly must
 invoke this collector; RPS-16 and CTL-041 are not complete.
 
+October 8 historical journal register: a collector now ties batches and run totals to the frozen
+JE population, checks transaction/functional balancing and counts, and carries saved journal gate
+results and source hashes. Historical state uses the existing report reader; later runs are
+excluded. The 105-test scoped run includes a nonempty database snapshot witness with seeded
+journals/certification plus pure mismatch refusals and existing report/history regressions.
+Full operational calculation/close acceptance and pack assembly remain open; assembly must also
+verify approval evidence. Supporting registers/access/audit, other kinds, jobs/routes/downloads
+and automatic generation still prevent completion of RPS-16/CTL-041.
+
 ## The fifteen standing names
 
 Fifteen tests of the backend suite do not pass in release 1.0. They are the same fifteen in every whole run on the day of the freeze, by name, and none passes when it is run again alone; the release candidate's suite shows these and no other (R-125 (n); R-126 (e)). None is skipped, loosened or marked: each fails at full strength until its cause is closed. Two gate targets fail by them, as the supervisor measured on `783f340ea`: `make answer-keys` by the six keys and `make test-pg` by the three capture witnesses. The causes below are read from the failure each test records and from the test: for names 3 to 5 as the suite takes them since index 308's part for the answer keys' runner is on the branch, for the others in the run of record on `5c3b5347c`. Names 1 to 5 are platform keys, which the suite takes on the in-memory platform. On the database platform a lane measured them on 2026-10-03 with that part: the two DISC keys pass; POS-CHK-012 compares clean in every block and is failed by its finding alone; the GT07 key is not run; POS-CHK-117 has four mismatches.

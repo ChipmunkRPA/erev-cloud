@@ -23,17 +23,19 @@ from erev_api.clock import FrozenClock
 from erev_api.config import Settings
 from erev_api.db import new_id, transitions
 from erev_api.db.tables import (
+    journal_run,
     legal_entity,
     lock_snapshot,
     period_lock,
     reconciliation,
     reconciliation_item,
 )
-from erev_api.domain.close import relock_diff
+from erev_api.domain.close import certification, relock_diff
 from erev_api.domain.close import snapshots as close_snapshots
 from erev_api.domain.reports import (
     evidence_archive,
     evidence_close,
+    evidence_journals,
     evidence_reconciliations,
     evidence_relock,
     locked,
@@ -47,10 +49,11 @@ from erev_api.schemas.evidence_packs import EvidencePackCreateIn
 from erev_engine.canonical import canonical_bytes
 from fastapi import FastAPI
 from pydantic import TypeAdapter
-from sqlalchemy import insert, select
+from sqlalchemy import func, insert, select
 from support import reconciliations as recon_api
 from support.close_world import (
     CloseWorld,
+    acknowledged_run_for,
     actor_with_role,
     close_world,
     contract_of,
@@ -61,6 +64,7 @@ from support.db import TestDatabase
 from support.principals import enrolled
 from support.rows import (
     insert_close_parts,
+    journal_run_values,
     period_lock_values,
     reconciliation_item_values,
     reconciliation_values,
@@ -320,7 +324,11 @@ def test_other_tenant_sources_stay_hidden_even_when_business_keys_match(
 
 
 def _freeze_for_pack(
-    sources: Sources, *, fault: str | None = None, formula_cells: bool = False
+    sources: Sources,
+    *,
+    fault: str | None = None,
+    formula_cells: bool = False,
+    certification_rows: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Real producer/store and seeded lock; adversarial cases alter explicit fixture inputs."""
     with sources.world.place.uow(sources.principal) as uow:
@@ -371,6 +379,8 @@ def _freeze_for_pack(
             cutoff_known_at=uow.now,
             snapshot_manifest_sha256=manifest,
         )
+        if certification_rows is not None:
+            row["certification"] = certification_rows
         uow.session.execute(insert(period_lock).values(**row))
         close_snapshots.write_lock_snapshots(uow, identity, datasets)
         uow.commit()
@@ -746,3 +756,81 @@ def test_reconciliation_pack_keeps_signed_lock_history_after_new_generation_and_
     with sources.world.place.uow(referenced_denied) as uow, pytest.raises(Problem) as error:
         evidence_reconciliations.collect(uow, selected)
     assert error.value.slug == "not-found"
+
+
+def test_journal_register_ties_to_frozen_rows_and_ignores_later_runs(
+    sources: Sources,
+    clock: FrozenClock,
+) -> None:
+    """Seeded journal/certification, real frozen producer/store and tenant-scoped collector."""
+    with system_session(sources.world) as session:
+        scope = locked.lock_scope(session, UUID(sources.close["period_lock_id"]))
+        assert scope is not None
+        rows = acknowledged_run_for(
+            session,
+            tenant_id=sources.world.tenant_id,
+            entity_id=scope.entity_id,
+            period_id=scope.period_id,
+            now=clock.now(),
+        )
+        clock.set(
+            session.execute(select(func.clock_timestamp())).scalar_one() + timedelta(seconds=1)
+        )
+        session.commit()
+    saved = [
+        {
+            "gate_check_code": code,
+            "status": "PASSED",
+            "count": 0,
+            "evaluated_at": clock.now().isoformat(),
+        }
+        for code in certification.CANONICAL_GATES
+    ]
+    request = ADAPTER.validate_python(_freeze_for_pack(sources, certification_rows=saved))
+    reader = replace(
+        sources.principal,
+        permissions=sources.principal.permissions | {"contract.read"},
+        permission_scopes={**sources.principal.permission_scopes, "contract.read": "*"},
+    )
+    with sources.world.place.uow(reader) as uow:
+        selection = resolve(uow, request)
+        result = evidence_journals.collect(uow, selection)
+        payload = json.loads(result[0].content)
+        assert len(payload["batches"]) == 1
+        batch = payload["batches"][0]
+        assert batch["id"] == str(rows.batch["id"])
+        assert batch["frozen_line_count"] == len(rows.lines) > 0
+        assert batch["balanced"] is True
+        assert Decimal(batch["total_debit_txn"]) == rows.batch["total_debit_txn"]
+        assert payload["runs"][0]["state_at_cutoff"] == "acknowledged"
+        assert {item["gate_check_code"] for item in payload["certification"]} == {
+            "JE_BALANCED",
+            "JE_COMPLETE",
+        }
+    with system_session(sources.world) as session:
+        later = journal_run_values(
+            sources.world.tenant_id,
+            parts=rows.parts,
+            created_at=clock.now() + timedelta(days=1),
+            cutoff_known_at=clock.now() + timedelta(days=1),
+        )
+        session.execute(insert(journal_run).values(**later))
+        session.commit()
+    with sources.world.place.uow(reader) as uow:
+        assert evidence_journals.collect(uow, selection) == result
+    for denied, expected_slug in (
+        (sources.principal, "forbidden"),
+        (
+            replace(
+                reader,
+                permission_scopes={
+                    **reader.permission_scopes,
+                    "contract.read": frozenset(),
+                },
+            ),
+            "not-found",
+        ),
+    ):
+        with sources.world.place.uow(denied) as uow, pytest.raises(Problem) as error:
+            evidence_journals.collect(uow, selection)
+        assert error.value.slug == expected_slug

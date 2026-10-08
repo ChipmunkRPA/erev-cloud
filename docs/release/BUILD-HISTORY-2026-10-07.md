@@ -2486,3 +2486,44 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   CONTRACT_SAMPLE/CHANGE/ACCESS collection and all complete-pack acceptance remain required.
   EVIDENCE_PACK stays pending, CTL-041 open. Full-current gates and accounting sign-off remain
   outstanding. No deployment; preserve exclusions and publish validated work to main.
+
+## Automatic reconciliation evidence — October 8, 2026 (RPS-16 continued)
+
+- Continued from 292b80e. Added a database collector witness using API-published
+  AUTO-REC-01, generated AUTO_CERTIFIED reconciliation and its actual CTL-026 record.
+  Produces/stores all twelve frozen datasets, binds certification through domain writers,
+  and verifies exported control/rule/version IDs, the 15,000.00 billing amount, population
+  and repeated-byte stability. Lock approval is seeded and read permissions explicit;
+  this is not the full approval or pack HTTP/download workflow and does not claim CTL-041.
+- Initial run failed because the test helper did not select the control execution ID.
+  Added that projection; final affected GL/billing reconciliation, source-selection and
+  certification-proof regression run: **78 passed in 134.88 seconds**. Log:
+  `/private/tmp/evidence-auto-final.log`; initial: `/private/tmp/evidence-auto-db.log`.
+  Ruff lint/format and whitespace pass; process is terminal. No application source changed.
+- Archived source-selection notes verbatim to keep this notebook below 20 KB. Full pack
+  population/waiver assembly, supporting registers, other kinds, jobs/routes, audited
+  downloads and automatic generation remain open, along with release gates and independent
+  accounting sign-off. No deployment; publish directly to main without a PR.
+
+## Stored re-lock evidence — October 8, 2026 (RPS-16 continued)
+
+- Continued from clean 60e2de1. Shared verified frozen-source reads with a new re-lock
+  collector. Follows LOCK → REOPEN history back to the prior LOCK within the same tenant,
+  entity, book and period; refuses cycles, broken/out-of-scope history and missing comparisons.
+  Verifies both twelve-kind frozen sources, file purpose/type/length/hash and the entire saved
+  comparison against the existing CLO-7 comparator over those bytes. Delivers the original
+  file and bound lock/manifest/file identities under `relock/`; never silently repairs evidence.
+- **182 tests passed in 52.05 seconds**: selection/collector/schema/archive cases plus the
+  existing approval-driven close/reopen/re-lock scenario, now also consuming the real stored
+  comparison with this collector. Pack HTTP authorization/download are not exercised; the
+  collector uses an explicit read principal. Other new lock-history cases use seeded rows.
+  Initial DB run: 29 passed, one fixture failure (JSON incorrectly supplied as IMPORT_SOURCE).
+  Corrected the wrong-purpose witness to a valid generated AUDIT_DIGEST file, still refused by
+  the collector as intended. Logs: `/private/tmp/evidence-relock-{db,final}.log`.
+- Two-source mypy, Ruff and whitespace pass. Processes are terminal. Archived request-schema
+  and archive-foundation notes verbatim in the build history to retain the notebook size limit.
+- Remaining: the separate `variance_between_closes` report, all other CLOSE supporting
+  contents, full CONTRACT_SAMPLE/CHANGE/ACCESS collection, persisted bindings, jobs/routes,
+  audited downloads and automatic pack generation. Stored comparison evidence does not replace
+  that broader report. EVIDENCE_PACK stays pending and CTL-041 remains open. Full-current gates
+  and independent accounting sign-off remain outstanding. No deployment; direct-main workflow.
