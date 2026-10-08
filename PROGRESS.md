@@ -2,6 +2,28 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## First-calculation RPO timing investigation — October 8, 2026
+
+- Reproduced B4-2 on f3c48c4 through real event submission, independent approval and
+  the report API: January NEW_CONTRACTS is 80,150 instead of 80,000 when initial
+  activation and a March 150 usage fee are first computed together. **One failed
+  in 11.20 seconds**; local log `/private/tmp/rpo-first-calculation-baseline.log`.
+- A working-tree repair adds period/state realized-allocation trace evidence, a dated
+  reader and independent realized-fee movement attribution. **262 recognition,
+  disclosure and trace tests passed in 96.04 seconds**; **79 reader/version-chain
+  tests passed in 0.97 seconds**. These are local, uncommitted-source results.
+- The API rerun has **five passed, one failed in 35.29 seconds**. Correcting earlier
+  allocation exposes the future revenue schedule's inclusion of the later fee:
+  `ScheduleUnreadable` refuses the inconsistent schedule. The repair is NOT published
+  or complete. Do not remove this guard or plug unexplained differences. Next: carry
+  the engine's fixed/realized revenue decomposition into dated schedule placement,
+  then verify both report totals/tie-outs and the revenue waterfall.
+- Detailed evidence and remaining implementation cautions are in the RPO release note.
+  Preserved the pending source/test edits in the local checkout; publish only verified
+  repairs directly to main. Archived older policy-lock evidence verbatim. No deployment.
+  Property session 52175 is still live on its original immutable 37c4f0c context;
+  it has reached P11, and cannot verify these later source changes.
+
 ## API RPO usage attribution repair — October 8, 2026
 
 - Continued from clean ada7213. Unit counterexamples: **three failed, one passed in
@@ -157,31 +179,6 @@ not authorize deployment, provisioning or changes to a live database.
   local evidence paths. No reset/restart occurred. This older run does not verify current main.
 - Next: compare failures with current code, rerun scoped cases, and classify from evidence.
   Monetary import reconciliation and independent accounting sign-off remain outstanding.
-
-## Policy approvals serialized with period locks — October 7, 2026
-
-- Continued from PR #8 on main (`9c5556f`). Policy overrides do not append a contract event,
-  so the existing event-appender period pin did not protect their approvals.
-- Approval of an override on a non-draft contract now shares the close-window rows of all
-  contracting/performing entities under tenant scope, after taking the group/contract locks and
-  before publishing approval or supersession. Draft contracts have no frozen calculation and skip
-  this control. The new scope entry is explicit in the architecture allowlist and developer guide.
-- The pending-approvals gate ordinarily prevents a lock while a policy decision is outstanding.
-  The regression uses the real **approved waiver** of that gate to exercise the permitted close
-  path. When policy approval comes first, the lock waits, then refuses the committed dirty group.
-  When the lock comes first, a later approval waits and can commit after it. When a lock overtakes
-  an already-started policy decision, the stale approval is refused with `PERIOD_STATE_MOVED`;
-  no approval audit or dirty mark is kept, the override remains submitted, and a retry succeeds.
-- Counterfactual verification in an isolated test process bypassed only the new check: the stale
-  policy decision returned **200 APPROVED** after the newer lock, where the regression requires
-  409. With the check enabled, all three real PostgreSQL race cases passed. An earlier observation
-  without a waiver proved lack of waiting but the ordinary pending gate still prevented locking;
-  it is not evidence of a completed inconsistent lock.
-- Actual verification: **26 policy and PostgreSQL window/race tests passed**, including the three
-  new cases; **267 architecture tests passed**. Mypy passed both changed source files; Ruff
-  lint/format and whitespace checks passed. These are targeted checks, not full-backend evidence.
-- The economic treatment of FX classification transitions remains pending independent accounting
-  review; public POL-163 authoring stays disabled. Repository completion only; no deployment.
 
 ## FX transition refusal and close-policy inputs — October 7, 2026
 

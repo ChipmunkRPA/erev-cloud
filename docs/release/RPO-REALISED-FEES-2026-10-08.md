@@ -123,3 +123,47 @@ B4-2 remains partially open. Further verification and implementation must cover 
 version containing later realized-fee events, per-cause decomposition of batched changes,
 royalties through the API, and the combined lifecycle/exemption/calendar matrix. These results
 prove the measured later-version path, not every report shape or the whole release.
+
+
+## First-computation timing counterexample — October 8, 2026
+
+On published f3c48c4, defer the fixture's initial computation, then submit and independently
+approve K08/O1 USAGE_REPORTED for March 1–31 with effective date March 31, quantity 1500
+and rated_amount USD 150.00. The first calculation includes activation and this usage together.
+January's report states NEW_CONTRACTS 80,150.00 rather than the fixed 80,000.00. The new local
+regression also checks January closing against independently posted ledger revenue and requires
+March VC_ESTIMATE_CHANGES 150, no new-contract addition, no unexplained amount and both tie-outs.
+Baseline: one failure in 11.20 seconds, `/private/tmp/rpo-first-calculation-baseline.log`.
+
+A pending local repair emits `realised_allocation` at every revenue period and at version date,
+including explicit zero points, using the existing recognition realization calculation. It keeps
+realization independent of recognized revenue (holds and royalty satisfaction can separate them).
+The dated reader adjusts allocation and remainder by the stored-versus-dated realization delta;
+the RPO builder separates fixed-allocation changes from realized-fee changes. These edits are
+**uncommitted and incomplete**, not evidence that published main has this repair.
+
+Local checks completed:
+
+- Recognition, disclosures and trace/formula suites: 262 passed in 96.04 seconds,
+  `/private/tmp/rpo-realised-trace-expanded.log`.
+- Dated reader and RPO version-chain units: 79 passed in 0.97 seconds,
+  `/private/tmp/rpo-realised-reader-units.log`.
+- API timing/entry/late-event suite: five passed, one failed in 35.29 seconds,
+  `/private/tmp/rpo-realised-reader-api.log`. The new case now reaches ScheduleUnreadable:
+  future schedule lines include the March fee even though January's corrected allocation does
+  not. Report job retry is a consequence of that named refusal, not passing report evidence.
+
+Next engineering work must align schedule placement with dated allocation using actual component
+revenue evidence; realized allocation cannot universally replace recognized component revenue.
+A royalty realized before satisfaction and a held fee are important counterexamples. Do not relax
+`cuts.scheduled_after`'s sum check or proportionally scale future schedule lines to force a tie.
+The revenue-waterfall reader also calls this shared schedule function and currently takes original
+line amounts, so any adjusted placement must be consumed consistently there and in RPO, with
+explanation lineage retained.
+
+Additional pending review of the working-tree prototype: keep trace trimming sufficient for all
+required dates; distinguish an absent legacy realization series from a traced zero amount; refuse
+incomplete new trace evidence; avoid reading unrelated historical versions merely to collect
+transition cuts; verify entry, cancellation and multiple-cause attribution, including a zero net
+realized state after correction. Historical traces stay immutable and require release/replay
+handling. This investigation does not close B4-2 or establish production readiness.
