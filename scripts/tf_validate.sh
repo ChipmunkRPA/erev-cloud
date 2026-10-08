@@ -339,8 +339,12 @@ if [[ $rc -ne 0 ]]; then
 fi
 STAGES_PASSED="$STAGES_PASSED fmt"
 
-# (4) schema validation against the locked provider.
-"$TERRAFORM" -chdir="$ROOT/$TF_DIR" validate -no-color
+# (4) schema validation against the locked provider. Go providers create Unix sockets under
+# TMPDIR. An absolute immutable-context path can exceed the host's socket path limit. Both
+# Terraform and its providers run in TF_DIR after -chdir, so a short relative path stays inside
+# this execution context's .run/tmp without making socket names depend on checkout length.
+mkdir -p "$ROOT/.run/tmp/tf-provider"
+TMPDIR="../../../.run/tmp/tf-provider" "$TERRAFORM" -chdir="$ROOT/$TF_DIR" validate -no-color
 rc=$?
 if [[ $rc -ne 0 ]]; then
   fail "validate" "$rc" "validate-failed" "terraform validate failed; see the lines above"

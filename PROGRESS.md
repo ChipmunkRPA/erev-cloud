@@ -2,6 +2,27 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Repository gate verification and Terraform socket repair — October 7, 2026
+
+- Continued from clean main 87f53d1; prior turn published dirty-group recovery (progress).
+  `make audit-deps` passed in an immutable snapshot of that revision: 77/77 pinned Python
+  runtime distributions, zero Python vulnerabilities and zero npm runtime advisories.
+  Source/dependency binding matched. Dated hashes and evidence paths are in
+  docs/release/REPOSITORY-GATES-2026-10-07.md; raw report is under .run/reports/audit-deps/.
+- Terraform init/fmt passed, but provider handshakes failed in the long immutable-context
+  temporary path. A retained-context validation with a relative temporary path succeeded.
+  Script now gives providers a short module-relative path within the same .run/tmp directory.
+  Added a real Unix-socket regression. Initial supervisor-script run: **40 passed, 1 failed
+  in 93.04 seconds**, /private/tmp/tf-provider-temp-tests.log, terminal. The old guard wrongly
+  rejected permitted .run/tmp paths; narrowed it to host-global temporary paths. Corrected
+  Terraform/forbidden-pattern verification: **20 passed, 26 deselected in 20.33 seconds**,
+  /private/tmp/tf-provider-temp-verified.log, terminal. Ruff/format, bash syntax and whitespace
+  checks pass. Clean-source formal gate follows the local commit.
+- Docker CLI exists but its daemon is stopped; container-based gates remain unverified.
+  No deployment or cloud mutation. AI/other implementation gaps, remaining verification and
+  independent accounting sign-off remain open. Preserve exclusions/noncommercial licensing.
+  Archived older CSV progress evidence verbatim; continue tested direct-main publication.
+
 ## Dirty contract recovery sweep — October 7, 2026
 
 - Continued from clean main e23068e (prior turn made verified owner-fallback progress).
@@ -95,38 +116,13 @@
   accounting sign-off remain open. No full-suite/readiness claim or deployment. Preserve
   publication exclusions/noncommercial licensing; publish tested changes directly to main.
 
-## CSV progress and event field reconciliation — October 7, 2026
-
-- Continued from clean main 31e2d1b. Prior turn published legacy modification checks and
-  identified additional CSV gaps (progress). Extended the shared event reader to compare
-  explicit numeric and identity fields from original validated rows, using wide decimals.
-- CSV progress now checks all four event kinds: delivery, return, progress and milestone.
-  Reconciles refund amount/currency (absent versus zero), quantity, progress ratio, hours,
-  milestone weight/code, obligation, trigger/measure, references, contract/date/source identity.
-  The expected event kind is taken from the source row, not the emitter's modified body.
-- Usage now also checks quantity, period dates, metric and obligation. Cost/pre-standard
-  events bind their obligation; costs also compare purpose, flags, payee and plan. Source
-  amounts continue to reconcile to stored events before verified file-column totals are kept.
-- Original monetary regression module: **15 passed in 55.28 seconds**,
-  /private/tmp/csv-event-fields-first.log. Expanded progress/refund and event-field tests,
-  CSV template workflows and layer/import-cycle checks: **95 passed in 180.38 seconds**,
-  /private/tmp/csv-event-fields-final.log. Changed refunds, quantities, ratios, hours, weights,
-  wrong obligations and missing event targets all roll back without source/event/lineage or
-  calculation children. Null/zero refund and rated-usage cases retain their distinction.
-  All runs terminal. Source Mypy, Ruff lint/format and whitespace pass; no full backend claim.
-- Updated the coverage inventory, B1-19 and developer guidance; preserved older setup
-  evidence in build history. Next: FX rates, bundle quantities and CSV invoice quantity/
-  contract/obligation checks. Integration-owner fallback, AI, other implementation and
-  verification gaps and independent accounting sign-off remain open. No deployment.
-  Publication exclusions/noncommercial licensing are unchanged.
-
 ## Outstanding release verification
 
 These checks need current release-candidate evidence. Historical October 3 results
 remain in the dated build history; they do not verify current main. This list does
 not authorize deployment, provisioning or changes to a live database.
 
-- SUPERVISOR VERIFICATION NEEDED: make audit-deps
+- make audit-deps: passed on 87f53d1 October 7; rerun for the final release candidate.
 - SUPERVISOR VERIFICATION NEEDED: make docker-build
 - SUPERVISOR VERIFICATION NEEDED: make compose-verify
 - SUPERVISOR VERIFICATION NEEDED: make zap-baseline

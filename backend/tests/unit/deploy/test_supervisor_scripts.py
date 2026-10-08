@@ -18,6 +18,7 @@ import shutil
 import signal
 import stat
 import subprocess
+import sys
 import tempfile
 import threading
 from collections.abc import Iterator
@@ -155,6 +156,31 @@ def _as_repository(root: Path) -> str:
     _git(root, "add", ".gitignore", "deploy")
     _git(root, "commit", "-q", "-m", "scratch context")
     return _git(root, "rev-parse", "HEAD")
+
+
+def test_tf_validate_provider_socket_works_with_long_inherited_tmpdir(scratch: Path) -> None:
+    """A real Unix socket models the provider handshake inside Terraform's -chdir directory."""
+    inherited = scratch / ("long-context-" * 12)
+    inherited.mkdir()
+    stub = scratch / "bin" / "terraform"
+    stub.write_text(
+        f"#!{sys.executable}\n"
+        "import json, os, socket, sys\n"
+        "if 'version' in sys.argv:\n"
+        "    print(json.dumps({'terraform_version': '9.9.9-stub'}))\n"
+        "elif 'validate' in sys.argv:\n"
+        "    directories = [a.split('=', 1)[1] for a in sys.argv if a.startswith('-chdir=')]\n"
+        "    directory = directories[0]\n"
+        "    os.chdir(directory)\n"
+        "    address = os.path.join(os.environ['TMPDIR'], 'plugin-socket-regression')\n"
+        "    with socket.socket(socket.AF_UNIX) as sock:\n"
+        "        sock.bind(address)\n"
+        "    os.unlink(address)\n",
+        encoding="utf-8",
+    )
+    result, _ = _run(scratch, extra_env={"TMPDIR": str(inherited)})
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert _report(scratch)["result"] == "validated"
 
 
 def test_tf_validate_report_is_usable_gate_evidence(scratch: Path) -> None:
@@ -378,9 +404,8 @@ def test_tf_validate_rules() -> None:
         match = re.search(r'"\$TERRAFORM"((?:\s+-\S+)*)\s+([a-z]+)', line)
         assert match is not None, line
         assert match.group(2) in {"version", "init", "fmt", "validate"}, line
-    assert (
-        "/" + "tmp" not in text
-    )  # DG-FORBID-04 (literal split so DG-ARC-05 does not flag this test)
+    # DG-FORBID-04 forbids host-global temporary paths, not the required .run/tmp directory.
+    assert re.search(r'(?<![A-Za-z0-9_.])/(?:private/)?tmp(?:/|["\s])', text) is None
     assert "credentials" not in text.lower()
     # The report is written through the environment, never by interpolating values into code.
     assert "REPORT_TF_VERSION=" in text and "json.dump(report" in text

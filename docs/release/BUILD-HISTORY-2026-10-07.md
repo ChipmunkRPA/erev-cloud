@@ -1877,3 +1877,28 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   accounting sign-off remain open. No full-suite or production-readiness claim. No deployment.
 - Confirmed GitHub has no open PRs, only main locally/remotely, and automatic deletion of
   merged branches enabled. Continue testing and pushing directly to main; no new PRs.
+
+## CSV progress and event field reconciliation — October 7, 2026
+
+- Continued from clean main 31e2d1b. Prior turn published legacy modification checks and
+  identified additional CSV gaps (progress). Extended the shared event reader to compare
+  explicit numeric and identity fields from original validated rows, using wide decimals.
+- CSV progress now checks all four event kinds: delivery, return, progress and milestone.
+  Reconciles refund amount/currency (absent versus zero), quantity, progress ratio, hours,
+  milestone weight/code, obligation, trigger/measure, references, contract/date/source identity.
+  The expected event kind is taken from the source row, not the emitter's modified body.
+- Usage now also checks quantity, period dates, metric and obligation. Cost/pre-standard
+  events bind their obligation; costs also compare purpose, flags, payee and plan. Source
+  amounts continue to reconcile to stored events before verified file-column totals are kept.
+- Original monetary regression module: **15 passed in 55.28 seconds**,
+  /private/tmp/csv-event-fields-first.log. Expanded progress/refund and event-field tests,
+  CSV template workflows and layer/import-cycle checks: **95 passed in 180.38 seconds**,
+  /private/tmp/csv-event-fields-final.log. Changed refunds, quantities, ratios, hours, weights,
+  wrong obligations and missing event targets all roll back without source/event/lineage or
+  calculation children. Null/zero refund and rated-usage cases retain their distinction.
+  All runs terminal. Source Mypy, Ruff lint/format and whitespace pass; no full backend claim.
+- Updated the coverage inventory, B1-19 and developer guidance; preserved older setup
+  evidence in build history. Next: FX rates, bundle quantities and CSV invoice quantity/
+  contract/obligation checks. Integration-owner fallback, AI, other implementation and
+  verification gaps and independent accounting sign-off remain open. No deployment.
+  Publication exclusions/noncommercial licensing are unchanged.
