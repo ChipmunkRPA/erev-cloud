@@ -95,6 +95,7 @@ from support import close_runs
 from support.adapter_secrets import serve_adapter_secrets, tenant_ref
 from support.audit_catalogue import (
     QUERY_EXEMPT,
+    REFUSED_CASES,
     RELEASE_REFUSED,
     ROUTES,
     required_operations,
@@ -2599,7 +2600,24 @@ OVERRIDE_RATIONALE: Final = (
 
 
 def s_policy_overrides_create(w: World) -> HttpResponse:
-    """SOP-7 class (e): release 1.0 refuses the creation by name (04 T-CON-23 rev 1.322). Maya
+    """A supported obligation override writes its creation audit event in the request tenant."""
+    e = _engine(w)
+    return post(
+        e.app,
+        f"{API}/policy-overrides",
+        e.place.author,
+        {
+            "contract_id": w.ids["k02.active"],
+            "obligation_key": "O1",
+            "policy_key": "balance.right_to_consideration",
+            "value": "UNCONDITIONAL",
+            "rationale": OVERRIDE_RATIONALE,
+        },
+    )
+
+
+def s_policy_overrides_create_refused(w: World) -> HttpResponse:
+    """An unsupported policy key is refused by name. Maya
     holds ``contract.create`` and reads the K-02 contract, so the answer is the command's own
     refusal and not a 403 or a 404; ``_exercise`` holds it to the rule id and to storing nothing."""
     e = _engine(w)
@@ -4033,7 +4051,7 @@ REQUEST_TENANT: Final[Mapping[str, Callable[[World], UUID]]] = {
     # Codex 0545 QUERY-TENANT-1: a query operation whose request runs in another world's tenant
     # names it here, so that world is prepared and its tenant selected BEFORE the no-write baseline.
     "explain_verify": lambda w: _engine(w).place.tenant_id,
-    # SOP-7 class (e): the refused creation is asked in the K-02 world, whose tables are counted.
+    # Both supported creation and unsupported-key refusal run in the K-02 world.
     "policy_overrides_create": lambda w: _engine(w).place.tenant_id,
 }
 
@@ -4079,8 +4097,10 @@ def _refused_failures(
     return failures
 
 
-def _exercise(world: World, walk: Walk, operation_id: str, scenario: Scenario) -> None:
-    route = ROUTES[operation_id]
+def _exercise(
+    world: World, walk: Walk, operation_id: str, scenario: Scenario, *, refused_case: bool = False
+) -> None:
+    route = REFUSED_CASES[operation_id] if refused_case else ROUTES[operation_id]
     world.evidence_tenant_id = None
     # The request tenant is selected before the baseline and the SAME tenant is compared after the
     # command (Codex 0545 QUERY-TENANT-1); the evidence tenant a scenario sets afterwards only
@@ -4094,8 +4114,9 @@ def _exercise(world: World, walk: Walk, operation_id: str, scenario: Scenario) -
         return
     tenant_id = world.evidence_tenant_id or request_tenant
     if route.evidence == "refused":
-        # BUILD_SPEC SOP-7 class (e): no successful call exists, so the refusal is the evidence —
-        # its rule id, no audit event under the request, no changed table of the request tenant.
+        # The selected request is intentionally unsupported: require its rule id, no audit
+        # event under the request and no changed table of the request tenant. A refusal case
+        # is separate from the successful route walk and cannot stand in for its evidence.
         request_id = response.headers.get(REQUEST_ID)
         if not request_id:
             walk.failures.append(f"{operation_id}: the response carries no {REQUEST_ID}")
@@ -4400,7 +4421,7 @@ def test_query_no_write_check_names_a_mutation() -> None:
     assert _changed_tables(before, {**before, "notification": 2}, "explain_verify") == [
         "notification"
     ]
-    assert set(REQUEST_TENANT) <= QUERY_EXEMPT | RELEASE_REFUSED
+    assert set(REQUEST_TENANT) <= QUERY_EXEMPT | RELEASE_REFUSED | set(REFUSED_CASES)
     assert set(REQUEST_TENANT) & QUERY_EXEMPT == {"explain_verify"}
     assert set(REQUEST_TENANT) & RELEASE_REFUSED == RELEASE_REFUSED
 
@@ -4435,7 +4456,7 @@ def test_refused_check_names_each_kind_of_miss() -> None:
     POLICY-OVERRIDE-WITHDRAW-1): a command the release refuses by name passes the walk only by its
     refusal. A success, another status, another rule id, a second error, an audit row and a
     changed table are each named; the refusal that stores nothing is not."""
-    rule = ROUTES["policy_overrides_create"].rule_ids
+    rule = REFUSED_CASES["policy_overrides_create"].rule_ids
     assert rule == ("POLICY_OVERRIDE_NOT_OFFERED",)
     op = "policy_overrides_create"
     assert _refused_failures(op, rule, 422, list(rule), 0, []) == []
@@ -4478,7 +4499,7 @@ def test_refused_check_fails_on_a_stored_row_and_on_a_success(
     op = "policy_overrides_create"
 
     clean = Walk()
-    _exercise(world, clean, op, s_policy_overrides_create)
+    _exercise(world, clean, op, s_policy_overrides_create_refused, refused_case=True)
     assert clean.failures == [] and op in clean.covered
     stored = select(func.count()).select_from(tables.policy_override)
     with tenant_session(_db(_engine(world).place.tenant_id), read_only=True) as session:
@@ -4489,10 +4510,10 @@ def test_refused_check_fails_on_a_stored_row_and_on_a_success(
         body = {"code": f"C-MUT-{random_suffix()}", "name": "Mutation witness (SOP-7 walk)"}
         created = post(e.app, f"{API}/customers", e.place.author, body)
         assert created.status_code == 201, created.text
-        return s_policy_overrides_create(w)
+        return s_policy_overrides_create_refused(w)
 
     beside = Walk()
-    _exercise(world, beside, op, storing)
+    _exercise(world, beside, op, storing, refused_case=True)
     # The customer and the audit event of ITS creation: the refusal itself wrote neither.
     assert beside.failures == [
         f"{op}: a refused command changed rows of ['audit_event', 'customer']"
@@ -4504,10 +4525,21 @@ def test_refused_check_fails_on_a_stored_row_and_on_a_success(
         return post(e.app, f"{API}/customers", e.place.author, body)
 
     success = Walk()
-    _exercise(world, success, op, succeeding)
+    _exercise(world, success, op, succeeding, refused_case=True)
     assert success.failures == [
         f"{op}: a command the release refuses by name answered HTTP 201 with rule ids [], not "
         "422 with ['POLICY_OVERRIDE_NOT_OFFERED']",
         f"{op}: a refused command wrote 1 audit_event row(s)",
         f"{op}: a refused command changed rows of ['audit_event', 'customer']",
     ]
+
+
+def test_supported_policy_override_creation_is_audited(
+    app: FastAPI, keyring: KeyRing, clock: FrozenClock, runtime: JobRuntime
+) -> None:
+    world = _world(app, keyring, clock, runtime)
+    walk = Walk()
+    _exercise(world, walk, "policy_overrides_create", s_policy_overrides_create)
+    assert walk.failures == []
+    assert "policy_overrides_create" in walk.covered
+    assert "policy_override.create" in walk.actions

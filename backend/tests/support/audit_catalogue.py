@@ -94,6 +94,7 @@ CATEGORIES: Final[tuple[Category, ...]] = (
         "configuration, policy, mapping and SSP changes",
         (
             "registry_version.update",
+            "policy_override.create",
             "account_mapping_version.create",
             "account_mapping_version.update",
             "ssp_book_version.approve",
@@ -471,13 +472,7 @@ _ROUTE_LIST: Final[tuple[Route, ...]] = (
     _audit("policies_withdraw"),
     _audit("policies_test", "registry_version.test_requested"),
     _audit("policies_presets_legacy_parity"),
-    # Release 1.0 offers no policy override (04 T-CON-23 rev 1.322; PRD ERR-102): the creation is
-    # refused by name; the submit keeps its code and is walked on a row the walk's world writes.
-    _refused(
-        "policy_overrides_create",
-        "POLICY_OVERRIDE_NOT_OFFERED",
-        note="refused by name in release 1.0 and stores nothing (item POLICY-OVERRIDE-WITHDRAW-1)",
-    ),
+    _audit("policy_overrides_create", "policy_override.create"),
     _audit("policy_overrides_submit", "policy_override.submit"),
     # reconciliations (API-R-40; BUILD_SPEC CLO-16, lane F-CLO-B): the generation request audits
     # the request on the reconciliation the job inserts; each later command its transition.
@@ -646,7 +641,15 @@ JOB_STARTING: Final = frozenset(
 # BUILD_SPEC SOP-7 class (e) (fragment 11 rev 1.44; item POLICY-OVERRIDE-WITHDRAW-1): the commands
 # the release refuses by name, which store nothing. Required, never exempt: the walk asks each for
 # its refusal. This set is a declaration, not proof: only the walk shows that nothing is stored.
-RELEASE_REFUSED: Final = frozenset({"policy_overrides_create"})
+RELEASE_REFUSED: Final[frozenset[str]] = frozenset()
+# Unsupported inputs still require a no-write refusal; this does not cover the successful route.
+REFUSED_CASES: Final = {
+    "policy_overrides_create": _refused(
+        "policy_overrides_create",
+        "POLICY_OVERRIDE_NOT_OFFERED",
+        note="unsupported policy keys store nothing; supported keys require audit evidence",
+    ),
+}
 # The routes SOP-7's route test excludes by name; they write security or provisioning events.
 SOP_7_EXEMPT: Final = frozenset(
     {

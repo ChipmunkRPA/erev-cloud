@@ -2,6 +2,25 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Supported policy-override audit coverage — October 7, 2026
+
+- Continued from 778ce38. The route catalogue still classified all policy override creation
+  as refused, even though balance.right_to_consideration and sfc.discount_rate_basis are supported.
+  Changed the route to require policy_override.create audit evidence, and added that action
+  to the configuration/policy category. Unsupported-key refusal is now a separate case and
+  cannot count as evidence of the successful route.
+- The database walk creates a real supported obligation override. Retained unsupported-key
+  checks require the exact refusal, no request audit event and unchanged row counts in the
+  request tenant. Their negative controls still catch a write beside the refusal or success
+  returned instead. The catalogue unit test now checks both paths.
+- Scoped catalogue/walk verification: **17 passed, 3 deselected in 23.49 seconds**,
+  /private/tmp/policy-audit-catalogue.log. Full CTL-038 command-route walk: **1 passed in
+  32.75 seconds**, /private/tmp/policy-audit-full-route-walk.log. Ruff/format/whitespace checks
+  pass; all runs are terminal. No production code changed. Published directly to main.
+  One more original baseline failure resolved; 34 remain without current-main disposition.
+- REQ-PLT-019's pending AI lifecycle category remains open and is not waived. Wider baseline
+  triage and accounting sign-off remain outstanding. No deployment or production claim.
+
 ## Audit summary types and snapshot revalidation — October 7, 2026
 
 - Continued from d90781b. The audit log's closed object-type catalogue omitted
@@ -59,21 +78,6 @@
   to main. Three more baseline failures resolved; 41 remain to be classified. No deployment
   or accounting sign-off. Broader current-main verification remains outstanding.
 
-## Combined-group reporting verification — October 7, 2026
-
-- Continued from 2ca9791. Reproduced a combined-group monitor failure on current main
-  (one failed in 17.02 seconds). The expectations predated individual persisted FX layers.
-  T-CON-18 identifies each billing event, while the former test expected a synthetic contract
-  net balance. Group FIFO consumes both September recognitions from the first invoice's layer.
-- Corrected monitor expectations using fixture events and the independently stated arithmetic:
-  36,000 - 3,202.55 - 3,205.48 = 29,591.97; the other invoice's 48,000 stays untouched.
-  Existing contract-level report balances, revenue assertions and duplicate-version checks
-  remain. Partially recomputed membership cases check each member's actual current layer.
-- Complete module: **17 passed in 89.20 seconds**; Ruff/format/whitespace checks pass.
-  Evidence and rationale: docs/release/BACKEND-BASELINE-2026-10-07.md. Seven old baseline
-  failures resolved as stale expectations; the other 44 await evidence-based disposition.
-  No product/calculation code changed. Published directly to main; no deployment. Broader
-  verification, import monetary reconciliation and independent accounting sign-off remain open.
 
 ## Older backend baseline completed — October 7, 2026
 

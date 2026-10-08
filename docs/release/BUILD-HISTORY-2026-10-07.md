@@ -1268,3 +1268,19 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   production readiness. Independent accounting sign-off and other release gaps remain open.
   Older baseline PID 36126 was live at 3h20m33s, beyond 50% with failures, on its separate DB.
   Preserve it. No deployment.
+
+## Combined-group reporting verification — October 7, 2026
+
+- Continued from 2ca9791. Reproduced a combined-group monitor failure on current main
+  (one failed in 17.02 seconds). The expectations predated individual persisted FX layers.
+  T-CON-18 identifies each billing event, while the former test expected a synthetic contract
+  net balance. Group FIFO consumes both September recognitions from the first invoice's layer.
+- Corrected monitor expectations using fixture events and the independently stated arithmetic:
+  36,000 - 3,202.55 - 3,205.48 = 29,591.97; the other invoice's 48,000 stays untouched.
+  Existing contract-level report balances, revenue assertions and duplicate-version checks
+  remain. Partially recomputed membership cases check each member's actual current layer.
+- Complete module: **17 passed in 89.20 seconds**; Ruff/format/whitespace checks pass.
+  Evidence and rationale: docs/release/BACKEND-BASELINE-2026-10-07.md. Seven old baseline
+  failures resolved as stale expectations; the other 44 await evidence-based disposition.
+  No product/calculation code changed. Published directly to main; no deployment. Broader
+  verification, import monetary reconciliation and independent accounting sign-off remain open.

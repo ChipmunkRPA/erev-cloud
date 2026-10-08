@@ -17,6 +17,7 @@ from support.audit_catalogue import (
     CATEGORIES,
     JOB_STARTING,
     QUERY_EXEMPT,
+    REFUSED_CASES,
     RELEASE_REFUSED,
     ROUTES,
     SOP_7_EXEMPT,
@@ -172,7 +173,7 @@ def test_inventory_shape_for_the_database_walk() -> None:
         "provisioning"
     ] + by_evidence["query"] + by_evidence["confirm"] + by_evidence["refused"] == len(ROUTES)
     assert by_evidence["confirm"] == 5  # the five *_publish idempotent confirms
-    assert by_evidence["refused"] == 1  # SOP-7 class (e): the creation of a policy override
+    assert by_evidence["refused"] == 0  # Unsupported inputs are separate refusal cases.
     assert by_evidence["provisioning"] == 1
     # Every unverified audit_event route is a named item for the database walk, never silent.
     assert all(not ROUTES[operation_id].verified_statically for operation_id in unverified)
@@ -182,38 +183,20 @@ def test_inventory_shape_for_the_database_walk() -> None:
     assert len(unverified) <= 27, unverified
 
 
-def test_sop_7_class_e_the_release_refuses_exactly_one_command_by_name() -> None:
-    """BUILD_SPEC SOP-7 class (e) (fragment 11 rev 1.44; item POLICY-OVERRIDE-WITHDRAW-1; 04
-    T-CON-23 "Not offered in release 1.0" rev 1.322): the catalogue's ``refused`` class is the
-    creation of a policy override and nothing else. It is REQUIRED — the walk asks it for its
-    refusal — and exempt from nothing; the rule id it must answer is the application's own; and
-    the action its handler wrote until this revision is no literal of the application any more,
-    so no route and no category can lean on it. This pins the declaration; only the database walk
-    proves that the refusal writes no audit event and changes no table."""
-    refused = {route.operation_id for route in ROUTES.values() if route.evidence == "refused"}
-    assert refused == RELEASE_REFUSED == {"policy_overrides_create"}
-    route = ROUTES["policy_overrides_create"]
-    assert route.rule_ids == (overrides.RULE_NOT_OFFERED,) == ("POLICY_OVERRIDE_NOT_OFFERED",)
-    assert not route.actions and not route.security_events and route.note
-    assert RELEASE_REFUSED <= required_operations()
-    assert not RELEASE_REFUSED & (SOP_7_EXEMPT | QUERY_EXEMPT | JOB_STARTING)
-    # No other class states a rule id: the member means a refusal and nothing else.
-    assert all(not other.rule_ids for other in ROUTES.values() if other.evidence != "refused")
-    literals = action_literals()
-    assert "policy_override.create" not in literals
-    assert "policy_override.submit" in literals
+def test_policy_override_creation_has_success_and_refusal_evidence() -> None:
+    assert RELEASE_REFUSED == frozenset()
+    assert ROUTES["policy_overrides_create"].evidence == "audit_event"
+    assert ROUTES["policy_overrides_create"].actions == ("policy_override.create",)
+    refused = REFUSED_CASES["policy_overrides_create"]
+    assert refused.evidence == "refused"
+    assert refused.rule_ids == (overrides.RULE_NOT_OFFERED,)
+    assert set(REFUSED_CASES) <= required_operations()
+    assert not set(REFUSED_CASES) & (SOP_7_EXEMPT | QUERY_EXEMPT | JOB_STARTING)
+    assert "policy_override.create" in action_literals()
+    assert "policy_override.create" in {
+        action for category in CATEGORIES for action in category.actions
+    }
     assert ROUTES["policy_overrides_submit"].actions == ("policy_override.submit",)
-    named = {action for category in CATEGORIES for action in category.actions}
-    assert "policy_override.create" not in named
-    # REQ-PLT-019 "configuration, policy, mapping and SSP changes" keeps its other five actions.
-    (changes,) = [category for category in CATEGORIES if category.name.startswith("configuration")]
-    assert changes.actions == (
-        "registry_version.update",
-        "account_mapping_version.create",
-        "account_mapping_version.update",
-        "ssp_book_version.approve",
-        "ssp_book_version.submit",
-    )
 
 
 def test_req_plt_019_pending_category_still_fails_by_name() -> None:

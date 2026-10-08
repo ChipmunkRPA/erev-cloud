@@ -158,3 +158,21 @@ failures without current-main disposition**.
 The policy-override audit-catalogue failure remains open. Its database-walk fixture
 uses a still-unsupported key, so that refusal proof remains valid; the catalogue also
 needs to represent and exercise supported-key creation, which now writes an audit event.
+
+### Supported policy-override creation audit coverage
+
+The route catalogue now requires policy_override.create audit evidence for supported
+creation instead of treating the whole command as refused. The real database-walk
+scenario creates an obligation-level balance.right_to_consideration override.
+Unsupported-key refusals have a separate case with the same exact rule, no request
+audit event and no-write checks, including negative controls for extra writes and an
+unexpected success. Refusal evidence cannot satisfy the successful-route walk.
+
+Catalogue and focused database checks: **17 passed, 3 deselected in 23.49 seconds**,
+`/private/tmp/policy-audit-catalogue.log`. Complete CTL-038 command-route audit walk:
+**1 passed in 32.75 seconds**, `/private/tmp/policy-audit-full-route-walk.log`.
+Ruff/format/whitespace checks pass. No production behavior changed.
+
+One additional original baseline failure resolved; **34 remain without current-main
+disposition**. The broader category gate's missing AI lifecycle evidence remains open;
+it was not waived or marked passing by these changes.
