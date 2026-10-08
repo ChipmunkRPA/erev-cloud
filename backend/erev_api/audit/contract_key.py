@@ -76,6 +76,7 @@ ALWAYS: Final = frozenset(
 )
 WHERE_NAMED: Final = frozenset(
     {
+        "evidence_pack",  # sample packs name contracts; period/access/change packs may not
         "estimate",  # an estimate of a portfolio names no contract (T-CON-12)
         "estimate_version",
         "judgement_record",  # T-CON-19 ``contract_id`` is null for a record about no contract

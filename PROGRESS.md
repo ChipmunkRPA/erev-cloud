@@ -2,6 +2,30 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Atomic first-close retention — October 8, 2026 (RPS-16 continued)
+
+- Continued from clean published 7f04236; previous turn closed the generic-file access bypass.
+  Added `evidence_storage.finish_close`: explicitly checks evidence export/entity scope, locks
+  the pack, reauthorizes and assembles all retained sources, stores encrypted ZIP output, then
+  writes SUCCEEDED/file/manifest/separate hash and `evidence.finish` in the caller's transaction.
+  QUEUED/FAILED and partial preexisting output refuse. SUCCEEDED repeats verify/reuse the exact
+  file; hashes, metadata, canonical ZIP and freshly verified source bytes must all agree.
+- Actual local database/encrypted-store witness: **2 passed in 15.04 seconds**. Rollback retains
+  RUNNING with no file-object row/manifest; commit produces one file and one finish audit event;
+  repeat creates neither, and each revoked source/export permission refuses. This uses the
+  earlier approved-omission/seeded-journal close witness, not full operational close acceptance.
+  Transaction atomicity concerns database references; object-store orphan recovery remains the
+  existing file-store responsibility. No completion helper commits or exposes bytes via API.
+- Broader regression: **90 passed, one failed in 16.42 seconds**; architecture correctly found
+  the new evidence_pack audit object unclassified. Classified it WHERE_NAMED and explicitly
+  supplied its contract_ids (empty for CLOSE, supporting future samples). Final regression:
+  **99 passed in 16.45 seconds**; source Mypy, Ruff lint/format and whitespace pass. Logs:
+  `/private/tmp/evidence-storage-{db,final,corrected}.log`; all processes terminal.
+- Archived older control/RPO notes verbatim. Dependency scheduling, creation/idempotency,
+  failure/cancellation lifecycle, download/API and export audit, automatic generation, other
+  kinds and variance remain open. RPS-16/CTL-041 and production readiness remain unclaimed;
+  release gates and accounting sign-off remain required. Direct main; no deployment.
+
 ## Evidence-pack download boundary — October 8, 2026 (RPS-16 continued)
 
 - Continued from clean published d558514; previous turn published verified assembly work.
@@ -113,24 +137,6 @@
   and the separate variance-between-closes report remain open. Current release gates and
   independent accounting approval remain required; RPS-16/CTL-041 and production readiness
   are unclaimed. Validated direct-main publication; no deployment or external notifications.
-
-## Control gate result and RPO closing defect — October 8, 2026
-
-- Completed the preserved control gate on immutable 68d9607: **494 passed, one failed,
-  10,483 deselected in 820.68 seconds**. Report: 45 controls pass, CTL-018 fails, CTL-041,
-  CTL-045 and CTL-048 lack evidence. The sole test failure is the relock witness already
-  corrected in 7c83cb4 and verified separately. No canonical rerun/pass is claimed.
-  Source/dependency bindings verify; hashes are in the dated repository-checks note.
-- Measured an additional B4-2 defect on clean 7c83cb4 using real recognition and disclosure
-  stages with allocated-state fixtures. A 12,000 fixed fee plus 150 March usage has 9,000
-  remaining in recognition, but rollforward closing is 8,850 with zero unexplained difference.
-  Pure usage produces the known 150 unexplained amount. This is engine-scoped evidence,
-  not an API measurement. Recorded inputs, outputs, reproduction and full repair scope in
-  docs/release/RPO-REALISED-FEES-2026-10-08.md; updated B4-2. A cause-map-only patch would
-  miss the incorrect closing; dated realized allocation must also be carried into measurement.
-- Control session 36008 is terminal. Property session 52175 / PID 6358 is confirmed live,
-  still in determinism, in its original immutable context. Keep that run; no database test
-  process is active. Archived invitation-erasure evidence verbatim. No deployment/readiness claim.
 
 ## GL reconciliation ledger-history freshness — October 8, 2026
 

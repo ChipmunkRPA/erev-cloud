@@ -2714,3 +2714,21 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   **6358** remains active in the original context, past all six metamorphic tests and through
   RPO checks, now in determinism. Both ongoing gates predate this test correction; preserve
   their handles and inspect final source bindings. No deployment or readiness claim.
+
+## Control gate result and RPO closing defect — October 8, 2026
+
+- Completed the preserved control gate on immutable 68d9607: **494 passed, one failed,
+  10,483 deselected in 820.68 seconds**. Report: 45 controls pass, CTL-018 fails, CTL-041,
+  CTL-045 and CTL-048 lack evidence. The sole test failure is the relock witness already
+  corrected in 7c83cb4 and verified separately. No canonical rerun/pass is claimed.
+  Source/dependency bindings verify; hashes are in the dated repository-checks note.
+- Measured an additional B4-2 defect on clean 7c83cb4 using real recognition and disclosure
+  stages with allocated-state fixtures. A 12,000 fixed fee plus 150 March usage has 9,000
+  remaining in recognition, but rollforward closing is 8,850 with zero unexplained difference.
+  Pure usage produces the known 150 unexplained amount. This is engine-scoped evidence,
+  not an API measurement. Recorded inputs, outputs, reproduction and full repair scope in
+  docs/release/RPO-REALISED-FEES-2026-10-08.md; updated B4-2. A cause-map-only patch would
+  miss the incorrect closing; dated realized allocation must also be carried into measurement.
+- Control session 36008 is terminal. Property session 52175 / PID 6358 is confirmed live,
+  still in determinism, in its original immutable context. Keep that run; no database test
+  process is active. Archived invitation-erasure evidence verbatim. No deployment/readiness claim.

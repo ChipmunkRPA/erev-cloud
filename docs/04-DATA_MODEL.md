@@ -5230,6 +5230,15 @@ reauthorizes the selected close and checks record/source consistency. Actual rep
 audit integrity must still be checked by their collectors. This does not enable a pack job or
 endpoint; the other pack kinds require their own source contracts.
 
+**First-close retention (October 8, 2026).** The internal completion helper requires a RUNNING
+pack, explicit evidence-export scope and verified retained source readers. It stores an encrypted
+EVIDENCE_PACK ZIP and records SUCCEEDED, file id, manifest, separate manifest hash and
+`evidence.finish` atomically in the caller's transaction. A repeated SUCCEEDED completion
+verifies file metadata, ZIP/manifest and reauthorized source bytes before reusing the file;
+it neither overwrites damaged output nor creates another finish event. Evidence-pack audit
+objects use the contract-key WHERE_NAMED classification and explicitly pass `contract_ids`
+(empty for CLOSE). Job creation/dependency scheduling and the public API remain pending.
+
 **Manifest layout (rev 1.2; SCREENS_B OQ-B-11, §6.2).** Payload entries in `manifest.files[].path` of a `CLOSE` pack start with the prefixes below. The ZIP also contains `manifest.json`. Tests assert payload prefixes and per-file SHA-256, never file order.
 
 October 8, 2026 implementation clarification: `manifest.json` does not list or hash itself. Its final canonical bytes are hashed separately into T-RPT-04 `manifest_sha256`; verification requires that trusted stored hash as well as every payload hash. Listing its own final SHA-256 would be self-referential. Exactly the listed payloads and the single manifest are admitted to the ZIP; missing, additional, duplicate or unsafe entries are refused. This clarification implements the existing separate manifest hash field, not a claim that the full pack workflow is available.

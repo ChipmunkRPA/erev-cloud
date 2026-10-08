@@ -71,6 +71,7 @@ from erev_api.db.tables import (
     role_permission,
     sync_run,
 )
+from erev_api.db.transitions import apply
 from erev_api.domain.close import commands as close_commands
 from erev_api.domain.close import dependencies as close_dependencies
 from erev_api.domain.close import gates, queries
@@ -81,6 +82,7 @@ from erev_api.domain.reports import (
     evidence_reconciliation_population,
     evidence_selection,
     evidence_sources,
+    evidence_storage,
 )
 from erev_api.enums import (
     ApprovalRequestStatus,
@@ -2235,7 +2237,9 @@ def test_first_close_archive_verifies_every_component_before_returning_bytes(
         )
         verification_id = verification["id"]
         uow.commit()
-    permissions = frozenset({"report.run", "report.export", "audit.read", "contract.read"})
+    permissions = frozenset(
+        {"report.run", "report.export", "audit.read", "contract.read", "evidence.export"}
+    )
     reader = replace(
         world.place.principal,
         permissions=permissions,
@@ -2263,6 +2267,20 @@ def test_first_close_archive_verifies_every_component_before_returning_bytes(
         assert "distinct preparer" in error.value.detail
         return
     assert "supporting report differs" in error.value.detail
+    with world.place.uow(reader) as uow, pytest.raises(Problem, match="Only a running"):
+        evidence_storage.finish_close(uow, pack["id"])
+    with world.place.uow(reader) as uow:
+        apply(
+            uow.session,
+            "evidence_pack",
+            pack["id"],
+            to_status="RUNNING",
+            expected_status="QUEUED",
+            set_values={},
+        )
+        uow.commit()
+    with world.place.uow(reader) as uow, pytest.raises(Problem, match="supporting report differs"):
+        evidence_storage.finish_close(uow, pack["id"])
     for report in bound.supporting_reports:
         finished = run_journal_job(world, report.job_id, attempts=1)
         assert finished["state"] == "SUCCEEDED", finished
@@ -2296,4 +2314,42 @@ def test_first_close_archive_verifies_every_component_before_returning_bytes(
         denied = replace(reader, permissions=reader.permissions - {permission})
         with world.place.uow(denied) as uow, pytest.raises(Problem) as error:
             evidence_assembly.assemble_close(uow, pack["id"])
+        assert error.value.slug == "forbidden"
+
+    # Output/file row and success are one transaction; an interrupted completion leaves neither.
+    with world.place.uow(reader) as uow:
+        before_files = uow.session.scalar(select(func.count()).select_from(file_object))
+    with world.place.uow(reader) as uow, pytest.raises(RuntimeError, match="rollback witness"):
+        retained = evidence_storage.finish_close(uow, pack["id"])
+        assert retained.archive == archive
+        raise RuntimeError("rollback witness")
+    with world.place.uow(reader) as uow:
+        saved = (
+            uow.session.execute(select(evidence_pack).where(evidence_pack.c.id == pack["id"]))
+            .mappings()
+            .one()
+        )
+        assert (saved["status"], saved["file_id"], saved["manifest"]) == ("RUNNING", None, None)
+        assert uow.session.scalar(select(func.count()).select_from(file_object)) == before_files
+        retained = evidence_storage.finish_close(uow, pack["id"])
+        uow.commit()
+    with world.place.uow(reader) as uow:
+        assert evidence_storage.finish_close(uow, pack["id"]) == retained
+        metadata, stream = open_file(
+            uow.session, retained.file_id, files=uow.files, keyring=uow.keyring
+        )
+        with stream:
+            assert stream.read() == archive.content
+        assert metadata["purpose"] == "EVIDENCE_PACK"
+        assert uow.session.scalar(select(func.count()).select_from(file_object)) == before_files + 1
+        finishes = uow.session.scalar(
+            select(func.count())
+            .select_from(audit_event)
+            .where(audit_event.c.action == "evidence.finish", audit_event.c.object_id == pack["id"])
+        )
+        assert finishes == 1
+    for permission in permissions:
+        denied = replace(reader, permissions=reader.permissions - {permission})
+        with world.place.uow(denied) as uow, pytest.raises(Problem) as error:
+            evidence_storage.finish_close(uow, pack["id"])
         assert error.value.slug == "forbidden"
