@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from datetime import date
+from functools import partial
 from typing import TYPE_CHECKING, Any, Final, Literal
 
 from pydantic import BaseModel, ConfigDict
@@ -82,4 +83,7 @@ TEMPLATE: Final = CsvTemplate(
     columns=COLUMNS,
     plans=plans,
     apply=apply,
+    reconcile_amounts=partial(
+        recorded.reconcile_amounts, event_type="COST_INCURRED", amount_field="amount"
+    ),
 )

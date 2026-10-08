@@ -3127,8 +3127,15 @@ A callback must cover every amount column before it enables the loaded.amount_su
 comparison. Those sums follow IPL-06 file-column semantics, including repeated cells;
 they are calculated only after the independent read-back proves the written facts.
 
-Currently only CSV invoices implements this callback. It checks document totals,
+The CSV `invoices` template implements this callback for document totals,
 signed source lines, positive invoice/credit events, tax components and currencies.
 Repeated tax rows contribute each tax once and one logical invoice line; their
-repeated amount cells still count in the file-column total. Other templates retain
-the row-coverage gate and are not claimed to have monetary read-back coverage.
+repeated amount cells still count in the file-column total.
+
+Costs, pre-standard revenue and usage also register the callback. Their shared
+reader binds each stored event to the expected contract, event type, effective
+date and source record before comparing amount and currency. Signed amounts stay
+signed; an absent rated usage amount stays null, distinct from explicit zero.
+The callbacks cover all monetary columns of these three one-event-per-row templates.
+Contracts, SSP, estimates and legacy monetary templates still require independent
+read-back implementation and are not claimed as covered.

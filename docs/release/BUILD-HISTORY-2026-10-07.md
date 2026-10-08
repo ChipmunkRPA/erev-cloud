@@ -1515,3 +1515,28 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   the pending AI lifecycle audit category and late-billing out-of-period K07 report.
   Broader current-main verification, implementation gaps and independent accounting
   sign-off remain open. No deployment.
+
+## Architecture follow-up — October 7, 2026
+
+- Continued from 906a83e. Full command-route audit plus architecture run: **5 failed,
+  263 passed in 169.16 seconds**, /private/tmp/post-import-audit-architecture.log.
+  The audit walk passed in 28.52 seconds. Five architecture checks exposed missing
+  declarations, a data-model column-order mismatch and an upward kernel/domain import.
+- Step 1 approval content now uses a registered SubjectLifecycle.content callback;
+  approvals no longer imports contracts to compute the hash. A missing callback refuses
+  explicitly. The existing domain function still supplies the exact approved content.
+  Sync-total exception assignment explicitly declares no contract IDs: its subject is
+  the sync run, not an individual contract. Data-model documentation matches the table's
+  owner-membership/entity column order.
+- Enumerated the five Step 1 tenant-scope entries with their purposes and the new import
+  computation deferral as a stored calculation, not a preview. Documented these boundaries
+  in the developer guide. The checks still reject unlisted calls. The preview check's
+  own negative-control expectation now includes the new declared call site.
+- Final affected architecture modules: **38 passed in 18.74 seconds**,
+  /private/tmp/architecture-followup-final.log. Preview negative controls plus actual Step 1
+  soft-close approval, book-change staleness, evidence snapshot, performing-entity review,
+  draft approval and sync totals: **13 passed in 54.51 seconds**,
+  /private/tmp/architecture-workflow-regressions.log. Source Mypy, Ruff/format and whitespace
+  pass. All runs terminal. This closes the five new architecture findings; no complete
+  backend pass is claimed. The two original baseline failures, remaining implementation
+  gaps and independent accounting sign-off remain open. No deployment.

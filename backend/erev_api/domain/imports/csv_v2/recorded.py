@@ -25,13 +25,14 @@ from __future__ import annotations
 import dataclasses
 from collections.abc import Mapping, Sequence
 from datetime import datetime
+from decimal import Decimal
 from typing import TYPE_CHECKING, Any, Final
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import and_, select
 from sqlalchemy.orm import Session
 
-from erev_api.db.tables import contract, legal_entity
+from erev_api.db.tables import contract, contract_event, legal_entity
 from erev_api.domain.imports import findings
 from erev_api.domain.imports.csv_v2.framework import Applied, ApplyContext, CsvRow, Plan, unflatten
 from erev_api.domain.imports.legacy_v1.headers import RowFinding
@@ -48,6 +49,7 @@ __all__ = [
     "column_label",
     "contract_findings",
     "row_plans",
+    "reconcile_amounts",
 ]
 
 CONTRACT_COLUMN: Final = "contract"
@@ -175,3 +177,83 @@ def append(
         applied.row_targets[row.id] = list(targets)
     applied.contracts.append((plan.key, contract_id, group_id, head))
     return applied
+
+
+def reconcile_amounts(
+    session: Session,
+    plan: Plan,
+    applied: Applied,
+    *,
+    context: ApplyContext,
+    event_type: str,
+    amount_field: str,
+) -> tuple[Mapping[str, Any], Mapping[str, Any]]:
+    """Independent monetary read-back for one-event-per-row templates (CTL-002).
+
+    Bind amounts to the contract, event kind, effective date and source record, so
+    another event with the same amount cannot stand in for the intended target.
+    An absent optional rated amount stays absent; it is never inferred as zero.
+    """
+
+    def money(value: Mapping[str, Any] | None) -> list[str] | None:
+        if value is None:
+            return None
+        return [format(Decimal(str(value["amount"])).normalize(), "f"), str(value["currency"])]
+
+    expected = {
+        "events": [
+            {
+                "contract": str(row.normalized["contract"]),
+                "event_type": event_type,
+                "effective_date": str(row.normalized["effective_date"]),
+                "source_record_id": str(context.record_ids[row.id]),
+                "amount": money(
+                    None
+                    if row.normalized.get(f"{amount_field}.amount") is None
+                    else {
+                        "amount": row.normalized[f"{amount_field}.amount"],
+                        "currency": row.normalized[f"{amount_field}.currency"],
+                    }
+                ),
+            }
+            for row in plan.rows
+        ]
+    }
+    rows = session.execute(
+        select(
+            contract.c.external_id,
+            contract_event.c.event_type,
+            contract_event.c.effective_date,
+            contract_event.c.source_record_id,
+            contract_event.c.payload,
+        )
+        .select_from(
+            contract_event.join(
+                contract,
+                and_(
+                    contract.c.tenant_id == contract_event.c.tenant_id,
+                    contract.c.id == contract_event.c.contract_id,
+                ),
+            )
+        )
+        .where(
+            contract_event.c.id.in_(
+                [key for kind, key in applied.targets if kind == "contract_event"]
+            ),
+            contract_event.c.import_upload_id == context.import_upload_id,
+        )
+        .order_by(contract_event.c.stream_version)
+    ).mappings()
+    actual = {
+        "events": [
+            {
+                "contract": str(row["external_id"]),
+                "event_type": str(row["event_type"]),
+                "effective_date": str(row["effective_date"]),
+                "source_record_id": str(row["source_record_id"]),
+                "amount": money(row["payload"].get(amount_field)),
+            }
+            for row in rows
+        ]
+    }
+    return expected, actual
