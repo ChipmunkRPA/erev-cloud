@@ -2,6 +2,27 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## File-shred durability test isolation — October 7, 2026
+
+- Continued from 1abb52b. The older baseline's three shred failures counted unrelated tenants'
+  pending files: observed completed counts 9 versus 1 and 3 versus 0, and failed counts 3 versus 1.
+  Current unmodified durability module in isolation: **6 passed in 70.22 seconds**,
+  /private/tmp/shred-order-current.log.
+- committed_db retains other tests' tenants. Import source-shred tests deliberately mark rows
+  incomplete, and the production sweep correctly scans all tenants. Durability assertions
+  intended for one world were incorrectly applied to that global workload.
+- Scoped this module's sweep workset to its own fresh tenant, retaining the real original
+  eligibility predicate and all storage, completion, transaction, retry and alert paths.
+  Production code is unchanged. Initial mixed run: 11 passed, one sandbox sweep-count failure
+  (3 completions versus 1) from the same unrelated pending imports. The sandbox case now scopes
+  the workset to BOTH its production and sandbox tenants through a shared test helper; its
+  source-key, archived-workspace and completion assertions remain intact.
+- Final combined import-source, durability and sandbox-shred verification: **12 passed in
+  82.01 seconds**, /private/tmp/shred-cross-suite-verified.log. Ruff/format/whitespace checks
+  pass; all scoped runs are terminal. Published directly to main. Three baseline failures
+  resolved plus the newly exposed sandbox count issue; 38 original failures still await
+  disposition. No deployment or readiness claim; accounting sign-off remains outstanding.
+
 ## Reconciliation timing and publication checks — October 7, 2026
 
 - Continued from c8fea89. Reproduced the reconciliation interleaving failure on current main

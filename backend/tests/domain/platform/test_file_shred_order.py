@@ -68,6 +68,7 @@ from support.interleave import await_lock_wait, backend_pid, observing_checkouts
 from support.principals import Actor, colleague, cookie_headers, enrolled, member
 from support.reference import approve, assign, get, post, slug
 from support.rows import insert_contract_rows, insert_import_upload
+from support.shred_sweep import scope_shred_sweep
 from support.stored_files import Stored, store
 
 FILES = "/api/v1/files"
@@ -161,9 +162,16 @@ def _context(tenant_id: UUID) -> DbContext:
 
 
 @pytest.fixture
-def world(app: FastAPI, keyring: KeyRing, clock: FrozenClock, files: LocalFileStore) -> World:
+def world(
+    app: FastAPI,
+    keyring: KeyRing,
+    clock: FrozenClock,
+    files: LocalFileStore,
+    monkeypatch: pytest.MonkeyPatch,
+) -> World:
     root = member(keyring, clock, name="tess")
     assign(root, "tenant_admin")
+    scope_shred_sweep(monkeypatch, [root.tenant_id])
     carla_member = colleague(root.tenant_id, "carla")
     assign(carla_member, "controller")
     with tenant_session(_context(root.tenant_id)) as session:

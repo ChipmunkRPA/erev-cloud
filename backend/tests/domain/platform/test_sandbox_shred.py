@@ -464,8 +464,10 @@ def test_file_shred_durable_order_1_a_sandbox_finishes_only_what_it_owns(
     from erev_api.files.store import open_file, shred_marker_key, sidecar_key
     from erev_api.jobs.context import system_unit_of_work
     from sqlalchemy import update
+    from support.shred_sweep import scope_shred_sweep
 
     world = copied
+    scope_shred_sweep(monkeypatch, [world.production, world.sandbox])
     raised: list[Any] = []
 
     class Recording:

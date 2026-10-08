@@ -115,3 +115,26 @@ modules: **18 passed in 44.02 seconds**,
 `/private/tmp/reconciliation-and-publication-final.log`. Ruff/format/whitespace checks pass.
 These three failures are resolved; **41 of the original baseline failures remain without
 a current-main disposition**. This count is not a full current-main failure count.
+
+### File-shred sweep workload isolation
+
+The unmodified durability module on `1abb52b` passes alone: **6 passed in 70.22
+seconds**, `/private/tmp/shred-order-current.log`. The original three failures
+counted pending files belonging to other tests' tenants. The database fixture
+retains tenants, and import-source tests intentionally mark sources shredded without
+completing them. Each test also has its own temporary file store. A platform-wide
+sweep therefore cannot be assumed to contain only one test's file workload.
+
+A shared test helper now narrows the original sweep eligibility predicate to the
+scenario's tenants. Durability tests retain their real storage, commit, retry and
+alert code and exact assertions. The sandbox case includes BOTH production and
+sandbox tenants, preserving source-key protection and archived-sandbox coverage.
+No production sweep logic changed.
+
+The first mixed run exposed the same issue in the sandbox test (3 completed versus
+1): **11 passed, 1 failed**, `/private/tmp/shred-cross-suite-final.log`. After scoping
+that case too, the complete import-source, durability and sandbox-shred modules pass
+in one database session: **12 passed in 82.01 seconds**,
+`/private/tmp/shred-cross-suite-verified.log`. Ruff/format/whitespace checks pass.
+Three original failures and the newly exposed sandbox count issue are resolved;
+**38 original baseline failures still await current-main disposition**.
