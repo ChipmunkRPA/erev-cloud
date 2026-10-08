@@ -725,3 +725,102 @@ def test_an_erased_person_is_not_invited_again_on_the_erased_membership(
     assert anew.json()["id"] != str(lena.membership_id)
     assert (anew.json()["status"], anew.json()["email"]) == ("INVITED", lena.email)
     assert of_lena() == (MembershipStatus.REMOVED.value, UserStatus.DISABLED.value)
+
+
+def test_erasure_between_invitation_read_and_membership_lock_refuses_stale_identity(
+    app: FastAPI,
+    world: World,
+    clock: FrozenClock,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A committed erasure cannot be undone by an invitation holding a pre-erasure read."""
+    from erev_api.db.tables import outbox_message
+    from erev_api.domain.platform import users
+
+    lena = colleague(world.tenant_id, "lena")
+    tomas = fresh_step_up(app, clock, world.tomas)
+    removed = post(app, f"{USERS}/{lena.membership_id}/remove", tomas, {"reason": REASON})
+    assert removed.status_code == 200, removed.text
+    [viewer] = tenant_rows(world.tenant_id, select(role.c.id).where(role.c.code == "viewer"))
+    real_lock = users._lock_membership
+    erased = False
+    before_outbox = tenant_rows(world.tenant_id, select(outbox_message.c.id))
+
+    def erase_then_lock(session: Any, membership_id: UUID) -> Mapping[str, Any]:
+        nonlocal erased
+        if not erased and membership_id == lena.membership_id:
+            erased = True
+            result = post(app, f"{USERS}/{lena.membership_id}/anonymise", tomas, {"reason": REASON})
+            assert result.status_code == 200, result.text
+        return real_lock(session, membership_id)
+
+    monkeypatch.setattr(users, "_lock_membership", erase_then_lock)
+    response = post(
+        app,
+        USERS,
+        tomas,
+        {
+            "email": lena.email,
+            "display_name": "Lena Fischer",
+            "roles": [{"role_id": str(viewer["id"]), "is_all_entities": True, "entity_codes": []}],
+        },
+    )
+    assert erased
+    assert response.status_code == 422, response.text
+    assert slug(response) == "validation-failed"
+    assert user_row(lena.user_id)["status"] == UserStatus.DISABLED
+    [membership] = tenant_rows(
+        world.tenant_id,
+        select(tenant_membership).where(tenant_membership.c.id == lena.membership_id),
+    )
+    assert membership["status"] == MembershipStatus.REMOVED
+    assert tenant_rows(world.tenant_id, select(outbox_message.c.id)) == before_outbox
+    assert not tenant_rows(
+        world.tenant_id,
+        select(audit_event.c.id).where(
+            audit_event.c.object_id == lena.membership_id,
+            audit_event.c.action == users.INVITE_ACTION,
+        ),
+    )
+
+
+def test_erased_identity_cannot_gain_a_membership_in_another_workspace(
+    app: FastAPI,
+    world: World,
+    clock: FrozenClock,
+    keyring: KeyRing,
+) -> None:
+    """The new-membership branch also refuses an existing erased global identity."""
+    from erev_api.db.tables import outbox_message
+
+    lena = colleague(world.tenant_id, "lena")
+    tomas = fresh_step_up(app, clock, world.tomas)
+    erased = post(app, f"{USERS}/{lena.membership_id}/anonymise", tomas, {"reason": REASON})
+    assert erased.status_code == 200, erased.text
+    other_admin = member(keyring, clock)
+    with tenant_session(_context(other_admin.tenant_id)) as session:
+        insert_role_assignment(
+            session,
+            tenant_id=other_admin.tenant_id,
+            membership_id=other_admin.membership_id,
+            role_code="tenant_admin",
+        )
+    actor = enrolled(app, clock, other_admin)
+    [viewer] = tenant_rows(other_admin.tenant_id, select(role.c.id).where(role.c.code == "viewer"))
+    before = tenant_rows(other_admin.tenant_id, select(outbox_message.c.id))
+    response = post(
+        app,
+        USERS,
+        actor,
+        {
+            "email": erased_email(lena.user_id),
+            "display_name": "Lena Fischer",
+            "roles": [{"role_id": str(viewer["id"]), "is_all_entities": True, "entity_codes": []}],
+        },
+    )
+    assert response.status_code == 422, response.text
+    assert not tenant_rows(
+        other_admin.tenant_id,
+        select(tenant_membership.c.id).where(tenant_membership.c.user_id == lena.user_id),
+    )
+    assert tenant_rows(other_admin.tenant_id, select(outbox_message.c.id)) == before

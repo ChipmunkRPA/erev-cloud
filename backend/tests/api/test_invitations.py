@@ -192,7 +192,21 @@ def test_lookup_and_accept(app: FastAPI, keyring: KeyRing, clock: FrozenClock) -
         {"status": "INVITED"},
         "ACTIVE",
     )
-    assert len(preferences) == 12
+    assert {str(row.kind) for row in preferences} == {
+        "APPROVAL_ASSIGNED",
+        "ITEM_REJECTED",
+        "APPROVAL_VOIDED",
+        "JOB_FAILED",
+        "CLOSE_BLOCKER_RAISED",
+        "CHAIN_VERIFICATION_FAILED",
+        "EXPORT_FAILED",
+        "EXCEPTION_ASSIGNED",
+        "SUPPORT_GRANT_REQUESTED",
+        "ITEM_APPROVED",
+        "PERIOD_LOCKED",
+        "PERIOD_REOPENED",
+        "APPROVAL_UNASSIGNED",
+    }
 
     signed_in = call(app, "POST", LOGIN, json={"email": invitation.email, "password": PASSWORD})
     assert signed_in.status_code == 200, signed_in.text

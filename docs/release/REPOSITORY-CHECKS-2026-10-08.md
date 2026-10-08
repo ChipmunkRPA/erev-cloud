@@ -56,7 +56,7 @@ SHA-256: `a8362ac6e3c0f18d74bd901dcf7637c6066d50a3c7bd3260d236b3d17cc127f7`.
 
 `make properties` started on the clean starting revision, with the thorough Hypothesis
 profile, in immutable context `.run/gates/ctx-properties-37c4f0c48918-6323`.
-It collected 48 tests. The first metamorphic test has passed; the suite remains active.
+It collected 48 tests. The first two metamorphic tests have passed; the suite remains active.
 Pytest PID 6358 was confirmed live with increasing CPU time; the executor session is
 52175. Console output: `/private/tmp/erev-properties-2026-10-08.log`.
 

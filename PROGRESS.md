@@ -2,6 +2,36 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Invitation-erasure identity recheck — October 8, 2026
+
+- Continued from clean published main 4e90c37; previous turn recorded passing full lint.
+  Closed B6-5: invitations lock and reread existing identities after locking any reused
+  membership, before ending prior membership state, assigning roles or queuing mail. Disabled
+  identities, changed normalized email and operator identities are refused. The acting-tenant
+  membership-to-identity lock order matches erasure. New memberships also pin/recheck existing
+  identities. A later explicit invitation to an erased person's former address may still create
+  a separate new identity; the retained erased identity is never revived.
+- PostgreSQL counterexample: **1 failed, 11 deselected in 7.71 seconds**,
+  /private/tmp/invitation-erasure-baseline.log. A real erasure committed between discovery and
+  membership lock; the invitation wrongly returned 201 and revived the erased row as INVITED.
+  After repair, privacy/operator-reinvite/acceptance checks: **19 passed, 1 failed in 49.46
+  seconds**, /private/tmp/invitation-erasure-fixed.log. Only an old 12-preference expectation
+  failed: APPROVAL_UNASSIGNED had made 13. Replaced the count with the explicit expected kinds
+  and corrected the stale activation docstring.
+- Added erased-identity refusal in another workspace. Expanded privacy/invitation/access-scope
+  and membership/person architecture checks: **29 passed in 66.36 seconds**,
+  /private/tmp/invitation-erasure-final.log. After normalizing the compared address, focused
+  erased/racing/new-identity verification: **3 passed, 10 deselected in 9.67 seconds**,
+  /private/tmp/invitation-erasure-verified.log. These database processes are terminal. Source
+  Mypy (two files), Ruff lint/format and whitespace checks pass. Tests assert no invitation
+  outbox row or invitation audit survives the refusal. No live email was sent.
+- Property gate session 52175 / PID 6358 remains live in its original immutable context;
+  two metamorphic tests passed so far. Its fixtures were inspected: no database use, so the
+  separate PostgreSQL regressions above could run safely; no two database pytest processes
+  overlapped. Keep polling that same property process. Updated limitations/developer guide,
+  archived prior SSP-routing evidence verbatim. No deployment or readiness claim. Remaining
+  implementation/release checks, engine cut/replays and independent sign-off remain open.
+
 ## Broader repository checks and reopen UI tests — October 8, 2026
 
 - Continued from clean published main 37c4f0c; previous turn made verified SSP-routing progress.
@@ -25,40 +55,13 @@
   research directory. Archived prior SSP-lineage evidence verbatim to preserve notebook size.
 - LIVE PROPERTY GATE: executor session **52175**, pytest PID **6358**, immutable context
   .run/gates/ctx-properties-37c4f0c48918-6323. Command `make properties`, thorough profile,
-  48 tests collected; first metamorphic test passed, suite active with increasing CPU time. Log:
+  48 tests collected; two metamorphic tests passed, suite active with increasing CPU time. Log:
   /private/tmp/erev-properties-2026-10-08.log. Preserve and poll this exact process; never restart
   on elapsed time alone. Inspect the final report and bindings before claiming a result. Other
-  test/typecheck/build handles are terminal. Do not start another database pytest while pending.
+  test/typecheck/build handles are terminal. Inspection confirmed property tests use in-memory worlds and no database fixtures; keep database test processes serial with each other.
 - Archived prior journal-validation evidence verbatim. Remaining implementation, current
   release checks, engine cut/replays and independent accounting sign-off remain open. No
   deployment/readiness claim; preserve exclusions and noncommercial licensing; push to main.
-
-## SSP approval effective-value routing — October 8, 2026
-
-- Continued from clean published main 4ebc96c (previous turn closed ledger-history freshness).
-  The exact role-balance check still needs broader reader integration. Inspection also found
-  material SSP changes that bypassed second review: list prices behind percentage bands,
-  zero-to-nonzero points and changed observable points. Routing now compares effective SSP
-  amounts, with legacy bands already scaled and retained unbanded cost-plus fallback aligned
-  with the engine. Method/value-basis/quantity-unit changes also require second review.
-- Cross multiplication in the explicit wide Decimal context preserves exact thresholds and
-  increments above them. Unchanged zero and compensating inputs yielding the same SSP do not
-  trigger numeric review; new/removed observable points do. Existing entry pairing and the
-  preparer's qualitative methodology declaration remain. Historical approvals are unchanged.
-- API counterexamples on unchanged code: **4 failed, 1 passed, 19 deselected in 13.68 seconds**,
-  /private/tmp/ssp-routing-baseline.log: three missed second steps plus an unnecessary one when
-  list-price and percentage changes compensated. Full publication checks after repair:
-  **24 passed in 44.85 seconds**, /private/tmp/ssp-routing-publication.log. Added low-precision,
-  exact/above-threshold, legacy and cost fallback cases; final publication/entity-scope/unit
-  matrix and import-cycle/forbidden-pattern/money architecture checks: **84 passed in
-  78.93 seconds**, /private/tmp/ssp-routing-final.log. All processes terminal. API cases prove
-  material changes remain SUBMITTED/PENDING after the first decision and require a distinct
-  second approver. Source Mypy, Ruff lint/format and whitespace checks pass.
-- Updated routing requirements, PRD, B1-22 and developer guidance. B1-22 remains open for
-  qualitative methodology changes not represented in stored inputs; exact reconciliation
-  recomparison, remaining product/release gates and independent accounting sign-off remain.
-  No deployment or readiness claim. Preserve publication exclusions/noncommercial licensing;
-  publish tested changes directly to main.
 
 ## GL reconciliation ledger-history freshness — October 8, 2026
 

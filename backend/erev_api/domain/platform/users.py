@@ -624,6 +624,22 @@ def invite_user(
         removed = _lock_membership(session, former)
         if removed["status"] != MembershipStatus.REMOVED.value:
             raise Problem("validation-failed", errors=[_already_member()])
+    if user is not None:
+        # Erasure takes membership then identity locks. Re-read after acquiring the
+        # same locks: the initial email lookup may predate a committed erasure.
+        # A new membership has no existing row to lock, but still pins its identity.
+        identity = session.execute(
+            select(app_user.c.email, app_user.c.status, app_user.c.is_operator)
+            .where(app_user.c.id == user.id)
+            .with_for_update(key_share=True)
+        ).one()
+        if (
+            identity.status == UserStatus.DISABLED.value
+            or normalise_email(str(identity.email)) != normalised
+            or identity.is_operator
+        ):
+            raise Problem("validation-failed", errors=[_already_member()])
+    if former is not None:
         _end_first_life(uow, former)
     # REQ-PLT-010: the SoD check at request covers the roles together, before any write of the
     # invitation (what ended the first life above is undone with a refusal here).

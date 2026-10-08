@@ -3336,3 +3336,19 @@ point, or changing method/value basis/quantity unit, requires independent second
 entry pairing and the declarative qualitative-methodology flag remain; no semantic interpretation
 of the study is claimed. Routing flags and the existing distinct-decider approval steps enforce
 this at submission. Historical approvals are unchanged.
+
+
+### Invitation identity recheck after erasure — October 8, 2026
+
+An invitation's initial email lookup is a discovery read. When reusing a removed membership,
+`users.invite_user` locks that membership and then takes the identity's NO KEY UPDATE lock,
+matching the acting-workspace erasure order. It rereads current email, status and operator status
+before ending the membership's old lifecycle, assigning roles or queuing an invitation. A disabled
+identity, an address that no longer matches or a platform operator is refused with the existing
+email validation response. New memberships also lock and recheck an existing identity.
+
+The regression commits a real erasure between the invitation's discovery read and membership lock:
+the invitation must refuse, keep the membership removed and leave no invitation audit or outbox
+message. A separate workspace cannot invite the retained erased identity either. The historical
+rule allowing a fresh identity at the former, now-unowned email address is unchanged; erasure does
+not keep a forbidden-address registry. This is repository verification, not a live email exercise.

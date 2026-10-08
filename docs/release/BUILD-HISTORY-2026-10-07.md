@@ -2068,3 +2068,30 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   validation; no full-suite or production-readiness claim. AI/other implementation gaps,
   container/release verification and independent accounting sign-off remain. No deployment;
   preserve publication exclusions/noncommercial licensing and publish directly to main.
+
+## SSP approval effective-value routing — October 8, 2026
+
+- Continued from clean published main 4ebc96c (previous turn closed ledger-history freshness).
+  The exact role-balance check still needs broader reader integration. Inspection also found
+  material SSP changes that bypassed second review: list prices behind percentage bands,
+  zero-to-nonzero points and changed observable points. Routing now compares effective SSP
+  amounts, with legacy bands already scaled and retained unbanded cost-plus fallback aligned
+  with the engine. Method/value-basis/quantity-unit changes also require second review.
+- Cross multiplication in the explicit wide Decimal context preserves exact thresholds and
+  increments above them. Unchanged zero and compensating inputs yielding the same SSP do not
+  trigger numeric review; new/removed observable points do. Existing entry pairing and the
+  preparer's qualitative methodology declaration remain. Historical approvals are unchanged.
+- API counterexamples on unchanged code: **4 failed, 1 passed, 19 deselected in 13.68 seconds**,
+  /private/tmp/ssp-routing-baseline.log: three missed second steps plus an unnecessary one when
+  list-price and percentage changes compensated. Full publication checks after repair:
+  **24 passed in 44.85 seconds**, /private/tmp/ssp-routing-publication.log. Added low-precision,
+  exact/above-threshold, legacy and cost fallback cases; final publication/entity-scope/unit
+  matrix and import-cycle/forbidden-pattern/money architecture checks: **84 passed in
+  78.93 seconds**, /private/tmp/ssp-routing-final.log. All processes terminal. API cases prove
+  material changes remain SUBMITTED/PENDING after the first decision and require a distinct
+  second approver. Source Mypy, Ruff lint/format and whitespace checks pass.
+- Updated routing requirements, PRD, B1-22 and developer guidance. B1-22 remains open for
+  qualitative methodology changes not represented in stored inputs; exact reconciliation
+  recomparison, remaining product/release gates and independent accounting sign-off remain.
+  No deployment or readiness claim. Preserve publication exclusions/noncommercial licensing;
+  publish tested changes directly to main.

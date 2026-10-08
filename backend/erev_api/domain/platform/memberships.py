@@ -48,7 +48,7 @@ ACCEPT_ACTION: Final = "membership.accept"  # 04 T-PLT-07
 
 
 def on_membership_activated(uow: UnitOfWork, membership_id: UUID) -> int:
-    """Insert the 12 default preferences of ``membership_id``; returns the rows inserted."""
+    """Insert the default preferences of ``membership_id``; returns the rows inserted."""
     principal = uow.principal
     rows = [
         {
