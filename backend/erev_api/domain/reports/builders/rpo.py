@@ -57,7 +57,8 @@ and is listed in section 2 with the expedient, the nature (product name), the re
 the version at that day; each version effective in the range adds its allocation change on the line
 of its cause (activation of a group without an included version: ``NEW_CONTRACTS``;
 ``CONTRACT_AMENDED``, material-right events and ``COMBINATION_CHANGED``: ``MODIFICATIONS``;
-``ESTIMATE_CHANGED``: ``VC_ESTIMATE_CHANGES``; ``CONTRACT_TERMINATED``: ``CANCELLATIONS``);
+``ESTIMATE_CHANGED`` and ``USAGE_REPORTED`` (including royalty statements):
+``VC_ESTIMATE_CHANGES``; ``CONTRACT_TERMINATED``: ``CANCELLATIONS``);
 ``REVENUE`` = −(revenue to the range end − revenue to the day before) by the closing version, both
 read at their cuts; closing = the RPO at the range end; ``UNEXPLAINED`` = closing − opening −
 movements (V9).
@@ -199,6 +200,7 @@ CAUSE_LINES: Final[Mapping[str, str]] = {
     "MATERIAL_RIGHT_EXPIRED": "MODIFICATIONS",
     "COMBINATION_CHANGED": "MODIFICATIONS",
     "ESTIMATE_CHANGED": "VC_ESTIMATE_CHANGES",
+    "USAGE_REPORTED": "VC_ESTIMATE_CHANGES",
     "CONTRACT_TERMINATED": "CANCELLATIONS",
 }
 NO_EXEMPTIONS: Final = "No contracts are excluded. {entity} applies no RPO practical expedient."
@@ -911,22 +913,24 @@ def _obligation_lines(
     opening = _in_version(store, opening_version, obligation_id)
     if opening is not None:
         lines["OPENING"] = rpo_of(opening, before, DEFAULT_BANDS, store.at(opening, before))[0]
+    previous_obligation = opening
     previous = ZERO if opening is None else opening.allocated
     for version in moved:
         current = _in_version(store, version, obligation_id)
         allocated = ZERO if current is None else current.allocated
         delta = allocated - previous
         if delta:
-            if previous == 0:
+            if previous_obligation is None:
                 line: str | None = "NEW_CONTRACTS"
             else:
-                line = next(
-                    (CAUSE_LINES[kind] for kind in sorted(version.causes) if kind in CAUSE_LINES),
-                    None,
-                )
+                causes = {CAUSE_LINES[kind] for kind in version.causes if kind in CAUSE_LINES}
+                # One version may include several events. Without a per-cause allocation
+                # breakdown, competing cause lines cannot be assigned by alphabetic order.
+                line = next(iter(causes)) if len(causes) == 1 else None
             if line is not None:
                 lines[line] += delta
         previous = allocated
+        previous_obligation = current
     closing = _in_version(store, closing_version, obligation_id)
     if closing is not None:
         at_end = store.at(closing, end)

@@ -2157,3 +2157,18 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   overlapped. Keep polling that same property process. Updated limitations/developer guide,
   archived prior SSP-routing evidence verbatim. No deployment or readiness claim. Remaining
   implementation/release checks, engine cut/replays and independent sign-off remain open.
+
+## Full accounting corpus verification — October 8, 2026
+
+- Canonical `make answer-keys AK_SCOPE=full` on clean main 177cb68 completed:
+  **505 passed, two failed in 352.75 seconds**. All 255 keys selected: 251 passed,
+  one failed, one not run, two withdrawn. All 255 review statuses remain unapproved.
+  Coverage is complete across all six sections; source/dependency and corpus bindings verify.
+- DLT-CHK-020 now reaches the nondistinct-review fixture limitation after 141 applied steps;
+  its integration target is absent. VC-CHK-113 retains seven concession/billing differences,
+  reserved for independent accounting decisions AD-14/AD-15. No oracle values or treatment
+  were changed to force a pass. Updated limitations, accounting-review packet and dated gate
+  evidence with exact counts/hashes. G4 remains failed; these are actionable remaining gaps.
+- Archived the older broad-check section verbatim. Property session 52175 remains active in
+  its original immutable context, with five metamorphic tests passed. The answer-key process
+  is terminal, so no database pytest process remains active. No deployment or readiness claim.

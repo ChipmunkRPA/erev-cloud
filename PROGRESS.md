@@ -2,6 +2,23 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## API RPO usage attribution repair — October 8, 2026
+
+- Continued from clean ada7213. Unit counterexamples: **three failed, one passed in
+  0.43 seconds**. Valid PostgreSQL baseline: **one failed in 11.49 seconds**, after fixing
+  the test's initial Money payload validation error. The report omitted a 150 usage addition.
+- Added USAGE_REPORTED to variable-consideration activity (also the royalty-statement event).
+  Existing obligations with zero allocation no longer become new contracts on their first fee.
+  Unknown or competing cause classes stay unexplained; no arbitrary alphabetic attribution.
+- **18 unit tests passed in 0.40 seconds**; expanded PostgreSQL RPO/disaggregation and unit
+  version-chain checks: **32 passed in 61.81 seconds**. Real event submission/independent
+  approval and report API verify the 150 addition, matching revenue, unchanged RPO and both
+  tie-outs. Mypy, Ruff and whitespace pass. Detailed logs are in the RPO evidence note.
+- B4-2 remains partial: first-version batching, multi-cause decomposition, API royalties,
+  combined edge cases and release cut/replays remain. Archived corpus evidence verbatim.
+  Property session 52175 continues against its original pre-repair revision. No deployment
+  or production-readiness claim; direct publication to main.
+
 ## Engine RPO realized allocation repair — October 8, 2026
 
 - Regressions reproduced both B4-2 cases: **two failed in 0.23 seconds**. Shared the
@@ -56,21 +73,6 @@
   **6358** remains active in the original context, past all six metamorphic tests and through
   RPO checks, now in determinism. Both ongoing gates predate this test correction; preserve
   their handles and inspect final source bindings. No deployment or readiness claim.
-
-## Full accounting corpus verification — October 8, 2026
-
-- Canonical `make answer-keys AK_SCOPE=full` on clean main 177cb68 completed:
-  **505 passed, two failed in 352.75 seconds**. All 255 keys selected: 251 passed,
-  one failed, one not run, two withdrawn. All 255 review statuses remain unapproved.
-  Coverage is complete across all six sections; source/dependency and corpus bindings verify.
-- DLT-CHK-020 now reaches the nondistinct-review fixture limitation after 141 applied steps;
-  its integration target is absent. VC-CHK-113 retains seven concession/billing differences,
-  reserved for independent accounting decisions AD-14/AD-15. No oracle values or treatment
-  were changed to force a pass. Updated limitations, accounting-review packet and dated gate
-  evidence with exact counts/hashes. G4 remains failed; these are actionable remaining gaps.
-- Archived the older broad-check section verbatim. Property session 52175 remains active in
-  its original immutable context, with five metamorphic tests passed. The answer-key process
-  is terminal, so no database pytest process remains active. No deployment or readiness claim.
 
 ## Golden parity verification — October 8, 2026
 

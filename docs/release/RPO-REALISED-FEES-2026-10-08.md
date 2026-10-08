@@ -93,3 +93,33 @@ The disclosure change joins the pending 0.3.0 to 0.4.0 cut and candidate replay 
 Local logs: `/private/tmp/rpo-realised-baseline.log`, `/private/tmp/rpo-realised-fixed.log`,
 `/private/tmp/rpo-royalty-fixed.log`, `/private/tmp/rpo-realised-expanded.log` and
 `/private/tmp/rpo-realised-entry.log`. No deployment or historical output rewrite occurred.
+
+## API report attribution repair
+
+The report builder now recognizes USAGE_REPORTED, including royalty statements, as variable
+consideration activity. It tests whether an obligation existed in the previous version instead
+of treating a zero previous allocation as a new contract. Unknown causes remain unexplained.
+Where one version carries competing allocation cause classes, it now also leaves the delta
+unexplained rather than choosing the alphabetically first event. Full per-cause decomposition
+of a multi-event version remains outstanding.
+
+The unit baseline had three failures and one pass in 0.43 seconds. A PostgreSQL report test
+first stopped at input validation because the test sent rated_amount as a scalar; correcting
+it to the API Money object produced the actual baseline failure: **one failed in 11.49 seconds**,
+with VC_ESTIMATE_CHANGES at 0.00 instead of 150.00.
+
+After the repair, the unit chain suite passed 18 tests in 0.40 seconds. The expanded database
+RPO/disaggregation and unit chain suites passed **32 tests in 61.81 seconds**. The API case
+submits the usage event with evidence and independent approval, then runs the report. It asserts
+no new-contract amount, a 150.00 variable-consideration addition, unchanged opening and closing
+RPO, revenue lower by 150.00 on the rollforward, zero unexplained and both report tie-outs PASS.
+The unit cases cover zero/nonzero opening allocations and unknown/competing causes. Mypy,
+Ruff lint/format and whitespace checks pass. No expected accounting oracle was weakened.
+
+Logs: `/private/tmp/rpo-api-zero-baseline.log`, `/private/tmp/rpo-api-usage-baseline-valid.log`,
+`/private/tmp/rpo-api-unit-fixed.log`, `/private/tmp/rpo-api-expanded.log`.
+
+B4-2 remains partially open. Further verification and implementation must cover one first
+version containing later realized-fee events, per-cause decomposition of batched changes,
+royalties through the API, and the combined lifecycle/exemption/calendar matrix. These results
+prove the measured later-version path, not every report shape or the whole release.

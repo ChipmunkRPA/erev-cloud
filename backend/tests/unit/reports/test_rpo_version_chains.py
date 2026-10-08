@@ -17,6 +17,7 @@ from datetime import UTC, date, datetime
 from decimal import Decimal
 from uuid import UUID
 
+import pytest
 from erev_api.domain.contracts.to_date import ObligationAt
 from erev_api.domain.reports.builders import rpo
 from erev_api.domain.reports.builders.rpo import Membership, Store, _Ob, _Version
@@ -493,3 +494,36 @@ def test_revenue_a_later_version_recognises_for_an_earlier_period_is_a_late_even
     }
     assert rpo.ROLLFORWARD_LINES.index("LATE_EVENTS") == rpo.ROLLFORWARD_LINES.index("REVENUE") - 1
     assert "LATE_EVENTS" in rpo.MOVEMENTS
+
+
+@pytest.mark.parametrize("opening_allocation", ["0", "1000"])
+@pytest.mark.parametrize("cause", ["USAGE_REPORTED", "MEMO_UPDATED", "MIXED"])
+def test_existing_zero_allocation_is_not_a_new_contract(
+    opening_allocation: str, cause: str
+) -> None:
+    initial = version(50, OWN_FIRST, 1, date(2026, 8, 1), BOOKED, "CONTRACT_ACTIVATED")
+    causes = ("USAGE_REPORTED", "CONTRACT_AMENDED") if cause == "MIXED" else (cause,)
+    changed = version(51, OWN_FIRST, 2, SEPTEMBER_30, JOINED, *causes)
+    amount = Decimal(opening_allocation)
+    old = obligation(initial, FIRST, FIRST_O1, "USAGE", str(amount), september="0", end=OCTOBER_31)
+    new = obligation(
+        changed, FIRST, FIRST_O1, "USAGE", str(amount + 150), september="150", end=OCTOBER_31
+    )
+    found = {initial.id: (old,), changed.id: (new,)}
+    data = Store(
+        versions={OWN_FIRST: (initial, changed)},
+        obligations=found,
+        chains={FIRST: (initial, changed)},
+        cuts={
+            (version_id, day): {ob.row_id: at(ob, day) for ob in items}
+            for version_id, items in found.items()
+            for day in (AUGUST_31, SEPTEMBER_30)
+        },
+    )
+    (result,) = rpo.rollforward_lines(data, ranges=RANGE, applied=NOTHING_APPLIED)
+    assert result.lines["NEW_CONTRACTS"] == 0
+    assert result.lines["OPENING"] == result.lines["CLOSING"] == amount
+    assert result.lines["REVENUE"] == -150
+    assert result.lines["VC_ESTIMATE_CHANGES"] == (150 if cause == "USAGE_REPORTED" else 0)
+    # A changed amount with no recognized allocation cause must remain unexplained.
+    assert result.lines["UNEXPLAINED"] == (0 if cause == "USAGE_REPORTED" else 150)

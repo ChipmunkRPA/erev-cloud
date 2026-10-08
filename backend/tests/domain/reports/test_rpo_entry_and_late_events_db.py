@@ -273,3 +273,39 @@ def test_revenue_posted_with_an_earlier_origin_is_the_late_events_line(
         OPENING=locked_at, LATE_EVENTS=-late, REVENUE=-own, CLOSING=locked_at - late - own
     )
     assert ties(run) == BALANCED
+
+
+@pytest.mark.slow
+def test_usage_allocation_change_is_reported_as_variable_consideration(
+    app: FastAPI, keyring: KeyRing, clock: FrozenClock, files: LocalFileStore
+) -> None:
+    """A later usage version adds its fee without calling it a new contract or unexplained."""
+    world = worlds.k08_ulvane(app, keyring, clock, files)
+    assign(world.priya.member, "revenue_reviewer")
+    contract_id = UUID(str(world.contracts[worlds.K08].contract["id"]))
+    before, _ = rollforward(world, AVM_US, "FY2026-P03")
+    worlds.approved_manual_events(
+        world.place,
+        world.priya,
+        contract_id,
+        {
+            "event_type": "USAGE_REPORTED",
+            "effective_date": "2026-03-31",
+            "payload": {
+                "obligation_key": "O1",
+                "usage_period_start": "2026-03-01",
+                "usage_period_end": "2026-03-31",
+                "metric": "API_CALLS",
+                "quantity": "1500",
+                "rated_amount": {"amount": "150.00", "currency": "USD"},
+            },
+        },
+    )
+    after, run = rollforward(world, AVM_US, "FY2026-P03")
+    assert after["NEW_CONTRACTS"] == 0
+    assert after["VC_ESTIMATE_CHANGES"] == Decimal("150.00")
+    assert after["OPENING"] == before["OPENING"]
+    assert after["CLOSING"] == before["CLOSING"]
+    assert after["REVENUE"] == before["REVENUE"] - Decimal("150.00")
+    assert after["UNEXPLAINED"] == 0
+    assert ties(run) == BALANCED
