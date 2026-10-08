@@ -38,8 +38,9 @@ Accountant and Revenue Reviewer, so each may calculate, submit and try to approv
 
 Stand-ins, the ones every lock world uses (``support.worlds.period_locked``): the two required
 reconciliations are rows reviewed through the SM-09 transitions and the period's close run is a
-``SUCCEEDED`` row. Neither is under test; a refusal is read for the three gates of the chain
-only.
+``SUCCEEDED`` row. Neither is under test. Backdated progress follows the independently reviewed
+reopen judgement and raises an out-of-order finding. The reopened cases assert that finding blocks
+the lock and obtain its independent waiver through the API before testing successful relock.
 """
 
 from __future__ import annotations
@@ -286,6 +287,51 @@ def _run(world: ReportWorld, run_id: str) -> dict[str, Any]:
     return dict(shown.json())
 
 
+def _review_late_progress(world: ReportWorld, clock: FrozenClock, *, count: int) -> ReportWorld:
+    """Backdated progress follows the reviewed reopen judgement: waive its actual finding."""
+    refused = _lock_request(world, FEBRUARY_2026)
+    assert refused.status_code == 409, refused.text
+    assert any(item["rule_id"] == gates.EXCEPTIONS_CLEARED for item in refused.json()["errors"]), (
+        refused.text
+    )
+    state = period_shown(world, AVM_US, FEBRUARY_2026)
+    listed = get(
+        world.app,
+        "/api/v1/exceptions",
+        world.maya,
+        {"blocking": state["id"], "limit": 100},
+    )
+    assert listed.status_code == 200, listed.text
+    items = listed.json()["items"]
+    assert len(items) == count and listed.json()["next_cursor"] is None, listed.text
+    for item in items:
+        assert (item["code"], item["status"], item["contract_id"]) == (
+            "LATE_EVENT",
+            "OPEN",
+            str(_contract_id(world)),
+        ), item
+        assert item["source_payload"]["detail"]["reason"] == "OUT_OF_ORDER", item
+        path = f"/api/v1/exceptions/{item['id']}"
+        requested = post(
+            world.app,
+            f"{path}/request-waiver",
+            world.maya,
+            {"comment": "Reviewed backdated progress in the reopened February period."},
+        )
+        assert requested.status_code == 200, requested.text
+        world = verified(world, clock, "priya")
+        request_id = requested.json()["approval_request_id"]
+        approved = approve(world.app, request_id, world.priya)
+        assert (approved.status_code, approved.json()["status"]) == (200, "APPROVED"), approved.text
+        shown = get(world.app, path, world.maya)
+        assert shown.status_code == 200, shown.text
+        assert (shown.json()["status"], shown.json()["waiver_approval_request_id"]) == (
+            "WAIVED",
+            request_id,
+        )
+    return world
+
+
 def _reconciliations_reviewed_again(
     world: ReportWorld, clock: FrozenClock, period_key: str
 ) -> None:
@@ -508,6 +554,7 @@ def test_ctl_018_a_post_reopen_line_nobody_approved_is_relocked_only_behind_an_a
     world, run_id = _locked_only_behind_an_approved_run(world, clock, FEBRUARY_2026, posted)
 
     assert (first["run_no"], _run(world, run_id)["run_no"]) == ("JR-000001", "JR-000002")
+    world = _review_late_progress(world, clock, count=1)
     _reconciliations_reviewed_again(world, clock, FEBRUARY_2026)
     requested = _lock_request(world, FEBRUARY_2026)
     assert requested.status_code == 200, requested.text
@@ -604,6 +651,7 @@ def test_gap_postings_that_net_to_zero_are_relocked_without_any_journal_approval
 
     # With that, no gate of the chain holds the lock any more.
     assert _chain_gates(_lock_request(world, FEBRUARY_2026)) == {}
+    world = _review_late_progress(world, clock, count=2)
     _reconciliations_reviewed_again(world, clock, FEBRUARY_2026)
     requested = _lock_request(world, FEBRUARY_2026)
     assert requested.status_code == 200, requested.text

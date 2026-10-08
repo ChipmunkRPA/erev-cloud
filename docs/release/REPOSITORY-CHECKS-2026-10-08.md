@@ -111,11 +111,44 @@ Local report `.run/reports/answer-keys/report.json` SHA-256:
 Local log `/private/tmp/erev-answer-keys-2026-10-08.log` SHA-256:
 `bf959b7ab6c0acd438be8c999ffd978ef1ac2c9b2fff05fb0e15b6be1a76ab29`.
 
+## Control gate and relock test correction
+
+`make controls-report` started on clean revision
+`68d960754ea25964340d30aa15498ecdf934fae1` in immutable context
+`.run/gates/ctx-controls-report-68d960754ea2-9993`. Executor session **36008**, process
+10033, remains active; log `/private/tmp/erev-controls-2026-10-08.log`. Collection independently
+confirmed 495 tagged tests. One relock test has failed so far; no final G7 result is claimed.
+Preserve and poll this same run. Its original source does not include the correction below.
+
+Reproduced that test in a separate disposable database `erev_rv_controlfix` on the same local
+PostgreSQL server, without resetting the gate's `erev_rv_cont` database. The initial attempt
+stopped at setup because the new database inherited SQL_ASCII; recreated this empty diagnostic
+database with UTF8 to match the primary test database. The actual regression then failed in
+18.32 seconds: relock correctly returned 409 / EXCEPTIONS_CLEARED, because the backdated
+progress following a later reviewed judgement had raised an OUT_OF_ORDER LATE_EVENT finding.
+
+The journal-chain test now asserts that refusal, checks the exact number and type of findings,
+requests their waiver as Maya, approves as Priya, and verifies the retained WAIVED status and
+approval reference through the API before expecting relock success. The separate zero-net
+journal gap witness performs the same review for both progress events. No application gate
+or exception is bypassed. This test repair does not implement the missing per-posting approval
+control or close the zero-net journal approval gap.
+
+All three journal-chain tests passed in **42.13 seconds**; Ruff lint/format and whitespace
+checks passed. The diagnostic process is terminal and its disposable database was removed.
+Only the full control gate uses the primary database; the property gate uses no database.
+
+Local baseline log `/private/tmp/erev-relock-control-baseline-utf8.log`, SHA-256
+`e99327255ccbd6836546bfc0db0e07928030d741bbe2f2209b17e675a118c1fe`.
+Local corrected log `/private/tmp/erev-relock-control-fixed.log`, SHA-256
+`76881d36aca40adcfc1cc8d481611bac9ab08276700b4265a024e25ab1577cfa`.
+
 ## Property gate still running
 
 `make properties` started on the clean starting revision, with the thorough Hypothesis
 profile, in immutable context `.run/gates/ctx-properties-37c4f0c48918-6323`.
-It collected 48 tests. The first five metamorphic tests have passed; the suite remains active.
+It collected 48 tests. All six metamorphic tests and the subsequent allocation, schedule, journal-balance,
+rollforward and RPO tests have passed; the suite remains active in determinism checks.
 Pytest PID 6358 was confirmed live with increasing CPU time; the executor session is
 52175. Console output: `/private/tmp/erev-properties-2026-10-08.log`.
 
