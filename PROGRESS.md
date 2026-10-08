@@ -2,6 +2,31 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Evidence pack integrity foundation — October 8, 2026 (RPS-16 in progress)
+
+- Continued from clean 8a8cdda. RPS-16 / CTL-041 remains unimplemented at the workflow level.
+  Started its required archive boundary: deterministic ZIP bytes, canonical payload manifest,
+  exact byte counts/report-run IDs, SHA-256 and verification against the separately stored
+  trusted manifest hash. The manifest cannot hash itself; clarified the existing detached
+  `manifest_sha256` contract in T-RPT-04 and the build acceptance wording.
+- `reports/evidence_archive.py` rejects changed/missing/unlisted payloads, altered manifests,
+  self-references, duplicates, file/directory and case collisions, unsafe paths, symlinks,
+  invalid metadata and over-limit payloads. No filesystem extraction or accounting derivation.
+  Export sanitization and authorization remain the caller's responsibilities.
+- **49 pure integrity tests passed in 0.11 seconds**; independent ZIP reads recompute payload
+  hashes, and tampering/reforging is refused against the trusted hash. Mypy, Ruff and whitespace
+  pass. Log: `/private/tmp/evidence-archive-units-final.log`. An earlier command named a
+  nonexistent output-test file and collected no tests; the recorded final command is the real run.
+- Continue the full RPS-16 workflow next: scoped request schemas/routes, job lifecycle, source
+  collection, immutable/as-of reads, encrypted file storage, audited download, automatic lock
+  enqueue and re-lock diff, and contract-sample/change/access packs. Use the archive boundary
+  in that implementation. Keep EVIDENCE_PACK pending and CTL-041 unclaimed until full tests pass.
+  Existing `locked.locked_dataset` verifies frozen bytes; CSV export must use the declared-kind
+  formula guard (`locked.export_csv` / snapshot column kinds), not serve raw frozen CSV.
+- This is a tested prerequisite, not an available evidence-pack product or readiness claim.
+  No deployment; publish reviewed work directly to main. Remaining accounting sign-off and
+  full-current verification requirements are unchanged.
+
 ## Journal fixture validation evidence — October 8, 2026
 
 - Continued from clean d09aefa. Reproduced the journal-audit fixture failure: **one failed,
@@ -48,48 +73,6 @@
   [dated evidence](docs/release/RECONCILIATION-ROLE-FRESHNESS-2026-10-08.md).
 - Preserve publication exclusions, PolyForm Noncommercial licensing and direct-main workflow.
   No deployment or readiness claim; independent accounting review and other release gaps remain.
-
-## Batched amendment and usage attribution — October 8, 2026
-
-- Continued from clean 9b199bb. A version-chain counterexample exposed a remaining B4-2
-  attribution defect: the report separately identified 150 of realized usage but left the
-  accompanying +200 or -200 fixed amendment unexplained because USAGE_REPORTED still
-  counted as a competing fixed cause. Baseline: **four failed, 21 passed in 0.51 seconds**.
-- Where the trace independently identifies realization, usage/royalty statements are now
-  removed from the fixed-allocation cause set. The known amendment reaches MODIFICATIONS;
-  usage stays in VC_ESTIMATE_CHANGES. Multiple remaining fixed cause classes and unsupported
-  fixed changes stay unexplained. Legacy traces keep their prior behavior; no fee is inferred.
-- **97 reader/version-chain units passed in 1.04 seconds**, including ten signed/ambiguous
-  combinations; **15 PostgreSQL RPO/disaggregation/API checks passed in 62.60 seconds**.
-  Mypy, Ruff and whitespace pass. The batched amendment itself is a version-chain witness,
-  not a new end-to-end modification-approval claim. Detailed logs are in the RPO release note.
-- The initial zero-net ordinary-usage hypothesis was not established through a valid API
-  event: rated usage amounts are nonnegative. No invalid negative-fee fixture was introduced.
-  That separate edge case remains unverified. Full fixed multi-cause decomposition and the
-  other B4-2, release-gate and independent accounting-review blockers remain open.
-  Publish verified changes directly to main; no PR, deployment or readiness claim.
-
-## Dated RPO allocation and schedule repair — October 8, 2026
-
-- Continued from fa1db7f and the retained failing first-computation regression. January
-  now keeps its 80,000 fixed allocation when first calculated with a March 150 usage fee.
-  Dated realization evidence adjusts the earlier remainder; engine component projections
-  keep future fees out of the fixed schedule in both RPO and the revenue waterfall.
-- Report cells link to the fixed-component amount actually displayed. Explain retains the
-  original line and component inputs, with dedicated formula/narrative identifiers. Explicit
-  no-fee states are distinct from absent legacy history; incomplete evidence, missing
-  projections and mixed legacy/detailed chains are refused rather than assumed or scaled.
-- **614 engine/kernel/reader/report-unit/explanation tests passed in 104.76 seconds**;
-  **19 PostgreSQL report/usage/explanation/access-scope tests passed in 89.48 seconds**.
-  The API witness includes a real January journal, waterfall tie-out and all RPO explanation
-  links. An earlier failure was a missing journal in the new test fixture; supplied the
-  journal through the normal API and retained the comparison. Ten-source mypy, Ruff and
-  whitespace pass. See the RPO release note for exact scope and local logs.
-- B4-2 remains partial: fixed multi-cause decomposition, adjustment/hold/Step-1 projections,
-  zero-net omitted schedule lines, legacy replay handling and the combined lifecycle,
-  exemption/calendar/royalty matrix still need work. Corrected stale C-4 cause-map status.
-  Trace changes require the pending 0.4.0 cut/replays; historical traces are immutable.
-  No full current backend/CI or production-readiness claim. No deployment; publish to main.
 
 ## Canonical property gate completed — October 8, 2026
 

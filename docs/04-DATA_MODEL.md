@@ -5204,7 +5204,9 @@ Keys: `PRIMARY KEY (tenant_id, id)`; `ux_evidence_pack__no (tenant_id, pack_no)`
 
 Checks (rev 1.2; SCREENS_B OQ-B-10): `ck_evidence_pack__close CHECK (kind <> 'CLOSE' OR (entity_id IS NOT NULL AND book_code IS NOT NULL AND period_id IS NOT NULL AND period_lock_id IS NOT NULL))`; `ck_evidence_pack__sample CHECK (kind <> 'CONTRACT_SAMPLE' OR (cardinality(contract_ids) >= 1 AND as_of_date IS NOT NULL))`; `ck_evidence_pack__change CHECK (kind <> 'CHANGE' OR (from_date IS NOT NULL AND to_date IS NOT NULL))`; `ck_evidence_pack__access CHECK (kind <> 'ACCESS' OR as_of_date IS NOT NULL)`.
 
-**Manifest layout (rev 1.2; SCREENS_B OQ-B-11, §6.2).** `manifest.files[].path` of a `CLOSE` pack starts with one of these prefixes. Tests assert the prefixes and the per-file SHA-256, never file order.
+**Manifest layout (rev 1.2; SCREENS_B OQ-B-11, §6.2).** Payload entries in `manifest.files[].path` of a `CLOSE` pack start with the prefixes below. The ZIP also contains `manifest.json`. Tests assert payload prefixes and per-file SHA-256, never file order.
+
+October 8, 2026 implementation clarification: `manifest.json` does not list or hash itself. Its final canonical bytes are hashed separately into T-RPT-04 `manifest_sha256`; verification requires that trusted stored hash as well as every payload hash. Listing its own final SHA-256 would be self-referential. Exactly the listed payloads and the single manifest are admitted to the ZIP; missing, additional, duplicate or unsafe entries are refused. This clarification implements the existing separate manifest hash field, not a claim that the full pack workflow is available.
 
 | Content | Path prefix | Source |
 |---|---|---|
@@ -5219,7 +5221,7 @@ Checks (rev 1.2; SCREENS_B OQ-B-10): `ck_evidence_pack__close CHECK (kind <> 'CL
 | User listing and SoD report as of period end | `access/` | `user_access_listing`, `sod_conflict_report` |
 | Audit chain digest | `audit/chain_digest.json` | T-PLT-23 |
 | Re-lock diff report (re-lock packs only) | `relock/` | `variance_between_closes` |
-| Manifest | `manifest.json` | this manifest |
+| Manifest (not a payload entry) | `manifest.json` | this manifest; its hash is T-RPT-04 `manifest_sha256` |
 
 ## 11. Import tables
 

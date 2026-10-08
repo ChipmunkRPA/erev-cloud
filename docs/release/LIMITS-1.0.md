@@ -461,6 +461,12 @@ loss test's trace through a bound contributor. Explain and Verify enforce tenant
 later calculations do not replace the source of an existing report's drill. Functional/reporting
 currency conversion and explicit locked-source reads remain outstanding for RPT-31.
 
+October 8 evidence-pack continuation: the deterministic archive/manifest builder and verifier are
+implemented and have 49 passing pure integrity tests. The manifest uses the separately stored
+T-RPT-04 hash; it does not hash itself. RPS-16 source collection, routes, jobs, audited download,
+automatic lock/re-lock generation and all complete-pack acceptance tests remain open. The
+EVIDENCE_PACK handler is still pending, CTL-041 is not claimed and report availability is unchanged.
+
 ## The fifteen standing names
 
 Fifteen tests of the backend suite do not pass in release 1.0. They are the same fifteen in every whole run on the day of the freeze, by name, and none passes when it is run again alone; the release candidate's suite shows these and no other (R-125 (n); R-126 (e)). None is skipped, loosened or marked: each fails at full strength until its cause is closed. Two gate targets fail by them, as the supervisor measured on `783f340ea`: `make answer-keys` by the six keys and `make test-pg` by the three capture witnesses. The causes below are read from the failure each test records and from the test: for names 3 to 5 as the suite takes them since index 308's part for the answer keys' runner is on the branch, for the others in the run of record on `5c3b5347c`. Names 1 to 5 are platform keys, which the suite takes on the in-memory platform. On the database platform a lane measured them on 2026-10-03 with that part: the two DISC keys pass; POS-CHK-012 compares clean in every block and is failed by its finding alone; the GT07 key is not run; POS-CHK-117 has four mismatches.

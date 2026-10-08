@@ -2303,3 +2303,45 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
 - Reconfirmed the owner's direct-to-main workflow: no open GitHub PRs and only remote
   main. Future verified changes go directly to main unless protection requires a PR;
   merge required PRs after checks and remove merged branches. No deployment.
+
+## Batched amendment and usage attribution — October 8, 2026
+
+- Continued from clean 9b199bb. A version-chain counterexample exposed a remaining B4-2
+  attribution defect: the report separately identified 150 of realized usage but left the
+  accompanying +200 or -200 fixed amendment unexplained because USAGE_REPORTED still
+  counted as a competing fixed cause. Baseline: **four failed, 21 passed in 0.51 seconds**.
+- Where the trace independently identifies realization, usage/royalty statements are now
+  removed from the fixed-allocation cause set. The known amendment reaches MODIFICATIONS;
+  usage stays in VC_ESTIMATE_CHANGES. Multiple remaining fixed cause classes and unsupported
+  fixed changes stay unexplained. Legacy traces keep their prior behavior; no fee is inferred.
+- **97 reader/version-chain units passed in 1.04 seconds**, including ten signed/ambiguous
+  combinations; **15 PostgreSQL RPO/disaggregation/API checks passed in 62.60 seconds**.
+  Mypy, Ruff and whitespace pass. The batched amendment itself is a version-chain witness,
+  not a new end-to-end modification-approval claim. Detailed logs are in the RPO release note.
+- The initial zero-net ordinary-usage hypothesis was not established through a valid API
+  event: rated usage amounts are nonnegative. No invalid negative-fee fixture was introduced.
+  That separate edge case remains unverified. Full fixed multi-cause decomposition and the
+  other B4-2, release-gate and independent accounting-review blockers remain open.
+  Publish verified changes directly to main; no PR, deployment or readiness claim.
+
+## Dated RPO allocation and schedule repair — October 8, 2026
+
+- Continued from fa1db7f and the retained failing first-computation regression. January
+  now keeps its 80,000 fixed allocation when first calculated with a March 150 usage fee.
+  Dated realization evidence adjusts the earlier remainder; engine component projections
+  keep future fees out of the fixed schedule in both RPO and the revenue waterfall.
+- Report cells link to the fixed-component amount actually displayed. Explain retains the
+  original line and component inputs, with dedicated formula/narrative identifiers. Explicit
+  no-fee states are distinct from absent legacy history; incomplete evidence, missing
+  projections and mixed legacy/detailed chains are refused rather than assumed or scaled.
+- **614 engine/kernel/reader/report-unit/explanation tests passed in 104.76 seconds**;
+  **19 PostgreSQL report/usage/explanation/access-scope tests passed in 89.48 seconds**.
+  The API witness includes a real January journal, waterfall tie-out and all RPO explanation
+  links. An earlier failure was a missing journal in the new test fixture; supplied the
+  journal through the normal API and retained the comparison. Ten-source mypy, Ruff and
+  whitespace pass. See the RPO release note for exact scope and local logs.
+- B4-2 remains partial: fixed multi-cause decomposition, adjustment/hold/Step-1 projections,
+  zero-net omitted schedule lines, legacy replay handling and the combined lifecycle,
+  exemption/calendar/royalty matrix still need work. Corrected stale C-4 cause-map status.
+  Trace changes require the pending 0.4.0 cut/replays; historical traces are immutable.
+  No full current backend/CI or production-readiness claim. No deployment; publish to main.
