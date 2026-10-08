@@ -541,7 +541,9 @@ def waterfall_obligations(world: ReportWorld) -> list[tuple[str, str]]:
 
 
 def layer(name: str, balance: str) -> tuple[str, str]:
-    return f"CONTRACT_LIABILITY:{name}", balance
+    # These fixtures each bill in EV-000003. The monitor reads the persisted originating
+    # layer, not a synthetic contract-level net balance (T-CON-18 / POL-161).
+    return f"CONTRACT_LIABILITY:{name}/EV-000003", balance
 
 
 def deferred(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -660,8 +662,11 @@ def test_the_schedule_lines_and_the_monitors_read_a_combined_member_once(
         ("REVENUE", "3202.55"),
     ]
     assert september_lines(combined, SECOND) == [("REVENUE", "3205.48")]
+    # Group FIFO consumes 3,202.55 + 3,205.48 from the first invoice's 36,000;
+    # the second invoice's 48,000 is untouched. Together the open layers equal
+    # 84,000 billed - 6,408.03 recognized = 77,591.97, without former-group layers.
     layers, recognitions = monitor_inputs(combined)
-    assert layers == [layer(K02, "30246.58"), layer(K09, "32797.45"), layer(SECOND, "44794.52")]
+    assert layers == [layer(K02, "30246.58"), layer(K09, "29591.97"), layer(SECOND, "48000.00")]
     assert recognitions == [(K02, "9863.01"), (K09, "3202.55"), (SECOND, "3205.48")]
 
 
@@ -722,7 +727,7 @@ def test_a_member_is_read_from_its_own_group_until_the_combined_group_is_compute
     assert september_lines(world, K09) == [("COST_AMORTIZATION", "177.37"), ("REVENUE", "3202.55")]
     assert september_lines(world, SECOND) == [("REVENUE", "3205.48")]
     layers, recognitions = monitor_inputs(world)
-    assert layers == [layer(K02, "30246.58"), layer(K09, "32797.45"), layer(SECOND, "44794.52")]
+    assert layers == [layer(K02, "30246.58"), layer(K09, "29591.97"), layer(SECOND, "48000.00")]
     assert recognitions == [(K02, "9863.01"), (K09, "3202.55"), (SECOND, "3205.48")]
     assert versions_stated(world) == {K02: 1, K09: 2, SECOND: 2}
     assert history_keys(world) == [
@@ -812,7 +817,7 @@ def test_a_contract_that_leaves_is_read_once_while_the_groups_await_their_comput
         [("REVENUE", "3205.48")],
     )
     layers, _ = monitor_inputs(world)
-    assert layers == [layer(K02, "30246.58"), layer(K09, "32797.45"), layer(SECOND, "44794.52")]
+    assert layers == [layer(K02, "30246.58"), layer(K09, "29591.97"), layer(SECOND, "48000.00")]
 
     # one group is computed; the combined group's version before the leave still carries the
     # rows of both orders, and each is read from one version only
@@ -829,8 +834,11 @@ def test_a_contract_that_leaves_is_read_once_while_the_groups_await_their_comput
     layers, recognitions = monitor_inputs(world)
     assert layers == [
         layer(K02, "30246.58"),
-        layer(K09, halfway.first),
-        layer(SECOND, halfway.leaver),
+        # Still-combined versions retain group FIFO: 36,000 - 3,202.55 - 3,205.48
+        # in the first billing layer, with the second billing layer's 48,000 untouched.
+        # Only the newly computed member returns to its standalone layer balance.
+        layer(K09, "29591.97" if leaver_first else "33043.80"),
+        layer(SECOND, "44054.79" if leaver_first else "48000.00"),
     ]
     assert recognitions == [
         (K02, "9863.01"),

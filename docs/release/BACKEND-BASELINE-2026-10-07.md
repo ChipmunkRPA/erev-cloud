@@ -70,3 +70,26 @@ none is dismissed on that basis without evidence. No deployment or accounting si
 - `backend/tests/unit/test_snapshot_export.py::test_monetary_state_is_the_stored_category_m_without_history`
 - `backend/tests/unit/test_ssrf_guard.py::test_sar_15_private_relay_opt_in_admits_loopback_and_private_use[::ffff:10.0.0.1]`
 - `backend/tests/unit/test_transition_pair_guard_revision.py::test_0130_re_renders_the_checklist_item_pairs`
+
+## Current-main triage — October 7, 2026
+
+The combined-group monitor case reproduces on main `2ca9791` (one failed in
+17.02 seconds, `/private/tmp/combined-layer-current.log`). Its layer expectations
+precede the individual-layer monitor changes in `5d48cb0` and `5b45532`.
+The current reader aggregates persisted T-CON-18 movements by originating layer,
+with consumption subtracted from that layer; stage 12 pools liabilities within the
+combination group/entity/book and applies the configured FIFO consumption policy.
+
+These fixture invoices are each event EV-000003. For the combined orders, September
+revenue is 3,202.55 + 3,205.48 = 6,408.03. FIFO consumes this from the first invoice's
+36,000 layer, leaving 29,591.97, while the second layer retains 48,000. Their total,
+77,591.97, still equals 84,000 billed less 6,408.03 recognized. Contract-level report
+balances remain 32,797.45 and 44,794.52; those separate assertions are retained.
+
+Updated monitor expectations name the actual originating events and check standalone,
+combined, deferred, refused, and partially recomputed membership states. No product
+or financial calculation code changes. Full module verification: **17 passed in
+89.20 seconds**, `/private/tmp/combined-layer-current-final.log`. Ruff and whitespace
+checks pass. The seven combined-group failure entries above are resolved by these
+expectation corrections; the other 44 baseline failures still require disposition.
+This scoped result does not replace a full current-main baseline or accounting sign-off.
