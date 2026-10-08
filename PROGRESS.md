@@ -2,6 +2,36 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Zero-posting late-event register — October 7, 2026
+
+- Continued from 3705c7c. The previous turn confirmed no open PRs and main as the sole
+  remote branch; it made no implementation change. Implemented REG-LATE-NOLINE-1 using
+  stored ENGINE LATE_EVENT findings, joined to actual event UUIDs through their dedupe keys.
+  New fallback findings pin the primary book. Legacy findings retain the stated primary-book
+  fallback; secondary books require their own stored evidence.
+- Findings are filtered by entity, book, calendar/period and both finding/event timestamps.
+  Closed/resolved status does not erase inclusion evidence. Existing single/cumulative ledger
+  attributions suppress additional event rows for the same origin/posting pair. Zero rows do
+  not invent ledger lines or effects. Event amount is the explicit payload Money value for a
+  single event; it is null for multi-event sets, triggers or events with no explicit amount.
+  Column labels explicitly identify revenue/balance amounts posted out of period. Catalogue
+  and source-binding declarations name the additional inputs.
+- K07 now drives the actual queued import computation. Before that worker, no row is shown;
+  after it, the EUR 100,000 invoice is shown with zero effects/line count, uploader and import
+  approval. Checks include timestamps immediately before/at finding creation, other periods,
+  origin filters and another book. Existing cumulative-attribution and frozen-register tests
+  retain their original counts and monetary expectations. CSV keeps event amounts separate.
+- Final register/export/provenance/snapshot/source-binding run: **110 passed in 71.39 seconds**,
+  /private/tmp/late-register-final.log. Intermediate runs identified missing ReportParams in
+  the new test and updated CSV header expectations; both are corrected. Source Mypy and Ruff
+  pass. Import-cycle/layer/report-reader architecture checks: **49 passed in 8.86 seconds**,
+  /private/tmp/late-register-architecture.log. All runs terminal; no complete backend pass claimed.
+- LIMITS B4-7/B3-7 and standing K07 failure are updated. Prior-date balance classification and
+  broader secondary-book finding coverage remain limited. One original baseline failure
+  remains: the absent AI lifecycle feature. Monetary import reconciliation, other documented
+  gaps, full current verification and independent accounting sign-off remain outstanding.
+  No deployment. Publication exclusions and PolyForm Noncommercial licensing are unchanged.
+
 ## Architecture follow-up — October 7, 2026
 
 - Continued from 906a83e. Full command-route audit plus architecture run: **5 failed,
@@ -115,42 +145,6 @@ not authorize deployment, provisioning or changes to a live database.
   local evidence paths. No reset/restart occurred. This older run does not verify current main.
 - Next: compare failures with current code, rerun scoped cases, and classify from evidence.
   Monetary import reconciliation and independent accounting sign-off remain outstanding.
-
-## Constraint review basis — October 7, 2026
-
-- Continued from main `72aaa2b`. Reproduced both B1-5 paths: a changed version accepted an
-  earlier version's reviewed constraint, and a draft accepted figures edited after review.
-  The two new API regressions failed against the prior implementation with HTTP 200 submissions.
-- Constraint judgement content now includes the specific estimate version and financial inputs.
-  Its existing submitted hash seals that basis; the submission audit retains the figures.
-  Estimate submission and approval verify the binding. Editing figures during a pending review
-  makes that review stale. No-change attestations retain their existing path; no posted history
-  is rewritten. Older unbound pending requests need a fresh review and resubmission.
-- The drawer offers a replacement conclusion after the API refuses an outdated review, even
-  while the old record remains REVIEWED. API copy and the data-model contract describe the new
-  requirement. B1-5 is closed for estimate-version submission/approval; other limitations remain.
-- **55 distinct database workflow checks verified across scoped runs**: 26 estimate tests,
-  19 judgement tests, two amendment integration tests and eight judgement/estimate/loss report
-  tests. Five new CTL-049 cases cover both reuse paths, pending edits with version/contract
-  subjects, recorded basis figures, and refusal of an old-release pending request without
-  changing its history. Fresh independent reviews restore the ordinary approval path.
-- The K-03 report fixture previously reviewed the constraint before creating its target version.
-  It now creates the draft first, then reviews and links the record. All original accounting
-  expectations are retained. An intermediate rerun also caught a missing fixture import; the
-  final eight-report rerun passed. This is scoped evidence, not a green whole-backend gate.
-- Architecture verification found PR #27's missing declaration for the authorized, same-tenant
-  `product_reference_date` scope entry. Added its explicit reason and developer-guide contract;
-  all six scope checks passed. The broader rerun passed **274 architecture/unit checks** and
-  caught the changed error copy's stale PRD row; after synchronizing it, that check passed too
-  (**267 architecture plus eight focused unit checks verified across these runs**).
-- **61 frontend drawer/form tests passed**, including recovery from a refused reviewed record.
-  TypeScript, ESLint, Vite build (existing chunk-size warning), source Mypy, Ruff, whitespace and
-  design checks (500 files) pass. Control markers validate (434 tagged tests). Secret scan:
-  3,391 files, zero findings. Publication exclusions and noncommercial licensing are preserved.
-- The broader backend verification remains live in the detached `ed6ea75` checkout and its own
-  loopback database. It excludes specialist markers and does not cover these later changes.
-  Full-backend/specialist verification, other release gaps and independent accounting sign-off
-  remain open. No deployment or external accounting contact.
 
 ## Policy approvals serialized with period locks — October 7, 2026
 

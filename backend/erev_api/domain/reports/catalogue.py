@@ -969,7 +969,8 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
         "REGISTER",
         _ALL,
         "Contract events whose effect posted in a period other than the period of their effective "
-        "date, with origin and posting periods (REQ-CLS-006).",
+        "date, plus computed late events with zero postings. Event amounts are separate from "
+        "posted effects (REQ-CLS-006; REG-LATE-NOLINE-1).",
         (
             "entity_codes",
             "book",
@@ -980,6 +981,7 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "currency_view",
         ),
         sources=(
+            "exception_item",
             "subledger_line",
             "contract_event",
             "contract",
@@ -989,6 +991,7 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "lock_snapshot",
         ),
         joins=(
+            "ENGINE LATE_EVENT exception dedupe key binds contract_event.id",
             "subledger_line.contract_event_id = contract_event.id",
             "subledger_line.contract_id = contract.id",
             "subledger_line.period_id = period.id (posting period)",
@@ -998,6 +1001,7 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             _IMPORT_APPROVAL,
         ),
         filters=(
+            "stored LATE_EVENT period/book evidence; known_at excludes later findings",
             _SCOPE,
             _BOOK,
             "posting period_key from from_period_key to to_period_key",

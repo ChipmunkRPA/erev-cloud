@@ -368,3 +368,29 @@ that needed the newly declared site. Source Mypy, Ruff/format/whitespace pass. A
 processes terminal. These five findings are resolved; the two original baseline
 failures remain open. No complete backend verification, deployment or accounting
 sign-off claimed.
+
+### Zero-posting late-event register
+
+Continued from 3705c7c. Implemented REG-LATE-NOLINE-1 from persisted LATE_EVENT
+findings. A finding binds the actual event UUID, book and period evidence; both
+finding/event timestamps must be visible. Existing ledger event-set membership
+suppresses duplicate zero rows for that origin/posting pair. No fake ledger lines
+or effects are added. Explicit event Money amounts are a separate column, null
+when not present or when the attribution is a multi-event set or a trigger.
+New platform fallback findings pin their primary book; legacy fallback remains
+primary-book scoped. Earlier balance classification is not restated.
+
+K07 now runs the actual imported contract-compute child. Before calculation it
+has no row; afterward the EUR 100,000 invoice has zero posted effects and zero
+line count, with uploader/approval provenance. Tests check finding cutoffs,
+period/origin/book filters, native CSV amount output, existing cumulative
+attribution conservation and frozen-register behavior.
+
+Final report/export/provenance/snapshot/source-binding modules: **110 passed in
+71.39 seconds**, `/private/tmp/late-register-final.log`. Architecture import-cycle,
+layer and report-reader modules: **49 passed in 8.86 seconds**,
+`/private/tmp/late-register-architecture.log`. Source Mypy, Ruff/format and whitespace
+pass. Intermediate new-test setup and CSV-header assertions were corrected; final
+runs are terminal. This resolves the original K07 baseline failure. The remaining
+original failure is the genuinely absent AI lifecycle feature; no full current
+backend pass, deployment or independent accounting sign-off is claimed.

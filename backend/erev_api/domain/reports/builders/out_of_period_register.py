@@ -3,6 +3,12 @@
 E-87; 03 REQ-CLS-004, REQ-CLS-006, REQ-PLT-030; D-19; POL-180; D-98 candidates 85, 95, 96, 102;
 BUILD_SPEC RPS-5).
 
+REG-LATE-NOLINE-1 (R-123(g)(2)): stored LATE_EVENT findings also supply rows for
+computed late events absent from the selected ledger attributions. Their posted effects are
+zero and do not increase line_count. Event amount is the explicit payload Money amount for a
+single event, null for a trigger, a multi-event set or an event without such an amount.
+Historical reads require both the event and the finding by known_at.
+
 One row per attribution whose effect posted in a period other than the period of its effective
 date — the subledger lines carrying an ``origin_period_id`` that differs from their posting
 ``period_id``, each attributed exactly once and aggregated per (origin period, posting period,
@@ -89,7 +95,7 @@ from decimal import Decimal
 from typing import Any, Final
 from uuid import UUID
 
-from sqlalchemy import and_, select
+from sqlalchemy import Text, and_, cast, select
 
 from erev_api.db.tables import (
     approval_request,
@@ -97,11 +103,13 @@ from erev_api.db.tables import (
     contract_computation,
     contract_event,
     contract_version,
+    exception_item,
     period,
     subledger_line,
     subledger_line_event,
     subledger_posting,
 )
+from erev_api.domain.contracts import queries as contract_queries
 from erev_api.domain.platform import approval_queries
 from erev_api.domain.reports import tie_outs
 from erev_api.domain.reports.builders import ReportParams, event_provenance
@@ -150,8 +158,9 @@ COLUMNS: Final = (
     Column("reason_code", "Reason", "code"),
     Column("origin", "Origin", "code"),
     Column("currency", "Currency", "code"),
-    Column("revenue_effect", "Revenue effect", "money"),
-    Column("balance_effect", "Balance effect", "money"),
+    Column("event_amount", "Event amount", "money"),
+    Column("revenue_effect", "Revenue posted out of period", "money"),
+    Column("balance_effect", "Balance posted out of period", "money"),
     Column("approval_request_no", "Approval", "code"),
     # attributes (display labels; never key)
     Column("event_type_label", "Event", "text"),
@@ -182,6 +191,7 @@ EVENT_FIELDS: Final = (
     "origin",
     "approval_request_no",
     "recorded_by",
+    "payload",
 )
 ZERO: Final = Decimal(0)
 
@@ -432,6 +442,7 @@ def _row(
         "reason_code": "",
         "origin": _joined(event.get("origin") for event in events),
         "currency": str(line["txn_currency"]).strip(),
+        "event_amount": event_amount(events[0]) if len(events) == 1 else None,
         "revenue_effect": None,
         "balance_effect": None,
         "approval_request_no": _joined(event.get("approval_request_no") for event in events),
@@ -461,6 +472,7 @@ def _trigger_row(
         "reason_code": "",
         "origin": None,
         "currency": str(line["txn_currency"]).strip(),
+        "event_amount": None,
         "revenue_effect": None,
         "balance_effect": None,
         "approval_request_no": None,
@@ -595,6 +607,7 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                 origin.c.period_key.label("origin_period_key"),
                 period.c.period_key.label("posting_period_key"),
                 contract.c.external_id.label("contract_external_id"),
+                contract_event.c.payload,
                 contract_event.c.stream_version,
                 contract_event.c.event_type,
                 contract_event.c.effective_date,
@@ -678,11 +691,154 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                     record["cause_event_count"] = proofs.get(UUID(str(row["computation_id"])))
             records.append(record)
     found_rows = aggregate(records)
+    extra = late_rows(
+        uow, params, book_code, records, posting_ids, origin_ids, [entity.id for entity in found]
+    )
+    rows_out = tuple(sorted((*found_rows.rows, *extra), key=lambda row: row["row_key"]))
     return ReportData(
         columns=COLUMNS,
-        rows=found_rows.rows,
-        control_totals=control_totals(found_rows.rows, line_count=found_rows.line_count),
+        rows=rows_out,
+        control_totals=control_totals(rows_out, line_count=found_rows.line_count),
     )
+
+
+def event_amount(event: Mapping[str, Any]) -> dict[str, str] | None:
+    """An event's explicit Money amount; no inferred sum for a multi-event attribution."""
+    amount = (event.get("payload") or {}).get("amount")
+    if not isinstance(amount, Mapping) or "amount" not in amount or "currency" not in amount:
+        return None
+    return tie_outs.money(Decimal(str(amount["amount"])), str(amount["currency"]))
+
+
+def late_rows(
+    uow: UnitOfWork,
+    params: ReportParams,
+    book_code: str,
+    records: Sequence[Mapping[str, Any]],
+    posting_ids: Sequence[UUID],
+    origin_ids: Sequence[UUID],
+    entity_ids: Sequence[UUID],
+) -> tuple[dict[str, Any], ...]:
+    """R-123(g)(2): stored LATE_EVENT facts without a selected posting attribution.
+
+    Exception dedupe identities bind actual event UUIDs. Resolved findings still prove
+    inclusion; creation time, not mutable last_seen_at, bounds historical visibility.
+    Legacy platform findings have no book field and belong to the primary book only.
+    """
+    if not posting_ids:
+        return ()
+    session = uow.session
+    periods = {
+        (row.calendar_id, row.period_key)
+        for row in session.execute(
+            select(period.c.calendar_id, period.c.period_key).where(period.c.id.in_(posting_ids))
+        )
+    }
+    tenant = exception_item.c.tenant_id
+    statement = (
+        select(
+            exception_item.c.source_payload,
+            exception_item.c.entity_id,
+            exception_item.c.period_id,
+            period.c.calendar_id,
+            period.c.period_key.label("stored_origin_key"),
+            contract.c.external_id.label("contract_external_id"),
+            contract.c.transaction_currency.label("txn_currency"),
+            contract_event.c.stream_version,
+            contract_event.c.event_type,
+            contract_event.c.effective_date,
+            contract_event.c.recorded_at,
+            contract_event.c.origin,
+            contract_event.c.created_by,
+            contract_event.c.created_by_kind,
+            contract_event.c.import_upload_id,
+            contract_event.c.payload,
+            approval_request.c.request_no.label("approval_request_no"),
+        )
+        .select_from(
+            exception_item.join(
+                contract_event,
+                and_(
+                    contract_event.c.tenant_id == tenant,
+                    exception_item.c.dedupe_key
+                    == "ENGINE:LATE_EVENT:" + cast(contract_event.c.id, Text),
+                    exception_item.c.contract_id == contract_event.c.contract_id,
+                ),
+            )
+            .join(
+                contract,
+                and_(
+                    contract.c.tenant_id == tenant,
+                    contract.c.id == contract_event.c.contract_id,
+                    contract.c.contracting_entity_id == exception_item.c.entity_id,
+                ),
+            )
+            .join(
+                period,
+                and_(period.c.tenant_id == tenant, period.c.id == exception_item.c.period_id),
+            )
+            .outerjoin(
+                approval_request,
+                and_(
+                    approval_request.c.tenant_id == tenant,
+                    approval_request.c.id == contract_event.c.approval_request_id,
+                ),
+            )
+        )
+        .where(
+            exception_item.c.source == "ENGINE",
+            exception_item.c.code == "LATE_EVENT",
+            exception_item.c.entity_id.in_(list(entity_ids)),
+            exception_item.c.created_at <= params.known_at,
+            contract_event.c.recorded_at <= params.known_at,
+        )
+    )
+    if origin_ids:
+        statement = statement.where(exception_item.c.period_id.in_(origin_ids))
+    facts = [dict(row) for row in session.execute(statement).mappings()]
+    facts = event_provenance.resolved(facts, event_provenance.uploads(session, facts))
+    names = approval_queries.display_names(session, [row["created_by"] for row in facts])
+    represented = set()
+    for record in records:
+        attributed = attribution(record)
+        if attributed is not None:
+            for event in attributed.events:
+                represented.add(
+                    (
+                        record["origin_period_key"],
+                        record["posting_period_key"],
+                        event["contract_external_id"],
+                        event["stream_version"],
+                    )
+                )
+    primary = contract_queries.primary_book(session)
+    result: dict[str, dict[str, Any]] = {}
+    for fact in facts:
+        source = fact["source_payload"] or {}
+        if (source.get("book_code") or primary) != book_code:
+            continue
+        detail = source.get("detail") or source
+        origin_key = detail.get("origin_period_key")
+        posting_key = detail.get("posting_period_key")
+        if (
+            not isinstance(origin_key, str)
+            or not isinstance(posting_key, str)
+            or origin_key != fact["stored_origin_key"]
+            or (fact["calendar_id"], posting_key) not in periods
+            or origin_key == posting_key
+        ):
+            continue
+        identity = (origin_key, posting_key, fact["contract_external_id"], fact["stream_version"])
+        if identity in represented:
+            continue
+        fact["recorded_by"] = _actor(fact, names)
+        attributed = Attribution(EVENT_SET, events=(fact,), scope=SUBJECT)
+        row = _row(origin_key, posting_key, attributed.key, attributed, fact)
+        row["reason_code"] = "LATE_EVENT"
+        row["revenue_effect"] = tie_outs.money(ZERO, str(fact["txn_currency"]).strip())
+        row["balance_effect"] = tie_outs.money(ZERO, str(fact["txn_currency"]).strip())
+        result[row["row_key"]] = row
+    return tuple(result.values())
 
 
 def _cause_event_counts(
@@ -728,6 +884,7 @@ def _event_sets(session: Any, line_ids: Sequence[UUID]) -> dict[UUID, tuple[dict
             subledger_line_event.c.subledger_line_id.label("line_id"),
             subledger_line_event.c.ordinal,
             contract.c.external_id.label("contract_external_id"),
+            contract_event.c.payload,
             contract_event.c.stream_version,
             contract_event.c.event_type,
             contract_event.c.effective_date,

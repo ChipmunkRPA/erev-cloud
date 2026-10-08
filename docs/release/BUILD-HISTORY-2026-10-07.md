@@ -1459,3 +1459,39 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   The seven-case tooling rerun started here completed in the continuation below;
   session 71400 is terminal. Its results supersede this entry's pending status.
   Accounting sign-off and implementation gaps remain open. No deployment.
+
+## Constraint review basis — October 7, 2026
+
+- Continued from main `72aaa2b`. Reproduced both B1-5 paths: a changed version accepted an
+  earlier version's reviewed constraint, and a draft accepted figures edited after review.
+  The two new API regressions failed against the prior implementation with HTTP 200 submissions.
+- Constraint judgement content now includes the specific estimate version and financial inputs.
+  Its existing submitted hash seals that basis; the submission audit retains the figures.
+  Estimate submission and approval verify the binding. Editing figures during a pending review
+  makes that review stale. No-change attestations retain their existing path; no posted history
+  is rewritten. Older unbound pending requests need a fresh review and resubmission.
+- The drawer offers a replacement conclusion after the API refuses an outdated review, even
+  while the old record remains REVIEWED. API copy and the data-model contract describe the new
+  requirement. B1-5 is closed for estimate-version submission/approval; other limitations remain.
+- **55 distinct database workflow checks verified across scoped runs**: 26 estimate tests,
+  19 judgement tests, two amendment integration tests and eight judgement/estimate/loss report
+  tests. Five new CTL-049 cases cover both reuse paths, pending edits with version/contract
+  subjects, recorded basis figures, and refusal of an old-release pending request without
+  changing its history. Fresh independent reviews restore the ordinary approval path.
+- The K-03 report fixture previously reviewed the constraint before creating its target version.
+  It now creates the draft first, then reviews and links the record. All original accounting
+  expectations are retained. An intermediate rerun also caught a missing fixture import; the
+  final eight-report rerun passed. This is scoped evidence, not a green whole-backend gate.
+- Architecture verification found PR #27's missing declaration for the authorized, same-tenant
+  `product_reference_date` scope entry. Added its explicit reason and developer-guide contract;
+  all six scope checks passed. The broader rerun passed **274 architecture/unit checks** and
+  caught the changed error copy's stale PRD row; after synchronizing it, that check passed too
+  (**267 architecture plus eight focused unit checks verified across these runs**).
+- **61 frontend drawer/form tests passed**, including recovery from a refused reviewed record.
+  TypeScript, ESLint, Vite build (existing chunk-size warning), source Mypy, Ruff, whitespace and
+  design checks (500 files) pass. Control markers validate (434 tagged tests). Secret scan:
+  3,391 files, zero findings. Publication exclusions and noncommercial licensing are preserved.
+- The broader backend verification remains live in the detached `ed6ea75` checkout and its own
+  loopback database. It excludes specialist markers and does not cover these later changes.
+  Full-backend/specialist verification, other release gaps and independent accounting sign-off
+  remain open. No deployment or external accounting contact.

@@ -348,8 +348,12 @@ def test_r1_je_population_money_cells_serialize_natively_populated_and_empty() -
 
 def test_r1_out_of_period_register_money_cells_serialize_natively_populated_and_empty() -> None:
     lines = [
-        _line(),
-        _line(account_role="CONTRACT_LIABILITY", amount_txn=D("300.00")),
+        _line(payload={"amount": _usd("1000.00")}),
+        _line(
+            account_role="CONTRACT_LIABILITY",
+            amount_txn=D("300.00"),
+            payload={"amount": _usd("1000.00")},
+        ),
         _line(stream_version=5, txn_currency="EUR", amount_txn=D("-99.99")),
     ]
     data = _oop_data(lines)
@@ -368,9 +372,14 @@ def test_r1_out_of_period_register_money_cells_serialize_natively_populated_and_
     }
     table = _csv(data)
     header = table[0]
-    assert "Revenue effect" in header and "Revenue effect currency" in header
-    assert table[1][header.index("Revenue effect")] == "300.00"
-    assert table[2][header.index("Revenue effect currency")] == "EUR"
+    assert (
+        "Revenue posted out of period" in header
+        and "Revenue posted out of period currency" in header
+    )
+    assert table[1][header.index("Event amount (USD)")] == "1000.00"
+    assert table[2][header.index("Event amount (USD)")] == ""
+    assert table[1][header.index("Revenue posted out of period")] == "300.00"
+    assert table[2][header.index("Revenue posted out of period currency")] == "EUR"
     empty = _oop_data([])
     assert _json(empty, "out_of_period_register")["rows"] == []
     assert len(_csv(empty)) == 1

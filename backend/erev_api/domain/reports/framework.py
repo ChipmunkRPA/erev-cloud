@@ -456,7 +456,7 @@ _LEGACY_JE_OPEN: Final = (
 _OOP_OPEN: Final = (
     "subledger-line population and postings, ordered T-SL-12 event sets, computation / approval "
     "references and whole-group per-book cause proof (missing evidence distinct from a proved "
-    "zero) read live; frps3c"
+    "zero), and stored LATE_EVENT findings with event amounts read live; frps3c"
 )
 _JE_POPULATION_OPEN: Final = (
     "journal population: the independent total side and the history side read live; frps3c"

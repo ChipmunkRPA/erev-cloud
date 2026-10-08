@@ -9,7 +9,7 @@ are their owners' witnesses and are not written here.
 
 from __future__ import annotations
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Any, Final
 from uuid import UUID
@@ -18,7 +18,14 @@ import pytest
 from erev_api.auth.keyring import KeyRing
 from erev_api.clock import FrozenClock
 from erev_api.config import Settings
-from erev_api.db.tables import contract, contract_version, modification, obligation_version
+from erev_api.db.tables import (
+    contract,
+    contract_version,
+    exception_item,
+    job,
+    modification,
+    obligation_version,
+)
 from erev_api.domain.contracts import queries
 from erev_api.domain.reports.builders import ReportParams
 from erev_api.domain.reports.builders import modification_register as register
@@ -701,22 +708,29 @@ def test_out_of_period_register_k07(
     one row with origin period Aug 2026, posting period Sep 2026, revenue effect 0.00, the user
     and the approval.
 
-    BLOCKED at full strength (lane F-RPS-REG, 2026-09-30; reported to the supervisor): the
-    register holds no row. (1) Avenmoor keeps ``billing.posting`` ``ERP`` (PRD §2.5; POL-004), so
-    an invoice posts no subledger line, and the register lists the lines that carry an origin
-    period (ENGINE_SPEC_B S15-R-18b): the late event's own fact (ENGINE_SPEC S08-R-11; the
-    ``LATE_EVENT`` finding) has no row, and the JET-06 reclass that would carry its balance effect
-    is posted only by the close run (CLO-19, CLO-20). (2) The commit of an import computes nothing
-    (05 IPL-11 is not built), so even the ``LATE_EVENT`` item waits for the next command on the
-    contract. (3) An imported event is appended by the system on the uploader's behalf and carries
-    no approval of its own (04 §3.3 ``BILLING_RECORDED``: none), so neither the user nor the
-    import's approval is on the event the register reads."""
+    The import child worker persists the LATE_EVENT finding before the report reads it.
+    ERP billing produces no ledger line; the event amount remains separate from posted effects.
+    """
     from support import worlds
     from support.worlds import AUGUST_2026, AVM_DE, K07, SEPTEMBER_2026
 
     world = worlds.k07_fenwright(app, keyring, clock, files)
     report = world.report
     assert world.late_invoice is not None
+    (child,) = report.place.rows(
+        select(job).where(
+            job.c.kind == "CONTRACT_COMPUTE",
+            job.c.params["import_upload_id"].astext == world.late_invoice["id"],
+        )
+    )
+    parameters = {
+        "entity_codes": [AVM_DE],
+        "from_period_key": SEPTEMBER_2026,
+        "to_period_key": SEPTEMBER_2026,
+    }
+    _, before = worlds.report_run(report, "out_of_period_register", parameters)
+    assert before == []  # An imported fact alone does not prove calculation inclusion.
+    assert worlds.run_now(report, child["id"])["state"] == "SUCCEEDED"
     run, rows = worlds.report_run(
         report,
         "out_of_period_register",
@@ -734,6 +748,9 @@ def test_out_of_period_register_k07(
         "BILLING_RECORDED",
         "2026-08-31",
     )
+    assert row["event_amount"] == {"amount": "100000.00", "currency": "EUR"}
+    assert row["balance_effect"] == {"amount": "0.00", "currency": "EUR"}
+    assert run["control_totals"]["line_count"] == 0
     assert row["revenue_effect"] == {"amount": "0.00", "currency": "EUR"}
     # the user who entered the invoice and the approval that released it (PRD J-04.2, J-04.3)
     assert (row["recorded_by"]["kind"], row["recorded_by"]["id"]) == (
@@ -743,6 +760,33 @@ def test_out_of_period_register_k07(
     assert row["approval_request_no"] == world.late_invoice["approval_request_no"]
     assert run["control_totals"]["row_count"] == 1
     assert run["control_totals"]["revenue_effect_total"] == {"EUR": "0.00"}
+
+    from erev_api.domain.reports.builders import out_of_period_register as oop
+
+    (finding,) = report.place.rows(
+        select(exception_item).where(
+            exception_item.c.code == "LATE_EVENT",
+        )
+    )
+
+    def built(*, cutoff: datetime | None = None, **filters: Any) -> Any:
+        with report.place.uow() as uow:
+            return oop.build(
+                uow,
+                ReportParams(
+                    report_code="out_of_period_register",
+                    report_version=1,
+                    parameters={**parameters, **filters},
+                    entity_ids=(finding["entity_id"],),
+                    known_at=cutoff or clock.now(),
+                ),
+            )
+
+    assert built(cutoff=finding["created_at"] - timedelta(microseconds=1)).rows == ()
+    assert len(built(cutoff=finding["created_at"]).rows) == 1
+    assert built(origin_period_key=SEPTEMBER_2026).rows == ()
+    assert built(book="IFRS15").rows == ()  # A primary-book finding is not another book's evidence.
+    assert built(from_period_key=AUGUST_2026, to_period_key=AUGUST_2026).rows == ()
 
 
 @pytest.mark.slow

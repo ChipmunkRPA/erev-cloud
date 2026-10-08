@@ -578,6 +578,7 @@ def _raise_late_events(
             entity_id=entity_id,
             period_id=origin.id,
             source_payload={
+                "book_code": book_code.value,
                 "event_key": event.event_key,
                 "origin_period_key": origin.period_key,
                 "posting_period_key": posting.period_key,
