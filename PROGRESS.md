@@ -2,6 +2,31 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Evidence-pack source selection — October 8, 2026 (RPS-16 continued)
+
+- Continued from clean db1e96f. Added `reports/evidence_selection.py`: resolves complete
+  contract samples in submitted order, captures tenant/entity/contract identities and the
+  request cutoff, and binds CLOSE to the exact lock/entity/book/period and stored freeze cutoff.
+  REOPEN and PERMANENT_LOCK records are refused because they freeze no datasets.
+- Selection intersects `report.run` and `audit.read` scopes with transaction RLS. Missing
+  permission/scope grants do not become wildcards; SYSTEM has no implicit generation access.
+  A missing or hidden sample member refuses the whole sample without naming hidden records.
+  A hidden lock is refused before describing its kind or mismatched selectors. CHANGE/ACCESS
+  bind the visible entity population for their future collectors.
+- **160 tests passed in 17.52 seconds**: nine PostgreSQL/RLS selection cases, 102 request-schema
+  tests and 49 archive tests. Same contract key in two tenants resolves only the caller's row;
+  role-scope union does not widen report/audit access. Test rows are seeded; no real close or
+  full pack is claimed. Log: `/private/tmp/evidence-selection-final.log`. Two-source mypy,
+  Ruff and whitespace pass. Initial DB run had nine fixture errors from a missing REOPEN
+  reason; corrected the fixture, then nine DB tests passed in 17.38 seconds before the
+  stronger cross-tenant case and final combined run. All processes are terminal.
+- Next integrate selection with audited command guards, persisted scope/cutoff, complete
+  source collection, jobs and files, download reauthorization/audit, automatic lock/re-lock
+  packs and the specified end-to-end acceptance. Selection alone does not authorize every
+  payload or establish as-of content completeness. EVIDENCE_PACK remains pending, CTL-041
+  open, report availability unchanged. Full-current gates and independent accounting sign-off
+  remain outstanding. Archived the fixture/freshness notes verbatim to the build history.
+
 ## Evidence-pack request contract — October 8, 2026 (RPS-16 continued)
 
 - Continued from clean 4860217. Verified zero open PRs and only remote `main`.
@@ -46,53 +71,6 @@
 - This is a tested prerequisite, not an available evidence-pack product or readiness claim.
   No deployment; publish reviewed work directly to main. Remaining accounting sign-off and
   full-current verification requirements are unchanged.
-
-## Journal fixture validation evidence — October 8, 2026
-
-- Continued from clean d09aefa. Reproduced the journal-audit fixture failure: **one failed,
-  two passed in 0.64 seconds**. The real producer includes `validation_execution_id`;
-  the fixture's audit omitted it. No production expectation was removed or skipped.
-- The fixture now validates its stored, unaggregated journal lines with the production
-  account/entity/dimension/currency/FX validator, writes CTL-020 evidence and links its
-  audit to that actual ID. Evidence explicitly identifies the seeded journal-line population.
-  The acknowledged-run helper creates, validates and audits in one transaction; migrated
-  its twelve callers out of the old split transaction arrangement.
-- Two initial database witnesses pass: a valid fixture has correctly scoped linked evidence;
-  an inactive account emits neither success evidence nor a calculation audit. Added an
-  atomic rollback witness for invalid newly created fixture rows. All **421 close-unit tests
-  passed in 1.42 seconds**. Broader lock/reopen/waiver/file/audit validation: **154 passed,
-  one failed in 542.45 seconds**; the CTL-038 command-route walk passed.
-- The remaining failure also reproduces on unchanged d09aefa (**one failed, 22.70 seconds**):
-  a reopened-period test tried to relock with an OPEN LATE_EVENT. Added the actual exception
-  waiver request/reviewer approval and retained both refusal and successful relock assertions.
-  Final close-run suite: **18 passed in 148.97 seconds**, including that corrected case.
-  Logs: `/private/tmp/recon-audit-fixture-{baseline,evidence,units,domain}.log` and
-  `/private/tmp/recon-audit-relock-{baseline,fixed}.log`. All processes are terminal.
-- Ruff lint/format and whitespace checks pass. No tests were skipped or expectations relaxed.
-  These are scoped results, not a full-current backend/CI or canonical control-gate rerun.
-- This repairs verification infrastructure, not a production calculation behavior. Preserve
-  historical gate dates, publication exclusions and noncommercial licensing. No deployment.
-
-## Exact reconciliation freshness — October 8, 2026
-
-- Continued from 364ba52. The new PostgreSQL/API witness publishes a different contract
-  liability account mapping after both January reconciliations are reviewed. Ledger chain
-  position and document counts do not move. The old gate incorrectly passes: baseline
-  **one failed in 11.38 seconds** (`/private/tmp/recon-role-freshness-baseline.log`).
-- Shared the existing attachment balance readers with the gate, without a runtime circular
-  import or a second accounting derivation. The gate, blocker count and reviewed KPI compare
-  all three role amounts, account membership and not-stated reasons/contracts against signed
-  totals. Decimal precision is retained; omitted zero rows preserve the comparison's semantics.
-- **72 PostgreSQL reconciliation/gate/lock checks passed in 227.16 seconds**. The extended
-  API witness also verifies the lock request is refused, then regeneration/preparation/review
-  restores the gate: **one passed in 12.65 seconds**. Ten new precision/basis units pass.
-- The final close-unit run has **420 passed, one failed in 1.74 seconds**: the unchanged
-  producer/fixture audit-key test finds `validation_execution_id` absent from the close-world
-  fixture. Repair that fixture/evidence gap next; no full unit-suite pass is claimed.
-  Three-source mypy, Ruff and whitespace pass. See
-  [dated evidence](docs/release/RECONCILIATION-ROLE-FRESHNESS-2026-10-08.md).
-- Preserve publication exclusions, PolyForm Noncommercial licensing and direct-main workflow.
-  No deployment or readiness claim; independent accounting review and other release gaps remain.
 
 ## Canonical property gate completed — October 8, 2026
 

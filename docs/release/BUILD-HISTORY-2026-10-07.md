@@ -2345,3 +2345,50 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   exemption/calendar/royalty matrix still need work. Corrected stale C-4 cause-map status.
   Trace changes require the pending 0.4.0 cut/replays; historical traces are immutable.
   No full current backend/CI or production-readiness claim. No deployment; publish to main.
+
+## Journal fixture validation evidence — October 8, 2026
+
+- Continued from clean d09aefa. Reproduced the journal-audit fixture failure: **one failed,
+  two passed in 0.64 seconds**. The real producer includes `validation_execution_id`;
+  the fixture's audit omitted it. No production expectation was removed or skipped.
+- The fixture now validates its stored, unaggregated journal lines with the production
+  account/entity/dimension/currency/FX validator, writes CTL-020 evidence and links its
+  audit to that actual ID. Evidence explicitly identifies the seeded journal-line population.
+  The acknowledged-run helper creates, validates and audits in one transaction; migrated
+  its twelve callers out of the old split transaction arrangement.
+- Two initial database witnesses pass: a valid fixture has correctly scoped linked evidence;
+  an inactive account emits neither success evidence nor a calculation audit. Added an
+  atomic rollback witness for invalid newly created fixture rows. All **421 close-unit tests
+  passed in 1.42 seconds**. Broader lock/reopen/waiver/file/audit validation: **154 passed,
+  one failed in 542.45 seconds**; the CTL-038 command-route walk passed.
+- The remaining failure also reproduces on unchanged d09aefa (**one failed, 22.70 seconds**):
+  a reopened-period test tried to relock with an OPEN LATE_EVENT. Added the actual exception
+  waiver request/reviewer approval and retained both refusal and successful relock assertions.
+  Final close-run suite: **18 passed in 148.97 seconds**, including that corrected case.
+  Logs: `/private/tmp/recon-audit-fixture-{baseline,evidence,units,domain}.log` and
+  `/private/tmp/recon-audit-relock-{baseline,fixed}.log`. All processes are terminal.
+- Ruff lint/format and whitespace checks pass. No tests were skipped or expectations relaxed.
+  These are scoped results, not a full-current backend/CI or canonical control-gate rerun.
+- This repairs verification infrastructure, not a production calculation behavior. Preserve
+  historical gate dates, publication exclusions and noncommercial licensing. No deployment.
+
+## Exact reconciliation freshness — October 8, 2026
+
+- Continued from 364ba52. The new PostgreSQL/API witness publishes a different contract
+  liability account mapping after both January reconciliations are reviewed. Ledger chain
+  position and document counts do not move. The old gate incorrectly passes: baseline
+  **one failed in 11.38 seconds** (`/private/tmp/recon-role-freshness-baseline.log`).
+- Shared the existing attachment balance readers with the gate, without a runtime circular
+  import or a second accounting derivation. The gate, blocker count and reviewed KPI compare
+  all three role amounts, account membership and not-stated reasons/contracts against signed
+  totals. Decimal precision is retained; omitted zero rows preserve the comparison's semantics.
+- **72 PostgreSQL reconciliation/gate/lock checks passed in 227.16 seconds**. The extended
+  API witness also verifies the lock request is refused, then regeneration/preparation/review
+  restores the gate: **one passed in 12.65 seconds**. Ten new precision/basis units pass.
+- The final close-unit run has **420 passed, one failed in 1.74 seconds**: the unchanged
+  producer/fixture audit-key test finds `validation_execution_id` absent from the close-world
+  fixture. Repair that fixture/evidence gap next; no full unit-suite pass is claimed.
+  Three-source mypy, Ruff and whitespace pass. See
+  [dated evidence](docs/release/RECONCILIATION-ROLE-FRESHNESS-2026-10-08.md).
+- Preserve publication exclusions, PolyForm Noncommercial licensing and direct-main workflow.
+  No deployment or readiness claim; independent accounting review and other release gaps remain.
