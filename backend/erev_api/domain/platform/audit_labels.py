@@ -279,6 +279,10 @@ NO_LABEL: Final = frozenset(
         "external_id_map",
         "file_attachment",
         "file_object",
+        # Computation AUD-FACT summaries: ids are retained in detail, object_id is null.
+        "fx_layer_movement",
+        "loss_provision_version",
+        "loss_provision_eac",
         "fx_rate",
         "job",
         "journal_batch",

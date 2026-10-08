@@ -2,6 +2,23 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Audit summary types and snapshot revalidation — October 7, 2026
+
+- Continued from d90781b. The audit log's closed object-type catalogue omitted
+  fx_layer_movement, loss_provision_version and loss_provision_eac. Computation writes these
+  through record_facts as aggregate summaries: null object_id, with row IDs or bounded
+  count/hash evidence in detail. Added the types to the explicit NO_LABEL set and documented
+  this convention. No financial amounts or audit events are changed.
+- Audit read unit/API tests and the two older failing sandbox replay cases: **21 passed in
+  26.44 seconds**, /private/tmp/audit-labels-and-replay.log. The replay cases already benefit
+  from dbb3e57's audit support additions and now have current-main evidence. Ruff/format and
+  whitespace checks pass; the run is terminal. Published directly to main, no deployment.
+- Three more original baseline failures resolved; 35 remain to be classified. Inspection also
+  confirms the audit route catalogue still describes policy override creation as wholly
+  refused, although two keys are supported. Its refusal fixture uses a still-unsupported key;
+  the successful creation path needs its own audit-walk coverage, not removal of refusal proof.
+  This remains open. Broader verification and independent accounting sign-off remain open.
+
 ## File-shred durability test isolation — October 7, 2026
 
 - Continued from 1abb52b. The older baseline's three shred failures counted unrelated tenants'
@@ -86,31 +103,6 @@
   No production claim, deployment or new PR. The independent older baseline was live at
   3h45m12s (94 percent) with failures on its separate database; preserve it until terminal.
 
-
-## Step 1 lifecycle verification complete — October 7, 2026
-
-- Previous goal turn published sandbox loss/FX comparison as dbb3e57. This continuation closes
-  B1-13's remaining listed lifecycle/snapshot coverage; implementation is already on main
-  in a40d848. The wider B1-2 remains open.
-- New public-API cases: enabling another book or independently applying a later assessment
-  makes the earlier request stale/VOIDED with no applied event ids or additional accounting
-  changes. Revoking a reviewer's role refuses a decision sent from the previously loaded page;
-  the request stays pending and another eligible independent reviewer can apply it.
-- Real export/load round trip retains the approved STEP1_EVENT request, identical readable
-  impact preview, evidence attached to the request and all three resulting events, and exact
-  decrypted attachment bytes. The loaded accounting computation verifies with zero mismatches.
-- Initial basis run: two passed; the revoked-reviewer case then found the replacement reviewer
-  lacked its required role. Corrected that fixture; authority recheck passed in 17.16 seconds.
-  Evidence round trip passed in 18.86 seconds. Final combined checks: **7 passed in 64.90
-  seconds**, including API-client, two-book and terminal-decision compatibility. Log:
-  `/private/tmp/step1-date-review-scope-evidence-final.log`. Ruff, formatting and whitespace
-  checks pass. All scoped runs are terminal and erev_rv_cont is free. This direct-main commit
-  publishes verification and documentation; no product code changed in this continuation.
-- Existing reopened-period coverage uses valid database state fixtures, not a fresh complete
-  certification/reopen workflow. Neither scoped tests nor B1-13 closure establish full-system
-  production readiness. Independent accounting sign-off and other release gaps remain open.
-  Older baseline PID 36126 was live at 3h20m33s, beyond 50% with failures, on its separate DB.
-  Preserve it. No deployment.
 
 
 ## Constraint review basis — October 7, 2026

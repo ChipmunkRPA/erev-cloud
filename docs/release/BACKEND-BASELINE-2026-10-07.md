@@ -138,3 +138,23 @@ in one database session: **12 passed in 82.01 seconds**,
 `/private/tmp/shred-cross-suite-verified.log`. Ruff/format/whitespace checks pass.
 Three original failures and the newly exposed sandbox count issue are resolved;
 **38 original baseline failures still await current-main disposition**.
+
+### Audit summaries and snapshot replay
+
+On `d90781b`, audit label coverage lacked the three new computation fact types:
+fx_layer_movement, loss_provision_version and loss_provision_eac. All are written
+through record_facts as aggregate summaries with null object_id, retaining their IDs
+or bounded count/hash evidence in detail. They now appear explicitly in NO_LABEL;
+the data-model documentation describes that convention. No financial calculation or
+audit-event contents changed.
+
+Audit-read unit tests, the complete audit API module and the two formerly failing
+sandbox replay cases: **21 passed in 26.44 seconds**,
+`/private/tmp/audit-labels-and-replay.log`. Those replay cases were already corrected
+by dbb3e57's addition of FX/loss facts to the snapshot audit-support catalogue; this run
+verifies them on current code. Three original failures resolved, leaving **35 original
+failures without current-main disposition**.
+
+The policy-override audit-catalogue failure remains open. Its database-walk fixture
+uses a still-unsupported key, so that refusal proof remains valid; the catalogue also
+needs to represent and exercise supported-key creation, which now writes an audit event.

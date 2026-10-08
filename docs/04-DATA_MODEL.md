@@ -7727,6 +7727,11 @@ The state of a step is the first that applies: `BLOCKED` when an open `BLOCKING`
 | `tenant_membership`, `app_user` | The person's `display_name` as it stands when the event is read (for an anonymised person the value 05 PRV-07 (a) wrote). For a membership it is the name the workspace is shown of the person — the email while the identity is withheld (T-PLT-02 "What a workspace is shown of a person", rev 1.315). |
 | `api_client`, `access_review_campaign` | `name` |
 
+Computation summaries for `fx_layer_movement`, `loss_provision_version` and
+`loss_provision_eac` are explicitly unlabelled AUD-FACT events. They retain the
+created row IDs (or the bounded count/hash summary) in `detail`, with null `object_id`
+and `object_label`, following the existing computation-fact audit convention.
+
 **API-S-EvidencePackCreate** (`POST /evidence-packs`; SCREENS_B OQ-B-10). Fields `kind` (E-66, R), `entity_code`, `book`, `period_key`, `period_lock_id`, `contract_external_ids` (array<string>), `from_date`, `to_date`, `as_of` (date). Required per kind: `CLOSE` needs `entity_code`, `book`, `period_key` and `period_lock_id`; `CONTRACT_SAMPLE` needs `contract_external_ids` (1 to 50) and `as_of`; `CHANGE` needs `from_date` and `to_date`; `ACCESS` needs `as_of`. A field not used by the kind returns 422 `validation-failed`. Response 202 API-S-Job (kind `EVIDENCE_PACK`) with header `X-Erev-Evidence-Pack-Id`; the pack follows the T-RPT-04 checks and manifest layout.
 
 **AI proposals and settings** (API-R-47, API-R-04; SCREENS_B OQ-B-14, OQ-B-18, OQ-B-26).

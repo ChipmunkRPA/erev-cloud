@@ -1243,3 +1243,28 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   sign-off remains outstanding. The older backend baseline PID 36126 was live at 3h41m12s on its
   separate database, with failures; preserve it until terminal. Dated sections moved verbatim to
   docs/release/BUILD-HISTORY-2026-10-07.md to keep this notebook below 20 KB.
+
+## Step 1 lifecycle verification complete — October 7, 2026
+
+- Previous goal turn published sandbox loss/FX comparison as dbb3e57. This continuation closes
+  B1-13's remaining listed lifecycle/snapshot coverage; implementation is already on main
+  in a40d848. The wider B1-2 remains open.
+- New public-API cases: enabling another book or independently applying a later assessment
+  makes the earlier request stale/VOIDED with no applied event ids or additional accounting
+  changes. Revoking a reviewer's role refuses a decision sent from the previously loaded page;
+  the request stays pending and another eligible independent reviewer can apply it.
+- Real export/load round trip retains the approved STEP1_EVENT request, identical readable
+  impact preview, evidence attached to the request and all three resulting events, and exact
+  decrypted attachment bytes. The loaded accounting computation verifies with zero mismatches.
+- Initial basis run: two passed; the revoked-reviewer case then found the replacement reviewer
+  lacked its required role. Corrected that fixture; authority recheck passed in 17.16 seconds.
+  Evidence round trip passed in 18.86 seconds. Final combined checks: **7 passed in 64.90
+  seconds**, including API-client, two-book and terminal-decision compatibility. Log:
+  `/private/tmp/step1-date-review-scope-evidence-final.log`. Ruff, formatting and whitespace
+  checks pass. All scoped runs are terminal and erev_rv_cont is free. This direct-main commit
+  publishes verification and documentation; no product code changed in this continuation.
+- Existing reopened-period coverage uses valid database state fixtures, not a fresh complete
+  certification/reopen workflow. Neither scoped tests nor B1-13 closure establish full-system
+  production readiness. Independent accounting sign-off and other release gaps remain open.
+  Older baseline PID 36126 was live at 3h20m33s, beyond 50% with failures, on its separate DB.
+  Preserve it. No deployment.
