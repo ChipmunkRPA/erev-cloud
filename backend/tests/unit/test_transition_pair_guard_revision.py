@@ -341,7 +341,7 @@ def test_0130_re_renders_the_checklist_item_pairs() -> None:
     # the number is the register's; the parent is not pinned here — the chain follows merge order
     # (supervisor rulings R-68 (e), R-117 (h))
     assert (revision.revision, revision.TABLE) == ("0130", "close_checklist_item")
-    assert revision.BODY == transition_trigger_sql("close_checklist_item")  # DG-ARC-07
+    assert revision.BODY == _load("0135_close_task_signoffs").PREVIOUS  # historical body
     previous = _load("0047_close_tables").CLOSE_CHECKLIST_ITEM_TRANSITION_BODY
     assert revision.PREVIOUS == previous  # verbatim (DG-MIG-04)
     changed = [
@@ -351,7 +351,7 @@ def test_0130_re_renders_the_checklist_item_pairs() -> None:
     ]
     [(old, new)] = changed
     assert new.replace(", 'WAIVED>FAILED', 'WAIVED>NOT_STARTED'", "") == old
-    assert TRANSITIONS["close_checklist_item"].pairs == {
+    assert TRANSITIONS["close_checklist_item"].pairs - {("PASSED", "NOT_STARTED")} == {
         ("NOT_STARTED", "IN_PROGRESS"),
         ("NOT_STARTED", "PASSED"),
         ("NOT_STARTED", "FAILED"),
@@ -369,3 +369,19 @@ def test_0130_re_renders_the_checklist_item_pairs() -> None:
         ("WAIVED", "NOT_STARTED"),
     }
     assert "$fn$" not in revision.BODY and "$fn$" not in revision.PREVIOUS
+
+
+def test_0135_adds_only_the_passed_task_reopen_pair() -> None:
+    """The current rendering adds reopen; downgrade restores the exact 0130 body."""
+    revision = _load("0135_close_task_signoffs")
+    assert revision.revision == "0135"
+    assert revision.BODY == transition_trigger_sql("close_checklist_item")
+    assert revision.PREVIOUS == _load(WAIVER_PAIRS).BODY
+    changed = [
+        (old, new)
+        for old, new in zip(revision.PREVIOUS.splitlines(), revision.BODY.splitlines(), strict=True)
+        if old != new
+    ]
+    [(old, new)] = changed
+    assert new.replace(", 'PASSED>NOT_STARTED'", "") == old
+    assert ("PASSED", "NOT_STARTED") in TRANSITIONS["close_checklist_item"].pairs

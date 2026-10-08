@@ -102,6 +102,8 @@ def test_every_downgrade_under_tests_pg_starts_from_a_fresh_head() -> None:
     assert late == [], f"no reset before the first downgrade: {late}"
     # The walks this rule holds today; a new one joins the list and takes the rule with it.
     assert walks == [
+        "test_db_invariants.py::"
+        "test_task_signature_cycles_preserve_other_uniqueness_and_refuse_lossy_downgrade",
         "test_migration_0067_downgrade_guard.py::"
         "test_0067_downgrade_refuses_by_name_over_a_populated_database_and_downgrades_compatible_data",
         "test_migration_0084_lock_cutoff.py::"
@@ -117,6 +119,7 @@ def test_every_downgrade_under_tests_pg_starts_from_a_fresh_head() -> None:
         "test_migration_0129.py::"
         "test_0129_adds_the_cutoff_over_stored_computations_and_its_descent_keeps_them",
         "test_migrations.py::test_upgrade_downgrade_upgrade",
+        "test_migrations.py::test_step1_report_filter_migration_round_trip",
         "test_registry_parameter.py::_downgrade_to_base_or_skip",
         "test_registry_parameter.py::test_old_seed_forward_upgrade_appends_a_correction",
         "test_transition_pair_guard.py::"

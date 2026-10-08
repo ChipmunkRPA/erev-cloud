@@ -131,7 +131,7 @@ from sqlalchemy import (
     update,
 )
 from sqlalchemy.orm import Session
-from support.db import TestDatabase
+from support.db import TestDatabase, fresh_head
 from support.factories import tenant_factory, tenant_id_of
 from support.rows import (
     JournalRows,
@@ -4649,6 +4649,7 @@ def test_db_15_webhook_endpoint_cannot_become_active_in_sandbox(
 def test_task_signature_cycles_preserve_other_uniqueness_and_refuse_lossy_downgrade(
     committed_db: TestDatabase, keyring: KeyRing
 ) -> None:
+    fresh_head()
     from importlib import import_module
 
     migration = import_module("erev_api.db.migrations.versions.0135_close_task_signoffs")

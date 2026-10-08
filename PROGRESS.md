@@ -2,6 +2,27 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Migration verification alignment — October 7, 2026
+
+- Continued from 9622f13. Scoped current-main run reproduced two migration-check failures
+  (2 failed, 42 passed in 1.56 seconds, /private/tmp/migration-pins-before.log). The task
+  signature downgrade test omitted fresh_head; revision 0130's historical transition body
+  was incorrectly compared with the current renderer, which includes 0135's reopen pair.
+- The downgrade case now starts with a data-free head before creating its own signature
+  history. Updated the static walk inventory for this case and the existing Step 1 report
+  filter round-trip (the latter already resets correctly). No guard exemption was added.
+  Revision 0130 is checked against 0135's literal previous body; the new 0135 check requires
+  today's renderer and exactly one added PASSED>NOT_STARTED pair. No migration was rewritten.
+- Final verification: **47 passed in 12.62 seconds**, /private/tmp/migration-pins-final.log.
+  Includes the real PostgreSQL lossy-downgrade refusal with signature retention and RLS
+  restoration, installed transition-function drift check, complete migration-entry/transition
+  unit modules and snapshot-export module. The snapshot baseline failure was already fixed
+  by dbb3e57 and now has fresh verification. An intermediate run found the missing Step 1
+  inventory entry; the final run includes that correction. Ruff/format/whitespace pass.
+- Three more original baseline failures resolved, leaving 14 without current-main disposition.
+  All runs terminal. This is scoped evidence, not a full migration walk or backend baseline.
+  Implementation gaps and independent accounting sign-off remain open. No deployment.
+
 ## Portable backup archives — October 7, 2026
 
 - Continued from f9f5683. Reproduced the restore baseline failure: macOS BSD tar adds
@@ -59,23 +80,6 @@
   One more original baseline failure resolved; 34 remain without current-main disposition.
 - REQ-PLT-019's pending AI lifecycle category remains open and is not waived. Wider baseline
   triage and accounting sign-off remain outstanding. No deployment or production claim.
-
-## Audit summary types and snapshot revalidation — October 7, 2026
-
-- Continued from d90781b. The audit log's closed object-type catalogue omitted
-  fx_layer_movement, loss_provision_version and loss_provision_eac. Computation writes these
-  through record_facts as aggregate summaries: null object_id, with row IDs or bounded
-  count/hash evidence in detail. Added the types to the explicit NO_LABEL set and documented
-  this convention. No financial amounts or audit events are changed.
-- Audit read unit/API tests and the two older failing sandbox replay cases: **21 passed in
-  26.44 seconds**, /private/tmp/audit-labels-and-replay.log. The replay cases already benefit
-  from dbb3e57's audit support additions and now have current-main evidence. Ruff/format and
-  whitespace checks pass; the run is terminal. Published directly to main, no deployment.
-- Three more original baseline failures resolved; 35 remain to be classified. Inspection also
-  confirms the audit route catalogue still describes policy override creation as wholly
-  refused, although two keys are supported. Its refusal fixture uses a still-unsupported key;
-  the successful creation path needs its own audit-walk coverage, not removal of refusal proof.
-  This remains open. Broader verification and independent accounting sign-off remain open.
 
 ## Older backend baseline completed — October 7, 2026
 

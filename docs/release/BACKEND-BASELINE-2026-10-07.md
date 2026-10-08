@@ -219,3 +219,28 @@ Ruff/format and whitespace checks pass. The 14 original script failures are reso
 These tests use real archive creation/inspection in scratch directories and stub
 pg_dump, verification and server identity; they are not evidence of a live recovery
 drill or production readiness. No deployment or cloud changes. All runs terminal.
+
+### Migration verification and snapshot export
+
+On 9622f13, the scoped migration-entry/transition/snapshot modules produced
+**2 failed, 42 passed in 1.56 seconds**, `/private/tmp/migration-pins-before.log`.
+The task-signature downgrade test lacked a fresh-head reset. It now resets before
+inserting its own histories, and the static walk inventory includes that test plus
+the already-resetting Step 1 report-filter round-trip. No guard exemption added.
+
+The historical 0130 body now compares with 0135's literal PREVIOUS. A new 0135
+check compares BODY with the current renderer and requires the only changed line
+to add PASSED>NOT_STARTED. Original 0130 additions and 0047 predecessor checks
+remain intact. No migration or production code changes.
+
+Final run: **47 passed in 12.62 seconds**, `/private/tmp/migration-pins-final.log`.
+Includes both complete migration unit modules, all snapshot-export unit cases,
+the real PostgreSQL task-signature downgrade refusal (retained rows and restored
+FORCE RLS), and installed transition SQL/trigger drift verification. Snapshot
+export's original failure was already fixed by dbb3e57 and is now reverified.
+An intermediate run found one missing static inventory entry, corrected before
+the final pass. Ruff/format/whitespace checks pass; all runs terminal.
+
+Three original baseline failures resolved; **14 remain without current-main
+disposition**. This is neither a full migration walk nor a full current-backend
+baseline. Independent accounting sign-off remains open; no deployment.

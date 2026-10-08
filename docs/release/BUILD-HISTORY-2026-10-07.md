@@ -1324,3 +1324,20 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   pass; all scoped runs are terminal. Published directly to main. Three baseline failures
   resolved plus the newly exposed sandbox count issue; 38 original failures still await
   disposition. No deployment or readiness claim; accounting sign-off remains outstanding.
+
+## Audit summary types and snapshot revalidation — October 7, 2026
+
+- Continued from d90781b. The audit log's closed object-type catalogue omitted
+  fx_layer_movement, loss_provision_version and loss_provision_eac. Computation writes these
+  through record_facts as aggregate summaries: null object_id, with row IDs or bounded
+  count/hash evidence in detail. Added the types to the explicit NO_LABEL set and documented
+  this convention. No financial amounts or audit events are changed.
+- Audit read unit/API tests and the two older failing sandbox replay cases: **21 passed in
+  26.44 seconds**, /private/tmp/audit-labels-and-replay.log. The replay cases already benefit
+  from dbb3e57's audit support additions and now have current-main evidence. Ruff/format and
+  whitespace checks pass; the run is terminal. Published directly to main, no deployment.
+- Three more original baseline failures resolved; 35 remain to be classified. Inspection also
+  confirms the audit route catalogue still describes policy override creation as wholly
+  refused, although two keys are supported. Its refusal fixture uses a still-unsupported key;
+  the successful creation path needs its own audit-walk coverage, not removal of refusal proof.
+  This remains open. Broader verification and independent accounting sign-off remain open.
