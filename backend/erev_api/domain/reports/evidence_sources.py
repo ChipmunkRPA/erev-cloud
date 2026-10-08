@@ -13,7 +13,15 @@ from datetime import date
 from typing import Annotated, Any, Literal, Self
 from uuid import UUID
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, ValidationError, model_validator
+from pydantic import (
+    AwareDatetime,
+    BaseModel,
+    ConfigDict,
+    Field,
+    TypeAdapter,
+    ValidationError,
+    model_validator,
+)
 from sqlalchemy import select
 
 from erev_api.auth.dependencies import require_for_entity
@@ -21,6 +29,7 @@ from erev_api.db.tables import evidence_pack, report_run
 from erev_api.domain.reports import evidence_audit, evidence_close, evidence_report_plan
 from erev_api.domain.reports.evidence_reports import PATHS, ReportSource
 from erev_api.domain.reports.evidence_selection import SOURCE_PERMISSIONS, resolve
+from erev_api.enums import JobKind
 from erev_api.problems import Problem
 from erev_api.schemas.evidence_packs import ClosePackCreateIn
 from erev_api.uow import UnitOfWork
@@ -44,10 +53,9 @@ class BoundReport(BaseModel):
         return ReportSource(**self.model_dump(exclude={"job_id"}))
 
 
-class CloseSources(BaseModel):
+class _CloseSources(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    format: Literal["erev.close-evidence.sources.v1"]
     tenant_id: UUID
     request: ClosePackCreateIn
     requested_at: AwareDatetime
@@ -57,7 +65,6 @@ class CloseSources(BaseModel):
     snapshot_manifest_sha256: Sha256
     frozen_report_run_ids: tuple[UUID, ...]
     supporting_reports: tuple[BoundReport, ...]
-    audit_verification_id: UUID
 
     @model_validator(mode="after")
     def complete_sources(self) -> Self:
@@ -100,17 +107,38 @@ class CloseSources(BaseModel):
         }
 
 
-def prepare_close(
-    uow: UnitOfWork, request: ClosePackCreateIn, *, verification_id: UUID
-) -> CloseSources:
-    """Queue sources once; caller must atomically persist the binding or roll everything back."""
+class CloseSources(_CloseSources):
+    """Original binding: its completed verification ID and serialization stay unchanged."""
+
+    format: Literal["erev.close-evidence.sources.v1"]
+    audit_verification_id: UUID
+
+
+class QueuedCloseSources(_CloseSources):
+    """A dedicated verification job; the exact result is resolved only after success."""
+
+    format: Literal["erev.close-evidence.sources.v2"]
+    audit_verification_job_id: UUID
+    pack_id: UUID
+
+    @model_validator(mode="after")
+    def distinct_audit_job(self) -> Self:
+        if self.audit_verification_job_id in {item.job_id for item in self.supporting_reports}:
+            raise ValueError("The audit verification must have its own job.")
+        return self
+
+
+type CloseBinding = CloseSources | QueuedCloseSources
+_BINDING: TypeAdapter[CloseBinding] = TypeAdapter(
+    Annotated[CloseBinding, Field(discriminator="format")]
+)
+
+
+def _prepared(uow: UnitOfWork, request: ClosePackCreateIn) -> dict[str, Any]:
     selection = resolve(uow, request)
     frozen = evidence_close.read_locked(uow, selection)
-    # Verify the caller's explicit digest before enqueueing any supporting report jobs.
-    evidence_audit.collect(uow, selection, verification_id=verification_id)
     queued = evidence_report_plan.queue(uow, selection)
-    return CloseSources(
-        format="erev.close-evidence.sources.v1",
+    return dict(
         tenant_id=selection.tenant_id,
         request=request,
         requested_at=selection.known_at,
@@ -130,17 +158,49 @@ def prepare_close(
         supporting_reports=tuple(
             BoundReport(**asdict(item.source), job_id=item.job_id) for item in queued
         ),
+    )
+
+
+def prepare_close(
+    uow: UnitOfWork, request: ClosePackCreateIn, *, verification_id: UUID
+) -> CloseSources:
+    """Retain the original explicit-completed-verification path for v1 callers."""
+    evidence_audit.collect(uow, resolve(uow, request), verification_id=verification_id)
+    return CloseSources(
+        **_prepared(uow, request),
+        format="erev.close-evidence.sources.v1",
         audit_verification_id=verification_id,
     )
 
 
-def checked_row(row: Mapping[str, Any]) -> CloseSources:
+def prepare_queued_close(
+    uow: UnitOfWork, request: ClosePackCreateIn, *, pack_id: UUID
+) -> QueuedCloseSources:
+    """Queue a fresh verification and five reports atomically with the caller's pack."""
+    # Never reuse a pending tenant verification: it may have read a prefix before this lock.
+    verification_job = uow.defer(
+        JobKind.AUDIT_CHAIN_VERIFY,
+        {"trigger": "ON_DEMAND", "period_lock_id": str(request.period_lock_id)},
+        subject_type="evidence_pack",
+        subject_id=pack_id,
+    )
+    return QueuedCloseSources(
+        **_prepared(uow, request),
+        format="erev.close-evidence.sources.v2",
+        audit_verification_job_id=verification_job["id"],
+        pack_id=pack_id,
+    )
+
+
+def checked_row(row: Mapping[str, Any]) -> CloseBinding:
     try:
-        bound = CloseSources.model_validate(row["source_binding"])
+        bound = _BINDING.validate_python(row["source_binding"])
     except (KeyError, ValidationError) as error:
         raise Problem(
             "validation-failed", "This pack has no valid retained CLOSE sources."
         ) from error
+    if isinstance(bound, QueuedCloseSources) and row.get("id") != bound.pack_id:
+        raise Problem("validation-failed", "The queued sources belong to a different pack.")
     expected = bound.pack_values()
     if (
         row["tenant_id"] != bound.tenant_id
@@ -157,7 +217,7 @@ def checked_row(row: Mapping[str, Any]) -> CloseSources:
     return bound
 
 
-def load_close(uow: UnitOfWork, pack_id: UUID) -> CloseSources:
+def load_close(uow: UnitOfWork, pack_id: UUID) -> CloseBinding:
     """Read exact saved sources under current caller scope; never enqueue or select latest."""
     if any(permission not in uow.principal.permissions for permission in SOURCE_PERMISSIONS):
         raise Problem("forbidden")

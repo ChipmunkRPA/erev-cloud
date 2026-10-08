@@ -119,7 +119,7 @@ def evidence_packs_create(
     cmd: Annotated[CommandContext, Depends(command("evidence.export"))],
     deps: Deps,
 ) -> Response:
-    """Create a first-close pack using a completed verification; replay its original IDs."""
+    """Create a first-close pack with a dedicated audit job; replay its original IDs."""
     started: dict[str, UUID] = {}
 
     def handle(uow: UnitOfWork) -> JobOut:

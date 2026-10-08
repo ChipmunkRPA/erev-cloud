@@ -2900,3 +2900,45 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   failure/cancellation lifecycle, download/API and export audit, automatic generation, other
   kinds and variance remain open. RPS-16/CTL-041 and production readiness remain unclaimed;
   release gates and accounting sign-off remain required. Direct main; no deployment.
+
+## Dependency-aware queue readiness — October 8, 2026 (RPS-16 continued)
+
+- Continued from clean published d7c27f8; previous turn retained verified first-close output.
+  Added optional read-only `ready` hooks to job registration. After release/delivery fencing,
+  before a slot/attempt, False keeps QUEUED and redispatches after 30 seconds with the same
+  attempt/release budget. Stale/cancelled deliveries do nothing. A domain Problem settles via
+  the normal terminal failure hook; unexpected reader errors preserve the queued task for
+  existing stranded-task recovery. No handler attempt is spent on dependency wait.
+- Added `evidence_readiness.close_ready`: checks pack/job subject identity and immutable CLOSE
+  binding, then only the five bound report/run/job pairs. Pending pairs wait; missing, failed,
+  cancelled or inconsistent sources refuse. This is a worker preflight, not authorization or
+  evidence integrity proof; completion must still invoke the source readers and storage step.
+- Queue suite **14 passed in 5.86 seconds**; source/queue/release/unit integration **30 passed in
+  20.64 seconds**. Added source terminal-state fault cases, then full scoped queue, release,
+  stall, cancellation API, registry and close witness: **50 passed in 23.48 seconds**. Seven
+  waits preserve attempt 1 without taking a slot; stale delivery does not recheck/redispatch;
+  completion runs once and produces one job.finish. Source checks use actual five report jobs;
+  kernel readiness tests register probe handlers. No complete EVIDENCE_PACK handler claim.
+- Logs `/private/tmp/job-readiness-{db,integrated,final}.log`; all processes terminal. Ruff,
+  source Mypy and whitespace pass. Archived GL freshness notes verbatim. Pack handler wiring,
+  creation/idempotency, failure/cancellation lifecycle, download/API, automatic generation,
+  other kinds and variance remain open. Current release gates/accounting sign-off still needed;
+  RPS-16/CTL-041 unclaimed. Direct main; no deployment or external notifications.
+
+
+## Evidence-pack download boundary — October 8, 2026 (RPS-16 continued)
+
+- Continued from clean published d558514; previous turn published verified assembly work.
+  Found that generic file metadata/content routes could serve evidence-pack files under
+  `evidence.export` without the pack-specific source checks and `evidence.export` audit fact.
+  Reserved this purpose for API-R-42's dedicated download route, following the report/journal
+  file pattern. Preserved the owner entity for destruction-scope checks. Updated the data-model
+  registry and its API sweep; the dedicated pack route itself remains unimplemented.
+- Two new entity/tenant-wide Auditor cases failed on the old generic route in **7.42 seconds**.
+  After the repair, all file API and registry architecture tests passed: **29 in 22.33 seconds**.
+  Both all-entity and scoped Auditors receive the same 404 as an unknown file for metadata and
+  bytes; retained entity/whole-tenant destruction scopes are checked. Ruff lint/format, source
+  Mypy and whitespace pass. Logs: `/private/tmp/evidence-file-route-{red,green}.log`.
+- All processes terminal. Archived older control/relock notes verbatim. Pack lifecycle/storage,
+  audited download/API, automatic generation, other kinds and variance remain open, along with
+  release gates and independent accounting approval. Direct main; no deployment/readiness claim.

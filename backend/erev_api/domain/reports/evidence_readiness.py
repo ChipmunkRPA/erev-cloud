@@ -15,7 +15,8 @@ from sqlalchemy.orm import Session
 
 from erev_api.db.session import of_session_tenant
 from erev_api.db.tables import evidence_pack, job, report_run
-from erev_api.domain.reports.evidence_sources import checked_row
+from erev_api.domain.reports import evidence_verification
+from erev_api.domain.reports.evidence_sources import QueuedCloseSources, checked_row
 from erev_api.problems import Problem
 
 
@@ -81,6 +82,16 @@ def close_ready(session: Session, job_id: UUID, params: Mapping[str, Any]) -> bo
     }:
         raise Problem("validation-failed", "A retained supporting report job is missing.")
     ready = True
+    if isinstance(bound, QueuedCloseSources):
+        ready = (
+            evidence_verification.completed(
+                session,
+                job_id=bound.audit_verification_job_id,
+                lock_id=bound.request.period_lock_id,
+                pack_id=bound.pack_id,
+            )
+            is not None
+        )
     for source in sources:
         if (
             source["job_id"] == job_id

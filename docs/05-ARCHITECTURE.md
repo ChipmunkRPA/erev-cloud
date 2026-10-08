@@ -1110,8 +1110,9 @@ it reuses that historical PASS or FAIL result. A crash after the verification tr
 and before job settlement therefore does not generate another digest, control execution or failure
 notification. More than one retained result or a different trigger refuses; the normal three-attempt
 policy applies. An uncommitted attempt is still retried normally. Reuse does not verify the current
-chain or check downstream archive integrity. This is a prerequisite for binding an evidence pack
-to a queued audit job; that orchestration and delayed pack-availability notification remain pending.
+chain or check downstream archive integrity. New evidence packs retain a dedicated audit job in their immutable v2 source binding.
+Their parent waits for that exact successful result before verifying the digest and building output.
+Automatic lock enqueue and delayed pack-availability notification remain pending.
 
 ### 5.7 Scheduling (periodic tasks)
 

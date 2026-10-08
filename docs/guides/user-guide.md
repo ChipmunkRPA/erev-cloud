@@ -274,16 +274,16 @@ Status at this revision: the nine definitions are in the report catalogue (`GET 
 
 ### Evidence packs
 
-The period evidence pack (report code `period_evidence_pack`, kind `PACK`, output ZIP; one entity, book and period, at a lock) collects the close certification, the lock snapshot ids and hashes, the journal batch register with its balancing and completeness results, the reconciliations with their sign-offs, the rollforwards, RPO and disaggregation, the manual adjustment, modification, SSP and configuration registers, the late-entry and out-of-period reports, the user listing and the separation-of-duties report as of period end, and the audit chain verification, each file with its SHA-256 in the manifest (REQ-RPT-014). The contract sample pack (`contract_sample_pack`; ZIP, PDF or XLSX) does the same for a sample of contracts as of a date (REQ-RPT-015). Downloading a pack needs `evidence.export`. Status on October 8, 2026: first-close packs can be created, listed, read and downloaded through the API. Automatic verification/generation on lock, contract samples, change/access packs and re-lock variance are still pending; the report-catalogue PACK builders are not available.
+The period evidence pack (report code `period_evidence_pack`, kind `PACK`, output ZIP; one entity, book and period, at a lock) collects the close certification, the lock snapshot ids and hashes, the journal batch register with its balancing and completeness results, the reconciliations with their sign-offs, the rollforwards, RPO and disaggregation, the manual adjustment, modification, SSP and configuration registers, the late-entry and out-of-period reports, the user listing and the separation-of-duties report as of period end, and the audit chain verification, each file with its SHA-256 in the manifest (REQ-RPT-014). The contract sample pack (`contract_sample_pack`; ZIP, PDF or XLSX) does the same for a sample of contracts as of a date (REQ-RPT-015). Downloading a pack needs `evidence.export`. Status on October 8, 2026: first-close packs can be created, listed, read and downloaded through the API. Automatic generation on lock, completion notifications, contract samples, change/access packs and re-lock variance are still pending; the report-catalogue PACK builders are not available.
 
 To create a first-close pack, POST `/api/v1/evidence-packs` with an `Idempotency-Key` and
 `kind: "CLOSE"`, `entity_code`, `book`, `period_key` and the exact `period_lock_id`. The caller
 needs `evidence.export`, `report.run`, `report.export`, `audit.read` and `contract.read` in the
-entity's scope. Creation requires a completed passing audit verification that covers the lock.
-If none exists, an authorized workspace-wide audit reader can POST `/api/v1/audit-events/verify`
-and wait for that job to succeed, then submit creation with a new `Idempotency-Key` (the
-earlier validation response is retained for its original key). The API does not generate a verification
-inside the creation request. A successful request returns 202 with the job, its `Location`, and
+entity's scope. Creation queues a dedicated audit verification and waits for its successful result
+alongside the supporting reports. You do not need to run audit verification separately. The pack
+retains that exact job's identity; a different verification cannot replace it. If verification fails
+or is cancelled, the pack fails without producing a ZIP. A successful request returns 202 with
+the job, its `Location`, and
 `X-Erev-Evidence-Pack-Id`. Repeating the same request/key returns those original IDs without
 creating another pack or choosing a newer digest. Using that key for different selectors refuses.
 Poll the job, then read `/api/v1/evidence-packs/{id}` and its `/download` route when complete.

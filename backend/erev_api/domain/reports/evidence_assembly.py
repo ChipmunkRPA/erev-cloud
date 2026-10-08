@@ -25,6 +25,7 @@ from erev_api.domain.reports import (
     evidence_reports,
     evidence_selection,
     evidence_sources,
+    evidence_verification,
     locked,
 )
 from erev_api.domain.reports.evidence_archive import Archive, PackFile
@@ -86,13 +87,24 @@ def assemble_close(uow: UnitOfWork, pack_id: UUID) -> Archive:
             "validation-failed",
             "Re-lock pack assembly requires the variance-between-closes report.",
         )
+    if isinstance(bound, evidence_sources.QueuedCloseSources):
+        verification_id = evidence_verification.completed(
+            uow.session,
+            job_id=bound.audit_verification_job_id,
+            lock_id=bound.request.period_lock_id,
+            pack_id=bound.pack_id,
+        )
+        if verification_id is None:
+            raise Problem("invalid-transition", "The pack's audit verification is still pending.")
+    else:
+        verification_id = bound.audit_verification_id
     files = [
         *evidence_close.frozen_payloads(frozen),
         *evidence_certification.collect(uow, selected),
         *evidence_journals.collect(uow, selected),
         *evidence_reconciliations.collect(uow, selected),
         *evidence_reconciliation_population.collect(uow, selected),
-        *evidence_audit.collect(uow, selected, verification_id=bound.audit_verification_id),
+        *evidence_audit.collect(uow, selected, verification_id=verification_id),
     ]
     for report in bound.supporting_reports:
         files.extend(evidence_reports.collect(uow, report.source()))

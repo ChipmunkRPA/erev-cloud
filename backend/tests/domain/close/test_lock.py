@@ -91,6 +91,7 @@ from erev_api.domain.reports import (
     evidence_selection,
     evidence_sources,
     evidence_storage,
+    evidence_verification,
 )
 from erev_api.enums import (
     ApprovalRequestStatus,
@@ -2245,12 +2246,16 @@ def test_close_pack_reconciliation_population_has_required_statements_or_exact_w
     assert error.value.slug == "not-found"
 
 
-@pytest.mark.parametrize("waive_missing,cancel_run", [(False, False), (True, False), (True, True)])
+@pytest.mark.parametrize(
+    "waive_missing,cancel_run,audit_fail",
+    [(False, False, False), (True, False, False), (True, True, False), (True, False, True)],
+)
 def test_first_close_archive_verifies_every_component_before_returning_bytes(
     world: CloseWorld,
     clock: FrozenClock,
     waive_missing: bool,
     cancel_run: bool,
+    audit_fail: bool,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Real close/waiver approval and source jobs; journal/close-run gate setup is seeded."""
@@ -2277,23 +2282,14 @@ def test_first_close_archive_verifies_every_component_before_returning_bytes(
     with world.place.uow(reader) as uow, pytest.raises(Problem, match="No completed passing"):
         evidence_audit.select_completed(uow, evidence_selection.resolve(uow, request))
     auditor = actor_with_role(world.app, clock, world.tenant_id, "auditor", name="pack-reader")
-    if waive_missing:
-        no_digest_headers = cookie_headers(auditor.token, auditor.csrf_token)
-        no_digest = call(
-            world.app,
-            "POST",
-            "/api/v1/evidence-packs",
-            json=request.model_dump(mode="json"),
-            headers=no_digest_headers,
-        )
-        assert (no_digest.status_code, slug(no_digest)) == (422, "validation-failed")
-        assert "No completed passing audit verification" in no_digest.json()["detail"]
-    with world.place.uow() as uow:
-        verification = audit_verify.record_tenant_verification(
-            uow, trigger="ON_DEMAND", job_id=None
-        )
-        verification_id = verification["id"]
-        uow.commit()
+    verification_id = UUID(int=0)
+    if not waive_missing:
+        with world.place.uow() as uow:
+            verification = audit_verify.record_tenant_verification(
+                uow, trigger="ON_DEMAND", job_id=None
+            )
+            verification_id = verification["id"]
+            uow.commit()
 
     def creation_state() -> tuple[Any, ...]:
         with world.place.uow(reader) as uow:
@@ -2314,17 +2310,6 @@ def test_first_close_archive_verifies_every_component_before_returning_bytes(
 
     before_create = creation_state()
     if waive_missing:
-        failed_replay = call(
-            world.app,
-            "POST",
-            "/api/v1/evidence-packs",
-            json=request.model_dump(mode="json"),
-            headers=no_digest_headers,
-        )
-        assert failed_replay.status_code == 422
-        assert failed_replay.headers["Idempotent-Replay"] == "true"
-        assert failed_replay.json() == no_digest.json()
-        assert creation_state() == before_create
         for permission in permissions:
             denied = replace(reader, permissions=reader.permissions - {permission})
             with world.place.uow(denied) as uow, pytest.raises(Problem) as refused:
@@ -2344,7 +2329,7 @@ def test_first_close_archive_verifies_every_component_before_returning_bytes(
             evidence_commands.create_close(uow, request, verification_id=UUID(int=0))
         assert creation_state() == before_create
         with world.place.uow(reader) as uow, pytest.raises(RuntimeError, match="creation rollback"):
-            evidence_commands.create_close(uow, request, verification_id=verification_id)
+            evidence_commands.create_close(uow, request)
             raise RuntimeError("creation rollback")
         assert creation_state() == before_create
         creation_headers = cookie_headers(auditor.token, auditor.csrf_token)
@@ -2369,6 +2354,7 @@ def test_first_close_archive_verifies_every_component_before_returning_bytes(
                 uow.session.execute(select(job).where(job.c.id == queued_job.id)).mappings().one()
             )
             bound = evidence_sources.checked_row(pack)
+            assert isinstance(bound, evidence_sources.QueuedCloseSources)
             assert pack["pack_no"].startswith("EVP-")
             assert pack["job_id"] == queued_job.id
             assert queued_job.kind == "EVIDENCE_PACK" and queued_job.state == "QUEUED"
@@ -2377,7 +2363,7 @@ def test_first_close_archive_verifies_every_component_before_returning_bytes(
         assert tuple(after_create[index] - before_create[index] for index in range(4)) == (
             1,
             5,
-            6,
+            7,
             0,
         )
         with world.place.uow(reader) as uow:
@@ -2387,7 +2373,8 @@ def test_first_close_archive_verifies_every_component_before_returning_bytes(
                 )
             ).scalar_one()
             assert created["job_id"] == str(parent["id"])
-            assert created["audit_verification_id"] == str(verification_id)
+            assert created["audit_verification_id"] is None
+            assert created["audit_verification_job_id"] == str(bound.audit_verification_job_id)
             assert set(created["report_run_ids"]) == {
                 str(value) for value in pack["report_run_ids"]
             }
@@ -2395,14 +2382,18 @@ def test_first_close_archive_verifies_every_component_before_returning_bytes(
                 uow.session.execute(
                     select(job.c.procrastinate_job_id).where(
                         job.c.id.in_(
-                            [parent["id"], *(source.job_id for source in bound.supporting_reports)]
+                            [
+                                parent["id"],
+                                bound.audit_verification_job_id,
+                                *(source.job_id for source in bound.supporting_reports),
+                            ]
                         )
                     )
                 )
                 .scalars()
                 .all()
             )
-            assert len(tasks) == 6 and all(value is not None for value in tasks)
+            assert len(tasks) == 7 and all(value is not None for value in tasks)
 
         # A newer completed verification must not rebind an idempotent retry.
         clock.advance(timedelta(seconds=1))
@@ -2426,7 +2417,8 @@ def test_first_close_archive_verifies_every_component_before_returning_bytes(
         assert creation_state() == before_replay
         with world.place.uow(reader) as uow:
             retained = evidence_sources.load_close(uow, pack_id)
-            assert retained.audit_verification_id == verification_id
+            assert isinstance(retained, evidence_sources.QueuedCloseSources)
+            assert retained.audit_verification_job_id == bound.audit_verification_job_id
             assert (
                 evidence_audit.select_completed(uow, evidence_selection.resolve(uow, request))
                 == newer["id"]
@@ -2452,15 +2444,8 @@ def test_first_close_archive_verifies_every_component_before_returning_bytes(
 
         with monkeypatch.context() as patch:
             patch.setattr(evidence_audit, "open_file", damaged_digest)
-            damaged = call(
-                world.app,
-                "POST",
-                "/api/v1/evidence-packs",
-                json=request.model_dump(mode="json"),
-                headers=cookie_headers(auditor.token, auditor.csrf_token),
-            )
-        assert (damaged.status_code, slug(damaged)) == (422, "validation-failed")
-        assert "digest file failed verification" in damaged.json()["detail"]
+            with world.place.uow(reader) as uow, pytest.raises(Problem, match="digest file failed"):
+                evidence_commands.create_close(uow, request, verification_id=newer["id"])
         assert creation_state() == before_replay
         unsupported = call(
             world.app,
@@ -2471,6 +2456,101 @@ def test_first_close_archive_verifies_every_component_before_returning_bytes(
         )
         assert (unsupported.status_code, slug(unsupported)) == (422, "validation-failed")
         assert creation_state() == before_replay
+        with world.place.uow(reader) as uow:
+            assert not evidence_readiness.close_ready(uow.session, parent["id"], parent["params"])
+            with pytest.raises(Problem, match="audit verification is still pending"):
+                evidence_assembly.assemble_close(uow, pack_id)
+        waiting = run_journal_job(world, parent["id"], attempts=1)
+        assert waiting["state"] == "QUEUED", waiting
+        # A newer unrelated PASS must never satisfy this specific queued verification.
+        for terminal in ("FAILED", "CANCELLED", "SUCCEEDED_WITH_EXCEPTIONS", "SUCCEEDED"):
+            with world.place.uow(reader) as uow:
+                apply(
+                    uow.session,
+                    "job",
+                    bound.audit_verification_job_id,
+                    to_status="RUNNING",
+                    expected_status="QUEUED",
+                    set_values={},
+                )
+                apply(
+                    uow.session,
+                    "job",
+                    bound.audit_verification_job_id,
+                    to_status=terminal,
+                    expected_status="RUNNING",
+                    set_values={},
+                )
+                with pytest.raises(Problem) as refused:
+                    evidence_readiness.close_ready(uow.session, parent["id"], parent["params"])
+                assert refused.value.slug == "validation-failed"
+        with world.place.uow(reader) as uow:
+            with pytest.raises(Problem, match="does not match"):
+                evidence_verification.completed(
+                    uow.session,
+                    job_id=bound.audit_verification_job_id,
+                    lock_id=UUID(int=0),
+                    pack_id=pack_id,
+                )
+        for result_id in (newer["id"], UUID(int=0)):
+            with world.place.uow(reader) as uow:
+                apply(
+                    uow.session,
+                    "job",
+                    bound.audit_verification_job_id,
+                    to_status="RUNNING",
+                    expected_status="QUEUED",
+                    set_values={},
+                )
+                apply(
+                    uow.session,
+                    "job",
+                    bound.audit_verification_job_id,
+                    to_status="SUCCEEDED",
+                    expected_status="RUNNING",
+                    set_values={"result": {"verification_id": str(result_id)}},
+                )
+                with pytest.raises(Problem, match="matching passing verification"):
+                    evidence_readiness.close_ready(uow.session, parent["id"], parent["params"])
+        if audit_fail:
+            before_failure = creation_state()
+            with world.place.uow(reader) as uow:
+                apply(
+                    uow.session,
+                    "job",
+                    bound.audit_verification_job_id,
+                    to_status="RUNNING",
+                    expected_status="QUEUED",
+                    set_values={},
+                )
+                apply(
+                    uow.session,
+                    "job",
+                    bound.audit_verification_job_id,
+                    to_status="FAILED",
+                    expected_status="RUNNING",
+                    set_values={},
+                )
+                uow.commit()
+            failed_pack_job = run_journal_job(world, parent["id"], attempts=1)
+            assert failed_pack_job["state"] == "FAILED", failed_pack_job
+            with world.place.uow(reader) as uow:
+                stopped = (
+                    uow.session.execute(select(evidence_pack).where(evidence_pack.c.id == pack_id))
+                    .mappings()
+                    .one()
+                )
+                assert (stopped["status"], stopped["file_id"], stopped["manifest"]) == (
+                    "FAILED",
+                    None,
+                    None,
+                )
+            assert creation_state()[3] == before_failure[3]
+            return
+        audit_finished = run_journal_job(world, bound.audit_verification_job_id, attempts=1)
+        assert audit_finished["state"] == "SUCCEEDED", audit_finished
+        verification_id = UUID(audit_finished["result"]["verification_id"])
+        assert verification_id != newer["id"]
 
     else:
         with world.place.uow(reader) as uow, pytest.raises(Problem, match="distinct preparer"):
@@ -2683,8 +2763,17 @@ def test_first_close_archive_verifies_every_component_before_returning_bytes(
     # A second seeded pack reuses these exact bound sources to exercise a fresh QUEUED
     # worker, followed by the first pack's interrupted RUNNING completion.
     with world.place.uow(reader) as uow:
+        legacy_bound = evidence_sources.CloseSources.model_validate(
+            {
+                **bound.model_dump(
+                    mode="json", exclude={"pack_id", "audit_verification_job_id", "format"}
+                ),
+                "format": "erev.close-evidence.sources.v1",
+                "audit_verification_id": verification_id,
+            }
+        )
         fresh = evidence_pack_values(
-            world.tenant_id, **bound.pack_values(), created_at=bound.requested_at
+            world.tenant_id, **legacy_bound.pack_values(), created_at=legacy_bound.requested_at
         )
         fresh_job = uow.defer(
             JobKind.EVIDENCE_PACK,
@@ -2756,7 +2845,7 @@ def test_first_close_archive_verifies_every_component_before_returning_bytes(
         with stream:
             assert stream.read() == archive.content
         assert metadata["purpose"] == "EVIDENCE_PACK"
-        assert uow.session.scalar(select(func.count()).select_from(file_object)) == before_files + 1
+        assert uow.session.scalar(select(func.count()).select_from(file_object)) == before_files + 2
         finishes = uow.session.scalar(
             select(func.count())
             .select_from(audit_event)

@@ -5230,6 +5230,21 @@ reauthorizes the selected close and checks record/source consistency. Actual rep
 audit integrity must still be checked by their collectors. This does not enable a pack job or
 endpoint; the other pack kinds require their own source contracts.
 
+**Queued audit source binding (October 8, 2026).** New public creations use
+`erev.close-evidence.sources.v2`, with the same frozen/report sources plus `pack_id` and
+`audit_verification_job_id` instead of `audit_verification_id`. The dedicated AUDIT_CHAIN_VERIFY
+job names that evidence_pack as subject and retains ON_DEMAND plus the exact period_lock_id
+in its parameters. One transaction creates the pack, five reports and seven jobs. An existing
+pending tenant verification is never reused because it may have read a prefix before the lock.
+
+The parent waits without spending a worker attempt. Only that job's SUCCEEDED result supplies
+the exact verification_id, whose row must match the job and be PASS with a digest. Failure,
+cancellation, missing/mismatched result or source identity refuses; the collector still verifies
+the digest bytes, full recorded prefix and lock anchor before output. The immutable v2 binding
+is never rewritten after verification. Original v1 parsing and canonical serialization remain
+unchanged; explicit completed-verification callers still produce v1 bindings. No table migration
+or public creation request change is needed. This does not yet enqueue packs on period lock.
+
 **First-close read/download API (October 8, 2026).** `GET /evidence-packs/{id}` returns
 `ClosePackOut`: id/number, CLOSE kind, status, entity/book/period/lock/job identifiers, report-run
 ids, created/updated instants, manifest and its separate hash, and a download href only when
@@ -5256,19 +5271,15 @@ individual record; its source and download checks remain authoritative.
 **First-close creation (October 8, 2026).** `POST /evidence-packs` accepts the documented
 CLOSE selectors and returns 202 JobOut, `Location` and `X-Erev-Evidence-Pack-Id`. The command
 kernel atomically retains that response for idempotent replay with the pack, immutable sources,
-five report runs, six jobs, numbering and `evidence.create` audit. The same key with a changed
+five report runs, seven jobs, numbering and `evidence.create` audit. The same key with a changed
 body refuses. Other kinds currently refuse 422 rather than queue unsupported work.
 
 Creation requires evidence.export plus report.run, report.export, audit.read and contract.read
-in source scope. After retained-source preflight, it selects the newest completed PASS digest
-covering the frozen audit head (`finished_at <= request time`, ordered by finished_at then ID).
-The collector verifies the selected digest bytes, record and historical prefix before queueing;
-damage refuses without falling back. The exact verification ID is retained in the binding and
-creation audit. Replay and workers never reselect it. Internal callers may supply an explicit ID;
-this is not a public request field. No eligible verification yields 422 with instructions to run
-`POST /audit-events/verify`, wait for success and submit with a new Idempotency-Key (the original
-key retains its validation response). Automatic verification orchestration and enqueue
-on lock remain outstanding; this request does not start an independent verification transaction.
+in source scope. After retained-source preflight, new requests queue the dedicated verification
+and retain a v2 binding. No completed digest is required up front. Request replay returns the
+original response without queueing again. Internal callers may still supply an explicit completed
+verification ID for a v1 binding; that argument is not a public request field. Automatic pack
+enqueue on lock and pack-availability notification remain outstanding.
 
 **First-close retention (October 8, 2026).** The internal completion helper requires a RUNNING
 pack, explicit evidence-export scope and verified retained source readers. It stores an encrypted

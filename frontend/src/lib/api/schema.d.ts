@@ -2264,7 +2264,7 @@ export interface paths {
     put?: never;
     /**
      * Evidence Packs Create
-     * @description Create a first-close pack using a completed verification; replay its original IDs.
+     * @description Create a first-close pack with a dedicated audit job; replay its original IDs.
      */
     post: operations["evidence_packs_create"];
     delete?: never;

@@ -6,7 +6,7 @@ from uuid import UUID
 
 import pytest
 from erev_api.domain.reports.evidence_reports import PATHS
-from erev_api.domain.reports.evidence_sources import CloseSources, checked_row
+from erev_api.domain.reports.evidence_sources import CloseSources, QueuedCloseSources, checked_row
 from erev_api.problems import Problem
 from pydantic import ValidationError
 
@@ -130,3 +130,35 @@ def test_unversioned_document_cannot_be_assumed_to_be_current() -> None:
         CloseSources.model_validate(
             {key: value for key, value in DOCUMENT.items() if key != "format"}
         )
+
+
+def test_v2_keeps_a_dedicated_audit_job_without_changing_v1_bytes() -> None:
+    from erev_engine.canonical import canonical_bytes
+
+    original = CloseSources.model_validate(DOCUMENT)
+    assert canonical_bytes(original.model_dump(mode="json")) == canonical_bytes(DOCUMENT).replace(
+        b"+00:00", b"Z"
+    )
+    queued = {key: value for key, value in DOCUMENT.items() if key != "audit_verification_id"}
+    queued.update(
+        format="erev.close-evidence.sources.v2",
+        audit_verification_job_id=str(UUID(int=90)),
+        pack_id=str(UUID(int=91)),
+    )
+    bound = QueuedCloseSources.model_validate(queued)
+    row = {
+        **bound.pack_values(),
+        "tenant_id": bound.tenant_id,
+        "created_at": NOW,
+        "id": bound.pack_id,
+    }
+    assert checked_row(row) == bound
+    assert "audit_verification_id" not in bound.model_dump()
+    for invalid in (
+        {**queued, "audit_verification_id": DOCUMENT["audit_verification_id"]},
+        {**queued, "audit_verification_job_id": DOCUMENT["supporting_reports"][0]["job_id"]},
+        {**queued, "format": "erev.close-evidence.sources.v1"},
+        {key: value for key, value in queued.items() if key != "audit_verification_job_id"},
+    ):
+        with pytest.raises(Problem):
+            checked_row({**row, "source_binding": invalid})

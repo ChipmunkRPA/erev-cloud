@@ -2,6 +2,36 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Queued audit verification for CLOSE packs — October 8, 2026 (RPS-16 continued)
+
+- Continued from clean published 7fc16e5. New POST /evidence-packs requests no longer need a
+  completed verification beforehand. Creation atomically inserts the pack, five supporting
+  report runs, a dedicated AUDIT_CHAIN_VERIFY job and its parent: seven jobs, one transaction.
+  Idempotent replay returns the original response without adding jobs or changing the binding.
+- Added versioned sources v2: pack_id and audit_verification_job_id replace the completed
+  verification_id. The audit job's evidence_pack subject and retained period_lock_id are checked;
+  a pending tenant-wide job is never reused. Parent readiness waits for the exact job, then
+  resolves its result.verification_id and verifies the PASS row/job/digest association. Assembly
+  still verifies digest bytes, recorded prefix and lock anchor. Failed/cancelled/missing or
+  mismatched results fail the parent; an unrelated PASS cannot substitute. V1 binding parsing
+  and canonical bytes remain unchanged, and explicit completed-verification callers still work.
+- Initial scoped run: **37 passed, 2 failed in 19.31 seconds** exposed the unsupported period_lock
+  job subject; changed to the pack's existing supported subject. Next **37 passed, 4 failed in
+  26.56 seconds** exposed the reserved release parameter and a timestamp-serialization fixture
+  mismatch; used registry.handler_params and preserved canonical UTC strings. Next **38 passed,
+  3 failed in 25.03 seconds** caught a missed test-helper pack_id argument. Corrected it and added
+  actual parent wait/failure cleanup; final expanded regression: **68 passed in 58.53 seconds**.
+- Tests cover no prior completed verification, atomic seven-job creation/rollback, exact replay,
+  waiting/failed/cancelled/foreign-result refusals, failed-parent cleanup without ZIP, successful
+  audit and report workers, v1/v2 output, interrupted completion, cancellation, register/download
+  and role revocation. The inherited seeded-journal/close-gate caveat remains; not CTL-041 proof.
+  Logs /private/tmp/evidence-queued-audit-{db,corrected,final,regression}.log; all terminal.
+- Source Mypy, Ruff lint/format, whitespace, regenerated OpenAPI/client types, staleness check
+  and frontend tsc --noEmit pass. Updated model/architecture/guide/build status/limits; archived
+  earlier readiness/download-boundary notes verbatim. Automatic pack enqueue on lock and truthful
+  availability notification, other kinds, re-lock variance and current release/accounting gates
+  remain open. RPS-16/CTL-041 and production readiness unclaimed. Direct main; no deployment.
+
 ## Stable audit verification job results — October 8, 2026 (RPS-16 prerequisite)
 
 - Continued from clean published abc0514. Reviewed NTF-06: the existing lock notification
@@ -148,47 +178,6 @@
   Public creation/download and request idempotency, automatic enqueue/NTF-06, other kinds,
   variance, current release gates and independent accounting approval remain open. No
   RPS-16/CTL-041 or production-readiness claim. Validated direct main; no deployment.
-
-## Dependency-aware queue readiness — October 8, 2026 (RPS-16 continued)
-
-- Continued from clean published d7c27f8; previous turn retained verified first-close output.
-  Added optional read-only `ready` hooks to job registration. After release/delivery fencing,
-  before a slot/attempt, False keeps QUEUED and redispatches after 30 seconds with the same
-  attempt/release budget. Stale/cancelled deliveries do nothing. A domain Problem settles via
-  the normal terminal failure hook; unexpected reader errors preserve the queued task for
-  existing stranded-task recovery. No handler attempt is spent on dependency wait.
-- Added `evidence_readiness.close_ready`: checks pack/job subject identity and immutable CLOSE
-  binding, then only the five bound report/run/job pairs. Pending pairs wait; missing, failed,
-  cancelled or inconsistent sources refuse. This is a worker preflight, not authorization or
-  evidence integrity proof; completion must still invoke the source readers and storage step.
-- Queue suite **14 passed in 5.86 seconds**; source/queue/release/unit integration **30 passed in
-  20.64 seconds**. Added source terminal-state fault cases, then full scoped queue, release,
-  stall, cancellation API, registry and close witness: **50 passed in 23.48 seconds**. Seven
-  waits preserve attempt 1 without taking a slot; stale delivery does not recheck/redispatch;
-  completion runs once and produces one job.finish. Source checks use actual five report jobs;
-  kernel readiness tests register probe handlers. No complete EVIDENCE_PACK handler claim.
-- Logs `/private/tmp/job-readiness-{db,integrated,final}.log`; all processes terminal. Ruff,
-  source Mypy and whitespace pass. Archived GL freshness notes verbatim. Pack handler wiring,
-  creation/idempotency, failure/cancellation lifecycle, download/API, automatic generation,
-  other kinds and variance remain open. Current release gates/accounting sign-off still needed;
-  RPS-16/CTL-041 unclaimed. Direct main; no deployment or external notifications.
-
-## Evidence-pack download boundary — October 8, 2026 (RPS-16 continued)
-
-- Continued from clean published d558514; previous turn published verified assembly work.
-  Found that generic file metadata/content routes could serve evidence-pack files under
-  `evidence.export` without the pack-specific source checks and `evidence.export` audit fact.
-  Reserved this purpose for API-R-42's dedicated download route, following the report/journal
-  file pattern. Preserved the owner entity for destruction-scope checks. Updated the data-model
-  registry and its API sweep; the dedicated pack route itself remains unimplemented.
-- Two new entity/tenant-wide Auditor cases failed on the old generic route in **7.42 seconds**.
-  After the repair, all file API and registry architecture tests passed: **29 in 22.33 seconds**.
-  Both all-entity and scoped Auditors receive the same 404 as an unknown file for metadata and
-  bytes; retained entity/whole-tenant destruction scopes are checked. Ruff lint/format, source
-  Mypy and whitespace pass. Logs: `/private/tmp/evidence-file-route-{red,green}.log`.
-- All processes terminal. Archived older control/relock notes verbatim. Pack lifecycle/storage,
-  audited download/API, automatic generation, other kinds and variance remain open, along with
-  release gates and independent accounting approval. Direct main; no deployment/readiness claim.
 
 ## Outstanding release verification
 

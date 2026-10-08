@@ -58289,7 +58289,7 @@
         "x-erev-permission": "report.run"
       },
       "post": {
-        "description": "Create a first-close pack using a completed verification; replay its original IDs.",
+        "description": "Create a first-close pack with a dedicated audit job; replay its original IDs.",
         "operationId": "evidence_packs_create",
         "parameters": [
           {
