@@ -113,6 +113,7 @@ class _Obligation:
     # the lines a cell names: of a period up to the as-of beside its posted revenue, of a later
     # period only where the line is the scheduled amount
     schedule_lines: dict[str, list[tuple[UUID, Decimal]]] = field(default_factory=dict)
+    fixed_schedule_lines: set[UUID] = field(default_factory=set)
     subledger_lines: dict[str, list[tuple[UUID, Decimal]]] = field(default_factory=dict)
 
 
@@ -355,6 +356,7 @@ def _at_as_of(
             schedule_line.c.period_id,
             schedule_line.c.period_end_date,
             schedule_line.c.amount,
+            schedule_line.c.trace_node_id,
         )
         .select_from(
             schedule_line.join(
@@ -374,7 +376,9 @@ def _at_as_of(
         .order_by(schedule_line.c.period_end_date, schedule_line.c.id)
     )
     lines: dict[tuple[UUID, UUID], list[tuple[UUID, date, Decimal, UUID]]] = {}
+    line_nodes: dict[UUID, str] = {}
     for row in session.execute(statement).mappings():
+        line_nodes[UUID(str(row["id"]))] = str(row["trace_node_id"])
         key = (UUID(str(row["contract_version_id"])), UUID(str(row["subject_id"])))
         lines.setdefault(key, []).append(
             (
@@ -392,19 +396,24 @@ def _at_as_of(
         ob.awaiting = found.awaiting
         own = lines.get((version_id, ob.obligation_id), [])
         scheduled = {
-            line_id
-            for line_id, _, _ in cuts.scheduled_after(
+            line_id: amount
+            for line_id, _, amount in cuts.scheduled_after(
                 [(line_id, end, amount) for line_id, end, amount, _ in own],
                 found,
                 day,
                 contract=ob.external_id,
                 obligation=ob.obligation_key,
+                sources=line_nodes,
             )
         }
         for line_id, end, amount, period_id in own:
             if period_id not in in_range or (end > day and line_id not in scheduled):
                 continue
             name = key_of[period_id]
+            if line_id in scheduled:
+                amount = scheduled[line_id]
+                if found.fixed_schedule is not None:
+                    ob.fixed_schedule_lines.add(line_id)
             ob.schedule_lines.setdefault(name, []).append((line_id, amount))
             if line_id in scheduled:
                 ob.scheduled[name] = ob.scheduled.get(name, ZERO) + amount
@@ -696,7 +705,15 @@ def cell(
                 if state in (None, SCHEDULED, RECOGNIZED):
                     for line_id, amount in ob.schedule_lines.get(key, ()):
                         contributors.append(
-                            _contributor("schedule_line", line_id, amount, currency)
+                            _contributor(
+                                "schedule_line",
+                                line_id,
+                                amount,
+                                currency,
+                                measure="scheduled_fixed_amount"
+                                if line_id in ob.fixed_schedule_lines
+                                else "amount",
+                            )
                         )
                 if state in (None, RECOGNIZED):
                     for line_id, amount in ob.subledger_lines.get(key, ()):

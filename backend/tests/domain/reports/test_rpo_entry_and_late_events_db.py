@@ -309,3 +309,86 @@ def test_usage_allocation_change_is_reported_as_variable_consideration(
     assert after["REVENUE"] == before["REVENUE"] - Decimal("150.00")
     assert after["UNEXPLAINED"] == 0
     assert ties(run) == BALANCED
+
+
+@pytest.mark.slow
+def test_first_calculation_keeps_later_usage_out_of_earlier_rpo(
+    app: FastAPI,
+    keyring: KeyRing,
+    clock: FrozenClock,
+    files: LocalFileStore,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Defer the initial computation, then calculate activation and March usage together."""
+    with monkeypatch.context() as patch:
+        patch.setattr(worlds, "computed", lambda *args, **kwargs: None)
+        world = worlds.k08_ulvane(app, keyring, clock, files)
+    assign(world.priya.member, "revenue_reviewer")
+    contract_id = UUID(str(world.contracts[worlds.K08].contract["id"]))
+    worlds.approved_manual_events(
+        world.place,
+        world.priya,
+        contract_id,
+        {
+            "event_type": "USAGE_REPORTED",
+            "effective_date": "2026-03-31",
+            "payload": {
+                "obligation_key": "O1",
+                "usage_period_start": "2026-03-01",
+                "usage_period_end": "2026-03-31",
+                "metric": "API_CALLS",
+                "quantity": "1500",
+                "rated_amount": {"amount": "150.00", "currency": "USD"},
+            },
+        },
+    )
+    january_revenue = posted_revenue(world.place, str(contract_id), date(2026, 1, 31))
+    january, run = rollforward(world, AVM_US, "FY2026-P01")
+    assert january["NEW_CONTRACTS"] == Decimal("80000.00")
+    assert january["CLOSING"] == Decimal("80000.00") - january_revenue
+    assert january["UNEXPLAINED"] == 0
+    assert ties(run) == BALANCED
+    worlds.journal_run(world, period_key="FY2026-P01")
+    waterfall, _ = report_run(
+        world,
+        "revenue_waterfall",
+        {
+            "entity_codes": [AVM_US],
+            "book": "ASC606",
+            "from_period_key": "FY2026-P01",
+            "to_period_key": "FY2026-P12",
+            "as_of": "2026-01-31",
+            "measure": "BY_STATE",
+        },
+    )
+    assert waterfall["control_totals"] == {
+        "recognized_total": {"USD": f"{january_revenue:.2f}"},
+        "scheduled_total": {"USD": f"{Decimal('80000.00') - january_revenue:.2f}"},
+        "awaiting_trigger_total": {"USD": "0.00"},
+    }
+    assert all(item["result"] == "PASS" for item in waterfall["tie_out_results"]), waterfall[
+        "tie_out_results"
+    ]
+    rpo, _ = report_run(
+        world, "rpo", {"entity_codes": [AVM_US], "book": "ASC606", "period_key": "FY2026-P01"}
+    )
+    cell = get(
+        world.app,
+        f"/api/v1/explain/report-runs/{rpo['id']}/cell",
+        world.maya,
+        {"row_key": f"contract:{worlds.K08}", "column_key": "total"},
+    )
+    assert cell.status_code == 200, cell.text
+    assert Decimal(cell.json()["value"]["amount"]) == january["CLOSING"]
+    contributors = cell.json()["contributors"]["items"]
+    assert contributors
+    for contributor in contributors:
+        assert contributor["measure"] == "scheduled_fixed_amount"
+        explained = get(world.app, contributor["href"], world.maya)
+        assert explained.status_code == 200, explained.text
+        assert explained.json()["value"] == contributor["value"]
+    march, run = rollforward(world, AVM_US, "FY2026-P03")
+    assert march["NEW_CONTRACTS"] == 0
+    assert march["VC_ESTIMATE_CHANGES"] == Decimal("150.00")
+    assert march["UNEXPLAINED"] == 0
+    assert ties(run) == BALANCED

@@ -124,6 +124,7 @@ UNKNOWN_NODE: Final = "The calculation trace holds no figure with this id."
 NOT_TRACED: Final = "The calculation trace holds no node for this figure."
 API: Final = "/api/v1"
 LINE_MEASURE: Final = "amount"
+FIXED_SCHEDULE: Final = "scheduled_fixed_amount"
 REVENUE: Final = "revenue"
 REVENUE_BY_CAUSE: Final = "revenue_by_cause"
 POSTING_TARGET: Final = "posting_target"
@@ -407,11 +408,24 @@ def _schedule_line(session: Session, object_id: UUID, measure: str) -> _Figure:
         .where(schedule_line.c.id == object_id)
     )
     row = _one(session, statement)
-    if measure != LINE_MEASURE:
-        raise Problem("not-found", f"A schedule line explains only {LINE_MEASURE}.")
+    if measure not in (LINE_MEASURE, FIXED_SCHEDULE):
+        raise Problem("not-found", f"A schedule line explains {LINE_MEASURE} or {FIXED_SCHEDULE}.")
     version = _version(session, row["contract_version_id"])
     trace_id = _uuid(version["calc_trace_id"])
     _, trace = _trace(session, trace_id)
+    root = _node(trace, row["trace_node_id"])
+    if measure == FIXED_SCHEDULE:
+        matches = [
+            node
+            for node in trace.nodes
+            if node.measure == FIXED_SCHEDULE
+            and node.params.get("source_node") == row["trace_node_id"]
+        ]
+        if len(matches) != 1:
+            raise Problem(
+                "not-found", "The schedule line has no unique fixed-component projection."
+            )
+        root = matches[0]
     return _figure(
         "schedule_line",
         object_id,
@@ -420,8 +434,8 @@ def _schedule_line(session: Session, object_id: UUID, measure: str) -> _Figure:
         version=version,
         trace_id=trace_id,
         trace=trace,
-        node=_node(trace, row["trace_node_id"]),
-        stored=Decimal(row["amount"]),
+        node=root,
+        stored=Decimal(row["amount"]) if measure == LINE_MEASURE else None,
         currency=row["currency"],
         entity_id=row["entity_id"],
         contract_id=row["contract_id"],

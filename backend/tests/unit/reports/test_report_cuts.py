@@ -11,6 +11,7 @@ of the caller, not a figure.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import date
 from decimal import Decimal
 from uuid import UUID
@@ -105,3 +106,29 @@ def test_a_read_at_a_date_the_versions_were_not_loaded_for_is_a_mistake() -> Non
         found.at(UUID(int=7), MARCH)
     with pytest.raises(ValueError, match="were loaded for 2026-02-28, not for 2026-03-31"):
         found.balance({"contract_version_id": UUID(int=7)}, MARCH)
+
+
+def test_fixed_projection_replaces_only_future_lines_and_must_reconcile() -> None:
+    february = replace(
+        at(revenue="200.00", scheduled="200.00", measured=Measured("P02", FEBRUARY)),
+        fixed_schedule={"march-source": Decimal("100.00"), "april-source": Decimal("100.00")},
+    )
+    lines = (*LINES[:2], (UUID(int=3), MARCH, Decimal("250.00")), LINES[3])
+    sources = {UUID(int=3): "march-source", UUID(int=4): "april-source"}
+    assert (
+        cuts.scheduled_after(
+            lines, february, FEBRUARY, contract="C-1", obligation="O1", sources=sources
+        )
+        == LINES[2:]
+    )
+    with pytest.raises(cuts.ScheduleUnreadable):
+        cuts.scheduled_after(
+            lines,
+            replace(february, scheduled=Decimal("201.00")),
+            FEBRUARY,
+            contract="C-1",
+            obligation="O1",
+            sources=sources,
+        )
+    with pytest.raises(cuts.ScheduleUnreadable):
+        cuts.scheduled_after(lines, february, FEBRUARY, contract="C-1", obligation="O1", sources={})

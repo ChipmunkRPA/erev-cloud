@@ -167,3 +167,56 @@ incomplete new trace evidence; avoid reading unrelated historical versions merel
 transition cuts; verify entry, cancellation and multiple-cause attribution, including a zero net
 realized state after correction. Historical traces stay immutable and require release/replay
 handling. This investigation does not close B4-2 or establish production readiness.
+
+
+## Dated allocation and fixed schedule repair — October 8, 2026
+
+The first-computation counterexample is repaired by the implementation following fa1db7f.
+Recognition persists period/state realized allocation independently of recognized revenue. A
+version with no fee component carries an explicit zero/NONE state; it is distinguishable from
+an older trace that never recorded realization. Dated series require both state and period
+evidence, including zero values. Missing evidence is not inferred from an absent node.
+
+The report reader removes later realization when reading an earlier cut. RPO activity separates
+fixed version-allocation changes from realized-fee movements. Entry/exit adjustments use dated
+component evidence; a chain mixing legacy missing evidence and explicit realization is refused.
+This requires legacy replay/upgrade handling before release, not historical trace mutation.
+
+The engine also records fixed portions bound to their original schedule cause nodes. Report
+placement removes future usage/royalty components using that decomposition rather than scaling
+lines. Both RPO and the revenue waterfall consume the resulting amounts; the existing scheduled
+sum check remains mandatory. A projection absent because manual adjustment, hold or Step-1
+netting lacks supported component attribution is refused if needed for a scheduled figure.
+This remains an implementation limitation, not permission to fabricate that split.
+
+Cell contributors for projected amounts now name `scheduled_fixed_amount`. Its explain route
+reads the unique component node from the same version's trace, with the original schedule line
+and component inputs retained. Dedicated formula/narrative identifiers describe realization,
+usage components and fixed schedule portions. Numeric primitives reuse the existing registered
+sum/difference and posted-allocation arithmetic. These trace changes join the pending engine
+0.4.0 release cut and candidate replay requirements; ENGINE_VERSION is not advanced prematurely.
+
+The PostgreSQL witness checks January new contracts exactly 80,000, closing against January
+posted subledger revenue, March variable-consideration additions 150, no unexplained amount and
+both RPO tie-outs. It also generates January's journal through the normal API, checks the
+waterfall recognized/scheduled/awaiting totals and its journal tie-out, and follows every RPO
+cell contributor to a matching explanation. An intermediate expanded run had 47 passes and one
+failure because the new waterfall assertion lacked a generated journal (expected journal revenue
+zero versus actual 6,794.52); the test now supplies that required real journal, without weakening
+the comparison. The corrected single witness passed in 11.51 seconds before final compatibility
+changes; the final API/usage/explanation/access-scope suite passed 19 tests in 89.48 seconds.
+
+Logs: `/private/tmp/rpo-fixed-schedule-expanded-db.log` (47 passes plus fixture failure),
+`/private/tmp/rpo-waterfall-tie-baseline.log` (diagnostic),
+`/private/tmp/rpo-waterfall-explain-fixed.log` (corrected witness), and
+`/private/tmp/rpo-fixed-final-db.log` (final API suite). Earlier intermediate scoped checks:
+262 engine/trace tests in 99.22 seconds; 111 units/trace checks in 1.74 seconds. These precede
+explicit no-fee states and are superseded for changed behavior by the final combined check:
+**614 recognition, disclosure, kernel, reader, version-chain, schedule and explanation tests
+passed in 104.76 seconds**, `/private/tmp/rpo-fixed-final-engine-unit.log`. All 10 changed
+source files pass mypy; changed Python files pass Ruff lint/format and git whitespace checks.
+
+B4-2 remains partial: complete multi-cause fixed-allocation decomposition, projection attribution
+under adjustments/holds/Step-1 netting, zero-net omitted schedule lines, mixed legacy upgrade
+handling, royalty/entry/cancellation/calendar/exemption combinations and release cut/replays
+still need coverage. No full backend/CI or production readiness is claimed. No deployment.

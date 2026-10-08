@@ -984,3 +984,75 @@ def test_a_transfer_dated_after_the_version_leaves_the_awaiting_trigger_amount()
             item["allocated_amount"] - part.shift == part.revenue + part.scheduled + part.awaiting
         )
     assert min(shown["scheduled_amount"], shown["awaiting_trigger_amount"]) >= 0
+
+
+@pytest.mark.parametrize("day, expected", [(JANUARY, "900.00"), (MARCH, "850.00")])
+def test_realized_fees_enter_the_remainder_only_at_their_period(day: date, expected: str) -> None:
+    nodes = trace(
+        node("realised_allocation", "C-1/O1", "-", "150.00"),
+        *series("realised_allocation", "C-1/O1", {"P01": "0.00", "P02": "0.00", "P03": "150.00"}),
+        pattern=("EVENT_DRIVEN", "false"),
+    )
+    stored = row(
+        effective_date=MARCH,
+        revenue_cum=Decimal("300.00"),
+        scheduled_amount=Decimal(0),
+        awaiting_trigger_amount=Decimal("850.00"),
+    )
+    result = read(day, nodes, rows=[stored])
+    at = result.obligations[stored["id"]]
+    assert at.scheduled + at.awaiting == Decimal(expected)
+    assert at.realised == (Decimal(0) if day == JANUARY else Decimal("150.00"))
+    assert at.realised_stored == Decimal("150.00")
+    assert result.returns_moved == (Decimal("150.00") if day == JANUARY else Decimal(0))
+
+
+@pytest.mark.parametrize("stored", ["0.00", "150.00"])
+def test_realized_state_requires_explicit_dated_evidence_even_when_zero(stored: str) -> None:
+    with pytest.raises(to_date.Unreadable, match="1 field needs attention"):
+        read(JANUARY, trace(node("realised_allocation", "C-1/O1", "-", stored)))
+
+
+def test_realized_series_requires_its_version_state() -> None:
+    with pytest.raises(to_date.Unreadable, match="1 field needs attention"):
+        read(JANUARY, trace(*series("realised_allocation", "C-1/O1", {"P01": "0.00"})))
+
+
+def test_trimming_preserves_fixed_schedule_sources_beyond_the_requested_cut() -> None:
+    extra = [
+        node(
+            "scheduled_fixed_amount",
+            "C-1/O1",
+            period,
+            "100.00",
+            source_node=f"revenue_by_cause:C-1/O1/NORMAL:{period}",
+        )
+        for period in ENDS
+    ]
+    whole = trace(*extra)
+    kept = to_date.nodes_of(to_date.nodes_at(whole, [JANUARY]), STARTS)
+    assert kept.fixed_schedule == to_date.nodes_of(whole, STARTS).fixed_schedule
+    assert len((kept.fixed_schedule or {})["C-1/O1"]) == 4
+
+
+def test_explicit_no_realization_state_is_distinct_from_missing_history() -> None:
+    result = read(
+        JANUARY, trace(node("realised_allocation", "C-1/O1", "-", "0.00", realisation_mode="NONE"))
+    )
+    at = result.obligations[row()["id"]]
+    assert at.realised_traced
+    assert at.realised == at.realised_stored == 0
+    assert at.fixed_schedule is None
+    assert at.scheduled == Decimal("900.00")
+
+
+@pytest.mark.parametrize("amount, dated", [("1.00", False), ("0.00", True)])
+def test_no_realization_marker_cannot_hide_a_value_or_dated_series(
+    amount: str, dated: bool
+) -> None:
+    nodes = [node("realised_allocation", "C-1/O1", "-", amount, realisation_mode="NONE")]
+    if dated:
+        nodes.append(node("realised_allocation", "C-1/O1", "P01", "0.00"))
+    with pytest.raises(to_date.Unreadable) as caught:
+        read(JANUARY, trace(*nodes))
+    assert caught.value.errors[0].field.endswith(".realised_allocation")

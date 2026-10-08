@@ -942,7 +942,9 @@ def _allocation_state(inputs: Sequence[Fraction], params: Mapping[str, str]) -> 
     allocation of the FIXED segment in force at d_v plus the realised PERIOD_VC amounts, net of
     the returns reduction under REDUCE. ``kind`` ``posted``: params ``allocated`` (minor units) and
     ``minor_unit``; ``kind`` ``exact``: params ``exact`` (a rational, currency units). The inputs
-    are lineage only: the segment's allocation node when one exists."""
+    are lineage only: the segment's allocation node when one exists. The posted
+    form also records the separately traced realized allocation component, with
+    the corresponding revenue target as period lineage."""
     kind = _param(params, "kind")
     if kind == "posted":
         return Fraction(_minor(params, "allocated"), 10 ** minor_unit_of(params))
@@ -4132,6 +4134,10 @@ FORMULAS: Final[Mapping[str, Formula]] = MappingProxyType(
         "rec.awaiting.v1": _awaiting,
         "rec.catch_up.sum.v1": _catch_up_sum,
         "rec.decompose.sequential.v1": _decompose_sequential,
+        # Component views reuse the same arithmetic primitives with separate explain narratives.
+        "rec.period_vc_revenue.v1": _decompose_sequential,
+        "rec.realised_allocation.v1": _allocation_state,
+        "rec.schedule.fixed.v1": _decompose_sequential,
         "rec.progress.cost_recovery.v1": _cost_recovery,
         "rec.progress.cost_to_cost.v1": _cost_to_cost,
         "rec.progress.labour_hours.v1": _labour_hours,

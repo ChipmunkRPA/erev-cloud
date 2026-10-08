@@ -146,26 +146,33 @@ control or close the zero-net journal approval gap.
 
 All three journal-chain tests passed in **42.13 seconds**; Ruff lint/format and whitespace
 checks passed. The diagnostic process is terminal and its disposable database was removed.
-The full control gate is now terminal; the continuing property gate uses no database.
+The full control gate is terminal; the property gate subsequently completed as recorded below.
 
 Local baseline log `/private/tmp/erev-relock-control-baseline-utf8.log`, SHA-256
 `e99327255ccbd6836546bfc0db0e07928030d741bbe2f2209b17e675a118c1fe`.
 Local corrected log `/private/tmp/erev-relock-control-fixed.log`, SHA-256
 `76881d36aca40adcfc1cc8d481611bac9ab08276700b4265a024e25ab1577cfa`.
 
-## Property gate still running
+## Property gate completed — October 8, 2026
 
-`make properties` started on the clean starting revision, with the thorough Hypothesis
-profile, in immutable context `.run/gates/ctx-properties-37c4f0c48918-6323`.
-It collected 48 tests. All six metamorphic tests and the subsequent allocation, schedule, journal-balance,
-rollforward and RPO tests have passed; the suite remains active in determinism checks.
-Pytest PID 6358 was confirmed live with increasing CPU time; the executor session is
-52175. Console output: `/private/tmp/erev-properties-2026-10-08.log`.
+`make properties` completed on captured clean revision
+`37c4f0c48918a8a72228bbc596061ecfd12f9e99` in the preserved immutable context
+`.run/gates/ctx-properties-37c4f0c48918-6323`: **48 passed, zero failed/skipped in
+5899.78 seconds (1:38:19)**. Exit code 0; gate reports `OK properties`. Session 52175
+is terminal and must not be polled/restarted as an unfinished run.
 
-Continue polling that exact session/process; do not restart merely because it is slow. No pass
-or failure is claimed. On completion inspect `.run/reports/properties/`, including source and
-dependency bindings, and replace this pending observation with the actual dated result. The
-running immutable context is separate from the cockpit test corrections made afterwards.
+The thorough Hypothesis profile completed all collected engine/platform properties,
+metamorphic tests and state-machine cases. The canonical report binds source tree
+`0ff89829cbe667ea372f96157dcae27baaac36f7` identically at start/end and context SHA-256
+`e5313e34f81a9629e785326ca1950e2f36693a23135fc7a84b5afa75322a745a` identically at start/end.
+Python and Node dependency bindings are consistent with no mismatches. The outer working
+checkout changed during this run; execution stayed inside its captured context. This is
+historical evidence for 37c4f0c, not verification of later RPO changes or current main.
+
+- Report: `.run/reports/properties/report.json`, SHA-256
+  `95e5cc8a47954bcc004bfbe9085f533bb2efbf2c9d93b6998edade4186a5651d`.
+- Console: `/private/tmp/erev-properties-2026-10-08.log`, SHA-256
+  `cc9cc188969cc4b20c6c237723752abe3434c881d13e3bd9b3e4c0d30fb4047e`.
 
 ## Completed log identities
 
@@ -181,7 +188,7 @@ These local logs are not shipped as repository files. Their hashes bind the obse
 
 ## Remaining work
 
-The property result is pending and the full accounting corpus gate has two unresolved failures.
+The captured property gate passed; the full accounting corpus gate has two unresolved failures.
 Full current backend/CI, browser,
 volume, container and restore checks still need current release-candidate evidence. Remaining
 implementation gaps, engine release cut/replays and independent accounting sign-off stay open.

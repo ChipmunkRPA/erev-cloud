@@ -195,6 +195,7 @@ def scheduled_after(
     *,
     contract: str,
     obligation: str,
+    sources: Mapping[UUID, str] | None = None,
 ) -> tuple[Line, ...]:
     """The schedule lines that state the scheduled part of an obligation's remainder at ``day``:
     the lines of the periods ending after the cut when the remainder has a scheduled part, none
@@ -205,11 +206,27 @@ def scheduled_after(
     period and the lines between the two are still scheduled. Before the first period the version
     measures the cut is ``day`` itself. ``lines`` are every ``REVENUE`` line of the obligation in
     its version.
-    ``ScheduleUnreadable`` when the later lines do not add up to the scheduled part."""
+    For traces with realized fee components, ``sources`` binds each line to the engine's
+    fixed-component projection. Future usage fees do not belong to the allocation at this cut.
+    ``ScheduleUnreadable`` when a projection is missing or the projected lines do not add up
+    to the scheduled part; no proportional allocation or unexplained-difference plug is used.
+    """
     if at.scheduled == 0:
         return ()
     cut = day if at.measured is None else at.measured.end_date
     later = tuple(line for line in lines if line[1] > cut)
+    if at.fixed_schedule is not None:
+        projected: list[Line] = []
+        for line_id, end, _ in later:
+            source = (sources or {}).get(line_id)
+            if source is None or source not in at.fixed_schedule:
+                raise ScheduleUnreadable(
+                    f"obligations[{obligation}].scheduled_amount",
+                    f"Contract {contract}, obligation {obligation}: no fixed-component projection "
+                    f"for schedule line {line_id} at {cut}. Nothing is reported in its place.",
+                )
+            projected.append((line_id, end, at.fixed_schedule[source]))
+        later = tuple(projected)
     placed = sum((amount for _, _, amount in later), ZERO)
     if placed != at.scheduled:
         message = SCHEDULE_DIFFERS.format(

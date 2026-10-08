@@ -159,6 +159,10 @@ __all__ = [
 # Realized usage/royalty allocation now participates in dated RPO rollforward closing and
 # variable-consideration movements (B4-2). Include this disclosure change in that same
 # pending release cut and candidate replays; do not rewrite historical outputs.
+# Period and version-state realised_allocation trace nodes also join that cut: API
+# readers need realization evidence independently of recognized revenue. Explicit no-fee
+# states and fixed schedule component nodes (with their own formula/narrative ids) are part
+# of the same cut; reports must not mix missing legacy components with explicit zero states.
 ENGINE_VERSION: Final[str] = "0.3.0"
 
 # DG-ENG-05 identities, named in ``EngineError.detail["identity"]`` (CTL-012).

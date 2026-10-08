@@ -106,6 +106,8 @@ ZERO: Final = Decimal(0)
 REVENUE: Final = "revenue_cum"
 BILLED: Final = "billed_cum"
 PROGRESS: Final = "progress_ratio"
+REALISED: Final = "realised_allocation"
+FIXED_SCHEDULE: Final = "scheduled_fixed_amount"
 RPO: Final = "rpo_amount"
 RELEASE: Final = "incentive_release_cum"  # ENGINE_SPEC_B S10-R-26, per ``<contract>@<entity>``
 TARGET: Final = "revenue_target_exact"
@@ -113,18 +115,26 @@ FIXED: Final = "#FIXED"  # the component of the returns reduction (ENGINE_SPEC_B
 REDUCE: Final = "REDUCE_CONTRACT_QUANTITY"  # POL-053
 STATE: Final = "-"  # the period slot of a version-state node (ENGINE_SPEC CV-50)
 # The obligation measures read by date: each of their period nodes carries its period's end.
-DATED: Final = (REVENUE, BILLED, PROGRESS)
+DATED: Final = (REVENUE, BILLED, PROGRESS, REALISED)
 # The ``<contract>@<entity>`` measures read by the period key of that subject's cut.
 KEYED: Final = (RELEASE,)
 # The two parts of an obligation's remainder (04 T-CON-11). ``SCHEDULED`` is also the measure of
 # the version-state node the reader takes the obligation's pattern from (``PATTERN``).
 SCHEDULED: Final = "scheduled_amount"
 AWAITING: Final = "awaiting_trigger_amount"
-MEASURES: Final = (*DATED, *KEYED, RPO, TARGET, SCHEDULED, *tie_outs.BALANCE_MEASURES)
+MEASURES: Final = (
+    *DATED,
+    *KEYED,
+    RPO,
+    TARGET,
+    SCHEDULED,
+    FIXED_SCHEDULE,
+    *tie_outs.BALANCE_MEASURES,
+)
 # What a read without balances needs of them: the periods a member subject carries, which one
 # balance the engine publishes for every member and period end gives (zeros included).
 HORIZON: Final = "contract_liability"
-WITHOUT_BALANCES: Final = (*DATED, *KEYED, RPO, TARGET, SCHEDULED, HORIZON)
+WITHOUT_BALANCES: Final = (*DATED, *KEYED, RPO, TARGET, SCHEDULED, FIXED_SCHEDULE, HORIZON)
 # ENGINE_SPEC_B S09-R-46; the statuses whose obligations carry RPO (04 T-CON-08 ``rpo_amount``).
 CANCELLED: Final = "CANCELLED"
 SATISFIED: Final = "SATISFIED"
@@ -202,6 +212,8 @@ PARAMS: Final = (
     "expected",
     "excluded",
     *PATTERN,
+    "source_node",
+    "realisation_mode",
 )
 NODES: Final = text(
     "SELECT ct.contract_version_id, node ->> 'id' AS node_id, node ->> 'measure' AS measure, "
@@ -209,7 +221,9 @@ NODES: Final = text(
     "node -> 'params' ->> 'included' AS included, node -> 'params' ->> 'scope' AS scope, "
     "node -> 'params' ->> 'unit_rate' AS unit_rate, node -> 'params' ->> 'returned' AS returned, "
     "node -> 'params' ->> 'expected' AS expected, node -> 'params' ->> 'excluded' AS excluded, "
-    "node -> 'params' ->> 'pattern' AS pattern, node -> 'params' ->> 'held' AS held "
+    "node -> 'params' ->> 'pattern' AS pattern, node -> 'params' ->> 'held' AS held, "
+    "node -> 'params' ->> 'source_node' AS source_node, "
+    "node -> 'params' ->> 'realisation_mode' AS realisation_mode "
     "FROM erev.calc_trace ct CROSS JOIN LATERAL jsonb_array_elements(ct.trace -> 'nodes') AS node "
     "WHERE ct.contract_version_id = ANY(:version_ids) "
     "AND node ->> 'measure' = ANY(:measures)"
@@ -287,6 +301,9 @@ class Nodes:
     ``starts`` gives, for the first period of every series, the start dates the tenant's calendars
     hold for a period of that key and end date. ``patterns`` maps an obligation's subject to the
     (``pattern``, ``held``) parameters of its version-state ``scheduled_amount`` node.
+    ``fixed_schedule`` binds each projected fixed amount to its original schedule source node.
+    ``realised_modes`` distinguishes explicitly absent fee components from a dated series;
+    missing historical evidence is neither an explicit zero nor a component projection.
     """
 
     periods: Mapping[str, tuple[Point, ...]]
@@ -298,6 +315,8 @@ class Nodes:
     reductions: Mapping[str, tuple[str, str, str]]
     starts: Starts
     patterns: Mapping[str, tuple[str, str]]
+    fixed_schedule: Mapping[str, Mapping[str, Decimal]] | None = None
+    realised_modes: Mapping[str, str] | None = None
 
     def at_key(self, measure: str, subject: str, period_key: str) -> Decimal | None:
         """A ``KEYED`` measure at the end of ``period_key``: its latest node not after that period
@@ -353,11 +372,18 @@ def nodes_of(trace_nodes: Iterable[TraceNode], starts: Starts | None = None) -> 
     ends: dict[str, dict[str, date | None]] = defaultdict(dict)
     reductions: dict[str, tuple[str, str, str]] = {}
     patterns: dict[str, tuple[str, str]] = {}
+    fixed_schedule: dict[str, dict[str, Decimal]] = {}
+    realised_modes: dict[str, str] = {}
     for node in trace_nodes:
         if node.measure not in MEASURES:
             continue
         head, _, slot = node.id.rpartition(":")
         params = node.params
+        if node.measure == FIXED_SCHEDULE:
+            source = params.get("source_node")
+            if isinstance(source, str):
+                fixed_schedule.setdefault(head.partition(":")[2], {})[source] = Decimal(node.value)
+            continue
         if node.measure == TARGET:
             reduction = tuple(params.get(name) for name in ("unit_rate", "returned", "expected"))
             if params.get("scope") == REDUCE and all(item is not None for item in reduction):
@@ -370,6 +396,10 @@ def nodes_of(trace_nodes: Iterable[TraceNode], starts: Starts | None = None) -> 
                 patterns[head.partition(":")[2]] = (str(stated[0]), str(stated[1]))
             continue
         if slot == STATE:
+            if node.measure == REALISED:
+                realised_modes[head.partition(":")[2]] = str(
+                    params.get("realisation_mode", "DATED")
+                )
             included, excluded = params.get("included"), params.get("excluded")
             states[head] = (
                 node.value,
@@ -408,6 +438,8 @@ def nodes_of(trace_nodes: Iterable[TraceNode], starts: Starts | None = None) -> 
         reductions=reductions,
         starts={} if starts is None else starts,
         patterns=patterns,
+        fixed_schedule=fixed_schedule,
+        realised_modes=realised_modes,
     )
 
 
@@ -456,6 +488,7 @@ def _kept[T](
     those periods. A member one of whose periods no node dates is refused by the reader whatever
     the date: it keeps every node, so that the refusal names what the whole trace would.
 
+    Fixed schedule projections all stay: a report cut must place future fixed amounts by period.
     Every other node stays — a version state, a node of an obligation's series without an end
     date, which the reader must still see to refuse the series by name — and of the returns
     targets those the reader takes (``nodes_of``). The release of a consideration payable goes:
@@ -466,6 +499,9 @@ def _kept[T](
     parsed: dict[object, date | None] = {}
     for item in items:
         node_id, measure, as_of, scope = facts(item)
+        if measure == FIXED_SCHEDULE:
+            found.append(item)
+            continue
         if measure == TARGET:
             if scope == REDUCE:
                 found.append(item)
@@ -721,9 +757,11 @@ def _unmeasured(nodes: Nodes, subject: str | None, row: Mapping[str, Any]) -> bo
     """An obligation the engine takes no measure per period of: no period node of its revenue,
     billing or progress, and the version's three figures 0 (a line outside Topic 606 that was
     never billed). It stays as the version holds it and needs no horizon."""
-    if any(Decimal(row[name]) != 0 for name in DATED):
+    if any(Decimal(row[name]) != 0 for name in (REVENUE, BILLED, PROGRESS)):
         return False
-    return subject is None or not any(_measures(nodes, name, subject) for name in DATED)
+    return subject is None or not any(
+        _measures(nodes, name, subject) for name in (REVENUE, BILLED, PROGRESS)
+    )
 
 
 def _horizon(nodes: Nodes, subject: str, named: _Named) -> date:
@@ -820,7 +858,8 @@ def _release_moved(nodes: Nodes, version: Mapping[str, Any], d_v: date, as_of: d
 @dataclass(frozen=True, slots=True)
 class ObligationAt:
     """One obligation at the cut. ``delta`` is its revenue at the cut less its revenue at d_v,
-    ``billed_delta`` the same for billing and ``shift`` the movement of its returns reduction.
+    ``billed_delta`` the same for billing. ``shift`` is the returns reduction movement
+    plus stored realized allocation less realized allocation at the cut.
     ``scheduled`` and ``awaiting`` are the two parts of its remainder at the cut: ``delta + shift``
     has left them as ``remainder_at`` says. ``measured`` is the period its revenue
     was read at and ``billed_measured`` the period of its billing; None before the first period
@@ -837,6 +876,11 @@ class ObligationAt:
     satisfaction_status: str
     measured: Measured | None
     billed_measured: Measured | None
+    realised: Decimal = ZERO
+    realised_stored: Decimal = ZERO
+    fixed_schedule: Mapping[str, Decimal] | None = None
+    realised_traced: bool = False
+    realised_through: Decimal = ZERO  # completed period ends on or before the requested date
 
 
 @dataclass(frozen=True, slots=True)
@@ -988,6 +1032,31 @@ def version_at(
         delta = revenue - Decimal(row["revenue_cum"])
         billed_delta = billed - Decimal(row["billed_cum"])
         shift = _returns_shift(nodes, subject, revenue_at, str(row["txn_currency"]).strip())
+        realised = realised_stored = ZERO
+        realised_state = nodes.states.get(f"{REALISED}:{subject}")
+        if realised_state is None and _measures(nodes, REALISED, subject):
+            raise Unreadable(
+                f"obligations[{subject}].{REALISED}",
+                f"Contract {named.contract}, obligation {named.obligation}: "
+                "the realized-allocation "
+                f"series has no version-state node. {STORED_NOT_SERVED}",
+            )
+        constant_zero = (nodes.realised_modes or {}).get(subject) == "NONE"
+        if realised_state is not None and constant_zero:
+            if Decimal(realised_state[0]) != ZERO or _measures(nodes, REALISED, subject):
+                raise Unreadable(
+                    f"obligations[{subject}].{REALISED}",
+                    "A no-realization state must be zero and have no dated series.",
+                )
+        elif realised_state is not None:
+            if not _measures(nodes, REALISED, subject):
+                raise Unreadable(
+                    f"obligations[{subject}].{REALISED}",
+                    UNTRACED.format(measure=REALISED, day=day, **named.facts()),
+                )
+            realised_stored = Decimal(realised_state[0])
+            realised, _ = _read(nodes, REALISED, subject, day, named, stored=realised_stored)
+            shift += realised_stored - realised
         recognised = _measures(nodes, REVENUE, subject)
         if recognised:  # an obligation the engine measures no revenue for keeps its status
             status = _status(status, revenue, progress)
@@ -1005,6 +1074,22 @@ def version_at(
             satisfaction_status=status,
             measured=_measured(revenue_at),
             billed_measured=_measured(billed_at),
+            realised=realised,
+            realised_stored=realised_stored,
+            realised_traced=realised_state is not None,
+            fixed_schedule=(
+                None
+                if realised_state is None or constant_zero
+                else (nodes.fixed_schedule or {}).get(subject, {})
+            ),
+            realised_through=next(
+                (
+                    Decimal(point.value)
+                    for point in reversed(nodes.periods.get(f"{REALISED}:{subject}", ()))
+                    if point.end <= day
+                ),
+                ZERO,
+            ),
         )
         revenue_moved += delta
         billed_moved += billed_delta

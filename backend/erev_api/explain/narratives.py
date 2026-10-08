@@ -182,6 +182,17 @@ NARRATIVES: Final[Mapping[str, str]] = MappingProxyType(
         "rec.catch_up.sum": "Cumulative catch-up to {date:as_of}, the sum of the boundary "
         "catch-ups cited = {value}.",
         # ENGINE_SPEC_B §9.5 obligation measures at the version date (ENC-10).
+        "rec.period_vc_revenue": (
+            "Usage fee component through {date:as_of}: the reported fees cited here = {value}."
+        ),
+        "rec.realised_allocation": (
+            "Realized usage and royalty allocation through {date:as_of}, including amounts "
+            "awaiting recognition and net of any royalty guarantee = {value}."
+        ),
+        "rec.schedule.fixed": (
+            "Fixed portion of the revenue schedule at {date:as_of}: the original line less "
+            "its identified usage or royalty component = {value}."
+        ),
         "rec.allocation": (
             "Allocation in force: the obligation's allocated amount at the version date is "
             "{value}, the segment in force net of any returns reduction."

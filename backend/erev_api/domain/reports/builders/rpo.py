@@ -61,7 +61,11 @@ of its cause (activation of a group without an included version: ``NEW_CONTRACTS
 ``VC_ESTIMATE_CHANGES``; ``CONTRACT_TERMINATED``: ``CANCELLATIONS``);
 ``REVENUE`` = −(revenue to the range end − revenue to the day before) by the closing version, both
 read at their cuts; closing = the RPO at the range end; ``UNEXPLAINED`` = closing − opening −
-movements (V9).
+movements (V9). Dated realization traces separate fee allocation from the fixed version
+allocation: fees enter variable consideration when realized, with pre-entry realized fees
+included in entry and exited fees removed on cancellation. Mixed legacy/dated evidence is
+refused because a missing historical component cannot be interpreted as zero. Fixed-allocation
+changes with competing event classes remain unexplained pending full cause decomposition.
 
 ``LATE_EVENTS`` (S15-R-12 "late events: revenue changes with an origin period before the period";
 rev 1.161; item RPT-RPO-ROLLFWD-1) = −(revenue to the day before the range by the CLOSING version
@@ -286,6 +290,7 @@ class _Ob:
     allocated: Decimal
     cancelled: bool
     lines: list[tuple[UUID, date, Decimal]] = field(default_factory=list)
+    line_nodes: dict[UUID, str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)
@@ -534,6 +539,7 @@ def load(
                 schedule_line.c.subject_id,
                 schedule_line.c.period_end_date,
                 schedule_line.c.amount,
+                schedule_line.c.trace_node_id,
             )
             .select_from(
                 schedule_line.join(
@@ -559,6 +565,7 @@ def load(
                 (UUID(str(found["contract_version_id"])), UUID(str(found["subject_id"])))
             )
             if ob_found is not None:
+                ob_found.line_nodes[UUID(str(found["id"]))] = str(found["trace_node_id"])
                 ob_found.lines.append(
                     (UUID(str(found["id"])), found["period_end_date"], Decimal(found["amount"]))
                 )
@@ -734,11 +741,19 @@ def measure(session: Session, store: Store, days: Mapping[UUID, Collection[date]
     version at both ends of its range. ``days`` are the dates per entity."""
     every = sorted({day for found in days.values() for day in found})
     wanted: dict[UUID, set[date]] = {}
-    for contract_id in store.chains:
-        for day in every:
+    for contract_id, chain in store.chains.items():
+        moved = [
+            candidate
+            for candidate in chain
+            if every and every[0] < candidate.effective <= every[-1]
+        ]
+        measured_days = {*every, *(candidate.effective for candidate in moved)}
+        for candidate in moved:
+            wanted.setdefault(candidate.id, set()).update(measured_days)
+        for day in measured_days:
             version = store.version_at(contract_id, day)
             if version is not None:
-                wanted.setdefault(version.id, set()).update(every)
+                wanted.setdefault(version.id, set()).update(measured_days)
     store.cuts.update(cuts.obligations_at(session, wanted))
 
 
@@ -755,7 +770,12 @@ def rpo_of(
     total = current = ZERO
     contributors: list[tuple[str, UUID, Decimal, int, bool]] = []
     scheduled = cuts.scheduled_after(
-        ob.lines, at, day, contract=ob.external_id, obligation=ob.obligation_key
+        ob.lines,
+        at,
+        day,
+        contract=ob.external_id,
+        obligation=ob.obligation_key,
+        sources=ob.line_nodes,
     )
     for line_id, end, amount in scheduled:
         index = band_index(end, bounds)
@@ -911,13 +931,49 @@ def _obligation_lines(
         return
     lines = dict.fromkeys(ROLLFORWARD_LINES, ZERO)
     opening = _in_version(store, opening_version, obligation_id)
+    evidence = [
+        store.at(ob, end).realised_traced
+        for version in (opening_version, *moved)
+        if (ob := _in_version(store, version, obligation_id)) is not None
+    ]
+    if any(evidence) and not all(evidence):
+        raise to_date.Unreadable(
+            f"obligations[{described.obligation_key}].{to_date.REALISED}",
+            f"Contract {described.external_id}, obligation {described.obligation_key}: "
+            "this rollforward mixes dated realization evidence with legacy versions that lack it. "
+            "Historical realized allocation cannot be inferred from a missing series. "
+            "Nothing is reported in its place.",
+        )
     if opening is not None:
         lines["OPENING"] = rpo_of(opening, before, DEFAULT_BANDS, store.at(opening, before))[0]
     previous_obligation = opening
-    previous = ZERO if opening is None else opening.allocated
+    previous = (
+        ZERO if opening is None else opening.allocated - store.at(opening, before).realised_stored
+    )
+    realised_opening = ZERO if opening is None else store.at(opening, before).realised
     for version in moved:
         current = _in_version(store, version, obligation_id)
-        allocated = ZERO if current is None else current.allocated
+        allocated = (
+            ZERO if current is None else current.allocated - store.at(current, end).realised_stored
+        )
+        if current is not None and previous_obligation is None:
+            # Fees realized by completed periods before admission enter with the contract;
+            # later realization is independently identified variable consideration.
+            entry_realised = (
+                store.at(current, version.effective).realised_through
+                if store.at(current, end).realised_traced
+                else ZERO
+            )
+            lines["NEW_CONTRACTS"] += entry_realised
+            lines["VC_ESTIMATE_CHANGES"] -= entry_realised
+        elif current is None and previous_obligation is not None:
+            removed = (
+                store.at(previous_obligation, version.effective).realised
+                if store.at(previous_obligation, end).realised_traced
+                else ZERO
+            )
+            lines["CANCELLATIONS"] -= removed
+            lines["VC_ESTIMATE_CHANGES"] += removed
         delta = allocated - previous
         if delta:
             if previous_obligation is None:
@@ -932,6 +988,8 @@ def _obligation_lines(
         previous = allocated
         previous_obligation = current
     closing = _in_version(store, closing_version, obligation_id)
+    realised_closing = ZERO if closing is None else store.at(closing, end).realised
+    lines["VC_ESTIMATE_CHANGES"] += realised_closing - realised_opening
     if closing is not None:
         at_end = store.at(closing, end)
         restated = store.at(closing, before).revenue  # to the day before, as the closing knows it
@@ -1242,6 +1300,11 @@ def cell(
                 continue
             value += amount
             measure = "amount" if kind == "schedule_line" else "awaiting_trigger_amount"
+            if (
+                kind == "schedule_line"
+                and run.store.at(item.ob, item.as_of).fixed_schedule is not None
+            ):
+                measure = to_date.FIXED_SCHEDULE
             contributors.append(
                 {
                     "object_type": kind,

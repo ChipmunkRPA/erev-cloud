@@ -67,6 +67,9 @@ __all__ = [
 ]
 
 ALLOCATION_FORMULA: Final = "rec.allocation.v1"
+REALISED_FORMULA: Final = "rec.realised_allocation.v1"
+FIXED_SCHEDULE_FORMULA: Final = "rec.schedule.fixed.v1"
+PERIOD_VC_FORMULA: Final = "rec.period_vc_revenue.v1"
 ADJUSTMENT_FORMULA: Final = "rec.allocation_adjustment.v1"
 SEGMENT_STATE_FORMULA: Final = "rec.segment_state.v1"
 ACTIVITY_FORMULA: Final = "rec.activity_sum.v1"
@@ -1149,6 +1152,135 @@ def revenue_schedule(
     return tuple(lines)
 
 
+def _emit_fixed_schedule(
+    ctx: BookContext,
+    tb: TraceBuilder,
+    evaluator: components.Evaluator,
+    targets: Sequence[Target],
+    causes: Sequence[Target],
+) -> None:
+    """Separate fixed schedule portions using the engine's component/cause evidence.
+
+    Manual adjustments, holds and Step-1 netting do not supply a component attribution;
+    omit their projections so a dated reader refuses instead of assigning them by ratio.
+    """
+    ob = evaluator.ob
+    if not any(seg.component in ("PERIOD_VC", "ROYALTY") for seg in ob.segments):
+        return
+    periods = {period.period_key: period for period in evaluator.periods}
+    previous: components.Evaluation | None = None
+    previous_usage: str | None = None
+    for target in targets:
+        ev = evaluator.posted(periods[target.period_key].end_date)
+        usage = sum(item.amount for item in ev.realised)
+        usage_node = tb.node(
+            measure="period_vc_revenue_cum",
+            subject_key=ob.subject_key,
+            period_key=target.period_key,
+            value=usage,
+            currency=ctx.txn_currency,
+            minor_unit=evaluator.mu,
+            formula_id=PERIOD_VC_FORMULA,
+            inputs=[
+                SourceRef(
+                    "contract_event",
+                    item.event_key,
+                    {"member": "rated_amount", "value": format_money(item.amount, evaluator.mu)},
+                )
+                for item in ev.realised
+            ],
+            params={"cause": "PERIOD_VC", "as_of": ev.as_of.isoformat()},
+            narrative_key=_narrative(PERIOD_VC_FORMULA),
+        )
+        readable = (
+            ev.guard is None
+            and not ev.adjusted
+            and (previous is None or (previous.guard is None and not previous.adjusted))
+        )
+        if readable:
+            old_usage = 0 if previous is None else sum(item.amount for item in previous.realised)
+            for cause in causes:
+                if cause.period_key != target.period_key:
+                    continue
+                inputs = [cause.node_id]
+                signs = ["+"]
+                value = cause.value
+                if cause.cause == "NORMAL":
+                    value -= usage - old_usage
+                    inputs.append(usage_node)
+                    signs.append("-")
+                    if previous_usage is not None:
+                        inputs.append(previous_usage)
+                        signs.append("+")
+                elif cause.cause == "ROYALTY":
+                    value = 0
+                    inputs.append(cause.node_id)
+                    signs.append("-")
+                tb.node(
+                    measure="scheduled_fixed_amount",
+                    subject_key=ob.subject_key,
+                    period_key=f"{target.period_key}@{cause.cause}",
+                    value=value,
+                    currency=ctx.txn_currency,
+                    minor_unit=evaluator.mu,
+                    formula_id=FIXED_SCHEDULE_FORMULA,
+                    inputs=inputs,
+                    params={
+                        "cause": "FIXED_SCHEDULE",
+                        "signs": ",".join(signs),
+                        "as_of": ev.as_of.isoformat(),
+                        "source_node": cause.node_id,
+                    },
+                    narrative_key=_narrative(FIXED_SCHEDULE_FORMULA),
+                )
+        previous, previous_usage = ev, usage_node
+
+
+def _emit_realised_allocation(
+    ctx: BookContext,
+    st: AllocatedState,
+    tb: TraceBuilder,
+    evaluator: components.Evaluator,
+    targets: Sequence[Target],
+    version_day: date,
+) -> None:
+    """Persist realization separately from fixed allocation and recognized revenue.
+
+    Revenue cannot stand in for this amount: a royalty or usage fee can remain
+    unrecognized under a satisfaction condition or recognition hold. Use the same
+    dated realization calculation as the obligation state and disclosure stage.
+    Zero period points are retained so earlier report cuts have explicit evidence.
+    """
+    ob = evaluator.ob
+    dated = any(seg.component in ("PERIOD_VC", "ROYALTY") for seg in ob.segments)
+    period_ends = {period.period_key: period.end_date for period in evaluator.periods}
+    points: list[tuple[str | None, date, tuple[str, ...]]] = [
+        (target.period_key, period_ends[target.period_key], (target.node_id,))
+        for target in targets
+        if dated
+    ]
+    points.append((None, version_day, tuple(target.node_id for target in targets)))
+    for period_key, day, inputs in points:
+        value = realised_at(ctx, st, ob, day, evaluator.posted(day))
+        tb.node(
+            measure="realised_allocation",
+            subject_key=ob.subject_key,
+            period_key=period_key,
+            value=value,
+            currency=ctx.txn_currency,
+            minor_unit=evaluator.mu,
+            formula_id=REALISED_FORMULA,
+            inputs=inputs,
+            params={
+                "allocated": str(value),
+                "as_of": day.isoformat(),
+                "kind": "posted",
+                "realisation_mode": "DATED" if dated else "NONE",
+            },
+            narrative_key=_narrative(REALISED_FORMULA),
+        )
+
+
 def build(
     ctx: BookContext, st: AllocatedState, tb: TraceBuilder, result: components.StageTargets
 ) -> tuple[tuple[ScheduleLineOut, ...], Mapping[str, ObligationMeasures]]:
@@ -1166,6 +1298,10 @@ def build(
     for subject_key in sorted(result.evaluators):
         evaluator = result.evaluators[subject_key]
         ob = evaluator.ob
+        _emit_realised_allocation(ctx, st, tb, evaluator, targets.get(subject_key, ()), v)
+        _emit_fixed_schedule(
+            ctx, tb, evaluator, targets.get(subject_key, ()), causes.get(subject_key, ())
+        )
         lines.extend(
             revenue_schedule(
                 st, ob, evaluator, targets.get(subject_key, ()), causes.get(subject_key, ())

@@ -18,7 +18,7 @@ from decimal import Decimal
 from uuid import UUID
 
 import pytest
-from erev_api.domain.contracts.to_date import ObligationAt
+from erev_api.domain.contracts.to_date import ObligationAt, Unreadable
 from erev_api.domain.reports.builders import rpo
 from erev_api.domain.reports.builders.rpo import Membership, Store, _Ob, _Version
 
@@ -527,3 +527,20 @@ def test_existing_zero_allocation_is_not_a_new_contract(
     assert result.lines["VC_ESTIMATE_CHANGES"] == (150 if cause == "USAGE_REPORTED" else 0)
     # A changed amount with no recognized allocation cause must remain unexplained.
     assert result.lines["UNEXPLAINED"] == (0 if cause == "USAGE_REPORTED" else 150)
+
+
+def test_mixed_legacy_and_dated_realization_versions_are_not_silently_reclassified() -> None:
+    data = store()
+    cuts = dict(data.cuts)
+    for key, values in list(cuts.items()):
+        if key[0] == JOINT.id:
+            cuts[key] = {
+                row_id: dataclasses.replace(value, realised_traced=True)
+                for row_id, value in values.items()
+            }
+    with pytest.raises(Unreadable) as caught:
+        rpo.rollforward_lines(
+            dataclasses.replace(data, cuts=cuts), ranges=RANGE, applied=NOTHING_APPLIED
+        )
+    assert "legacy versions" in caught.value.errors[0].message
+    assert caught.value.errors[0].field.endswith(".realised_allocation")

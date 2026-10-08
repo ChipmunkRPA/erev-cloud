@@ -91,6 +91,22 @@ def test_realized_usage_is_added_and_does_not_reduce_fixed_remaining(fee: int, h
     recognition = run(ctx, st, tb)
     trace = tb.build(root_measures={})
     assert reevaluate(trace) == {node.id: node.value for node in trace.nodes}
+    realised = {
+        node.id.rpartition(":")[2]: node.value
+        for node in trace.nodes
+        if node.measure == "realised_allocation"
+    }
+    assert realised["FY2026-P01"] == "0.00"
+    assert realised["FY2026-P02"] == "0.00"
+    assert realised["FY2026-P03"] == "150.00"
+    assert realised["-"] == "150.00"
+    fixed = {
+        node.params["source_node"]: Decimal(node.value)
+        for node in trace.nodes
+        if node.measure == "scheduled_fixed_amount"
+    }
+    march_parts = [value for source, value in fixed.items() if source.endswith(":FY2026-P03")]
+    assert march_parts == ([] if held else [Decimal(fee) / 12])
     measures = recognition.obligation_measures[f"{CONTRACT_KEY}/POB-01"]
     # Without a hold, nine fixed-fee portions remain; with a hold, ten plus the unrecognized fee.
     expected_closing = fee * 100 * 10 // 12 + 15000 if held else fee * 75

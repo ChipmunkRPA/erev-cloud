@@ -2197,3 +2197,58 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   lint/format and whitespace checks passed. These are targeted checks, not full-backend evidence.
 - The economic treatment of FX classification transitions remains pending independent accounting
   review; public POL-163 authoring stays disabled. Repository completion only; no deployment.
+
+## First-calculation RPO timing investigation — October 8, 2026
+
+- Reproduced B4-2 on f3c48c4 through real event submission, independent approval and
+  the report API: January NEW_CONTRACTS is 80,150 instead of 80,000 when initial
+  activation and a March 150 usage fee are first computed together. **One failed
+  in 11.20 seconds**; local log `/private/tmp/rpo-first-calculation-baseline.log`.
+- A working-tree repair adds period/state realized-allocation trace evidence, a dated
+  reader and independent realized-fee movement attribution. **262 recognition,
+  disclosure and trace tests passed in 96.04 seconds**; **79 reader/version-chain
+  tests passed in 0.97 seconds**. These are local, uncommitted-source results.
+- The API rerun has **five passed, one failed in 35.29 seconds**. Correcting earlier
+  allocation exposes the future revenue schedule's inclusion of the later fee:
+  `ScheduleUnreadable` refuses the inconsistent schedule. The repair is NOT published
+  or complete. Do not remove this guard or plug unexplained differences. Next: carry
+  the engine's fixed/realized revenue decomposition into dated schedule placement,
+  then verify both report totals/tie-outs and the revenue waterfall.
+- Detailed evidence and remaining implementation cautions are in the RPO release note.
+  Preserved the pending source/test edits in the local checkout; publish only verified
+  repairs directly to main. Archived older policy-lock evidence verbatim. No deployment.
+  Property session 52175 is still live on its original immutable 37c4f0c context;
+  it has reached P11, and cannot verify these later source changes.
+
+## API RPO usage attribution repair — October 8, 2026
+
+- Continued from clean ada7213. Unit counterexamples: **three failed, one passed in
+  0.43 seconds**. Valid PostgreSQL baseline: **one failed in 11.49 seconds**, after fixing
+  the test's initial Money payload validation error. The report omitted a 150 usage addition.
+- Added USAGE_REPORTED to variable-consideration activity (also the royalty-statement event).
+  Existing obligations with zero allocation no longer become new contracts on their first fee.
+  Unknown or competing cause classes stay unexplained; no arbitrary alphabetic attribution.
+- **18 unit tests passed in 0.40 seconds**; expanded PostgreSQL RPO/disaggregation and unit
+  version-chain checks: **32 passed in 61.81 seconds**. Real event submission/independent
+  approval and report API verify the 150 addition, matching revenue, unchanged RPO and both
+  tie-outs. Mypy, Ruff and whitespace pass. Detailed logs are in the RPO evidence note.
+- B4-2 remains partial: first-version batching, multi-cause decomposition, API royalties,
+  combined edge cases and release cut/replays remain. Archived corpus evidence verbatim.
+  Property session 52175 continues against its original pre-repair revision. No deployment
+  or production-readiness claim; direct publication to main.
+
+## Engine RPO realized allocation repair — October 8, 2026
+
+- Regressions reproduced both B4-2 cases: **two failed in 0.23 seconds**. Shared the
+  recognition stage's realized-allocation reader with disclosures at the revenue period cuts.
+  RPO closing includes realized usage/royalty allocation; its movement enters variable
+  consideration, without plugging unexplained differences or double-counting Step-1 entry.
+- Mixed fixed/usage closing is now 9,000 rather than 8,850; pure usage gets the 150 addition.
+  Holds retain unrealized revenue in RPO. Added royalty-guarantee, delayed satisfaction and
+  downward-correction checks. Initial disclosure/deterministic suite: **77 passed**; royalty
+  module: **13 passed**; expanded recognition/disclosure and architecture: **268 passed in
+  79.77 seconds**; final usage/hold/Step-1 matrix: **six passed in 0.24 seconds**.
+  Mypy, Ruff and whitespace pass. Detailed scope and logs are in the RPO evidence note.
+- B4-2 remains partially open: API attribution, combined lifecycle/exemption/calendar matrix,
+  engine 0.4.0 cut and replays still required. Historical outputs unchanged; no deployment or
+  readiness claim. Property session 52175 remains active on its original pre-repair revision.
