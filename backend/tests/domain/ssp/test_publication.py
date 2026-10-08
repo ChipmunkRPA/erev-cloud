@@ -1233,3 +1233,84 @@ def test_evidence_count_shredded_1_the_submission_and_the_approval_wait_for_a_sh
     }
     assert shown(app, world.maya, draft["id"])["status"] == "DRAFT"
     assert shown(app, world.maya, other["id"])["status"] == "SUBMITTED"
+
+
+@pytest.mark.control("CTL-010")
+@pytest.mark.parametrize(
+    ("before", "after", "needs_second"),
+    [
+        (
+            {
+                "value_basis": "PERCENT_OF_LIST",
+                "unit_list_price": "100",
+                "ranges": [{"point_value": "1"}],
+            },
+            {"unit_list_price": "120"},
+            True,
+        ),
+        ({"ranges": [{"point_value": "0"}]}, {"ranges": [{"point_value": "1"}]}, True),
+        (
+            {
+                "observable_point": "100",
+                "ranges": [{"low_value": "80", "mid_value": "100", "high_value": "150"}],
+            },
+            {"observable_point": "120"},
+            True,
+        ),
+        (
+            {
+                "value_basis": "PERCENT_OF_LIST",
+                "unit_list_price": "100",
+                "ranges": [{"point_value": "1"}],
+            },
+            {"unit_list_price": "110"},
+            False,
+        ),
+        (
+            {
+                "value_basis": "PERCENT_OF_LIST",
+                "unit_list_price": "100",
+                "ranges": [{"point_value": "1"}],
+            },
+            {"unit_list_price": "200", "ranges": [{"point_value": "0.5"}]},
+            False,
+        ),
+    ],
+)
+def test_second_approval_uses_effective_ssp_values(
+    app: FastAPI,
+    world: World,
+    before: dict[str, Any],
+    after: dict[str, Any],
+    needs_second: bool,
+) -> None:
+    """Changing entry-level inputs cannot bypass the material-value routing check."""
+    entry = {
+        "product_code": PLATFORM,
+        "currency": "USD",
+        "method": "observable",
+        "distinctness": "distinct",
+        **before,
+    }
+    first = approved(app, world, label="2026-H1", effective_from="2026-01-01", entries=(entry,))
+    second = new_version(
+        app,
+        world.maya,
+        world.book_id,
+        label="2026-H2",
+        effective_from="2026-10-01",
+        entries=({**entry, **after},),
+        copy_from_version_id=first["id"],
+    )
+    request_id = submitted(app, world.maya, second["id"])["approval_request_id"]
+    request = request_of(app, world.priya, request_id)
+    assert ("ABOVE_THRESHOLD" in request["flags"]) is needs_second
+    decided = approve(app, request_id, world.priya)
+    assert decided.status_code == 200, decided.text
+    assert decided.json()["status"] == ("PENDING" if needs_second else "APPROVED")
+    if needs_second:
+        assert shown(app, world.maya, second["id"])["status"] == "SUBMITTED"
+        assert approve(app, request_id, world.priya).status_code == 409
+        completed = approve(app, request_id, world.marcus)
+        assert completed.status_code == 200, completed.text
+        assert completed.json()["status"] == "APPROVED"

@@ -17,7 +17,8 @@ one transaction, as FX rate set versions do (RFD-3).
   APPROVED version, audits the POL-073 findings and opens one ``SSP_BOOK_VERSION`` request.
 - ``change_flags`` (the subject's T-PLT-17 routing flags): ``METHODOLOGY_CHANGE`` for a methodology
   change; ``ABOVE_THRESHOLD`` when an entry paired with the latest APPROVED version changes its
-  method, or a band's mid value (else its point value) by more than the tenant threshold. Either
+  method/value basis, or an effective band/observable/fallback point by more than the tenant
+  threshold. Percentage-of-list bands include list price; nonzero changes from zero qualify. Either
   flag gives the request a second ``ssp.approve`` step (REQ-SSP-007).
 - ``withdraw_ssp_book_version`` (``POST /ssp-book-versions/{id}/withdraw``): the preparer withdraws
   the pending request, and ``on_voided`` returns the version to DRAFT.
@@ -174,29 +175,66 @@ def diff_summary(
 # --- routing flags (REQ-SSP-007) -----------------------------------------------------------------
 
 
-def band_change_ratio(before: Mapping[str, Any], after: Mapping[str, Any]) -> Decimal | None:
-    """|after − before| ÷ |before| of a band's mid value, else of its point value; None without
-    values on both sides or with a before value of 0."""
-    for name in ("mid_value", "point_value"):
-        old, new = books.decimal_or_none(before[name]), books.decimal_or_none(after[name])
-        if old is not None and new is not None:
-            if old == 0:
-                return None
-            return abs(_WIDE.divide(_WIDE.subtract(new, old), old))
-    return None
+def _value_exceeds(old: Decimal | None, new: Decimal | None, threshold: Decimal) -> bool:
+    """Compare effective values exactly; a new or removed value needs independent review.
+
+    Cross multiplication avoids rounding a ratio at the threshold. From a zero baseline,
+    any nonzero value exceeds the allowed relative change; unchanged zero does not.
+    """
+    if old is None or new is None:
+        return old != new
+    return _WIDE.subtract(new, old).copy_abs() > _WIDE.multiply(old.copy_abs(), threshold)
+
+
+def _band_value(entry: Mapping[str, Any], band: Mapping[str, Any]) -> Decimal | None:
+    """The per-unit mid, else point, in the entry's currency (S05-R-06)."""
+    value = books.decimal_or_none(band["mid_value"])
+    if value is None:
+        value = books.decimal_or_none(band["point_value"])
+    # Legacy bands already contain list price × (1 - discount), regardless of the
+    # retained value-basis label; the engine's legacy branch does not scale them again.
+    if (
+        value is not None
+        and entry["method"] != "legacy_range"
+        and entry["value_basis"] == "PERCENT_OF_LIST"
+    ):
+        price = books.decimal_or_none(entry["unit_list_price"])
+        return None if price is None else _WIDE.multiply(value, price)
+    return value
+
+
+def _unbanded_cost(entry: Mapping[str, Any]) -> Decimal | None:
+    """The engine's cost-plus fallback for a retained entry without bands."""
+    if entry["method"] != "cost_plus_margin" or entry["ranges"]:
+        return None
+    cost = books.decimal_or_none(entry["cost_basis"])
+    margin = books.decimal_or_none(entry["margin_ratio"])
+    if cost is None or margin is None:
+        return None
+    return _WIDE.multiply(cost, _WIDE.add(Decimal(1), margin))
 
 
 def above_threshold(change: Mapping[str, Any], threshold: Decimal) -> bool:
-    """A changed diff item needs a second approver: its method changed, or a band paired by
-    dimension and start changed its value by more than ``threshold`` (PRD §2.5)."""
+    """A changed entry needs two approvers when its effective SSP changes above the limit.
+
+    Compare like units and paired bands. A method/basis change cannot be judged by a
+    percentage of unlike values and also requires the second approver (REQ-SSP-007).
+    """
     before, after = change["before"], change["after"]
-    if before["method"] != after["method"]:
+    if any(before[name] != after[name] for name in ("method", "value_basis", "quantity_unit")):
+        return True
+    if _value_exceeds(
+        books.decimal_or_none(before["observable_point"]),
+        books.decimal_or_none(after["observable_point"]),
+        threshold,
+    ) or _value_exceeds(_unbanded_cost(before), _unbanded_cost(after), threshold):
         return True
     earlier = {(band["band_dimension"], band["band_from"]): band for band in before["ranges"]}
     for band in after["ranges"]:
         paired = earlier.get((band["band_dimension"], band["band_from"]))
-        ratio = None if paired is None else band_change_ratio(paired, band)
-        if ratio is not None and ratio > threshold:
+        if paired is not None and _value_exceeds(
+            _band_value(before, paired), _band_value(after, band), threshold
+        ):
             return True
     return False
 

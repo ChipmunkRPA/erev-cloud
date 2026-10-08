@@ -3318,3 +3318,21 @@ still orders commits; pre-0121 rows retain their timestamp fallback over the wid
 Entity, tenant and book scoping remain in the predicate; future-period postings are excluded.
 Billing-to-subledger keeps its own period's posting population. This closes B2-8; it does not
 implement the exact role-balance recomparison or establish volume performance under B1-29.
+
+
+### SSP approval threshold uses effective values — October 8, 2026
+
+`ssp.publication.above_threshold` compares each paired band's midpoint, else point, in its
+entry currency. Percentage-of-list values include list price. Legacy ranges already contain
+list price and discount and are never scaled a second time. Observable points are checked
+separately; retained cost-plus entries without bands use cost × (1 + margin), matching the
+engine fallback. With bands present, unused cost inputs do not change that band's SSP.
+
+Absolute differences are compared by cross multiplication in the explicit wide Decimal context,
+so an exact threshold is allowed and a representable increment above it requires second review,
+even under a low ambient precision. A nonzero change from zero requires review; unchanged zero
+and compensating inputs with the same effective amount do not. Adding or removing an observable
+point, or changing method/value basis/quantity unit, requires independent second review. Existing
+entry pairing and the declarative qualitative-methodology flag remain; no semantic interpretation
+of the study is claimed. Routing flags and the existing distinct-decider approval steps enforce
+this at submission. Historical approvals are unchanged.
