@@ -584,6 +584,7 @@ def test_verify_on_demand_returns_job(
 
     finished = get(app, f"/api/v1/jobs/{job_id}", maya).json()
     assert (finished["state"], finished["result"]["href"]) == ("SUCCEEDED", VERIFICATIONS)
+    assert finished["result"]["verification_id"] == item["id"]
     # Holders of audit.read download the digest (SF-09:verification).
     digest = get(app, f"/api/v1/files/{item['digest_file_id']}/content", maya)
     assert digest.status_code == 200, digest.text

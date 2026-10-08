@@ -2876,3 +2876,27 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   remain open. Collectors must still validate output/audit bytes and export permissions. No
   pack endpoint, CTL-041, RPS-16 or production-readiness claim. Current release verification and
   independent accounting sign-off remain required. Direct main; no deployment or notifications.
+
+## Atomic first-close retention — October 8, 2026 (RPS-16 continued)
+
+- Continued from clean published 7f04236; previous turn closed the generic-file access bypass.
+  Added `evidence_storage.finish_close`: explicitly checks evidence export/entity scope, locks
+  the pack, reauthorizes and assembles all retained sources, stores encrypted ZIP output, then
+  writes SUCCEEDED/file/manifest/separate hash and `evidence.finish` in the caller's transaction.
+  QUEUED/FAILED and partial preexisting output refuse. SUCCEEDED repeats verify/reuse the exact
+  file; hashes, metadata, canonical ZIP and freshly verified source bytes must all agree.
+- Actual local database/encrypted-store witness: **2 passed in 15.04 seconds**. Rollback retains
+  RUNNING with no file-object row/manifest; commit produces one file and one finish audit event;
+  repeat creates neither, and each revoked source/export permission refuses. This uses the
+  earlier approved-omission/seeded-journal close witness, not full operational close acceptance.
+  Transaction atomicity concerns database references; object-store orphan recovery remains the
+  existing file-store responsibility. No completion helper commits or exposes bytes via API.
+- Broader regression: **90 passed, one failed in 16.42 seconds**; architecture correctly found
+  the new evidence_pack audit object unclassified. Classified it WHERE_NAMED and explicitly
+  supplied its contract_ids (empty for CLOSE, supporting future samples). Final regression:
+  **99 passed in 16.45 seconds**; source Mypy, Ruff lint/format and whitespace pass. Logs:
+  `/private/tmp/evidence-storage-{db,final,corrected}.log`; all processes terminal.
+- Archived older control/RPO notes verbatim. Dependency scheduling, creation/idempotency,
+  failure/cancellation lifecycle, download/API and export audit, automatic generation, other
+  kinds and variance remain open. RPS-16/CTL-041 and production readiness remain unclaimed;
+  release gates and accounting sign-off remain required. Direct main; no deployment.

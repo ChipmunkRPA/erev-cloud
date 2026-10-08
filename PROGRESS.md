@@ -2,6 +2,31 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Stable audit verification job results — October 8, 2026 (RPS-16 prerequisite)
+
+- Continued from clean published abc0514. Reviewed NTF-06: the existing lock notification
+  truthfully promises stored snapshots; pack availability must follow successful automatic
+  generation. That depends on a stable queued audit result. Found and fixed an audit worker
+  retry gap: a crash after verification commit could repeat verification before job settlement.
+- AUDIT_CHAIN_VERIFY now returns result.verification_id and reuses the single committed
+  tenant/job/trigger result, including FAIL. It does not reverify a newer prefix, create another
+  digest/control result, or notify again. Multiple retained rows or trigger mismatch refuse;
+  the normal three-attempt policy remains. This proves a historical verification, not current
+  chain integrity. No schema migration or public request change; JobResultOut permits this member.
+- Initial audit domain/API run: **16 passed in 13.78 seconds**. Expanded ambiguous-result cases
+  first had **47 passed, 4 failed in 16.10 seconds** because the test expected final failure on
+  attempt two of three. Corrected the witness to fetch/run attempt three without changing the
+  retry policy; final audit/API/digest/audit-classification regression: **51 passed in 16.05
+  seconds**. PASS/FAIL crash cases retain exact IDs and row/file/control/notification/outbox
+  counts; inconsistent cases settle FAILED without new verification. API exposes the exact ID.
+- Logs /private/tmp/audit-result-{retry,final,corrected}.log; all processes terminal. Source Mypy,
+  Ruff lint/format and whitespace checks pass. Updated architecture/limits and archived earlier
+  retention notes verbatim. Next: bind a queued audit job in versioned pack sources, wait for
+  that exact successful verification, then integrate automatic lock enqueue and availability.
+  Current creation still requires a completed verification; no NTF-06/RPS-16/CTL-041 completion
+  or production-readiness claim. Other kinds, variance and release/accounting gates remain open.
+  Direct main; no deployment or external notifications.
+
 ## Scoped first-close pack register — October 8, 2026 (RPS-16 continued)
 
 - Continued from clean published 3ceeffa. Added GET /evidence-packs with a metadata summary,
@@ -147,30 +172,6 @@
   creation/idempotency, failure/cancellation lifecycle, download/API, automatic generation,
   other kinds and variance remain open. Current release gates/accounting sign-off still needed;
   RPS-16/CTL-041 unclaimed. Direct main; no deployment or external notifications.
-
-## Atomic first-close retention — October 8, 2026 (RPS-16 continued)
-
-- Continued from clean published 7f04236; previous turn closed the generic-file access bypass.
-  Added `evidence_storage.finish_close`: explicitly checks evidence export/entity scope, locks
-  the pack, reauthorizes and assembles all retained sources, stores encrypted ZIP output, then
-  writes SUCCEEDED/file/manifest/separate hash and `evidence.finish` in the caller's transaction.
-  QUEUED/FAILED and partial preexisting output refuse. SUCCEEDED repeats verify/reuse the exact
-  file; hashes, metadata, canonical ZIP and freshly verified source bytes must all agree.
-- Actual local database/encrypted-store witness: **2 passed in 15.04 seconds**. Rollback retains
-  RUNNING with no file-object row/manifest; commit produces one file and one finish audit event;
-  repeat creates neither, and each revoked source/export permission refuses. This uses the
-  earlier approved-omission/seeded-journal close witness, not full operational close acceptance.
-  Transaction atomicity concerns database references; object-store orphan recovery remains the
-  existing file-store responsibility. No completion helper commits or exposes bytes via API.
-- Broader regression: **90 passed, one failed in 16.42 seconds**; architecture correctly found
-  the new evidence_pack audit object unclassified. Classified it WHERE_NAMED and explicitly
-  supplied its contract_ids (empty for CLOSE, supporting future samples). Final regression:
-  **99 passed in 16.45 seconds**; source Mypy, Ruff lint/format and whitespace pass. Logs:
-  `/private/tmp/evidence-storage-{db,final,corrected}.log`; all processes terminal.
-- Archived older control/RPO notes verbatim. Dependency scheduling, creation/idempotency,
-  failure/cancellation lifecycle, download/API and export audit, automatic generation, other
-  kinds and variance remain open. RPS-16/CTL-041 and production readiness remain unclaimed;
-  release gates and accounting sign-off remain required. Direct main; no deployment.
 
 ## Evidence-pack download boundary — October 8, 2026 (RPS-16 continued)
 

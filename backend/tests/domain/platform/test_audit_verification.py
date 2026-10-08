@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import secrets
 from collections.abc import Mapping, Sequence
+from dataclasses import replace
 from typing import Any
 from uuid import UUID
 
@@ -24,6 +25,8 @@ from erev_api.db.tables import (
     audit_chain_head,
     audit_chain_verification,
     audit_event,
+    control_execution,
+    file_object,
     job,
     notification,
     outbox_message,
@@ -34,9 +37,9 @@ from erev_api.enums import ControlResult, JobKind, NotificationKind, PrincipalKi
 from erev_api.events import notifications
 from erev_api.files.store import LocalFileStore, open_file
 from erev_api.jobs import registry
-from erev_api.jobs.context import JobRuntime
+from erev_api.jobs.context import JobContext, JobRuntime
 from erev_api.uow import UnitOfWork, unit_of_work
-from sqlalchemy import Engine, select, text
+from sqlalchemy import Engine, func, select, text
 from support.clock import FROZEN_AT, frozen_clock
 from support.db import TestDatabase
 from support.factories import stamp_test_release, tenant_factory, tenant_id_of
@@ -166,7 +169,11 @@ def test_ctl_039_failure_notifies_and_records(
     stored = _job(tenant_id, job_id)
     assert (stored["state"], stored["result"]) == (
         "SUCCEEDED_WITH_EXCEPTIONS",
-        {"href": VERIFICATIONS_HREF, "counts": {"events_checked": 2, "failures": 1}},
+        {
+            "href": VERIFICATIONS_HREF,
+            "verification_id": str(row["id"]),
+            "counts": {"events_checked": 2, "failures": 1},
+        },
     )
 
     with tenant_session(_db(tenant_id)) as session:
@@ -372,7 +379,11 @@ def test_req_plt_020_pass_writes_digest(
     stored = _job(tenant_id, job_id)
     assert (stored["state"], stored["result"]) == (
         "SUCCEEDED",
-        {"href": VERIFICATIONS_HREF, "counts": {"events_checked": 5, "failures": 0}},
+        {
+            "href": VERIFICATIONS_HREF,
+            "verification_id": str(row["id"]),
+            "counts": {"events_checked": 5, "failures": 0},
+        },
     )
     audited = _verification_fact(tenant_id, job_id)
     assert (audited["chain_seq"], audited["action"], audited["detail"]["ids"]) == (
@@ -441,3 +452,94 @@ def test_sch_02_security_chain_verification(
         result.digest_last_hmac,
     ) == ("security_event", ControlResult.PASS, None, last.chain_seq, last.hmac)
     assert result.events_checked >= 1
+
+
+@pytest.mark.parametrize("conflict", [None, "duplicate", "trigger"])
+@pytest.mark.parametrize("damage_chain", [False, True])
+def test_verification_retry_reuses_committed_result(
+    committed_db: TestDatabase,
+    keyring: KeyRing,
+    clock: FrozenClock,
+    runtime: JobRuntime,
+    monkeypatch: pytest.MonkeyPatch,
+    damage_chain: bool,
+    conflict: str | None,
+) -> None:
+    """Crash after verification commit; reuse one result, refuse ambiguous or mismatched rows."""
+    lena = member(keyring, clock)
+    tenant_id = lena.tenant_id
+    with tenant_session(_db(tenant_id)) as session:
+        insert_role_assignment(
+            session, tenant_id=tenant_id, membership_id=lena.membership_id, role_code="tenant_admin"
+        )
+    if damage_chain:
+        tamper_audit_event(committed_db.owner_engine, tenant_id=tenant_id, chain_seq=2)
+    calls = 0
+
+    def interrupted(jc: JobContext, params: Mapping[str, Any]) -> registry.JobOutcome:
+        nonlocal calls
+        first_params = {"trigger": "ON_DEMAND"} if calls == 0 and conflict == "trigger" else params
+        outcome = audit_jobs.audit_chain_verify(jc, first_params)
+        calls += 1
+        if calls == 1:
+            if conflict == "duplicate":
+                with jc.unit_of_work() as uow:
+                    record_tenant_verification(uow, trigger="SCHEDULED", job_id=jc.job_id)
+                    uow.commit()
+            raise RuntimeError("lost audit completion acknowledgement")
+        return outcome
+
+    monkeypatch.setitem(
+        registry.HANDLERS,
+        JobKind.AUDIT_CHAIN_VERIFY,
+        replace(registry.HANDLERS[JobKind.AUDIT_CHAIN_VERIFY], handler=interrupted),
+    )
+    job_id = _verify(tenant_id, runtime)
+    assert _job(tenant_id, job_id)["state"] == "QUEUED"
+    originals = _verifications(tenant_id)
+    assert len(originals) == (2 if conflict == "duplicate" else 1)
+    original = originals[0]
+
+    def effects() -> tuple[int | None, ...]:
+        with tenant_session(_db(tenant_id)) as session:
+            return tuple(
+                session.scalar(select(func.count()).select_from(table))
+                for table in (
+                    audit_chain_verification,
+                    file_object,
+                    control_execution,
+                    notification,
+                    outbox_message,
+                )
+            )
+
+    before = effects()
+
+    # No digest exporter, verifier, or alert sender may run on the retry.
+    def unexpected(*args: Any, **kwargs: Any) -> Any:
+        raise AssertionError("a committed verification must not be repeated")
+
+    monkeypatch.setattr(audit_jobs.verify, "record_tenant_verification", unexpected)
+    with tenant_session(_db(tenant_id)) as session:
+        task_id = session.scalar(select(job.c.procrastinate_job_id).where(job.c.id == job_id))
+        session.execute(_FETCHED, {"id": task_id})
+    registry.run_job(job_id, tenant_id, attempt=2, runtime=runtime)
+    if conflict:
+        assert _job(tenant_id, job_id)["state"] == "QUEUED"
+        assert effects() == before
+        with tenant_session(_db(tenant_id)) as session:
+            task_id = session.scalar(select(job.c.procrastinate_job_id).where(job.c.id == job_id))
+            session.execute(_FETCHED, {"id": task_id})
+        registry.run_job(job_id, tenant_id, attempt=3, runtime=runtime)
+    finished = _job(tenant_id, job_id)
+    if conflict:
+        assert finished["state"] == "FAILED", finished
+        assert "inconsistent retained results" in finished["problem"]["detail"]
+        assert calls == 1
+    else:
+        assert finished["state"] == ("SUCCEEDED_WITH_EXCEPTIONS" if damage_chain else "SUCCEEDED")
+        assert finished["result"]["verification_id"] == str(original["id"])
+        assert finished["result"]["counts"]["failures"] == int(damage_chain)
+        assert calls == 2
+    assert effects() == before
+    assert _verifications(tenant_id) == originals

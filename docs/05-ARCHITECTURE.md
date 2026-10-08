@@ -1103,6 +1103,16 @@ Execution profiles (E-14):
 
 Queues are exactly the eight names `compute`, `imports`, `close`, `outbox`, `reports`, `maintenance`, `integrations` and `ai` (DG §5.12 `QueueName`); rev 1.1 splits the rev 1.0 row "`RETENTION_SWEEP`, `WEBHOOK_DELIVERY`, `EMAIL_DELIVERY` → `maintenance` / `outbox`" so that each kind has one queue, as DG-KRN-JOB-10 maps it. Worker processes consume all eight by default: `erev worker` without `--queues` and with `EREV_WORKER_QUEUES` empty (DG-KRN-JOB-11, DG-RUN-02, DG-RUN-05). `--queues` restricts a worker only for the hosted split: a dedicated `compute,close` worker service and an `imports,reports,outbox,integrations,ai,maintenance` worker service (DPL-31). The sweeper and the periodic fan-out tasks run on `maintenance` (DG-KRN-JOB-10).
 
+**Audit verification retry identity — October 8, 2026.** An AUDIT_CHAIN_VERIFY outcome
+includes `result.verification_id`, the exact T-PLT-23 row produced by that job. Before verifying,
+the worker checks its tenant/job association. If one committed row exists with the same trigger,
+it reuses that historical PASS or FAIL result. A crash after the verification transaction commits
+and before job settlement therefore does not generate another digest, control execution or failure
+notification. More than one retained result or a different trigger refuses; the normal three-attempt
+policy applies. An uncommitted attempt is still retried normally. Reuse does not verify the current
+chain or check downstream archive integrity. This is a prerequisite for binding an evidence pack
+to a queued audit job; that orchestration and delayed pack-availability notification remain pending.
+
 ### 5.7 Scheduling (periodic tasks)
 
 Periodic tasks use `@app.periodic(cron=…)`; each fan-out task reads the tenant directory under `app.platform_scope = 'tenant_directory'` (TXN-07) and defers one tenant-scoped job per tenant.
