@@ -11,6 +11,7 @@ import hashlib
 import json
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
+from decimal import Decimal
 from io import BytesIO
 from typing import Any
 from uuid import UUID, uuid4
@@ -20,23 +21,50 @@ from erev_api.auth.keyring import KeyRing
 from erev_api.auth.principal import Principal, system_principal
 from erev_api.clock import FrozenClock
 from erev_api.config import Settings
-from erev_api.db import new_id
-from erev_api.db.tables import legal_entity, lock_snapshot, period_lock
+from erev_api.db import new_id, transitions
+from erev_api.db.tables import (
+    legal_entity,
+    lock_snapshot,
+    period_lock,
+    reconciliation,
+    reconciliation_item,
+)
 from erev_api.domain.close import relock_diff
 from erev_api.domain.close import snapshots as close_snapshots
-from erev_api.domain.reports import evidence_archive, evidence_close, evidence_relock, locked
+from erev_api.domain.reports import (
+    evidence_archive,
+    evidence_close,
+    evidence_reconciliations,
+    evidence_relock,
+    locked,
+)
 from erev_api.domain.reports.evidence_selection import resolve
 from erev_api.enums import FilePurpose
 from erev_api.files.store import LocalFileStore, store_file
 from erev_api.main import create_app
 from erev_api.problems import Problem
 from erev_api.schemas.evidence_packs import EvidencePackCreateIn
+from erev_engine.canonical import canonical_bytes
 from fastapi import FastAPI
 from pydantic import TypeAdapter
 from sqlalchemy import insert, select
-from support.close_world import CloseWorld, close_world, contract_of, other_entity, system_session
+from support import reconciliations as recon_api
+from support.close_world import (
+    CloseWorld,
+    actor_with_role,
+    close_world,
+    contract_of,
+    other_entity,
+    system_session,
+)
 from support.db import TestDatabase
-from support.rows import insert_close_parts, period_lock_values
+from support.principals import enrolled
+from support.rows import (
+    insert_close_parts,
+    period_lock_values,
+    reconciliation_item_values,
+    reconciliation_values,
+)
 
 ADAPTER = TypeAdapter(EvidencePackCreateIn)
 FROZEN_AT = datetime(2026, 9, 1, tzinfo=UTC)
@@ -339,6 +367,7 @@ def _freeze_for_pack(
         row = dict(original)
         row.update(
             id=identity,
+            created_at=uow.now,
             cutoff_known_at=uow.now,
             snapshot_manifest_sha256=manifest,
         )
@@ -585,3 +614,135 @@ def test_first_close_has_no_relock_payload(sources: Sources) -> None:
     request = ADAPTER.validate_python(_freeze_for_pack(sources))
     with sources.world.place.uow(sources.principal) as uow:
         assert evidence_relock.collect(uow, resolve(uow, request)) == ()
+
+
+@pytest.mark.parametrize("reference_in", ["item", "not_stated_total"])
+def test_reconciliation_pack_keeps_signed_lock_history_after_new_generation_and_reopen(
+    sources: Sources,
+    clock: FrozenClock,
+    reference_in: str,
+) -> None:
+    body = _freeze_for_pack(sources)
+    reader = replace(
+        sources.principal,
+        permissions=sources.principal.permissions | {"contract.read"},
+        permission_scopes={**sources.principal.permission_scopes, "contract.read": "*"},
+    )
+    with sources.world.place.uow(reader) as uow:
+        selected = resolve(uow, ADAPTER.validate_python(body))
+        assert selected.lock is not None
+        row = reconciliation_values(
+            sources.world.tenant_id,
+            entity_id=selected.lock.entity_id,
+            period_id=selected.lock.period_id,
+            kind="BILLING_TO_SUBLEDGER",
+            as_of_known_at=uow.now,
+            totals=[]
+            if reference_in == "item"
+            else [
+                {
+                    "currency": "USD",
+                    "account_role": "CONTRACT_LIABILITY",
+                    "account_codes": ["2100"],
+                    "subledger_amount": None,
+                    "source_amount": None,
+                    "difference": None,
+                    "not_stated": {
+                        "reason": "Fixture contract reference",
+                        "contracts": [
+                            {"id": str(sources.first_contract), "external_id": "SAMPLE-US"}
+                        ],
+                    },
+                }
+            ],
+        )
+        uow.session.execute(insert(reconciliation).values(**row))
+        # A cross-entity reference exercises the supported schema's confidentiality rule;
+        # it is a seeded statement, not an engine-created cross-entity accounting balance.
+        if reference_in == "item":
+            item = reconciliation_item_values(
+                sources.world.tenant_id,
+                reconciliation_id=row["id"],
+                contract_id=sources.first_contract,
+                subledger_amount=Decimal(0),
+                source_amount=Decimal(0),
+                difference=Decimal(0),
+            )
+            uow.session.execute(insert(reconciliation_item).values(**item))
+        uow.commit()
+    preparer = enrolled(sources.world.app, clock, sources.world.maya.member)
+    reviewer = actor_with_role(
+        sources.world.app, clock, sources.world.tenant_id, "revenue_reviewer", name="packreviewer"
+    )
+    prepared = recon_api.prepare(sources.world.app, preparer, str(row["id"]))
+    assert prepared.status_code == 200, prepared.text
+    reviewed = recon_api.sign(sources.world.app, reviewer, str(row["id"]))
+    assert reviewed.status_code == 200, reviewed.text
+    # Seed only the lock-certification transition; the two signatures above are real API commands.
+    with sources.world.place.uow(reader) as uow:
+        transitions.apply(
+            uow.session,
+            "reconciliation",
+            row["id"],
+            to_status="CERTIFIED",
+            expected_status="REVIEWED",
+            set_values={"period_lock_id": selected.lock.lock_id, "certified_at": uow.now},
+        )
+        uow.commit()
+    with sources.world.place.uow(reader) as uow:
+        before = evidence_reconciliations.collect(uow, selected)
+    payload = json.loads(before[0].content)
+    assert payload["reconciliation_id"] == str(row["id"])
+    assert payload["certification_basis"]["kind"] == "SIGNOFFS"
+    assert {s["id"] for s in payload["certification_basis"]["signoffs"]} == {
+        s["id"] for s in reviewed.json()["signoffs"]
+    }
+    assert (
+        hashlib.sha256(
+            # Re-encode the exported statement with the same published canonical representation.
+            canonical_bytes(payload["statement"])
+        ).hexdigest()
+        == payload["certification_basis"]["snapshot_sha256"]
+    )
+    with sources.world.place.uow(reader) as uow:
+        transitions.apply(
+            uow.session,
+            "reconciliation",
+            row["id"],
+            to_status="REOPENED",
+            expected_status="CERTIFIED",
+            set_values={},
+        )
+        newer = reconciliation_values(
+            sources.world.tenant_id,
+            entity_id=selected.lock.entity_id,
+            period_id=selected.lock.period_id,
+            kind="BILLING_TO_SUBLEDGER",
+            as_of_known_at=uow.now + timedelta(seconds=1),
+            totals=[{"different": "new generation"}],
+        )
+        uow.session.execute(insert(reconciliation).values(**newer))
+        uow.commit()
+    with sources.world.place.uow(reader) as uow:
+        assert evidence_reconciliations.collect(uow, selected) == before
+    denied = replace(
+        reader,
+        permission_scopes={
+            **reader.permission_scopes,
+            "contract.read": frozenset({sources.world.entity_id}),
+        },
+    )
+    with sources.world.place.uow(denied) as uow, pytest.raises(Problem) as error:
+        evidence_reconciliations.collect(uow, selected)
+    assert error.value.slug == "not-found"
+    # Parent access is insufficient when the signed statement names a hidden contract.
+    referenced_denied = replace(
+        reader,
+        permission_scopes={
+            **reader.permission_scopes,
+            "contract.read": frozenset({selected.lock.entity_id}),
+        },
+    )
+    with sources.world.place.uow(referenced_denied) as uow, pytest.raises(Problem) as error:
+        evidence_reconciliations.collect(uow, selected)
+    assert error.value.slug == "not-found"

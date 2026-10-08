@@ -1035,6 +1035,18 @@ def snapshot(held: _Held, items: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     }
 
 
+def stored_snapshot(session: Session, row: Mapping[str, Any]) -> dict[str, Any]:
+    """Read the exact signing content without command locks or requiring a current row.
+
+    The caller must authorize the parent entity and verify the returned hash against
+    its sign-offs. This also serves certified history retained after a reopen.
+    """
+    scope = period_scope_of(
+        session, UUID(str(row["entity_id"])), _text(row["book_code"]), UUID(str(row["period_id"]))
+    )
+    return snapshot(_Held(row, scope), _item_rows(session, UUID(str(row["id"]))))
+
+
 def _signers(session: Session, reconciliation_id: UUID, role: SignoffRole) -> list[dict[str, Any]]:
     return [
         dict(row)
