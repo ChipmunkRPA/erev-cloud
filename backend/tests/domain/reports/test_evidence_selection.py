@@ -17,12 +17,15 @@ from typing import Any
 from uuid import UUID, uuid4
 
 import pytest
+from erev_api.audit import verify as audit_verify
 from erev_api.auth.keyring import KeyRing
 from erev_api.auth.principal import Principal, system_principal
 from erev_api.clock import FrozenClock
 from erev_api.config import Settings
 from erev_api.db import new_id, transitions
 from erev_api.db.tables import (
+    audit_chain_head,
+    audit_chain_verification,
     journal_run,
     legal_entity,
     lock_snapshot,
@@ -34,6 +37,7 @@ from erev_api.domain.close import certification, relock_diff
 from erev_api.domain.close import snapshots as close_snapshots
 from erev_api.domain.reports import (
     evidence_archive,
+    evidence_audit,
     evidence_close,
     evidence_journals,
     evidence_reconciliations,
@@ -42,7 +46,7 @@ from erev_api.domain.reports import (
 )
 from erev_api.domain.reports.evidence_selection import resolve
 from erev_api.enums import FilePurpose
-from erev_api.files.store import LocalFileStore, store_file
+from erev_api.files.store import LocalFileStore, open_file, store_file
 from erev_api.main import create_app
 from erev_api.problems import Problem
 from erev_api.schemas.evidence_packs import EvidencePackCreateIn
@@ -329,6 +333,7 @@ def _freeze_for_pack(
     fault: str | None = None,
     formula_cells: bool = False,
     certification_rows: list[dict[str, Any]] | None = None,
+    audit_head: tuple[int, str | None] | None = None,
 ) -> dict[str, Any]:
     """Real producer/store and seeded lock; adversarial cases alter explicit fixture inputs."""
     with sources.world.place.uow(sources.principal) as uow:
@@ -381,6 +386,8 @@ def _freeze_for_pack(
         )
         if certification_rows is not None:
             row["certification"] = certification_rows
+        if audit_head is not None:
+            row["audit_head_chain_seq"], row["audit_head_hmac"] = audit_head
         uow.session.execute(insert(period_lock).values(**row))
         close_snapshots.write_lock_snapshots(uow, identity, datasets)
         uow.commit()
@@ -834,3 +841,99 @@ def test_journal_register_ties_to_frozen_rows_and_ignores_later_runs(
         with sources.world.place.uow(denied) as uow, pytest.raises(Problem) as error:
             evidence_journals.collect(uow, selection)
         assert error.value.slug == expected_slug
+
+
+@pytest.mark.parametrize("fault", [None, "anchor", "truncated", "content", "purpose"])
+def test_audit_digest_uses_recorded_verification_and_real_chain(
+    sources: Sources,
+    fault: str | None,
+) -> None:
+    """Real audit HMACs and verification files; the close/snapshots are explicitly seeded."""
+    with sources.world.place.uow(sources.principal) as uow:
+        head = uow.session.execute(
+            select(
+                audit_chain_head.c.last_chain_seq,
+                audit_chain_head.c.last_hmac,
+            )
+        ).one()
+        assert head.last_chain_seq > 0
+    request = ADAPTER.validate_python(
+        _freeze_for_pack(
+            sources,
+            audit_head=(
+                head.last_chain_seq,
+                "0" * 64 if fault == "anchor" else head.last_hmac,
+            ),
+        )
+    )
+    with sources.world.place.uow() as uow:
+        verification = dict(
+            audit_verify.record_tenant_verification(
+                uow,
+                trigger="ON_DEMAND",
+                job_id=None,
+            )
+        )
+        assert verification["result"] == "PASS"
+        uow.commit()
+    if fault in {"truncated", "content", "purpose"}:
+        # Explicit invalid fixture: file checks alone must not bless a wrong verification.
+        with sources.world.place.uow() as uow:
+            _, stream = open_file(
+                uow.session, verification["digest_file_id"], files=uow.files, keyring=uow.keyring
+            )
+            with stream:
+                document = json.loads(stream.read())
+            verification["id"] = new_id()
+            if fault == "truncated":
+                verification["to_chain_seq"] += 1000
+                verification["events_checked"] += 1000
+                document["last_chain_seq"] = verification["to_chain_seq"]
+                document["events_checked"] = verification["events_checked"]
+            elif fault == "content":
+                document["tenant_id"] = str(new_id())
+            stored = store_file(
+                uow,
+                purpose=FilePurpose.REPORT_OUTPUT
+                if fault == "purpose"
+                else FilePurpose.AUDIT_DIGEST,
+                stream=BytesIO((json.dumps(document, indent=2, sort_keys=True) + "\n").encode()),
+                original_filename="chain_digest.json",
+                media_type="application/json",
+            )
+            verification["digest_file_id"] = stored["id"]
+            uow.session.execute(insert(audit_chain_verification).values(**verification))
+            uow.commit()
+    with sources.world.place.uow(sources.principal) as uow:
+        selection = resolve(uow, request)
+        if fault is not None:
+            message = {
+                "anchor": "does not bind",
+                "truncated": "no longer verifies",
+                "content": "inconsistent",
+                "purpose": "file failed verification",
+            }[fault]
+            with pytest.raises(Problem, match=message):
+                evidence_audit.collect(uow, selection, verification_id=verification["id"])
+            return
+        packed = evidence_audit.collect(uow, selection, verification_id=verification["id"])
+        digest = json.loads(packed[0].content)
+        metadata = json.loads(packed[1].content)
+        assert digest["last_chain_seq"] == verification["to_chain_seq"] >= head.last_chain_seq
+        assert metadata["verification_id"] == str(verification["id"])
+        assert metadata["audit_head_hmac"] == head.last_hmac
+        with pytest.raises(Problem) as missing:
+            evidence_audit.collect(uow, selection, verification_id=new_id())
+        assert missing.value.slug == "not-found"
+    # Verification appends its own audit facts. A second run extends the chain but must
+    # not replace the ID already bound to a pack's sources or change its delivered bytes.
+    with sources.world.place.uow() as uow:
+        later = audit_verify.record_tenant_verification(uow, trigger="ON_DEMAND", job_id=None)
+        assert later["to_chain_seq"] > verification["to_chain_seq"]
+        uow.commit()
+    with sources.world.place.uow(sources.principal) as uow:
+        assert evidence_audit.collect(uow, selection, verification_id=verification["id"]) == packed
+    denied = replace(sources.principal, permissions=frozenset({"report.run"}))
+    with sources.world.place.uow(denied) as uow, pytest.raises(Problem) as error:
+        evidence_audit.collect(uow, selection, verification_id=verification["id"])
+    assert error.value.slug == "forbidden"

@@ -2527,3 +2527,27 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   audited downloads and automatic pack generation. Stored comparison evidence does not replace
   that broader report. EVIDENCE_PACK stays pending and CTL-041 remains open. Full-current gates
   and independent accounting sign-off remain outstanding. No deployment; direct-main workflow.
+
+## Reconciliation evidence — October 8, 2026 (RPS-16 continued)
+
+- Continued from clean f147e9e. Added the CLOSE reconciliation collector, selecting the
+  write-once `period_lock_id` population rather than current generations. Reuses the production
+  signing snapshot; verifies distinct preparer/reviewer IDs, subject hashes and chronology.
+  Auto-certified rows require matching CTL-026 success evidence and rule/version IDs instead
+  of human signatures. Exports the certified statement, evidence and actual population index.
+- Adds `contract.read` checks for both the parent entity and every referenced contract in
+  items/not-stated totals. Hidden references refuse the entire export; redacting would break
+  its signature. A reopen and a newer generation leave historical exported bytes unchanged.
+- **210 scoped regression tests passed in 54.98 seconds**, including the real-signature
+  database witness and 27 pure certification-proof checks. Extended the database witness to
+  both reference locations: **two passed in 11.55 seconds**. Prepare/review use real API/MFA;
+  lock/certification transitions and cross-entity source references are explicitly seeded.
+  Auto-certification proof has unit coverage; its complete database/pack witness remains open.
+  Logs: `/private/tmp/evidence-recon-scoped-final.log`, `evidence-recon-reference-cases.log`.
+  An initial database attempt failed from a missing fixture `set_values` argument; corrected.
+  Two-source mypy, Ruff and whitespace pass. All processes are terminal.
+- Remaining: full population/waiver assembly, batch and supporting registers, access/audit
+  evidence, variance report, other pack kinds, persisted bindings, jobs/routes, audited
+  downloads and automatic generation. An empty index states the actual bound population,
+  not completeness. EVIDENCE_PACK stays pending and CTL-041 open. Full-current release gates
+  and independent accounting sign-off remain outstanding. No deployment; direct-main workflow.

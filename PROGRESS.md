@@ -2,6 +2,32 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Audit digest evidence — October 8, 2026 (RPS-16 continued)
+
+- Continued from clean 90871f4. Added `reports/evidence_audit.py`, requiring an explicit
+  verification ID rather than selecting latest on every read. Checks the original stored
+  AUDIT_DIGEST file's purpose/type/length/hash and exact canonical metadata against its
+  successful complete-prefix verification row. The prefix must cover the lock's audit head.
+  Rechecks HMACs through the recorded endpoint and matches the lock's saved head; a shorter
+  intact prefix is insufficient. Returns original digest bytes and source IDs/hashes.
+- Collection is read-only and exposes aggregate verification metadata, not audit-event
+  contents. It creates no verification or external retained copy. Future pack orchestration
+  must persist the chosen verification ID, alongside its other source bindings.
+- **71 scoped tests passed in 61.84 seconds**: digest refusals, source/frozen collectors and
+  existing audit-verification regression tests. Database cases use actual audit events/HMACs,
+  verification writer and encrypted digest files with seeded close/snapshot references.
+  Rejects a mismatched lock head, an overstated prefix endpoint, wrong digest metadata and
+  wrong file purpose; refuses missing verification IDs and revoked audit permission.
+  Another real verification extends the chain without changing the originally selected bytes.
+- Initial two database witnesses passed in 9.93 seconds. Logs:
+  `/private/tmp/evidence-audit-{db,final}.log`. Source mypy, Ruff lint/format and whitespace
+  pass; all processes terminal. Archived earlier reconciliation notes verbatim.
+- Remaining: reconciliation population/waiver completeness, supporting SSP/configuration/late
+  entry/access reports, other pack kinds, persisted source bindings, full assembly, jobs/routes,
+  audited downloads and automatic generation. Operational close/full-pack acceptance, current
+  release gates and independent accounting sign-off remain open. RPS-16/CTL-041 unclaimed.
+  Direct-main publication; no deployment, cloud mutation or external notifications.
+
 ## Historical journal batch register — October 8, 2026 (RPS-16 continued)
 
 - Continued from clean c27d724. Added `reports/evidence_journals.py`, collecting the
@@ -53,30 +79,6 @@
   generation/jobs/routes/downloads. Assembly must invoke this verification; no pack endpoint
   is enabled and RPS-16/CTL-041 remain open. Final release gates and independent accounting
   sign-off remain outstanding. Direct-main publication; no deployment.
-
-## Reconciliation evidence — October 8, 2026 (RPS-16 continued)
-
-- Continued from clean f147e9e. Added the CLOSE reconciliation collector, selecting the
-  write-once `period_lock_id` population rather than current generations. Reuses the production
-  signing snapshot; verifies distinct preparer/reviewer IDs, subject hashes and chronology.
-  Auto-certified rows require matching CTL-026 success evidence and rule/version IDs instead
-  of human signatures. Exports the certified statement, evidence and actual population index.
-- Adds `contract.read` checks for both the parent entity and every referenced contract in
-  items/not-stated totals. Hidden references refuse the entire export; redacting would break
-  its signature. A reopen and a newer generation leave historical exported bytes unchanged.
-- **210 scoped regression tests passed in 54.98 seconds**, including the real-signature
-  database witness and 27 pure certification-proof checks. Extended the database witness to
-  both reference locations: **two passed in 11.55 seconds**. Prepare/review use real API/MFA;
-  lock/certification transitions and cross-entity source references are explicitly seeded.
-  Auto-certification proof has unit coverage; its complete database/pack witness remains open.
-  Logs: `/private/tmp/evidence-recon-scoped-final.log`, `evidence-recon-reference-cases.log`.
-  An initial database attempt failed from a missing fixture `set_values` argument; corrected.
-  Two-source mypy, Ruff and whitespace pass. All processes are terminal.
-- Remaining: full population/waiver assembly, batch and supporting registers, access/audit
-  evidence, variance report, other pack kinds, persisted bindings, jobs/routes, audited
-  downloads and automatic generation. An empty index states the actual bound population,
-  not completeness. EVIDENCE_PACK stays pending and CTL-041 open. Full-current release gates
-  and independent accounting sign-off remain outstanding. No deployment; direct-main workflow.
 
 ## Canonical property gate completed — October 8, 2026
 
