@@ -3233,3 +3233,13 @@ An eligible creator owns the exception and receives its notification; the config
 is not rewritten. With no eligible recipient, retain the unassigned blocking exception.
 API-client/system creators never resolve to a human through a coincident identifier.
 Deduplication prevents a repeated mismatch handler from assigning or notifying twice.
+
+
+SCH-17 (`dirty_contract_sweep`) runs every minute on maintenance. Per ACTIVE tenant it
+selects dirty APPLIED groups with a current member's CONTRACT_BOOKED event, locks each
+available group with SKIP LOCKED, and defers CONTRACT_COMPUTE transactionally. Preview jobs
+do not cover a group; queued/running normal computations do. The dirty timestamp plus row
+version identifies a generation, preventing repeated jobs for an unchanged failed/quarantined
+input while allowing a later mark with the same timestamp. FX_REPUBLISH is retained; other
+marks use COMMAND. One group or tenant failing does not stop others. Enqueue failures leave
+no job and retry on a later tick. Engine completion still owns clearing the dirty mark.

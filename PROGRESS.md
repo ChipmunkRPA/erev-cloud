@@ -2,6 +2,29 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Dirty contract recovery sweep — October 7, 2026
+
+- Continued from clean main e23068e (prior turn made verified owner-fallback progress).
+  Added worker SCH-17 each minute: dirty APPLIED groups with booked current members receive
+  durable CONTRACT_COMPUTE jobs. Preserve FX_REPUBLISH, otherwise COMMAND; skip locked groups,
+  existing live normal jobs and generations already swept. Generation includes timestamp and
+  row version so a new change sharing a timestamp still runs. Preview jobs do not suppress work.
+  Transactions and failures isolate each group/tenant. Engine completion owns clearing marks;
+  unchanged quarantined/failed generations stay with existing retries/exception remediation.
+- First matrix/worker run: **6 passed, 2 failed in 34.38 seconds**,
+  /private/tmp/dirty-sweep-first.log. New fixtures used an unsupported dirty trigger; corrected
+  to the schema's FX_REPUBLISH. Expanded worker/architecture run: **56 passed, 1 failed in
+  48.25 seconds**, /private/tmp/dirty-sweep-final.log. The new normal-job fixture still queued
+  PREVIEW; corrected it. Matrix with enqueue isolation/recovery: **6 passed in 21.33 seconds**,
+  /private/tmp/dirty-sweep-corrected.log. These runs are terminal. Added generation row version
+  and same-timestamp re-mark verification: **6 passed in 21.45 seconds**,
+  /private/tmp/dirty-sweep-verified.log, terminal. All 47 architecture and 5 worker checks
+  passed in the expanded run. Source Mypy, Ruff lint/format and whitespace checks pass.
+- Updated schedule registry, B3-7 and developer guidance; preserved older invoice evidence
+  in build history. AI and other implementation gaps, broad release verification and independent
+  accounting sign-off remain. No full-suite/readiness claim or deployment. Preserve publication
+  exclusions/noncommercial licensing and push tested changes directly to main.
+
 ## Integration mismatch recipient fallback — October 7, 2026
 
 - Continued from clean main e12dcfd; prior turn published verified FX checks (progress).
@@ -71,29 +94,6 @@
   integration-owner fallback, AI, broader implementation/release checks and independent
   accounting sign-off remain open. No full-suite/readiness claim or deployment. Preserve
   publication exclusions/noncommercial licensing; publish tested changes directly to main.
-
-## Invoice quantity and identity reconciliation — October 7, 2026
-
-- Continued from main 2fcf380. Invoice read-back now compares source-line quantities at
-  database precision (absent versus zero preserved), contract/obligation/product identities,
-  service dates, header dates/cancellation/credit reference, and event contract/date/source,
-  obligation, invoice/line references and source-invoice link. Tax roles/types/jurisdictions
-  are checked alongside amounts. Expectations come from original validated rows.
-- First run: **5 passed, 5 failed in 44.83 seconds**, /private/tmp/invoice-fields-first.log.
-  Fixed the new reader's expectation of CSV boolean text versus stored booleans. Expanded
-  invoice replay: **18 passed in 64.51 seconds**, /private/tmp/invoice-fields-second.log.
-  Final invoice matrix: **28 passed in 98.51 seconds**, /private/tmp/invoice-fields-final.log.
-  Includes changed quantities, wrong contracts/obligations/products/references, changed tax
-  classifications/dates, credit memos, absent/zero quantities and 18-place database rounding.
-  Each injected mismatch rolls back documents/events/source records/lineage/calculation jobs.
-  Shared import/template and layer/import-cycle regressions: **75 passed in 84.09 seconds**,
-  /private/tmp/invoice-fields-regression.log. All runs terminal. Source Mypy, Ruff lint/format
-  and whitespace pass. Archived older late-event evidence verbatim in the build history.
-- Updated coverage inventory, B1-19 and developer guidance. FX-rate and bundle readers,
-  integration-owner fallback, AI, other implementation/release checks and independent
-  accounting sign-off remain open. No full-suite or production-readiness claim. No deployment.
-- Confirmed GitHub has no open PRs, only main locally/remotely, and automatic deletion of
-  merged branches enabled. Continue testing and pushing directly to main; no new PRs.
 
 ## CSV progress and event field reconciliation — October 7, 2026
 

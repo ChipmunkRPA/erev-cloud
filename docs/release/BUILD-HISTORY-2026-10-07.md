@@ -1854,3 +1854,26 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   close the named CSV gaps. Other implementation/verification gaps, integration-owner fallback,
   AI and independent accounting sign-off remain open. No whole-backend/readiness claim or
   deployment. Publication exclusions/noncommercial licensing are unchanged.
+
+## Invoice quantity and identity reconciliation — October 7, 2026
+
+- Continued from main 2fcf380. Invoice read-back now compares source-line quantities at
+  database precision (absent versus zero preserved), contract/obligation/product identities,
+  service dates, header dates/cancellation/credit reference, and event contract/date/source,
+  obligation, invoice/line references and source-invoice link. Tax roles/types/jurisdictions
+  are checked alongside amounts. Expectations come from original validated rows.
+- First run: **5 passed, 5 failed in 44.83 seconds**, /private/tmp/invoice-fields-first.log.
+  Fixed the new reader's expectation of CSV boolean text versus stored booleans. Expanded
+  invoice replay: **18 passed in 64.51 seconds**, /private/tmp/invoice-fields-second.log.
+  Final invoice matrix: **28 passed in 98.51 seconds**, /private/tmp/invoice-fields-final.log.
+  Includes changed quantities, wrong contracts/obligations/products/references, changed tax
+  classifications/dates, credit memos, absent/zero quantities and 18-place database rounding.
+  Each injected mismatch rolls back documents/events/source records/lineage/calculation jobs.
+  Shared import/template and layer/import-cycle regressions: **75 passed in 84.09 seconds**,
+  /private/tmp/invoice-fields-regression.log. All runs terminal. Source Mypy, Ruff lint/format
+  and whitespace pass. Archived older late-event evidence verbatim in the build history.
+- Updated coverage inventory, B1-19 and developer guidance. FX-rate and bundle readers,
+  integration-owner fallback, AI, other implementation/release checks and independent
+  accounting sign-off remain open. No full-suite or production-readiness claim. No deployment.
+- Confirmed GitHub has no open PRs, only main locally/remotely, and automatic deletion of
+  merged branches enabled. Continue testing and pushing directly to main; no new PRs.

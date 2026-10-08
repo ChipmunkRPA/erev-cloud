@@ -46,6 +46,7 @@ from erev_api.controls.release import EngineRelease, log_release, stamp_release
 from erev_api.controls.startup import refuse_unsafe_production
 from erev_api.db.session import dispose_engines, set_component
 from erev_api.domain.close import data_quality_sweep as sch10_data_quality_sweep
+from erev_api.domain.contracts import dirty_sweep
 from erev_api.domain.integrations import sweeps as sch09_integration_sweeps
 from erev_api.domain.integrations import sync as integrations_sync
 from erev_api.domain.journals import ports as gl_ports
@@ -80,6 +81,7 @@ FILE_SHRED_COMPLETION_TASK: Final = "erev.file_shred_completion"
 PERIOD_AUTO_OPEN_TASK: Final = "erev.period_auto_open"
 DATA_QUALITY_MONITORS_TASK: Final = "erev.data_quality_monitors"
 INTEGRATION_SWEEPS_TASK: Final = "erev.integration_sweeps"
+DIRTY_CONTRACT_SWEEP_TASK: Final = "erev.dirty_contract_sweep"
 STARTUP_REQUEST_ID: Final = "startup-worker"
 # Modules whose `jobs.registry.task` handlers the worker registers; items that build handlers add
 # their module here (DG-KRN-JOB-01; BS-D-07).
@@ -335,6 +337,18 @@ def integration_sweeps(timestamp: int) -> None:
     ACTIVE inbound connection of every ACTIVE tenant, through the ``SYNC_REQUEST`` outbox so a
     six-hour bucket asks once per connection (REQ-INT-007; BUILD_SPEC DIN-13)."""
     sch09_integration_sweeps.run(_require_runtime())
+
+
+@app.periodic(cron="* * * * *", periodic_id="dirty_contract_sweep")
+@app.task(
+    name=DIRTY_CONTRACT_SWEEP_TASK,
+    queue="maintenance",
+    queueing_lock=DIRTY_CONTRACT_SWEEP_TASK,
+    pass_context=False,
+)
+def dirty_contract_sweep(timestamp: int) -> None:
+    """Recover dirty booked groups through durable CONTRACT_COMPUTE jobs each minute."""
+    dirty_sweep.run(_require_runtime())
 
 
 def process_clock() -> Clock:

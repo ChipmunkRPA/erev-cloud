@@ -114,6 +114,7 @@ def test_krn_job_02_worker_tasks() -> None:
         worker.PERIOD_AUTO_OPEN_TASK,
         worker.DATA_QUALITY_MONITORS_TASK,
         worker.INTEGRATION_SWEEPS_TASK,
+        worker.DIRTY_CONTRACT_SWEEP_TASK,
     ):
         assert (worker.app.tasks[name].queue, worker.app.tasks[name].queueing_lock) == (
             "maintenance",
@@ -145,6 +146,7 @@ def test_krn_job_02_worker_tasks() -> None:
         # SCH-09 (BUILD_SPEC DIN-13; REQ-INT-007): the six-hourly reconciliation sweep request
         # per ACTIVE inbound connection.
         ("erev.integration_sweeps", "0 */6 * * *"),
+        ("erev.dirty_contract_sweep", "* * * * *"),
     ]
 
 
