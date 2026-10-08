@@ -1495,3 +1495,23 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   loopback database. It excludes specialist markers and does not cover these later changes.
   Full-backend/specialist verification, other release gaps and independent accounting sign-off
   remain open. No deployment or external accounting contact.
+
+## Waiver and modification-audit verification — October 7, 2026
+
+- Continued from cc31480. Both remaining close-waiver/audit-report cases reproduced
+  (/private/tmp/waiver-audit-before.log). The synthetic waiver request had a placeholder
+  content hash; the report expected the trail from before preparer answer confirmation.
+- The waiver fixture now binds the real subject content before using the approved hook.
+  It checks the stored WAIVED state directly, then verifies gate evaluation invalidates
+  the unbound waiver and refuses the lock while re-marking is pending. Newly dirty members
+  remain blocking after the job succeeds; recomputing those groups clears the gate.
+  An intermediate run confirmed read-time invalidation; no freshness check is bypassed.
+- The audit report's exact expected action list now includes the proposal read, preparer's
+  saved questionnaire and classification of those saved answers. Full list/export equality,
+  outcome filters, field-level diffs and accounting fixture expectations remain intact.
+- Full period-opening module plus the audit export case: **10 passed in 67.57 seconds**,
+  /private/tmp/waiver-audit-final.log. Ruff/format/whitespace checks pass. No production
+  code changed; all runs terminal. Two original baseline failures remain unresolved:
+  the pending AI lifecycle audit category and late-billing out-of-period K07 report.
+  Broader current-main verification, implementation gaps and independent accounting
+  sign-off remain open. No deployment.

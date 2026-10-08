@@ -9,6 +9,7 @@ them.
 
 from __future__ import annotations
 
+import copy
 import csv
 import io
 from collections.abc import Sequence
@@ -24,8 +25,11 @@ from erev_api.db.session import DbContext, tenant_session
 from erev_api.db.tables import (
     contract_event,
     exception_item,
+    import_row_lineage,
+    job,
     source_invoice,
     source_invoice_line,
+    source_record,
 )
 from erev_api.enums import RegistryCategory, RegistryScope
 from erev_api.files.store import LocalFileStore
@@ -130,6 +134,13 @@ def committed(world: K11World, name: str, content: bytes, template_code: str) ->
 def test_invoices_and_credit_memos_ingested(k11: K11World) -> None:
     done = committed(k11, "avm-de-invoices-2026-09.csv", csv_bytes(HEADERS, ROWS), "invoices")
     assert done["counts"]["rows"] == 3
+    checks = done["control_totals"]["loaded"]["monetary_checks"]
+    assert (
+        done["control_totals"]["loaded"]["amount_sums"]
+        == done["control_totals"]["source"]["amount_sums"]
+    )
+    assert len(checks) == 3
+    assert all(check["source"] == check["stored"] for check in checks)
     import_id = UUID(done["id"])
     imports = importer(k11)
 
@@ -628,3 +639,91 @@ def test_d98_103_parity_vc_line_credit_is_out_of_scope_at_import_validation(
         "Row 5, column Lines amount amount: Credit of 200.01 exceeds the 0.00 billed on "
         "NS-SO-DE-5011. (REFUND_EXCEEDS_BILLED)"
     ]
+
+
+@pytest.mark.parametrize("corruption", ["source_amount", "event_amount", "source_tax"])
+def test_monetary_mismatch_rolls_back_invoice_batch(
+    k11: K11World, monkeypatch: pytest.MonkeyPatch, corruption: str
+) -> None:
+    from erev_api.domain.imports.csv_v2 import invoices
+
+    imports = importer(k11)
+    import_id = diffed(imports, "amount-check.csv", csv_bytes(HEADERS, ROWS[:1]), "invoices")
+    submitted = submit(imports, import_id)
+    assert submitted.status_code == 200
+    assert (
+        approve(k11.app, str(submitted.json()["approval_request_id"]), k11.priya).status_code == 200
+    )
+    if corruption == "event_amount":
+        original_items = invoices._items
+
+        def changed_items(body: Any, invoice_id: Any) -> Any:
+            altered = copy.deepcopy(body)
+            altered["lines"][0]["amount"]["amount"] = "53999.00"
+            return original_items(altered, invoice_id)
+
+        monkeypatch.setattr(invoices, "_items", changed_items)
+    else:
+        original_store = invoices._store
+
+        def changed_store(uow: Any, plan: Any, context: Any, body: Any) -> Any:
+            altered = copy.deepcopy(body)
+            if corruption == "source_amount":
+                altered["lines"][0]["amount"]["amount"] = "53999.00"
+            else:
+                altered["lines"][0]["tax_lines"] = []
+            return original_store(uow, plan, context, altered)
+
+        monkeypatch.setattr(invoices, "_store", changed_store)
+    run_import_job(imports, job_of(imports, UUID(import_id), "IMPORT_COMMIT"))
+    done = shown(imports, import_id)
+    assert done["status"] == "FAILED", done
+    (finding,) = imports.rows(
+        select(exception_item).where(
+            exception_item.c.import_upload_id == UUID(import_id),
+            exception_item.c.code == "CONTROL_TOTALS_MISMATCH",
+        )
+    )
+    assert finding["severity"] == "BLOCKING"
+    assert "Written amounts do not match the file." in finding["message"]
+    (check,) = done["control_totals"]["loaded"]["monetary_checks"]
+    assert check["source"] != check["stored"]
+    assert (
+        imports.rows(
+            select(source_invoice.c.id).where(source_invoice.c.external_version == import_id)
+        )
+        == []
+    )
+    for table in (contract_event, source_record, import_row_lineage):
+        assert (
+            imports.rows(select(table.c.id).where(table.c.import_upload_id == UUID(import_id)))
+            == []
+        )
+    assert (
+        imports.rows(
+            select(job.c.id).where(
+                job.c.kind == "CONTRACT_COMPUTE",
+                job.c.params["import_upload_id"].astext == import_id,
+            )
+        )
+        == []
+    )
+
+
+def test_reconciliation_counts_repeated_tax_rows_without_doubling_the_invoice(
+    k11: K11World,
+) -> None:
+    second = list(ROWS[0])
+    second[HEADERS.index("lines.tax_lines.tax_type")] = "OTHER"
+    second[HEADERS.index("lines.tax_lines.amount.amount")] = "100.00"
+    done = committed(k11, "two-taxes.csv", csv_bytes(HEADERS, [ROWS[0], second]), "invoices")
+    loaded = done["control_totals"]["loaded"]
+    assert {key: Decimal(value) for key, value in loaded["amount_sums"].items()} == {
+        "lines.amount.amount": Decimal("108000"),
+        "lines.tax_lines.amount.amount": Decimal("10360"),
+    }
+    (check,) = loaded["monetary_checks"]
+    assert check["source"] == check["stored"]
+    assert check["stored"]["total_amount"] == "54000"
+    assert check["stored"]["tax_amount"] == "10360"
+    assert len(check["stored"]["lines"]) == len(check["stored"]["events"]) == 1

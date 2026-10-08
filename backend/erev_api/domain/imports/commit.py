@@ -38,6 +38,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC
+from decimal import Decimal
 from typing import TYPE_CHECKING, Any, Final, Literal
 from uuid import UUID
 
@@ -503,9 +504,33 @@ def commit_upload(
     scope.require_covered(scope.committing_entity_ids(row), bounds)
     lineage: list[tuple[UUID, str, UUID]] = []
     with scope.narrowed(uow, bounds.db_scope):
-        loaded, affected_groups = _apply_plans(uow, row, template, rows, lineage, bounds, consumed)
+        loaded, affected_groups, monetary_checks = _apply_plans(
+            uow, row, template, rows, lineage, bounds, consumed
+        )
     source = (row["control_totals"] or {}).get("source") or {}
-    totals_loaded = {"rows": loaded, "quarantined": quarantined}
+    totals_loaded: dict[str, Any] = {"rows": loaded, "quarantined": quarantined}
+    if monetary_checks:
+        totals_loaded["monetary_checks"] = monetary_checks
+    if template is not None and template.reconcile_amounts is not None:
+        # Only sum cells after the template independently proved their stored monetary facts.
+        # IPL-06 is a FILE-COLUMN total: repeated line amounts count once per source row.
+        amounts = {
+            column.name: sum(
+                (
+                    Decimal(str(item.normalized[column.name]))
+                    for item in rows
+                    if item.normalized.get(column.name) is not None
+                ),
+                Decimal(0),
+            )
+            for column in template.columns
+            if column.type == "amount"
+        }
+        totals_loaded["amount_sums"] = {key: format(value, "f") for key, value in amounts.items()}
+        if amounts != {
+            key: Decimal(str(value)) for key, value in (source.get("amount_sums") or {}).items()
+        }:
+            raise ControlTotalsMismatch(source, totals_loaded)
     if template is not None and loaded + quarantined != int(source.get("rows", 0)):
         raise ControlTotalsMismatch(source, totals_loaded)
     # IPL-11: durable jobs share the import transaction; dispatch happens only after commit.
@@ -533,10 +558,10 @@ def _apply_plans(
     lineage: list[tuple[UUID, str, UUID]],
     bounds: scope.Bounds,
     consumed: Any,
-) -> tuple[int, set[UUID]]:
+) -> tuple[int, set[UUID], list[dict[str, Any]]]:
     """IPL-10: the source records and the plans of a COMMITTING upload, inside the uploader's
     scope (the caller narrowed the transaction). Appends the lineage of every emitted object to
-    ``lineage`` and returns the loaded row count and affected groups."""
+    ``lineage`` and returns the loaded row count, affected groups and read-back amount evidence."""
     session = uow.session
     import_id = UUID(str(row["id"]))
     request_id = row["approval_request_id"]
@@ -546,6 +571,7 @@ def _apply_plans(
     loaded = 0
     applied_rows: set[UUID] = set()
     appended_to: set[UUID] = set()
+    monetary_checks: list[dict[str, Any]] = []
     if template is not None:
         for csv_row in rows:
             stored = normalise.store_source_record(
@@ -583,6 +609,20 @@ def _apply_plans(
         diff.hold_plan_windows(unit, template, plans)
         for plan in plans:
             applied = template.apply(unit, plan, context=context)
+            if template.reconcile_amounts is not None:
+                expected, actual = template.reconcile_amounts(
+                    unit.session, plan, applied, context=context
+                )
+                check = {"source": dict(expected), "stored": dict(actual)}
+                if expected != actual:
+                    raise ControlTotalsMismatch(
+                        {
+                            **dict((row["control_totals"] or {}).get("source") or {}),
+                            "monetary_expected": dict(expected),
+                        },
+                        {"rows": loaded, "monetary_checks": [*monetary_checks, check]},
+                    )
+                monetary_checks.append(check)
             appended_to.update(group_id for _, _, group_id, _ in applied.contracts)
             for row_id, targets in applied.row_targets.items():
                 if row_id not in record_ids or row_id in applied_rows:
@@ -599,7 +639,7 @@ def _apply_plans(
         # nothing and is not judged (supervisor ruling R-122 (j); item PIN-WINDOW-APPENDER-1).
         period_ends.refuse_appends_a_lock_met(unit, appended_to)
     diff.hand_over(unit, uow)
-    return loaded, appended_to
+    return loaded, appended_to, monetary_checks
 
 
 def _recorded(
@@ -609,7 +649,7 @@ def _recorded(
     lineage: list[tuple[UUID, str, UUID]],
     loaded: int,
     quarantined: int,
-    totals_loaded: Mapping[str, int],
+    totals_loaded: Mapping[str, Any],
 ) -> Committed:
     """IPL-10 to IPL-12 after the plans: lineage, COMMITTED, the audit fact, CTL-001 and CTL-044."""
     session = uow.session
@@ -688,10 +728,15 @@ def _amounts(totals: Mapping[str, Any]) -> str:
 
 def mismatch_message(import_no: str, source: Mapping[str, Any], loaded: Mapping[str, Any]) -> str:
     """PRD IMP-43."""
+    detail = (
+        "Written amounts do not match the file. "
+        if any(check["source"] != check["stored"] for check in loaded.get("monetary_checks", ()))
+        else ""
+    )
     return (
         f"Control totals do not match for {import_no}: source {source.get('rows', 0)} records, "
         f"{_amounts(source)}; loaded {loaded.get('rows', 0)} records, {_amounts(loaded)}. "
-        "Nothing was committed."
+        f"{detail}Nothing was committed."
     )
 
 

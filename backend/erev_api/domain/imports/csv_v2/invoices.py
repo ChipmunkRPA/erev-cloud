@@ -32,7 +32,13 @@ from sqlalchemy import insert, select
 
 from erev_api.audit import writer as audit_writer
 from erev_api.db import new_id
-from erev_api.db.tables import contract, legal_entity, source_invoice, source_invoice_line
+from erev_api.db.tables import (
+    contract,
+    contract_event,
+    legal_entity,
+    source_invoice,
+    source_invoice_line,
+)
 from erev_api.domain.imports.csv_v2 import recorded
 from erev_api.domain.imports.csv_v2.framework import (
     Applied,
@@ -445,6 +451,134 @@ def apply(uow: UnitOfWork, plan: Plan, *, context: ApplyContext) -> Applied:
     return recorded.append(uow, plan, context=context, items=_items(body, invoice_id))
 
 
+def _exact(value: Any) -> str:
+    return format(Decimal(str(value)).normalize(), "f")
+
+
+def _amount_pair(value: Mapping[str, Any]) -> list[str]:
+    return [_exact(value["amount"]), str(value["currency"]).strip()]
+
+
+def reconcile_amounts(
+    session: Session, plan: Plan, applied: Applied, *, context: ApplyContext
+) -> tuple[Mapping[str, Any], Mapping[str, Any]]:
+    """Read written monetary facts independently of the emitter's plan body (CTL-002).
+
+    File rows repeat the invoice amount once per tax component. Count each line once,
+    each tax row once, and compare currencies as well as amounts. Credit source lines
+    are signed; credit events retain the positive source amount. Event order is stream
+    order, including credit events which do not carry a line_external_id.
+    """
+    first = plan.rows[0].normalized
+    credit = first["document_kind"] == CREDIT_MEMO
+    sign = Decimal(-1 if credit else 1)
+    source_lines: dict[str, dict[str, Any]] = {}
+    for row in plan.rows:
+        cells = row.normalized
+        key = str(cells["lines.line_external_id"])
+        line = source_lines.setdefault(
+            key,
+            {
+                "amount": [
+                    _exact(sign * Decimal(str(cells["lines.amount.amount"]))),
+                    str(cells["lines.amount.currency"]),
+                ],
+                "taxes": [],
+            },
+        )
+        if cells.get("lines.tax_lines.amount.amount") is not None:
+            line["taxes"].append(
+                [
+                    _exact(cells["lines.tax_lines.amount.amount"]),
+                    str(cells["lines.tax_lines.amount.currency"]),
+                ]
+            )
+    expected_events = [
+        {
+            "amount": [_exact(sign * Decimal(line["amount"][0])), line["amount"][1]],
+            "taxes": [] if credit else line["taxes"],
+            "tax_amount": None
+            if credit or not line["taxes"]
+            else [
+                _exact(sum((Decimal(tax[0]) for tax in line["taxes"]), Decimal(0))),
+                line["taxes"][0][1],
+            ],
+        }
+        for line in source_lines.values()
+    ]
+    expected = {
+        "invoice_number": str(first["invoice_number"]),
+        "document_kind": str(first["document_kind"]),
+        "currency": str(first["lines.amount.currency"]),
+        "total_amount": _exact(
+            sum((Decimal(line["amount"][0]) for line in source_lines.values()), Decimal(0))
+        ),
+        "tax_amount": _exact(
+            sum(
+                (Decimal(tax[0]) for line in source_lines.values() for tax in line["taxes"]),
+                Decimal(0),
+            )
+        ),
+        "lines": source_lines,
+        "events": expected_events,
+    }
+    documents = list(
+        session.execute(
+            select(source_invoice).where(
+                source_invoice.c.source_record_id == context.record_ids[plan.rows[0].id],
+                source_invoice.c.external_version == str(context.import_upload_id),
+            )
+        ).mappings()
+    )
+    if len(documents) != 1:
+        return expected, {"document_count": len(documents)}
+    document = documents[0]
+    stored_lines = list(
+        session.execute(
+            select(source_invoice_line).where(
+                source_invoice_line.c.source_invoice_id == document["id"]
+            )
+        ).mappings()
+    )
+    events = list(
+        session.execute(
+            select(contract_event.c.payload)
+            .where(
+                contract_event.c.id.in_(
+                    [key for kind, key in applied.targets if kind == "contract_event"]
+                ),
+                contract_event.c.import_upload_id == context.import_upload_id,
+            )
+            .order_by(contract_event.c.stream_version)
+        ).scalars()
+    )
+    actual = {
+        "invoice_number": str(document["invoice_number"]),
+        "document_kind": str(document["document_kind"]),
+        "currency": str(document["currency"]).strip(),
+        "total_amount": _exact(document["total_amount"]),
+        "tax_amount": _exact(document["tax_amount"]),
+        "lines": {
+            str(line["line_external_id"]): {
+                "amount": [_exact(line["amount"]), str(document["currency"]).strip()],
+                "taxes": [_amount_pair(tax["amount"]) for tax in line["tax_lines"] or []],
+            }
+            for line in stored_lines
+        },
+        "events": [
+            {
+                "amount": _amount_pair(event["amount"]),
+                "taxes": [_amount_pair(tax["amount"]) for tax in event.get("tax_lines") or []],
+                "tax_amount": None
+                if event.get("tax_amount") is None
+                else _amount_pair(event["tax_amount"]),
+            }
+            for event in events
+        ],
+    }
+    return expected, actual
+
+
 TEMPLATE: Final = CsvTemplate(
     code=CODE,
     object_type=SourceObjectType.INVOICE,
@@ -455,4 +589,5 @@ TEMPLATE: Final = CsvTemplate(
     apply=apply,
     group_key=KEY,
     repeats=REPEATS,
+    reconcile_amounts=reconcile_amounts,
 )

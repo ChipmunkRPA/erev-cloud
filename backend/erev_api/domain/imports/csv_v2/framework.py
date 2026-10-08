@@ -232,6 +232,8 @@ class CsvTemplate:
     # the cells a row states for itself.
     group_key: tuple[str, ...] = ()
     repeats: tuple[Repeated, ...] = ()
+    # Commit-only independent source/target amount evidence; unequal maps roll back the batch.
+    reconcile_amounts: Callable[..., tuple[Mapping[str, Any], Mapping[str, Any]]] | None = None
 
 
 def _unwrap(annotation: Any) -> tuple[Any, bool]:

@@ -3113,3 +3113,22 @@ CONTRACT_COMPUTE job per affected group after validating the uploader's scope an
 source rows. Dispatch follows transaction commit; report readers retain their own
 entity permissions. These sites are explicitly enumerated by DG-ARC-16 and
 DG-KRN-APR-07 architecture checks.
+
+
+### Import monetary read-back — October 7, 2026
+
+A CSV template may register `reconcile_amounts(session, plan, applied, context=...)`.
+The commit calls it after applying the plan, inside the same narrowed transaction.
+It must independently reconstruct expected monetary facts from the validated source
+rows and read the actual persisted targets. Returning unequal source/stored maps
+raises CONTROL_TOTALS_MISMATCH and rolls back the whole batch, including source
+records and deferred calculations. Evidence is retained under loaded.monetary_checks.
+A callback must cover every amount column before it enables the loaded.amount_sums
+comparison. Those sums follow IPL-06 file-column semantics, including repeated cells;
+they are calculated only after the independent read-back proves the written facts.
+
+Currently only CSV invoices implements this callback. It checks document totals,
+signed source lines, positive invoice/credit events, tax components and currencies.
+Repeated tax rows contribute each tax once and one logical invoice line; their
+repeated amount cells still count in the file-column total. Other templates retain
+the row-coverage gate and are not claimed to have monetary read-back coverage.

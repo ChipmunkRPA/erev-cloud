@@ -2,6 +2,33 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Invoice monetary reconciliation — October 7, 2026
+
+- Continued from 644bcfb; the prior turn implemented and published the late-event report
+  (progress). Revalidated clean main and B1-19: commit reconciled rows but no stored amounts.
+- Added a commit-only template reconciliation callback. CSV invoices/credit memos now
+  independently read persisted document totals, signed source lines, positive event amounts,
+  tax components and currencies against validated source rows. This runs inside the narrowed
+  transaction; any mismatch rolls back the whole batch and raises CONTROL_TOTALS_MISMATCH.
+  Loaded monetary_checks retain the expected/stored evidence, with an explicit mismatch
+  sentence. Verified file-column amount sums are also compared to validation's source totals.
+- Repeated tax rows count once per component and once per logical invoice line. File-column
+  totals retain IPL-06 repeated-cell semantics. A two-tax-row fixture verifies a 54,000 invoice
+  while the repeated amount column totals 108,000; neither ledger nor document is doubled.
+- Three injected emitter defects change source amount, event amount or remove source tax.
+  Each leaves FAILED with the blocking mismatch and no events, source documents/records,
+  lineage or calculation child. Ordinary signed credit memos retain their existing behavior.
+- Invoice plus shared commit modules: **24 passed in 66.78 seconds**,
+  /private/tmp/invoice-reconcile-final.log. Final mismatch-copy, repeated-cell and architecture
+  checks: **93 passed in 27.81 seconds**, /private/tmp/invoice-reconcile-contracts.log.
+  The first invoice-only run passed 9 in 38.61 seconds. Source Mypy and Ruff pass; all runs
+  terminal. No full-backend pass or deployment claimed.
+- This implements invoice monetary reconciliation, not all templates. B1-19 and the developer
+  guide explicitly retain other monetary templates and ineligible integration-owner fallback
+  notifications as outstanding. AI, broader verification, other documented implementation
+  gaps and independent accounting sign-off remain open. Licensing/publication exclusions
+  are preserved; direct-main workflow continues.
+
 ## Zero-posting late-event register — October 7, 2026
 
 - Continued from 3705c7c. The previous turn confirmed no open PRs and main as the sole
@@ -81,26 +108,6 @@
   dirty-group sweep, monetary import totals, AI feature, broader verification and independent
   accounting sign-off remain open. Both original baseline failures remain unresolved.
   No deployment; publication exclusions and noncommercial licensing are unchanged.
-
-## Waiver and modification-audit verification — October 7, 2026
-
-- Continued from cc31480. Both remaining close-waiver/audit-report cases reproduced
-  (/private/tmp/waiver-audit-before.log). The synthetic waiver request had a placeholder
-  content hash; the report expected the trail from before preparer answer confirmation.
-- The waiver fixture now binds the real subject content before using the approved hook.
-  It checks the stored WAIVED state directly, then verifies gate evaluation invalidates
-  the unbound waiver and refuses the lock while re-marking is pending. Newly dirty members
-  remain blocking after the job succeeds; recomputing those groups clears the gate.
-  An intermediate run confirmed read-time invalidation; no freshness check is bypassed.
-- The audit report's exact expected action list now includes the proposal read, preparer's
-  saved questionnaire and classification of those saved answers. Full list/export equality,
-  outcome filters, field-level diffs and accounting fixture expectations remain intact.
-- Full period-opening module plus the audit export case: **10 passed in 67.57 seconds**,
-  /private/tmp/waiver-audit-final.log. Ruff/format/whitespace checks pass. No production
-  code changed; all runs terminal. Two original baseline failures remain unresolved:
-  the pending AI lifecycle audit category and late-billing out-of-period K07 report.
-  Broader current-main verification, implementation gaps and independent accounting
-  sign-off remain open. No deployment.
 
 ## Tooling revalidation and import cleanup retry — October 7, 2026
 
