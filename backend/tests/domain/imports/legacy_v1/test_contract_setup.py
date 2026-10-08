@@ -6,7 +6,7 @@ REQ-DAT-017, REQ-ALC-010, REQ-TP-016; BUILD_SPEC DIN-4, BS3-D-23).
 World: ``support.legacy_replay.legacy_world`` (J-01.2 to J-01.5): Maya uploads WLD-F-01 and then the
 setup files, Priya approves each import, and the jobs run as the worker runs them. The VC element
 port (``contract_setup.vc_element_writer``) is the documented contract of BUILD_SPEC CTR-12: the
-member tests fake it, and since the L5 merge its default stores the element (L5-1-Q-15, Q-35).
+member tests observe its real writes, and its default stores the element (L5-1-Q-15, Q-35).
 """
 
 from __future__ import annotations
@@ -116,15 +116,14 @@ def native(
 
 @pytest.fixture
 def elements(monkeypatch: pytest.MonkeyPatch) -> list[tuple[contract_setup.VcElement, bool]]:
-    """The CTR-12 port faked: every element written, with whether the apply was a dry run."""
+    """Observe the real CTR-12 writer in dry runs and committed imports."""
     written: list[tuple[contract_setup.VcElement, bool]] = []
 
     def fake(
         uow: UnitOfWork, element: contract_setup.VcElement, *, context: ApplyContext
     ) -> UUID | None:
-        del uow
         written.append((element, context.dry_run))
-        return None
+        return contract_setup.store_vc_element(uow, element, context=context)
 
     monkeypatch.setattr(contract_setup, "vc_element_writer", fake)
     return written

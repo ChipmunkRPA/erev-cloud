@@ -1640,3 +1640,51 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   ineligible integration-owner notification fallback. AI, full current verification,
   other documented gaps and independent accounting sign-off remain open. No deployment;
   publication exclusions and noncommercial licensing are preserved.
+
+## SSP monetary reconciliation — October 7, 2026
+
+- Continued from clean main 3e5f9dc. The prior turn published cost/revenue/usage event
+  read-back checks (progress). Added CSV SSP values to the transactional reconciliation gate.
+- Reconstructs expected entry prices/ratios, currency, business dimensions, value basis,
+  quantity unit and complete band sets from validated source rows, independently of the
+  emitter's plan body. Reads actual entries/bands for the emitted book version. Missing,
+  additional or changed values trigger CONTROL_TOTALS_MISMATCH and roll back the batch.
+- Independently derives legacy-range low/mid/high values with wide decimal arithmetic,
+  then compares at TY-02 NUMERIC(38,18) precision, including PostgreSQL rounding. SSP numeric
+  fields are flattened text, so explicit monetary_checks carry coverage even though
+  amount_sums is empty. Bands are grouped by entry without a quadratic scan.
+- Existing declarations/scope tests first passed **10 in 33.98 seconds**. Final module plus
+  layer/import-cycle checks: **61 passed in 52.11 seconds**,
+  /private/tmp/ssp-reconcile-final.log. Tests include valid multi-band entries, deliberately
+  changed points and missing bands after approval, batch rollback/no version or source
+  lineage, and a derived legacy range with an 18-decimal discount ratio. Source Mypy,
+  Ruff/format and whitespace pass. All runs terminal; no complete backend pass claimed.
+- B1-19 and the developer guide now reflect SSP coverage. Contract, estimate and legacy
+  monetary reconciliation, integration-owner fallback notification, AI, broader current
+  verification, other documented gaps and independent accounting sign-off remain open.
+  No deployment. Noncommercial licensing and publication exclusions are unchanged.
+
+## Contract monetary reconciliation — October 7, 2026
+
+- Continued from clean main 3577d81; prior turn published SSP read-back checks (progress).
+  Added the contract template to the transactional monetary gate for new and replacement
+  draft bookings. Reads actual CONTRACT_BOOKED targets bound to the current import.
+- Each obligation/product line's price, out-of-scope amount, quantity, unit price and scope
+  flag is compared against validated source rows. Contract and payload transaction currencies
+  and the source-record identity are checked. Offsetting line errors cannot hide behind a
+  matching aggregate total. Verified file-column totals retain the existing IPL-06 check.
+- Inspection found that replacement imports omitted upload/source-record provenance even
+  though replace_draft already accepts it. They now pass those identifiers, IMPORT origin and
+  the import idempotency key; new and replacement bookings share the provenance contract.
+- Existing shared commit tests: **14 passed in 40.99 seconds**,
+  /private/tmp/contract-reconcile-first.log. New/replacement success and offsetting-error
+  workflows plus layers/import cycles/stream-appender architecture: **56 passed in 32.58 seconds**,
+  /private/tmp/contract-reconcile-final.log. A 1,000 decrease on one line and increase on the
+  other rolls back despite unchanged 120,000 total. No source records, events, lineage or
+  calculation children survive; failed replacements preserve the complete previous contract.
+  Successful replacements carry their import source. Source Mypy, Ruff/format and whitespace
+  pass. All runs terminal; no complete backend pass or deployment claimed.
+- B1-19 and developer guidance reflect contract coverage. Estimate and legacy monetary
+  readers, integration-owner fallback notification, AI, broader current verification,
+  other documented gaps and independent accounting sign-off remain outstanding.
+  Publication exclusions and noncommercial licensing remain unchanged.

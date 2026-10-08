@@ -3166,5 +3166,13 @@ SSP inputs and use the same persisted entry/range reader. Currency comes from th
 upload tenant's reporting currency. The emitter's request builder is not reused.
 For legacy templates without flattened columns, verified file-column totals use
 the upload's pinned template header definitions. Whole-version quarantine remains
-atomic. Legacy contract setup, progress and modification monetary readers are still
-incomplete and are not claimed as covered.
+atomic.
+
+Legacy contract setup checks source-order line prices/quantities separately from
+booking-event prices/quantities, currencies and source-record identity. Split uploads
+reconstruct retained draft lines from immutable earlier bookings. VC rows must produce
+linked approved estimate versions with matching magnitude, currency, effective date
+and import approval. Newly created elements also match the source sign and defaults;
+existing elements retain their established settings. A missing VC writer cannot pass
+commit. Tests that observe that port now call its real writer. Legacy progress and
+modification monetary readers remain incomplete and are not claimed as covered.

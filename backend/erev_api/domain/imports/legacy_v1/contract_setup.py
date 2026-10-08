@@ -90,7 +90,7 @@ from erev_api.domain.imports.csv_v2.framework import (
     Plan,
 )
 from erev_api.domain.imports.exceptions import raise_exception_item, severity_of
-from erev_api.domain.imports.legacy_v1 import headers
+from erev_api.domain.imports.legacy_v1 import headers, setup_amounts
 from erev_api.domain.imports.legacy_v1.sku_ssp import (
     SspKey,
     approved_midpoints,
@@ -717,9 +717,10 @@ def _book(
 
 def _vc_elements(
     uow: UnitOfWork, plan: Plan, context: ApplyContext, contract_id: UUID, currency: str
-) -> None:
+) -> list[tuple[str, UUID]]:
     """S01-R-06: one element per ``VC`` row, through the CTR-12 port."""
     inception = _inception(plan.rows)
+    targets: list[tuple[str, UUID]] = []
     for row in plan.rows:
         if headers.text(row.normalized, columns.STRATIFICATION) != VC_STRATIFICATION:
             continue
@@ -735,7 +736,19 @@ def _vc_elements(
             currency=currency,
             effective_date=inception,
         )
-        vc_element_writer(uow, element, context=context)
+        existed = uow.session.execute(
+            select(estimate.c.id).where(
+                estimate.c.contract_id == contract_id,
+                estimate.c.element_code == element.element_code,
+            )
+        ).scalar_one_or_none()
+        version_id = vc_element_writer(uow, element, context=context)
+        if version_id is not None and existed is None:
+            estimate_id = uow.session.execute(
+                select(estimate_version.c.estimate_id).where(estimate_version.c.id == version_id)
+            ).scalar_one()
+            targets.append(("estimate", UUID(str(estimate_id))))
+    return targets
 
 
 # --- commit-only records ------------------------------------------------------------------------
@@ -1069,7 +1082,7 @@ def apply(uow: UnitOfWork, plan: Plan, *, context: ApplyContext) -> Applied:
     currency = reporting_currency(uow)
     customer_id = _customer(uow, plan.key)
     contract_id, group_id, event_id, head = _book(uow, plan, context, currency, customer_id)
-    _vc_elements(uow, plan, context, contract_id, currency)
+    vc_targets = _vc_elements(uow, plan, context, contract_id, currency)
     if not context.dry_run:
         _links(uow, plan, context, contract_id, event_id)
         _source_order(uow, plan, context, customer_id, currency)
@@ -1077,6 +1090,7 @@ def apply(uow: UnitOfWork, plan: Plan, *, context: ApplyContext) -> Applied:
             _prepare_records(uow, contract_id, context)
             _activate(uow, plan, context, contract_id)
     applied = Applied()
+    applied.targets.extend(vc_targets)
     applied.targets.append(("contract_event", event_id))
     for row in plan.rows:
         applied.row_targets[row.id] = [("contract_event", event_id)]
@@ -1166,4 +1180,5 @@ TEMPLATE: Final = CsvTemplate(
     apply=apply,
     source_system=SourceSystem.LEGACY_TEMPLATE_V1,
     underlying=underlying,
+    reconcile_amounts=setup_amounts.reconcile_amounts,
 )

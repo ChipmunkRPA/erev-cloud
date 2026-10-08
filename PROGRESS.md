@@ -2,6 +2,34 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Legacy contract setup monetary reconciliation — October 7, 2026
+
+- Continued from clean main 1ebf45a; the prior turn published legacy SSP checks (progress).
+  Added a separate reader for legacy setup source orders, additive booking events and VC.
+- Reconstructs file prices/quantities and currencies independently of emitter requests.
+  Split uploads retain earlier draft lines read from immutable earlier bookings. Source-order
+  lines are checked independently, at database precision, against the current file's rows.
+- VC rows require a linked approved version with the source magnitude, reporting currency,
+  effective date and import approval. Newly created elements also check source-derived sign
+  and defaults; existing elements retain their settings. Added new-element target identities.
+  The old test spy now observes real VC writes, so a no-op writer cannot pass reconciliation.
+- Existing setup/activation/split-upload tests: **14 passed in 85.52 seconds**,
+  /private/tmp/legacy-setup-first.log. The first corruption/architecture run had **54 passed,
+  2 failed**: source-order UPDATE injection hit immutable-table protection before read-back.
+  Replaced that injection with altered inputs to the source-order insert. Booking corruption,
+  prior-line corruption, VC amount/direction corruption and missing VC already rolled back.
+- Expanded setup/approval-floor/approver/architecture run: **91 passed, 1 failed in 228.64
+  seconds**, /private/tmp/legacy-setup-final.log. Its sole failure was the new existing-element
+  fixture's invalid API identifier (422 before import). Corrected its identifier and VC type;
+  final matrix/layer/import-cycle rerun: **57 passed in 55.10 seconds**,
+  /private/tmp/legacy-setup-corrected.log. Existing-element INCREASE direction is retained.
+  All runs terminal. Source Mypy, Ruff lint/format and whitespace pass. No full backend
+  or readiness claim.
+- Updated B1-19 and developer guidance; archived dated SSP evidence without removing release
+  gates. Next: legacy progress and modification monetary readers. Owner-notification fallback,
+  AI, other implementation/verification gaps and independent accounting sign-off remain open.
+  No deployment. Publication exclusions/noncommercial licensing are unchanged.
+
 ## Legacy SSP monetary reconciliation — October 7, 2026
 
 - Continued from clean main 6fb12c3. The preceding workflow check confirmed all 31 PRs
@@ -54,54 +82,6 @@
   fallback notification, AI, broader verification, other documented gaps and independent
   accounting sign-off remain open. No deployment. Publication exclusions/noncommercial
   licensing are unchanged; tested changes continue directly to main.
-
-## Contract monetary reconciliation — October 7, 2026
-
-- Continued from clean main 3577d81; prior turn published SSP read-back checks (progress).
-  Added the contract template to the transactional monetary gate for new and replacement
-  draft bookings. Reads actual CONTRACT_BOOKED targets bound to the current import.
-- Each obligation/product line's price, out-of-scope amount, quantity, unit price and scope
-  flag is compared against validated source rows. Contract and payload transaction currencies
-  and the source-record identity are checked. Offsetting line errors cannot hide behind a
-  matching aggregate total. Verified file-column totals retain the existing IPL-06 check.
-- Inspection found that replacement imports omitted upload/source-record provenance even
-  though replace_draft already accepts it. They now pass those identifiers, IMPORT origin and
-  the import idempotency key; new and replacement bookings share the provenance contract.
-- Existing shared commit tests: **14 passed in 40.99 seconds**,
-  /private/tmp/contract-reconcile-first.log. New/replacement success and offsetting-error
-  workflows plus layers/import cycles/stream-appender architecture: **56 passed in 32.58 seconds**,
-  /private/tmp/contract-reconcile-final.log. A 1,000 decrease on one line and increase on the
-  other rolls back despite unchanged 120,000 total. No source records, events, lineage or
-  calculation children survive; failed replacements preserve the complete previous contract.
-  Successful replacements carry their import source. Source Mypy, Ruff/format and whitespace
-  pass. All runs terminal; no complete backend pass or deployment claimed.
-- B1-19 and developer guidance reflect contract coverage. Estimate and legacy monetary
-  readers, integration-owner fallback notification, AI, broader current verification,
-  other documented gaps and independent accounting sign-off remain outstanding.
-  Publication exclusions and noncommercial licensing remain unchanged.
-
-## SSP monetary reconciliation — October 7, 2026
-
-- Continued from clean main 3e5f9dc. The prior turn published cost/revenue/usage event
-  read-back checks (progress). Added CSV SSP values to the transactional reconciliation gate.
-- Reconstructs expected entry prices/ratios, currency, business dimensions, value basis,
-  quantity unit and complete band sets from validated source rows, independently of the
-  emitter's plan body. Reads actual entries/bands for the emitted book version. Missing,
-  additional or changed values trigger CONTROL_TOTALS_MISMATCH and roll back the batch.
-- Independently derives legacy-range low/mid/high values with wide decimal arithmetic,
-  then compares at TY-02 NUMERIC(38,18) precision, including PostgreSQL rounding. SSP numeric
-  fields are flattened text, so explicit monetary_checks carry coverage even though
-  amount_sums is empty. Bands are grouped by entry without a quadratic scan.
-- Existing declarations/scope tests first passed **10 in 33.98 seconds**. Final module plus
-  layer/import-cycle checks: **61 passed in 52.11 seconds**,
-  /private/tmp/ssp-reconcile-final.log. Tests include valid multi-band entries, deliberately
-  changed points and missing bands after approval, batch rollback/no version or source
-  lineage, and a derived legacy range with an 18-decimal discount ratio. Source Mypy,
-  Ruff/format and whitespace pass. All runs terminal; no complete backend pass claimed.
-- B1-19 and the developer guide now reflect SSP coverage. Contract, estimate and legacy
-  monetary reconciliation, integration-owner fallback notification, AI, broader current
-  verification, other documented gaps and independent accounting sign-off remain open.
-  No deployment. Noncommercial licensing and publication exclusions are unchanged.
 
 ## Zero-posting late-event register — October 7, 2026
 
