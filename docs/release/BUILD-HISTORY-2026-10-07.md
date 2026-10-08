@@ -1207,3 +1207,39 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
 - Independent older baseline PID 36126 remained live at 3h10m33s on its separate DB, with
   failures; preserve it. Broader backend failures, Step 1 scope/evidence verification, other
   release limitations and independent accounting sign-off remain open. No deployment.
+
+## Integration owner notifications — October 7, 2026
+
+- Migration 0140 adds a nullable tenant-bound connection owner. API creation defaults to an
+  eligible creator; explicit null remains unassigned. Owner or entity changes validate active
+  membership and integration.manage plus contract.read over every served entity. Empty entity
+  scope requires both permissions for all entities. Historical connections remain unassigned.
+- A control-total mismatch assigns its new blocking OPEN exception and notifies the eligible
+  owner transactionally. Recipient authority is rechecked at delivery; repeated handling of
+  the same exception does not invoke notification again. Existing notification preferences
+  govern email. No external messages were sent by this work.
+- Connection editor supports assigning/clearing an owner, retains unchanged ownership on edits,
+  and warns about missing owners. Browsing other members retains user.manage protection;
+  self-assignment remains available and server-validated. OpenAPI/types and T-INT-01 updated.
+- Six migration checks previously passed. Backend API/reconciliation suite: **20 passed in
+  39.92 seconds** (/private/tmp/integration-owner-suite-final.log). Additional scope/downgrade
+  and owner security checks: **7 passed in 21.05 seconds**
+  (/private/tmp/integration-owner-scope-migration.log). Expansion beyond a scoped owner's
+  authority is refused atomically, while replacing the owner permits expansion. A nonempty
+  downgrade without tenant context refuses to discard the assignment, and rollback preserves it.
+- Negative notification cases cover unassigned, suspended and revoked owners; retry coverage
+  counts actual delivery calls independently of the generic ten-minute notification merge.
+  Initial revoked fixture used nonexistent status rather than revoked_at; corrected. An existing
+  outage test falsely matched "503" in a generated UUID; exact safe-message and whole-response
+  secret assertions remain, while the invalid substring test was removed.
+- Connection UI: **27 passed** (/private/tmp/integration-owner-ui-tests-final.log), including
+  self-assignment and existing editing flows. Initial test used click on the component's
+  mousedown-driven options; corrected to exercise its actual selection event. Final TypeScript
+  and full make lint pass; whitespace checks pass. All scoped processes are terminal. This
+  verified increment is published directly to main, without a PR.
+- B1-19 remains open for missing/ineligible-owner fallback and import amount reconciliation.
+  Existing owners who later lose authority receive nothing; the exception queue remains the
+  documented recovery path. No production readiness claim or deployment. Independent accounting
+  sign-off remains outstanding. The older backend baseline PID 36126 was live at 3h41m12s on its
+  separate database, with failures; preserve it until terminal. Dated sections moved verbatim to
+  docs/release/BUILD-HISTORY-2026-10-07.md to keep this notebook below 20 KB.

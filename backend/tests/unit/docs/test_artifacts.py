@@ -70,8 +70,8 @@ def test_bs_d_13_documents_present() -> None:
 
 def test_licence_and_notice() -> None:
     licence = _read("LICENSE")
-    assert licence.startswith("MIT License")
-    assert "Copyright (c) 2025-2026 ChipmunkRPA" in licence
+    assert licence.startswith("# PolyForm Noncommercial License 1.0.0")
+    assert "## Noncommercial Purposes" in licence
     notice = _read("NOTICE")
     assert "Copyright (c) 2025-2026 ChipmunkRPA" in notice
     for component, licence_id, bundled in NOTICES:

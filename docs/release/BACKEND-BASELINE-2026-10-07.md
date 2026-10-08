@@ -93,3 +93,25 @@ or financial calculation code changes. Full module verification: **17 passed in
 checks pass. The seven combined-group failure entries above are resolved by these
 expectation corrections; the other 44 baseline failures still require disposition.
 This scoped result does not replace a full current-main baseline or accounting sign-off.
+
+### Reconciliation timing and publication expectations
+
+The reconciliation-generation interleaving failure reproduced on `c8fea89` in
+10.98 seconds. A diagnostic assertion then demonstrated that the fixture's frozen
+application time was 0.163 seconds ahead of database time. Its shared clock helper
+starts one second ahead; the test incorrectly depended on setup consuming that second.
+The case now sets its application time from the database before generation and asserts
+both the initial ordering and the injected billing event's persisted recorded_at being
+after the generated as_of_known_at. All original reconciliation and stale-gate assertions
+remain. No production snapshot logic changed.
+
+Two publication tests still asserted MIT. Updated these to validate the owner's published
+PolyForm Noncommercial 1.0.0 license, the noncommercial-purpose section and required
+copyright notice. Third-party component notices retain their checks; no license text changed.
+
+All eight reconciliation timing cases initially passed in 47.59 seconds. Final run with
+the additional persisted-event timestamp assertion and both complete publication test
+modules: **18 passed in 44.02 seconds**,
+`/private/tmp/reconciliation-and-publication-final.log`. Ruff/format/whitespace checks pass.
+These three failures are resolved; **41 of the original baseline failures remain without
+a current-main disposition**. This count is not a full current-main failure count.

@@ -709,6 +709,11 @@ def test_an_event_recorded_and_computed_while_a_generation_runs_is_not_counted_a
     period_id = UUID(str(january["period"]["id"]))
     balances = _erp_ledger(_journalised(world, clock))
 
+    # on_record_clock deliberately starts one second ahead for other close fixtures.
+    # This case requires the opposite ordering; do not depend on setup taking a second.
+    clock.set(world.place.scalar(select(func.clock_timestamp())))
+    assert clock.now() <= world.place.scalar(select(func.clock_timestamp()))
+
     read_position = reconciliation_domain.chain_position
     recorded: list[str] = []
 
@@ -722,6 +727,16 @@ def test_an_event_recorded_and_computed_while_a_generation_runs_is_not_counted_a
     monkeypatch.setattr(reconciliation_domain, "chain_position", while_the_generation_runs)
     ledger = _ledger_reviewed(world, maya, priya, balances)  # ties: the balance of before
     assert recorded == [LATE_NUMBER]
+    # Prove the interleaving actually produced a later recorded event, rather than
+    # merely obtaining the desired gate result under an accidentally advanced clock.
+    recorded_at = world.place.scalar(
+        select(contract_event.c.recorded_at).where(
+            contract_event.c.contract_id == UUID(str(world.contracts[K01].contract["id"])),
+            contract_event.c.event_type == ContractEventType.BILLING_RECORDED.value,
+            contract_event.c.payload["invoice_number"].astext == LATE_NUMBER,
+        )
+    )
+    assert recorded_at > datetime.fromisoformat(ledger["as_of_known_at"])
     assert _january_lines(world, period_id)[0] == 4  # the event wrote no line
     # billing to subledger is generated after the event and reads it
     _billing_reviewed(world, maya, priya)
