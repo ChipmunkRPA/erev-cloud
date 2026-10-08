@@ -17,7 +17,10 @@
   rejected permitted .run/tmp paths; narrowed it to host-global temporary paths. Corrected
   Terraform/forbidden-pattern verification: **20 passed, 26 deselected in 20.33 seconds**,
   /private/tmp/tf-provider-temp-verified.log, terminal. Ruff/format, bash syntax and whitespace
-  checks pass. Clean-source formal gate follows the local commit.
+  checks pass. `make tf-validate` then passed on clean 40ae405 in an immutable
+  context: init/fmt/validate all pass, matching source/dependency bindings, Terraform
+  1.16.4 and four locked providers. Report: .run/reports/tf-validate/report.json;
+  /private/tmp/erev-tf-validate-verified.log. Both formal gate processes are terminal.
 - Docker CLI exists but its daemon is stopped; container-based gates remain unverified.
   No deployment or cloud mutation. AI/other implementation gaps, remaining verification and
   independent accounting sign-off remain open. Preserve exclusions/noncommercial licensing.
@@ -126,7 +129,7 @@ not authorize deployment, provisioning or changes to a live database.
 - SUPERVISOR VERIFICATION NEEDED: make docker-build
 - SUPERVISOR VERIFICATION NEEDED: make compose-verify
 - SUPERVISOR VERIFICATION NEEDED: make zap-baseline
-- SUPERVISOR VERIFICATION NEEDED: make tf-validate (validation only)
+- make tf-validate: passed on 40ae405 October 7 (validation only); rerun for final candidate.
 - SUPERVISOR VERIFICATION NEEDED: make backup, make restore-verify (isolated local drill only)
 
 ## Older backend baseline completed — October 7, 2026

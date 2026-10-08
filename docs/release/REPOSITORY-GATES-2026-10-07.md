@@ -28,8 +28,13 @@ in the retained context succeeded when the temporary directory was relative to t
 The validation script now uses `../../../.run/tmp/tf-provider` from the fixed module
 working directory. Temporary sockets remain inside the execution context. A regression
 runs a real Unix socket bind with a long inherited temporary path. No state, plan, apply,
-cloud credentials or deployed resources are used. Formal clean-source validation follows
-the script's local commit; its result is still pending here.
+cloud credentials or deployed resources are used. Formal `make tf-validate` passed against clean commit `40ae405fd58805386c239aafa73f63848f9f743f`
+in an immutable execution context, finishing `2026-10-08T06:36:51.104233Z` (UTC).
+Terraform 1.16.4 passed init (backend disabled), recursive formatting and
+schema validation against all four locked providers. Input hashes matched before/after:
+`42074943a8df4ee86cd77b4fb47a64c9802a0b125df26b55aa8a6396142ec5df`. Source and dependency bindings also matched.
+Local raw evidence: `.run/reports/tf-validate/report.json`; console log:
+`erev-tf-validate-verified.log`. Repeat this gate for the final release candidate.
 
 ## Remaining gates
 
