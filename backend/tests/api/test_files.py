@@ -27,13 +27,14 @@ from erev_api.db.session import DbContext, tenant_session
 from erev_api.db.tables import (
     approval_request,
     audit_event,
+    evidence_pack,
     file_object,
     file_upload,
     idempotency_record,
     ssp_calculator_run,
 )
 from erev_api.domain.platform.attachments import ANY_UPLOAD_PERMISSION
-from erev_api.domain.platform.file_access import ATTACHMENT_SUBJECTS
+from erev_api.domain.platform.file_access import ATTACHMENT_SUBJECTS, referencing_scopes
 from erev_api.enums import (
     ApprovalRequestStatus,
     ApprovalSubjectType,
@@ -64,6 +65,7 @@ from support.principals import workspace as at_work
 from support.rows import (
     ROW_BUILDERS,
     RowContext,
+    evidence_pack_values,
     file_object_values,
     insert_approval_request,
     insert_approval_step,
@@ -995,8 +997,9 @@ def test_r_111_9_every_owner_of_the_registry_is_read_through_the_file_routes(
 
     Since 04 rev 1.300 (item MOD-PREVIEW-READ-SCOPE-1) the previews a modification and a manual
     adjustment retain are stated by a rule — the same permissions, for every entity the
-    subject is bound to — and are no rows that name permissions: fourteen such rows are left,
-    and the two are read in a block of their own below, as this sweep read them."""
+    subject is bound to — and are no rows that name permissions. Thirteen permission rows
+    remain; evidence packs require their audited download route. The two previews are read
+    in a block of their own below, as this sweep read them."""
     admin = member(keyring, clock)
     tenant_id = admin.tenant_id
     with tenant_session(_all_entities(tenant_id)) as session:
@@ -1005,7 +1008,6 @@ def test_r_111_9_every_owner_of_the_registry_is_read_through_the_file_routes(
     variants: dict[str, list[dict[str, Any]]] = {
         "registry_version.impact_simulation_file_id": [{}, {"scope": "ENTITY", "entity_id": named}],
         "control_execution.exceptions_file_id": [{}, {"entity_id": named}],
-        "evidence_pack.file_id": [{}, {"entity_id": named}],
         "import_upload.file_object_id": [
             {},
             {"named_entity_ids": [named]},
@@ -1097,7 +1099,7 @@ def test_r_111_9_every_owner_of_the_registry_is_read_through_the_file_routes(
         )
 
     owners = documented_owners()
-    assert len(owners) >= 14, [owner.ref for owner in owners]
+    assert len(owners) >= 13, [owner.ref for owner in owners]
     outsider = joined(app, tenant_id, "outsider")
     problems: list[str] = []
     for owner in owners:
@@ -1691,3 +1693,49 @@ def test_krn_idem_04_large_response_stored_as_file(app: FastAPI, accountant: Act
         "application/json",
         len(first.content),
     )
+
+
+@pytest.mark.parametrize("entity_bound", [False, True])
+def test_evidence_pack_files_require_the_audited_pack_download_route(
+    app: FastAPI, keyring: KeyRing, clock: FrozenClock, entity_bound: bool
+) -> None:
+    """Even an all-entity Auditor cannot bypass pack source checks/audit via /files."""
+    admin = member(keyring, clock)
+    tenant_id = admin.tenant_id
+    with tenant_session(_all_entities(tenant_id)) as session:
+        entity_id = insert_contract_rows(session, tenant_id).entity_id
+    auditor = joined(app, tenant_id, "pack-auditor", "auditor")
+    scoped = joined(app, tenant_id, "pack-scoped", "auditor", entity_ids=(entity_id,))
+    system = RequestContext(
+        principal=system_principal(tenant_id, on_behalf_of_id=None),
+        tenant_kind=TenantKind.PRODUCTION,
+        request_id="tests-pack-file-route",
+        source_ip=None,
+        user_agent=None,
+        idempotency_key=None,
+        if_match=None,
+        now=clock.now(),
+        format_locale="en-US",
+    )
+    with unit_of_work(system, clock=clock, keyring=keyring, files=app.state.file_store) as uow:
+        stored = store_file(
+            uow,
+            purpose=FilePurpose.EVIDENCE_PACK,
+            stream=io.BytesIO(b"private retained pack fixture"),
+            original_filename="evidence.zip",
+            media_type="application/zip",
+        )
+        file_id = stored["id"]
+        uow.session.execute(
+            insert(evidence_pack).values(
+                **evidence_pack_values(
+                    tenant_id, entity_id=entity_id if entity_bound else None, file_id=file_id
+                )
+            )
+        )
+        uow.commit()
+    assert_hidden(app, str(file_id), auditor, scoped)
+    # Reserving the read route must preserve the entity binding used by shred protection.
+    assert referencing_scopes(tenant_id, file_id) == [
+        (False, (entity_id,)) if entity_bound else (True, ())
+    ]

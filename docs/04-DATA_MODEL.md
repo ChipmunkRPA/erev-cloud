@@ -1878,7 +1878,7 @@ An upload over its purpose limit, or of a media type outside its list, returns 4
 | `REPORT_OUTPUT` | `access_review_campaign.snapshot_file_id` | `access.approve` | tenant |
 | `REPORT_OUTPUT` | `control_execution.exceptions_file_id` | `audit.read` | `control_execution.entity_id`; all entities without one |
 | `REPORT_OUTPUT` | `idempotency_record.response_file_id` | route: internal | - |
-| `EVIDENCE_PACK` | `evidence_pack.file_id` | `evidence.export` | `evidence_pack.entity_id`; all entities without one |
+| `EVIDENCE_PACK` | `evidence_pack.file_id` | route: GET /evidence-packs/{id}/download | - |
 | `JOURNAL_EXPORT` | `journal_batch.export_file_id` | route: GET /journal-batches/{id}/download | - |
 | `JOURNAL_EXPORT` | `journal_batch.detail_file_id` | route: internal | - |
 | `SNAPSHOT_DATASET` | `lock_snapshot.file_id` | `report.run` | `period_lock.entity_id` |
@@ -1891,6 +1891,8 @@ An upload over its purpose limit, or of a media type outside its list, returns 4
 | `POSTING_RESPONSE` | `posting_ack.response_file_id` | route: internal | - |
 | `AI_PROMPT_LOG` | none | nobody | - |
 | `AI_DOCUMENT_TEXT` | none | nobody | - |
+
+Evidence-pack files are reserved for API-R-42 so every download can reauthorize the complete retained population and record `evidence.export` with the pack id (PRD J-17-AC-4). Generic file metadata/content routes return 404 even to an all-entity Auditor. This route reservation does not claim the still-pending evidence-pack endpoint is implemented. The owner retains its entity binding for file-destruction scope checks.
 
 **Binding (authoritative; rev 1.189; REQ-PLT-012; ruling R-111 (1)).** A command that takes a file id from its caller — to parse the file, to make it the source or the evidence of a record, to attach it — binds it through one function, `erev_api.domain.platform.file_access.bound`, which answers the file's row only when the id names a file the caller may read (Read access above). A file that does not exist and a file the caller may not read are one answer, the answer of the table, and it is given before anything of the file is looked at — purpose, media type, shred state, name or content — so that no answer of the command tells an unreadable file from a missing one. The job that later works on a bound file reads it as SYSTEM. The request members that name a file:
 

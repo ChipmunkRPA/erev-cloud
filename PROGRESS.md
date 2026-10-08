@@ -2,6 +2,23 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Evidence-pack download boundary — October 8, 2026 (RPS-16 continued)
+
+- Continued from clean published d558514; previous turn published verified assembly work.
+  Found that generic file metadata/content routes could serve evidence-pack files under
+  `evidence.export` without the pack-specific source checks and `evidence.export` audit fact.
+  Reserved this purpose for API-R-42's dedicated download route, following the report/journal
+  file pattern. Preserved the owner entity for destruction-scope checks. Updated the data-model
+  registry and its API sweep; the dedicated pack route itself remains unimplemented.
+- Two new entity/tenant-wide Auditor cases failed on the old generic route in **7.42 seconds**.
+  After the repair, all file API and registry architecture tests passed: **29 in 22.33 seconds**.
+  Both all-entity and scoped Auditors receive the same 404 as an unknown file for metadata and
+  bytes; retained entity/whole-tenant destruction scopes are checked. Ruff lint/format, source
+  Mypy and whitespace pass. Logs: `/private/tmp/evidence-file-route-{red,green}.log`.
+- All processes terminal. Archived older control/relock notes verbatim. Pack lifecycle/storage,
+  audited download/API, automatic generation, other kinds and variance remain open, along with
+  release gates and independent accounting approval. Direct main; no deployment/readiness claim.
+
 ## First-close ZIP assembly — October 8, 2026 (RPS-16 continued)
 
 - Continued from clean published 9fe1bd0. Added `reports/evidence_assembly.py`: reloads a
@@ -114,27 +131,6 @@
 - Control session 36008 is terminal. Property session 52175 / PID 6358 is confirmed live,
   still in determinism, in its original immutable context. Keep that run; no database test
   process is active. Archived invitation-erasure evidence verbatim. No deployment/readiness claim.
-
-## Control verification and relock witness — October 8, 2026
-
-- Started canonical `make controls-report` on clean main 68d9607. It remains active in
-  .run/gates/ctx-controls-report-68d960754ea2-9993, executor **36008**, PID **10033**;
-  log /private/tmp/erev-controls-2026-10-08.log. Collection confirms 495 tagged tests.
-  One relock test has failed so far. Keep polling this immutable run; no final G7 claim.
-- Reproduced the relock failure on a separate disposable local database, preserving the
-  control gate's primary database. Initial setup failed because the new database inherited
-  SQL_ASCII; recreated that empty database with UTF8. Actual baseline: **one failed in
-  18.32 seconds**. Backdated progress follows a later reviewed judgement, raises LATE_EVENT
-  / OUT_OF_ORDER, and the open exception correctly prevents relock.
-- Updated the two reopened-period witnesses to assert the exception gate refusal, inspect
-  the exact findings, request and independently approve their waivers through the API, and
-  verify retained waiver evidence. All **three journal-chain tests passed in 42.13 seconds**.
-  Ruff lint/format and whitespace pass. No application control was weakened; per-posting
-  approval and the zero-net journal gap remain open. Log hashes are in the dated checks note.
-- Diagnostic process is terminal and its database removed. Property session **52175** / PID
-  **6358** remains active in the original context, past all six metamorphic tests and through
-  RPO checks, now in determinism. Both ongoing gates predate this test correction; preserve
-  their handles and inspect final source bindings. No deployment or readiness claim.
 
 ## GL reconciliation ledger-history freshness — October 8, 2026
 

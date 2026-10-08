@@ -891,6 +891,7 @@ _CONFIG_READ: Final = frozenset({"config.read"})
 # (``named_entity_ids``; R-86 (f)), and by the upload's own uploader. ``import.upload`` brings
 # data in and reads nothing another member brought (R-98).
 IMPORT_READERS: Final = frozenset({"contract.read", "import.approve"})
+EVIDENCE_DOWNLOAD_ROUTE: Final = "GET /evidence-packs/{id}/download"
 REPORT_OUTPUT_ROUTE: Final = "GET /report-runs/{id}/output"
 JOURNAL_DOWNLOAD_ROUTE: Final = "GET /journal-batches/{id}/download"
 SNAPSHOT_MANIFEST_ROUTE: Final = "GET /tenant/snapshots/{id}/manifest"
@@ -986,9 +987,8 @@ FILE_READ_ACCESS: Final[Mapping[FilePurpose, PurposeAccess]] = MappingProxyType(
                 FileOwner(
                     evidence_pack,
                     "file_id",
-                    frozenset({"evidence.export"}),
-                    evidence_pack.c.entity_id,
-                    financial=True,
+                    entity=evidence_pack.c.entity_id,
+                    route=EVIDENCE_DOWNLOAD_ROUTE,
                 ),
             ),
         ),
