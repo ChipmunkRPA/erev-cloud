@@ -3117,7 +3117,7 @@ DG-KRN-APR-07 architecture checks.
 
 ### Import monetary read-back — October 7, 2026
 
-A CSV template may register `reconcile_amounts(session, plan, applied, context=...)`.
+An import template may register `reconcile_amounts(session, plan, applied, context=...)`.
 The commit calls it after applying the plan, inside the same narrowed transaction.
 It must independently reconstruct expected monetary facts from the validated source
 rows and read the actual persisted targets. Returning unequal source/stored maps
@@ -3159,5 +3159,12 @@ are also checked. New elements use the command's declared defaults; omitted sett
 of existing elements retain their existing meaning, while explicit file values must
 agree. Source figures are reconstructed from validated rows, not the emitter's plan
 body. Money/exact columns compare at their declared database scale; JSON scenarios
-retain their decimal precision. Legacy monetary templates still need independent
-read-back and are not claimed as covered.
+retain their decimal precision.
+
+Legacy SKU SSP imports independently translate validated legacy cells into canonical
+SSP inputs and use the same persisted entry/range reader. Currency comes from the
+upload tenant's reporting currency. The emitter's request builder is not reused.
+For legacy templates without flattened columns, verified file-column totals use
+the upload's pinned template header definitions. Whole-version quarantine remains
+atomic. Legacy contract setup, progress and modification monetary readers are still
+incomplete and are not claimed as covered.

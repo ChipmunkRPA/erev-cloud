@@ -1614,3 +1614,29 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   notifications as outstanding. AI, broader verification, other documented implementation
   gaps and independent accounting sign-off remain open. Licensing/publication exclusions
   are preserved; direct-main workflow continues.
+
+## Event-import monetary reconciliation — October 7, 2026
+
+- Continued from clean main 257533d. The preceding turn implemented and published invoice
+  read-back checks (progress). Extended the existing transaction gate to CSV costs,
+  pre-standard revenue and rated usage using an independent reader of persisted events.
+- The reader checks contract, event type, effective date and source-record identity as well
+  as amount/currency. It reads validated source rows, not the emitter's possibly altered
+  plan body. Signed revenue remains signed; absent rated usage amounts stay distinct from
+  explicit zero. All declared amount columns of each covered template have a reader.
+- Real import tests inject altered amounts or missing target references after approval.
+  Every failed batch retains a blocking monetary mismatch but no events, source records,
+  lineage or calculation children. Successful imports retain matching source/stored evidence
+  and file-column totals. Cases cover cost, negative pre-standard revenue, positive rated
+  usage, absent rated amount and explicit zero.
+- Final new workflows plus existing cost/usage/estimate/modification and quarantine tests:
+  **21 passed in 67.91 seconds**, /private/tmp/event-amounts-final.log. The first run's three
+  successful-path assertions expected scientific notation; corrected to decimal strings.
+  Its six rollback cases already passed. Source Mypy and Ruff pass. A direct registry check
+  confirms all three readers cover their complete declared monetary columns.
+- Architecture import/layer checks: **47 passed in 8.95 seconds**,
+  /private/tmp/event-amounts-architecture.log. All runs terminal. B1-19 and the developer guide retain
+  contracts, SSP, estimate and legacy monetary reconciliation as outstanding, along with
+  ineligible integration-owner notification fallback. AI, full current verification,
+  other documented gaps and independent accounting sign-off remain open. No deployment;
+  publication exclusions and noncommercial licensing are preserved.

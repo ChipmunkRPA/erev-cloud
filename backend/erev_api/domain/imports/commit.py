@@ -64,7 +64,7 @@ from erev_api.db.tables import (
 )
 from erev_api.db.transitions import apply
 from erev_api.domain.contracts import period_ends, repo
-from erev_api.domain.imports import commands, diff, job_hooks, queries, scope
+from erev_api.domain.imports import commands, diff, job_hooks, queries, scope, templates
 from erev_api.domain.imports.csv_v2.framework import ApplyContext, CsvRow, CsvTemplate
 from erev_api.domain.imports.exceptions import raise_exception_item, severity_of
 from erev_api.domain.integrations import normalise
@@ -514,17 +514,26 @@ def commit_upload(
     if template is not None and template.reconcile_amounts is not None:
         # Only sum cells after the template independently proved their stored monetary facts.
         # IPL-06 is a FILE-COLUMN total: repeated line amounts count once per source row.
+        columns = template.columns
+        if not columns:
+            declared = templates.find_template(
+                session, str(row["template_code"]), int(row["template_version"])
+            )
+            if declared is None:
+                raise LookupError(f"import template {row['template_code']} is absent")
+            amount_names = [header.name for header in declared.headers if header.type == "amount"]
+        else:
+            amount_names = [column.name for column in columns if column.type == "amount"]
         amounts = {
-            column.name: sum(
+            name: sum(
                 (
-                    Decimal(str(item.normalized[column.name]))
+                    Decimal(str(item.normalized[name]))
                     for item in rows
-                    if item.normalized.get(column.name) is not None
+                    if item.normalized.get(name) is not None
                 ),
                 Decimal(0),
             )
-            for column in template.columns
-            if column.type == "amount"
+            for name in amount_names
         }
         totals_loaded["amount_sums"] = {key: format(value, "f") for key, value in amounts.items()}
         if amounts != {

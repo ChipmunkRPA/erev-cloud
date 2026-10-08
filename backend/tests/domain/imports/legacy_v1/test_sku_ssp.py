@@ -20,8 +20,10 @@ from erev_api.db.tables import (
     exception_item,
     gl_account,
     import_row,
+    import_row_lineage,
     pob_template,
     product,
+    source_record,
     ssp_book,
     ssp_book_version,
     ssp_entry,
@@ -38,6 +40,7 @@ from support.legacy_replay import (
     SKU_SSP,
     LegacyWorld,
     committed,
+    diffed,
     job_of,
     legacy_world,
     shown,
@@ -298,8 +301,67 @@ def test_r109_quarantine_mode_loads_an_ssp_version_whole_or_not_at_all(legacy: L
     run_import_job(imports, job_of(imports, UUID(import_id), "IMPORT_COMMIT"))
     done = shown(imports, import_id)
     assert done["status"] == "COMMITTED", done
-    assert done["control_totals"]["loaded"] == {"rows": 2, "quarantined": 7}
+    loaded = done["control_totals"]["loaded"]
+    assert (loaded["rows"], loaded["quarantined"]) == (2, 7)
+    assert loaded["amount_sums"] == done["control_totals"]["source"]["amount_sums"]
+    assert all(check["source"] == check["stored"] for check in loaded["monetary_checks"])
     assert [
         (row["legacy_version_label"], str(row["status"]), row["entry_count"])
         for row in _versions(legacy)
     ] == [("2024-01-01", "APPROVED", 2)]
+
+
+@pytest.mark.parametrize("corruption", [None, "price", "discount", "missing_band"])
+def test_legacy_ssp_monetary_readback(
+    legacy: LegacyWorld, monkeypatch: pytest.MonkeyPatch, corruption: str | None
+) -> None:
+    from erev_api.domain.imports.legacy_v1 import sku_ssp
+    from sqlalchemy import delete
+
+    imports = legacy.imports
+    import_id = diffed(imports, "sku-readback.xlsx", SKU_SSP.read_bytes(), "legacy_sku_ssp")
+    submitted = submit(imports, import_id)
+    assert submitted.status_code == 200, submitted.text
+    approved = approve(legacy.app, str(submitted.json()["approval_request_id"]), legacy.priya)
+    assert approved.status_code == 200, approved.text
+    original = sku_ssp.upsert_ssp_entries
+
+    def changed(uow: Any, version_id: Any, *, body: Any) -> Any:
+        entries = list(body.entries)
+        if corruption == "price":
+            # Preserve aggregate list price; each source entry must still match.
+            entries[0] = entries[0].model_copy(update={"unit_list_price": "101"})
+            entries[1] = entries[1].model_copy(update={"unit_list_price": "199"})
+        elif corruption == "discount":
+            entries[0] = entries[0].model_copy(update={"midpoint_discount_ratio": "0.11"})
+        ids = original(uow, version_id, body=body.model_copy(update={"entries": entries}))
+        if corruption == "missing_band":
+            uow.session.execute(delete(ssp_range).where(ssp_range.c.ssp_entry_id == ids[0]))
+        return ids
+
+    monkeypatch.setattr(sku_ssp, "upsert_ssp_entries", changed)
+    run_import_job(imports, job_of(imports, UUID(import_id), "IMPORT_COMMIT"))
+    done = shown(imports, import_id)
+    assert done["status"] == ("COMMITTED" if corruption is None else "FAILED"), done
+    loaded = done["control_totals"]["loaded"]
+    (check,) = loaded["monetary_checks"]
+    if corruption is None:
+        assert check["source"] == check["stored"]
+        assert len(check["stored"]["entries"]) == 7
+        assert Decimal(loaded["amount_sums"]["SKU Unit List Price"]) == Decimal("603")
+        assert loaded["amount_sums"] == done["control_totals"]["source"]["amount_sums"]
+    else:
+        assert check["source"] != check["stored"]
+        assert _versions(legacy) == []
+        for table in (source_record, import_row_lineage):
+            assert (
+                imports.rows(select(table.c.id).where(table.c.import_upload_id == UUID(import_id)))
+                == []
+            )
+        (finding,) = imports.rows(
+            select(exception_item).where(
+                exception_item.c.import_upload_id == UUID(import_id),
+                exception_item.c.code == "CONTROL_TOTALS_MISMATCH",
+            )
+        )
+        assert finding["severity"] == "BLOCKING"

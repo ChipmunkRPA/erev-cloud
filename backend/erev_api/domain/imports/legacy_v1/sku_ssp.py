@@ -28,6 +28,7 @@ contributing row, or equals a row of an approved version (BUILD_SPEC DIN-7).
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from dataclasses import replace
 from datetime import datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any, Final
@@ -40,6 +41,7 @@ from sqlalchemy.orm import Session
 from erev_api.approvals import subjects
 from erev_api.db.tables import (
     gl_account,
+    import_upload,
     pob_template,
     product,
     ssp_book,
@@ -49,7 +51,7 @@ from erev_api.db.tables import (
 )
 from erev_api.domain.imports import findings
 from erev_api.domain.imports import legacy_templates as columns
-from erev_api.domain.imports.csv_v2 import ssp_declarations
+from erev_api.domain.imports.csv_v2 import ssp_declarations, ssp_values
 from erev_api.domain.imports.csv_v2.framework import (
     Applied,
     ApplyContext,
@@ -523,6 +525,39 @@ def underlying(
     }
 
 
+def reconcile_amounts(
+    session: Session, plan: Plan, applied: Applied, *, context: ApplyContext
+) -> tuple[Mapping[str, Any], Mapping[str, Any]]:
+    """Read legacy SSP prices and derived ranges independently of the emitter request."""
+    currency = str(
+        session.execute(
+            select(tenant.c.reporting_currency)
+            .join(import_upload, import_upload.c.tenant_id == tenant.c.id)
+            .where(import_upload.c.id == context.import_upload_id)
+        ).scalar_one()
+    ).strip()
+    translated = tuple(
+        replace(
+            row,
+            normalized={
+                "ssp_book_code": BOOK_CODE,
+                "lines.product_code": row.normalized[columns.SKU],
+                "lines.stratification": row.normalized[columns.STRATIFICATION],
+                "lines.currency": currency,
+                "lines.method": "legacy_range",
+                "lines.distinctness": FLAGS[str(row.normalized[columns.DISTINCT_FLAG])],
+                "lines.unit_list_price": str(row.normalized[columns.LIST_PRICE]),
+                "lines.midpoint_discount_ratio": str(row.normalized[columns.DISCOUNT]),
+                "lines.range_ratio": str(row.normalized[columns.RANGE]),
+            },
+        )
+        for row in plan.rows
+    )
+    return ssp_values.reconcile_amounts(
+        session, replace(plan, rows=translated), applied, context=context
+    )
+
+
 TEMPLATE: Final = CsvTemplate(
     code=CODE,
     object_type=SourceObjectType.SSP_ROW,
@@ -533,4 +568,5 @@ TEMPLATE: Final = CsvTemplate(
     apply=apply,
     source_system=SourceSystem.LEGACY_TEMPLATE_V1,
     underlying=underlying,
+    reconcile_amounts=reconcile_amounts,
 )
