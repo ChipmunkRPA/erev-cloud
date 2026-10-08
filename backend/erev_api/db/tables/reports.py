@@ -105,6 +105,7 @@ evidence_pack: Final = Table(
     Column("tenant_id", Uuid(), primary_key=True),
     Column("id", Uuid(), primary_key=True),
     Column("pack_no", Text(), nullable=False),
+    Column("source_binding", JSONB(none_as_null=True), nullable=True),
     Column("kind", evidence_pack_kind, nullable=False),
     Column("entity_id", Uuid(), nullable=True),
     Column("book_code", book_code_type, nullable=True),

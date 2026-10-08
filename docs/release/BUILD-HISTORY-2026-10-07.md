@@ -2630,3 +2630,55 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   completeness, other pack kinds, assembly/jobs/routes/audited downloads/automatic generation
   and final release/accounting approval remain open. RPS-16/CTL-041 unclaimed. Archived saved
   certification notes verbatim. Direct-main publication; no deployment or external messaging.
+
+## Audit digest evidence — October 8, 2026 (RPS-16 continued)
+
+- Continued from clean 90871f4. Added `reports/evidence_audit.py`, requiring an explicit
+  verification ID rather than selecting latest on every read. Checks the original stored
+  AUDIT_DIGEST file's purpose/type/length/hash and exact canonical metadata against its
+  successful complete-prefix verification row. The prefix must cover the lock's audit head.
+  Rechecks HMACs through the recorded endpoint and matches the lock's saved head; a shorter
+  intact prefix is insufficient. Returns original digest bytes and source IDs/hashes.
+- Collection is read-only and exposes aggregate verification metadata, not audit-event
+  contents. It creates no verification or external retained copy. Future pack orchestration
+  must persist the chosen verification ID, alongside its other source bindings.
+- **71 scoped tests passed in 61.84 seconds**: digest refusals, source/frozen collectors and
+  existing audit-verification regression tests. Database cases use actual audit events/HMACs,
+  verification writer and encrypted digest files with seeded close/snapshot references.
+  Rejects a mismatched lock head, an overstated prefix endpoint, wrong digest metadata and
+  wrong file purpose; refuses missing verification IDs and revoked audit permission.
+  Another real verification extends the chain without changing the originally selected bytes.
+- Initial two database witnesses passed in 9.93 seconds. Logs:
+  `/private/tmp/evidence-audit-{db,final}.log`. Source mypy, Ruff lint/format and whitespace
+  pass; all processes terminal. Archived earlier reconciliation notes verbatim.
+- Remaining: reconciliation population/waiver completeness, supporting SSP/configuration/late
+  entry/access reports, other pack kinds, persisted source bindings, full assembly, jobs/routes,
+  audited downloads and automatic generation. Operational close/full-pack acceptance, current
+  release gates and independent accounting sign-off remain open. RPS-16/CTL-041 unclaimed.
+  Direct-main publication; no deployment, cloud mutation or external notifications.
+
+## Close supporting-source plan — October 8, 2026 (RPS-16 continued)
+
+- Continued from clean 277408a. Added `reports/evidence_report_plan.py`: derives five CSV
+  source requests from the selected lock and its fiscal period. SSP/configuration use the
+  full inclusive period date range; late-entry uses the selected entity/book/period. Access
+  and SoD use UTC period-end (23:59:59.999999), consistent with the register framework's
+  UTC-day date-range convention. All known-at values are the lock's freeze cutoff, not now.
+- Refuses early closes that cannot supply period-end access evidence, invalid intervals,
+  naive cutoffs and period records changed after the lock (no versioned period-date history).
+  Queues through ordinary report creation/permissions and captures normalized selectors,
+  scope and cutoff in source bindings, refusing normalization that changes scope/cutoff.
+  Does not commit; the future pack command must persist bindings atomically and reuse on retry.
+- Initial database witness: **one passed in 8.58 seconds**. Selected seeded January lock →
+  five actual report jobs → worker execution → collection of all fifteen original files.
+  Final source/collector/selector regression: **82 passed in 65.76 seconds**. Covers leap-year
+  and non-calendar fiscal intervals, UTC offset normalization, re-lock cutoff changes, early
+  close/changed-period refusal and export denial with no report rows left. Logs:
+  `/private/tmp/evidence-plan-{db,final}.log`. Source mypy, Ruff lint/format and whitespace pass;
+  all processes terminal. Historical journal-register notes archived verbatim.
+- Remaining: durable pack state/idempotency and source bindings, reconciliation population
+  completeness, other pack kinds, complete assembly/jobs/routes/audited downloads and automatic
+  close generation. Existing builders still refuse historical mutable facts they cannot prove;
+  this planner never substitutes current data. End-to-end operational close acceptance,
+  current release gates and independent accounting sign-off remain open. RPS-16/CTL-041
+  unclaimed. Direct-main publication; no deployment, cloud mutation or external notifications.

@@ -26,6 +26,8 @@ from erev_api.db import new_id, transitions
 from erev_api.db.tables import (
     audit_chain_head,
     audit_chain_verification,
+    evidence_pack,
+    job,
     journal_run,
     legal_entity,
     lock_snapshot,
@@ -46,6 +48,7 @@ from erev_api.domain.reports import (
     evidence_relock,
     evidence_report_plan,
     evidence_reports,
+    evidence_sources,
     locked,
 )
 from erev_api.domain.reports.evidence_selection import resolve
@@ -53,7 +56,7 @@ from erev_api.enums import FilePurpose
 from erev_api.files.store import LocalFileStore, open_file, store_file
 from erev_api.main import create_app
 from erev_api.problems import Problem
-from erev_api.schemas.evidence_packs import EvidencePackCreateIn
+from erev_api.schemas.evidence_packs import ClosePackCreateIn, EvidencePackCreateIn
 from erev_engine.canonical import canonical_bytes
 from fastapi import FastAPI
 from pydantic import TypeAdapter
@@ -72,6 +75,7 @@ from support.close_world import (
 from support.db import TestDatabase
 from support.principals import enrolled
 from support.rows import (
+    evidence_pack_values,
     insert_close_parts,
     journal_run_values,
     period_lock_values,
@@ -1021,3 +1025,123 @@ def test_supporting_queue_requires_export_and_leaves_no_report_rows(
         assert (
             uow.session.execute(select(func.count()).select_from(report_run)).scalar_one() == before
         )
+
+
+def test_close_source_binding_round_trips_without_reselecting_or_requeuing(
+    sources: Sources,
+    clock: FrozenClock,
+) -> None:
+    with sources.world.place.uow() as uow:
+        clock.set(
+            uow.session.execute(select(func.clock_timestamp())).scalar_one() + timedelta(seconds=1)
+        )
+        head = uow.session.execute(
+            select(audit_chain_head.c.last_chain_seq, audit_chain_head.c.last_hmac)
+        ).one()
+    request = ClosePackCreateIn.model_validate(
+        _freeze_for_pack(
+            sources,
+            audit_head=(head.last_chain_seq, head.last_hmac),
+        )
+    )
+    with sources.world.place.uow() as uow:
+        verification = audit_verify.record_tenant_verification(
+            uow, trigger="ON_DEMAND", job_id=None
+        )
+        verification_id = verification["id"]
+        uow.commit()
+    permissions = frozenset({"report.run", "report.export", "audit.read", "contract.read"})
+    reader = replace(
+        sources.principal,
+        permissions=permissions,
+        permission_scopes={permission: "*" for permission in permissions},
+    )
+    with sources.world.place.uow(reader) as uow:
+        bound = evidence_sources.prepare_close(uow, request, verification_id=verification_id)
+        pack = evidence_pack_values(
+            sources.world.tenant_id, **bound.pack_values(), created_at=uow.now
+        )
+        uow.session.execute(insert(evidence_pack).values(**pack))
+        uow.commit()
+    for report in bound.supporting_reports:
+        finished = run_journal_job(sources.world, report.job_id, attempts=1)
+        assert finished["state"] == "SUCCEEDED", finished
+    with sources.world.place.uow(reader) as uow:
+        restored = evidence_sources.load_close(uow, pack["id"])
+        assert restored == bound
+        outputs = tuple(
+            file
+            for report in restored.supporting_reports
+            for file in evidence_reports.collect(uow, report.source())
+        )
+        assert len(outputs) == 15
+        # Newer candidates must never replace the selected report or digest on a retry read.
+        newer = evidence_report_plan.queue(uow, resolve(uow, request))
+        assert {item.source.run_id for item in newer}.isdisjoint(
+            report.run_id for report in restored.supporting_reports
+        )
+        uow.commit()
+    with sources.world.place.uow() as uow:
+        newer_digest = audit_verify.record_tenant_verification(
+            uow, trigger="ON_DEMAND", job_id=None
+        )
+        assert newer_digest["id"] != verification_id
+        uow.commit()
+    with sources.world.place.uow(reader) as uow:
+        count = uow.session.execute(select(func.count()).select_from(report_run)).scalar_one()
+        assert evidence_sources.load_close(uow, pack["id"]) == bound
+        assert evidence_sources.load_close(uow, pack["id"]) == bound
+        assert (
+            uow.session.execute(select(func.count()).select_from(report_run)).scalar_one() == count
+        )
+        assert (
+            tuple(
+                file
+                for report in bound.supporting_reports
+                for file in evidence_reports.collect(uow, report.source())
+            )
+            == outputs
+        )
+        legacy = evidence_pack_values(
+            sources.world.tenant_id,
+            **{**bound.pack_values(), "source_binding": None},
+            created_at=uow.now,
+        )
+        uow.session.execute(insert(evidence_pack).values(**legacy))
+        with pytest.raises(Problem, match="no valid retained"):
+            evidence_sources.load_close(uow, legacy["id"])
+    with sources.world.place.uow(reader) as uow:
+        before = tuple(
+            uow.session.execute(select(func.count()).select_from(table)).scalar_one()
+            for table in (evidence_pack, report_run, job)
+        )
+    with pytest.raises(RuntimeError, match="pack transaction failed"):
+        with sources.world.place.uow(reader) as uow:
+            another = evidence_sources.prepare_close(uow, request, verification_id=verification_id)
+            uow.session.execute(
+                insert(evidence_pack).values(
+                    **evidence_pack_values(
+                        sources.world.tenant_id,
+                        **another.pack_values(),
+                        created_at=uow.now,
+                    )
+                )
+            )
+            raise RuntimeError("pack transaction failed")
+    with sources.world.place.uow(reader) as uow:
+        assert (
+            tuple(
+                uow.session.execute(select(func.count()).select_from(table)).scalar_one()
+                for table in (evidence_pack, report_run, job)
+            )
+            == before
+        )
+    denied = replace(
+        reader, permission_scopes={**reader.permission_scopes, "audit.read": frozenset()}
+    )
+    with sources.world.place.uow(denied) as uow, pytest.raises(Problem) as error:
+        evidence_sources.load_close(uow, pack["id"])
+    assert error.value.slug == "not-found"
+    with sources.world.place.uow(reader) as uow, pytest.raises(Problem) as error:
+        evidence_sources.load_close(uow, new_id())
+    assert error.value.slug == "not-found"

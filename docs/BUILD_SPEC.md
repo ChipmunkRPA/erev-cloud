@@ -10163,7 +10163,7 @@ Author BS-3. Uses CTR (PHASES §1 row 12). Indicative size 16 items; this phase 
   - **Prerequisites:** RPS-15
   - **Scope:**
     - Paths: `backend/erev_api/domain/reports/evidence.py` (`build_pack(jc, params) -> JobOutcome` for kinds `CLOSE`, `CONTRACT_SAMPLE`, `CHANGE`, `ACCESS`; builders of report codes `period_evidence_pack` RPT-54 and `contract_sample_pack` RPT-55); `backend/erev_api/jobs/` handler `EVIDENCE_PACK` (removed from `PENDING_JOB_HANDLERS`); `backend/erev_api/domain/close/commands.py` (lock and re-lock enqueue the `CLOSE` pack, NTF-06); `backend/erev_api/api/v1/evidence_packs.py`; `backend/erev_api/schemas/evidence_packs.py`; `backend/tests/domain/reports/test_evidence_packs.py`; `docs/guides/user-guide.md` (section "Evidence packs"); `docs/api/openapi.json`; `frontend/src/lib/api/schema.d.ts`
-    - Schema: none
+    - Schema: migration 0142 adds immutable `evidence_pack.source_binding` (T-RPT-04); legacy rows remain unbound.
     - API: API-R-42 `GET, POST /evidence-packs` (API-S-EvidencePackCreate, 202), `GET /evidence-packs/{id}`, `GET /evidence-packs/{id}/download`
     - Engine: none
     - Screens: none

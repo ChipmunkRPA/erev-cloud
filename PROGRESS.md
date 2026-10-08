@@ -2,6 +2,42 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Durable CLOSE source bindings — October 8, 2026 (RPS-16 continued)
+
+- Continued from clean published a622467. Migration 0142 adds immutable
+  `evidence_pack.source_binding`: an object or legacy NULL, with no UPDATE grant. DB-03
+  protects it even before success; downgrade validates across all tenants and refuses to
+  discard any retained binding. Existing rows are not backfilled from current sources.
+- Added `reports/evidence_sources.py`. Preparation verifies an explicit audit digest, queues
+  the five supporting reports through the existing planner, and returns a versioned binding
+  for atomic pack insertion. It retains the request, tenant/entity/period, request/freeze
+  instants, snapshot manifest, frozen run IDs, supporting run/job IDs and normalized selector
+  hashes, plus the digest verification ID. Loading reauthorizes the selected close and checks
+  the pack row, frozen source and report/job associations without selecting or enqueueing anew.
+- Initial database witnesses: **two passed in 8.81 seconds**. Real report jobs/outputs and
+  audit verification are used around a seeded close. Newer report/digest candidates do not
+  replace the saved selection; repeated loads preserve output bytes. A failed enclosing pack
+  transaction rolls back the pack, reports and jobs together. Legacy NULL, revoked scope,
+  wrong identities/cutoffs, duplicate/missing sources and unversioned documents refuse.
+- Broader source/PG/migration run: **88 passed, one failed in 82.19 seconds**. The failure found
+  pre-existing out-of-period report metadata drift. Migration 0143 corrects its description
+  and IPE sources for the already implemented computed late events; stored runs/outputs stay
+  intact. Next run: **88 passed, one failed in 82.55 seconds** because the owner-role trigger
+  test saw no tenant row under RLS. A role-switch attempt then gave **48 passed, one failed
+  in 23.72 seconds** (owner cannot SET ROLE erev_app). The final fixture temporarily removes
+  FORCE RLS for the table owner in a rolled-back transaction, verifies the row is visible,
+  and proves the trigger refuses the mutation. **Final affected run: 49 passed in 24.25 seconds**,
+  including full upgrade/downgrade/upgrade, catalogue equality, application grants, downgrade
+  refusal and the extended binding/rollback witness. All processes terminal.
+- Logs: `/private/tmp/evidence-binding-{db,final,corrected,verified,guards}.log`. Source/migration
+  Mypy, Ruff lint/format and whitespace pass. Audit-digest and supporting-source-plan notes
+  archived verbatim. Snapshot sandbox rules regenerate evidence packs/report runs instead of copying them.
+- The creation command and job lifecycle/idempotency still need integration with these bindings.
+  Full assembly, audited downloads/routes, automatic generation, other kinds and variance report
+  remain open. Collectors must still validate output/audit bytes and export permissions. No
+  pack endpoint, CTL-041, RPS-16 or production-readiness claim. Current release verification and
+  independent accounting sign-off remain required. Direct main; no deployment or notifications.
+
 ## Reconciliation population and retained waiver basis — October 8, 2026 (RPS-16 continued)
 
 - Continued from clean published 4a9de2a. New checklist-waiver submission audit events retain
@@ -34,58 +70,6 @@
   and the separate variance-between-closes report remain open. Current release gates and
   independent accounting approval remain required; RPS-16/CTL-041 and production readiness
   are unclaimed. Validated direct-main publication; no deployment or external notifications.
-
-## Close supporting-source plan — October 8, 2026 (RPS-16 continued)
-
-- Continued from clean 277408a. Added `reports/evidence_report_plan.py`: derives five CSV
-  source requests from the selected lock and its fiscal period. SSP/configuration use the
-  full inclusive period date range; late-entry uses the selected entity/book/period. Access
-  and SoD use UTC period-end (23:59:59.999999), consistent with the register framework's
-  UTC-day date-range convention. All known-at values are the lock's freeze cutoff, not now.
-- Refuses early closes that cannot supply period-end access evidence, invalid intervals,
-  naive cutoffs and period records changed after the lock (no versioned period-date history).
-  Queues through ordinary report creation/permissions and captures normalized selectors,
-  scope and cutoff in source bindings, refusing normalization that changes scope/cutoff.
-  Does not commit; the future pack command must persist bindings atomically and reuse on retry.
-- Initial database witness: **one passed in 8.58 seconds**. Selected seeded January lock →
-  five actual report jobs → worker execution → collection of all fifteen original files.
-  Final source/collector/selector regression: **82 passed in 65.76 seconds**. Covers leap-year
-  and non-calendar fiscal intervals, UTC offset normalization, re-lock cutoff changes, early
-  close/changed-period refusal and export denial with no report rows left. Logs:
-  `/private/tmp/evidence-plan-{db,final}.log`. Source mypy, Ruff lint/format and whitespace pass;
-  all processes terminal. Historical journal-register notes archived verbatim.
-- Remaining: durable pack state/idempotency and source bindings, reconciliation population
-  completeness, other pack kinds, complete assembly/jobs/routes/audited downloads and automatic
-  close generation. Existing builders still refuse historical mutable facts they cannot prove;
-  this planner never substitutes current data. End-to-end operational close acceptance,
-  current release gates and independent accounting sign-off remain open. RPS-16/CTL-041
-  unclaimed. Direct-main publication; no deployment, cloud mutation or external notifications.
-
-## Audit digest evidence — October 8, 2026 (RPS-16 continued)
-
-- Continued from clean 90871f4. Added `reports/evidence_audit.py`, requiring an explicit
-  verification ID rather than selecting latest on every read. Checks the original stored
-  AUDIT_DIGEST file's purpose/type/length/hash and exact canonical metadata against its
-  successful complete-prefix verification row. The prefix must cover the lock's audit head.
-  Rechecks HMACs through the recorded endpoint and matches the lock's saved head; a shorter
-  intact prefix is insufficient. Returns original digest bytes and source IDs/hashes.
-- Collection is read-only and exposes aggregate verification metadata, not audit-event
-  contents. It creates no verification or external retained copy. Future pack orchestration
-  must persist the chosen verification ID, alongside its other source bindings.
-- **71 scoped tests passed in 61.84 seconds**: digest refusals, source/frozen collectors and
-  existing audit-verification regression tests. Database cases use actual audit events/HMACs,
-  verification writer and encrypted digest files with seeded close/snapshot references.
-  Rejects a mismatched lock head, an overstated prefix endpoint, wrong digest metadata and
-  wrong file purpose; refuses missing verification IDs and revoked audit permission.
-  Another real verification extends the chain without changing the originally selected bytes.
-- Initial two database witnesses passed in 9.93 seconds. Logs:
-  `/private/tmp/evidence-audit-{db,final}.log`. Source mypy, Ruff lint/format and whitespace
-  pass; all processes terminal. Archived earlier reconciliation notes verbatim.
-- Remaining: reconciliation population/waiver completeness, supporting SSP/configuration/late
-  entry/access reports, other pack kinds, persisted source bindings, full assembly, jobs/routes,
-  audited downloads and automatic generation. Operational close/full-pack acceptance, current
-  release gates and independent accounting sign-off remain open. RPS-16/CTL-041 unclaimed.
-  Direct-main publication; no deployment, cloud mutation or external notifications.
 
 ## Canonical property gate completed — October 8, 2026
 

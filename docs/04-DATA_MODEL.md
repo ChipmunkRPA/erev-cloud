@@ -5192,6 +5192,7 @@ Keys: `PRIMARY KEY (tenant_id, id)`; `ix_disclosure_snapshot__period (tenant_id,
 |---|---|---|---|---|
 | SC-T | | | | |
 | `pack_no` | text | N | | Series `EVIDENCE_PACK`. |
+| `source_binding` | jsonb | Y | | Immutable at insert (migration 0142). Versioned source selectors and identities; NULL means legacy/unbound, never infer from current data. See retained-source rules below. |
 | `kind` | erev.evidence_pack_kind | N | | |
 | `entity_id` | uuid | Y | | |
 | `book_code` | erev.book_code | Y | | |
@@ -5212,6 +5213,20 @@ Keys: `PRIMARY KEY (tenant_id, id)`; `ix_disclosure_snapshot__period (tenant_id,
 Keys: `PRIMARY KEY (tenant_id, id)`; `ux_evidence_pack__no (tenant_id, pack_no)`.
 
 Checks (rev 1.2; SCREENS_B OQ-B-10): `ck_evidence_pack__close CHECK (kind <> 'CLOSE' OR (entity_id IS NOT NULL AND book_code IS NOT NULL AND period_id IS NOT NULL AND period_lock_id IS NOT NULL))`; `ck_evidence_pack__sample CHECK (kind <> 'CONTRACT_SAMPLE' OR (cardinality(contract_ids) >= 1 AND as_of_date IS NOT NULL))`; `ck_evidence_pack__change CHECK (kind <> 'CHANGE' OR (from_date IS NOT NULL AND to_date IS NOT NULL))`; `ck_evidence_pack__access CHECK (kind <> 'ACCESS' OR as_of_date IS NOT NULL)`.
+
+**Retained source binding (October 8, 2026; migration 0142).** When present, the value is a
+JSON object (`ck_evidence_pack__source_binding`). It receives no application UPDATE grant
+and is outside the DB-03 mutable-column list, including while QUEUED or RUNNING. Downgrade
+refuses any retained binding, across all tenants. Legacy NULL rows are not backfilled.
+
+The initial `erev.close-evidence.sources.v1` document retains the exact CLOSE request,
+tenant/entity/period identities, request and freeze instants, snapshot-manifest hash, frozen
+report-run IDs, all five supporting report/run/job bindings with normalized selector hashes,
+and an explicit audit verification ID. Preparation and pack insertion belong to one transaction;
+retry orchestration must load this saved document, not call preparation again. The reader
+reauthorizes the selected close and checks record/source consistency. Actual report-output and
+audit integrity must still be checked by their collectors. This does not enable a pack job or
+endpoint; the other pack kinds require their own source contracts.
 
 **Manifest layout (rev 1.2; SCREENS_B OQ-B-11, §6.2).** Payload entries in `manifest.files[].path` of a `CLOSE` pack start with the prefixes below. The ZIP also contains `manifest.json`. Tests assert payload prefixes and per-file SHA-256, never file order.
 

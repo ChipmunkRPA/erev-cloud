@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 from datetime import UTC, date, datetime
+from importlib import import_module
 from typing import Any
 
 import pytest
 from erev_api.auth.keyring import KeyRing
+from erev_api.db import migration_ops as ops
 from erev_api.db import new_id
-from erev_api.db.session import DbContext, identity_session, tenant_session
+from erev_api.db.session import DbContext, identity_session, set_tenant_context, tenant_session
 from erev_api.db.tables import (
     engine_release,
     evidence_pack,
@@ -17,7 +19,7 @@ from erev_api.db.tables import (
     report_run,
 )
 from erev_api.domain.reports.catalogue import DEFINITIONS
-from sqlalchemy import Executable, delete, exc, func, insert, select, update
+from sqlalchemy import Executable, delete, exc, func, insert, select, text, update
 from sqlalchemy.orm import Session
 from support.db import TestDatabase
 from support.factories import tenant_factory, tenant_id_of
@@ -307,3 +309,50 @@ def test_evidence_pack_frozen_after_success(committed_db: TestDatabase, keyring:
             select(evidence_pack.c.status, evidence_pack.c.manifest_sha256).where(target)
         ).one()
         assert tuple(stored) == ("SUCCEEDED", "f" * 64)
+
+
+def test_evidence_source_binding_is_immutable_and_cannot_be_discarded(
+    committed_db: TestDatabase,
+    keyring: KeyRing,
+) -> None:
+    tenant_id, context = _context(keyring)
+    with tenant_session(context) as session:
+        bad = evidence_pack_values(tenant_id, source_binding=["not an object"])
+        assert _violated(session, insert(evidence_pack).values(**bad)) == (
+            CHECK_VIOLATION,
+            "ck_evidence_pack__source_binding",
+        )
+        pack = evidence_pack_values(tenant_id, source_binding={"format": "retained-test"})
+        session.execute(insert(evidence_pack).values(**pack))
+        target = evidence_pack.c.id == pack["id"]
+        for value in (None, {"format": "replacement"}):
+            assert (
+                _failure(session, update(evidence_pack).where(target).values(source_binding=value))[
+                    0
+                ]
+                == INSUFFICIENT_PRIVILEGE
+            )
+        session.commit()
+    # Isolate DB-03 from grants/RLS: let the table owner see this synthetic row in a
+    # transaction that rolls back the NO FORCE change as well as the attempted mutation.
+    with committed_db.owner_engine.connect() as connection:
+        connection.execute(text("ALTER TABLE erev.evidence_pack NO FORCE ROW LEVEL SECURITY"))
+        set_tenant_context(connection, context)
+        assert (
+            connection.execute(select(evidence_pack.c.id).where(target)).scalar_one() == pack["id"]
+        )
+        with pytest.raises(exc.DBAPIError) as error:
+            connection.execute(update(evidence_pack).where(target).values(source_binding=None))
+        assert error.value.orig.sqlstate == RAISED
+        connection.rollback()
+    migration = import_module("erev_api.db.migrations.versions.0142_evidence_pack_source_binding")
+    # No tenant context: downgrade must still detect data protected by tenant RLS.
+    with committed_db.owner_engine.connect() as connection, ops.bound_to(connection):
+        with pytest.raises(exc.DBAPIError) as error:
+            migration.downgrade()
+        assert error.value.orig.sqlstate == CHECK_VIOLATION
+        connection.rollback()
+    with tenant_session(context) as session:
+        assert session.execute(
+            select(evidence_pack.c.source_binding).where(target)
+        ).scalar_one() == {"format": "retained-test"}
