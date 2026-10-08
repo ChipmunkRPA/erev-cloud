@@ -56,6 +56,40 @@ def checked_stored(
         raise Problem("validation-failed", "The retained evidence archive is invalid.") from error
 
 
+def read_close(uow: UnitOfWork, pack_id: UUID) -> StoredClose:
+    """Read a completed pack under current source/export scope; never finish pending work."""
+    if "evidence.export" not in uow.principal.permissions:
+        raise Problem("forbidden")
+    row = (
+        uow.session.execute(
+            select(evidence_pack).where(
+                evidence_pack.c.tenant_id == uow.principal.tenant_id,
+                evidence_pack.c.id == pack_id,
+                evidence_pack.c.kind == "CLOSE",
+            )
+        )
+        .mappings()
+        .one_or_none()
+    )
+    if row is None:
+        raise Problem("not-found")
+    require_for_entity(uow.ctx, "evidence.export", row["entity_id"])
+    if row["status"] != "SUCCEEDED":
+        raise Problem("invalid-transition", "The evidence pack has not completed.")
+    archive = evidence_assembly.assemble_close(uow, pack_id)
+    return _retained(uow, dict(row), archive)
+
+
+def _retained(uow: UnitOfWork, row: Mapping[str, Any], archive: Archive) -> StoredClose:
+    if row["file_id"] is None:
+        raise Problem("validation-failed", "The succeeded evidence pack has no file.")
+    metadata, stream = open_file(uow.session, row["file_id"], files=uow.files, keyring=uow.keyring)
+    with stream:
+        content = stream.read(len(archive.content) + 1)
+    checked_stored(row, metadata, content, archive)
+    return StoredClose(row["file_id"], archive)
+
+
 def finish_close(uow: UnitOfWork, pack_id: UUID) -> StoredClose:
     """Finish a RUNNING pack atomically, or verify and reuse an already SUCCEEDED output."""
     if "evidence.export" not in uow.principal.permissions:
@@ -91,15 +125,7 @@ def finish_close(uow: UnitOfWork, pack_id: UUID) -> StoredClose:
         raise Problem("invalid-transition", "Only a running or succeeded close pack can finish.")
     archive = evidence_assembly.assemble_close(uow, pack_id)
     if row["status"] == "SUCCEEDED":
-        if row["file_id"] is None:
-            raise Problem("validation-failed", "The succeeded evidence pack has no file.")
-        metadata, stream = open_file(
-            uow.session, row["file_id"], files=uow.files, keyring=uow.keyring
-        )
-        with stream:
-            content = stream.read(len(archive.content) + 1)
-        checked_stored(dict(row), metadata, content, archive)
-        return StoredClose(row["file_id"], archive)
+        return _retained(uow, dict(row), archive)
     if any(row[key] is not None for key in ("file_id", "manifest", "manifest_sha256")):
         raise Problem("validation-failed", "The running evidence pack already contains output.")
     stored = store_file(

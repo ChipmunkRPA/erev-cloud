@@ -84,6 +84,7 @@ from erev_api.domain.reports import (
     evidence_assembly,
     evidence_certification,
     evidence_commands,
+    evidence_queries,
     evidence_readiness,
     evidence_reconciliation_population,
     evidence_selection,
@@ -122,6 +123,7 @@ from support.close_world import (
     CloseWorld,
     acknowledge_run,
     acknowledged_run,
+    actor_with_role,
     close_run_succeeded,
     close_run_succeeded_for,
     close_world,
@@ -160,6 +162,7 @@ from support.rows import (
     exception_item_values,
     integration_connection_values,
     publish_registry_version,
+    revoke_role_assignments,
 )
 
 COMMENT = "September 2026 close complete"
@@ -2380,6 +2383,15 @@ def test_first_close_archive_verifies_every_component_before_returning_bytes(
         assert "distinct preparer" in error.value.detail
         return
     assert "supporting report differs" in error.value.detail
+    auditor = actor_with_role(world.app, clock, world.tenant_id, "auditor", name="pack-reader")
+    header_path = f"/api/v1/evidence-packs/{pack['id']}"
+    download_path = header_path + "/download"
+    pending = get(world.app, header_path, auditor)
+    assert pending.status_code == 200, pending.text
+    assert pending.json()["status"] == "QUEUED" and pending.json()["manifest"] is None
+    assert pending.json()["download_href"] is None
+    unavailable = get(world.app, download_path, auditor)
+    assert (unavailable.status_code, slug(unavailable)) == (409, "invalid-transition")
     with world.place.uow(reader) as uow:
         assert not evidence_readiness.close_ready(uow.session, parent["id"], parent["params"])
     # Readiness rejects terminal children and contradictory job/report states. These
@@ -2576,3 +2588,60 @@ def test_first_close_archive_verifies_every_component_before_returning_bytes(
         with world.place.uow(denied) as uow, pytest.raises(Problem) as error:
             evidence_storage.finish_close(uow, pack["id"])
         assert error.value.slug == "forbidden"
+
+    # Real HTTP downloads return the verified bytes and each commit their own export event.
+    shown = get(world.app, header_path, auditor)
+    assert shown.status_code == 200, shown.text
+    assert shown.json()["manifest_sha256"] == archive.manifest_sha256
+    assert shown.json()["download_href"] == download_path
+    for _ in range(2):
+        downloaded = get(world.app, download_path, auditor)
+        assert downloaded.status_code == 200, downloaded.text[:200]
+        assert downloaded.content == archive.content
+        assert downloaded.headers["content-type"] == "application/zip"
+        assert downloaded.headers["cache-control"] == "no-store"
+        assert "attachment;" in downloaded.headers["content-disposition"]
+    original_open = evidence_storage.open_file
+
+    def damaged_pack(session: Session, file_id: UUID, **kwargs: Any) -> Any:
+        metadata, stream = original_open(session, file_id, **kwargs)
+        if file_id == retained.file_id:
+            stream.close()
+            return metadata, io.BytesIO(archive.content[:-1] + bytes([archive.content[-1] ^ 1]))
+        return metadata, stream
+
+    with monkeypatch.context() as patch:
+        patch.setattr(evidence_storage, "open_file", damaged_pack)
+        damaged = get(world.app, download_path, auditor)
+        assert (damaged.status_code, slug(damaged)) == (422, "validation-failed")
+        assert damaged.headers["content-type"].startswith("application/problem+json")
+    for permission in permissions:
+        outside = replace(
+            reader,
+            permission_scopes={**reader.permission_scopes, permission: frozenset({UUID(int=0)})},
+        )
+        with world.place.uow(outside) as uow, pytest.raises(Problem) as refused:
+            evidence_queries.download_close(uow, pack["id"])
+        assert refused.value.slug == "not-found"
+    with world.place.uow(reader) as uow:
+        exports = (
+            uow.session.execute(
+                select(audit_event.c.detail).where(
+                    audit_event.c.action == "evidence.export", audit_event.c.object_id == pack["id"]
+                )
+            )
+            .scalars()
+            .all()
+        )
+        assert len(exports) == 2
+        assert all(item["manifest_sha256"] == archive.manifest_sha256 for item in exports)
+        revoke_role_assignments(
+            uow.session,
+            tenant_id=world.tenant_id,
+            membership_id=auditor.member.membership_id,
+            at=uow.now,
+        )
+        uow.commit()
+    for path in (header_path, download_path):
+        denied_response = get(world.app, path, auditor)
+        assert (denied_response.status_code, slug(denied_response)) == (403, "forbidden")

@@ -1892,7 +1892,7 @@ An upload over its purpose limit, or of a media type outside its list, returns 4
 | `AI_PROMPT_LOG` | none | nobody | - |
 | `AI_DOCUMENT_TEXT` | none | nobody | - |
 
-Evidence-pack files are reserved for API-R-42 so every download can reauthorize the complete retained population and record `evidence.export` with the pack id (PRD J-17-AC-4). Generic file metadata/content routes return 404 even to an all-entity Auditor. This route reservation does not claim the still-pending evidence-pack endpoint is implemented. The owner retains its entity binding for file-destruction scope checks.
+Evidence-pack files are reserved for API-R-42 so every download can reauthorize the complete retained population and record `evidence.export` with the pack id (PRD J-17-AC-4). Generic file metadata/content routes return 404 even to an all-entity Auditor. The initial endpoint serves retained first-close packs; other pack kinds and public creation/listing remain pending. The owner retains its entity binding for file-destruction scope checks.
 
 **Binding (authoritative; rev 1.189; REQ-PLT-012; ruling R-111 (1)).** A command that takes a file id from its caller — to parse the file, to make it the source or the evidence of a record, to attach it — binds it through one function, `erev_api.domain.platform.file_access.bound`, which answers the file's row only when the id names a file the caller may read (Read access above). A file that does not exist and a file the caller may not read are one answer, the answer of the table, and it is given before anything of the file is looked at — purpose, media type, shred state, name or content — so that no answer of the command tells an unreadable file from a missing one. The job that later works on a bound file reads it as SYSTEM. The request members that name a file:
 
@@ -5229,6 +5229,18 @@ retry orchestration must load this saved document, not call preparation again. T
 reauthorizes the selected close and checks record/source consistency. Actual report-output and
 audit integrity must still be checked by their collectors. This does not enable a pack job or
 endpoint; the other pack kinds require their own source contracts.
+
+**First-close read/download API (October 8, 2026).** `GET /evidence-packs/{id}` returns
+`ClosePackOut`: id/number, CLOSE kind, status, entity/book/period/lock/job identifiers, report-run
+ids, created/updated instants, manifest and its separate hash, and a download href only when
+SUCCEEDED. Reads require report.run plus audit.read and contract.read in scope. Legacy/unbound
+or inconsistent retained sources refuse; other kinds return 404 until supported.
+`GET /evidence-packs/{id}/download` additionally requires evidence.export and report.export,
+reauthorizes all retained source readers and verifies file metadata, ZIP/manifest and exact
+source bytes before committing one evidence.export audit. Only then are application/zip bytes
+returned with attachment, sandbox and no-store headers. Pending/failed packs return 409;
+verification failure returns 422. Reads never complete pending work or regenerate output.
+These routes do not enable public creation/listing or automatic pack generation.
 
 **First-close creation (October 8, 2026).** The internal `evidence_commands.create_close`
 command takes the documented CLOSE selectors plus an explicitly supplied completed audit

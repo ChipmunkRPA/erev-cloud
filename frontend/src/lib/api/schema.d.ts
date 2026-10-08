@@ -2246,6 +2246,46 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/evidence-packs/{pack_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Evidence Packs Get
+     * @description Read a retained CLOSE header and manifest under current source scope.
+     */
+    get: operations["evidence_packs_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/evidence-packs/{pack_id}/download": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Evidence Packs Download
+     * @description Reauthorize and verify retained bytes, committing one export audit before serving them.
+     */
+    get: operations["evidence_packs_download"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/exceptions": {
     parameters: {
       query?: never;
@@ -9506,6 +9546,60 @@ export interface components {
       owner_role_id?: string | null;
     };
     /**
+     * ClosePackOut
+     * @description Retained CLOSE pack header and manifest; source bindings are not rewritten on read.
+     */
+    ClosePackOut: {
+      book: components["schemas"]["BookCode"];
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /** Download Href */
+      download_href: string | null;
+      /**
+       * Entity Id
+       * Format: uuid
+       */
+      entity_id: string;
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Job Id */
+      job_id: string | null;
+      /**
+       * Kind
+       * @constant
+       */
+      kind: "CLOSE";
+      manifest: components["schemas"]["EvidenceManifestOut"] | null;
+      /** Manifest Sha256 */
+      manifest_sha256: string | null;
+      /** Pack No */
+      pack_no: string;
+      /**
+       * Period Id
+       * Format: uuid
+       */
+      period_id: string;
+      /**
+       * Period Lock Id
+       * Format: uuid
+       */
+      period_lock_id: string;
+      /** Report Run Ids */
+      report_run_ids: string[];
+      status: components["schemas"]["RunStatus"];
+      /**
+       * Updated At
+       * Format: date-time
+       */
+      updated_at: string;
+    };
+    /**
      * CloseRunCancelIn
      * @description ``POST /close-runs/{id}/cancel``.
      */
@@ -12113,6 +12207,22 @@ export interface components {
       /** Events */
       events: components["schemas"]["EventOut"][];
       step1_gate: components["schemas"]["Step1GateOut"] | null;
+    };
+    /** EvidenceManifestFileOut */
+    EvidenceManifestFileOut: {
+      /** Bytes */
+      bytes: number;
+      /** Path */
+      path: string;
+      /** Report Run Id */
+      report_run_id: string | null;
+      /** Sha256 */
+      sha256: string;
+    };
+    /** EvidenceManifestOut */
+    EvidenceManifestOut: {
+      /** Files */
+      files: components["schemas"]["EvidenceManifestFileOut"][];
     };
     /**
      * ExceptionAction
@@ -31776,6 +31886,140 @@ export interface operations {
         };
       };
       /** @description Problem: validation-failed, idempotency-key-reused */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+    };
+  };
+  evidence_packs_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        pack_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ClosePackOut"];
+        };
+      };
+      /** @description Problem: unauthenticated, session-expired */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: not-found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: validation-failed */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+    };
+  };
+  evidence_packs_download: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        pack_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Verified evidence ZIP */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/zip": unknown;
+        };
+      };
+      /** @description Problem: unauthenticated, session-expired */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: not-found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: invalid-transition */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: validation-failed */
       422: {
         headers: {
           [name: string]: unknown;

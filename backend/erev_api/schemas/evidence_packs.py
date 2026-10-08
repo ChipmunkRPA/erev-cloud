@@ -7,13 +7,13 @@ lock consistency must be checked by the command within its unit of work.
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from typing import Annotated, Literal, Self
 from uuid import UUID
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, model_validator
 
-from erev_api.enums import BookCode
+from erev_api.enums import BookCode, RunStatus
 
 
 def _nonblank(value: str) -> str:
@@ -79,3 +79,34 @@ type EvidencePackCreateIn = Annotated[
     ClosePackCreateIn | ContractSamplePackCreateIn | ChangePackCreateIn | AccessPackCreateIn,
     Field(discriminator="kind"),
 ]
+
+
+class EvidenceManifestFileOut(BaseModel):
+    path: str
+    sha256: str
+    bytes: int
+    report_run_id: UUID | None
+
+
+class EvidenceManifestOut(BaseModel):
+    files: list[EvidenceManifestFileOut]
+
+
+class ClosePackOut(BaseModel):
+    """Retained CLOSE pack header and manifest; source bindings are not rewritten on read."""
+
+    id: UUID
+    pack_no: str
+    kind: Literal["CLOSE"]
+    status: RunStatus
+    entity_id: UUID
+    book: BookCode
+    period_id: UUID
+    period_lock_id: UUID
+    job_id: UUID | None
+    report_run_ids: list[UUID]
+    manifest: EvidenceManifestOut | None
+    manifest_sha256: str | None
+    created_at: datetime
+    updated_at: datetime
+    download_href: str | None

@@ -4976,6 +4976,127 @@
         "title": "CloseChecklistTemplateUpdateIn",
         "type": "object"
       },
+      "ClosePackOut": {
+        "description": "Retained CLOSE pack header and manifest; source bindings are not rewritten on read.",
+        "properties": {
+          "book": {
+            "$ref": "#/components/schemas/BookCode"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "download_href": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Download Href"
+          },
+          "entity_id": {
+            "format": "uuid",
+            "title": "Entity Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "job_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Id"
+          },
+          "kind": {
+            "const": "CLOSE",
+            "title": "Kind",
+            "type": "string"
+          },
+          "manifest": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EvidenceManifestOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "manifest_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manifest Sha256"
+          },
+          "pack_no": {
+            "title": "Pack No",
+            "type": "string"
+          },
+          "period_id": {
+            "format": "uuid",
+            "title": "Period Id",
+            "type": "string"
+          },
+          "period_lock_id": {
+            "format": "uuid",
+            "title": "Period Lock Id",
+            "type": "string"
+          },
+          "report_run_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Report Run Ids",
+            "type": "array"
+          },
+          "status": {
+            "$ref": "#/components/schemas/RunStatus"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "pack_no",
+          "kind",
+          "status",
+          "entity_id",
+          "book",
+          "period_id",
+          "period_lock_id",
+          "job_id",
+          "report_run_ids",
+          "manifest",
+          "manifest_sha256",
+          "created_at",
+          "updated_at",
+          "download_href"
+        ],
+        "title": "ClosePackOut",
+        "type": "object"
+      },
       "CloseRunCancelIn": {
         "additionalProperties": false,
         "description": "``POST /close-runs/{id}/cancel``.",
@@ -11995,6 +12116,58 @@
           "step1_gate"
         ],
         "title": "EventsAppendedOut",
+        "type": "object"
+      },
+      "EvidenceManifestFileOut": {
+        "properties": {
+          "bytes": {
+            "title": "Bytes",
+            "type": "integer"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "report_run_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Report Run Id"
+          },
+          "sha256": {
+            "title": "Sha256",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "sha256",
+          "bytes",
+          "report_run_id"
+        ],
+        "title": "EvidenceManifestFileOut",
+        "type": "object"
+      },
+      "EvidenceManifestOut": {
+        "properties": {
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/EvidenceManifestFileOut"
+            },
+            "title": "Files",
+            "type": "array"
+          }
+        },
+        "required": [
+          "files"
+        ],
+        "title": "EvidenceManifestOut",
         "type": "object"
       },
       "ExceptionAction": {
@@ -57643,6 +57816,207 @@
         "x-erev-permission": "event.record"
       }
     },
+    "/api/v1/evidence-packs/{pack_id}": {
+      "get": {
+        "description": "Read a retained CLOSE header and manifest under current source scope.",
+        "operationId": "evidence_packs_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "pack_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Pack Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClosePackOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: unauthenticated, session-expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: not-found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: validation-failed"
+          }
+        },
+        "summary": "Evidence Packs Get",
+        "tags": [
+          "API-R-42 Evidence packs"
+        ],
+        "x-erev-permission": "report.run"
+      }
+    },
+    "/api/v1/evidence-packs/{pack_id}/download": {
+      "get": {
+        "description": "Reauthorize and verify retained bytes, committing one export audit before serving them.",
+        "operationId": "evidence_packs_download",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "pack_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Pack Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/zip": {}
+            },
+            "description": "Verified evidence ZIP"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: unauthenticated, session-expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: not-found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: invalid-transition"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: validation-failed"
+          }
+        },
+        "summary": "Evidence Packs Download",
+        "tags": [
+          "API-R-42 Evidence packs"
+        ],
+        "x-erev-permission": "evidence.export"
+      }
+    },
     "/api/v1/exceptions": {
       "get": {
         "description": "Exception items; sort ``severity`` (default), ``created_at`` or ``-created_at``.",
@@ -95643,6 +96017,9 @@
     },
     {
       "name": "API-R-41 Reports"
+    },
+    {
+      "name": "API-R-42 Evidence packs"
     },
     {
       "name": "API-R-43 Imports"

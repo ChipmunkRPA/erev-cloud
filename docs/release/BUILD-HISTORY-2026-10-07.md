@@ -2814,3 +2814,29 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   continue tested direct-main publication. No deployment or full-suite/readiness claim. Remaining
   implementation, final release checks, engine cut/replays and independent accounting sign-off
   remain open; preserve publication exclusions and noncommercial licensing.
+
+## First-close ZIP assembly — October 8, 2026 (RPS-16 continued)
+
+- Continued from clean published 9fe1bd0. Added `reports/evidence_assembly.py`: reloads a
+  pack's immutable source binding, reauthorizes scope/export, then invokes all frozen-close,
+  certification/approval, journal, reconciliation statement/population, audit and supporting
+  report readers. Includes the binding in `lock/source_binding.json`. Missing required paths,
+  mismatched report populations, duplicate/unsafe files or any source refusal yield no ZIP.
+- First-close output uses the deterministic archive builder and separately hashed manifest.
+  Re-lock assembly explicitly refuses until the separate driver-variance report is available;
+  a valid stored raw comparison alone is not substituted. This boundary creates no jobs,
+  verification records or stored files and does not commit or expose an endpoint.
+- Initial two database cases: **one passed, one failed in 14.26 seconds**; the assembled ZIP
+  reached verification, but the new test used the wrong verifier keyword. Corrected it to
+  `expected_manifest_sha256`. Final assembly/archive/close/re-lock regression:
+  **79 passed in 24.33 seconds**. Actual independent waiver/lock approvals, twelve freeze
+  datasets, audit digest and five report jobs feed a reproducible 36-payload ZIP. Each byte
+  count/hash and source binding is checked; journal evidence is nonempty and omissions retain
+  their approved identities. Journal and close-run gate setup is seeded, not full operational
+  accounting acceptance. Unsigned reconciliation fixtures, pending reports, removed permissions
+  and a genuine approved re-lock without its variance report all refuse assembly.
+- Logs: `/private/tmp/evidence-assembly-{db,final}.log`. All processes terminal. Source Mypy,
+  Ruff lint/format and whitespace pass. RPS-16/CTL-041 are unclaimed: complete job lifecycle,
+  encrypted storage, creation/idempotency, audited download/API, automatic generation, other
+  pack kinds and re-lock variance reporting remain open. Current release gates and independent
+  accounting approval remain required. Direct-main publication; no deployment or notifications.
