@@ -80,7 +80,7 @@ from erev_api.domain.imports.csv_v2.framework import (
     Performed,
     Plan,
 )
-from erev_api.domain.imports.legacy_v1 import headers
+from erev_api.domain.imports.legacy_v1 import headers, modification_amounts
 from erev_api.domain.imports.legacy_v1.sku_ssp import BOOK_CODE
 from erev_api.domain.integrations.normalise import import_event_key
 from erev_api.domain.reference.products import required_attribute_errors
@@ -776,5 +776,6 @@ TEMPLATE: Final = CsvTemplate(
     apply=apply,
     source_system=SourceSystem.LEGACY_TEMPLATE_V1,
     underlying=underlying,
+    reconcile_amounts=modification_amounts.reconcile_amounts,
     computes=True,
 )

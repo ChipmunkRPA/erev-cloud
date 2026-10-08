@@ -3181,5 +3181,16 @@ It verifies billing/credit, signed pre-standard revenue and delivery/return even
 those aggregates, including currency, date, lead source-record identity and emitted targets.
 Synthetic invoice headers and lines retain signed amounts; credit events retain positive
 magnitudes. Positive billing events must link to their stored source invoice. Zero aggregates
-produce no financial event or document. Legacy modification monetary read-back remains
-incomplete and is not claimed as covered.
+produce no financial event or document.
+
+Legacy modifications read signed consideration/quantity deltas, line identity, dates,
+treatments and SSP references from the stored amendment. Expected values come from
+validated rows, the requested mode and approved SSP reference records, independently
+of emitter builders. Existing obligation identities distinguish CHANGE from ADD; newly
+added obligations must have the source product identity. Source record, approval,
+synthetic modification identity and event targets are also checked.
+
+Remaining coverage is explicit in [the October 7 inventory](release/IMPORT-RECONCILIATION-2026-10-07.md):
+CSV progress refunds and numeric inputs, FX rates, bundle quantities, invoice/usage
+quantities and stronger event obligation binding. Registered readers do not imply
+complete coverage of every numeric or accounting field.

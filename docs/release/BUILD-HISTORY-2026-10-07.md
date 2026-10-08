@@ -1715,3 +1715,29 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   fallback notification, AI, broader verification, other documented gaps and independent
   accounting sign-off remain open. No deployment. Publication exclusions/noncommercial
   licensing are unchanged; tested changes continue directly to main.
+
+## Legacy SSP monetary reconciliation — October 7, 2026
+
+- Continued from clean main 6fb12c3. The preceding workflow check confirmed all 31 PRs
+  merged and main as the sole remote branch; no implementation change in that turn.
+- Legacy SKU SSP imports now reconstruct expected prices, ratios and reporting currency
+  from validated legacy rows, independently of the emitter request builder. Reuses the
+  stored-entry/range reader, including independently derived bands at database precision.
+  A mismatch rolls back the whole import, including its approved SSP version and lineage.
+- Legacy emitters have no flattened columns. Their verified file-column amount sums now
+  use the upload's pinned template header definitions, matching validation metadata.
+  Existing whole-version quarantine and later-version append behavior remain covered.
+- New cases change two prices while preserving their aggregate, change a discount or
+  remove a derived band after approval. All fail with blocking CONTROL_TOTALS_MISMATCH;
+  valid input retains matching evidence and a 603 list-price sum. The initial run exposed
+  a missing required distinctness field in the independent translation; corrected it.
+  The complete SKU SSP module then passed **7 tests in 29.94 seconds**,
+  /private/tmp/legacy-ssp-reconcile-matrix.log.
+- Final legacy/shared-commit/CSV-SSP/layer/import-cycle run: **166 passed in 637.17 seconds**,
+  /private/tmp/legacy-ssp-reconcile-final.log. All runs terminal. Source Mypy, Ruff lint/format
+  and whitespace checks pass. No whole-backend or production claim.
+- Updated B1-19 and developer guidance; preserved dated event-import evidence in build
+  history. Next: legacy contract setup, progress and modification monetary readers.
+  Integration-owner fallback, AI, remaining implementation/verification and independent
+  accounting sign-off remain open. No deployment. Publication exclusions and noncommercial
+  licensing are unchanged; verified changes publish directly to main.
