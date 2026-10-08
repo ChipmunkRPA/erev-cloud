@@ -1341,3 +1341,22 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   refused, although two keys are supported. Its refusal fixture uses a still-unsupported key;
   the successful creation path needs its own audit-walk coverage, not removal of refusal proof.
   This remains open. Broader verification and independent accounting sign-off remain open.
+
+## Supported policy-override audit coverage — October 7, 2026
+
+- Continued from 778ce38. The route catalogue still classified all policy override creation
+  as refused, even though balance.right_to_consideration and sfc.discount_rate_basis are supported.
+  Changed the route to require policy_override.create audit evidence, and added that action
+  to the configuration/policy category. Unsupported-key refusal is now a separate case and
+  cannot count as evidence of the successful route.
+- The database walk creates a real supported obligation override. Retained unsupported-key
+  checks require the exact refusal, no request audit event and unchanged row counts in the
+  request tenant. Their negative controls still catch a write beside the refusal or success
+  returned instead. The catalogue unit test now checks both paths.
+- Scoped catalogue/walk verification: **17 passed, 3 deselected in 23.49 seconds**,
+  /private/tmp/policy-audit-catalogue.log. Full CTL-038 command-route walk: **1 passed in
+  32.75 seconds**, /private/tmp/policy-audit-full-route-walk.log. Ruff/format/whitespace checks
+  pass; all runs are terminal. No production code changed. Published directly to main.
+  One more original baseline failure resolved; 34 remain without current-main disposition.
+- REQ-PLT-019's pending AI lifecycle category remains open and is not waived. Wider baseline
+  triage and accounting sign-off remain outstanding. No deployment or production claim.

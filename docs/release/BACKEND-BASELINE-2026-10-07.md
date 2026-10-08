@@ -244,3 +244,25 @@ the final pass. Ruff/format/whitespace checks pass; all runs terminal.
 Three original baseline failures resolved; **14 remain without current-main
 disposition**. This is neither a full migration walk nor a full current-backend
 baseline. Independent accounting sign-off remains open; no deployment.
+
+### Container probe fixture and visible release gates
+
+On d44d5c5 the container hardening-probe fixture and progress-list checks reproduced
+as **2 failed in 0.16 seconds**, `/private/tmp/release-probes-before.log`.
+The scratch file inherited group 0, while the test process's group is 20; macOS
+silently cleared setgid. A direct local check observed 0755, then 02755 after
+assigning the caller's group. The test now assigns that group to the setgid file
+and directory and asserts all expected modes before invoking the unchanged probe.
+Both privileged files must still be detected; the directory and symlink stay excluded.
+
+Restored the required supervisor-target list in PROGRESS.md, explicitly outstanding
+for the current release candidate. Dated October 3 results stay in the build history
+and are not current verification. The list does not authorize deployment.
+
+Complete Docker script module plus progress-list check: **20 passed in 15.36 seconds**,
+`/private/tmp/release-probes-verified.log`. Ruff/format and whitespace checks pass.
+Docker is stubbed; no image build or live-container verification occurred. Two
+original baseline failures resolved; **12 remain without current-main disposition**.
+A separate seven-case local-tooling rerun is still active in session 71400, PID 43359,
+`/private/tmp/local-tooling-revalidation.log`; no result claimed yet. Preserve its
+primary test database until terminal. Independent accounting sign-off remains open.

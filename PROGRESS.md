@@ -2,6 +2,40 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Container probe fixture and release-check visibility — October 7, 2026
+
+- Continued from d44d5c5. Reproduced the container probe and progress-list failures:
+  **2 failed in 0.16 seconds**, /private/tmp/release-probes-before.log. On this host,
+  files under the scratch root inherit group 0 while the process uses group 20; macOS
+  silently removes setgid on chmod. A local probe confirmed mode 0755 before changing
+  to the caller's group and 02755 afterward.
+- The fixture now assigns its setgid file/directory the caller's group and explicitly
+  asserts all privileged mode bits before running the unchanged container probe. The
+  probe must still report both privileged files and exclude directories and symlinks.
+  Restored the outstanding supervisor-target list below, with historical results kept
+  dated and current release-candidate evidence still required.
+- Full container-script module plus progress-list check: **20 passed in 15.36 seconds**,
+  /private/tmp/release-probes-verified.log. Ruff/format and whitespace checks pass.
+  These use Docker stand-ins; no images were built, deployed or certified by this run.
+- Two original baseline failures resolved; 12 remain without current-main disposition.
+  Seven tooling-related cases are running in session 71400 (PID 43359), log
+  /private/tmp/local-tooling-revalidation.log. Full demo seeding is still active; do not
+  reset the primary test database or start another pytest until this process is terminal.
+  Accounting sign-off and implementation gaps remain open. No deployment.
+
+## Outstanding release verification
+
+These checks need current release-candidate evidence. Historical October 3 results
+remain in the dated build history; they do not verify current main. This list does
+not authorize deployment, provisioning or changes to a live database.
+
+- SUPERVISOR VERIFICATION NEEDED: make audit-deps
+- SUPERVISOR VERIFICATION NEEDED: make docker-build
+- SUPERVISOR VERIFICATION NEEDED: make compose-verify
+- SUPERVISOR VERIFICATION NEEDED: make zap-baseline
+- SUPERVISOR VERIFICATION NEEDED: make tf-validate (validation only)
+- SUPERVISOR VERIFICATION NEEDED: make backup, make restore-verify (isolated local drill only)
+
 ## Migration verification alignment — October 7, 2026
 
 - Continued from 9622f13. Scoped current-main run reproduced two migration-check failures
@@ -61,25 +95,6 @@
   Ruff, format and whitespace checks pass; all runs terminal. Three baseline failures
   resolved, leaving 31 without current-main disposition. These are scoped unit checks,
   not a new full-backend baseline. Accounting sign-off remains open; no deployment.
-
-## Supported policy-override audit coverage — October 7, 2026
-
-- Continued from 778ce38. The route catalogue still classified all policy override creation
-  as refused, even though balance.right_to_consideration and sfc.discount_rate_basis are supported.
-  Changed the route to require policy_override.create audit evidence, and added that action
-  to the configuration/policy category. Unsupported-key refusal is now a separate case and
-  cannot count as evidence of the successful route.
-- The database walk creates a real supported obligation override. Retained unsupported-key
-  checks require the exact refusal, no request audit event and unchanged row counts in the
-  request tenant. Their negative controls still catch a write beside the refusal or success
-  returned instead. The catalogue unit test now checks both paths.
-- Scoped catalogue/walk verification: **17 passed, 3 deselected in 23.49 seconds**,
-  /private/tmp/policy-audit-catalogue.log. Full CTL-038 command-route walk: **1 passed in
-  32.75 seconds**, /private/tmp/policy-audit-full-route-walk.log. Ruff/format/whitespace checks
-  pass; all runs are terminal. No production code changed. Published directly to main.
-  One more original baseline failure resolved; 34 remain without current-main disposition.
-- REQ-PLT-019's pending AI lifecycle category remains open and is not waived. Wider baseline
-  triage and accounting sign-off remain outstanding. No deployment or production claim.
 
 ## Older backend baseline completed — October 7, 2026
 

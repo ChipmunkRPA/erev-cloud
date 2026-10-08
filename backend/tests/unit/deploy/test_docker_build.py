@@ -714,9 +714,17 @@ def test_the_probe_program_reads_both_interpreters_and_the_whole_root_filesystem
             file.write_text("x", encoding="utf-8")
         plain.chmod(0o755)
         setuid.chmod(0o4755)
+        # macOS clears setgid for an inherited group the caller does not belong to
+        # (for example wheel under /private/tmp). Give our fixture the caller's group.
+        os.chown(setgid, -1, os.getgid())
         setgid.chmod(0o2755)
-        (root / "usr" / "shared").mkdir()
-        (root / "usr" / "shared").chmod(0o2775)
+        shared = root / "usr" / "shared"
+        shared.mkdir()
+        os.chown(shared, -1, os.getgid())
+        shared.chmod(0o2775)
+        assert stat.S_IMODE(setuid.stat().st_mode) == 0o4755
+        assert stat.S_IMODE(setgid.stat().st_mode) == 0o2755
+        assert stat.S_IMODE(shared.stat().st_mode) == 0o2775
         (root / "usr" / "bin" / "link").symlink_to(setuid)
         assert namespace["setuid_files"](str(root)) == sorted([str(setuid), str(setgid)])
 
