@@ -8,14 +8,15 @@ replace its component rows.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-from typing import TYPE_CHECKING, Final
+from collections.abc import Mapping, Sequence
+from decimal import ROUND_HALF_UP, Decimal, localcontext
+from typing import TYPE_CHECKING, Any, Final
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 
-from erev_api.db.tables import product
+from erev_api.db.tables import product, product_bundle_component
 from erev_api.domain.imports.csv_v2.framework import (
     Applied,
     ApplyContext,
@@ -33,6 +34,8 @@ from erev_api.problems import Problem
 from erev_api.schemas.products import BundleComponentIn, BundleComponentsIn
 
 if TYPE_CHECKING:
+    from sqlalchemy.orm import Session
+
     from erev_api.uow import UnitOfWork
 
 __all__ = ["COLUMNS", "ROW_MODEL", "TEMPLATE", "BundleIn"]
@@ -96,6 +99,90 @@ def apply(uow: UnitOfWork, plan: Plan, *, context: ApplyContext) -> Applied:
     return applied
 
 
+def _numeric(value: Any) -> str | None:
+    if value is None:
+        return None
+    with localcontext() as ctx:
+        ctx.prec = 80
+        return format(
+            Decimal(str(value)).quantize(Decimal("1e-18"), rounding=ROUND_HALF_UP).normalize(),
+            "f",
+        )
+
+
+def _component(value: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        "component_product_id": str(value["component_product_id"]),
+        "quantity_per_bundle": _numeric(value.get("quantity_per_bundle", "1")),
+        "split_basis": value.get("split_basis", "relative_ssp"),
+        "split_ratio": _numeric(value.get("split_ratio")),
+        "sequence": int(value["sequence"]),
+        "valid_from": str(value["valid_from"]),
+        "valid_to": None if value.get("valid_to") is None else str(value["valid_to"]),
+    }
+
+
+def reconcile_amounts(
+    session: Session, plan: Plan, applied: Applied, *, context: ApplyContext
+) -> tuple[Mapping[str, Any], Mapping[str, Any]]:
+    """Verify the complete replacement and each source row's declared component target."""
+    del context
+    code = str(plan.rows[0].normalized["product_code"])
+    bundle_id = session.execute(select(product.c.id).where(product.c.code == code)).scalar_one()
+    stored = {
+        row["id"]: row
+        for row in session.execute(
+            select(product_bundle_component).where(
+                product_bundle_component.c.bundle_product_id == bundle_id
+            )
+        ).mappings()
+    }
+    expected: dict[str, Any] = {
+        "complete": True,
+        "components": [
+            _component(
+                {
+                    key.removeprefix("lines."): value
+                    for key, value in row.normalized.items()
+                    if key.startswith("lines.") and value is not None
+                }
+            )
+            for row in plan.rows
+        ],
+    }
+    # Component windows end at the next source set unless an earlier end is explicit.
+    components = expected["components"]
+    starts = sorted({item["valid_from"] for item in components})
+    for item in components:
+        ends = [start for start in starts if start > item["valid_from"]]
+        if item["valid_to"] is not None:
+            ends.append(item["valid_to"])
+        item["valid_to"] = min(ends) if ends else None
+    actual_rows: list[Any] = []
+    row_ids: list[UUID] = []
+    for row in plan.rows:
+        targets = applied.row_targets.get(row.id, [])
+        if len(targets) != 1 or targets[0][0] != "product_bundle_component":
+            actual_rows.append({"target_count": len(targets)})
+            continue
+        component_id = targets[0][1]
+        row_ids.append(component_id)
+        actual_rows.append(
+            _component(dict(stored[component_id])) if component_id in stored else None
+        )
+    expected_targets = {("product_bundle_component", key) for key in stored}
+    actual = {
+        "complete": (
+            len(row_ids) == len(set(row_ids)) == len(stored)
+            and set(row_ids) == set(stored)
+            and len(applied.targets) == len(expected_targets)
+            and set(applied.targets) == expected_targets
+        ),
+        "components": actual_rows,
+    }
+    return expected, actual
+
+
 TEMPLATE: Final = CsvTemplate(
     code=CODE,
     object_type=SourceObjectType.PRODUCT,
@@ -105,4 +192,5 @@ TEMPLATE: Final = CsvTemplate(
     plans=plans,
     apply=apply,
     group_key=KEY,
+    reconcile_amounts=reconcile_amounts,
 )

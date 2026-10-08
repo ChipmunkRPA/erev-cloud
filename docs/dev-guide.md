@@ -3191,7 +3191,7 @@ added obligations must have the source product identity. Source record, approval
 synthetic modification identity and event targets are also checked.
 
 Remaining coverage is explicit in [the October 7 inventory](release/IMPORT-RECONCILIATION-2026-10-07.md):
-FX rates and bundle quantities. Registered readers do not imply complete coverage of every accounting field.
+FX rates. Registered readers do not imply complete coverage of every accounting field.
 
 CSV progress uses the shared event reader with the source row's event type. It verifies
 optional refund money, quantity, progress ratio, hours and milestone weight, plus obligation,
@@ -3208,3 +3208,10 @@ product and service dates; header dates, cancellation flag and credit reference;
 contract/obligation, effective date, source record, invoice/line references and source-invoice
 link. Tax classifications and source jurisdiction are checked alongside tax money. Credit
 source quantities retain the file's sign convention; credit events keep their existing schema.
+
+
+Bundle imports independently read the complete replacement component list, including
+quantities, split bases/ratios, product identities, sequence and effective windows. Source
+windows end at the next source set's start unless an earlier end is stated. Each source
+row must name exactly its stored component target, and all declared targets must account
+for the entire stored list. A mismatch restores the prior list by rolling back the import.

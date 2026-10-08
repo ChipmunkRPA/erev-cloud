@@ -19,7 +19,7 @@ coverage of every field that affects accounting.
 | legacy_contract_modification | Signed consideration/quantity deltas, treatment, SSP reference, date/source/approval and added obligations | Scoped replay/corruption evidence in PROGRESS.md; broader release verification remains |
 | progress_events | Refund amounts/currency, quantity, progress ratio, hours, milestone weight/code, obligation, trigger/measure, contract, date and source identity | Scoped tests in PROGRESS.md; broader release verification remains |
 | fx_rates | No callback | Currency-pair/date/rate identity and stored rates |
-| bundles | No callback | Component identity and quantity per bundle |
+| bundles | Complete replacement, per-source target identity, component quantities/split ratios at database precision, sequence and effective windows (including derived end dates) | Broader release verification |
 | customers, products, gl_accounts, account_mapping | No monetary callback; reference-data emitters | Their full functional/release checks remain separate from this monetary inventory |
 
 The unregistered CSV `modifications` template is explicitly refused by the import
