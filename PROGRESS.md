@@ -2,6 +2,27 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Scoped first-close pack register — October 8, 2026 (RPS-16 continued)
+
+- Continued from clean published 3ceeffa. Added GET /evidence-packs with a metadata summary,
+  standard keyset paging/counts, entity/book/period/kind/status filters and id/created_at/pack_no
+  sorts. OpenAPI declares the filters; regenerated the API document and frontend client types.
+- SQL intersects report.run, audit.read and contract.read scopes before paging/counting and
+  explicitly joins tenant/entity/period identities. Only retained CLOSE bindings are admitted;
+  legacy unbound/unsupported kinds are omitted. Each row must match its binding. Listing opens
+  no files and makes no archive-integrity claim; individual read/download verification remains.
+- Initial real HTTP/route run: **14 passed in 35.89 seconds**. Final list-kernel/OpenAPI/route/
+  audit/close regression: **33 passed in 57.57 seconds**. Witnesses cover two-page traversal on
+  all three sort keys (including tied timestamps), changed-filter cursor refusal, filtering,
+  zero rows/counts outside each source scope, missing permissions, revoked-role HTTP refusal,
+  and exclusion of seeded legacy/unsupported rows from counts. Logs:
+  /private/tmp/evidence-list-{db,final}.log; all processes terminal. Source Mypy, Ruff lint/format,
+  OpenAPI staleness, frontend tsc --noEmit and whitespace checks pass. Updated guide/model/limits.
+- Automatic audit verification/enqueue on lock/NTF-06, other pack kinds, re-lock variance and
+  current release/accounting approval remain outstanding. The inherited close fixture retains
+  seeded journal/gate setup; no operational CTL-041, RPS-16 completion or production-readiness
+  claim. Direct main; no deployment or external notifications.
+
 ## Idempotent first-close creation API — October 8, 2026 (RPS-16 continued)
 
 - Continued from clean published fbe1eaa; rechecked zero open PRs and main as the only remote

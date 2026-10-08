@@ -2253,7 +2253,14 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    get?: never;
+    /**
+     * Evidence Packs List
+     * @description Retained CLOSE register; entity/book/period/kind/status filters, id/created_at/pack_no sorts.
+     *
+     *     Counts and pages intersect source permission scopes. Archive verification belongs to the
+     *     individual read/download, not this metadata list. Legacy unbound and other kinds are omitted.
+     */
+    get: operations["evidence_packs_list"];
     put?: never;
     /**
      * Evidence Packs Create
@@ -9676,6 +9683,53 @@ export interface components {
       updated_at: string;
     };
     /**
+     * ClosePackSummaryOut
+     * @description Register metadata; listing is not verification of the retained archive.
+     */
+    ClosePackSummaryOut: {
+      book: components["schemas"]["BookCode"];
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /**
+       * Entity Id
+       * Format: uuid
+       */
+      entity_id: string;
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Job Id */
+      job_id: string | null;
+      /**
+       * Kind
+       * @constant
+       */
+      kind: "CLOSE";
+      /** Pack No */
+      pack_no: string;
+      /**
+       * Period Id
+       * Format: uuid
+       */
+      period_id: string;
+      /**
+       * Period Lock Id
+       * Format: uuid
+       */
+      period_lock_id: string;
+      status: components["schemas"]["RunStatus"];
+      /**
+       * Updated At
+       * Format: date-time
+       */
+      updated_at: string;
+    };
+    /**
      * CloseRunCancelIn
      * @description ``POST /close-runs/{id}/cancel``.
      */
@@ -14970,6 +15024,13 @@ export interface components {
     ListOut_CloseChecklistTemplateOut_: {
       /** Items */
       items: components["schemas"]["CloseChecklistTemplateOut"][];
+      /** Next Cursor */
+      next_cursor: string | null;
+    };
+    /** ListOut[ClosePackSummaryOut] */
+    ListOut_ClosePackSummaryOut_: {
+      /** Items */
+      items: components["schemas"]["ClosePackSummaryOut"][];
       /** Next Cursor */
       next_cursor: string | null;
     };
@@ -31981,6 +32042,79 @@ export interface operations {
         };
       };
       /** @description Problem: validation-failed, idempotency-key-reused */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+    };
+  };
+  evidence_packs_list: {
+    parameters: {
+      query?: {
+        /** @description Entity code; repeatable */
+        entity?: string[] | null;
+        book?: components["schemas"]["BookCode"] | null;
+        /** @description Period key */
+        period?: string | null;
+        kind?: "CLOSE" | null;
+        status?: components["schemas"]["RunStatus"][] | null;
+        limit?: number;
+        cursor?: string | null;
+        sort?: string | null;
+        q?: string | null;
+        count?: boolean;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ListOut_ClosePackSummaryOut_"];
+        };
+      };
+      /** @description Problem: unauthenticated, session-expired */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: not-found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: validation-failed */
       422: {
         headers: {
           [name: string]: unknown;

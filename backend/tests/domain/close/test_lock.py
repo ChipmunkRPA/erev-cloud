@@ -2505,6 +2505,42 @@ def test_first_close_archive_verifies_every_component_before_returning_bytes(
     assert pending.json()["download_href"] is None
     unavailable = get(world.app, download_path, auditor)
     assert (unavailable.status_code, slug(unavailable)) == (409, "invalid-transition")
+    # Neither legacy unbound rows nor unsupported kinds enter the visible population/count.
+    with world.place.uow(reader) as uow:
+        legacy = evidence_pack_values(
+            world.tenant_id,
+            **{**bound.pack_values(), "source_binding": None},
+            created_at=bound.requested_at,
+        )
+        uow.session.execute(insert(evidence_pack).values(**legacy))
+        unsupported_row = evidence_pack_values(world.tenant_id)
+        uow.session.execute(insert(evidence_pack).values(**unsupported_row))
+        uow.commit()
+    listing_path = "/api/v1/evidence-packs"
+    listed = get(world.app, listing_path, auditor, params={"count": "true", "status": "QUEUED"})
+    assert listed.status_code == 200, listed.text
+    assert listed.headers["X-Erev-Total-Count"] == "1"
+    assert [item["id"] for item in listed.json()["items"]] == [str(pack["id"])]
+    assert "manifest" not in listed.json()["items"][0]
+    for permission in evidence_queries.READ_PERMISSIONS:
+        outside = replace(
+            reader,
+            permission_scopes={**reader.permission_scopes, permission: frozenset({UUID(int=0)})},
+        )
+        with world.place.uow(outside) as uow:
+            statement = evidence_queries.list_statement(outside)
+            assert uow.session.execute(statement).all() == []
+            assert uow.session.scalar(select(func.count()).select_from(statement.subquery())) == 0
+        missing = replace(reader, permissions=reader.permissions - {permission})
+        with world.place.uow(missing) as uow:
+            assert uow.session.execute(evidence_queries.list_statement(missing)).all() == []
+    for filters in ({"entity": "OTHER"}, {"book": "IFRS15"}, {"period": "FY2026-P08"}):
+        empty = get(world.app, listing_path, auditor, params={**filters, "count": "true"})
+        assert empty.status_code == 200, empty.text
+        assert empty.json()["items"] == [] and empty.headers["X-Erev-Total-Count"] == "0"
+    for invalid_filters in ({"status": "MISSING"}, {"sort": "manifest"}, {"unknown": "x"}):
+        invalid_list = get(world.app, listing_path, auditor, params=invalid_filters)
+        assert (invalid_list.status_code, slug(invalid_list)) == (422, "validation-failed")
     with world.place.uow(reader) as uow:
         assert not evidence_readiness.close_ready(uow.session, parent["id"], parent["params"])
     # Readiness rejects terminal children and contradictory job/report states. These
@@ -2645,7 +2681,7 @@ def test_first_close_archive_verifies_every_component_before_returning_bytes(
             assert uow.session.scalar(select(func.count()).select_from(file_object)) == before_files
         return
     # A second seeded pack reuses these exact bound sources to exercise a fresh QUEUED
-    # worker, followed by the first pack's interrupted RUNNING completion. Creation API pending.
+    # worker, followed by the first pack's interrupted RUNNING completion.
     with world.place.uow(reader) as uow:
         fresh = evidence_pack_values(
             world.tenant_id, **bound.pack_values(), created_at=bound.requested_at
@@ -2658,6 +2694,37 @@ def test_first_close_archive_verifies_every_component_before_returning_bytes(
         )
         uow.session.execute(insert(evidence_pack).values(**{**fresh, "job_id": fresh_job["id"]}))
         uow.commit()
+    filters = {"entity": "AVM-US", "book": "ASC606", "period": "FY2026-P09", "kind": "CLOSE"}
+    for sort in ("-id", "created_at", "pack_no"):
+        first = get(
+            world.app,
+            listing_path,
+            auditor,
+            params={**filters, "sort": sort, "limit": 1, "count": "true"},
+        )
+        assert first.status_code == 200, first.text
+        assert first.headers["X-Erev-Total-Count"] == "2"
+        cursor = first.json()["next_cursor"]
+        assert cursor is not None
+        second = get(
+            world.app,
+            listing_path,
+            auditor,
+            params={**filters, "sort": sort, "limit": 1, "cursor": cursor},
+        )
+        assert second.status_code == 200, second.text
+        assert second.json()["next_cursor"] is None
+        assert {first.json()["items"][0]["id"], second.json()["items"][0]["id"]} == {
+            str(pack["id"]),
+            str(fresh["id"]),
+        }
+        changed_filter = get(
+            world.app,
+            listing_path,
+            auditor,
+            params={**filters, "sort": sort, "cursor": cursor, "status": "QUEUED"},
+        )
+        assert (changed_filter.status_code, slug(changed_filter)) == (422, "validation-failed")
     fresh_finished = run_journal_job(world, fresh_job["id"], attempts=1)
     assert fresh_finished["state"] == "SUCCEEDED", fresh_finished
     lost_ack = True
@@ -2755,7 +2822,7 @@ def test_first_close_archive_verifies_every_component_before_returning_bytes(
             at=uow.now,
         )
         uow.commit()
-    for path in (header_path, download_path):
+    for path in (listing_path, header_path, download_path):
         denied_response = get(world.app, path, auditor)
         assert (denied_response.status_code, slug(denied_response)) == (403, "forbidden")
     denied_replay = call(

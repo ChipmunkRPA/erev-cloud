@@ -92,8 +92,8 @@ class EvidenceManifestOut(BaseModel):
     files: list[EvidenceManifestFileOut]
 
 
-class ClosePackOut(BaseModel):
-    """Retained CLOSE pack header and manifest; source bindings are not rewritten on read."""
+class ClosePackSummaryOut(BaseModel):
+    """Register metadata; listing is not verification of the retained archive."""
 
     id: UUID
     pack_no: str
@@ -104,9 +104,14 @@ class ClosePackOut(BaseModel):
     period_id: UUID
     period_lock_id: UUID
     job_id: UUID | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class ClosePackOut(ClosePackSummaryOut):
+    """Retained CLOSE pack header and manifest; source bindings are not rewritten on read."""
+
     report_run_ids: list[UUID]
     manifest: EvidenceManifestOut | None
     manifest_sha256: str | None
-    created_at: datetime
-    updated_at: datetime
     download_href: str | None
