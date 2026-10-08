@@ -1379,3 +1379,22 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   Ruff, format and whitespace checks pass; all runs terminal. Three baseline failures
   resolved, leaving 31 without current-main disposition. These are scoped unit checks,
   not a new full-backend baseline. Accounting sign-off remains open; no deployment.
+
+## Import row coverage — October 7, 2026
+
+- Continued from published a194ef2. Review of B1-19 found a separate equal-count hole: an
+  emitter could return one source row twice and omit another while the commit counted every
+  response. New regression reproduced COMMITTED on that invalid lineage before the fix
+  (/private/tmp/import-duplicate-lineage-before.log).
+- Import commit now rejects unknown or repeated source row identities before recording lineage.
+  The failure uses CONTROL_TOTALS_MISMATCH and rolls back target/source records and lineage.
+  Existing final row-count accounting continues to include quarantined rows.
+- Complete import commit module: **11 passed in 34.04 seconds**,
+  /private/tmp/import-row-coverage.log. Mypy for commit.py, Ruff formatting/checks and whitespace
+  checks pass. Final duplicate/unknown-row negative cases: **2 passed in 9.32 seconds**,
+  /private/tmp/import-row-coverage-negative.log. Both runs are terminal. Published directly
+  to main after verification.
+- This fixes row coverage, not loaded monetary amounts. B1-19 remains open: actual target
+  amounts need template-aware reconciliation, including repeated header amounts and quarantine.
+  No production claim, deployment or new PR. The independent older baseline was live at
+  3h45m12s (94 percent) with failures on its separate database; preserve it until terminal.

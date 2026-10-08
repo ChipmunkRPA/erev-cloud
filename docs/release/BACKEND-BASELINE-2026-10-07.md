@@ -266,3 +266,32 @@ original baseline failures resolved; **12 remain without current-main dispositio
 A separate seven-case local-tooling rerun is still active in session 71400, PID 43359,
 `/private/tmp/local-tooling-revalidation.log`; no result claimed yet. Preserve its
 primary test database until terminal. Independent accounting sign-off remains open.
+
+### Local tooling revalidation and required import cleanup
+
+Session 71400 completed without interruption: **7 passed in 350.56 seconds**,
+`/private/tmp/local-tooling-revalidation.log`. Demo seed setup took 326.84 seconds.
+Seven original cases passed unchanged: demo-password refusal, fixture tamper/no-write
+checks, dependency licensing, Makefile success output, reset refusal with a running
+stack, OpenAPI stale/current checks and process start/reuse/stop. No blanket
+environment exemption was added. This is targeted evidence, not their full modules.
+
+Current import cleanup is a required failure hook. The older test expected a FAILED
+job beside a locked COMMITTING upload; it now requires COMMITTING/RUNNING while held,
+then a later sweep after release must produce FAILED/FAILED plus one
+IMPORT_PROCESSING_FAILED item. Already committed uploads stay committed. It checks
+one terminal job.failed log per job and the initial held-upload hook failure.
+No production changes. Full failure-hook module: **4 passed in 15.88 seconds**,
+`/private/tmp/import-failure-cleanup-verified.log`. Ruff/format/whitespace checks pass.
+All processes terminal. The progress notebook's size check initially found 20,032
+bytes; another historical section was archived unchanged to restore its under-20KB limit.
+
+Eight more original failures resolved; four remain without current-main disposition:
+
+- close/test_lock_open_redirty_db.py: waived-item freshness/re-marking case;
+- platform/test_audit_coverage.py: pending AI lifecycle category;
+- reports/test_registers_access.py: modification audit action expectations;
+- reports/test_registers_close.py: late-billing out-of-period K07 report.
+
+Implementation gaps, broader verification and independent accounting sign-off remain
+open. No deployment or production-readiness claim.
