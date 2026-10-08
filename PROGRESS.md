@@ -2,6 +2,29 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## SSP monetary reconciliation — October 7, 2026
+
+- Continued from clean main 3e5f9dc. The prior turn published cost/revenue/usage event
+  read-back checks (progress). Added CSV SSP values to the transactional reconciliation gate.
+- Reconstructs expected entry prices/ratios, currency, business dimensions, value basis,
+  quantity unit and complete band sets from validated source rows, independently of the
+  emitter's plan body. Reads actual entries/bands for the emitted book version. Missing,
+  additional or changed values trigger CONTROL_TOTALS_MISMATCH and roll back the batch.
+- Independently derives legacy-range low/mid/high values with wide decimal arithmetic,
+  then compares at TY-02 NUMERIC(38,18) precision, including PostgreSQL rounding. SSP numeric
+  fields are flattened text, so explicit monetary_checks carry coverage even though
+  amount_sums is empty. Bands are grouped by entry without a quadratic scan.
+- Existing declarations/scope tests first passed **10 in 33.98 seconds**. Final module plus
+  layer/import-cycle checks: **61 passed in 52.11 seconds**,
+  /private/tmp/ssp-reconcile-final.log. Tests include valid multi-band entries, deliberately
+  changed points and missing bands after approval, batch rollback/no version or source
+  lineage, and a derived legacy range with an 18-decimal discount ratio. Source Mypy,
+  Ruff/format and whitespace pass. All runs terminal; no complete backend pass claimed.
+- B1-19 and the developer guide now reflect SSP coverage. Contract, estimate and legacy
+  monetary reconciliation, integration-owner fallback notification, AI, broader current
+  verification, other documented gaps and independent accounting sign-off remain open.
+  No deployment. Noncommercial licensing and publication exclusions are unchanged.
+
 ## Event-import monetary reconciliation — October 7, 2026
 
 - Continued from clean main 257533d. The preceding turn implemented and published invoice
@@ -109,28 +132,6 @@
   dirty-group sweep, monetary import totals, AI feature, broader verification and independent
   accounting sign-off remain open. Both original baseline failures remain unresolved.
   No deployment; publication exclusions and noncommercial licensing are unchanged.
-
-## Tooling revalidation and import cleanup retry — October 7, 2026
-
-- Continued from 09c31ef. Preserved session 71400 and its primary test database until
-  terminal. The seven tooling cases passed unchanged: **7 passed in 350.56 seconds**,
-  /private/tmp/local-tooling-revalidation.log. Demo fixture setup took 326.84 seconds.
-  This verifies missing-demo-password refusal, fixture tamper detection/no writes,
-  dependency licensing, Makefile success output, running-stack reset refusal, OpenAPI
-  stale/current checks and process start/reuse/stop. Earlier missing-tooling errors do
-  not reproduce in this configured checkout. No blanket environment exemption added.
-- The import failure test expected settlement to finish despite a held upload. Current
-  required-hook behavior deliberately rolls back settlement on cleanup failure. The
-  test now checks COMMITTING/RUNNING while held and retries after release, requiring
-  FAILED/FAILED plus one IMPORT_PROCESSING_FAILED item. Already committed uploads
-  remain committed, and each job emits one job.failed log; the held case logs its
-  initial hook failure. Production code is unchanged.
-- Full import failure-hook module: **4 passed in 15.88 seconds**,
-  /private/tmp/import-failure-cleanup-verified.log. Ruff/format and whitespace checks pass.
-  All processes terminal. Eight original baseline failures resolved; four remain:
-  close waiver freshness, pending AI audit category, modification audit report expectations,
-  and the late-billing out-of-period report. Current full-backend verification and
-  implementation gaps remain open, as does independent accounting sign-off. No deployment.
 
 ## Outstanding release verification
 

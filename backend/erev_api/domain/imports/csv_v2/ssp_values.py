@@ -11,15 +11,18 @@ the RFD lifecycle (submission, study, approval).
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+import json
+from collections.abc import Mapping, Sequence
 from datetime import date
+from decimal import ROUND_HALF_UP, Decimal, localcontext
 from typing import TYPE_CHECKING, Any, Final
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
-from sqlalchemy import select
+from sqlalchemy import and_, select
+from sqlalchemy.orm import Session
 
-from erev_api.db.tables import ssp_book
+from erev_api.db.tables import product, ssp_book, ssp_book_version, ssp_entry, ssp_range
 from erev_api.domain.imports.csv_v2 import ssp_declarations
 from erev_api.domain.imports.csv_v2.framework import (
     Applied,
@@ -224,6 +227,146 @@ def apply(uow: UnitOfWork, plan: Plan, *, context: ApplyContext) -> Applied:
     return applied
 
 
+ENTRY_NUMBERS: Final = (
+    "unit_list_price",
+    "midpoint_discount_ratio",
+    "range_ratio",
+    "cost_basis",
+    "margin_ratio",
+    "observable_point",
+)
+BAND_NUMBERS: Final = (
+    "band_from",
+    "band_to",
+    "point_value",
+    "low_value",
+    "mid_value",
+    "high_value",
+)
+
+
+def _stored_exact(value: Any) -> str | None:
+    """TY-02 NUMERIC(38,18), including PostgreSQL's half-away-from-zero rounding."""
+    if value is None:
+        return None
+    with localcontext() as ctx:
+        ctx.prec = 80
+        rounded = Decimal(str(value)).quantize(Decimal("1e-18"), rounding=ROUND_HALF_UP)
+        return format(rounded.normalize(), "f") if rounded else "0"
+
+
+def _band_values(values: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        "band_dimension": values.get("band_dimension") or "NONE",
+        **{name: _stored_exact(values.get(name)) for name in BAND_NUMBERS},
+    }
+
+
+def _entry_values(values: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        **{name: values.get(name) for name in ENTRY_KEY},
+        "value_basis": values.get("value_basis") or "AMOUNT",
+        "quantity_unit": values.get("quantity_unit"),
+        **{name: _stored_exact(values.get(name)) for name in ENTRY_NUMBERS},
+    }
+
+
+def _ordered(values: Sequence[Mapping[str, Any]]) -> list[Mapping[str, Any]]:
+    return sorted(values, key=lambda value: json.dumps(value, sort_keys=True))
+
+
+def reconcile_amounts(
+    session: Session, plan: Plan, applied: Applied, *, context: ApplyContext
+) -> tuple[Mapping[str, Any], Mapping[str, Any]]:
+    """CTL-002: reconstruct SSP inputs from file rows and read stored entries/bands.
+
+    These numeric fields are text columns in the flattened template. Their monetary
+    and ratio evidence is retained explicitly; an empty amount_sums is not coverage.
+    """
+    del context
+    expected_entries: dict[tuple[Any, ...], dict[str, Any]] = {}
+    for row in plan.rows:
+        value = SspEntryRowIn.model_validate(unflatten(row.normalized)["lines"]).model_dump(
+            mode="json"
+        )
+        key = tuple(value[name] for name in ENTRY_KEY)
+        entry = expected_entries.setdefault(key, {**_entry_values(value), "bands": []})
+        if value.get("ranges") is not None:
+            entry["bands"].append(_band_values(value["ranges"]))
+        elif value["method"] == "legacy_range" and not entry["bands"]:
+            with localcontext() as ctx:
+                ctx.prec = 80
+                mid = Decimal(value["unit_list_price"]) * (
+                    1 - Decimal(value["midpoint_discount_ratio"])
+                )
+                ratio = Decimal(value["range_ratio"])
+                entry["bands"].append(
+                    _band_values(
+                        {
+                            "low_value": mid * (1 - ratio),
+                            "mid_value": mid,
+                            "high_value": mid * (1 + ratio),
+                        }
+                    )
+                )
+    for entry in expected_entries.values():
+        entry["bands"] = _ordered(entry["bands"])
+    expected = {
+        "books": [str(plan.rows[0].normalized["ssp_book_code"])],
+        "entries": _ordered(list(expected_entries.values())),
+    }
+    ids = [key for kind, key in applied.targets if kind == "ssp_book_version"]
+    books = list(
+        session.scalars(
+            select(ssp_book.c.code)
+            .join(
+                ssp_book_version,
+                and_(
+                    ssp_book_version.c.tenant_id == ssp_book.c.tenant_id,
+                    ssp_book_version.c.ssp_book_id == ssp_book.c.id,
+                ),
+            )
+            .where(ssp_book_version.c.id.in_(ids))
+        )
+    )
+    entries = list(
+        session.execute(
+            select(ssp_entry, product.c.code.label("product_code"))
+            .join(
+                product,
+                and_(
+                    product.c.tenant_id == ssp_entry.c.tenant_id,
+                    product.c.id == ssp_entry.c.product_id,
+                ),
+            )
+            .where(ssp_entry.c.ssp_book_version_id.in_(ids))
+        ).mappings()
+    )
+    bands = list(
+        session.execute(
+            select(ssp_range).where(
+                ssp_range.c.ssp_entry_id.in_([entry["id"] for entry in entries])
+            )
+        ).mappings()
+    )
+    by_entry: dict[UUID, list[Mapping[str, Any]]] = {}
+    for band in bands:
+        by_entry.setdefault(band["ssp_entry_id"], []).append(_band_values(dict(band)))
+    actual = {
+        "books": sorted(str(code) for code in books),
+        "entries": _ordered(
+            [
+                {
+                    **_entry_values(dict(entry)),
+                    "bands": _ordered(by_entry.get(entry["id"], [])),
+                }
+                for entry in entries
+            ]
+        ),
+    }
+    return expected, actual
+
+
 CROSS_RULE: Final = ssp_declarations.cross_findings
 
 TEMPLATE: Final = CsvTemplate(
@@ -236,4 +379,5 @@ TEMPLATE: Final = CsvTemplate(
     apply=apply,
     group_key=KEY,
     repeats=REPEATS,
+    reconcile_amounts=reconcile_amounts,
 )

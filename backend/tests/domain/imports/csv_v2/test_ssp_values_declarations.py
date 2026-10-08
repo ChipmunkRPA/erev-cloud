@@ -25,7 +25,9 @@ from erev_api.config import Settings
 from erev_api.db.tables import (
     exception_item,
     import_row,
+    import_row_lineage,
     import_upload,
+    source_record,
     ssp_book_version,
     ssp_entry,
 )
@@ -47,7 +49,7 @@ from support.factories import (
     j03_world,
     run_import_job,
 )
-from support.legacy_replay import diffed, job_of, submit
+from support.legacy_replay import diffed, job_of, shown, submit
 from support.principals import colleague
 from support.reference import approve, assign, get, holding, post
 
@@ -491,3 +493,104 @@ def test_r98_ssp_values_stay_inside_the_scope_of_ssp_create(
     level_id, level = imported(eve, "eve-open.csv", csv_bytes(HEADERS, [level_row]), "ssp_values")
     assert level["status"] == "VALIDATED", (level, _row_findings(maya, level_id))
     assert _named(maya, level_id) == []
+
+
+@pytest.mark.parametrize("corruption", [None, "point", "missing_band"])
+def test_ssp_monetary_readback_rolls_back_changed_or_missing_bands(
+    app: FastAPI,
+    keyring: KeyRing,
+    clock: FrozenClock,
+    files: LocalFileStore,
+    monkeypatch: pytest.MonkeyPatch,
+    corruption: str | None,
+) -> None:
+    from erev_api.domain.imports.csv_v2 import ssp_values
+
+    world = j03_world(app, keyring, clock, files)
+    assign(world.priya.member, "revenue_reviewer")
+    imports = importer(world.place)
+    label = "SSP-READBACK"
+    rows = [
+        _band_row(PLATFORM_100, label, band, **{"lines.value_basis": "AMOUNT"})
+        for band in (("0", "10", "1000.00"), ("10", "20", "900.00"))
+    ]
+    import_id = diffed(imports, "ssp-amounts.csv", csv_bytes(HEADERS, rows), "ssp_values")
+    submitted = submit(imports, import_id)
+    assert submitted.status_code == 200
+    assert (
+        approve(app, str(submitted.json()["approval_request_id"]), world.priya).status_code == 200
+    )
+    original = ssp_values.upsert_ssp_entries
+
+    def changed(uow: Any, version_id: Any, *, body: Any) -> Any:
+        entry = body.entries[0]
+        bands = list(entry.ranges)
+        if corruption == "point":
+            bands[0] = bands[0].model_copy(update={"point_value": "1001.00"})
+        elif corruption == "missing_band":
+            bands = bands[:1]
+        altered = body.model_copy(update={"entries": [entry.model_copy(update={"ranges": bands})]})
+        return original(uow, version_id, body=altered)
+
+    monkeypatch.setattr(ssp_values, "upsert_ssp_entries", changed)
+    run_import_job(imports, job_of(imports, UUID(import_id), "IMPORT_COMMIT"))
+    done = shown(imports, import_id)
+    assert done["status"] == ("COMMITTED" if corruption is None else "FAILED"), done
+    (check,) = done["control_totals"]["loaded"]["monetary_checks"]
+    if corruption is None:
+        assert check["source"] == check["stored"]
+        assert len(check["stored"]["entries"][0]["bands"]) == 2
+    else:
+        assert check["source"] != check["stored"]
+        assert (
+            imports.rows(
+                select(ssp_book_version.c.id).where(
+                    ssp_book_version.c.legacy_version_label == label
+                )
+            )
+            == []
+        )
+        for table in (source_record, import_row_lineage):
+            assert (
+                imports.rows(select(table.c.id).where(table.c.import_upload_id == UUID(import_id)))
+                == []
+            )
+        (finding,) = imports.rows(
+            select(exception_item).where(
+                exception_item.c.import_upload_id == UUID(import_id),
+                exception_item.c.code == "CONTROL_TOTALS_MISMATCH",
+            )
+        )
+        assert finding["severity"] == "BLOCKING"
+
+
+def test_ssp_derived_legacy_range_reconciles_at_database_precision(
+    app: FastAPI,
+    keyring: KeyRing,
+    clock: FrozenClock,
+    files: LocalFileStore,
+) -> None:
+    world = j03_world(app, keyring, clock, files)
+    assign(world.priya.member, "revenue_reviewer")
+    imports = importer(world.place)
+    row = _row(
+        IMPLEMENTATION_PLUS,
+        "SSP-DERIVED",
+        **{
+            "lines.method": "legacy_range",
+            "lines.unit_list_price": "1000.00",
+            "lines.midpoint_discount_ratio": "0.123456789012345678",
+            "lines.range_ratio": "0.2",
+            "lines.ranges.low_value": "",
+            "lines.ranges.mid_value": "",
+            "lines.ranges.high_value": "",
+        },
+    )
+    result = _committed(imports, world, "ssp-derived.csv", csv_bytes(HEADERS, [row]))
+    done = shown(imports, result["import_id"])
+    assert done["status"] == "COMMITTED", done
+    (check,) = done["control_totals"]["loaded"]["monetary_checks"]
+    assert check["source"] == check["stored"]
+    (band,) = check["stored"]["entries"][0]["bands"]
+    assert band["mid_value"] == "876.543210987654322"
+    assert band["low_value"] == "701.2345687901234576"

@@ -3137,5 +3137,12 @@ reader binds each stored event to the expected contract, event type, effective
 date and source record before comparing amount and currency. Signed amounts stay
 signed; an absent rated usage amount stays null, distinct from explicit zero.
 The callbacks cover all monetary columns of these three one-event-per-row templates.
-Contracts, SSP, estimates and legacy monetary templates still require independent
-read-back implementation and are not claimed as covered.
+The CSV SSP values reader independently reconstructs entry prices, ratios and bands
+from validated rows, including value basis, quantity unit, currency and entry keys.
+It reads the actual entries and complete band sets for the emitted book version.
+Legacy-range bands are independently derived and compared at TY-02 NUMERIC(38,18)
+precision with half-away-from-zero rounding. SSP numeric inputs are flattened as
+text columns; their explicit monetary_checks evidence is required even when the
+file's amount_sums map is empty. Bands are grouped by entry in linear time before
+comparison. Contract, estimate and legacy monetary templates still require their
+own independent read-back implementation and are not claimed as covered.
