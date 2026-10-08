@@ -2,6 +2,26 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Evidence-pack request contract — October 8, 2026 (RPS-16 continued)
+
+- Continued from clean 4860217. Verified zero open PRs and only remote `main`.
+  Added API-S-EvidencePackCreate as a discriminated request union for CLOSE,
+  CONTRACT_SAMPLE, CHANGE and ACCESS. Each kind requires exactly its documented
+  selectors; unrelated fields (including explicit nulls) are rejected. Sample selection
+  preserves exact business keys and order, rejects blank/duplicate IDs and enforces 1–50.
+  Change ranges permit one day and reject reversed dates. No default lock/book/date.
+- **151 request/archive unit tests passed in 0.17 seconds** (102 request, 49 archive),
+  including the required/unused-field matrix, JSON round trips and schema requirements.
+  Log: `/private/tmp/evidence-request-units.log`. Mypy on the new schema, Ruff and whitespace
+  checks pass. Initial request run: 13 failed, 89 passed because the test fixture used
+  nonexistent book `PRIMARY`; corrected it to the actual E-02 code `ASC606`.
+- Request shape is now available for the forthcoming routes; this does not verify source
+  selection, permissions, HTTP behavior or generation. Next: resolve each selector within
+  tenant and permission scope, bind the generation cutoff/source identities, and implement
+  complete source collection, jobs, audited downloads, automatic lock/re-lock packs and
+  the specified acceptance tests. Keep EVIDENCE_PACK pending and CTL-041 open until then.
+  Full-current release gates and independent accounting sign-off remain outstanding.
+
 ## Evidence pack integrity foundation — October 8, 2026 (RPS-16 in progress)
 
 - Continued from clean 8a8cdda. RPS-16 / CTL-041 remains unimplemented at the workflow level.
