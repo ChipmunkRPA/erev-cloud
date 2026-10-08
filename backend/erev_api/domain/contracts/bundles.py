@@ -94,6 +94,7 @@ from erev_engine.bundle import (
     PostedAmountInput,
     ProductInput,
     ResolvedPolicyInput,
+    ssp_range_key,
 )
 from erev_engine.canonical import sha256_hex
 from erev_engine.currencies import ISO_4217
@@ -2510,10 +2511,11 @@ def ssp_weight_members(
     """04 T-CON-07 ``pinned_refs.ssp_weights`` of the computation of ``bundle`` whose result is
     ``output``: per book, modification event id and obligation id, the id of the SSP book version
     the obligation's weight in that event was priced from (ENGINE_SPEC S06-R-11) — read from the
-    ``ssp_entry`` sources of the event's ``mod_weight@<event key>`` nodes, so the record is what
-    was computed. Only an obligation that existed before the event has one: an obligation the
-    event adds is priced for itself, and T-CON-11 records that version. A weight priced from no
-    entry, or from entries of more than one version, has none and is selected by date again.
+    ``ssp_entry`` or ``ssp_range`` sources of the event's ``mod_weight@<event key>`` nodes,
+    so the record is what was computed. Only an obligation that existed before the event has one:
+    an obligation the event adds is priced for itself, and T-CON-11 records that version.
+    A weight priced from no entry, or from entries of more than one version, has none and is
+    selected by date again.
     ``recorded_ssp_versions`` hands the record to the next computation of the event, so a version
     approved afterwards does not weigh an applied modification a second time."""
     version_keys = {
@@ -2521,6 +2523,14 @@ def ssp_weight_members(
         for version in bundle.ssp_versions
         for entry in version.entries
     }
+    version_keys.update(
+        {
+            ssp_range_key(entry.entry_key, band.band_dimension, band.band_from): version.version_key
+            for version in bundle.ssp_versions
+            for entry in version.entries
+            for band in entry.ranges
+        }
+    )
     event_ids = {
         event.event_key: found.events.get((event.contract_key, event.stream_version))
         for event in bundle.events
@@ -2537,7 +2547,7 @@ def ssp_weight_members(
                 version_keys.get(source.ref_id)
                 for source in node.inputs
                 if isinstance(source, SourceRef)
-                and source.ref_type == "ssp_entry"
+                and source.ref_type in {"ssp_entry", "ssp_range"}
                 and source.detail.get("member", "").startswith(_WEIGHED_PARTS)
             }
             if event_id is None or row is None or len(priced_from) != 1:
@@ -3447,6 +3457,7 @@ class BundleIndex:
     templates: Mapping[str, UUID]  # template version key -> id
     ssp_versions: Mapping[str, UUID]
     ssp_entries: Mapping[str, UUID]
+    ssp_ranges: Mapping[str, UUID]
     account_mapping_version_id: UUID | None
     fx_versions: Mapping[str, UUID]
     events: Mapping[tuple[str, int], UUID]  # (external id, stream version) -> event id
@@ -3557,6 +3568,7 @@ def _index(session: Session, bundle: InputBundle) -> BundleIndex:
         templates=template_ids,
         ssp_versions=ssp_ids,
         ssp_entries=dict(entry_ids),
+        ssp_ranges=resolution.approved_range_ids(session, entry_ids),
         account_mapping_version_id=mapping_id,
         fx_versions=fx_ids,
         events=events,

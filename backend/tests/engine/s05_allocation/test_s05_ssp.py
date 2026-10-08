@@ -498,7 +498,7 @@ def test_s05_r05_currency_conversion() -> None:
     assert ssp is not None
     assert (ssp.selected, ssp.rate_key) == (110, "FX-1")
     node = traced["original_ssp_selected:K-01/POB-01:-"]
-    assert [getattr(ref, "ref_type", None) for ref in node.inputs] == ["ssp_entry", "fx_rate"]
+    assert [getattr(ref, "ref_type", None) for ref in node.inputs] == ["ssp_range", "fx_rate"]
     inverse = FxRateInput("FX-2", "FX@v1", "spot", "USD", "EUR", INCEPTION, None, Decimal("0.5"))
     _, _, allocated, _ = fold(bundle(line, versions=[version], rates=[inverse]))
     ssp = obligation(allocated, "POB-01").ssp
@@ -633,3 +633,67 @@ def test_s05_r08_bypasses() -> None:
         bundle(product, free, versions=[version], rights=[right], estimates=[likelihood("1.2")])
     )
     assert [f.code for f in allocated.findings] == ["NON_FINITE_AMOUNT"]
+
+
+@pytest.mark.parametrize("quantity,lower", [("4", "0"), ("5", "5"), ("10", "5")])
+@pytest.mark.parametrize("range_values", [False, True])
+def test_selected_band_identity_survives_equal_prices(
+    quantity: str,
+    lower: str,
+    range_values: bool,
+) -> None:
+    """Equal prices cannot identify a band: retain the actual half-open quantity selection."""
+    entry = point_entry(f"{BOOK}@v1", "SKU-LIC", "100")
+    entry = dataclasses.replace(
+        entry,
+        ranges=(
+            SspRangeInput("QUANTITY", Decimal(0), Decimal(5), Decimal(100), None, None, None),
+            SspRangeInput("QUANTITY", Decimal(5), None, Decimal(100), None, None, None),
+        ),
+    )
+    if range_values:
+        entry = dataclasses.replace(
+            entry,
+            method="adjusted_market",
+            ranges=tuple(
+                dataclasses.replace(
+                    row,
+                    point_value=None,
+                    low_value=Decimal(90),
+                    mid_value=Decimal(100),
+                    high_value=Decimal(110),
+                )
+                for row in entry.ranges
+            ),
+        )
+    _, _, allocated, traced = fold(
+        bundle(
+            booking_line("POB-01", "SKU-LIC", quantity, "100.00"),
+            versions=[ssp_version(1, [entry])],
+        )
+    )
+    selected = obligation(allocated, "POB-01").ssp
+    assert selected is not None
+    expected = f"{entry.entry_key}/QUANTITY/{lower}"
+    assert selected.range_key == expected
+    node = traced["original_ssp_selected:K-01/POB-01:-"]
+    assert [
+        source.ref_id
+        for source in node.inputs
+        if not isinstance(source, str) and source.ref_type == "ssp_range"
+    ] == [expected]
+
+
+def test_merged_band_identity_requires_one_common_source() -> None:
+    from erev_engine.stages.s05_allocation.points import combine
+
+    _, _, allocated, _ = fold(ex_05_b("MIDPOINT"))
+    legacy = obligation(allocated, "POB-01").ssp
+    point = obligation(allocated, "POB-02").ssp
+    assert legacy is not None and point is not None
+    assert legacy.range_key is None
+    assert point.range_key is not None
+    assert combine([point, point]).range_key == point.range_key
+    assert combine([point, legacy]).range_key is None
+    different = dataclasses.replace(point, range_key="another/QUANTITY/5")
+    assert combine([point, different]).range_key is None

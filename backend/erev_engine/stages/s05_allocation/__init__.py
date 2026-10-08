@@ -23,7 +23,7 @@ from fractions import Fraction
 from types import MappingProxyType
 from typing import Final
 
-from erev_engine.bundle import MaterialRightInput, ProposalOut
+from erev_engine.bundle import MaterialRightInput, ProposalOut, ssp_range_key
 from erev_engine.enums import ObligationKind
 from erev_engine.errors import EngineError
 from erev_engine.money import format_exact, to_fraction
@@ -600,7 +600,16 @@ def _resolve_line(
     # D-97 (3): the selected dated entry carries its own quantity_unit declaration and agrees with
     # every entry of its product in its book (CV-45; never reinterpreted by a later declaration).
     check_selected_quantity_unit(cb.bundle, book, entry)
+    row = (
+        points.band_row(entry, line, allocation_basis)
+        if entry.ranges and entry.method != "legacy_range"
+        else None
+    )
+    range_key = (
+        None if row is None else ssp_range_key(entry.entry_key, row.band_dimension, row.band_from)
+    )
     resolution = SspResolution(
+        range_key=range_key,
         book_code=book,
         version_key=version.version_key,
         version_label=version.legacy_version_label,
@@ -621,7 +630,11 @@ def _resolve_line(
         quantity_unit=entry.quantity_unit,
     )
     sources: list[SourceRef] = [
-        SourceRef("ssp_entry", entry.entry_key, {"value": format_exact(point.selected)})
+        SourceRef(
+            "ssp_entry" if range_key is None else "ssp_range",
+            entry.entry_key if range_key is None else range_key,
+            {"value": format_exact(point.selected)},
+        )
     ]
     rate_source: SourceRef | None = None
     if conversion.rate_key is not None:
@@ -632,7 +645,7 @@ def _resolve_line(
         entry=entry,
         factor=conversion.factor,
         rate_source=rate_source,
-        row=points.band_row(entry, line, allocation_basis) if entry.ranges else None,
+        row=row,
     )
     return resolution, tuple(sources), entry.revenue_account_code, snapshot
 
@@ -668,11 +681,11 @@ def _bypass(
         account = None
     else:
         resolution = dataclasses.replace(
-            found[0], selected=selected, in_range=None, point_policy=policy
+            found[0], selected=selected, in_range=None, point_policy=policy, range_key=None
         )
         sources = extra or tuple(
-            dataclasses.replace(source, detail={"value": format_exact(selected)})
-            if source.ref_type == "ssp_entry"
+            SourceRef("ssp_entry", found[0].entry_key, {"value": format_exact(selected)})
+            if source.ref_type in {"ssp_entry", "ssp_range"}
             else source
             for source in found[1]
         )

@@ -128,6 +128,9 @@ CALLERS: Final[Mapping[Call, tuple[str, str]]] = {
 }
 # Who is handed the directory by `tenant_directory.active_tenants`.
 DIRECTORY_READERS: Final[Mapping[Call, str]] = {
+    ("backend/erev_api/domain/contracts/dirty_sweep.py", "run"): (
+        "SCH-17 recovers booked dirty groups in separate SYSTEM tenant transactions"
+    ),
     ("backend/erev_api/domain/reference/period_auto_open.py", "eligible_tenants"): (
         "the period tick opens due periods tenant by tenant (05 SCH-05)"
     ),

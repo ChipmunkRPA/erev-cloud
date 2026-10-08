@@ -14,7 +14,7 @@ from types import MappingProxyType
 from typing import Final
 
 from erev_engine import royalties, usage
-from erev_engine.bundle import SspEntryInput, SspRangeInput
+from erev_engine.bundle import SspEntryInput, SspRangeInput, ssp_range_key
 from erev_engine.enums import ObligationKind, SspMethod, SspValueBasis
 from erev_engine.errors import EngineError
 from erev_engine.money import format_exact, round_half_up, to_fraction
@@ -550,8 +550,7 @@ def _emit_row_bounds(
     assert source is not None
     entry = source.entry
     quantity_node = f"original_quantity:{subject}:-"
-    band_from = "" if row.band_from is None else str(row.band_from)
-    ref_id = f"{entry.entry_key}/{row.band_dimension}/{band_from}"
+    ref_id = ssp_range_key(entry.entry_key, row.band_dimension, row.band_from)
     scale = _row_scale(entry, item.draft.line.quantity * source.factor)
     if scale is None:
         return

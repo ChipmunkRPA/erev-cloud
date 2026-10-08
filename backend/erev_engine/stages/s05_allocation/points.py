@@ -213,6 +213,9 @@ def combine(parts: Sequence[SspResolution]) -> SspResolution:
     in_range = False if False in flags else (True if all(flags) else None)
     return dataclasses.replace(
         host,
+        range_key=host.range_key
+        if all(part.range_key == host.range_key for part in parts)
+        else None,
         low=total([part.low for part in parts]),
         mid=total([part.mid for part in parts]),
         high=total([part.high for part in parts]),

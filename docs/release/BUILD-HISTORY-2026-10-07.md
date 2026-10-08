@@ -1902,3 +1902,26 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   contract/obligation checks. Integration-owner fallback, AI, other implementation and
   verification gaps and independent accounting sign-off remain open. No deployment.
   Publication exclusions/noncommercial licensing are unchanged.
+
+## Bundle replacement reconciliation — October 7, 2026
+
+- Continued from clean main 74e3437 (prior turn made verified invoice progress). Bundle
+  imports now independently read the full stored replacement and bind each source row to
+  its declared component target. Compare bundle/component identity, quantity, split basis/
+  ratio, sequence and effective windows; derive the next-set end boundary from source rows.
+  Reject missing/extra targets or stored components. A mismatch restores the previous list.
+- Added a PostgreSQL replacement matrix: high-precision and omitted/default fields succeed;
+  changed quantity, ratio, component, bundle, date, sequence, missing target and extra row
+  must fail with CONTROL_TOTALS_MISMATCH and leave no new source records/lineage.
+- First run: **1 passed, 9 failed in 21.61 seconds**, /private/tmp/bundle-readback-first.log.
+  The new fixture used 19 decimal places, beyond the command's 18-place input limit;
+  corrected it. Second run: **10 passed, 1 failed in 23.40 seconds**,
+  /private/tmp/bundle-readback-second.log. Blank CSV cells normalize to null; corrected
+  the reader to apply quantity/split-basis defaults to omitted source values. Both runs
+  are terminal. Final matrix, CSV workflows and layer/import-cycle regressions:
+  **67 passed in 53.00 seconds**, /private/tmp/bundle-readback-final.log, terminal.
+  Source Mypy, Ruff lint/format and whitespace checks pass.
+- Updated coverage inventory, B1-19 and developer guidance. FX-rate read-back remains next;
+  integration-owner fallback, AI, broader implementation/release checks and independent
+  accounting sign-off remain open. No full-suite/readiness claim or deployment. Preserve
+  publication exclusions/noncommercial licensing; publish tested changes directly to main.

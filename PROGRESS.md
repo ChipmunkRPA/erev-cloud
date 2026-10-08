@@ -2,6 +2,32 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Selected SSP range provenance — October 7, 2026
+
+- Continued from clean main 4e043a1 after verifying all 31 PRs merged and only remote main.
+  Engine selections now retain the actual band's natural key, including equal-price bands;
+  persistence resolves it to the approved range UUID. Point/range and modification weight traces
+  cite the band directly. Readback recognizes historical entry and new range sources, preserving
+  pinned versions. Formula-only/bypass prices claim no band; merged selections keep all sources
+  in trace and a scalar range only if every contributor shares it. No historical rewrite.
+- First allocation/persistence run: **58 passed, 1 failed in 32.66 seconds**,
+  /private/tmp/ssp-range-first.log (old currency trace expectation). Expanded trace/readback and
+  architecture run: **361 passed, 12 failed in 175.23 seconds**,
+  /private/tmp/ssp-range-expanded.log. One old repin source expectation and eleven scope-registry
+  failures for the previously added dirty sweep. Registered SCH-17's reviewed SYSTEM builder,
+  tenant-directory reader and non-preview computation with reasons; updated trace expectations.
+- Allocation/modification/readback/persistence and affected architecture run: **290 passed,
+  1 failed in 71.46 seconds**, /private/tmp/ssp-range-final.log. Remaining failure was the
+  architecture reader's synthetic missing-registration expectation; corrected for the new entry.
+  Added explicit range/entry readback matrix and equal-price point/range boundary cases.
+  Corrected affected checks: **33 passed in 7.98 seconds**, /private/tmp/ssp-range-corrected.log.
+  All runs terminal. Mypy passes 18 source files; Ruff lint/format and whitespace checks pass.
+- Updated B1-23/developer guidance and archived older bundle import evidence verbatim.
+  Output metadata/trace changes belong in the already pending 0.4.0 release cut and replay
+  validation; no full-suite or production-readiness claim. AI/other implementation gaps,
+  container/release verification and independent accounting sign-off remain. No deployment;
+  preserve publication exclusions/noncommercial licensing and publish directly to main.
+
 ## Repository gate verification and Terraform socket repair — October 7, 2026
 
 - Continued from clean main 87f53d1; prior turn published dirty-group recovery (progress).
@@ -95,29 +121,6 @@
   full accounting coverage. Integration-owner fallback, AI and other implementation gaps,
   remaining release checks and independent accounting sign-off remain open. No deployment
   or full-suite/readiness claim. Preserve exclusions/licensing; push verified changes to main.
-
-## Bundle replacement reconciliation — October 7, 2026
-
-- Continued from clean main 74e3437 (prior turn made verified invoice progress). Bundle
-  imports now independently read the full stored replacement and bind each source row to
-  its declared component target. Compare bundle/component identity, quantity, split basis/
-  ratio, sequence and effective windows; derive the next-set end boundary from source rows.
-  Reject missing/extra targets or stored components. A mismatch restores the previous list.
-- Added a PostgreSQL replacement matrix: high-precision and omitted/default fields succeed;
-  changed quantity, ratio, component, bundle, date, sequence, missing target and extra row
-  must fail with CONTROL_TOTALS_MISMATCH and leave no new source records/lineage.
-- First run: **1 passed, 9 failed in 21.61 seconds**, /private/tmp/bundle-readback-first.log.
-  The new fixture used 19 decimal places, beyond the command's 18-place input limit;
-  corrected it. Second run: **10 passed, 1 failed in 23.40 seconds**,
-  /private/tmp/bundle-readback-second.log. Blank CSV cells normalize to null; corrected
-  the reader to apply quantity/split-basis defaults to omitted source values. Both runs
-  are terminal. Final matrix, CSV workflows and layer/import-cycle regressions:
-  **67 passed in 53.00 seconds**, /private/tmp/bundle-readback-final.log, terminal.
-  Source Mypy, Ruff lint/format and whitespace checks pass.
-- Updated coverage inventory, B1-19 and developer guidance. FX-rate read-back remains next;
-  integration-owner fallback, AI, broader implementation/release checks and independent
-  accounting sign-off remain open. No full-suite/readiness claim or deployment. Preserve
-  publication exclusions/noncommercial licensing; publish tested changes directly to main.
 
 ## Outstanding release verification
 

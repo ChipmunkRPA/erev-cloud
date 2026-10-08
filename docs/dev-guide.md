@@ -3243,3 +3243,26 @@ version identifies a generation, preventing repeated jobs for an unchanged faile
 input while allowing a later mark with the same timestamp. FX_REPUBLISH is retained; other
 marks use COMMAND. One group or tenant failing does not stop others. Enqueue failures leave
 no job and retry on a later tick. Engine completion still owns clearing the dirty mark.
+
+
+### Selected SSP range provenance — October 7, 2026
+
+The engine carries the natural key of the selected approved band through `SspResolution.range_key`
+and the output's `ssp_range_key`. `bundles.index` maps approved entry/band identities to stored UUIDs;
+computation persistence writes `obligation_version.ssp_range_id` and refuses an unknown non-null key.
+The key is the existing trace identity `<entry_key>/<band_dimension>/<band_from>` (empty lower bound
+when absent). It comes from band selection, never from matching numerical prices. Band-based point
+and range selections cite the band as their `ssp.point.v1` source. Formula-only legacy/cost prices
+keep entry references. Option/VC bypasses do not claim that a band priced their selected amount.
+Merged obligations retain their contributing sources; a scalar range key survives only when every
+contributor has the same key. SSP repins carry the corrected selection with the corrected version.
+
+This adds output metadata and trace lineage without changing allocation arithmetic. Include it in
+the already pending 0.3.0 to 0.4.0 release cut and historical/candidate replay verification. Existing
+stored computations remain immutable; this implementation does not certify a release or accounting
+sign-off.
+
+SCH-17's `dirty_sweep.run` is registered in the architecture inventories as a SYSTEM principal
+builder, an `active_tenants` directory reader, and a normal computation deferrer. Each group uses
+its own tenant-scoped unit of work; it returns no preview to a human. The platform-session door,
+its audit, and all unlisted-caller refusals remain enforced.

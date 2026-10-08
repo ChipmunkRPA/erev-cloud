@@ -45,6 +45,7 @@ from erev_api.db.tables import (
     schedule,
     schedule_line,
     ssp_entry,
+    ssp_range,
 )
 from erev_api.domain.contracts import bundles, computation
 from erev_api.enums import ContractEventType
@@ -753,3 +754,33 @@ def test_ctl_011_allocation_lineage_recorded_per_obligation(world: World) -> Non
         uow.commit()
     assert count(world, obligation_version) == 2
     assert stored["replayed"] is False
+
+
+@pytest.mark.control("CTL-011")
+def test_computation_persists_selected_range_identity(world: World) -> None:
+    booked = k01(world)
+    with world.place.uow() as uow:
+        bundle = bundles.build(uow.session, booked.combination_group["id"], uow.now)
+        output = engine()(bundle)
+        index = bundles.index(uow.session, bundle)
+        keys = [item.columns.get("ssp_range_key") for item in output.books[0].obligation_versions]
+        assert any(keys)
+        computation.persist(uow, bundle, output)
+        uow.commit()
+    with world.place.uow() as uow:
+        rows = uow.session.execute(
+            select(
+                obligation_version.c.ssp_range_id,
+                obligation_version.c.ssp_entry_id,
+            )
+        ).all()
+        actual = {row.ssp_range_id for row in rows if row.ssp_range_id is not None}
+        assert actual == {index.ssp_ranges[str(key)] for key in keys if key is not None}
+        for row in rows:
+            if row.ssp_range_id is not None:
+                assert (
+                    uow.session.scalar(
+                        select(ssp_range.c.ssp_entry_id).where(ssp_range.c.id == row.ssp_range_id)
+                    )
+                    == row.ssp_entry_id
+                )

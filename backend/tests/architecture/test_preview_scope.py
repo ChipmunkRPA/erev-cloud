@@ -67,6 +67,9 @@ PREVIEWS: Final = {
 }
 # (file, function) → why it is no preview: it answers no summary to the caller.
 COMPUTATIONS: Final = {
+    ("backend/erev_api/domain/contracts/dirty_sweep.py", "run"): (
+        "SCH-17 persists dirty-group recovery under SYSTEM; no preview is returned to a caller"
+    ),
     ("backend/erev_api/domain/imports/commit.py", "commit_upload"): (
         "IPL-11 children compute committed imported facts per group; they return no preview "
         "to the uploader, and report readers retain their own scopes"
@@ -408,6 +411,7 @@ def test_dg_krn_apr_07_the_reader_reports_each_kind_of_finding() -> None:
     # what the snippets do not hold is reported as gone
     assert [line for line in rendered if line.endswith(GONE)] == [
         f"{CLOSE_RUNS}:1 {RULE} _recompute_dirty {GONE}",
+        f"backend/erev_api/domain/contracts/dirty_sweep.py:1 {RULE} run {GONE}",
         f"{VOLUME}:1 {RULE} _apply_modification {GONE}",
         f"backend/erev_api/domain/imports/commit.py:1 {RULE} commit_upload {GONE}",
         f"{EXCEPTIONS}:1 {RULE} request_reprocess {GONE}",

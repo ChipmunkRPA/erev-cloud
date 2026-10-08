@@ -737,6 +737,7 @@ class SspResolution:
     residual_candidate: bool
     value_basis: str | None = None  # E-49 of the entry (D-93 (4) series pricing basis)
     quantity_unit: str | None = None  # E-125 of the entry (D-97 (3), PER_INCREMENT only)
+    range_key: str | None = None  # Unique band actually used; merged/method bypasses may lack one.
 
 
 @dataclass(frozen=True, slots=True)

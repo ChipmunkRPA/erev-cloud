@@ -44,7 +44,8 @@ DB-17 checks at commit that the obligation versions of each contract version all
 stores no trace; ``rpo_amount`` falls back to scheduled plus awaiting trigger until stage 15 emits
 it; a balance's ``revenue_cum_txn``, ``billed_cum_txn`` and ``net_position_txn`` fall back to the
 obligation sums; the balance kept per contract and entity is the one of the latest period;
-``ssp_range_id`` and ``last_modification_id`` stay null; cost-asset schedule subjects take a uuid5
+``last_modification_id`` stays null; SSP ranges resolve from the engine's selected natural key;
+cost-asset schedule subjects take a uuid5
 of their subject key until T-CON-16 exists. L3-1-Q-30 records the posting choices: a line's
 effective date is the latest effective date of the bundle's events inside the entry's origin period
 (else its posting period), or that period's end; a foreign-currency line is refused until the
@@ -484,7 +485,7 @@ def _obligation_rows(
             "performing_entity_id": found.entities[str(columns["performing_entity_code"])]["id"],
             "ssp_book_version_id": _key(found.ssp_versions, columns.get("ssp_book_version_key")),
             "ssp_entry_id": _key(found.ssp_entries, columns.get("ssp_entry_key")),
-            "ssp_range_id": None,
+            "ssp_range_id": _key(found.ssp_ranges, columns.get("ssp_range_key")),
             "ssp_override_approval_request_id": override_requests.get(obligation_id),
             "last_modification_id": None,
             "previous_effective_date": None if before is None else before["effective_date"],

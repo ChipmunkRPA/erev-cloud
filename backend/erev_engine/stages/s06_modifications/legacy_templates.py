@@ -316,7 +316,11 @@ def _mod_ssp(
 
 def _reference(found: SspResolution, member: str) -> SourceRef:
     detail = {"member": member, "value": format_exact(found.selected)}
-    return SourceRef("ssp_entry", found.entry_key or "-", detail)
+    return SourceRef(
+        "ssp_range" if found.range_key is not None else "ssp_entry",
+        found.range_key or found.entry_key or "-",
+        detail,
+    )
 
 
 def mod_ssp(

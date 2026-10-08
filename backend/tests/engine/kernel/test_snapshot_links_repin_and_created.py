@@ -157,7 +157,7 @@ def test_repin_links_the_corrected_ssp_and_its_dependents_whole_book() -> None:
     selected = nodes[a.trace_nodes["original_ssp_selected"]]
     assert selected.formula_id == "ssp.point.v1" and selected.value == "800"
     assert all(
-        isinstance(item, SourceRef) and item.ref_type == "ssp_entry" for item in selected.inputs
+        isinstance(item, SourceRef) and item.ref_type == "ssp_range" for item in selected.inputs
     )
     assert b.trace_nodes["original_ssp_selected"] == f"original_ssp_selected:{b.subject_key}:-"
     total = nodes[a.trace_nodes["original_total_contract_ssp"]]

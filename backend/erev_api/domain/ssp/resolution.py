@@ -58,6 +58,7 @@ from erev_engine.bundle import (
     SspEntryInput,
     SspRangeInput,
     SspVersionInput,
+    ssp_range_key,
 )
 from erev_engine.canonical import sha256_hex
 from erev_engine.currencies import ISO_4217
@@ -660,3 +661,19 @@ def resolve(
                 for name, source in sources.items()
             },
         }
+
+
+def approved_range_ids(session: Session, entry_ids: Mapping[str, UUID]) -> dict[str, UUID]:
+    """Resolve only bands belonging to the approved entries included in the bundle index."""
+    keys = {value: key for key, value in entry_ids.items()}
+    return {
+        ssp_range_key(keys[row.ssp_entry_id], row.band_dimension, row.band_from): row.id
+        for row in session.execute(
+            select(
+                ssp_range.c.id,
+                ssp_range.c.ssp_entry_id,
+                ssp_range.c.band_dimension,
+                ssp_range.c.band_from,
+            ).where(ssp_range.c.ssp_entry_id.in_(keys))
+        )
+    }

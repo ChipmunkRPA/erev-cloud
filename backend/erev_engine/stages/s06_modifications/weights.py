@@ -168,7 +168,11 @@ def _raw(
 
 def _reference(resolution: SspResolution, member: str) -> SourceRef:
     detail = {"member": member, "value": format_exact(resolution.selected)}
-    return SourceRef("ssp_entry", resolution.entry_key or "-", detail)
+    return SourceRef(
+        "ssp_range" if resolution.range_key is not None else "ssp_entry",
+        resolution.range_key or resolution.entry_key or "-",
+        detail,
+    )
 
 
 def added_parts(

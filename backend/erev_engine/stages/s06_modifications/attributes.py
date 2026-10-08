@@ -228,8 +228,11 @@ def reallocate(
         else:
             value, member = weights.inception_ssp(ob)[0], "inception"
             entry, resolution = ("-" if ob.ssp is None else ob.ssp.entry_key), ob.ssp
+        range_key = None if resolution is None else resolution.range_key
         source = SourceRef(
-            "ssp_entry", entry or "-", {"member": member, "value": format_exact(value)}
+            "ssp_range" if range_key is not None else "ssp_entry",
+            range_key or entry or "-",
+            {"member": member, "value": format_exact(value)},
         )
         params = MappingProxyType({"member": member})
         weighted.append(

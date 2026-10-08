@@ -154,6 +154,8 @@ __all__ = [
 # answers the stored key, and ``<group>@<entity>`` for a remeasurement line without one (05
 # RCP-05). The output of every other input is unchanged (1,648 of 1,648 corpus output hashes).
 # A minor step, folded into the one 0.3.0 → 0.4.0 step.
+# SSP range provenance also changes output metadata/trace; include it in the pending
+# 0.4.0 release cut and candidate-upgrade evidence. Historical traces remain immutable.
 ENGINE_VERSION: Final[str] = "0.3.0"
 
 # DG-ENG-05 identities, named in ``EngineError.detail["identity"]`` (CTL-012).
@@ -775,6 +777,7 @@ def _obligation_version(
         "stated_price": stated,
         "ssp_book_version_key": None if ssp is None else ssp.version_key,
         "ssp_entry_key": None if ssp is None else ssp.entry_key,
+        "ssp_range_key": None if ssp is None else ssp.range_key,
         "ssp_method": None if ssp is None else ssp.method,
         "ssp_version_label": None if ssp is None else ssp.version_label,
         "ssp_unit_list_price": None if ssp is None else ssp.unit_list_price,

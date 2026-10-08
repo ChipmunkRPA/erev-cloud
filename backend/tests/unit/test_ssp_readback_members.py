@@ -61,6 +61,7 @@ def _index(bundle: InputBundle, output: OutputBundle) -> bundles.BundleIndex:
         templates={},
         ssp_versions={v.version_key: _id("version", v.version_key) for v in bundle.ssp_versions},
         ssp_entries={},
+        ssp_ranges={},
         account_mapping_version_id=None,
         fx_versions={},
         events={
@@ -150,7 +151,10 @@ def _entry(key: str, member: str) -> SourceRef:
     return SourceRef("ssp_entry", key, {"member": member, "value": "1"})
 
 
-def test_a_weight_is_recorded_only_where_one_version_priced_an_existing_obligation() -> None:
+@pytest.mark.parametrize("band_sources", [False, True])
+def test_a_weight_is_recorded_only_where_one_version_priced_an_existing_obligation(
+    band_sources: bool,
+) -> None:
     """``ssp_weight_members`` over the nodes of one event: the remaining units and the added
     units of an existing obligation priced from one version are recorded under the ids of the
     event, the obligation and the version; an obligation the event adds (``added``), a correction
@@ -158,7 +162,15 @@ def test_a_weight_is_recorded_only_where_one_version_priced_an_existing_obligati
     versions have no record, and neither has a node of another measure."""
     event = SimpleNamespace(event_key="K-01/EV-000003", contract_key="K-01", stream_version=3)
     versions = [
-        SimpleNamespace(version_key=f"SSP-US@v{no}", entries=[SimpleNamespace(entry_key=f"E{no}")])
+        SimpleNamespace(
+            version_key=f"SSP-US@v{no}",
+            entries=[
+                SimpleNamespace(
+                    entry_key=f"E{no}",
+                    ranges=(SimpleNamespace(band_dimension="NONE", band_from=None),),
+                )
+            ],
+        )
         for no in (1, 2)
     ]
     bundle: Any = SimpleNamespace(ssp_versions=versions, events=[event])
@@ -173,6 +185,12 @@ def test_a_weight_is_recorded_only_where_one_version_priced_an_existing_obligati
         _node("mod_pool@K-01/EV-000003", "K-01/O1", _entry("E2", "remaining")),
         _node("mod_weight@K-01/EV-000009", "K-01/O1", _entry("E2", "remaining")),
     ]
+    if band_sources:
+        for node in nodes:
+            node.inputs = tuple(
+                SourceRef("ssp_range", f"{source.ref_id}/NONE/", source.detail)
+                for source in node.inputs
+            )
     output: Any = SimpleNamespace(
         books=[
             SimpleNamespace(book_code="ASC606", trace=SimpleNamespace(nodes=nodes)),

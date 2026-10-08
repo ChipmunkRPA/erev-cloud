@@ -351,6 +351,11 @@ class EventInput:
     manual_adjustment_key: str | None
 
 
+def ssp_range_key(entry_key: str, dimension: str, lower: Decimal | None) -> str:
+    """Natural identity of an approved band, shared by calculation and persistence."""
+    return f"{entry_key}/{dimension}/{'' if lower is None else str(lower)}"
+
+
 @dataclass(frozen=True, slots=True)
 class SspRangeInput:
     band_dimension: str
