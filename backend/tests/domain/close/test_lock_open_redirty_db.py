@@ -31,6 +31,7 @@ from typing import Any, Final
 from uuid import UUID
 
 import pytest
+from erev_api.approvals import engine as approvals
 from erev_api.auth.keyring import KeyRing
 from erev_api.clock import FrozenClock
 from erev_api.config import Settings
@@ -38,6 +39,7 @@ from erev_api.db.session import DbContext, tenant_session
 from erev_api.db.tables import (
     approval_request,
     audit_event,
+    close_checklist_item,
     combination_group,
     job,
     subledger_line,
@@ -46,7 +48,13 @@ from erev_api.db.tables import (
 from erev_api.domain.close import commands as close_commands
 from erev_api.domain.platform import setup
 from erev_api.domain.reference import period_auto_open, period_redirty_job
-from erev_api.enums import ApprovalRequestStatus, JobKind, JobState, PeriodState
+from erev_api.enums import (
+    ApprovalRequestStatus,
+    ApprovalSubjectType,
+    JobKind,
+    JobState,
+    PeriodState,
+)
 from erev_api.files.store import LocalFileStore
 from erev_api.jobs.registry import run_job
 from erev_api.main import create_app
@@ -432,8 +440,8 @@ def test_r112_j_a_waived_item_does_not_clear_the_gate_before_the_re_marking_has_
     while it fails because the period's re-marking has not succeeded. The product refuses such a
     waiver request, so the item is waived here through the decision's own writer
     (``_checklist_waived`` with an APPROVED ``EXCEPTION_WAIVER`` request): the lock request of
-    October is still refused by that gate, by name. Once the job has succeeded the same waived
-    item clears the gate, as any waiver does.
+    October is still refused by that gate, by name. Once the job succeeds, its newly dirty
+    members are not covered by the earlier waiver and must still block the lock.
 
     Fail-first (the overlay as lane SECFIX-CLO's integration left it): the waived item cleared the
     gate while the job was still queued."""
@@ -450,13 +458,26 @@ def test_r112_j_a_waived_item_does_not_clear_the_gate_before_the_re_marking_has_
             subject_id=item_id,
             summary="Fixture waiver of All contracts computed",
         )
+        request["subject_content_sha256"] = approvals.current_content_sha256(
+            uow, approvals.spec_for(ApprovalSubjectType.EXCEPTION_WAIVER), request
+        )
         uow.session.execute(insert(approval_request).values(**request))
         close_commands._checklist_waived(uow, item_id, UUID(str(request["id"])))
         uow.commit()
-    assert _item(world, october_id)["status"] == "WAIVED"
-    assert _lock_refusals(world, october_id).get(GATE) == NOT_RE_MARKED
+    assert (
+        world.place.scalar(
+            select(close_checklist_item.c.status).where(close_checklist_item.c.id == item_id)
+        )
+        == "WAIVED"
+    )
+    # Reading the gate invalidates this unbound waiver, rather than clearing the blocker.
+    assert _lock_refusals(world, october_id)[GATE].startswith(NOT_RE_MARKED)
+    assert _item(world, october_id)["status"] == "FAILED"
     assert run_now(world, UUID(str(deferred["id"])))["state"] == JobState.SUCCEEDED.value
-    # the waiver clears the gate once it is a count of dirty groups again
+    # Re-marking cannot turn an earlier waiver into approval of newly dirty members.
+    assert GATE in _lock_refusals(world, october_id)
+    assert _item(world, october_id)["status"] == "FAILED"
+    assert _recompute_the_dirty_groups(world) == [_group_id(world)]
     assert GATE not in _lock_refusals(world, october_id)
 
 

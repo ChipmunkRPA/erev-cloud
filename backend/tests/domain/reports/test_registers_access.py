@@ -2062,7 +2062,10 @@ def test_audit_log_export_states_the_rows_of_the_list(k03: K03World, clock: Froz
     modified = [row for row in trail if row["object_id"] == change.modification_id]
     assert [row["action"] for row in modified] == [
         "modification.create",
-        "modification.classify",
+        "modification.classify",  # initial treatment proposal
+        "modification.classify",  # confirm_answers reads the proposed questionnaire
+        "modification.update",  # preparer explicitly saves the answers
+        "modification.classify",  # classify those saved answers
         "modification.preview_stored",
         "modification.submit",
         "modification.applied",

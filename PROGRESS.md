@@ -2,6 +2,26 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Waiver and modification-audit verification — October 7, 2026
+
+- Continued from cc31480. Both remaining close-waiver/audit-report cases reproduced
+  (/private/tmp/waiver-audit-before.log). The synthetic waiver request had a placeholder
+  content hash; the report expected the trail from before preparer answer confirmation.
+- The waiver fixture now binds the real subject content before using the approved hook.
+  It checks the stored WAIVED state directly, then verifies gate evaluation invalidates
+  the unbound waiver and refuses the lock while re-marking is pending. Newly dirty members
+  remain blocking after the job succeeds; recomputing those groups clears the gate.
+  An intermediate run confirmed read-time invalidation; no freshness check is bypassed.
+- The audit report's exact expected action list now includes the proposal read, preparer's
+  saved questionnaire and classification of those saved answers. Full list/export equality,
+  outcome filters, field-level diffs and accounting fixture expectations remain intact.
+- Full period-opening module plus the audit export case: **10 passed in 67.57 seconds**,
+  /private/tmp/waiver-audit-final.log. Ruff/format/whitespace checks pass. No production
+  code changed; all runs terminal. Two original baseline failures remain unresolved:
+  the pending AI lifecycle audit category and late-billing out-of-period K07 report.
+  Broader current-main verification, implementation gaps and independent accounting
+  sign-off remain open. No deployment.
+
 ## Tooling revalidation and import cleanup retry — October 7, 2026
 
 - Continued from 09c31ef. Preserved session 71400 and its primary test database until
@@ -77,26 +97,6 @@ not authorize deployment, provisioning or changes to a live database.
 - Three more original baseline failures resolved, leaving 14 without current-main disposition.
   All runs terminal. This is scoped evidence, not a full migration walk or backend baseline.
   Implementation gaps and independent accounting sign-off remain open. No deployment.
-
-## Portable backup archives — October 7, 2026
-
-- Continued from f9f5683. Reproduced the restore baseline failure: macOS BSD tar adds
-  an AppleDouble ._files entry outside the declared files/ root, so restore correctly
-  refuses the backup before reaching subsequent checks. The new archive regression
-  adds explicit macOS extended attributes and failed against the old script with that
-  exact refusal (/private/tmp/backup-archive-regression.log, 1 failed in 1.15 seconds).
-- Backup tar creation now sets COPYFILE_DISABLE=1 for that command, suppressing host
-  AppleDouble metadata. Restore validation is unchanged. The regression checks exact
-  archive members, preserved ciphertext bytes and acceptance by the real archive validator;
-  partial uploads remain excluded. The runbook documents the archive contents.
-- Complete backup/restore script module: **29 passed in 77.31 seconds**,
-  /private/tmp/backup-restore-verified.log. Recovery preflight module: **25 passed in
-  0.11 seconds**, /private/tmp/recovery-preflight-verified.log. Bash syntax, Ruff/format
-  and whitespace checks pass; all processes are terminal. These scratch-repository runs
-  stub database/verification commands; they do not prove a live backup or restore drill.
-- All 14 original backup/restore baseline failures are resolved, leaving 17 original
-  failures without current-main disposition. Broader verification, implementation gaps
-  and independent accounting sign-off remain open. No deployment or cloud changes.
 
 ## Older backend baseline completed — October 7, 2026
 

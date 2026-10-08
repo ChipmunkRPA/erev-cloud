@@ -1398,3 +1398,23 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   amounts need template-aware reconciliation, including repeated header amounts and quarantine.
   No production claim, deployment or new PR. The independent older baseline was live at
   3h45m12s (94 percent) with failures on its separate database; preserve it until terminal.
+
+## Portable backup archives — October 7, 2026
+
+- Continued from f9f5683. Reproduced the restore baseline failure: macOS BSD tar adds
+  an AppleDouble ._files entry outside the declared files/ root, so restore correctly
+  refuses the backup before reaching subsequent checks. The new archive regression
+  adds explicit macOS extended attributes and failed against the old script with that
+  exact refusal (/private/tmp/backup-archive-regression.log, 1 failed in 1.15 seconds).
+- Backup tar creation now sets COPYFILE_DISABLE=1 for that command, suppressing host
+  AppleDouble metadata. Restore validation is unchanged. The regression checks exact
+  archive members, preserved ciphertext bytes and acceptance by the real archive validator;
+  partial uploads remain excluded. The runbook documents the archive contents.
+- Complete backup/restore script module: **29 passed in 77.31 seconds**,
+  /private/tmp/backup-restore-verified.log. Recovery preflight module: **25 passed in
+  0.11 seconds**, /private/tmp/recovery-preflight-verified.log. Bash syntax, Ruff/format
+  and whitespace checks pass; all processes are terminal. These scratch-repository runs
+  stub database/verification commands; they do not prove a live backup or restore drill.
+- All 14 original backup/restore baseline failures are resolved, leaving 17 original
+  failures without current-main disposition. Broader verification, implementation gaps
+  and independent accounting sign-off remain open. No deployment or cloud changes.

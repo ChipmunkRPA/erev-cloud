@@ -295,3 +295,26 @@ Eight more original failures resolved; four remain without current-main disposit
 
 Implementation gaps, broader verification and independent accounting sign-off remain
 open. No deployment or production-readiness claim.
+
+### Close-waiver and modification audit report verification
+
+Both cases reproduced on cc31480 (`/private/tmp/waiver-audit-before.log`).
+The waiver fixture's synthetic APPROVED request now binds the real current subject
+hash before invoking the decision hook. It checks WAIVED directly in the table,
+then requires the gate's read-time evaluation to invalidate the waiver without
+reviewed identities. The lock stays refused before re-marking and after the job
+introduces dirty members; recomputing those members clears the gate. No approval
+freshness check is bypassed. An intermediate run confirmed read-time invalidation,
+which the old test's cockpit read had obscured.
+
+The modification report expectation now includes the explicit preparer questionnaire
+save and both classification calls in confirm_answers, retaining an exact action
+sequence and all list/export, filter, field-diff and financial fixture assertions.
+No production code changed.
+
+Complete period-opening module plus audit export case: **10 passed in 67.57 seconds**,
+`/private/tmp/waiver-audit-final.log`. Ruff/format/whitespace checks pass. All processes
+terminal. Two original baseline failures remain unresolved: pending AI lifecycle
+audit coverage and the late-billing out-of-period K07 report. A new complete backend
+baseline, remaining implementation work and independent accounting sign-off are
+still required. No deployment or production-readiness claim.
