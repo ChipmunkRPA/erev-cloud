@@ -1118,6 +1118,21 @@ function LockDrawer({
               <blockquote className="rounded-md bg-subtle px-3 py-2">{lock.comment}</blockquote>
             </Definition>
           )}
+          {approval?.content_withheld === false &&
+          approval.reopen_judgement != null &&
+          approval.reopen_judgement.id === lock.judgement_record_id ? (
+            <Definition term={t("close.reopen.evidenceLabel")}>
+              <div className="flex flex-col gap-2">
+                <span>{approval.reopen_judgement.judgement_no}</span>
+                <p className="whitespace-pre-wrap">{approval.reopen_judgement.conclusion}</p>
+                <p>
+                  {t("close.reopen.evidenceReviewer", {
+                    name: approval.reopen_judgement.reviewer.display_name,
+                  })}
+                </p>
+              </div>
+            </Definition>
+          ) : null}
           {lock.cutoff_known_at === null ? null : (
             <Definition term={t("close.history.drawer.snapshot")}>
               {t("close.history.drawer.frozen", {

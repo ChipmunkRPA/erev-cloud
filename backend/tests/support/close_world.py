@@ -320,6 +320,26 @@ def contract_of(
     return UUID(str(row["id"])), UUID(str(event["id"])), UUID(str(group["id"]))
 
 
+def reviewed_error_judgement(world: CloseWorld, **extra: Any) -> UUID:
+    with world.place.uow() as uow:
+        contract_id, _, _ = contract_of(uow.session, world)
+        values = judgement_record_values(
+            world.tenant_id,
+            topic="ESTIMATE_VS_ERROR",
+            subject_type="contract",
+            subject_id=contract_id,
+            contract_id=contract_id,
+            book_code="ASC606",
+            status="REVIEWED",
+            reviewer_id=world.maya.member.user_id,
+            reviewed_at=uow.now,
+        )
+        values.update(extra)
+        uow.session.execute(insert(judgement_record).values(**values))
+        uow.commit()
+    return UUID(str(values["id"]))
+
+
 def other_entity(session: Session, world: CloseWorld, code: str = "AVM-UK") -> UUID:
     """A second entity of the tenant on AVM-US's calendar (no period states)."""
     calendar_id = session.execute(

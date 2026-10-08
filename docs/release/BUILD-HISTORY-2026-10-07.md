@@ -714,3 +714,122 @@ Earlier October 7 policy-isolation and workbench evidence is archived verbatim i
 - Remaining work includes the broader backend/specialist verification, B1-10 identity-bound
   close-gate waivers, the other documented limitations and independent accounting sign-off.
   Archived the earlier originating-contract FX section verbatim to keep this file under 20 KB.
+
+## Close-gate waiver identities — October 7, 2026
+
+- Continued from main `e9cae63`. Reproduced B1-10 in pending and approved waivers: resolving
+  one exception and introducing another at the same count let the replacement inherit review.
+- Automatic gate results now retain sorted, typed member identities. Count and membership
+  queries share their predicates; reconciliation identity, status and freshness are read together.
+  Missing reconciliation kinds and a missing journal run have explicit identities. All ten
+  waivable automatic gates carry a population; the four never-waivable gates remain protected.
+- Approval refreshes the gates under the period/checklist locks and checks its own request's
+  content hash. It refuses a changed population even without a cockpit visit. An approved
+  waiver may cover a shrinking subset; additions or replacements lapse it at any count, and
+  a spent waiver never revives. Legacy count-only waivers with blockers require a fresh review.
+  This binds membership, not every mutable field of an existing member. B1-11 remains open.
+- Submission audits retain the submitted population; lapse audits retain before/after identities.
+  Same-count replacements and missing legacy scope have explicit lapse messages. A renewed
+  approval removes the old lapse annotation. Existing historical lock records are unchanged.
+  The existing JSONB result column is sufficient; no migration or financial-oracle change.
+- **49 PostgreSQL close/lock checks passed** in 170.54 seconds, including all 11 waiver cases:
+  lock-decision replacement, missing-to-unreviewed reconciliations, legacy scope, subset
+  retention, renewal and reopen/audit behavior. Earlier runs also verified the fail-first cases.
+- **678 close-unit and architecture checks passed**; a final focused rerun passed 37 checks.
+  Updated the shared-predicate structural test and PR #29's FX unit principal fixture, which
+  lacked the tenant ID required by the publication lock. Source Mypy, Ruff, whitespace and
+  design checks (500 files) pass; 446 control tags validate; secret scan: 3,391 files, no findings.
+- B1-10 is closed for automatic gate membership. Other limitations and accounting sign-off
+  remain open. A backend run started on detached `7c9b22d` with a local database,
+  excluding parity/answer-key/performance markers; no completed result yet. Exclusions and
+  noncommercial licensing are preserved. Archived the earlier answer-key section verbatim.
+  Repository only; no deployment.
+
+## Error-correction reopen integration in progress — October 7, 2026
+
+- Continued from main `b6bbedf`; the previous turn made progress by publishing the tested
+  validation foundation. Current integration is **uncommitted on main** pending broader
+  verification. No PR, deployment or production-readiness claim.
+- Revision 0137 adds tenant-FK citations to period state and immutable reopen history;
+  downgrade physically validates that no citation would be discarded, including outside
+  the owner's tenant scope. Submission validates and binds reviewed evidence before opening
+  the request. Final approval rechecks it under period/judgement locks; superseded evidence
+  and legacy error requests without a citation become stale. Duplicate requests roll back
+  their attempted citation replacement. Non-error requests refuse an irrelevant citation.
+- The request hash includes the complete judgement and review identity. Its immutable audit
+  retains the submitted evidence for authorized approval/history readers. The form selects a
+  reviewed record using entity/book/topic/status filters and pagination; errors need that
+  record before submission. Generated API types and snapshot-copy references are updated.
+- **27 reopen workflow tests passed** in 77.05 seconds; **3 citation migration tests passed**
+  in 17.05 seconds; **all 5 migration-walk checks passed** in 17.79 seconds. **60 frontend
+  checks passed** in 3.31 seconds; TypeScript and ESLint pass. The broader unit/architecture
+  run had 675 passes and 3 failures for missing column documentation/copy mapping; those
+  fixes passed all 37 affected checks. Source Mypy and Ruff pass; design check: 501 files,
+  no findings; secret scan: 3,396 files, no findings. Earlier API failures were missing fixture
+  permissions/evidence and a refreshed MFA token discarded by the new test helper.
+- A wider close/journal/API/judgement compatibility run is **live** on the primary test DB:
+  session `10949`, PID `48598`, log `/private/tmp/reopen-citation-compatibility.log`.
+  It has reported two setup errors; inspect terminal diagnostics before claiming a pass.
+  Do not start another DB test there until it ends. The picker-filter case appended to
+  `test_reopen.py` was added after collection and needs a separate run. Also finish scoped
+  evidence/remaining fixture checks, update LIMITS only after verification, then push main.
+- The independent baseline on `7c9b22d` remains live (PID 36126, separate DB, about 25%);
+  it does not cover these edits. Follow `REOPEN-JUDGEMENT-CONTINUATION.md` for the remaining
+  integration requirements. Archived the waiver-identity section verbatim to keep this file
+  bounded. Other implementation gaps and independent accounting sign-off remain.
+
+## Error-correction reopen evidence foundation — October 7, 2026
+
+- Continued from main `4cdf8b7`. The preceding turn made progress: the B1-11 fix was tested
+  and pushed directly to main. Revalidated the separate backend process as live; its pinned
+  run is about 22% through, not a completed gate and not proof for later source changes.
+- Investigated B1-12: the public reopen request has only reason/comment; its form submits
+  the reopen before optionally authoring an unlinked judgement. A checked citation requires
+  storage, approval-basis and form changes. The integration contract and remaining verification
+  are recorded in `docs/release/REOPEN-JUDGEMENT-CONTINUATION.md`.
+- Added `close.reopen_judgements.reviewed_basis`: validates tenant/entity/book, topic,
+  REVIEWED status and independent review metadata, retaining the full accounting content and
+  review identity for approval binding. A NOWAIT share lock avoids waiting in the reverse
+  judgement/period order; its savepoint preserves the caller's transaction after conflict.
+- **14 PostgreSQL evidence checks passed** in 25.44 seconds: valid book/all-book records,
+  missing and out-of-scope records, wrong book/topic, unreviewed/superseded records and both
+  lock orders. **47 layer/import checks passed** in 11.26 seconds. Source Mypy and Ruff
+  lint/format pass. This foundation is not yet connected to the public command or form;
+  B1-12 remains open. Do not describe it as enforcement or a completed control.
+- Next: persist and hash the selected reviewed citation, revalidate at the final decision,
+  retain it in immutable reopen history, update the form and run public workflow/migration
+  tests. Other documented gaps and independent accounting sign-off remain. No deployment.
+  Archived the earlier backend-baseline section verbatim; direct-main workflow retained.
+
+## Error-correction reopen concurrency repair — October 7, 2026
+
+- The prior workflow-only turn reconfirmed no open PRs and main as the sole branch; it did not
+  advance implementation. Continued the uncommitted B1-12 integration on main `b6bbedf`.
+- The compatibility run ended with **130 passes, one failure and two setup errors**. Storing
+  the citation on the period row required an exclusive submission lock and broke the existing
+  later-period close/reopen interleaving. Replaced that design with a tenant/entity-scoped
+  `period_reopen_basis` table; submission keeps FOR SHARE and the original period row version.
+  The per-period advisory lock serializes basis changes. Immutable submitted evidence remains
+  in the request audit; the completed reopen lock retains its citation.
+- Removed the redundant mid-domain-suite schema reset that invalidated cached PostgreSQL enum
+  OIDs. The full migration suite already covers empty upgrade/downgrade/upgrade. Downgrade loss
+  guards now inspect current basis and immutable lock citations, without bypassing RLS.
+- Updated ORM exports, snapshot inventory, data-model API contract and the user guide. The
+  first revised DB run finished with **57 passes and one test assertion failure**: after all
+  scope for the request's entity was removed, the API correctly returned 404 rather than a
+  redacted header. Corrected the expectation without changing access rules. Both close/reopen
+  concurrency orders passed, including the formerly failing later-close-first interleaving.
+- **742 unit/architecture/snapshot checks passed** in 166.98 seconds on the revised storage;
+  schema/snapshot checks separately passed 71. Mypy: 5 source files clean. Ruff and diff checks
+  pass; design scan: 501 files, no findings; secret scan: 3,396 files, no findings. Frontend:
+  **62 tests passed**, TypeScript and ESLint passed (unchanged UI during storage repair).
+- Broader primary-DB compatibility is live in session `1996`, PID `56657`, log
+  `/private/tmp/reopen-citation-sidecar-compatibility.log`. It includes the corrected scope
+  case, new public submitted/superseded refusals, approval API and close/journal compatibility.
+  Wait for completion before another DB suite. Then run `backend/tests/pg/test_migrations.py`
+  for the revised migration's full up/down/up; do not use the removed mid-domain schema reset.
+- The independent baseline remains live, PID 36126, at about 28%; it has reported failures and
+  must finish for diagnostics. It runs on `erev_rv_waivers` at `7c9b22d`, not this revised source.
+  Do not restart it. Prior integration evidence was archived verbatim in BUILD-HISTORY.
+- B1-12 remains open pending current migration/compatibility/static verification and publication.
+  Other documented gaps and independent accounting sign-off remain. No deployment authorized.

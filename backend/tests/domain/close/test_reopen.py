@@ -24,6 +24,7 @@ from uuid import UUID
 
 import pytest
 from erev_api import periods as period_kernel
+from erev_api.approvals import engine as approvals
 from erev_api.auth.keyring import KeyRing
 from erev_api.clock import FrozenClock
 from erev_api.config import Settings
@@ -32,8 +33,10 @@ from erev_api.db.session import DbContext, tenant_session
 from erev_api.db.tables import (
     approval_request,
     audit_event,
+    judgement_record,
     lock_snapshot,
     period_lock,
+    period_reopen_basis,
     period_state_transition,
     reconciliation,
     subledger_line,
@@ -45,6 +48,7 @@ from erev_api.domain.journals import subledger
 from erev_api.domain.reports import snapshots as registry
 from erev_api.enums import (
     ApprovalRequestStatus,
+    ApprovalSubjectType,
     BookCode,
     ControlResult,
     FilePurpose,
@@ -56,7 +60,7 @@ from erev_api.files.store import LocalFileStore, open_file, store_file
 from erev_api.main import create_app
 from erev_api.schemas.periods import PeriodLockRequestIn
 from fastapi import FastAPI
-from sqlalchemy import func, insert, select
+from sqlalchemy import func, insert, select, update
 from sqlalchemy.orm import Session
 from support.close_world import (
     CloseWorld,
@@ -64,10 +68,14 @@ from support.close_world import (
     actor_with_role,
     close_run_succeeded,
     close_world,
+    contract_of,
     earlier_periods_closed,
     other_entity,
     reviewed_reconciliations,
     system_session,
+)
+from support.close_world import (
+    reviewed_error_judgement as _reviewed_error_judgement,
 )
 from support.db import TestDatabase
 from support.factories import booked_contract, computed
@@ -87,6 +95,7 @@ from support.worlds import (
     period_reopened,
     posted_journal,
     report_run,
+    reviewed_reopen_judgement,
     verified,
 )
 from support.worlds import period_state as period_shown
@@ -188,12 +197,17 @@ def _lock_by_writer(world: CloseWorld, key: str = "FY2026-P09") -> UUID:
 def _request_reopen(
     world: CloseWorld, requester: Actor, key: str = "FY2026-P09", reason: str = "ERROR_CORRECTION"
 ) -> Any:
+    citation = _reviewed_error_judgement(world) if reason == "ERROR_CORRECTION" else None
     shown = _state(world, key)
     return post(
         world.app,
         f"{PERIODS}/{shown['id']}/request-reopen",
         requester,
-        {"reason_code": reason, "comment": REASON},
+        {
+            "reason_code": reason,
+            "comment": REASON,
+            "judgement_record_id": None if citation is None else str(citation),
+        },
         if_match=f'"r{shown["row_version"]}"',
     )
 
@@ -653,11 +667,14 @@ COMMAND_BODIES: dict[str, dict[str, Any]] = {
 
 def _command(world: CloseWorld, actor: Actor, key: str, name: str) -> Any:
     shown = _state(world, key)
+    body = dict(COMMAND_BODIES[name])
+    if name == "request-reopen" and shown["state"] == "closed":
+        body["judgement_record_id"] = str(_reviewed_error_judgement(world))
     return post(
         world.app,
         f"{PERIODS}/{shown['id']}/{name}",
         actor,
-        COMMAND_BODIES[name],
+        body,
         if_match=f'"r{shown["row_version"]}"',
     )
 
@@ -923,11 +940,12 @@ def test_cancel_close_returns_a_reopened_period_to_reopened(
     shown = period_shown(world, AVM_US, AUGUST_2026)
     state_id, period_id = UUID(str(shown["id"])), UUID(str(shown["period"]["id"]))
     world = verified(world, clock, "priya")
+    citation, world = reviewed_reopen_judgement(world, clock, entity_code=AVM_US, comment=REASON)
     requested = post(
         app,
         f"{PERIODS}/{state_id}/request-reopen",
         world.priya,
-        {"reason_code": "ERROR_CORRECTION", "comment": REASON},
+        {"reason_code": "ERROR_CORRECTION", "comment": REASON, "judgement_record_id": citation},
         if_match=f'"r{shown["row_version"]}"',
     )
     assert requested.status_code == 200, requested.text
@@ -1309,3 +1327,394 @@ def test_closed_period_cannot_receive_a_new_task_signature(
     refused = _sign_task(world, signer, task)
     assert refused.status_code == 409, refused.text
     assert _shown_task(world)["signoff"] is None
+
+
+@pytest.mark.parametrize(
+    "citation_kind",
+    [
+        "missing",
+        "unknown",
+        "draft",
+        "submitted",
+        "superseded",
+        "wrong_topic",
+        "wrong_book",
+        "other_entity",
+        "other_tenant",
+    ],
+)
+def test_error_correction_reopen_requires_reviewed_evidence(
+    world: CloseWorld,
+    clock: FrozenClock,
+    keyring: KeyRing,
+    files: LocalFileStore,
+    citation_kind: str,
+) -> None:
+    requester = actor_with_role(
+        world.app, clock, world.tenant_id, "revenue_reviewer", name="requester"
+    )
+    _lock_by_writer(world)
+    before = _state(world)
+    citation = None
+    if citation_kind == "unknown":
+        citation = new_id()
+    elif citation_kind == "draft":
+        citation = _reviewed_error_judgement(
+            world, status="DRAFT", reviewer_id=None, reviewed_at=None
+        )
+    elif citation_kind in {"submitted", "superseded"}:
+        citation = _reviewed_error_judgement(world, status=citation_kind.upper())
+    elif citation_kind == "wrong_topic":
+        citation = _reviewed_error_judgement(world, topic="PRINCIPAL_AGENT")
+    elif citation_kind == "wrong_book":
+        citation = _reviewed_error_judgement(world, book_code="IFRS15")
+    elif citation_kind == "other_entity":
+        from support.close_world import other_entity
+
+        with system_session(world) as session:
+            entity_id = other_entity(session, world)
+            contract_id, _, _ = contract_of(session, world, entity_id)
+        citation = _reviewed_error_judgement(world, contract_id=contract_id, subject_id=contract_id)
+    elif citation_kind == "other_tenant":
+        other = close_world(world.app, keyring, clock, files)
+        citation = _reviewed_error_judgement(other)
+    response = post(
+        world.app,
+        f"{PERIODS}/{world.state_id}/request-reopen",
+        requester,
+        {
+            "reason_code": "ERROR_CORRECTION",
+            "comment": REASON,
+            "judgement_record_id": None if citation is None else str(citation),
+        },
+        if_match=f'"r{before["row_version"]}"',
+    )
+    assert response.status_code == 422, response.text
+    assert response.json()["errors"][0]["rule_id"] == "REOPEN_REVIEWED_JUDGEMENT"
+    after = _state(world)
+    assert (after["state"], after["row_version"]) == ("closed", before["row_version"])
+    assert len(_locks(world)) == 1
+
+
+def test_reopen_history_keeps_the_reviewed_citation(world: CloseWorld, clock: FrozenClock) -> None:
+    requester = actor_with_role(
+        world.app, clock, world.tenant_id, "revenue_reviewer", name="requester"
+    )
+    _lock_by_writer(world)
+    first = actor_with_role(world.app, clock, world.tenant_id, "controller", name="first")
+    second = actor_with_role(world.app, clock, world.tenant_id, "controller", name="second")
+    requested = _request_reopen(world, requester)
+    assert requested.status_code == 200, requested.text
+    request_id = requested.json()["approval_request_id"]
+    with system_session(world) as session:
+        citation = session.execute(
+            select(period_reopen_basis.c.judgement_record_id).where(
+                period_reopen_basis.c.period_state_id == world.state_id
+            )
+        ).scalar_one()
+    assert citation is not None
+    shown = get(world.app, f"/api/v1/approvals/{request_id}", first)
+    assert shown.status_code == 200, shown.text
+    assert shown.json()["reopen_judgement"]["id"] == str(citation)
+    assert shown.json()["reopen_judgement"]["reviewer"]["id"] == str(world.maya.member.user_id)
+    assert approve(world.app, request_id, first).status_code == 200
+    response = approve(world.app, request_id, second)
+    assert response.status_code == 200, response.text
+    lock, reopen = _locks(world)
+    assert lock["judgement_record_id"] is None
+    assert reopen["judgement_record_id"] == citation
+    listed = get(world.app, f"{PERIODS}/{world.state_id}/locks", world.maya)
+    assert listed.status_code == 200, listed.text
+    assert any(row["judgement_record_id"] == str(citation) for row in listed.json()["items"])
+
+
+@pytest.mark.parametrize("after_first", [False, True])
+def test_superseded_citation_voids_reopen_before_any_period_change(
+    world: CloseWorld, clock: FrozenClock, after_first: bool
+) -> None:
+    _lock_by_writer(world)
+    requester = actor_with_role(
+        world.app, clock, world.tenant_id, "revenue_reviewer", name="requester"
+    )
+    first = actor_with_role(world.app, clock, world.tenant_id, "controller", name="first")
+    second = actor_with_role(world.app, clock, world.tenant_id, "controller", name="second")
+    requested = _request_reopen(world, requester)
+    assert requested.status_code == 200, requested.text
+    request_id = requested.json()["approval_request_id"]
+    if after_first:
+        assert approve(world.app, request_id, first).status_code == 200
+    with system_session(world) as session:
+        citation = session.execute(
+            select(period_reopen_basis.c.judgement_record_id).where(
+                period_reopen_basis.c.period_state_id == world.state_id
+            )
+        ).scalar_one()
+        session.execute(
+            update(judgement_record)
+            .where(judgement_record.c.id == citation)
+            .values(status="SUPERSEDED")
+        )
+    refused = approve(world.app, request_id, second)
+    assert (refused.status_code, slug(refused)) == (409, "stale-approval"), refused.text
+    assert _request_status(world, request_id) == "VOIDED"
+    assert _state(world)["state"] == "closed"
+    assert len(_locks(world)) == 1
+
+
+def test_legacy_error_reopen_without_a_citation_cannot_complete(
+    world: CloseWorld, clock: FrozenClock
+) -> None:
+    _lock_by_writer(world)
+    first = actor_with_role(world.app, clock, world.tenant_id, "controller", name="first")
+    second = actor_with_role(world.app, clock, world.tenant_id, "controller", name="second")
+    # A request created before 0137: the ordinary kernel basis, with no citation on the state.
+    with world.place.uow() as uow:
+        request = approvals.submit(
+            uow,
+            subject_type=ApprovalSubjectType.PERIOD_REOPEN,
+            subject_id=world.state_id,
+            summary="Legacy error correction",
+            comment=REASON,
+            reason_code="ERROR_CORRECTION",
+            auto_approval=False,
+        )
+        request_id = str(request["id"])
+        uow.commit()
+    assert approve(world.app, request_id, first).status_code == 200
+    refused = approve(world.app, request_id, second)
+    assert (refused.status_code, slug(refused)) == (409, "stale-approval"), refused.text
+    assert _request_status(world, request_id) == "VOIDED"
+    assert _state(world)["state"] == "closed"
+    assert len(_locks(world)) == 1
+
+
+def test_second_reopen_request_cannot_replace_the_pending_citation(
+    world: CloseWorld, clock: FrozenClock
+) -> None:
+    _lock_by_writer(world)
+    requester = actor_with_role(
+        world.app, clock, world.tenant_id, "revenue_reviewer", name="requester"
+    )
+    first = _request_reopen(world, requester)
+    assert first.status_code == 200, first.text
+    before = _state(world)
+    with system_session(world) as session:
+        original = session.execute(
+            select(period_reopen_basis.c.judgement_record_id).where(
+                period_reopen_basis.c.period_state_id == world.state_id
+            )
+        ).scalar_one()
+    refused = _request_reopen(world, requester)
+    assert refused.status_code == 409, refused.text
+    assert _state(world)["row_version"] == before["row_version"]
+    with system_session(world) as session:
+        assert (
+            session.execute(
+                select(period_reopen_basis.c.judgement_record_id).where(
+                    period_reopen_basis.c.period_state_id == world.state_id
+                )
+            ).scalar_one()
+            == original
+        )
+
+
+@pytest.mark.parametrize("history", [False, True])
+def test_citation_migration_refuses_loss_outside_the_owners_tenant_scope(
+    world: CloseWorld, clock: FrozenClock, committed_db: TestDatabase, history: bool
+) -> None:
+    from importlib import import_module
+
+    from erev_api.db import migration_ops
+    from sqlalchemy.exc import DBAPIError
+
+    migration = import_module("erev_api.db.migrations.versions.0137_reopen_judgement_citations")
+    _lock_by_writer(world)
+    requester = actor_with_role(
+        world.app, clock, world.tenant_id, "revenue_reviewer", name="requester"
+    )
+    requested = _request_reopen(world, requester)
+    assert requested.status_code == 200, requested.text
+    if history:
+        for name in ("first", "second"):
+            reviewer = actor_with_role(world.app, clock, world.tenant_id, "controller", name=name)
+            assert (
+                approve(world.app, requested.json()["approval_request_id"], reviewer).status_code
+                == 200
+            )
+        with system_session(world) as session:
+            session.execute(
+                update(period_reopen_basis)
+                .where(period_reopen_basis.c.period_state_id == world.state_id)
+                .values(judgement_record_id=None)
+            )
+    with committed_db.owner_engine.connect() as connection:
+        transaction = connection.begin()
+        try:
+            with migration_ops.bound_to(connection), pytest.raises(DBAPIError) as error:
+                migration.downgrade()
+            assert getattr(error.value.orig, "sqlstate", None) == "23514"
+        finally:
+            transaction.rollback()
+    with system_session(world) as session:
+        if history:
+            assert (
+                session.execute(
+                    select(period_lock.c.judgement_record_id).where(period_lock.c.kind == "REOPEN")
+                ).scalar_one()
+                is not None
+            )
+        else:
+            assert (
+                session.execute(
+                    select(period_reopen_basis.c.judgement_record_id).where(
+                        period_reopen_basis.c.period_state_id == world.state_id
+                    )
+                ).scalar_one()
+                is not None
+            )
+
+
+def test_reopen_picker_filters_reviewed_topic_entity_and_applicable_book(world: CloseWorld) -> None:
+    from support.close_world import other_entity
+
+    specific = _reviewed_error_judgement(world)
+    all_books = _reviewed_error_judgement(world, book_code=None)
+    _reviewed_error_judgement(world, book_code="IFRS15")
+    _reviewed_error_judgement(world, topic="PRINCIPAL_AGENT")
+    _reviewed_error_judgement(world, status="DRAFT", reviewer_id=None, reviewed_at=None)
+    with system_session(world) as session:
+        other = other_entity(session, world)
+        contract_id, _, _ = contract_of(session, world, other)
+    _reviewed_error_judgement(world, contract_id=contract_id, subject_id=contract_id)
+    response = get(
+        world.app,
+        "/api/v1/judgements",
+        world.maya,
+        {
+            "topic": "ESTIMATE_VS_ERROR",
+            "status": "REVIEWED",
+            "entity_id": str(world.entity_id),
+            "book": "ASC606",
+        },
+    )
+    assert response.status_code == 200, response.text
+    assert {row["id"] for row in response.json()["items"]} == {str(specific), str(all_books)}
+
+
+def test_reopen_evidence_is_inaccessible_after_its_preparer_loses_entity_scope(
+    world: CloseWorld, clock: FrozenClock
+) -> None:
+    from erev_api.db.tables import role_assignment
+    from support.close_world import other_entity
+
+    _lock_by_writer(world)
+    requester = actor_with_role(
+        world.app, clock, world.tenant_id, "revenue_reviewer", name="requester"
+    )
+    requested = _request_reopen(world, requester)
+    assert requested.status_code == 200, requested.text
+    path = f"/api/v1/approvals/{requested.json()['approval_request_id']}"
+    original = get(world.app, path, requester)
+    assert original.status_code == 200, original.text
+    evidence = original.json()["reopen_judgement"]
+    assert evidence is not None
+    with system_session(world) as session:
+        other = other_entity(session, world)
+        session.execute(
+            update(role_assignment)
+            .where(
+                role_assignment.c.membership_id == requester.member.membership_id,
+                role_assignment.c.revoked_at.is_(None),
+            )
+            .values(revoked_at=clock.now(), revoked_by_kind="SYSTEM")
+        )
+    assign(requester.member, "revenue_reviewer", entity_ids=[other])
+    hidden = get(world.app, path, requester)
+    # This single-entity request is outside every remaining grant: even its header
+    # is inaccessible. Partial-scope headers are covered by the approval API suite.
+    assert (hidden.status_code, slug(hidden)) == (404, "not-found"), hidden.text
+    assert evidence["id"] not in hidden.text
+    assert evidence["judgement_no"] not in hidden.text
+    assert evidence["rationale"] not in hidden.text
+
+
+def test_a_later_request_does_not_replace_the_earlier_requests_submitted_evidence(
+    world: CloseWorld, clock: FrozenClock
+) -> None:
+    _lock_by_writer(world)
+    requester = actor_with_role(
+        world.app, clock, world.tenant_id, "revenue_reviewer", name="requester"
+    )
+    requested = _request_reopen(world, requester)
+    assert requested.status_code == 200, requested.text
+    path = f"/api/v1/approvals/{requested.json()['approval_request_id']}"
+    original = get(world.app, path, requester).json()["reopen_judgement"]
+    withdrawn = post(
+        world.app,
+        f"{path}/withdraw",
+        requester,
+        {"comment": "Replace the evidence with the subsequent reviewed conclusion."},
+    )
+    assert withdrawn.status_code == 200, withdrawn.text
+    later = _request_reopen(world, requester)
+    assert later.status_code == 200, later.text
+    new_path = f"/api/v1/approvals/{later.json()['approval_request_id']}"
+    assert get(world.app, new_path, requester).json()["reopen_judgement"]["id"] != original["id"]
+    assert get(world.app, path, requester).json()["reopen_judgement"] == original
+
+
+def test_a_busy_judgement_retries_the_final_reopen_decision_without_voiding_it(
+    world: CloseWorld, clock: FrozenClock
+) -> None:
+    _lock_by_writer(world)
+    requester = actor_with_role(
+        world.app, clock, world.tenant_id, "revenue_reviewer", name="requester"
+    )
+    first = actor_with_role(world.app, clock, world.tenant_id, "controller", name="first")
+    second = actor_with_role(world.app, clock, world.tenant_id, "controller", name="second")
+    requested = _request_reopen(world, requester)
+    assert requested.status_code == 200, requested.text
+    request_id = requested.json()["approval_request_id"]
+    assert approve(world.app, request_id, first).status_code == 200
+    with system_session(world) as writer:
+        citation = writer.execute(
+            select(period_reopen_basis.c.judgement_record_id).where(
+                period_reopen_basis.c.period_state_id == world.state_id
+            )
+        ).scalar_one()
+        writer.execute(
+            select(judgement_record.c.id).where(judgement_record.c.id == citation).with_for_update()
+        ).one()
+        busy = approve(world.app, request_id, second)
+        assert (busy.status_code, slug(busy)) == (409, "invalid-transition"), busy.text
+        assert _request_status(world, request_id) == "PENDING"
+        assert _state(world)["state"] == "closed"
+        assert len(_locks(world)) == 1
+    approved = approve(world.app, request_id, second)
+    assert approved.status_code == 200, approved.text
+    assert _state(world)["state"] == "reopened"
+
+
+def test_non_error_reopen_refuses_an_irrelevant_citation(
+    world: CloseWorld, clock: FrozenClock
+) -> None:
+    _lock_by_writer(world)
+    requester = actor_with_role(
+        world.app, clock, world.tenant_id, "revenue_reviewer", name="requester"
+    )
+    citation = _reviewed_error_judgement(world)
+    before = _state(world)
+    response = post(
+        world.app,
+        f"{PERIODS}/{world.state_id}/request-reopen",
+        requester,
+        {
+            "reason_code": "LATE_SOURCE_DATA",
+            "comment": REASON,
+            "judgement_record_id": str(citation),
+        },
+        if_match=f'"r{before["row_version"]}"',
+    )
+    assert response.status_code == 422, response.text
+    assert response.json()["errors"][0]["rule_id"] == "REOPEN_JUDGEMENT_REASON"
+    assert _state(world)["row_version"] == before["row_version"]

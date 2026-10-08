@@ -2562,6 +2562,16 @@
             ],
             "title": "Reason Code"
           },
+          "reopen_judgement": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReopenJudgementEvidenceOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "request_no": {
             "title": "Request No",
             "type": "string"
@@ -25921,6 +25931,18 @@
             "title": "Id",
             "type": "string"
           },
+          "judgement_record_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Judgement Record Id"
+          },
           "kind": {
             "$ref": "#/components/schemas/LockKind"
           },
@@ -26185,6 +26207,18 @@
             "minLength": 1,
             "title": "Comment",
             "type": "string"
+          },
+          "judgement_record_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Judgement Record Id"
           },
           "reason_code": {
             "$ref": "#/components/schemas/ReasonCode"
@@ -30666,6 +30700,59 @@
           "deployed_at"
         ],
         "title": "ReleaseOut",
+        "type": "object"
+      },
+      "ReopenJudgementEvidenceOut": {
+        "description": "Immutable reviewed citation retained when an error-correction reopen was requested.",
+        "properties": {
+          "conclusion": {
+            "title": "Conclusion",
+            "type": "string"
+          },
+          "contract_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contract Id"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "judgement_no": {
+            "title": "Judgement No",
+            "type": "string"
+          },
+          "rationale": {
+            "title": "Rationale",
+            "type": "string"
+          },
+          "reviewed_at": {
+            "format": "date-time",
+            "title": "Reviewed At",
+            "type": "string"
+          },
+          "reviewer": {
+            "$ref": "#/components/schemas/ActorOut"
+          }
+        },
+        "required": [
+          "id",
+          "judgement_no",
+          "contract_id",
+          "conclusion",
+          "rationale",
+          "reviewer",
+          "reviewed_at"
+        ],
+        "title": "ReopenJudgementEvidenceOut",
         "type": "object"
       },
       "ReplayImportIn": {
@@ -67340,6 +67427,39 @@
         "description": "Judgement records; sort ``id`` (default ``-id``), ``judgement_no`` or ``created_at``. The\nclose gate lists ``status=SUBMITTED`` (CTL-049).",
         "operationId": "judgements_list",
         "parameters": [
+          {
+            "in": "query",
+            "name": "entity_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Entity Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "book",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/BookCode"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Book"
+            }
+          },
           {
             "description": "E-56",
             "in": "query",

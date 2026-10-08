@@ -2,28 +2,37 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
-## Error-correction reopen evidence foundation — October 7, 2026
+## Reviewed evidence for error-correction reopens — October 7, 2026
 
-- Continued from main `4cdf8b7`. The preceding turn made progress: the B1-11 fix was tested
-  and pushed directly to main. Revalidated the separate backend process as live; its pinned
-  run is about 22% through, not a completed gate and not proof for later source changes.
-- Investigated B1-12: the public reopen request has only reason/comment; its form submits
-  the reopen before optionally authoring an unlinked judgement. A checked citation requires
-  storage, approval-basis and form changes. The integration contract and remaining verification
-  are recorded in `docs/release/REOPEN-JUDGEMENT-CONTINUATION.md`.
-- Added `close.reopen_judgements.reviewed_basis`: validates tenant/entity/book, topic,
-  REVIEWED status and independent review metadata, retaining the full accounting content and
-  review identity for approval binding. A NOWAIT share lock avoids waiting in the reverse
-  judgement/period order; its savepoint preserves the caller's transaction after conflict.
-- **14 PostgreSQL evidence checks passed** in 25.44 seconds: valid book/all-book records,
-  missing and out-of-scope records, wrong book/topic, unreviewed/superseded records and both
-  lock orders. **47 layer/import checks passed** in 11.26 seconds. Source Mypy and Ruff
-  lint/format pass. This foundation is not yet connected to the public command or form;
-  B1-12 remains open. Do not describe it as enforcement or a completed control.
-- Next: persist and hash the selected reviewed citation, revalidate at the final decision,
-  retain it in immutable reopen history, update the form and run public workflow/migration
-  tests. Other documented gaps and independent accounting sign-off remain. No deployment.
-  Archived the earlier backend-baseline section verbatim; direct-main workflow retained.
+- Continued from main `b6bbedf`; the preceding turn made progress by repairing the submission
+  locking regression and verifying both decision orders. B1-12 is now implemented and verified
+  for direct publication to main. No PR or deployment.
+- ERROR_CORRECTION requires a reviewed ESTIMATE_VS_ERROR judgement from the same tenant/entity
+  and applicable book. The request binds full content and independent review identity; final
+  approval revalidates under period/judgement locks. Superseded evidence and legacy requests
+  without citations become stale. Busy review locks are retryable. Other reasons refuse a citation.
+- Revision 0137 stores the current basis separately, preserving the period's FOR SHARE request
+  lock and row version. Duplicate submissions cannot replace pending evidence. Immutable request
+  audit and reopen history retain the citation; downgrade refuses citation loss across tenants.
+- The form selects reviewed evidence with entity/book/topic/status filters and pagination.
+  Approvers and history readers see the submitted conclusion and reviewer within content scope.
+  New requests cannot replace old evidence; loss of all entity access returns 404.
+- **138 compatibility tests passed** in 419.60 seconds (`reopen-citation-sidecar-compatibility.log`).
+  The earlier revised run passed 57 tests including both decision interleavings and the 14
+  basis tests; its sole incorrect 200-vs-404 expectation was fixed and passed in the final run.
+  **5 migration checks passed** in 16.31 seconds (`reopen-citation-sidecar-migration-walk.log`),
+  including full up/down/up and database lint. **742 unit/architecture/snapshot checks passed**
+  in 166.98 seconds. **62 frontend tests passed**; TypeScript, ESLint, Ruff and source Mypy pass.
+  Design: 501 files, no findings. Secrets: 3,396 files, no findings. Logs are in `/private/tmp/`.
+- Updated the data model/API contract, user guide, snapshot inventory, generated types and
+  LIMITS. The noncommercial license and research-folder exclusions remain intact. See
+  `docs/release/REOPEN-JUDGEMENT-CONTINUATION.md` for requirements and evidence.
+- The independent full-backend baseline remains live on `7c9b22d`, PID 36126 / session 28842,
+  separate DB `erev_rv_waivers`, roughly 29%, with reported failures. Preserve it and read terminal
+  diagnostics when it finishes; it does not cover this change. No full-backend pass is asserted.
+- Other documented implementation gaps and independent accounting sign-off remain. The next
+  approval-control candidate is B1-15 (requests with no independent eligible decider); eligibility
+  already exists in `approvals.engine._assigned_memberships`, but no queue/admin warning was found.
 
 ## Approvals-gate waiver sequencing — October 7, 2026
 
@@ -46,36 +55,6 @@
   answer-key and performance markers. It does not cover this change and is not a completed
   passing gate. Other limitations, specialist verification and accounting sign-off remain.
   Archived the mandatory-product section verbatim. Repository only; no deployment.
-
-## Close-gate waiver identities — October 7, 2026
-
-- Continued from main `e9cae63`. Reproduced B1-10 in pending and approved waivers: resolving
-  one exception and introducing another at the same count let the replacement inherit review.
-- Automatic gate results now retain sorted, typed member identities. Count and membership
-  queries share their predicates; reconciliation identity, status and freshness are read together.
-  Missing reconciliation kinds and a missing journal run have explicit identities. All ten
-  waivable automatic gates carry a population; the four never-waivable gates remain protected.
-- Approval refreshes the gates under the period/checklist locks and checks its own request's
-  content hash. It refuses a changed population even without a cockpit visit. An approved
-  waiver may cover a shrinking subset; additions or replacements lapse it at any count, and
-  a spent waiver never revives. Legacy count-only waivers with blockers require a fresh review.
-  This binds membership, not every mutable field of an existing member. B1-11 remains open.
-- Submission audits retain the submitted population; lapse audits retain before/after identities.
-  Same-count replacements and missing legacy scope have explicit lapse messages. A renewed
-  approval removes the old lapse annotation. Existing historical lock records are unchanged.
-  The existing JSONB result column is sufficient; no migration or financial-oracle change.
-- **49 PostgreSQL close/lock checks passed** in 170.54 seconds, including all 11 waiver cases:
-  lock-decision replacement, missing-to-unreviewed reconciliations, legacy scope, subset
-  retention, renewal and reopen/audit behavior. Earlier runs also verified the fail-first cases.
-- **678 close-unit and architecture checks passed**; a final focused rerun passed 37 checks.
-  Updated the shared-predicate structural test and PR #29's FX unit principal fixture, which
-  lacked the tenant ID required by the publication lock. Source Mypy, Ruff, whitespace and
-  design checks (500 files) pass; 446 control tags validate; secret scan: 3,391 files, no findings.
-- B1-10 is closed for automatic gate membership. Other limitations and accounting sign-off
-  remain open. A backend run started on detached `7c9b22d` with a local database,
-  excluding parity/answer-key/performance markers; no completed result yet. Exclusions and
-  noncommercial licensing are preserved. Archived the earlier answer-key section verbatim.
-  Repository only; no deployment.
 
 ## Estimate FX approval drift — October 7, 2026
 

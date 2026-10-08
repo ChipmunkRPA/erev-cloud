@@ -470,6 +470,9 @@ RULES: Final[Mapping[str, TableRule]] = MappingProxyType(
             _K.INTEGRATION, "per-connection id map (T-INT-04); connections are not copied"
         ),
         # --- regenerated: operational rows the sandbox produces on its own (Q-7) ----------------
+        "period_reopen_basis": _regenerated(
+            _K.OPERATIONAL, "current reopen request basis; sandbox requests create their own"
+        ),
         "job": _regenerated(_K.OPERATIONAL, "the load job creates the sandbox's own rows"),
         "notification": _regenerated(_K.OPERATIONAL, "produced by sandbox activity"),
         "notification_preference": _regenerated(_K.OPERATIONAL, "user preferences (Q-7)"),

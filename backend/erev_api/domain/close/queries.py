@@ -726,6 +726,7 @@ def list_locks(session: Session, scope: gates.PeriodScope) -> list[dict[str, Any
                 period_lock.c.snapshot_manifest_sha256,
                 period_lock.c.previous_lock_id,
                 period_lock.c.diff_report_file_id,
+                period_lock.c.judgement_record_id,
                 period_lock.c.cutoff_known_at,
                 *_LOCK_CREATOR,
             )

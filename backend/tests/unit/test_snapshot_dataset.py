@@ -65,10 +65,11 @@ def test_class_totals_and_reasons_are_pinned() -> None:
         # + modification (T-CON-06; CTR-17 / D-98 140, revision 0068)
         # + migration_population_version, migration_population_obligation (04 rev 1.60, F-LMG)
         sd.SnapshotClass.REPLAY_REFERENCE: 3,
-        sd.SnapshotClass.REGENERATED: 51,  # + control_execution, migration_reconciliation_line,
+        sd.SnapshotClass.REGENERATED: 52,  # + control_execution, migration_reconciliation_line,
         # subledger_line_event (T-SL-12, lane ENG-C6); + sync_run, external_id_map (DIN-12, 0072);
         # + audit_event_contract (T-PLT-48, revision 0101: the index of the sandbox's own events);
         # + file_upload (T-PLT-49, revision 0103: the sandbox's own uploads)
+        # + period_reopen_basis (T-CLS-09, revision 0137: the sandbox's own requests)
         sd.SnapshotClass.EXCLUDED_SECRET: 10,  # + integration_connection (DIN-12, 0072)
         sd.SnapshotClass.SHARED: 9,  # + registry_parameter_correction (T-PLT-47, 04 1.59)
     }
@@ -141,6 +142,7 @@ def test_snapshot_copies_facts_not_derived() -> None:
         "journal_run",
         "report_run",
         "lock_snapshot",
+        "period_reopen_basis",  # source pending reopen requests are not resumed
         "exception_item",  # ruling Q-1: validation derives it on load
     ):
         assert excluded[name].snapshot_class is sd.SnapshotClass.REGENERATED, name
@@ -202,7 +204,8 @@ def test_references_resolve_every_id_column_of_the_copied_tables() -> None:
     # + the array reference ssp_calculator_run.entity_ids → legal_entity (04 rev 1.277 T-REF-32;
     # item SSP-ENTITY-SCOPE-1, lane SECFIX-APR, revision 0123): the entities the provider of a
     # calculator run read, a requirement set (ruling R-98) = 211
-    assert len(refs) == len(INV.references) == 211
+    assert len(refs) == len(INV.references) == 212
+    assert refs[("period_lock", "judgement_record_id")].target == "judgement_record"
     assert refs[("approval_request", "entity_ids")].target == "legal_entity"
     assert refs[("approval_request", "entity_ids")].array
     assert refs[("ssp_calculator_run", "entity_ids")].target == "legal_entity"

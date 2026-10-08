@@ -37,7 +37,7 @@ from erev_api.auth.principal import RequestContext
 from erev_api.db.tables import judgement_record
 from erev_api.domain.contracts import queries
 from erev_api.domain.policies import judgements
-from erev_api.enums import JudgementStatus, JudgementTopic
+from erev_api.enums import BookCode, JudgementStatus, JudgementTopic
 from erev_api.schemas.common import ListOut
 from erev_api.schemas.judgements import (
     JudgementCreateIn,
@@ -68,7 +68,9 @@ JUDGEMENT_LIST: Final = ListSpec(
     },
     default_sort="-id",
     filters={},
-    custom_filters=frozenset({"topic", "status", "subject_type", "subject_id"}),
+    custom_filters=frozenset(
+        {"topic", "status", "subject_type", "subject_id", "entity_id", "book"}
+    ),
 )
 
 type ReadContext = Annotated[RequestContext, Depends(require(READ))]
@@ -93,6 +95,8 @@ def judgements_list(
     response: Response,
     ctx: ReadContext,
     params: Params,
+    entity_id: Annotated[uuid.UUID | None, Query()] = None,
+    book: Annotated[BookCode | None, Query()] = None,
     topic: Annotated[list[JudgementTopic] | None, Query(description="E-56")] = None,
     status: Annotated[list[JudgementStatus] | None, Query(description="E-57")] = None,
     subject_type: Annotated[SubjectType | None, Query()] = None,
@@ -103,6 +107,8 @@ def judgements_list(
 
     def page(session: Session) -> tuple[ListResult, list[JudgementOut]]:
         statement = judgements.judgements_statement(
+            entity_id=entity_id,
+            book_code=book,
             topics=tuple(topic or ()),
             statuses=tuple(status or ()),
             subject_type=subject_type,

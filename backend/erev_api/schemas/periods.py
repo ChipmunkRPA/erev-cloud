@@ -177,6 +177,7 @@ class PeriodReopenRequestIn(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    judgement_record_id: uuid.UUID | None = None
     reason_code: ReasonCode
     comment: str = Field(min_length=1, max_length=MEMO_LENGTH)
 
@@ -250,5 +251,6 @@ class PeriodLockRowOut(BaseModel):
     snapshot_manifest_sha256: str | None
     previous_lock_id: uuid.UUID | None
     diff_report_file_id: uuid.UUID | None
+    judgement_record_id: uuid.UUID | None = None
     cutoff_known_at: datetime | None
     snapshots: list[PeriodLockSnapshotOut]

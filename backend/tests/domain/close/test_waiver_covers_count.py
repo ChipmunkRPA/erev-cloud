@@ -42,6 +42,7 @@ from support.close_world import (
     close_run_succeeded,
     close_world,
     earlier_periods_closed,
+    reviewed_error_judgement,
     reviewed_reconciliations,
     system_session,
 )
@@ -394,7 +395,11 @@ def test_a_reopen_ends_the_waivers_of_the_close_it_reopens(
         world,
         priya,
         "request-reopen",
-        {"reason_code": "ERROR_CORRECTION", "comment": "Costs of September were omitted."},
+        {
+            "judgement_record_id": str(reviewed_error_judgement(world)),
+            "reason_code": "ERROR_CORRECTION",
+            "comment": "Costs of September were omitted.",
+        },
     )
     assert asked.status_code == 200, asked.text
     dana = actor_with_role(app, clock, world.tenant_id, "controller", name="dana")

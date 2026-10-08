@@ -3520,7 +3520,7 @@ def s_periods_request_reopen(w: World) -> HttpResponse:
         w.app,
         f"{API}/periods/{state['id']}/request-reopen",
         w.nora,
-        {"reason_code": "ERROR_CORRECTION", "comment": "Late invoice to record (SOP-7 walk)."},
+        {"reason_code": "LATE_SOURCE_DATA", "comment": "Late invoice to record (SOP-7 walk)."},
         if_match=f'"r{state["row_version"]}"',
     )
 

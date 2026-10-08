@@ -7068,5 +7068,13 @@
   "contracts.policyOverrides.status.PUBLISHED": "Published",
   "contracts.policyOverrides.status.VOIDED": "Voided",
   "contracts.policyOverrides.rateValue": "Annual rate {rate} · {compounding} · {basis}",
-  "contracts.policyOverrides.viewRequest": "View approval request"
+  "contracts.policyOverrides.viewRequest": "View approval request",
+  "close.reopen.evidenceHelp": "An error correction requires an independently reviewed estimate-versus-error judgement for this entity and book. Prepare and review the judgement before requesting reopen.",
+  "close.reopen.evidenceLabel": "Reviewed judgement",
+  "close.reopen.evidenceRequired": "Select the reviewed judgement supporting this error correction.",
+  "close.reopen.evidenceLoadError": "Could not load reviewed judgements. Refresh and try again.",
+  "close.reopen.evidenceLoading": "Loading reviewed judgements…",
+  "close.reopen.evidenceEmpty": "No reviewed judgements are available for this entity and book.",
+  "close.reopen.evidenceReviewer": "Reviewed by {name}",
+  "close.reopen.evidenceContract": "Open contract"
 }

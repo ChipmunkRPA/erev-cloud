@@ -1,7 +1,8 @@
 // SF-05 "Request reopen" (SCREENS_B §1.1 J-14.1; DESIGN_SYSTEM DS-CMP-09 modal drawer, DS-CMP-18,
 // DS-A11Y-08; 04 §16.8 `POST /periods/{id}/request-reopen`, API-R-12 `POST /files` and
 // `POST /attachments`, `POST /judgements` and `/submit`; BUILD_SPEC CLO-23, CLO-7). The request is sent
-// first; the attachments and the estimate-versus-error judgement follow, and a later failure keeps the
+// first for other reasons; error corrections select an independently reviewed judgement before
+// submission. Attachments follow, and a later failure keeps the
 // drawer open with the partial-success banner. While the request waits for its two decisions the
 // cockpit shows `ReopenRequestBanner`: the dual-approval status, the decisions recorded so far and, for
 // the requester, "Withdraw request". The two optional parts follow the requester's permissions
@@ -47,6 +48,8 @@ import {
 } from "./judgement-drawer";
 
 /** The E-110 subset of 04 table 3.4-R for `request-reopen` (OQ-B-06, D-76). */
+import { ReopenEvidence } from "./reopen-evidence";
+
 export type ReopenReason = "ERROR_CORRECTION" | "LATE_SOURCE_DATA" | "AUDIT_ADJUSTMENT" | "OTHER";
 const REASONS: readonly ReopenReason[] = [
   "ERROR_CORRECTION",
@@ -116,6 +119,7 @@ export function ReopenDrawer({
   const [reason, setReason] = useState<ReopenReason | null>(null);
   const [comment, setComment] = useState("");
   const [files, setFiles] = useState<readonly File[]>([]);
+  const [citation, setCitation] = useState<string | null>(null);
   const [judged, setJudged] = useState(false);
   const [judgement, setJudgement] = useState<JudgementDraft>(EMPTY_JUDGEMENT);
   const [attempted, setAttempted] = useState(false);
@@ -124,8 +128,13 @@ export function ReopenDrawer({
   const [partial, setPartial] = useState<string | null>(null);
   const entityCode = period.entity.code;
 
-  const judgementProblems = judged ? judgementErrors(judgement) : null;
+  const judgementProblems =
+    judged && reason !== "ERROR_CORRECTION" ? judgementErrors(judgement) : null;
   const errors = {
+    citation:
+      reason === "ERROR_CORRECTION" && citation === null
+        ? t("close.reopen.evidenceRequired")
+        : null,
     reason: reason === null ? t("close.reopen.reasonError") : null,
     comment: reasonError(comment),
     contract: judgementProblems?.contract ?? null,
@@ -155,7 +164,7 @@ export function ReopenDrawer({
   };
 
   const judge = async (): Promise<ApiProblem | null> => {
-    if (!judged || judgement.contractId === null) {
+    if (reason === "ERROR_CORRECTION" || !judged || judgement.contractId === null) {
       return null;
     }
     const outcome = await recordJudgement(keys, judgement);
@@ -175,7 +184,11 @@ export function ReopenDrawer({
         keys,
         "POST",
         periodCommandPath(period.id, "request-reopen"),
-        { reason_code: reason, comment: comment.trim() } satisfies PeriodReopenRequestIn,
+        {
+          reason_code: reason,
+          comment: comment.trim(),
+          judgement_record_id: reason === "ERROR_CORRECTION" ? citation : null,
+        } satisfies PeriodReopenRequestIn,
         rowIfMatch(period.row_version),
       );
       if (!created.ok) {
@@ -288,7 +301,15 @@ export function ReopenDrawer({
             onChange={setFiles}
           />
         ) : null}
-        {canJudge ? (
+        {reason === "ERROR_CORRECTION" ? (
+          <ReopenEvidence
+            entityId={period.entity.id}
+            book={period.book}
+            value={citation}
+            onChange={setCitation}
+            error={attempted ? errors.citation : null}
+          />
+        ) : canJudge ? (
           <label htmlFor={checkboxId} className="flex items-center gap-2 text-body-sm text-fg-1">
             <input
               id={checkboxId}
@@ -312,7 +333,7 @@ export function ReopenDrawer({
             )}
           </p>
         )}
-        {judged ? (
+        {judged && reason !== "ERROR_CORRECTION" ? (
           <fieldset className="flex flex-col gap-3 border-s border-hairline ps-4">
             <legend className="text-title-sm text-fg-1">{t("close.reopen.judgementLegend")}</legend>
             <JudgementFields

@@ -136,6 +136,7 @@ period_lock: Final = Table(
     Column("snapshot_manifest_sha256", CHAR(64), nullable=True),
     Column("previous_lock_id", Uuid(), nullable=True),
     Column("diff_report_file_id", Uuid(), nullable=True),
+    Column("judgement_record_id", Uuid(), nullable=True),
     # rev 1.113 (revision 0084): the instant a LOCK row's datasets are frozen at (S15-R-18c)
     _timestamp("cutoff_known_at"),
     *_sc_c(),
@@ -231,4 +232,17 @@ signoff: Final = Table(
     Column("subject_content_sha256", CHAR(64), nullable=False),
     _timestamp("mfa_verified_at", nullable=False),
     _timestamp("signed_at", nullable=False, now_default=True),
+)
+
+
+# T-CLS-09: mutable current request basis; historical evidence stays in the request audit.
+period_reopen_basis: Final = Table(
+    "period_reopen_basis",
+    metadata,
+    Column("tenant_id", Uuid(), primary_key=True),
+    Column("id", Uuid(), primary_key=True),
+    Column("period_state_id", Uuid(), nullable=False),
+    Column("entity_id", Uuid(), nullable=False),
+    Column("judgement_record_id", Uuid(), nullable=True),
+    *_sc_c_sc_m(),
 )

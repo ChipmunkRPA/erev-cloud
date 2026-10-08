@@ -95,6 +95,18 @@ class ApprovalAttachmentOut(BaseModel):
     original_filename: str | None
 
 
+class ReopenJudgementEvidenceOut(BaseModel):
+    """Immutable reviewed citation retained when an error-correction reopen was requested."""
+
+    id: uuid.UUID
+    judgement_no: str
+    contract_id: uuid.UUID | None
+    conclusion: str
+    rationale: str
+    reviewer: ActorOut
+    reviewed_at: datetime
+
+
 class ApprovalOut(BaseModel):
     """API-S-Approval."""
 
@@ -126,6 +138,7 @@ class ApprovalOut(BaseModel):
     current_step_no: int
     steps: list[ApprovalStepOut]
     impact_preview: ImpactPreviewOut | None
+    reopen_judgement: ReopenJudgementEvidenceOut | None = None
     attachments: list[ApprovalAttachmentOut]
     can_decide: bool
     # 04 §16.10 rev 1.208 (item APR-CONTENT-SCOPE-1): true for a reader who covers only some of

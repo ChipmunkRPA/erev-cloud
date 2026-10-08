@@ -3679,6 +3679,44 @@ def period_locked(
     return run, world
 
 
+def reviewed_reopen_judgement(
+    world: ReportWorld, clock: FrozenClock, *, entity_code: str, comment: str
+) -> tuple[str, ReportWorld]:
+    """Prepare and independently review the evidence before an error-correction reopen."""
+    from erev_api.db.tables import contract, legal_entity
+    from support.reference import approve
+
+    with world.place.uow() as uow:
+        contract_id = uow.session.execute(
+            select(contract.c.id)
+            .join(legal_entity, legal_entity.c.id == contract.c.contracting_entity_id)
+            .where(legal_entity.c.code == entity_code)
+            .order_by(contract.c.id)
+            .limit(1)
+        ).scalar_one()
+    created = post(
+        world.app,
+        "/api/v1/judgements",
+        world.maya,
+        {
+            "topic": "ESTIMATE_VS_ERROR",
+            "subject_type": "contract",
+            "subject_id": str(contract_id),
+            "book": "ASC606",
+            "conclusion": "The omitted source information is an error correction.",
+            "rationale": comment,
+        },
+    )
+    assert created.status_code == 201, created.text
+    record_id = str(created.json()["id"])
+    submitted = post(world.app, f"/api/v1/judgements/{record_id}/submit", world.maya, {})
+    assert submitted.status_code == 200, submitted.text
+    world = verified(world, clock, "marcus")
+    reviewed = approve(world.app, submitted.json()["approval_request_id"], world.marcus)
+    assert reviewed.status_code == 200, reviewed.text
+    return record_id, world
+
+
 def period_reopened(
     world: ReportWorld, clock: FrozenClock, *, entity_code: str, period_key: str, comment: str
 ) -> ReportWorld:
@@ -3687,6 +3725,9 @@ def period_reopened(
     from support.close_world import actor_with_role
     from support.reference import approve
 
+    citation, world = reviewed_reopen_judgement(
+        world, clock, entity_code=entity_code, comment=comment
+    )
     app = world.app
     elena = actor_with_role(app, clock, world.tenant_id, "controller", name="elena")
     state = period_state(world, entity_code, period_key)
@@ -3695,7 +3736,7 @@ def period_reopened(
         app,
         f"{PERIODS}/{state['id']}/request-reopen",
         world.priya,
-        {"reason_code": "ERROR_CORRECTION", "comment": comment},
+        {"reason_code": "ERROR_CORRECTION", "comment": comment, "judgement_record_id": citation},
         if_match=f'"r{state["row_version"]}"',
     )
     assert requested.status_code == 200, requested.text

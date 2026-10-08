@@ -8539,6 +8539,7 @@ export interface components {
       preparer: components["schemas"]["ActorOut"];
       /** Reason Code */
       reason_code: string | null;
+      reopen_judgement?: components["schemas"]["ReopenJudgementEvidenceOut"] | null;
       /** Request No */
       request_no: string;
       routing: components["schemas"]["ApprovalRoutingOut"];
@@ -17079,6 +17080,8 @@ export interface components {
        * Format: uuid
        */
       id: string;
+      /** Judgement Record Id */
+      judgement_record_id?: string | null;
       kind: components["schemas"]["LockKind"];
       /** Ledger Head Chain Seq */
       ledger_head_chain_seq: number;
@@ -17167,6 +17170,8 @@ export interface components {
     PeriodReopenRequestIn: {
       /** Comment */
       comment: string;
+      /** Judgement Record Id */
+      judgement_record_id?: string | null;
       reason_code: components["schemas"]["ReasonCode"];
     };
     /**
@@ -18795,6 +18800,31 @@ export interface components {
       id: string;
       /** Schema Revision */
       schema_revision: string;
+    };
+    /**
+     * ReopenJudgementEvidenceOut
+     * @description Immutable reviewed citation retained when an error-correction reopen was requested.
+     */
+    ReopenJudgementEvidenceOut: {
+      /** Conclusion */
+      conclusion: string;
+      /** Contract Id */
+      contract_id: string | null;
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Judgement No */
+      judgement_no: string;
+      /** Rationale */
+      rationale: string;
+      /**
+       * Reviewed At
+       * Format: date-time
+       */
+      reviewed_at: string;
+      reviewer: components["schemas"]["ActorOut"];
     };
     /**
      * ReplayImportIn
@@ -37066,6 +37096,8 @@ export interface operations {
   judgements_list: {
     parameters: {
       query?: {
+        entity_id?: string | null;
+        book?: components["schemas"]["BookCode"] | null;
         /** @description E-56 */
         topic?: components["schemas"]["JudgementTopic"][] | null;
         /** @description E-57 */

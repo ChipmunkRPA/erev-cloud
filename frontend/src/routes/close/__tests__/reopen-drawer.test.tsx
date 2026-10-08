@@ -6,16 +6,43 @@
 // period that is already waiting — and saves the attachment.
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Period } from "../../../lib/api/queries/tenant";
 import { installMemoryStorage, renderWithApp, signedInMe } from "../../../test/app";
 import { apiUrl, installMswServer, problemResponse, server } from "../../../test/msw";
 import { REFUSAL_REFERENCE, REFUSAL_TITLE, refusedWith } from "../../../test/refusals";
 import { ReopenDrawer } from "../reopen-drawer";
+import { ReopenEvidence } from "../reopen-evidence";
 
 installMswServer();
 installMemoryStorage();
+
+const JUDGEMENT_ID = "afe16a52-348b-40ca-b023-000000000001";
+beforeEach(() => {
+  server.use(
+    http.get(apiUrl("/api/v1/judgements"), ({ request }) => {
+      const query = new URL(request.url).searchParams;
+      expect(query.get("topic")).toBe("ESTIMATE_VS_ERROR");
+      expect(query.get("status")).toBe("REVIEWED");
+      expect(query.get("entity_id")).toBe(PERIOD.entity.id);
+      expect(query.get("book")).toBe("ASC606");
+      return HttpResponse.json({
+        items: [
+          {
+            id: JUDGEMENT_ID,
+            judgement_no: "JDG-000042",
+            conclusion: "Correct the duplicate August usage.",
+            rationale: "Supported by the source file.",
+            contract_id: "contract-42",
+            reviewer: { display_name: "Marcus" },
+          },
+        ],
+        next_cursor: null,
+      });
+    }),
+  );
+});
 
 afterEach(() => {
   cleanup();
@@ -88,7 +115,8 @@ describe("SF-05 Request reopen", () => {
       http.get(apiUrl("/api/v1/me/notifications"), () =>
         HttpResponse.json({ items: [], next_cursor: null }),
       ),
-      http.post(apiUrl(`/api/v1/periods/${STATE_ID}/request-reopen`), ({ request }) => {
+      http.post(apiUrl(`/api/v1/periods/${STATE_ID}/request-reopen`), async ({ request }) => {
+        expect(await request.json()).toMatchObject({ judgement_record_id: JUDGEMENT_ID });
         note(request);
         // What the API answers to the first send, and replays to the second under the same key.
         return HttpResponse.json({ approval_request_id: REQUEST_ID });
@@ -172,6 +200,10 @@ describe("SF-05 Request reopen", () => {
     await screen.findByRole("dialog", { name: "Request reopen of Aug 2026" });
     fireEvent.click(screen.getByRole("combobox", { name: /^Reason/ }));
     fireEvent.mouseDown(screen.getByRole("option", { name: "Error correction" }));
+    await screen.findByRole("combobox", { name: /^Reviewed judgement/ });
+    fireEvent.click(screen.getByRole("combobox", { name: /^Reviewed judgement/ }));
+    fireEvent.mouseDown(await screen.findByRole("option", { name: "JDG-000042" }));
+    expect(screen.getByText("Reviewed by Marcus")).toBeTruthy();
     fireEvent.change(screen.getByRole("textbox", { name: /^Comment/ }), {
       target: { value: "The August usage file was loaded twice." },
     });
@@ -253,6 +285,10 @@ describe("SF-05 Request reopen", () => {
     const drawer = await screen.findByRole("dialog", { name: "Request reopen of Aug 2026" });
     fireEvent.click(screen.getByRole("combobox", { name: /^Reason/ }));
     fireEvent.mouseDown(screen.getByRole("option", { name: "Error correction" }));
+    await screen.findByRole("combobox", { name: /^Reviewed judgement/ });
+    fireEvent.click(screen.getByRole("combobox", { name: /^Reviewed judgement/ }));
+    fireEvent.mouseDown(await screen.findByRole("option", { name: "JDG-000042" }));
+    expect(screen.getByText("Reviewed by Marcus")).toBeTruthy();
     fireEvent.change(screen.getByRole("textbox", { name: /^Comment/ }), {
       target: { value: "The August usage file was loaded twice." },
     });
@@ -261,4 +297,88 @@ describe("SF-05 Request reopen", () => {
     const banner = await within(drawer).findByRole("alert");
     expect(banner.textContent).toBe(REFUSAL_TITLE + first + second + REFUSAL_REFERENCE);
   });
+});
+
+it("requires reviewed evidence before sending an error-correction reopen", async () => {
+  const sent = vi.fn();
+  server.use(
+    http.post(apiUrl(`/api/v1/periods/${STATE_ID}/request-reopen`), () => {
+      sent();
+      return HttpResponse.json({ approval_request_id: REQUEST_ID });
+    }),
+  );
+  renderWithApp(
+    <ReopenDrawer
+      period={PERIOD}
+      periodLabel="Aug 2026"
+      bookLabel="ASC 606"
+      canViewRequest={false}
+      canAttach={false}
+      canJudge={false}
+      judgementRegisterHref={null}
+      onClose={() => undefined}
+    />,
+    {
+      entry: "/close/AVM-US/ASC606/FY2026-P08",
+      me: signedInMe({ permissions: ["contract.read", "period.reopen_request"] }),
+    },
+  );
+  fireEvent.click(await screen.findByRole("combobox", { name: /^Reason/ }));
+  fireEvent.mouseDown(screen.getByRole("option", { name: "Error correction" }));
+  fireEvent.change(screen.getByRole("textbox", { name: /^Comment/ }), {
+    target: { value: "Correct the duplicate August usage." },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Submit reopen request" }));
+  expect(
+    await screen.findByText("Select the reviewed judgement supporting this error correction."),
+  ).toBeTruthy();
+  expect(sent).not.toHaveBeenCalled();
+});
+
+it("loads later pages of reviewed evidence without dropping entity and book filters", async () => {
+  const cursors: (string | null)[] = [];
+  server.use(
+    http.get(apiUrl("/api/v1/judgements"), ({ request }) => {
+      const query = new URL(request.url).searchParams;
+      const cursor = query.get("cursor");
+      cursors.push(cursor);
+      expect(query.get("entity_id")).toBe(PERIOD.entity.id);
+      expect(query.get("book")).toBe("ASC606");
+      expect(query.get("status")).toBe("REVIEWED");
+      expect(query.get("topic")).toBe("ESTIMATE_VS_ERROR");
+      return HttpResponse.json(
+        cursor === null
+          ? { items: [], next_cursor: "second-page" }
+          : {
+              items: [
+                {
+                  id: JUDGEMENT_ID,
+                  judgement_no: "JDG-000043",
+                  conclusion: "Second page evidence.",
+                  rationale: "The later page remains selectable.",
+                  contract_id: null,
+                  reviewer: { display_name: "Elena" },
+                },
+              ],
+              next_cursor: null,
+            },
+      );
+    }),
+  );
+  renderWithApp(
+    <ReopenEvidence
+      entityId={PERIOD.entity.id}
+      book="ASC606"
+      value={JUDGEMENT_ID}
+      onChange={() => undefined}
+      error={null}
+    />,
+    {
+      entry: "/close/AVM-US/ASC606/FY2026-P08",
+      me: signedInMe({ permissions: ["contract.read"] }),
+    },
+  );
+  expect(await screen.findByText("Second page evidence.")).toBeTruthy();
+  expect(screen.getByText("Reviewed by Elena")).toBeTruthy();
+  expect(cursors).toEqual([null, "second-page"]);
 });

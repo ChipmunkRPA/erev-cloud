@@ -56,6 +56,7 @@ from support.close_world import (
     close_world,
     earlier_periods_closed,
     periods_closed_before,
+    reviewed_error_judgement,
     reviewed_reconciliations,
     system_session,
 )
@@ -404,7 +405,14 @@ def test_the_dataset_lock_through_a_lock_a_reopen_a_second_lock_and_the_permanen
     priya = actor_with_role(app, clock, world.tenant_id, "revenue_reviewer", name="priya")
     elena = actor_with_role(app, clock, world.tenant_id, "controller", name="elena")
     asked = _commanded(
-        world, priya, "request-reopen", {"reason_code": "ERROR_CORRECTION", "comment": REASON}
+        world,
+        priya,
+        "request-reopen",
+        {
+            "judgement_record_id": str(reviewed_error_judgement(world)),
+            "reason_code": "ERROR_CORRECTION",
+            "comment": REASON,
+        },
     )
     request_id = str(asked.json()["approval_request_id"])
     assert approve(app, request_id, marcus).status_code == 200

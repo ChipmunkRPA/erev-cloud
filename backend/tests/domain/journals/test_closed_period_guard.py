@@ -47,6 +47,7 @@ from support.close_world import (
     close_world,
     earlier_periods_closed,
     requested_journal_run,
+    reviewed_error_judgement,
     reviewed_reconciliations,
     run_journal_job,
     system_session,
@@ -469,7 +470,11 @@ def test_a_run_is_calculated_and_cancelled_in_a_reopened_period(
         world.app,
         f"{PERIODS}/{shown['id']}/request-reopen",
         requester,
-        {"reason_code": "ERROR_CORRECTION", "comment": "A late credit memo for September."},
+        {
+            "judgement_record_id": str(reviewed_error_judgement(world)),
+            "reason_code": "ERROR_CORRECTION",
+            "comment": "A late credit memo for September.",
+        },
         if_match=f'"r{shown["row_version"]}"',
     )
     assert requested.status_code == 200, requested.text

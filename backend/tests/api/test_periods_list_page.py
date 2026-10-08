@@ -35,6 +35,7 @@ from support.close_world import (
     actor_with_role,
     close_world,
     periods_closed_before,
+    reviewed_error_judgement,
     system_session,
 )
 from support.db import TestDatabase
@@ -200,7 +201,11 @@ def test_a_row_of_the_list_is_the_single_read_without_its_blockers(
         world.app,
         f"{PERIODS}/{september['id']}/request-reopen",
         priya,
-        {"reason_code": "ERROR_CORRECTION", "comment": REOPEN_REASON},
+        {
+            "judgement_record_id": str(reviewed_error_judgement(world)),
+            "reason_code": "ERROR_CORRECTION",
+            "comment": REOPEN_REASON,
+        },
         if_match=f'"r{september["row_version"]}"',
     )
     assert requested.status_code == 200, requested.text

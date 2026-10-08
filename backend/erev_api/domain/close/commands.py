@@ -48,6 +48,7 @@ from erev_api.db.tables import (
     legal_entity,
     period,
     period_lock,
+    period_reopen_basis,
     period_state,
     period_state_transition,
     reconciliation,
@@ -64,6 +65,7 @@ from erev_api.domain.close import (
     period_machine,
     rate_changes,
     relock_diff,
+    reopen_judgements,
     snapshots,
 )
 from erev_api.domain.close import queries as close_queries
@@ -475,7 +477,8 @@ def _pinned_scope(
     neither waits for the postings in flight nor makes one wait. ``one_request`` first takes a
     transaction-level advisory lock on the period state: two requests for one period are decided
     one after the other, as the row lock ``FOR UPDATE`` did, and the second one reads the first
-    one's pending request."""
+    one's pending request. The pending reopen basis is stored separately so submission
+    never upgrades this shared period lock."""
     session = uow.session
     if one_request:
         key = REQUEST_LOCK_KEY.format(state_id=state_id)
@@ -1501,7 +1504,10 @@ def request_reopen(
     other than the requester decide; no auto-approval (D-98 55). A period of the LEGACY book is
     refused by name (``_refuse_legacy_book``; PRD ERR-76)."""
     scope = _pinned_scope(
-        uow, state_id, permission=period_rules.REOPEN_REQUEST_PERMISSION, one_request=True
+        uow,
+        state_id,
+        permission=period_rules.REOPEN_REQUEST_PERMISSION,
+        one_request=True,
     )
     check_version(scope.row_version)
     _refuse_legacy_book(uow.session, scope.book_code)
@@ -1516,13 +1522,59 @@ def request_reopen(
         ctx=_context(scope),
     )
     _refuse(outcome)
+    basis = None
+    if body.reason_code is ReasonCode.ERROR_CORRECTION:
+        basis = reopen_judgements.reviewed_basis(
+            uow.session,
+            tenant_id=uow.principal.tenant_id,
+            entity_id=scope.entity_id,
+            book_code=scope.book_code,
+            judgement_id=body.judgement_record_id,
+        )
+    elif body.judgement_record_id is not None:
+        raise Problem(
+            "validation-failed",
+            errors=[
+                ProblemError(
+                    field="judgement_record_id",
+                    rule_id="REOPEN_JUDGEMENT_REASON",
+                    message="A judgement citation is only accepted for an error-correction reopen.",
+                )
+            ],
+        )
+    # The per-period advisory lock serializes requests. Keep the period FOR SHARE:
+    # upgrading it here would block behind a later period's close decision.
+    current_basis = uow.session.execute(
+        select(period_reopen_basis.c.id).where(period_reopen_basis.c.period_state_id == state_id)
+    ).scalar_one_or_none()
+    if current_basis is None:
+        uow.session.execute(
+            insert(period_reopen_basis).values(
+                tenant_id=uow.principal.tenant_id,
+                id=new_id(),
+                period_state_id=state_id,
+                entity_id=scope.entity_id,
+                judgement_record_id=body.judgement_record_id,
+                created_at=uow.now,
+                created_by=uow.principal.id,
+                created_by_kind=uow.principal.kind.value,
+                **_stamps(uow),
+            )
+        )
+    else:
+        uow.session.execute(
+            update(period_reopen_basis)
+            .where(period_reopen_basis.c.id == current_basis)
+            .values(judgement_record_id=body.judgement_record_id, **_stamps(uow))
+        )
     request = approvals.submit(
         uow,
         subject_type=ApprovalSubjectType.PERIOD_REOPEN,
         subject_id=state_id,
         summary=REOPEN_SUMMARY.format(
             period_key=scope.period_key, entity=scope.entity_code, book=scope.book_code
-        ),
+        )
+        + ("" if basis is None else f" — {basis['content']['judgement_no']}"),
         comment=body.comment,
         reason_code=body.reason_code.value,
         auto_approval=False,
@@ -1533,9 +1585,14 @@ def request_reopen(
         object_type=period_rules.STATE_OBJECT,
         object_id=state_id,
         object_version=str(scope.row_version),
-        after={"approval_request_id": str(request_id), "lock_kind": LockKind.REOPEN.value},
+        after={
+            "approval_request_id": str(request_id),
+            "lock_kind": LockKind.REOPEN.value,
+            "judgement": basis,
+        },
         reason_code=body.reason_code.value,
         comment=body.comment,
+        approval_request_id=request_id,
     )
     return PeriodReopenRequestOut(approval_request_id=request_id)
 
@@ -1682,13 +1739,6 @@ def _period_reopen_approved(uow: UnitOfWork, subject_id: UUID, approval_request_
     scope = gates.period_scope(session, subject_id, lock=True)
     if scope is None:
         raise Problem("not-found")
-    # DG-KRN-APR-05 rev 1.165 (review gap G3): the approved basis again, under the row lock
-    approvals.assert_own_fresh_basis(
-        uow,
-        approval_request_id,
-        subject_type=ApprovalSubjectType.PERIOD_REOPEN,
-        subject_id=subject_id,
-    )
     request = (
         session.execute(
             select(
@@ -1706,6 +1756,32 @@ def _period_reopen_approved(uow: UnitOfWork, subject_id: UUID, approval_request_
         None
         if request["reason_code"] is None
         else ReasonCode(str(getattr(request["reason_code"], "value", request["reason_code"])))
+    )
+    citation = session.execute(
+        select(period_reopen_basis.c.judgement_record_id).where(
+            period_reopen_basis.c.period_state_id == subject_id
+        )
+    ).scalar_one_or_none()
+    if reason is ReasonCode.ERROR_CORRECTION:
+        try:
+            reopen_judgements.reviewed_basis(
+                session,
+                tenant_id=uow.principal.tenant_id,
+                entity_id=scope.entity_id,
+                book_code=scope.book_code,
+                judgement_id=citation,
+            )
+        except Problem as error:
+            if error.slug != "validation-failed":
+                raise
+            raise approvals.StaleBasis() from error
+    elif citation is not None:
+        raise approvals.StaleBasis()
+    approvals.assert_own_fresh_basis(
+        uow,
+        approval_request_id,
+        subject_type=ApprovalSubjectType.PERIOD_REOPEN,
+        subject_id=subject_id,
     )
     requester = None if request["preparer_id"] is None else UUID(str(request["preparer_id"]))
     decisions = approvals.decisions_of(
@@ -1746,6 +1822,7 @@ def _period_reopen_approved(uow: UnitOfWork, subject_id: UUID, approval_request_
         snapshot_manifest_sha256=None,
         heads=_heads(session, scope),
         reason_code=reason,
+        judgement_record_id=citation,
     )
     reconciliations_reopened = _reopen_reconciliations(uow, scope)
     # 04 T-CLS-03 rev 1.305 (item CLO-WAIVER-COVERS-LATER-1): a waiver accepts what stood before
@@ -2004,6 +2081,7 @@ def _persist_lock(
     reason_code: ReasonCode | None = None,
     diff_report_file_id: UUID | None = None,
     cutoff_known_at: datetime | None = None,
+    judgement_record_id: UUID | None = None,
 ) -> None:
     """Write a lock in the order the keys allow (D-98 61): the ``period_lock`` row first — its
     ``period_state_transition_id`` edge is the 0047 deferred key — then the T-REF-07 transition row
@@ -2031,6 +2109,7 @@ def _persist_lock(
             snapshot_manifest_sha256=snapshot_manifest_sha256,
             previous_lock_id=scope.current_lock_id,
             diff_report_file_id=diff_report_file_id,
+            judgement_record_id=judgement_record_id,
             cutoff_known_at=cutoff_known_at,
             created_at=uow.now,
             created_by=principal.id,

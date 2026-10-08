@@ -1495,3 +1495,44 @@ const ACTIVATION_PREVIEW: PreviewDocument = {
     ],
   },
 };
+
+it.each([false, true])(
+  "reopen evidence follows content visibility (withheld=%s)",
+  async (withheld) => {
+    const evidence = {
+      id: "b1e74b2c-9016-439b-b08b-478f0acfa021",
+      judgement_no: "JDG-000042",
+      contract_id: "b1e74b2c-9016-439b-b08b-478f0acfa022",
+      conclusion: "Correct the duplicate usage.",
+      rationale: "The reviewed source file contains a duplicate.",
+      reviewer: PRIYA,
+      reviewed_at: "2026-09-12T15:10:00Z",
+    };
+    const shown = approval({
+      subject: {
+        ...approval().subject,
+        type: "PERIOD_REOPEN",
+        href: "/close/AVM-US/ASC606/FY2026-P08",
+      },
+      summary: "Reopen August for AVM-US",
+      reopen_judgement: evidence,
+      content_withheld: withheld,
+      can_decide: !withheld,
+    });
+    serve({ details: { [REQUEST_A]: shown }, list: [shown] });
+    renderRequest(`/approvals/requests/${REQUEST_A}`);
+    await screen.findByText("APR-000231");
+    if (withheld) {
+      expect(screen.queryByText("JDG-000042")).toBeNull();
+      expect(screen.queryByText(evidence.conclusion)).toBeNull();
+      expect(screen.queryByText(evidence.rationale)).toBeNull();
+      return;
+    }
+    expect(await screen.findByText("JDG-000042")).toBeTruthy();
+    expect(screen.getByText(evidence.conclusion)).toBeTruthy();
+    expect(screen.getByText(evidence.rationale)).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Open contract" }).getAttribute("href")).toBe(
+      `/contracts/${evidence.contract_id}`,
+    );
+  },
+);

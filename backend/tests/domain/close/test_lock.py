@@ -101,6 +101,7 @@ from support.close_world import (
     identity_duplicates,
     other_entity,
     periods_closed_before,
+    reviewed_error_judgement,
     reviewed_reconciliations,
     reviewed_reconciliations_for,
     submitted_judgement,
@@ -900,7 +901,11 @@ def test_permanent_lock_needs_second_controller(world: CloseWorld, clock: Frozen
         world.app,
         f"{PERIODS}/{world.state_id}/request-reopen",
         second,
-        {"reason_code": "ERROR_CORRECTION", "comment": "Late September costs"},
+        {
+            "judgement_record_id": str(reviewed_error_judgement(world)),
+            "reason_code": "ERROR_CORRECTION",
+            "comment": "Late September costs",
+        },
         if_match=f'"r{_state(world)["row_version"]}"',
     )
     assert (reopen.status_code, slug(reopen)) == (409, "invalid-transition"), reopen.text

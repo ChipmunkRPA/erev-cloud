@@ -57,6 +57,7 @@ from support.close_world import (
     close_run_succeeded,
     close_world,
     earlier_periods_closed,
+    reviewed_error_judgement,
     reviewed_reconciliations,
     system_session,
 )
@@ -645,7 +646,13 @@ def test_locks_list_states_what_each_record_certified_and_froze(
 
     # the reopen: Priya requests, two Controllers decide
     asked = command(
-        "request-reopen", priya, {"reason_code": "ERROR_CORRECTION", "comment": REOPEN_COMMENT}
+        "request-reopen",
+        priya,
+        {
+            "judgement_record_id": str(reviewed_error_judgement(world)),
+            "reason_code": "ERROR_CORRECTION",
+            "comment": REOPEN_COMMENT,
+        },
     )
     assert asked.status_code == 200, asked.text
     reopen_request = str(asked.json()["approval_request_id"])

@@ -633,6 +633,30 @@ function RequestReview({ approval, viewerId, onApproved }: RequestReviewProps) {
         </div>
       ) : (
         <>
+          {approval.reopen_judgement == null ? null : (
+            <section className="flex flex-col gap-2" aria-label={t("close.reopen.evidenceLabel")}>
+              <h3 className="text-title-sm text-fg-1">{approval.reopen_judgement.judgement_no}</h3>
+              <p className="whitespace-pre-wrap text-body-sm text-fg-1">
+                {approval.reopen_judgement.conclusion}
+              </p>
+              <p className="whitespace-pre-wrap text-body-sm text-fg-2">
+                {approval.reopen_judgement.rationale}
+              </p>
+              <p className="text-body-sm text-fg-2">
+                {t("close.reopen.evidenceReviewer", {
+                  name: approval.reopen_judgement.reviewer.display_name,
+                })}
+              </p>
+              {approval.reopen_judgement.contract_id === null ? null : (
+                <Link
+                  className="text-accent-fg hover:underline"
+                  to={`/contracts/${approval.reopen_judgement.contract_id}`}
+                >
+                  {t("close.reopen.evidenceContract")}
+                </Link>
+              )}
+            </section>
+          )}
           <CriteriaMetRegion approval={approval} />
           {approval.impact_preview === null ? (
             // SCREENS §15.4 region 4 (rev 1.18): nothing was computed, so the pane claims no impact and

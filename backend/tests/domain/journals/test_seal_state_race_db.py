@@ -69,6 +69,7 @@ from support.worlds import (
     k01_pellworth,
     on_record_clock,
     period_locked,
+    reviewed_reopen_judgement,
     verified,
 )
 from support.worlds import (
@@ -136,11 +137,12 @@ def august(app: FastAPI, keyring: KeyRing, clock: FrozenClock, app_settings: Set
     shown = period_shown(world, AVM_US, AUGUST_2026)
     state_id = UUID(str(shown["id"]))
     world = verified(world, clock, "priya")
+    citation, world = reviewed_reopen_judgement(world, clock, entity_code=AVM_US, comment=REASON)
     requested = post(
         app,
         f"{PERIODS}/{state_id}/request-reopen",
         world.priya,
-        {"reason_code": "ERROR_CORRECTION", "comment": REASON},
+        {"reason_code": "ERROR_CORRECTION", "comment": REASON, "judgement_record_id": citation},
         if_match=f'"r{shown["row_version"]}"',
     )
     assert requested.status_code == 200, requested.text

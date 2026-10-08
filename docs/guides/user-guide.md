@@ -129,6 +129,17 @@ period's version. The request is refused with `later-period-closed` while a late
 entity and book is `closed` or `permanently locked` (BR-CLS-05): reopen the later period first. A
 `permanently locked` period never reopens.
 
+For `ERROR_CORRECTION`, select an existing reviewed **Estimate vs error** judgement before
+requesting the reopen. It must belong to a contract of the same entity and apply to the period's
+book or all books. The form shows its conclusion and reviewer. If none is available, prepare
+the judgement and complete its independent review first. The API requires its
+`judgement_record_id`; other reopen reasons must omit this citation.
+
+The request retains the submitted conclusion and review evidence. Approvers can read it on the
+approval page, and the completed reopen retains the citation in close history. A superseded or
+changed judgement makes the request stale; submit a new request with current reviewed evidence.
+Readers must still have access to the request's content to see that evidence.
+
 ### Two approvers, at least one Controller
 
 Two people holding `period.reopen_approve` decide the request, each with a fresh authenticator

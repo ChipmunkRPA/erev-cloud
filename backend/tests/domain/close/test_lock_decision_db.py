@@ -73,6 +73,7 @@ from support.close_world import (
     close_run_succeeded,
     close_world,
     earlier_periods_closed,
+    reviewed_error_judgement,
     reviewed_reconciliations,
     system_session,
 )
@@ -571,7 +572,11 @@ def _reopen_beside_the_lock(world: CloseWorld, clock: FrozenClock) -> Beside:
         world.app,
         f"{PERIODS}/{august['id']}/request-reopen",
         priya,
-        {"reason_code": "ERROR_CORRECTION", "comment": "An August invoice was omitted."},
+        {
+            "judgement_record_id": str(reviewed_error_judgement(world)),
+            "reason_code": "ERROR_CORRECTION",
+            "comment": "An August invoice was omitted.",
+        },
         if_match=f'"r{august["row_version"]}"',
     )
     assert requested.status_code == 200, requested.text
@@ -741,7 +746,11 @@ def test_g3_a_reopen_waits_for_a_later_periods_lock_decision_and_is_refused(
                 world.app,
                 f"{PERIODS}/{august['id']}/request-reopen",
                 priya,
-                {"reason_code": "ERROR_CORRECTION", "comment": "An August invoice was omitted."},
+                {
+                    "judgement_record_id": str(reviewed_error_judgement(world)),
+                    "reason_code": "ERROR_CORRECTION",
+                    "comment": "An August invoice was omitted.",
+                },
                 if_match=f'"r{august["row_version"]}"',
             )
             assert requested.status_code == 200, requested.text  # September reads `closing`

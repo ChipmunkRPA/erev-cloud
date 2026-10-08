@@ -117,6 +117,7 @@ API_S_APPROVAL = {
     "current_step_no",
     "steps",
     "impact_preview",
+    "reopen_judgement",
     "attachments",
     "can_decide",
     "content_withheld",
@@ -1447,7 +1448,11 @@ def test_apr_content_scope_a_reader_of_one_entity_is_answered_the_header_of_a_re
         both["subject_content_sha256"],
     )
     assert (body["summary"], body["amount"], body["flags"]) == (withheld, None, [])
-    assert (body["impact_preview"], body["attachments"]) == (None, [])
+    assert (body["impact_preview"], body["attachments"], body["reopen_judgement"]) == (
+        None,
+        [],
+        None,
+    )
     assert (body["id"], body["request_no"], body["status"], body["can_decide"]) == (
         request_id,
         both["request_no"],

@@ -184,6 +184,7 @@ from erev_api.db.tables import (
     modification,
     obligation,
     obligation_version,
+    period_reopen_basis,
     period_state,
     pob_template,
     pob_template_version,
@@ -3623,7 +3624,38 @@ def period_reopen_content(session: Session, state_id: UUID) -> dict[str, Any]:
     """What a ``PERIOD_REOPEN`` approval decides on: the period state's identity, its ``closed``
     state, version and the lock the reopen names as ``previous_lock_id`` (BUILD_SPEC CLO-7; 04
     T-CLS-04 ``REOPEN``; SM-07 ``closed → reopened``)."""
-    return {**period_lock_content(session, state_id), "lock_kind": "REOPEN"}
+    content = {**period_lock_content(session, state_id), "lock_kind": "REOPEN"}
+    citation = session.execute(
+        select(period_reopen_basis.c.judgement_record_id).where(
+            period_reopen_basis.c.period_state_id == state_id
+        )
+    ).scalar_one_or_none()
+    if citation is not None:
+        record = (
+            session.execute(
+                select(
+                    judgement_record.c.status,
+                    judgement_record.c.reviewer_id,
+                    judgement_record.c.reviewed_at,
+                    judgement_record.c.row_version,
+                ).where(judgement_record.c.id == citation)
+            )
+            .mappings()
+            .one_or_none()
+        )
+        content["judgement"] = {
+            "id": str(citation),
+            "content": None
+            if record is None
+            else dict(judgement_record_content(session, citation)),
+            "review": None
+            if record is None
+            else {
+                key: None if value is None else str(getattr(value, "value", value))
+                for key, value in record.items()
+            },
+        }
+    return content
 
 
 def period_lock_entity(session: Session, state_id: UUID) -> UUID | None:

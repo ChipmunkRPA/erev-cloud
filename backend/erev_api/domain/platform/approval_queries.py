@@ -75,6 +75,7 @@ from erev_api.db.tables import (
     approval_decision,
     approval_request,
     approval_step,
+    audit_event,
     file_attachment,
     file_object,
     legal_entity,
@@ -810,6 +811,35 @@ def _decision_out(
     }
 
 
+def _reopen_evidence(session: Session, visible_requests: set[UUID]) -> dict[UUID, dict[str, Any]]:
+    """The submitted citation, never the period's possibly newer pending request's evidence."""
+    if not visible_requests:
+        return {}
+    found = {}
+    for row in session.execute(
+        select(audit_event.c.approval_request_id, audit_event.c.after).where(
+            audit_event.c.approval_request_id.in_(visible_requests),
+            audit_event.c.action == "period.request_reopen",
+        )
+    ):
+        basis = (row.after or {}).get("judgement")
+        if basis is not None:
+            found[row.approval_request_id] = basis
+    names = display_names(session, [UUID(basis["reviewer_id"]) for basis in found.values()])
+    return {
+        request_id: {
+            "id": basis["id"],
+            "judgement_no": basis["content"]["judgement_no"],
+            "contract_id": basis["content"]["contract_id"],
+            "conclusion": basis["content"]["conclusion"],
+            "rationale": basis["content"]["rationale"],
+            "reviewer": actor(UUID(basis["reviewer_id"]), "USER", names),
+            "reviewed_at": basis["reviewed_at"],
+        }
+        for request_id, basis in found.items()
+    }
+
+
 def approval_outs(
     session: Session,
     principal: Principal,
@@ -916,6 +946,14 @@ def approval_outs(
             {"file_id": item.file_object_id, "original_filename": item.original_filename}
         )
     entities = _entity_refs(session, rows)
+    reopen_evidence = _reopen_evidence(
+        session,
+        {
+            UUID(str(row["id"]))
+            for row in rows
+            if row["id"] in whole and row["subject_type"] == ApprovalSubjectType.PERIOD_REOPEN.value
+        },
+    )
     outs: list[dict[str, Any]] = []
     for row in rows:
         answered = row["id"] in whole
@@ -938,6 +976,7 @@ def approval_outs(
                     "row_version": row["subject_row_version"],
                 },
                 "summary": summary,
+                "reopen_judgement": reopen_evidence.get(row["id"]) if answered else None,
                 "status": row["status"],
                 "entity": _entity_ref(entities, row["entity_id"]),
                 "entities": _entity_list(entities, engine.request_entities(row)),

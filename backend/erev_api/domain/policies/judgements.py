@@ -63,6 +63,7 @@ from erev_api.domain.contracts.compute_job import (
 from erev_api.domain.platform import approval_queries
 from erev_api.enums import (
     ApprovalSubjectType,
+    BookCode,
     JudgementStatus,
     JudgementTopic,
     ModificationStatus,
@@ -1085,10 +1086,25 @@ def judgements_statement(
     statuses: Sequence[JudgementStatus] = (),
     subject_type: str | None = None,
     subject_id: UUID | None = None,
+    entity_id: UUID | None = None,
+    book_code: BookCode | None = None,
 ) -> Select[Any]:
     """``GET /judgements`` filtered by the API-R-33 parameters: the records the session reads
     (``read_by_the_session``)."""
     conditions: list[ColumnElement[bool]] = [read_by_the_session()]
+    if entity_id is not None:
+        conditions.append(
+            judgement_record.c.contract_id.in_(
+                select(contract.c.id).where(contract.c.contracting_entity_id == entity_id)
+            )
+        )
+    if book_code is not None:
+        conditions.append(
+            or_(
+                judgement_record.c.book_code.is_(None),
+                judgement_record.c.book_code == book_code.value,
+            )
+        )
     if topics:
         conditions.append(judgement_record.c.topic.in_([value.value for value in topics]))
     if statuses:
