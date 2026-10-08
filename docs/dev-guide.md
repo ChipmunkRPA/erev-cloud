@@ -3266,3 +3266,21 @@ SCH-17's `dirty_sweep.run` is registered in the architecture inventories as a SY
 builder, an `active_tenants` directory reader, and a normal computation deferrer. Each group uses
 its own tenant-scoped unit of work; it returns no preview to a human. The platform-session door,
 its audit, and all unlisted-caller refusals remain enforced.
+
+
+### Journal currency validation and evidence — October 8, 2026
+
+`journals.validation` checks transaction and stamped functional currencies against the active
+currency catalogue, and requires the stamped functional currency to equal the entity's functional
+currency. It does not infer correctness merely from a matching FX pair. Unknown/inactive codes or
+a mismatched stamp raise `JOURNAL_CURRENCY_INVALID` with `validation-failed`; generation rolls back
+and the job records named JOURNAL exceptions through its existing failure transaction. Historical
+sealed lines are not rewritten. Currency checks impose no assumed two-decimal precision and do not
+reinterpret the tenant's currency-enablement settings as permission to discard historical lines.
+
+`journals.summarise.calculate` records CTL-020 once for a newly written run, in the same transaction
+as that run. Evidence names the entity, book, period, coverage, validation checks and currency set;
+the population is the retained detail lines, with held lines separately counted as unvalidated.
+A nonempty validated population is PASS; an empty population is NOT_APPLICABLE. The calculation
+audit links the evidence UUID. Existing-run retries create neither a new run nor another validation
+record, and later failures roll back the run and its passing evidence together.

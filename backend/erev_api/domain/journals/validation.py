@@ -3,7 +3,8 @@ role``, ``missing-fx-rate``; §15.4 ``ACCOUNT_MAPPING_MISSING``, ``FX_RATE_MISSI
 ERR-36; F-CLO record §25.18).
 
 Journal generation validates every detail line before a run is written: the account exists, is
-active and applies to the entity; the account's mandatory dimensions are present; a line in a
+active and applies to the entity; the account's mandatory dimensions are present; currency codes
+are active and the stamped functional currency agrees with the entity; a line in a
 currency other than the entity's functional currency carries an FX rate that converts it — an
 in-force rate (APPROVED or SUPERSEDED version) from the line's currency to the functional currency
 (Codex production-20260921-1054 R4: ``ck_subledger_line__fx`` already refuses a sealed foreign-
@@ -19,21 +20,29 @@ and no line is silently dropped.
 Codes: ``ACCOUNT_MAPPING_MISSING`` for an account that is missing, inactive or of other entities;
 ``DIMENSION_MISSING_CODE`` for a mandatory dimension — raised under ``ACCOUNT_MAPPING_MISSING`` with
 the dimension named until the supervisor rules a dedicated §15.4 row (record §25.18);
-``FX_RATE_MISSING`` for the rate.
+``FX_RATE_MISSING`` for the rate; ``JOURNAL_CURRENCY_INVALID`` for currencies.
 """
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Collection, Mapping, Sequence
 from dataclasses import dataclass
 from functools import partial
 from typing import TYPE_CHECKING, Final
 from uuid import UUID
 
+from erev_engine.currencies import ISO_4217
 from sqlalchemy import and_, select
 from sqlalchemy.orm import Session
 
-from erev_api.db.tables import contract, fx_rate, fx_rate_set_version, gl_account, obligation
+from erev_api.db.tables import (
+    contract,
+    currency,
+    fx_rate,
+    fx_rate_set_version,
+    gl_account,
+    obligation,
+)
 from erev_api.enums import ConfigStatus
 from erev_api.problems import Problem, ProblemError
 
@@ -42,6 +51,7 @@ if TYPE_CHECKING:
 
 ACCOUNT_MAPPING_MISSING: Final = "ACCOUNT_MAPPING_MISSING"  # 04 table 15.4-A
 FX_RATE_MISSING: Final = "FX_RATE_MISSING"
+CURRENCY_INVALID: Final = "JOURNAL_CURRENCY_INVALID"
 DIMENSION_MISSING_CODE: Final = ACCOUNT_MAPPING_MISSING  # pending a §15.4 ruling (record §25.18)
 UNMAPPED_PROBLEM: Final = "unmapped-account-role"
 FX_PROBLEM: Final = "missing-fx-rate"
@@ -143,14 +153,37 @@ def line_findings(
     entity_id: UUID,
     functional_currency: str,
     rates: Mapping[UUID, RateFacts] | None = None,
+    currencies: Collection[str] | None = None,
 ) -> list[LineFinding]:
     """The pure rule: every finding of every line, in line order; a line may carry several.
     ``rates`` are the facts of the rates the lines name; ``None`` means the caller loaded none
     (a named rate is then taken as present — the unit-rule callers), an empty mapping means none of
     the named rates exists."""
+    active_currencies = ISO_4217 if currencies is None else currencies
     findings: list[LineFinding] = []
     for line in lines:
         found = partial(_finding, findings, line)
+        invalid = sorted(
+            {
+                code
+                for code in (line.txn_currency, line.functional_currency, functional_currency)
+                if code not in active_currencies
+            }
+        )
+        if invalid:
+            found(
+                CURRENCY_INVALID,
+                "validation-failed",
+                f"Journal line for role {line.account_role} names inactive or unknown "
+                f"currency code(s): {', '.join(repr(code) for code in invalid)}.",
+            )
+        if line.functional_currency != functional_currency:
+            found(
+                CURRENCY_INVALID,
+                "validation-failed",
+                f"Journal line for role {line.account_role} has functional currency "
+                f"{line.functional_currency}; this entity requires {functional_currency}.",
+            )
         account = accounts.get(line.gl_account_id)
         if account is None:
             found(
@@ -315,8 +348,23 @@ def validate_lines(
     """``line_findings`` over the lines' accounts and rates as stored (BUILD_SPEC CLO-10)."""
     accounts = account_facts(session, [line.gl_account_id for line in lines])
     rates = rate_facts(session, [line.fx_rate_id for line in lines if line.fx_rate_id is not None])
+    codes = {functional_currency} | {
+        code for line in lines for code in (line.txn_currency, line.functional_currency)
+    }
+    active = set(
+        session.scalars(
+            select(currency.c.code).where(
+                currency.c.code.in_(codes), currency.c.is_active.is_(True)
+            )
+        )
+    )
     return line_findings(
-        lines, accounts, entity_id=entity_id, functional_currency=functional_currency, rates=rates
+        lines,
+        accounts,
+        entity_id=entity_id,
+        functional_currency=functional_currency,
+        rates=rates,
+        currencies=active,
     )
 
 

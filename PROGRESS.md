@@ -2,6 +2,29 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Journal validation currencies and evidence — October 8, 2026
+
+- Continued from clean published main a63dfc0; prior turn completed SSP range lineage (progress).
+  Generation now checks transaction/stamped functional currency codes against the active
+  catalogue and the functional stamp against the entity. A mismatch refuses the whole run with
+  JOURNAL_CURRENCY_INVALID and named exceptions. Tenant enablement is not used to discard older
+  lines, and currency validation assumes no fixed decimal precision.
+- Every newly written run records CTL-020 in its own transaction: validated detail population,
+  currency set, checks, entity/book/period and coverage, with held lines counted as unvalidated.
+  Empty populations are NOT_APPLICABLE; nonempty valid ones PASS. The calculation audit links
+  the evidence UUID. Failure/retry boundaries preserve the existing atomic/idempotent behavior.
+- Initial rules and PostgreSQL validation matrix: **24 passed in 12.51 seconds**,
+  /private/tmp/journal-currency-first.log. Includes a sealed EUR-functional line in a USD entity:
+  rejected with named exceptions, no journal run and no passing validation evidence. Added empty
+  population and audit-link checks. Expanded validation/gross/delta/held/empty-run plus import
+  cycle, forbidden-pattern and money-literal architecture checks: **80 passed in 126.75 seconds**,
+  /private/tmp/journal-currency-final.log. Both processes terminal. Mypy passes both source files;
+  Ruff lint/format and whitespace checks pass.
+- Updated the finding catalogue, B1-25 and developer guidance; archived prior FX import evidence
+  verbatim. Remaining implementation, full-suite/release verification, the pending engine version
+  cut/replays and independent accounting sign-off are still open. No deployment or readiness
+  claim. Preserve exclusions/noncommercial licensing; publish tested changes directly to main.
+
 ## Selected SSP range provenance — October 7, 2026
 
 - Continued from clean main 4e043a1 after verifying all 31 PRs merged and only remote main.
@@ -100,27 +123,6 @@
   evidence verbatim. AI, other implementation gaps, remaining release checks and independent
   accounting sign-off remain open. No full-suite/readiness claim or deployment. Preserve
   exclusions and noncommercial licensing; push verified changes directly to main.
-
-## FX import rate reconciliation — October 7, 2026
-
-- Continued from clean main 8667084; prior turn published bundle reconciliation (progress).
-  Added an independent FX version reader: compare set/coverage/upload/status, the complete
-  entered/derived rate list, pair/type/day/period identity and per-source lineage targets.
-  Reconstruct inverse rates with independent decimal arithmetic and 12-place half-up rounding;
-  explicit reverse pairs suppress derivation. Period keys resolve closing/average end dates.
-- Initial matrix plus existing approval workflow: **15 passed in 31.02 seconds**,
-  /private/tmp/fx-readback-first.log, terminal. Covers spot/closing/average, precision,
-  explicit inverse and rounding tie; changed rate/currency/day/period/coverage/set, changed
-  inverse, missing inverse and missing targets all roll back versions, FX approval requests,
-  source records and lineage. Added swapped targets and a multi-version batch (including
-  failure of the second version). Expanded matrix, CSV workflows and layer/import-cycle
-  regressions: **74 passed in 69.18 seconds**, /private/tmp/fx-readback-final.log, terminal.
-  Source Mypy, Ruff lint/format and whitespace checks pass.
-- Updated inventory, B1-19 and developer guidance; archived older legacy progress evidence
-  verbatim. Listed financial CSV and legacy readers now have defined scope, not a claim of
-  full accounting coverage. Integration-owner fallback, AI and other implementation gaps,
-  remaining release checks and independent accounting sign-off remain open. No deployment
-  or full-suite/readiness claim. Preserve exclusions/licensing; push verified changes to main.
 
 ## Outstanding release verification
 

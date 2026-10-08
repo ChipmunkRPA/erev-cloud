@@ -6275,6 +6275,7 @@ Parity and answer-key assertions use finding severities; the stored exception se
 | `DQ_NEGATIVE_LIABILITY_LAYER` | ERROR | X `DATA_QUALITY` | monitor | A contract-liability layer (T-CON-18) has a negative open balance | REQ-CLS-019 |
 | `DQ_RECOGNITION_AFTER_POB_END` | WARNING | X `DATA_QUALITY` | monitor | Revenue recognised in a period that starts after the POB end date | REQ-CLS-019 |
 | `DQ_INACTIVE_CONTRACT` | WARNING | X `DATA_QUALITY` | monitor | Active contract without any event for more than `close.dq_inactive_contract_days` | REQ-CLS-019; T-PLT-31 |
+| `JOURNAL_CURRENCY_INVALID` | ERROR | X `JOURNAL` | journal | A journal detail line names an unknown/inactive currency or its stamped functional currency differs from the entity. Generation refuses the full run with `validation-failed`; the exception names the line, contract, obligation and role (REQ-JE-022, CTL-020; October 8, 2026). |
 | `FX_RATE_MISSING` | ERROR | X `DATA_QUALITY`, X `ENGINE`, X `JOURNAL` | monitor, engine, journal | A required FX rate is absent; journal generation raises it (source `JOURNAL`, rev 1.63) for a line in a currency other than the entity's functional currency that carries no FX rate id (REQ-JE-022; CTL-020), failing the run by name; API commands return 422 `missing-fx-rate` | REQ-CLS-019; REQ-FX-006; REQ-JE-022 |
 
 **Table 15.4-F Anomaly detectors (REQ-AI-007; source `ANOMALY`).** Detectors are deterministic and never change data. Each item is an action item with an owner, priority and status.

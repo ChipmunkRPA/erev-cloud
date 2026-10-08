@@ -29,6 +29,8 @@ from erev_api.auth.keyring import KeyRing
 from erev_api.clock import FrozenClock
 from erev_api.config import Settings
 from erev_api.db.tables import (
+    audit_event,
+    control_execution,
     exception_item,
     fx_rate,
     fx_rate_set,
@@ -262,3 +264,81 @@ def test_mandatory_dimension_missing(world: CloseWorld) -> None:
     for named in ("Contract 2", "POB #1", "REVENUE", "department"):
         assert named in item["message"], item["message"]
     assert _runs(world) == 0
+
+
+@pytest.mark.control("CTL-020")
+@pytest.mark.parametrize("populated", [False, True])
+def test_successful_generation_records_validation_evidence(
+    world: CloseWorld,
+    populated: bool,
+) -> None:
+    if populated:
+        revenue, unbilled = _account(world, "5001"), _account(world, "1201")
+        with system_session(world) as session:
+            sealed_activity(
+                session,
+                world,
+                account=revenue,
+                period_id=world.period_id,
+                period_end_date=PERIOD_END,
+                amounts=[Decimal("-100.00")],
+                offset_account=unbilled,
+            )
+    job_id, run_id = requested_journal_run(world)
+    assert str(run_journal_job(world, job_id)["state"]) == "SUCCEEDED"
+    with system_session(world) as session:
+        evidence = (
+            session.execute(
+                select(control_execution).where(
+                    control_execution.c.control_id == "CTL-020",
+                    control_execution.c.run_ref_id == run_id,
+                )
+            )
+            .mappings()
+            .one()
+        )
+        assert str(evidence["result"]) == ("PASS" if populated else "NOT_APPLICABLE")
+        assert evidence["population_count"] == (2 if populated else 0)
+        assert evidence["exception_count"] == 0
+        audit = session.execute(
+            select(audit_event.c.after).where(
+                audit_event.c.object_id == run_id,
+                audit_event.c.action == "journal_run.calculate",
+            )
+        ).scalar_one()
+        assert audit["validation_execution_id"] == str(evidence["id"])
+        assert evidence["entity_id"] == world.entity_id
+        assert evidence["period_id"] == world.period_id
+        assert evidence["detail"]["transaction_currencies"] == (["USD"] if populated else [])
+        assert evidence["detail"]["functional_currency"] == "USD"
+        assert evidence["detail"]["checks"] == [
+            "account",
+            "entity",
+            "dimensions",
+            "currency",
+            "fx_rate",
+        ]
+
+
+@pytest.mark.control("CTL-020")
+def test_wrong_stamped_functional_currency_blocks_generation(world: CloseWorld) -> None:
+    revenue, unbilled = _account(world, "5001"), _account(world, "1201")
+    with system_session(world) as session:
+        sealed_activity(
+            session,
+            world,
+            account=revenue,
+            period_id=world.period_id,
+            period_end_date=PERIOD_END,
+            amounts=[Decimal("-100.00")],
+            txn_currency="EUR",
+            functional_currency="EUR",
+            offset_account=unbilled,
+        )
+    _failed(world, "validation-failed", validation.CURRENCY_INVALID)
+    assert _runs(world) == 0
+    assert len(_items(world, validation.CURRENCY_INVALID)) == 2
+    with system_session(world) as session:
+        assert not session.execute(
+            select(control_execution.c.id).where(control_execution.c.control_id == "CTL-020")
+        ).all()

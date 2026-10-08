@@ -1696,6 +1696,25 @@ def calculate(
         "detail_lines": len(kept),
         "held_lines": len(held),
     }
+    validation_execution_id = record_execution(
+        uow,
+        control_id="CTL-020",
+        run_ref_type=RunRefType.JOURNAL_RUN,
+        run_ref_id=run_id,
+        population_count=len(kept),
+        exception_count=0,
+        result=ControlResult.PASS if kept else ControlResult.NOT_APPLICABLE,
+        entity_id=entity_id,
+        book_code=book_code,
+        period_id=period_id,
+        detail={
+            "functional_currency": functional_currency,
+            "transaction_currencies": sorted({line.txn_currency for line in kept}),
+            "checks": ["account", "entity", "dimensions", "currency", "fx_rate"],
+            "held_lines_not_validated": len(held),
+            "coverage": [from_seq, to_seq, delta_from if delta_to is not None else None, delta_to],
+        },
+    )
     uow.audit(
         action=CALCULATE_ACTION,
         object_type=OBJECT_TYPE,
@@ -1703,6 +1722,7 @@ def calculate(
         object_version="1",
         after={
             "run_no": run_no,
+            "validation_execution_id": str(validation_execution_id),
             "entity_id": str(entity_id),
             "book_code": book_code,
             "period_id": str(period_id),

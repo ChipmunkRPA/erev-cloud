@@ -1925,3 +1925,24 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   integration-owner fallback, AI, broader implementation/release checks and independent
   accounting sign-off remain open. No full-suite/readiness claim or deployment. Preserve
   publication exclusions/noncommercial licensing; publish tested changes directly to main.
+
+## FX import rate reconciliation — October 7, 2026
+
+- Continued from clean main 8667084; prior turn published bundle reconciliation (progress).
+  Added an independent FX version reader: compare set/coverage/upload/status, the complete
+  entered/derived rate list, pair/type/day/period identity and per-source lineage targets.
+  Reconstruct inverse rates with independent decimal arithmetic and 12-place half-up rounding;
+  explicit reverse pairs suppress derivation. Period keys resolve closing/average end dates.
+- Initial matrix plus existing approval workflow: **15 passed in 31.02 seconds**,
+  /private/tmp/fx-readback-first.log, terminal. Covers spot/closing/average, precision,
+  explicit inverse and rounding tie; changed rate/currency/day/period/coverage/set, changed
+  inverse, missing inverse and missing targets all roll back versions, FX approval requests,
+  source records and lineage. Added swapped targets and a multi-version batch (including
+  failure of the second version). Expanded matrix, CSV workflows and layer/import-cycle
+  regressions: **74 passed in 69.18 seconds**, /private/tmp/fx-readback-final.log, terminal.
+  Source Mypy, Ruff lint/format and whitespace checks pass.
+- Updated inventory, B1-19 and developer guidance; archived older legacy progress evidence
+  verbatim. Listed financial CSV and legacy readers now have defined scope, not a claim of
+  full accounting coverage. Integration-owner fallback, AI and other implementation gaps,
+  remaining release checks and independent accounting sign-off remain open. No deployment
+  or full-suite/readiness claim. Preserve exclusions/licensing; push verified changes to main.

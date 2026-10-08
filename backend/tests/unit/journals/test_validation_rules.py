@@ -4,10 +4,12 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from decimal import Decimal
 from typing import Final
 from uuid import UUID
 
+import pytest
 from erev_api.domain.journals import validation
 from erev_api.domain.journals.summarise import DetailLine
 
@@ -171,3 +173,33 @@ def test_every_line_is_reported_and_none_is_dropped() -> None:
     rate_findings = [item for item in findings if item.code == validation.FX_RATE_MISSING]
     assert len(rate_findings) == 1 and rate_findings[0].line_id == lines[1].id
     assert validation.problem_of(rate_findings).slug == "missing-fx-rate"
+
+
+@pytest.mark.parametrize("code", ["", "ZZZ", "usd", "USD ", "XXX"])
+def test_unknown_currency_is_rejected_independently_of_fx(code: str) -> None:
+    findings = _findings(_line(currency=code, fx_rate_id=RATE), _account())
+    assert len(findings) == 1
+    assert findings[0].code == validation.CURRENCY_INVALID
+    assert findings[0].problem == "validation-failed"
+    assert findings[0].contract_id == CONTRACT
+    assert findings[0].obligation_id == OBLIGATION
+
+
+def test_inactive_currency_and_wrong_functional_currency_are_rejected() -> None:
+    line = _line(currency="EUR", fx_rate_id=RATE)
+    findings = validation.line_findings(
+        [line],
+        {ACCOUNT: _account()},
+        entity_id=ENTITY,
+        functional_currency="USD",
+        currencies={"USD"},
+    )
+    assert [item.code for item in findings] == [validation.CURRENCY_INVALID]
+    (finding,) = _findings(replace(_line(), functional_currency="EUR"), _account())
+    assert finding.code == validation.CURRENCY_INVALID
+    assert "this entity requires USD" in finding.message
+
+
+@pytest.mark.parametrize("code", ["JPY", "KWD"])
+def test_currency_check_does_not_assume_two_decimal_places(code: str) -> None:
+    assert _findings(_line(currency=code, fx_rate_id=RATE), _account()) == []
