@@ -2290,3 +2290,16 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   or accounting sign-off occurred. This packet is not an approval.
 - Earlier continuation entries were moved unchanged to the dated build history to keep this
   notebook below 20 KB. Publication exclusions and PolyForm Noncommercial licensing are retained.
+
+## Golden parity verification — October 8, 2026
+
+- `make parity` passed on clean main 6d33ae1: 18 fixture files verified; **130 tests
+  passed in 106.29 seconds**, comprising 122 golden cases and eight additional checks.
+  Immutable source/context hashes and Python/Node dependency bindings remained consistent.
+  Report/log hashes and scope are in docs/release/REPOSITORY-CHECKS-2026-10-08.md.
+- Independent accounting approval remains pending for DEV-002, DEV-052, DEV-010,
+  DEV-050 and DEV-011. No production-readiness or full-current-CI claim.
+  Property session 52175 remains active; preserve the same immutable run.
+- Reconfirmed the owner's direct-to-main workflow: no open GitHub PRs and only remote
+  main. Future verified changes go directly to main unless protection requires a PR;
+  merge required PRs after checks and remove merged branches. No deployment.

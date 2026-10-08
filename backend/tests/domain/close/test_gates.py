@@ -1167,3 +1167,114 @@ def test_days_to_close_in_entity_time_zone(world: CloseWorld) -> None:
         {"period_key": "FY2026-P08", "days": 4},
         {"period_key": "FY2026-P09", "days": 6},
     ]
+
+
+@pytest.mark.parametrize("active", [True, False], ids=["valid", "inactive-account"])
+def test_fixture_run_audit_binds_real_validation_evidence(world: CloseWorld, active: bool) -> None:
+    """The test fixture cannot manufacture a successful audit for invalid journal lines."""
+    from erev_api.db.tables import audit_event, control_execution
+    from erev_api.domain.journals.validation import JournalValidationFailed
+    from support.close_world import acknowledged_run_for, record_run_calculation
+
+    with system_session(world) as session:
+        rows = acknowledged_run_for(
+            session,
+            tenant_id=world.tenant_id,
+            entity_id=world.entity_id,
+            period_id=world.period_id,
+            now=world.place.clock.now(),
+        )
+        if not active:
+            session.execute(
+                update(gl_account)
+                .where(gl_account.c.id == rows.parts.account_id)
+                .values(is_active=False)
+            )
+    if active:
+        record_run_calculation(world, rows)
+    else:
+        with pytest.raises(JournalValidationFailed) as refused:
+            record_run_calculation(world, rows)
+        assert {item.code for item in refused.value.findings} == {"ACCOUNT_MAPPING_MISSING"}
+        assert {item.line_id for item in refused.value.findings} == {
+            row["id"] for row in rows.lines
+        }
+    with system_session(world) as session:
+        audit = session.execute(
+            select(audit_event.c.after).where(
+                audit_event.c.object_id == rows.run["id"],
+                audit_event.c.action == "journal_run.calculate",
+            )
+        ).scalar_one_or_none()
+        executions = (
+            session.execute(
+                select(control_execution).where(
+                    control_execution.c.run_ref_id == rows.run["id"],
+                    control_execution.c.control_id == "CTL-020",
+                )
+            )
+            .mappings()
+            .all()
+        )
+    if not active:
+        assert audit is None and executions == []
+        return
+    assert audit is not None
+    (execution,) = executions
+    assert audit["validation_execution_id"] == str(execution["id"])
+    assert str(execution["result"]) == "PASS"
+    assert execution["population_count"] == len(rows.lines)
+    assert execution["exception_count"] == 0
+    assert execution["entity_id"] == world.entity_id
+    assert execution["period_id"] == world.period_id
+    assert execution["run_ref_type"] == "JOURNAL_RUN"
+    assert str(execution["book_code"]) == "ASC606"
+    assert execution["detail"]["fixture"] is True
+    assert execution["detail"]["validated_population"] == "seeded_journal_lines"
+    assert set(execution["detail"]["line_ids"]) == {str(row["id"]) for row in rows.lines}
+
+
+def test_invalid_acknowledged_fixture_rolls_back_rows_and_evidence(
+    world: CloseWorld, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from erev_api.db.tables import audit_event, control_execution, journal_run
+    from erev_api.domain.journals.validation import JournalValidationFailed
+    from support import close_world as fixtures
+    from support.rows import JournalRows
+
+    original = fixtures.acknowledged_run_for
+    created: list[JournalRows] = []
+
+    def invalid(*args: Any, **kwargs: Any) -> JournalRows:
+        rows = original(*args, **kwargs)
+        created.append(rows)
+        args[0].execute(
+            update(gl_account)
+            .where(gl_account.c.id == rows.parts.account_id)
+            .values(is_active=False)
+        )
+        return rows
+
+    monkeypatch.setattr(fixtures, "acknowledged_run_for", invalid)
+    with pytest.raises(JournalValidationFailed):
+        fixtures.acknowledged_run(world)
+    (rows,) = created
+    with system_session(world) as session:
+        assert (
+            session.scalar(select(journal_run.c.id).where(journal_run.c.id == rows.run["id"]))
+            is None
+        )
+        assert (
+            session.scalar(
+                select(control_execution.c.id).where(
+                    control_execution.c.run_ref_id == rows.run["id"]
+                )
+            )
+            is None
+        )
+        assert (
+            session.scalar(
+                select(audit_event.c.id).where(audit_event.c.object_id == rows.run["id"])
+            )
+            is None
+        )

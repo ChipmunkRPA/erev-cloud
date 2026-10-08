@@ -169,8 +169,8 @@ def _ready_for_lock(world: CloseWorld) -> dict[str, Any]:
         if_match=f'"r{shown["row_version"]}"',
     )
     assert started.status_code == 200, started.text
+    acknowledged_run(world)
     with system_session(world) as session:
-        acknowledged_run(session, world)
         reviewed_reconciliations(session, world)
         close_run_succeeded(session, world)
     return _state(world)

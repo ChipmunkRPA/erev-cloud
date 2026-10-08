@@ -133,8 +133,8 @@ def test_request_lock_gates_failed(world: CloseWorld) -> None:
     failed "not evaluated" on main — batch #4 / #5)."""
     etag = _start_close(world)
     shown = _september(world)
+    acknowledged_run(world, world.period_id)
     with system_session(world) as session:
-        acknowledged_run(session, world, world.period_id)
         close_run_succeeded(session, world, world.period_id)
         session.execute(
             insert(approval_request).values(
@@ -177,8 +177,8 @@ def _ready_for_lock(world: CloseWorld) -> None:
     """September in soft close with every automatic gate passed: an acknowledged run, reviewed
     reconciliations and a succeeded close run (the fixture state of each gate)."""
     _start_close(world)
+    acknowledged_run(world, world.period_id)
     with system_session(world) as session:
-        acknowledged_run(session, world, world.period_id)
         reviewed_reconciliations(session, world, world.period_id)
         close_run_succeeded(session, world, world.period_id)
 
@@ -599,8 +599,8 @@ def test_locks_list_states_what_each_record_certified_and_froze(
     app, maya, tenant_id = world.app, world.maya, world.tenant_id
     state_id = str(world.state_id)
     _start_close(world)
+    acknowledged_run(world, world.period_id)
     with system_session(world) as session:
-        acknowledged_run(session, world, world.period_id)
         reviewed_reconciliations(session, world, world.period_id)
         close_run_succeeded(session, world, world.period_id)
         session.execute(

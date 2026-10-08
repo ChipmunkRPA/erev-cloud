@@ -210,8 +210,8 @@ def _pass_gates(world: CloseWorld, period_id: UUID | None = None) -> None:
     sealed activity, so completeness is PASSED 0; the two required reconciliations reviewed
     (BR-CLS-01); and the period's close run succeeded — a row, fixture state for the gate
     ``CLOSE_RUN_COMPLETED`` (supervisor ruling R-114 (b))."""
+    acknowledged_run(world, period_id)
     with system_session(world) as session:
-        acknowledged_run(session, world, period_id)
         reviewed_reconciliations(session, world, period_id)
         close_run_succeeded(session, world, period_id)
 
@@ -768,8 +768,8 @@ def test_lock_certifies_reconciliations(world: CloseWorld, clock: FrozenClock) -
     (2): the source statuses are reached along the admitted pairs (DRAFT → PREPARED → REVIEWED;
     DRAFT → AUTO_CERTIFIED) — REVIEWED → AUTO_CERTIFIED is not a transition and the rule stays."""
     _start_close(world)
+    acknowledged_run(world)
     with system_session(world) as session:
-        acknowledged_run(session, world)
         reviewed_reconciliations(session, world, kinds=("SUBLEDGER_TO_GL",), status="REVIEWED")
         reviewed_reconciliations(
             session, world, kinds=("BILLING_TO_SUBLEDGER",), status="AUTO_CERTIFIED"

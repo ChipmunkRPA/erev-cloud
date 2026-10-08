@@ -18,6 +18,7 @@ from support import close_world, rows
 
 PRODUCER_AFTER_KEYS = {
     "run_no",
+    "validation_execution_id",
     "entity_id",
     "book_code",
     "period_id",
@@ -63,8 +64,9 @@ def _rows() -> rows.JournalRows:
 
 
 def test_the_fixture_audit_payload_is_the_producers_shape() -> None:
-    after = close_world.run_audit_after(_rows())
+    after = close_world.run_audit_after(_rows(), validation_execution_id=UUID(int=8))
     assert set(after) == PRODUCER_AFTER_KEYS
+    assert after["validation_execution_id"] == str(UUID(int=8))
     assert after["held_subledger_line_ids"] == [] and after["held_detail_file_id"] is None
     assert after["held_detail_sha256"] is None
     assert after["taken_over_subledger_line_ids"] == []
@@ -106,7 +108,10 @@ def test_the_producer_keys_pin_summarise_and_completeness_read_the_same_facts() 
     """The fixture payload's key set EQUALS the producer's (exact, both directions), and the
     members ``completeness.run_exclusions`` reads are among them."""
     assert _producer_after_keys() == PRODUCER_AFTER_KEYS
-    assert set(close_world.run_audit_after(_rows())) == _producer_after_keys()
+    assert (
+        set(close_world.run_audit_after(_rows(), validation_execution_id=UUID(int=8)))
+        == _producer_after_keys()
+    )
     assert (close_world.RUN_AUDIT_ACTION, close_world.RUN_AUDIT_OBJECT_TYPE) == (
         summarise.CALCULATE_ACTION,
         summarise.OBJECT_TYPE,

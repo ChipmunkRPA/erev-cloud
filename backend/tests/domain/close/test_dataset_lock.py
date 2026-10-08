@@ -390,8 +390,8 @@ def test_the_dataset_lock_through_a_lock_a_reopen_a_second_lock_and_the_permanen
     )
 
     # 2. closed: the lock is both records
+    acknowledged_run(world)
     with system_session(world) as session:
-        acknowledged_run(session, world)
         reviewed_reconciliations(session, world)
         close_run_succeeded(session, world)
     marcus = actor_with_role(app, clock, world.tenant_id, "controller", name="marcus")

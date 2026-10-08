@@ -102,12 +102,10 @@ from support.audit_catalogue import (
     uncovered_categories,
 )
 from support.close_world import (
-    RUN_AUDIT_ACTION,
-    RUN_AUDIT_OBJECT_TYPE,
     acknowledged_run_for,
     close_run_succeeded_for,
+    record_fixture_run_calculation,
     reviewed_reconciliations_for,
-    run_audit_after,
 )
 from support.db import TestDatabase
 from support.factories import (
@@ -1826,13 +1824,7 @@ def _lock_gate_facts(w: World, state: Mapping[str, Any]) -> None:
             now=w.clock.now(),
         )
     with _system_uow(w, "sop7-run-calculation") as uow:
-        uow.audit(
-            action=RUN_AUDIT_ACTION,
-            object_type=RUN_AUDIT_OBJECT_TYPE,
-            object_id=UUID(str(run.run["id"])),
-            object_version="1",
-            after=run_audit_after(run),
-        )
+        record_fixture_run_calculation(uow, run)
         uow.commit()
 
 

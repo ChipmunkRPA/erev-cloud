@@ -507,8 +507,8 @@ def test_the_gate_reads_the_same_for_a_decider_scoped_to_one_entity_of_two(
                 .values(period_ends_open={key: day})
             )
 
+    acknowledged_run(world)
     with system_session(world) as session:
-        acknowledged_run(session, world)
         reviewed_reconciliations(session, world)
         close_run_succeeded(session, world)
         uk = other_entity(session, world)
@@ -810,6 +810,37 @@ def test_a_reopened_period_needs_a_new_close_run(
     # the re-lock: the journal run of the correction through its life, the reconciliations again
     world = runs.journal_posted(world, clock, second["journal_run_id"])
     _reconciled(world, clock)
+    again = _lock_requested(world)
+    assert (again.status_code, slug(again)) == (409, "close-gates-failed"), again.text
+    assert {error["rule_id"] for error in again.json()["errors"]} == {gates.EXCEPTIONS_CLEARED}
+    state = worlds.period_state(world, US01, JANUARY)
+    listed = get(app, "/api/v1/exceptions", world.maya, {"blocking": state["id"], "limit": 100})
+    assert listed.status_code == 200 and listed.json()["next_cursor"] is None, listed.text
+    (item,) = listed.json()["items"]
+    assert (item["code"], item["status"], item["contract_id"]) == (
+        "LATE_EVENT",
+        "OPEN",
+        str(contract_id),
+    ), item
+    assert item["source_payload"]["detail"]["reason"] == "OUT_OF_ORDER", item
+    path = f"/api/v1/exceptions/{item['id']}"
+    asked = post(
+        app,
+        f"{path}/request-waiver",
+        world.maya,
+        {"comment": "Reviewed backdated INV-POS-5 in reopened January and its new close run."},
+    )
+    assert asked.status_code == 200, asked.text
+    request_id = asked.json()["approval_request_id"]
+    world = worlds.verified(world, clock, "priya")
+    waived = approve(app, str(request_id), world.priya)
+    assert (waived.status_code, waived.json()["status"]) == (200, "APPROVED"), waived.text
+    shown = get(app, path, world.maya)
+    assert shown.status_code == 200, shown.text
+    assert (shown.json()["status"], shown.json()["waiver_approval_request_id"]) == (
+        "WAIVED",
+        request_id,
+    )
     again = _lock_requested(world)
     assert again.status_code == 200, again.text
     world = worlds.verified(world, clock, "marcus")

@@ -20,6 +20,7 @@ from uuid import UUID
 
 from erev_api.auth.keyring import KeyRing
 from erev_api.clock import FrozenClock
+from erev_api.controls.evidence import RunRefType, record_execution
 from erev_api.db import new_id, transitions
 from erev_api.db.session import DbContext, tenant_session
 from erev_api.db.tables import (
@@ -41,6 +42,7 @@ from erev_api.db.tables import (
     job,
     journal_batch,
     journal_entry,
+    journal_line,
     journal_run,
     judgement_record,
     legal_entity,
@@ -59,9 +61,11 @@ from erev_api.db.tables import (
 from erev_api.domain.close import commands as close_commands
 from erev_api.domain.close import gates
 from erev_api.domain.contracts import period_ends
+from erev_api.domain.journals import summarise, validation
 from erev_api.enums import (
     ApprovalRequestStatus,
     ConfigStatus,
+    ControlResult,
     FilePurpose,
     ImportStatus,
     LockKind,
@@ -70,6 +74,7 @@ from erev_api.enums import (
 from erev_api.files.store import LocalFileStore
 from erev_api.jobs.context import JobRuntime
 from erev_api.jobs.registry import run_job
+from erev_api.uow import UnitOfWork
 from fastapi import FastAPI
 from sqlalchemy import bindparam, func, insert, select, text, update
 from sqlalchemy.dialects.postgresql import JSONB
@@ -568,7 +573,7 @@ RUN_AUDIT_ACTION = "journal_run.calculate"  # summarise.CALCULATE_ACTION (pinned
 RUN_AUDIT_OBJECT_TYPE = "journal_run"  # summarise.OBJECT_TYPE
 
 
-def run_audit_after(rows: JournalRows) -> dict[str, Any]:
+def run_audit_after(rows: JournalRows, *, validation_execution_id: UUID) -> dict[str, Any]:
     """The ``journal_run.calculate`` audit ``after`` a real run writes (``summarise.calculate``),
     for a fixture run: the explicit zero-held state (``held_subledger_line_ids`` []) that
     ``completeness.run_exclusions`` reads — without it a run is unverifiable by design and
@@ -578,6 +583,7 @@ def run_audit_after(rows: JournalRows) -> dict[str, Any]:
     run = rows.run
     return {
         "run_no": str(run["run_no"]),
+        "validation_execution_id": str(validation_execution_id),
         "entity_id": str(run["entity_id"]),
         "book_code": str(run["book_code"]),
         "period_id": str(run["period_id"]),
@@ -607,33 +613,113 @@ def run_audit_after(rows: JournalRows) -> dict[str, Any]:
     }
 
 
-def record_run_calculation(world: Any, rows: JournalRows) -> None:
-    """Write the producer's CALCULATE audit event for a fixture run through the world's unit of
-    work (``world.place.uow()``), as ``summarise.calculate`` does in the same transaction."""
-    with world.place.uow() as uow:
-        uow.audit(
-            action=RUN_AUDIT_ACTION,
-            object_type=RUN_AUDIT_OBJECT_TYPE,
-            object_id=UUID(str(rows.run["id"])),
-            object_version="1",
-            after=run_audit_after(rows),
+def record_fixture_run_calculation(uow: UnitOfWork, rows: JournalRows) -> UUID:
+    """Validate the stored fixture lines and bind the audit to real CTL-020 evidence.
+
+    These domestic, unaggregated probe lines were inserted by the fixture, not by the
+    calculation job. The evidence names that population explicitly. Do not invent a PASS
+    for production generation, or accept multi-rate/aggregated lines this adapter cannot
+    represent. Account, currency and dimension checks use the production validator.
+    """
+    session = uow.session
+    run = rows.run
+    run_id = UUID(str(run["id"]))
+    entity_id = UUID(str(run["entity_id"]))
+    functional = str(
+        session.scalar(
+            select(legal_entity.c.functional_currency).where(legal_entity.c.id == entity_id)
         )
+    ).strip()
+    stored = (
+        session.execute(
+            select(journal_line)
+            .join(journal_batch, journal_batch.c.id == journal_line.c.journal_batch_id)
+            .where(journal_batch.c.journal_run_id == run_id)
+            .order_by(journal_line.c.id)
+        )
+        .mappings()
+        .all()
+    )
+    assert {row["id"] for row in stored} == {row["id"] for row in rows.lines}
+    lines = []
+    for row in stored:
+        assert row["source_line_count"] == 1
+        assert not row["fx_rate_ids"] and not row["fx_rate_set_version_ids"]
+        lines.append(
+            summarise.DetailLine(
+                id=row["id"],
+                book_code=str(row["book_code"]),
+                sign=1,
+                chain_seq=0,
+                posting_kind="FIXTURE",
+                entry_kind="FIXTURE",
+                account_role=str(row["account_role"]),
+                gl_account_id=row["gl_account_id"],
+                gl_account_code=str(row["gl_account_code"]),
+                dimensions=row["dimensions"],
+                txn_currency=str(row["txn_currency"]).strip(),
+                amount_txn=Decimal(row["debit_txn"]) - Decimal(row["credit_txn"]),
+                functional_currency=str(row["functional_currency"]).strip(),
+                amount_functional=Decimal(row["debit_functional"])
+                - Decimal(row["credit_functional"]),
+                contract_id=row["contract_id"],
+                obligation_id=row["obligation_id"],
+            )
+        )
+    findings = validation.validate_lines(
+        session, lines, entity_id=entity_id, functional_currency=functional
+    )
+    if findings:
+        raise validation.JournalValidationFailed(findings)
+    execution_id = record_execution(
+        uow,
+        control_id="CTL-020",
+        run_ref_type=RunRefType.JOURNAL_RUN,
+        run_ref_id=run_id,
+        population_count=len(lines),
+        exception_count=0,
+        result=ControlResult.PASS if lines else ControlResult.NOT_APPLICABLE,
+        entity_id=entity_id,
+        book_code=str(run["book_code"]),
+        period_id=UUID(str(run["period_id"])),
+        detail={
+            "fixture": True,
+            "validated_population": "seeded_journal_lines",
+            "line_ids": [str(line.id) for line in lines],
+            "functional_currency": functional,
+            "transaction_currencies": sorted({line.txn_currency for line in lines}),
+            "checks": ["account", "entity", "dimensions", "currency", "fx_rate"],
+        },
+    )
+    uow.audit(
+        action=RUN_AUDIT_ACTION,
+        object_type=RUN_AUDIT_OBJECT_TYPE,
+        object_id=run_id,
+        object_version="1",
+        after=run_audit_after(rows, validation_execution_id=execution_id),
+    )
+    return execution_id
+
+
+def record_run_calculation(world: Any, rows: JournalRows) -> None:
+    """Validate and audit a fixture run in the same unit of work."""
+    with world.place.uow() as uow:
+        record_fixture_run_calculation(uow, rows)
         uow.commit()
 
 
-def acknowledged_run(
-    session: Session, world: CloseWorld, period_id: UUID | None = None
-) -> JournalRows:
-    """``acknowledged_run_for`` on the world's entity and period (default September), with the
-    producer's CALCULATE audit fact written through the world's unit of work (§25.22)."""
-    rows = acknowledged_run_for(
-        session,
-        tenant_id=world.tenant_id,
-        entity_id=world.entity_id,
-        period_id=world.period_id if period_id is None else period_id,
-        now=world.place.clock.now(),
-    )
-    record_run_calculation(world, rows)
+def acknowledged_run(world: CloseWorld, period_id: UUID | None = None) -> JournalRows:
+    """Create, validate and audit the acknowledged fixture run in one transaction."""
+    with world.place.uow() as uow:
+        rows = acknowledged_run_for(
+            uow.session,
+            tenant_id=world.tenant_id,
+            entity_id=world.entity_id,
+            period_id=world.period_id if period_id is None else period_id,
+            now=uow.now,
+        )
+        record_fixture_run_calculation(uow, rows)
+        uow.commit()
     return rows
 
 

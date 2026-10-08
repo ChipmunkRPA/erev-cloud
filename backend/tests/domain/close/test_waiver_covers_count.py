@@ -95,8 +95,8 @@ def _in_soft_close_with_every_other_gate_green(world: CloseWorld) -> None:
     earlier_periods_closed(world)
     started = _command(world, world.maya, "start-close", {"comment": "September close"})
     assert started.status_code == 200, started.text
+    acknowledged_run(world)
     with system_session(world) as session:
-        acknowledged_run(session, world)
         reviewed_reconciliations(session, world)
         close_run_succeeded(session, world)
 

@@ -445,8 +445,8 @@ def test_br_cls_08_lock_decision_refused_after_an_earlier_period_reopened(
         if_match=f'"r{shown["row_version"]}"',
     )
     assert started.status_code == 200, started.text
+    acknowledged_run(world)
     with system_session(world) as session:
-        acknowledged_run(session, world)
         reviewed_reconciliations(session, world)
         close_run_succeeded(session, world)
     with world.place.uow() as uow:
@@ -527,8 +527,8 @@ def test_relock_writes_diff_report(world: CloseWorld, clock: FrozenClock) -> Non
         if_match=f'"r{shown["row_version"]}"',
     )
     assert started.status_code == 200, started.text
+    acknowledged_run(world)
     with system_session(world) as session:
-        acknowledged_run(session, world)
         reviewed_reconciliations(session, world)
         close_run_succeeded(session, world)
     with world.place.uow() as uow:
@@ -730,8 +730,8 @@ def test_period_state_machine_complete(world: CloseWorld, clock: FrozenClock) ->
     assert _state(world, key)["state"] == PeriodState.OPEN.value
     assert _command(world, maya, key, "start-close").status_code == 200
     # closing → closed (lock)
+    acknowledged_run(world, period_id)
     with system_session(world) as session:
-        acknowledged_run(session, world, period_id)
         reviewed_reconciliations(session, world, period_id)
         close_run_succeeded(session, world, period_id)
     requested = _command(world, maya, key, "request-lock")

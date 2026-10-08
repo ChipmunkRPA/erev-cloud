@@ -2,6 +2,32 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Journal fixture validation evidence — October 8, 2026
+
+- Continued from clean d09aefa. Reproduced the journal-audit fixture failure: **one failed,
+  two passed in 0.64 seconds**. The real producer includes `validation_execution_id`;
+  the fixture's audit omitted it. No production expectation was removed or skipped.
+- The fixture now validates its stored, unaggregated journal lines with the production
+  account/entity/dimension/currency/FX validator, writes CTL-020 evidence and links its
+  audit to that actual ID. Evidence explicitly identifies the seeded journal-line population.
+  The acknowledged-run helper creates, validates and audits in one transaction; migrated
+  its twelve callers out of the old split transaction arrangement.
+- Two initial database witnesses pass: a valid fixture has correctly scoped linked evidence;
+  an inactive account emits neither success evidence nor a calculation audit. Added an
+  atomic rollback witness for invalid newly created fixture rows. All **421 close-unit tests
+  passed in 1.42 seconds**. Broader lock/reopen/waiver/file/audit validation: **154 passed,
+  one failed in 542.45 seconds**; the CTL-038 command-route walk passed.
+- The remaining failure also reproduces on unchanged d09aefa (**one failed, 22.70 seconds**):
+  a reopened-period test tried to relock with an OPEN LATE_EVENT. Added the actual exception
+  waiver request/reviewer approval and retained both refusal and successful relock assertions.
+  Final close-run suite: **18 passed in 148.97 seconds**, including that corrected case.
+  Logs: `/private/tmp/recon-audit-fixture-{baseline,evidence,units,domain}.log` and
+  `/private/tmp/recon-audit-relock-{baseline,fixed}.log`. All processes are terminal.
+- Ruff lint/format and whitespace checks pass. No tests were skipped or expectations relaxed.
+  These are scoped results, not a full-current backend/CI or canonical control-gate rerun.
+- This repairs verification infrastructure, not a production calculation behavior. Preserve
+  historical gate dates, publication exclusions and noncommercial licensing. No deployment.
+
 ## Exact reconciliation freshness — October 8, 2026
 
 - Continued from 364ba52. The new PostgreSQL/API witness publishes a different contract
@@ -114,19 +140,6 @@
   **6358** remains active in the original context, past all six metamorphic tests and through
   RPO checks, now in determinism. Both ongoing gates predate this test correction; preserve
   their handles and inspect final source bindings. No deployment or readiness claim.
-
-## Golden parity verification — October 8, 2026
-
-- `make parity` passed on clean main 6d33ae1: 18 fixture files verified; **130 tests
-  passed in 106.29 seconds**, comprising 122 golden cases and eight additional checks.
-  Immutable source/context hashes and Python/Node dependency bindings remained consistent.
-  Report/log hashes and scope are in docs/release/REPOSITORY-CHECKS-2026-10-08.md.
-- Independent accounting approval remains pending for DEV-002, DEV-052, DEV-010,
-  DEV-050 and DEV-011. No production-readiness or full-current-CI claim.
-  Property session 52175 remains active; preserve the same immutable run.
-- Reconfirmed the owner's direct-to-main workflow: no open GitHub PRs and only remote
-  main. Future verified changes go directly to main unless protection requires a PR;
-  merge required PRs after checks and remove merged branches. No deployment.
 
 ## GL reconciliation ledger-history freshness — October 8, 2026
 
