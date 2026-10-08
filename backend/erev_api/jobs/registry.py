@@ -115,6 +115,10 @@ Handler = Callable[[JobContext, Mapping[str, Any]], JobOutcome]
 # FAILED, the job's params and its problem, after the last attempt (BUILD_SPEC RPS-2; RV-14).
 type FailureHook = Callable[[UnitOfWork, Mapping[str, Any], Mapping[str, Any]], None]
 type CancellationHook = Callable[[UnitOfWork, Mapping[str, Any], UUID], None]
+# Read-only dependency check while QUEUED: False defers without using a handler attempt.
+# A domain Problem is terminal (missing/failed dependency); infrastructure errors propagate
+# to the existing stranded-task recovery rather than being mistaken for readiness.
+type ReadyHook = Callable[[Session, UUID, Mapping[str, Any]], bool]
 
 
 @dataclass(frozen=True, slots=True)
@@ -414,6 +418,7 @@ class HandlerSpec:
     failed_item: FailedItem | None = None
     on_cancel: CancellationHook | None = None
     failure_hook_required: bool = False
+    ready: ReadyHook | None = None
 
 
 # One handler per E-14 kind (DG-KRN-JOB-01), filled by ``task`` when handler modules are imported.
@@ -428,6 +433,7 @@ def task(
     failed_item: FailedItem | None = None,
     on_cancel: CancellationHook | None = None,
     failure_hook_required: bool = False,
+    ready: ReadyHook | None = None,
 ) -> Callable[[Handler], Handler]:
     """Register the handler of ``kind``; its queue is ``JOB_QUEUE[kind]``. ``on_failure`` runs in
     the transaction that ends the job FAILED after its last attempt (BUILD_SPEC RPS-2).
@@ -435,6 +441,9 @@ def task(
     can retry instead of leaving a terminal job with an unfinished subject.
     ``on_cancel`` settles the subject when a queued job is cancelled, atomically with the job.
     A hook error aborts cancellation rather than stranding the subject.
+    ``ready`` reads retained dependencies before a slot/attempt is taken. False keeps the job
+    QUEUED and schedules another delivery without spending retry budget; a Problem settles
+    the job through its failure hook. It must not mutate business state.
     ``failed_item`` makes such a job leave the exception item ``JOB_FAILED`` when its record
     names one legal entity (05 JOB-07 rev 1.165); a kind whose failure hook raises an item of
     its own registers none."""
@@ -449,6 +458,7 @@ def task(
             failed_item=failed_item,
             on_cancel=on_cancel,
             failure_hook_required=failure_hook_required,
+            ready=ready,
         )
         return handler
 
@@ -1112,6 +1122,16 @@ def run_job(
             attempt=attempt,
             enqueuer_release_id=pin.enqueuer,
         )
+    if _defer_until_ready(
+        job_id,
+        tenant_id,
+        current=current,
+        task_id=task_id,
+        attempt=attempt,
+        release_mismatch_deferrals=release_mismatch_deferrals,
+        runtime=runtime,
+    ):
+        return
     with ExitStack() as stack:
         if not exempt:
             if stack.enter_context(job_slot(tenant_id, limit)) is None:
@@ -1153,6 +1173,66 @@ def run_job(
             runtime=runtime,
             current=current,
         )
+
+
+DEPENDENCY_RETRY_DELAY: Final = timedelta(seconds=30)
+
+
+def _defer_until_ready(
+    job_id: UUID,
+    tenant_id: UUID,
+    *,
+    current: RowMapping,
+    task_id: int | None,
+    attempt: int,
+    release_mismatch_deferrals: int,
+    runtime: JobRuntime,
+) -> bool:
+    """True when this delivery was deferred, superseded, cancelled or failed by readiness."""
+    spec = HANDLERS.get(JobKind(current["kind"]))
+    if spec is None or spec.ready is None:
+        return False
+    try:
+        with tenant_session(_system_context(tenant_id)) as session:
+            owner = session.execute(
+                select(job.c.procrastinate_job_id)
+                .where(
+                    job.c.tenant_id == tenant_id,
+                    job.c.id == job_id,
+                    job.c.state == JobState.QUEUED.value,
+                )
+                .with_for_update()
+            ).one_or_none()
+            if owner is None or owner[0] != task_id:
+                return True
+            ready = spec.ready(session, job_id, handler_params(current["params"]))
+            if not isinstance(ready, bool):
+                raise TypeError("A job readiness hook must return bool.")
+            if ready:
+                return False
+            _redispatch_if_owner(
+                session,
+                job_id,
+                tenant_id,
+                task_id=task_id,
+                queue=str(current["queue"]),
+                now=runtime.clock.now(),
+                attempt=attempt,
+                delay=DEPENDENCY_RETRY_DELAY,
+                release_mismatch_deferrals=release_mismatch_deferrals,
+            )
+        return True
+    except Problem as error:
+        _fail_queued(
+            job_id,
+            tenant_id,
+            task_id=task_id,
+            attempt=attempt,
+            error=error,
+            runtime=runtime,
+            created_by=current["created_by"],
+        )
+        return True
 
 
 def _redispatch_if_owner(

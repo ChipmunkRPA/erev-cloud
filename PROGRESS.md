@@ -2,6 +2,30 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Dependency-aware queue readiness — October 8, 2026 (RPS-16 continued)
+
+- Continued from clean published d7c27f8; previous turn retained verified first-close output.
+  Added optional read-only `ready` hooks to job registration. After release/delivery fencing,
+  before a slot/attempt, False keeps QUEUED and redispatches after 30 seconds with the same
+  attempt/release budget. Stale/cancelled deliveries do nothing. A domain Problem settles via
+  the normal terminal failure hook; unexpected reader errors preserve the queued task for
+  existing stranded-task recovery. No handler attempt is spent on dependency wait.
+- Added `evidence_readiness.close_ready`: checks pack/job subject identity and immutable CLOSE
+  binding, then only the five bound report/run/job pairs. Pending pairs wait; missing, failed,
+  cancelled or inconsistent sources refuse. This is a worker preflight, not authorization or
+  evidence integrity proof; completion must still invoke the source readers and storage step.
+- Queue suite **14 passed in 5.86 seconds**; source/queue/release/unit integration **30 passed in
+  20.64 seconds**. Added source terminal-state fault cases, then full scoped queue, release,
+  stall, cancellation API, registry and close witness: **50 passed in 23.48 seconds**. Seven
+  waits preserve attempt 1 without taking a slot; stale delivery does not recheck/redispatch;
+  completion runs once and produces one job.finish. Source checks use actual five report jobs;
+  kernel readiness tests register probe handlers. No complete EVIDENCE_PACK handler claim.
+- Logs `/private/tmp/job-readiness-{db,integrated,final}.log`; all processes terminal. Ruff,
+  source Mypy and whitespace pass. Archived GL freshness notes verbatim. Pack handler wiring,
+  creation/idempotency, failure/cancellation lifecycle, download/API, automatic generation,
+  other kinds and variance remain open. Current release gates/accounting sign-off still needed;
+  RPS-16/CTL-041 unclaimed. Direct main; no deployment or external notifications.
+
 ## Atomic first-close retention — October 8, 2026 (RPS-16 continued)
 
 - Continued from clean published 7f04236; previous turn closed the generic-file access bypass.
@@ -137,30 +161,6 @@
   and the separate variance-between-closes report remain open. Current release gates and
   independent accounting approval remain required; RPS-16/CTL-041 and production readiness
   are unclaimed. Validated direct-main publication; no deployment or external notifications.
-
-## GL reconciliation ledger-history freshness — October 8, 2026
-
-- Continued from clean published main 8579c6b (previous turn made verified progress).
-  Closed B2-8: GL reconciliation freshness now watches later seals across ledger history
-  through the reconciled period end, matching the comparison's account/role population.
-  An earlier-period posting invalidates review even without a reversal into the current period.
-  Older rows retain timestamp fallback over the same range. Billing stays period-scoped;
-  other entities/books and future periods do not invalidate either comparison.
-- First regression run: **8 failed, 25 deselected in 14.32 seconds**, all fixture transition
-  calls missing set_values. Corrected baseline: **6 failed, 2 passed, 25 deselected in
-  15.23 seconds**: two cases reproduced the missed earlier-period posting; four were fixture
-  period-state errors. Corrected fixtures and implementation: **8 passed, 25 deselected in
-  13.51 seconds**. Logs: /private/tmp/reconciliation-history-{before,baseline,fixed}.log.
-- Added entity isolation and unsigned-cockpit checks. Broader lock/reconciliation and query
-  coverage: **48 passed in 142.38 seconds**, /private/tmp/reconciliation-history-expanded.log.
-  Strengthened the matrix with amounts moved between distinct accounts: **10 passed,
-  25 deselected in 15.82 seconds**, /private/tmp/reconciliation-history-final.log. All processes
-  terminal. Ruff lint/format, source Mypy and whitespace checks pass. Existing concurrent
-  posting/generation cases remain covered by the broad run. No current full-suite claim.
-- Updated the model, B2-8 and developer guidance; archived prior repository-gate evidence
-  verbatim. Exact role-balance recomparison (B1-29), volume/release checks, remaining product
-  gaps and independent accounting sign-off remain open. No deployment; preserve exclusions
-  and noncommercial licensing. Publish tested changes directly to main.
 
 ## Durable completeness refusal evidence — October 8, 2026
 

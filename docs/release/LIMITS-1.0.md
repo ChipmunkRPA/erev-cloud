@@ -607,6 +607,13 @@ close witness. Final scoped regression: 99 passed. This is not the EVIDENCE_PACK
 public download: dependency scheduling, creation/idempotency, failure/cancellation lifecycle,
 export auditing/API, automatic generation, other kinds, variance and release approvals remain.
 
+October 8 queue-readiness foundation: job handlers can wait for dependencies without taking a
+tenant slot or spending retry attempts. A CLOSE-specific preflight checks only immutable saved
+report/job pairs, refusing failed/cancelled/missing or inconsistent sources. All 50 scoped queue,
+release-fencing, stall, cancellation, registry and close tests pass. Kernel tests use probe
+handlers and the source reader uses actual report jobs; the complete EVIDENCE_PACK worker is
+still pending, including lifecycle/cancellation integration and API availability.
+
 ## The fifteen standing names
 
 Fifteen tests of the backend suite do not pass in release 1.0. They are the same fifteen in every whole run on the day of the freeze, by name, and none passes when it is run again alone; the release candidate's suite shows these and no other (R-125 (n); R-126 (e)). None is skipped, loosened or marked: each fails at full strength until its cause is closed. Two gate targets fail by them, as the supervisor measured on `783f340ea`: `make answer-keys` by the six keys and `make test-pg` by the three capture witnesses. The causes below are read from the failure each test records and from the test: for names 3 to 5 as the suite takes them since index 308's part for the answer keys' runner is on the branch, for the others in the run of record on `5c3b5347c`. Names 1 to 5 are platform keys, which the suite takes on the in-memory platform. On the database platform a lane measured them on 2026-10-03 with that part: the two DISC keys pass; POS-CHK-012 compares clean in every block and is failed by its finding alone; the GT07 key is not run; POS-CHK-117 has four mismatches.

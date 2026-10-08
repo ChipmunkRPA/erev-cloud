@@ -626,3 +626,129 @@ def test_r_50_a_a_tenant_that_cannot_be_audited_never_stops_the_fan_out(
             (action, request) for action, _, request, _ in _job_events(served, swept["id"])
         ] == [("job.start", "tests-isolation")]
         assert _chain_passes(served, runtime)
+
+
+def test_dependencies_wait_without_spending_attempts_or_taking_a_slot(
+    tenant_id: UUID, runtime: JobRuntime, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A real queued child gates a real queued parent across repeated/stale deliveries."""
+    ran: list[UUID] = []
+    checks: list[UUID] = []
+    monkeypatch.setitem(registry.HANDLERS, JobKind.AUDIT_CHAIN_VERIFY, _succeeding(ran))
+    dependency = _defer(tenant_id, runtime, JobKind.AUDIT_CHAIN_VERIFY)
+
+    def ready(session: Session, job_id: UUID, params: Mapping[str, Any]) -> bool:
+        assert params == {"probe": True}
+        checks.append(job_id)
+        return session.scalar(select(job.c.state).where(job.c.id == dependency)) == "SUCCEEDED"
+
+    success = _succeeding(ran)
+    monkeypatch.setitem(
+        registry.HANDLERS,
+        JobKind.EVIDENCE_PACK,
+        HandlerSpec(handler=success.handler, retry=RetryPolicy(max_attempts=1), ready=ready),
+    )
+    parent = _defer(tenant_id, runtime, JobKind.EVIDENCE_PACK)
+    first_task = _fetch(tenant_id, parent)
+    real_slot = registry.job_slot
+
+    def forbidden_slot(*args: Any, **kwargs: Any) -> Any:
+        raise AssertionError("a dependency wait must not acquire a tenant slot")
+
+    monkeypatch.setattr(registry, "job_slot", forbidden_slot)
+    for index in range(7):
+        delivery = first_task if index == 0 else _fetch(tenant_id, parent)
+        run_job(parent, tenant_id, attempt=1, runtime=runtime, delivered_task_id=delivery)
+        waiting = _job(tenant_id, parent)
+        assert (waiting["state"], waiting["started_at"], waiting["problem"]) == (
+            "QUEUED",
+            None,
+            None,
+        )
+        assert waiting["procrastinate_job_id"] != delivery
+        task = _task(tenant_id, waiting["procrastinate_job_id"])
+        assert task["args"]["attempt"] == 1
+        assert task["scheduled_at"] == runtime.clock.now() + timedelta(seconds=30)
+    assert ran == [] and checks == [parent] * 7
+    # An old delivery neither rechecks dependencies nor supersedes the current task.
+    latest = _job(tenant_id, parent)["procrastinate_job_id"]
+    run_job(parent, tenant_id, attempt=1, runtime=runtime, delivered_task_id=first_task)
+    assert len(checks) == 7
+    assert _job(tenant_id, parent)["procrastinate_job_id"] == latest
+    monkeypatch.setattr(registry, "job_slot", real_slot)
+    child_task = _fetch(tenant_id, dependency)
+    run_job(dependency, tenant_id, attempt=1, runtime=runtime, delivered_task_id=child_task)
+    delivery = _fetch(tenant_id, parent)
+    run_job(parent, tenant_id, attempt=1, runtime=runtime, delivered_task_id=delivery)
+    assert ran == [dependency, parent]
+    assert _job(tenant_id, parent)["state"] == "SUCCEEDED"
+    with tenant_session(_db(tenant_id), read_only=True) as session:
+        events = (
+            session.execute(select(audit_event.c.action).where(audit_event.c.object_id == parent))
+            .scalars()
+            .all()
+        )
+    assert sorted(events) == ["job.finish", "job.start"]
+
+
+def test_failed_dependency_settles_parent_and_its_failure_hook_without_handler(
+    tenant_id: UUID, runtime: JobRuntime, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    ran: list[UUID] = []
+    failures: list[str] = []
+
+    def ready(session: Session, job_id: UUID, params: Mapping[str, Any]) -> bool:
+        raise Problem("validation-failed", "A retained source report failed.")
+
+    def failed(uow: Any, params: Mapping[str, Any], problem: Mapping[str, Any]) -> None:
+        failures.append(str(problem["detail"]))
+
+    monkeypatch.setitem(
+        registry.HANDLERS,
+        JobKind.EVIDENCE_PACK,
+        HandlerSpec(
+            handler=_succeeding(ran).handler,
+            retry=RetryPolicy(max_attempts=3),
+            ready=ready,
+            on_failure=failed,
+            failure_hook_required=True,
+        ),
+    )
+    parent = _defer(tenant_id, runtime, JobKind.EVIDENCE_PACK)
+    delivery = _fetch(tenant_id, parent)
+    run_job(parent, tenant_id, attempt=1, runtime=runtime, delivered_task_id=delivery)
+    stored = _job(tenant_id, parent)
+    assert stored["state"] == "FAILED"
+    assert stored["problem"]["detail"] == "A retained source report failed."
+    assert ran == [] and failures == ["A retained source report failed."]
+    run_job(parent, tenant_id, attempt=1, runtime=runtime, delivered_task_id=delivery)
+    assert failures == ["A retained source report failed."]
+
+
+@pytest.mark.parametrize("broken", ["exception", "not-bool"])
+def test_broken_readiness_keeps_queued_job_for_existing_stranded_recovery(
+    tenant_id: UUID, runtime: JobRuntime, monkeypatch: pytest.MonkeyPatch, broken: str
+) -> None:
+    ran: list[UUID] = []
+
+    def ready(session: Session, job_id: UUID, params: Mapping[str, Any]) -> bool:
+        if broken == "exception":
+            raise RuntimeError("dependency reader unavailable")
+        return None  # type: ignore[return-value] - exercise an invalid hook at runtime
+
+    monkeypatch.setitem(
+        registry.HANDLERS,
+        JobKind.EVIDENCE_PACK,
+        HandlerSpec(handler=_succeeding(ran).handler, retry=RetryPolicy(), ready=ready),
+    )
+    parent = _defer(tenant_id, runtime, JobKind.EVIDENCE_PACK)
+    delivery = _fetch(tenant_id, parent)
+    with pytest.raises(RuntimeError if broken == "exception" else TypeError):
+        run_job(parent, tenant_id, attempt=1, runtime=runtime, delivered_task_id=delivery)
+    stored = _job(tenant_id, parent)
+    assert (stored["state"], stored["procrastinate_job_id"], stored["started_at"]) == (
+        "QUEUED",
+        delivery,
+        None,
+    )
+    assert ran == []

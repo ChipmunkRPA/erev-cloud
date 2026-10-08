@@ -2732,3 +2732,27 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
 - Control session 36008 is terminal. Property session 52175 / PID 6358 is confirmed live,
   still in determinism, in its original immutable context. Keep that run; no database test
   process is active. Archived invitation-erasure evidence verbatim. No deployment/readiness claim.
+
+## GL reconciliation ledger-history freshness — October 8, 2026
+
+- Continued from clean published main 8579c6b (previous turn made verified progress).
+  Closed B2-8: GL reconciliation freshness now watches later seals across ledger history
+  through the reconciled period end, matching the comparison's account/role population.
+  An earlier-period posting invalidates review even without a reversal into the current period.
+  Older rows retain timestamp fallback over the same range. Billing stays period-scoped;
+  other entities/books and future periods do not invalidate either comparison.
+- First regression run: **8 failed, 25 deselected in 14.32 seconds**, all fixture transition
+  calls missing set_values. Corrected baseline: **6 failed, 2 passed, 25 deselected in
+  15.23 seconds**: two cases reproduced the missed earlier-period posting; four were fixture
+  period-state errors. Corrected fixtures and implementation: **8 passed, 25 deselected in
+  13.51 seconds**. Logs: /private/tmp/reconciliation-history-{before,baseline,fixed}.log.
+- Added entity isolation and unsigned-cockpit checks. Broader lock/reconciliation and query
+  coverage: **48 passed in 142.38 seconds**, /private/tmp/reconciliation-history-expanded.log.
+  Strengthened the matrix with amounts moved between distinct accounts: **10 passed,
+  25 deselected in 15.82 seconds**, /private/tmp/reconciliation-history-final.log. All processes
+  terminal. Ruff lint/format, source Mypy and whitespace checks pass. Existing concurrent
+  posting/generation cases remain covered by the broad run. No current full-suite claim.
+- Updated the model, B2-8 and developer guidance; archived prior repository-gate evidence
+  verbatim. Exact role-balance recomparison (B1-29), volume/release checks, remaining product
+  gaps and independent accounting sign-off remain open. No deployment; preserve exclusions
+  and noncommercial licensing. Publish tested changes directly to main.

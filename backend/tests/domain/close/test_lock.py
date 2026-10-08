@@ -79,6 +79,7 @@ from erev_api.domain.reports import (
     evidence_archive,
     evidence_assembly,
     evidence_certification,
+    evidence_readiness,
     evidence_reconciliation_population,
     evidence_selection,
     evidence_sources,
@@ -89,6 +90,7 @@ from erev_api.enums import (
     BookCode,
     ChecklistStatus,
     FilePurpose,
+    JobKind,
     LockKind,
     PeriodState,
     RegistryCategory,
@@ -2257,6 +2259,13 @@ def test_first_close_archive_verifies_every_component_before_returning_bytes(
     with world.place.uow(reader) as uow:
         bound = evidence_sources.prepare_close(uow, request, verification_id=verification_id)
         pack = evidence_pack_values(world.tenant_id, **bound.pack_values(), created_at=uow.now)
+        parent = uow.defer(
+            JobKind.EVIDENCE_PACK,
+            {"evidence_pack_id": str(pack["id"])},
+            subject_type="evidence_pack",
+            subject_id=pack["id"],
+        )
+        pack["job_id"] = parent["id"]
         uow.session.execute(insert(evidence_pack).values(**pack))
         uow.commit()
     with world.place.uow(reader) as uow, pytest.raises(Problem) as error:
@@ -2267,6 +2276,48 @@ def test_first_close_archive_verifies_every_component_before_returning_bytes(
         assert "distinct preparer" in error.value.detail
         return
     assert "supporting report differs" in error.value.detail
+    with world.place.uow(reader) as uow:
+        assert not evidence_readiness.close_ready(uow.session, parent["id"], parent["params"])
+    # Readiness rejects terminal children and contradictory job/report states. These
+    # legal state transitions are rolled back after each fault so the real workers can run.
+    source = bound.supporting_reports[0]
+    for terminal in ("FAILED", "CANCELLED", "SUCCEEDED"):
+        with world.place.uow(reader) as uow:
+            apply(
+                uow.session,
+                "job",
+                source.job_id,
+                to_status="RUNNING",
+                expected_status="QUEUED",
+                set_values={},
+            )
+            apply(
+                uow.session,
+                "job",
+                source.job_id,
+                to_status=terminal,
+                expected_status="RUNNING",
+                set_values={},
+            )
+            with pytest.raises(Problem) as refused:
+                evidence_readiness.close_ready(uow.session, parent["id"], parent["params"])
+            assert refused.value.slug == "validation-failed"
+    with world.place.uow(reader) as uow:
+        apply(
+            uow.session,
+            "report_run",
+            source.run_id,
+            to_status="FAILED",
+            expected_status="QUEUED",
+            set_values={},
+        )
+        with pytest.raises(Problem, match="failed or was cancelled"):
+            evidence_readiness.close_ready(uow.session, parent["id"], parent["params"])
+    with world.place.uow(reader) as uow:
+        with pytest.raises(Problem, match="does not match"):
+            evidence_readiness.close_ready(uow.session, source.job_id, parent["params"])
+        with pytest.raises(Problem, match="no valid pack id"):
+            evidence_readiness.close_ready(uow.session, parent["id"], {})
     with world.place.uow(reader) as uow, pytest.raises(Problem, match="Only a running"):
         evidence_storage.finish_close(uow, pack["id"])
     with world.place.uow(reader) as uow:
@@ -2285,6 +2336,7 @@ def test_first_close_archive_verifies_every_component_before_returning_bytes(
         finished = run_journal_job(world, report.job_id, attempts=1)
         assert finished["state"] == "SUCCEEDED", finished
     with world.place.uow(reader) as uow:
+        assert evidence_readiness.close_ready(uow.session, parent["id"], parent["params"])
         archive = evidence_assembly.assemble_close(uow, pack["id"])
         assert evidence_assembly.assemble_close(uow, pack["id"]) == archive
     manifest = evidence_archive.verify(
