@@ -808,7 +808,7 @@ Every row is release 1.0. G7 requires at least one test tagged exactly `@pytest.
 | CTL-016 | Close gates before lock | PC-02 (system part) | F-07 | Prev · Auto | REQ-CLS-008, REQ-CLS-009 | Close certification with gate results |
 | CTL-017 | Out-of-period items post to first open period with origin tag | PC-04 | F-08 | Prev · Auto | REQ-CLS-004, REQ-CLS-006 | Out-of-period register |
 | CTL-018 | Reopen requires dual approval; diff at re-lock | PC-05 | F-07 | Prev/Det · Auto | REQ-CLS-011 | Reopen record; re-lock diff report |
-| CTL-019 | Journal completeness assertions | JE-01 | F-10 | Det/Prev · Auto | REQ-JE-005 | Evidence registry entry per journal run |
+| CTL-019 | Journal completeness assertions | JE-01 | F-10 | Det/Prev · Auto | REQ-JE-005 | Evidence registry entry per journal run and refused period lock evaluation |
 | CTL-020 | Journal line validation: account, dimensions, entity, currency, FX rate id; mapping completeness | JE-02 | F-09 | Prev · Auto | REQ-JE-022, REQ-REF-007, REQ-REF-008, REQ-FX-006 | Validation log; exception report |
 | CTL-021 | Idempotent GL export with acknowledgement matching; unacknowledged batches block lock | JE-03 | F-10 | Det · Auto | REQ-JE-012, REQ-JE-013, REQ-JE-014, REQ-JE-015, REQ-JE-016 | Posting receipt register; aging list |
 | CTL-022 | Journals balance per entity, book, currency and period (database constraint) | JE-05 | F-09 | Prev · Auto | REQ-JE-001, REQ-JE-002 | Balancing check result per batch |

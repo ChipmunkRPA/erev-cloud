@@ -1946,3 +1946,29 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   full accounting coverage. Integration-owner fallback, AI and other implementation gaps,
   remaining release checks and independent accounting sign-off remain open. No deployment
   or full-suite/readiness claim. Preserve exclusions/licensing; push verified changes to main.
+
+## Integration mismatch recipient fallback — October 7, 2026
+
+- Continued from clean main e12dcfd; prior turn published verified FX checks (progress).
+  Sync mismatches now prefer the configured eligible owner, then the connection's human
+  creator if still an active tenant member with manage/read scope over every affected entity.
+  Assign the exception and notify once; do not rewrite connection ownership. No broad role
+  broadcast or API-client/system-to-human identifier fallback. With no qualified recipient,
+  preserve the unassigned blocking exception for authorized queue review.
+- Existing sync/reconciliation tests plus new fallback/priority/deduplication matrix:
+  **11 passed in 23.65 seconds**, /private/tmp/integration-owner-fallback-first.log, terminal.
+  Added narrowed-creator-scope refusal and updated owner help/missing-owner UI copy.
+  Expanded backend/architecture run: **58 passed, 1 failed in 35.08 seconds**,
+  /private/tmp/integration-owner-fallback-final.log. The new scoped-role fixture attempted
+  a duplicate active assignment. First correction: **11 passed, 1 failed in 25.49 seconds**,
+  /private/tmp/integration-owner-fallback-corrected.log: assignment scope is immutable.
+  Changed the fixture to revoke then regrant within the failure transaction. Final scoped
+  matrix: **12 passed in 25.25 seconds**, /private/tmp/integration-owner-fallback-verified.log.
+  All backend runs are terminal; the expanded run passed all 47 architecture checks. Integration settings UI: **27 passed in 3.19 seconds**,
+  /private/tmp/integration-owner-fallback-ui.log, terminal. Source Mypy, Ruff lint/format,
+  JSON Prettier and whitespace checks pass.
+- Source inspection confirmed file uploads deliberately retain uploader visibility; that
+  existing rule is preserved. Updated B1-19/developer guidance and archived older amendment
+  evidence verbatim. AI, other implementation gaps, remaining release checks and independent
+  accounting sign-off remain open. No full-suite/readiness claim or deployment. Preserve
+  exclusions and noncommercial licensing; push verified changes directly to main.

@@ -25,6 +25,7 @@ from erev_api.audit import writer as audit_writer
 from erev_api.auth.keyring import KeyRing
 from erev_api.auth.principal import Principal, RequestContext, system_principal
 from erev_api.clock import Clock
+from erev_api.controls.evidence import ControlRefusal
 from erev_api.db.session import system_entity_scope, system_user, tenant_session
 from erev_api.enums import JobKind, PrincipalKind
 from erev_api.files.store import FileStore
@@ -233,12 +234,30 @@ def unit_of_work(
     statement_timeout_ms: int = 60_000,
 ) -> Iterator[UnitOfWork]:
     """A tenant transaction for ``ctx.principal`` with ``now`` captured once (DG-KRN-UOW-01)."""
-    with tenant_session(
-        ctx.principal.db_context, statement_timeout_ms=statement_timeout_ms
-    ) as session:
-        uow = UnitOfWork(ctx=ctx, session=session, clock=clock, keyring=keyring, files=files)
-        try:
-            yield uow
-        finally:
-            if not uow.committed:
-                uow.discard()
+    try:
+        with tenant_session(
+            ctx.principal.db_context, statement_timeout_ms=statement_timeout_ms
+        ) as session:
+            uow = UnitOfWork(ctx=ctx, session=session, clock=clock, keyring=keyring, files=files)
+            try:
+                yield uow
+            finally:
+                if not uow.committed:
+                    uow.discard()
+    except ControlRefusal as refused:
+        if uow.committed:
+            raise RuntimeError("a control refusal must precede commit") from refused
+        # Exit the original session first: no business write or lock survives into this
+        # independent evidence transaction. A failure to retain evidence is not hidden.
+        if not refused.retained:
+            with unit_of_work(
+                ctx,
+                clock=clock,
+                keyring=keyring,
+                files=files,
+                statement_timeout_ms=statement_timeout_ms,
+            ) as evidence_uow:
+                refused.retain(evidence_uow)
+                evidence_uow.commit()
+            refused.retained = True
+        raise

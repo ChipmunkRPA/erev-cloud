@@ -2210,7 +2210,7 @@ Rev 1.13 pending column (D-96) — lifted in rev 1.29 (lane P5, integration slic
 |---|---|---|---|---|
 | SC-T | | | | |
 | `control_id` | text | N | | `CHECK (control_id ~ '^CTL-[0-9]{3}$')` (`docs/03-REQUIREMENTS.md` §4). |
-| `run_ref_type` | text | N | | `CLOSE_RUN`, `JOURNAL_RUN`, `IMPORT_UPLOAD`, `CONTRACT_COMPUTATION`, `REPORT_RUN`, `AUDIT_CHAIN_VERIFICATION`, `SYNC_RUN`, `JOURNAL_BATCH`, `RECONCILIATION_RUN`, `PERIOD_LOCK` (rev 1.21: an on-demand reconciliation records against its own run row as `RECONCILIATION_RUN`; CTL-016 evaluated at lock time before a close run exists records against the lock's approval request as `PERIOD_LOCK`; supervisor rulings of 2026-09-19 on the SOP-1 questions returned by lanes F-CLO and P4). The Python mirror is `erev_api.controls.evidence.RunRefType` (not an E-enum of §3: the column is text with this check). |
+| `run_ref_type` | text | N | | `CLOSE_RUN`, `JOURNAL_RUN`, `IMPORT_UPLOAD`, `CONTRACT_COMPUTATION`, `REPORT_RUN`, `AUDIT_CHAIN_VERIFICATION`, `SYNC_RUN`, `JOURNAL_BATCH`, `RECONCILIATION_RUN`, `PERIOD_LOCK`, `PERIOD_STATE` (rev 1.21: an on-demand reconciliation records against its own run row as `RECONCILIATION_RUN`; CTL-016 evaluated at lock time before a close run exists records against the lock's approval request as `PERIOD_LOCK`; supervisor rulings of 2026-09-19 on the SOP-1 questions returned by lanes F-CLO and P4). `PERIOD_STATE` identifies the existing period-state row for a refused lock before a lock record exists (October 8, 2026, revision 0141). The Python mirror is `erev_api.controls.evidence.RunRefType` (not an E-enum of §3: the column is text with this check). |
 | `run_ref_id` | uuid | N | | |
 | `entity_id` | uuid | Y | | |
 | `book_code` | erev.book_code | Y | | |

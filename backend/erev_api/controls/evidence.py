@@ -30,6 +30,7 @@ from erev_api.controls.stamping import process_release_id
 from erev_api.db import new_id
 from erev_api.db.tables import control_execution, engine_release
 from erev_api.enums import BookCode, ControlResult
+from erev_api.problems import Problem
 
 if TYPE_CHECKING:
     from erev_api.uow import UnitOfWork
@@ -51,6 +52,7 @@ class RunRefType(StrEnum):
     JOURNAL_BATCH = "JOURNAL_BATCH"
     RECONCILIATION_RUN = "RECONCILIATION_RUN"
     PERIOD_LOCK = "PERIOD_LOCK"
+    PERIOD_STATE = "PERIOD_STATE"
 
 
 @dataclass(frozen=True, slots=True)
@@ -247,3 +249,54 @@ def record_execution(
         )
     )
     return row_id
+
+
+class ControlRefusal(Problem):
+    """A refused command with failure observations to retain after its transaction rolls back.
+
+    The payload is control evidence only, never deferred business writes. The outer unit-of-work
+    boundary records it with the same caller/tenant after releasing the refused transaction.
+    """
+
+    def __init__(self, problem: Problem, records: tuple[ExecutionRecord, ...]) -> None:
+        if not records or any(record.result is not ControlResult.FAIL for record in records):
+            raise ValueError("a control refusal requires failed control observations")
+        super().__init__(
+            problem.slug,
+            problem.detail,
+            errors=problem.errors,
+            code=problem.code,
+            headers=problem.headers,
+            **problem.extensions,
+        )
+        self.records = records
+        self.retained = False
+
+    def retain(self, uow: UnitOfWork) -> None:
+        for record in self.records:
+            evidence_id = record_execution(
+                uow,
+                control_id=record.control_id,
+                run_ref_type=record.run_ref_type,
+                run_ref_id=record.run_ref_id,
+                population_count=record.population_count,
+                exception_count=record.exception_count,
+                result=record.result,
+                detail=record.detail,
+                exceptions_file_id=record.exceptions_file_id,
+                entity_id=record.entity_id,
+                book_code=None if record.book_code is None else record.book_code.value,
+                period_id=record.period_id,
+            )
+            uow.audit(
+                action="control_execution.refusal",
+                object_type="control_execution",
+                object_id=evidence_id,
+                after={
+                    "control_id": record.control_id,
+                    "result": "FAIL",
+                    "problem": self.slug,
+                    "run_ref_type": record.run_ref_type.value,
+                    "run_ref_id": str(record.run_ref_id),
+                },
+            )

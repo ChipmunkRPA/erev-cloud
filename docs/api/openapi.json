@@ -32584,7 +32584,8 @@
           "SYNC_RUN",
           "JOURNAL_BATCH",
           "RECONCILIATION_RUN",
-          "PERIOD_LOCK"
+          "PERIOD_LOCK",
+          "PERIOD_STATE"
         ],
         "title": "RunRefType",
         "type": "string"

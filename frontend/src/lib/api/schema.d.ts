@@ -19513,7 +19513,8 @@ export interface components {
       | "SYNC_RUN"
       | "JOURNAL_BATCH"
       | "RECONCILIATION_RUN"
-      | "PERIOD_LOCK";
+      | "PERIOD_LOCK"
+      | "PERIOD_STATE";
     /**
      * RunStatus
      * @description E-67 ``run_status`` (04 §3.4).

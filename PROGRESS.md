@@ -2,6 +2,31 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Durable completeness refusal evidence — October 8, 2026
+
+- Continued from published main c0e4fc6. Failed JE_COMPLETE evaluations now retain CTL-019
+  FAIL observations after the refused lock request or approval transaction rolls back. Evidence
+  cites the existing period state, so missing journal runs are covered. The original refusal and
+  pending approval remain; no period lock or business write survives. Same caller/tenant scope,
+  nested refusals retained once, and evidence-write failure rolls back partial observations.
+- Migration 0141 adds PERIOD_STATE and refuses downgrade while such evidence exists. Updated
+  generated API types, control registry, audit classification and B1-24 guidance. Completed the
+  prior currency finding's missing IMP-149 PRD catalogue row and matching architecture counts.
+- Initial PostgreSQL cases: **2 passed, 21 deselected in 10.10 seconds**. Expanded lock/UOW/
+  validation/all-architecture run: **329 passed, 2 failed in 203.69 seconds**; fixed missing audit
+  object classification and currency catalogue drift. Final affected run: **98 passed, 1 failed
+  in 85.53 seconds**; only catalogue row count remained and was corrected. Corrected catalogue/
+  validation: **65 passed in 1.00 seconds**; control registry/report: **6 passed in 35.88 seconds**.
+  Logs: /private/tmp/completeness-refusal-{first,expanded,final,corrected,registry}.log. All terminal.
+  Coverage includes real PostgreSQL rollback, approval refusal, nested handling, migration head,
+  downgrade protection and failure after evidence insert. Source Mypy, Ruff lint/format, generated
+  OpenAPI, frontend tsc --noEmit and whitespace checks pass. npm run typecheck was unavailable;
+  the direct TypeScript compiler check succeeded instead.
+- Archived integration fallback evidence verbatim. Verified no open PRs and only remote main;
+  continue tested direct-main publication. No deployment or full-suite/readiness claim. Remaining
+  implementation, final release checks, engine cut/replays and independent accounting sign-off
+  remain open; preserve publication exclusions and noncommercial licensing.
+
 ## Journal validation currencies and evidence — October 8, 2026
 
 - Continued from clean published main a63dfc0; prior turn completed SSP range lineage (progress).
@@ -97,32 +122,6 @@
   in build history. AI and other implementation gaps, broad release verification and independent
   accounting sign-off remain. No full-suite/readiness claim or deployment. Preserve publication
   exclusions/noncommercial licensing and push tested changes directly to main.
-
-## Integration mismatch recipient fallback — October 7, 2026
-
-- Continued from clean main e12dcfd; prior turn published verified FX checks (progress).
-  Sync mismatches now prefer the configured eligible owner, then the connection's human
-  creator if still an active tenant member with manage/read scope over every affected entity.
-  Assign the exception and notify once; do not rewrite connection ownership. No broad role
-  broadcast or API-client/system-to-human identifier fallback. With no qualified recipient,
-  preserve the unassigned blocking exception for authorized queue review.
-- Existing sync/reconciliation tests plus new fallback/priority/deduplication matrix:
-  **11 passed in 23.65 seconds**, /private/tmp/integration-owner-fallback-first.log, terminal.
-  Added narrowed-creator-scope refusal and updated owner help/missing-owner UI copy.
-  Expanded backend/architecture run: **58 passed, 1 failed in 35.08 seconds**,
-  /private/tmp/integration-owner-fallback-final.log. The new scoped-role fixture attempted
-  a duplicate active assignment. First correction: **11 passed, 1 failed in 25.49 seconds**,
-  /private/tmp/integration-owner-fallback-corrected.log: assignment scope is immutable.
-  Changed the fixture to revoke then regrant within the failure transaction. Final scoped
-  matrix: **12 passed in 25.25 seconds**, /private/tmp/integration-owner-fallback-verified.log.
-  All backend runs are terminal; the expanded run passed all 47 architecture checks. Integration settings UI: **27 passed in 3.19 seconds**,
-  /private/tmp/integration-owner-fallback-ui.log, terminal. Source Mypy, Ruff lint/format,
-  JSON Prettier and whitespace checks pass.
-- Source inspection confirmed file uploads deliberately retain uploader visibility; that
-  existing rule is preserved. Updated B1-19/developer guidance and archived older amendment
-  evidence verbatim. AI, other implementation gaps, remaining release checks and independent
-  accounting sign-off remain open. No full-suite/readiness claim or deployment. Preserve
-  exclusions and noncommercial licensing; push verified changes directly to main.
 
 ## Outstanding release verification
 

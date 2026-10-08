@@ -232,11 +232,13 @@ controls:
     r07_feature: ["F-10"]
     type: "Det/Prev · Auto"
     reqs: ["REQ-JE-005"]
-    evidence: "Evidence registry entry per journal run"
+    evidence: "Evidence registry entry per journal run and refused period lock evaluation"
     release: "1.0"
     phase: "CLO"
     impact_paths:
       - "backend/erev_api/domain/journals/**"
+      - "backend/erev_api/domain/close/commands.py"
+      - "backend/erev_api/uow.py"
   - id: "CTL-020"
     title: "Journal line validation: account, dimensions, entity, currency, FX rate id; mapping completeness"
     r07_catalogue_id: "JE-02"

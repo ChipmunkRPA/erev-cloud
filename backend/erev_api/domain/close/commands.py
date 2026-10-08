@@ -35,6 +35,7 @@ from erev_api.approvals import engine as approvals
 from erev_api.approvals import subjects
 from erev_api.auth import mfa
 from erev_api.auth.dependencies import require_for_entity
+from erev_api.controls.evidence import ControlRefusal, RunRefType, validate_execution
 from erev_api.db import new_id, transitions
 from erev_api.db.tables import (
     app_user,
@@ -1250,6 +1251,49 @@ def _refuse(outcome: period_machine.Refusal | period_machine.Accepted | Any) -> 
         raise outcome.problem()
 
 
+def _refuse_lock(
+    uow: UnitOfWork,
+    outcome: period_machine.Refusal | period_machine.Accepted | Any,
+    scope: gates.PeriodScope,
+    results: gates.GateResults,
+) -> None:
+    if not isinstance(outcome, period_machine.Refusal):
+        return
+    problem = outcome.problem()
+    failed = next(
+        (
+            item
+            for item in results
+            if item.gate_check_code == gates.JE_COMPLETE and item.status is ChecklistStatus.FAILED
+        ),
+        None,
+    )
+    if problem.slug == "close-gates-failed" and failed is not None:
+        record = validate_execution(
+            control_id="CTL-019",
+            run_ref_type=RunRefType.PERIOD_STATE,
+            run_ref_id=scope.state_id,
+            population_count=max(1, failed.count or 0),
+            exception_count=max(1, failed.count or 0),
+            result=ControlResult.FAIL,
+            entity_id=scope.entity_id,
+            book_code=scope.book_code,
+            period_id=scope.period_id,
+            detail={
+                "gate": gates.JE_COMPLETE,
+                "status": failed.status.value,
+                "finding_count": failed.count,
+                "detail": failed.detail,
+                "evaluated_at": failed.evaluated_at.isoformat(),
+                "period_row_version": scope.row_version,
+                "population_basis": "completeness findings; one if unavailable",
+                "request_id": uow.ctx.request_id,
+            },
+        )
+        raise ControlRefusal(problem, (record,))
+    raise problem
+
+
 def request_lock(
     uow: UnitOfWork,
     *,
@@ -1278,7 +1322,7 @@ def request_lock(
         ),
         ctx=_context(scope),
     )
-    _refuse(outcome)
+    _refuse_lock(uow, outcome, scope, results)
     request = approvals.submit(
         uow,
         subject_type=ApprovalSubjectType.PERIOD_LOCK,
@@ -2215,7 +2259,7 @@ def _period_lock_approved(uow: UnitOfWork, subject_id: UUID, approval_request_id
         ),
         ctx=_context(scope),
     )
-    _refuse(outcome)
+    _refuse_lock(uow, outcome, scope, results)
     if kind is LockKind.PERMANENT_LOCK:
         earlier = _earlier_unlocked(session, scope)
         if earlier is not None:

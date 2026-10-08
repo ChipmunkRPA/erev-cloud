@@ -17,6 +17,7 @@ from uuid import UUID, uuid4
 import pytest
 from erev_api.controls.evidence import (
     CONTROL_ID,
+    ControlRefusal,
     ExecutionRecord,
     RunRefType,
     validate_execution,
@@ -52,8 +53,8 @@ def test_run_ref_type_mirrors_04_t_plt_39() -> None:
     )
     listed = re.findall(r"`([A-Z_]+)`", row.split("|")[5].split("(rev")[0])
     assert [member.value for member in RunRefType] == listed
-    assert listed[-2:] == ["RECONCILIATION_RUN", "PERIOD_LOCK"]
-    assert len(RunRefType) == 10
+    assert listed[-3:] == ["RECONCILIATION_RUN", "PERIOD_LOCK", "PERIOD_STATE"]
+    assert len(RunRefType) == 11
 
 
 def test_validate_execution_accepts_the_agreed_shape() -> None:
@@ -196,3 +197,12 @@ def test_api_r_52_schemas_carry_the_table_columns() -> None:
         "deployed_at",
     }
     assert ControlExecutionOut.model_fields["run_ref_type"].annotation is RunRefType
+
+
+@pytest.mark.parametrize("result", [ControlResult.PASS, ControlResult.NOT_APPLICABLE])
+def test_refusal_cannot_retain_a_passing_observation(result: ControlResult) -> None:
+    from erev_api.problems import Problem
+
+    record = _valid(result=result, population_count=0)
+    with pytest.raises(ValueError, match="failed control observations"):
+        ControlRefusal(Problem("close-gates-failed"), (record,))

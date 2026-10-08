@@ -3284,3 +3284,25 @@ the population is the retained detail lines, with held lines separately counted 
 A nonempty validated population is PASS; an empty population is NOT_APPLICABLE. The calculation
 audit links the evidence UUID. Existing-run retries create neither a new run nor another validation
 record, and later failures roll back the run and its passing evidence together.
+
+
+### Completeness refusals retain control evidence — October 8, 2026
+
+A lock request or approval refused with a failed JE_COMPLETE gate raises `ControlRefusal` carrying
+validated CTL-019 failure observations. It retains the measured gate count/detail, observation
+instant, period row version and request ID. The `PERIOD_STATE` reference names the existing state
+row, including when no journal run or approval has been created. The evidence population explicitly
+counts failing completeness findings (one sentinel if unavailable), not all journal lines.
+
+The outer `unit_of_work` boundary first rolls back the refused business transaction and closes its
+session. Only then does it write the failure evidence and `control_execution.refusal` audit in an
+independent transaction under the same caller and tenant context. It re-raises the original problem;
+no rejected lock, approval decision, checklist update, audit buffer or deferred business action is
+committed. Nested propagation retains a refusal only once. A refusal after commit is a programming
+error. Failure to write the evidence is surfaced, never converted into a successful close or hidden
+behind a claim that evidence was retained. Ordinary problems retain their existing rollback behavior.
+
+Revision 0141 extends the reference-type check. Downgrading while PERIOD_STATE evidence exists is
+refused by physical constraint validation, including without tenant context. Existing evidence is
+append-only; it is never discarded to make a downgrade pass. API and TypeScript schema mirrors carry
+the new reference type.

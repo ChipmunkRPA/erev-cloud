@@ -132,6 +132,7 @@ OTHER: Final = frozenset(
         "import_mapping_profile",
         "fiscal_calendar",
         "period",
+        "control_execution",  # control observations reference their run/period, not one contract
         "period_state",
         "period_state_transition",
         "legal_entity",

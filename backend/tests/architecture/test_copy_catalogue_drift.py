@@ -439,7 +439,8 @@ def test_dg_arc_13_imp_rows_cover_codes() -> None:
     # + IMP-148 (lane SECFIX-CLO; item USAGE-REPORT-PERIOD-ENDED-1, the supervisor's rulings of
     # 2026-10-03: USAGE_PERIOD_NOT_ENDED, 04 1.320 table 15.4-B / PRD 1.208; the number is the
     # supervisor's, register index 306).
-    assert len(active) == 146
+    # IMP-149: explicit journal currency validation (October 8, 2026).
+    assert len(active) == 147
     rows = imp_rows()
     # + IMP-123 (F-ADM on F-DIN's branch, DIN-12; D-98 candidate 146 amendment 1 Q-B:
     # MODIFICATION_CANDIDATE_UNAPPLIED; PRD 1.17 / 04 1.77).
@@ -447,7 +448,7 @@ def test_dg_arc_13_imp_rows_cover_codes() -> None:
     # IMP-147 follows them (lane API-GAPS, register index 295) and IMP-148 (lane SECFIX-CLO,
     # register index 306); IMP-142 and IMP-146 have no row on this branch.
     assert [row.id for row in rows] == [
-        f"IMP-{n:02d}" for n in (*range(1, 142), 143, 144, 145, 147, 148)
+        f"IMP-{n:02d}" for n in (*range(1, 142), 143, 144, 145, 147, 148, 149)
     ]
     named: list[str] = []
     for row in rows:
@@ -523,7 +524,8 @@ def test_dg_arc_13_copy_cells_are_commonmark_escaped() -> None:
     # + ERR-103 at PRD 1.210 (PRODUCT-POLICY-VALUE-NOT-READ-1, lane SECFIX-CLO, register index
     # 309): one ERR row more
     # 96 ERR + 146 IMP
-    assert len(rows) == 242
+    # IMP-149 adds explicit journal currency validation: 96 ERR + 147 IMP.
+    assert len(rows) == 243
     for line in rows:
         kind = line[2:5]
         assert len(_cells(line)) == COPY_ROW_CELLS[kind], line[:40]

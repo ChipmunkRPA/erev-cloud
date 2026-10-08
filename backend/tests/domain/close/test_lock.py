@@ -46,11 +46,13 @@ from erev_api.db.tables import (
     approval_decision,
     approval_request,
     approval_step,
+    audit_event,
     close_checklist_item,
     close_checklist_template,
     contract,
     contract_event,
     contract_hold,
+    control_execution,
     exception_item,
     file_object,
     integration_connection,
@@ -1738,3 +1740,172 @@ def test_r_62_c_an_approved_waiver_of_a_data_quality_error_lets_the_period_lock(
     assert decided.status_code == 200, decided.text
     assert _state(world)["state"] == PeriodState.CLOSED.value
     assert findings() == [(item_id, "WAIVED")]
+
+
+@pytest.mark.control("CTL-019")
+@pytest.mark.parametrize("nested", [False, True])
+def test_failed_completeness_evidence_survives_refused_request(
+    world: CloseWorld,
+    committed_db: TestDatabase,
+    nested: bool,
+) -> None:
+    _start_close(world)
+    before = _state(world)
+    if nested:
+        with pytest.raises(Problem) as caught, world.place.uow():
+            _request_lock(world)
+        refused = caught.value
+    else:
+        refused = _refused_lock(world)
+    assert refused.slug == "close-gates-failed"
+    assert gates.JE_COMPLETE in {error.rule_id for error in refused.errors}
+    after = _state(world)
+    assert (after["state"], after["row_version"]) == (before["state"], before["row_version"])
+    with system_session(world) as session:
+        record = (
+            session.execute(
+                select(control_execution).where(
+                    control_execution.c.control_id == "CTL-019",
+                    control_execution.c.run_ref_id == world.state_id,
+                )
+            )
+            .mappings()
+            .one()
+        )
+        assert str(record["result"]) == "FAIL"
+        assert record["run_ref_type"] == "PERIOD_STATE"
+        assert record["exception_count"] == 1
+        assert record["entity_id"] == world.entity_id
+        assert record["period_id"] == world.period_id
+        assert record["detail"]["gate"] == gates.JE_COMPLETE
+        assert record["detail"]["detail"] == gates.RUN_NOT_CALCULATED
+        assert (
+            session.scalar(
+                select(audit_event.c.id).where(
+                    audit_event.c.object_id == record["id"],
+                    audit_event.c.action == "control_execution.refusal",
+                )
+            )
+            is not None
+        )
+        assert not session.execute(
+            select(period_lock.c.id).where(period_lock.c.period_id == world.period_id)
+        ).all()
+
+    # Without tenant context, downgrade still refuses to erase the new evidence scope.
+    import importlib
+
+    from erev_api.db import migration_ops
+    from sqlalchemy.exc import IntegrityError
+
+    migration = importlib.import_module(
+        "erev_api.db.migrations.versions.0141_control_refusal_scope"
+    )
+    with committed_db.owner_engine.connect() as connection:
+        transaction = connection.begin()
+        try:
+            with (
+                migration_ops.bound_to(connection),
+                pytest.raises(IntegrityError, match="ck_control_execution__run_ref_type"),
+            ):
+                migration.downgrade()
+        finally:
+            transaction.rollback()
+
+
+@pytest.mark.control("CTL-019")
+def test_failed_completeness_at_approval_keeps_decision_pending(
+    world: CloseWorld,
+    clock: FrozenClock,
+) -> None:
+    from erev_api.db.tables import gl_account
+    from support.close_world import sealed_activity
+    from support.rows import gl_account_values
+
+    _start_close(world)
+    _pass_gates(world)
+    request_id, _ = _request_lock(world)
+    before = _state(world)
+    with system_session(world) as session:
+        account = gl_account_values(world.tenant_id, code="7770")
+        session.execute(insert(gl_account).values(**account))
+        sealed_activity(
+            session,
+            world,
+            account=account,
+            period_id=world.period_id,
+            period_end_date=date(2026, 9, 30),
+            amounts=[Decimal("100"), Decimal("-100")],
+        )
+    decided = approve(world.app, str(request_id), _controller(world.app, clock, world.tenant_id))
+    assert (decided.status_code, slug(decided)) == (409, "close-gates-failed"), decided.text
+    assert gates.JE_COMPLETE in {error["rule_id"] for error in decided.json()["errors"]}
+    after = _state(world)
+    assert (after["state"], after["row_version"]) == (before["state"], before["row_version"])
+    with system_session(world) as session:
+        record = (
+            session.execute(
+                select(control_execution).where(
+                    control_execution.c.control_id == "CTL-019",
+                    control_execution.c.run_ref_id == world.state_id,
+                )
+            )
+            .mappings()
+            .one()
+        )
+        assert str(record["result"]) == "FAIL" and record["exception_count"] > 0
+        assert (
+            _value(
+                session.scalar(
+                    select(approval_request.c.status).where(approval_request.c.id == request_id)
+                )
+            )
+            == "PENDING"
+        )
+        assert not session.execute(
+            select(approval_decision.c.id).where(
+                approval_decision.c.approval_request_id == request_id
+            )
+        ).all()
+        assert not session.execute(
+            select(period_lock.c.id).where(period_lock.c.period_id == world.period_id)
+        ).all()
+
+
+@pytest.mark.control("CTL-019")
+def test_refusal_evidence_write_failure_never_commits_business_or_partial_evidence(
+    world: CloseWorld,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from erev_api.controls.evidence import ControlRefusal
+
+    _start_close(world)
+    before = _state(world)
+    retain = ControlRefusal.retain
+
+    def fail_after_insert(refused: ControlRefusal, uow: Any) -> None:
+        retain(refused, uow)
+        raise RuntimeError("evidence persistence unavailable")
+
+    monkeypatch.setattr(ControlRefusal, "retain", fail_after_insert)
+    with pytest.raises(RuntimeError, match="evidence persistence unavailable"):
+        _request_lock(world)
+    after = _state(world)
+    assert (after["state"], after["row_version"]) == (before["state"], before["row_version"])
+    with system_session(world) as session:
+        assert not session.execute(
+            select(control_execution.c.id).where(
+                control_execution.c.control_id == "CTL-019",
+                control_execution.c.run_ref_id == world.state_id,
+            )
+        ).all()
+        assert not session.execute(
+            select(audit_event.c.id).where(
+                audit_event.c.action == "control_execution.refusal",
+            )
+        ).all()
+        assert not session.execute(
+            select(period_lock.c.id).where(
+                period_lock.c.period_id == world.period_id,
+            )
+        ).all()
