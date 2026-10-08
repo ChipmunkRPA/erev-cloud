@@ -2,6 +2,31 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Step 1 lifecycle verification complete — October 7, 2026
+
+- Previous goal turn published sandbox loss/FX comparison as dbb3e57. This continuation closes
+  B1-13's remaining listed lifecycle/snapshot coverage; implementation is already on main
+  in a40d848. The wider B1-2 remains open.
+- New public-API cases: enabling another book or independently applying a later assessment
+  makes the earlier request stale/VOIDED with no applied event ids or additional accounting
+  changes. Revoking a reviewer's role refuses a decision sent from the previously loaded page;
+  the request stays pending and another eligible independent reviewer can apply it.
+- Real export/load round trip retains the approved STEP1_EVENT request, identical readable
+  impact preview, evidence attached to the request and all three resulting events, and exact
+  decrypted attachment bytes. The loaded accounting computation verifies with zero mismatches.
+- Initial basis run: two passed; the revoked-reviewer case then found the replacement reviewer
+  lacked its required role. Corrected that fixture; authority recheck passed in 17.16 seconds.
+  Evidence round trip passed in 18.86 seconds. Final combined checks: **7 passed in 64.90
+  seconds**, including API-client, two-book and terminal-decision compatibility. Log:
+  `/private/tmp/step1-date-review-scope-evidence-final.log`. Ruff, formatting and whitespace
+  checks pass. All scoped runs are terminal and erev_rv_cont is free. This direct-main commit
+  publishes verification and documentation; no product code changed in this continuation.
+- Existing reopened-period coverage uses valid database state fixtures, not a fresh complete
+  certification/reopen workflow. Neither scoped tests nor B1-13 closure establish full-system
+  production readiness. Independent accounting sign-off and other release gaps remain open.
+  Older baseline PID 36126 was live at 3h20m33s, beyond 50% with failures, on its separate DB.
+  Preserve it. No deployment.
+
 ## Sandbox monetary verification — October 7, 2026
 
 - Previous goal turn published Step 1 approval as a40d848 directly to main. This continuation
@@ -30,26 +55,6 @@
   failures; preserve it. Broader backend failures, Step 1 scope/evidence verification, other
   release limitations and independent accounting sign-off remain open. No deployment.
 
-## Performing-entity Step 1 review — October 7, 2026
-
-- Previous goal turn made progress with draft-gate review and 5 backend/59 frontend checks.
-  Continued local unpublished work on main `5ca602f`; added real cross-entity API verification.
-- AVM-US contracts the subscription; AVM-OPS performs it in USD. With both periods open,
-  the assessment applies immediately. With only AVM-OPS in soft close, it waits for approval
-  while the owner's period remains open. Locking AVM-OPS's period produces a retryable
-  conflict without changing the stream, ledger or hold; retry applies reviewed postings.
-  The ledger comparison retains entity, book, account role and debit/credit, and equals the
-  retained preview amounts. **2 passed in 22.88 seconds**:
-  `/private/tmp/step1-date-review-performing-entity.log`.
-- Performing-period-change case: **1 passed in 17.33 seconds**. Canceling the performer's
-  close after submission makes approval stale and leaves the stream, ledger and hold unchanged.
-  Log: `/private/tmp/step1-date-review-performing-period-change.log`; primary DB erev_rv_cont
-  is available. Approval authority continues to use contracting/group entities as accepted
-  subject-scope rules require; this work checks posting windows for performers.
-- Source changes were unnecessary for the first two cases. Ruff and whitespace checks pass.
-  FX/other configuration races, physical large-group performance and final publication checks
-  remain open. B1-13/B1-2 and independent accounting sign-off remain open. No deployment,
-  publication or readiness claim. Earlier Step 1 implementation evidence archived verbatim.
 
 ## Draft Step 1 gate review — October 7, 2026
 

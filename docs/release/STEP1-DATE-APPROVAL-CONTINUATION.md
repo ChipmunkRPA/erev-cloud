@@ -1,12 +1,13 @@
 # Step 1 posting-date approval — October 7, 2026
 
-The implementation is included in this direct-main change. B1-13 retains the specific
-verification work listed below, and the wider B1-2 remains open. This is a scoped engineering
-change, not a production-readiness or independent accounting-sign-off claim.
+The implementation was published in a40d848. Subsequent lifecycle and snapshot verification
+closes B1-13; the wider B1-2 remains open. This is a scoped engineering completion, not a
+production-readiness or independent accounting-sign-off claim.
 
 Subsequent sandbox continuation resolves the loss/FX monetary-comparison omission found
 during these checks. See PROGRESS.md for scoped positive and negative export/load evidence.
-Step 1-specific attached-evidence export/load coverage remains separate and open.
+Step 1-specific export/load coverage now also passes: the approved request, identical preview,
+all derived-event attachments and exact file bytes are retained, with zero monetary mismatches.
 
 Final scoped compatibility: **93 passed in 486.28 seconds**. A separate terminal-decision
 regression passed in **16.56 seconds**: mixed batches are refused; rejection and withdrawal
@@ -63,7 +64,7 @@ engine receives the unmodified actual bundle; no persisted input hash is rewritt
 computation rolls back the decision and effects. Ordinary fact-capture paths still defer.
 Three success controls passed in 30.37 seconds; failure/late-input checks passed in 23.63
 seconds, including retry after failure. The late-input test injects an engine-version change;
-real configuration-publication interleavings remain to be tested. Large decisions may take
+real configuration-publication interleavings were still pending at that stage. Large decisions may take
 longer without deferral; no latency guarantee has been verified. Expanded compatibility is
 complete: **77 passed in 374.20 seconds**,
 `/private/tmp/step1-date-review-atomic-compatibility.log`. The API-client case passed, including pending review and non-manual attribution.
@@ -113,15 +114,14 @@ guard exposed a real monetary-verification omission: stored loss provisions and 
 movements are not included in sandbox monetary comparisons. Keep that guard and resolve
 the omission; do not treat regenerated rows as verified. Step 1 subject-reference cases pass.
 
-Do not close B1-13 yet. Audit the remaining lifecycle controls and
-configuration-publication races between comparison and computation, and the new
-synchronous decision path; the fingerprint alone does not establish that concurrency guarantee. The retained preview now includes all-book revenue and all output posting lines with
+The following earlier verification notes are supplemented by the completed lifecycle checks
+below; a fingerprint alone would not establish the concurrency guarantee. The retained preview now includes all-book revenue and all output posting lines with
 entity, account, period and both currencies. One- and two-book public-API cases passed
 (2 in 26.27 seconds); the expanded matrix compares preview amounts with actual ledger
 entries after approval and passed all 13 cases in 98.92 seconds. Frontend checks passed (58 in 4.37 seconds), including a multi-entity,
 multi-currency display fixture and suppression of a false primary-book-only no-impact claim.
 Performing-entity and multi-currency integration results are recorded above.
-Finish snapshot compatibility and final publication checks; report-filter migration checks passed.
+Snapshot compatibility is now verified by the final round trip below; report-filter migration checks passed.
 No full-suite or accounting-sign-off claim is supported.
 
 ## Reproduced behavior
@@ -171,13 +171,16 @@ The final test rerun again produced one pass and one failure in 19.76 seconds:
   and give the preparer an accurate pending message instead of an “assessment saved” toast.
   Regenerate schema/types and preserve audit/snapshot/migration compatibility.
 
-## Remaining verification
+## Final lifecycle verification and boundaries
 
 The scoped results above cover soft close, reopened state fixtures, open-period compatibility,
 API-client inputs, two books, performing entities, independent/self review, period contention,
 superseded judgements, draft gates, hold release, and selected SSP/FX publication races.
-The reopened fixtures do not prove a complete certification/reopen workflow. Cover new-subject-specific lost scope,
-later Step 1 events, book changes and attached-evidence retention through snapshot export/load.
+The reopened fixtures do not prove a complete certification/reopen workflow. Final targeted
+checks passed **7 in 64.90 seconds**: changed books and later applied assessments void earlier
+review; a revoked reviewer cannot use an already-loaded approval page; another eligible
+reviewer can decide; evidence and preview survive real export/load. API-client, two-book and
+terminal-decision controls also pass. Log: `step1-date-review-scope-evidence-final.log`.
 Generic legacy-submission bypass controls are retained. The separate loss/FX comparison
 omission has since been corrected with integration coverage, as noted above.
 

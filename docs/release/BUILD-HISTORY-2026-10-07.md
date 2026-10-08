@@ -1103,3 +1103,24 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   on its separate DB with failures; preserve it.
 - B1-13 remaining scope/evidence/snapshot coverage, broader B1-2 producers, full-suite failures and
   independent accounting sign-off remain open. No deployment or production-readiness claim.
+
+## Performing-entity Step 1 review — October 7, 2026
+
+- Previous goal turn made progress with draft-gate review and 5 backend/59 frontend checks.
+  Continued local unpublished work on main `5ca602f`; added real cross-entity API verification.
+- AVM-US contracts the subscription; AVM-OPS performs it in USD. With both periods open,
+  the assessment applies immediately. With only AVM-OPS in soft close, it waits for approval
+  while the owner's period remains open. Locking AVM-OPS's period produces a retryable
+  conflict without changing the stream, ledger or hold; retry applies reviewed postings.
+  The ledger comparison retains entity, book, account role and debit/credit, and equals the
+  retained preview amounts. **2 passed in 22.88 seconds**:
+  `/private/tmp/step1-date-review-performing-entity.log`.
+- Performing-period-change case: **1 passed in 17.33 seconds**. Canceling the performer's
+  close after submission makes approval stale and leaves the stream, ledger and hold unchanged.
+  Log: `/private/tmp/step1-date-review-performing-period-change.log`; primary DB erev_rv_cont
+  is available. Approval authority continues to use contracting/group entities as accepted
+  subject-scope rules require; this work checks posting windows for performers.
+- Source changes were unnecessary for the first two cases. Ruff and whitespace checks pass.
+  FX/other configuration races, physical large-group performance and final publication checks
+  remain open. B1-13/B1-2 and independent accounting sign-off remain open. No deployment,
+  publication or readiness claim. Earlier Step 1 implementation evidence archived verbatim.

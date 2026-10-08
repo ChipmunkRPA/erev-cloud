@@ -53,6 +53,8 @@ from erev_api.db.tables import (
     period_lock,
     period_state,
     period_state_transition,
+    role,
+    role_assignment,
     subledger_line,
 )
 from erev_api.db.tables import book as book_table
@@ -3465,6 +3467,10 @@ def _reopened_assessment_period(world: SeatWorld, state_id: str) -> None:
         (True, "ssp-between-checks"),
         (True, "ssp-after-read"),
         (True, "api-client"),
+        (True, "book-added"),
+        (True, "later-assessment"),
+        (True, "decider-revoked"),
+        (True, "evidence-snapshot"),
     ],
     ids=[
         "open",
@@ -3486,6 +3492,10 @@ def _reopened_assessment_period(world: SeatWorld, state_id: str) -> None:
         "ssp-between-checks",
         "ssp-after-read",
         "api-client",
+        "book-added",
+        "later-assessment",
+        "decider-revoked",
+        "evidence-snapshot",
     ],
 )
 def test_step1_assessment_date_requires_independent_review_in_soft_close(
@@ -3590,7 +3600,30 @@ def test_step1_assessment_date_requires_independent_review_in_soft_close(
         {**FLAG, "effective_date": "2026-09-08"},
         _assessment(record, probable=False, on="2026-09-08"),
     ]
-    if basis_change == "api-client":
+    evidence_id = None
+    if basis_change == "evidence-snapshot":
+        from support import upload_fixtures as upload
+        from support.http import call
+        from support.principals import cookie_headers
+
+        stored = call(
+            world.app,
+            "POST",
+            "/api/v1/files",
+            data={"purpose": "ATTACHMENT"},
+            files={"file": ("assessment-date.pdf", upload.PDF, "application/pdf")},
+            headers=cookie_headers(world.place.author.token, world.place.author.csrf_token),
+        )
+        assert stored.status_code == 201, stored.text
+        evidence_id = stored.json()["id"]
+        assessed = post(
+            world.app,
+            EVENTS.format(contract_id=contract_id),
+            world.place.author,
+            {"events": batch, "evidence_file_ids": [evidence_id]},
+            if_match=f'"s{before[0][1]}"',
+        )
+    elif basis_change == "api-client":
         from support.api_clients import access_approver, issued_client
         from support.http import call
 
@@ -3650,7 +3683,50 @@ def test_step1_assessment_date_requires_independent_review_in_soft_close(
         assert line["side"] in {"Debit", "Credit"}
     if basis_change == "elapsed":
         world.place.clock.advance(timedelta(minutes=1))
-    if basis_change in {"period", "judgement", "ssp", "day"}:
+    final_decider = world.priya
+    if basis_change == "decider-revoked":
+        shown = get(world.app, f"/api/v1/approvals/{request_id}", world.priya)
+        assert shown.status_code == 200, shown.text
+        reviewed = shown.json()
+        assignment_id = world.place.scalar(
+            select(role_assignment.c.id)
+            .join(role, role.c.id == role_assignment.c.role_id)
+            .where(
+                role_assignment.c.membership_id == world.priya.member.membership_id,
+                role_assignment.c.revoked_at.is_(None),
+                role.c.code == "revenue_reviewer",
+            )
+        )
+        revoked = post(
+            world.app,
+            f"/api/v1/role-assignments/{assignment_id}/revoke",
+            world.marcus,
+            {"reason": "Reviewer no longer has approval responsibility."},
+        )
+        assert revoked.status_code == 200, revoked.text
+        refused = post(
+            world.app,
+            f"/api/v1/approvals/{request_id}/approve",
+            world.priya,
+            {
+                "subject_content_sha256": reviewed["subject"]["content_sha256"],
+                "impact_preview_sha256": reviewed["impact_preview"]["sha256"],
+                "comment": "Decision from a page loaded before role revocation.",
+            },
+        )
+        assert refused.status_code in (403, 404), refused.text
+        assert (
+            _header(world, contract_id),
+            _books(world, contract_id),
+            _posted(world, contract_id),
+            _holds(world, contract_id),
+        ) == before
+        assign(world.marcus.member, "revenue_reviewer")
+        pending = get(world.app, f"/api/v1/approvals/{request_id}", world.marcus)
+        assert pending.status_code == 200, pending.text
+        assert pending.json()["status"] == "PENDING"
+        final_decider = world.marcus
+    if basis_change in {"period", "judgement", "ssp", "day", "book-added", "later-assessment"}:
         decider = world.priya
         if basis_change == "period":
             cancelled = post(
@@ -3684,6 +3760,19 @@ def test_step1_assessment_date_requires_independent_review_in_soft_close(
                     )
                 ],
             )
+        elif basis_change == "book-added":
+            _keep_ifrs15(world)
+        elif basis_change == "later-assessment":
+            later = _record_events(
+                world,
+                contract_id,
+                {**FLAG, "effective_date": "2026-09-09"},
+                _assessment(record, probable=False, on="2026-09-09"),
+            )
+            assert later.status_code == 201, later.text
+            applied = approve(world.app, later.json()["approval_request_id"], world.priya)
+            assert applied.status_code == 200, applied.text
+            assert _header(world, contract_id)[1] == before[0][1] + 3
         else:
             _reviewed(world, contract_id, "NOT_A_CONTRACT", NOT_A_CONTRACT)
         changed = (
@@ -3701,6 +3790,20 @@ def test_step1_assessment_date_requires_independent_review_in_soft_close(
             _posted(world, contract_id),
             _holds(world, contract_id),
         ) == changed
+        assert (
+            world.place.scalar(
+                select(approval_request.c.status).where(approval_request.c.id == UUID(request_id))
+            )
+            == "VOIDED"
+        )
+        assert (
+            world.place.scalar(
+                select(event_submission.c.applied_event_ids).where(
+                    event_submission.c.id == UUID(assessed.json()["event_submission_id"])
+                )
+            )
+            == []
+        )
         return
     if basis_change == "busy-approval":
         with world.place.uow() as blocker:
@@ -3804,7 +3907,7 @@ def test_step1_assessment_date_requires_independent_review_in_soft_close(
 
         monkeypatch.setattr(bundles_domain, "build", changed_inputs)
     try:
-        decided = approve(world.app, request_id, world.priya)
+        decided = approve(world.app, request_id, final_decider)
     finally:
         for publisher in publishers:
             publisher.join(timeout=30)
@@ -3878,6 +3981,114 @@ def test_step1_assessment_date_requires_independent_review_in_soft_close(
             event_submission.c.id == UUID(assessed.json()["event_submission_id"])
         )
     ) == [row["id"] for row in approved_events]
+    if evidence_id is not None:
+        _step1_evidence_snapshot(
+            world,
+            UUID(request_id),
+            [row["id"] for row in approved_events],
+            UUID(evidence_id),
+            monkeypatch,
+        )
+
+
+def _step1_evidence_snapshot(
+    world: SeatWorld,
+    request_id: UUID,
+    event_ids: list[UUID],
+    evidence_id: UUID,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A real snapshot carries the Step 1 request, derived-event evidence and file bytes."""
+    from erev_api.db.tables import file_attachment, tenant_snapshot
+    from erev_api.domain.platform import sandboxes, snapshot_job
+    from erev_api.enums import JobKind
+    from erev_api.files.store import open_file
+    from erev_api.jobs import registry
+    from support import upload_fixtures as upload
+    from support.factories import stamp_test_release
+    from support.rows import tenant_snapshot_values
+    from support.snapshots import confirm_retention, cutoff_after, run_dispatched_snapshot
+
+    stamp_test_release()
+    monkeypatch.setitem(
+        registry.HANDLERS,
+        JobKind.TENANT_SNAPSHOT,
+        registry.HandlerSpec(
+            handler=snapshot_job.tenant_snapshot_export,
+            retry=snapshot_job.SNAPSHOT_RETRY,
+            on_failure=snapshot_job.snapshot_failed,
+        ),
+    )
+    context = DbContext(tenant_id=world.place.tenant_id, user_id=None, entity_scope="*")
+    with tenant_session(context) as session:
+        confirm_retention(
+            session, world.place.tenant_id, at=world.place.clock.now() - timedelta(days=1)
+        )
+    known_at = cutoff_after(world.place.tenant_id, world.place.clock)
+    row = tenant_snapshot_values(world.place.tenant_id, known_at=known_at, purpose="SANDBOX_COPY")
+    with tenant_session(context) as session:
+        session.execute(insert(tenant_snapshot).values(**row))
+    sandbox_id = new_id()
+    runtime = JobRuntime(
+        clock=world.place.clock, keyring=world.place.keyring, files=world.place.files
+    )
+    result = run_dispatched_snapshot(
+        world.place.tenant_id,
+        {
+            "tenant_snapshot_id": str(row["id"]),
+            "known_at": known_at.isoformat(),
+            "purpose": "SANDBOX_COPY",
+            **sandboxes.load_params_of(
+                sandbox_tenant_id=sandbox_id,
+                name="Step one assessment evidence",
+                requested_by=world.marcus.member.user_id,
+                restore=False,
+            ),
+        },
+        runtime=runtime,
+        now=known_at,
+    )
+    assert result["state"] == "SUCCEEDED", str(result["problem"])
+    assert result["result"]["counts"]["derived_mismatches"] == 0
+    attachments = []
+    previews = []
+    for tenant_id in (world.place.tenant_id, sandbox_id):
+        with tenant_session(
+            DbContext(tenant_id=tenant_id, user_id=None, entity_scope="*"), read_only=True
+        ) as session:
+            request = (
+                session.execute(select(approval_request).where(approval_request.c.id == request_id))
+                .mappings()
+                .one()
+            )
+            assert (request["subject_type"], request["status"]) == ("STEP1_EVENT", "APPROVED")
+            previews.append(
+                read_preview(
+                    session,
+                    request["impact_preview_file_id"],
+                    files=world.place.files,
+                    keyring=world.place.keyring,
+                )
+            )
+            attachments.append(
+                set(
+                    session.execute(
+                        select(file_attachment.c.subject_type, file_attachment.c.subject_id).where(
+                            file_attachment.c.file_object_id == evidence_id,
+                            file_attachment.c.voided_at.is_(None),
+                        )
+                    ).all()
+                )
+            )
+            _, stream = open_file(
+                session, evidence_id, files=world.place.files, keyring=world.place.keyring
+            )
+            assert stream.read() == upload.PDF
+    expected = {("approval_request", request_id)} | {
+        ("contract_event", event_id) for event_id in event_ids
+    }
+    assert attachments == [expected, expected]
+    assert previews[0] == previews[1]
 
 
 @pytest.mark.parametrize(
