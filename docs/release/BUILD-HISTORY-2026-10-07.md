@@ -2019,3 +2019,26 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   in build history. AI and other implementation gaps, broad release verification and independent
   accounting sign-off remain. No full-suite/readiness claim or deployment. Preserve publication
   exclusions/noncommercial licensing and push tested changes directly to main.
+
+## Journal validation currencies and evidence — October 8, 2026
+
+- Continued from clean published main a63dfc0; prior turn completed SSP range lineage (progress).
+  Generation now checks transaction/stamped functional currency codes against the active
+  catalogue and the functional stamp against the entity. A mismatch refuses the whole run with
+  JOURNAL_CURRENCY_INVALID and named exceptions. Tenant enablement is not used to discard older
+  lines, and currency validation assumes no fixed decimal precision.
+- Every newly written run records CTL-020 in its own transaction: validated detail population,
+  currency set, checks, entity/book/period and coverage, with held lines counted as unvalidated.
+  Empty populations are NOT_APPLICABLE; nonempty valid ones PASS. The calculation audit links
+  the evidence UUID. Failure/retry boundaries preserve the existing atomic/idempotent behavior.
+- Initial rules and PostgreSQL validation matrix: **24 passed in 12.51 seconds**,
+  /private/tmp/journal-currency-first.log. Includes a sealed EUR-functional line in a USD entity:
+  rejected with named exceptions, no journal run and no passing validation evidence. Added empty
+  population and audit-link checks. Expanded validation/gross/delta/held/empty-run plus import
+  cycle, forbidden-pattern and money-literal architecture checks: **80 passed in 126.75 seconds**,
+  /private/tmp/journal-currency-final.log. Both processes terminal. Mypy passes both source files;
+  Ruff lint/format and whitespace checks pass.
+- Updated the finding catalogue, B1-25 and developer guidance; archived prior FX import evidence
+  verbatim. Remaining implementation, full-suite/release verification, the pending engine version
+  cut/replays and independent accounting sign-off are still open. No deployment or readiness
+  claim. Preserve exclusions/noncommercial licensing; publish tested changes directly to main.

@@ -1122,9 +1122,30 @@ describe("SF-05 close cockpit", () => {
   it("request reopen sends the reason and the comment, then shows the pending request", async () => {
     const sent: { readonly ifMatch: string | null; readonly body: unknown }[] = [];
     const withdrawn: unknown[] = [];
+    const reviewedJudgementId = "3c4d5e6f-7081-4b92-8ca3-000000000502";
     let pending: PeriodApproval | null = null;
     serve(period({ state: "closed", row_version: 5 }), checklist([]));
     server.use(
+      http.get(apiUrl("/api/v1/judgements"), ({ request }) => {
+        const query = new URL(request.url).searchParams;
+        expect(query.get("entity_id")).toBe(period().entity.id);
+        expect(query.get("book")).toBe("ASC606");
+        expect(query.get("topic")).toBe("ESTIMATE_VS_ERROR");
+        expect(query.get("status")).toBe("REVIEWED");
+        return HttpResponse.json({
+          items: [
+            {
+              id: reviewedJudgementId,
+              judgement_no: "JDG-000042",
+              conclusion: "Correct omitted September costs.",
+              rationale: "Reviewed source cost file.",
+              contract_id: null,
+              reviewer: { display_name: "Marcus" },
+            },
+          ],
+          next_cursor: null,
+        });
+      }),
       http.get(apiUrl("/api/v1/approvals"), () =>
         HttpResponse.json({ items: pending === null ? [] : [pending], next_cursor: null }),
       ),
@@ -1181,12 +1202,27 @@ describe("SF-05 close cockpit", () => {
       target: { value: REOPEN_COMMENT },
     });
     fireEvent.click(within(drawer).getByRole("button", { name: "Submit reopen request" }));
+    expect(sent).toHaveLength(0);
+    fireEvent.click(await within(drawer).findByRole("combobox", { name: /^Reviewed judgement/ }));
+    fireEvent.mouseDown(await screen.findByRole("option", { name: "JDG-000042" }));
+    expect(within(drawer).getByText("Reviewed by Marcus")).toBeTruthy();
+    expect(
+      within(drawer).queryByRole("checkbox", { name: "Record an estimate-versus-error judgement" }),
+    ).toBeNull();
+    fireEvent.click(within(drawer).getByRole("button", { name: "Submit reopen request" }));
 
     expect(
       await screen.findByText("Reopen requested for AVM-US Sep 2026. Two approvers must approve."),
     ).toBeTruthy();
     expect(sent).toEqual([
-      { ifMatch: '"r5"', body: { reason_code: "ERROR_CORRECTION", comment: REOPEN_COMMENT } },
+      {
+        ifMatch: '"r5"',
+        body: {
+          reason_code: "ERROR_CORRECTION",
+          comment: REOPEN_COMMENT,
+          judgement_record_id: reviewedJudgementId,
+        },
+      },
     ]);
 
     // The pending request: the dual-approval status, the requester's line and "Withdraw request";
@@ -1216,7 +1252,7 @@ describe("SF-05 close cockpit", () => {
     expect(await screen.findByRole("button", { name: "Request reopen" })).toBeTruthy();
   });
 
-  it("request reopen attaches the files and records the judgement for a requester who may", async () => {
+  it("late-source reopen attaches files and optionally submits a new judgement for review", async () => {
     // A role that requests a reopen, prepares reconciliations (an attachment permission, 04 API-R-12)
     // and records judgements (PRD ACT-12).
     const requester = signedInMe({
@@ -1233,6 +1269,7 @@ describe("SF-05 close cockpit", () => {
     const FILE_ID = "f1f1f1f1-f1f1-4f1f-8f1f-000000000401";
     const JUDGEMENT_ID = "3c4d5e6f-7081-4b92-8ca3-000000000501";
     const calls: string[] = [];
+    const requests: unknown[] = [];
     const attached: unknown[] = [];
     const judged: unknown[] = [];
     const uploads: string[] = [];
@@ -1253,8 +1290,9 @@ describe("SF-05 close cockpit", () => {
           next_cursor: null,
         }),
       ),
-      http.post(apiUrl(`/api/v1/periods/${STATE_ID}/request-reopen`), () => {
+      http.post(apiUrl(`/api/v1/periods/${STATE_ID}/request-reopen`), async ({ request }) => {
         calls.push("request-reopen");
+        requests.push(await request.json());
         return HttpResponse.json({ approval_request_id: REOPEN_REQUEST_ID });
       }),
       http.post(apiUrl("/api/v1/files"), async ({ request }) => {
@@ -1283,7 +1321,7 @@ describe("SF-05 close cockpit", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Request reopen" }));
     const drawer = await screen.findByRole("dialog", { name: "Request reopen of Sep 2026" });
     fireEvent.click(within(drawer).getByRole("combobox", { name: /^Reason/ }));
-    fireEvent.mouseDown(await screen.findByRole("option", { name: "Error correction" }));
+    fireEvent.mouseDown(await screen.findByRole("option", { name: "Late source data" }));
     fireEvent.change(within(drawer).getByRole("textbox", { name: /^Comment \(required\)/ }), {
       target: { value: REOPEN_COMMENT },
     });
@@ -1308,10 +1346,12 @@ describe("SF-05 close cockpit", () => {
       await screen.findByRole("option", { name: "PRJ-CB-2026-01 · Castellan Builders" }),
     );
     fireEvent.change(within(drawer).getByRole("textbox", { name: /^Conclusion/ }), {
-      target: { value: "Error: costs incurred in September were omitted from the cost file." },
+      target: { value: "Estimate: late September cost data needs review." },
     });
     fireEvent.change(within(drawer).getByRole("textbox", { name: /^Rationale/ }), {
-      target: { value: "The costs were known at the close and are not a change in estimate." },
+      target: {
+        value: "The source arrived after close; the accounting conclusion requires review.",
+      },
     });
     fireEvent.click(within(drawer).getByRole("button", { name: "Submit reopen request" }));
 
@@ -1319,6 +1359,9 @@ describe("SF-05 close cockpit", () => {
       await screen.findByText("Reopen requested for AVM-US Sep 2026. Two approvers must approve."),
     ).toBeTruthy();
     // The request first; then the file, attached to the request; then the judgement and its submit.
+    expect(requests).toEqual([
+      { reason_code: "LATE_SOURCE_DATA", comment: REOPEN_COMMENT, judgement_record_id: null },
+    ]);
     expect(calls).toEqual([
       "request-reopen",
       "files",
@@ -1344,8 +1387,8 @@ describe("SF-05 close cockpit", () => {
         topic: "ESTIMATE_VS_ERROR",
         subject_type: "contract",
         subject_id: CONTRACT_ID,
-        conclusion: "Error: costs incurred in September were omitted from the cost file.",
-        rationale: "The costs were known at the close and are not a change in estimate.",
+        conclusion: "Estimate: late September cost data needs review.",
+        rationale: "The source arrived after close; the accounting conclusion requires review.",
       },
     ]);
   });

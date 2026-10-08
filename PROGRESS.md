@@ -2,6 +2,29 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Broader repository checks and reopen UI tests — October 8, 2026
+
+- Continued from clean published main 37c4f0c; previous turn made verified SSP-routing progress.
+  `make typecheck` passed all 850 Python source files and frontend TypeScript. `make build`
+  passed frontend production bundling and backend imports, with a non-failing large-chunk warning.
+- Full frontend suite: **2 failed, 2,055 passed in 55.71 seconds** (192 files). Two old cockpit
+  tests expected error corrections without an independently reviewed judgement. Corrected the
+  scoped reviewed-evidence mock, citation-required/submitted assertions and reviewer display.
+  Preserved optional new judgement/attachment coverage under late-source reopening with its
+  exact request payload. No application code changed. Focused checks: **34 passed in 4.96
+  seconds**. Full rerun: **2,057 passed in 55.65 seconds**, 192 files. All these processes are
+  terminal; Prettier, frontend tsc and whitespace checks pass. Dated log paths/hashes and scope
+  are in docs/release/REPOSITORY-CHECKS-2026-10-08.md. This is not a full CI or browser pass.
+- LIVE PROPERTY GATE: executor session **52175**, pytest PID **6358**, immutable context
+  .run/gates/ctx-properties-37c4f0c48918-6323. Command `make properties`, thorough profile,
+  48 tests collected; first metamorphic test still active with increasing CPU time. Log:
+  /private/tmp/erev-properties-2026-10-08.log. Preserve and poll this exact process; never restart
+  on elapsed time alone. Inspect the final report and bindings before claiming a result. Other
+  test/typecheck/build handles are terminal. Do not start another database pytest while pending.
+- Archived prior journal-validation evidence verbatim. Remaining implementation, current
+  release checks, engine cut/replays and independent accounting sign-off remain open. No
+  deployment/readiness claim; preserve exclusions and noncommercial licensing; push to main.
+
 ## SSP approval effective-value routing — October 8, 2026
 
 - Continued from clean published main 4ebc96c (previous turn closed ledger-history freshness).
@@ -77,29 +100,6 @@
   continue tested direct-main publication. No deployment or full-suite/readiness claim. Remaining
   implementation, final release checks, engine cut/replays and independent accounting sign-off
   remain open; preserve publication exclusions and noncommercial licensing.
-
-## Journal validation currencies and evidence — October 8, 2026
-
-- Continued from clean published main a63dfc0; prior turn completed SSP range lineage (progress).
-  Generation now checks transaction/stamped functional currency codes against the active
-  catalogue and the functional stamp against the entity. A mismatch refuses the whole run with
-  JOURNAL_CURRENCY_INVALID and named exceptions. Tenant enablement is not used to discard older
-  lines, and currency validation assumes no fixed decimal precision.
-- Every newly written run records CTL-020 in its own transaction: validated detail population,
-  currency set, checks, entity/book/period and coverage, with held lines counted as unvalidated.
-  Empty populations are NOT_APPLICABLE; nonempty valid ones PASS. The calculation audit links
-  the evidence UUID. Failure/retry boundaries preserve the existing atomic/idempotent behavior.
-- Initial rules and PostgreSQL validation matrix: **24 passed in 12.51 seconds**,
-  /private/tmp/journal-currency-first.log. Includes a sealed EUR-functional line in a USD entity:
-  rejected with named exceptions, no journal run and no passing validation evidence. Added empty
-  population and audit-link checks. Expanded validation/gross/delta/held/empty-run plus import
-  cycle, forbidden-pattern and money-literal architecture checks: **80 passed in 126.75 seconds**,
-  /private/tmp/journal-currency-final.log. Both processes terminal. Mypy passes both source files;
-  Ruff lint/format and whitespace checks pass.
-- Updated the finding catalogue, B1-25 and developer guidance; archived prior FX import evidence
-  verbatim. Remaining implementation, full-suite/release verification, the pending engine version
-  cut/replays and independent accounting sign-off are still open. No deployment or readiness
-  claim. Preserve exclusions/noncommercial licensing; publish tested changes directly to main.
 
 ## Selected SSP range provenance — October 7, 2026
 
