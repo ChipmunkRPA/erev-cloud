@@ -14,7 +14,10 @@ NTF-11; 03 REQ-DAT-001, REQ-DAT-008, REQ-DAT-010; controls CTL-001, CTL-044; BUI
    command services, ``import_row_lineage`` names every emitted object, and
    ``control_totals.loaded`` must account for every source row (loaded plus quarantined). With
    ``is_quarantine_mode`` the ERROR rows stay behind with their open exception items (REQ-DAT-008).
-4. Any failure rolls the commit back; a new transaction sets FAILED and raises
+4. A successful commit queues one CONTRACT_COMPUTE child per affected group (IPL-11),
+   dispatched after commit. Calculation failures cannot roll back the imported facts.
+5. Any failure of the import transaction rolls the commit back; a new transaction sets FAILED
+   and raises
    ``CONTROL_TOTALS_MISMATCH`` or ``IMPORT_PROCESSING_FAILED`` for the integration owner, who is
    notified ``EXCEPTION_ASSIGNED`` (IPL-12; L5-1-Q-9).
 
@@ -66,6 +69,7 @@ from erev_api.domain.imports.exceptions import raise_exception_item, severity_of
 from erev_api.domain.integrations import normalise
 from erev_api.enums import (
     ApprovalSubjectType,
+    ComputationTrigger,
     ControlResult,
     ExceptionSeverity,
     ExceptionSource,
@@ -422,7 +426,9 @@ def _check_bases(uow: UnitOfWork, row: Mapping[str, Any]) -> None:
             raise StaleImport(external_id)
 
 
-def commit_upload(uow: UnitOfWork, import_id: UUID) -> Committed | None:
+def commit_upload(
+    uow: UnitOfWork, import_id: UUID, *, parent_job_id: UUID | None = None
+) -> Committed | None:
     """IPL-10 in the caller's transaction; None when the import is not COMMITTING."""
     session = uow.session
     row = _locked(session, import_id)
@@ -497,11 +503,25 @@ def commit_upload(uow: UnitOfWork, import_id: UUID) -> Committed | None:
     scope.require_covered(scope.committing_entity_ids(row), bounds)
     lineage: list[tuple[UUID, str, UUID]] = []
     with scope.narrowed(uow, bounds.db_scope):
-        loaded = _apply_plans(uow, row, template, rows, lineage, bounds, consumed)
+        loaded, affected_groups = _apply_plans(uow, row, template, rows, lineage, bounds, consumed)
     source = (row["control_totals"] or {}).get("source") or {}
     totals_loaded = {"rows": loaded, "quarantined": quarantined}
     if template is not None and loaded + quarantined != int(source.get("rows", 0)):
         raise ControlTotalsMismatch(source, totals_loaded)
+    # IPL-11: durable jobs share the import transaction; dispatch happens only after commit.
+    # One group per child keeps a failed calculation from blocking unrelated imported groups.
+    for group_id in sorted(affected_groups):
+        uow.defer(
+            JobKind.CONTRACT_COMPUTE,
+            {
+                "combination_group_ids": [str(group_id)],
+                "trigger": ComputationTrigger.COMMAND.value,
+                "import_upload_id": str(import_id),
+            },
+            parent_job_id=parent_job_id,
+            subject_type="combination_group",
+            subject_id=group_id,
+        )
     return _recorded(uow, row, import_id, lineage, loaded, quarantined, totals_loaded)
 
 
@@ -513,10 +533,10 @@ def _apply_plans(
     lineage: list[tuple[UUID, str, UUID]],
     bounds: scope.Bounds,
     consumed: Any,
-) -> int:
+) -> tuple[int, set[UUID]]:
     """IPL-10: the source records and the plans of a COMMITTING upload, inside the uploader's
     scope (the caller narrowed the transaction). Appends the lineage of every emitted object to
-    ``lineage`` and returns the loaded row count."""
+    ``lineage`` and returns the loaded row count and affected groups."""
     session = uow.session
     import_id = UUID(str(row["id"]))
     request_id = row["approval_request_id"]
@@ -525,6 +545,7 @@ def _apply_plans(
     record_ids: dict[UUID, UUID] = {}
     loaded = 0
     applied_rows: set[UUID] = set()
+    appended_to: set[UUID] = set()
     if template is not None:
         for csv_row in rows:
             stored = normalise.store_source_record(
@@ -560,7 +581,6 @@ def _apply_plans(
         )
         plans = template.plans(rows)
         diff.hold_plan_windows(unit, template, plans)
-        appended_to: set[UUID] = set()
         for plan in plans:
             applied = template.apply(unit, plan, context=context)
             appended_to.update(group_id for _, _, group_id, _ in applied.contracts)
@@ -579,7 +599,7 @@ def _apply_plans(
         # nothing and is not judged (supervisor ruling R-122 (j); item PIN-WINDOW-APPENDER-1).
         period_ends.refuse_appends_a_lock_met(unit, appended_to)
     diff.hand_over(unit, uow)
-    return loaded
+    return loaded, appended_to
 
 
 def _recorded(
@@ -810,14 +830,14 @@ def _commit_after_a_lock(ctx: JobContext, import_id: UUID) -> Committed | None:
     second refusal is the commit's failure, told by the rule's sentence."""
     try:
         with ctx.unit_of_work() as uow:
-            committed = commit_upload(uow, import_id)
+            committed = commit_upload(uow, import_id, parent_job_id=ctx.job_id)
             uow.commit()
         return committed
     except Problem as problem:
         if not is_period_state_moved(problem):
             raise
     with ctx.unit_of_work() as uow:
-        committed = commit_upload(uow, import_id)
+        committed = commit_upload(uow, import_id, parent_job_id=ctx.job_id)
         uow.commit()
     return committed
 

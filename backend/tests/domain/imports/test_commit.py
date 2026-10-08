@@ -295,12 +295,42 @@ def test_customers_csv_full_pipeline(world: ImportWorld) -> None:
     assert statuses == [("COMMITTED", "COMMITTED")]
 
 
-def test_import_events_carry_row_lineage(j03: J03World, contract_importer: ImportWorld) -> None:
+@pytest.mark.parametrize("failure_stage", [None, "commit", "compute"])
+def test_import_events_carry_row_lineage(
+    j03: J03World,
+    contract_importer: ImportWorld,
+    monkeypatch: pytest.MonkeyPatch,
+    failure_stage: str | None,
+) -> None:
     import_id = diffed(
         contract_importer, "sf-ord-30001.csv", contracts_csv(j03.customer_id), "contracts"
     )
     assign(j03.priya.member, "revenue_reviewer")
+
+    def fail(*args: Any, **kwargs: Any) -> Any:
+        raise RuntimeError("Injected failure after scheduling computation")
+
+    if failure_stage == "commit":
+        monkeypatch.setattr(commit, "_recorded", fail)
     done = committed(contract_importer, import_id, j03.priya)
+    if failure_stage == "commit":
+        assert done["status"] == "FAILED", done
+        assert (
+            contract_importer.rows(
+                select(job.c.id).where(
+                    job.c.params["import_upload_id"].astext == import_id,
+                    job.c.kind == "CONTRACT_COMPUTE",
+                )
+            )
+            == []
+        )
+        assert (
+            contract_importer.rows(
+                select(contract.c.id).where(contract.c.external_id == "SF-ORD-30001")
+            )
+            == []
+        )
+        return
     assert done["status"] == "COMMITTED", done
     (booked,) = contract_importer.rows(
         select(contract.c.id).where(contract.c.external_id == "SF-ORD-30001")
@@ -337,6 +367,33 @@ def test_import_events_carry_row_lineage(j03: J03World, contract_importer: Impor
         )
     )
     assert [str(row["target_id"]) for row in lineage] == [event["id"], event["id"]]
+    # Two source rows for the same contract schedule exactly one post-commit computation.
+    (child,) = contract_importer.rows(
+        select(job.c.id, job.c.parent_job_id, job.c.state, job.c.params).where(
+            job.c.kind == "CONTRACT_COMPUTE",
+            job.c.params["import_upload_id"].astext == import_id,
+        )
+    )
+    assert child["state"] == "QUEUED" and child["parent_job_id"] is not None
+    assert len(child["params"]["combination_group_ids"]) == 1
+    if failure_stage == "compute":
+        from erev_api.domain.contracts import compute_job
+
+        monkeypatch.setattr(compute_job, "compute_group", fail)
+    run_import_job(contract_importer, child["id"])
+    (computed,) = contract_importer.rows(select(job).where(job.c.id == child["id"]))
+    if failure_stage == "compute":
+        assert computed["state"] == "FAILED", computed
+    else:
+        assert computed["state"] == "SUCCEEDED", computed["problem"]
+        assert computed["result"]["counts"]["succeeded"] == 1
+    (upload_state,) = contract_importer.rows(
+        select(import_upload.c.status).where(import_upload.c.id == UUID(import_id))
+    )
+    assert upload_state["status"] == "COMMITTED"
+    assert contract_importer.rows(
+        select(contract_event.c.id).where(contract_event.c.id == UUID(event["id"]))
+    )
 
 
 def test_import_commit_needs_approval_rights_for_every_named_entity(

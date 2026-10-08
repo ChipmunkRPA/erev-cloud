@@ -1418,3 +1418,24 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
 - All 14 original backup/restore baseline failures are resolved, leaving 17 original
   failures without current-main disposition. Broader verification, implementation gaps
   and independent accounting sign-off remain open. No deployment or cloud changes.
+
+## Migration verification alignment — October 7, 2026
+
+- Continued from 9622f13. Scoped current-main run reproduced two migration-check failures
+  (2 failed, 42 passed in 1.56 seconds, /private/tmp/migration-pins-before.log). The task
+  signature downgrade test omitted fresh_head; revision 0130's historical transition body
+  was incorrectly compared with the current renderer, which includes 0135's reopen pair.
+- The downgrade case now starts with a data-free head before creating its own signature
+  history. Updated the static walk inventory for this case and the existing Step 1 report
+  filter round-trip (the latter already resets correctly). No guard exemption was added.
+  Revision 0130 is checked against 0135's literal previous body; the new 0135 check requires
+  today's renderer and exactly one added PASSED>NOT_STARTED pair. No migration was rewritten.
+- Final verification: **47 passed in 12.62 seconds**, /private/tmp/migration-pins-final.log.
+  Includes the real PostgreSQL lossy-downgrade refusal with signature retention and RLS
+  restoration, installed transition-function drift check, complete migration-entry/transition
+  unit modules and snapshot-export module. The snapshot baseline failure was already fixed
+  by dbb3e57 and now has fresh verification. An intermediate run found the missing Step 1
+  inventory entry; the final run includes that correction. Ruff/format/whitespace pass.
+- Three more original baseline failures resolved, leaving 14 without current-main disposition.
+  All runs terminal. This is scoped evidence, not a full migration walk or backend baseline.
+  Implementation gaps and independent accounting sign-off remain open. No deployment.

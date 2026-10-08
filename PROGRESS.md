@@ -2,6 +2,31 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Post-import computation scheduling — October 7, 2026
+
+- Continued from 3e106e6. AI routes are genuinely absent, so its pending audit category
+  remains open. Investigation of B3-7 confirmed CSV commits collect affected groups but
+  schedule no computation. A new real import regression failed because no child job existed
+  (/private/tmp/import-compute-before.log, 1 failed in 10.27 seconds).
+- Successful CSV commits now insert one CONTRACT_COMPUTE child for each distinct affected
+  group, linked to the import job and upload. Jobs share the import transaction and dispatch
+  after commit. The existing worker computes each group separately; calculation failures
+  cannot roll back committed imported events. The period-lock retry carries the parent ID.
+- The regression verifies two rows for one contract produce one child and the actual worker
+  succeeds. An injected failure after scheduling rolls back both contract and child job;
+  an injected worker failure preserves the COMMITTED upload and event. Existing period-pin
+  instrumentation forwards the new parent argument, retaining its original race assertions.
+- Import commit module plus stream-appender architecture checks: **19 passed in 35.35 seconds**,
+  /private/tmp/import-compute-final.log. Transient-error and import period-pin checks:
+  **13 passed, 4 deselected in 51.20 seconds**, /private/tmp/import-compute-period-pins.log.
+  Final actual lock-race check with exactly-one-child assertion: **1 passed in 43.61 seconds**,
+  /private/tmp/import-compute-retry-child.log. Source Mypy, Ruff/format and whitespace pass.
+- All runs terminal. LIMITS B3-7 records the scheduling improvement; B1-20 distinguishes
+  CSV imports from adapter booking. The zero-posting late-event report (B4-7/K07), general
+  dirty-group sweep, monetary import totals, AI feature, broader verification and independent
+  accounting sign-off remain open. Both original baseline failures remain unresolved.
+  No deployment; publication exclusions and noncommercial licensing are unchanged.
+
 ## Waiver and modification-audit verification — October 7, 2026
 
 - Continued from cc31480. Both remaining close-waiver/audit-report cases reproduced
@@ -76,27 +101,6 @@ not authorize deployment, provisioning or changes to a live database.
 - SUPERVISOR VERIFICATION NEEDED: make zap-baseline
 - SUPERVISOR VERIFICATION NEEDED: make tf-validate (validation only)
 - SUPERVISOR VERIFICATION NEEDED: make backup, make restore-verify (isolated local drill only)
-
-## Migration verification alignment — October 7, 2026
-
-- Continued from 9622f13. Scoped current-main run reproduced two migration-check failures
-  (2 failed, 42 passed in 1.56 seconds, /private/tmp/migration-pins-before.log). The task
-  signature downgrade test omitted fresh_head; revision 0130's historical transition body
-  was incorrectly compared with the current renderer, which includes 0135's reopen pair.
-- The downgrade case now starts with a data-free head before creating its own signature
-  history. Updated the static walk inventory for this case and the existing Step 1 report
-  filter round-trip (the latter already resets correctly). No guard exemption was added.
-  Revision 0130 is checked against 0135's literal previous body; the new 0135 check requires
-  today's renderer and exactly one added PASSED>NOT_STARTED pair. No migration was rewritten.
-- Final verification: **47 passed in 12.62 seconds**, /private/tmp/migration-pins-final.log.
-  Includes the real PostgreSQL lossy-downgrade refusal with signature retention and RLS
-  restoration, installed transition-function drift check, complete migration-entry/transition
-  unit modules and snapshot-export module. The snapshot baseline failure was already fixed
-  by dbb3e57 and now has fresh verification. An intermediate run found the missing Step 1
-  inventory entry; the final run includes that correction. Ruff/format/whitespace pass.
-- Three more original baseline failures resolved, leaving 14 without current-main disposition.
-  All runs terminal. This is scoped evidence, not a full migration walk or backend baseline.
-  Implementation gaps and independent accounting sign-off remain open. No deployment.
 
 ## Older backend baseline completed — October 7, 2026
 

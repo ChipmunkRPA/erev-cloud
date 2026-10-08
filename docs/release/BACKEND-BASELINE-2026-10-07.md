@@ -318,3 +318,26 @@ terminal. Two original baseline failures remain unresolved: pending AI lifecycle
 audit coverage and the late-billing out-of-period K07 report. A new complete backend
 baseline, remaining implementation work and independent accounting sign-off are
 still required. No deployment or production-readiness claim.
+
+### Post-import computation implementation
+
+B3-7 investigation on 3e106e6 found no post-commit calculation scheduling. The new
+regression failed with no CONTRACT_COMPUTE child (1 failed in 10.27 seconds,
+`/private/tmp/import-compute-before.log`). CSV commits now queue one job per distinct
+affected group, in the same transaction, dispatched after commit. Children carry
+parent_job_id and import_upload_id; the existing worker computes groups independently.
+
+Import/stream architecture verification: **19 passed in 35.35 seconds**,
+`/private/tmp/import-compute-final.log`. Tests prove successful child execution,
+one child for repeated contract rows, rollback of child and contract after scheduling
+failure, and preservation of the committed import/event when calculation fails.
+Transient-error and period-pin checks: **13 passed, 4 deselected in 51.20 seconds**,
+`/private/tmp/import-compute-period-pins.log`. Final lock-race verification additionally
+requires exactly one queued child after the retry: **1 passed in 43.61 seconds**,
+`/private/tmp/import-compute-retry-child.log`. Source Mypy, Ruff/format and whitespace
+checks pass. All processes terminal.
+
+Neither original remaining baseline failure is closed by this change. The AI feature
+has no routes, and the late-event report still needs zero-posting event rows plus its
+child-worker workflow. LIMITS B3-7/B1-20 reflect the implemented scheduling portion.
+No deployment, full-backend pass or independent accounting sign-off claimed.

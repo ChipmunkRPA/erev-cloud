@@ -683,9 +683,9 @@ def test_an_imports_commit_across_the_lock_is_run_once_more_and_committed_after_
     commits: list[Any] = []
     commit_upload = import_commit.commit_upload
 
-    def counted(uow: Any, upload_id: UUID) -> Any:
+    def counted(uow: Any, upload_id: UUID, **kwargs: Any) -> Any:
         commits.append(uow.session.execute(select(func.transaction_timestamp())).scalar_one())
-        return commit_upload(uow, upload_id)
+        return commit_upload(uow, upload_id, **kwargs)
 
     monkeypatch.setattr(import_commit, "commit_upload", counted)
     stand = _held(monkeypatch, recorded, "append", after=True)
@@ -707,6 +707,15 @@ def test_an_imports_commit_across_the_lock_is_run_once_more_and_committed_after_
     event = _head_event(pending)
     assert (event["event_type"], str(event["import_upload_id"])) == ("PROGRESS_RECORDED", import_id)
     assert event["recorded_at"] == commits[1] > max(lock["created_at"], lock["cutoff_known_at"])
+    (child,) = _rows(
+        pending.world.tenant_id,
+        select(job.c.state, job.c.params).where(
+            job.c.parent_job_id == job_id, job.c.kind == "CONTRACT_COMPUTE"
+        ),
+    )
+    assert child["state"] == "QUEUED"
+    assert child["params"]["import_upload_id"] == import_id
+    assert len(child["params"]["combination_group_ids"]) == 1
     (state,) = _rows(pending.world.tenant_id, select(job.c.state).where(job.c.id == job_id))
     assert str(getattr(state["state"], "value", state["state"])) == "SUCCEEDED"
 
@@ -748,7 +757,7 @@ def test_only_the_pins_refusal_is_run_again_and_a_second_one_fails_the_import_by
     )
     calls: list[UUID] = []
 
-    def refused(_uow: Any, upload_id: UUID) -> Any:
+    def refused(_uow: Any, upload_id: UUID, **_kwargs: Any) -> Any:
         calls.append(upload_id)
         raise refusal()
 
