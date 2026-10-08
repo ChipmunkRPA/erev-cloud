@@ -716,3 +716,42 @@ def test_ctl_001_committed_file_refused_again(
     assert contract_importer.scalar(select(func.count()).select_from(import_upload)) == 1
     assert contract_importer.scalar(select(func.count()).select_from(contract_version)) == versions
     assert contract_importer.scalar(select(func.count()).select_from(contract_event)) == events
+
+
+@pytest.mark.parametrize("fault", ["duplicate", "unknown"])
+def test_equal_count_duplicate_lineage_fails_import_atomically(
+    world: ImportWorld, monkeypatch: pytest.MonkeyPatch, fault: str
+) -> None:
+    """A repeated row cannot account for a different omitted row, even with equal counts."""
+    priya = reviewer(world)
+    import_id = diffed(world, "crm-customers.csv", customers_csv(CUSTOMERS), "customers")
+    original = csv_v2.TEMPLATES["customers"]
+    first: list[UUID] = []
+
+    def duplicate(unit: Any, plan: Any, *, context: Any) -> Any:
+        applied = original.apply(unit, plan, context=context)
+        for row_id, targets in list(applied.row_targets.items()):
+            if not first:
+                first.append(row_id)
+            else:
+                del applied.row_targets[row_id]
+                applied.row_targets[first[0] if fault == "duplicate" else uuid4()] = targets
+        return applied
+
+    monkeypatch.setattr(
+        csv_v2, "TEMPLATES", {"customers": dataclasses.replace(original, apply=duplicate)}
+    )
+    done = committed(world, import_id, priya)
+    assert done["status"] == "FAILED", done
+    assert world.rows(select(customer.c.code).where(customer.c.code.in_(["C-501", "C-502"]))) == []
+    for table in (source_record, import_row_lineage):
+        assert (
+            world.rows(select(table.c.id).where(table.c.import_upload_id == UUID(import_id))) == []
+        )
+    [item] = world.rows(
+        select(exception_item).where(
+            exception_item.c.import_upload_id == UUID(import_id),
+            exception_item.c.code == "CONTROL_TOTALS_MISMATCH",
+        )
+    )
+    assert item["severity"] == "BLOCKING"

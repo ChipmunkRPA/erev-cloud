@@ -524,6 +524,7 @@ def _apply_plans(
     unit = diff.import_unit(uow, row["created_by"], bounds)
     record_ids: dict[UUID, UUID] = {}
     loaded = 0
+    applied_rows: set[UUID] = set()
     if template is not None:
         for csv_row in rows:
             stored = normalise.store_source_record(
@@ -564,6 +565,12 @@ def _apply_plans(
             applied = template.apply(unit, plan, context=context)
             appended_to.update(group_id for _, _, group_id, _ in applied.contracts)
             for row_id, targets in applied.row_targets.items():
+                if row_id not in record_ids or row_id in applied_rows:
+                    raise ControlTotalsMismatch(
+                        (row["control_totals"] or {}).get("source") or {},
+                        {"rows": loaded, "row_coverage_error": "unknown_or_repeated_row"},
+                    )
+                applied_rows.add(row_id)
                 loaded += 1
                 lineage.append((row_id, "source_record", record_ids[row_id]))
                 lineage += [(row_id, target_type, target_id) for target_type, target_id in targets]
