@@ -47,20 +47,6 @@ from typing import Any
 from uuid import UUID, uuid4
 
 import pytest
-from fastapi import FastAPI
-from sqlalchemy import exc, select, text
-from support.db import TestDatabase
-from support.factories import (
-    IMPORTS_PATH,
-    ImportWorld,
-    create_import,
-    import_world,
-    upload_import_source,
-)
-from support.http import call
-from support.principals import Actor, colleague, cookie_headers, enrolled
-from support.reference import approve, assign, get, post
-
 from erev_api.auth.keyring import KeyRing
 from erev_api.auth.principal import system_principal
 from erev_api.clock import FrozenClock
@@ -81,6 +67,19 @@ from erev_api.jobs import registry
 from erev_api.jobs.context import system_unit_of_work
 from erev_api.jobs.registry import RetryPolicy, run_job
 from erev_api.main import create_app
+from fastapi import FastAPI
+from sqlalchemy import exc, select, text
+from support.db import TestDatabase
+from support.factories import (
+    IMPORTS_PATH,
+    ImportWorld,
+    create_import,
+    import_world,
+    upload_import_source,
+)
+from support.http import call
+from support.principals import Actor, colleague, cookie_headers, enrolled
+from support.reference import approve, assign, get, post
 
 _FETCHED = text("UPDATE procrastinate_jobs SET status = 'doing' WHERE id = :id")
 # The server raises the code itself, as it does when two transactions meet.

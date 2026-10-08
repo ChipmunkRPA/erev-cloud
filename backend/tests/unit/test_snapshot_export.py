@@ -293,7 +293,8 @@ def test_approval_rules_are_data_per_approval_bearing_table() -> None:
     # + MIGRATION_SSP_REPLAY on migration_batch (F-LMG PG-7b; 04 rev 1.72)
     # + MANUAL_ADJUSTMENT on manual_adjustment (F-CLO-A CLO-12; the subject left PENDING_SUBJECTS)
     # + EVIDENCE_SHRED on file_object (lane SECFIX-IMP; rulings R-49 (a), R-86; 04 rev 1.142)
-    assert len(subject_rules) == 27
+    # + STEP1_EVENT on event_submission (B1-13 dated assessment approval).
+    assert len(subject_rules) == 28
     not_copied = {spec.table for spec in SUBJECTS.values()} - set(LOAD_ORDER)
     assert not_copied == {"support_grant", "exception_item", "journal_run"}  # never copied subjects
     assert all(r.table in LOAD_ORDER for r in rules)
@@ -305,16 +306,25 @@ def test_subject_references_keep_requests_whose_subject_row_is_copied() -> None:
         {"id": _u(2), "subject_type": "CONTRACT_ACTIVATION", "subject_id": _u(102)},  # not copied
         {"id": _u(3), "subject_type": "JOURNAL_RUN", "subject_id": _u(301)},  # never copied
         {"id": _u(4), "subject_type": "JUDGEMENT_RECORD", "subject_id": _u(401)},
+        {"id": _u(5), "subject_type": "STEP1_EVENT", "subject_id": _u(501)},
+        {"id": _u(6), "subject_type": "STEP1_EVENT", "subject_id": _u(502)},  # not copied
     ]
-    copied = {"contract": [_u(101)], "judgement_record": [_u(401)], "journal_run": [_u(301)]}
-    assert sx.subject_references(requests, copied) == frozenset({_u(1), _u(4)})
+    copied = {
+        "contract": [_u(101)],
+        "judgement_record": [_u(401)],
+        "journal_run": [_u(301)],
+        "event_submission": [_u(501)],
+    }
+    assert sx.subject_references(requests, copied) == frozenset({_u(1), _u(4), _u(5)})
     assert sx.subject_references(requests, {}) == frozenset()
     # Union with the column rule is the export-time set (SBX-03 read both ways).
     column = sx.referenced_ids(
         {"judgement_record": [{"approval_request_id": _u(9)}]},
         sx.reference_columns()[sx.APPROVAL_REFERENCE],
     )
-    assert column | sx.subject_references(requests, copied) == frozenset({_u(1), _u(4), _u(9)})
+    assert column | sx.subject_references(requests, copied) == frozenset(
+        {_u(1), _u(4), _u(5), _u(9)}
+    )
 
 
 def test_subject_references_fail_closed_on_pending_or_unknown_subject_types() -> None:

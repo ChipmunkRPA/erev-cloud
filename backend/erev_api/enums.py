@@ -169,6 +169,7 @@ class ApprovalSubjectType(StrEnum):
     # 04 rev 1.142 (supervisor rulings R-49 (a), R-86; lane SECFIX-IMP): the last E-08 member
     # — the 0094 replay order
     EVIDENCE_SHRED = "EVIDENCE_SHRED"
+    STEP1_EVENT = "STEP1_EVENT"
 
 
 class EstimateKind(StrEnum):

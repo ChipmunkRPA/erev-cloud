@@ -29,9 +29,9 @@ SEAM = "preparer_entities"
 # The specification entries of the kernel, and the registrations of the two domains: how often
 # each file passes ``preparer_entities=`` to a call.
 STATED_IN = {
-    "backend/erev_api/approvals/subjects.py": 3,  # IMPORT_COMMIT, MANUAL_EVENT, ATTRIBUTE_CHANGE
+    "backend/erev_api/approvals/subjects.py": 4,  # import and the three event-submission subjects
     "backend/erev_api/domain/imports/commit.py": 1,
-    # one registration in a loop over the two event-submission subjects
+    # one registration in a loop over the three event-submission subjects
     "backend/erev_api/domain/contracts/events.py": 1,
 }
 # A lifecycle is registered when its module is imported.
@@ -50,7 +50,7 @@ def stating_files() -> dict[str, list[int]]:
     return found
 
 
-def test_r106_three_subjects_state_preparer_entities_and_no_other() -> None:
+def test_event_and_import_subjects_state_preparer_entities() -> None:
     stated = sorted(
         subject_type.value
         for subject_type, spec in subjects.SUBJECTS.items()
@@ -61,6 +61,7 @@ def test_r106_three_subjects_state_preparer_entities_and_no_other() -> None:
             ApprovalSubjectType.ATTRIBUTE_CHANGE.value,
             ApprovalSubjectType.IMPORT_COMMIT.value,
             ApprovalSubjectType.MANUAL_EVENT.value,
+            ApprovalSubjectType.STEP1_EVENT.value,
         ]
     )
 
@@ -83,4 +84,5 @@ def test_r106_only_the_imports_and_the_contracts_domain_register_preparer_entiti
         ApprovalSubjectType.ATTRIBUTE_CHANGE: contract_events.preparer_entities,
         ApprovalSubjectType.IMPORT_COMMIT: import_scope.preparer_entities,
         ApprovalSubjectType.MANUAL_EVENT: contract_events.preparer_entities,
+        ApprovalSubjectType.STEP1_EVENT: contract_events.preparer_entities,
     }

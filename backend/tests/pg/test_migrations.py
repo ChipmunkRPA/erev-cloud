@@ -10,6 +10,7 @@ from alembic import command
 from erev_api.cli import app
 from erev_api.db import migration_ops as ops
 from erev_api.db.lint import lint_as_app
+from erev_api.enums import ApprovalSubjectType
 from sqlalchemy import Connection, exc, text
 from support.db import TestDatabase, alembic_config, fresh_head
 from typer.testing import CliRunner
@@ -344,8 +345,8 @@ def test_single_head() -> None:
     # 0135: fresh manual close-task signatures after an approved reopen.
     # 0136: move the non-leakproof book enum behind the FX layer lookup keys.
     # 0137: persist tenant-bound reviewed judgement citations for error-correction reopens.
-    # 0138: unassigned approval notifications.
-    assert lines[0].split()[0] == "0138"
+    # 0139: dedicated Step 1 event approvals.
+    assert lines[0].split()[0] == "0139"
 
 
 def test_upgrade_downgrade_upgrade(test_database: TestDatabase) -> None:
@@ -485,6 +486,42 @@ def test_upgrade_downgrade_upgrade(test_database: TestDatabase) -> None:
     assert second == first
     assert second_public == first_public
     assert lint_as_app(request_id="tests-round-trip") == []
+
+
+def test_step1_report_filter_migration_round_trip(test_database: TestDatabase) -> None:
+    """A report's stored filter must admit the same subjects as the application."""
+    fresh_head()
+    query = text(
+        "SELECT parameters_schema #> '{properties,subject_types,items,enum}' "
+        "FROM erev.report_definition WHERE code = 'approvals_register' AND version = 1"
+    )
+    owner = test_database.owner_engine
+    with owner.connect() as connection:
+        subjects = connection.execute(query).scalar_one()
+    assert subjects == [subject.value for subject in ApprovalSubjectType]
+
+    command.downgrade(alembic_config(), "0138")
+    test_database.app_engine.dispose()
+    owner.dispose()
+    with owner.connect() as connection:
+        previous = connection.execute(query).scalar_one()
+    assert previous == [subject for subject in subjects if subject != "STEP1_EVENT"]
+
+    command.upgrade(alembic_config(), "head")
+    test_database.app_engine.dispose()
+    owner.dispose()
+    with owner.connect() as connection:
+        assert connection.execute(query).scalar_one() == subjects
+        assert (
+            connection.execute(
+                text(
+                    "SELECT tgenabled FROM pg_trigger WHERE "
+                    "tgrelid = 'erev.report_definition'::regclass "
+                    "AND tgname = 'tg_report_definition__immutable'"
+                )
+            ).scalar_one()
+            == "O"
+        )
 
 
 def test_lint_after_upgrade(test_database: TestDatabase, log_stream: io.StringIO) -> None:

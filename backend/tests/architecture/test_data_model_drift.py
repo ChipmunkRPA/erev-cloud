@@ -189,7 +189,7 @@ def test_dg_arc_09_enums_match_data_model() -> None:
     assert [row.number for row in rows if row.api_only] == [*range(111, 125), 132]
     assert len(enums.AccountRole) == 33
     # 04 rev 1.72: MIGRATION_SSP_REPLAY; rev 1.142: EVIDENCE_SHRED (rulings R-49 (a), R-86)
-    assert len(enums.ApprovalSubjectType) == 32
+    assert len(enums.ApprovalSubjectType) == 33
     assert len(enums.JobKind) == 27  # 04 rev 1.164: PERIOD_OPEN_REDIRTY (revision 0098)
     assert len(enums.NotificationKind) == 13
     # 04 rev 1.108 (revision 0092; ruling R-50 (b)): MFA_ENROLMENT_STARTED and

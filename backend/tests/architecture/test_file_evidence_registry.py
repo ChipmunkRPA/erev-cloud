@@ -182,11 +182,11 @@ def test_the_holds_an_approval_lifts_are_the_ruled_ones() -> None:
     assert "amount_functional_abs" not in adjustment
     for status in ("DRAFT", "REJECTED"):
         assert f"'{status}'" not in adjustment, status
-    # 04 T-CON-24: a live attachment of the approval request of an event submission — either
+    # 04 T-CON-24: a live attachment of the approval request of an event submission — any
     # subject type that stores one — while the submission stands. A rejected, withdrawn or voided
     # submission put nothing in force.
     assert "subject_type = 'approval_request'" in request and "voided_at IS NULL" in request
-    assert "subject_type IN ('MANUAL_EVENT', 'ATTRIBUTE_CHANGE')" in request
+    assert "subject_type IN ('MANUAL_EVENT', 'STEP1_EVENT', 'ATTRIBUTE_CHANGE')" in request
     assert "status IN ('SUBMITTED', 'APPROVED', 'APPLIED')" in request
     for status in ("DRAFT", "REJECTED", "VOIDED", "WITHDRAWN"):
         assert f"'{status}'" not in request, status

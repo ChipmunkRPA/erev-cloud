@@ -1061,6 +1061,7 @@ def approved_ssp_version(
     label: str,
     effective_from: str,
     entries: Sequence[Mapping[str, Any]],
+    copy_from_version_id: str | None = None,
 ) -> str:
     """An SSP book version with ``entries``, its study attached, submitted and approved."""
     body = {
@@ -1068,6 +1069,8 @@ def approved_ssp_version(
         "effective_from_date": effective_from,
         "methodology_label": "List-price study",
     }
+    if copy_from_version_id is not None:
+        body["copy_from_version_id"] = copy_from_version_id
     created = post(app, f"{SSP_BOOKS}/{book_id}/versions", author, body)
     assert created.status_code == 201, created.text
     version_id = str(created.json()["id"])

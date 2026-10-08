@@ -210,4 +210,29 @@ describe("SF-03 Record assessment, a record the API refuses", () => {
     expect(sent).toHaveLength(2);
     expect(await screen.findByText("Assessment recorded.")).toBeTruthy();
   });
+
+  it("a pending date review shows its request instead of claiming the assessment was recorded", async () => {
+    server.use(
+      http.get(apiUrl("/api/v1/approvals/date-review"), () =>
+        HttpResponse.json({ request_no: "APR-000123" }),
+      ),
+    );
+    const { onClose } = open(() =>
+      HttpResponse.json(
+        {
+          event_submission_id: "submission",
+          approval_request_id: "date-review",
+        },
+        { status: 201 },
+      ),
+    );
+    press();
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+    expect(
+      await screen.findByText(
+        "Submitted for approval. Request APR-000123 is waiting for approval.",
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByText("Assessment recorded.")).toBeNull();
+  });
 });

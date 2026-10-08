@@ -342,7 +342,12 @@ def _released(
 
 def _system_unit(uow: UnitOfWork) -> UnitOfWork:
     """The SYSTEM principal in the caller's transaction, stamped with the caller's instant."""
-    ctx = dataclasses.replace(uow.ctx, principal=system_principal(uow.principal.tenant_id))
+    ctx = dataclasses.replace(
+        uow.ctx,
+        principal=system_principal(
+            uow.principal.tenant_id, on_behalf_of_id=uow.principal.on_behalf_of_id
+        ),
+    )
     system = UnitOfWork(
         ctx=ctx, session=uow.session, clock=uow.clock, keyring=uow.keyring, files=uow.files
     )
@@ -599,7 +604,12 @@ def apply_system_hold(uow: UnitOfWork, contract_id: UUID, *, reason: str) -> UUI
 
 
 def release_system_holds(
-    uow: UnitOfWork, contract_id: UUID, *, reason: str, comment: str
+    uow: UnitOfWork,
+    contract_id: UUID,
+    *,
+    reason: str,
+    comment: str,
+    approval_request_id: UUID | None = None,
 ) -> list[UUID]:
     """Release the open SYSTEM holds of ``reason``; the caller computes the group."""
     session = uow.session
@@ -618,6 +628,7 @@ def release_system_holds(
                 event_type=ContractEventType.HOLD_RELEASED,
                 effective_date=today,
                 payload=HoldReleasedV1(hold_id=_uuid(hold["id"]), comment=comment),
+                approval_request_id=approval_request_id,
             )
             for hold in holds
         ],

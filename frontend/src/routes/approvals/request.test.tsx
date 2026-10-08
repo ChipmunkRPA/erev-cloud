@@ -653,6 +653,81 @@ describe("SF-12:request and REQ-UX-012", () => {
     ]);
   });
 
+  it("shows the reviewed draft status transition for a Step 1 assessment", () => {
+    expect(
+      fieldChanges(
+        {
+          before: { status: "DRAFT" },
+          after: { status: "NOT_A_CONTRACT" },
+        },
+        { subjectType: "STEP1_EVENT" },
+      ),
+    ).toEqual([
+      {
+        id: "status",
+        field: "Status",
+        kind: "changed",
+        current: "Draft",
+        proposed: "Not a contract",
+      },
+    ]);
+    expect(
+      fieldChanges(
+        {
+          before: { status: "DRAFT" },
+          after: { status: "DRAFT" },
+        },
+        { subjectType: "STEP1_EVENT" },
+      )[0],
+    ).toMatchObject({
+      kind: "unchanged",
+      current: "Draft",
+      proposed: "Draft",
+    });
+  });
+
+  it("keeps book, entity and both currencies visible in Step 1 posting lines", () => {
+    registerCurrencies([
+      { code: "USD", minor_unit: 2 },
+      { code: "EUR", minor_unit: 2 },
+    ]);
+    const changes = fieldChanges(
+      {
+        before: {},
+        after: {
+          posting_lines: [
+            {
+              book: "IFRS15",
+              entity: "AVM-EU",
+              posting_period: "FY2026-P09",
+              side: "Debit",
+              account: "1200",
+              transaction_amount: { amount: "125.00", currency: "USD" },
+              functional_amount: { amount: "100.00", currency: "EUR" },
+            },
+            {
+              book: "ASC606",
+              entity: "AVM-US",
+              posting_period: "FY2026-P09",
+              side: "Credit",
+              account: "4000",
+              transaction_amount: { amount: "125.00", currency: "USD" },
+              functional_amount: { amount: "125.00", currency: "USD" },
+            },
+          ],
+        },
+      },
+      { subjectType: "STEP1_EVENT" },
+    );
+    expect(changes).toHaveLength(1);
+    expect(changes[0]?.proposed).toContain("IFRS15");
+    expect(changes[0]?.proposed).toContain("AVM-EU");
+    expect(changes[0]?.proposed).toContain("EUR\u00a0100.00");
+    expect(changes[0]?.proposed).toContain("ASC606");
+    expect(changes[0]?.proposed).toContain("AVM-US");
+    expect(changes[0]?.proposed).toContain("USD\u00a0125.00");
+  });
+
   it("the generic field diff formats money, period amounts and member labels (D-90a QA-L9-5a)", () => {
     registerCurrencies([{ code: "USD", minor_unit: 2 }]);
     const changes = fieldChanges(ACTIVATION_PREVIEW, { periodLabel: periodLabeller([SEP_2026]) });
@@ -971,6 +1046,28 @@ describe("SF-12:request regions 1 and 4, what an approver can open and what is n
       "This screen does not show what the request changes, and it has no link to the record.",
     );
     expect(bare.textContent).not.toContain("before you decide");
+  });
+
+  it("does not infer no Step 1 impact from an empty primary-book summary", async () => {
+    const computed = approval({
+      subject: { ...approval().subject, type: "STEP1_EVENT" },
+      impact_preview: {
+        file_id: PREVIEW_FILE,
+        sha256: PREVIEW_HASH,
+        summary: {
+          revenue_by_period_before: [],
+          revenue_by_period_after: [],
+          balances_before: [],
+          balances_after: [],
+          journal_lines: [],
+          catch_up_total: null,
+          criteria_met: null,
+        },
+      },
+    });
+    const region = await open(computed);
+    expect(within(region).queryByText("No impact on revenue or balances.")).toBeNull();
+    expect(within(region).getByText(/Review the assessment dates, revenue by book/)).toBeTruthy();
   });
 
   it("a stored preview that moves nothing keeps No impact on revenue or balances. and shows no notice", async () => {

@@ -2,91 +2,109 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
-## Approval availability and access-admin alerts — October 7, 2026
+## Step 1 publication checks — October 7, 2026
 
-- Previous goal turn made progress: B1-12 was tested and pushed directly to main as `ab4fa7d`.
-  Continued from that clean commit. B1-15 is now implemented and verified for direct publication.
-- Fail-first tests reproduced no alert when only the preparer held the approval permission and
-  the absence of queue availability. Submission/next-step activation now emits APPROVAL_UNASSIGNED
-  to active direct role.manage holders covering every entity. Its title/body contain no accounting
-  summary or amounts. Revision 0138 adds the kind; preferences default to app/email with existing
-  deduplication and sandbox restrictions. Preference input length follows the enum's actual size.
-- API assignment_blocked is computed from current eligibility using the same logic as assigned
-  recipients: preparer/prior-decision exclusions, delegation, subject rules and later-step
-  reservations. It is separate from routing flags and clears after a valid grant is restored.
-  Closed requests answer false; content-withheld headers and unsupported subjects answer null.
-  Queue/detail display the warning; unsupported subject requests retain their named refusal.
-- **43 backend compatibility tests passed** in 36.43 seconds (approval engine, notifications,
-  approval API and preferences). **8 notification tests passed** in the final 5.55-second run, including
-  entity-specific and all-entity admin scope and redacted alert content. Initial compatibility
-  caught the unsupported-subject read and old 12-kind input cap; both were fixed and reverified.
-- **79 frontend tests passed** in 3.04 seconds, including queue/detail visibility, preferences
-  and notification panel. TypeScript and ESLint pass. **5 migration checks passed** in 16.22
-  seconds (full up/down/up and lint). Unit/architecture run: 504 passes and one obsolete enum
-  count assertion; corrected count and all 245 affected unit/schema checks passed in 4.08 seconds.
-  Mypy: five source files clean. Logs: `/private/tmp/approval-availability-*.log`.
-- Final approval API recheck: **20 passed** in 34.03 seconds. A caller who can decide already
-  proves availability, so the queue avoids another recipient search for those rows. Alert titles
-  include the request reference so the email (which omits the in-app body) can identify it.
-- The extra scope test first tried changing a grant in place; PostgreSQL correctly refused it.
-  The fixture now revokes the old grant and inserts the scoped replacement; product rules unchanged.
-- Independent full-backend baseline remains live on `7c9b22d`, PID 36126 / session 28842, separate
-  DB `erev_rv_waivers`, around 30%, with earlier failures. Preserve it until terminal diagnostics.
-  It does not cover B1-11, B1-12 or this work. No full-backend pass or production-readiness claim.
-- Remaining LIMITS and independent accounting sign-off are still open. Main-only workflow,
-  research-folder exclusions, noncommercial license and no-deployment scope remain in force.
+- Previous goal turn verified zero open PRs and only main remotely. Direct-main workflow
+  remains in effect; the verified Step 1 implementation is included in this direct-main commit.
+- Physical 201-obligation case passed (1 in 18.73 seconds), without lowering the obligation
+  budget: `/private/tmp/step1-date-review-201-obligations.log`. This proves the functional
+  approval path, not a production latency or load guarantee.
+- Repository-wide `make lint` passed, including design, licence, secrets, OpenAPI drift and
+  migration-head checks: `/private/tmp/step1-date-review-release-lint-complete.log`.
+  Two existing formatting failures were corrected in the import-job and AboutDialog tests.
+- Event/evidence compatibility: 36 passed, one old subject-list assertion failed. Updated it
+  to retain STEP1_EVENT evidence. Evidence-registry plus snapshot-export recheck: 25 passed,
+  one genuine pre-existing monetary-comparison gap remains (1.69 seconds). New Step 1
+  subject-reference checks passed. Log: `/private/tmp/step1-date-review-evidence-snapshot-final.log`.
+- Do not remove that failing drift guard: stored loss_provision_version and fx_layer_movement
+  remain absent from snapshot_export.MONETARY_TABLES and sandboxes._monetary_rows. They are
+  regenerated on load but omitted from monetary verification. Implement a state comparison
+  that handles cumulative state versus incremental movements, with real sandbox coverage.
+- Full Step 1/registry/data-model/preparer/evidence compatibility passed: **93 in 486.28
+  seconds**, `/private/tmp/step1-date-review-final-compatibility.log`. Source Mypy passes
+  all six changed backend modules. Terminal-decision/mixed-batch regression: **1 passed in
+  16.56 seconds**, `/private/tmp/step1-date-review-terminal-decisions.log`: reject/withdraw
+  change no accounting state; resubmission applies once and repeat approval is refused. All
+  current scoped runs are terminal; erev_rv_cont is free. Older baseline PID 36126 was verified live at 3h00m54s
+  on its separate DB with failures; preserve it.
+- B1-13 remaining scope/evidence/snapshot coverage, broader B1-2 producers, full-suite failures and
+  independent accounting sign-off remain open. No deployment or production-readiness claim.
 
-## Approvals-gate waiver sequencing — October 7, 2026
+## Performing-entity Step 1 review — October 7, 2026
 
-- Continued on main `88de370`. Reproduced B1-11 with two failing decision-order cases;
-  five controls already passed. A pending approvals-gate waiver now retains its submitted
-  request identities while other requests complete. Final approval refreshes the gate under
-  the existing locks and requires the live pending population to be a subset of that scope.
-- New or replacement pending requests still void the waiver, including at the same count
-  and without a cockpit refresh. Renewal reviews the new scope. If all requests complete,
-  the gate passes and the unneeded waiver is voided. Other gates keep strict pending-basis
-  checks. Rejection/voiding clears the temporary basis; approval retains reviewed coverage.
-  Existing JSONB storage suffices; no migration or historical lock rewrite.
-- **56 PostgreSQL close/lock checks passed** in 235.98 seconds, including all 18 waiver
-  cases and seven new sequencing controls. **678 close-unit/architecture checks passed**
-  in 171.83 seconds. Source Mypy, Ruff lint/format, whitespace and design checks pass;
-  secret scan: 3,391 files, zero findings. B1-11 is closed for completed-request sequencing.
-- GitHub has no open PRs and only main. Automatic merge and merged-branch deletion are
-  enabled. Following the owner's instruction, this tested change goes directly to main.
-- The separate backend run remains live on `7c9b22d` (about 20% through), excluding parity,
-  answer-key and performance markers. It does not cover this change and is not a completed
-  passing gate. Other limitations, specialist verification and accounting sign-off remain.
-  Archived the mandatory-product section verbatim. Repository only; no deployment.
+- Previous goal turn made progress with draft-gate review and 5 backend/59 frontend checks.
+  Continued local unpublished work on main `5ca602f`; added real cross-entity API verification.
+- AVM-US contracts the subscription; AVM-OPS performs it in USD. With both periods open,
+  the assessment applies immediately. With only AVM-OPS in soft close, it waits for approval
+  while the owner's period remains open. Locking AVM-OPS's period produces a retryable
+  conflict without changing the stream, ledger or hold; retry applies reviewed postings.
+  The ledger comparison retains entity, book, account role and debit/credit, and equals the
+  retained preview amounts. **2 passed in 22.88 seconds**:
+  `/private/tmp/step1-date-review-performing-entity.log`.
+- Performing-period-change case: **1 passed in 17.33 seconds**. Canceling the performer's
+  close after submission makes approval stale and leaves the stream, ledger and hold unchanged.
+  Log: `/private/tmp/step1-date-review-performing-period-change.log`; primary DB erev_rv_cont
+  is available. Approval authority continues to use contracting/group entities as accepted
+  subject-scope rules require; this work checks posting windows for performers.
+- Source changes were unnecessary for the first two cases. Ruff and whitespace checks pass.
+  FX/other configuration races, physical large-group performance and final publication checks
+  remain open. B1-13/B1-2 and independent accounting sign-off remain open. No deployment,
+  publication or readiness claim. Earlier Step 1 implementation evidence archived verbatim.
 
-## Estimate FX approval drift — October 7, 2026
+## Draft Step 1 gate review — October 7, 2026
 
-- Continued from main `252c5d9`. Reproduced B1-7: EUR 46,000 was routed with one reviewer
-  at USD 49,910 (1.085), then the same request approved after a rate of 1.09 made its impact
-  USD 50,140. The unpublished-rate and unchanged-rate controls already passed.
-- Final estimate approval now repeats its dry run and compares current functional amount,
-  currency and threshold flags with the stored request before any version/event changes.
-  Drift uses the existing stale-request rollback/void path: the version is WITHDRAWN and a
-  fresh submission routes the Controller step. No accounting expectations were changed.
-- A tenant-specific transaction gate prevents an FX publication between that check and posting.
-  Estimate submission/final approval take its shared side before group/contract locks; FX
-  publication takes its exclusive side before mutation and group/period hooks. It covers new
-  rate sets as well. Current routing reads also include a committed publication whose application
-  timestamp is later than the decision transaction's start. Historical bundle reads keep their
-  time cutoffs. Automatic approval inside submission holds the gate too; a stale refusal there
-  rolls back the submission. The final dry run adds work; no full-volume latency claim is made.
-- **53 PostgreSQL workflow checks passed**: 51 across the complete estimate, FX-reference and
-  rate-change-after-lock files, plus the linked J-06 modification journey and its K-03 report.
-  Six new CTL-013 cases cover the threshold crossing, unpublished and unchanged controls, both
-  ordering races observed waiting in PostgreSQL, and a publication overtaking an earlier-started
-  decision. A refused request appends no estimate event; resubmission needs the Controller and
-  applies once. The original J-06 monetary assertions remain intact.
-- **273 architecture/routing-unit checks passed**. Four-source Mypy, Ruff lint/format, whitespace
-  and design checks (500 files) pass. Control markers validate (440 tagged tests); secret scan:
-  3,391 files, zero findings. B1-7 is closed in LIMITS, with the lock and API behavior documented.
-- The broader backend run is still live on detached `ed6ea75` with its separate loopback database;
-  it excludes specialist markers and does not cover these later changes. Full-backend/specialist
-  verification, remaining limitations and independent accounting sign-off stay open. Publication
-  exclusions and noncommercial licensing are preserved. No deployment.
+- Previous goal turn made progress with 77 compatibility checks, API-client verification and
+  both SSP publication interleavings. Continued unpublished changes on main `5ca602f`.
+- Added before/after contract status to the retained Step 1 preview and readable contract
+  status labels to the approval screen. A draft's proposed gate is now visible, including
+  Draft remaining unchanged when the existing obligation-budget gate guard withholds it.
+- Two new public-API cases cover a derived draft gate and its size-budget boundary. Initial
+  tests reproduced missing preview status. Subsequent assertions exposed fixture assumptions:
+  draft judgements create no active-contract hold, and counting every job includes unrelated
+  jobs. Corrected the expected event list and scoped the no-deferral assertion to CONTRACT_COMPUTE.
+- Frontend: **59 passed in 2.92 seconds**; source Mypy, TypeScript, ESLint, Ruff and whitespace
+  checks pass. Backend compatibility: **5 passed in 39.64 seconds**, covering draft outcomes,
+  two-book/API-client decisions and existing immediate-append budget behavior. Log:
+  `/private/tmp/step1-date-review-draft-gate-compatibility.log`. Primary test DB erev_rv_cont
+  is free. Lowering the budget exercises the boundary, not real-volume performance.
+- Actual performing-entity behavior, FX/configuration interleavings and physical large-group
+  performance remain open, along with B1-2's other producers and accounting sign-off. No
+  publication/deployment/readiness claim. Earlier preview notes archived verbatim.
+
+## Atomic Step 1 computation — October 7, 2026
+
+- Previous goal turn made progress: all-book previews and 13 backend/58 frontend checks.
+  This turn reproduced deferred approval: with the fact-capture obligation budget forced
+  below the group size, the request approved while its book still had the old ACTIVE state.
+  Regression: **1 failed in 14.28 seconds** (`step1-date-review-deferred-regression.log`).
+- STEP1_EVENT now computes successfully inside the approval transaction, without the ordinary
+  fact-capture deferral budget. It compares the actual persisted-event input bundle with the
+  previously validated proposal before running the engine. Only SYSTEM append attribution,
+  recorded time and assigned record sequence are normalized for this comparison; actual event
+  order and accounting inputs remain checked. The unmodified actual bundle is computed and
+  persisted with its normal hash. Other event approvals retain their existing computation path.
+- Failed calculation rolls back approval, events and hold releases; changed inputs use stale
+  approval handling. The single-book, two-book and forced-deferral cases passed: **3 in 30.37
+  seconds**. Failure/late-input boundary checks passed: **2 in 23.63 seconds**, including a
+  successful retry after engine failure and unchanged computation count on refusals. Their
+  first run only failed the fixture expectation of null instead of an empty applied-id array.
+  The late-input test injects an engine-version change; it is not real publication-race proof.
+- Source Mypy (two files), Ruff and whitespace checks pass. Expanded compatibility finished:
+  **77 passed in 374.20 seconds**, `/private/tmp/step1-date-review-atomic-compatibility.log`.
+  API-client case passed: automated submissions still wait for date approval and retain
+  non-manual attribution. Both real SSP-publication interleavings passed in **23.96 seconds**:
+  before the final input read the decision is stale; after it, actual postings match the reviewed
+  amounts. Initial publication probes stopped at the fixture's old session after MFA enrolment;
+  using the preparer's current enrolled session fixed the fixture. Logs:
+  `/private/tmp/step1-date-review-publication-client.log` (one pass, two fixture failures) and
+  `/private/tmp/step1-date-review-publication-interleavings.log` (two passes). All scoped runs
+  are terminal; primary test DB erev_rv_cont is available. The older baseline PID 36126 remains
+  live on its separate DB with earlier failures. Updated the data-model contract for decisions.
+- Remaining: FX and other configuration interleavings, actual performing-entity coverage,
+  draft-gate and large-group decision verification, final compatibility and publication checks.
+  Synchronous decisions can take longer; no performance claim. B1-13/B1-2 remain open, all
+  changes unpublished. No deployment or production-readiness claim. FX evidence archived.
+
 
 ## Constraint review basis — October 7, 2026
 

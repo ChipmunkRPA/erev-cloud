@@ -22,9 +22,16 @@ BUILD_SPEC CTR-5).
    item USAGE-REPORT-PERIOD-ENDED-1). It is asked where the bounds are, because ``check_bounds``
    is what every channel passes and what the approval of a stored request passes again.
 4. Unit of work A appends the events (``events.stream.append_events``: head raised, group dirty).
-5. Unit of work B computes the group (``compute_job.compute_group``). More than 200 obligations, or
-   more than 30 seconds of engine time before persisting, defer ``CONTRACT_COMPUTE`` and answer 202
-   API-S-Job (RCP-18); a refused computation still answers 201 with ``computation.status``.
+5. For an immediate append, unit of work B computes the group (``compute_job.compute_group``).
+   More than 200 obligations, or more than 30 seconds of engine time before persisting, defer
+   ``CONTRACT_COMPUTE`` and answer 202 API-S-Job (RCP-18); a refused computation still answers
+   201 with ``computation.status``.
+
+Dated Step 1 batches whose effects reach a restricted posting window instead create a
+STEP1_EVENT request. Its decision validates the retained inputs again and computes within the
+approval transaction, without the fact-capture deferral budget. A stale basis or failed calculation
+rolls back the assessment and its hold releases. This may make a large decision slower; the
+fact-capture rules above continue to apply to ordinary immediate appends.
 
 [J] L4-1-Q-4: the route records the measure, billing, cost, payment, memo and flag types, and
 since CTR-7 the Step 1 assessment ``COLLECTIBILITY_ASSESSED`` with its judgement record
@@ -117,7 +124,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Iterable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date, datetime
 from decimal import Decimal
 from fractions import Fraction
@@ -168,7 +175,15 @@ from erev_api.db.tables import (
     schedule,
     schedule_line,
 )
-from erev_api.domain.contracts import bundles, computation, holds, locks, queries, repo
+from erev_api.domain.contracts import (
+    bundles,
+    computation,
+    holds,
+    locks,
+    queries,
+    repo,
+    step1_approval,
+)
 from erev_api.domain.contracts.compute_job import (
     ENGINE_BUDGET_SECONDS,
     OBLIGATION_BUDGET,
@@ -1628,7 +1643,11 @@ def _assessed_holds(session: Session, events: Sequence[EventIn]) -> list[tuple[s
 
 
 def _release_assessed_holds(
-    uow: UnitOfWork, contract_id: UUID, events: Sequence[EventIn]
+    uow: UnitOfWork,
+    contract_id: UUID,
+    events: Sequence[EventIn],
+    *,
+    approval_request_id: UUID | None = None,
 ) -> list[dict[str, Any]]:
     """Release the holds of ``_assessed_holds`` as SYSTEM, behind the caller's append and in its
     unit of work (the caller computes once); answers the ``HOLD_RELEASED`` rows in stream
@@ -1636,7 +1655,13 @@ def _release_assessed_holds(
     session = uow.session
     released: list[UUID] = []
     for reason, comment in _assessed_holds(session, events):
-        released += holds.release_system_holds(uow, contract_id, reason=reason, comment=comment)
+        released += holds.release_system_holds(
+            uow,
+            contract_id,
+            reason=reason,
+            comment=comment,
+            approval_request_id=approval_request_id,
+        )
     if not released:
         return []
     statement = (
@@ -2030,8 +2055,79 @@ def record_events(
     locks.refuse_locked_fields(uow, current, body.events, permission=RECORD_PERMISSION)
     locks.refuse_version_pin(body.events)  # item ATTR-SSP-PIN-1: the SSP override command's
     subject = _submission_subject(uow, body.events)
+    step1_preview = None
+    if subject is None and any(item.event_type in STEP1_DATED_TYPES for item in body.events):
+        if step1_approval.lock_basis(session, contract_id, known_at=uow.now):
+            candidate, _gate = _validated(uow, current, body, engine=engine)
+            pending = [*candidate, *_pending_hold_releases(session, current, uow.now, candidate)]
+            with system_entity_scope(session):
+                preview_bundle, output, summary = dry_run_summary(
+                    session,
+                    current,
+                    uow.now,
+                    pending,
+                    pending_contract_id=contract_id,
+                    engine=engine,
+                )
+                if step1_approval.requires_review(session, contract_id, pending, output):
+                    subject = ApprovalSubjectType.STEP1_EVENT
+                    assert summary is not None
+                    figures = summary.model_dump(mode="json")
+                    revenue_by_book: list[dict[str, Any]] = []
+                    for book in output.books:
+                        if book.contract_version is None:
+                            continue
+                        book_figures = impact_summary(
+                            session,
+                            current,
+                            preview_bundle,
+                            output,
+                            pending,
+                            computed_at=uow.now,
+                            book_code=book.book_code,
+                        ).model_dump(mode="json")
+                        revenue_by_book.extend(
+                            {
+                                "book": book.book_code,
+                                "period": row["period_key"],
+                                "before_amount": row["before"],
+                                "after_amount": row["after"],
+                            }
+                            for row in book_figures["revenue_by_period"]
+                        )
+                    step1_preview = approvals.ImpactPreview(
+                        before={
+                            "status": str(current["status"]),
+                            "revenue_by_period": [
+                                {"period_key": row["period_key"], "amount": row["before"]}
+                                for row in figures["revenue_by_period"]
+                            ],
+                            "balances": figures["balances_before"],
+                        },
+                        after={
+                            "status": (
+                                ContractStatus.NOT_A_CONTRACT.value
+                                if _gate is not None and _gate.appended
+                                else str(current["status"])
+                            ),
+                            "revenue_by_period": [
+                                {"period_key": row["period_key"], "amount": row["after"]}
+                                for row in figures["revenue_by_period"]
+                            ],
+                            "balances": figures["balances_after"],
+                            "journal_lines": figures["journal_lines"],
+                            "primary_book": queries.primary_book(session),
+                            "computed_at": uow.now.isoformat(),
+                            "revenue_by_book": revenue_by_book,
+                            "posting_lines": step1_approval.posting_lines(output),
+                            "assessment_dates": step1_approval.reviewed_dates(session, candidate),
+                        },
+                    )
+                    step1_preview = step1_approval.retain_preview(
+                        uow, step1_preview, preview_bundle, current
+                    )
     if subject is not None:
-        submission = _submit(uow, current, body, subject_type=subject)
+        submission = _submit(uow, current, body, subject_type=subject, impact_preview=step1_preview)
         return Recorded(appended=None, job=None, submission=submission)
     events, gate = _validated(uow, current, body, engine=engine)
     rows = append_events(
@@ -2111,6 +2207,7 @@ MANUAL_ACTION: Final = "event_submission.submit_manual_events"
 SUBMIT_ACTIONS: Final[Mapping[ApprovalSubjectType, str]] = {
     ApprovalSubjectType.ATTRIBUTE_CHANGE: ATTRIBUTE_ACTION,
     ApprovalSubjectType.MANUAL_EVENT: MANUAL_ACTION,
+    ApprovalSubjectType.STEP1_EVENT: "event_submission.submit_step_one_events",
 }
 
 
@@ -2190,6 +2287,7 @@ def _submit(
     body: EventAppendIn,
     *,
     subject_type: ApprovalSubjectType,
+    impact_preview: approvals.ImpactPreview | None = None,
 ) -> SubmissionCreatedOut:
     """A request that waits for approval appends nothing: its items are validated as an append
     would be and stored as ONE ``event_submission`` (04 §16.3 API-S-EventAppend, T-CON-24; PRD
@@ -2201,6 +2299,7 @@ def _submit(
     session = uow.session
     contract_id = UUID(str(current["id"]))
     attribute = subject_type is ApprovalSubjectType.ATTRIBUTE_CHANGE
+    step1_submission = subject_type is ApprovalSubjectType.STEP1_EVENT
     # Ruling R-20: a Step 1 assessment is validated where it is recorded (its judgement record,
     # an enabled book, the gate); stored in a submission it would be appended at approval without
     # any of that. Ruling R-77 (1): the same holds for the DATE of a significant-change flag —
@@ -2214,7 +2313,7 @@ def _submit(
         for index, item in enumerate(body.events)
         if item.event_type in STEP1_DATED_TYPES
     ]
-    if riding:
+    if riding and not step1_submission:
         raise _failed(riding)
     by_person = _by_person(uow)
     events = to_events(
@@ -2226,6 +2325,11 @@ def _submit(
     if by_person and not body.evidence_file_ids and any(_needs_evidence(event) for event in events):
         raise _failed([_error("evidence_file_ids", RULE_EVIDENCE, EVIDENCE_REQUIRED)])
     _check_batch(uow, current, events)
+    if step1_submission:
+        if any(event.event_type not in STEP1_DATED_TYPES for event in events):
+            raise _failed([_error("events", RULE_ROUTE, STEP1_OWN_REQUEST)])
+        # Validate derived gate effects, but store only the caller's original inputs.
+        _validated(uow, current, body)
     items = [
         {
             "event_type": event.event_type.value,
@@ -2265,11 +2369,15 @@ def _submit(
         subject_type=subject_type,
         subject_id=submission_id,
         summary=(
-            f"Change line attributes of {current['external_id']}"
+            f"Review Step 1 dates for {current['external_id']}"
+            if step1_submission
+            else f"Change line attributes of {current['external_id']}"
             if attribute
             else _manual_summary(current["external_id"], events)
         ),
         comment=body.comment,
+        auto_approval=False if step1_submission else True,
+        impact_preview=impact_preview,
     )
     request_id = UUID(str(request["id"]))
     transitions.apply(
@@ -3184,10 +3292,12 @@ def check_stored(uow: UnitOfWork, current: Mapping[str, Any], events: Sequence[E
 
 
 def _approve_submission(uow: UnitOfWork, submission_id: UUID, request_id: UUID) -> None:
-    """``on_approved`` of ``MANUAL_EVENT`` and ``ATTRIBUTE_CHANGE``: the stored batch is checked
+    """``on_approved`` of event submissions: the stored batch is checked
     again (``check_stored``), appended by the SYSTEM principal on behalf of the preparer, and the
     group is computed as after an append — at once, or by ``CONTRACT_COMPUTE`` beyond the budget
-    (05 RCP-18). A void's reversal is therefore posted with its approval.
+    (05 RCP-18). STEP1_EVENT instead requires successful computation in the decision's
+    transaction against the checked inputs; it never queues an unchecked later computation.
+    A void's reversal is therefore posted with its approval.
 
     The evidence (item EVT-EVIDENCE-1; 04 T-CON-24 and T-PLT-29 rev 1.268). Under the submission's
     locks and before the basis is read again, the files of the request's live attachments are
@@ -3208,8 +3318,25 @@ def _approve_submission(uow: UnitOfWork, submission_id: UUID, request_id: UUID) 
         str(getattr(preparer_kind, "value", preparer_kind)) != PrincipalKind.API_CLIENT.value
     )
     evidence: list[UUID] = []
+    step1_request = (
+        session.execute(
+            select(approval_request.c.subject_type).where(approval_request.c.id == request_id)
+        ).scalar_one()
+        == ApprovalSubjectType.STEP1_EVENT.value
+    )
+    prepared: list[EventIn] = []
+    reviewed_calculation: tuple[InputBundle, str, int] | None = None
 
     def locked(inner: UnitOfWork) -> None:
+        if step1_request:
+            step1_approval.lock_basis(inner.session, UUID(str(contract_id)), known_at=inner.now)
+            submitted_at = inner.session.execute(
+                select(approval_request.c.submitted_at).where(approval_request.c.id == request_id)
+            ).scalar_one()
+            if not step1_approval.same_effective_day(
+                inner.session, UUID(str(contract_id)), submitted_at, inner.now
+            ):
+                raise approvals.StaleBasis()
         files, intact = attachments.readable_evidence(inner.session, EVIDENCE_SUBJECT, request_id)
         if not intact:
             raise approvals.StaleBasis()
@@ -3220,19 +3347,79 @@ def _approve_submission(uow: UnitOfWork, submission_id: UUID, request_id: UUID) 
         if by_person and not evidence and any(_needs_evidence(event) for event in events):
             raise _failed([_error("evidence_file_ids", RULE_EVIDENCE, EVIDENCE_GONE)])
 
-    def attached(system: UnitOfWork, rows: Sequence[Mapping[str, Any]]) -> None:
+    def prepare(
+        inner: UnitOfWork, current: Mapping[str, Any], events: Sequence[EventIn]
+    ) -> Sequence[EventIn]:
+        nonlocal reviewed_calculation
+        if not events or any(event.event_type not in STEP1_DATED_TYPES for event in events):
+            raise approvals.StaleBasis()
+        try:
+            events = [
+                replace(event, is_manual=str(preparer_kind) == PrincipalKind.USER.value)
+                for event in events
+            ]
+            derived, _gate = step1_outcome(inner, current, events)
+            check_stored(inner, current, derived)
+            pending = [
+                *derived,
+                *_pending_hold_releases(inner.session, current, inner.now, derived),
+            ]
+            candidate = bundles.build(
+                inner.session,
+                UUID(str(current["combination_group_id"])),
+                inner.now,
+                pending,
+                DRY_RUN,
+                pending_contract_id=UUID(str(contract_id)),
+            )
+            step1_approval.assert_calculation(inner, request_id, candidate, current)
+            reviewed_calculation = (
+                candidate,
+                str(current["external_id"]),
+                int(current["head_stream_version"]),
+            )
+        except Problem as problem:
+            raise approvals.StaleBasis() from problem
+        reviewed = [replace(event, approval_request_id=request_id) for event in derived]
+        prepared.extend(reviewed)
+        return reviewed
+
+    def attached(
+        system: UnitOfWork, rows: Sequence[Mapping[str, Any]]
+    ) -> Sequence[Mapping[str, Any]]:
+        released = (
+            _release_assessed_holds(
+                system, UUID(str(contract_id)), prepared, approval_request_id=request_id
+            )
+            if step1_request
+            else []
+        )
         _attach_to_events(
             system,
             evidence,
-            rows,
+            [*rows, *released],
             contract_id=UUID(str(contract_id)),
             approval_request_id=request_id,
         )
+        return released
 
     apply_event_submission(
-        uow, submission_id, request_id, check=checked, before_basis=locked, applied=attached
+        uow,
+        submission_id,
+        request_id,
+        check=checked,
+        before_basis=locked,
+        applied=attached,
+        prepare_step1=prepare if step1_request else None,
     )
-    holds.compute(uow, repo.get_contract(session, UUID(str(contract_id))))
+    if step1_request:
+        assert reviewed_calculation is not None
+        candidate, contract_key, previous_head = reviewed_calculation
+        step1_approval.compute_approved(
+            uow, candidate, contract_key=contract_key, previous_head=previous_head
+        )
+    else:
+        holds.compute(uow, repo.get_contract(session, UUID(str(contract_id))))
 
 
 def preparer_entities(session: Session, submission_id: UUID) -> SubjectEntities:
@@ -3255,7 +3442,11 @@ def preparer_entities(session: Session, submission_id: UUID) -> SubjectEntities:
     return SubjectEntities(frozenset({UUID(str(found))}))
 
 
-for _subject in (ApprovalSubjectType.MANUAL_EVENT, ApprovalSubjectType.ATTRIBUTE_CHANGE):
+for _subject in (
+    ApprovalSubjectType.MANUAL_EVENT,
+    ApprovalSubjectType.ATTRIBUTE_CHANGE,
+    ApprovalSubjectType.STEP1_EVENT,
+):
     register_lifecycle(
         _subject,
         SubjectLifecycle(

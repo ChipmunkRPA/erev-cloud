@@ -95,6 +95,7 @@ READERS: Final[Mapping[str, Readers]] = MappingProxyType(
         ApprovalSubjectType.COMBINATION_GROUP.value: _CONTRACT_READ,
         ApprovalSubjectType.MODIFICATION.value: _CONTRACT_READ,
         ApprovalSubjectType.MANUAL_EVENT.value: _CONTRACT_READ,
+        ApprovalSubjectType.STEP1_EVENT.value: _CONTRACT_READ,
         ApprovalSubjectType.ATTRIBUTE_CHANGE.value: _CONTRACT_READ,
         ApprovalSubjectType.ESTIMATE_VERSION.value: _CONTRACT_READ,
         ApprovalSubjectType.SSP_OVERRIDE.value: _CONTRACT_READ,

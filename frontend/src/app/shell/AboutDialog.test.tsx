@@ -42,9 +42,11 @@ describe("SF-27", () => {
     const engine = within(dialog).getByTestId("SF-27-engine-release");
     expect(engine.textContent).toBe("Engine 1.0.0 · build 3f9a1c22 · schema e41");
     expect(engine.hasAttribute("data-volatile")).toBe(true);
-    expect(within(dialog).getByRole("link", { name: "PolyForm Noncommercial licence" }).getAttribute("href")).toBe(
-      "/licenses/LICENSE.txt",
-    );
+    expect(
+      within(dialog)
+        .getByRole("link", { name: "PolyForm Noncommercial licence" })
+        .getAttribute("href"),
+    ).toBe("/licenses/LICENSE.txt");
     expect(
       within(dialog).getByRole("link", { name: "Third-party notices" }).getAttribute("href"),
     ).toBe("/licenses/NOTICE.txt");

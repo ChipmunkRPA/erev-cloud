@@ -33,7 +33,7 @@ import { placeProblemByEnd } from "../../../lib/api/refusals";
 import { formatDate, formatList, formatTimestamp, parseDateInput } from "../../../lib/format";
 import { hasMessage, t } from "../../../lib/i18n/t";
 import { isProbable } from "../step1";
-import { useRefreshRecord } from "./common";
+import { requestNumber, useRefreshRecord } from "./common";
 
 // docs/dev-guide.md DG-FE-06: the body nests one event per book, so the date is placed by the end of
 // its pointer (`events.0.effective_date`); what names another member of an event is the banner's.
@@ -110,7 +110,7 @@ export function Step1AssessmentDrawer({
     setSubmitting(true);
     setProblem(null);
     try {
-      const appended = await sendCommand(
+      const appended = await sendCommand<{ readonly approval_request_id?: string | null }>(
         keys,
         "POST",
         `${CONTRACTS_PATH}/${contract.id}/events`,
@@ -135,7 +135,16 @@ export function Step1AssessmentDrawer({
         return;
       }
       await refresh();
-      toast.show({ tone: "positive", message: t(`contracts.drawer.assessment.saved.${mode}`) });
+      const requestId = appended.data?.approval_request_id ?? null;
+      toast.show({
+        tone: "positive",
+        message:
+          requestId === null
+            ? t(`contracts.drawer.assessment.saved.${mode}`)
+            : t("contracts.drawer.submittedForApproval", {
+                request: await requestNumber(requestId),
+              }),
+      });
       onClose();
     } catch {
       // No answer: the next press sends the assessment under the same key (DG-FE-05).

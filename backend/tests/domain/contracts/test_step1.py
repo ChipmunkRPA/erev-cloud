@@ -37,7 +37,7 @@ from erev_api.auth.keyring import KeyRing
 from erev_api.auth.principal import RequestContext, system_principal
 from erev_api.clock import FrozenClock
 from erev_api.config import Settings
-from erev_api.db import transitions
+from erev_api.db import new_id, transitions
 from erev_api.db.session import DbContext, tenant_session
 from erev_api.db.tables import (
     approval_decision,
@@ -48,7 +48,11 @@ from erev_api.db.tables import (
     contract_event,
     contract_hold,
     contract_version,
+    event_submission,
     job,
+    period_lock,
+    period_state,
+    period_state_transition,
     subledger_line,
 )
 from erev_api.db.tables import book as book_table
@@ -62,7 +66,7 @@ from erev_api.jobs.registry import run_job
 from erev_api.main import create_app
 from erev_api.uow import unit_of_work
 from fastapi import FastAPI
-from sqlalchemy import and_, func, or_, select, text
+from sqlalchemy import and_, func, insert, or_, select, text, update
 from support.db import TestDatabase
 from support.factories import (
     STEP1_CHART,
@@ -70,17 +74,27 @@ from support.factories import (
     SeatWorld,
     activated_contract,
     appended,
+    approved_ssp_version,
     booked_contract,
     computed,
     j03_world,
     k02_body,
     k09_body,
+    range_entry,
     seat_world,
     sf_ord_20417_body,
     step1_criteria,
 )
 from support.interleave import await_lock_wait, backend_pid, observing_checkouts
-from support.reference import approve, assign, fields, get, patch, post, put, reject, slug
+from support.principals import enrolled, sign_in
+from support.principals import workspace as signed_workspace
+from support.reference import approve, assign, fields, get, patch, periods, post, put, reject, slug
+from support.rows import (
+    CloseParts,
+    insert_approval_request,
+    period_lock_values,
+    period_state_transition_values,
+)
 
 CONTRACTS = "/api/v1/contracts"
 JUDGEMENTS = "/api/v1/judgements"
@@ -3368,6 +3382,978 @@ def test_step1_hold_release_1_a_not_a_contract_hold_ends_at_the_assessment_that_
     assert _released_in_audit(world, contract_id)[-1] == [body["events"][1]["id"]]
     assert _books(world, contract_id)["ASC606"] == OUT_AT_THE_EIGHTH
     assert _recognition(world) == _unapproved_recognition(world) == []
+
+
+def _reopened_assessment_period(world: SeatWorld, state_id: str) -> None:
+    """Seed DB-valid close/reopen history; this fixture does not certify a real close run."""
+    for previous, state, kind in [("closing", "closed", "LOCK"), ("closed", "reopened", "REOPEN")]:
+        with world.place.uow() as uow:
+            row = (
+                uow.session.execute(select(period_state).where(period_state.c.id == UUID(state_id)))
+                .mappings()
+                .one()
+            )
+            transition_id = new_id()
+            parts = CloseParts(
+                calendar_id=UUID(int=0),
+                entity_id=world.entity_id,
+                period_id=row["period_id"],
+                period_state_transition_id=transition_id,
+                approval_request_id=insert_approval_request(
+                    uow.session,
+                    tenant_id=uow.principal.tenant_id,
+                    entity_id=world.entity_id,
+                ),
+                file_id=UUID(int=0),
+            )
+            reason = "ERROR_CORRECTION" if kind == "REOPEN" else None
+            lock = period_lock_values(
+                uow.principal.tenant_id,
+                parts=parts,
+                kind=kind,
+                reason_code=reason,
+                created_at=uow.now,
+            )
+            uow.session.execute(insert(period_lock).values(**lock))
+            uow.session.execute(
+                insert(period_state_transition).values(
+                    **period_state_transition_values(
+                        uow.principal.tenant_id,
+                        period_state_id=row["id"],
+                        entity_id=world.entity_id,
+                        period_id=row["period_id"],
+                        from_state=previous,
+                        to_state=state,
+                        id=transition_id,
+                        reason_code=reason,
+                        approval_request_id=parts.approval_request_id,
+                        period_lock_id=lock["id"],
+                    )
+                )
+            )
+            uow.session.execute(
+                update(period_state)
+                .where(period_state.c.id == row["id"])
+                .values(
+                    state=state,
+                    current_lock_id=lock["id"],
+                    updated_by_kind="SYSTEM",
+                )
+            )
+            uow.commit()
+
+
+@pytest.mark.parametrize(
+    ("soft_close", "basis_change"),
+    [
+        (False, None),
+        (False, "unrelated-period"),
+        (True, None),
+        (True, "period"),
+        (True, "judgement"),
+        (True, "ssp"),
+        (True, "reopened"),
+        (True, "reopened-closing"),
+        (True, "elapsed"),
+        (True, "day"),
+        (True, "busy-submission"),
+        (True, "busy-approval"),
+        (True, "second-book"),
+        (True, "deferred"),
+        (True, "compute-fails"),
+        (True, "late-input-change"),
+        (True, "ssp-between-checks"),
+        (True, "ssp-after-read"),
+        (True, "api-client"),
+    ],
+    ids=[
+        "open",
+        "unrelated-close",
+        "soft-close",
+        "period-changed",
+        "judgement-superseded",
+        "ssp-changed",
+        "reopened",
+        "reopened-closing",
+        "same-day-delay",
+        "next-day",
+        "busy-submission",
+        "busy-approval",
+        "two-books",
+        "deferred-computation",
+        "calculation-failure",
+        "late-input-change",
+        "ssp-between-checks",
+        "ssp-after-read",
+        "api-client",
+    ],
+)
+def test_step1_assessment_date_requires_independent_review_in_soft_close(
+    world: SeatWorld,
+    soft_close: bool,
+    basis_change: str | None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """B1-13: reviewing a conclusion must not authorize an unreviewed posting date.
+
+    Prepare and review the judgement while September is open. Then start close through
+    the public command before requesting the dated assessment. The pending request must
+    leave the stream, accounting balances, book status and judgement hold unchanged.
+    The open-period control retains immediate application of the reviewed assessment.
+    """
+    assign(world.priya.member, "revenue_reviewer")
+    if basis_change == "second-book":
+        _keep_ifrs15(world)
+    contract_id = _created(world)
+    if basis_change == "second-book":
+        first = _reviewed(world, contract_id, "COLLECTIBILITY")
+        second = _reviewed(world, contract_id, "COLLECTIBILITY", book="IFRS15")
+        assessed = _record_events(
+            world,
+            contract_id,
+            _assessment(first, probable=True),
+            _assessment(second, probable=True, book="IFRS15"),
+        )
+        assert assessed.status_code == 201, assessed.text
+        submitted = _submit(world, contract_id)
+        assert submitted.status_code == 200, submitted.text
+        activated = approve(world.app, submitted.headers[APPROVAL_HEADER], world.priya)
+        assert activated.status_code == 200, activated.text
+    else:
+        _activated(world, contract_id)
+    record = _reviewed(world, contract_id, "NOT_A_CONTRACT", NOT_A_CONTRACT)
+    if soft_close or basis_change == "unrelated-period":
+        closing_key = "FY2026-P01" if basis_change == "unrelated-period" else "FY2026-P09"
+        september = next(
+            row
+            for row in periods(world.app, world.place.author, entity="AVM-US", book="ASC606")
+            if row["period"]["period_key"] == closing_key
+        )
+        started = post(
+            world.app,
+            f"/api/v1/periods/{september['id']}/start-close",
+            world.place.author,
+            {"comment": "Review assessment date during September close"},
+            if_match=f'"r{september["row_version"]}"',
+        )
+        assert started.status_code == 200, started.text
+        assert started.json()["state"] == "closing"
+        if basis_change in {"reopened", "reopened-closing"}:
+            _reopened_assessment_period(world, september["id"])
+            current = next(
+                row
+                for row in periods(world.app, world.place.author, entity="AVM-US", book="ASC606")
+                if row["id"] == september["id"]
+            )
+            assert current["state"] == "reopened"
+            if basis_change == "reopened-closing":
+                reclosing = post(
+                    world.app,
+                    f"/api/v1/periods/{september['id']}/start-close",
+                    world.place.author,
+                    {},
+                    if_match=f'"r{current["row_version"]}"',
+                )
+                assert reclosing.status_code == 200, reclosing.text
+                assert reclosing.json()["state"] == "closing"
+    before = (
+        _header(world, contract_id),
+        _books(world, contract_id),
+        _posted(world, contract_id),
+        _holds(world, contract_id),
+    )
+    if basis_change == "busy-submission":
+        with world.place.uow() as blocker:
+            blocker.session.execute(
+                select(period_state.c.id)
+                .where(period_state.c.id == UUID(september["id"]))
+                .with_for_update()
+            ).one()
+            refused = _record_events(
+                world,
+                contract_id,
+                {**FLAG, "effective_date": "2026-09-08"},
+                _assessment(record, probable=False, on="2026-09-08"),
+            )
+            assert refused.status_code == 409, refused.text
+            assert slug(refused) == "lock-conflict"
+        assert _header(world, contract_id) == before[0]
+        assert (
+            world.place.scalar(
+                select(func.count())
+                .select_from(event_submission)
+                .where(event_submission.c.contract_id == contract_id)
+            )
+            == 0
+        )
+    batch = [
+        {**FLAG, "effective_date": "2026-09-08"},
+        _assessment(record, probable=False, on="2026-09-08"),
+    ]
+    if basis_change == "api-client":
+        from support.api_clients import access_approver, issued_client
+        from support.http import call
+
+        ada = access_approver(world.app, world.place.clock, world.marcus.member, "ada")
+        client = issued_client(
+            world.app,
+            world.marcus,
+            {"name": "svc-step1", "scopes": ["event.record", "contract.read"]},
+            approver=ada,
+        )
+        token = call(
+            world.app,
+            "POST",
+            "/api/v1/oauth/token",
+            data={"grant_type": "client_credentials"},
+            auth=(client["client_id"], client["client_secret"]),
+        )
+        assert token.status_code == 200, token.text
+        assessed = call(
+            world.app,
+            "POST",
+            EVENTS.format(contract_id=contract_id),
+            json={"events": batch},
+            headers={
+                "Authorization": f"Bearer {token.json()['access_token']}",
+                "Idempotency-Key": f"step1-{new_id()}",
+                "If-Match": f'"s{before[0][1]}"',
+            },
+        )
+    else:
+        assessed = _record_events(world, contract_id, *batch)
+    if not soft_close:
+        assert assessed.status_code == 201, assessed.text
+        assert _books(world, contract_id)["ASC606"] == OUT_AT_THE_EIGHTH
+        assert _header(world, contract_id)[1] == before[0][1] + 3
+        return
+    after = (
+        _header(world, contract_id),
+        _books(world, contract_id),
+        _posted(world, contract_id),
+        _holds(world, contract_id),
+    )
+    assert after == before, "A pending assessment must not append, post, or release its hold"
+    assert assessed.status_code == 201, assessed.text
+    request_id = assessed.json()["approval_request_id"]
+    assert assessed.json()["event_submission_id"]
+    preview = _preview_document(world, request_id)
+    assert preview["after"]["primary_book"] == "ASC606"
+    expected_books = {"ASC606", "IFRS15"} if basis_change == "second-book" else {"ASC606"}
+    assert {row["book"] for row in preview["after"]["revenue_by_book"]} == expected_books
+    assert preview["after"]["posting_lines"], "The hold release must show its posting effects"
+    for line in preview["after"]["posting_lines"]:
+        assert line["book"] in expected_books
+        assert line["entity"] == "AVM-US"
+        assert line["transaction_amount"]["currency"] == "USD"
+        assert line["functional_amount"]["currency"] == "USD"
+        assert line["side"] in {"Debit", "Credit"}
+    if basis_change == "elapsed":
+        world.place.clock.advance(timedelta(minutes=1))
+    if basis_change in {"period", "judgement", "ssp", "day"}:
+        decider = world.priya
+        if basis_change == "period":
+            cancelled = post(
+                world.app,
+                f"/api/v1/periods/{september['id']}/cancel-close",
+                world.place.author,
+                {"reason_code": "CLOSE_RESTARTED", "comment": "Reconsider September close"},
+                if_match=f'"r{started.json()["row_version"]}"',
+            )
+            assert cancelled.status_code == 200, cancelled.text
+        elif basis_change == "day":
+            world.place.clock.advance(timedelta(days=1))
+            decider = signed_workspace(
+                world.app,
+                world.priya.member,
+                sign_in(world.app, world.priya.member.email),
+                world.priya.secret,
+            )
+        elif basis_change == "ssp":
+            approved_ssp_version(
+                world.app,
+                world.place.author,
+                [world.priya],
+                world.book_id,
+                label="Updated study",
+                effective_from="2026-09-01",
+                copy_from_version_id=world.version_id,
+                entries=[
+                    range_entry(
+                        "AVM-SEAT-MO", "2300.00", "2500.00", "2700.00", value_basis="AMOUNT"
+                    )
+                ],
+            )
+        else:
+            _reviewed(world, contract_id, "NOT_A_CONTRACT", NOT_A_CONTRACT)
+        changed = (
+            _header(world, contract_id),
+            _books(world, contract_id),
+            _posted(world, contract_id),
+            _holds(world, contract_id),
+        )
+        stale = approve(world.app, request_id, decider)
+        assert stale.status_code == 409, stale.text
+        assert slug(stale) == "stale-approval", stale.text
+        assert (
+            _header(world, contract_id),
+            _books(world, contract_id),
+            _posted(world, contract_id),
+            _holds(world, contract_id),
+        ) == changed
+        return
+    if basis_change == "busy-approval":
+        with world.place.uow() as blocker:
+            blocker.session.execute(
+                select(period_state.c.id)
+                .where(period_state.c.id == UUID(september["id"]))
+                .with_for_update()
+            ).one()
+            refused = approve(world.app, request_id, world.priya)
+            assert refused.status_code == 409, refused.text
+            assert slug(refused) == "lock-conflict"
+        assert _header(world, contract_id) == before[0]
+        pending = get(world.app, f"/api/v1/approvals/{request_id}", world.priya)
+        assert pending.status_code == 200, pending.text
+        assert pending.json()["status"] == "PENDING"
+    if basis_change != "api-client":
+        assign(world.place.author.member, "revenue_reviewer")
+        preparer = enrolled(world.app, world.place.clock, world.place.author.member)
+        own = approve(world.app, request_id, preparer)
+        assert own.status_code == 403, own.text
+        assert slug(own) == "self-approval", own.text
+    assert _header(world, contract_id) == before[0]
+    if basis_change == "deferred":
+        from erev_api.domain.contracts import holds as holds_domain
+
+        monkeypatch.setattr(holds_domain, "OBLIGATION_BUDGET", 0)
+    computations_before = world.place.scalar(select(func.count()).select_from(contract_computation))
+    publishers: list[threading.Thread] = []
+    if basis_change in {"ssp-between-checks", "ssp-after-read"}:
+        from erev_api.domain.contracts import computation as computation_domain
+        from erev_api.domain.contracts import step1_approval
+
+        published: dict[str, Any] = {}
+
+        def publish() -> None:
+            try:
+                published["version"] = approved_ssp_version(
+                    world.app,
+                    preparer,
+                    [world.priya],
+                    world.book_id,
+                    label="Concurrent study",
+                    effective_from="2026-09-01",
+                    copy_from_version_id=world.version_id,
+                    entries=[
+                        range_entry(
+                            "AVM-SEAT-MO", "2300.00", "2500.00", "2700.00", value_basis="AMOUNT"
+                        )
+                    ],
+                )
+            except Exception as error:  # noqa: BLE001 - surfaced in the deciding test thread
+                published["error"] = error
+
+        def publish_before_continuing() -> None:
+            publisher = threading.Thread(target=publish, name="step1-concurrent-ssp")
+            publishers.append(publisher)
+            publisher.start()
+            publisher.join(timeout=20)
+            assert not publisher.is_alive(), "SSP publication did not finish during the decision"
+            assert "error" not in published, published
+            assert published["version"]
+
+        if basis_change == "ssp-between-checks":
+            original_check = step1_approval.assert_calculation
+
+            def checked_then_published(*args: Any, **kwargs: Any) -> None:
+                original_check(*args, **kwargs)
+                publish_before_continuing()
+
+            monkeypatch.setattr(step1_approval, "assert_calculation", checked_then_published)
+        else:
+            run = computation_domain.default_engine()
+
+            def publish_after_read(bundle: Any) -> Any:
+                publish_before_continuing()
+                return run(bundle)
+
+            monkeypatch.setattr(computation_domain, "default_engine", lambda: publish_after_read)
+    if basis_change == "compute-fails":
+        from erev_api.domain.contracts import computation as computation_domain
+
+        def failed_calculation(bundle: Any) -> Any:
+            raise RuntimeError("Injected engine failure after assessment validation")
+
+        monkeypatch.setattr(computation_domain, "default_engine", lambda: failed_calculation)
+    elif basis_change == "late-input-change":
+        from dataclasses import replace
+
+        from erev_api.domain.contracts import bundles as bundles_domain
+
+        original_build = bundles_domain.build
+
+        def changed_inputs(*args: Any, **kwargs: Any) -> Any:
+            bundle = original_build(*args, **kwargs)
+            if bundle.trigger == "COMMAND":
+                # Simulate a publication entering the actual computation's fresh read,
+                # after the earlier pending-event bundle was checked. This is a boundary
+                # test, not evidence of a real two-connection publication interleaving.
+                bundle = replace(bundle, engine_version=bundle.engine_version + "-changed")
+            return bundle
+
+        monkeypatch.setattr(bundles_domain, "build", changed_inputs)
+    try:
+        decided = approve(world.app, request_id, world.priya)
+    finally:
+        for publisher in publishers:
+            publisher.join(timeout=30)
+            assert not publisher.is_alive(), "Publication did not exit after decision rollback"
+    if basis_change in {"compute-fails", "late-input-change", "ssp-between-checks"}:
+        assert decided.status_code == 409, decided.text
+        expected_problem = (
+            "invalid-transition" if basis_change == "compute-fails" else "stale-approval"
+        )
+        assert slug(decided) == expected_problem
+        assert (
+            _header(world, contract_id),
+            _books(world, contract_id),
+            _posted(world, contract_id),
+            _holds(world, contract_id),
+        ) == before
+        assert (
+            world.place.scalar(select(func.count()).select_from(contract_computation))
+            == computations_before
+        )
+        assert (
+            world.place.scalar(
+                select(event_submission.c.applied_event_ids).where(
+                    event_submission.c.id == UUID(assessed.json()["event_submission_id"])
+                )
+            )
+            == []
+        )
+        pending = get(world.app, f"/api/v1/approvals/{request_id}", world.priya)
+        assert pending.status_code == 200, pending.text
+        assert pending.json()["status"] == (
+            "PENDING" if basis_change == "compute-fails" else "VOIDED"
+        )
+        if basis_change in {"late-input-change", "ssp-between-checks"}:
+            return
+        monkeypatch.undo()
+        decided = approve(world.app, request_id, world.priya)
+    assert decided.status_code == 200, decided.text
+    assert _header(world, contract_id)[1] == before[0][1] + 3
+    assert _books(world, contract_id)["ASC606"] == OUT_AT_THE_EIGHTH
+    expected_posted = dict(before[2])
+    for line in preview["after"]["posting_lines"]:
+        key = (line["book"], line["account_role"], "D" if line["side"] == "Debit" else "C")
+        expected_posted[key] = expected_posted.get(key, Decimal(0)) + Decimal(
+            line["transaction_amount"]["amount"]
+        )
+    assert _posted(world, contract_id) == expected_posted
+    assert all(released is not None for _, _, released in _holds(world, contract_id))
+    approved_events = world.place.rows(
+        select(
+            contract_event.c.id,
+            contract_event.c.approval_request_id,
+            contract_event.c.origin,
+            contract_event.c.is_manual,
+        )
+        .where(
+            contract_event.c.contract_id == contract_id,
+            contract_event.c.stream_version > before[0][1],
+        )
+        .order_by(contract_event.c.stream_version)
+    )
+    if basis_change == "api-client":
+        assert all(not row["is_manual"] for row in approved_events)
+    assert len(approved_events) == 3
+    assert all(
+        row["approval_request_id"] == UUID(request_id) and row["origin"] == "SYSTEM"
+        for row in approved_events
+    )
+    assert world.place.scalar(
+        select(event_submission.c.applied_event_ids).where(
+            event_submission.c.id == UUID(assessed.json()["event_submission_id"])
+        )
+    ) == [row["id"] for row in approved_events]
+
+
+@pytest.mark.parametrize(
+    ("performer_closing", "period_changed", "fx_mode"),
+    [
+        (False, False, "none"),
+        (True, False, "none"),
+        (True, True, "none"),
+        (True, False, "unchanged"),
+        (True, False, "changed"),
+        (True, False, "concurrent"),
+    ],
+    ids=[
+        "performer-open",
+        "performer-closing",
+        "performer-period-changed",
+        "performer-gbp",
+        "performer-fx-changed",
+        "performer-fx-concurrent",
+    ],
+)
+def test_step1_date_review_follows_performing_entity_postings(
+    app: FastAPI,
+    keyring: KeyRing,
+    clock: FrozenClock,
+    app_settings: Settings,
+    performer_closing: bool,
+    period_changed: bool,
+    fx_mode: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from erev_api.db.tables import legal_entity
+    from support.factories import open_periods
+    from support.reference import entity
+
+    world = seat_world(
+        app,
+        keyring,
+        clock,
+        LocalFileStore(app_settings.file_root),
+        chart=(
+            *STEP1_CHART,
+            ("1300", "Intercompany due from", "ASSET", "D", "INTERCOMPANY_DUE_FROM"),
+            ("2300", "Intercompany due to", "LIABILITY", "C", "INTERCOMPANY_DUE_TO"),
+            ("7200", "Foreign exchange gain or loss", "EXPENSE", "D", "FX_GAIN_LOSS"),
+            ("7299", "Rounding", "EXPENSE", "D", "ROUNDING"),
+        ),
+    )
+    assign(world.priya.member, "revenue_reviewer")
+    calendar_id = world.place.scalar(
+        select(legal_entity.c.calendar_id).where(legal_entity.c.id == world.entity_id)
+    )
+    fx_sets: dict[str, str] = {}
+
+    def publish_rates(kind: str, rate: str) -> None:
+        pair = {"base_currency": "USD", "quote_currency": "GBP", "rate": rate}
+        rates = (
+            [{**pair, "effective_date": f"2026-09-{day:02d}"} for day in range(1, 31)]
+            if kind == "spot"
+            else [{**pair, "period_key": "FY2026-P09"}]
+        )
+        draft = post(
+            app,
+            f"/api/v1/fx-rate-sets/{fx_sets[kind]}/versions",
+            world.place.author,
+            {"coverage_from": "2026-09-01", "coverage_to": "2026-09-30", "rates": rates},
+        )
+        assert draft.status_code == 201, draft.text
+        submitted = post(
+            app,
+            f"/api/v1/fx-rate-set-versions/{draft.json()['id']}/submit",
+            world.place.author,
+            {},
+            if_match=f'"r{draft.json()["row_version"]}"',
+        )
+        assert submitted.status_code == 200, submitted.text
+        published = approve(app, submitted.json()["pending_approval_request_id"], world.marcus)
+        assert published.status_code == 200, published.text
+        assert published.json()["status"] == "APPROVED"
+
+    if fx_mode != "none":
+        enabled = put(
+            app, "/api/v1/tenant-currencies", world.marcus, {"currency_codes": ["USD", "GBP"]}
+        )
+        assert enabled.status_code == 200, enabled.text
+        for kind in ("spot", "average", "closing"):
+            made = post(
+                app,
+                "/api/v1/fx-rate-sets",
+                world.place.author,
+                {"code": f"STEP1-{kind.upper()}", "name": f"Step 1 {kind}", "rate_type": kind},
+            )
+            assert made.status_code == 201, made.text
+            fx_sets[kind] = made.json()["id"]
+            publish_rates(kind, "0.800000")
+    entity(
+        app,
+        world.place.author,
+        code="AVM-OPS",
+        calendar_id=str(calendar_id),
+        functional_currency="USD" if fx_mode == "none" else "GBP",
+    )
+    open_periods(
+        app,
+        world.place.author,
+        entity_code="AVM-OPS",
+        keys=[f"FY2026-P{month:02d}" for month in range(1, 10)],
+    )
+    body = k09_body(world.customers["C-09"])
+    body["lines"][0]["performing_entity_code"] = "AVM-OPS"
+    created = post(app, CONTRACTS, world.place.author, body)
+    assert created.status_code == 201, created.text
+    contract_id = UUID(created.json()["id"])
+    _activated(world, contract_id)
+    record = _reviewed(world, contract_id, "NOT_A_CONTRACT", NOT_A_CONTRACT)
+    performing_period = next(
+        row
+        for row in periods(app, world.place.author, entity="AVM-OPS", book="ASC606")
+        if row["period"]["period_key"] == "FY2026-P09"
+    )
+    if performer_closing:
+        started = post(
+            app,
+            f"/api/v1/periods/{performing_period['id']}/start-close",
+            world.place.author,
+            {},
+            if_match=f'"r{performing_period["row_version"]}"',
+        )
+        assert started.status_code == 200, started.text
+    owner_period = next(
+        row
+        for row in periods(app, world.place.author, entity="AVM-US", book="ASC606")
+        if row["period"]["period_key"] == "FY2026-P09"
+    )
+    assert owner_period["state"] == "open"
+
+    def ledger(*, functional: bool = False) -> dict[tuple[str, str, str, str], Decimal]:
+        amount = subledger_line.c.amount_functional if functional else subledger_line.c.amount_txn
+        rows = world.place.rows(
+            select(
+                legal_entity.c.code,
+                subledger_line.c.book_code,
+                subledger_line.c.account_role,
+                subledger_line.c.dr_cr,
+                func.sum(amount).label("total"),
+            )
+            .join(legal_entity, legal_entity.c.id == subledger_line.c.entity_id)
+            .where(subledger_line.c.contract_id == contract_id)
+            .group_by(
+                legal_entity.c.code,
+                subledger_line.c.book_code,
+                subledger_line.c.account_role,
+                subledger_line.c.dr_cr,
+            )
+        )
+        return {
+            (
+                str(row["code"]),
+                str(row["book_code"]),
+                str(row["account_role"]),
+                str(row["dr_cr"]),
+            ): abs(Decimal(row["total"]))
+            for row in rows
+        }
+
+    before = (_header(world, contract_id), ledger(), _holds(world, contract_id))
+    functional_before = ledger(functional=True)
+    assessed = _record_events(
+        world,
+        contract_id,
+        {**FLAG, "effective_date": "2026-09-08"},
+        _assessment(record, probable=False, on="2026-09-08"),
+    )
+    assert assessed.status_code == 201, assessed.text
+    if not performer_closing:
+        assert "approval_request_id" not in assessed.json()
+        assert _books(world, contract_id)["ASC606"] == OUT_AT_THE_EIGHTH
+        return
+    request_id = assessed.json()["approval_request_id"]
+    assert (_header(world, contract_id), ledger(), _holds(world, contract_id)) == before
+    preview = _preview_document(world, request_id)
+    lines = preview["after"]["posting_lines"]
+    assert "AVM-OPS" in {line["entity"] for line in lines}
+    for line in lines:
+        if line["entity"] == "AVM-OPS":
+            assert line["transaction_amount"]["currency"] == "USD"
+            assert line["functional_amount"]["currency"] == ("USD" if fx_mode == "none" else "GBP")
+    with world.place.uow() as blocker:
+        blocker.session.execute(
+            select(period_state.c.id)
+            .where(period_state.c.id == UUID(performing_period["id"]))
+            .with_for_update()
+        ).one()
+        refused = approve(app, request_id, world.priya)
+        assert refused.status_code == 409, refused.text
+        assert slug(refused) == "lock-conflict"
+    assert (_header(world, contract_id), ledger(), _holds(world, contract_id)) == before
+    if period_changed:
+        cancelled = post(
+            app,
+            f"/api/v1/periods/{performing_period['id']}/cancel-close",
+            world.place.author,
+            {"reason_code": "CLOSE_RESTARTED", "comment": "Reconsider performing entity close"},
+            if_match=f'"r{started.json()["row_version"]}"',
+        )
+        assert cancelled.status_code == 200, cancelled.text
+    if fx_mode == "changed":
+        publish_rates("average", "0.900000")
+    publisher: threading.Thread | None = None
+    concurrent: dict[str, Any] = {}
+    if fx_mode == "concurrent":
+        from erev_api.domain.contracts import step1_approval
+
+        original_check = step1_approval.assert_calculation
+
+        def publish_average() -> None:
+            try:
+                publish_rates("average", "0.900000")
+                concurrent["published"] = True
+            except Exception as error:  # noqa: BLE001 - surfaced in the test thread
+                concurrent["error"] = error
+
+        publisher = threading.Thread(target=publish_average, name="step1-concurrent-fx")
+
+        def checked_then_observe(uow: Any, *args: Any) -> None:
+            original_check(uow, *args)
+            assert publisher is not None
+            with observing_checkouts() as backends:
+                holder = backend_pid(uow.session)
+                publisher.start()
+                # The group's FOR UPDATE is at the end of a long reach CTE; the
+                # pg_stat_activity query is truncated before its table name. Still
+                # require this publisher to be blocked by this decision's backend.
+                _, concurrent["waiting_statement"] = await_lock_wait(
+                    uow.session,
+                    holder_pid=holder,
+                    backends=backends,
+                    timeout=10,
+                    expect="with reach as",
+                    while_running=publisher.is_alive,
+                )
+            assert publisher.is_alive() and "published" not in concurrent
+
+        monkeypatch.setattr(step1_approval, "assert_calculation", checked_then_observe)
+    try:
+        decided = approve(app, request_id, world.priya)
+    finally:
+        if publisher is not None and publisher.ident is not None:
+            publisher.join(timeout=30)
+            assert not publisher.is_alive(), concurrent
+    if fx_mode == "concurrent":
+        assert "error" not in concurrent, concurrent
+        assert concurrent["published"]
+        assert concurrent["waiting_statement"].startswith("WITH reach AS")
+    if period_changed or fx_mode == "changed":
+        assert decided.status_code == 409, decided.text
+        assert slug(decided) == "stale-approval"
+        assert (_header(world, contract_id), ledger(), _holds(world, contract_id)) == before
+        return
+    assert decided.status_code == 200, decided.text
+    expected = dict(before[1])
+    expected_functional = dict(functional_before)
+    for line in lines:
+        key = (
+            line["entity"],
+            line["book"],
+            line["account_role"],
+            "D" if line["side"] == "Debit" else "C",
+        )
+        expected[key] = expected.get(key, Decimal(0)) + Decimal(
+            line["transaction_amount"]["amount"]
+        )
+        expected_functional[key] = expected_functional.get(key, Decimal(0)) + Decimal(
+            line["functional_amount"]["amount"]
+        )
+    assert ledger() == expected
+    assert ledger(functional=True) == expected_functional
+    assert _books(world, contract_id)["ASC606"] == OUT_AT_THE_EIGHTH
+    assert _header(world, contract_id)[1] == before[0][1] + 3
+
+
+@pytest.mark.parametrize(
+    ("over_budget", "physical_large"),
+    [(False, False), (True, False), (True, True)],
+    ids=["draft-gate", "large-group-boundary", "201-obligations"],
+)
+def test_draft_step1_date_approval_applies_only_the_reviewed_gate(
+    world: SeatWorld, monkeypatch: pytest.MonkeyPatch, over_budget: bool, physical_large: bool
+) -> None:
+    """A restricted-window draft assessment reviews and atomically applies its derived gate."""
+    from erev_api.domain.contracts import events as events_domain
+    from erev_api.domain.contracts import holds as holds_domain
+
+    assign(world.priya.member, "revenue_reviewer")
+    if physical_large:
+        from erev_api.domain.contracts.compute_job import obligation_count
+
+        body = k09_body(world.customers["C-09"])
+        template = body["lines"][0]
+        body["lines"] = [{**template, "obligation_key": f"O{index}"} for index in range(1, 202)]
+        created = post(world.app, CONTRACTS, world.place.author, body)
+        assert created.status_code == 201, created.text
+        contract_id = UUID(created.json()["id"])
+        with world.place.uow() as uow:
+            assert obligation_count(uow.session, _group_id(world, contract_id)) == 201
+    else:
+        contract_id = _created(world)
+    record = _reviewed(world, contract_id, "NOT_A_CONTRACT", NOT_A_CONTRACT)
+    september = next(
+        row
+        for row in periods(world.app, world.place.author, entity="AVM-US", book="ASC606")
+        if row["period"]["period_key"] == "FY2026-P09"
+    )
+    started = post(
+        world.app,
+        f"/api/v1/periods/{september['id']}/start-close",
+        world.place.author,
+        {},
+        if_match=f'"r{september["row_version"]}"',
+    )
+    assert started.status_code == 200, started.text
+    if over_budget and not physical_large:
+        # Exercise the existing withholding boundary with one real obligation. This does
+        # not stand in for a volume/performance test of a physically large contract.
+        monkeypatch.setattr(events_domain, "OBLIGATION_BUDGET", 0)
+        monkeypatch.setattr(holds_domain, "OBLIGATION_BUDGET", 0)
+    before = (
+        _header(world, contract_id),
+        _books(world, contract_id),
+        _posted(world, contract_id),
+        _holds(world, contract_id),
+    )
+    jobs_before = world.place.scalar(
+        select(func.count()).select_from(job).where(job.c.kind == "CONTRACT_COMPUTE")
+    )
+    sent = _record_events(world, contract_id, _assessment(record, probable=False, on="2026-09-08"))
+    assert sent.status_code == 201, sent.text
+    request_id = sent.json()["approval_request_id"]
+    assert (
+        _header(world, contract_id),
+        _books(world, contract_id),
+        _posted(world, contract_id),
+        _holds(world, contract_id),
+    ) == before
+    preview = _preview_document(world, request_id)
+    expected_status = "DRAFT" if over_budget else "NOT_A_CONTRACT"
+    assert preview["before"]["status"] == "DRAFT"
+    assert preview["after"]["status"] == expected_status
+    decided = approve(world.app, request_id, world.priya)
+    assert decided.status_code == 200, decided.text
+    assert _header(world, contract_id) == (
+        expected_status,
+        before[0][1] + (1 if over_budget else 2),
+    )
+    effects = world.place.rows(
+        select(
+            contract_event.c.id, contract_event.c.event_type, contract_event.c.approval_request_id
+        )
+        .where(
+            contract_event.c.contract_id == contract_id,
+            contract_event.c.stream_version > before[0][1],
+        )
+        .order_by(contract_event.c.stream_version)
+    )
+    expected_types = ["COLLECTIBILITY_ASSESSED"]
+    if not over_budget:
+        expected_types.insert(1, "CONTRACT_ACTIVATED")
+    assert [str(row["event_type"]) for row in effects] == expected_types
+    assert all(row["approval_request_id"] == UUID(request_id) for row in effects)
+    assert world.place.scalar(
+        select(event_submission.c.applied_event_ids).where(
+            event_submission.c.id == UUID(sent.json()["event_submission_id"])
+        )
+    ) == [row["id"] for row in effects]
+    assert before[3] == _holds(world, contract_id) == []
+    assert _books(world, contract_id)["ASC606"][0] == expected_status
+    assert (
+        world.place.scalar(
+            select(func.count()).select_from(job).where(job.c.kind == "CONTRACT_COMPUTE")
+        )
+        == jobs_before
+    )
+
+
+def test_step1_date_review_terminal_decisions_do_not_apply_twice(world: SeatWorld) -> None:
+    """Rejected/withdrawn dates do nothing; resubmission can apply exactly once."""
+    assign(world.priya.member, "revenue_reviewer")
+    contract_id = _created(world)
+    _activated(world, contract_id)
+    record = _reviewed(world, contract_id, "NOT_A_CONTRACT", NOT_A_CONTRACT)
+    september = next(
+        row
+        for row in periods(world.app, world.place.author, entity="AVM-US", book="ASC606")
+        if row["period"]["period_key"] == "FY2026-P09"
+    )
+    started = post(
+        world.app,
+        f"/api/v1/periods/{september['id']}/start-close",
+        world.place.author,
+        {},
+        if_match=f'"r{september["row_version"]}"',
+    )
+    assert started.status_code == 200, started.text
+
+    def state() -> tuple[Any, ...]:
+        return (
+            _header(world, contract_id),
+            _books(world, contract_id),
+            _posted(world, contract_id),
+            _holds(world, contract_id),
+            world.place.scalar(select(func.count()).select_from(contract_computation)),
+        )
+
+    before = state()
+    mixed = _record_events(
+        world,
+        contract_id,
+        {**FLAG, "effective_date": "2026-09-08"},
+        _assessment(record, probable=False, on="2026-09-08"),
+        RECEIPT,
+    )
+    assert mixed.status_code == 422, mixed.text
+    assert "Record the Step 1 assessment in a request of its own." in mixed.text
+    assert state() == before
+    assert (
+        world.place.scalar(
+            select(func.count())
+            .select_from(event_submission)
+            .where(event_submission.c.contract_id == contract_id)
+        )
+        == 0
+    )
+    for action, request_status, submission_status in (
+        ("reject", "REJECTED", "REJECTED"),
+        ("withdraw", "WITHDRAWN", "VOIDED"),
+        ("approve", "APPROVED", "APPLIED"),
+    ):
+        assessed = _record_events(
+            world,
+            contract_id,
+            {**FLAG, "effective_date": "2026-09-08"},
+            _assessment(record, probable=False, on="2026-09-08"),
+        )
+        assert assessed.status_code == 201, assessed.text
+        assert state() == before
+        request_id = assessed.json()["approval_request_id"]
+        submission_id = UUID(assessed.json()["event_submission_id"])
+        if action == "reject":
+            decided = reject(world.app, request_id, world.priya, "Revise the assessment date.")
+        elif action == "withdraw":
+            decided = post(
+                world.app, f"/api/v1/approvals/{request_id}/withdraw", world.place.author, {}
+            )
+        else:
+            decided = approve(world.app, request_id, world.priya)
+        assert decided.status_code == 200, decided.text
+        detail = get(world.app, f"/api/v1/approvals/{request_id}", world.priya)
+        assert detail.status_code == 200, detail.text
+        assert detail.json()["status"] == request_status
+        submission = world.place.rows(
+            select(event_submission.c.status, event_submission.c.applied_event_ids).where(
+                event_submission.c.id == submission_id
+            )
+        )[0]
+        assert submission["status"] == submission_status
+        if action != "approve":
+            assert state() == before
+            assert submission["applied_event_ids"] == []
+        else:
+            assert _header(world, contract_id)[1] == before[0][1] + 3
+            assert len(submission["applied_event_ids"]) == 3
+            assert all(released is not None for _, _, released in _holds(world, contract_id))
+        terminal = state()
+        repeated = approve(world.app, request_id, world.priya)
+        assert (repeated.status_code, slug(repeated)) == (409, "invalid-transition")
+        assert state() == terminal
 
 
 def test_step1_hold_release_1_a_not_probable_assessment_of_an_active_book_follows_a_flag(

@@ -8658,7 +8658,8 @@ export interface components {
       | "MAPPING_PROFILE_VERSION"
       | "POLICY_OVERRIDE"
       | "MIGRATION_SSP_REPLAY"
-      | "EVIDENCE_SHRED";
+      | "EVIDENCE_SHRED"
+      | "STEP1_EVENT";
     /** ApprovalWithdrawIn */
     ApprovalWithdrawIn: {
       /** Comment */

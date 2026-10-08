@@ -174,7 +174,7 @@ def test_dg_arc_08_subjects() -> None:
     phases = registry_phases(PHASES.read_text(encoding="utf-8"), _SUBJECT_COLUMN)
     literals = {subject.value for subject in ApprovalSubjectType}
     # 04 rev 1.72: MIGRATION_SSP_REPLAY; rev 1.142: EVIDENCE_SHRED (PHASES rev 1.4, SOP row)
-    assert len(literals) == 32
+    assert len(literals) == 33
     assert set(phases) == literals
     registered = {subject.value for subject in SUBJECTS}
 

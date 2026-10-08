@@ -229,6 +229,7 @@ export interface DisplayOptions {
 const STATUS_ENUM: Partial<Record<ApprovalSubjectType, string>> = {
   CONTRACT_ACTIVATION: "E-17",
   CONTRACT_VOID: "E-17",
+  STEP1_EVENT: "E-17",
 };
 
 /** The status word the product shows for a literal; a literal without a word reads as sent. */
@@ -676,6 +677,8 @@ function RequestReview({ approval, viewerId, onApproved }: RequestReviewProps) {
                 {noPreviewMessage(link !== null, pending && approval.can_decide, approval)}
               </Banner>
             </div>
+          ) : approval.subject.type === "STEP1_EVENT" ? (
+            <p className="text-body-sm text-fg-2">{t("approvals.request.step1Impact")}</p>
           ) : impactIsEmpty(approval.impact_preview) ? (
             <p className="text-body-sm text-fg-2">{t("approvals.request.noImpact")}</p>
           ) : null}

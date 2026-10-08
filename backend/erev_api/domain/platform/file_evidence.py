@@ -151,6 +151,7 @@ ADJUSTMENT_SUBJECT: Final = "manual_adjustment"
 REQUEST_SUBJECT: Final = "approval_request"
 EVENT_SUBMISSION_SUBJECTS: Final = (
     ApprovalSubjectType.MANUAL_EVENT.value,
+    ApprovalSubjectType.STEP1_EVENT.value,
     ApprovalSubjectType.ATTRIBUTE_CHANGE.value,
 )
 SUBMISSION_STANDING: Final = (
@@ -309,7 +310,8 @@ def _adjustment_column(name: str) -> Callable[[Table], ColumnElement[Any]]:
 
 def _event_request_evidence(table: Table) -> ColumnElement[bool]:
     """A live attachment of an approval request whose subject is an event submission —
-    ``MANUAL_EVENT`` or ``ATTRIBUTE_CHANGE`` — that is submitted, approved or applied."""
+    ``MANUAL_EVENT``, ``ATTRIBUTE_CHANGE`` or ``STEP1_EVENT`` — that is submitted,
+    approved or applied."""
     request, submission = _table("approval_request"), _table("event_submission")
     return and_(
         table.c.subject_type == REQUEST_SUBJECT,

@@ -1224,6 +1224,12 @@ def event_submission_content(session: Session, subject_id: UUID) -> Mapping[str,
     }
 
 
+def step1_event_content(session: Session, subject_id: UUID) -> Mapping[str, Any]:
+    from erev_api.domain.contracts.step1_approval import content  # noqa: PLC0415
+
+    return content(session, subject_id)
+
+
 def _visible_entity(found: Any) -> UUID:
     """The one entity a bound subject names (R-25; 04 T-PLT-17 rev 1.104). A subject row the caller
     cannot read answers 404 ``not-found`` (REQ-PLT-012): a bound subject never falls back to a
@@ -1574,9 +1580,14 @@ def _submission_stamps(uow: UnitOfWork) -> dict[str, Any]:
 # The contracts domain's check of a stored batch (``_apply_event_submission``): the unit of work,
 # the locked contract row and the events the stored items parse to.
 type EventSubmissionCheck = Callable[[UnitOfWork, Mapping[str, Any], Sequence[EventIn]], None]
+type EventSubmissionPrepare = Callable[
+    [UnitOfWork, Mapping[str, Any], Sequence[EventIn]], Sequence[EventIn]
+]
 # The contracts domain's writes that belong to the append: the unit of work of the SYSTEM principal
 # that appended, acting for the preparer, and the stored rows of the appended events.
-type EventSubmissionApplied = Callable[[UnitOfWork, Sequence[Mapping[str, Any]]], None]
+type EventSubmissionApplied = Callable[
+    [UnitOfWork, Sequence[Mapping[str, Any]]], Sequence[Mapping[str, Any]] | None
+]
 
 
 def _apply_event_submission(
@@ -1585,6 +1596,7 @@ def _apply_event_submission(
     approval_request_id: UUID,
     *,
     check: EventSubmissionCheck | None = None,
+    prepare_step1: EventSubmissionPrepare | None = None,
     before_basis: Callable[[UnitOfWork], None] | None = None,
     applied: EventSubmissionApplied | None = None,
 ) -> None:
@@ -1633,7 +1645,16 @@ def _apply_event_submission(
     # appended — no activation event, no Step 1 assessment or flag, no void of an assessment or of
     # an activation event (rulings R-20, R-61 (b)) — so a submission stored before a refusal
     # existed, or built below the routes, never reaches the stream.
-    step1.refuse_stored(session, events)
+    subject_type = session.execute(
+        select(approval_request.c.subject_type).where(approval_request.c.id == approval_request_id)
+    ).scalar_one()
+    if subject_type == ApprovalSubjectType.STEP1_EVENT.value:
+        if prepare_step1 is None:
+            raise engine.StaleBasis()
+        events = list(prepare_step1(uow, locked_contract, events))
+    else:
+        # Legacy generic submissions never gain the dedicated Step 1 validation path.
+        step1.refuse_stored(session, events)
     if check is not None:
         check(uow, locked_contract, events)
     head = int(locked_contract["head_stream_version"])
@@ -1653,7 +1674,9 @@ def _apply_event_submission(
         origin="SYSTEM",
     )
     if applied is not None:
-        applied(system, appended)
+        additional = applied(system, appended)
+        if additional:
+            appended = [*appended, *additional]
     for event in system.drain_audit_events():
         uow.buffer_audit_event(event)
     stamps = _submission_stamps(uow)
@@ -4366,6 +4389,24 @@ SUBJECTS: Final[dict[ApprovalSubjectType, SubjectSpec]] = {
         on_rejected=_registered(ApprovalSubjectType.MANUAL_EVENT, "on_rejected"),
         on_voided=_registered(ApprovalSubjectType.MANUAL_EVENT, "on_voided"),
     ),
+    ApprovalSubjectType.STEP1_EVENT: SubjectSpec(
+        subject_type=ApprovalSubjectType.STEP1_EVENT,
+        excluded_deciders=draft_authors(event_submission, edit_actions=()),
+        excluded_detail=AUTHOR_DETAIL,
+        table="event_submission",
+        required_permission="event.approve",
+        revenue_affecting=True,
+        min_approvers=1,
+        content=step1_event_content,
+        entity_id=_resolved_by_entities,
+        entities=event_submission_entities,
+        amount_functional=lambda _session, _subject_id: None,
+        flags=lambda _session, _subject_id: frozenset(),
+        preparer_entities=_event_submission_preparer_entities(ApprovalSubjectType.STEP1_EVENT),
+        on_approved=_registered(ApprovalSubjectType.STEP1_EVENT, "on_approved"),
+        on_rejected=_registered(ApprovalSubjectType.STEP1_EVENT, "on_rejected"),
+        on_voided=_registered(ApprovalSubjectType.STEP1_EVENT, "on_voided"),
+    ),
     ApprovalSubjectType.IMPORT_COMMIT: SubjectSpec(
         subject_type=ApprovalSubjectType.IMPORT_COMMIT,
         table="import_upload",
@@ -4834,6 +4875,7 @@ SUBJECT_LABELS: Final[Mapping[ApprovalSubjectType, str]] = MappingProxyType(
         ApprovalSubjectType.CONTRACT_ACTIVATION: "Contract activation",
         ApprovalSubjectType.MODIFICATION: "Modification",
         ApprovalSubjectType.MANUAL_EVENT: "Manual event",
+        ApprovalSubjectType.STEP1_EVENT: "Step 1 assessment date",
         ApprovalSubjectType.ESTIMATE_VERSION: "Estimate version",
         ApprovalSubjectType.MANUAL_ADJUSTMENT: "Manual adjustment",
         ApprovalSubjectType.REGISTRY_VERSION: "Policy version",
