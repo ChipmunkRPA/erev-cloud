@@ -2246,6 +2246,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/evidence-packs": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Evidence Packs Create
+     * @description Create a first-close pack using a completed verification; replay its original IDs.
+     */
+    post: operations["evidence_packs_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/evidence-packs/{pack_id}": {
     parameters: {
       query?: never;
@@ -7595,6 +7615,22 @@ export type webhooks = Record<string, never>;
 export interface components {
   schemas: {
     /**
+     * AccessPackCreateIn
+     * @description Access evidence as of an explicit date.
+     */
+    AccessPackCreateIn: {
+      /**
+       * As Of
+       * Format: date
+       */
+      as_of: string;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "ACCESS";
+    };
+    /**
      * AccessReviewCountsOut
      * @description The SF-14:access-review KPI strip: items by decision.
      */
@@ -9343,6 +9379,27 @@ export interface components {
       recorded_at: string;
     };
     /**
+     * ChangePackCreateIn
+     * @description Changes in an inclusive date range, including a single day.
+     */
+    ChangePackCreateIn: {
+      /**
+       * From Date
+       * Format: date
+       */
+      from_date: string;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "CHANGE";
+      /**
+       * To Date
+       * Format: date
+       */
+      to_date: string;
+    };
+    /**
      * ChecklistGateKind
      * @description E-61 ``checklist_gate_kind`` (04 §3.4).
      * @enum {string}
@@ -9544,6 +9601,25 @@ export interface components {
       name?: string | null;
       /** Owner Role Id */
       owner_role_id?: string | null;
+    };
+    /**
+     * ClosePackCreateIn
+     * @description A specific lock's entity, book and period; no implicit current-lock selection.
+     */
+    ClosePackCreateIn: {
+      book: components["schemas"]["BookCode"];
+      entity_code: components["schemas"]["Identifier"];
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "CLOSE";
+      period_key: components["schemas"]["Identifier"];
+      /**
+       * Period Lock Id
+       * Format: uuid
+       */
+      period_lock_id: string;
     };
     /**
      * ClosePackOut
@@ -10662,6 +10738,24 @@ export interface components {
       | "MODIFIED_THIS_PERIOD"
       | "CREATED_MANUALLY"
       | "CREATED_FROM_INTEGRATIONS_THIS_PERIOD";
+    /**
+     * ContractSamplePackCreateIn
+     * @description One to fifty distinct contracts, with an explicit effective-date cutoff.
+     */
+    ContractSamplePackCreateIn: {
+      /**
+       * As Of
+       * Format: date
+       */
+      as_of: string;
+      /** Contract External Ids */
+      contract_external_ids: components["schemas"]["Identifier"][];
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "CONTRACT_SAMPLE";
+    };
     /**
      * ContractSourceOut
      * @description One item of ``GET /contracts/{id}/sources`` (04 API-R-28, T-CON-02; SCREENS §6.6; BUILD_SPEC
@@ -13346,6 +13440,7 @@ export interface components {
      * @enum {string}
      */
     HoldType: "recognition" | "journal_export";
+    Identifier: string;
     /** IdentityProviderRefOut */
     IdentityProviderRefOut: {
       /** Code */
@@ -31887,6 +31982,97 @@ export interface operations {
       };
       /** @description Problem: validation-failed, idempotency-key-reused */
       422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+    };
+  };
+  evidence_packs_create: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description API-C-04: one key per user intent (8-255 characters); a repeat with the same key and body replays the stored response, another body is 422 idempotency-key-reused. */
+        "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json":
+          | components["schemas"]["ClosePackCreateIn"]
+          | components["schemas"]["ContractSamplePackCreateIn"]
+          | components["schemas"]["ChangePackCreateIn"]
+          | components["schemas"]["AccessPackCreateIn"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["JobOut"];
+        };
+      };
+      /** @description Problem: unauthenticated, session-expired */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: not-found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: idempotency-in-progress */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: validation-failed, idempotency-key-reused */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: release-mismatch */
+      503: {
         headers: {
           [name: string]: unknown;
         };

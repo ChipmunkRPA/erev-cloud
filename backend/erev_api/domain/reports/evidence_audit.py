@@ -81,6 +81,40 @@ def checked_digest(
         raise Problem("validation-failed", "The saved audit digest is inconsistent.") from error
 
 
+def select_completed(uow: UnitOfWork, selection: SourceSelection) -> UUID:
+    """Choose once at creation; persisted bindings, workers and retries never call this.
+
+    Choose the newest completed passing prefix covering the lock, with a stable ID
+    tiebreaker. The collector still verifies its bytes and chain; damage must refuse
+    the request rather than silently falling back to an older digest.
+    """
+    source = evidence_close.read_locked(uow, selection)
+    verification_id = uow.session.scalar(
+        select(audit_chain_verification.c.id)
+        .where(
+            audit_chain_verification.c.tenant_id == selection.tenant_id,
+            audit_chain_verification.c.result == ControlResult.PASS,
+            audit_chain_verification.c.finished_at <= uow.now,
+            audit_chain_verification.c.from_chain_seq == 1,
+            audit_chain_verification.c.to_chain_seq >= source.record["audit_head_chain_seq"],
+            audit_chain_verification.c.digest_file_id.is_not(None),
+        )
+        .order_by(
+            audit_chain_verification.c.finished_at.desc(),
+            audit_chain_verification.c.id.desc(),
+        )
+        .limit(1)
+    )
+    if verification_id is None:
+        raise Problem(
+            "validation-failed",
+            "No completed passing audit verification covers this lock. "
+            "Run POST /api/v1/audit-events/verify and wait for its job to succeed, "
+            "then submit with a new Idempotency-Key.",
+        )
+    return UUID(str(verification_id))
+
+
 def collect(
     uow: UnitOfWork,
     selection: SourceSelection,

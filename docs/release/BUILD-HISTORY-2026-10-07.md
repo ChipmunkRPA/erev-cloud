@@ -2840,3 +2840,39 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   encrypted storage, creation/idempotency, audited download/API, automatic generation, other
   pack kinds and re-lock variance reporting remain open. Current release gates and independent
   accounting approval remain required. Direct-main publication; no deployment or notifications.
+
+## Durable CLOSE source bindings — October 8, 2026 (RPS-16 continued)
+
+- Continued from clean published a622467. Migration 0142 adds immutable
+  `evidence_pack.source_binding`: an object or legacy NULL, with no UPDATE grant. DB-03
+  protects it even before success; downgrade validates across all tenants and refuses to
+  discard any retained binding. Existing rows are not backfilled from current sources.
+- Added `reports/evidence_sources.py`. Preparation verifies an explicit audit digest, queues
+  the five supporting reports through the existing planner, and returns a versioned binding
+  for atomic pack insertion. It retains the request, tenant/entity/period, request/freeze
+  instants, snapshot manifest, frozen run IDs, supporting run/job IDs and normalized selector
+  hashes, plus the digest verification ID. Loading reauthorizes the selected close and checks
+  the pack row, frozen source and report/job associations without selecting or enqueueing anew.
+- Initial database witnesses: **two passed in 8.81 seconds**. Real report jobs/outputs and
+  audit verification are used around a seeded close. Newer report/digest candidates do not
+  replace the saved selection; repeated loads preserve output bytes. A failed enclosing pack
+  transaction rolls back the pack, reports and jobs together. Legacy NULL, revoked scope,
+  wrong identities/cutoffs, duplicate/missing sources and unversioned documents refuse.
+- Broader source/PG/migration run: **88 passed, one failed in 82.19 seconds**. The failure found
+  pre-existing out-of-period report metadata drift. Migration 0143 corrects its description
+  and IPE sources for the already implemented computed late events; stored runs/outputs stay
+  intact. Next run: **88 passed, one failed in 82.55 seconds** because the owner-role trigger
+  test saw no tenant row under RLS. A role-switch attempt then gave **48 passed, one failed
+  in 23.72 seconds** (owner cannot SET ROLE erev_app). The final fixture temporarily removes
+  FORCE RLS for the table owner in a rolled-back transaction, verifies the row is visible,
+  and proves the trigger refuses the mutation. **Final affected run: 49 passed in 24.25 seconds**,
+  including full upgrade/downgrade/upgrade, catalogue equality, application grants, downgrade
+  refusal and the extended binding/rollback witness. All processes terminal.
+- Logs: `/private/tmp/evidence-binding-{db,final,corrected,verified,guards}.log`. Source/migration
+  Mypy, Ruff lint/format and whitespace pass. Audit-digest and supporting-source-plan notes
+  archived verbatim. Snapshot sandbox rules regenerate evidence packs/report runs instead of copying them.
+- The creation command and job lifecycle/idempotency still need integration with these bindings.
+  Full assembly, audited downloads/routes, automatic generation, other kinds and variance report
+  remain open. Collectors must still validate output/audit bytes and export permissions. No
+  pack endpoint, CTL-041, RPS-16 or production-readiness claim. Current release verification and
+  independent accounting sign-off remain required. Direct main; no deployment or notifications.

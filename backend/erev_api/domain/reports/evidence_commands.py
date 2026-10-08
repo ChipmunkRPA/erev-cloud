@@ -1,7 +1,7 @@
 """Transactional creation of retained first-close packs (RPS-16).
 
-The API/idempotency boundary owns commit and must supply a completed audit
-verification. This command neither chooses a latest verification nor verifies
+The API/idempotency boundary owns commit. Creation selects a completed audit
+verification once unless its caller supplies an explicit ID. It never verifies
 in a separate transaction; all report jobs, numbering and pack state roll back
 with the caller. Other pack kinds and re-lock variance remain pending.
 """
@@ -18,6 +18,7 @@ from erev_api.db import new_id
 from erev_api.db.tables import evidence_pack
 from erev_api.domain.platform.jobs import job_out_of
 from erev_api.domain.reports import (
+    evidence_audit,
     evidence_certification,
     evidence_journals,
     evidence_reconciliation_population,
@@ -39,7 +40,7 @@ PERMISSIONS = frozenset(
 
 
 def create_close(
-    uow: UnitOfWork, request: ClosePackCreateIn, *, verification_id: UUID
+    uow: UnitOfWork, request: ClosePackCreateIn, *, verification_id: UUID | None = None
 ) -> tuple[UUID, JobOut]:
     """Create the bound pack and its six jobs, atomically in the caller's transaction."""
     if not PERMISSIONS <= uow.principal.permissions:
@@ -58,6 +59,8 @@ def create_close(
     evidence_journals.collect(uow, selection)
     evidence_reconciliations.collect(uow, selection)
     evidence_reconciliation_population.collect(uow, selection)
+    if verification_id is None:
+        verification_id = evidence_audit.select_completed(uow, selection)
     bound = evidence_sources.prepare_close(uow, request, verification_id=verification_id)
     pack_id = new_id()
     pack_no = next_number(uow, "EVIDENCE_PACK")

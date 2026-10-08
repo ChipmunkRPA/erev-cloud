@@ -5240,16 +5240,24 @@ reauthorizes all retained source readers and verifies file metadata, ZIP/manifes
 source bytes before committing one evidence.export audit. Only then are application/zip bytes
 returned with attachment, sandbox and no-store headers. Pending/failed packs return 409;
 verification failure returns 422. Reads never complete pending work or regenerate output.
-These routes do not enable public creation/listing or automatic pack generation.
+These read routes do not themselves create packs. Listing and automatic generation remain pending.
 
-**First-close creation (October 8, 2026).** The internal `evidence_commands.create_close`
-command takes the documented CLOSE selectors plus an explicitly supplied completed audit
-verification from its caller. It verifies caller permissions and retained source evidence before
-queueing, then atomically inserts the numbered pack, immutable source binding, five report runs,
-six jobs and `evidence.create` audit. The caller owns commit and request idempotency. This
-internal verification argument is not an added API-S-EvidencePackCreate field; the public
-boundary's verification orchestration and HTTP route remain pending. No latest-source fallback
-or independent-transaction verification is hidden inside creation.
+**First-close creation (October 8, 2026).** `POST /evidence-packs` accepts the documented
+CLOSE selectors and returns 202 JobOut, `Location` and `X-Erev-Evidence-Pack-Id`. The command
+kernel atomically retains that response for idempotent replay with the pack, immutable sources,
+five report runs, six jobs, numbering and `evidence.create` audit. The same key with a changed
+body refuses. Other kinds currently refuse 422 rather than queue unsupported work.
+
+Creation requires evidence.export plus report.run, report.export, audit.read and contract.read
+in source scope. After retained-source preflight, it selects the newest completed PASS digest
+covering the frozen audit head (`finished_at <= request time`, ordered by finished_at then ID).
+The collector verifies the selected digest bytes, record and historical prefix before queueing;
+damage refuses without falling back. The exact verification ID is retained in the binding and
+creation audit. Replay and workers never reselect it. Internal callers may supply an explicit ID;
+this is not a public request field. No eligible verification yields 422 with instructions to run
+`POST /audit-events/verify`, wait for success and submit with a new Idempotency-Key (the original
+key retains its validation response). Automatic verification orchestration and enqueue
+on lock remain outstanding; this request does not start an independent verification transaction.
 
 **First-close retention (October 8, 2026).** The internal completion helper requires a RUNNING
 pack, explicit evidence-export scope and verified retained source readers. It stores an encrypted

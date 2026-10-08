@@ -82,6 +82,7 @@ from erev_api.domain.reports import (
     evidence,
     evidence_archive,
     evidence_assembly,
+    evidence_audit,
     evidence_certification,
     evidence_commands,
     evidence_queries,
@@ -109,6 +110,7 @@ from erev_api.jobs.context import JobContext
 from erev_api.main import create_app
 from erev_api.problems import Problem
 from erev_api.registry.resolve import resolve as resolve_setting
+from erev_api.schemas.common import JobOut
 from erev_api.schemas.evidence_packs import ClosePackCreateIn
 from erev_api.schemas.periods import PeriodLockRequestIn, PeriodPermanentLockRequestIn
 from erev_engine.canonical import sha256_hex
@@ -142,7 +144,16 @@ from support.close_world import (
 )
 from support.db import TestDatabase
 from support.factories import Workspace
-from support.principals import Actor, carrying, colleague, enrolled, sign_in, step_up
+from support.http import call
+from support.principals import (
+    Actor,
+    carrying,
+    colleague,
+    cookie_headers,
+    enrolled,
+    sign_in,
+    step_up,
+)
 from support.principals import workspace as signed_actor
 from support.reference import (
     APPROVALS,
@@ -2245,12 +2256,6 @@ def test_first_close_archive_verifies_every_component_before_returning_bytes(
     """Real close/waiver approval and source jobs; journal/close-run gate setup is seeded."""
     lock, waiver_id = _close_for_population(world, clock, waive_missing=waive_missing)
     clock.set(lock["cutoff_known_at"] + timedelta(seconds=1))
-    with world.place.uow() as uow:
-        verification = audit_verify.record_tenant_verification(
-            uow, trigger="ON_DEMAND", job_id=None
-        )
-        verification_id = verification["id"]
-        uow.commit()
     permissions = frozenset(
         {"report.run", "report.export", "audit.read", "contract.read", "evidence.export"}
     )
@@ -2268,6 +2273,27 @@ def test_first_close_archive_verifies_every_component_before_returning_bytes(
             "period_lock_id": lock["id"],
         }
     )
+
+    with world.place.uow(reader) as uow, pytest.raises(Problem, match="No completed passing"):
+        evidence_audit.select_completed(uow, evidence_selection.resolve(uow, request))
+    auditor = actor_with_role(world.app, clock, world.tenant_id, "auditor", name="pack-reader")
+    if waive_missing:
+        no_digest_headers = cookie_headers(auditor.token, auditor.csrf_token)
+        no_digest = call(
+            world.app,
+            "POST",
+            "/api/v1/evidence-packs",
+            json=request.model_dump(mode="json"),
+            headers=no_digest_headers,
+        )
+        assert (no_digest.status_code, slug(no_digest)) == (422, "validation-failed")
+        assert "No completed passing audit verification" in no_digest.json()["detail"]
+    with world.place.uow() as uow:
+        verification = audit_verify.record_tenant_verification(
+            uow, trigger="ON_DEMAND", job_id=None
+        )
+        verification_id = verification["id"]
+        uow.commit()
 
     def creation_state() -> tuple[Any, ...]:
         with world.place.uow(reader) as uow:
@@ -2288,6 +2314,17 @@ def test_first_close_archive_verifies_every_component_before_returning_bytes(
 
     before_create = creation_state()
     if waive_missing:
+        failed_replay = call(
+            world.app,
+            "POST",
+            "/api/v1/evidence-packs",
+            json=request.model_dump(mode="json"),
+            headers=no_digest_headers,
+        )
+        assert failed_replay.status_code == 422
+        assert failed_replay.headers["Idempotent-Replay"] == "true"
+        assert failed_replay.json() == no_digest.json()
+        assert creation_state() == before_create
         for permission in permissions:
             denied = replace(reader, permissions=reader.permissions - {permission})
             with world.place.uow(denied) as uow, pytest.raises(Problem) as refused:
@@ -2310,10 +2347,19 @@ def test_first_close_archive_verifies_every_component_before_returning_bytes(
             evidence_commands.create_close(uow, request, verification_id=verification_id)
             raise RuntimeError("creation rollback")
         assert creation_state() == before_create
+        creation_headers = cookie_headers(auditor.token, auditor.csrf_token)
+        created_response = call(
+            world.app,
+            "POST",
+            "/api/v1/evidence-packs",
+            json=request.model_dump(mode="json"),
+            headers=creation_headers,
+        )
+        assert created_response.status_code == 202, created_response.text
+        pack_id = UUID(created_response.headers["X-Erev-Evidence-Pack-Id"])
+        queued_job = JobOut.model_validate(created_response.json())
+        assert created_response.headers["Location"] == f"/api/v1/jobs/{queued_job.id}"
         with world.place.uow(reader) as uow:
-            pack_id, queued_job = evidence_commands.create_close(
-                uow, request, verification_id=verification_id
-            )
             pack = dict(
                 uow.session.execute(select(evidence_pack).where(evidence_pack.c.id == pack_id))
                 .mappings()
@@ -2358,6 +2404,74 @@ def test_first_close_archive_verifies_every_component_before_returning_bytes(
             )
             assert len(tasks) == 6 and all(value is not None for value in tasks)
 
+        # A newer completed verification must not rebind an idempotent retry.
+        clock.advance(timedelta(seconds=1))
+        with world.place.uow() as uow:
+            newer = audit_verify.record_tenant_verification(uow, trigger="ON_DEMAND", job_id=None)
+            uow.commit()
+        assert newer["id"] != verification_id
+        before_replay = creation_state()
+        replay = call(
+            world.app,
+            "POST",
+            "/api/v1/evidence-packs",
+            json=request.model_dump(mode="json"),
+            headers=creation_headers,
+        )
+        assert replay.status_code == 202, replay.text
+        assert replay.json() == created_response.json()
+        assert replay.headers["Idempotent-Replay"] == "true"
+        assert replay.headers["X-Erev-Evidence-Pack-Id"] == str(pack_id)
+        assert replay.headers["Location"] == created_response.headers["Location"]
+        assert creation_state() == before_replay
+        with world.place.uow(reader) as uow:
+            retained = evidence_sources.load_close(uow, pack_id)
+            assert retained.audit_verification_id == verification_id
+            assert (
+                evidence_audit.select_completed(uow, evidence_selection.resolve(uow, request))
+                == newer["id"]
+            )
+        different = call(
+            world.app,
+            "POST",
+            "/api/v1/evidence-packs",
+            json={**request.model_dump(mode="json"), "period_key": "FY2026-P08"},
+            headers=creation_headers,
+        )
+        assert (different.status_code, slug(different)) == (422, "idempotency-key-reused")
+        assert creation_state() == before_replay
+
+        original_digest_open = evidence_audit.open_file
+
+        def damaged_digest(*args: Any, **kwargs: Any) -> Any:
+            metadata, stream = original_digest_open(*args, **kwargs)
+            if metadata["id"] != newer["digest_file_id"]:
+                return metadata, stream
+            stream.close()
+            return metadata, io.BytesIO(b"damaged digest")
+
+        with monkeypatch.context() as patch:
+            patch.setattr(evidence_audit, "open_file", damaged_digest)
+            damaged = call(
+                world.app,
+                "POST",
+                "/api/v1/evidence-packs",
+                json=request.model_dump(mode="json"),
+                headers=cookie_headers(auditor.token, auditor.csrf_token),
+            )
+        assert (damaged.status_code, slug(damaged)) == (422, "validation-failed")
+        assert "digest file failed verification" in damaged.json()["detail"]
+        assert creation_state() == before_replay
+        unsupported = call(
+            world.app,
+            "POST",
+            "/api/v1/evidence-packs",
+            json={"kind": "ACCESS", "as_of": "2026-09-30"},
+            headers=cookie_headers(auditor.token, auditor.csrf_token),
+        )
+        assert (unsupported.status_code, slug(unsupported)) == (422, "validation-failed")
+        assert creation_state() == before_replay
+
     else:
         with world.place.uow(reader) as uow, pytest.raises(Problem, match="distinct preparer"):
             evidence_commands.create_close(uow, request, verification_id=verification_id)
@@ -2383,7 +2497,6 @@ def test_first_close_archive_verifies_every_component_before_returning_bytes(
         assert "distinct preparer" in error.value.detail
         return
     assert "supporting report differs" in error.value.detail
-    auditor = actor_with_role(world.app, clock, world.tenant_id, "auditor", name="pack-reader")
     header_path = f"/api/v1/evidence-packs/{pack['id']}"
     download_path = header_path + "/download"
     pending = get(world.app, header_path, auditor)
@@ -2645,3 +2758,11 @@ def test_first_close_archive_verifies_every_component_before_returning_bytes(
     for path in (header_path, download_path):
         denied_response = get(world.app, path, auditor)
         assert (denied_response.status_code, slug(denied_response)) == (403, "forbidden")
+    denied_replay = call(
+        world.app,
+        "POST",
+        "/api/v1/evidence-packs",
+        json=request.model_dump(mode="json"),
+        headers=creation_headers,
+    )
+    assert (denied_replay.status_code, slug(denied_replay)) == (403, "forbidden")

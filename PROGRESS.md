@@ -2,6 +2,32 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Idempotent first-close creation API — October 8, 2026 (RPS-16 continued)
+
+- Continued from clean published fbe1eaa; rechecked zero open PRs and main as the only remote
+  branch. Added POST /evidence-packs with the documented discriminated selectors, 202 JobOut,
+  Location and X-Erev-Evidence-Pack-Id. The command kernel stores the response atomically with
+  the pack, sources, five reports, six jobs and numbering. Other kinds explicitly refuse 422.
+- Creation preflights caller scope and retained evidence, then selects one completed PASS digest
+  covering the frozen audit head, ordered by completion time/ID. It verifies that digest before
+  queueing and persists its exact ID. Existing internal callers may still supply an explicit ID.
+  A damaged selected digest refuses without older fallback; replay never reselects or queues.
+  Missing verification returns actionable 422. The existing audit verify job must finish before
+  a new creation key is submitted; the earlier validation response remains tied to its key.
+- Initial HTTP/route regression: **14 passed in 35.07 seconds**. Expanded audit/OpenAPI/route/
+  classification/close regression: **50 passed in 56.75 seconds**. Witnesses include newer digest
+  after creation with unchanged replay IDs/counts, changed-body rejection, damaged digest with
+  no queued effects, unsupported kind, missing verification and revoked-role replay refusal.
+  Final failed-response replay extension: **3 passed in 25.32 seconds**; all processes terminal.
+  The inherited close witness still has seeded journal/close-run setup and approved omissions;
+  it does not establish operational CTL-041 acceptance.
+- Regenerated OpenAPI/client types and updated the guide/data model/build status/limits.
+  Source Mypy, Ruff lint/format, OpenAPI staleness, frontend tsc --noEmit and whitespace pass.
+  Archived the older durable-source-binding section verbatim. Logs are local under
+  /private/tmp/evidence-post-{db,final,retry}.log. Automatic verification orchestration, listing,
+  enqueue on lock/NTF-06, other kinds, re-lock variance and current release/accounting approval
+  remain open. RPS-16/CTL-041 and production readiness remain unclaimed. Direct main; no deployment.
+
 ## Verified close-pack read/download API — October 8, 2026 (RPS-16 continued)
 
 - Continued from clean published caf33b7; previous turn added atomic internal pack creation.
@@ -141,42 +167,6 @@
 - All processes terminal. Archived older control/relock notes verbatim. Pack lifecycle/storage,
   audited download/API, automatic generation, other kinds and variance remain open, along with
   release gates and independent accounting approval. Direct main; no deployment/readiness claim.
-
-## Durable CLOSE source bindings — October 8, 2026 (RPS-16 continued)
-
-- Continued from clean published a622467. Migration 0142 adds immutable
-  `evidence_pack.source_binding`: an object or legacy NULL, with no UPDATE grant. DB-03
-  protects it even before success; downgrade validates across all tenants and refuses to
-  discard any retained binding. Existing rows are not backfilled from current sources.
-- Added `reports/evidence_sources.py`. Preparation verifies an explicit audit digest, queues
-  the five supporting reports through the existing planner, and returns a versioned binding
-  for atomic pack insertion. It retains the request, tenant/entity/period, request/freeze
-  instants, snapshot manifest, frozen run IDs, supporting run/job IDs and normalized selector
-  hashes, plus the digest verification ID. Loading reauthorizes the selected close and checks
-  the pack row, frozen source and report/job associations without selecting or enqueueing anew.
-- Initial database witnesses: **two passed in 8.81 seconds**. Real report jobs/outputs and
-  audit verification are used around a seeded close. Newer report/digest candidates do not
-  replace the saved selection; repeated loads preserve output bytes. A failed enclosing pack
-  transaction rolls back the pack, reports and jobs together. Legacy NULL, revoked scope,
-  wrong identities/cutoffs, duplicate/missing sources and unversioned documents refuse.
-- Broader source/PG/migration run: **88 passed, one failed in 82.19 seconds**. The failure found
-  pre-existing out-of-period report metadata drift. Migration 0143 corrects its description
-  and IPE sources for the already implemented computed late events; stored runs/outputs stay
-  intact. Next run: **88 passed, one failed in 82.55 seconds** because the owner-role trigger
-  test saw no tenant row under RLS. A role-switch attempt then gave **48 passed, one failed
-  in 23.72 seconds** (owner cannot SET ROLE erev_app). The final fixture temporarily removes
-  FORCE RLS for the table owner in a rolled-back transaction, verifies the row is visible,
-  and proves the trigger refuses the mutation. **Final affected run: 49 passed in 24.25 seconds**,
-  including full upgrade/downgrade/upgrade, catalogue equality, application grants, downgrade
-  refusal and the extended binding/rollback witness. All processes terminal.
-- Logs: `/private/tmp/evidence-binding-{db,final,corrected,verified,guards}.log`. Source/migration
-  Mypy, Ruff lint/format and whitespace pass. Audit-digest and supporting-source-plan notes
-  archived verbatim. Snapshot sandbox rules regenerate evidence packs/report runs instead of copying them.
-- The creation command and job lifecycle/idempotency still need integration with these bindings.
-  Full assembly, audited downloads/routes, automatic generation, other kinds and variance report
-  remain open. Collectors must still validate output/audit bytes and export permissions. No
-  pack endpoint, CTL-041, RPS-16 or production-readiness claim. Current release verification and
-  independent accounting sign-off remain required. Direct main; no deployment or notifications.
 
 ## Outstanding release verification
 

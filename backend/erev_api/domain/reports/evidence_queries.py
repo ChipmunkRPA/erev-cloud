@@ -16,7 +16,7 @@ from erev_api.schemas.evidence_packs import ClosePackOut
 from erev_api.uow import UnitOfWork
 
 
-def _permissions(uow: UnitOfWork, pack_id: UUID, required: frozenset[str]) -> None:
+def require_permissions(uow: UnitOfWork, pack_id: UUID | None, required: frozenset[str]) -> None:
     for permission in sorted(required - uow.principal.permissions):
         audit_writer.record_denied(
             uow.ctx,
@@ -31,7 +31,7 @@ def _permissions(uow: UnitOfWork, pack_id: UUID, required: frozenset[str]) -> No
 
 
 def get_close(uow: UnitOfWork, pack_id: UUID) -> ClosePackOut:
-    _permissions(uow, pack_id, frozenset({"report.run", "audit.read", "contract.read"}))
+    require_permissions(uow, pack_id, frozenset({"report.run", "audit.read", "contract.read"}))
     bound = evidence_sources.load_close(uow, pack_id)
     require_for_entity(uow.ctx, "contract.read", bound.entity_id)
     row = (
@@ -71,7 +71,7 @@ def get_close(uow: UnitOfWork, pack_id: UUID) -> ClosePackOut:
 
 
 def download_close(uow: UnitOfWork, pack_id: UUID) -> tuple[str, bytes]:
-    _permissions(
+    require_permissions(
         uow,
         pack_id,
         frozenset(

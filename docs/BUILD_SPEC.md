@@ -10160,7 +10160,7 @@ Author BS-3. Uses CTR (PHASES §1 row 12). Indicative size 16 items; this phase 
   - **Gates:** GK-01 `make ci`; GK-03 `make openapi`
 
 - [ ] **RPS-16 Period evidence packs and contract sample packs.**
-  - October 8, 2026 partial implementation: first-close worker registered with retained-source readiness, atomic output retention, retry reuse and failure/cancellation cleanup. Public creation/download, automatic enqueue/notification, other kinds and re-lock variance remain incomplete; acceptance/CTL-041 are not claimed.
+  - October 8, 2026 partial implementation: first-close worker registered with retained-source readiness, atomic output retention, retry reuse and failure/cancellation cleanup. Public first-close creation/read/download are available, with idempotent creation requiring an already completed audit verification. Listing, automatic verification/enqueue/notification, other kinds and re-lock variance remain incomplete; acceptance/CTL-041 are not claimed.
   - **Prerequisites:** RPS-15
   - **Scope:**
     - Paths: `backend/erev_api/domain/reports/evidence.py` (`build_pack(jc, params) -> JobOutcome` for kinds `CLOSE`, `CONTRACT_SAMPLE`, `CHANGE`, `ACCESS`; builders of report codes `period_evidence_pack` RPT-54 and `contract_sample_pack` RPT-55); `backend/erev_api/jobs/` handler `EVIDENCE_PACK` (removed from `PENDING_JOB_HANDLERS`); `backend/erev_api/domain/close/commands.py` (lock and re-lock enqueue the `CLOSE` pack, NTF-06); `backend/erev_api/api/v1/evidence_packs.py`; `backend/erev_api/schemas/evidence_packs.py`; `backend/tests/domain/reports/test_evidence_packs.py`; `docs/guides/user-guide.md` (section "Evidence packs"); `docs/api/openapi.json`; `frontend/src/lib/api/schema.d.ts`

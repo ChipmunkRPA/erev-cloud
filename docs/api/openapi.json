@@ -53,6 +53,28 @@
       }
     },
     "schemas": {
+      "AccessPackCreateIn": {
+        "additionalProperties": false,
+        "description": "Access evidence as of an explicit date.",
+        "properties": {
+          "as_of": {
+            "format": "date",
+            "title": "As Of",
+            "type": "string"
+          },
+          "kind": {
+            "const": "ACCESS",
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "as_of"
+        ],
+        "title": "AccessPackCreateIn",
+        "type": "object"
+      },
       "AccessReviewCountsOut": {
         "description": "The SF-14:access-review KPI strip: items by decision.",
         "properties": {
@@ -4442,6 +4464,34 @@
         "title": "CauseEventOut",
         "type": "object"
       },
+      "ChangePackCreateIn": {
+        "additionalProperties": false,
+        "description": "Changes in an inclusive date range, including a single day.",
+        "properties": {
+          "from_date": {
+            "format": "date",
+            "title": "From Date",
+            "type": "string"
+          },
+          "kind": {
+            "const": "CHANGE",
+            "title": "Kind",
+            "type": "string"
+          },
+          "to_date": {
+            "format": "date",
+            "title": "To Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "from_date",
+          "to_date"
+        ],
+        "title": "ChangePackCreateIn",
+        "type": "object"
+      },
       "ChecklistGateKind": {
         "description": "E-61 ``checklist_gate_kind`` (04 §3.4).",
         "enum": [
@@ -4974,6 +5024,42 @@
           }
         },
         "title": "CloseChecklistTemplateUpdateIn",
+        "type": "object"
+      },
+      "ClosePackCreateIn": {
+        "additionalProperties": false,
+        "description": "A specific lock's entity, book and period; no implicit current-lock selection.",
+        "properties": {
+          "book": {
+            "$ref": "#/components/schemas/BookCode"
+          },
+          "entity_code": {
+            "$ref": "#/components/schemas/Identifier",
+            "maxLength": 64
+          },
+          "kind": {
+            "const": "CLOSE",
+            "title": "Kind",
+            "type": "string"
+          },
+          "period_key": {
+            "$ref": "#/components/schemas/Identifier",
+            "maxLength": 16
+          },
+          "period_lock_id": {
+            "format": "uuid",
+            "title": "Period Lock Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "entity_code",
+          "book",
+          "period_key",
+          "period_lock_id"
+        ],
+        "title": "ClosePackCreateIn",
         "type": "object"
       },
       "ClosePackOut": {
@@ -8049,6 +8135,38 @@
         ],
         "title": "ContractQuickList",
         "type": "string"
+      },
+      "ContractSamplePackCreateIn": {
+        "additionalProperties": false,
+        "description": "One to fifty distinct contracts, with an explicit effective-date cutoff.",
+        "properties": {
+          "as_of": {
+            "format": "date",
+            "title": "As Of",
+            "type": "string"
+          },
+          "contract_external_ids": {
+            "items": {
+              "$ref": "#/components/schemas/Identifier"
+            },
+            "maxItems": 50,
+            "minItems": 1,
+            "title": "Contract External Ids",
+            "type": "array"
+          },
+          "kind": {
+            "const": "CONTRACT_SAMPLE",
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "contract_external_ids",
+          "as_of"
+        ],
+        "title": "ContractSamplePackCreateIn",
+        "type": "object"
       },
       "ContractSourceOut": {
         "description": "One item of ``GET /contracts/{id}/sources`` (04 API-R-28, T-CON-02; SCREENS §6.6; BUILD_SPEC\nDIN-4, BS3-D-04): a link of the contract to a source record, with the record's identity and the\nimport row it came from. [J] L5-1-Q-18: 04 §16 names no item schema; the members are the\nT-CON-02 columns, the T-SRC-01 identity and the T-IMP-03 sheet and row number.",
@@ -14815,6 +14933,10 @@
           "journal_export"
         ],
         "title": "HoldType",
+        "type": "string"
+      },
+      "Identifier": {
+        "minLength": 1,
         "type": "string"
       },
       "IdentityProviderRefOut": {
@@ -57814,6 +57936,157 @@
           "API-R-30 Events"
         ],
         "x-erev-permission": "event.record"
+      }
+    },
+    "/api/v1/evidence-packs": {
+      "post": {
+        "description": "Create a first-close pack using a completed verification; replay its original IDs.",
+        "operationId": "evidence_packs_create",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "discriminator": {
+                  "mapping": {
+                    "ACCESS": "#/components/schemas/AccessPackCreateIn",
+                    "CHANGE": "#/components/schemas/ChangePackCreateIn",
+                    "CLOSE": "#/components/schemas/ClosePackCreateIn",
+                    "CONTRACT_SAMPLE": "#/components/schemas/ContractSamplePackCreateIn"
+                  },
+                  "propertyName": "kind"
+                },
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/ClosePackCreateIn"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ContractSamplePackCreateIn"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ChangePackCreateIn"
+                  },
+                  {
+                    "$ref": "#/components/schemas/AccessPackCreateIn"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: unauthenticated, session-expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: not-found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: idempotency-in-progress"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: validation-failed, idempotency-key-reused"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: release-mismatch"
+          }
+        },
+        "summary": "Evidence Packs Create",
+        "tags": [
+          "API-R-42 Evidence packs"
+        ],
+        "x-erev-permission": "evidence.export"
       }
     },
     "/api/v1/evidence-packs/{pack_id}": {
