@@ -2,6 +2,27 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Exact reconciliation freshness — October 8, 2026
+
+- Continued from 364ba52. The new PostgreSQL/API witness publishes a different contract
+  liability account mapping after both January reconciliations are reviewed. Ledger chain
+  position and document counts do not move. The old gate incorrectly passes: baseline
+  **one failed in 11.38 seconds** (`/private/tmp/recon-role-freshness-baseline.log`).
+- Shared the existing attachment balance readers with the gate, without a runtime circular
+  import or a second accounting derivation. The gate, blocker count and reviewed KPI compare
+  all three role amounts, account membership and not-stated reasons/contracts against signed
+  totals. Decimal precision is retained; omitted zero rows preserve the comparison's semantics.
+- **72 PostgreSQL reconciliation/gate/lock checks passed in 227.16 seconds**. The extended
+  API witness also verifies the lock request is refused, then regeneration/preparation/review
+  restores the gate: **one passed in 12.65 seconds**. Ten new precision/basis units pass.
+- The final close-unit run has **420 passed, one failed in 1.74 seconds**: the unchanged
+  producer/fixture audit-key test finds `validation_execution_id` absent from the close-world
+  fixture. Repair that fixture/evidence gap next; no full unit-suite pass is claimed.
+  Three-source mypy, Ruff and whitespace pass. See
+  [dated evidence](docs/release/RECONCILIATION-ROLE-FRESHNESS-2026-10-08.md).
+- Preserve publication exclusions, PolyForm Noncommercial licensing and direct-main workflow.
+  No deployment or readiness claim; independent accounting review and other release gaps remain.
+
 ## Batched amendment and usage attribution — October 8, 2026
 
 - Continued from clean 9b199bb. A version-chain counterexample exposed a remaining B4-2
@@ -168,44 +189,6 @@ not authorize deployment, provisioning or changes to a live database.
 - SUPERVISOR VERIFICATION NEEDED: make zap-baseline
 - make tf-validate: passed on 40ae405 October 7 (validation only); rerun for final candidate.
 - SUPERVISOR VERIFICATION NEEDED: make backup, make restore-verify (isolated local drill only)
-
-## Older backend baseline completed — October 7, 2026
-
-- PID 36126 is terminal and absent. The uninterrupted isolated run on revision 7c9b22d
-  ended with **51 failed, 9,970 passed, 1 skipped, 640 deselected, 3 xfailed in 3h46m**.
-  See docs/release/BACKEND-BASELINE-2026-10-07.md for the complete failure inventory and
-  local evidence paths. No reset/restart occurred. This older run does not verify current main.
-- Next: compare failures with current code, rerun scoped cases, and classify from evidence.
-  Monetary import reconciliation and independent accounting sign-off remain outstanding.
-
-## FX transition refusal and close-policy inputs — October 7, 2026
-
-- PR #7 merged into main (`dc1c116`). Current work continues from that revision; no deployment.
-- Added the missing functional-layer validation before a calculation can emit output. A fully
-  consumed layer must carry zero; an open historical contract-liability layer must carry its
-  remaining original historical basis. Positive and negative residues, partial releases and no
-  release all refuse with the layer, period and expected/actual amounts identified.
-- The reproduced monetary-to-historical defect is now blocked, **not implemented as a supported
-  transition**. A PostgreSQL regression verifies the refused recomputation leaves the previous
-  calculation head and journal lines intact and keeps the group dirty. Public POL-163 authoring
-  remains disabled pending reviewed transition treatment and remaining approval/close validation.
-- Close-run policy digests now include effective contract exceptions through the same period-scoped
-  resolver used by bundles, under tenant scope. Drafts, same-value approvals, approvals after the
-  entity-local period end and IFRS-forced treatment do not alter the digest. Existing digests are
-  unchanged when no exception differs from the entity default.
-- A real database close job records the old inputs, an effective approval makes its gate fail,
-  and the next close job recomputes and records the new inputs. The prior period remains valid;
-  the asset-position fixture needs no monetary adjustment or duplicate journal. Approval/lock
-  concurrency still needs focused review; these tests do not certify the whole close workflow.
-- Actual verification: **578 FX engine, posting, property and architecture tests passed**;
-  **22 database and close-input unit tests passed**. Mypy passed both source files. Ruff lint,
-  formatting and whitespace checks passed. No full-backend or production-readiness claim.
-- Added `docs/release/ACCOUNTING-REVIEW.md` with the measured case, required decisions about
-  correction versus a change in refund rights, economic timing, basis/rates and closed periods,
-  and a pending independent-sign-off record. Reviewer identity was requested; no external contact
-  or accounting sign-off occurred. This packet is not an approval.
-- Earlier continuation entries were moved unchanged to the dated build history to keep this
-  notebook below 20 KB. Publication exclusions and PolyForm Noncommercial licensing are retained.
 
 ## Public repository publication — October 5, 2026 (America/Los_Angeles)
 

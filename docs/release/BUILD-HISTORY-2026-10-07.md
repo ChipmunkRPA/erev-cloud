@@ -2252,3 +2252,41 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
 - B4-2 remains partially open: API attribution, combined lifecycle/exemption/calendar matrix,
   engine 0.4.0 cut and replays still required. Historical outputs unchanged; no deployment or
   readiness claim. Property session 52175 remains active on its original pre-repair revision.
+
+## Older backend baseline completed — October 7, 2026
+
+- PID 36126 is terminal and absent. The uninterrupted isolated run on revision 7c9b22d
+  ended with **51 failed, 9,970 passed, 1 skipped, 640 deselected, 3 xfailed in 3h46m**.
+  See docs/release/BACKEND-BASELINE-2026-10-07.md for the complete failure inventory and
+  local evidence paths. No reset/restart occurred. This older run does not verify current main.
+- Next: compare failures with current code, rerun scoped cases, and classify from evidence.
+  Monetary import reconciliation and independent accounting sign-off remain outstanding.
+
+## FX transition refusal and close-policy inputs — October 7, 2026
+
+- PR #7 merged into main (`dc1c116`). Current work continues from that revision; no deployment.
+- Added the missing functional-layer validation before a calculation can emit output. A fully
+  consumed layer must carry zero; an open historical contract-liability layer must carry its
+  remaining original historical basis. Positive and negative residues, partial releases and no
+  release all refuse with the layer, period and expected/actual amounts identified.
+- The reproduced monetary-to-historical defect is now blocked, **not implemented as a supported
+  transition**. A PostgreSQL regression verifies the refused recomputation leaves the previous
+  calculation head and journal lines intact and keeps the group dirty. Public POL-163 authoring
+  remains disabled pending reviewed transition treatment and remaining approval/close validation.
+- Close-run policy digests now include effective contract exceptions through the same period-scoped
+  resolver used by bundles, under tenant scope. Drafts, same-value approvals, approvals after the
+  entity-local period end and IFRS-forced treatment do not alter the digest. Existing digests are
+  unchanged when no exception differs from the entity default.
+- A real database close job records the old inputs, an effective approval makes its gate fail,
+  and the next close job recomputes and records the new inputs. The prior period remains valid;
+  the asset-position fixture needs no monetary adjustment or duplicate journal. Approval/lock
+  concurrency still needs focused review; these tests do not certify the whole close workflow.
+- Actual verification: **578 FX engine, posting, property and architecture tests passed**;
+  **22 database and close-input unit tests passed**. Mypy passed both source files. Ruff lint,
+  formatting and whitespace checks passed. No full-backend or production-readiness claim.
+- Added `docs/release/ACCOUNTING-REVIEW.md` with the measured case, required decisions about
+  correction versus a change in refund rights, economic timing, basis/rates and closed periods,
+  and a pending independent-sign-off record. Reviewer identity was requested; no external contact
+  or accounting sign-off occurred. This packet is not an approval.
+- Earlier continuation entries were moved unchanged to the dated build history to keep this
+  notebook below 20 KB. Publication exclusions and PolyForm Noncommercial licensing are retained.

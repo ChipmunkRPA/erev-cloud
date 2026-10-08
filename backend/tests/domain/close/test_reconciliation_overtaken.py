@@ -837,3 +837,77 @@ def test_an_event_that_began_before_a_generation_and_committed_after_it_overtake
         liability["source_amount"]["amount"],
         liability["difference"]["amount"],
     ) == ("-103930.14", "-103430.14", "500.00")
+
+
+@pytest.mark.control("CTL-025")
+def test_reviewed_role_mapping_change_without_ledger_or_document_movement(
+    app: FastAPI, clock: FrozenClock, pellworth: ReportWorld
+) -> None:
+    """Publishing another role account changes the signed basis without a seal or event."""
+    from erev_api.db.tables import gl_account, reconciliation
+    from support.reference import mapping_published
+
+    world = pellworth
+    maya = enrolled(app, clock, world.maya.member)
+    world = carrying(world, maya=maya)
+    priya = step_up(app, clock, world.priya)
+    january = next(
+        item
+        for item in periods(app, maya, entity="AVM-US")
+        if item["period"]["period_key"] == JANUARY
+    )
+    period_id = UUID(str(january["period"]["id"]))
+    balances = _journalised(world, clock)
+    balances["2100"] -= Decimal("120000.00")
+    _billing_reviewed(world, maya, priya)
+    reviewed = _ledger_reviewed(world, maya, priya, balances)
+    assert _gate(world, period_id) == ("PASSED", 0, None, 0, 2)
+    with world.place.uow() as uow:
+        scope = gates.scope_of_period(uow.session, world.entity_id, BOOK, period_id)
+        assert scope is not None
+        before = (
+            reconciliation_domain.chain_position(uow.session, scope),
+            uow.session.scalar(select(gates.ledger_documents(scope))),
+        )
+        account_id = uow.session.scalar(select(gl_account.c.id).where(gl_account.c.code == "1210"))
+        assert account_id is not None
+    mapping_published(
+        app,
+        maya,
+        step_up(app, clock, world.marcus),
+        name="Reviewed role basis replacement",
+        effective_from="2026-02-01T00:00:00Z",
+        rules=[{"account_role": "CONTRACT_LIABILITY", "gl_account_id": str(account_id)}],
+    )
+    with world.place.uow() as uow:
+        after = (
+            reconciliation_domain.chain_position(uow.session, scope),
+            uow.session.scalar(select(gates.ledger_documents(scope))),
+        )
+        assert after == before
+        assert not uow.session.scalar(
+            select(gates.overtaken(scope)).where(reconciliation.c.id == UUID(reviewed["id"]))
+        )
+    assert _gate(world, period_id) == ("FAILED", 1, LEDGER_OUT_OF_DATE, 1, 1)
+    started = post(
+        app,
+        f"{PERIODS}/{january['id']}/start-close",
+        maya,
+        {"comment": "Verify current role basis"},
+        if_match=f'"r{january["row_version"]}"',
+    )
+    assert started.status_code == 200, started.text
+    with pytest.raises(Problem) as refused, world.place.uow() as uow:
+        close_commands.request_lock(
+            uow,
+            state_id=UUID(str(january["id"])),
+            body=PeriodLockRequestIn(certification_comment="January close"),
+            check_version=lambda actual: None,
+        )
+    assert refused.value.slug == "close-gates-failed"
+    assert {error.rule_id: error.message for error in refused.value.errors}[
+        GATE
+    ] == LEDGER_OUT_OF_DATE
+    _ledger_reviewed(world, maya, priya, balances)
+    assert _gate(world, period_id) == ("PASSED", 0, None, 0, 2)
+    assert recon.shown(app, maya, reviewed["id"])["is_current"] is False

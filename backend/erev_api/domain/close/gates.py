@@ -197,7 +197,7 @@ from erev_api.db.tables import (
     subledger_posting_seal,
     sync_run,
 )
-from erev_api.domain.close import quarantines, run_inputs
+from erev_api.domain.close import quarantines, reconciliation_balances, run_inputs
 from erev_api.domain.contracts import period_ends
 from erev_api.domain.journals import completeness as completeness_rules
 from erev_api.domain.platform import jobs as platform_jobs
@@ -627,7 +627,9 @@ def _population(table: Any, *conditions: ColumnElement[bool]) -> Select[Any]:
     return select(table.c.id).select_from(table).where(*conditions)
 
 
-def _population_members(session: Session, scope: PeriodScope) -> dict[str, tuple[str, ...]]:
+def _population_members(
+    session: Session, scope: PeriodScope, *, known_at: datetime | None = None
+) -> dict[str, tuple[str, ...]]:
     populations = _blocker_populations(scope)
     populations["data_quality_blocking"] = _population(exception_item, *_quality_conditions(scope))
     row = (
@@ -645,10 +647,20 @@ def _population_members(session: Session, scope: PeriodScope) -> dict[str, tuple
         .one()
     )
     # Typed identifiers distinguish two different source populations with the same UUID.
-    return {
+    members = {
         key: tuple(sorted(f"{key}:{identifier}" for identifier in (row[key] or ())))
         for key in populations
     }
+    members["reconciliations_unsigned"] = tuple(
+        sorted(
+            set(members["reconciliations_unsigned"])
+            | {
+                f"reconciliations_unsigned:{identifier}"
+                for identifier in _role_overtaken_ids(session, scope, known_at=known_at)
+            }
+        )
+    )
+    return members
 
 
 def _entity_contracts(entity_id: UUID) -> Select[Any]:
@@ -1137,7 +1149,12 @@ BLOCKER_KEYS: Final = (
 
 
 def _counts_row(session: Session, scope: PeriodScope) -> Mapping[Any, Any]:
-    return session.execute(blocker_statement(scope)).mappings().one()
+    row = dict(session.execute(blocker_statement(scope)).mappings().one())
+    role_outdated = _role_overtaken_ids(session, scope)
+    if role_outdated:
+        unsigned = set(session.scalars(_blocker_populations(scope)["reconciliations_unsigned"]))
+        row["reconciliations_unsigned"] = len(unsigned | role_outdated)
+    return row
 
 
 def blocker_counts(session: Session, scope: PeriodScope) -> dict[str, int]:
@@ -1166,7 +1183,7 @@ def reconciliations_reviewed(
     auto-certified or certified reconciliation of the period, over the required kinds."""
     kinds = required_kinds(session, scope, known_at=known_at)
     generated = _reconciliation_statuses(session, scope)
-    outdated = _overtaken_kinds(session, scope)
+    outdated = _overtaken_kinds(session, scope, known_at=known_at)
     reviewed = sum(
         1
         for kind in kinds
@@ -1359,6 +1376,9 @@ def overtaken(scope: PeriodScope) -> ColumnElement[bool]:
     21:41 and 22:52 and of 2026-10-02 00:09 and 01:41; 04 T-CLS-06 rev 1.259). Such a row does
     not count as reviewed; generating the reconciliation again gives the current one.
 
+    This SQL predicate is the position/count part of freshness. The count, member and
+    reviewed-KPI readers also apply ``_role_overtaken_ids`` for the exact GL role basis.
+
     A reconciliation records what it READ, as a position and a count, not as a time. A line's
     ``recorded_at`` — like a source invoice's ``created_at`` and an event's ``recorded_at`` — is
     the START of its unit of work, so "recorded after" is not "committed after": a posting that
@@ -1455,13 +1475,53 @@ def overtaken(scope: PeriodScope) -> ColumnElement[bool]:
     return and_(row.status.in_(OVERTAKEN_STATUSES), or_(later_line, source_moved, subledger_moved))
 
 
-def _overtaken_kinds(session: Session, scope: PeriodScope) -> frozenset[str]:
+def _role_overtaken_ids(
+    session: Session, scope: PeriodScope, *, known_at: datetime | None = None
+) -> set[UUID]:
+    """Attached, reviewed GL reconciliations whose exact role basis has changed."""
+    rows = session.execute(
+        select(reconciliation.c.id, reconciliation.c.totals, reconciliation.c.as_of_known_at).where(
+            _of_period(reconciliation, scope),
+            ~superseded(),
+            reconciliation.c.kind == ReconciliationKind.SUBLEDGER_TO_GL.value,
+            reconciliation.c.status.in_(OVERTAKEN_STATUSES),
+            or_(
+                reconciliation.c.source_file_id.is_not(None),
+                reconciliation.c.sync_run_id.is_not(None),
+            ),
+        )
+    ).all()
+    if not rows:
+        return set()
+    # Never read earlier than the signed snapshot. The server cutoff also covers committed
+    # computations when an application's frozen/test clock trails the database clock.
+    cutoff = max(
+        session.scalar(select(func.transaction_timestamp())), *(row.as_of_known_at for row in rows)
+    )
+    if known_at is not None:
+        cutoff = max(cutoff, known_at)
+    roles = reconciliation_balances.current_roles(session, scope, cutoff)
+    return {
+        UUID(str(row.id))
+        for row in rows
+        if not reconciliation_balances.matches_roles(
+            row.totals or (), roles, scope.functional_currency
+        )
+    }
+
+
+def _overtaken_kinds(
+    session: Session, scope: PeriodScope, *, known_at: datetime | None = None
+) -> frozenset[str]:
     """The kinds whose current reconciliation of the period is ``overtaken``."""
+    role_outdated = _role_overtaken_ids(session, scope, known_at=known_at)
     return frozenset(
         _text(kind)
         for kind in session.execute(
             select(reconciliation.c.kind).where(
-                _of_period(reconciliation, scope), ~superseded(), overtaken(scope)
+                _of_period(reconciliation, scope),
+                ~superseded(),
+                or_(overtaken(scope), reconciliation.c.id.in_(role_outdated)),
             )
         ).scalars()
     )
@@ -1603,7 +1663,7 @@ def signals(
     """Everything the gates read, in a few statements. ``files`` / ``keyring`` let the completeness
     assertion read a run's held detail file when its audit event predates
     ``held_subledger_line_ids`` (CLO-10; Codex 1317 R5-ORDER-1)."""
-    members = _population_members(session, scope)
+    members = _population_members(session, scope, known_at=known_at)
     row = {key: len(values) for key, values in members.items()}
     row["interface_failures"] = row["imports_failed"] + row["sync_failed"]
     runs_live = int(row["runs_live"])
@@ -1644,7 +1704,16 @@ def signals(
         for kind in kinds
         if kind in generated and not generated[kind] & REVIEWED_RECONCILIATIONS
     )
-    overtaken_kinds = {_text(found.kind) for found in reconciliation_rows if found.overtaken}
+    unsigned_members = set(members["reconciliations_unsigned"])
+    overtaken_kinds = {
+        _text(found.kind)
+        for found in reconciliation_rows
+        if found.overtaken
+        or (
+            _text(found.status) in OVERTAKEN_STATUSES
+            and f"reconciliations_unsigned:{found.id}" in unsigned_members
+        )
+    }
     outdated = tuple(kind for kind in kinds if kind in overtaken_kinds)
     return CloseSignals(
         blockers={key: int(row[key]) for key in BLOCKER_KEYS},

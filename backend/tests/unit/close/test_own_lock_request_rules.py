@@ -117,7 +117,9 @@ def test_every_reader_of_the_count_goes_through_the_one_statement() -> None:
     ``pending_approvals`` — there the lock request is a request someone has to decide."""
     assert "blocker_statement(scope)" in inspect.getsource(gates._counts_row)
     assert "_counts_row(session, scope)" in inspect.getsource(gates.blocker_counts)
-    assert "_population_members(session, scope)" in inspect.getsource(gates.signals)
+    assert "_population_members(session, scope, known_at=known_at)" in inspect.getsource(
+        gates.signals
+    )
     for reader in (gates.blocker_statement, gates._population_members):
         assert "_blocker_populations(scope)" in inspect.getsource(reader), reader.__name__
     assert 'blockers["approvals_pending"]' in inspect.getsource(gates.gate_results)
