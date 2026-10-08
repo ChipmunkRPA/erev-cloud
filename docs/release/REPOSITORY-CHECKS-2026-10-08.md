@@ -52,6 +52,28 @@ nor `docs/research/` has tracked files. These checks do not assert a full securi
 Lint log: `/private/tmp/erev-lint-2026-10-08.log`.
 SHA-256: `a8362ac6e3c0f18d74bd901dcf7637c6066d50a3c7bd3260d236b3d17cc127f7`.
 
+## Golden parity gate
+
+`make parity` passed on clean revision `6d33ae174652db51f4400c2219eaa5420f6e570b`.
+All 18 legacy fixture files verified. Pytest completed **130 passed in 106.29 seconds**:
+122 selected golden cases passed (zero failures/skips), plus eight additional checks.
+The golden population comprises 56 class A, nine class B and 57 class C cases.
+
+The immutable-context report confirms unchanged source tree and context hashes, consistent
+Python and Node dependencies with no mismatches, and a clean unchanged parent checkout.
+Captured tree: `cfaa43a699eefb870a97576c9348b50f5d4d9523`.
+Context SHA-256: `f50b15ad04ea2d42ab7f3ceaa60454ee047bc51b2462b1ac87ac642cd9adc93a`.
+Run ID: `adf406cc0f7e49afb127da74fb2f2ce0`; finished October 8 at 08:08:33 UTC.
+
+The nine class B cases still require independent revenue-accountant approval across five
+units: DEV-002, DEV-052, DEV-010, DEV-050 and DEV-011. Machine parity does not provide that
+approval. Rerun the gate for the final release candidate after subsequent source changes.
+
+Local report: `.run/reports/parity/report.json`, SHA-256
+`bd84543f6abc41241761383867747749a27d3c0bb27d50caf1e87394fbf82831`.
+Local log: `/private/tmp/erev-parity-2026-10-08.log`, SHA-256
+`2aeb81f968f2321608c05c4f7f9c49c2cc1c19d163898e3717d5011da11ce31e`.
+
 ## Property gate still running
 
 `make properties` started on the clean starting revision, with the thorough Hypothesis
@@ -79,6 +101,6 @@ These local logs are not shipped as repository files. Their hashes bind the obse
 
 ## Remaining work
 
-The property result is pending. Full current backend/CI, accounting corpus/parity, browser,
+The property result is pending. Full current backend/CI, accounting corpus, browser,
 volume, container and restore checks still need current release-candidate evidence. Remaining
 implementation gaps, engine release cut/replays and independent accounting sign-off stay open.
