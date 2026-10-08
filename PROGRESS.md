@@ -2,6 +2,24 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Control gate result and RPO closing defect — October 8, 2026
+
+- Completed the preserved control gate on immutable 68d9607: **494 passed, one failed,
+  10,483 deselected in 820.68 seconds**. Report: 45 controls pass, CTL-018 fails, CTL-041,
+  CTL-045 and CTL-048 lack evidence. The sole test failure is the relock witness already
+  corrected in 7c83cb4 and verified separately. No canonical rerun/pass is claimed.
+  Source/dependency bindings verify; hashes are in the dated repository-checks note.
+- Measured an additional B4-2 defect on clean 7c83cb4 using real recognition and disclosure
+  stages with allocated-state fixtures. A 12,000 fixed fee plus 150 March usage has 9,000
+  remaining in recognition, but rollforward closing is 8,850 with zero unexplained difference.
+  Pure usage produces the known 150 unexplained amount. This is engine-scoped evidence,
+  not an API measurement. Recorded inputs, outputs, reproduction and full repair scope in
+  docs/release/RPO-REALISED-FEES-2026-10-08.md; updated B4-2. A cause-map-only patch would
+  miss the incorrect closing; dated realized allocation must also be carried into measurement.
+- Control session 36008 is terminal. Property session 52175 / PID 6358 is confirmed live,
+  still in determinism, in its original immutable context. Keep that run; no database test
+  process is active. Archived invitation-erasure evidence verbatim. No deployment/readiness claim.
+
 ## Control verification and relock witness — October 8, 2026
 
 - Started canonical `make controls-report` on clean main 68d9607. It remains active in
@@ -50,36 +68,6 @@
 - Reconfirmed the owner's direct-to-main workflow: no open GitHub PRs and only remote
   main. Future verified changes go directly to main unless protection requires a PR;
   merge required PRs after checks and remove merged branches. No deployment.
-
-## Invitation-erasure identity recheck — October 8, 2026
-
-- Continued from clean published main 4e90c37; previous turn recorded passing full lint.
-  Closed B6-5: invitations lock and reread existing identities after locking any reused
-  membership, before ending prior membership state, assigning roles or queuing mail. Disabled
-  identities, changed normalized email and operator identities are refused. The acting-tenant
-  membership-to-identity lock order matches erasure. New memberships also pin/recheck existing
-  identities. A later explicit invitation to an erased person's former address may still create
-  a separate new identity; the retained erased identity is never revived.
-- PostgreSQL counterexample: **1 failed, 11 deselected in 7.71 seconds**,
-  /private/tmp/invitation-erasure-baseline.log. A real erasure committed between discovery and
-  membership lock; the invitation wrongly returned 201 and revived the erased row as INVITED.
-  After repair, privacy/operator-reinvite/acceptance checks: **19 passed, 1 failed in 49.46
-  seconds**, /private/tmp/invitation-erasure-fixed.log. Only an old 12-preference expectation
-  failed: APPROVAL_UNASSIGNED had made 13. Replaced the count with the explicit expected kinds
-  and corrected the stale activation docstring.
-- Added erased-identity refusal in another workspace. Expanded privacy/invitation/access-scope
-  and membership/person architecture checks: **29 passed in 66.36 seconds**,
-  /private/tmp/invitation-erasure-final.log. After normalizing the compared address, focused
-  erased/racing/new-identity verification: **3 passed, 10 deselected in 9.67 seconds**,
-  /private/tmp/invitation-erasure-verified.log. These database processes are terminal. Source
-  Mypy (two files), Ruff lint/format and whitespace checks pass. Tests assert no invitation
-  outbox row or invitation audit survives the refusal. No live email was sent.
-- Property gate session 52175 / PID 6358 remains live in its original immutable context;
-  two metamorphic tests passed so far. Its fixtures were inspected: no database use, so the
-  separate PostgreSQL regressions above could run safely; no two database pytest processes
-  overlapped. Keep polling that same property process. Updated limitations/developer guide,
-  archived prior SSP-routing evidence verbatim. No deployment or readiness claim. Remaining
-  implementation/release checks, engine cut/replays and independent sign-off remain open.
 
 ## GL reconciliation ledger-history freshness — October 8, 2026
 

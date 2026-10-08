@@ -115,10 +115,20 @@ Local log `/private/tmp/erev-answer-keys-2026-10-08.log` SHA-256:
 
 `make controls-report` started on clean revision
 `68d960754ea25964340d30aa15498ecdf934fae1` in immutable context
-`.run/gates/ctx-controls-report-68d960754ea2-9993`. Executor session **36008**, process
-10033, remains active; log `/private/tmp/erev-controls-2026-10-08.log`. Collection independently
-confirmed 495 tagged tests. One relock test has failed so far; no final G7 result is claimed.
-Preserve and poll this same run. Its original source does not include the correction below.
+`.run/gates/ctx-controls-report-68d960754ea2-9993`. It completed with **494 passed,
+one failed, 10,483 deselected and one warning in 820.68 seconds**. The report counts 45 of
+49 controls passing, CTL-018 failing, and CTL-041 / CTL-045 / CTL-048 missing tagged evidence.
+The failure is the relock witness corrected below; its original immutable source predates that
+correction. No rerun or current canonical G7 pass is claimed. The three missing features remain
+unimplemented: period evidence pack, AI proposal acceptance and migration promotion.
+
+Source tree stayed `d4c78502232c8a2ec9133d798bf07f704b0a2947`; context SHA-256 stayed
+`1d6589094361a11c407fe22d1183ec9bf2603d99d834adda709aebdc914403db`.
+Python and Node dependency bindings remained consistent with no mismatches.
+Report `.run/reports/controls-report/report.json` SHA-256:
+`88fe72bff682edd07d588d610b3cb5eac0ceba9312d5f230935631b3653a64b7`.
+Log `/private/tmp/erev-controls-2026-10-08.log` SHA-256:
+`0800467b8d1954c88541c51e7c063b32e12d229ec2e9a9931c21a328c890a9d6`.
 
 Reproduced that test in a separate disposable database `erev_rv_controlfix` on the same local
 PostgreSQL server, without resetting the gate's `erev_rv_cont` database. The initial attempt
@@ -136,7 +146,7 @@ control or close the zero-net journal approval gap.
 
 All three journal-chain tests passed in **42.13 seconds**; Ruff lint/format and whitespace
 checks passed. The diagnostic process is terminal and its disposable database was removed.
-Only the full control gate uses the primary database; the property gate uses no database.
+The full control gate is now terminal; the continuing property gate uses no database.
 
 Local baseline log `/private/tmp/erev-relock-control-baseline-utf8.log`, SHA-256
 `e99327255ccbd6836546bfc0db0e07928030d741bbe2f2209b17e675a118c1fe`.

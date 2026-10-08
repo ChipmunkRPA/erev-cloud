@@ -2127,3 +2127,33 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
 - Archived prior journal-validation evidence verbatim. Remaining implementation, current
   release checks, engine cut/replays and independent accounting sign-off remain open. No
   deployment/readiness claim; preserve exclusions and noncommercial licensing; push to main.
+
+## Invitation-erasure identity recheck — October 8, 2026
+
+- Continued from clean published main 4e90c37; previous turn recorded passing full lint.
+  Closed B6-5: invitations lock and reread existing identities after locking any reused
+  membership, before ending prior membership state, assigning roles or queuing mail. Disabled
+  identities, changed normalized email and operator identities are refused. The acting-tenant
+  membership-to-identity lock order matches erasure. New memberships also pin/recheck existing
+  identities. A later explicit invitation to an erased person's former address may still create
+  a separate new identity; the retained erased identity is never revived.
+- PostgreSQL counterexample: **1 failed, 11 deselected in 7.71 seconds**,
+  /private/tmp/invitation-erasure-baseline.log. A real erasure committed between discovery and
+  membership lock; the invitation wrongly returned 201 and revived the erased row as INVITED.
+  After repair, privacy/operator-reinvite/acceptance checks: **19 passed, 1 failed in 49.46
+  seconds**, /private/tmp/invitation-erasure-fixed.log. Only an old 12-preference expectation
+  failed: APPROVAL_UNASSIGNED had made 13. Replaced the count with the explicit expected kinds
+  and corrected the stale activation docstring.
+- Added erased-identity refusal in another workspace. Expanded privacy/invitation/access-scope
+  and membership/person architecture checks: **29 passed in 66.36 seconds**,
+  /private/tmp/invitation-erasure-final.log. After normalizing the compared address, focused
+  erased/racing/new-identity verification: **3 passed, 10 deselected in 9.67 seconds**,
+  /private/tmp/invitation-erasure-verified.log. These database processes are terminal. Source
+  Mypy (two files), Ruff lint/format and whitespace checks pass. Tests assert no invitation
+  outbox row or invitation audit survives the refusal. No live email was sent.
+- Property gate session 52175 / PID 6358 remains live in its original immutable context;
+  two metamorphic tests passed so far. Its fixtures were inspected: no database use, so the
+  separate PostgreSQL regressions above could run safely; no two database pytest processes
+  overlapped. Keep polling that same property process. Updated limitations/developer guide,
+  archived prior SSP-routing evidence verbatim. No deployment or readiness claim. Remaining
+  implementation/release checks, engine cut/replays and independent sign-off remain open.
