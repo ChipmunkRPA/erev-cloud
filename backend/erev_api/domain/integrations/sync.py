@@ -2279,8 +2279,8 @@ def _totals_mismatch(
         .mappings()
         .one()
     )
-    owner_id = connection["owner_membership_id"]
-    if item.created and owners.eligible(uow, owner_id, connection["entity_ids"]):
+    owner_id = owners.recipient(uow, dict(connection)) if item.created else None
+    if owner_id is not None:
         uow.session.execute(
             update(exception_item)
             .where(exception_item.c.id == item.id)

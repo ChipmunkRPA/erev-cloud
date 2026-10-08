@@ -3224,3 +3224,12 @@ An explicitly entered reverse pair suppresses derivation. Closing/average dates 
 the source period key. Source-row targets must name all and only the entered rates. A mismatch
 rolls back every version in the import, including FX approval requests; successful imports
 still require separate FX approval before rates take effect.
+
+
+For sync control-total mismatches, prefer the configured eligible integration owner. If
+unavailable, resolve the connection's human creator to a current tenant membership and
+recheck active status plus integration.manage and contract.read over the whole connection.
+An eligible creator owns the exception and receives its notification; the configured owner
+is not rewritten. With no eligible recipient, retain the unassigned blocking exception.
+API-client/system creators never resolve to a human through a coincident identifier.
+Deduplication prevents a repeated mismatch handler from assigning or notifying twice.

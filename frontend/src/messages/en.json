@@ -7085,8 +7085,8 @@
   "close.reopen.evidenceContract": "Open contract",
   "data.integrations.owner.automatic": "Assign to me if eligible",
   "data.integrations.owner.current": "Current owner",
-  "data.integrations.owner.help": "Receives control-total mismatch notifications. The owner must be active and able to manage and read every entity of this connection. User administrators can select other members.",
+  "data.integrations.owner.help": "Receives control-total mismatch notifications. Recipients must be active and able to manage and read every entity of this connection. If this owner is unavailable, the connection creator receives the notification when eligible. User administrators can select other members.",
   "data.integrations.owner.label": "Integration owner",
-  "data.integrations.owner.missing": "No integration owner is assigned. Review the exception queue after each sync; mismatch notifications have no recipient.",
+  "data.integrations.owner.missing": "No integration owner is assigned. Mismatch notifications go to the connection creator if still eligible. Review the exception queue after each sync; if the creator is ineligible, no notification is sent.",
   "data.integrations.owner.unassigned": "Unassigned"
 }

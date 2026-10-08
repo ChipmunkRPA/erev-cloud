@@ -468,7 +468,7 @@ def test_control_totals_on_sync_run(world: IntegrationWorld) -> None:
     assert len(world.rows(select(contract))) == 3  # the ingestion stands; the mismatch is flagged
 
 
-@pytest.mark.parametrize("owner_state", ["unassigned", "suspended", "revoked"])
+@pytest.mark.parametrize("owner_state", ["suspended", "revoked", "scoped"])
 def test_mismatch_does_not_notify_an_ineligible_owner(
     world: IntegrationWorld, monkeypatch: pytest.MonkeyPatch, owner_state: str
 ) -> None:
@@ -478,9 +478,7 @@ def test_mismatch_does_not_notify_an_ineligible_owner(
     original = sync_module._totals_mismatch
 
     def lose_access(uow: Any, **kwargs: Any) -> None:
-        if owner_state == "unassigned":
-            uow.session.execute(update(integration_connection).values(owner_membership_id=None))
-        elif owner_state == "suspended":
+        if owner_state == "suspended":
             uow.session.execute(
                 update(tenant_membership)
                 .where(tenant_membership.c.id == world.nikhil.member.membership_id)
@@ -489,8 +487,21 @@ def test_mismatch_does_not_notify_an_ineligible_owner(
         else:
             uow.session.execute(
                 update(role_assignment)
-                .where(role_assignment.c.membership_id == world.nikhil.member.membership_id)
+                .where(
+                    role_assignment.c.membership_id == world.nikhil.member.membership_id,
+                    role_assignment.c.is_all_entities.is_(True),
+                )
                 .values(revoked_at=uow.now)
+            )
+        if owner_state == "scoped":
+            from support.rows import insert_role_assignment
+
+            insert_role_assignment(
+                uow.session,
+                tenant_id=world.tenant_id,
+                membership_id=world.nikhil.member.membership_id,
+                role_code="integration_admin",
+                entity_ids=[world.entity_id],
             )
         original(uow, **kwargs)
 
@@ -571,3 +582,53 @@ def test_owner_scope_must_cover_expanded_connection(world: IntegrationWorld) -> 
     )
     assert changed.status_code == 200, changed.text
     assert changed.json()["entity_ids"] == []
+
+
+@pytest.mark.parametrize("owner_state", ["unassigned", "suspended", "revoked", "eligible"])
+def test_mismatch_falls_back_to_eligible_connection_creator(
+    world: IntegrationWorld, monkeypatch: pytest.MonkeyPatch, owner_state: str
+) -> None:
+    from support.principals import colleague
+    from support.reference import assign
+
+    other = colleague(world.tenant_id, "configured-owner")
+    assign(other, "integration_admin")
+    ports.register_inbound_adapter("SALESFORCE", _OverstatedSource)
+    crm = connection(world, **{**SALESFORCE_BODY, "owner_membership_id": str(other.membership_id)})
+    original = sync_module._totals_mismatch
+
+    def change_owner(uow: Any, **kwargs: Any) -> None:
+        if owner_state == "unassigned":
+            uow.session.execute(update(integration_connection).values(owner_membership_id=None))
+        elif owner_state == "suspended":
+            uow.session.execute(
+                update(tenant_membership)
+                .where(tenant_membership.c.id == other.membership_id)
+                .values(status="SUSPENDED")
+            )
+        elif owner_state == "revoked":
+            uow.session.execute(
+                update(role_assignment)
+                .where(role_assignment.c.membership_id == other.membership_id)
+                .values(revoked_at=uow.now)
+            )
+        original(uow, **kwargs)
+        original(uow, **{**kwargs, "counts": sync_module.Counts()})
+
+    monkeypatch.setattr(sync_module, "_totals_mismatch", change_owner)
+    row, _ = sync(world, crm)
+    assert row["status"] == "CONTROL_TOTAL_MISMATCH"
+    [item] = world.rows(
+        select(exception_item).where(exception_item.c.code == "CONTROL_TOTALS_MISMATCH")
+    )
+    recipient = (
+        other.membership_id if owner_state == "eligible" else world.nikhil.member.membership_id
+    )
+    assert item["owner_membership_id"] == recipient
+    notes = world.rows(select(notification).where(notification.c.subject_id == item["id"]))
+    assert len(notes) == 1
+    assert notes[0]["recipient_membership_id"] == recipient
+    [stored] = world.rows(select(integration_connection))
+    assert stored["owner_membership_id"] == (
+        None if owner_state == "unassigned" else other.membership_id
+    )

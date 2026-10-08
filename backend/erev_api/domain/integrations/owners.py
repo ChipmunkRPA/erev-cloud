@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import select
 
 from erev_api.auth.permissions import effective_grants
 from erev_api.db.tables import tenant_membership
-from erev_api.enums import MembershipStatus
+from erev_api.enums import MembershipStatus, PrincipalKind
 from erev_api.problems import ProblemError
 from erev_api.uow import UnitOfWork
 
@@ -49,3 +50,27 @@ def errors(
             ),
         )
     ]
+
+
+def recipient(uow: UnitOfWork, connection: Mapping[str, Any]) -> UUID | None:
+    """Prefer the configured owner; fall back to the eligible human creator of the connection.
+
+    Connection creation already defaults ownership to that member. Resolve current membership
+    and grants again when raising a failure; never change the configured owner implicitly.
+    """
+    owner_id = connection["owner_membership_id"]
+    entities = connection["entity_ids"]
+    if eligible(uow, owner_id, entities):
+        return UUID(str(owner_id))
+    if (
+        connection["created_by_kind"] != PrincipalKind.USER.value
+        or connection["created_by"] is None
+    ):
+        return None
+    creator_id = uow.session.execute(
+        select(tenant_membership.c.id).where(
+            tenant_membership.c.tenant_id == uow.principal.tenant_id,
+            tenant_membership.c.user_id == connection["created_by"],
+        )
+    ).scalar_one_or_none()
+    return UUID(str(creator_id)) if eligible(uow, creator_id, entities) else None

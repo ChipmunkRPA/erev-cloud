@@ -1825,3 +1825,32 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   Next: legacy modification monetary read-back. Integration-owner fallback, AI, other
   implementation/verification gaps and independent accounting sign-off remain open.
   No deployment. Publication exclusions/noncommercial licensing are unchanged.
+
+## Legacy modification reconciliation and coverage audit — October 7, 2026
+
+- Continued from clean main 35c9fe2. Prior turn published legacy progress checks (progress).
+  Added independent amendment read-back for signed consideration and quantity deltas,
+  line identities/dates, all-obligation treatment, approved SSP reference and override defaults.
+  Also checks source/approval/synthetic modification identity, emitted targets and added
+  obligation product identities. Expected facts do not reuse emitter line/catalogue builders.
+- Prospective, retrospective, price-only, negative and add-obligation workflows are covered
+  by new tests. Faults injected after approval alter amount, quantity, treatment, SSP basis
+  or the added obligation's stored product. Mismatches must roll back the whole import.
+- Initial replay: **3 passed, 6 failed in 124.28 seconds**,
+  /private/tmp/legacy-modification-first.log. The new expectation omitted default SSP
+  is_override/justification fields; corrected the comparison. Expanded replay, matrix and
+  layer/import-cycle run: **63 passed, 3 failed in 216.60 seconds**,
+  /private/tmp/legacy-modification-final.log. The three new add-obligation fixtures omitted
+  required account fields, so validation refused them before the gate. Completed those rows;
+  corrected matrix rerun: **10 passed in 66.40 seconds**,
+  /private/tmp/legacy-modification-corrected.log. All runs terminal. Source Mypy,
+  Ruff lint/format and whitespace pass.
+- Audited the actual emitter registry and callback bodies. Added dated coverage inventory
+  docs/release/IMPORT-RECONCILIATION-2026-10-07.md; a callback's presence is not full coverage.
+  Remaining: CSV progress refund/numeric inputs, FX rates, bundle quantities, invoice/usage
+  quantities and explicit event obligation binding. CSV modifications have no emitter and
+  remain explicitly refused; legacy support does not imply CSV support.
+- Updated B1-19/developer guidance and preserved old SSP evidence in build history. Next:
+  close the named CSV gaps. Other implementation/verification gaps, integration-owner fallback,
+  AI and independent accounting sign-off remain open. No whole-backend/readiness claim or
+  deployment. Publication exclusions/noncommercial licensing are unchanged.

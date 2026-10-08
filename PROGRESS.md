@@ -2,6 +2,32 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Integration mismatch recipient fallback — October 7, 2026
+
+- Continued from clean main e12dcfd; prior turn published verified FX checks (progress).
+  Sync mismatches now prefer the configured eligible owner, then the connection's human
+  creator if still an active tenant member with manage/read scope over every affected entity.
+  Assign the exception and notify once; do not rewrite connection ownership. No broad role
+  broadcast or API-client/system-to-human identifier fallback. With no qualified recipient,
+  preserve the unassigned blocking exception for authorized queue review.
+- Existing sync/reconciliation tests plus new fallback/priority/deduplication matrix:
+  **11 passed in 23.65 seconds**, /private/tmp/integration-owner-fallback-first.log, terminal.
+  Added narrowed-creator-scope refusal and updated owner help/missing-owner UI copy.
+  Expanded backend/architecture run: **58 passed, 1 failed in 35.08 seconds**,
+  /private/tmp/integration-owner-fallback-final.log. The new scoped-role fixture attempted
+  a duplicate active assignment. First correction: **11 passed, 1 failed in 25.49 seconds**,
+  /private/tmp/integration-owner-fallback-corrected.log: assignment scope is immutable.
+  Changed the fixture to revoke then regrant within the failure transaction. Final scoped
+  matrix: **12 passed in 25.25 seconds**, /private/tmp/integration-owner-fallback-verified.log.
+  All backend runs are terminal; the expanded run passed all 47 architecture checks. Integration settings UI: **27 passed in 3.19 seconds**,
+  /private/tmp/integration-owner-fallback-ui.log, terminal. Source Mypy, Ruff lint/format,
+  JSON Prettier and whitespace checks pass.
+- Source inspection confirmed file uploads deliberately retain uploader visibility; that
+  existing rule is preserved. Updated B1-19/developer guidance and archived older amendment
+  evidence verbatim. AI, other implementation gaps, remaining release checks and independent
+  accounting sign-off remain open. No full-suite/readiness claim or deployment. Preserve
+  exclusions and noncommercial licensing; push verified changes directly to main.
+
 ## FX import rate reconciliation — October 7, 2026
 
 - Continued from clean main 8667084; prior turn published bundle reconciliation (progress).
@@ -93,35 +119,6 @@
   contract/obligation checks. Integration-owner fallback, AI, other implementation and
   verification gaps and independent accounting sign-off remain open. No deployment.
   Publication exclusions/noncommercial licensing are unchanged.
-
-## Legacy modification reconciliation and coverage audit — October 7, 2026
-
-- Continued from clean main 35c9fe2. Prior turn published legacy progress checks (progress).
-  Added independent amendment read-back for signed consideration and quantity deltas,
-  line identities/dates, all-obligation treatment, approved SSP reference and override defaults.
-  Also checks source/approval/synthetic modification identity, emitted targets and added
-  obligation product identities. Expected facts do not reuse emitter line/catalogue builders.
-- Prospective, retrospective, price-only, negative and add-obligation workflows are covered
-  by new tests. Faults injected after approval alter amount, quantity, treatment, SSP basis
-  or the added obligation's stored product. Mismatches must roll back the whole import.
-- Initial replay: **3 passed, 6 failed in 124.28 seconds**,
-  /private/tmp/legacy-modification-first.log. The new expectation omitted default SSP
-  is_override/justification fields; corrected the comparison. Expanded replay, matrix and
-  layer/import-cycle run: **63 passed, 3 failed in 216.60 seconds**,
-  /private/tmp/legacy-modification-final.log. The three new add-obligation fixtures omitted
-  required account fields, so validation refused them before the gate. Completed those rows;
-  corrected matrix rerun: **10 passed in 66.40 seconds**,
-  /private/tmp/legacy-modification-corrected.log. All runs terminal. Source Mypy,
-  Ruff lint/format and whitespace pass.
-- Audited the actual emitter registry and callback bodies. Added dated coverage inventory
-  docs/release/IMPORT-RECONCILIATION-2026-10-07.md; a callback's presence is not full coverage.
-  Remaining: CSV progress refund/numeric inputs, FX rates, bundle quantities, invoice/usage
-  quantities and explicit event obligation binding. CSV modifications have no emitter and
-  remain explicitly refused; legacy support does not imply CSV support.
-- Updated B1-19/developer guidance and preserved old SSP evidence in build history. Next:
-  close the named CSV gaps. Other implementation/verification gaps, integration-owner fallback,
-  AI and independent accounting sign-off remain open. No whole-backend/readiness claim or
-  deployment. Publication exclusions/noncommercial licensing are unchanged.
 
 ## Outstanding release verification
 
