@@ -26,8 +26,9 @@ Amounts are debit positive and credit negative; ``difference`` = GL − subledge
 
 from __future__ import annotations
 
+import json
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Any
@@ -40,8 +41,10 @@ from erev_api.adapters.mocks import netsuite as ns_mock
 from erev_api.auth.keyring import KeyRing
 from erev_api.clock import FrozenClock
 from erev_api.config import Settings
+from erev_api.db import new_id
 from erev_api.db.session import DbContext, tenant_session
 from erev_api.db.tables import (
+    approval_request,
     combination_group,
     contract,
     contract_event,
@@ -55,11 +58,21 @@ from erev_api.db.tables import (
     sync_run,
     tenant,
 )
+from erev_api.domain.close import commands as close_commands
+from erev_api.domain.close import gates
 from erev_api.domain.close import reconciliations as reconciliation_domain
+from erev_api.domain.close import snapshots as close_snapshots
 from erev_api.domain.journals import export
 from erev_api.domain.journals import ports as gl_ports
-from erev_api.domain.reports import tie_outs
-from erev_api.enums import ContractEventType, GlAdapter, RuleSetKind
+from erev_api.domain.reports import evidence_reconciliations, evidence_selection, tie_outs
+from erev_api.enums import (
+    ApprovalRequestStatus,
+    ContractEventType,
+    GlAdapter,
+    LockKind,
+    PeriodState,
+    RuleSetKind,
+)
 from erev_api.events.payloads import BillingRecordedV1
 from erev_api.events.stream import EventIn
 from erev_api.files.store import LocalFileStore
@@ -67,6 +80,7 @@ from erev_api.jobs.context import JobRuntime
 from erev_api.main import create_app
 from erev_api.money import MoneyIn
 from erev_api.problems import ProblemError
+from erev_api.schemas.evidence_packs import ClosePackCreateIn
 from fastapi import FastAPI
 from sqlalchemy import insert, select, update
 from support import close_run_worlds, worlds
@@ -77,8 +91,10 @@ from support.db import TestDatabase
 from support.factories import appended, k11_world
 from support.http import HttpResponse, asgi_client
 from support.principals import carrying, colleague, enrolled
-from support.reference import approve, assign, get, holding, patch, post, slug
+from support.record_clock import on_record_time
+from support.reference import approve, assign, get, holding, patch, periods, post, slug
 from support.rows import (
+    approval_request_values,
     combination_group_values,
     contract_values,
     customer_values,
@@ -1683,6 +1699,105 @@ def _published_auto_rec_01(world: ReportWorld) -> tuple[str, str]:
     assert shown.status_code == 200, shown.text
     assert (shown.json()["status"], shown.json()["version_no"]) == ("PUBLISHED", 1)
     return version_id, str(added.json()["id"])
+
+
+def test_auto_certified_reconciliation_is_collected_with_its_real_control_evidence(
+    app: FastAPI, keyring: KeyRing, clock: FrozenClock, files: LocalFileStore, runtime: JobRuntime
+) -> None:
+    """RPS-16 collector over API-published rule and generated AUTO_CERTIFIED reconciliation.
+
+    The lock uses the domain writers with a seeded approval, not the full close approval
+    workflow. All datasets are produced/stored normally and certification binds the real row.
+    """
+    world = on_record_time(recon.ingested_k01(app, keyring, clock, files, runtime))
+    version_id, rule_id = _published_auto_rec_01(world)
+    generated = recon.generated(
+        app, world.maya, runtime, entity_code="AVM-US", period_key="FY2026-P02"
+    )
+    assert generated["status"] == "AUTO_CERTIFIED"
+    (control,) = recon.control_executions(world.tenant_id, "CTL-026", generated["id"])
+    world = on_record_time(world)
+    (february,) = [
+        item
+        for item in periods(app, world.maya, entity="AVM-US")
+        if item["period"]["period_key"] == "FY2026-P02"
+    ]
+    started = post(
+        app,
+        f"/api/v1/periods/{february['id']}/start-close",
+        world.maya,
+        {"comment": "Prepare evidence collector fixture"},
+        if_match=f'"r{february["row_version"]}"',
+    )
+    assert started.status_code == 200, started.text
+    lock_id = new_id()
+    with world.place.uow() as uow:
+        scope = gates.period_scope(uow.session, UUID(february["id"]), lock=True)
+        assert scope is not None
+        datasets = close_snapshots.freeze_datasets(
+            uow, scope.entity_id, scope.book_code, scope.period_id, uow.now
+        )
+        assert any(d.kind == "CONTRACT_BALANCES" and d.row_count > 0 for d in datasets)
+        approval = approval_request_values(
+            world.tenant_id,
+            status=ApprovalRequestStatus.APPROVED,
+            entity_id=scope.entity_id,
+            subject_type="PERIOD_LOCK",
+            subject_id=UUID(february["id"]),
+        )
+        uow.session.execute(insert(approval_request).values(**approval))
+        close_commands._persist_lock(
+            uow,
+            scope,
+            kind=LockKind.LOCK,
+            lock_id=lock_id,
+            transition_id=new_id(),
+            from_state=PeriodState.CLOSING,
+            to_state=PeriodState.CLOSED,
+            action=close_commands.LOCK_ACTION,
+            approval_request_id=approval["id"],
+            comment="Collector fixture lock",
+            certification=[],
+            snapshot_manifest_sha256=close_snapshots.manifest_of(datasets),
+            heads=close_commands._heads(uow.session, scope),
+            cutoff_known_at=uow.now,
+        )
+        close_snapshots.write_lock_snapshots(uow, lock_id, datasets)
+        assert close_commands._certify_reconciliations(uow, scope, lock_id) == 1
+        uow.commit()
+    reader = replace(
+        world.place.principal,
+        permissions=frozenset({"report.run", "audit.read", "contract.read"}),
+        permission_scopes={"report.run": "*", "audit.read": "*", "contract.read": "*"},
+    )
+    with world.place.uow(reader) as uow:
+        selection = evidence_selection.resolve(
+            uow,
+            ClosePackCreateIn.model_validate(
+                {
+                    "kind": "CLOSE",
+                    "entity_code": "AVM-US",
+                    "book": "ASC606",
+                    "period_key": "FY2026-P02",
+                    "period_lock_id": lock_id,
+                }
+            ),
+        )
+        outputs = evidence_reconciliations.collect(uow, selection)
+        assert evidence_reconciliations.collect(uow, selection) == outputs
+    payload = json.loads(
+        next(f.content for f in outputs if f.path.endswith(f"/{generated['id']}.json"))
+    )
+    basis = payload["certification_basis"]
+    assert basis["kind"] == "AUTO_CERTIFICATION"
+    assert "signoffs" not in basis
+    assert basis["control_execution"]["id"] == str(control["id"])
+    assert basis["control_execution"]["detail"]["rule"]["rule_id"] == rule_id
+    assert basis["control_execution"]["detail"]["rule"]["rule_set_version_id"] == version_id
+    assert payload["period_lock_id"] == str(lock_id)
+    assert Decimal(payload["statement"]["totals"][0]["source_amount"]) == Decimal("15000.00")
+    index = json.loads(next(f.content for f in outputs if f.path.endswith("/index.json")))
+    assert index["reconciliation_ids"] == [generated["id"]]
 
 
 @pytest.mark.control("CTL-026")

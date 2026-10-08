@@ -211,6 +211,7 @@ def control_executions(
             dict(row)
             for row in session.execute(
                 select(
+                    control_execution.c.id,
                     control_execution.c.run_ref_type,
                     control_execution.c.population_count,
                     control_execution.c.exception_count,

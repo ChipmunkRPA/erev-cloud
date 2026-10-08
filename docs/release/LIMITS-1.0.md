@@ -497,9 +497,12 @@ October 8 reconciliation collector: CLOSE packs can collect their lock-bound sig
 verified sign-offs or CTL-026 auto-certification evidence, and the actual population index.
 Historical bytes stay stable after a reopen/new generation. Parent and referenced-contract
 permissions are enforced without altering signed content. 210 scoped tests and two extended
-API-signature/database cases pass; auto-proof validation has unit coverage, with its complete
-database/pack witness outstanding. Full pack/waiver completeness and the generation/download
-workflow remain open; no RPS-16, CTL-041 or readiness claim is made.
+API-signature/database cases pass. A subsequent 78-test GL/billing reconciliation and collector
+run passed in 134.88 seconds, including real rule publication, auto-certification/CTL-026,
+frozen-source production and deterministic collection. That witness seeds the lock approval
+and supplies explicit reader permissions; the complete approval/pack HTTP/download witness
+remains outstanding. Full pack/waiver completeness and the generation/download workflow remain
+open; no RPS-16, CTL-041 or readiness claim is made.
 
 ## The fifteen standing names
 

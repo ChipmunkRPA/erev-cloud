@@ -2,6 +2,24 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Automatic reconciliation evidence — October 8, 2026 (RPS-16 continued)
+
+- Continued from 292b80e. Added a database collector witness using API-published
+  AUTO-REC-01, generated AUTO_CERTIFIED reconciliation and its actual CTL-026 record.
+  Produces/stores all twelve frozen datasets, binds certification through domain writers,
+  and verifies exported control/rule/version IDs, the 15,000.00 billing amount, population
+  and repeated-byte stability. Lock approval is seeded and read permissions explicit;
+  this is not the full approval or pack HTTP/download workflow and does not claim CTL-041.
+- Initial run failed because the test helper did not select the control execution ID.
+  Added that projection; final affected GL/billing reconciliation, source-selection and
+  certification-proof regression run: **78 passed in 134.88 seconds**. Log:
+  `/private/tmp/evidence-auto-final.log`; initial: `/private/tmp/evidence-auto-db.log`.
+  Ruff lint/format and whitespace pass; process is terminal. No application source changed.
+- Archived source-selection notes verbatim to keep this notebook below 20 KB. Full pack
+  population/waiver assembly, supporting registers, other kinds, jobs/routes, audited
+  downloads and automatic generation remain open, along with release gates and independent
+  accounting sign-off. No deployment; publish directly to main without a PR.
+
 ## Reconciliation evidence — October 8, 2026 (RPS-16 continued)
 
 - Continued from clean f147e9e. Added the CLOSE reconciliation collector, selecting the
@@ -72,31 +90,6 @@
   CONTRACT_SAMPLE/CHANGE/ACCESS collection and all complete-pack acceptance remain required.
   EVIDENCE_PACK stays pending, CTL-041 open. Full-current gates and accounting sign-off remain
   outstanding. No deployment; preserve exclusions and publish validated work to main.
-
-## Evidence-pack source selection — October 8, 2026 (RPS-16 continued)
-
-- Continued from clean db1e96f. Added `reports/evidence_selection.py`: resolves complete
-  contract samples in submitted order, captures tenant/entity/contract identities and the
-  request cutoff, and binds CLOSE to the exact lock/entity/book/period and stored freeze cutoff.
-  REOPEN and PERMANENT_LOCK records are refused because they freeze no datasets.
-- Selection intersects `report.run` and `audit.read` scopes with transaction RLS. Missing
-  permission/scope grants do not become wildcards; SYSTEM has no implicit generation access.
-  A missing or hidden sample member refuses the whole sample without naming hidden records.
-  A hidden lock is refused before describing its kind or mismatched selectors. CHANGE/ACCESS
-  bind the visible entity population for their future collectors.
-- **160 tests passed in 17.52 seconds**: nine PostgreSQL/RLS selection cases, 102 request-schema
-  tests and 49 archive tests. Same contract key in two tenants resolves only the caller's row;
-  role-scope union does not widen report/audit access. Test rows are seeded; no real close or
-  full pack is claimed. Log: `/private/tmp/evidence-selection-final.log`. Two-source mypy,
-  Ruff and whitespace pass. Initial DB run had nine fixture errors from a missing REOPEN
-  reason; corrected the fixture, then nine DB tests passed in 17.38 seconds before the
-  stronger cross-tenant case and final combined run. All processes are terminal.
-- Next integrate selection with audited command guards, persisted scope/cutoff, complete
-  source collection, jobs and files, download reauthorization/audit, automatic lock/re-lock
-  packs and the specified end-to-end acceptance. Selection alone does not authorize every
-  payload or establish as-of content completeness. EVIDENCE_PACK remains pending, CTL-041
-  open, report availability unchanged. Full-current gates and independent accounting sign-off
-  remain outstanding. Archived the fixture/freshness notes verbatim to the build history.
 
 ## Canonical property gate completed — October 8, 2026
 
