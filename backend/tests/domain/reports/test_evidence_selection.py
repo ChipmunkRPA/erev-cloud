@@ -29,9 +29,11 @@ from erev_api.db.tables import (
     journal_run,
     legal_entity,
     lock_snapshot,
+    period,
     period_lock,
     reconciliation,
     reconciliation_item,
+    report_run,
 )
 from erev_api.domain.close import certification, relock_diff
 from erev_api.domain.close import snapshots as close_snapshots
@@ -42,6 +44,8 @@ from erev_api.domain.reports import (
     evidence_journals,
     evidence_reconciliations,
     evidence_relock,
+    evidence_report_plan,
+    evidence_reports,
     locked,
 )
 from erev_api.domain.reports.evidence_selection import resolve
@@ -62,6 +66,7 @@ from support.close_world import (
     close_world,
     contract_of,
     other_entity,
+    run_journal_job,
     system_session,
 )
 from support.db import TestDatabase
@@ -937,3 +942,82 @@ def test_audit_digest_uses_recorded_verification_and_real_chain(
     with sources.world.place.uow(denied) as uow, pytest.raises(Problem) as error:
         evidence_audit.collect(uow, selection, verification_id=verification["id"])
     assert error.value.slug == "forbidden"
+
+
+def test_close_supporting_report_plan_queues_normalized_sources_and_collects_jobs(
+    sources: Sources,
+    clock: FrozenClock,
+) -> None:
+    """Seeded January lock, actual framework queue/worker and all five original outputs."""
+    with sources.world.place.uow() as uow:
+        clock.set(
+            uow.session.execute(select(func.clock_timestamp())).scalar_one() + timedelta(seconds=1)
+        )
+    request = ADAPTER.validate_python(_freeze_for_pack(sources))
+    permissions = frozenset({"report.run", "report.export", "audit.read", "contract.read"})
+    reader = replace(
+        sources.principal,
+        permissions=permissions,
+        permission_scopes={permission: "*" for permission in permissions},
+    )
+    with sources.world.place.uow(reader) as uow:
+        selection = resolve(uow, request)
+        planned = evidence_report_plan.plan(uow, selection)
+        by_code = {body.report_code: body.parameters for body in planned}
+        assert by_code["ssp_change_log"]["from_date"] == "2026-01-01"
+        assert by_code["config_change_register"]["to_date"] == "2026-01-31"
+        assert by_code["user_access_listing"]["as_of"] == "2026-01-31T23:59:59.999999+00:00"
+        assert by_code["late_entry_report"]["period_key"] == "FY2026-P01"
+        queued = evidence_report_plan.queue(uow, selection)
+        assert {item.source.report_code for item in queued} == set(evidence_reports.PATHS)
+        assert all(item.source.known_at == selection.lock_known_at for item in queued)
+        assert all(item.source.entity_ids == selection.entity_ids for item in queued)
+        uow.commit()
+    for item in queued:
+        finished = run_journal_job(sources.world, item.job_id, attempts=1)
+        assert finished["state"] == "SUCCEEDED", finished
+    with sources.world.place.uow(reader) as uow:
+        outputs = [file for item in queued for file in evidence_reports.collect(uow, item.source)]
+        assert len(outputs) == 15
+        assert len({file.path for file in outputs}) == 15
+
+
+def test_supporting_plan_refuses_unverifiable_historical_period_dates(
+    sources: Sources,
+    clock: FrozenClock,
+) -> None:
+    with sources.world.place.uow() as uow:
+        scope = locked.lock_scope(uow.session, UUID(sources.close["period_lock_id"]))
+        assert scope is not None
+        changed_at = uow.session.execute(
+            select(period.c.updated_at).where(
+                period.c.id == scope.period_id,
+            )
+        ).scalar_one()
+    clock.set(changed_at - timedelta(seconds=1))
+    request = ADAPTER.validate_python(_freeze_for_pack(sources))
+    with sources.world.place.uow(sources.principal) as uow:
+        selection = resolve(uow, request)
+        with pytest.raises(Problem, match="historical dates"):
+            evidence_report_plan.plan(uow, selection)
+
+
+def test_supporting_queue_requires_export_and_leaves_no_report_rows(
+    sources: Sources,
+    clock: FrozenClock,
+) -> None:
+    with sources.world.place.uow() as uow:
+        clock.set(
+            uow.session.execute(select(func.clock_timestamp())).scalar_one() + timedelta(seconds=1)
+        )
+        before = uow.session.execute(select(func.count()).select_from(report_run)).scalar_one()
+    request = ADAPTER.validate_python(_freeze_for_pack(sources))
+    with sources.world.place.uow(sources.principal) as uow:
+        selection = resolve(uow, request)
+        with pytest.raises(Problem) as error:
+            evidence_report_plan.queue(uow, selection)
+        assert error.value.slug == "forbidden"
+    with sources.world.place.uow() as uow:
+        assert (
+            uow.session.execute(select(func.count()).select_from(report_run)).scalar_one() == before
+        )

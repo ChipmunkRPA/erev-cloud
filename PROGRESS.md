@@ -2,6 +2,32 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Close supporting-source plan — October 8, 2026 (RPS-16 continued)
+
+- Continued from clean 277408a. Added `reports/evidence_report_plan.py`: derives five CSV
+  source requests from the selected lock and its fiscal period. SSP/configuration use the
+  full inclusive period date range; late-entry uses the selected entity/book/period. Access
+  and SoD use UTC period-end (23:59:59.999999), consistent with the register framework's
+  UTC-day date-range convention. All known-at values are the lock's freeze cutoff, not now.
+- Refuses early closes that cannot supply period-end access evidence, invalid intervals,
+  naive cutoffs and period records changed after the lock (no versioned period-date history).
+  Queues through ordinary report creation/permissions and captures normalized selectors,
+  scope and cutoff in source bindings, refusing normalization that changes scope/cutoff.
+  Does not commit; the future pack command must persist bindings atomically and reuse on retry.
+- Initial database witness: **one passed in 8.58 seconds**. Selected seeded January lock →
+  five actual report jobs → worker execution → collection of all fifteen original files.
+  Final source/collector/selector regression: **82 passed in 65.76 seconds**. Covers leap-year
+  and non-calendar fiscal intervals, UTC offset normalization, re-lock cutoff changes, early
+  close/changed-period refusal and export denial with no report rows left. Logs:
+  `/private/tmp/evidence-plan-{db,final}.log`. Source mypy, Ruff lint/format and whitespace pass;
+  all processes terminal. Historical journal-register notes archived verbatim.
+- Remaining: durable pack state/idempotency and source bindings, reconciliation population
+  completeness, other pack kinds, complete assembly/jobs/routes/audited downloads and automatic
+  close generation. Existing builders still refuse historical mutable facts they cannot prove;
+  this planner never substitutes current data. End-to-end operational close acceptance,
+  current release gates and independent accounting sign-off remain open. RPS-16/CTL-041
+  unclaimed. Direct-main publication; no deployment, cloud mutation or external notifications.
+
 ## Saved supporting-report evidence — October 8, 2026 (RPS-16 continued)
 
 - Continued from clean 628ee14. The SSP/configuration/late-entry/access/SoD report builders
@@ -54,34 +80,6 @@
   audited downloads and automatic generation. Operational close/full-pack acceptance, current
   release gates and independent accounting sign-off remain open. RPS-16/CTL-041 unclaimed.
   Direct-main publication; no deployment, cloud mutation or external notifications.
-
-## Historical journal batch register — October 8, 2026 (RPS-16 continued)
-
-- Continued from clean c27d724. Added `reports/evidence_journals.py`, collecting the
-  selected lock's journal runs/batches at its cutoff and verifying them against the frozen
-  JE population. Reuses the report's historical run-state reader; ignores later runs and
-  excludes cancelled-at-cutoff runs. Checks each batch's line count, transaction/functional
-  currencies, amounts and balancing, then ties batches to run totals/counts. Empty batches
-  remain explicit. Records snapshot identity/hash and saved JE_BALANCED/JE_COMPLETE results;
-  does not recompute completeness over today's ledger or export mutable delivery attempts.
-- Requires parent `contract.read` as the journal routes do, plus report/audit selection checks.
-  Missing/duplicate/unknown batches or frozen lines, invalid amounts, scope/state/currency
-  mismatches and failed balancing refuse collection. The complete saved gate set is checked;
-  assembly must also collect/verify lock approvals through the previous collector.
-- **105 scoped tests passed in 53.96 seconds**: source/frozen collectors, existing export
-  producers and historical-state tests, nineteen new batch comparison cases, saved-gate
-  validation. Database witness uses seeded journal/certification rows and the real twelve-kind
-  snapshot producer/store; checks nonempty figures, later-run exclusion and permission refusals.
-  Full operational journal calculation/close and pack HTTP/download acceptance remain open.
-- Initial DB attempt failed because the fixture queried after its tenant session commit;
-  corrected the ordering. Next run: 19 passed, one assertion failure because scoped denial is
-  deliberately not-found rather than forbidden; corrected to each guard's exact contract.
-  Logs: `/private/tmp/evidence-journals-{db,corrected,final}.log`. Source mypy, Ruff lint/format,
-  whitespace pass; all processes terminal. Archived automatic-reconciliation and re-lock notes verbatim.
-- Remaining: reconciliation population/waiver completeness, supporting SSP/configuration/late
-  entry/access/audit evidence, other pack kinds, persisted generation/jobs/routes/downloads
-  and automatic generation. RPS-16/CTL-041 and final release gates/accounting sign-off remain
-  open. Direct-main publication with no deployment; exclusions/noncommercial license retained.
 
 ## Canonical property gate completed — October 8, 2026
 

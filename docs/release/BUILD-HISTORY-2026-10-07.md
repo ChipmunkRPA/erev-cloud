@@ -2575,3 +2575,31 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   generation/jobs/routes/downloads. Assembly must invoke this verification; no pack endpoint
   is enabled and RPS-16/CTL-041 remain open. Final release gates and independent accounting
   sign-off remain outstanding. Direct-main publication; no deployment.
+
+## Historical journal batch register — October 8, 2026 (RPS-16 continued)
+
+- Continued from clean c27d724. Added `reports/evidence_journals.py`, collecting the
+  selected lock's journal runs/batches at its cutoff and verifying them against the frozen
+  JE population. Reuses the report's historical run-state reader; ignores later runs and
+  excludes cancelled-at-cutoff runs. Checks each batch's line count, transaction/functional
+  currencies, amounts and balancing, then ties batches to run totals/counts. Empty batches
+  remain explicit. Records snapshot identity/hash and saved JE_BALANCED/JE_COMPLETE results;
+  does not recompute completeness over today's ledger or export mutable delivery attempts.
+- Requires parent `contract.read` as the journal routes do, plus report/audit selection checks.
+  Missing/duplicate/unknown batches or frozen lines, invalid amounts, scope/state/currency
+  mismatches and failed balancing refuse collection. The complete saved gate set is checked;
+  assembly must also collect/verify lock approvals through the previous collector.
+- **105 scoped tests passed in 53.96 seconds**: source/frozen collectors, existing export
+  producers and historical-state tests, nineteen new batch comparison cases, saved-gate
+  validation. Database witness uses seeded journal/certification rows and the real twelve-kind
+  snapshot producer/store; checks nonempty figures, later-run exclusion and permission refusals.
+  Full operational journal calculation/close and pack HTTP/download acceptance remain open.
+- Initial DB attempt failed because the fixture queried after its tenant session commit;
+  corrected the ordering. Next run: 19 passed, one assertion failure because scoped denial is
+  deliberately not-found rather than forbidden; corrected to each guard's exact contract.
+  Logs: `/private/tmp/evidence-journals-{db,corrected,final}.log`. Source mypy, Ruff lint/format,
+  whitespace pass; all processes terminal. Archived automatic-reconciliation and re-lock notes verbatim.
+- Remaining: reconciliation population/waiver completeness, supporting SSP/configuration/late
+  entry/access/audit evidence, other pack kinds, persisted generation/jobs/routes/downloads
+  and automatic generation. RPS-16/CTL-041 and final release gates/accounting sign-off remain
+  open. Direct-main publication with no deployment; exclusions/noncommercial license retained.

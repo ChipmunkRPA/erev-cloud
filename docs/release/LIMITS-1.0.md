@@ -541,6 +541,16 @@ bind to generated report selectors; they do not prove the close-pack orchestrati
 required period-end access instant or register range. Choosing and persisting those sources,
 full assembly and remaining pack workflows remain outstanding; RPS-16/CTL-041 are still open.
 
+October 8 close supporting-source plan: the five requests now derive their entity, fiscal date
+range/period, UTC period-end access instant and known-at cutoff from the selected lock. The
+ordinary report framework queues each source; normalized bindings are returned for atomic pack
+persistence. An 82-test scoped run includes actual queue/worker/collection over a seeded close,
+calendar/cutoff boundaries and permission/historical-period refusals. UTC period-end follows the
+existing register-day convention. Pack-state persistence, retry reuse and automatic close/job/API
+integration remain unimplemented. Historical mutable facts that existing report builders cannot
+reconstruct remain refused rather than replaced with current data; full operational close and
+pack acceptance, RPS-16 and CTL-041 are not complete.
+
 ## The fifteen standing names
 
 Fifteen tests of the backend suite do not pass in release 1.0. They are the same fifteen in every whole run on the day of the freeze, by name, and none passes when it is run again alone; the release candidate's suite shows these and no other (R-125 (n); R-126 (e)). None is skipped, loosened or marked: each fails at full strength until its cause is closed. Two gate targets fail by them, as the supervisor measured on `783f340ea`: `make answer-keys` by the six keys and `make test-pg` by the three capture witnesses. The causes below are read from the failure each test records and from the test: for names 3 to 5 as the suite takes them since index 308's part for the answer keys' runner is on the branch, for the others in the run of record on `5c3b5347c`. Names 1 to 5 are platform keys, which the suite takes on the in-memory platform. On the database platform a lane measured them on 2026-10-03 with that part: the two DISC keys pass; POS-CHK-012 compares clean in every block and is failed by its finding alone; the GT07 key is not run; POS-CHK-117 has four mismatches.
