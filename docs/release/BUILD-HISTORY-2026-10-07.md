@@ -1688,3 +1688,30 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   readers, integration-owner fallback notification, AI, broader current verification,
   other documented gaps and independent accounting sign-off remain outstanding.
   Publication exclusions and noncommercial licensing remain unchanged.
+
+## Estimate monetary reconciliation — October 7, 2026
+
+- Continued from clean main 2b1c477. The prior turn published contract price/provenance
+  checks (progress). Added estimate imports to the transactional read-back gate.
+- Reconstructs scalar money values, rates, quantities, amortization months, typed parameters
+  and full scenario rows from validated source rows. Compares the stored version plus
+  contract/element identity, kind, method, currency, direction, allocation target and obligation.
+  Scalar columns use their database precision; JSON scenarios retain their decimal precision.
+  Source rows, not the emitter's altered plan body, supply the expected financial inputs.
+- New-element defaults follow the existing command. Existing elements inherit omitted
+  settings; explicit file settings still must agree. A regression preserves an existing
+  INCREASE direction when the new version's file omits it, avoiding an unintended change
+  to the established existing-element import behavior.
+- Tests inject changed constrained amount, changed refund parameter, offsetting scenario
+  amounts with unchanged aggregate, and a rebate direction flipped to INCREASE after approval.
+  Each leaves a blocking mismatch with no estimate element/version or source lineage committed.
+  Valid imports retain matching evidence, scenario zero and default contract currency.
+- Initial existing end-to-end witness: **1 passed in 15.78 seconds**. Expanded workflows plus
+  layer/import-cycle checks: **53 passed in 39.53 seconds**, /private/tmp/estimate-reconcile-complete.log.
+  Final inherited-setting and full financial workflow rerun: **7 passed in 31.16 seconds**,
+  /private/tmp/estimate-reconcile-inherited.log. Source Mypy and Ruff/format/whitespace pass.
+  All runs terminal; no whole-backend pass claimed.
+- B1-19 and developer guidance retain legacy monetary readers as incomplete. Integration-owner
+  fallback notification, AI, broader verification, other documented gaps and independent
+  accounting sign-off remain open. No deployment. Publication exclusions/noncommercial
+  licensing are unchanged; tested changes continue directly to main.

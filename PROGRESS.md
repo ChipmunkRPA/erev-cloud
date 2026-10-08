@@ -2,6 +2,32 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Legacy progress monetary reconciliation — October 7, 2026
+
+- Continued from clean main f15e790. The prior turn published legacy setup checks (progress).
+  Added independent read-back for legacy progress imports, including the original aggregated
+  rows. Source billing, signed pre-standard revenue and delivery are summed by obligation/SKU
+  without reusing the emitter's aggregation or payload builder.
+- Compares stored billing/credit/revenue and delivery/return events, their currency/date,
+  lead source-record identity and declared targets. Independently checks signed synthetic
+  invoice/credit headers and lines, including currency, source identity, product and obligation.
+  Positive billing must link to the expected invoice. Zero aggregates create neither a
+  financial event nor a document. Verified file-column totals retain their original semantics.
+- Tests inject changed event amount, changed signed invoice amount, changed revenue/quantity,
+  a missing event and an unexpected posting for a zero aggregate after approval. Every mismatch
+  rolls back the complete import, preserving existing contracts, events and invoices and leaving
+  no source records or lineage. Positive, negative and zero duplicate-row aggregates succeed.
+- Existing progress/credit/return workflows: **11 passed in 86.83 seconds**,
+  /private/tmp/legacy-progress-first.log. New matrix, amended-terms and layer/import-cycle
+  checks: **59 passed in 100.96 seconds**, /private/tmp/legacy-progress-final.log.
+  Final reader uses copy_abs to preserve full decimal precision; matrix rerun: **11 passed
+  in 72.55 seconds**, /private/tmp/legacy-progress-verified.log. All runs terminal.
+  Source Mypy, Ruff lint/format and whitespace pass. No whole-backend or readiness claim.
+- Updated B1-19 and developer guidance; preserved dated estimate evidence in build history.
+  Next: legacy modification monetary read-back. Integration-owner fallback, AI, other
+  implementation/verification gaps and independent accounting sign-off remain open.
+  No deployment. Publication exclusions/noncommercial licensing are unchanged.
+
 ## Legacy contract setup monetary reconciliation — October 7, 2026
 
 - Continued from clean main 1ebf45a; the prior turn published legacy SSP checks (progress).
@@ -55,33 +81,6 @@
   Integration-owner fallback, AI, remaining implementation/verification and independent
   accounting sign-off remain open. No deployment. Publication exclusions and noncommercial
   licensing are unchanged; verified changes publish directly to main.
-
-## Estimate monetary reconciliation — October 7, 2026
-
-- Continued from clean main 2b1c477. The prior turn published contract price/provenance
-  checks (progress). Added estimate imports to the transactional read-back gate.
-- Reconstructs scalar money values, rates, quantities, amortization months, typed parameters
-  and full scenario rows from validated source rows. Compares the stored version plus
-  contract/element identity, kind, method, currency, direction, allocation target and obligation.
-  Scalar columns use their database precision; JSON scenarios retain their decimal precision.
-  Source rows, not the emitter's altered plan body, supply the expected financial inputs.
-- New-element defaults follow the existing command. Existing elements inherit omitted
-  settings; explicit file settings still must agree. A regression preserves an existing
-  INCREASE direction when the new version's file omits it, avoiding an unintended change
-  to the established existing-element import behavior.
-- Tests inject changed constrained amount, changed refund parameter, offsetting scenario
-  amounts with unchanged aggregate, and a rebate direction flipped to INCREASE after approval.
-  Each leaves a blocking mismatch with no estimate element/version or source lineage committed.
-  Valid imports retain matching evidence, scenario zero and default contract currency.
-- Initial existing end-to-end witness: **1 passed in 15.78 seconds**. Expanded workflows plus
-  layer/import-cycle checks: **53 passed in 39.53 seconds**, /private/tmp/estimate-reconcile-complete.log.
-  Final inherited-setting and full financial workflow rerun: **7 passed in 31.16 seconds**,
-  /private/tmp/estimate-reconcile-inherited.log. Source Mypy and Ruff/format/whitespace pass.
-  All runs terminal; no whole-backend pass claimed.
-- B1-19 and developer guidance retain legacy monetary readers as incomplete. Integration-owner
-  fallback notification, AI, broader verification, other documented gaps and independent
-  accounting sign-off remain open. No deployment. Publication exclusions/noncommercial
-  licensing are unchanged; tested changes continue directly to main.
 
 ## Zero-posting late-event register — October 7, 2026
 

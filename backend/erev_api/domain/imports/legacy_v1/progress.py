@@ -54,7 +54,7 @@ from erev_api.domain.imports.csv_v2.framework import (
     CsvTemplate,
     Plan,
 )
-from erev_api.domain.imports.legacy_v1 import headers
+from erev_api.domain.imports.legacy_v1 import headers, progress_amounts
 from erev_api.domain.integrations.normalise import import_event_key
 from erev_api.enums import ContractEventType, ContractStatus, SourceObjectType, SourceSystem
 from erev_api.events.payloads import (
@@ -596,4 +596,5 @@ TEMPLATE: Final = CsvTemplate(
     apply=apply,
     source_system=SourceSystem.LEGACY_TEMPLATE_V1,
     computes=True,
+    reconcile_amounts=progress_amounts.reconcile_amounts,
 )

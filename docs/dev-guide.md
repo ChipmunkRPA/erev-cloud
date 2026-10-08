@@ -3174,5 +3174,12 @@ reconstruct retained draft lines from immutable earlier bookings. VC rows must p
 linked approved estimate versions with matching magnitude, currency, effective date
 and import approval. Newly created elements also match the source sign and defaults;
 existing elements retain their established settings. A missing VC writer cannot pass
-commit. Tests that observe that port now call its real writer. Legacy progress and
-modification monetary readers remain incomplete and are not claimed as covered.
+commit. Tests that observe that port now call its real writer.
+
+Legacy progress independently aggregates original validated rows by obligation/product.
+It verifies billing/credit, signed pre-standard revenue and delivery/return events against
+those aggregates, including currency, date, lead source-record identity and emitted targets.
+Synthetic invoice headers and lines retain signed amounts; credit events retain positive
+magnitudes. Positive billing events must link to their stored source invoice. Zero aggregates
+produce no financial event or document. Legacy modification monetary read-back remains
+incomplete and is not claimed as covered.
