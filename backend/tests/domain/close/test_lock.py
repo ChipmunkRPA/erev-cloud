@@ -34,10 +34,12 @@ from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
+from zipfile import ZipFile
 from zoneinfo import ZoneInfo
 
 import pytest
 from erev_api.approvals.engine import ROLE_REQUIRED_DETAIL
+from erev_api.audit import verify as audit_verify
 from erev_api.auth.keyring import KeyRing
 from erev_api.clock import FrozenClock
 from erev_api.config import Settings
@@ -54,6 +56,7 @@ from erev_api.db.tables import (
     contract_event,
     contract_hold,
     control_execution,
+    evidence_pack,
     exception_item,
     file_object,
     integration_connection,
@@ -72,9 +75,12 @@ from erev_api.domain.close import commands as close_commands
 from erev_api.domain.close import dependencies as close_dependencies
 from erev_api.domain.close import gates, queries
 from erev_api.domain.reports import (
+    evidence_archive,
+    evidence_assembly,
     evidence_certification,
     evidence_reconciliation_population,
     evidence_selection,
+    evidence_sources,
 )
 from erev_api.enums import (
     ApprovalRequestStatus,
@@ -116,6 +122,7 @@ from support.close_world import (
     reviewed_error_judgement,
     reviewed_reconciliations,
     reviewed_reconciliations_for,
+    run_journal_job,
     submitted_judgement,
     system_session,
     wld_b,
@@ -138,6 +145,7 @@ from support.reference import (
 from support.rows import (
     contract_event_values,
     contract_hold_values,
+    evidence_pack_values,
     exception_item_values,
     integration_connection_values,
     publish_registry_version,
@@ -2102,10 +2110,10 @@ def test_reconciliation_freshness_covers_ledger_history(
         assert gates.blocker_counts(session, scope)["reconciliations_unsigned"] == len(expected)
 
 
-@pytest.mark.parametrize("waive_missing", [False, True])
-def test_close_pack_reconciliation_population_has_required_statements_or_exact_waiver(
-    world: CloseWorld, clock: FrozenClock, waive_missing: bool
-) -> None:
+def _close_for_population(
+    world: CloseWorld, clock: FrozenClock, *, waive_missing: bool
+) -> tuple[Mapping[str, Any], str | None]:
+    waiver_id = None
     _start_close(world)
     if waive_missing:
         acknowledged_run(world)
@@ -2138,6 +2146,14 @@ def test_close_pack_reconciliation_population_has_required_statements_or_exact_w
     )
     assert approved.status_code == 200, approved.text
     lock = _lock_row(world)
+    return lock, waiver_id
+
+
+@pytest.mark.parametrize("waive_missing", [False, True])
+def test_close_pack_reconciliation_population_has_required_statements_or_exact_waiver(
+    world: CloseWorld, clock: FrozenClock, waive_missing: bool
+) -> None:
+    lock, waiver_id = _close_for_population(world, clock, waive_missing=waive_missing)
     reader = replace(
         world.place.principal,
         permissions=frozenset({"report.run", "audit.read", "contract.read"}),
@@ -2202,3 +2218,82 @@ def test_close_pack_reconciliation_population_has_required_statements_or_exact_w
     with world.place.uow(denied) as uow, pytest.raises(Problem) as error:
         evidence_reconciliation_population.collect(uow, selected)
     assert error.value.slug == "not-found"
+
+
+@pytest.mark.parametrize("waive_missing", [False, True])
+def test_first_close_archive_verifies_every_component_before_returning_bytes(
+    world: CloseWorld,
+    clock: FrozenClock,
+    waive_missing: bool,
+) -> None:
+    """Real close/waiver approval and source jobs; journal/close-run gate setup is seeded."""
+    lock, waiver_id = _close_for_population(world, clock, waive_missing=waive_missing)
+    clock.set(lock["cutoff_known_at"] + timedelta(seconds=1))
+    with world.place.uow() as uow:
+        verification = audit_verify.record_tenant_verification(
+            uow, trigger="ON_DEMAND", job_id=None
+        )
+        verification_id = verification["id"]
+        uow.commit()
+    permissions = frozenset({"report.run", "report.export", "audit.read", "contract.read"})
+    reader = replace(
+        world.place.principal,
+        permissions=permissions,
+        permission_scopes={permission: "*" for permission in permissions},
+    )
+    request = ClosePackCreateIn.model_validate(
+        {
+            "kind": "CLOSE",
+            "entity_code": "AVM-US",
+            "book": "ASC606",
+            "period_key": "FY2026-P09",
+            "period_lock_id": lock["id"],
+        }
+    )
+    with world.place.uow(reader) as uow:
+        bound = evidence_sources.prepare_close(uow, request, verification_id=verification_id)
+        pack = evidence_pack_values(world.tenant_id, **bound.pack_values(), created_at=uow.now)
+        uow.session.execute(insert(evidence_pack).values(**pack))
+        uow.commit()
+    with world.place.uow(reader) as uow, pytest.raises(Problem) as error:
+        evidence_assembly.assemble_close(uow, pack["id"])
+    if not waive_missing:
+        # The gate fixture marked rows REVIEWED without real signatures. Assembly must
+        # reject those rows even though their population and saved close gate pass.
+        assert "distinct preparer" in error.value.detail
+        return
+    assert "supporting report differs" in error.value.detail
+    for report in bound.supporting_reports:
+        finished = run_journal_job(world, report.job_id, attempts=1)
+        assert finished["state"] == "SUCCEEDED", finished
+    with world.place.uow(reader) as uow:
+        archive = evidence_assembly.assemble_close(uow, pack["id"])
+        assert evidence_assembly.assemble_close(uow, pack["id"]) == archive
+    manifest = evidence_archive.verify(
+        archive.content, expected_manifest_sha256=archive.manifest_sha256
+    )
+    assert len(manifest["files"]) == 36
+    with ZipFile(io.BytesIO(archive.content)) as opened:
+        assert set(opened.namelist()) == {row["path"] for row in manifest["files"]} | {
+            "manifest.json"
+        }
+        for row in manifest["files"]:
+            content = opened.read(row["path"])
+            assert hashlib.sha256(content).hexdigest() == row["sha256"]
+            assert len(content) == row["bytes"]
+        population = json.loads(opened.read("reconciliations/population.json"))
+        assert set(population["waived_absent_kinds"]) == set(gates.REQUIRED_KINDS)
+        assert population["waiver"]["request"]["id"] == waiver_id
+        journals = json.loads(opened.read("journals/batch_register.json"))
+        assert journals["batches"] and all(row["balanced"] for row in journals["batches"])
+        assert opened.read("journals/je_population.csv").count(b"\n") > 1
+        saved = json.loads(opened.read("lock/source_binding.json"))
+        assert saved == bound.model_dump(mode="json")
+        audit = json.loads(opened.read("audit/sources.json"))
+        assert audit["verification_id"] == str(verification_id)
+    # Permission is checked again on every assembly; no successful cached ZIP bypass.
+    for permission in ("report.export", "audit.read", "contract.read"):
+        denied = replace(reader, permissions=reader.permissions - {permission})
+        with world.place.uow(denied) as uow, pytest.raises(Problem) as error:
+            evidence_assembly.assemble_close(uow, pack["id"])
+        assert error.value.slug == "forbidden"

@@ -2682,3 +2682,14 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   this planner never substitutes current data. End-to-end operational close acceptance,
   current release gates and independent accounting sign-off remain open. RPS-16/CTL-041
   unclaimed. Direct-main publication; no deployment, cloud mutation or external notifications.
+
+## Canonical property gate completed — October 8, 2026
+
+- Preserved session 52175 completed successfully: **48 passed, zero failed/skipped in
+  5899.78 seconds (1:38:19)**; `make properties` exit 0. This was the thorough run on
+  clean captured 37c4f0c48918a8a72228bbc596061ecfd12f9e99, not the later RPO source.
+- Verified immutable source/context start/end bindings and Python/Node dependency bindings;
+  no mismatches. Captured tree matches that Git commit. Report/log hashes are recorded in
+  REPOSITORY-CHECKS-2026-10-08.md. The process is terminal; no unfinished property run remains.
+- Archived the preceding RPO investigation/repair notes verbatim. Full accounting corpus
+  failures, control-gate gaps, other product gaps and independent accounting sign-off remain.

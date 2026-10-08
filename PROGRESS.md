@@ -2,6 +2,32 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## First-close ZIP assembly — October 8, 2026 (RPS-16 continued)
+
+- Continued from clean published 9fe1bd0. Added `reports/evidence_assembly.py`: reloads a
+  pack's immutable source binding, reauthorizes scope/export, then invokes all frozen-close,
+  certification/approval, journal, reconciliation statement/population, audit and supporting
+  report readers. Includes the binding in `lock/source_binding.json`. Missing required paths,
+  mismatched report populations, duplicate/unsafe files or any source refusal yield no ZIP.
+- First-close output uses the deterministic archive builder and separately hashed manifest.
+  Re-lock assembly explicitly refuses until the separate driver-variance report is available;
+  a valid stored raw comparison alone is not substituted. This boundary creates no jobs,
+  verification records or stored files and does not commit or expose an endpoint.
+- Initial two database cases: **one passed, one failed in 14.26 seconds**; the assembled ZIP
+  reached verification, but the new test used the wrong verifier keyword. Corrected it to
+  `expected_manifest_sha256`. Final assembly/archive/close/re-lock regression:
+  **79 passed in 24.33 seconds**. Actual independent waiver/lock approvals, twelve freeze
+  datasets, audit digest and five report jobs feed a reproducible 36-payload ZIP. Each byte
+  count/hash and source binding is checked; journal evidence is nonempty and omissions retain
+  their approved identities. Journal and close-run gate setup is seeded, not full operational
+  accounting acceptance. Unsigned reconciliation fixtures, pending reports, removed permissions
+  and a genuine approved re-lock without its variance report all refuse assembly.
+- Logs: `/private/tmp/evidence-assembly-{db,final}.log`. All processes terminal. Source Mypy,
+  Ruff lint/format and whitespace pass. RPS-16/CTL-041 are unclaimed: complete job lifecycle,
+  encrypted storage, creation/idempotency, audited download/API, automatic generation, other
+  pack kinds and re-lock variance reporting remain open. Current release gates and independent
+  accounting approval remain required. Direct-main publication; no deployment or notifications.
+
 ## Durable CLOSE source bindings — October 8, 2026 (RPS-16 continued)
 
 - Continued from clean published a622467. Migration 0142 adds immutable
@@ -70,17 +96,6 @@
   and the separate variance-between-closes report remain open. Current release gates and
   independent accounting approval remain required; RPS-16/CTL-041 and production readiness
   are unclaimed. Validated direct-main publication; no deployment or external notifications.
-
-## Canonical property gate completed — October 8, 2026
-
-- Preserved session 52175 completed successfully: **48 passed, zero failed/skipped in
-  5899.78 seconds (1:38:19)**; `make properties` exit 0. This was the thorough run on
-  clean captured 37c4f0c48918a8a72228bbc596061ecfd12f9e99, not the later RPO source.
-- Verified immutable source/context start/end bindings and Python/Node dependency bindings;
-  no mismatches. Captured tree matches that Git commit. Report/log hashes are recorded in
-  REPOSITORY-CHECKS-2026-10-08.md. The process is terminal; no unfinished property run remains.
-- Archived the preceding RPO investigation/repair notes verbatim. Full accounting corpus
-  failures, control-gate gaps, other product gaps and independent accounting sign-off remain.
 
 ## Control gate result and RPO closing defect — October 8, 2026
 

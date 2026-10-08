@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import replace
-from datetime import UTC, date
+from datetime import UTC, date, timedelta
 from io import BytesIO
 from typing import Any
 from uuid import UUID
@@ -26,6 +26,7 @@ from uuid import UUID
 import pytest
 from erev_api import periods as period_kernel
 from erev_api.approvals import engine as approvals
+from erev_api.audit import verify as audit_verify
 from erev_api.auth.keyring import KeyRing
 from erev_api.clock import FrozenClock
 from erev_api.config import Settings
@@ -34,6 +35,7 @@ from erev_api.db.session import DbContext, tenant_session
 from erev_api.db.tables import (
     approval_request,
     audit_event,
+    evidence_pack,
     judgement_record,
     lock_snapshot,
     period_lock,
@@ -46,7 +48,13 @@ from erev_api.domain.close import commands as close_commands
 from erev_api.domain.close import gates, posting_guard
 from erev_api.domain.close import snapshots as close_snapshots
 from erev_api.domain.journals import subledger
-from erev_api.domain.reports import evidence_certification, evidence_relock, evidence_selection
+from erev_api.domain.reports import (
+    evidence_assembly,
+    evidence_certification,
+    evidence_relock,
+    evidence_selection,
+    evidence_sources,
+)
 from erev_api.domain.reports import snapshots as registry
 from erev_api.enums import (
     ApprovalRequestStatus,
@@ -60,6 +68,7 @@ from erev_api.enums import (
 )
 from erev_api.files.store import LocalFileStore, open_file, store_file
 from erev_api.main import create_app
+from erev_api.problems import Problem
 from erev_api.schemas.evidence_packs import ClosePackCreateIn
 from erev_api.schemas.periods import PeriodLockRequestIn
 from fastapi import FastAPI
@@ -84,7 +93,7 @@ from support.db import TestDatabase
 from support.factories import booked_contract, computed
 from support.principals import Actor, colleague, enrolled
 from support.reference import PERIODS, approve, assign, get, periods, post, slug
-from support.rows import approval_request_values
+from support.rows import approval_request_values, evidence_pack_values
 from support.worlds import (
     AUGUST_2026,
     AVM_US,
@@ -692,6 +701,39 @@ def test_relock_writes_diff_report(world: CloseWorld, clock: FrozenClock) -> Non
             for item in report["certification"]["current"]
             if item["status"] == "WAIVED"
         }
+
+    # A valid stored raw diff is insufficient for the required driver-variance report.
+    clock.set(second["cutoff_known_at"] + timedelta(seconds=1))
+    with world.place.uow() as uow:
+        verification = audit_verify.record_tenant_verification(
+            uow, trigger="ON_DEMAND", job_id=None
+        )
+        verification_id = verification["id"]
+        uow.commit()
+    exporter = replace(
+        reader,
+        permissions=reader.permissions | {"report.export"},
+        permission_scopes={**reader.permission_scopes, "report.export": "*"},
+    )
+    with world.place.uow(exporter) as uow:
+        bound = evidence_sources.prepare_close(
+            uow,
+            ClosePackCreateIn.model_validate(
+                {
+                    "kind": "CLOSE",
+                    "entity_code": "AVM-US",
+                    "book": "ASC606",
+                    "period_key": "FY2026-P09",
+                    "period_lock_id": second_id,
+                }
+            ),
+            verification_id=verification_id,
+        )
+        pack = evidence_pack_values(world.tenant_id, **bound.pack_values(), created_at=uow.now)
+        uow.session.execute(insert(evidence_pack).values(**pack))
+        uow.commit()
+    with world.place.uow(exporter) as uow, pytest.raises(Problem, match="variance-between-closes"):
+        evidence_assembly.assemble_close(uow, pack["id"])
 
 
 # --- 7b: the SM-07 sweep and the BR-CLS-06 predicate -------------------------------------------
