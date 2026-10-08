@@ -30,12 +30,34 @@ The starting clean revision was `37c4f0c48918a8a72228bbc596061ecfd12f9e99`.
 The corrected frontend result covers the starting revision plus the cockpit test correction
 in this commit. These direct commands are scoped evidence, not a canonical `make ci` report.
 
+## Repository-wide lint follow-up
+
+`make lint` passed on clean revision `1d59f65b026402ec0b4c88745933721c4e3bc730`.
+This includes Ruff format checks over 2,006 files, Ruff lint, Prettier, ESLint,
+OpenAPI drift, generated registry, legacy fixtures and the single migration head check.
+The component results were:
+
+- Design: 501 files, zero errors or warnings.
+- Vocabulary: 1,198 files, zero findings.
+- Dependency licence scan: 133 packages (77 Python, 56 npm), seven allow-listed,
+  zero findings or allow-list errors. This is separate from the repository's licence.
+- Secret scan: 3,423 files, eight allow-listed findings, zero unexpected findings or
+  unused allow-list entries.
+- Legacy fixture integrity: 18 files verified.
+- Control marker collection: all 495 tagged tests valid. Collection does not prove these
+  tests passed and does not replace the canonical controls-report gate.
+
+The repository licence remains PolyForm Noncommercial 1.0.0; neither `research-harness/`
+nor `docs/research/` has tracked files. These checks do not assert a full security audit.
+Lint log: `/private/tmp/erev-lint-2026-10-08.log`.
+SHA-256: `a8362ac6e3c0f18d74bd901dcf7637c6066d50a3c7bd3260d236b3d17cc127f7`.
+
 ## Property gate still running
 
 `make properties` started on the clean starting revision, with the thorough Hypothesis
 profile, in immutable context `.run/gates/ctx-properties-37c4f0c48918-6323`.
-It collected 48 tests and was still executing its first metamorphic test when this note was
-written. Pytest PID 6358 was confirmed live with increasing CPU time; the executor session is
+It collected 48 tests. The first metamorphic test has passed; the suite remains active.
+Pytest PID 6358 was confirmed live with increasing CPU time; the executor session is
 52175. Console output: `/private/tmp/erev-properties-2026-10-08.log`.
 
 Continue polling that exact session/process; do not restart merely because it is slow. No pass

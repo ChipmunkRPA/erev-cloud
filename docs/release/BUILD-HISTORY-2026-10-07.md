@@ -2042,3 +2042,29 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   verbatim. Remaining implementation, full-suite/release verification, the pending engine version
   cut/replays and independent accounting sign-off are still open. No deployment or readiness
   claim. Preserve exclusions/noncommercial licensing; publish tested changes directly to main.
+
+## Selected SSP range provenance — October 7, 2026
+
+- Continued from clean main 4e043a1 after verifying all 31 PRs merged and only remote main.
+  Engine selections now retain the actual band's natural key, including equal-price bands;
+  persistence resolves it to the approved range UUID. Point/range and modification weight traces
+  cite the band directly. Readback recognizes historical entry and new range sources, preserving
+  pinned versions. Formula-only/bypass prices claim no band; merged selections keep all sources
+  in trace and a scalar range only if every contributor shares it. No historical rewrite.
+- First allocation/persistence run: **58 passed, 1 failed in 32.66 seconds**,
+  /private/tmp/ssp-range-first.log (old currency trace expectation). Expanded trace/readback and
+  architecture run: **361 passed, 12 failed in 175.23 seconds**,
+  /private/tmp/ssp-range-expanded.log. One old repin source expectation and eleven scope-registry
+  failures for the previously added dirty sweep. Registered SCH-17's reviewed SYSTEM builder,
+  tenant-directory reader and non-preview computation with reasons; updated trace expectations.
+- Allocation/modification/readback/persistence and affected architecture run: **290 passed,
+  1 failed in 71.46 seconds**, /private/tmp/ssp-range-final.log. Remaining failure was the
+  architecture reader's synthetic missing-registration expectation; corrected for the new entry.
+  Added explicit range/entry readback matrix and equal-price point/range boundary cases.
+  Corrected affected checks: **33 passed in 7.98 seconds**, /private/tmp/ssp-range-corrected.log.
+  All runs terminal. Mypy passes 18 source files; Ruff lint/format and whitespace checks pass.
+- Updated B1-23/developer guidance and archived older bundle import evidence verbatim.
+  Output metadata/trace changes belong in the already pending 0.4.0 release cut and replay
+  validation; no full-suite or production-readiness claim. AI/other implementation gaps,
+  container/release verification and independent accounting sign-off remain. No deployment;
+  preserve publication exclusions/noncommercial licensing and publish directly to main.
