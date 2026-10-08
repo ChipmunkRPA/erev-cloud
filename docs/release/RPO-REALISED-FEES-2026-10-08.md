@@ -220,3 +220,38 @@ B4-2 remains partial: complete multi-cause fixed-allocation decomposition, proje
 under adjustments/holds/Step-1 netting, zero-net omitted schedule lines, mixed legacy upgrade
 handling, royalty/entry/cancellation/calendar/exemption combinations and release cut/replays
 still need coverage. No full backend/CI or production readiness is claimed. No deployment.
+
+
+## Batched amendment with separately traced usage — October 8, 2026
+
+On 9b199bb, the report correctly separates realized-fee movement from fixed allocation, but
+its remaining fixed cause set still includes USAGE_REPORTED. Thus an amendment with a known
++200 or -200 fixed change, batched with a 150 fee addition, has two cause classes and leaves
+the fixed change unexplained. The new version-chain baseline reproduced four failures beside
+21 passing cases in 0.51 seconds (`/private/tmp/rpo-mixed-cause-baseline.log`).
+
+For a version with explicit realization evidence, USAGE_REPORTED (including royalty statements)
+now belongs solely to the independently measured realized-fee movement. It is omitted from the
+fixed-allocation cause set. A remaining amendment cause class can then explain that fixed delta.
+No other competing cause is removed. Amendment plus estimate changes remains unexplained;
+an unsupported fixed change cannot be explained merely by the presence of a usage event.
+Legacy traces retain their prior cause handling rather than assuming an absent series is zero.
+
+The final matrix covers positive and negative fixed amendments with: amendment only, amendment
+plus an estimate change, amendment plus a memo, memo only and no other event cause. All retain
+the independently known 150 fee addition; only the two unambiguous amendment combinations
+assign the fixed delta to MODIFICATIONS. Totals still reconcile independently of classification.
+The batched-case witness builds report version chains and dated inputs; it is not evidence of
+a new end-to-end modification approval journey.
+
+Final verification: 97 reader/version-chain unit tests passed in 1.04 seconds
+(`/private/tmp/rpo-mixed-cause-unit-final.log`); 15 PostgreSQL report tests passed in 62.60 seconds
+(`/private/tmp/rpo-mixed-cause-api.log`), including the real first-calculation usage, waterfall,
+journal and explanation witness. One-source mypy, changed-file Ruff lint/format and whitespace
+checks pass. No engine arithmetic or historical trace changed in this follow-up.
+
+The earlier proposed zero-net ordinary-usage example was not established: UsageReportedV1
+requires NonNegativeMoney and ordinary derived usage sums admitted rated events. No negative
+rated event was used to force a baseline. A valid route to a missing zero-net fixed schedule
+portion, and the adjustments/holds/Step-1, legacy-upgrade and full fixed-cause decomposition
+cases, remain separate work. No production-readiness or independent accounting approval claim.

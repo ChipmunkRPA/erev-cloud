@@ -544,3 +544,59 @@ def test_mixed_legacy_and_dated_realization_versions_are_not_silently_reclassifi
         )
     assert "legacy versions" in caught.value.errors[0].message
     assert caught.value.errors[0].field.endswith(".realised_allocation")
+
+
+@pytest.mark.parametrize("fixed_change", [Decimal("200"), Decimal("-200")])
+@pytest.mark.parametrize(
+    "fixed_causes, modification_known",
+    [
+        (("CONTRACT_AMENDED",), True),
+        (("CONTRACT_AMENDED", "ESTIMATE_CHANGED"), False),
+        (("CONTRACT_AMENDED", "MEMO_UPDATED"), True),
+        (("MEMO_UPDATED",), False),
+        ((), False),
+    ],
+)
+def test_traced_usage_does_not_hide_known_or_ambiguous_fixed_changes(
+    fixed_change: Decimal, fixed_causes: tuple[str, ...], modification_known: bool
+) -> None:
+    initial = version(60, OWN_FIRST, 1, date(2026, 8, 1), BOOKED, "CONTRACT_ACTIVATED")
+    changed = version(61, OWN_FIRST, 2, SEPTEMBER_30, JOINED, "USAGE_REPORTED", *fixed_causes)
+    old = obligation(initial, FIRST, FIRST_O1, "MIXED", "1050", september="0", end=OCTOBER_31)
+    new = obligation(
+        changed,
+        FIRST,
+        FIRST_O1,
+        "MIXED",
+        str(Decimal("1200") + fixed_change),
+        september="150",
+        end=OCTOBER_31,
+    )
+    found = {initial.id: (old,), changed.id: (new,)}
+    data = Store(
+        versions={OWN_FIRST: (initial, changed)},
+        obligations=found,
+        chains={FIRST: (initial, changed)},
+        cuts={
+            (version_id, day): {
+                ob.row_id: dataclasses.replace(
+                    at(ob, day),
+                    realised_traced=True,
+                    realised_stored=Decimal("50") if version_id == initial.id else Decimal("200"),
+                    realised=Decimal("200")
+                    if version_id == changed.id and day == SEPTEMBER_30
+                    else Decimal("50"),
+                )
+                for ob in items
+            }
+            for version_id, items in found.items()
+            for day in (AUGUST_31, SEPTEMBER_30)
+        },
+    )
+    (result,) = rpo.rollforward_lines(data, ranges=RANGE, applied=NOTHING_APPLIED)
+    ambiguous = not modification_known
+    assert result.lines["NEW_CONTRACTS"] == 0
+    assert result.lines["VC_ESTIMATE_CHANGES"] == Decimal("150")
+    assert result.lines["MODIFICATIONS"] == (0 if ambiguous else fixed_change)
+    assert result.lines["UNEXPLAINED"] == (fixed_change if ambiguous else 0)
+    assert result.lines["CLOSING"] - result.lines["OPENING"] == fixed_change

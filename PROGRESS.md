@@ -2,6 +2,26 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Batched amendment and usage attribution — October 8, 2026
+
+- Continued from clean 9b199bb. A version-chain counterexample exposed a remaining B4-2
+  attribution defect: the report separately identified 150 of realized usage but left the
+  accompanying +200 or -200 fixed amendment unexplained because USAGE_REPORTED still
+  counted as a competing fixed cause. Baseline: **four failed, 21 passed in 0.51 seconds**.
+- Where the trace independently identifies realization, usage/royalty statements are now
+  removed from the fixed-allocation cause set. The known amendment reaches MODIFICATIONS;
+  usage stays in VC_ESTIMATE_CHANGES. Multiple remaining fixed cause classes and unsupported
+  fixed changes stay unexplained. Legacy traces keep their prior behavior; no fee is inferred.
+- **97 reader/version-chain units passed in 1.04 seconds**, including ten signed/ambiguous
+  combinations; **15 PostgreSQL RPO/disaggregation/API checks passed in 62.60 seconds**.
+  Mypy, Ruff and whitespace pass. The batched amendment itself is a version-chain witness,
+  not a new end-to-end modification-approval claim. Detailed logs are in the RPO release note.
+- The initial zero-net ordinary-usage hypothesis was not established through a valid API
+  event: rated usage amounts are nonnegative. No invalid negative-fee fixture was introduced.
+  That separate edge case remains unverified. Full fixed multi-cause decomposition and the
+  other B4-2, release-gate and independent accounting-review blockers remain open.
+  Publish verified changes directly to main; no PR, deployment or readiness claim.
+
 ## Dated RPO allocation and schedule repair — October 8, 2026
 
 - Continued from fa1db7f and the retained failing first-computation regression. January

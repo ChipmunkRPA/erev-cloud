@@ -979,9 +979,18 @@ def _obligation_lines(
             if previous_obligation is None:
                 line: str | None = "NEW_CONTRACTS"
             else:
-                causes = {CAUSE_LINES[kind] for kind in version.causes if kind in CAUSE_LINES}
-                # One version may include several events. Without a per-cause allocation
-                # breakdown, competing cause lines cannot be assigned by alphabetic order.
+                realised_is_separate = (
+                    current is not None and store.at(current, end).realised_traced
+                )
+                causes = {
+                    CAUSE_LINES[kind]
+                    for kind in version.causes
+                    if kind in CAUSE_LINES
+                    and not (realised_is_separate and kind == "USAGE_REPORTED")
+                }
+                # Dated usage (including royalty statements) is already attributed below.
+                # It cannot also make a fixed amendment ambiguous or explain an otherwise
+                # unsupported fixed change. Competing remaining cause lines stay unexplained.
                 line = next(iter(causes)) if len(causes) == 1 else None
             if line is not None:
                 lines[line] += delta
