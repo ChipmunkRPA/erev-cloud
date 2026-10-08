@@ -419,6 +419,7 @@ class HandlerSpec:
     on_cancel: CancellationHook | None = None
     failure_hook_required: bool = False
     ready: ReadyHook | None = None
+    cancel_guard: CancellationHook | None = None
 
 
 # One handler per E-14 kind (DG-KRN-JOB-01), filled by ``task`` when handler modules are imported.
@@ -434,6 +435,7 @@ def task(
     on_cancel: CancellationHook | None = None,
     failure_hook_required: bool = False,
     ready: ReadyHook | None = None,
+    cancel_guard: CancellationHook | None = None,
 ) -> Callable[[Handler], Handler]:
     """Register the handler of ``kind``; its queue is ``JOB_QUEUE[kind]``. ``on_failure`` runs in
     the transaction that ends the job FAILED after its last attempt (BUILD_SPEC RPS-2).
@@ -441,6 +443,8 @@ def task(
     can retry instead of leaving a terminal job with an unfinished subject.
     ``on_cancel`` settles the subject when a queued job is cancelled, atomically with the job.
     A hook error aborts cancellation rather than stranding the subject.
+    ``cancel_guard`` checks the subject under the job row lock before either queued or running
+    cancellation; it can reject a cancellation after an atomic subject completion.
     ``ready`` reads retained dependencies before a slot/attempt is taken. False keeps the job
     QUEUED and schedules another delivery without spending retry budget; a Problem settles
     the job through its failure hook. It must not mutate business state.
@@ -459,6 +463,7 @@ def task(
             on_cancel=on_cancel,
             failure_hook_required=failure_hook_required,
             ready=ready,
+            cancel_guard=cancel_guard,
         )
         return handler
 

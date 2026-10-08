@@ -232,6 +232,13 @@ def cancel_job(uow: UnitOfWork, job_id: UUID) -> JobOut:
         "updated_by_kind": principal.kind.value,
     }
     state = JobState(current["state"])
+    spec = HANDLERS.get(JobKind(current["kind"]))
+    if (
+        state in {JobState.QUEUED, JobState.RUNNING}
+        and spec is not None
+        and spec.cancel_guard is not None
+    ):
+        spec.cancel_guard(uow, handler_params(current["params"] or {}), job_id)
     if state == JobState.QUEUED:
         apply(
             uow.session,
@@ -241,7 +248,6 @@ def cancel_job(uow: UnitOfWork, job_id: UUID) -> JobOut:
             set_values={"cancel_requested_at": uow.now, "finished_at": uow.now, **stamp},
             expected_status=JobState.QUEUED.value,
         )
-        spec = HANDLERS.get(JobKind(current["kind"]))
         if spec is not None and spec.on_cancel is not None:
             spec.on_cancel(uow, handler_params(current["params"] or {}), job_id)
         after = JobState.CANCELLED

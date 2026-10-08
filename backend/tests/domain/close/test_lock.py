@@ -60,6 +60,7 @@ from erev_api.db.tables import (
     exception_item,
     file_object,
     integration_connection,
+    job,
     judgement_record,
     ledger_chain_head,
     lock_snapshot,
@@ -76,6 +77,7 @@ from erev_api.domain.close import commands as close_commands
 from erev_api.domain.close import dependencies as close_dependencies
 from erev_api.domain.close import gates, queries
 from erev_api.domain.reports import (
+    evidence,
     evidence_archive,
     evidence_assembly,
     evidence_certification,
@@ -98,6 +100,8 @@ from erev_api.enums import (
 )
 from erev_api.events.payloads import HoldReleasedV1
 from erev_api.files.store import LocalFileStore, open_file
+from erev_api.jobs import registry as job_registry
+from erev_api.jobs.context import JobContext
 from erev_api.main import create_app
 from erev_api.problems import Problem
 from erev_api.registry.resolve import resolve as resolve_setting
@@ -2224,11 +2228,13 @@ def test_close_pack_reconciliation_population_has_required_statements_or_exact_w
     assert error.value.slug == "not-found"
 
 
-@pytest.mark.parametrize("waive_missing", [False, True])
+@pytest.mark.parametrize("waive_missing,cancel_run", [(False, False), (True, False), (True, True)])
 def test_first_close_archive_verifies_every_component_before_returning_bytes(
     world: CloseWorld,
     clock: FrozenClock,
     waive_missing: bool,
+    cancel_run: bool,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Real close/waiver approval and source jobs; journal/close-run gate setup is seeded."""
     lock, waiver_id = _close_for_population(world, clock, waive_missing=waive_missing)
@@ -2383,9 +2389,76 @@ def test_first_close_archive_verifies_every_component_before_returning_bytes(
         )
         assert (saved["status"], saved["file_id"], saved["manifest"]) == ("RUNNING", None, None)
         assert uow.session.scalar(select(func.count()).select_from(file_object)) == before_files
-        retained = evidence_storage.finish_close(uow, pack["id"])
-        uow.commit()
+    if cancel_run:
+
+        def cancel_before_handler(jc: JobContext, params: Mapping[str, Any]) -> Any:
+            # The real cancellation command sets this flag while the job is RUNNING;
+            # inject it at the deterministic boundary immediately before this handler.
+            with world.place.uow() as uow:
+                uow.session.execute(
+                    update(job).where(job.c.id == jc.job_id).values(cancel_requested_at=uow.now)
+                )
+                uow.commit()
+            return evidence.build_pack(jc, params)
+
+        monkeypatch.setitem(
+            job_registry.HANDLERS,
+            JobKind.EVIDENCE_PACK,
+            replace(job_registry.HANDLERS[JobKind.EVIDENCE_PACK], handler=cancel_before_handler),
+        )
+        finished = run_journal_job(world, parent["id"], attempts=1)
+        assert finished["state"] == "CANCELLED", finished
+        with world.place.uow(reader) as uow:
+            stopped = (
+                uow.session.execute(select(evidence_pack).where(evidence_pack.c.id == pack["id"]))
+                .mappings()
+                .one()
+            )
+            assert (stopped["status"], stopped["file_id"], stopped["manifest"]) == (
+                "FAILED",
+                None,
+                None,
+            )
+            assert uow.session.scalar(select(func.count()).select_from(file_object)) == before_files
+        return
+    # A second seeded pack reuses these exact bound sources to exercise a fresh QUEUED
+    # worker, followed by the first pack's interrupted RUNNING completion. Creation API pending.
     with world.place.uow(reader) as uow:
+        fresh = evidence_pack_values(
+            world.tenant_id, **bound.pack_values(), created_at=bound.requested_at
+        )
+        fresh_job = uow.defer(
+            JobKind.EVIDENCE_PACK,
+            {"evidence_pack_id": str(fresh["id"])},
+            subject_type="evidence_pack",
+            subject_id=fresh["id"],
+        )
+        uow.session.execute(insert(evidence_pack).values(**{**fresh, "job_id": fresh_job["id"]}))
+        uow.commit()
+    fresh_finished = run_journal_job(world, fresh_job["id"], attempts=1)
+    assert fresh_finished["state"] == "SUCCEEDED", fresh_finished
+    lost_ack = True
+
+    def crash_after_commit(jc: JobContext, params: Mapping[str, Any]) -> Any:
+        nonlocal lost_ack
+        outcome = evidence.build_pack(jc, params)
+        if lost_ack:
+            lost_ack = False
+            raise RuntimeError("simulated worker loss after retained pack commit")
+        return outcome
+
+    monkeypatch.setitem(
+        job_registry.HANDLERS,
+        JobKind.EVIDENCE_PACK,
+        replace(job_registry.HANDLERS[JobKind.EVIDENCE_PACK], handler=crash_after_commit),
+    )
+    finished = run_journal_job(world, parent["id"], attempts=2)
+    assert not lost_ack
+    assert finished["state"] == "SUCCEEDED", finished
+    assert finished["result"]["counts"] == {"packs": 1, "files": 36}
+    with world.place.uow(reader) as uow:
+        retained = evidence_storage.finish_close(uow, pack["id"])
+        assert retained.archive == archive
         assert evidence_storage.finish_close(uow, pack["id"]) == retained
         metadata, stream = open_file(
             uow.session, retained.file_id, files=uow.files, keyring=uow.keyring

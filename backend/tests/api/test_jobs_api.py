@@ -18,8 +18,10 @@ from erev_api.auth.keyring import KeyRing
 from erev_api.clock import FrozenClock
 from erev_api.config import Settings
 from erev_api.db.session import DbContext, tenant_session
-from erev_api.db.tables import audit_event, job
+from erev_api.db.tables import audit_event, evidence_pack, job
+from erev_api.db.transitions import apply
 from erev_api.domain.platform import retention  # noqa: F401  (registers RETENTION_SWEEP)
+from erev_api.domain.reports import evidence
 from erev_api.enums import JobKind, PrincipalKind
 from erev_api.files.store import LocalFileStore
 from erev_api.jobs import registry
@@ -27,11 +29,11 @@ from erev_api.jobs.context import JobContext, JobRuntime
 from erev_api.jobs.registry import HandlerSpec, JobOutcome, RetryPolicy, run_job
 from erev_api.main import create_app
 from fastapi import FastAPI
-from sqlalchemy import select, text
+from sqlalchemy import insert, select, text
 from support.db import TestDatabase
 from support.http import HttpResponse, call
 from support.principals import Actor, Member, colleague, cookie_headers, member, sign_in, workspace
-from support.rows import insert_role_assignment
+from support.rows import evidence_pack_values, insert_role_assignment
 
 JOBS = "/api/v1/jobs"
 PROBLEM_BASE = "https://erev.dev/problems/"
@@ -353,3 +355,127 @@ def test_r_50_a_cancel_writes_job_cancel_as_the_caller(
             {"kind": "REPORT_RUN", "state": "CANCELLED", "cancel_requested_at": now},
         )
     ]
+
+
+def _start_pack(
+    someone: Member, clock: FrozenClock, *, pack_status: str = "QUEUED"
+) -> tuple[UUID, UUID]:
+    # Seed a pack lifecycle record; this fixture does not claim ACCESS pack generation.
+    assert registry.HANDLERS[JobKind.EVIDENCE_PACK].handler is evidence.build_pack
+    pack = evidence_pack_values(someone.tenant_id, status=pack_status)
+    with tenant_session(_db(someone.tenant_id)) as session:
+        parent = registry.insert_job(
+            session,
+            JobKind.EVIDENCE_PACK,
+            {"evidence_pack_id": str(pack["id"])},
+            tenant_id=someone.tenant_id,
+            now=clock.now(),
+            created_by=someone.user_id,
+            created_by_kind=PrincipalKind.USER,
+            subject_type="evidence_pack",
+            subject_id=pack["id"],
+        )
+        session.execute(insert(evidence_pack).values(**{**pack, "job_id": parent["id"]}))
+        registry.dispatch(
+            session,
+            job_id=parent["id"],
+            tenant_id=someone.tenant_id,
+            queue=str(parent["queue"]),
+            now=clock.now(),
+        )
+    return pack["id"], parent["id"]
+
+
+def test_queued_pack_cancellation_settles_both_records(
+    app: FastAPI,
+    keyring: KeyRing,
+    clock: FrozenClock,
+) -> None:
+    owner = member(keyring, clock)
+    actor = workspace(app, owner, sign_in(app, owner.email))
+    pack_id, job_id = _start_pack(owner, clock)
+    response = cancel(app, job_id, actor)
+    assert response.status_code == 200, response.text
+    assert response.json()["state"] == "CANCELLED"
+    with tenant_session(_db(owner.tenant_id), read_only=True) as session:
+        pack = (
+            session.execute(select(evidence_pack).where(evidence_pack.c.id == pack_id))
+            .mappings()
+            .one()
+        )
+        assert (pack["status"], pack["file_id"]) == ("FAILED", None)
+        stops = (
+            session.execute(
+                select(audit_event.c.detail).where(
+                    audit_event.c.action == "evidence.stop", audit_event.c.object_id == pack_id
+                )
+            )
+            .scalars()
+            .all()
+        )
+        assert len(stops) == 1 and stops[0]["reason"] == "cancelled"
+
+
+def test_completed_pack_refuses_late_running_job_cancellation(
+    app: FastAPI,
+    keyring: KeyRing,
+    clock: FrozenClock,
+) -> None:
+    owner = member(keyring, clock)
+    actor = workspace(app, owner, sign_in(app, owner.email))
+    pack_id, job_id = _start_pack(owner, clock, pack_status="SUCCEEDED")
+    with tenant_session(_db(owner.tenant_id)) as session:
+        apply(session, "job", job_id, to_status="RUNNING", expected_status="QUEUED", set_values={})
+    response = cancel(app, job_id, actor)
+    assert (response.status_code, slug(response)) == (409, "invalid-transition"), response.text
+    assert response.json()["detail"] == "The evidence pack has already completed."
+    assert _job(owner.tenant_id, job_id)["cancel_requested_at"] is None
+    with tenant_session(_db(owner.tenant_id), read_only=True) as session:
+        assert (
+            session.scalar(select(evidence_pack.c.status).where(evidence_pack.c.id == pack_id))
+            == "SUCCEEDED"
+        )
+
+
+def test_unsupported_pack_failure_cleans_its_subject_and_cannot_stop_another_pack(
+    app: FastAPI,
+    keyring: KeyRing,
+    clock: FrozenClock,
+    runtime: JobRuntime,
+) -> None:
+    owner = member(keyring, clock)
+    pack_id, job_id = _start_pack(owner, clock)
+    # A foreign malformed job points at this pack but is not its owning job.
+    with tenant_session(_db(owner.tenant_id)) as session:
+        foreign = registry.insert_job(
+            session,
+            JobKind.EVIDENCE_PACK,
+            {"evidence_pack_id": str(pack_id)},
+            tenant_id=owner.tenant_id,
+            now=clock.now(),
+            created_by=owner.user_id,
+            created_by_kind=PrincipalKind.USER,
+            subject_type="evidence_pack",
+            subject_id=pack_id,
+        )
+        registry.dispatch(
+            session,
+            job_id=foreign["id"],
+            tenant_id=owner.tenant_id,
+            queue=str(foreign["queue"]),
+            now=clock.now(),
+        )
+    _run(owner.tenant_id, foreign["id"], runtime)
+    assert _job(owner.tenant_id, foreign["id"])["state"] == "FAILED"
+    with tenant_session(_db(owner.tenant_id), read_only=True) as session:
+        assert (
+            session.scalar(select(evidence_pack.c.status).where(evidence_pack.c.id == pack_id))
+            == "QUEUED"
+        )
+    _run(owner.tenant_id, job_id, runtime)
+    assert _job(owner.tenant_id, job_id)["state"] == "FAILED"
+    with tenant_session(_db(owner.tenant_id), read_only=True) as session:
+        assert (
+            session.scalar(select(evidence_pack.c.status).where(evidence_pack.c.id == pack_id))
+            == "FAILED"
+        )

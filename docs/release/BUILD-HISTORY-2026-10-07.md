@@ -2756,3 +2756,36 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   verbatim. Exact role-balance recomparison (B1-29), volume/release checks, remaining product
   gaps and independent accounting sign-off remain open. No deployment; preserve exclusions
   and noncommercial licensing. Publish tested changes directly to main.
+
+## Reconciliation population and retained waiver basis — October 8, 2026 (RPS-16 continued)
+
+- Continued from clean published 4a9de2a. New checklist-waiver submission audit events retain
+  the exact subject hashed by the approval request, before submission changes pending counts.
+  The certification collector checks that retained document against the approved hash, gate,
+  entity/book/period, reviewed count/members and the selected lock's audit prefix. Exported
+  proof includes the original subject and audit event identity; later checklist state is unused.
+- Added `reports/evidence_reconciliation_population.py`: resolves the reconciliation requirement
+  at the lock freeze cutoff, retaining its setting source identity; enumerates only that lock's
+  certified/reopened statements. Rejects duplicate kinds/IDs, wrong scope/time and unexplained
+  required omissions. Approved missing/unreviewed member identities can cover absent kinds;
+  an equal-count waiver of another kind or an outdated statement cannot. Omissions remain
+  explicit `waived_absent_kinds`, never mislabeled as certified statements. Full assembly must
+  invoke both this population reader and the existing statement/signature collector.
+- Initial waiver witness: **one passed in 12.20 seconds**. Initial population/subject checks:
+  **53 passed in 18.09 seconds**. Broader lock/re-lock, waiver and evidence regression:
+  **149 passed in 171.95 seconds**. Extended policy-history run: **67 passed, two failed in
+  18.57 seconds** because the test advanced September's frozen clock, still before the actual
+  October database freeze cutoff. Corrected the fixture to publish after the recorded cutoff;
+  final affected run: **69 passed in 18.51 seconds**. Covers real waiver/lock approvals,
+  unchanged output after a later disabled policy, revoked scope, hash/member/scope mismatch,
+  duplicate sources and explicit approved omissions. Journal/reconciliation gate setup is seeded;
+  these are not complete operational close or accounting acceptance witnesses.
+- Logs: `/private/tmp/waiver-basis-db.log` and `/private/tmp/waiver-population-{db,final,history,
+  corrected}.log`. All processes terminal. Source Mypy, Ruff lint/format and whitespace pass.
+  Saved supporting-report notes archived verbatim. No API contract or availability change.
+- Legacy waiver audit events without the exact subject document cannot supply this proof;
+  collection refuses rather than inventing historical details. Full pack assembly, persisted
+  state/bindings/retry reuse, jobs/routes/audited downloads/automatic generation, other pack kinds
+  and the separate variance-between-closes report remain open. Current release gates and
+  independent accounting approval remain required; RPS-16/CTL-041 and production readiness
+  are unclaimed. Validated direct-main publication; no deployment or external notifications.

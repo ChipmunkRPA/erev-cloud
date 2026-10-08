@@ -34,7 +34,6 @@ _OUTBOX_COLUMN: Final = 3
 PENDING_JOB_HANDLERS: tuple[tuple[str, str], ...] = (
     ("AI_TASK", "AIX"),
     ("DEAL_PREVIEW", "FCS"),
-    ("EVIDENCE_PACK", "RPS"),
     ("FORECAST_RUN", "FCS"),
     ("REPLAY_VERIFY", "SOP"),
 )

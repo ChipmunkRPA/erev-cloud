@@ -2,6 +2,32 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## First-close pack worker lifecycle — October 8, 2026 (RPS-16 continued)
+
+- Continued from clean published 5ba0f2d; previous turn added verified dependency readiness.
+  Registered `reports/evidence.py::build_pack` for EVIDENCE_PACK with the CLOSE readiness hook,
+  three attempts, encrypted completion, required failure cleanup and queued cancellation.
+  Uses internal SYSTEM source-reader capabilities restricted to the immutable entity; these
+  grant no public caller access. Other pack kinds and re-lock variance still refuse.
+- Added an optional cancellation guard under the job row lock. Completion locks job then pack:
+  a pre-handler cancellation stops without output, while late cancellation after SUCCEEDED
+  refuses 409. Failure cleanup requires the pack's own FAILED job/subject/params association;
+  malformed foreign jobs cannot stop another pack. E-67 has no CANCELLED, so unfinished packs
+  end FAILED with an evidence.stop reason; job state distinguishes failure from cancellation.
+- Initial worker/registry/audit tests: **10 passed in 17.02 seconds**. Queue/release/stall/API/
+  registry/close regression: **57 passed in 31.85 seconds**. Added a post-commit crash/retry
+  witness: **9 passed in 23.73 seconds**; fresh QUEUED, interrupted RUNNING and retained
+  SUCCEEDED completions reuse verified output, with one finish event per pack. An injected
+  running cancellation produces no file; API tests cover queued and late cancellation, plus
+  unsupported-kind cleanup and foreign-job isolation. Existing import cancellation/cleanup
+  rollback tests: **2 passed in 24.14 seconds**. Source Mypy, Ruff lint/format, whitespace pass.
+- Logs `/private/tmp/evidence-worker-{db,final,retry,cancel-regression}.log`; all terminal.
+  Close witness retains seeded journal/close-run setup and approved reconciliation omissions;
+  it is not full operational accounting acceptance. Archived waiver-population notes verbatim.
+  Public creation/download and request idempotency, automatic enqueue/NTF-06, other kinds,
+  variance, current release gates and independent accounting approval remain open. No
+  RPS-16/CTL-041 or production-readiness claim. Validated direct main; no deployment.
+
 ## Dependency-aware queue readiness — October 8, 2026 (RPS-16 continued)
 
 - Continued from clean published d7c27f8; previous turn retained verified first-close output.
@@ -128,39 +154,6 @@
   remain open. Collectors must still validate output/audit bytes and export permissions. No
   pack endpoint, CTL-041, RPS-16 or production-readiness claim. Current release verification and
   independent accounting sign-off remain required. Direct main; no deployment or notifications.
-
-## Reconciliation population and retained waiver basis — October 8, 2026 (RPS-16 continued)
-
-- Continued from clean published 4a9de2a. New checklist-waiver submission audit events retain
-  the exact subject hashed by the approval request, before submission changes pending counts.
-  The certification collector checks that retained document against the approved hash, gate,
-  entity/book/period, reviewed count/members and the selected lock's audit prefix. Exported
-  proof includes the original subject and audit event identity; later checklist state is unused.
-- Added `reports/evidence_reconciliation_population.py`: resolves the reconciliation requirement
-  at the lock freeze cutoff, retaining its setting source identity; enumerates only that lock's
-  certified/reopened statements. Rejects duplicate kinds/IDs, wrong scope/time and unexplained
-  required omissions. Approved missing/unreviewed member identities can cover absent kinds;
-  an equal-count waiver of another kind or an outdated statement cannot. Omissions remain
-  explicit `waived_absent_kinds`, never mislabeled as certified statements. Full assembly must
-  invoke both this population reader and the existing statement/signature collector.
-- Initial waiver witness: **one passed in 12.20 seconds**. Initial population/subject checks:
-  **53 passed in 18.09 seconds**. Broader lock/re-lock, waiver and evidence regression:
-  **149 passed in 171.95 seconds**. Extended policy-history run: **67 passed, two failed in
-  18.57 seconds** because the test advanced September's frozen clock, still before the actual
-  October database freeze cutoff. Corrected the fixture to publish after the recorded cutoff;
-  final affected run: **69 passed in 18.51 seconds**. Covers real waiver/lock approvals,
-  unchanged output after a later disabled policy, revoked scope, hash/member/scope mismatch,
-  duplicate sources and explicit approved omissions. Journal/reconciliation gate setup is seeded;
-  these are not complete operational close or accounting acceptance witnesses.
-- Logs: `/private/tmp/waiver-basis-db.log` and `/private/tmp/waiver-population-{db,final,history,
-  corrected}.log`. All processes terminal. Source Mypy, Ruff lint/format and whitespace pass.
-  Saved supporting-report notes archived verbatim. No API contract or availability change.
-- Legacy waiver audit events without the exact subject document cannot supply this proof;
-  collection refuses rather than inventing historical details. Full pack assembly, persisted
-  state/bindings/retry reuse, jobs/routes/audited downloads/automatic generation, other pack kinds
-  and the separate variance-between-closes report remain open. Current release gates and
-  independent accounting approval remain required; RPS-16/CTL-041 and production readiness
-  are unclaimed. Validated direct-main publication; no deployment or external notifications.
 
 ## Durable completeness refusal evidence — October 8, 2026
 

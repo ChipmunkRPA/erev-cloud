@@ -1062,8 +1062,20 @@ release-deferral budget; a stale or cancelled delivery changes nothing. A domain
 the queued job through its ordinary failure/subject cleanup path. Unexpected exceptions or a
 non-boolean return leave the task queued for existing stranded-task recovery. Hooks must use
 retained dependency identities and must not mutate business state. The CLOSE evidence reader
-checks its saved report/job population; it is not yet wired to a complete EVIDENCE_PACK handler.
-This preflight provides no authorization or output-integrity substitute for the handler.
+checks its saved report/job population and is wired to the initial first-close EVIDENCE_PACK
+handler; other pack kinds and re-lock variance remain incomplete. This preflight provides no
+authorization or output-integrity substitute for the handler.
+
+October 8, 2026 cancellation guard: a handler may register `cancel_guard(uow, params, job_id)`.
+The job cancellation command calls it under the job row lock before either queued or running
+cancellation. Evidence-pack completion takes locks in the same order (job, then pack), rejects
+late cancellation once the pack is SUCCEEDED, and honors a cancellation flag present before its
+completion transaction. Queued cancellation and terminal job failure settle an unfinished pack
+as FAILED (E-67 has no CANCELLED), with `evidence.stop` and no completed output. The pack failure
+hook is required and checks the owning FAILED job's immutable subject/params binding before
+cleanup; a malformed foreign job cannot stop another pack. Worker source-reader capabilities
+are internal and restricted to the retained entity; public creation/download still must authorize
+the actual caller. This is first-close worker support, not public API or automatic generation.
 
 Execution profiles (E-14):
 
