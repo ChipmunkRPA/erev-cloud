@@ -19,6 +19,8 @@ states counts and chain values, no entity's data.
 
 from __future__ import annotations
 
+import json
+from dataclasses import replace
 from datetime import timedelta
 from typing import Any, Final
 from uuid import UUID
@@ -29,9 +31,13 @@ from erev_api.clock import FrozenClock
 from erev_api.config import Settings
 from erev_api.db.session import DbContext, tenant_session
 from erev_api.db.tables import approval_request, approval_step, audit_event, role
+from erev_api.db.tables import report_run as report_run_table
+from erev_api.domain.reports import evidence_reports
 from erev_api.enums import ApprovalRequestStatus, AuditOutcome
 from erev_api.files.store import LocalFileStore
 from erev_api.main import create_app
+from erev_api.problems import Problem
+from erev_engine.canonical import sha256_hex
 from fastapi import FastAPI
 from sqlalchemy import insert, select
 from support import worlds
@@ -269,3 +275,82 @@ def test_a_run_names_no_entity_outside_a_permission_its_report_declares(
     assert listed.status_code == 200, listed.text
     ids = {item["id"] for item in listed.json()["items"]}
     assert register["id"] not in ids and {his["id"], plain["id"], theirs["id"]} <= ids
+
+
+@pytest.mark.parametrize("code", sorted(evidence_reports.PATHS))
+def test_evidence_collects_original_supporting_report_csv_and_manifest(
+    app: FastAPI,
+    keyring: KeyRing,
+    clock: FrozenClock,
+    files: LocalFileStore,
+    code: str,
+) -> None:
+    """Actual report API/worker/output; this does not choose a full close pack's selectors."""
+    world = worlds.k04_saltmarsh(app, keyring, clock, files).report
+    if code in {"config_change_register", "ssp_change_log"}:
+        parameters = today(clock)
+    elif code == "late_entry_report":
+        parameters = {"entity_codes": [AVM_US], "book": "ASC606", "period_key": "FY2026-P09"}
+    else:
+        parameters = {"as_of": clock.now().isoformat()}
+    shown, _ = report_run(world, code, parameters, output_format="CSV")
+    permissions = frozenset({"report.run", "report.export", "audit.read", "contract.read"})
+    reader = replace(
+        world.place.principal,
+        permissions=permissions,
+        permission_scopes={permission: "*" for permission in permissions},
+    )
+    with world.place.uow(reader) as uow:
+        row = (
+            uow.session.execute(
+                select(report_run_table).where(
+                    report_run_table.c.id == UUID(shown["id"]),
+                )
+            )
+            .mappings()
+            .one()
+        )
+        source = evidence_reports.ReportSource(
+            run_id=row["id"],
+            report_code=code,
+            parameters_sha256=sha256_hex(row["parameters"]),
+            entity_ids=tuple(row["entity_ids"]),
+            book_code=row["book_code"],
+            as_of_date=row["as_of_date"],
+            known_at=row["known_at"],
+        )
+        packed = evidence_reports.collect(uow, source)
+        assert evidence_reports.collect(uow, source) == packed
+        assert len(packed) == 3
+        assert all(file.report_run_id == source.run_id for file in packed)
+        assert packed[0].path == evidence_reports.PATHS[code] + ".csv"
+        manifest = json.loads(packed[1].content)
+        assert manifest["report_run_no"] == row["report_run_no"]
+        assert manifest["sha256"] == row["output_sha256"]
+        if code == "user_access_listing":
+            assert manifest["row_count"] > 0
+        with pytest.raises(Problem, match="bound source"):
+            evidence_reports.collect(
+                uow, replace(source, known_at=source.known_at - timedelta(seconds=1))
+            )
+    for part, payload in (("output", packed[0]), ("manifest", packed[1])):
+        downloaded = get(
+            world.app, f"{REPORT_RUNS}/{source.run_id}/output", world.maya, {"part": part}
+        )
+        assert downloaded.status_code == 200, downloaded.text
+        assert downloaded.content == payload.content
+    if code in {"config_change_register", "user_access_listing", "sod_conflict_report"}:
+        no_audit = replace(reader, permissions=reader.permissions - {"audit.read"})
+        with world.place.uow(no_audit) as uow, pytest.raises(Problem) as error:
+            evidence_reports.collect(uow, source)
+        assert error.value.slug == "forbidden"
+    denied = replace(reader, permissions=reader.permissions - {"report.export"})
+    with world.place.uow(denied) as uow, pytest.raises(Problem) as error:
+        evidence_reports.collect(uow, source)
+    assert error.value.slug == "forbidden"
+    restricted = replace(
+        reader, permission_scopes={**reader.permission_scopes, "report.export": frozenset()}
+    )
+    with world.place.uow(restricted) as uow, pytest.raises(Problem) as error:
+        evidence_reports.collect(uow, source)
+    assert error.value.slug == "not-found"

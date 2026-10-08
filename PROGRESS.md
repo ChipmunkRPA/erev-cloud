@@ -2,6 +2,33 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Saved supporting-report evidence — October 8, 2026 (RPS-16 continued)
+
+- Continued from clean 628ee14. The SSP/configuration/late-entry/access/SoD report builders
+  already exist. Added `reports/evidence_reports.py` to collect their successful saved CSVs,
+  IPE manifests and source identities. Explicit source bindings require exact report code,
+  normalized parameter hash, entity population, book, as-of date and known-at cutoff; no
+  rerendering, implicit latest-run selection or fallback to current data.
+- Reuses the report framework's export visibility and underlying report permissions. Checks
+  original output/manifest purpose, type, size and hashes; checks canonical manifest against
+  run identity/version, parameters, count, totals, tie-outs and output bytes. Uses only fixed
+  admitted payload paths. Source metadata preserves actual run/file IDs and both hashes.
+- All five actual report API/worker witnesses initially passed in **29.91 seconds**, including
+  a nonempty access listing. Broader regression: **75 passed, three failed in 99.18 seconds**;
+  all failures were the new missing-audit-permission assertions expecting not-found where
+  the existing guard returns forbidden (permission removed, scope entry retained). Corrected
+  those expectations; final affected report witnesses and pure checks: **38 passed in 29.88
+  seconds**. Each collected CSV/manifest matches the ordinary HTTP download byte for byte.
+  Covers changed cutoff, export removal/scope denial, underlying permission removal, invalid
+  binding/manifest and changed-output refusals. Logs: `/private/tmp/evidence-reports-{db,final,
+  corrected}.log`. Source mypy, Ruff lint/format and whitespace pass; all processes terminal.
+- These witnesses bind to the actual generated report parameters, not a claimed full-close
+  selection. Pack orchestration still must choose the correct close-period dates/cutoff,
+  create and persist these run bindings, and invoke all collectors. Reconciliation population
+  completeness, other pack kinds, assembly/jobs/routes/audited downloads/automatic generation
+  and final release/accounting approval remain open. RPS-16/CTL-041 unclaimed. Archived saved
+  certification notes verbatim. Direct-main publication; no deployment or external messaging.
+
 ## Audit digest evidence — October 8, 2026 (RPS-16 continued)
 
 - Continued from clean 90871f4. Added `reports/evidence_audit.py`, requiring an explicit
@@ -55,30 +82,6 @@
   entry/access/audit evidence, other pack kinds, persisted generation/jobs/routes/downloads
   and automatic generation. RPS-16/CTL-041 and final release gates/accounting sign-off remain
   open. Direct-main publication with no deployment; exclusions/noncommercial license retained.
-
-## Saved certification evidence — October 8, 2026 (RPS-16 continued)
-
-- Continued from clean 3c09d36. Added `reports/evidence_certification.py`: checks the
-  historical lock's complete canonical gate population through existing close-domain rules,
-  rejects uncleared/nonwaivable gates, invalid chronology and unbound/outgrown count waivers.
-  Collects actual lock and checklist-waiver approval requests plus their recorded decisions
-  into `lock/approvals.json`; verifies subject/entity/time/hash correspondence. Does not rerun
-  today's gates or use current checklist status/result as historical evidence.
-- **85 scoped tests passed in 62.00 seconds** (new parser refusals, existing certification
-  rules, real lock/waiver and reopen/re-lock approvals, source-selection/collector regressions).
-  Extended actual approval witnesses: **two passed in 16.50 seconds**, including prior-lock
-  approval selection after re-lock and missing/wrong-subject/wrong-entity/late approval refusal.
-  Waiver witness retains approved count 2 versus lock-time count 1 and actual decision ID/hash.
-  Existing setup seeds journal/reconciliation signals; approvals use the real workflow and
-  collection an explicit read principal. This is not complete-pack HTTP/download evidence.
-- Initial re-lock collector witness: one passed in 11.06 seconds. Logs:
-  `/private/tmp/evidence-certification-{db,final,history}.log`. Source mypy, Ruff lint/format
-  and whitespace pass; all processes terminal. Archived frozen-source notes verbatim.
-- Remaining: journal batch register and balancing details, reconciliation population/waiver
-  completeness, other supporting registers/access/audit evidence, other pack kinds, persisted
-  generation/jobs/routes/downloads. Assembly must invoke this verification; no pack endpoint
-  is enabled and RPS-16/CTL-041 remain open. Final release gates and independent accounting
-  sign-off remain outstanding. Direct-main publication; no deployment.
 
 ## Canonical property gate completed — October 8, 2026
 

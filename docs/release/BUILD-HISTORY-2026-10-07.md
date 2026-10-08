@@ -2551,3 +2551,27 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   downloads and automatic generation. An empty index states the actual bound population,
   not completeness. EVIDENCE_PACK stays pending and CTL-041 open. Full-current release gates
   and independent accounting sign-off remain outstanding. No deployment; direct-main workflow.
+
+## Saved certification evidence — October 8, 2026 (RPS-16 continued)
+
+- Continued from clean 3c09d36. Added `reports/evidence_certification.py`: checks the
+  historical lock's complete canonical gate population through existing close-domain rules,
+  rejects uncleared/nonwaivable gates, invalid chronology and unbound/outgrown count waivers.
+  Collects actual lock and checklist-waiver approval requests plus their recorded decisions
+  into `lock/approvals.json`; verifies subject/entity/time/hash correspondence. Does not rerun
+  today's gates or use current checklist status/result as historical evidence.
+- **85 scoped tests passed in 62.00 seconds** (new parser refusals, existing certification
+  rules, real lock/waiver and reopen/re-lock approvals, source-selection/collector regressions).
+  Extended actual approval witnesses: **two passed in 16.50 seconds**, including prior-lock
+  approval selection after re-lock and missing/wrong-subject/wrong-entity/late approval refusal.
+  Waiver witness retains approved count 2 versus lock-time count 1 and actual decision ID/hash.
+  Existing setup seeds journal/reconciliation signals; approvals use the real workflow and
+  collection an explicit read principal. This is not complete-pack HTTP/download evidence.
+- Initial re-lock collector witness: one passed in 11.06 seconds. Logs:
+  `/private/tmp/evidence-certification-{db,final,history}.log`. Source mypy, Ruff lint/format
+  and whitespace pass; all processes terminal. Archived frozen-source notes verbatim.
+- Remaining: journal batch register and balancing details, reconciliation population/waiver
+  completeness, other supporting registers/access/audit evidence, other pack kinds, persisted
+  generation/jobs/routes/downloads. Assembly must invoke this verification; no pack endpoint
+  is enabled and RPS-16/CTL-041 remain open. Final release gates and independent accounting
+  sign-off remain outstanding. Direct-main publication; no deployment.
