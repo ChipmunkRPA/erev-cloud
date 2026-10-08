@@ -3152,5 +3152,12 @@ and product. Contract and payload transaction currencies must agree with the fil
 Both new bookings and draft replacements carry the import upload/source-record IDs;
 replacement imports now pass those through the existing replace_draft command. A
 monetary mismatch rolls back the replacement and preserves the previous draft.
-Estimate and legacy monetary templates still need independent read-back and are
-not claimed as covered.
+Estimate imports reconcile scalar amounts, rates, quantities, amortization months,
+kind-specific parameters and complete scenario evidence from the stored version.
+Contract/element identity, method, currency, direction, allocation target and obligation
+are also checked. New elements use the command's declared defaults; omitted settings
+of existing elements retain their existing meaning, while explicit file values must
+agree. Source figures are reconstructed from validated rows, not the emitter's plan
+body. Money/exact columns compare at their declared database scale; JSON scenarios
+retain their decimal precision. Legacy monetary templates still need independent
+read-back and are not claimed as covered.

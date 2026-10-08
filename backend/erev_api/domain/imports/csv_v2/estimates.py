@@ -40,13 +40,15 @@ from __future__ import annotations
 import uuid
 from collections.abc import Mapping, Sequence
 from datetime import date
+from decimal import ROUND_HALF_UP, Decimal, localcontext
 from typing import TYPE_CHECKING, Any, Final
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
-from sqlalchemy import select
+from sqlalchemy import and_, select
+from sqlalchemy.orm import Session
 
-from erev_api.db.tables import estimate
+from erev_api.db.tables import contract, estimate, estimate_version, obligation
 from erev_api.domain.imports.csv_v2 import recorded
 from erev_api.domain.imports.csv_v2.framework import (
     Applied,
@@ -63,6 +65,7 @@ from erev_api.domain.imports.csv_v2.framework import (
 )
 from erev_api.enums import EstimateKind, EstimateMethod, SourceObjectType
 from erev_api.problems import Problem
+from erev_api.schemas.db_json import EstimateParameters
 from erev_api.schemas.estimates import (
     AllocationTarget,
     Direction,
@@ -279,6 +282,190 @@ def apply(uow: UnitOfWork, plan: Plan, *, context: ApplyContext) -> Applied:
     return applied
 
 
+MONEY_COLUMNS: Final = (
+    "unconstrained_amount",
+    "most_conservative_amount",
+    "constrained_amount",
+    "expected_total_amount",
+)
+EXACT_COLUMNS: Final = ("rate", "expected_quantity")
+
+
+def _number(value: Any, scale: int | None = None) -> str | None:
+    if value is None:
+        return None
+    with localcontext() as ctx:
+        ctx.prec = 80
+        number = Decimal(str(value))
+        if scale is not None:
+            number = number.quantize(Decimal(1).scaleb(-scale), rounding=ROUND_HALF_UP)
+        return format(number.normalize(), "f") if number else "0"
+
+
+def _financial_values(values: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        **{name: _number(values.get(name), 4) for name in MONEY_COLUMNS},
+        **{name: _number(values.get(name), 18) for name in EXACT_COLUMNS},
+        "amortization_months": values.get("amortization_months"),
+        "parameters": dict(values.get("parameters") or {}),
+        "scenarios": [
+            {
+                "outcome": line["outcome"],
+                "amount": _number(line["amount"]),
+                "probability": _number(line.get("probability")),
+            }
+            for line in values.get("scenarios") or []
+        ],
+    }
+
+
+def reconcile_amounts(
+    session: Session, plan: Plan, applied: Applied, *, context: ApplyContext
+) -> tuple[Mapping[str, Any], Mapping[str, Any]]:
+    """CTL-002: independently read saved estimate inputs and complete scenario evidence."""
+    from erev_api.domain.contracts import estimates as estimate_commands
+
+    del context
+    source = EstimatesIn.model_validate(
+        {
+            **unflatten(plan.rows[0].normalized, skip=_LINES),
+            "lines": [line for row in plan.rows if (line := _scenario(row.normalized))],
+        }
+    )
+    currency = (
+        source.currency
+        or str(
+            session.execute(
+                select(contract.c.transaction_currency).where(
+                    contract.c.external_id == source.contract
+                )
+            ).scalar_one()
+        ).strip()
+    )
+    obligation_id = None
+    if source.obligation_key is not None:
+        obligation_id = session.execute(
+            select(obligation.c.id)
+            .join(
+                contract,
+                and_(
+                    contract.c.tenant_id == obligation.c.tenant_id,
+                    contract.c.id == obligation.c.contract_id,
+                ),
+            )
+            .where(
+                contract.c.external_id == source.contract,
+                obligation.c.obligation_key == source.obligation_key,
+            )
+        ).scalar_one()
+    # An existing element keeps omitted metadata; explicit file values still must agree.
+    inherited: Mapping[str, Any] = {}
+    if not any(kind == "estimate" for kind, _ in applied.targets):
+        inherited = dict(
+            session.execute(
+                select(estimate)
+                .join(
+                    contract,
+                    and_(
+                        contract.c.tenant_id == estimate.c.tenant_id,
+                        contract.c.id == estimate.c.contract_id,
+                    ),
+                )
+                .where(
+                    contract.c.external_id == source.contract,
+                    estimate.c.element_code == source.element_code,
+                )
+            )
+            .mappings()
+            .one()
+        )
+        if source.obligation_key is None:
+            obligation_id = inherited.get("obligation_id")
+    values = source.model_dump(mode="json")
+    values["parameters"] = EstimateParameters.validate(
+        source.estimate_kind,
+        {} if source.parameters is None else source.parameters.model_dump(exclude_none=True),
+    )
+    values["scenarios"] = values.pop("lines")
+    expected = {
+        "versions": [
+            {
+                "contract": source.contract,
+                "element_code": source.element_code,
+                "estimate_kind": source.estimate_kind.value,
+                "method": source.method.value,
+                "vc_element_type": source.vc_element_type or inherited.get("vc_element_type"),
+                "direction": source.direction
+                or inherited.get("direction")
+                or estimate_commands._default_direction(
+                    source.estimate_kind, source.vc_element_type
+                ),
+                "allocation_target": source.allocation_target
+                if plan.rows[0].normalized.get("allocation_target") is not None
+                else inherited.get("allocation_target", source.allocation_target),
+                "obligation_id": None if obligation_id is None else str(obligation_id),
+                "effective_date": source.effective_date.isoformat(),
+                "currency": currency,
+                **_financial_values(values),
+            }
+        ]
+    }
+    rows = session.execute(
+        select(
+            estimate_version,
+            contract.c.external_id.label("contract"),
+            estimate.c.element_code,
+            estimate.c.estimate_kind,
+            estimate.c.method,
+            estimate.c.vc_element_type,
+            estimate.c.direction,
+            estimate.c.allocation_target,
+            estimate.c.obligation_id,
+        )
+        .select_from(
+            estimate_version.join(
+                estimate,
+                and_(
+                    estimate.c.tenant_id == estimate_version.c.tenant_id,
+                    estimate.c.id == estimate_version.c.estimate_id,
+                ),
+            ).join(
+                contract,
+                and_(
+                    contract.c.tenant_id == estimate.c.tenant_id,
+                    contract.c.id == estimate.c.contract_id,
+                ),
+            )
+        )
+        .where(
+            estimate_version.c.id.in_(
+                [key for kind, key in applied.targets if kind == "estimate_version"]
+            ),
+        )
+    ).mappings()
+    actual = {
+        "versions": [
+            {
+                "contract": row["contract"],
+                "element_code": row["element_code"],
+                "estimate_kind": str(row["estimate_kind"]),
+                "method": str(row["method"]),
+                "vc_element_type": row["vc_element_type"],
+                "direction": row["direction"],
+                "allocation_target": row["allocation_target"],
+                "obligation_id": None
+                if row["obligation_id"] is None
+                else str(row["obligation_id"]),
+                "effective_date": row["effective_date"].isoformat(),
+                "currency": str(row["currency"]).strip(),
+                **_financial_values(dict(row)),
+            }
+            for row in rows
+        ]
+    }
+    return expected, actual
+
+
 TEMPLATE: Final = CsvTemplate(
     code=CODE,
     object_type=SourceObjectType.CONTRACT_SETUP_ROW,
@@ -289,4 +476,5 @@ TEMPLATE: Final = CsvTemplate(
     apply=apply,
     group_key=KEY,
     repeats=REPEATS,
+    reconcile_amounts=reconcile_amounts,
 )

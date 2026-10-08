@@ -2,6 +2,33 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Estimate monetary reconciliation — October 7, 2026
+
+- Continued from clean main 2b1c477. The prior turn published contract price/provenance
+  checks (progress). Added estimate imports to the transactional read-back gate.
+- Reconstructs scalar money values, rates, quantities, amortization months, typed parameters
+  and full scenario rows from validated source rows. Compares the stored version plus
+  contract/element identity, kind, method, currency, direction, allocation target and obligation.
+  Scalar columns use their database precision; JSON scenarios retain their decimal precision.
+  Source rows, not the emitter's altered plan body, supply the expected financial inputs.
+- New-element defaults follow the existing command. Existing elements inherit omitted
+  settings; explicit file settings still must agree. A regression preserves an existing
+  INCREASE direction when the new version's file omits it, avoiding an unintended change
+  to the established existing-element import behavior.
+- Tests inject changed constrained amount, changed refund parameter, offsetting scenario
+  amounts with unchanged aggregate, and a rebate direction flipped to INCREASE after approval.
+  Each leaves a blocking mismatch with no estimate element/version or source lineage committed.
+  Valid imports retain matching evidence, scenario zero and default contract currency.
+- Initial existing end-to-end witness: **1 passed in 15.78 seconds**. Expanded workflows plus
+  layer/import-cycle checks: **53 passed in 39.53 seconds**, /private/tmp/estimate-reconcile-complete.log.
+  Final inherited-setting and full financial workflow rerun: **7 passed in 31.16 seconds**,
+  /private/tmp/estimate-reconcile-inherited.log. Source Mypy and Ruff/format/whitespace pass.
+  All runs terminal; no whole-backend pass claimed.
+- B1-19 and developer guidance retain legacy monetary readers as incomplete. Integration-owner
+  fallback notification, AI, broader verification, other documented gaps and independent
+  accounting sign-off remain open. No deployment. Publication exclusions/noncommercial
+  licensing are unchanged; tested changes continue directly to main.
+
 ## Contract monetary reconciliation — October 7, 2026
 
 - Continued from clean main 3577d81; prior turn published SSP read-back checks (progress).
@@ -75,33 +102,6 @@
   ineligible integration-owner notification fallback. AI, full current verification,
   other documented gaps and independent accounting sign-off remain open. No deployment;
   publication exclusions and noncommercial licensing are preserved.
-
-## Invoice monetary reconciliation — October 7, 2026
-
-- Continued from 644bcfb; the prior turn implemented and published the late-event report
-  (progress). Revalidated clean main and B1-19: commit reconciled rows but no stored amounts.
-- Added a commit-only template reconciliation callback. CSV invoices/credit memos now
-  independently read persisted document totals, signed source lines, positive event amounts,
-  tax components and currencies against validated source rows. This runs inside the narrowed
-  transaction; any mismatch rolls back the whole batch and raises CONTROL_TOTALS_MISMATCH.
-  Loaded monetary_checks retain the expected/stored evidence, with an explicit mismatch
-  sentence. Verified file-column amount sums are also compared to validation's source totals.
-- Repeated tax rows count once per component and once per logical invoice line. File-column
-  totals retain IPL-06 repeated-cell semantics. A two-tax-row fixture verifies a 54,000 invoice
-  while the repeated amount column totals 108,000; neither ledger nor document is doubled.
-- Three injected emitter defects change source amount, event amount or remove source tax.
-  Each leaves FAILED with the blocking mismatch and no events, source documents/records,
-  lineage or calculation child. Ordinary signed credit memos retain their existing behavior.
-- Invoice plus shared commit modules: **24 passed in 66.78 seconds**,
-  /private/tmp/invoice-reconcile-final.log. Final mismatch-copy, repeated-cell and architecture
-  checks: **93 passed in 27.81 seconds**, /private/tmp/invoice-reconcile-contracts.log.
-  The first invoice-only run passed 9 in 38.61 seconds. Source Mypy and Ruff pass; all runs
-  terminal. No full-backend pass or deployment claimed.
-- This implements invoice monetary reconciliation, not all templates. B1-19 and the developer
-  guide explicitly retain other monetary templates and ineligible integration-owner fallback
-  notifications as outstanding. AI, broader verification, other documented implementation
-  gaps and independent accounting sign-off remain open. Licensing/publication exclusions
-  are preserved; direct-main workflow continues.
 
 ## Zero-posting late-event register — October 7, 2026
 
