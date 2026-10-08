@@ -2462,3 +2462,27 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   payload or establish as-of content completeness. EVIDENCE_PACK remains pending, CTL-041
   open, report availability unchanged. Full-current gates and independent accounting sign-off
   remain outstanding. Archived the fixture/freshness notes verbatim to the build history.
+
+## Frozen close-pack sources — October 8, 2026 (RPS-16 continued)
+
+- Continued from clean 9c18557. Added `reports/evidence_close.py::collect_locked` for the
+  frozen-source portion of CLOSE packs: certification, lock/snapshot identities and all twelve
+  frozen CSV datasets. Rechecks the selected lock and current permissions before opening files.
+  Requires all E-64 kinds and verifies their combined manifest against the selected lock;
+  existing as-locked readers verify each file hash, row count and row-key presence.
+- CSV output uses the existing declared-column formula guard. Snapshot metadata retains both
+  original `file_sha256` and delivered `export_sha256`, actual source IDs and nullable source
+  report-run IDs; it invents no run. Missing/inconsistent sources never fall back to live data.
+- Real twelve-kind producer/encrypted-store witness: **one passed in 8.14 seconds**. Final
+  selection/collector/schema/archive run: **168 passed in 28.88 seconds**. Includes missing
+  kind, aggregate/file hash, row-count and row-key refusals; altered selection and revoked
+  access; adversarial text escaped while negative numeric money remains numeric. The latter
+  uses explicitly injected fixture CSV cells, not an accounting expectation. Locks are seeded,
+  not approved close decisions. Logs: `/private/tmp/evidence-close-{producer,final}.log`.
+  Source mypy, Ruff and whitespace pass. All processes are terminal.
+- This collector is not a full CLOSE pack. Next add batch register/reconciliation signoffs,
+  SSP/config/late-entry registers, period-end access evidence, audit-chain digest and re-lock
+  comparison, then connect persisted selection, jobs/routes/files and audited downloads.
+  CONTRACT_SAMPLE/CHANGE/ACCESS collection and all complete-pack acceptance remain required.
+  EVIDENCE_PACK stays pending, CTL-041 open. Full-current gates and accounting sign-off remain
+  outstanding. No deployment; preserve exclusions and publish validated work to main.

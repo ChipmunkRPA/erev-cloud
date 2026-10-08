@@ -27,6 +27,7 @@ from __future__ import annotations
 import csv
 import hashlib
 import io
+import json
 from collections.abc import Mapping
 from dataclasses import replace
 from datetime import date, datetime, time, timedelta
@@ -70,6 +71,7 @@ from erev_api.db.tables import (
 from erev_api.domain.close import commands as close_commands
 from erev_api.domain.close import dependencies as close_dependencies
 from erev_api.domain.close import gates, queries
+from erev_api.domain.reports import evidence_certification, evidence_selection
 from erev_api.enums import (
     ApprovalRequestStatus,
     ChecklistStatus,
@@ -82,6 +84,7 @@ from erev_api.events.payloads import HoldReleasedV1
 from erev_api.files.store import LocalFileStore, open_file
 from erev_api.main import create_app
 from erev_api.problems import Problem
+from erev_api.schemas.evidence_packs import ClosePackCreateIn
 from erev_api.schemas.periods import PeriodLockRequestIn, PeriodPermanentLockRequestIn
 from erev_engine.canonical import sha256_hex
 from fastapi import FastAPI
@@ -1572,6 +1575,60 @@ def test_approved_waiver_clears_its_gate_for_the_lock(
         "evaluated_at",
     }
     assert certification["CONTROLLER_CERTIFIED"]["status"] == "PASSED"
+    # Collect the actual approved waiver and decision, not today's mutable checklist result.
+    reader = replace(
+        world.place.principal,
+        permissions=frozenset({"report.run", "audit.read"}),
+        permission_scopes={"report.run": "*", "audit.read": "*"},
+    )
+    with world.place.uow(reader) as uow:
+        selection = evidence_selection.resolve(
+            uow,
+            ClosePackCreateIn.model_validate(
+                {
+                    "kind": "CLOSE",
+                    "entity_code": "AVM-US",
+                    "book": "ASC606",
+                    "period_key": "FY2026-P09",
+                    "period_lock_id": _lock_row(world)["id"],
+                }
+            ),
+        )
+        packed = evidence_certification.collect(uow, selection)
+        assert evidence_certification.collect(uow, selection) == packed
+        proof = json.loads(packed[0].content)
+        (saved_waiver,) = proof["waivers"]
+        assert saved_waiver["request"]["id"] == waiver_id
+        assert (saved_waiver["count"], saved_waiver["waived_count"]) == (1, 2)
+        assert saved_waiver["decisions"][0]["decision"] == "APPROVE"
+        valid = {
+            "request_id": UUID(proof["lock_approval"]["request"]["id"]),
+            "subject_type": "PERIOD_LOCK",
+            "subject_id": world.state_id,
+            "entity_id": world.entity_id,
+            "locked_at": uow.now,
+        }
+        for mismatch in (
+            {"request_id": new_id()},
+            {"subject_id": new_id()},
+            {"entity_id": new_id()},
+            {
+                "locked_at": datetime.fromisoformat(proof["lock_approval"]["request"]["decided_at"])
+                - timedelta(microseconds=1)
+            },
+        ):
+            with pytest.raises(Problem, match="missing or mismatched"):
+                evidence_certification._approval(uow, **{**valid, **mismatch})
+        # A valid approval for a different subject must not be relabelled as a lock approval.
+        with pytest.raises(Problem, match="missing or mismatched"):
+            evidence_certification._approval(
+                uow,
+                UUID(waiver_id),
+                subject_type="PERIOD_LOCK",
+                subject_id=world.state_id,
+                entity_id=world.entity_id,
+                locked_at=uow.now,
+            )
 
 
 def _soft_close(world: CloseWorld, key: str) -> None:

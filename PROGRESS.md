@@ -2,6 +2,30 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Saved certification evidence — October 8, 2026 (RPS-16 continued)
+
+- Continued from clean 3c09d36. Added `reports/evidence_certification.py`: checks the
+  historical lock's complete canonical gate population through existing close-domain rules,
+  rejects uncleared/nonwaivable gates, invalid chronology and unbound/outgrown count waivers.
+  Collects actual lock and checklist-waiver approval requests plus their recorded decisions
+  into `lock/approvals.json`; verifies subject/entity/time/hash correspondence. Does not rerun
+  today's gates or use current checklist status/result as historical evidence.
+- **85 scoped tests passed in 62.00 seconds** (new parser refusals, existing certification
+  rules, real lock/waiver and reopen/re-lock approvals, source-selection/collector regressions).
+  Extended actual approval witnesses: **two passed in 16.50 seconds**, including prior-lock
+  approval selection after re-lock and missing/wrong-subject/wrong-entity/late approval refusal.
+  Waiver witness retains approved count 2 versus lock-time count 1 and actual decision ID/hash.
+  Existing setup seeds journal/reconciliation signals; approvals use the real workflow and
+  collection an explicit read principal. This is not complete-pack HTTP/download evidence.
+- Initial re-lock collector witness: one passed in 11.06 seconds. Logs:
+  `/private/tmp/evidence-certification-{db,final,history}.log`. Source mypy, Ruff lint/format
+  and whitespace pass; all processes terminal. Archived frozen-source notes verbatim.
+- Remaining: journal batch register and balancing details, reconciliation population/waiver
+  completeness, other supporting registers/access/audit evidence, other pack kinds, persisted
+  generation/jobs/routes/downloads. Assembly must invoke this verification; no pack endpoint
+  is enabled and RPS-16/CTL-041 remain open. Final release gates and independent accounting
+  sign-off remain outstanding. Direct-main publication; no deployment.
+
 ## Automatic reconciliation evidence — October 8, 2026 (RPS-16 continued)
 
 - Continued from 292b80e. Added a database collector witness using API-published
@@ -66,30 +90,6 @@
   audited downloads and automatic pack generation. Stored comparison evidence does not replace
   that broader report. EVIDENCE_PACK stays pending and CTL-041 remains open. Full-current gates
   and independent accounting sign-off remain outstanding. No deployment; direct-main workflow.
-
-## Frozen close-pack sources — October 8, 2026 (RPS-16 continued)
-
-- Continued from clean 9c18557. Added `reports/evidence_close.py::collect_locked` for the
-  frozen-source portion of CLOSE packs: certification, lock/snapshot identities and all twelve
-  frozen CSV datasets. Rechecks the selected lock and current permissions before opening files.
-  Requires all E-64 kinds and verifies their combined manifest against the selected lock;
-  existing as-locked readers verify each file hash, row count and row-key presence.
-- CSV output uses the existing declared-column formula guard. Snapshot metadata retains both
-  original `file_sha256` and delivered `export_sha256`, actual source IDs and nullable source
-  report-run IDs; it invents no run. Missing/inconsistent sources never fall back to live data.
-- Real twelve-kind producer/encrypted-store witness: **one passed in 8.14 seconds**. Final
-  selection/collector/schema/archive run: **168 passed in 28.88 seconds**. Includes missing
-  kind, aggregate/file hash, row-count and row-key refusals; altered selection and revoked
-  access; adversarial text escaped while negative numeric money remains numeric. The latter
-  uses explicitly injected fixture CSV cells, not an accounting expectation. Locks are seeded,
-  not approved close decisions. Logs: `/private/tmp/evidence-close-{producer,final}.log`.
-  Source mypy, Ruff and whitespace pass. All processes are terminal.
-- This collector is not a full CLOSE pack. Next add batch register/reconciliation signoffs,
-  SSP/config/late-entry registers, period-end access evidence, audit-chain digest and re-lock
-  comparison, then connect persisted selection, jobs/routes/files and audited downloads.
-  CONTRACT_SAMPLE/CHANGE/ACCESS collection and all complete-pack acceptance remain required.
-  EVIDENCE_PACK stays pending, CTL-041 open. Full-current gates and accounting sign-off remain
-  outstanding. No deployment; preserve exclusions and publish validated work to main.
 
 ## Canonical property gate completed — October 8, 2026
 

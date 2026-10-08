@@ -46,7 +46,7 @@ from erev_api.domain.close import commands as close_commands
 from erev_api.domain.close import gates, posting_guard
 from erev_api.domain.close import snapshots as close_snapshots
 from erev_api.domain.journals import subledger
-from erev_api.domain.reports import evidence_relock, evidence_selection
+from erev_api.domain.reports import evidence_certification, evidence_relock, evidence_selection
 from erev_api.domain.reports import snapshots as registry
 from erev_api.enums import (
     ApprovalRequestStatus,
@@ -662,6 +662,36 @@ def test_relock_writes_diff_report(world: CloseWorld, clock: FrozenClock) -> Non
             file.content for file in packed if file.path == "relock/stored_comparison.json"
         )
         assert json.loads(saved) == report
+        approvals = evidence_certification.collect(uow, selection)
+        assert evidence_certification.collect(uow, selection) == approvals
+        proof = json.loads(approvals[0].content)
+        assert proof["period_lock_id"] == str(second_id)
+        assert proof["lock_approval"]["request"]["status"] == "APPROVED"
+        assert proof["lock_approval"]["decisions"]
+        prior = evidence_selection.resolve(
+            uow,
+            ClosePackCreateIn.model_validate(
+                {
+                    "kind": "CLOSE",
+                    "entity_code": "AVM-US",
+                    "book": "ASC606",
+                    "period_key": "FY2026-P09",
+                    "period_lock_id": first_id,
+                }
+            ),
+        )
+        earlier_proof = json.loads(evidence_certification.collect(uow, prior)[0].content)
+        assert earlier_proof["period_lock_id"] == str(first_id)
+        assert earlier_proof["lock_approval"]["request"]["id"] == str(out.approval_request_id)
+        assert (
+            earlier_proof["lock_approval"]["request"]["id"]
+            != proof["lock_approval"]["request"]["id"]
+        )
+        assert {waiver["gate_check_code"] for waiver in proof["waivers"]} == {
+            item["gate_check_code"]
+            for item in report["certification"]["current"]
+            if item["status"] == "WAIVED"
+        }
 
 
 # --- 7b: the SM-07 sweep and the BR-CLS-06 predicate -------------------------------------------
