@@ -3191,8 +3191,7 @@ added obligations must have the source product identity. Source record, approval
 synthetic modification identity and event targets are also checked.
 
 Remaining coverage is explicit in [the October 7 inventory](release/IMPORT-RECONCILIATION-2026-10-07.md):
-FX rates, bundle quantities, invoice quantities and invoice event contract/obligation
-binding. Registered readers do not imply complete coverage of every accounting field.
+FX rates and bundle quantities. Registered readers do not imply complete coverage of every accounting field.
 
 CSV progress uses the shared event reader with the source row's event type. It verifies
 optional refund money, quantity, progress ratio, hours and milestone weight, plus obligation,
@@ -3201,3 +3200,11 @@ quantity, period dates, metric and obligation alongside rated money. Costs and p
 revenue also bind the obligation; costs additionally check purpose, flags, payee and plan.
 All field expectations come from original validated rows, independently of the emitter's
 plan body, and numeric comparisons use wide decimal precision.
+
+
+Invoice reconciliation also reads source-line quantities at NUMERIC(38,18) precision,
+keeping absent quantities distinct from zero. It compares the source contract, obligation,
+product and service dates; header dates, cancellation flag and credit reference; and event
+contract/obligation, effective date, source record, invoice/line references and source-invoice
+link. Tax classifications and source jurisdiction are checked alongside tax money. Credit
+source quantities retain the file's sign convention; credit events keep their existing schema.

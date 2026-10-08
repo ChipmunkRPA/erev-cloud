@@ -1769,3 +1769,33 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   gates. Next: legacy progress and modification monetary readers. Owner-notification fallback,
   AI, other implementation/verification gaps and independent accounting sign-off remain open.
   No deployment. Publication exclusions/noncommercial licensing are unchanged.
+
+## Zero-posting late-event register — October 7, 2026
+
+- Continued from 3705c7c. The previous turn confirmed no open PRs and main as the sole
+  remote branch; it made no implementation change. Implemented REG-LATE-NOLINE-1 using
+  stored ENGINE LATE_EVENT findings, joined to actual event UUIDs through their dedupe keys.
+  New fallback findings pin the primary book. Legacy findings retain the stated primary-book
+  fallback; secondary books require their own stored evidence.
+- Findings are filtered by entity, book, calendar/period and both finding/event timestamps.
+  Closed/resolved status does not erase inclusion evidence. Existing single/cumulative ledger
+  attributions suppress additional event rows for the same origin/posting pair. Zero rows do
+  not invent ledger lines or effects. Event amount is the explicit payload Money value for a
+  single event; it is null for multi-event sets, triggers or events with no explicit amount.
+  Column labels explicitly identify revenue/balance amounts posted out of period. Catalogue
+  and source-binding declarations name the additional inputs.
+- K07 now drives the actual queued import computation. Before that worker, no row is shown;
+  after it, the EUR 100,000 invoice is shown with zero effects/line count, uploader and import
+  approval. Checks include timestamps immediately before/at finding creation, other periods,
+  origin filters and another book. Existing cumulative-attribution and frozen-register tests
+  retain their original counts and monetary expectations. CSV keeps event amounts separate.
+- Final register/export/provenance/snapshot/source-binding run: **110 passed in 71.39 seconds**,
+  /private/tmp/late-register-final.log. Intermediate runs identified missing ReportParams in
+  the new test and updated CSV header expectations; both are corrected. Source Mypy and Ruff
+  pass. Import-cycle/layer/report-reader architecture checks: **49 passed in 8.86 seconds**,
+  /private/tmp/late-register-architecture.log. All runs terminal; no complete backend pass claimed.
+- LIMITS B4-7/B3-7 and standing K07 failure are updated. Prior-date balance classification and
+  broader secondary-book finding coverage remain limited. One original baseline failure
+  remains: the absent AI lifecycle feature. Monetary import reconciliation, other documented
+  gaps, full current verification and independent accounting sign-off remain outstanding.
+  No deployment. Publication exclusions and PolyForm Noncommercial licensing are unchanged.

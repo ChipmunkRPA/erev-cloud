@@ -2,6 +2,29 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Invoice quantity and identity reconciliation — October 7, 2026
+
+- Continued from main 2fcf380. Invoice read-back now compares source-line quantities at
+  database precision (absent versus zero preserved), contract/obligation/product identities,
+  service dates, header dates/cancellation/credit reference, and event contract/date/source,
+  obligation, invoice/line references and source-invoice link. Tax roles/types/jurisdictions
+  are checked alongside amounts. Expectations come from original validated rows.
+- First run: **5 passed, 5 failed in 44.83 seconds**, /private/tmp/invoice-fields-first.log.
+  Fixed the new reader's expectation of CSV boolean text versus stored booleans. Expanded
+  invoice replay: **18 passed in 64.51 seconds**, /private/tmp/invoice-fields-second.log.
+  Final invoice matrix: **28 passed in 98.51 seconds**, /private/tmp/invoice-fields-final.log.
+  Includes changed quantities, wrong contracts/obligations/products/references, changed tax
+  classifications/dates, credit memos, absent/zero quantities and 18-place database rounding.
+  Each injected mismatch rolls back documents/events/source records/lineage/calculation jobs.
+  Shared import/template and layer/import-cycle regressions: **75 passed in 84.09 seconds**,
+  /private/tmp/invoice-fields-regression.log. All runs terminal. Source Mypy, Ruff lint/format
+  and whitespace pass. Archived older late-event evidence verbatim in the build history.
+- Updated coverage inventory, B1-19 and developer guidance. FX-rate and bundle readers,
+  integration-owner fallback, AI, other implementation/release checks and independent
+  accounting sign-off remain open. No full-suite or production-readiness claim. No deployment.
+- Confirmed GitHub has no open PRs, only main locally/remotely, and automatic deletion of
+  merged branches enabled. Continue testing and pushing directly to main; no new PRs.
+
 ## CSV progress and event field reconciliation — October 7, 2026
 
 - Continued from clean main 31e2d1b. Prior turn published legacy modification checks and
@@ -81,36 +104,6 @@
   Next: legacy modification monetary read-back. Integration-owner fallback, AI, other
   implementation/verification gaps and independent accounting sign-off remain open.
   No deployment. Publication exclusions/noncommercial licensing are unchanged.
-
-## Zero-posting late-event register — October 7, 2026
-
-- Continued from 3705c7c. The previous turn confirmed no open PRs and main as the sole
-  remote branch; it made no implementation change. Implemented REG-LATE-NOLINE-1 using
-  stored ENGINE LATE_EVENT findings, joined to actual event UUIDs through their dedupe keys.
-  New fallback findings pin the primary book. Legacy findings retain the stated primary-book
-  fallback; secondary books require their own stored evidence.
-- Findings are filtered by entity, book, calendar/period and both finding/event timestamps.
-  Closed/resolved status does not erase inclusion evidence. Existing single/cumulative ledger
-  attributions suppress additional event rows for the same origin/posting pair. Zero rows do
-  not invent ledger lines or effects. Event amount is the explicit payload Money value for a
-  single event; it is null for multi-event sets, triggers or events with no explicit amount.
-  Column labels explicitly identify revenue/balance amounts posted out of period. Catalogue
-  and source-binding declarations name the additional inputs.
-- K07 now drives the actual queued import computation. Before that worker, no row is shown;
-  after it, the EUR 100,000 invoice is shown with zero effects/line count, uploader and import
-  approval. Checks include timestamps immediately before/at finding creation, other periods,
-  origin filters and another book. Existing cumulative-attribution and frozen-register tests
-  retain their original counts and monetary expectations. CSV keeps event amounts separate.
-- Final register/export/provenance/snapshot/source-binding run: **110 passed in 71.39 seconds**,
-  /private/tmp/late-register-final.log. Intermediate runs identified missing ReportParams in
-  the new test and updated CSV header expectations; both are corrected. Source Mypy and Ruff
-  pass. Import-cycle/layer/report-reader architecture checks: **49 passed in 8.86 seconds**,
-  /private/tmp/late-register-architecture.log. All runs terminal; no complete backend pass claimed.
-- LIMITS B4-7/B3-7 and standing K07 failure are updated. Prior-date balance classification and
-  broader secondary-book finding coverage remain limited. One original baseline failure
-  remains: the absent AI lifecycle feature. Monetary import reconciliation, other documented
-  gaps, full current verification and independent accounting sign-off remain outstanding.
-  No deployment. Publication exclusions and PolyForm Noncommercial licensing are unchanged.
 
 ## Outstanding release verification
 

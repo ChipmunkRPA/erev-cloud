@@ -22,13 +22,13 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from datetime import date
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal, localcontext
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Final, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, ValidationError
-from sqlalchemy import insert, select
+from sqlalchemy import and_, insert, select
 
 from erev_api.audit import writer as audit_writer
 from erev_api.db import new_id
@@ -452,7 +452,29 @@ def apply(uow: UnitOfWork, plan: Plan, *, context: ApplyContext) -> Applied:
 
 
 def _exact(value: Any) -> str:
-    return format(Decimal(str(value)).normalize(), "f")
+    with localcontext() as ctx:
+        ctx.prec = 80
+        return format(Decimal(str(value)).normalize(), "f")
+
+
+def _stored_quantity(value: Any) -> str | None:
+    if value is None:
+        return None
+    with localcontext() as ctx:
+        ctx.prec = 80
+        return _exact(Decimal(str(value)).quantize(Decimal("1e-18"), rounding=ROUND_HALF_UP))
+
+
+def _day_text(value: Any) -> str | None:
+    return None if value is None else str(value)
+
+
+def _tax_attributes(value: Mapping[str, Any], *, source: bool) -> dict[str, Any]:
+    return {
+        "tax_type": value.get("tax_type"),
+        "principal_or_agent": value.get("principal_or_agent"),
+        **({"jurisdiction": value.get("jurisdiction")} if source else {}),
+    }
 
 
 def _amount_pair(value: Mapping[str, Any]) -> list[str]:
@@ -483,7 +505,14 @@ def reconcile_amounts(
                     _exact(sign * Decimal(str(cells["lines.amount.amount"]))),
                     str(cells["lines.amount.currency"]),
                 ],
+                "contract": str(first["contract"]),
+                "obligation": cells.get("lines.obligation_key"),
+                "product": cells.get("lines.product_code"),
+                "quantity": _stored_quantity(cells.get("lines.quantity")),
+                "service_period_start": cells.get("lines.service_period_start"),
+                "service_period_end": cells.get("lines.service_period_end"),
                 "taxes": [],
+                "tax_attributes": [],
             },
         )
         if cells.get("lines.tax_lines.amount.amount") is not None:
@@ -493,8 +522,38 @@ def reconcile_amounts(
                     str(cells["lines.tax_lines.amount.currency"]),
                 ]
             )
+            line["tax_attributes"].append(
+                _tax_attributes(
+                    {
+                        "tax_type": cells.get("lines.tax_lines.tax_type"),
+                        "principal_or_agent": cells.get("lines.tax_lines.principal_or_agent"),
+                        "jurisdiction": cells.get("lines.tax_lines.jurisdiction"),
+                    },
+                    source=True,
+                )
+            )
     expected_events = [
         {
+            "contract": str(first["contract"]),
+            "event_type": "CREDIT_MEMO_RECORDED" if credit else "BILLING_RECORDED",
+            "effective_date": str(first["issue_date"]),
+            "source_record_id": str(context.record_ids[plan.rows[0].id]),
+            "obligation": line["obligation"],
+            "number": str(first["invoice_number"]),
+            "line_external_id": None if credit else key,
+            "source_invoice_linked": None if credit else True,
+            "credited_invoice_number": first.get("credited_invoice_number") if credit else None,
+            "issue_date": str(first["issue_date"]),
+            "due_date": None if credit else first.get("due_date"),
+            "is_cancellable": None
+            if credit or first.get("is_cancellable") is None
+            else str(first["is_cancellable"]).lower() == "true",
+            "service_period_start": None if credit else line["service_period_start"],
+            "service_period_end": None if credit else line["service_period_end"],
+            "reason": first.get("reason") if credit else None,
+            "tax_attributes": []
+            if credit
+            else [_tax_attributes(tax, source=False) for tax in line["tax_attributes"]],
             "amount": [_exact(sign * Decimal(line["amount"][0])), line["amount"][1]],
             "taxes": [] if credit else line["taxes"],
             "tax_amount": None
@@ -504,11 +563,15 @@ def reconcile_amounts(
                 line["taxes"][0][1],
             ],
         }
-        for line in source_lines.values()
+        for key, line in source_lines.items()
     ]
     expected = {
         "invoice_number": str(first["invoice_number"]),
         "document_kind": str(first["document_kind"]),
+        "issue_date": str(first["issue_date"]),
+        "due_date": first.get("due_date"),
+        "is_cancellable": str(first.get("is_cancellable")).lower() == "true",
+        "credited_invoice_number": first.get("credited_invoice_number"),
         "currency": str(first["lines.amount.currency"]),
         "total_amount": _exact(
             sum((Decimal(line["amount"][0]) for line in source_lines.values()), Decimal(0))
@@ -542,7 +605,20 @@ def reconcile_amounts(
     )
     events = list(
         session.execute(
-            select(contract_event.c.payload)
+            select(
+                contract_event.c.payload,
+                contract_event.c.event_type,
+                contract_event.c.effective_date,
+                contract_event.c.source_record_id,
+                contract.c.external_id,
+            )
+            .join(
+                contract,
+                and_(
+                    contract.c.tenant_id == contract_event.c.tenant_id,
+                    contract.c.id == contract_event.c.contract_id,
+                ),
+            )
             .where(
                 contract_event.c.id.in_(
                     [key for kind, key in applied.targets if kind == "contract_event"]
@@ -550,16 +626,29 @@ def reconcile_amounts(
                 contract_event.c.import_upload_id == context.import_upload_id,
             )
             .order_by(contract_event.c.stream_version)
-        ).scalars()
+        ).mappings()
     )
     actual = {
         "invoice_number": str(document["invoice_number"]),
         "document_kind": str(document["document_kind"]),
+        "issue_date": str(document["issue_date"]),
+        "due_date": _day_text(document["due_date"]),
+        "is_cancellable": document["is_cancellable"],
+        "credited_invoice_number": document["credited_invoice_external_id"],
         "currency": str(document["currency"]).strip(),
         "total_amount": _exact(document["total_amount"]),
         "tax_amount": _exact(document["tax_amount"]),
         "lines": {
             str(line["line_external_id"]): {
+                "contract": line["contract_ref"],
+                "obligation": line["obligation_ref"],
+                "product": line["product_code"],
+                "quantity": _stored_quantity(line["quantity"]),
+                "service_period_start": _day_text(line["service_period_start"]),
+                "service_period_end": _day_text(line["service_period_end"]),
+                "tax_attributes": [
+                    _tax_attributes(tax, source=True) for tax in line["tax_lines"] or []
+                ],
                 "amount": [_exact(line["amount"]), str(document["currency"]).strip()],
                 "taxes": [_amount_pair(tax["amount"]) for tax in line["tax_lines"] or []],
             }
@@ -567,13 +656,36 @@ def reconcile_amounts(
         },
         "events": [
             {
+                "contract": row["external_id"],
+                "event_type": str(row["event_type"]),
+                "effective_date": str(row["effective_date"]),
+                "source_record_id": str(row["source_record_id"]),
+                "obligation": event.get("obligation_key"),
+                "number": event.get("invoice_number") or event.get("credit_memo_number"),
+                "line_external_id": event.get("line_external_id"),
+                "source_invoice_linked": (
+                    event.get("source_invoice_id") == str(document["id"])
+                    if str(row["event_type"]) == "BILLING_RECORDED"
+                    else None
+                ),
+                "credited_invoice_number": event.get("credited_invoice_number"),
+                "issue_date": event.get("issue_date"),
+                "due_date": event.get("due_date"),
+                "is_cancellable": event.get("is_cancellable"),
+                "service_period_start": event.get("service_period_start"),
+                "service_period_end": event.get("service_period_end"),
+                "reason": event.get("reason"),
+                "tax_attributes": [
+                    _tax_attributes(tax, source=False) for tax in event.get("tax_lines") or []
+                ],
                 "amount": _amount_pair(event["amount"]),
                 "taxes": [_amount_pair(tax["amount"]) for tax in event.get("tax_lines") or []],
                 "tax_amount": None
                 if event.get("tax_amount") is None
                 else _amount_pair(event["tax_amount"]),
             }
-            for event in events
+            for row in events
+            for event in (row["payload"],)
         ],
     }
     return expected, actual

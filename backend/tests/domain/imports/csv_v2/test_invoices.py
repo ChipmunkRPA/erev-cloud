@@ -13,6 +13,7 @@ import copy
 import csv
 import io
 from collections.abc import Sequence
+from dataclasses import replace
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
@@ -641,25 +642,80 @@ def test_d98_103_parity_vc_line_credit_is_out_of_scope_at_import_validation(
     ]
 
 
-@pytest.mark.parametrize("corruption", ["source_amount", "event_amount", "source_tax"])
+@pytest.mark.parametrize(
+    "credit,corruption",
+    [
+        (False, value)
+        for value in (
+            "source_amount",
+            "event_amount",
+            "source_tax",
+            "source_quantity",
+            "source_obligation",
+            "source_product",
+            "event_obligation",
+            "event_line",
+            "event_tax_role",
+            "source_tax_jurisdiction",
+            "source_due_date",
+            "source_contract",
+            "event_contract",
+        )
+    ]
+    + [
+        (True, value)
+        for value in (
+            "source_quantity",
+            "source_obligation",
+            "event_obligation",
+            "event_reference",
+        )
+    ],
+)
 def test_monetary_mismatch_rolls_back_invoice_batch(
-    k11: K11World, monkeypatch: pytest.MonkeyPatch, corruption: str
+    k11: K11World, monkeypatch: pytest.MonkeyPatch, credit: bool, corruption: str
 ) -> None:
     from erev_api.domain.imports.csv_v2 import invoices
 
     imports = importer(k11)
-    import_id = diffed(imports, "amount-check.csv", csv_bytes(HEADERS, ROWS[:1]), "invoices")
+    if credit:
+        committed(k11, "billing.csv", csv_bytes(HEADERS, ROWS[:2]), "invoices")
+    other_contract = "NS-SO-DE-INVOICE-CHECK"
+    if corruption.endswith("_contract"):
+        body = k11_body(k11.customer_id)
+        body["external_id"] = other_contract
+        booked = booked_contract(k11.place, body, activate=False)
+        activated_contract(k11.place, booked)
+    selected = ROWS[2:] if credit else ROWS[:1]
+    import_id = diffed(imports, "amount-check.csv", csv_bytes(HEADERS, selected), "invoices")
     submitted = submit(imports, import_id)
     assert submitted.status_code == 200
     assert (
         approve(k11.app, str(submitted.json()["approval_request_id"]), k11.priya).status_code == 200
     )
-    if corruption == "event_amount":
+    if corruption == "event_contract":
+        original_append = invoices.recorded.append
+
+        def changed_append(uow: Any, plan: Any, **kwargs: Any) -> Any:
+            return original_append(uow, replace(plan, key=other_contract), **kwargs)
+
+        monkeypatch.setattr(invoices.recorded, "append", changed_append)
+    elif corruption.startswith("event_"):
         original_items = invoices._items
 
         def changed_items(body: Any, invoice_id: Any) -> Any:
             altered = copy.deepcopy(body)
-            altered["lines"][0]["amount"]["amount"] = "53999.00"
+            line = altered["lines"][0]
+            if corruption == "event_amount":
+                line["amount"]["amount"] = "53999.00"
+            elif corruption == "event_obligation":
+                line["obligation_key"] = "O2"
+            elif corruption == "event_reference":
+                altered["credited_invoice_number"] = "INV-DE-4472"
+            elif corruption == "event_line":
+                line["line_external_id"] = "wrong-line"
+            else:
+                line["tax_lines"][0]["principal_or_agent"] = "AGENT"
             return original_items(altered, invoice_id)
 
         monkeypatch.setattr(invoices, "_items", changed_items)
@@ -668,10 +724,22 @@ def test_monetary_mismatch_rolls_back_invoice_batch(
 
         def changed_store(uow: Any, plan: Any, context: Any, body: Any) -> Any:
             altered = copy.deepcopy(body)
-            if corruption == "source_amount":
+            if corruption == "source_contract":
+                plan = replace(plan, key=other_contract)
+            elif corruption == "source_amount":
                 altered["lines"][0]["amount"]["amount"] = "53999.00"
-            else:
+            elif corruption == "source_tax":
                 altered["lines"][0]["tax_lines"] = []
+            elif corruption == "source_quantity":
+                altered["lines"][0]["quantity"] = "119"
+            elif corruption == "source_obligation":
+                altered["lines"][0]["obligation_key"] = "O2"
+            elif corruption == "source_product":
+                altered["lines"][0]["product_code"] = "AVM-SUP-12"
+            elif corruption == "source_tax_jurisdiction":
+                altered["lines"][0]["tax_lines"][0]["jurisdiction"] = "FR"
+            else:
+                altered["due_date"] = "2026-10-13"
             return original_store(uow, plan, context, altered)
 
         monkeypatch.setattr(invoices, "_store", changed_store)
@@ -727,3 +795,23 @@ def test_reconciliation_counts_repeated_tax_rows_without_doubling_the_invoice(
     assert check["stored"]["total_amount"] == "54000"
     assert check["stored"]["tax_amount"] == "10360"
     assert len(check["stored"]["lines"]) == len(check["stored"]["events"]) == 1
+
+
+@pytest.mark.parametrize(
+    "quantity,stored",
+    [
+        ("", None),
+        ("0", "0"),
+        ("120.123456789012345678", "120.123456789012345678"),
+        ("120.1234567890123456785", "120.123456789012345679"),
+    ],
+)
+def test_invoice_quantity_preserves_optional_and_database_precision(
+    k11: K11World, quantity: str, stored: str | None
+) -> None:
+    row = list(ROWS[0])
+    row[HEADERS.index("lines.quantity")] = quantity
+    done = committed(k11, "quantity.csv", csv_bytes(HEADERS, [row]), "invoices")
+    (check,) = done["control_totals"]["loaded"]["monetary_checks"]
+    assert check["source"] == check["stored"]
+    assert check["stored"]["lines"]["1"]["quantity"] == stored

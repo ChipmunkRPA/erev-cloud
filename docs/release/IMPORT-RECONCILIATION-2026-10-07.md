@@ -8,7 +8,7 @@ coverage of every field that affects accounting.
 | Registered template | Current read-back scope | Remaining work identified |
 | --- | --- | --- |
 | contracts | Booking line prices, currencies, quantities, unit prices, out-of-scope amounts and source identity | Broader release verification |
-| invoices | Signed document/line amounts, positive event amounts and tax amounts/currencies | Add invoice quantities and explicit event contract/obligation binding to the comparison |
+| invoices | Signed document/line amounts, positive event amounts, taxes, quantities at database precision, contract/obligation/product identity, dates, invoice links and tax classifications | Broader release verification |
 | cost_events, pre_standard_revenue | Event amount/currency, contract, obligation, date and source identity; cost purpose/flags/payee/plan | Broader release verification |
 | usage | Rated amount/currency (including absent versus zero), quantity, obligation, usage period/metric, contract, date and source identity | Broader release verification |
 | estimates | Scalar money/rates/quantities, typed parameters, scenarios, identity and element settings | Broader release verification |
