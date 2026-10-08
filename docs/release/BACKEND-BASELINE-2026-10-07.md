@@ -341,3 +341,30 @@ Neither original remaining baseline failure is closed by this change. The AI fea
 has no routes, and the late-event report still needs zero-posting event rows plus its
 child-worker workflow. LIMITS B3-7/B1-20 reflect the implemented scheduling portion.
 No deployment, full-backend pass or independent accounting sign-off claimed.
+
+### Architecture follow-up after import scheduling
+
+On 906a83e, full command-route audit plus architecture tests: **5 failed, 263 passed
+in 169.16 seconds**, `/private/tmp/post-import-audit-architecture.log`. CTL-038 passed
+in 28.52 seconds. The five new architecture findings were:
+
+- sync-total exception assignment omitted explicit contract scope;
+- five Step 1 system-scope calls lacked their documented declarations;
+- integration_connection documentation listed owner_membership_id in a different order;
+- approvals/subjects imported the Step 1 domain to calculate approved content;
+- the import calculation deferral lacked its explicit stored-computation declaration.
+
+The content function now registers through SubjectLifecycle.content and fails closed
+if absent; the kernel no longer imports the domain. The sync-run exception's assignment
+explicitly carries no contract IDs. Column ordering and the reviewed call declarations
+are synchronized, with scope reasons in the developer guide. No architecture rule was
+removed. Its negative-control list includes the new import site.
+
+Final five architecture modules: **38 passed in 18.74 seconds**,
+`/private/tmp/architecture-followup-final.log`. Preview checks plus six real Step 1/sync
+workflows: **13 passed in 54.51 seconds**, `/private/tmp/architecture-workflow-regressions.log`.
+An intermediate 37-pass/one-failure run identified the negative-control expectation
+that needed the newly declared site. Source Mypy, Ruff/format/whitespace pass. All
+processes terminal. These five findings are resolved; the two original baseline
+failures remain open. No complete backend verification, deployment or accounting
+sign-off claimed.

@@ -128,6 +128,26 @@ DOOR: Final = {
         ): "a fiscal year's period states are written for every entity on the calendar: a count",
     },
     SYSTEM_SCOPE: {
+        (
+            "backend/erev_api/domain/contracts/events.py",
+            "record_events",
+        ): "Step 1 preview after contract authorization includes every performing entity",
+        (
+            "backend/erev_api/domain/contracts/step1_approval.py",
+            "lock_basis",
+        ): "hold all group members' books, judgements and posting windows before Step 1 decisions",
+        (
+            "backend/erev_api/domain/contracts/step1_approval.py",
+            "requires_review",
+        ): "restricted-period review considers every group entity and enabled book",
+        (
+            "backend/erev_api/domain/contracts/step1_approval.py",
+            "same_effective_day",
+        ): "current-day release is checked in every affected entity's time zone",
+        (
+            "backend/erev_api/domain/contracts/step1_approval.py",
+            "content",
+        ): "approval basis seals all group members and reviewed inputs, independent of reader",
         (SESSION, "every_entity_scope"): "the same block for a caller that holds its context",
         (APPROVALS, "route_submission"): SUBJECT,
         (APPROVALS, "submit"): SUBJECT,

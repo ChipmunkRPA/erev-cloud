@@ -2295,6 +2295,7 @@ def _totals_mismatch(
             object_id=item.id,
             before={"owner_membership_id": None},
             after={"owner_membership_id": str(owner_id)},
+            contract_ids=(),  # This exception covers the sync run's totals, not a contract.
         )
         notify(
             uow,

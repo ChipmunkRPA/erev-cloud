@@ -67,6 +67,10 @@ PREVIEWS: Final = {
 }
 # (file, function) → why it is no preview: it answers no summary to the caller.
 COMPUTATIONS: Final = {
+    ("backend/erev_api/domain/imports/commit.py", "commit_upload"): (
+        "IPL-11 children compute committed imported facts per group; they return no preview "
+        "to the uploader, and report readers retain their own scopes"
+    ),
     (COMPUTE_JOB, "defer_compute"): (
         "the computation of a group a command left dirty: stored figures, read under each "
         "reader's own scope"
@@ -405,6 +409,7 @@ def test_dg_krn_apr_07_the_reader_reports_each_kind_of_finding() -> None:
     assert [line for line in rendered if line.endswith(GONE)] == [
         f"{CLOSE_RUNS}:1 {RULE} _recompute_dirty {GONE}",
         f"{VOLUME}:1 {RULE} _apply_modification {GONE}",
+        f"backend/erev_api/domain/imports/commit.py:1 {RULE} commit_upload {GONE}",
         f"{EXCEPTIONS}:1 {RULE} request_reprocess {GONE}",
         f"{ADJUSTMENTS}:1 {RULE} preview {GONE}",
     ]

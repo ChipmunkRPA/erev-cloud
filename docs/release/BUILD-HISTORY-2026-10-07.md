@@ -1439,3 +1439,23 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
 - Three more original baseline failures resolved, leaving 14 without current-main disposition.
   All runs terminal. This is scoped evidence, not a full migration walk or backend baseline.
   Implementation gaps and independent accounting sign-off remain open. No deployment.
+
+## Container probe fixture and release-check visibility — October 7, 2026
+
+- Continued from d44d5c5. Reproduced the container probe and progress-list failures:
+  **2 failed in 0.16 seconds**, /private/tmp/release-probes-before.log. On this host,
+  files under the scratch root inherit group 0 while the process uses group 20; macOS
+  silently removes setgid on chmod. A local probe confirmed mode 0755 before changing
+  to the caller's group and 02755 afterward.
+- The fixture now assigns its setgid file/directory the caller's group and explicitly
+  asserts all privileged mode bits before running the unchanged container probe. The
+  probe must still report both privileged files and exclude directories and symlinks.
+  Restored the outstanding supervisor-target list below, with historical results kept
+  dated and current release-candidate evidence still required.
+- Full container-script module plus progress-list check: **20 passed in 15.36 seconds**,
+  /private/tmp/release-probes-verified.log. Ruff/format and whitespace checks pass.
+  These use Docker stand-ins; no images were built, deployed or certified by this run.
+- Two original baseline failures resolved; 12 remain without current-main disposition.
+  The seven-case tooling rerun started here completed in the continuation below;
+  session 71400 is terminal. Its results supersede this entry's pending status.
+  Accounting sign-off and implementation gaps remain open. No deployment.

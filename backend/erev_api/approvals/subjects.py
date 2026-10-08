@@ -1225,9 +1225,10 @@ def event_submission_content(session: Session, subject_id: UUID) -> Mapping[str,
 
 
 def step1_event_content(session: Session, subject_id: UUID) -> Mapping[str, Any]:
-    from erev_api.domain.contracts.step1_approval import content  # noqa: PLC0415
-
-    return content(session, subject_id)
+    lifecycle = LIFECYCLES.get(ApprovalSubjectType.STEP1_EVENT)
+    if lifecycle is None or lifecycle.content is None:
+        raise LookupError("STEP1_EVENT content callback is not registered")
+    return lifecycle.content(session, subject_id)
 
 
 def _visible_entity(found: Any) -> UUID:
@@ -3274,7 +3275,7 @@ def ssp_book_version_entity(session: Session, version_id: UUID) -> UUID | None:
 @dataclass(frozen=True, slots=True)
 class SubjectLifecycle:
     """The callbacks of a subject whose lifecycle a domain module implements, and optionally
-    what only that module can state about the subject: its routing flags, the legal entities it
+    what only that module can state about the subject: its content, routing flags, legal entities it
     names, the entities its preparer is held to, the steps its content demands and its own
     check of the people who decide (``IMPORT_COMMIT``: rulings R-29, R-38 (ii), R-41 (5), R-64
     (6), R-87 (1), R-92)."""
@@ -3282,6 +3283,7 @@ class SubjectLifecycle:
     on_approved: Callable[[UnitOfWork, UUID, UUID], None]
     on_rejected: Callable[[UnitOfWork, UUID, UUID], None]
     on_voided: Callable[[UnitOfWork, UUID, UUID], None]
+    content: Callable[[Session, UUID], Mapping[str, Any]] | None = None
     flags: Callable[[Session, UUID], frozenset[str]] | None = None
     # Item ACT-FLAGS-1: T-PLT-17 ``amount_functional`` with its currency, for a subject whose
     # amount only the domain module can state (a conversion at the rates in force); None states

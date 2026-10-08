@@ -3097,3 +3097,19 @@ new pending requests cannot inherit review. A fully cleared gate voids its unnee
 Approval retains the original covered scope and removes the temporary basis; rejection or
 voiding removes the temporary basis with the request pointer. Other gates keep strict pending
 basis checks. No migration or historical lock rewrite is needed.
+
+### October 7 continuation: Step 1 scope and import computation
+
+Step 1's subject-content callback is registered by the contracts domain through
+SubjectLifecycle.content; the approvals kernel does not import the domain to hash it.
+After the caller's contract authorization, record_events previews the group's full
+entity scope. step1_approval.lock_basis holds every member's book, judgement and
+posting windows; requires_review examines all affected entities/books;
+same_effective_day checks their time zones; content seals the complete group basis.
+These tenant-bound system-scope calls return no cross-entity rows to the caller.
+
+IPL-11 import children are stored computations, not previews. The commit queues one
+CONTRACT_COMPUTE job per affected group after validating the uploader's scope and
+source rows. Dispatch follows transaction commit; report readers retain their own
+entity permissions. These sites are explicitly enumerated by DG-ARC-16 and
+DG-KRN-APR-07 architecture checks.

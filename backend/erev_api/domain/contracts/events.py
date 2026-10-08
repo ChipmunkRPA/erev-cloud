@@ -3454,5 +3454,6 @@ for _subject in (
             on_rejected=reject_event_submission,
             on_voided=void_event_submission,
             preparer_entities=preparer_entities,
+            content=step1_approval.content if _subject is ApprovalSubjectType.STEP1_EVENT else None,
         ),
     )

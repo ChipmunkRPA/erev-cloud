@@ -2,6 +2,31 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Architecture follow-up — October 7, 2026
+
+- Continued from 906a83e. Full command-route audit plus architecture run: **5 failed,
+  263 passed in 169.16 seconds**, /private/tmp/post-import-audit-architecture.log.
+  The audit walk passed in 28.52 seconds. Five architecture checks exposed missing
+  declarations, a data-model column-order mismatch and an upward kernel/domain import.
+- Step 1 approval content now uses a registered SubjectLifecycle.content callback;
+  approvals no longer imports contracts to compute the hash. A missing callback refuses
+  explicitly. The existing domain function still supplies the exact approved content.
+  Sync-total exception assignment explicitly declares no contract IDs: its subject is
+  the sync run, not an individual contract. Data-model documentation matches the table's
+  owner-membership/entity column order.
+- Enumerated the five Step 1 tenant-scope entries with their purposes and the new import
+  computation deferral as a stored calculation, not a preview. Documented these boundaries
+  in the developer guide. The checks still reject unlisted calls. The preview check's
+  own negative-control expectation now includes the new declared call site.
+- Final affected architecture modules: **38 passed in 18.74 seconds**,
+  /private/tmp/architecture-followup-final.log. Preview negative controls plus actual Step 1
+  soft-close approval, book-change staleness, evidence snapshot, performing-entity review,
+  draft approval and sync totals: **13 passed in 54.51 seconds**,
+  /private/tmp/architecture-workflow-regressions.log. Source Mypy, Ruff/format and whitespace
+  pass. All runs terminal. This closes the five new architecture findings; no complete
+  backend pass is claimed. The two original baseline failures, remaining implementation
+  gaps and independent accounting sign-off remain open. No deployment.
+
 ## Post-import computation scheduling — October 7, 2026
 
 - Continued from 3e106e6. AI routes are genuinely absent, so its pending audit category
@@ -68,26 +93,6 @@
   close waiver freshness, pending AI audit category, modification audit report expectations,
   and the late-billing out-of-period report. Current full-backend verification and
   implementation gaps remain open, as does independent accounting sign-off. No deployment.
-
-## Container probe fixture and release-check visibility — October 7, 2026
-
-- Continued from d44d5c5. Reproduced the container probe and progress-list failures:
-  **2 failed in 0.16 seconds**, /private/tmp/release-probes-before.log. On this host,
-  files under the scratch root inherit group 0 while the process uses group 20; macOS
-  silently removes setgid on chmod. A local probe confirmed mode 0755 before changing
-  to the caller's group and 02755 afterward.
-- The fixture now assigns its setgid file/directory the caller's group and explicitly
-  asserts all privileged mode bits before running the unchanged container probe. The
-  probe must still report both privileged files and exclude directories and symlinks.
-  Restored the outstanding supervisor-target list below, with historical results kept
-  dated and current release-candidate evidence still required.
-- Full container-script module plus progress-list check: **20 passed in 15.36 seconds**,
-  /private/tmp/release-probes-verified.log. Ruff/format and whitespace checks pass.
-  These use Docker stand-ins; no images were built, deployed or certified by this run.
-- Two original baseline failures resolved; 12 remain without current-main disposition.
-  The seven-case tooling rerun started here completed in the continuation below;
-  session 71400 is terminal. Its results supersede this entry's pending status.
-  Accounting sign-off and implementation gaps remain open. No deployment.
 
 ## Outstanding release verification
 
