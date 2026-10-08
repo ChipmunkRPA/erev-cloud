@@ -1360,3 +1360,22 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   One more original baseline failure resolved; 34 remain without current-main disposition.
 - REQ-PLT-019's pending AI lifecycle category remains open and is not waived. Wider baseline
   triage and accounting sign-off remain outstanding. No deployment or production claim.
+
+## Estimate lock and SMTP guard verification — October 7, 2026
+
+- Continued from ef323e6. Reproduced three older baseline failures on current main:
+  two estimate-approval stand-ins crashed on the newer shared FX publication lock;
+  one SMTP test expected the original spelling of a normalized IPv4-mapped IPv6 literal.
+  Initial run: **3 failed, 117 passed in 2.53 seconds**, /private/tmp/lock-ssrf-before.log.
+- The lock stand-in now recognizes only the expected shared advisory call, verifies its
+  tenant namespace/hash seed, and records it before group/contract locks. Both approval
+  assertions require this complete order, including at basis revalidation. Literal SMTP
+  addresses use canonical spelling; resolver outputs retain their original checked spelling.
+  All private-opt-in and blocked-destination checks remain. Production code is unchanged.
+- Final verification: **120 passed in 2.25 seconds**, /private/tmp/lock-ssrf-verified.log.
+  A separate process bypassed only hold_fx_publication: both approval cases failed their
+  order assertions as required (/private/tmp/estimate-gate-negative.log). An intermediate
+  run exposed the resolver/literal spelling distinction; the final assertions cover both.
+  Ruff, format and whitespace checks pass; all runs terminal. Three baseline failures
+  resolved, leaving 31 without current-main disposition. These are scoped unit checks,
+  not a new full-backend baseline. Accounting sign-off remains open; no deployment.

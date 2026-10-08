@@ -208,13 +208,11 @@ def test_a_commit_whose_worker_died_before_it_began_fails_the_import(
 def test_job_failed_item_1_the_commit_hook_leaves_an_upload_that_ended_or_is_held(
     lena: Member, app_settings: Settings, keyring: KeyRing, log_stream: io.StringIO
 ) -> None:
-    """The hook ends only an upload that is ``APPROVED`` or ``COMMITTING`` and that nobody holds
-    (the widening of 05 rev 1.185 is witnessed above). An upload whose
-    commit had committed before the worker died stays ``COMMITTED``. An upload whose row another
-    transaction holds is not waited for: the job ends FAILED and the upload is that
-    transaction's to end. Since 05 JOB-06 rev 1.200 the holder is never the job's own commit -
-    a commit in flight keeps its job from being stopped (the next test); the session here holds
-    the row without the job's lock, as a transaction of another actor would."""
+    """Completed imports stay completed. A competing lock must not strand a COMMITTING
+    import behind a FAILED job: required cleanup rolls settlement back after lock timeout,
+    then a later sweep finishes both records when the competing holder has released it.
+    The holder here is a different actor, not the job's own transaction/advisory lock.
+    """
     committed, first = _committing(lena, "COMMITTED")
     held, second = _committing(lena, "COMMITTING")
     with tenant_session(_db(lena.tenant_id)) as holder:
@@ -222,12 +220,23 @@ def test_job_failed_item_1_the_commit_hook_leaves_an_upload_that_ended_or_is_hel
             select(import_upload.c.id).where(import_upload.c.id == held).with_for_update()
         )
         _sweep(app_settings, keyring)
+        assert _state(lena.tenant_id, held, second) == ("COMMITTING", "RUNNING", [])
     assert _state(lena.tenant_id, committed, first) == ("COMMITTED", "FAILED", [])
-    assert _state(lena.tenant_id, held, second) == ("COMMITTING", "FAILED", [])
-    # Not waited for: the hook returned, it did not fail on the held row's lock.
+    # Required cleanup is retried after the competing command releases the upload.
+    _sweep(app_settings, keyring)
+    status, state, items = _state(lena.tenant_id, held, second)
+    assert (status, state) == ("FAILED", "FAILED")
+    assert len(items) == 1 and items[0]["code"] == "IMPORT_PROCESSING_FAILED"
     lines = [json.loads(raw) for raw in log_stream.getvalue().splitlines() if raw.strip()]
     mine = {str(first), str(second)}
-    assert [line["event"] for line in lines if line.get("job_id") in mine] == ["job.failed"] * 2
+    failures = [
+        line for line in lines if line.get("job_id") in mine and line["event"] == "job.failed"
+    ]
+    assert sorted(line["job_id"] for line in failures) == sorted(mine)
+    assert any(
+        line.get("job_id") == str(second) and line["event"] == "job.failure_hook_failed"
+        for line in lines
+    )
 
 
 def test_job_06_a_commit_in_flight_keeps_its_job_from_being_stopped(

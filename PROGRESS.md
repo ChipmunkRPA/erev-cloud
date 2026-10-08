@@ -2,6 +2,28 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Tooling revalidation and import cleanup retry — October 7, 2026
+
+- Continued from 09c31ef. Preserved session 71400 and its primary test database until
+  terminal. The seven tooling cases passed unchanged: **7 passed in 350.56 seconds**,
+  /private/tmp/local-tooling-revalidation.log. Demo fixture setup took 326.84 seconds.
+  This verifies missing-demo-password refusal, fixture tamper detection/no writes,
+  dependency licensing, Makefile success output, running-stack reset refusal, OpenAPI
+  stale/current checks and process start/reuse/stop. Earlier missing-tooling errors do
+  not reproduce in this configured checkout. No blanket environment exemption added.
+- The import failure test expected settlement to finish despite a held upload. Current
+  required-hook behavior deliberately rolls back settlement on cleanup failure. The
+  test now checks COMMITTING/RUNNING while held and retries after release, requiring
+  FAILED/FAILED plus one IMPORT_PROCESSING_FAILED item. Already committed uploads
+  remain committed, and each job emits one job.failed log; the held case logs its
+  initial hook failure. Production code is unchanged.
+- Full import failure-hook module: **4 passed in 15.88 seconds**,
+  /private/tmp/import-failure-cleanup-verified.log. Ruff/format and whitespace checks pass.
+  All processes terminal. Eight original baseline failures resolved; four remain:
+  close waiver freshness, pending AI audit category, modification audit report expectations,
+  and the late-billing out-of-period report. Current full-backend verification and
+  implementation gaps remain open, as does independent accounting sign-off. No deployment.
+
 ## Container probe fixture and release-check visibility — October 7, 2026
 
 - Continued from d44d5c5. Reproduced the container probe and progress-list failures:
@@ -18,9 +40,8 @@
   /private/tmp/release-probes-verified.log. Ruff/format and whitespace checks pass.
   These use Docker stand-ins; no images were built, deployed or certified by this run.
 - Two original baseline failures resolved; 12 remain without current-main disposition.
-  Seven tooling-related cases are running in session 71400 (PID 43359), log
-  /private/tmp/local-tooling-revalidation.log. Full demo seeding is still active; do not
-  reset the primary test database or start another pytest until this process is terminal.
+  The seven-case tooling rerun started here completed in the continuation below;
+  session 71400 is terminal. Its results supersede this entry's pending status.
   Accounting sign-off and implementation gaps remain open. No deployment.
 
 ## Outstanding release verification
@@ -76,25 +97,6 @@ not authorize deployment, provisioning or changes to a live database.
 - All 14 original backup/restore baseline failures are resolved, leaving 17 original
   failures without current-main disposition. Broader verification, implementation gaps
   and independent accounting sign-off remain open. No deployment or cloud changes.
-
-## Estimate lock and SMTP guard verification — October 7, 2026
-
-- Continued from ef323e6. Reproduced three older baseline failures on current main:
-  two estimate-approval stand-ins crashed on the newer shared FX publication lock;
-  one SMTP test expected the original spelling of a normalized IPv4-mapped IPv6 literal.
-  Initial run: **3 failed, 117 passed in 2.53 seconds**, /private/tmp/lock-ssrf-before.log.
-- The lock stand-in now recognizes only the expected shared advisory call, verifies its
-  tenant namespace/hash seed, and records it before group/contract locks. Both approval
-  assertions require this complete order, including at basis revalidation. Literal SMTP
-  addresses use canonical spelling; resolver outputs retain their original checked spelling.
-  All private-opt-in and blocked-destination checks remain. Production code is unchanged.
-- Final verification: **120 passed in 2.25 seconds**, /private/tmp/lock-ssrf-verified.log.
-  A separate process bypassed only hold_fx_publication: both approval cases failed their
-  order assertions as required (/private/tmp/estimate-gate-negative.log). An intermediate
-  run exposed the resolver/literal spelling distinction; the final assertions cover both.
-  Ruff, format and whitespace checks pass; all runs terminal. Three baseline failures
-  resolved, leaving 31 without current-main disposition. These are scoped unit checks,
-  not a new full-backend baseline. Accounting sign-off remains open; no deployment.
 
 ## Older backend baseline completed — October 7, 2026
 
