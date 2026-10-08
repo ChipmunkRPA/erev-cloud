@@ -192,7 +192,7 @@ def test_krn_evt_06_preferences_respected(world: World, run: Run) -> None:
     tenant_id = world.tenant_id
     membership = _membership(world.approver_a)
     with run(system_principal(tenant_id)) as uow:
-        assert on_membership_activated(uow, membership) == 12
+        assert on_membership_activated(uow, membership) == 13
         uow.commit()
 
     def send(kind: NotificationKind, title: str, **kwargs: Any) -> None:
@@ -311,7 +311,7 @@ def test_a_notification_raised_in_a_sandbox_is_delivered_in_the_app_only(
         with system_unit_of_work(
             runtime, system_principal(tenant_id), request_id="tests-sbx-email"
         ) as uow:
-            assert on_membership_activated(uow, membership) == 12
+            assert on_membership_activated(uow, membership) == 13
             uow.commit()
         send(sent[1])
         send(sent[2])
@@ -340,7 +340,7 @@ def test_membership_activation_seeds_preferences(world: World, run: Run) -> None
     tenant_id = world.tenant_id
     membership = _membership(world.approver_b)
     with run(system_principal(tenant_id)) as uow:
-        assert on_membership_activated(uow, membership) == 12
+        assert on_membership_activated(uow, membership) == 13
         uow.commit()
     with tenant_session(_all_entities(tenant_id)) as session:
         rows = session.execute(
@@ -350,10 +350,11 @@ def test_membership_activation_seeds_preferences(world: World, run: Run) -> None
                 notification_preference.c.email,
             ).where(notification_preference.c.membership_id == membership)
         ).all()
-    assert len(rows) == 12
+    assert len(rows) == 13
     assert all(row.in_app for row in rows)
     assert {str(row.kind): bool(row.email) for row in rows} == {
         "APPROVAL_ASSIGNED": True,
+        "APPROVAL_UNASSIGNED": True,
         "ITEM_REJECTED": True,
         "APPROVAL_VOIDED": True,
         "JOB_FAILED": True,
@@ -453,3 +454,98 @@ def test_approval_notifications_ntf_01_to_04(world: World, probe: ProbeSubjects,
             f"/approvals/requests/{third['id']}",
             third["subject_id"],
         )
+
+
+def test_unassigned_request_tells_access_admin_without_disclosing_its_content(
+    world: World, run: Run, probe: ProbeSubjects, clock: FrozenClock
+) -> None:
+    from erev_api.db.tables import role_assignment
+
+    with tenant_session(_all_entities(world.tenant_id)) as session:
+        session.execute(
+            update(role_assignment)
+            .where(
+                role_assignment.c.membership_id.in_(
+                    [_membership(world.approver_a), _membership(world.approver_b)]
+                )
+            )
+            .values(revoked_at=clock.now(), revoked_by_kind="SYSTEM")
+        )
+    subject_id = probe.new_subject(role="access_approver")
+    with run(world.preparer) as uow:
+        request = submit(uow, subject_type=SUBJECT, subject_id=subject_id, summary=SUMMARY)
+        uow.commit()
+    with tenant_session(_all_entities(world.tenant_id)) as session:
+        warnings = [
+            dict(row)
+            for row in session.execute(select(notification)).mappings()
+            if str(row["kind"]) == "APPROVAL_UNASSIGNED"
+        ]
+    assert len(warnings) == 1
+    warning = warnings[0]
+    assert warning["recipient_membership_id"] == _membership(world.preparer)
+    assert str(request["request_no"]) in warning["body"]
+    assert str(request["request_no"]) in warning["title"]
+    assert SUMMARY not in warning["title"] + warning["body"]
+    assert warning["subject_id"] == request["id"]
+    assert warning["link_path"] == "/settings/roles"
+    assert _notifications(world.tenant_id, NotificationKind.APPROVAL_ASSIGNED) == []
+
+
+@pytest.mark.parametrize("all_entities", [False, True])
+def test_unassigned_alert_only_reaches_access_admins_covering_the_request(
+    world: World,
+    run: Run,
+    probe: ProbeSubjects,
+    monkeypatch: pytest.MonkeyPatch,
+    clock: FrozenClock,
+    all_entities: bool,
+) -> None:
+    from dataclasses import replace
+
+    from erev_api.approvals.subjects import SubjectEntities
+    from erev_api.db.tables import fiscal_calendar, legal_entity, role_assignment
+    from sqlalchemy import insert
+    from support.rows import fiscal_calendar_values, legal_entity_values
+
+    with tenant_session(_all_entities(world.tenant_id)) as session:
+        calendar = fiscal_calendar_values(world.tenant_id)
+        session.execute(insert(fiscal_calendar).values(**calendar))
+        entities = []
+        for person in (world.approver_a, world.approver_b):
+            entity = legal_entity_values(world.tenant_id, calendar_id=calendar["id"])
+            session.execute(insert(legal_entity).values(**entity))
+            entities.append(entity["id"])
+            session.execute(
+                update(role_assignment)
+                .where(role_assignment.c.membership_id == _membership(person))
+                .values(revoked_at=clock.now(), revoked_by_kind="SYSTEM")
+            )
+            insert_role_assignment(
+                session,
+                tenant_id=world.tenant_id,
+                membership_id=_membership(person),
+                role_code="tenant_admin",
+                entity_ids=[entity["id"]],
+            )
+    scope = (
+        SubjectEntities(all_entities=True)
+        if all_entities
+        else SubjectEntities(frozenset({entities[1]}))
+    )
+    install(
+        monkeypatch,
+        replace(
+            probe.spec(SUBJECT, required_permission="ssp.approve"),
+            entities=lambda _session, _id: scope,
+        ),
+    )
+    with run(world.preparer) as uow:
+        submit(uow, subject_type=SUBJECT, subject_id=probe.new_subject(), summary=SUMMARY)
+        uow.commit()
+    expected = {_membership(world.preparer)}
+    if not all_entities:
+        expected.add(_membership(world.approver_b))
+    warnings = _notifications(world.tenant_id, NotificationKind.APPROVAL_UNASSIGNED)
+    assert {row["recipient_membership_id"] for row in warnings} == expected
+    assert all(SUMMARY not in row["body"] + row["title"] for row in warnings)

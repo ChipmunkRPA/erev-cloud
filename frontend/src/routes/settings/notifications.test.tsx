@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 // SF-15:notifications and REQ-PLT-021 (BUILD_SPEC WEB-17; SCREENS_B §9.8; SCREENS SCR-IA-03; PRD §5.4
-// NTF-R2, NTF-R3; 04 API-R-03 `GET, PUT /me/notification-preferences`, T-PLT-25): the twelve kinds with
+// NTF-R2, NTF-R3; 04 API-R-03 `GET, PUT /me/notification-preferences`, T-PLT-25): the thirteen kinds with
 // their names, descriptions and switches; the full-list PUT; "Preferences saved." at most once per 5
 // seconds; the revert on failure; the mandatory audit chain switches; and a sandbox, which sends no
 // email (05 SBX-08 rev 1.116; SCREENS_B §9.8 rev 1.54).
@@ -27,6 +27,7 @@ afterEach(() => {
 /** 04 E-69 order with the T-PLT-25 email defaults (PRD §5.4 "Email default"). */
 const STORED: readonly NotificationPreference[] = [
   { kind: "APPROVAL_ASSIGNED", in_app: true, email: true },
+  { kind: "APPROVAL_UNASSIGNED", in_app: true, email: true },
   { kind: "ITEM_REJECTED", in_app: true, email: true },
   { kind: "APPROVAL_VOIDED", in_app: true, email: true },
   { kind: "JOB_FAILED", in_app: true, email: true },
@@ -43,6 +44,10 @@ const STORED: readonly NotificationPreference[] = [
 /** SCREENS_B §9.8 grid rows: notification and "When it is sent". */
 const ROWS: readonly (readonly [string, string])[] = [
   ["Approval assigned to you", "A step becomes active for an item you can approve"],
+  [
+    "Approval needs an independent approver",
+    "An approval has no independent eligible person for its active step",
+  ],
   ["Your item was approved", "An item you prepared is approved"],
   ["Your item was rejected", "An item you prepared is rejected"],
   ["An approval request was voided", "An item changed after submission or was withdrawn"],
@@ -104,7 +109,7 @@ function switchNamed(name: string): HTMLElement {
 }
 
 describe("SF-15:notifications and REQ-PLT-021", () => {
-  it("the table Notification preferences lists the 12 kinds with the SCREENS_B §9.8 names, descriptions and named switches; the footnote states NTF-R3", async () => {
+  it("the table Notification preferences lists the 13 kinds with the SCREENS_B §9.8 names, descriptions and named switches; the footnote states NTF-R3", async () => {
     servePreferences();
     renderPreferences();
 
@@ -185,7 +190,7 @@ describe("SF-15:notifications and REQ-PLT-021", () => {
     expect(switchNamed("A period was locked, email").getAttribute("aria-checked")).toBe("true");
     expect(screen.getAllByText("Preferences saved.")).toHaveLength(1);
     const second = served.bodies[1]?.items ?? [];
-    expect(second).toHaveLength(12);
+    expect(second).toHaveLength(13);
     expect(second.find((item) => item.kind === "PERIOD_LOCKED")).toEqual({
       kind: "PERIOD_LOCKED",
       in_app: true,
@@ -277,8 +282,8 @@ describe("SF-15:notifications and REQ-PLT-021", () => {
     // Every "Email" switch is off and unavailable, whatever is stored, and says why.
     await screen.findByRole("table", { name: "Notification preferences" });
     const emails = ROWS.map(([name]) => switchNamed(`${name}, email`));
-    expect(emails).toHaveLength(12);
-    expect(STORED.filter((item) => item.email)).toHaveLength(8);
+    expect(emails).toHaveLength(13);
+    expect(STORED.filter((item) => item.email)).toHaveLength(9);
     for (const email of emails) {
       expect(email.getAttribute("aria-checked")).toBe("false");
       expect(email.getAttribute("aria-disabled")).toBe("true");
@@ -323,7 +328,7 @@ describe("SF-15:notifications and REQ-PLT-021", () => {
       item.kind === "CHAIN_VERIFICATION_FAILED" ? { ...item, in_app: false, email: false } : item,
     );
     const body = preferencesBody(tampered);
-    expect(body.items).toHaveLength(12);
+    expect(body.items).toHaveLength(13);
     expect(body.items.find((item) => item.kind === "CHAIN_VERIFICATION_FAILED")).toEqual({
       kind: "CHAIN_VERIFICATION_FAILED",
       in_app: true,

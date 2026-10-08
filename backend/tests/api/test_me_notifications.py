@@ -155,7 +155,7 @@ def test_notification_preferences_put_and_mandatory_kind(app: FastAPI, actor: Ac
         }
         for kind in NotificationKind
     ]
-    assert len(entries) == 12
+    assert len(entries) == 13
     put = call(
         app,
         "PUT",

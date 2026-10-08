@@ -344,7 +344,8 @@ def test_single_head() -> None:
     # 0135: fresh manual close-task signatures after an approved reopen.
     # 0136: move the non-leakproof book enum behind the FX layer lookup keys.
     # 0137: persist tenant-bound reviewed judgement citations for error-correction reopens.
-    assert lines[0].split()[0] == "0137"
+    # 0138: unassigned approval notifications.
+    assert lines[0].split()[0] == "0138"
 
 
 def test_upgrade_downgrade_upgrade(test_database: TestDatabase) -> None:

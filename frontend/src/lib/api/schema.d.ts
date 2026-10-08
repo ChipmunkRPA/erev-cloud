@@ -8511,6 +8511,8 @@ export interface components {
       /** All Entities */
       all_entities: boolean;
       amount: components["schemas"]["MoneyOut"] | null;
+      /** Assignment Blocked */
+      assignment_blocked?: boolean | null;
       /** Attachments */
       attachments: components["schemas"]["ApprovalAttachmentOut"][];
       /** Can Decide */
@@ -16431,7 +16433,8 @@ export interface components {
       | "SUPPORT_GRANT_REQUESTED"
       | "ITEM_APPROVED"
       | "PERIOD_LOCKED"
-      | "PERIOD_REOPENED";
+      | "PERIOD_REOPENED"
+      | "APPROVAL_UNASSIGNED";
     /**
      * NotificationOut
      * @description One T-PLT-24 notification of the caller.

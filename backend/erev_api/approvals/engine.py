@@ -2939,13 +2939,33 @@ def _admitted(
     return [membership_id for membership_id in found if users.get(membership_id) not in refused]
 
 
+def assignment_blocked(
+    session: Session, request: Mapping[str, Any], *, at: datetime
+) -> bool | None:
+    """Current active-step availability, without writing or altering routing facts.
+
+    A request whose subject implementation is unavailable cannot be assessed here. Its
+    existing named lifecycle refusal remains authoritative; a role change cannot fix it.
+    """
+    if request["status"] != ApprovalRequestStatus.PENDING.value:
+        return False
+    if ApprovalSubjectType(request["subject_type"]) not in SUBJECTS:
+        return None
+    return not assigned_memberships(session, request, at=at)
+
+
 def _assigned_memberships(uow: UnitOfWork, request: Mapping[str, Any]) -> list[UUID]:
+    return assigned_memberships(uow.session, request, at=uow.now)
+
+
+def assigned_memberships(
+    session: Session, request: Mapping[str, Any], *, at: datetime
+) -> list[UUID]:
     """NTF-01 recipients (NTF-04 on a void): the people ``can_decide`` answers true for (R-64
     (5)) — those who could decide the active step (``_eligible_memberships``), less the preparer,
     the deciders the subject excludes and everyone who decided the request, and less a person a
     later step cannot do without (``_reserved_for_later_step``; R-66 (7)), who is told when that
     step becomes active; a delegate counts only through a delegator who is none of those."""
-    session = uow.session
     step = session.execute(
         select(approval_step.c.required_permission, approval_step.c.required_role_id).where(
             approval_step.c.approval_request_id == request["id"],
@@ -2965,7 +2985,7 @@ def _assigned_memberships(uow: UnitOfWork, request: Mapping[str, Any]) -> list[U
             role_id=step.required_role_id,
             barred=people,
             ordinal=ordinal,
-            at=uow.now,
+            at=at,
         )
 
     found = eligible(barred)
@@ -2980,12 +3000,12 @@ def _assigned_memberships(uow: UnitOfWork, request: Mapping[str, Any]) -> list[U
             )
         )
     }
-    available = [_step_deciders(session, request, item, barred, at=uow.now) for item in later]
+    available = [_step_deciders(session, request, item, barred, at=at) for item in later]
     reserved = {
         user_id
         for user_id in users
         if any(
-            _starves(session, request, item, barred, [user_id], count, at=uow.now)
+            _starves(session, request, item, barred, [user_id], count, at=at)
             for item, count in zip(later, available, strict=True)
         )
     }
@@ -3104,9 +3124,33 @@ def _reserved_for_later_step(
 
 
 def _notify_assigned(uow: UnitOfWork, request_id: UUID) -> None:
-    """NTF-01 ``APPROVAL_ASSIGNED`` when a step becomes active."""
+    """NTF-01 assignments or NTF-13 access-admin alert when a step becomes active."""
     session = uow.session
     request = _request_row(session, request_id)
+    recipients = _assigned_memberships(uow, request)
+    if not recipients:
+        entities = request_entities(request)
+        administrators = notifications.permission_holders_direct(
+            session,
+            permission="role.manage",
+            entity_ids=entities.ids,
+            all_entities=entities.all_entities,
+            at=uow.now,
+        )
+        notifications.notify(
+            uow,
+            recipient_membership_ids=sorted(administrators, key=str),
+            kind=NotificationKind.APPROVAL_UNASSIGNED,
+            title=f"Approval {request['request_no']} needs an independent approver",
+            body=(
+                f"Approval {request['request_no']} has no independent eligible approver "
+                "for its active step. Review role assignments and separation of duties."
+            ),
+            link_path="/settings/roles",
+            subject_type=OBJECT_TYPE,
+            subject_id=request_id,
+        )
+        return
     summary = str(request["summary"])
     body = f"{_display_name(session, request['preparer_id'])} submitted {summary} for approval."
     impact = _impact(request)
@@ -3114,7 +3158,7 @@ def _notify_assigned(uow: UnitOfWork, request_id: UUID) -> None:
         body += f" Impact: {impact}."
     notifications.notify(
         uow,
-        recipient_membership_ids=_assigned_memberships(uow, request),
+        recipient_membership_ids=recipients,
         kind=NotificationKind.APPROVAL_ASSIGNED,
         title=f"Approval needed: {summary}",
         body=body,

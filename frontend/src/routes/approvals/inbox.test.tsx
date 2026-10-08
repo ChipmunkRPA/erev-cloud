@@ -470,3 +470,14 @@ describe("SF-12 master list", () => {
     ).toEqual([...CATALOGUED_FLAGS].sort());
   });
 });
+
+it.each([true, false, null])("queue marks current assignment blockage (%s)", async (blocked) => {
+  const searches: string[] = [];
+  currencies();
+  listApprovals([approval({ assignment_blocked: blocked, can_decide: false })], searches);
+  renderInbox("/approvals/submitted");
+  await screen.findByRole("listbox", { name: "Approval requests" });
+  const [row] = options();
+  if (row === undefined) throw new Error("one option expected");
+  expect(within(row).queryByText("Needs an independent approver") !== null).toBe(blocked === true);
+});

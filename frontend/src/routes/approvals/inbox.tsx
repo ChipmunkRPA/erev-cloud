@@ -172,6 +172,9 @@ function RowDetails({ approval }: { readonly approval: Approval }) {
         </span>
       ))}
       {approval.status === "PENDING" ? null : <StatusChip status={approvalChipWord(approval)} />}
+      {approval.assignment_blocked === true && !approval.content_withheld ? (
+        <OutlineChip label={t("approvals.assignmentBlocked.title")} />
+      ) : null}
       {approval.flags.map((flag) => (
         <OutlineChip key={flag} label={flagLabel(flag)} />
       ))}

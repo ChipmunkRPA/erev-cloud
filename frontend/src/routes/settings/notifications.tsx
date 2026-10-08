@@ -1,7 +1,7 @@
 // SF-15:notifications Notification preferences (SCREENS_B §9.8; SCREENS §0.3 SCR-IA-03, §0.4 RT-72;
 // DESIGN_SYSTEM DS-CMP-07, DS-CMP-10 static table, DS-CMP-21 switch, DS-CMP-22, DS-CMP-27; PRD §5.4
 // NTF-01 to NTF-12, NTF-R2, NTF-R3; 04 API-R-03 `GET, PUT /me/notification-preferences`, T-PLT-25, E-69;
-// 03 REQ-PLT-021). The table "Notification preferences" lists the twelve kinds in PRD order, each with
+// 03 REQ-PLT-021). The table "Notification preferences" lists the thirteen kinds in PRD order, each with
 // an "In app" and an "Email" switch. A switch applies at once: it turns and shows its busy state while
 // `PUT /me/notification-preferences` sends the full list. Success shows "Preferences saved." at most
 // once per 5 seconds; failure returns every switch to the last stored list with "Could not save the
@@ -41,6 +41,7 @@ export const MANDATORY_KIND: NotificationKind = "CHAIN_VERIFICATION_FAILED";
 /** SCREENS_B §9.8 row order (PRD §5.4 NTF-01 to NTF-12). */
 export const PREFERENCE_KINDS: readonly NotificationKind[] = [
   "APPROVAL_ASSIGNED",
+  "APPROVAL_UNASSIGNED",
   "ITEM_APPROVED",
   "ITEM_REJECTED",
   "APPROVAL_VOIDED",
@@ -122,7 +123,7 @@ export function NotificationPreferences() {
       </Banner>
     );
   } else {
-    body = <Skeleton region={title} shape="rows" count={12} />;
+    body = <Skeleton region={title} shape="rows" count={PREFERENCE_KINDS.length} />;
   }
 
   return (

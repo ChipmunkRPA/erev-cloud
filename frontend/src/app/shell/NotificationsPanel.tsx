@@ -46,6 +46,7 @@ import { t } from "../../lib/i18n/t";
 export const KIND_ICON: Readonly<
   Record<NotificationKind, { readonly icon: Icon; readonly tone: string }>
 > = {
+  APPROVAL_UNASSIGNED: { icon: WarningCircle, tone: "text-warning-fg" },
   APPROVAL_ASSIGNED: { icon: SealCheck, tone: "text-fg-2" },
   ITEM_APPROVED: { icon: CheckCircle, tone: "text-positive-fg" },
   ITEM_REJECTED: { icon: XCircle, tone: "text-negative-fg" },

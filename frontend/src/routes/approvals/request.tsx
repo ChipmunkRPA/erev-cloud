@@ -633,6 +633,11 @@ function RequestReview({ approval, viewerId, onApproved }: RequestReviewProps) {
         </div>
       ) : (
         <>
+          {approval.assignment_blocked === true ? (
+            <Banner tone="warning" title={t("approvals.assignmentBlocked.title")}>
+              {t("approvals.assignmentBlocked.message")}
+            </Banner>
+          ) : null}
           {approval.reopen_judgement == null ? null : (
             <section className="flex flex-col gap-2" aria-label={t("close.reopen.evidenceLabel")}>
               <h3 className="text-title-sm text-fg-1">{approval.reopen_judgement.judgement_no}</h3>

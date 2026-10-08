@@ -51,6 +51,7 @@ if TYPE_CHECKING:
 EMAIL_DEFAULTS: Final[Mapping[NotificationKind, bool]] = MappingProxyType(
     {
         NotificationKind.APPROVAL_ASSIGNED: True,
+        NotificationKind.APPROVAL_UNASSIGNED: True,
         NotificationKind.ITEM_REJECTED: True,
         NotificationKind.APPROVAL_VOIDED: True,
         NotificationKind.JOB_FAILED: True,

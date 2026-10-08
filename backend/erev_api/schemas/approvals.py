@@ -140,6 +140,7 @@ class ApprovalOut(BaseModel):
     impact_preview: ImpactPreviewOut | None
     reopen_judgement: ReopenJudgementEvidenceOut | None = None
     attachments: list[ApprovalAttachmentOut]
+    assignment_blocked: bool | None = None
     can_decide: bool
     # 04 §16.10 rev 1.208 (item APR-CONTENT-SCOPE-1): true for a reader who covers only some of
     # the request's entities. ``summary`` and ``subject.display`` then read the subject type's

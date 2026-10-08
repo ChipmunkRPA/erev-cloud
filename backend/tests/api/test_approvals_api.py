@@ -119,6 +119,7 @@ API_S_APPROVAL = {
     "impact_preview",
     "reopen_judgement",
     "attachments",
+    "assignment_blocked",
     "can_decide",
     "content_withheld",
 }
@@ -1441,6 +1442,7 @@ def test_apr_content_scope_a_reader_of_one_entity_is_answered_the_header_of_a_re
     withheld = f"Policy override {both['request_no']}"
     assert set(body) == API_S_APPROVAL
     assert body["content_withheld"] is True
+    assert body["assignment_blocked"] is None
     assert body["subject"] == {**shown["subject"], "display": withheld}
     assert (body["subject"]["type"], body["subject"]["id"], body["subject"]["content_sha256"]) == (
         BOUND.value,
@@ -1827,3 +1829,35 @@ def test_a_request_of_a_subject_type_without_a_specification_is_refused_by_name(
             .where(audit_event.c.approval_request_id == seeded["id"])
         ).scalar_one()
     assert events == 0
+
+
+def test_assignment_warning_tracks_live_independent_grants_without_changing_the_request(
+    app: FastAPI, world: World, submitted: Submitter, clock: FrozenClock
+) -> None:
+    from erev_api.db.tables import role_assignment
+    from sqlalchemy import update
+
+    tenant_id = world.lena.member.tenant_id
+    with tenant_session(_all_entities(tenant_id)) as session:
+        session.execute(
+            update(role_assignment)
+            .where(role_assignment.c.membership_id == world.ben.member.membership_id)
+            .values(revoked_at=clock.now(), revoked_by_kind="SYSTEM")
+        )
+    request = submitted(world.lena)
+    path = f"{APPROVALS}/{request['id']}"
+    blocked = get(app, path, world.lena)
+    assert blocked.status_code == 200, blocked.text
+    assert blocked.json()["assignment_blocked"] is True
+    with tenant_session(_all_entities(tenant_id)) as session:
+        insert_role_assignment(
+            session,
+            tenant_id=tenant_id,
+            membership_id=world.ben.member.membership_id,
+            role_code="tenant_admin",
+        )
+    ready = get(app, path, world.lena)
+    assert ready.status_code == 200, ready.text
+    assert ready.json()["assignment_blocked"] is False
+    assert ready.json()["subject"]["content_sha256"] == blocked.json()["subject"]["content_sha256"]
+    assert ready.json()["flags"] == blocked.json()["flags"]

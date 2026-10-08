@@ -833,3 +833,35 @@ Earlier October 7 policy-isolation and workbench evidence is archived verbatim i
   Do not restart it. Prior integration evidence was archived verbatim in BUILD-HISTORY.
 - B1-12 remains open pending current migration/compatibility/static verification and publication.
   Other documented gaps and independent accounting sign-off remain. No deployment authorized.
+
+## Reviewed evidence for error-correction reopens — October 7, 2026
+
+- Continued from main `b6bbedf`; the preceding turn made progress by repairing the submission
+  locking regression and verifying both decision orders. B1-12 is now implemented and verified
+  for direct publication to main. No PR or deployment.
+- ERROR_CORRECTION requires a reviewed ESTIMATE_VS_ERROR judgement from the same tenant/entity
+  and applicable book. The request binds full content and independent review identity; final
+  approval revalidates under period/judgement locks. Superseded evidence and legacy requests
+  without citations become stale. Busy review locks are retryable. Other reasons refuse a citation.
+- Revision 0137 stores the current basis separately, preserving the period's FOR SHARE request
+  lock and row version. Duplicate submissions cannot replace pending evidence. Immutable request
+  audit and reopen history retain the citation; downgrade refuses citation loss across tenants.
+- The form selects reviewed evidence with entity/book/topic/status filters and pagination.
+  Approvers and history readers see the submitted conclusion and reviewer within content scope.
+  New requests cannot replace old evidence; loss of all entity access returns 404.
+- **138 compatibility tests passed** in 419.60 seconds (`reopen-citation-sidecar-compatibility.log`).
+  The earlier revised run passed 57 tests including both decision interleavings and the 14
+  basis tests; its sole incorrect 200-vs-404 expectation was fixed and passed in the final run.
+  **5 migration checks passed** in 16.31 seconds (`reopen-citation-sidecar-migration-walk.log`),
+  including full up/down/up and database lint. **742 unit/architecture/snapshot checks passed**
+  in 166.98 seconds. **62 frontend tests passed**; TypeScript, ESLint, Ruff and source Mypy pass.
+  Design: 501 files, no findings. Secrets: 3,396 files, no findings. Logs are in `/private/tmp/`.
+- Updated the data model/API contract, user guide, snapshot inventory, generated types and
+  LIMITS. The noncommercial license and research-folder exclusions remain intact. See
+  `docs/release/REOPEN-JUDGEMENT-CONTINUATION.md` for requirements and evidence.
+- The independent full-backend baseline remains live on `7c9b22d`, PID 36126 / session 28842,
+  separate DB `erev_rv_waivers`, roughly 29%, with reported failures. Preserve it and read terminal
+  diagnostics when it finishes; it does not cover this change. No full-backend pass is asserted.
+- Other documented implementation gaps and independent accounting sign-off remain. The next
+  approval-control candidate is B1-15 (requests with no independent eligible decider); eligibility
+  already exists in `approvals.engine._assigned_memberships`, but no queue/admin warning was found.

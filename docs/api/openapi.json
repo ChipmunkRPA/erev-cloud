@@ -2463,6 +2463,17 @@
               }
             ]
           },
+          "assignment_blocked": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assignment Blocked"
+          },
           "attachments": {
             "items": {
               "$ref": "#/components/schemas/ApprovalAttachmentOut"
@@ -24182,7 +24193,8 @@
           "SUPPORT_GRANT_REQUESTED",
           "ITEM_APPROVED",
           "PERIOD_LOCKED",
-          "PERIOD_REOPENED"
+          "PERIOD_REOPENED",
+          "APPROVAL_UNASSIGNED"
         ],
         "title": "NotificationKind",
         "type": "string"
@@ -24332,7 +24344,7 @@
             "items": {
               "$ref": "#/components/schemas/NotificationPreferenceIn"
             },
-            "maxItems": 12,
+            "maxItems": 13,
             "minItems": 1,
             "title": "Items",
             "type": "array"

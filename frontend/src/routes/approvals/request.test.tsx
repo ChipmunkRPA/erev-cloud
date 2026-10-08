@@ -1536,3 +1536,25 @@ it.each([false, true])(
     );
   },
 );
+
+it.each([false, true])(
+  "unassigned warning follows content visibility (withheld=%s)",
+  async (withheld) => {
+    const shown = approval({
+      assignment_blocked: true,
+      content_withheld: withheld,
+      can_decide: false,
+    });
+    serve({ details: { [REQUEST_A]: shown }, list: [shown] });
+    renderRequest(`/approvals/requests/${REQUEST_A}`);
+    await screen.findByText("APR-000231");
+    const message =
+      "No eligible person can decide the active step. Ask an access administrator to review role assignments and separation of duties.";
+    if (withheld) {
+      expect(screen.queryByText(message)).toBeNull();
+      expect(screen.queryByText("Needs an independent approver")).toBeNull();
+    } else {
+      expect(await screen.findByText(message)).toBeTruthy();
+    }
+  },
+);

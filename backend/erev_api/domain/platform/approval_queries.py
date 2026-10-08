@@ -957,6 +957,7 @@ def approval_outs(
     outs: list[dict[str, Any]] = []
     for row in rows:
         answered = row["id"] in whole
+        can_decide = engine.can_decide(session, principal, row, at=at)
         told_why = rejection_reason_shown(principal, row)
         submitted = answered or submission_shown(principal, row)
         amount = row["amount_functional"] if answered else None
@@ -977,6 +978,13 @@ def approval_outs(
                 },
                 "summary": summary,
                 "reopen_judgement": reopen_evidence.get(row["id"]) if answered else None,
+                "assignment_blocked": (
+                    None
+                    if not answered
+                    else False
+                    if can_decide
+                    else engine.assignment_blocked(session, row, at=at)
+                ),
                 "status": row["status"],
                 "entity": _entity_ref(entities, row["entity_id"]),
                 "entities": _entity_list(entities, engine.request_entities(row)),
@@ -1024,7 +1032,7 @@ def approval_outs(
                 if answered
                 else None,
                 "attachments": attachments.get(row["id"], []),
-                "can_decide": engine.can_decide(session, principal, row, at=at),
+                "can_decide": can_decide,
                 "content_withheld": not answered,
             }
         )

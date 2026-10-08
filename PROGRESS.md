@@ -2,37 +2,39 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
-## Reviewed evidence for error-correction reopens — October 7, 2026
+## Approval availability and access-admin alerts — October 7, 2026
 
-- Continued from main `b6bbedf`; the preceding turn made progress by repairing the submission
-  locking regression and verifying both decision orders. B1-12 is now implemented and verified
-  for direct publication to main. No PR or deployment.
-- ERROR_CORRECTION requires a reviewed ESTIMATE_VS_ERROR judgement from the same tenant/entity
-  and applicable book. The request binds full content and independent review identity; final
-  approval revalidates under period/judgement locks. Superseded evidence and legacy requests
-  without citations become stale. Busy review locks are retryable. Other reasons refuse a citation.
-- Revision 0137 stores the current basis separately, preserving the period's FOR SHARE request
-  lock and row version. Duplicate submissions cannot replace pending evidence. Immutable request
-  audit and reopen history retain the citation; downgrade refuses citation loss across tenants.
-- The form selects reviewed evidence with entity/book/topic/status filters and pagination.
-  Approvers and history readers see the submitted conclusion and reviewer within content scope.
-  New requests cannot replace old evidence; loss of all entity access returns 404.
-- **138 compatibility tests passed** in 419.60 seconds (`reopen-citation-sidecar-compatibility.log`).
-  The earlier revised run passed 57 tests including both decision interleavings and the 14
-  basis tests; its sole incorrect 200-vs-404 expectation was fixed and passed in the final run.
-  **5 migration checks passed** in 16.31 seconds (`reopen-citation-sidecar-migration-walk.log`),
-  including full up/down/up and database lint. **742 unit/architecture/snapshot checks passed**
-  in 166.98 seconds. **62 frontend tests passed**; TypeScript, ESLint, Ruff and source Mypy pass.
-  Design: 501 files, no findings. Secrets: 3,396 files, no findings. Logs are in `/private/tmp/`.
-- Updated the data model/API contract, user guide, snapshot inventory, generated types and
-  LIMITS. The noncommercial license and research-folder exclusions remain intact. See
-  `docs/release/REOPEN-JUDGEMENT-CONTINUATION.md` for requirements and evidence.
-- The independent full-backend baseline remains live on `7c9b22d`, PID 36126 / session 28842,
-  separate DB `erev_rv_waivers`, roughly 29%, with reported failures. Preserve it and read terminal
-  diagnostics when it finishes; it does not cover this change. No full-backend pass is asserted.
-- Other documented implementation gaps and independent accounting sign-off remain. The next
-  approval-control candidate is B1-15 (requests with no independent eligible decider); eligibility
-  already exists in `approvals.engine._assigned_memberships`, but no queue/admin warning was found.
+- Previous goal turn made progress: B1-12 was tested and pushed directly to main as `ab4fa7d`.
+  Continued from that clean commit. B1-15 is now implemented and verified for direct publication.
+- Fail-first tests reproduced no alert when only the preparer held the approval permission and
+  the absence of queue availability. Submission/next-step activation now emits APPROVAL_UNASSIGNED
+  to active direct role.manage holders covering every entity. Its title/body contain no accounting
+  summary or amounts. Revision 0138 adds the kind; preferences default to app/email with existing
+  deduplication and sandbox restrictions. Preference input length follows the enum's actual size.
+- API assignment_blocked is computed from current eligibility using the same logic as assigned
+  recipients: preparer/prior-decision exclusions, delegation, subject rules and later-step
+  reservations. It is separate from routing flags and clears after a valid grant is restored.
+  Closed requests answer false; content-withheld headers and unsupported subjects answer null.
+  Queue/detail display the warning; unsupported subject requests retain their named refusal.
+- **43 backend compatibility tests passed** in 36.43 seconds (approval engine, notifications,
+  approval API and preferences). **8 notification tests passed** in the final 5.55-second run, including
+  entity-specific and all-entity admin scope and redacted alert content. Initial compatibility
+  caught the unsupported-subject read and old 12-kind input cap; both were fixed and reverified.
+- **79 frontend tests passed** in 3.04 seconds, including queue/detail visibility, preferences
+  and notification panel. TypeScript and ESLint pass. **5 migration checks passed** in 16.22
+  seconds (full up/down/up and lint). Unit/architecture run: 504 passes and one obsolete enum
+  count assertion; corrected count and all 245 affected unit/schema checks passed in 4.08 seconds.
+  Mypy: five source files clean. Logs: `/private/tmp/approval-availability-*.log`.
+- Final approval API recheck: **20 passed** in 34.03 seconds. A caller who can decide already
+  proves availability, so the queue avoids another recipient search for those rows. Alert titles
+  include the request reference so the email (which omits the in-app body) can identify it.
+- The extra scope test first tried changing a grant in place; PostgreSQL correctly refused it.
+  The fixture now revokes the old grant and inserts the scoped replacement; product rules unchanged.
+- Independent full-backend baseline remains live on `7c9b22d`, PID 36126 / session 28842, separate
+  DB `erev_rv_waivers`, around 30%, with earlier failures. Preserve it until terminal diagnostics.
+  It does not cover B1-11, B1-12 or this work. No full-backend pass or production-readiness claim.
+- Remaining LIMITS and independent accounting sign-off are still open. Main-only workflow,
+  research-folder exclusions, noncommercial license and no-deployment scope remain in force.
 
 ## Approvals-gate waiver sequencing — October 7, 2026
 

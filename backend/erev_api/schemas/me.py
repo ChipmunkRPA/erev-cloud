@@ -205,7 +205,7 @@ class NotificationPreferencesIn(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    items: list[NotificationPreferenceIn] = Field(min_length=1, max_length=12)
+    items: list[NotificationPreferenceIn] = Field(min_length=1, max_length=len(NotificationKind))
 
 
 class NotificationPreferenceOut(BaseModel):
