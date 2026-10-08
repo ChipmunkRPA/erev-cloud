@@ -2,6 +2,15 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Older backend baseline completed — October 7, 2026
+
+- PID 36126 is terminal and absent. The uninterrupted isolated run on revision 7c9b22d
+  ended with **51 failed, 9,970 passed, 1 skipped, 640 deselected, 3 xfailed in 3h46m**.
+  See docs/release/BACKEND-BASELINE-2026-10-07.md for the complete failure inventory and
+  local evidence paths. No reset/restart occurred. This older run does not verify current main.
+- Next: compare failures with current code, rerun scoped cases, and classify from evidence.
+  Monetary import reconciliation and independent accounting sign-off remain outstanding.
+
 ## Import row coverage — October 7, 2026
 
 - Continued from published a194ef2. Review of B1-19 found a separate equal-count hole: an
@@ -81,35 +90,6 @@
   production readiness. Independent accounting sign-off and other release gaps remain open.
   Older baseline PID 36126 was live at 3h20m33s, beyond 50% with failures, on its separate DB.
   Preserve it. No deployment.
-
-## Sandbox monetary verification — October 7, 2026
-
-- Previous goal turn published Step 1 approval as a40d848 directly to main. This continuation
-  resolves the category-M drift guard's missing loss-provision and FX-movement comparisons.
-- Both tables contain full reconstructed results per computation version: period loss tests
-  and FX movement history. Compare their monetary fields and pinned inputs, excluding only
-  surrogate/version ownership, stamps and trace. FX natural-key duplicates are compared as a
-  sorted multiset with occurrence numbers; missing rows and offsetting errors remain visible.
-  The database reader now follows MONETARY_TABLES, retaining special version/schedule reads.
-- Unit tests: 30 passed in 1.46 seconds. Whole Avenmoor reference-tenant snapshot export/load:
-  1 passed in 48.59 seconds, twelve groups and multiple currencies. Existing repeated-computation
-  control passed. Logs: `/private/tmp/sandbox-monetary-loss-fx-{unit,avenmoor,replay}.log`.
-- Added real snapshot negative controls: one-cent changes to persisted loss movements or FX
-  movements are named monetary mismatches; unchanged K03 period loss rows compare equally.
-  Nine integration/audit-support checks passed in 40.11 seconds. Updated the audit helper's
-  explicit creation-action set for existing FX/loss facts. Earlier failures were the stale
-  audit set and parameter cases sharing globally unique sandbox names; distinct names fix
-  the combined run. An initial diagnostic assumption about an amount constraint was not
-  established by evidence; the captured validation error identifies the duplicate name.
-- Final dynamic-reader recheck: **39 passed in 41.58 seconds**, with unit/export, audit
-  support, positive loss and negative loss/FX controls; log
-  `/private/tmp/sandbox-monetary-loss-fx-final.log`. All scoped processes are terminal and
-  erev_rv_cont is free. Two source modules pass Mypy; Ruff/format/whitespace checks pass.
-  This verified correction is included in this direct-main commit.
-- Independent older baseline PID 36126 remained live at 3h10m33s on its separate DB, with
-  failures; preserve it. Broader backend failures, Step 1 scope/evidence verification, other
-  release limitations and independent accounting sign-off remain open. No deployment.
-
 
 
 ## Constraint review basis — October 7, 2026
