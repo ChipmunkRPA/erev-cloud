@@ -59,6 +59,7 @@ __all__ = [
     "build",
     "is_deterministic",
     "obligation_measures",
+    "realised_at",
     "revenue_schedule",
     "unit_ssp",
     "validate",
@@ -258,7 +259,7 @@ def _returns_reduction(
     return returns.reduction(ctx, st, evaluator.contract, ob, seg, v)
 
 
-def _realised_at(
+def realised_at(
     ctx: BookContext,
     st: AllocatedState,
     ob: ObligationState,
@@ -449,7 +450,7 @@ def obligation_measures(
     evaluation = evaluator.posted(v)
     seg = components.active_segment(ob, "FIXED", v)
     allocated_fixed, x_fixed = _allocation(ctx, st, ob, evaluator, seg, v)
-    realised = _realised_at(ctx, st, ob, v, evaluation)
+    realised = realised_at(ctx, st, ob, v, evaluation)
     in_target = sum(item.amount for item in evaluation.realised) + (
         0 if evaluation.royalty is None else evaluation.royalty.recognised
     )

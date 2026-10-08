@@ -2,6 +2,22 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Engine RPO realized allocation repair — October 8, 2026
+
+- Regressions reproduced both B4-2 cases: **two failed in 0.23 seconds**. Shared the
+  recognition stage's realized-allocation reader with disclosures at the revenue period cuts.
+  RPO closing includes realized usage/royalty allocation; its movement enters variable
+  consideration, without plugging unexplained differences or double-counting Step-1 entry.
+- Mixed fixed/usage closing is now 9,000 rather than 8,850; pure usage gets the 150 addition.
+  Holds retain unrealized revenue in RPO. Added royalty-guarantee, delayed satisfaction and
+  downward-correction checks. Initial disclosure/deterministic suite: **77 passed**; royalty
+  module: **13 passed**; expanded recognition/disclosure and architecture: **268 passed in
+  79.77 seconds**; final usage/hold/Step-1 matrix: **six passed in 0.24 seconds**.
+  Mypy, Ruff and whitespace pass. Detailed scope and logs are in the RPO evidence note.
+- B4-2 remains partially open: API attribution, combined lifecycle/exemption/calendar matrix,
+  engine 0.4.0 cut and replays still required. Historical outputs unchanged; no deployment or
+  readiness claim. Property session 52175 remains active on its original pre-repair revision.
+
 ## Control gate result and RPO closing defect — October 8, 2026
 
 - Completed the preserved control gate on immutable 68d9607: **494 passed, one failed,

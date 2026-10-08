@@ -35,7 +35,8 @@ S15-R-12 (``rollforward``; REQ-RPT-010; V9) gives, per contracting entity and pe
 lane simplification L3-2-Q-32):
 
 - the RPO of an obligation at a date d is A(d) − R(d) while it is included (S15-R-08). A(d) is
-  ``a_posted`` of the ``FIXED`` segment in force at d less the S09-R-23 reduction
+  ``a_posted`` of the ``FIXED`` segment in force at d plus realized PERIOD_VC/ROYALTY
+  allocation at the revenue cut, less the S09-R-23 reduction
   ρ(d) = round(r × (Y + E)) of a returnable obligation under POL-053 ``REDUCE_CONTRACT_QUANTITY``
   (``returns.reduction``; the segments keep the gross allocation, S04-R-08b); R(d) is the stage 09
   ``revenue_cum`` target. ρ(d) and R(d) are read from the states stage 09 publishes at the last
@@ -51,7 +52,8 @@ lane simplification L3-2-Q-32):
   opening less the snapshot, so 0 without a snapshot;
 - ``NEW_CONTRACTS``, ``MODIFICATIONS``, ``VC_ESTIMATE_CHANGES`` and ``CANCELLATIONS`` take the
   movement of the returns-adjusted allocation of the segments effective in the period by cause
-  (``CAUSE_LINES``); ``VC_ESTIMATE_CHANGES`` also takes −Δρ between boundaries (estimate revisions,
+  (``CAUSE_LINES``); ``VC_ESTIMATE_CHANGES`` also takes realized-allocation movements and −Δρ
+  between boundaries (estimate revisions,
   returns beyond E, window expiry; 606-10-55-25, 32-14, 32-42 to 32-44). ``CANCELLATIONS`` also
   takes what remains when an obligation stops being included;
 - ``REVENUE`` is −(R(end) − R(start − 1 day)), ``EXEMPTIONS`` the exempt amount at the opening less
@@ -90,6 +92,7 @@ from erev_engine.stages.s09_recognition import (
     deposit_share,
     deposit_share_node_id,
     returns,
+    schedule,
 )
 from erev_engine.stages.state import (
     AllocatedState,
@@ -392,10 +395,17 @@ def rollforward(
         revenue = points.get(ob.subject_key, ())
         reduced = reductions.get(ob.subject_key, ())
         fixed = tuple(seg for seg in ob.segments if seg.component == FIXED)
+        # Match the performing-entity period cuts used by recognized revenue. Recognition
+        # owns the realization rules (including unrecognized royalties awaiting satisfaction).
+        realised = (
+            tuple((on, schedule.realised_at(ctx, st, ob, on)) for on, _ in revenue)
+            if any(seg.component in ("PERIOD_VC", ROYALTY) for seg in ob.segments)
+            else ()
+        )
         contract = _contract_of(st, ob)
         basis = _Basis(ctx, contract, attributed.get(ob.contract_key), minor_unit)
-        open_in, open_rpo = _rpo_at(ob, fixed, revenue, reduced, before, basis)
-        close_in, close_rpo = _rpo_at(ob, fixed, revenue, reduced, end, basis)
+        open_in, open_rpo = _rpo_at(ob, fixed, revenue, realised, reduced, before, basis)
+        close_in, close_rpo = _rpo_at(ob, fixed, revenue, realised, reduced, end, basis)
         wholly_open = open_in and _revenue_at(revenue, before) == 0
         wholly_close = close_in and _revenue_at(revenue, end) == 0
         restated = open_rpo - _excluded(
@@ -418,6 +428,7 @@ def rollforward(
                 ob,
                 fixed,
                 revenue,
+                realised,
                 reduced,
                 before,
                 end,
@@ -434,7 +445,9 @@ def rollforward(
                 # "groups activated in the period" of S15-R-12), so the period ties (V9); one that
                 # leaves again before the period end exits through `_movements` (secondary
                 # review item 1).
-                _, entry = _rpo_at(ob, fixed, revenue, reduced, entered, basis, status=False)
+                _, entry = _rpo_at(
+                    ob, fixed, revenue, realised, reduced, entered, basis, status=False
+                )
                 lines["NEW_CONTRACTS"] += entry + _revenue_at(revenue, entered)
         lines["EXEMPTIONS"] = (open_rpo - restated) - (close_rpo - closing)
         lines["CLOSING"] = closing
@@ -628,6 +641,7 @@ def _rpo_at(
     ob: ObligationState,
     fixed: Sequence[AllocationSegment],
     revenue: Sequence[tuple[date, int]],
+    realised: Sequence[tuple[date, int]],
     reductions: Sequence[tuple[date, int]],
     at: date,
     basis: _Basis,
@@ -646,7 +660,12 @@ def _rpo_at(
         return False, 0
     if status and basis.excluded(at):
         return False, 0
-    remaining = in_force.a_posted - _revenue_at(reductions, at) - _revenue_at(revenue, at)
+    remaining = (
+        in_force.a_posted
+        + _revenue_at(realised, at)
+        - _revenue_at(reductions, at)
+        - _revenue_at(revenue, at)
+    )
     return True, max(remaining - basis.r25(ob.subject_key, at), 0)
 
 
@@ -656,6 +675,7 @@ def _movements(
     ob: ObligationState,
     fixed: Sequence[AllocationSegment],
     revenue: Sequence[tuple[date, int]],
+    realised: Sequence[tuple[date, int]],
     reduced: Sequence[tuple[date, int]],
     before: date,
     end: date,
@@ -701,10 +721,20 @@ def _movements(
             moved = True
         previous = seg
     lines["VC_ESTIMATE_CHANGES"] -= (rho_end - rho_before) - boundary_rho
+    realised_end = _revenue_at(realised, end)
+    if open_in or close_in or moved or entered is not None:
+        # Entry already includes the allocation realized through its own cut. Only later
+        # realizations are additions; an entirely excluded contract has no RPO activity.
+        realised_start = _revenue_at(realised, before if entered is None else entered)
+        lines["VC_ESTIMATE_CHANGES"] += realised_end - realised_start
     lines["REVENUE"] = -(_revenue_at(revenue, end) - _revenue_at(revenue, before))
     if not close_in and (open_in or moved or entered is not None):
         in_force = _in_force(fixed, end)
-        left = (0 if in_force is None else in_force.a_posted - rho_end) - _revenue_at(revenue, end)
+        left = (
+            (0 if in_force is None else in_force.a_posted - rho_end)
+            + realised_end
+            - _revenue_at(revenue, end)
+        )
         r25 = basis.r25(ob.subject_key, end)
         # The remainder nets the 25-7 revenue attributed, floored as the dated measurements are
         # (`_rpo_at`); without a 25-7 recognition the expression is the S15-R-12 one unchanged.

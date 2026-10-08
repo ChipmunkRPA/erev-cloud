@@ -23,6 +23,7 @@ from erev_engine.stages import s10_billing_balances
 from erev_engine.stages.s01_canonicalize import group_entity_subject_key
 from erev_engine.stages.s09_recognition import RecognitionState, run
 from erev_engine.stages.s10_billing_balances import BalanceState
+from erev_engine.stages.s15_disclosures.rpo import rollforward
 from erev_engine.stages.state import (
     AllocatedState,
     BookContext,
@@ -694,3 +695,33 @@ def test_same_period_correction_emits_both_true_ups() -> None:
         f"{CONTRACT_KEY}/EV-000004",
         f"{CONTRACT_KEY}/EV-000007",
     ]
+
+
+@pytest.mark.parametrize("satisfied", [False, True])
+def test_royalty_rollforward_carries_realized_allocation_before_and_after_satisfaction(
+    satisfied: bool,
+) -> None:
+    st = _ex_09_f_state()
+    if not satisfied:
+        st = dataclasses.replace(st, events=st.events[1:], measure_events=st.measure_events[1:])
+    recognition, _ = _run(CTX_JPY, st)
+    september = rollforward(CTX_JPY, st, recognition, ENTITY_CODE, "FY2026-P09")
+    assert september.lines["OPENING"] == (0 if satisfied else 50_000_000)
+    assert september.lines["CLOSING"] == (0 if satisfied else 55_000_000)
+    assert september.lines["VC_ESTIMATE_CHANGES"] == 5_000_000
+    assert september.lines["REVENUE"] == (-5_000_000 if satisfied else 0)
+    assert september.lines["UNEXPLAINED"] == 0
+    november = rollforward(CTX_JPY, st, recognition, ENTITY_CODE, "FY2026-P11")
+    assert november.lines["CLOSING"] == (0 if satisfied else 57_000_000)
+    assert november.lines["VC_ESTIMATE_CHANGES"] == 2_000_000
+    assert november.lines["UNEXPLAINED"] == 0
+
+
+def test_royalty_rollforward_downward_correction_reverses_realized_additions() -> None:
+    st = _corrected(_ex_09_f_state(), (7, DEC_15, 28_000_000), (8, JAN_15_2027, 26_000_000))
+    recognition, _ = _run(CTX_JPY_13, st)
+    january = rollforward(CTX_JPY_13, st, recognition, ENTITY_CODE, "FY2027-P01")
+    assert january.lines["OPENING"] == january.lines["CLOSING"] == 0
+    assert january.lines["VC_ESTIMATE_CHANGES"] == -2_000_000
+    assert january.lines["REVENUE"] == 2_000_000
+    assert january.lines["UNEXPLAINED"] == 0
