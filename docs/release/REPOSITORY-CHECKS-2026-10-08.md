@@ -74,11 +74,48 @@ Local report: `.run/reports/parity/report.json`, SHA-256
 Local log: `/private/tmp/erev-parity-2026-10-08.log`, SHA-256
 `2aeb81f968f2321608c05c4f7f9c49c2cc1c19d163898e3717d5011da11ce31e`.
 
+## Full accounting answer-key gate
+
+`make answer-keys AK_SCOPE=full` completed on clean revision
+`177cb682af1c1626e372ac8c1de5e623e1a089f1` with **505 tests passed and two failed
+in 352.75 seconds**. The canonical database scope selected all 255 corpus keys:
+251 passed, one failed, one could not run, and two were withdrawn. All 255 key review
+statuses remain unapproved; this count includes the withdrawn keys.
+
+Coverage has no gaps: List A 49/49, List B 46/46, List C 76/76, hints 50/50,
+family slugs 9/9 and family codes 28/28. The release manifest's corpus-membership/hash
+and run-chronology validators accept the report. This validates its provenance and scope,
+not its outcome: G4 remains failed.
+
+The failures are:
+
+- `DLT-CHK-020-CHK-022-GT07-JANUARY-2023-GROSS-AND-DELTA-JOURNALS`: the database
+  runner applied 141 steps, then refused the nondistinct review for CONTRACT-1 / POB #3.
+  Its template declares nondistinct; the runner supports confirming distinct conclusions,
+  and the fixture does not declare the integration target needed for a nondistinct review.
+  The following 57 steps were refused and no checkpoint blocks compared. POL-122 overrides
+  are no longer the first blocker. Do not change distinctness or invent a target to force a pass.
+- `VC-CHK-113-TC-POBVC-16`: seven mismatches remain. Software billing is 364.98 versus
+  expected 400.00; after the concession the engine states a 60.00 contract liability versus
+  the expected refund liability, with the corresponding November/December journal differences.
+  These are the existing AD-14/AD-15 accounting decisions, still pending independent review.
+  Neither key expectations nor engine treatment was changed for this run.
+
+Source tree stayed `88d639280679111b1826a5e3966cb7321dcb2674`; immutable context SHA-256
+stayed `9ee4f8b58b02056223f20b628d0ff18188f35756ef2ae8e97e7ae8794dc512f9`.
+Python and Node dependency bindings remained consistent with no mismatches; the parent checkout
+remained clean. The report finished October 8 at 08:20:34 UTC.
+
+Local report `.run/reports/answer-keys/report.json` SHA-256:
+`6c8eecb9fe4e4c7176f8cfe9d50fa71c7325b3abaccd3031a51be415ce4cadb0`.
+Local log `/private/tmp/erev-answer-keys-2026-10-08.log` SHA-256:
+`bf959b7ab6c0acd438be8c999ffd978ef1ac2c9b2fff05fb0e15b6be1a76ab29`.
+
 ## Property gate still running
 
 `make properties` started on the clean starting revision, with the thorough Hypothesis
 profile, in immutable context `.run/gates/ctx-properties-37c4f0c48918-6323`.
-It collected 48 tests. The first two metamorphic tests have passed; the suite remains active.
+It collected 48 tests. The first five metamorphic tests have passed; the suite remains active.
 Pytest PID 6358 was confirmed live with increasing CPU time; the executor session is
 52175. Console output: `/private/tmp/erev-properties-2026-10-08.log`.
 
@@ -101,6 +138,7 @@ These local logs are not shipped as repository files. Their hashes bind the obse
 
 ## Remaining work
 
-The property result is pending. Full current backend/CI, accounting corpus, browser,
+The property result is pending and the full accounting corpus gate has two unresolved failures.
+Full current backend/CI, browser,
 volume, container and restore checks still need current release-candidate evidence. Remaining
 implementation gaps, engine release cut/replays and independent accounting sign-off stay open.

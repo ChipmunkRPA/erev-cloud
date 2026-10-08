@@ -1,6 +1,6 @@
 # Independent accounting review — pending
 
-Prepared October 7, 2026. This is a review request and evidence index, not a certification.
+Prepared October 7, 2026; accounting corpus evidence updated October 8. This is a review request and evidence index, not a certification.
 Repository work is authorized; deployment is excluded. No independent reviewer or sign-off has
 been recorded. Passing software tests does not establish compliance with ASC606 or ASC830.
 
@@ -62,8 +62,28 @@ entries, then validate it against reviewer-supplied examples.
   policy approvals and period-lock decisions in both orders; an approval overtaken by a lock
   rolls back and remains available for a later decision.
 - `PROGRESS.md`: dated test results and publication record.
-- `LIMITS-1.0.md`: broader outstanding system limitations. This packet covers the FX decision;
+- `LIMITS-1.0.md`: broader outstanding system limitations. This packet covers the FX and concession decisions;
   final sign-off must review the full implemented ASC606 scope and remaining limitations.
+
+## Decision required: concession after modification (AD-14 and AD-15)
+
+The October 8 full database accounting-corpus gate reproduced all seven differences for
+`VC-CHK-113-TC-POBVC-16`. The key expects software billed to date of 400.00; the engine
+states 364.98. After a 60.00 concession, the key expects a refund liability; the engine states
+a contract liability. Corresponding November refund-liability and December release entries
+differ. See [the dated gate evidence](REPOSITORY-CHECKS-2026-10-08.md) for the immutable
+revision, run scope and report hashes. The key remains pending review and failing.
+
+Review the key's modification, billing allocation, targeted concession and credit-memo facts.
+Resolve AD-14 and AD-15 with expected obligation billing, balances and journal entries at all
+three checkpoints. Establish whether the fixture/expectations, calculation, or both need repair;
+no expected value has been changed merely to agree with the current implementation.
+
+The separate legacy journal key cannot complete its nondistinct review because the fixture lacks
+an integration target. Completing that scenario requires explicit supported facts, preserving
+its intended independent journal comparisons. All 255 corpus key review statuses are still
+unapproved, and the parity gate separately lists five pending deviation approval units. A passing
+subset or complete coverage inventory does not substitute for these reviews.
 
 ## Sign-off record
 

@@ -2,6 +2,21 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Full accounting corpus verification — October 8, 2026
+
+- Canonical `make answer-keys AK_SCOPE=full` on clean main 177cb68 completed:
+  **505 passed, two failed in 352.75 seconds**. All 255 keys selected: 251 passed,
+  one failed, one not run, two withdrawn. All 255 review statuses remain unapproved.
+  Coverage is complete across all six sections; source/dependency and corpus bindings verify.
+- DLT-CHK-020 now reaches the nondistinct-review fixture limitation after 141 applied steps;
+  its integration target is absent. VC-CHK-113 retains seven concession/billing differences,
+  reserved for independent accounting decisions AD-14/AD-15. No oracle values or treatment
+  were changed to force a pass. Updated limitations, accounting-review packet and dated gate
+  evidence with exact counts/hashes. G4 remains failed; these are actionable remaining gaps.
+- Archived the older broad-check section verbatim. Property session 52175 remains active in
+  its original immutable context, with five metamorphic tests passed. The answer-key process
+  is terminal, so no database pytest process remains active. No deployment or readiness claim.
+
 ## Golden parity verification — October 8, 2026
 
 - `make parity` passed on clean main 6d33ae1: 18 fixture files verified; **130 tests
@@ -44,37 +59,6 @@
   overlapped. Keep polling that same property process. Updated limitations/developer guide,
   archived prior SSP-routing evidence verbatim. No deployment or readiness claim. Remaining
   implementation/release checks, engine cut/replays and independent sign-off remain open.
-
-## Broader repository checks and reopen UI tests — October 8, 2026
-
-- Continued from clean published main 37c4f0c; previous turn made verified SSP-routing progress.
-  `make typecheck` passed all 850 Python source files and frontend TypeScript. `make build`
-  passed frontend production bundling and backend imports, with a non-failing large-chunk warning.
-- Full frontend suite: **2 failed, 2,055 passed in 55.71 seconds** (192 files). Two old cockpit
-  tests expected error corrections without an independently reviewed judgement. Corrected the
-  scoped reviewed-evidence mock, citation-required/submitted assertions and reviewer display.
-  Preserved optional new judgement/attachment coverage under late-source reopening with its
-  exact request payload. No application code changed. Focused checks: **34 passed in 4.96
-  seconds**. Full rerun: **2,057 passed in 55.65 seconds**, 192 files. All these processes are
-  terminal; Prettier, frontend tsc and whitespace checks pass. Dated log paths/hashes and scope
-  are in docs/release/REPOSITORY-CHECKS-2026-10-08.md. This is not a full CI or browser pass.
-- Follow-up on clean main 1d59f65: `make lint` passed. Ruff formatting: 2,006 files;
-  Ruff, Prettier, ESLint, OpenAPI, registry, migration-head and fixture checks passed. Design:
-  501 files / no findings; vocabulary: 1,198 / no findings. Dependency licences: 133 packages,
-  no unexpected findings; secrets: 3,423 files, no unexpected findings or unused allowances.
-  All 495 control markers are valid (collection only, not a controls-report pass). Log:
-  /private/tmp/erev-lint-2026-10-08.log, hash in the dated repository-checks note. Lint process
-  is terminal. Confirmed PolyForm Noncommercial licence and no tracked files in either excluded
-  research directory. Archived prior SSP-lineage evidence verbatim to preserve notebook size.
-- LIVE PROPERTY GATE: executor session **52175**, pytest PID **6358**, immutable context
-  .run/gates/ctx-properties-37c4f0c48918-6323. Command `make properties`, thorough profile,
-  48 tests collected; two metamorphic tests passed, suite active with increasing CPU time. Log:
-  /private/tmp/erev-properties-2026-10-08.log. Preserve and poll this exact process; never restart
-  on elapsed time alone. Inspect the final report and bindings before claiming a result. Other
-  test/typecheck/build handles are terminal. Inspection confirmed property tests use in-memory worlds and no database fixtures; keep database test processes serial with each other.
-- Archived prior journal-validation evidence verbatim. Remaining implementation, current
-  release checks, engine cut/replays and independent accounting sign-off remain open. No
-  deployment/readiness claim; preserve exclusions and noncommercial licensing; push to main.
 
 ## GL reconciliation ledger-history freshness — October 8, 2026
 
