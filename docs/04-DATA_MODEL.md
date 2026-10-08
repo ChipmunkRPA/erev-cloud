@@ -5230,6 +5230,15 @@ reauthorizes the selected close and checks record/source consistency. Actual rep
 audit integrity must still be checked by their collectors. This does not enable a pack job or
 endpoint; the other pack kinds require their own source contracts.
 
+**First-close creation (October 8, 2026).** The internal `evidence_commands.create_close`
+command takes the documented CLOSE selectors plus an explicitly supplied completed audit
+verification from its caller. It verifies caller permissions and retained source evidence before
+queueing, then atomically inserts the numbered pack, immutable source binding, five report runs,
+six jobs and `evidence.create` audit. The caller owns commit and request idempotency. This
+internal verification argument is not an added API-S-EvidencePackCreate field; the public
+boundary's verification orchestration and HTTP route remain pending. No latest-source fallback
+or independent-transaction verification is hidden inside creation.
+
 **First-close retention (October 8, 2026).** The internal completion helper requires a RUNNING
 pack, explicit evidence-export scope and verified retained source readers. It stores an encrypted
 EVIDENCE_PACK ZIP and records SUCCEEDED, file id, manifest, separate manifest hash and

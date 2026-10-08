@@ -51,6 +51,7 @@ from erev_api.domain.journals import subledger
 from erev_api.domain.reports import (
     evidence_assembly,
     evidence_certification,
+    evidence_commands,
     evidence_relock,
     evidence_selection,
     evidence_sources,
@@ -734,6 +735,13 @@ def test_relock_writes_diff_report(world: CloseWorld, clock: FrozenClock) -> Non
         uow.commit()
     with world.place.uow(exporter) as uow, pytest.raises(Problem, match="variance-between-closes"):
         evidence_assembly.assemble_close(uow, pack["id"])
+    creator = replace(
+        exporter,
+        permissions=evidence_commands.PERMISSIONS,
+        permission_scopes={permission: "*" for permission in evidence_commands.PERMISSIONS},
+    )
+    with world.place.uow(creator) as uow, pytest.raises(Problem, match="variance-between-closes"):
+        evidence_commands.create_close(uow, bound.request, verification_id=verification_id)
 
 
 # --- 7b: the SM-07 sweep and the BR-CLS-06 predicate -------------------------------------------

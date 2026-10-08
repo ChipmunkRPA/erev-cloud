@@ -2,6 +2,31 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Atomic close-pack creation command — October 8, 2026 (RPS-16 continued)
+
+- Continued from clean published b06824b; previous turn integrated the first-close worker.
+  Added `evidence_commands.create_close`: checks caller source/export permissions and entity
+  scope, refuses unsupported re-locks, validates approval/journal/reconciliation evidence as
+  the caller, prepares immutable sources with an explicit completed audit verification, then
+  numbers/inserts the pack and queues its worker. One transaction owns five source report
+  runs, six jobs, the binding, numbering and evidence.create audit; caller owns commit.
+- Creation deliberately does not choose a latest digest or create one in a separate transaction.
+  The pending HTTP/idempotency boundary must orchestrate a completed verification; this internal
+  argument is not a new API request field. Other pack kinds and automatic lock enqueue remain
+  open. A returned JobOut describes the queued worker; no new public route was exposed.
+- Initial creation/worker/audit witnesses: **6 passed in 23.46 seconds**. Final close/re-lock,
+  source-binding, storage and audit-classification regression: **55 passed in 27.84 seconds**.
+  Commit produces exactly one pack/five reports/six jobs, all dispatched, with source IDs in
+  the create audit. Rollback restores rows and numbering. Missing or out-of-scope permissions,
+  invalid verification, unsigned reconciliation fixtures and unsupported re-locks refuse.
+  Existing encrypted worker/retry/cancellation checks run through command-created close packs.
+- Logs `/private/tmp/evidence-create-{db,final}.log`; all processes terminal. Source Mypy,
+  Ruff lint/format and whitespace pass. Archived completeness-refusal notes verbatim. The close
+  witness still uses seeded journal/close-run setup and approved omissions, not full accounting
+  acceptance. Public creation/download with request idempotency, verification orchestration,
+  NTF-06/automatic enqueue, other kinds, variance and current release/accounting approvals
+  remain open. RPS-16/CTL-041 unclaimed. Direct main; no deployment or external notifications.
+
 ## First-close pack worker lifecycle — October 8, 2026 (RPS-16 continued)
 
 - Continued from clean published 5ba0f2d; previous turn added verified dependency readiness.
@@ -154,31 +179,6 @@
   remain open. Collectors must still validate output/audit bytes and export permissions. No
   pack endpoint, CTL-041, RPS-16 or production-readiness claim. Current release verification and
   independent accounting sign-off remain required. Direct main; no deployment or notifications.
-
-## Durable completeness refusal evidence — October 8, 2026
-
-- Continued from published main c0e4fc6. Failed JE_COMPLETE evaluations now retain CTL-019
-  FAIL observations after the refused lock request or approval transaction rolls back. Evidence
-  cites the existing period state, so missing journal runs are covered. The original refusal and
-  pending approval remain; no period lock or business write survives. Same caller/tenant scope,
-  nested refusals retained once, and evidence-write failure rolls back partial observations.
-- Migration 0141 adds PERIOD_STATE and refuses downgrade while such evidence exists. Updated
-  generated API types, control registry, audit classification and B1-24 guidance. Completed the
-  prior currency finding's missing IMP-149 PRD catalogue row and matching architecture counts.
-- Initial PostgreSQL cases: **2 passed, 21 deselected in 10.10 seconds**. Expanded lock/UOW/
-  validation/all-architecture run: **329 passed, 2 failed in 203.69 seconds**; fixed missing audit
-  object classification and currency catalogue drift. Final affected run: **98 passed, 1 failed
-  in 85.53 seconds**; only catalogue row count remained and was corrected. Corrected catalogue/
-  validation: **65 passed in 1.00 seconds**; control registry/report: **6 passed in 35.88 seconds**.
-  Logs: /private/tmp/completeness-refusal-{first,expanded,final,corrected,registry}.log. All terminal.
-  Coverage includes real PostgreSQL rollback, approval refusal, nested handling, migration head,
-  downgrade protection and failure after evidence insert. Source Mypy, Ruff lint/format, generated
-  OpenAPI, frontend tsc --noEmit and whitespace checks pass. npm run typecheck was unavailable;
-  the direct TypeScript compiler check succeeded instead.
-- Archived integration fallback evidence verbatim. Verified no open PRs and only remote main;
-  continue tested direct-main publication. No deployment or full-suite/readiness claim. Remaining
-  implementation, final release checks, engine cut/replays and independent accounting sign-off
-  remain open; preserve publication exclusions and noncommercial licensing.
 
 ## Outstanding release verification
 

@@ -64,10 +64,12 @@ from erev_api.db.tables import (
     judgement_record,
     ledger_chain_head,
     lock_snapshot,
+    numbering_series,
     period_lock,
     period_state,
     period_state_transition,
     reconciliation,
+    report_run,
     role,
     role_permission,
     sync_run,
@@ -81,6 +83,7 @@ from erev_api.domain.reports import (
     evidence_archive,
     evidence_assembly,
     evidence_certification,
+    evidence_commands,
     evidence_readiness,
     evidence_reconciliation_population,
     evidence_selection,
@@ -2262,18 +2265,113 @@ def test_first_close_archive_verifies_every_component_before_returning_bytes(
             "period_lock_id": lock["id"],
         }
     )
-    with world.place.uow(reader) as uow:
-        bound = evidence_sources.prepare_close(uow, request, verification_id=verification_id)
-        pack = evidence_pack_values(world.tenant_id, **bound.pack_values(), created_at=uow.now)
-        parent = uow.defer(
-            JobKind.EVIDENCE_PACK,
-            {"evidence_pack_id": str(pack["id"])},
-            subject_type="evidence_pack",
-            subject_id=pack["id"],
+
+    def creation_state() -> tuple[Any, ...]:
+        with world.place.uow(reader) as uow:
+            counts = tuple(
+                uow.session.scalar(select(func.count()).select_from(table))
+                for table in (evidence_pack, report_run, job, file_object, audit_event)
+            )
+            numbers = tuple(
+                uow.session.execute(
+                    select(
+                        numbering_series.c.series_code,
+                        numbering_series.c.scope_key,
+                        numbering_series.c.next_value,
+                    ).order_by(numbering_series.c.series_code, numbering_series.c.scope_key)
+                ).all()
+            )
+        return (*counts, numbers)
+
+    before_create = creation_state()
+    if waive_missing:
+        for permission in permissions:
+            denied = replace(reader, permissions=reader.permissions - {permission})
+            with world.place.uow(denied) as uow, pytest.raises(Problem) as refused:
+                evidence_commands.create_close(uow, request, verification_id=verification_id)
+            assert refused.value.slug == "forbidden"
+            outside = replace(
+                reader,
+                permission_scopes={
+                    **reader.permission_scopes,
+                    permission: frozenset({UUID(int=0)}),
+                },
+            )
+            with world.place.uow(outside) as uow, pytest.raises(Problem) as refused:
+                evidence_commands.create_close(uow, request, verification_id=verification_id)
+            assert refused.value.slug == "not-found"
+        with world.place.uow(reader) as uow, pytest.raises(Problem):
+            evidence_commands.create_close(uow, request, verification_id=UUID(int=0))
+        assert creation_state() == before_create
+        with world.place.uow(reader) as uow, pytest.raises(RuntimeError, match="creation rollback"):
+            evidence_commands.create_close(uow, request, verification_id=verification_id)
+            raise RuntimeError("creation rollback")
+        assert creation_state() == before_create
+        with world.place.uow(reader) as uow:
+            pack_id, queued_job = evidence_commands.create_close(
+                uow, request, verification_id=verification_id
+            )
+            pack = dict(
+                uow.session.execute(select(evidence_pack).where(evidence_pack.c.id == pack_id))
+                .mappings()
+                .one()
+            )
+            parent = dict(
+                uow.session.execute(select(job).where(job.c.id == queued_job.id)).mappings().one()
+            )
+            bound = evidence_sources.checked_row(pack)
+            assert pack["pack_no"].startswith("EVP-")
+            assert pack["job_id"] == queued_job.id
+            assert queued_job.kind == "EVIDENCE_PACK" and queued_job.state == "QUEUED"
+            uow.commit()
+        after_create = creation_state()
+        assert tuple(after_create[index] - before_create[index] for index in range(4)) == (
+            1,
+            5,
+            6,
+            0,
         )
-        pack["job_id"] = parent["id"]
-        uow.session.execute(insert(evidence_pack).values(**pack))
-        uow.commit()
+        with world.place.uow(reader) as uow:
+            created = uow.session.execute(
+                select(audit_event.c.after).where(
+                    audit_event.c.action == "evidence.create", audit_event.c.object_id == pack["id"]
+                )
+            ).scalar_one()
+            assert created["job_id"] == str(parent["id"])
+            assert created["audit_verification_id"] == str(verification_id)
+            assert set(created["report_run_ids"]) == {
+                str(value) for value in pack["report_run_ids"]
+            }
+            tasks = (
+                uow.session.execute(
+                    select(job.c.procrastinate_job_id).where(
+                        job.c.id.in_(
+                            [parent["id"], *(source.job_id for source in bound.supporting_reports)]
+                        )
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            assert len(tasks) == 6 and all(value is not None for value in tasks)
+
+    else:
+        with world.place.uow(reader) as uow, pytest.raises(Problem, match="distinct preparer"):
+            evidence_commands.create_close(uow, request, verification_id=verification_id)
+        assert creation_state() == before_create
+        # Keep a deliberately invalid seeded pack to verify the worker-side assembly guard too.
+        with world.place.uow(reader) as uow:
+            bound = evidence_sources.prepare_close(uow, request, verification_id=verification_id)
+            pack = evidence_pack_values(world.tenant_id, **bound.pack_values(), created_at=uow.now)
+            parent = uow.defer(
+                JobKind.EVIDENCE_PACK,
+                {"evidence_pack_id": str(pack["id"])},
+                subject_type="evidence_pack",
+                subject_id=pack["id"],
+            )
+            pack["job_id"] = parent["id"]
+            uow.session.execute(insert(evidence_pack).values(**pack))
+            uow.commit()
     with world.place.uow(reader) as uow, pytest.raises(Problem) as error:
         evidence_assembly.assemble_close(uow, pack["id"])
     if not waive_missing:

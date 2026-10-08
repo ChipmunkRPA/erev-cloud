@@ -2789,3 +2789,28 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   and the separate variance-between-closes report remain open. Current release gates and
   independent accounting approval remain required; RPS-16/CTL-041 and production readiness
   are unclaimed. Validated direct-main publication; no deployment or external notifications.
+
+## Durable completeness refusal evidence — October 8, 2026
+
+- Continued from published main c0e4fc6. Failed JE_COMPLETE evaluations now retain CTL-019
+  FAIL observations after the refused lock request or approval transaction rolls back. Evidence
+  cites the existing period state, so missing journal runs are covered. The original refusal and
+  pending approval remain; no period lock or business write survives. Same caller/tenant scope,
+  nested refusals retained once, and evidence-write failure rolls back partial observations.
+- Migration 0141 adds PERIOD_STATE and refuses downgrade while such evidence exists. Updated
+  generated API types, control registry, audit classification and B1-24 guidance. Completed the
+  prior currency finding's missing IMP-149 PRD catalogue row and matching architecture counts.
+- Initial PostgreSQL cases: **2 passed, 21 deselected in 10.10 seconds**. Expanded lock/UOW/
+  validation/all-architecture run: **329 passed, 2 failed in 203.69 seconds**; fixed missing audit
+  object classification and currency catalogue drift. Final affected run: **98 passed, 1 failed
+  in 85.53 seconds**; only catalogue row count remained and was corrected. Corrected catalogue/
+  validation: **65 passed in 1.00 seconds**; control registry/report: **6 passed in 35.88 seconds**.
+  Logs: /private/tmp/completeness-refusal-{first,expanded,final,corrected,registry}.log. All terminal.
+  Coverage includes real PostgreSQL rollback, approval refusal, nested handling, migration head,
+  downgrade protection and failure after evidence insert. Source Mypy, Ruff lint/format, generated
+  OpenAPI, frontend tsc --noEmit and whitespace checks pass. npm run typecheck was unavailable;
+  the direct TypeScript compiler check succeeded instead.
+- Archived integration fallback evidence verbatim. Verified no open PRs and only remote main;
+  continue tested direct-main publication. No deployment or full-suite/readiness claim. Remaining
+  implementation, final release checks, engine cut/replays and independent accounting sign-off
+  remain open; preserve publication exclusions and noncommercial licensing.

@@ -623,6 +623,15 @@ interrupted completion, a crash after output commit, and malformed foreign-job i
 covered locally. Public creation/download, request idempotency, NTF-06/automatic lock enqueue,
 other kinds and variance remain open; CTL-041 and production readiness remain unclaimed.
 
+October 8 creation command: an internal caller-authorized command now numbers and inserts a
+first-close pack with its immutable sources, five report runs, six jobs and evidence.create audit
+in one transaction. It requires an explicit completed audit verification and preflights retained
+approval/journal/reconciliation evidence before queueing. All 55 scoped tests pass, including
+rollback of numbering/rows, permissions/scope refusals, invalid verification and re-lock refusal.
+This does not expose POST /evidence-packs or HTTP idempotency; the public boundary still needs
+verification orchestration. Automatic enqueue/notification, downloads, other kinds, variance
+and release/accounting approval remain outstanding.
+
 ## The fifteen standing names
 
 Fifteen tests of the backend suite do not pass in release 1.0. They are the same fifteen in every whole run on the day of the freeze, by name, and none passes when it is run again alone; the release candidate's suite shows these and no other (R-125 (n); R-126 (e)). None is skipped, loosened or marked: each fails at full strength until its cause is closed. Two gate targets fail by them, as the supervisor measured on `783f340ea`: `make answer-keys` by the six keys and `make test-pg` by the three capture witnesses. The causes below are read from the failure each test records and from the test: for names 3 to 5 as the suite takes them since index 308's part for the answer keys' runner is on the branch, for the others in the run of record on `5c3b5347c`. Names 1 to 5 are platform keys, which the suite takes on the in-memory platform. On the database platform a lane measured them on 2026-10-03 with that part: the two DISC keys pass; POS-CHK-012 compares clean in every block and is failed by its finding alone; the GT07 key is not run; POS-CHK-117 has four mismatches.
