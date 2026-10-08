@@ -2,6 +2,26 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Portable backup archives — October 7, 2026
+
+- Continued from f9f5683. Reproduced the restore baseline failure: macOS BSD tar adds
+  an AppleDouble ._files entry outside the declared files/ root, so restore correctly
+  refuses the backup before reaching subsequent checks. The new archive regression
+  adds explicit macOS extended attributes and failed against the old script with that
+  exact refusal (/private/tmp/backup-archive-regression.log, 1 failed in 1.15 seconds).
+- Backup tar creation now sets COPYFILE_DISABLE=1 for that command, suppressing host
+  AppleDouble metadata. Restore validation is unchanged. The regression checks exact
+  archive members, preserved ciphertext bytes and acceptance by the real archive validator;
+  partial uploads remain excluded. The runbook documents the archive contents.
+- Complete backup/restore script module: **29 passed in 77.31 seconds**,
+  /private/tmp/backup-restore-verified.log. Recovery preflight module: **25 passed in
+  0.11 seconds**, /private/tmp/recovery-preflight-verified.log. Bash syntax, Ruff/format
+  and whitespace checks pass; all processes are terminal. These scratch-repository runs
+  stub database/verification commands; they do not prove a live backup or restore drill.
+- All 14 original backup/restore baseline failures are resolved, leaving 17 original
+  failures without current-main disposition. Broader verification, implementation gaps
+  and independent accounting sign-off remain open. No deployment or cloud changes.
+
 ## Estimate lock and SMTP guard verification — October 7, 2026
 
 - Continued from ef323e6. Reproduced three older baseline failures on current main:
@@ -56,27 +76,6 @@
   refused, although two keys are supported. Its refusal fixture uses a still-unsupported key;
   the successful creation path needs its own audit-walk coverage, not removal of refusal proof.
   This remains open. Broader verification and independent accounting sign-off remain open.
-
-## File-shred durability test isolation — October 7, 2026
-
-- Continued from 1abb52b. The older baseline's three shred failures counted unrelated tenants'
-  pending files: observed completed counts 9 versus 1 and 3 versus 0, and failed counts 3 versus 1.
-  Current unmodified durability module in isolation: **6 passed in 70.22 seconds**,
-  /private/tmp/shred-order-current.log.
-- committed_db retains other tests' tenants. Import source-shred tests deliberately mark rows
-  incomplete, and the production sweep correctly scans all tenants. Durability assertions
-  intended for one world were incorrectly applied to that global workload.
-- Scoped this module's sweep workset to its own fresh tenant, retaining the real original
-  eligibility predicate and all storage, completion, transaction, retry and alert paths.
-  Production code is unchanged. Initial mixed run: 11 passed, one sandbox sweep-count failure
-  (3 completions versus 1) from the same unrelated pending imports. The sandbox case now scopes
-  the workset to BOTH its production and sandbox tenants through a shared test helper; its
-  source-key, archived-workspace and completion assertions remain intact.
-- Final combined import-source, durability and sandbox-shred verification: **12 passed in
-  82.01 seconds**, /private/tmp/shred-cross-suite-verified.log. Ruff/format/whitespace checks
-  pass; all scoped runs are terminal. Published directly to main. Three baseline failures
-  resolved plus the newly exposed sandbox count issue; 38 original failures still await
-  disposition. No deployment or readiness claim; accounting sign-off remains outstanding.
 
 ## Older backend baseline completed — October 7, 2026
 

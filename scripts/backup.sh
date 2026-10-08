@@ -398,9 +398,11 @@ PY
 SNAPSHOT_FINISHED_AT="$(utc_now)"
 echo "$(basename "$DUMP")"
 
-# (4) the file store, without partial uploads.
+# (4) the file store, without partial uploads or host-specific AppleDouble metadata.
+# macOS BSD tar otherwise adds ._files outside the declared archive root. The restore
+# validator must keep rejecting such paths; only application bytes belong in this archive.
 FAIL_STAGE="files"
-tar -czf "$FILES_TAR" -C "$(dirname "$FILE_ROOT")" --exclude "$(basename "$FILE_ROOT")/.incoming" "$(basename "$FILE_ROOT")" \
+COPYFILE_DISABLE=1 tar -czf "$FILES_TAR" -C "$(dirname "$FILE_ROOT")" --exclude "$(basename "$FILE_ROOT")/.incoming" "$(basename "$FILE_ROOT")" \
   || fail "tar of the file root failed"
 echo "$(basename "$FILES_TAR")"
 

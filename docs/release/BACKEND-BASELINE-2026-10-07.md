@@ -196,3 +196,26 @@ expected (`/private/tmp/estimate-gate-negative.log`). Ruff, formatting and white
 checks pass. All processes are terminal. Three more original failures resolved;
 **31 remain without current-main disposition**. This does not prove a green full
 backend suite or independent accounting approval. No deployment.
+
+### Backup archive portability
+
+All 14 backup/restore-script failures shared the same earlier refusal on macOS:
+BSD tar generated ._files outside files/. The existing failed-baseline restore case
+reproduced on f9f5683 (1 failed in 1.74 seconds,
+`/private/tmp/backup-tar-before.log`). A strengthened archive test adds explicit
+macOS directory/file extended attributes, checks the exact member set and ciphertext
+bytes, and invokes the real archive validator. It failed before the fix with the
+same ._files refusal (1 failed in 1.15 seconds,
+`/private/tmp/backup-archive-regression.log`).
+
+The production backup command now sets COPYFILE_DISABLE=1 only for tar creation;
+restore containment and link rules remain unchanged. Runbook contents are updated.
+Complete script module: **29 passed in 77.31 seconds**,
+`/private/tmp/backup-restore-verified.log`. Recovery validation module: **25 passed
+in 0.11 seconds**, `/private/tmp/recovery-preflight-verified.log`. Bash syntax,
+Ruff/format and whitespace checks pass. The 14 original script failures are resolved;
+**17 original failures remain without current-main disposition**.
+
+These tests use real archive creation/inspection in scratch directories and stub
+pg_dump, verification and server identity; they are not evidence of a live recovery
+drill or production readiness. No deployment or cloud changes. All runs terminal.

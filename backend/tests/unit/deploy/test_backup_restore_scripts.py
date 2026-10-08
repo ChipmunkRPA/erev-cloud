@@ -348,6 +348,13 @@ def test_backup_and_restore_rules() -> None:
 
 def test_backup_script_writes_dump_files_env_digests_and_manifest(scratch: Path) -> None:
     repo = _scratch_repo(scratch)
+    if sys.platform == "darwin":
+        # BSD tar otherwise synthesizes AppleDouble entries (including outside files/).
+        # These host attributes are not application file content and must not be archived.
+        for path in (repo / ".data/files", repo / ".data/files/t/ATTACHMENT/obj"):
+            subprocess.run(
+                ["xattr", "-w", "com.erev.backup-test", "host-metadata", str(path)], check=True
+            )
     done = _run(BACKUP, repo, scratch)
     assert done.returncode == 0, done.stdout + done.stderr
     lines = done.stdout.splitlines()
@@ -413,6 +420,17 @@ def test_backup_script_writes_dump_files_env_digests_and_manifest(scratch: Path)
         check=True,
     ).stdout
     assert "files/t/ATTACHMENT/obj" in listed and ".incoming" not in listed
+    archive = repo / ".data" / "backups" / members["files"]
+    assert pf.inspect_archive(archive, file_root="files") == []
+    with tarfile.open(archive, "r:gz") as captured:
+        assert {member.name.rstrip("/") for member in captured.getmembers()} == {
+            "files",
+            "files/t",
+            "files/t/ATTACHMENT",
+            "files/t/ATTACHMENT/obj",
+        }
+        stored = captured.extractfile("files/t/ATTACHMENT/obj")
+        assert stored is not None and stored.read() == b"ciphertext"
 
     calls = (scratch / "calls.log").read_text(encoding="utf-8")
     dump_call = next(line for line in calls.splitlines() if "--format=custom" in line)
