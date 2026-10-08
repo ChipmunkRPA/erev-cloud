@@ -17,6 +17,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from datetime import date, datetime
+from functools import partial
 from typing import TYPE_CHECKING, Any, Final, Literal
 
 from pydantic import BaseModel, ConfigDict, ValidationError
@@ -186,4 +187,23 @@ TEMPLATE: Final = CsvTemplate(
     columns=COLUMNS,
     plans=plans,
     apply=apply,
+    reconcile_amounts=partial(
+        recorded.reconcile_amounts,
+        event_type=None,
+        amount_field="refund_amount",
+        numeric_fields=(
+            "quantity",
+            "cumulative_progress_ratio",
+            "hours_to_date",
+            "cumulative_weight",
+        ),
+        identity_fields=(
+            "obligation_key",
+            "trigger",
+            "measure",
+            "milestone_code",
+            "source_ref",
+            "reason",
+        ),
+    ),
 )

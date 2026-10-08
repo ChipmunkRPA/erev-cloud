@@ -2,6 +2,31 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## CSV progress and event field reconciliation — October 7, 2026
+
+- Continued from clean main 31e2d1b. Prior turn published legacy modification checks and
+  identified additional CSV gaps (progress). Extended the shared event reader to compare
+  explicit numeric and identity fields from original validated rows, using wide decimals.
+- CSV progress now checks all four event kinds: delivery, return, progress and milestone.
+  Reconciles refund amount/currency (absent versus zero), quantity, progress ratio, hours,
+  milestone weight/code, obligation, trigger/measure, references, contract/date/source identity.
+  The expected event kind is taken from the source row, not the emitter's modified body.
+- Usage now also checks quantity, period dates, metric and obligation. Cost/pre-standard
+  events bind their obligation; costs also compare purpose, flags, payee and plan. Source
+  amounts continue to reconcile to stored events before verified file-column totals are kept.
+- Original monetary regression module: **15 passed in 55.28 seconds**,
+  /private/tmp/csv-event-fields-first.log. Expanded progress/refund and event-field tests,
+  CSV template workflows and layer/import-cycle checks: **95 passed in 180.38 seconds**,
+  /private/tmp/csv-event-fields-final.log. Changed refunds, quantities, ratios, hours, weights,
+  wrong obligations and missing event targets all roll back without source/event/lineage or
+  calculation children. Null/zero refund and rated-usage cases retain their distinction.
+  All runs terminal. Source Mypy, Ruff lint/format and whitespace pass; no full backend claim.
+- Updated the coverage inventory, B1-19 and developer guidance; preserved older setup
+  evidence in build history. Next: FX rates, bundle quantities and CSV invoice quantity/
+  contract/obligation checks. Integration-owner fallback, AI, other implementation and
+  verification gaps and independent accounting sign-off remain open. No deployment.
+  Publication exclusions/noncommercial licensing are unchanged.
+
 ## Legacy modification reconciliation and coverage audit — October 7, 2026
 
 - Continued from clean main 35c9fe2. Prior turn published legacy progress checks (progress).
@@ -55,34 +80,6 @@
 - Updated B1-19 and developer guidance; preserved dated estimate evidence in build history.
   Next: legacy modification monetary read-back. Integration-owner fallback, AI, other
   implementation/verification gaps and independent accounting sign-off remain open.
-  No deployment. Publication exclusions/noncommercial licensing are unchanged.
-
-## Legacy contract setup monetary reconciliation — October 7, 2026
-
-- Continued from clean main 1ebf45a; the prior turn published legacy SSP checks (progress).
-  Added a separate reader for legacy setup source orders, additive booking events and VC.
-- Reconstructs file prices/quantities and currencies independently of emitter requests.
-  Split uploads retain earlier draft lines read from immutable earlier bookings. Source-order
-  lines are checked independently, at database precision, against the current file's rows.
-- VC rows require a linked approved version with the source magnitude, reporting currency,
-  effective date and import approval. Newly created elements also check source-derived sign
-  and defaults; existing elements retain their settings. Added new-element target identities.
-  The old test spy now observes real VC writes, so a no-op writer cannot pass reconciliation.
-- Existing setup/activation/split-upload tests: **14 passed in 85.52 seconds**,
-  /private/tmp/legacy-setup-first.log. The first corruption/architecture run had **54 passed,
-  2 failed**: source-order UPDATE injection hit immutable-table protection before read-back.
-  Replaced that injection with altered inputs to the source-order insert. Booking corruption,
-  prior-line corruption, VC amount/direction corruption and missing VC already rolled back.
-- Expanded setup/approval-floor/approver/architecture run: **91 passed, 1 failed in 228.64
-  seconds**, /private/tmp/legacy-setup-final.log. Its sole failure was the new existing-element
-  fixture's invalid API identifier (422 before import). Corrected its identifier and VC type;
-  final matrix/layer/import-cycle rerun: **57 passed in 55.10 seconds**,
-  /private/tmp/legacy-setup-corrected.log. Existing-element INCREASE direction is retained.
-  All runs terminal. Source Mypy, Ruff lint/format and whitespace pass. No full backend
-  or readiness claim.
-- Updated B1-19 and developer guidance; archived dated SSP evidence without removing release
-  gates. Next: legacy progress and modification monetary readers. Owner-notification fallback,
-  AI, other implementation/verification gaps and independent accounting sign-off remain open.
   No deployment. Publication exclusions/noncommercial licensing are unchanged.
 
 ## Zero-posting late-event register — October 7, 2026

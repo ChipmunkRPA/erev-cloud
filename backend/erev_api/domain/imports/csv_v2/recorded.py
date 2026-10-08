@@ -25,7 +25,7 @@ from __future__ import annotations
 import dataclasses
 from collections.abc import Mapping, Sequence
 from datetime import datetime
-from decimal import Decimal
+from decimal import Decimal, localcontext
 from typing import TYPE_CHECKING, Any, Final
 from uuid import UUID
 
@@ -185,26 +185,44 @@ def reconcile_amounts(
     applied: Applied,
     *,
     context: ApplyContext,
-    event_type: str,
+    event_type: str | None,
     amount_field: str,
+    numeric_fields: tuple[str, ...] = (),
+    identity_fields: tuple[str, ...] = ("obligation_key",),
 ) -> tuple[Mapping[str, Any], Mapping[str, Any]]:
     """Independent monetary read-back for one-event-per-row templates (CTL-002).
 
-    Bind amounts to the contract, event kind, effective date and source record, so
-    another event with the same amount cannot stand in for the intended target.
-    An absent optional rated amount stays absent; it is never inferred as zero.
+    Bind amounts to contract, event kind, date, source record and obligation. Templates
+    may also name numeric inputs and identity fields; expectations come from original
+    validated rows, not emitter plan bodies. A null amount/input stays distinct from zero.
+    A mixed-event template takes its expected event kind from each source row.
     """
 
-    def money(value: Mapping[str, Any] | None) -> list[str] | None:
+    def number(value: Any) -> str | None:
         if value is None:
             return None
-        return [format(Decimal(str(value["amount"])).normalize(), "f"), str(value["currency"])]
+        with localcontext() as ctx:
+            ctx.prec = 80
+            decimal = Decimal(str(value))
+            return format(decimal.normalize(), "f") if decimal else "0"
+
+    def money(value: Mapping[str, Any] | None) -> list[Any] | None:
+        if value is None:
+            return None
+        return [number(value["amount"]), str(value["currency"])]
+
+    def fields(value: Mapping[str, Any]) -> dict[str, Any]:
+        return {
+            **{key: value.get(key) for key in identity_fields},
+            **{key: number(value.get(key)) for key in numeric_fields},
+        }
 
     expected = {
         "events": [
             {
                 "contract": str(row.normalized["contract"]),
-                "event_type": event_type,
+                "event_type": event_type or str(row.normalized["event_type"]),
+                "fields": fields(row.normalized),
                 "effective_date": str(row.normalized["effective_date"]),
                 "source_record_id": str(context.record_ids[row.id]),
                 "amount": money(
@@ -252,6 +270,7 @@ def reconcile_amounts(
                 "effective_date": str(row["effective_date"]),
                 "source_record_id": str(row["source_record_id"]),
                 "amount": money(row["payload"].get(amount_field)),
+                "fields": fields(row["payload"]),
             }
             for row in rows
         ]

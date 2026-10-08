@@ -1741,3 +1741,31 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   Integration-owner fallback, AI, remaining implementation/verification and independent
   accounting sign-off remain open. No deployment. Publication exclusions and noncommercial
   licensing are unchanged; verified changes publish directly to main.
+
+## Legacy contract setup monetary reconciliation — October 7, 2026
+
+- Continued from clean main 1ebf45a; the prior turn published legacy SSP checks (progress).
+  Added a separate reader for legacy setup source orders, additive booking events and VC.
+- Reconstructs file prices/quantities and currencies independently of emitter requests.
+  Split uploads retain earlier draft lines read from immutable earlier bookings. Source-order
+  lines are checked independently, at database precision, against the current file's rows.
+- VC rows require a linked approved version with the source magnitude, reporting currency,
+  effective date and import approval. Newly created elements also check source-derived sign
+  and defaults; existing elements retain their settings. Added new-element target identities.
+  The old test spy now observes real VC writes, so a no-op writer cannot pass reconciliation.
+- Existing setup/activation/split-upload tests: **14 passed in 85.52 seconds**,
+  /private/tmp/legacy-setup-first.log. The first corruption/architecture run had **54 passed,
+  2 failed**: source-order UPDATE injection hit immutable-table protection before read-back.
+  Replaced that injection with altered inputs to the source-order insert. Booking corruption,
+  prior-line corruption, VC amount/direction corruption and missing VC already rolled back.
+- Expanded setup/approval-floor/approver/architecture run: **91 passed, 1 failed in 228.64
+  seconds**, /private/tmp/legacy-setup-final.log. Its sole failure was the new existing-element
+  fixture's invalid API identifier (422 before import). Corrected its identifier and VC type;
+  final matrix/layer/import-cycle rerun: **57 passed in 55.10 seconds**,
+  /private/tmp/legacy-setup-corrected.log. Existing-element INCREASE direction is retained.
+  All runs terminal. Source Mypy, Ruff lint/format and whitespace pass. No full backend
+  or readiness claim.
+- Updated B1-19 and developer guidance; archived dated SSP evidence without removing release
+  gates. Next: legacy progress and modification monetary readers. Owner-notification fallback,
+  AI, other implementation/verification gaps and independent accounting sign-off remain open.
+  No deployment. Publication exclusions/noncommercial licensing are unchanged.

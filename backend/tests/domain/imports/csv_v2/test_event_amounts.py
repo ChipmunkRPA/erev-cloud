@@ -28,16 +28,20 @@ k11 = invoice_tests.k11
 
 
 @pytest.mark.parametrize(
-    "template_code, amount",
+    "template_code, amount, corruption",
     [
-        ("cost_events", "250.00"),
-        ("pre_standard_revenue", "-120.00"),
-        ("usage", "250.00"),
-        ("usage", None),
-        ("usage", "0.00"),
-    ],
+        (template, amount, corruption)
+        for template, amount in (
+            ("cost_events", "250.00"),
+            ("pre_standard_revenue", "-120.00"),
+            ("usage", "250.00"),
+            ("usage", None),
+            ("usage", "0.00"),
+        )
+        for corruption in (None, "amount", "missing_target", "obligation")
+    ]
+    + [("usage", amount, "quantity") for amount in ("250.00", None, "0.00")],
 )
-@pytest.mark.parametrize("corruption", [None, "amount", "missing_target"])
 def test_event_amounts_match_stored_targets(
     k11: K11World,
     monkeypatch: pytest.MonkeyPatch,
@@ -90,6 +94,10 @@ def test_event_amounts_match_stored_targets(
         body = copy.deepcopy(plan.body)
         if corruption == "amount":
             body[field] = {"amount": str(Decimal(amount or "0") + 1), "currency": "EUR"}
+        if corruption == "obligation":
+            body["obligation_key"] = "O1"
+        elif corruption == "quantity":
+            body["quantity"] = "15"
         applied = template.apply(uow, dataclasses.replace(plan, body=body), context=context)
         if corruption == "missing_target":
             applied.targets.clear()

@@ -122,6 +122,10 @@ TEMPLATE: Final = CsvTemplate(
     plans=plans,
     apply=apply,
     reconcile_amounts=partial(
-        recorded.reconcile_amounts, event_type="USAGE_REPORTED", amount_field="rated_amount"
+        recorded.reconcile_amounts,
+        event_type="USAGE_REPORTED",
+        amount_field="rated_amount",
+        numeric_fields=("quantity",),
+        identity_fields=("obligation_key", "usage_period_start", "usage_period_end", "metric"),
     ),
 )

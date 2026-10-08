@@ -84,6 +84,16 @@ TEMPLATE: Final = CsvTemplate(
     plans=plans,
     apply=apply,
     reconcile_amounts=partial(
-        recorded.reconcile_amounts, event_type="COST_INCURRED", amount_field="amount"
+        recorded.reconcile_amounts,
+        event_type="COST_INCURRED",
+        amount_field="amount",
+        identity_fields=(
+            "obligation_key",
+            "purpose",
+            "is_wasted",
+            "is_uninstalled_material",
+            "payee",
+            "plan_code",
+        ),
     ),
 )
