@@ -693,6 +693,10 @@ def waive_checklist_item(
     ):
         # R-106 (a): not waivable while the opened period's re-marking has not succeeded
         raise _refused(gates.REMARK_PENDING_DETAIL)
+    # Preserve the exact approved subject before submission changes pending-approval counts.
+    # A later reopen may overwrite the checklist result; the request hash alone cannot
+    # recover the reviewed member population.
+    waiver_basis = subjects.exception_waiver_content(uow.session, item_id)
     request = approvals.submit(
         uow,
         subject_type=ApprovalSubjectType.EXCEPTION_WAIVER,
@@ -722,7 +726,11 @@ def waive_checklist_item(
         object_id=item_id,
         object_version=str(int(item["row_version"]) + 1),
         before={"status": status, "waiver_approval_request_id": None},
-        after={"status": status, "waiver_approval_request_id": str(request_id)}
+        after={
+            "status": status,
+            "waiver_approval_request_id": str(request_id),
+            "waiver_basis": waiver_basis,
+        }
         | ({"members": item["result"].get("members")} if item["result"] else {}),
         comment=body.reason,
         approval_request_id=request_id,

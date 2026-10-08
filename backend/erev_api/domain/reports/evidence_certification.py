@@ -9,17 +9,19 @@ separate, including the journal batch register and reconciliation population pro
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from erev_engine.canonical import canonical_bytes
+from erev_engine.canonical import canonical_bytes, sha256_hex
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from sqlalchemy import and_, select
 
 from erev_api.db.tables import (
     approval_decision,
     approval_request,
+    audit_event,
     close_checklist_item,
     close_checklist_template,
     period_state,
@@ -130,6 +132,120 @@ def _approval(
     return {"request": dict(request), "decisions": decisions}
 
 
+def checked_waiver_basis(
+    value: Any,
+    *,
+    content_sha256: str,
+    gate: SavedGate,
+    entity_id: UUID,
+    book_code: str,
+    period_id: UUID,
+) -> dict[str, Any]:
+    """The immutable submitted subject must match the approved hash and selected close."""
+    if not isinstance(value, Mapping) or sha256_hex(value) != content_sha256:
+        raise Problem("validation-failed", "The saved waiver basis is missing or has changed.")
+    members = value.get("members")
+    if (
+        value.get("subject_table") != "close_checklist_item"
+        or value.get("gate_kind") != "AUTOMATIC"
+        or value.get("gate_check_code") != gate.gate_check_code
+        or value.get("entity_id") != str(entity_id)
+        or value.get("book_code") != book_code
+        or value.get("period_id") != str(period_id)
+        or value.get("open") is not True
+        or type(value.get("count")) is not int
+        or value["count"] != gate.waived_count
+        or not isinstance(members, list)
+        or any(not isinstance(member, str) or not member for member in members)
+        or len(set(members)) != len(members)
+        or len(members) != value["count"]
+    ):
+        raise Problem("validation-failed", "The saved waiver basis does not match its close gate.")
+    return dict(value)
+
+
+def _waiver_basis(
+    uow: UnitOfWork,
+    proof: Mapping[str, Any],
+    gate: SavedGate,
+    frozen: evidence_close.FrozenClose,
+) -> dict[str, Any]:
+    request = proof["request"]
+    events = (
+        uow.session.execute(
+            select(audit_event).where(
+                audit_event.c.tenant_id == uow.principal.tenant_id,
+                audit_event.c.action == "close_checklist_item.request_waiver",
+                audit_event.c.object_type == "close_checklist_item",
+                audit_event.c.object_id == request["subject_id"],
+                audit_event.c.approval_request_id == request["id"],
+            )
+        )
+        .mappings()
+        .all()
+    )
+    if len(events) != 1:
+        raise Problem("validation-failed", "The waiver lacks its unique submission audit event.")
+    event = events[0]
+    after = event["after"] or {}
+    if (
+        not isinstance(after, Mapping)
+        or event["outcome"] != "SUCCESS"
+        or not request["submitted_at"] <= event["occurred_at"] <= request["decided_at"]
+        or event["chain_seq"] > frozen.record["audit_head_chain_seq"]
+        or after.get("waiver_approval_request_id") != str(request["id"])
+    ):
+        raise Problem("validation-failed", "The waiver submission is outside its approved history.")
+    basis = checked_waiver_basis(
+        after.get("waiver_basis"),
+        content_sha256=request["subject_content_sha256"],
+        gate=gate,
+        entity_id=frozen.scope.entity_id,
+        book_code=frozen.scope.book_code,
+        period_id=frozen.scope.period_id,
+    )
+    return {"subject": basis, "audit_event_id": event["id"], "audit_chain_seq": event["chain_seq"]}
+
+
+def waiver_proof(
+    uow: UnitOfWork, frozen: evidence_close.FrozenClose, gate: SavedGate
+) -> dict[str, Any]:
+    """Approval and original reviewed subject for a gate in an already authorized frozen close."""
+    if gate.waiver_approval_request_id is None:
+        raise Problem("validation-failed", "The close gate has no waiver approval.")
+    scope, record = frozen.scope, frozen.record
+    # Current status/result may have changed on reopen. Only stable checklist identity
+    # is used; the selected lock is the authority for the historical waiver reference.
+    subject_id = uow.session.execute(
+        select(close_checklist_item.c.id)
+        .join(
+            close_checklist_template,
+            and_(
+                close_checklist_template.c.tenant_id == close_checklist_item.c.tenant_id,
+                close_checklist_template.c.id == close_checklist_item.c.close_checklist_template_id,
+            ),
+        )
+        .where(
+            close_checklist_item.c.tenant_id == uow.principal.tenant_id,
+            close_checklist_item.c.entity_id == scope.entity_id,
+            close_checklist_item.c.book_code == scope.book_code,
+            close_checklist_item.c.period_id == scope.period_id,
+            close_checklist_template.c.gate_check_code == gate.gate_check_code,
+        )
+    ).scalar_one_or_none()
+    if subject_id is None:
+        raise Problem("validation-failed", "A certified waiver lacks its checklist subject.")
+    proof = _approval(
+        uow,
+        gate.waiver_approval_request_id,
+        subject_type="EXCEPTION_WAIVER",
+        subject_id=subject_id,
+        entity_id=scope.entity_id,
+        locked_at=record["created_at"],
+    )
+    return {**proof, "basis": _waiver_basis(uow, proof, gate, frozen)}
+
+
 def collect(uow: UnitOfWork, selection: SourceSelection) -> tuple[PackFile, ...]:
     frozen = evidence_close.read_locked(uow, selection)
     scope, record = frozen.scope, frozen.record
@@ -154,41 +270,13 @@ def collect(uow: UnitOfWork, selection: SourceSelection) -> tuple[PackFile, ...]
     for row in saved:
         if row.waiver_approval_request_id is None:
             continue
-        # Current status/result may have changed on reopen. Only stable checklist identity
-        # is used; the selected lock is the authority for the historical waiver reference.
-        subject_id = uow.session.execute(
-            select(close_checklist_item.c.id)
-            .join(
-                close_checklist_template,
-                and_(
-                    close_checklist_template.c.tenant_id == close_checklist_item.c.tenant_id,
-                    close_checklist_template.c.id
-                    == close_checklist_item.c.close_checklist_template_id,
-                ),
-            )
-            .where(
-                close_checklist_item.c.tenant_id == selection.tenant_id,
-                close_checklist_item.c.entity_id == scope.entity_id,
-                close_checklist_item.c.book_code == scope.book_code,
-                close_checklist_item.c.period_id == scope.period_id,
-                close_checklist_template.c.gate_check_code == row.gate_check_code,
-            )
-        ).scalar_one_or_none()
-        if subject_id is None:
-            raise Problem("validation-failed", "A certified waiver lacks its checklist subject.")
+        proof = waiver_proof(uow, frozen, row)
         waivers.append(
             {
                 "gate_check_code": row.gate_check_code,
                 "count": row.count,
                 "waived_count": row.waived_count,
-                **_approval(
-                    uow,
-                    row.waiver_approval_request_id,
-                    subject_type="EXCEPTION_WAIVER",
-                    subject_id=subject_id,
-                    entity_id=scope.entity_id,
-                    locked_at=record["created_at"],
-                ),
+                **proof,
             }
         )
     return (

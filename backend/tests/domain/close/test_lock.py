@@ -71,19 +71,26 @@ from erev_api.db.tables import (
 from erev_api.domain.close import commands as close_commands
 from erev_api.domain.close import dependencies as close_dependencies
 from erev_api.domain.close import gates, queries
-from erev_api.domain.reports import evidence_certification, evidence_selection
+from erev_api.domain.reports import (
+    evidence_certification,
+    evidence_reconciliation_population,
+    evidence_selection,
+)
 from erev_api.enums import (
     ApprovalRequestStatus,
+    BookCode,
     ChecklistStatus,
     FilePurpose,
     LockKind,
     PeriodState,
+    RegistryCategory,
     SnapshotKind,
 )
 from erev_api.events.payloads import HoldReleasedV1
 from erev_api.files.store import LocalFileStore, open_file
 from erev_api.main import create_app
 from erev_api.problems import Problem
+from erev_api.registry.resolve import resolve as resolve_setting
 from erev_api.schemas.evidence_packs import ClosePackCreateIn
 from erev_api.schemas.periods import PeriodLockRequestIn, PeriodPermanentLockRequestIn
 from erev_engine.canonical import sha256_hex
@@ -133,6 +140,7 @@ from support.rows import (
     contract_hold_values,
     exception_item_values,
     integration_connection_values,
+    publish_registry_version,
 )
 
 COMMENT = "September 2026 close complete"
@@ -1601,6 +1609,13 @@ def test_approved_waiver_clears_its_gate_for_the_lock(
         assert saved_waiver["request"]["id"] == waiver_id
         assert (saved_waiver["count"], saved_waiver["waived_count"]) == (1, 2)
         assert saved_waiver["decisions"][0]["decision"] == "APPROVE"
+        original = saved_waiver["basis"]["subject"]
+        assert sha256_hex(original) == saved_waiver["request"]["subject_content_sha256"]
+        assert original["gate_check_code"] == "EXCEPTIONS_CLEARED"
+        assert original["count"] == len(original["members"]) == 2
+        assert saved_waiver["basis"]["audit_chain_seq"] <= _lock_row(world)["audit_head_chain_seq"]
+        assert str(second_item) in " ".join(original["members"])
+
         valid = {
             "request_id": UUID(proof["lock_approval"]["request"]["id"]),
             "subject_type": "PERIOD_LOCK",
@@ -2085,3 +2100,105 @@ def test_reconciliation_freshness_covers_ledger_history(
         actual = session.scalars(select(reconciliation.c.kind).where(gates.overtaken(scope))).all()
         assert {str(kind) for kind in actual} == expected
         assert gates.blocker_counts(session, scope)["reconciliations_unsigned"] == len(expected)
+
+
+@pytest.mark.parametrize("waive_missing", [False, True])
+def test_close_pack_reconciliation_population_has_required_statements_or_exact_waiver(
+    world: CloseWorld, clock: FrozenClock, waive_missing: bool
+) -> None:
+    _start_close(world)
+    if waive_missing:
+        acknowledged_run(world)
+        with system_session(world) as session:
+            close_run_succeeded(session, world)
+        gate = _checklist(world, world.maya)["RECONCILIATIONS_GENERATED"]
+        assert gate["result"]["count"] == 2
+        shown = _state(world)
+        response = post(
+            world.app,
+            f"{PERIODS}/{shown['id']}/checklist/{gate['id']}/waive",
+            world.maya,
+            {"reason": "Both missing statements accepted for this test close."},
+            if_match=f'"r{shown["row_version"]}"',
+        )
+        assert response.status_code == 200, response.text
+        waiver_id = response.json()["approval_request_id"]
+        member = colleague(world.tenant_id, "population-reviewer")
+        assign(member, "revenue_reviewer")
+        response = approve(world.app, waiver_id, enrolled(world.app, clock, member))
+        assert response.status_code == 200, response.text
+    else:
+        _pass_gates(world)
+    requested = _lock_request(world, world.maya)
+    assert requested.status_code == 200, requested.text
+    approved = approve(
+        world.app,
+        requested.json()["approval_request_id"],
+        _controller(world.app, clock, world.tenant_id),
+    )
+    assert approved.status_code == 200, approved.text
+    lock = _lock_row(world)
+    reader = replace(
+        world.place.principal,
+        permissions=frozenset({"report.run", "audit.read", "contract.read"}),
+        permission_scopes={"report.run": "*", "audit.read": "*", "contract.read": "*"},
+    )
+    with world.place.uow(reader) as uow:
+        selected = evidence_selection.resolve(
+            uow,
+            ClosePackCreateIn.model_validate(
+                {
+                    "kind": "CLOSE",
+                    "entity_code": "AVM-US",
+                    "book": "ASC606",
+                    "period_key": "FY2026-P09",
+                    "period_lock_id": lock["id"],
+                }
+            ),
+        )
+        files = evidence_reconciliation_population.collect(uow, selected)
+        assert evidence_reconciliation_population.collect(uow, selected) == files
+        assert files[0].path == "reconciliations/population.json"
+        population = json.loads(files[0].content)
+        assert population["policy"]["value"] is True
+        assert set(population["required_kinds"]) == set(gates.REQUIRED_KINDS)
+        if waive_missing:
+            assert population["certified"] == []
+            assert set(population["waived_absent_kinds"]) == set(gates.REQUIRED_KINDS)
+            assert population["waiver"]["request"]["id"] == waiver_id
+            assert set(population["waiver"]["basis"]["subject"]["members"]) == {
+                f"reconciliation:{kind}:missing" for kind in gates.REQUIRED_KINDS
+            }
+        else:
+            assert {row["kind"] for row in population["certified"]} == set(gates.REQUIRED_KINDS)
+            assert population["waived_absent_kinds"] == []
+            assert population["waiver"] is None
+    # Seed a later published policy through the normal registry state transitions. This is
+    # historical-reader evidence, not an end-to-end configuration-publication witness.
+    clock.set(lock["cutoff_known_at"] + timedelta(seconds=1))
+    with system_session(world) as session:
+        publish_registry_version(
+            session,
+            tenant_id=world.tenant_id,
+            category=RegistryCategory.CLOSE,
+            values={gates.REQUIRE_RECONCILIATIONS: False},
+            at=clock.now(),
+        )
+    with world.place.uow(reader) as uow:
+        assert (
+            resolve_setting(
+                uow.session,
+                gates.REQUIRE_RECONCILIATIONS,
+                book_code=BookCode.ASC606,
+                entity_id=world.entity_id,
+                known_at=uow.now,
+            ).value
+            is False
+        )
+        assert evidence_reconciliation_population.collect(uow, selected) == files
+    denied = replace(
+        reader, permission_scopes={**reader.permission_scopes, "contract.read": frozenset()}
+    )
+    with world.place.uow(denied) as uow, pytest.raises(Problem) as error:
+        evidence_reconciliation_population.collect(uow, selected)
+    assert error.value.slug == "not-found"

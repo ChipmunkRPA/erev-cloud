@@ -4884,6 +4884,15 @@ The item and template are locked while signing so an owner-role edit cannot race
 
 Keys: `PRIMARY KEY (tenant_id, id)`; `ux_close_checklist_item (tenant_id, close_checklist_template_id, entity_id, book_code, period_id)`.
 
+October 8, 2026 evidence continuation: `close_checklist_item.request_waiver` now retains
+`after.waiver_basis`, the exact subject document hashed by the approval request before
+submission. It includes the gate identity, scope, open flag, count, detail and member IDs.
+The retained document survives later gate evaluation and reopen. Historical close-pack
+readers compare its canonical hash with the approved request/decisions and bind its audit
+event to the selected lock's audit prefix. Old events lacking that document are not silently
+reconstructed from a current checklist or a count; affected evidence collection refuses.
+Existing approvals and lock certifications are not rewritten.
+
 ### T-CLS-04 `period_lock`
 
 - **Purpose.** Lock, reopen or permanent-lock record with certification, head hashes and snapshot manifest (REQ-CLS-009 to -011).

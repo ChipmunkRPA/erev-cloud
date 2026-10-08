@@ -551,6 +551,21 @@ integration remain unimplemented. Historical mutable facts that existing report 
 reconstruct remain refused rather than replaced with current data; full operational close and
 pack acceptance, RPS-16 and CTL-041 are not complete.
 
+October 8 reconciliation population evidence: a reader now resolves the lock-time requirement,
+retains its registry source and checks required kinds against only the lock-bound certified
+population. Missing kinds need exact approved missing/unreviewed member evidence and remain
+explicitly listed as waived omissions. Duplicate or unexplained sources refuse. Waiver submission
+audit events now preserve the complete hashed subject; saved approval evidence checks that hash,
+scope/count/members and audit-prefix coverage. Older events lacking the subject cannot supply this
+proof and are not reconstructed from mutable checklist rows. Existing lock records are unchanged.
+The broad scoped run passed 149 tests. An added policy-history witness initially failed twice due
+to a fixture timestamp before the database freeze cutoff; after fixing that chronology, 69 affected
+tests passed, including byte-identical historical output after a later policy change. These tests
+use real waiver/lock approvals with seeded journal/reconciliation gate setup. Complete assembly
+must invoke both population and statement/signature readers; durable jobs/API/downloads, other
+pack kinds, the separate variance report and operational close acceptance remain open. RPS-16,
+CTL-041 and production readiness are not claimed.
+
 ## The fifteen standing names
 
 Fifteen tests of the backend suite do not pass in release 1.0. They are the same fifteen in every whole run on the day of the freeze, by name, and none passes when it is run again alone; the release candidate's suite shows these and no other (R-125 (n); R-126 (e)). None is skipped, loosened or marked: each fails at full strength until its cause is closed. Two gate targets fail by them, as the supervisor measured on `783f340ea`: `make answer-keys` by the six keys and `make test-pg` by the three capture witnesses. The causes below are read from the failure each test records and from the test: for names 3 to 5 as the suite takes them since index 308's part for the answer keys' runner is on the branch, for the others in the run of record on `5c3b5347c`. Names 1 to 5 are platform keys, which the suite takes on the in-memory platform. On the database platform a lane measured them on 2026-10-03 with that part: the two DISC keys pass; POS-CHK-012 compares clean in every block and is failed by its finding alone; the GT07 key is not run; POS-CHK-117 has four mismatches.

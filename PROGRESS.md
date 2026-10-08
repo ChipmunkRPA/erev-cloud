@@ -2,6 +2,39 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Reconciliation population and retained waiver basis — October 8, 2026 (RPS-16 continued)
+
+- Continued from clean published 4a9de2a. New checklist-waiver submission audit events retain
+  the exact subject hashed by the approval request, before submission changes pending counts.
+  The certification collector checks that retained document against the approved hash, gate,
+  entity/book/period, reviewed count/members and the selected lock's audit prefix. Exported
+  proof includes the original subject and audit event identity; later checklist state is unused.
+- Added `reports/evidence_reconciliation_population.py`: resolves the reconciliation requirement
+  at the lock freeze cutoff, retaining its setting source identity; enumerates only that lock's
+  certified/reopened statements. Rejects duplicate kinds/IDs, wrong scope/time and unexplained
+  required omissions. Approved missing/unreviewed member identities can cover absent kinds;
+  an equal-count waiver of another kind or an outdated statement cannot. Omissions remain
+  explicit `waived_absent_kinds`, never mislabeled as certified statements. Full assembly must
+  invoke both this population reader and the existing statement/signature collector.
+- Initial waiver witness: **one passed in 12.20 seconds**. Initial population/subject checks:
+  **53 passed in 18.09 seconds**. Broader lock/re-lock, waiver and evidence regression:
+  **149 passed in 171.95 seconds**. Extended policy-history run: **67 passed, two failed in
+  18.57 seconds** because the test advanced September's frozen clock, still before the actual
+  October database freeze cutoff. Corrected the fixture to publish after the recorded cutoff;
+  final affected run: **69 passed in 18.51 seconds**. Covers real waiver/lock approvals,
+  unchanged output after a later disabled policy, revoked scope, hash/member/scope mismatch,
+  duplicate sources and explicit approved omissions. Journal/reconciliation gate setup is seeded;
+  these are not complete operational close or accounting acceptance witnesses.
+- Logs: `/private/tmp/waiver-basis-db.log` and `/private/tmp/waiver-population-{db,final,history,
+  corrected}.log`. All processes terminal. Source Mypy, Ruff lint/format and whitespace pass.
+  Saved supporting-report notes archived verbatim. No API contract or availability change.
+- Legacy waiver audit events without the exact subject document cannot supply this proof;
+  collection refuses rather than inventing historical details. Full pack assembly, persisted
+  state/bindings/retry reuse, jobs/routes/audited downloads/automatic generation, other pack kinds
+  and the separate variance-between-closes report remain open. Current release gates and
+  independent accounting approval remain required; RPS-16/CTL-041 and production readiness
+  are unclaimed. Validated direct-main publication; no deployment or external notifications.
+
 ## Close supporting-source plan — October 8, 2026 (RPS-16 continued)
 
 - Continued from clean 277408a. Added `reports/evidence_report_plan.py`: derives five CSV
@@ -27,33 +60,6 @@
   this planner never substitutes current data. End-to-end operational close acceptance,
   current release gates and independent accounting sign-off remain open. RPS-16/CTL-041
   unclaimed. Direct-main publication; no deployment, cloud mutation or external notifications.
-
-## Saved supporting-report evidence — October 8, 2026 (RPS-16 continued)
-
-- Continued from clean 628ee14. The SSP/configuration/late-entry/access/SoD report builders
-  already exist. Added `reports/evidence_reports.py` to collect their successful saved CSVs,
-  IPE manifests and source identities. Explicit source bindings require exact report code,
-  normalized parameter hash, entity population, book, as-of date and known-at cutoff; no
-  rerendering, implicit latest-run selection or fallback to current data.
-- Reuses the report framework's export visibility and underlying report permissions. Checks
-  original output/manifest purpose, type, size and hashes; checks canonical manifest against
-  run identity/version, parameters, count, totals, tie-outs and output bytes. Uses only fixed
-  admitted payload paths. Source metadata preserves actual run/file IDs and both hashes.
-- All five actual report API/worker witnesses initially passed in **29.91 seconds**, including
-  a nonempty access listing. Broader regression: **75 passed, three failed in 99.18 seconds**;
-  all failures were the new missing-audit-permission assertions expecting not-found where
-  the existing guard returns forbidden (permission removed, scope entry retained). Corrected
-  those expectations; final affected report witnesses and pure checks: **38 passed in 29.88
-  seconds**. Each collected CSV/manifest matches the ordinary HTTP download byte for byte.
-  Covers changed cutoff, export removal/scope denial, underlying permission removal, invalid
-  binding/manifest and changed-output refusals. Logs: `/private/tmp/evidence-reports-{db,final,
-  corrected}.log`. Source mypy, Ruff lint/format and whitespace pass; all processes terminal.
-- These witnesses bind to the actual generated report parameters, not a claimed full-close
-  selection. Pack orchestration still must choose the correct close-period dates/cutoff,
-  create and persist these run bindings, and invoke all collectors. Reconciliation population
-  completeness, other pack kinds, assembly/jobs/routes/audited downloads/automatic generation
-  and final release/accounting approval remain open. RPS-16/CTL-041 unclaimed. Archived saved
-  certification notes verbatim. Direct-main publication; no deployment or external messaging.
 
 ## Audit digest evidence — October 8, 2026 (RPS-16 continued)
 
