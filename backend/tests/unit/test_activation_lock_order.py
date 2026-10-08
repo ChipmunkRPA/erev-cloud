@@ -98,6 +98,7 @@ def _bound(statement: Any) -> Any:
 
 
 RULED_ORDER = [("contract", False), ("combination_group", True), ("contract", True)]
+ESTIMATE_APPROVAL_ORDER = [("fx_publication_shared", True), *RULED_ORDER]
 
 
 class _Stop(Exception):
@@ -170,6 +171,20 @@ class _Session:
             if hasattr(statement, "get_final_froms")
             else [statement.table]
         )
+        if not froms:
+            # Estimate approval holds the tenant's shared FX gate before any row lock.
+            # Recognize only this statement; do not silently accept arbitrary SELECTs.
+            columns = list(statement.selected_columns)
+            assert len(columns) == 1
+            gate = columns[0]
+            assert gate.name == "pg_advisory_xact_lock_shared"
+            (key,) = list(gate.clauses)
+            assert key.name == "hashtextextended"
+            namespace, seed = list(key.clauses)
+            assert namespace.value == f"erev:fx-publication:{PRINCIPAL.tenant_id}"
+            assert seed.value == 0
+            self.calls.append(("fx_publication_shared", True))
+            return _Result()
         table = getattr(froms[0], "name", "join")  # a joined select (contract ⋈ legal_entity)
         locked = getattr(statement, "_for_update_arg", None) is not None
         if table in ("contract", "combination_group", "judgement_record"):
@@ -349,7 +364,7 @@ def test_estimate_approval_locks_the_group_before_the_contract(
     )
     session = _Session()
     _run(session, lambda uow: estimates._approve_version(uow, UUID(int=7), UUID(int=8)))
-    assert session.calls == RULED_ORDER
+    assert session.calls == ESTIMATE_APPROVAL_ORDER
 
 
 def test_estimate_version_creation_locks_the_group_before_the_contract(
@@ -975,7 +990,7 @@ def test_estimate_approval_revalidates_the_basis_under_its_locks(
     session = _Session(stop=False)
     with pytest.raises(_Stop):
         estimates._approve_version(_Uow(session), UUID(int=7), APPROVAL_REQUEST)  # type: ignore[arg-type]
-    assert seen == [RULED_ORDER]
+    assert seen == [ESTIMATE_APPROVAL_ORDER]
 
 
 def test_event_submission_revalidates_the_basis_under_its_locks(

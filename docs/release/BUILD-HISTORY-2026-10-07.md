@@ -1284,3 +1284,22 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   failures resolved as stale expectations; the other 44 await evidence-based disposition.
   No product/calculation code changed. Published directly to main; no deployment. Broader
   verification, import monetary reconciliation and independent accounting sign-off remain open.
+
+## Reconciliation timing and publication checks — October 7, 2026
+
+- Continued from c8fea89. Reproduced the reconciliation interleaving failure on current main
+  (one failed in 10.98 seconds). An explicit precondition then proved the fixture's application
+  clock was 0.163 seconds ahead of the database clock. The shared helper starts one second
+  ahead; this scenario required setup to take longer than that, making its ordering accidental.
+- The timing test now sets its clock from the database immediately before generation, asserts
+  it is not ahead, and checks the injected billing event's persisted recorded_at against the
+  generated reconciliation's as_of_known_at. Production snapshot logic is unchanged.
+- All eight reconciliation timing cases passed in 47.59 seconds before the additional persisted
+  timestamp assertion. Final combined verification with the assertion and publication tests:
+  **18 passed in 44.02 seconds**, /private/tmp/reconciliation-and-publication-final.log.
+- Two publication tests still required MIT despite the owner's noncommercial publication.
+  Updated them to assert PolyForm Noncommercial 1.0.0, its noncommercial-purpose section and
+  the required copyright notice; existing third-party notice checks remain. No license terms
+  changed. Ruff/format/whitespace checks pass; all scoped runs are terminal. Published directly
+  to main. Three more baseline failures resolved; 41 remain to be classified. No deployment
+  or accounting sign-off. Broader current-main verification remains outstanding.

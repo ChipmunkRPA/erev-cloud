@@ -2,6 +2,25 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Estimate lock and SMTP guard verification — October 7, 2026
+
+- Continued from ef323e6. Reproduced three older baseline failures on current main:
+  two estimate-approval stand-ins crashed on the newer shared FX publication lock;
+  one SMTP test expected the original spelling of a normalized IPv4-mapped IPv6 literal.
+  Initial run: **3 failed, 117 passed in 2.53 seconds**, /private/tmp/lock-ssrf-before.log.
+- The lock stand-in now recognizes only the expected shared advisory call, verifies its
+  tenant namespace/hash seed, and records it before group/contract locks. Both approval
+  assertions require this complete order, including at basis revalidation. Literal SMTP
+  addresses use canonical spelling; resolver outputs retain their original checked spelling.
+  All private-opt-in and blocked-destination checks remain. Production code is unchanged.
+- Final verification: **120 passed in 2.25 seconds**, /private/tmp/lock-ssrf-verified.log.
+  A separate process bypassed only hold_fx_publication: both approval cases failed their
+  order assertions as required (/private/tmp/estimate-gate-negative.log). An intermediate
+  run exposed the resolver/literal spelling distinction; the final assertions cover both.
+  Ruff, format and whitespace checks pass; all runs terminal. Three baseline failures
+  resolved, leaving 31 without current-main disposition. These are scoped unit checks,
+  not a new full-backend baseline. Accounting sign-off remains open; no deployment.
+
 ## Supported policy-override audit coverage — October 7, 2026
 
 - Continued from 778ce38. The route catalogue still classified all policy override creation
@@ -58,26 +77,6 @@
   pass; all scoped runs are terminal. Published directly to main. Three baseline failures
   resolved plus the newly exposed sandbox count issue; 38 original failures still await
   disposition. No deployment or readiness claim; accounting sign-off remains outstanding.
-
-## Reconciliation timing and publication checks — October 7, 2026
-
-- Continued from c8fea89. Reproduced the reconciliation interleaving failure on current main
-  (one failed in 10.98 seconds). An explicit precondition then proved the fixture's application
-  clock was 0.163 seconds ahead of the database clock. The shared helper starts one second
-  ahead; this scenario required setup to take longer than that, making its ordering accidental.
-- The timing test now sets its clock from the database immediately before generation, asserts
-  it is not ahead, and checks the injected billing event's persisted recorded_at against the
-  generated reconciliation's as_of_known_at. Production snapshot logic is unchanged.
-- All eight reconciliation timing cases passed in 47.59 seconds before the additional persisted
-  timestamp assertion. Final combined verification with the assertion and publication tests:
-  **18 passed in 44.02 seconds**, /private/tmp/reconciliation-and-publication-final.log.
-- Two publication tests still required MIT despite the owner's noncommercial publication.
-  Updated them to assert PolyForm Noncommercial 1.0.0, its noncommercial-purpose section and
-  the required copyright notice; existing third-party notice checks remain. No license terms
-  changed. Ruff/format/whitespace checks pass; all scoped runs are terminal. Published directly
-  to main. Three more baseline failures resolved; 41 remain to be classified. No deployment
-  or accounting sign-off. Broader current-main verification remains outstanding.
-
 
 ## Older backend baseline completed — October 7, 2026
 

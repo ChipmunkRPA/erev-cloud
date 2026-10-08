@@ -176,3 +176,23 @@ Ruff/format/whitespace checks pass. No production behavior changed.
 One additional original baseline failure resolved; **34 remain without current-main
 disposition**. The broader category gate's missing AI lifecycle evidence remains open;
 it was not waived or marked passing by these changes.
+
+### Estimate approval locks and SMTP literal normalization
+
+Reproduced the two activation-lock-order failures and the IPv4-mapped SMTP
+private-relay case on ef323e6: **3 failed, 117 passed in 2.53 seconds**
+(`/private/tmp/lock-ssrf-before.log`). The approval stand-in did not understand
+SELECT without FROM for the shared FX publication gate. It now verifies the exact
+shared function, tenant namespace and hash seed and records its position before
+the group/contract locks. Both approval expectations include that gate, including
+at basis revalidation. The SMTP literal assertion expects canonical IP spelling;
+DNS results still must equal the original checked resolver output. Refusal checks
+are retained. No production changes.
+
+Final complete two-module run: **120 passed in 2.25 seconds**,
+`/private/tmp/lock-ssrf-verified.log`. In a separate process, disabling only
+hold_fx_publication made both approval tests fail their order assertions as
+expected (`/private/tmp/estimate-gate-negative.log`). Ruff, formatting and whitespace
+checks pass. All processes are terminal. Three more original failures resolved;
+**31 remain without current-main disposition**. This does not prove a green full
+backend suite or independent accounting approval. No deployment.

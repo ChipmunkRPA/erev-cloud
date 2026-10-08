@@ -6,6 +6,7 @@ from __future__ import annotations
 import ast
 import inspect
 from collections.abc import Sequence
+from ipaddress import ip_address
 from pathlib import Path
 
 import pytest
@@ -146,7 +147,9 @@ def test_sar_15_private_relay_opt_in_admits_loopback_and_private_use(address: st
     """``check_host(..., private=True)`` — the SMTP relay under the operator's opt-in — admits a
     loopback or private-use address, literal or resolved, and returns it as the address to connect
     to; the same address stays refused without the opt-in."""
-    assert check_host(address, 587, env=Environment.PRODUCTION, private=True) == address
+    # Literal hosts are normalized; DNS results retain the checked resolver spelling.
+    expected = str(ip_address(address))
+    assert check_host(address, 587, env=Environment.PRODUCTION, private=True) == expected
     resolved = check_host(
         "relay.internal.test",
         587,
