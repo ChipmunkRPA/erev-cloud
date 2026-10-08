@@ -3190,8 +3190,8 @@ of emitter builders. Existing obligation identities distinguish CHANGE from ADD;
 added obligations must have the source product identity. Source record, approval,
 synthetic modification identity and event targets are also checked.
 
-Remaining coverage is explicit in [the October 7 inventory](release/IMPORT-RECONCILIATION-2026-10-07.md):
-FX rates. Registered readers do not imply complete coverage of every accounting field.
+Read-back scope is explicit in [the October 7 inventory](release/IMPORT-RECONCILIATION-2026-10-07.md).
+Registered readers do not imply complete coverage of every accounting field or release gate.
 
 CSV progress uses the shared event reader with the source row's event type. It verifies
 optional refund money, quantity, progress ratio, hours and milestone weight, plus obligation,
@@ -3215,3 +3215,12 @@ quantities, split bases/ratios, product identities, sequence and effective windo
 windows end at the next source set's start unless an earlier end is stated. Each source
 row must name exactly its stored component target, and all declared targets must account
 for the entire stored list. A mismatch restores the prior list by rolling back the import.
+
+
+FX imports reconcile the submitted version's set, coverage, upload and status against
+validated source rows. The reader checks the complete rate list: currency pairs, rate type,
+dates/period identity, entered rates and missing-pair inverses rounded half up to 12 places.
+An explicitly entered reverse pair suppresses derivation. Closing/average dates come from
+the source period key. Source-row targets must name all and only the entered rates. A mismatch
+rolls back every version in the import, including FX approval requests; successful imports
+still require separate FX approval before rates take effect.

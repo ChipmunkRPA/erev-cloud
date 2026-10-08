@@ -2,6 +2,27 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## FX import rate reconciliation — October 7, 2026
+
+- Continued from clean main 8667084; prior turn published bundle reconciliation (progress).
+  Added an independent FX version reader: compare set/coverage/upload/status, the complete
+  entered/derived rate list, pair/type/day/period identity and per-source lineage targets.
+  Reconstruct inverse rates with independent decimal arithmetic and 12-place half-up rounding;
+  explicit reverse pairs suppress derivation. Period keys resolve closing/average end dates.
+- Initial matrix plus existing approval workflow: **15 passed in 31.02 seconds**,
+  /private/tmp/fx-readback-first.log, terminal. Covers spot/closing/average, precision,
+  explicit inverse and rounding tie; changed rate/currency/day/period/coverage/set, changed
+  inverse, missing inverse and missing targets all roll back versions, FX approval requests,
+  source records and lineage. Added swapped targets and a multi-version batch (including
+  failure of the second version). Expanded matrix, CSV workflows and layer/import-cycle
+  regressions: **74 passed in 69.18 seconds**, /private/tmp/fx-readback-final.log, terminal.
+  Source Mypy, Ruff lint/format and whitespace checks pass.
+- Updated inventory, B1-19 and developer guidance; archived older legacy progress evidence
+  verbatim. Listed financial CSV and legacy readers now have defined scope, not a claim of
+  full accounting coverage. Integration-owner fallback, AI and other implementation gaps,
+  remaining release checks and independent accounting sign-off remain open. No deployment
+  or full-suite/readiness claim. Preserve exclusions/licensing; push verified changes to main.
+
 ## Bundle replacement reconciliation — October 7, 2026
 
 - Continued from clean main 74e3437 (prior turn made verified invoice progress). Bundle
@@ -101,32 +122,6 @@
   close the named CSV gaps. Other implementation/verification gaps, integration-owner fallback,
   AI and independent accounting sign-off remain open. No whole-backend/readiness claim or
   deployment. Publication exclusions/noncommercial licensing are unchanged.
-
-## Legacy progress monetary reconciliation — October 7, 2026
-
-- Continued from clean main f15e790. The prior turn published legacy setup checks (progress).
-  Added independent read-back for legacy progress imports, including the original aggregated
-  rows. Source billing, signed pre-standard revenue and delivery are summed by obligation/SKU
-  without reusing the emitter's aggregation or payload builder.
-- Compares stored billing/credit/revenue and delivery/return events, their currency/date,
-  lead source-record identity and declared targets. Independently checks signed synthetic
-  invoice/credit headers and lines, including currency, source identity, product and obligation.
-  Positive billing must link to the expected invoice. Zero aggregates create neither a
-  financial event nor a document. Verified file-column totals retain their original semantics.
-- Tests inject changed event amount, changed signed invoice amount, changed revenue/quantity,
-  a missing event and an unexpected posting for a zero aggregate after approval. Every mismatch
-  rolls back the complete import, preserving existing contracts, events and invoices and leaving
-  no source records or lineage. Positive, negative and zero duplicate-row aggregates succeed.
-- Existing progress/credit/return workflows: **11 passed in 86.83 seconds**,
-  /private/tmp/legacy-progress-first.log. New matrix, amended-terms and layer/import-cycle
-  checks: **59 passed in 100.96 seconds**, /private/tmp/legacy-progress-final.log.
-  Final reader uses copy_abs to preserve full decimal precision; matrix rerun: **11 passed
-  in 72.55 seconds**, /private/tmp/legacy-progress-verified.log. All runs terminal.
-  Source Mypy, Ruff lint/format and whitespace pass. No whole-backend or readiness claim.
-- Updated B1-19 and developer guidance; preserved dated estimate evidence in build history.
-  Next: legacy modification monetary read-back. Integration-owner fallback, AI, other
-  implementation/verification gaps and independent accounting sign-off remain open.
-  No deployment. Publication exclusions/noncommercial licensing are unchanged.
 
 ## Outstanding release verification
 

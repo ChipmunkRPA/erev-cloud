@@ -1799,3 +1799,29 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   remains: the absent AI lifecycle feature. Monetary import reconciliation, other documented
   gaps, full current verification and independent accounting sign-off remain outstanding.
   No deployment. Publication exclusions and PolyForm Noncommercial licensing are unchanged.
+
+## Legacy progress monetary reconciliation — October 7, 2026
+
+- Continued from clean main f15e790. The prior turn published legacy setup checks (progress).
+  Added independent read-back for legacy progress imports, including the original aggregated
+  rows. Source billing, signed pre-standard revenue and delivery are summed by obligation/SKU
+  without reusing the emitter's aggregation or payload builder.
+- Compares stored billing/credit/revenue and delivery/return events, their currency/date,
+  lead source-record identity and declared targets. Independently checks signed synthetic
+  invoice/credit headers and lines, including currency, source identity, product and obligation.
+  Positive billing must link to the expected invoice. Zero aggregates create neither a
+  financial event nor a document. Verified file-column totals retain their original semantics.
+- Tests inject changed event amount, changed signed invoice amount, changed revenue/quantity,
+  a missing event and an unexpected posting for a zero aggregate after approval. Every mismatch
+  rolls back the complete import, preserving existing contracts, events and invoices and leaving
+  no source records or lineage. Positive, negative and zero duplicate-row aggregates succeed.
+- Existing progress/credit/return workflows: **11 passed in 86.83 seconds**,
+  /private/tmp/legacy-progress-first.log. New matrix, amended-terms and layer/import-cycle
+  checks: **59 passed in 100.96 seconds**, /private/tmp/legacy-progress-final.log.
+  Final reader uses copy_abs to preserve full decimal precision; matrix rerun: **11 passed
+  in 72.55 seconds**, /private/tmp/legacy-progress-verified.log. All runs terminal.
+  Source Mypy, Ruff lint/format and whitespace pass. No whole-backend or readiness claim.
+- Updated B1-19 and developer guidance; preserved dated estimate evidence in build history.
+  Next: legacy modification monetary read-back. Integration-owner fallback, AI, other
+  implementation/verification gaps and independent accounting sign-off remain open.
+  No deployment. Publication exclusions/noncommercial licensing are unchanged.

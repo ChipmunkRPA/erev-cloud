@@ -30,6 +30,7 @@ from erev_api.domain.imports.csv_v2.framework import (
     row_model,
     unflatten,
 )
+from erev_api.domain.imports.csv_v2.fx_amounts import reconcile_amounts
 from erev_api.domain.reference.commands import (
     create_fx_rate_set_version,
     submit_fx_rate_set_version,
@@ -148,4 +149,5 @@ TEMPLATE: Final = CsvTemplate(
     plans=plans,
     apply=apply,
     group_key=KEY,
+    reconcile_amounts=reconcile_amounts,
 )

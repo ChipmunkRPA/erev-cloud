@@ -18,7 +18,7 @@ coverage of every field that affects accounting.
 | legacy_progress_tracking | Independently aggregated billing, revenue, delivery/return events and signed invoices | Broader release verification |
 | legacy_contract_modification | Signed consideration/quantity deltas, treatment, SSP reference, date/source/approval and added obligations | Scoped replay/corruption evidence in PROGRESS.md; broader release verification remains |
 | progress_events | Refund amounts/currency, quantity, progress ratio, hours, milestone weight/code, obligation, trigger/measure, contract, date and source identity | Scoped tests in PROGRESS.md; broader release verification remains |
-| fx_rates | No callback | Currency-pair/date/rate identity and stored rates |
+| fx_rates | Submitted version/set/coverage/upload identity, all entered rates and derived inverses at 12 places, pair/type/day/period identity and per-source targets | Broader release verification |
 | bundles | Complete replacement, per-source target identity, component quantities/split ratios at database precision, sequence and effective windows (including derived end dates) | Broader release verification |
 | customers, products, gl_accounts, account_mapping | No monetary callback; reference-data emitters | Their full functional/release checks remain separate from this monetary inventory |
 
@@ -26,8 +26,9 @@ The unregistered CSV `modifications` template is explicitly refused by the impor
 API. It has no emitter; legacy modification coverage does not imply support for
 that CSV template.
 
-All enabled legacy templates now register independent readers. Financial coverage
-is still incomplete for the CSV paths listed above. Some numerics are flattened as
+All listed financial CSV templates and enabled legacy templates now register independent
+readers with the scopes above. This does not establish full accounting or release coverage.
+Reference-data workflows still require their separate checks. Some numerics are flattened as
 text: an empty `amount_sums` map does not prove they were checked. Preserve source
 row reconstruction, tenant/entity scope, currency and target identity, and rollback
 of the entire import on disagreement when extending this gate.
