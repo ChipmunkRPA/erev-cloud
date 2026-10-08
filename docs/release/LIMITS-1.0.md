@@ -1,10 +1,11 @@
 # eRev Cloud 1.0: stated limits of the release
 
-October 7 verification finding: sandbox monetary comparison omits the stored
-`loss_provision_version` and `fx_layer_movement` tables. Snapshot loading regenerates these
-tables, but the comparison does not verify their monetary state. The category-M drift guard
-in `test_snapshot_export.py` fails on this omission. Sandbox verification is incomplete until
-comparison handles these results, including cumulative state versus incremental movements.
+October 7 sandbox correction: monetary verification now reads and compares the stored
+`loss_provision_version` and `fx_layer_movement` results. These are reconstructed per-period
+loss tests and FX history within each computation version, rather than predecessor deltas.
+Duplicate FX movements remain distinct; changed amounts or rates and missing rows produce
+findings. Scoped export/load and negative-control evidence is in PROGRESS.md. This resolves
+the omitted-table drift guard, not the broader release limitations below.
 
 This file states what release 1.0 of eRev Cloud does not do, does differently from what its governed documents say, or has not been measured to do. Release 1.0 is the product as it stands on main at commit `4832c645c` (the freeze of 2026-10-03 13:09) with two register indexes placed behind the freeze: index 308, the withdrawal of policy overrides (supervisor ruling R-126 (b) (1) and (c)), and index 309, the refusal on a product or an obligation template of three policy parameters that the books read for a contract alone (rows B3-13 and B3-21), which the supervisor placed under the same reason and records in ruling R-127. The file was written on 2026-10-03 on the integration branch, from `0372e7388` to `783f340ea`, under ruling R-126 (d). It has no revision table and no test pins it; when a limit is closed, its row is taken out by the change that closes it.
 

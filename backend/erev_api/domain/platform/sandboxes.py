@@ -1145,7 +1145,9 @@ def _monetary_rows(
             ).mappings()
         ]
     }
-    for name in ("contract_version_balance", "obligation_version", "schedule"):
+    for name in sx.MONETARY_TABLES:
+        if name in {"contract_version", "schedule_line"}:
+            continue  # the version itself and the line/header join have specialized reads
         table = tables[name]
         rows[name] = [
             dict(row)

@@ -7,10 +7,11 @@ approval and file rows a snapshot carries (only those the copied rows reference,
 approval or an orphaned file never leaves the source) and compare the sandbox's recomputed
 result per (combination group, book) with the source's latest version as of ``known_at`` (05
 SBX-05 rev 1.50; supervisor rulings R-9 and R-43 (a)). What is verified is the MONETARY STATE —
-the stored version, balances, obligation versions and schedule lines, without the per-version
-activity columns (:func:`monetary_state`, :func:`first_difference`): the engine is incremental
-and the sandbox computes each group once, so nothing else of a later source version can be
-equal. For a group's FIRST computation the output itself is compared too, hashed with the source
+the stored version, balances, obligation versions, schedule lines, period loss tests and
+reconstructed FX movements, without per-version activity columns (:func:`monetary_state`,
+:func:`first_difference`). The sandbox computes each group once, so incremental activity,
+posting deltas and traces can differ from a later source version. For a group's FIRST
+computation the output itself is compared too, hashed with the source
 computation's ``input_sha256`` in place of its own (:func:`comparable_hashes`) — the two raw
 hashes can never be equal. :func:`judge` puts the two together. The reference columns are derived
 from the 04 metadata by name and pinned by a test, so a new reference column on a copied table
@@ -27,6 +28,7 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Final
 from uuid import UUID
 
+from erev_engine.canonical import canonical_bytes
 from sqlalchemy import MetaData
 
 from erev_api.approvals.subjects import PENDING_SUBJECTS, SUBJECTS
@@ -482,9 +484,10 @@ def compare_determinism(
 # --- SBX-05 rev 1.50 (supervisor ruling R-43 (a)): the monetary state ----------------------------
 
 # The stored result of one contract version that SBX-05 compares — RCP-28a L2 category M as far
-# as the platform stores it. T-CON-16 / 17 / 18 (cost asset versions, loss provision versions, FX
-# layer movements) belong to the category and are PENDING tables: each joins here when it lands
-# (a test fails the day one is in the model and not in this tuple). The order is the order in
+# as the platform stores it. T-CON-16 (cost asset versions) remains pending. Loss tests and FX
+# movements are full period/history reconstructions within each immutable version, not deltas
+# from its predecessor. Compare their rows, including period movements and pinned rates.
+# The order is the order in
 # which a difference is looked for and named: a schedule line before its header, whose count and
 # total only sum the lines.
 MONETARY_TABLES: Final = (
@@ -493,6 +496,8 @@ MONETARY_TABLES: Final = (
     "obligation_version",
     "schedule_line",
     "schedule",
+    "loss_provision_version",
+    "fx_layer_movement",
 )
 # T-CON-11 columns that state the ACTIVITY OF ONE VERSION — what the events first included in it
 # (``EventView.is_new``; ENGINE_SPEC Table 0.9-A, CV-64) delivered, recognised, billed and caught
@@ -559,6 +564,10 @@ MONETARY_EXCLUDED: Final[Mapping[str, frozenset[str]]] = MappingProxyType(
                 "created_at",
             }
         ),
+        "loss_provision_version": _STAMPS
+        | {"tenant_id", "id", "contract_version_id", "book_code", "trace_nodes"},
+        "fx_layer_movement": _STAMPS
+        | {"tenant_id", "id", "contract_version_id", "book_code", "trace_node_id"},
     }
 )
 # Per table, what identifies a row within ONE version, in both tenants alike: copied ids and
@@ -577,6 +586,15 @@ MONETARY_KEYS: Final[Mapping[str, tuple[str, ...]]] = MappingProxyType(
             "entity_id",
             "period_id",
             "line_type",
+        ),
+        "loss_provision_version": ("contract_id", "entity_id", "unit", "unit_key", "period_id"),
+        "fx_layer_movement": (
+            "contract_id",
+            "entity_id",
+            "layer_key",
+            "movement_kind",
+            "effective_date",
+            "source_event_id",
         ),
     }
 )
@@ -603,13 +621,25 @@ def monetary_state(
     ``MONETARY_TABLES`` the rows of that version; a ``schedule_line`` row carries its header's
     ``schedule_kind``): per table, per row key (``MONETARY_KEYS``), the member columns
     (:func:`monetary_members`). Two rows of one table with the same key are refused — the key
-    would not identify a member."""
+    would not identify a member. FX movements can legitimately share a natural key: compare
+    them as a sorted multiset, appending an occurrence number. Surrogate ids and trace ids
+    never order this multiset, and duplicate rows are retained rather than aggregated away."""
     state: dict[str, Mapping[tuple[str, ...], Mapping[str, Any]]] = {}
     for table in MONETARY_TABLES:
         members = monetary_members(table, metadata)
         keyed: dict[tuple[str, ...], Mapping[str, Any]] = {}
-        for row in rows.get(table, ()):
+        table_rows = rows.get(table, ())
+        occurrences: dict[tuple[str, ...], int] = {}
+        if table == "fx_layer_movement":
+            table_rows = sorted(
+                table_rows, key=lambda row: canonical_bytes({c: row[c] for c in members})
+            )
+        for row in table_rows:
             key = tuple(str(row[column]) for column in MONETARY_KEYS[table])
+            if table == "fx_layer_movement":
+                occurrence = occurrences.get(key, 0)
+                occurrences[key] = occurrence + 1
+                key = (*key, str(occurrence))
             if key in keyed:
                 raise ValueError(f"{table}: two rows of one version carry the key {key}")
             keyed[key] = MappingProxyType(

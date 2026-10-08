@@ -321,6 +321,7 @@ def _period_states(tenant_id: UUID) -> dict[UUID, str]:
         }
 
 
+@pytest.mark.parametrize("corrupt_loss", [False, True], ids=["unchanged", "loss-mismatch"])
 def test_sandbox_copy_k03(
     committed_db: TestDatabase,
     app: FastAPI,
@@ -329,6 +330,8 @@ def test_sandbox_copy_k03(
     clock: FrozenClock,
     app_settings: Settings,
     job: ModuleType,
+    monkeypatch: pytest.MonkeyPatch,
+    corrupt_loss: bool,
 ) -> None:
     """BUILD_SPEC SNP-2 ``test_sandbox_copy_k03`` (fragment 14 rev 1.5) on the world it names:
     ``worlds.k03_castellan`` — ``PRJ-CB-2026-01`` through the product's commands — taken through
@@ -357,15 +360,67 @@ def test_sandbox_copy_k03(
         session.execute(insert(tenant_snapshot).values(**row))
     sandbox_id = UUID(int=int(row["id"]) ^ 1)  # a distinct pre-allocated id
     before = _counts(someone.tenant_id)
+    if corrupt_loss:
+        import erev_engine
+
+        real = erev_engine.compute
+
+        def changed_loss(bundle):
+            output = real(bundle)
+            if bundle.trigger != "MIGRATION":
+                return output
+            book = output.books[0]
+            loss = book.loss_provision_versions[0]
+            columns = dict(loss.columns)
+            columns["provision_movement"] += 1
+            changed = dataclasses.replace(
+                book,
+                loss_provision_versions=(
+                    dataclasses.replace(loss, columns=columns),
+                    *book.loss_provision_versions[1:],
+                ),
+            )
+            return dataclasses.replace(output, books=(changed, *output.books[1:]))
+
+        monkeypatch.setattr(erev_engine, "compute", changed_loss)
     result = run_dispatched_snapshot(
         someone.tenant_id,
-        _copy_params(someone, UUID(str(row["id"])), sandbox_id, "K03 Castellan", known_at),
+        _copy_params(
+            someone,
+            UUID(str(row["id"])),
+            sandbox_id,
+            "K03 Castellan loss mismatch" if corrupt_loss else "K03 Castellan",
+            known_at,
+        ),
         runtime=runtime,
         now=known_at,
     )
-    assert result["state"] == "SUCCEEDED", result["problem"]
+    assert result["state"] == "SUCCEEDED", json.dumps(result["problem"])
     counts = result["result"]["counts"]
-    assert counts["derived_mismatches"] == 0, load_outcome(counts)
+    assert counts["derived_mismatches"] == int(corrupt_loss), load_outcome(counts)
+    report = _load_report(sandbox_id, runtime, keyring)
+    loss_states = []
+    for tenant_id in (someone.tenant_id, sandbox_id):
+        with tenant_session(_context(tenant_id), read_only=True) as session:
+            latest = session.execute(
+                select(contract_version.c.id)
+                .where(contract_version.c.combination_group_id == k03.group_id)
+                .order_by(contract_version.c.version_no.desc())
+                .limit(1)
+            ).scalar_one()
+            rows = sb._monetary_rows(session, tenant_id, latest)
+            assert rows["loss_provision_version"]
+            loss_states.append(sx.monetary_state(rows)["loss_provision_version"])
+    if corrupt_loss:
+        assert loss_states[0] != loss_states[1]
+        (mismatch,) = report["mismatches"]
+        assert mismatch["comparison"] == sx.COMPARISON_STATE
+        assert mismatch["member"].startswith("loss_provision_version[")
+        assert mismatch["member"].endswith("].provision_movement")
+        assert Decimal(mismatch["sandbox"]) - Decimal(mismatch["source"]) == Decimal("0.01")
+        assert _counts(someone.tenant_id) == before
+        return
+    assert loss_states[0] == loss_states[1]
     assert result["result"]["sandbox_tenant_id"] == str(sandbox_id)
     with tenant_session(_context(sandbox_id), read_only=True) as session:
         created = session.execute(select(tenant).where(tenant.c.id == sandbox_id)).mappings().one()

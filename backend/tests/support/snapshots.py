@@ -321,6 +321,9 @@ LOAD_RECOMPUTE_ACTIONS: Final = frozenset(
                 computation.BALANCE_OBJECT,
                 computation.SCHEDULE_OBJECT,
                 computation.SCHEDULE_LINE_OBJECT,
+                "fx_layer_movement",
+                "loss_provision_version",
+                "loss_provision_eac",
             )
         ),
         # subledger.post (the computation's ENGINE_COMPUTE posting)

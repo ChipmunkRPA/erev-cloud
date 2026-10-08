@@ -2,33 +2,33 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
-## Step 1 publication checks — October 7, 2026
+## Sandbox monetary verification — October 7, 2026
 
-- Previous goal turn verified zero open PRs and only main remotely. Direct-main workflow
-  remains in effect; the verified Step 1 implementation is included in this direct-main commit.
-- Physical 201-obligation case passed (1 in 18.73 seconds), without lowering the obligation
-  budget: `/private/tmp/step1-date-review-201-obligations.log`. This proves the functional
-  approval path, not a production latency or load guarantee.
-- Repository-wide `make lint` passed, including design, licence, secrets, OpenAPI drift and
-  migration-head checks: `/private/tmp/step1-date-review-release-lint-complete.log`.
-  Two existing formatting failures were corrected in the import-job and AboutDialog tests.
-- Event/evidence compatibility: 36 passed, one old subject-list assertion failed. Updated it
-  to retain STEP1_EVENT evidence. Evidence-registry plus snapshot-export recheck: 25 passed,
-  one genuine pre-existing monetary-comparison gap remains (1.69 seconds). New Step 1
-  subject-reference checks passed. Log: `/private/tmp/step1-date-review-evidence-snapshot-final.log`.
-- Do not remove that failing drift guard: stored loss_provision_version and fx_layer_movement
-  remain absent from snapshot_export.MONETARY_TABLES and sandboxes._monetary_rows. They are
-  regenerated on load but omitted from monetary verification. Implement a state comparison
-  that handles cumulative state versus incremental movements, with real sandbox coverage.
-- Full Step 1/registry/data-model/preparer/evidence compatibility passed: **93 in 486.28
-  seconds**, `/private/tmp/step1-date-review-final-compatibility.log`. Source Mypy passes
-  all six changed backend modules. Terminal-decision/mixed-batch regression: **1 passed in
-  16.56 seconds**, `/private/tmp/step1-date-review-terminal-decisions.log`: reject/withdraw
-  change no accounting state; resubmission applies once and repeat approval is refused. All
-  current scoped runs are terminal; erev_rv_cont is free. Older baseline PID 36126 was verified live at 3h00m54s
-  on its separate DB with failures; preserve it.
-- B1-13 remaining scope/evidence/snapshot coverage, broader B1-2 producers, full-suite failures and
-  independent accounting sign-off remain open. No deployment or production-readiness claim.
+- Previous goal turn published Step 1 approval as a40d848 directly to main. This continuation
+  resolves the category-M drift guard's missing loss-provision and FX-movement comparisons.
+- Both tables contain full reconstructed results per computation version: period loss tests
+  and FX movement history. Compare their monetary fields and pinned inputs, excluding only
+  surrogate/version ownership, stamps and trace. FX natural-key duplicates are compared as a
+  sorted multiset with occurrence numbers; missing rows and offsetting errors remain visible.
+  The database reader now follows MONETARY_TABLES, retaining special version/schedule reads.
+- Unit tests: 30 passed in 1.46 seconds. Whole Avenmoor reference-tenant snapshot export/load:
+  1 passed in 48.59 seconds, twelve groups and multiple currencies. Existing repeated-computation
+  control passed. Logs: `/private/tmp/sandbox-monetary-loss-fx-{unit,avenmoor,replay}.log`.
+- Added real snapshot negative controls: one-cent changes to persisted loss movements or FX
+  movements are named monetary mismatches; unchanged K03 period loss rows compare equally.
+  Nine integration/audit-support checks passed in 40.11 seconds. Updated the audit helper's
+  explicit creation-action set for existing FX/loss facts. Earlier failures were the stale
+  audit set and parameter cases sharing globally unique sandbox names; distinct names fix
+  the combined run. An initial diagnostic assumption about an amount constraint was not
+  established by evidence; the captured validation error identifies the duplicate name.
+- Final dynamic-reader recheck: **39 passed in 41.58 seconds**, with unit/export, audit
+  support, positive loss and negative loss/FX controls; log
+  `/private/tmp/sandbox-monetary-loss-fx-final.log`. All scoped processes are terminal and
+  erev_rv_cont is free. Two source modules pass Mypy; Ruff/format/whitespace checks pass.
+  This verified correction is included in this direct-main commit.
+- Independent older baseline PID 36126 remained live at 3h10m33s on its separate DB, with
+  failures; preserve it. Broader backend failures, Step 1 scope/evidence verification, other
+  release limitations and independent accounting sign-off remain open. No deployment.
 
 ## Performing-entity Step 1 review — October 7, 2026
 

@@ -1582,6 +1582,7 @@ def test_determinism_is_verified_under_the_source_input_hash(
     assert events.after == ()  # no warning item beside the summary
 
 
+@pytest.mark.parametrize("changed_table", ["schedule_line", "fx_layer_movement"])
 def test_a_differing_sandbox_output_is_a_determinism_mismatch(
     committed_db: TestDatabase,
     app: FastAPI,
@@ -1591,14 +1592,16 @@ def test_a_differing_sandbox_output_is_a_determinism_mismatch(
     app_settings: Settings,
     job: ModuleType,
     monkeypatch: pytest.MonkeyPatch,
+    changed_table: str,
 ) -> None:
     """The NEGATIVE witness of 05 SBX-05 (supervisor rulings R-9 and R-43 (a) — "a check that
     cannot fail is worth nothing"). The source is built with the real engine; then a controlled
-    fault is planted in the engine for the sandbox's recompute only: ONE schedule line amount one
-    minor unit higher, nothing else — no stored row is edited, no guard bypassed, and the
+    fault is planted in the engine for the sandbox's recompute only: ONE schedule line amount,
+    or both amounts of one same-currency FX movement, one minor unit higher. No stored row is
+    edited, no guard bypassed, and the
     differing output is persisted through the governed path as a SUCCEEDED computation. The real
     comparison counts the pair as a mismatch of the MONETARY STATE and NAMES THE MEMBER — that
-    schedule line's ``amount``, with the source's value and the sandbox's, one minor unit apart;
+    schedule line's ``amount`` or movement's ``amount_txn``, one minor unit apart;
     the load still SUCCEEDS; the load report carries the source's hash and input hash, the
     sandbox's stored hash and the compared hash beside it; ONE ``SANDBOX_DETERMINISM_MISMATCH``
     WARNING naming the member is raised in the sandbox beside the summary event; and the
@@ -1613,15 +1616,29 @@ def test_a_differing_sandbox_output_is_a_determinism_mismatch(
         if bundle.trigger != "MIGRATION":
             return output
         book = output.books[0]
-        line = book.schedules[0]
-        schedules = (dataclasses.replace(line, amount=line.amount + 1), *book.schedules[1:])
-        return dataclasses.replace(
-            output, books=(dataclasses.replace(book, schedules=schedules), *output.books[1:])
-        )
+        if changed_table == "schedule_line":
+            line = book.schedules[0]
+            schedules = (dataclasses.replace(line, amount=line.amount + 1), *book.schedules[1:])
+            changed = dataclasses.replace(book, schedules=schedules)
+        else:
+            movement = book.fx_layer_movements[0]
+            columns = dict(movement.columns)
+            columns["amount_txn"] += 1
+            columns["amount_functional"] += 1
+            changed = dataclasses.replace(
+                book,
+                fx_layer_movements=(
+                    dataclasses.replace(movement, columns=columns),
+                    *book.fx_layer_movements[1:],
+                ),
+            )
+        return dataclasses.replace(output, books=(changed, *output.books[1:]))
 
     monkeypatch.setattr(erev_engine, "compute", off_by_one_minor_unit)
-    sandbox_id, result = _copy(chain, world.runtime, "Differing output", clock=clock)
-    assert result["state"] == "SUCCEEDED", result["problem"]
+    sandbox_id, result = _copy(
+        chain, world.runtime, f"Differing output {changed_table}", clock=clock
+    )
+    assert result["state"] == "SUCCEEDED", json.dumps(result["problem"])
     counts = result["result"]["counts"]
     source = _version_hashes(world.tenant_id, chain.group_id)
     sandbox = _version_hashes(sandbox_id, chain.group_id)
@@ -1629,7 +1646,9 @@ def test_a_differing_sandbox_output_is_a_determinism_mismatch(
     assert counts["groups_recomputed"] == 1 and counts["groups_not_recomputed"] == 0
     assert counts["derived_mismatches"] == len(source)
     # the fault is one real member of the stored output: USD, so one minor unit is 0.01
-    assert _schedule_total(sandbox_id) - _schedule_total(world.tenant_id) == Decimal("0.01")
+    assert _schedule_total(sandbox_id) - _schedule_total(world.tenant_id) == (
+        Decimal("0.01") if changed_table == "schedule_line" else Decimal(0)
+    )
     report = _load_report(sandbox_id, world.runtime, keyring)
     assert (report["compared"], report["derived_mismatches"]) == (len(source), len(source))
     assert sorted(m["book_code"] for m in report["mismatches"]) == sorted(source)
@@ -1646,8 +1665,9 @@ def test_a_differing_sandbox_output_is_a_determinism_mismatch(
         assert mismatch["sandbox_computation"] == "SUCCEEDED"
         # the member: one schedule line's amount, the two values one minor unit apart
         assert mismatch["comparison"] == sx.COMPARISON_STATE
-        assert str(mismatch["member"]).startswith("schedule_line[")
-        assert str(mismatch["member"]).endswith("].amount")
+        assert str(mismatch["member"]).startswith(f"{changed_table}[")
+        column = "amount" if changed_table == "schedule_line" else "amount_txn"
+        assert str(mismatch["member"]).endswith(f"].{column}")
         assert Decimal(mismatch["sandbox"]) - Decimal(mismatch["source"]) == Decimal("0.01")
     with tenant_session(_context(sandbox_id), read_only=True) as session:
         items = [

@@ -667,6 +667,33 @@ def _version_rows(**changes: dict[str, Any]) -> dict[str, list[dict[str, Any]]]:
                 "schedule_line", **{**_LINE_KEY, "period_id": _u(52)}, amount=Decimal("9720.00")
             ),
         ],
+        "loss_provision_version": [
+            _stored(
+                "loss_provision_version",
+                contract_id=_u(21),
+                entity_id=_u(41),
+                unit="CONTRACT",
+                unit_key="C-1",
+                period_id=_u(51),
+                provision_balance=Decimal("120.00"),
+                provision_movement=Decimal("20.00"),
+            )
+        ],
+        "fx_layer_movement": [
+            _stored(
+                "fx_layer_movement",
+                contract_id=_u(21),
+                entity_id=_u(41),
+                layer_key="ASSET:INVOICE-1",
+                movement_kind="ASSET_LAYER_CREATED",
+                effective_date=date(2026, 2, 27),
+                amount_txn=Decimal("100.00"),
+                amount_functional=Decimal("80.00"),
+                rate=Decimal("0.8"),
+                fx_rate_id=_u(71),
+                source_event_id=_u(81),
+            )
+        ],
     }
     for table, values in changes.items():
         rows[table] = [{**rows[table][0], **values}, *rows[table][1:]]
@@ -682,14 +709,16 @@ def _differs(**changes: dict[str, Any]) -> sx.Difference | None:
 def test_monetary_state_is_the_stored_category_m_without_history() -> None:
     """The tables, keys and exclusions of the monetary state against the model: every excluded
     and every key column exists (no stale name), the six activity columns are T-CON-11 columns
-    and are the only MONEY members left out, and the three category-M tables the platform does
-    not store yet are still pending — the day one lands, this pin makes it join."""
+    and are the only MONEY members left out. The remaining category-M table the platform does
+    not store yet stays pending — the day it lands, this pin makes it join."""
     assert sx.MONETARY_TABLES == (
         "contract_version",
         "contract_version_balance",
         "obligation_version",
         "schedule_line",  # before its header: the line is what a difference names
         "schedule",
+        "loss_provision_version",
+        "fx_layer_movement",
     )
     assert set(sx.MONETARY_EXCLUDED) == set(sx.MONETARY_KEYS) == set(sx.MONETARY_TABLES)
     for table in sx.MONETARY_TABLES:
@@ -716,10 +745,60 @@ def test_monetary_state_is_the_stored_category_m_without_history() -> None:
     assert {"transaction_price", "revenue_cum", "rpo_amount"} <= set(
         sx.monetary_members("contract_version")
     )
-    # RCP-28a category M also covers T-CON-16 / 17 / 18; none is a table of the model yet
-    pending = {"cost_asset_version", "loss_provision_version", "fx_layer_movement"}
+    # RCP-28a category M: T-CON-17 / 18 are stored and compared; T-CON-16 remains pending.
+    assert "provision_movement" in sx.monetary_members("loss_provision_version")
+    assert {"amount_txn", "amount_functional", "rate", "fx_rate_id"} <= set(
+        sx.monetary_members("fx_layer_movement")
+    )
+    pending = {"cost_asset_version"}
     assert pending <= set(sd.PENDING)
     assert not pending & {table.name for table in metadata.tables.values()}
+
+
+@pytest.mark.parametrize(
+    ("table", "column", "value"),
+    [
+        ("loss_provision_version", "provision_balance", Decimal("120.01")),
+        ("loss_provision_version", "provision_movement", Decimal("20.01")),
+        ("loss_provision_version", "in_scope", True),
+        ("fx_layer_movement", "amount_txn", Decimal("100.01")),
+        ("fx_layer_movement", "amount_functional", Decimal("80.01")),
+        ("fx_layer_movement", "rate", Decimal("0.81")),
+        ("fx_layer_movement", "fx_rate_id", _u(72)),
+    ],
+)
+def test_loss_and_fx_differences_cannot_verify_as_equal(
+    table: str, column: str, value: Any
+) -> None:
+    found = _differs(**{table: {column: value}})
+    assert found is not None
+    assert (found.table, found.column) == (table, column)
+    assert _differs(**{table: {"id": _u(99), "contract_version_id": _u(98)}}) is None
+
+
+def test_fx_movement_multiset_preserves_duplicates_without_relying_on_row_order() -> None:
+    source = _version_rows()
+    original = source["fx_layer_movement"][0]
+    source["fx_layer_movement"] += [
+        dict(original),
+        {**original, "amount_functional": Decimal("81.00")},
+    ]
+    sandbox = _version_rows()
+    sandbox["fx_layer_movement"] = list(reversed(source["fx_layer_movement"]))
+    expected = sx.monetary_state(source)
+    assert sx.first_difference(expected, sx.monetary_state(sandbox)) is None
+    sandbox["fx_layer_movement"].pop()
+    missing = sx.first_difference(expected, sx.monetary_state(sandbox))
+    assert missing is not None and missing.table == "fx_layer_movement"
+    sandbox["fx_layer_movement"] = [
+        {**original, "amount_functional": Decimal("79.00")},
+        {**original, "amount_functional": Decimal("81.00")},
+        {**original, "amount_functional": Decimal("81.00")},
+    ]
+    # Equal total functional amounts do not excuse different individual movements.
+    changed = sx.first_difference(expected, sx.monetary_state(sandbox))
+    assert changed is not None
+    assert (changed.table, changed.column) == ("fx_layer_movement", "amount_functional")
 
 
 def test_first_difference_names_the_member_and_ignores_history() -> None:

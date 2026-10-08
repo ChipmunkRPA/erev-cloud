@@ -4,6 +4,10 @@ The implementation is included in this direct-main change. B1-13 retains the spe
 verification work listed below, and the wider B1-2 remains open. This is a scoped engineering
 change, not a production-readiness or independent accounting-sign-off claim.
 
+Subsequent sandbox continuation resolves the loss/FX monetary-comparison omission found
+during these checks. See PROGRESS.md for scoped positive and negative export/load evidence.
+Step 1-specific attached-evidence export/load coverage remains separate and open.
+
 Final scoped compatibility: **93 passed in 486.28 seconds**. A separate terminal-decision
 regression passed in **16.56 seconds**: mixed batches are refused; rejection and withdrawal
 leave accounting state unchanged; resubmission applies once; repeated decisions cannot append
@@ -174,8 +178,8 @@ API-client inputs, two books, performing entities, independent/self review, peri
 superseded judgements, draft gates, hold release, and selected SSP/FX publication races.
 The reopened fixtures do not prove a complete certification/reopen workflow. Cover new-subject-specific lost scope,
 later Step 1 events, book changes and attached-evidence retention through snapshot export/load.
-Generic legacy-submission bypass controls are retained. Keep the known sandbox monetary
-comparison failure visible until its implementation and integration coverage are complete.
+Generic legacy-submission bypass controls are retained. The separate loss/FX comparison
+omission has since been corrected with integration coverage, as noted above.
 
 B1-2 also covers other event producers, holds, memos, judgements, integrations,
 exception reprocessing, close recomputations and auto-approved activation. Completing
