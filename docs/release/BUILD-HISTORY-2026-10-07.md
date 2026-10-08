@@ -1972,3 +1972,50 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   evidence verbatim. AI, other implementation gaps, remaining release checks and independent
   accounting sign-off remain open. No full-suite/readiness claim or deployment. Preserve
   exclusions and noncommercial licensing; push verified changes directly to main.
+
+## Repository gate verification and Terraform socket repair — October 7, 2026
+
+- Continued from clean main 87f53d1; prior turn published dirty-group recovery (progress).
+  `make audit-deps` passed in an immutable snapshot of that revision: 77/77 pinned Python
+  runtime distributions, zero Python vulnerabilities and zero npm runtime advisories.
+  Source/dependency binding matched. Dated hashes and evidence paths are in
+  docs/release/REPOSITORY-GATES-2026-10-07.md; raw report is under .run/reports/audit-deps/.
+- Terraform init/fmt passed, but provider handshakes failed in the long immutable-context
+  temporary path. A retained-context validation with a relative temporary path succeeded.
+  Script now gives providers a short module-relative path within the same .run/tmp directory.
+  Added a real Unix-socket regression. Initial supervisor-script run: **40 passed, 1 failed
+  in 93.04 seconds**, /private/tmp/tf-provider-temp-tests.log, terminal. The old guard wrongly
+  rejected permitted .run/tmp paths; narrowed it to host-global temporary paths. Corrected
+  Terraform/forbidden-pattern verification: **20 passed, 26 deselected in 20.33 seconds**,
+  /private/tmp/tf-provider-temp-verified.log, terminal. Ruff/format, bash syntax and whitespace
+  checks pass. `make tf-validate` then passed on clean 40ae405 in an immutable
+  context: init/fmt/validate all pass, matching source/dependency bindings, Terraform
+  1.16.4 and four locked providers. Report: .run/reports/tf-validate/report.json;
+  /private/tmp/erev-tf-validate-verified.log. Both formal gate processes are terminal.
+- Docker CLI exists but its daemon is stopped; container-based gates remain unverified.
+  No deployment or cloud mutation. AI/other implementation gaps, remaining verification and
+  independent accounting sign-off remain open. Preserve exclusions/noncommercial licensing.
+  Archived older CSV progress evidence verbatim; continue tested direct-main publication.
+
+## Dirty contract recovery sweep — October 7, 2026
+
+- Continued from clean main e23068e (prior turn made verified owner-fallback progress).
+  Added worker SCH-17 each minute: dirty APPLIED groups with booked current members receive
+  durable CONTRACT_COMPUTE jobs. Preserve FX_REPUBLISH, otherwise COMMAND; skip locked groups,
+  existing live normal jobs and generations already swept. Generation includes timestamp and
+  row version so a new change sharing a timestamp still runs. Preview jobs do not suppress work.
+  Transactions and failures isolate each group/tenant. Engine completion owns clearing marks;
+  unchanged quarantined/failed generations stay with existing retries/exception remediation.
+- First matrix/worker run: **6 passed, 2 failed in 34.38 seconds**,
+  /private/tmp/dirty-sweep-first.log. New fixtures used an unsupported dirty trigger; corrected
+  to the schema's FX_REPUBLISH. Expanded worker/architecture run: **56 passed, 1 failed in
+  48.25 seconds**, /private/tmp/dirty-sweep-final.log. The new normal-job fixture still queued
+  PREVIEW; corrected it. Matrix with enqueue isolation/recovery: **6 passed in 21.33 seconds**,
+  /private/tmp/dirty-sweep-corrected.log. These runs are terminal. Added generation row version
+  and same-timestamp re-mark verification: **6 passed in 21.45 seconds**,
+  /private/tmp/dirty-sweep-verified.log, terminal. All 47 architecture and 5 worker checks
+  passed in the expanded run. Source Mypy, Ruff lint/format and whitespace checks pass.
+- Updated schedule registry, B3-7 and developer guidance; preserved older invoice evidence
+  in build history. AI and other implementation gaps, broad release verification and independent
+  accounting sign-off remain. No full-suite/readiness claim or deployment. Preserve publication
+  exclusions/noncommercial licensing and push tested changes directly to main.

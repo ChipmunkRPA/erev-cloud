@@ -1909,3 +1909,122 @@ def test_refusal_evidence_write_failure_never_commits_business_or_partial_eviden
                 period_lock.c.period_id == world.period_id,
             )
         ).all()
+
+
+@pytest.mark.control("CTL-025")
+@pytest.mark.parametrize("chain_position", [None, 0], ids=["legacy-time", "sealed-position"])
+@pytest.mark.parametrize(
+    ("posting_month", "posting_book", "other_entity", "expected"),
+    [
+        (7, "ASC606", False, {"SUBLEDGER_TO_GL"}),
+        (8, "ASC606", False, {"SUBLEDGER_TO_GL", "BILLING_TO_SUBLEDGER"}),
+        (9, "ASC606", False, set()),
+        (7, "IFRS15", False, set()),
+        (7, "ASC606", True, set()),
+    ],
+)
+def test_reconciliation_freshness_covers_ledger_history(
+    world: CloseWorld,
+    chain_position: int | None,
+    posting_month: int,
+    posting_book: str,
+    other_entity: bool,
+    expected: set[str],
+) -> None:
+    """A later seal in earlier history invalidates GL only; future/other-book seals do not."""
+    from calendar import monthrange
+
+    from erev_api.db import transitions
+    from erev_api.db.tables import gl_account, period
+    from erev_api.enums import BookCode
+    from support.close_world import sealed_activity
+    from support.factories import open_periods
+    from support.reference import entity
+    from support.rows import gl_account_values, period_state_values, reconciliation_values
+
+    with system_session(world) as session:
+        target_period = session.scalar(
+            select(period.c.id).where(period.c.end_date == date(2026, 8, 31))
+        )
+        assert target_period is not None
+        for kind in ("SUBLEDGER_TO_GL", "BILLING_TO_SUBLEDGER"):
+            row = reconciliation_values(
+                world.tenant_id,
+                entity_id=world.entity_id,
+                period_id=target_period,
+                kind=kind,
+                ledger_chain_seq=chain_position,
+                as_of_known_at=world.place.clock.now() - timedelta(days=1),
+            )
+            session.execute(insert(reconciliation).values(**row))
+            transitions.apply(
+                session,
+                "reconciliation",
+                row["id"],
+                to_status="PREPARED",
+                expected_status="DRAFT",
+                set_values={},
+            )
+            transitions.apply(
+                session,
+                "reconciliation",
+                row["id"],
+                to_status="REVIEWED",
+                expected_status="PREPARED",
+                set_values={},
+            )
+    posting_world = world
+    if other_entity:
+        with system_session(world) as session:
+            calendar_id = session.scalar(
+                select(period.c.calendar_id).where(period.c.id == target_period)
+            )
+        created = entity(world.app, world.maya, code="OTHER", calendar_id=str(calendar_id))
+        open_periods(
+            world.app,
+            world.maya,
+            entity_code="OTHER",
+            keys=[f"FY2026-P{m:02d}" for m in range(1, 8)],
+        )
+        posting_world = replace(world, entity_id=UUID(created["id"]))
+    with system_session(world) as session:
+        scope = gates.scope_of_period(session, world.entity_id, "ASC606", target_period)
+        assert scope is not None
+        assert not session.scalars(
+            select(reconciliation.c.kind).where(gates.overtaken(scope))
+        ).all()
+        end = date(2026, posting_month, monthrange(2026, posting_month)[1])
+        posting_period = session.scalar(select(period.c.id).where(period.c.end_date == end))
+        assert posting_period is not None
+        if posting_book != "ASC606":
+            session.execute(
+                insert(period_state).values(
+                    **period_state_values(
+                        world.tenant_id,
+                        entity_id=world.entity_id,
+                        period_id=posting_period,
+                        period_end_date=end,
+                        book_code=BookCode(posting_book),
+                        state="open",
+                    )
+                )
+            )
+        account = gl_account_values(world.tenant_id, code="7771")
+        session.execute(insert(gl_account).values(**account))
+        offset = gl_account_values(world.tenant_id, code="7772")
+        session.execute(insert(gl_account).values(**offset))
+        sealed_activity(
+            session,
+            posting_world,
+            account=account,
+            period_id=posting_period,
+            period_end_date=end,
+            amounts=[Decimal("100")],
+            offset_account=offset,
+            book_code=posting_book,
+            recorded_at=world.place.clock.now(),
+        )
+    with system_session(world) as session:
+        actual = session.scalars(select(reconciliation.c.kind).where(gates.overtaken(scope))).all()
+        assert {str(kind) for kind in actual} == expected
+        assert gates.blocker_counts(session, scope)["reconciliations_unsigned"] == len(expected)

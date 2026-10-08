@@ -3306,3 +3306,15 @@ Revision 0141 extends the reference-type check. Downgrading while PERIOD_STATE e
 refused by physical constraint validation, including without tenant context. Existing evidence is
 append-only; it is never discarded to make a downgrade pass. API and TypeScript schema mirrors carry
 the new reference type.
+
+### Reconciliation ledger-history freshness — October 8, 2026
+
+The subledger-to-GL comparison reads ledger history through the reconciled period end,
+including accounts and role membership even where a prior fiscal year's income-statement
+amount no longer contributes to its balance. Its freshness predicate now watches that same
+history for later seals. A later posting into an earlier period invalidates the reviewed
+comparison without requiring a reversal into the reconciled period. The seal's chain position
+still orders commits; pre-0121 rows retain their timestamp fallback over the wider range.
+Entity, tenant and book scoping remain in the predicate; future-period postings are excluded.
+Billing-to-subledger keeps its own period's posting population. This closes B2-8; it does not
+implement the exact role-balance recomparison or establish volume performance under B1-29.

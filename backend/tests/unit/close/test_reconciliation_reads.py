@@ -50,10 +50,13 @@ AS_OF = datetime(2026, 2, 3, 9, tzinfo=UTC)
 # The populations, as conditions.
 LINE_OF_PERIOD = (
     "erev.subledger_line.tenant_id = erev.reconciliation.tenant_id "
-    "AND erev.subledger_line.period_end_date = '2026-01-31' "
     f"AND erev.subledger_line.entity_id = '{ENTITY}' "
     "AND erev.subledger_line.book_code = 'ASC606' "
-    f"AND erev.subledger_line.period_id = '{PERIOD}'"
+    "AND (erev.reconciliation.kind = 'SUBLEDGER_TO_GL' "
+    "AND erev.subledger_line.period_end_date <= '2026-01-31' "
+    "OR erev.reconciliation.kind != 'SUBLEDGER_TO_GL' "
+    "AND erev.subledger_line.period_end_date = '2026-01-31' "
+    f"AND erev.subledger_line.period_id = '{PERIOD}')"
 )
 SOURCE_INVOICES = (
     "erev.source_invoice.legal_entity_code = 'AVM-US' "

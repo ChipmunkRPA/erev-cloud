@@ -97,10 +97,10 @@ active template first.
   and period (``superseded``; CLO-16; 04 T-CLS-06 rev 1.121; supervisor ruling R-54 (b)): a
   required kind counts while its current reconciliation is missing, or not ``REVIEWED``,
   ``AUTO_CERTIFIED`` or ``CERTIFIED``. A reviewed or auto-certified one that the period has
-  overtaken — a subledger line of the entity, book and period, or for billing to subledger a
-  source invoice of the period, recorded after its ``as_of_known_at`` — does not count as
-  reviewed (``overtaken``; supervisor ruling R-58 (e)): the gate names it out of date, and the
-  unsigned count and the cockpit KPI read it the same way.
+  overtaken does not count as reviewed (``overtaken``; supervisor ruling R-58 (e)): the gate
+  names it out of date, and the unsigned count and cockpit KPI read it the same way. Ledger
+  seals and document counts establish freshness, with timestamps for pre-0121 records. The
+  GL kind watches posting history through period end; other kinds watch that period's lines.
 - ``CLOSE_RUN_COMPLETED`` (item CLO-GATE-RUN-1; supervisor rulings R-114 (b) and R-116 (e)): the
   latest close run of the entity, book and period ended ``SUCCEEDED``, and no computed contract
   group holds a period end of the period, or of an earlier one, still to post (04 T-CON-03;
@@ -1367,8 +1367,10 @@ def overtaken(scope: PeriodScope) -> ColumnElement[bool]:
     seal takes the chain head's row lock and holds it to commit, so ``chain_seq`` is the commit
     order of the book's postings.
 
-    - Any kind: a subledger line of the entity, book and period whose posting was sealed after
-      the chain position the generation read (``ledger_chain_seq``).
+    - Any kind: a subledger line of the entity and book whose posting was sealed after
+      the chain position the generation read (``ledger_chain_seq``). For subledger to GL,
+      the population includes every period through the reconciled period end, matching
+      the attach's ledger history; other kinds retain the reconciled period alone.
     - Billing to subledger: or the number of source invoices of the period, or of the billing
       events through the period's last day and the voids of the contracts billed in it, differs
       from what the generation read. Under ``billing.posting = ERP`` a billing event writes no
@@ -1385,10 +1387,21 @@ def overtaken(scope: PeriodScope) -> ColumnElement[bool]:
     row = reconciliation.c
     of_period = (
         subledger_line.c.tenant_id == row.tenant_id,
-        subledger_line.c.period_end_date == scope.end_date,  # the partition
         subledger_line.c.entity_id == scope.entity_id,
         subledger_line.c.book_code == scope.book_code,
-        subledger_line.c.period_id == scope.period_id,
+        # The GL attach reads all history through period end (including account/role
+        # discovery), while the billing comparison reads postings of this period only.
+        or_(
+            and_(
+                row.kind == ReconciliationKind.SUBLEDGER_TO_GL.value,
+                subledger_line.c.period_end_date <= scope.end_date,
+            ),
+            and_(
+                row.kind != ReconciliationKind.SUBLEDGER_TO_GL.value,
+                subledger_line.c.period_end_date == scope.end_date,
+                subledger_line.c.period_id == scope.period_id,
+            ),
+        ),
     )
     later_seal = (
         exists()
