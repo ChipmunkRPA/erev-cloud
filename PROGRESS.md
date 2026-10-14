@@ -2,6 +2,31 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Operational first-close manifest control — October 14, 2026 (CTL-041)
+
+- From clean 0dfb9ec, added the exact RPS-16 CTL-041 test path/marker. AVM-US September uses
+  real close execution, journal calculation/approval/export/acknowledgement, billing and GL
+  reconciliation generation and distinct preparer/reviewer sign-offs, lock approval, automatic
+  preparation/audit/report/build workers, and an Auditor's API download. No current-period
+  journal/close result or reconciliation review is seeded, and no close gate is waived.
+- The archive names the real close journal and both reviewed statements. The required path
+  prefixes are present; every payload hash and the separately stored manifest hash match.
+  Changed payload and manifest bytes each fail verification. Targeted marked control run:
+  **1 passed in 18.51 seconds** (.run/operational-close-pack-control.log).
+- Setup corrections followed the actual interfaces: enroll the preparer in MFA; retain her
+  session on ReportWorld.place.author; attach an initial GL reference before reading comparison
+  totals; generate a new reconciliation to attach the final source (replacement is forbidden).
+  The corruption helper copies ZipInfo metadata because writestr mutates offsets. Earlier
+  failure logs .run/operational-close-pack{,-mfa,-persona,-reference,-regenerated}.log are terminal;
+  no production code, accounting oracle, permission rule or transition was changed to pass.
+- Prior periods are fixture-closed. ERP acknowledgement uses the test adapter; the GL upload is
+  a synthetic matching reference derived from the comparison, not an independent amount oracle.
+  This supplies the missing first-close control witness, not accounting sign-off or a full
+  controls/release pass. Re-lock variance, other pack kinds, browser/release gates and independent
+  accounting approval remain. Control-tag validation passes (497 tagged tests collected, not
+  executed by that check); log .run/evidence-control-tags.log. Ruff lint/format and whitespace
+  checks pass. All processes terminal. Direct main; no deployment or readiness claim.
+
 ## Automatic close-pack availability notification — October 14, 2026
 
 - From clean 43c55a4, approval-driven locks now defer NTF-06 until successful automatic pack
@@ -159,27 +184,6 @@
   Current creation still requires a completed verification; no NTF-06/RPS-16/CTL-041 completion
   or production-readiness claim. Other kinds, variance and release/accounting gates remain open.
   Direct main; no deployment or external notifications.
-
-## Scoped first-close pack register — October 8, 2026 (RPS-16 continued)
-
-- Continued from clean published 3ceeffa. Added GET /evidence-packs with a metadata summary,
-  standard keyset paging/counts, entity/book/period/kind/status filters and id/created_at/pack_no
-  sorts. OpenAPI declares the filters; regenerated the API document and frontend client types.
-- SQL intersects report.run, audit.read and contract.read scopes before paging/counting and
-  explicitly joins tenant/entity/period identities. Only retained CLOSE bindings are admitted;
-  legacy unbound/unsupported kinds are omitted. Each row must match its binding. Listing opens
-  no files and makes no archive-integrity claim; individual read/download verification remains.
-- Initial real HTTP/route run: **14 passed in 35.89 seconds**. Final list-kernel/OpenAPI/route/
-  audit/close regression: **33 passed in 57.57 seconds**. Witnesses cover two-page traversal on
-  all three sort keys (including tied timestamps), changed-filter cursor refusal, filtering,
-  zero rows/counts outside each source scope, missing permissions, revoked-role HTTP refusal,
-  and exclusion of seeded legacy/unsupported rows from counts. Logs:
-  /private/tmp/evidence-list-{db,final}.log; all processes terminal. Source Mypy, Ruff lint/format,
-  OpenAPI staleness, frontend tsc --noEmit and whitespace checks pass. Updated guide/model/limits.
-- Automatic audit verification/enqueue on lock/NTF-06, other pack kinds, re-lock variance and
-  current release/accounting approval remain outstanding. The inherited close fixture retains
-  seeded journal/gate setup; no operational CTL-041, RPS-16 completion or production-readiness
-  claim. Direct main; no deployment or external notifications.
 
 ## Outstanding release verification
 

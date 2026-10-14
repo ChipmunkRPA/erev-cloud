@@ -770,3 +770,24 @@ post-commit crash reuse and cancellation. Broader lock/notification regression: 
 do not establish current full-backend, browser or release acceptance.
 Seeded close/journal gates remain in the focused fixture; operational CTL-041 and independent
 accounting approval are still missing. Re-lock variance and other pack kinds remain incomplete.
+
+
+## October 14, 2026 — operational first-close manifest control witness
+
+`backend/tests/domain/reports/test_evidence_packs.py::test_ctl_041_close_pack_manifest` now
+exists with the CTL-041 marker and passed in 18.51 seconds. AVM-US September 2026 runs through
+close execution, journal calculation/approval/export/acknowledgement, both reconciliation
+workers and distinct preparer/reviewer sign-offs, lock approval, automatic pack preparation,
+audit verification, supporting reports, archive retention and an Auditor's API download.
+No journal, close-run result, current-period gate result or reconciliation review is seeded;
+no current-period gate is waived. The archive names the actual journal run and both reviewed
+reconciliations. Required paths, payload hashes, separate manifest hash and rejection of altered
+payload/manifest bytes are checked.
+
+Boundaries: earlier periods are closed as fixture state; the ERP acknowledgement uses the test
+adapter, and the uploaded GL is a synthetic matching reference derived from the comparison.
+This tests workflow/evidence integrity, not independent financial reconciliation or correctness
+of all accounting amounts. It supersedes the earlier missing-CTL-041-witness notes for this
+first-close case. Re-lock variance, other pack kinds, full controls/current release verification,
+real-browser acceptance and independent accounting approval remain outstanding. No deployment
+or production-readiness claim follows from this targeted control pass.
