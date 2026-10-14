@@ -17,7 +17,7 @@ from sqlalchemy import and_, select
 from erev_api.db.session import of_session_tenant
 from erev_api.db.tables import evidence_pack, job
 from erev_api.db.transitions import apply
-from erev_api.domain.reports import evidence_preparation
+from erev_api.domain.reports import evidence_notifications, evidence_preparation
 from erev_api.domain.reports.evidence_readiness import close_ready
 from erev_api.domain.reports.evidence_sources import checked_row
 from erev_api.domain.reports.evidence_storage import finish_close
@@ -192,6 +192,10 @@ def build_pack(jc: JobContext, params: Mapping[str, Any]) -> JobOutcome:
                 set_values={},
             )
         retained = finish_close(uow, row["id"])
+        if row["status"] != "SUCCEEDED":
+            evidence_notifications.completed(
+                uow, pack_id=row["id"], preparation_id=current["parent_job_id"]
+            )
         uow.commit()
     return JobOutcome(
         state="SUCCEEDED",

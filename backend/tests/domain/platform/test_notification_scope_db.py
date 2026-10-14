@@ -128,9 +128,9 @@ def test_an_event_is_told_to_the_holders_whose_role_covers_it(
     app_settings: Settings,
     committed_db: TestDatabase,
 ) -> None:
-    """Four events, two of the workspace and two of AVM-US. An operator's request for access is
-    told to the Tenant Admins of all entities, the requester apart; the lock and the reopen of
-    AVM-US January to the Controllers, Revenue Reviewers and Auditors whose role covers AVM-US —
+    """Workspace and entity notifications; lock availability waits for the evidence worker.
+    An operator's request for access is told to the Tenant Admins of all entities, the requester
+    apart; the reopen of AVM-US January to the roles whose scope covers AVM-US —
     a Controller of AVM-US alone and an Auditor of AVM-US and AVM-DE among them; the chain's
     failed verification to the Tenant Admins and Controllers of all entities. The five members
     who hold one role each for AVM-DE alone are told of none of the four, and a Controller of
@@ -180,8 +180,10 @@ def test_an_event_is_told_to_the_holders_whose_role_covers_it(
     # 2. AVM-US's: January is closed and locked through the product
     covers_us = {"priya", "marcus", f"controller of {AVM_US}", "auditor of both"}
     _, world = worlds.period_locked(world, clock, entity_code=AVM_US, period_key=JANUARY_2026)
-    assert titles(world, NotificationKind.PERIOD_LOCKED) == {f"{AVM_US} {JANUARY_2026} locked"}
-    assert told(world, people, NotificationKind.PERIOD_LOCKED) == covers_us
+    # NTF-06 promises a retained archive, so approval alone must not send it.
+    # The automatic-pack worker test covers completion and all three recipient roles/scopes.
+    assert titles(world, NotificationKind.PERIOD_LOCKED) == set()
+    assert told(world, people, NotificationKind.PERIOD_LOCKED) == set()
 
     # 3. AVM-US's: January is reopened
     world = worlds.period_reopened(

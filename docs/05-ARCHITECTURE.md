@@ -1086,9 +1086,20 @@ under the preparation job row lock. The build job retains `parent_job_id` pointi
 a retry after commit reuses that exact child pack and refuses ambiguous or inconsistent results.
 Preparation success means the pack is queued, not that its archive is ready. Cancellation before
 creation produces no child pack; cancellation after creation is refused at the preparation job
-(the build job has its own cancellation lifecycle). Existing lock notification copy continues to
-promise stored snapshots only. Availability notification, re-lock variance and other pack kinds
-remain incomplete; a re-lock preparation fails explicitly at the existing variance prerequisite.
+(the build job has its own cancellation lifecycle). Availability notification is emitted only when the automatic build first retains its archive
+successfully (October 14 completion update below). Re-lock variance and other pack kinds remain
+incomplete; a re-lock preparation fails explicitly at the existing variance prerequisite.
+
+October 14, 2026 completion notification: approval-driven lock commands defer NTF-06 until the
+automatically prepared pack's first successful retention. The build validates its preparation
+association, retains the archive and inserts PERIOD_LOCKED notices in the same transaction.
+Recipients are active Controllers, Revenue Reviewers and Auditors whose role covers the selected
+entity at completion. Copy names the locking actor and confirms availability; the link opens the
+period cockpit. The immutable period_lock subject distinguishes separate locks within the normal
+notification merge window. A failed transaction retains neither archive metadata nor notices;
+a retry of an already SUCCEEDED pack verifies/reuses its archive without notifying again.
+Manual pack creation never repeats NTF-06. The sandbox replay shortcut still has its separate
+snapshots-only notice; this update does not claim replay evidence-pack availability.
 
 Execution profiles (E-14):
 

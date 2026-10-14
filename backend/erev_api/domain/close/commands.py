@@ -2416,20 +2416,6 @@ def _period_lock_approved(uow: UnitOfWork, subject_id: UUID, approval_request_id
         subject_type="period_state",
         subject_id=subject_id,
     )
-    notify(
-        uow,
-        recipient_membership_ids=role_holders(
-            session, role_codes=LOCK_NOTIFIED_ROLES, entity_id=scope.entity_id, at=uow.now
-        ),
-        kind=NotificationKind.PERIOD_LOCKED,
-        title=LOCKED_TITLE.format(entity=scope.entity_code, period_key=scope.period_key),
-        body=LOCKED_BODY.format(
-            period_key=scope.period_key, entity=scope.entity_code, book=scope.book_code
-        ),
-        link_path=subjects.PERIOD_LINK.format(state_id=subject_id),
-        subject_type=period_rules.STATE_OBJECT,
-        subject_id=subject_id,
-    )
     uow.audit(
         action=LOCK_ACTION,
         object_type=LOCK_OBJECT,

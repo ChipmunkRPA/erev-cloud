@@ -3017,3 +3017,29 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   request idempotency and verification orchestration, automatic enqueue/NTF-06, other kinds,
   variance and current release/accounting approval remain open. RPS-16/CTL-041 and production
   readiness unclaimed. Direct main; no deployment or external notifications.
+
+## Idempotent first-close creation API — October 8, 2026 (RPS-16 continued)
+
+- Continued from clean published fbe1eaa; rechecked zero open PRs and main as the only remote
+  branch. Added POST /evidence-packs with the documented discriminated selectors, 202 JobOut,
+  Location and X-Erev-Evidence-Pack-Id. The command kernel stores the response atomically with
+  the pack, sources, five reports, six jobs and numbering. Other kinds explicitly refuse 422.
+- Creation preflights caller scope and retained evidence, then selects one completed PASS digest
+  covering the frozen audit head, ordered by completion time/ID. It verifies that digest before
+  queueing and persists its exact ID. Existing internal callers may still supply an explicit ID.
+  A damaged selected digest refuses without older fallback; replay never reselects or queues.
+  Missing verification returns actionable 422. The existing audit verify job must finish before
+  a new creation key is submitted; the earlier validation response remains tied to its key.
+- Initial HTTP/route regression: **14 passed in 35.07 seconds**. Expanded audit/OpenAPI/route/
+  classification/close regression: **50 passed in 56.75 seconds**. Witnesses include newer digest
+  after creation with unchanged replay IDs/counts, changed-body rejection, damaged digest with
+  no queued effects, unsupported kind, missing verification and revoked-role replay refusal.
+  Final failed-response replay extension: **3 passed in 25.32 seconds**; all processes terminal.
+  The inherited close witness still has seeded journal/close-run setup and approved omissions;
+  it does not establish operational CTL-041 acceptance.
+- Regenerated OpenAPI/client types and updated the guide/data model/build status/limits.
+  Source Mypy, Ruff lint/format, OpenAPI staleness, frontend tsc --noEmit and whitespace pass.
+  Archived the older durable-source-binding section verbatim. Logs are local under
+  /private/tmp/evidence-post-{db,final,retry}.log. Automatic verification orchestration, listing,
+  enqueue on lock/NTF-06, other kinds, re-lock variance and current release/accounting approval
+  remain open. RPS-16/CTL-041 and production readiness remain unclaimed. Direct main; no deployment.

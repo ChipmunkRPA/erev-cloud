@@ -88,6 +88,7 @@ from erev_api.domain.reports import (
     evidence_audit,
     evidence_certification,
     evidence_commands,
+    evidence_notifications,
     evidence_preparation,
     evidence_queries,
     evidence_readiness,
@@ -1200,7 +1201,8 @@ def test_failed_lock_callback_rolls_back_everything(
     unchanged, no lock, no snapshot, no dataset ``file_object`` (store objects, if any, are the
     SCH-14 orphan sweep's), CONTROLLER_CERTIFIED still FAILED, reconciliations unchanged, October
     still ``future``. Failures are injected at the control recorder or final lock audit, after
-    notifications. Jobs, packs, report runs, notifications and outbox messages also roll back.
+    the preparation job is queued. Jobs, packs, report runs, notifications and outbox messages
+    also roll back.
     The run-reference enum, snapshot registry and engine are real producers by name."""
     _start_close(world)
     _pass_gates(world)
@@ -1220,10 +1222,7 @@ def test_failed_lock_callback_rolls_back_everything(
             kwargs.get("action") == close_commands.LOCK_ACTION
             and kwargs.get("object_type") == close_commands.LOCK_OBJECT
         ):
-            assert (
-                uow.session.scalar(select(func.count()).select_from(notification))
-                > before["notifications"]
-            )
+            assert uow.session.scalar(select(func.count()).select_from(job)) > before["jobs"]
             reached.append({"writes": _writes_seen(uow.session, world), "call": recorded_calls[-1]})
             raise RuntimeError(RECORDER_FAILURE)
 
@@ -2885,6 +2884,14 @@ def test_first_close_archive_verifies_every_component_before_returning_bytes(
             .where(audit_event.c.action == "evidence.finish", audit_event.c.object_id == pack["id"])
         )
         assert finishes == 1
+        assert (
+            uow.session.scalar(
+                select(func.count())
+                .select_from(notification)
+                .where(notification.c.kind == "PERIOD_LOCKED")
+            )
+            == 0
+        )  # A manually requested pack never announces the automatic close's availability.
     for permission in permissions:
         denied = replace(reader, permissions=reader.permissions - {permission})
         with world.place.uow(denied) as uow, pytest.raises(Problem) as error:
@@ -2964,7 +2971,27 @@ def test_lock_queues_close_pack_once_across_preparation_commit_crash(
     """Automatic handoff and actual child workers; journal/close-run gate setup remains seeded."""
     lock, _ = _close_for_population(world, clock, waive_missing=True)
     clock.set(lock["cutoff_known_at"] + timedelta(seconds=1))
+    scoped_in: set[UUID] = set()
+    scoped_out: set[UUID] = set()
     with system_session(world) as session:
+        other_id = other_entity(session, world)
+    for role_code in ("controller", "revenue_reviewer", "auditor"):
+        for entity_id, recipients, suffix in (
+            (world.entity_id, scoped_in, "in"),
+            (other_id, scoped_out, "out"),
+        ):
+            member = colleague(world.tenant_id, f"notice-{role_code}-{suffix}")
+            assign(member, role_code, entity_ids=(entity_id,))
+            recipients.add(member.membership_id)
+    with system_session(world) as session:
+        assert (
+            session.scalar(
+                select(func.count())
+                .select_from(notification)
+                .where(notification.c.kind == "PERIOD_LOCKED")
+            )
+            == 0
+        )
         preparation = (
             session.execute(
                 select(job).where(
@@ -3018,9 +3045,39 @@ def test_lock_queues_close_pack_once_across_preparation_commit_crash(
         return
     interrupted = False
     first_pack_id: UUID | None = None
+    build_interrupted = False
+    notification_failed = False
+    real_notify = evidence_notifications.notify
+
+    def fail_first_notification(uow: UnitOfWork, **kwargs: Any) -> None:
+        nonlocal notification_failed
+        real_notify(uow, **kwargs)
+        if not notification_failed:
+            assert uow.session.scalar(
+                select(func.count())
+                .select_from(notification)
+                .where(notification.c.kind == "PERIOD_LOCKED")
+            ) >= len(scoped_in)
+            notification_failed = True
+            raise RuntimeError("Simulated failure after notification insert, before commit")
+
+    monkeypatch.setattr(evidence_notifications, "notify", fail_first_notification)
 
     def crash_after_prepare(jc: JobContext, params: Mapping[str, Any]) -> Any:
-        nonlocal interrupted, first_pack_id
+        nonlocal interrupted, first_pack_id, build_interrupted
+        if jc.job_id != preparation["id"] and notification_failed and not build_interrupted:
+            with system_session(world) as session:
+                rolled_back = session.execute(select(evidence_pack)).mappings().one()
+                assert rolled_back["status"] == "QUEUED"
+                assert rolled_back["file_id"] is None
+                assert (
+                    session.scalar(
+                        select(func.count())
+                        .select_from(notification)
+                        .where(notification.c.kind == "PERIOD_LOCKED")
+                    )
+                    == 0
+                )
         outcome = original.handler(jc, params)
         if jc.job_id == preparation["id"] and not interrupted:
             with system_session(world) as session:
@@ -3030,6 +3087,9 @@ def test_lock_queues_close_pack_once_across_preparation_commit_crash(
                 evidence.guard_cancel(uow, params, jc.job_id)
             interrupted = True
             raise RuntimeError("Simulated process loss after automatic preparation commit")
+        if jc.job_id != preparation["id"] and not build_interrupted:
+            build_interrupted = True
+            raise RuntimeError("Simulated process loss after archive and notification commit")
         return outcome
 
     monkeypatch.setitem(
@@ -3067,10 +3127,23 @@ def test_lock_queues_close_pack_once_across_preparation_commit_crash(
     for child_id in children:
         child = run_journal_job(world, child_id, attempts=1)
         assert child["state"] == "SUCCEEDED", child
-    finished = run_journal_job(world, pack["job_id"], attempts=1)
+    finished = run_journal_job(world, pack["job_id"], attempts=3)
+    assert notification_failed and build_interrupted
     assert finished["state"] == "SUCCEEDED", finished
     assert finished["result"]["counts"] == {"packs": 1, "files": 36}
     with system_session(world) as session:
         retained = session.execute(select(evidence_pack)).mappings().one()
         assert retained["status"] == "SUCCEEDED"
         assert retained["file_id"] is not None
+        notices = (
+            session.execute(select(notification).where(notification.c.kind == "PERIOD_LOCKED"))
+            .mappings()
+            .all()
+        )
+        recipients = [n["recipient_membership_id"] for n in notices]
+        assert scoped_in <= set(recipients)
+        assert not scoped_out & set(recipients)
+        assert len(recipients) == len(set(recipients))
+        assert {n["subject_id"] for n in notices} == {lock["id"]}
+        assert {n["link_path"] for n in notices} == {f"/close/periods/{world.state_id}"}
+        assert all(n["body"].endswith("The evidence pack is available.") for n in notices)

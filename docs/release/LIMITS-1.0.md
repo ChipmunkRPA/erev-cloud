@@ -754,3 +754,19 @@ operational accounting acceptance. No deployment or independent accounting appro
 Validation for this change: lock-module and retained-binding regression **81 passed in 183.79
 seconds**; source Mypy and changed-file Ruff lint/format pass. This is scoped evidence, not a
 current full backend, browser, release, or accounting acceptance result.
+
+
+## October 14, 2026 — automatic first-close availability notification
+
+Approval-driven locks now defer NTF-06 until the automatic pack's archive is retained. The
+PERIOD_LOCKED notice and archive metadata commit atomically, using the lock as notification
+subject and the period cockpit as link. Current active Controller, Revenue Reviewer and Auditor
+roles must cover the entity. Manual builds do not notify, and a retry after successful retention
+does not repeat the notice. Generation failure/cancellation produces no availability claim.
+Sandbox replay's separate snapshots-only notification is unchanged; no replay pack is claimed.
+The focused four tests passed, including scoped recipients, rollback after notification insert,
+post-commit crash reuse and cancellation. Broader lock/notification regression: **54 passed in
+196.55 seconds**. Source Mypy and changed-file Ruff lint/format also pass. These scoped checks
+do not establish current full-backend, browser or release acceptance.
+Seeded close/journal gates remain in the focused fixture; operational CTL-041 and independent
+accounting approval are still missing. Re-lock variance and other pack kinds remain incomplete.
