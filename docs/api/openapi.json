@@ -5084,10 +5084,25 @@
             ],
             "title": "Download Href"
           },
+          "entity_code": {
+            "title": "Entity Code",
+            "type": "string"
+          },
           "entity_id": {
             "format": "uuid",
             "title": "Entity Id",
             "type": "string"
+          },
+          "file_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Count"
           },
           "id": {
             "format": "uuid",
@@ -5141,6 +5156,10 @@
             "title": "Period Id",
             "type": "string"
           },
+          "period_key": {
+            "title": "Period Key",
+            "type": "string"
+          },
           "period_lock_id": {
             "format": "uuid",
             "title": "Period Lock Id",
@@ -5169,15 +5188,18 @@
           "kind",
           "status",
           "entity_id",
+          "entity_code",
           "book",
           "period_id",
+          "period_key",
           "period_lock_id",
           "job_id",
+          "file_count",
+          "manifest_sha256",
           "created_at",
           "updated_at",
           "report_run_ids",
           "manifest",
-          "manifest_sha256",
           "download_href"
         ],
         "title": "ClosePackOut",
@@ -5194,10 +5216,25 @@
             "title": "Created At",
             "type": "string"
           },
+          "entity_code": {
+            "title": "Entity Code",
+            "type": "string"
+          },
           "entity_id": {
             "format": "uuid",
             "title": "Entity Id",
             "type": "string"
+          },
+          "file_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Count"
           },
           "id": {
             "format": "uuid",
@@ -5221,6 +5258,17 @@
             "title": "Kind",
             "type": "string"
           },
+          "manifest_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manifest Sha256"
+          },
           "pack_no": {
             "title": "Pack No",
             "type": "string"
@@ -5228,6 +5276,10 @@
           "period_id": {
             "format": "uuid",
             "title": "Period Id",
+            "type": "string"
+          },
+          "period_key": {
+            "title": "Period Key",
             "type": "string"
           },
           "period_lock_id": {
@@ -5250,10 +5302,14 @@
           "kind",
           "status",
           "entity_id",
+          "entity_code",
           "book",
           "period_id",
+          "period_key",
           "period_lock_id",
           "job_id",
+          "file_count",
+          "manifest_sha256",
           "created_at",
           "updated_at"
         ],
@@ -58633,6 +58689,112 @@
           }
         },
         "summary": "Evidence Packs Download",
+        "tags": [
+          "API-R-42 Evidence packs"
+        ],
+        "x-erev-permission": "evidence.export"
+      }
+    },
+    "/api/v1/evidence-packs/{pack_id}/manifest": {
+      "get": {
+        "description": "Download the exact manifest bytes from the verified archive, with an export audit.",
+        "operationId": "evidence_packs_manifest",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "pack_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Pack Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {}
+            },
+            "description": "Verified retained manifest bytes"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: unauthenticated, session-expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: not-found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: invalid-transition"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: validation-failed"
+          }
+        },
+        "summary": "Evidence Packs Manifest",
         "tags": [
           "API-R-42 Evidence packs"
         ],

@@ -7,6 +7,7 @@ from typing import Any
 from uuid import UUID
 
 from erev_engine.canonical import sha256_hex
+from pydantic import ValidationError
 from sqlalchemy import Select, false, select
 
 from erev_api.audit import writer as audit_writer
@@ -15,7 +16,11 @@ from erev_api.auth.principal import Principal
 from erev_api.db.tables import evidence_pack, legal_entity, period
 from erev_api.domain.reports import evidence_sources, evidence_storage
 from erev_api.problems import Problem
-from erev_api.schemas.evidence_packs import ClosePackOut, ClosePackSummaryOut
+from erev_api.schemas.evidence_packs import (
+    ClosePackOut,
+    ClosePackSummaryOut,
+    EvidenceManifestOut,
+)
 from erev_api.uow import UnitOfWork
 
 READ_PERMISSIONS = frozenset({"report.run", "audit.read", "contract.read"})
@@ -35,6 +40,24 @@ def require_permissions(uow: UnitOfWork, pack_id: UUID | None, required: frozens
         raise Problem("forbidden")
 
 
+def _retained_manifest(row: Mapping[Any, Any]) -> EvidenceManifestOut | None:
+    """Check retained metadata; archive/source integrity is verified on download."""
+    if row["status"] != "SUCCEEDED":
+        return None
+    if (
+        row["manifest"] is None
+        or row["file_id"] is None
+        or sha256_hex(row["manifest"]) != row["manifest_sha256"]
+    ):
+        raise Problem("validation-failed", "The retained evidence manifest is inconsistent.")
+    try:
+        return EvidenceManifestOut.model_validate(row["manifest"])
+    except ValidationError as error:
+        raise Problem(
+            "validation-failed", "The retained evidence manifest is malformed."
+        ) from error
+
+
 def get_close(uow: UnitOfWork, pack_id: UUID) -> ClosePackOut:
     require_permissions(uow, pack_id, READ_PERMISSIONS)
     bound = evidence_sources.load_close(uow, pack_id)
@@ -49,25 +72,23 @@ def get_close(uow: UnitOfWork, pack_id: UUID) -> ClosePackOut:
         .mappings()
         .one()
     )
-    succeeded = row["status"] == "SUCCEEDED"
-    if succeeded and (
-        row["manifest"] is None
-        or row["file_id"] is None
-        or sha256_hex(row["manifest"]) != row["manifest_sha256"]
-    ):
-        raise Problem("validation-failed", "The retained evidence manifest is inconsistent.")
+    manifest = _retained_manifest(row)
+    succeeded = manifest is not None
     return ClosePackOut(
         id=pack_id,
         pack_no=row["pack_no"],
         kind="CLOSE",
         status=row["status"],
         entity_id=bound.entity_id,
+        entity_code=bound.request.entity_code,
         book=bound.request.book,
         period_id=bound.period_id,
+        period_key=bound.request.period_key,
         period_lock_id=bound.request.period_lock_id,
         job_id=row["job_id"],
         report_run_ids=row["report_run_ids"],
-        manifest=row["manifest"] if succeeded else None,
+        manifest=manifest,
+        file_count=len(manifest.files) if manifest is not None else None,
         manifest_sha256=row["manifest_sha256"] if succeeded else None,
         created_at=row["created_at"],
         updated_at=row["updated_at"],
@@ -75,7 +96,9 @@ def get_close(uow: UnitOfWork, pack_id: UUID) -> ClosePackOut:
     )
 
 
-def download_close(uow: UnitOfWork, pack_id: UUID) -> tuple[str, bytes]:
+def download_close(
+    uow: UnitOfWork, pack_id: UUID, *, manifest_only: bool = False
+) -> tuple[str, bytes]:
     require_permissions(
         uow,
         pack_id,
@@ -85,6 +108,8 @@ def download_close(uow: UnitOfWork, pack_id: UUID) -> tuple[str, bytes]:
     )
     header = get_close(uow, pack_id)
     retained = evidence_storage.read_close(uow, pack_id)
+    content = retained.archive.manifest_bytes if manifest_only else retained.archive.content
+    artifact = "manifest" if manifest_only else "archive"
     uow.audit(
         action="evidence.export",
         object_type="evidence_pack",
@@ -93,10 +118,12 @@ def download_close(uow: UnitOfWork, pack_id: UUID) -> tuple[str, bytes]:
         detail={
             "file_id": str(retained.file_id),
             "manifest_sha256": retained.archive.manifest_sha256,
-            "bytes": len(retained.archive.content),
+            "bytes": len(content),
+            "artifact": artifact,
         },
     )
-    return f"{header.pack_no}.zip", retained.archive.content
+    suffix = ".manifest.json" if manifest_only else ".zip"
+    return f"{header.pack_no}{suffix}", content
 
 
 def list_statement(principal: Principal) -> Select[Any]:
@@ -131,16 +158,21 @@ def list_statement(principal: Principal) -> Select[Any]:
 def summary(row: Mapping[str, Any]) -> ClosePackSummaryOut:
     """Validate record/binding identity without opening files or asserting source integrity."""
     bound = evidence_sources.checked_row(row)
+    manifest = _retained_manifest(row)
     return ClosePackSummaryOut(
         id=row["id"],
         pack_no=row["pack_no"],
         kind="CLOSE",
         status=row["status"],
         entity_id=bound.entity_id,
+        entity_code=bound.request.entity_code,
         book=bound.request.book,
         period_id=bound.period_id,
+        period_key=bound.request.period_key,
         period_lock_id=bound.request.period_lock_id,
         job_id=row["job_id"],
+        file_count=len(manifest.files) if manifest is not None else None,
+        manifest_sha256=row["manifest_sha256"] if manifest is not None else None,
         created_at=row["created_at"],
         updated_at=row["updated_at"],
     )

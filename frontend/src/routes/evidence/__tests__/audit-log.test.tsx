@@ -728,6 +728,7 @@ describe("SF-09:audit-log", () => {
     ).toEqual([
       ["Catalogue", null],
       ["Report runs", null],
+      ["Evidence packs", null],
       ["Audit log", "page"],
     ]);
 

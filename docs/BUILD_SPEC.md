@@ -10298,6 +10298,11 @@ Author BS-3. Uses CTR (PHASES §1 row 12). Indicative size 16 items; this phase 
   - **Gates:** GK-01 `make ci`; GK-07 `make e2e SPEC=frontend/e2e/projects/screens.spec.ts`
 
 - [ ] **RPS-20 Evidence pack screens.**
+  - October 14 repository increment: first-close register/detail and verified ZIP/manifest
+    downloads implemented; API/MFA/worker/schema checks 118 passed, focused UI checks 12 passed.
+    Full frontend 2,069 passed before the final count/hash columns (focused/static/build checks
+    cover those additions). Auditor requests, generation forms, other kinds, remaining register
+    detail and actual browser acceptance remain; this item is not complete.
   - **Prerequisites:** RPS-19
   - **Scope:**
     - Paths: `frontend/src/routes/evidence/evidence.tsx` (SF-09 with the 20 auditor requests A-01 to A-20 and the generate forms per E-66 kind); `frontend/src/routes/evidence/pack.tsx` (SF-09:pack); `frontend/src/app/router.tsx`; `frontend/src/messages/en.json` (namespace `evidence`); `frontend/src/routes/evidence/__tests__/evidence.test.tsx`; `frontend/e2e/projects/screens.spec.ts`

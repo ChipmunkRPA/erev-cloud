@@ -478,6 +478,20 @@ export const SCREEN_ROUTES: readonly RouteObject[] = [
     },
   },
   {
+    id: "SF-09",
+    path: "/reports/evidence",
+    handle: { sf: "SF-09", screen: "SF-09", titleKey: "evidence.packs.title" },
+    lazy: async () => ({
+      Component: (await import("../routes/evidence/evidence")).EvidencePacksPage,
+    }),
+  },
+  {
+    id: "SF-09:pack",
+    path: "/reports/evidence/:packId",
+    handle: { sf: "SF-09", screen: "SF-09:pack", titleKey: "evidence.packs.detailTitle" },
+    lazy: async () => ({ Component: (await import("../routes/evidence/pack")).EvidencePackPage }),
+  },
+  {
     // SCREENS_B RT-37 SF-09:audit-log (BUILD_SPEC RPS-21): `f.*`, `drawer=event` with `event`.
     id: "SF-09:audit-log",
     path: "/reports/audit-log",

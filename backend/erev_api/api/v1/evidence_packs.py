@@ -183,3 +183,34 @@ def evidence_packs_download(
             "X-Content-Type-Options": "nosniff",
         },
     )
+
+
+@router.get(
+    "/evidence-packs/{pack_id}/manifest",
+    operation_id="evidence_packs_manifest",
+    response_class=Response,
+    responses={
+        200: {
+            "content": {"application/json": {}},
+            "description": "Verified retained manifest bytes",
+        },
+        **problem_responses(*PROBLEMS, "invalid-transition"),
+    },
+)
+def evidence_packs_manifest(
+    pack_id: UUID, ctx: Annotated[RequestContext, Depends(require("evidence.export"))], deps: Deps
+) -> Response:
+    """Download the exact manifest bytes from the verified archive, with an export audit."""
+    with unit_of_work(ctx, clock=deps.clock, keyring=deps.keyring, files=deps.files) as uow:
+        filename, content = evidence_queries.download_close(uow, pack_id, manifest_only=True)
+        uow.commit()
+    return Response(
+        content,
+        media_type="application/json",
+        headers={
+            "Content-Disposition": f"attachment; filename*=UTF-8''{quote(filename, safe='')}",
+            "Content-Security-Policy": "sandbox",
+            "Cache-Control": "no-store",
+            "X-Content-Type-Options": "nosniff",
+        },
+    )

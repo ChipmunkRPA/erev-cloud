@@ -3064,3 +3064,58 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   current release/accounting approval remain outstanding. The inherited close fixture retains
   seeded journal/gate setup; no operational CTL-041, RPS-16 completion or production-readiness
   claim. Direct main; no deployment or external notifications.
+
+## Stable audit verification job results — October 8, 2026 (RPS-16 prerequisite)
+
+- Continued from clean published abc0514. Reviewed NTF-06: the existing lock notification
+  truthfully promises stored snapshots; pack availability must follow successful automatic
+  generation. That depends on a stable queued audit result. Found and fixed an audit worker
+  retry gap: a crash after verification commit could repeat verification before job settlement.
+- AUDIT_CHAIN_VERIFY now returns result.verification_id and reuses the single committed
+  tenant/job/trigger result, including FAIL. It does not reverify a newer prefix, create another
+  digest/control result, or notify again. Multiple retained rows or trigger mismatch refuse;
+  the normal three-attempt policy remains. This proves a historical verification, not current
+  chain integrity. No schema migration or public request change; JobResultOut permits this member.
+- Initial audit domain/API run: **16 passed in 13.78 seconds**. Expanded ambiguous-result cases
+  first had **47 passed, 4 failed in 16.10 seconds** because the test expected final failure on
+  attempt two of three. Corrected the witness to fetch/run attempt three without changing the
+  retry policy; final audit/API/digest/audit-classification regression: **51 passed in 16.05
+  seconds**. PASS/FAIL crash cases retain exact IDs and row/file/control/notification/outbox
+  counts; inconsistent cases settle FAILED without new verification. API exposes the exact ID.
+- Logs /private/tmp/audit-result-{retry,final,corrected}.log; all processes terminal. Source Mypy,
+  Ruff lint/format and whitespace checks pass. Updated architecture/limits and archived earlier
+  retention notes verbatim. Next: bind a queued audit job in versioned pack sources, wait for
+  that exact successful verification, then integrate automatic lock enqueue and availability.
+  Current creation still requires a completed verification; no NTF-06/RPS-16/CTL-041 completion
+  or production-readiness claim. Other kinds, variance and release/accounting gates remain open.
+  Direct main; no deployment or external notifications.
+
+## Queued audit verification for CLOSE packs — October 8, 2026 (RPS-16 continued)
+
+- Continued from clean published 7fc16e5. New POST /evidence-packs requests no longer need a
+  completed verification beforehand. Creation atomically inserts the pack, five supporting
+  report runs, a dedicated AUDIT_CHAIN_VERIFY job and its parent: seven jobs, one transaction.
+  Idempotent replay returns the original response without adding jobs or changing the binding.
+- Added versioned sources v2: pack_id and audit_verification_job_id replace the completed
+  verification_id. The audit job's evidence_pack subject and retained period_lock_id are checked;
+  a pending tenant-wide job is never reused. Parent readiness waits for the exact job, then
+  resolves its result.verification_id and verifies the PASS row/job/digest association. Assembly
+  still verifies digest bytes, recorded prefix and lock anchor. Failed/cancelled/missing or
+  mismatched results fail the parent; an unrelated PASS cannot substitute. V1 binding parsing
+  and canonical bytes remain unchanged, and explicit completed-verification callers still work.
+- Initial scoped run: **37 passed, 2 failed in 19.31 seconds** exposed the unsupported period_lock
+  job subject; changed to the pack's existing supported subject. Next **37 passed, 4 failed in
+  26.56 seconds** exposed the reserved release parameter and a timestamp-serialization fixture
+  mismatch; used registry.handler_params and preserved canonical UTC strings. Next **38 passed,
+  3 failed in 25.03 seconds** caught a missed test-helper pack_id argument. Corrected it and added
+  actual parent wait/failure cleanup; final expanded regression: **68 passed in 58.53 seconds**.
+- Tests cover no prior completed verification, atomic seven-job creation/rollback, exact replay,
+  waiting/failed/cancelled/foreign-result refusals, failed-parent cleanup without ZIP, successful
+  audit and report workers, v1/v2 output, interrupted completion, cancellation, register/download
+  and role revocation. The inherited seeded-journal/close-gate caveat remains; not CTL-041 proof.
+  Logs /private/tmp/evidence-queued-audit-{db,corrected,final,regression}.log; all terminal.
+- Source Mypy, Ruff lint/format, whitespace, regenerated OpenAPI/client types, staleness check
+  and frontend tsc --noEmit pass. Updated model/architecture/guide/build status/limits; archived
+  earlier readiness/download-boundary notes verbatim. Automatic pack enqueue on lock and truthful
+  availability notification, other kinds, re-lock variance and current release/accounting gates
+  remain open. RPS-16/CTL-041 and production readiness unclaimed. Direct main; no deployment.

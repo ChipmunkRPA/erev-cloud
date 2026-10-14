@@ -458,6 +458,13 @@ const SEEDS: readonly Seed[] = [
     },
   },
   {
+    params: ["packId"],
+    find: async (api) => {
+      const [pack] = await list<{ readonly id: string }>(api, "/api/v1/evidence-packs");
+      return pack === undefined ? null : { packId: pack.id };
+    },
+  },
+  {
     // The verification that finished last (SCREENS_B §6.4).
     params: ["verificationId"],
     find: async (api) => {

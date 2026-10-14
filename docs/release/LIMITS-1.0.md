@@ -791,3 +791,20 @@ of all accounting amounts. It supersedes the earlier missing-CTL-041-witness not
 first-close case. Re-lock variance, other pack kinds, full controls/current release verification,
 real-browser acceptance and independent accounting approval remain outstanding. No deployment
 or production-readiness claim follows from this targeted control pass.
+
+
+## October 14, 2026 — first-close evidence screens and control gate
+
+The first-close register/detail screens and verified ZIP/manifest downloads are implemented.
+The manifest download returns the retained archive's exact bytes, with the same scoped export
+permissions and audited completion as the ZIP. List metadata includes retained entity/period
+labels, file count and manifest hash; it is not an archive-integrity verification. The final
+API/worker/MFA/schema/metadata regression passed 118 tests; focused UI tests passed 12. A full
+frontend run passed 2,069 tests before the final count/hash columns; those columns also passed
+focused tests, TypeScript, lint and build. This does not close RPS-20: auditor-request actions,
+generation forms, other kinds, remaining register details and real browser acceptance remain.
+
+The separate immutable c214c47 control run passed all 497 tagged tests, covering 47/49 controls.
+CTL-045 and CTL-048 remain missing, so the control gate fails. Details and binding are recorded
+in CONTROLS-2026-10-14.md. No full release, independent accounting sign-off or production
+readiness is claimed, and no deployment was performed.

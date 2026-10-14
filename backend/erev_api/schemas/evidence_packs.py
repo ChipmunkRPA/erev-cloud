@@ -100,10 +100,14 @@ class ClosePackSummaryOut(BaseModel):
     kind: Literal["CLOSE"]
     status: RunStatus
     entity_id: UUID
+    entity_code: str
     book: BookCode
     period_id: UUID
+    period_key: str
     period_lock_id: UUID
     job_id: UUID | None
+    file_count: int | None
+    manifest_sha256: str | None
     created_at: datetime
     updated_at: datetime
 
@@ -113,5 +117,4 @@ class ClosePackOut(ClosePackSummaryOut):
 
     report_run_ids: list[UUID]
     manifest: EvidenceManifestOut | None
-    manifest_sha256: str | None
     download_href: str | None

@@ -24,6 +24,7 @@ export interface ReportsTab {
   readonly permission: string;
   /** A second permission that opens the route as well. */
   readonly orPermission?: string;
+  readonly requiredPermissions?: readonly string[];
 }
 
 /** SCREENS §0.3 SCR-IA-02 Reports route tabs, in order, with their §0.4 read permissions. */
@@ -36,7 +37,13 @@ export const REPORTS_TABS: readonly ReportsTab[] = [
     permission: "report.run",
     orPermission: "audit.read",
   },
-  { screen: "SF-09", path: "/reports/evidence", key: "evidence", permission: "report.run" },
+  {
+    screen: "SF-09",
+    path: "/reports/evidence",
+    key: "evidence",
+    permission: "report.run",
+    requiredPermissions: ["audit.read", "contract.read"],
+  },
   {
     screen: "SF-09:audit-log",
     path: "/reports/audit-log",
@@ -59,6 +66,7 @@ export function ReportsHeader() {
   const tabs: RouteTab[] = REPORTS_TABS.filter(
     (tab) =>
       built.has(tab.path) &&
+      (tab.requiredPermissions ?? []).every((permission) => access.holdsAnywhere(permission)) &&
       (access.holdsAnywhere(tab.permission) ||
         (tab.orPermission !== undefined && access.holdsAnywhere(tab.orPermission))),
   ).map((tab) => ({

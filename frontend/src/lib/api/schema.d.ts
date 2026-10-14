@@ -2313,6 +2313,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/evidence-packs/{pack_id}/manifest": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Evidence Packs Manifest
+     * @description Download the exact manifest bytes from the verified archive, with an export audit.
+     */
+    get: operations["evidence_packs_manifest"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/exceptions": {
     parameters: {
       query?: never;
@@ -9641,11 +9661,15 @@ export interface components {
       created_at: string;
       /** Download Href */
       download_href: string | null;
+      /** Entity Code */
+      entity_code: string;
       /**
        * Entity Id
        * Format: uuid
        */
       entity_id: string;
+      /** File Count */
+      file_count: number | null;
       /**
        * Id
        * Format: uuid
@@ -9668,6 +9692,8 @@ export interface components {
        * Format: uuid
        */
       period_id: string;
+      /** Period Key */
+      period_key: string;
       /**
        * Period Lock Id
        * Format: uuid
@@ -9693,11 +9719,15 @@ export interface components {
        * Format: date-time
        */
       created_at: string;
+      /** Entity Code */
+      entity_code: string;
       /**
        * Entity Id
        * Format: uuid
        */
       entity_id: string;
+      /** File Count */
+      file_count: number | null;
       /**
        * Id
        * Format: uuid
@@ -9710,6 +9740,8 @@ export interface components {
        * @constant
        */
       kind: "CLOSE";
+      /** Manifest Sha256 */
+      manifest_sha256: string | null;
       /** Pack No */
       pack_no: string;
       /**
@@ -9717,6 +9749,8 @@ export interface components {
        * Format: uuid
        */
       period_id: string;
+      /** Period Key */
+      period_key: string;
       /**
        * Period Lock Id
        * Format: uuid
@@ -32297,6 +32331,78 @@ export interface operations {
         };
         content: {
           "application/zip": unknown;
+        };
+      };
+      /** @description Problem: unauthenticated, session-expired */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: not-found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: invalid-transition */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: validation-failed */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+    };
+  };
+  evidence_packs_manifest: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        pack_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Verified retained manifest bytes */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
         };
       };
       /** @description Problem: unauthenticated, session-expired */

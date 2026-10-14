@@ -94,6 +94,8 @@ describe("SCR-IA-06 route objects", () => {
       "SF-08:runs",
       "SF-08:run",
       "SF-08:dashboard",
+      "SF-09",
+      "SF-09:pack",
       "SF-09:audit-log",
       "SF-09:verification",
       "SF-10",

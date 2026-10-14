@@ -2611,12 +2611,22 @@ def test_first_close_archive_verifies_every_component_before_returning_bytes(
     assert "supporting report differs" in error.value.detail
     header_path = f"/api/v1/evidence-packs/{pack['id']}"
     download_path = header_path + "/download"
+    manifest_path = header_path + "/manifest"
     pending = get(world.app, header_path, auditor)
     assert pending.status_code == 200, pending.text
     assert pending.json()["status"] == "QUEUED" and pending.json()["manifest"] is None
     assert pending.json()["download_href"] is None
+    assert pending.json()["file_count"] is None
+    assert pending.json()["manifest_sha256"] is None
+    assert pending.json()["entity_code"] == bound.request.entity_code
+    assert pending.json()["period_key"] == bound.request.period_key
     unavailable = get(world.app, download_path, auditor)
     assert (unavailable.status_code, slug(unavailable)) == (409, "invalid-transition")
+    unavailable_manifest = get(world.app, manifest_path, auditor)
+    assert (unavailable_manifest.status_code, slug(unavailable_manifest)) == (
+        409,
+        "invalid-transition",
+    )
     # Neither legacy unbound rows nor unsupported kinds enter the visible population/count.
     with world.place.uow(reader) as uow:
         legacy = evidence_pack_values(
@@ -2634,6 +2644,10 @@ def test_first_close_archive_verifies_every_component_before_returning_bytes(
     assert listed.headers["X-Erev-Total-Count"] == "1"
     assert [item["id"] for item in listed.json()["items"]] == [str(pack["id"])]
     assert "manifest" not in listed.json()["items"][0]
+    assert listed.json()["items"][0]["file_count"] is None
+    assert listed.json()["items"][0]["manifest_sha256"] is None
+    assert listed.json()["items"][0]["entity_code"] == bound.request.entity_code
+    assert listed.json()["items"][0]["period_key"] == bound.request.period_key
     for permission in evidence_queries.READ_PERMISSIONS:
         outside = replace(
             reader,
@@ -2902,6 +2916,14 @@ def test_first_close_archive_verifies_every_component_before_returning_bytes(
     shown = get(world.app, header_path, auditor)
     assert shown.status_code == 200, shown.text
     assert shown.json()["manifest_sha256"] == archive.manifest_sha256
+    assert shown.json()["file_count"] == len(manifest["files"])
+    completed_list = get(world.app, listing_path, auditor, params={"status": "SUCCEEDED"})
+    assert completed_list.status_code == 200, completed_list.text
+    completed_summary = next(
+        item for item in completed_list.json()["items"] if item["id"] == str(pack["id"])
+    )
+    assert completed_summary["file_count"] == len(manifest["files"])
+    assert completed_summary["manifest_sha256"] == archive.manifest_sha256
     assert shown.json()["download_href"] == download_path
     for _ in range(2):
         downloaded = get(world.app, download_path, auditor)
@@ -2910,6 +2932,13 @@ def test_first_close_archive_verifies_every_component_before_returning_bytes(
         assert downloaded.headers["content-type"] == "application/zip"
         assert downloaded.headers["cache-control"] == "no-store"
         assert "attachment;" in downloaded.headers["content-disposition"]
+    manifest_download = get(world.app, manifest_path, auditor)
+    assert manifest_download.status_code == 200, manifest_download.text[:200]
+    assert manifest_download.content == archive.manifest_bytes
+    assert hashlib.sha256(manifest_download.content).hexdigest() == archive.manifest_sha256
+    assert manifest_download.headers["content-type"] == "application/json"
+    assert manifest_download.headers["cache-control"] == "no-store"
+    assert ".manifest.json" in manifest_download.headers["content-disposition"]
     original_open = evidence_storage.open_file
 
     def damaged_pack(session: Session, file_id: UUID, **kwargs: Any) -> Any:
@@ -2924,14 +2953,17 @@ def test_first_close_archive_verifies_every_component_before_returning_bytes(
         damaged = get(world.app, download_path, auditor)
         assert (damaged.status_code, slug(damaged)) == (422, "validation-failed")
         assert damaged.headers["content-type"].startswith("application/problem+json")
+        damaged_manifest = get(world.app, manifest_path, auditor)
+        assert (damaged_manifest.status_code, slug(damaged_manifest)) == (422, "validation-failed")
     for permission in permissions:
         outside = replace(
             reader,
             permission_scopes={**reader.permission_scopes, permission: frozenset({UUID(int=0)})},
         )
-        with world.place.uow(outside) as uow, pytest.raises(Problem) as refused:
-            evidence_queries.download_close(uow, pack["id"])
-        assert refused.value.slug == "not-found"
+        for manifest_only in (False, True):
+            with world.place.uow(outside) as uow, pytest.raises(Problem) as refused:
+                evidence_queries.download_close(uow, pack["id"], manifest_only=manifest_only)
+            assert refused.value.slug == "not-found"
     with world.place.uow(reader) as uow:
         exports = (
             uow.session.execute(
@@ -2942,7 +2974,11 @@ def test_first_close_archive_verifies_every_component_before_returning_bytes(
             .scalars()
             .all()
         )
-        assert len(exports) == 2
+        assert len(exports) == 3
+        assert [item["artifact"] for item in exports].count("manifest") == 1
+        assert next(item["bytes"] for item in exports if item["artifact"] == "manifest") == len(
+            archive.manifest_bytes
+        )
         assert all(item["manifest_sha256"] == archive.manifest_sha256 for item in exports)
         revoke_role_assignments(
             uow.session,
@@ -2951,7 +2987,7 @@ def test_first_close_archive_verifies_every_component_before_returning_bytes(
             at=uow.now,
         )
         uow.commit()
-    for path in (listing_path, header_path, download_path):
+    for path in (listing_path, header_path, download_path, manifest_path):
         denied_response = get(world.app, path, auditor)
         assert (denied_response.status_code, slug(denied_response)) == (403, "forbidden")
     denied_replay = call(

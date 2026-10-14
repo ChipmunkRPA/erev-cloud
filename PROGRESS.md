@@ -2,6 +2,43 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Close evidence register and retained downloads — October 14, 2026 (RPS-20 partial)
+
+- SF-09 and SF-09:pack now expose the scoped paginated first-close register, status filters,
+  retained entity/period labels, file counts and manifest hashes, pending-state refresh,
+  manifest file list, and authorized ZIP/manifest downloads. Manifest download verifies
+  the archive and returns its exact retained bytes, with a committed export audit before
+  serving. Both artifact types require all five source/export permissions in entity scope.
+- Register counts/hashes use hash-consistent, schema-valid retained metadata and are null
+  before success; listing does not open or verify archive payloads. Download still verifies
+  archive/source integrity. Updated API docs, OpenAPI/client types, router inventory and
+  crawl seed. Evidence tab requires all three read permissions.
+- Actual API/worker/MFA/schema/metadata regression: **118 passed in 58.66 seconds**
+  (.run/evidence-screen-api-regression.log). Checks include returned labels/count/hash,
+  exact manifest bytes, pending/corrupt archive refusal, export audit artifacts/byte counts,
+  each source permission's entity scope, revoked roles, and the operational CTL-041 witness.
+- Full frontend suite before the final count/hash columns: **2,069 passed across 193 files
+  in 73.48 seconds** (.run/evidence-ui-final-regression.log). Final focused screen suite:
+  **12 passed in 1.53 seconds**, including those columns and filters/export refusals
+  (.run/evidence-register-columns-tests.log). TypeScript, full ESLint, Vite build, Python
+  Ruff/Mypy and OpenAPI checks pass. Existing Vite large-chunk warning remains.
+- Earlier full frontend runs found route/crawl/tab integration issues (2,062 pass / 4 fail)
+  and a test's incorrect filtered-empty expectation (2,067 pass / 1 fail); both are resolved.
+  Ten database-free metadata tests also passed independently. All runs are terminal.
+- RPS-20 stays unchecked: auditor-request table, generation forms, other pack kinds,
+  remaining register details and real browser/accessibility/volume acceptance are outstanding.
+  This is a tested repository increment, not a production-readiness claim. Direct main;
+  no deployment, new PR, accounting oracle change or permission relaxation.
+
+## Current control gate evidence — October 14, 2026
+
+- Immutable c214c47 control run: **497 passed in 1,076.97 seconds**. No tagged test failed;
+  47/49 controls are covered. CTL-045 (AI proposals) and CTL-048 (legacy migration promotion)
+  lack tagged tests, so the gate correctly fails. CTL-018 and CTL-041 now pass in this gate.
+- Source/dependency bindings match before/after execution. This result attests c214c47,
+  not the subsequent screen increment. See docs/release/CONTROLS-2026-10-14.md and local
+  .run/reports/controls-report/report.json. Independent accounting approval is still missing.
+
 ## Operational first-close manifest control — October 14, 2026 (CTL-041)
 
 - From clean 0dfb9ec, added the exact RPS-16 CTL-041 test path/marker. AVM-US September uses
@@ -129,61 +166,6 @@
 - Local logs/evidence live under the new checkout's ignored .run/. Earlier October 8 evidence
   remains historical. Automatic pack enqueue/availability notification, other pack kinds,
   variance and current release/accounting gates remain outstanding. No deployment/readiness claim.
-
-## Queued audit verification for CLOSE packs — October 8, 2026 (RPS-16 continued)
-
-- Continued from clean published 7fc16e5. New POST /evidence-packs requests no longer need a
-  completed verification beforehand. Creation atomically inserts the pack, five supporting
-  report runs, a dedicated AUDIT_CHAIN_VERIFY job and its parent: seven jobs, one transaction.
-  Idempotent replay returns the original response without adding jobs or changing the binding.
-- Added versioned sources v2: pack_id and audit_verification_job_id replace the completed
-  verification_id. The audit job's evidence_pack subject and retained period_lock_id are checked;
-  a pending tenant-wide job is never reused. Parent readiness waits for the exact job, then
-  resolves its result.verification_id and verifies the PASS row/job/digest association. Assembly
-  still verifies digest bytes, recorded prefix and lock anchor. Failed/cancelled/missing or
-  mismatched results fail the parent; an unrelated PASS cannot substitute. V1 binding parsing
-  and canonical bytes remain unchanged, and explicit completed-verification callers still work.
-- Initial scoped run: **37 passed, 2 failed in 19.31 seconds** exposed the unsupported period_lock
-  job subject; changed to the pack's existing supported subject. Next **37 passed, 4 failed in
-  26.56 seconds** exposed the reserved release parameter and a timestamp-serialization fixture
-  mismatch; used registry.handler_params and preserved canonical UTC strings. Next **38 passed,
-  3 failed in 25.03 seconds** caught a missed test-helper pack_id argument. Corrected it and added
-  actual parent wait/failure cleanup; final expanded regression: **68 passed in 58.53 seconds**.
-- Tests cover no prior completed verification, atomic seven-job creation/rollback, exact replay,
-  waiting/failed/cancelled/foreign-result refusals, failed-parent cleanup without ZIP, successful
-  audit and report workers, v1/v2 output, interrupted completion, cancellation, register/download
-  and role revocation. The inherited seeded-journal/close-gate caveat remains; not CTL-041 proof.
-  Logs /private/tmp/evidence-queued-audit-{db,corrected,final,regression}.log; all terminal.
-- Source Mypy, Ruff lint/format, whitespace, regenerated OpenAPI/client types, staleness check
-  and frontend tsc --noEmit pass. Updated model/architecture/guide/build status/limits; archived
-  earlier readiness/download-boundary notes verbatim. Automatic pack enqueue on lock and truthful
-  availability notification, other kinds, re-lock variance and current release/accounting gates
-  remain open. RPS-16/CTL-041 and production readiness unclaimed. Direct main; no deployment.
-
-## Stable audit verification job results — October 8, 2026 (RPS-16 prerequisite)
-
-- Continued from clean published abc0514. Reviewed NTF-06: the existing lock notification
-  truthfully promises stored snapshots; pack availability must follow successful automatic
-  generation. That depends on a stable queued audit result. Found and fixed an audit worker
-  retry gap: a crash after verification commit could repeat verification before job settlement.
-- AUDIT_CHAIN_VERIFY now returns result.verification_id and reuses the single committed
-  tenant/job/trigger result, including FAIL. It does not reverify a newer prefix, create another
-  digest/control result, or notify again. Multiple retained rows or trigger mismatch refuse;
-  the normal three-attempt policy remains. This proves a historical verification, not current
-  chain integrity. No schema migration or public request change; JobResultOut permits this member.
-- Initial audit domain/API run: **16 passed in 13.78 seconds**. Expanded ambiguous-result cases
-  first had **47 passed, 4 failed in 16.10 seconds** because the test expected final failure on
-  attempt two of three. Corrected the witness to fetch/run attempt three without changing the
-  retry policy; final audit/API/digest/audit-classification regression: **51 passed in 16.05
-  seconds**. PASS/FAIL crash cases retain exact IDs and row/file/control/notification/outbox
-  counts; inconsistent cases settle FAILED without new verification. API exposes the exact ID.
-- Logs /private/tmp/audit-result-{retry,final,corrected}.log; all processes terminal. Source Mypy,
-  Ruff lint/format and whitespace checks pass. Updated architecture/limits and archived earlier
-  retention notes verbatim. Next: bind a queued audit job in versioned pack sources, wait for
-  that exact successful verification, then integrate automatic lock enqueue and availability.
-  Current creation still requires a completed verification; no NTF-06/RPS-16/CTL-041 completion
-  or production-readiness claim. Other kinds, variance and release/accounting gates remain open.
-  Direct main; no deployment or external notifications.
 
 ## Outstanding release verification
 
