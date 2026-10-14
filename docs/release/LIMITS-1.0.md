@@ -673,6 +673,17 @@ verifications cannot substitute. Failed or cancelled verification fails the pack
 V1 bindings and explicit-completed-verification callers remain supported. Automatic pack enqueue
 on lock, completion notification, other kinds, variance and release/accounting gates remain open.
 
+October 14 dependency remediation: a clean checkout/install found npm advisories affecting
+three locked brace-expansion versions and source-map-js. Targeted updates to 1.1.21/2.1.7/5.0.12
+and 1.2.2 respectively reduce npm's reported known vulnerabilities to zero for the installed
+locked tree on this date. This does not constitute a full security review or release acceptance.
+The repository was recovered into a persistent Documents checkout and a fresh local test database;
+no previous local configuration, cloud deployment, backup-restore proof or accounting approval
+is implied by that recovery. The restored backend baseline passed 52 scoped tests; patched
+frontend dependencies passed 2,057 tests across 192 files, TypeScript build-mode checking,
+ESLint, production build and OpenAPI staleness. Bundle-size/jsdom navigation warnings remain;
+full backend, real-browser and accounting release gates are not established by these checks.
+
 ## The fifteen standing names
 
 Fifteen tests of the backend suite do not pass in release 1.0. They are the same fifteen in every whole run on the day of the freeze, by name, and none passes when it is run again alone; the release candidate's suite shows these and no other (R-125 (n); R-126 (e)). None is skipped, loosened or marked: each fails at full strength until its cause is closed. Two gate targets fail by them, as the supervisor measured on `783f340ea`: `make answer-keys` by the six keys and `make test-pg` by the three capture witnesses. The causes below are read from the failure each test records and from the test: for names 3 to 5 as the suite takes them since index 308's part for the answer keys' runner is on the branch, for the others in the run of record on `5c3b5347c`. Names 1 to 5 are platform keys, which the suite takes on the in-memory platform. On the database platform a lane measured them on 2026-10-03 with that part: the two DISC keys pass; POS-CHK-012 compares clean in every block and is failed by its finding alone; the GT07 key is not run; POS-CHK-117 has four mismatches.

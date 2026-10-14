@@ -2,6 +2,39 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Checkout recovery and dependency remediation — October 14, 2026
+
+- Re-established current state from GitHub main 37e21a7: the old temporary checkout had lost
+  tracked source/Git metadata and the prior Platonick workspace path no longer existed. Restored
+  a clean clone at /Users/raysang/Documents/eRev-Cloud. Keep future work here, outside /tmp.
+  Rechecked public visibility, main as the only remote branch and zero open PRs. No source was
+  recovered from the obsolete Desktop original, and no hosted environment was changed.
+- Reinstalled locked Python 3.12 and Node 24.5 dependencies. Created an isolated PostgreSQL 17
+  cluster at .run/postgres on loopback port 55438, with fresh local owner/app roles, disposable
+  test database erev_rv_oct14 and generated ignored .env keys. Prior credentials/processes/data
+  were not assumed or reused. This is a new test environment, not a backup-restoration drill.
+- On the recovered 37e21a7 backend, the close-pack/audit/source-binding baseline passed:
+  **52 tests in 39.59 seconds**, using the fresh database and migrations. This is scoped current
+  evidence, not a full backend or operational accounting acceptance run.
+- npm audit reported two high-severity dependency groups. Updated only four locked entries:
+  brace-expansion 1.1.18 → 1.1.21, 2.1.4 → 2.1.7, 5.0.9 → 5.0.12; source-map-js 1.2.1 → 1.2.2.
+  Preserved unrelated optional-platform metadata. Reinstalled from the patched lock; npm audit
+  reports zero known vulnerabilities across the dependency tree on October 14. Dependency
+  manifests, application code, noncommercial licensing and research exclusions are unchanged.
+- Full frontend suite: **192 files / 2,057 tests passed in 70.33 seconds**. TypeScript project
+  build (`tsc -b`), ESLint with zero warnings, Vite production build, official OpenAPI staleness
+  check and git whitespace check pass. A plain noEmit check initially lacked fresh referenced
+  project declarations; the documented build-mode check creates them and passes. Build retains
+  its >500 kB chunk warning; jsdom retains its unsupported-navigation warning. No browser,
+  accessibility, volume, full backend or hosted release gate is claimed by these results.
+- Published scope is the four dependency entries plus dated evidence. All test/tool processes
+  are terminal; the isolated local PostgreSQL server remains available for subsequent work.
+  .env, database files, dependencies and test logs are ignored. Public research paths remain
+  absent and PolyForm Noncommercial 1.0.0 remains unchanged. Direct main; no PR or deployment.
+- Local logs/evidence live under the new checkout's ignored .run/. Earlier October 8 evidence
+  remains historical. Automatic pack enqueue/availability notification, other pack kinds,
+  variance and current release/accounting gates remain outstanding. No deployment/readiness claim.
+
 ## Queued audit verification for CLOSE packs — October 8, 2026 (RPS-16 continued)
 
 - Continued from clean published 7fc16e5. New POST /evidence-packs requests no longer need a
@@ -152,32 +185,6 @@
   acceptance. Public creation/download with request idempotency, verification orchestration,
   NTF-06/automatic enqueue, other kinds, variance and current release/accounting approvals
   remain open. RPS-16/CTL-041 unclaimed. Direct main; no deployment or external notifications.
-
-## First-close pack worker lifecycle — October 8, 2026 (RPS-16 continued)
-
-- Continued from clean published 5ba0f2d; previous turn added verified dependency readiness.
-  Registered `reports/evidence.py::build_pack` for EVIDENCE_PACK with the CLOSE readiness hook,
-  three attempts, encrypted completion, required failure cleanup and queued cancellation.
-  Uses internal SYSTEM source-reader capabilities restricted to the immutable entity; these
-  grant no public caller access. Other pack kinds and re-lock variance still refuse.
-- Added an optional cancellation guard under the job row lock. Completion locks job then pack:
-  a pre-handler cancellation stops without output, while late cancellation after SUCCEEDED
-  refuses 409. Failure cleanup requires the pack's own FAILED job/subject/params association;
-  malformed foreign jobs cannot stop another pack. E-67 has no CANCELLED, so unfinished packs
-  end FAILED with an evidence.stop reason; job state distinguishes failure from cancellation.
-- Initial worker/registry/audit tests: **10 passed in 17.02 seconds**. Queue/release/stall/API/
-  registry/close regression: **57 passed in 31.85 seconds**. Added a post-commit crash/retry
-  witness: **9 passed in 23.73 seconds**; fresh QUEUED, interrupted RUNNING and retained
-  SUCCEEDED completions reuse verified output, with one finish event per pack. An injected
-  running cancellation produces no file; API tests cover queued and late cancellation, plus
-  unsupported-kind cleanup and foreign-job isolation. Existing import cancellation/cleanup
-  rollback tests: **2 passed in 24.14 seconds**. Source Mypy, Ruff lint/format, whitespace pass.
-- Logs `/private/tmp/evidence-worker-{db,final,retry,cancel-regression}.log`; all terminal.
-  Close witness retains seeded journal/close-run setup and approved reconciliation omissions;
-  it is not full operational accounting acceptance. Archived waiver-population notes verbatim.
-  Public creation/download and request idempotency, automatic enqueue/NTF-06, other kinds,
-  variance, current release gates and independent accounting approval remain open. No
-  RPS-16/CTL-041 or production-readiness claim. Validated direct main; no deployment.
 
 ## Outstanding release verification
 

@@ -2942,3 +2942,29 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
 - All processes terminal. Archived older control/relock notes verbatim. Pack lifecycle/storage,
   audited download/API, automatic generation, other kinds and variance remain open, along with
   release gates and independent accounting approval. Direct main; no deployment/readiness claim.
+
+## First-close pack worker lifecycle — October 8, 2026 (RPS-16 continued)
+
+- Continued from clean published 5ba0f2d; previous turn added verified dependency readiness.
+  Registered `reports/evidence.py::build_pack` for EVIDENCE_PACK with the CLOSE readiness hook,
+  three attempts, encrypted completion, required failure cleanup and queued cancellation.
+  Uses internal SYSTEM source-reader capabilities restricted to the immutable entity; these
+  grant no public caller access. Other pack kinds and re-lock variance still refuse.
+- Added an optional cancellation guard under the job row lock. Completion locks job then pack:
+  a pre-handler cancellation stops without output, while late cancellation after SUCCEEDED
+  refuses 409. Failure cleanup requires the pack's own FAILED job/subject/params association;
+  malformed foreign jobs cannot stop another pack. E-67 has no CANCELLED, so unfinished packs
+  end FAILED with an evidence.stop reason; job state distinguishes failure from cancellation.
+- Initial worker/registry/audit tests: **10 passed in 17.02 seconds**. Queue/release/stall/API/
+  registry/close regression: **57 passed in 31.85 seconds**. Added a post-commit crash/retry
+  witness: **9 passed in 23.73 seconds**; fresh QUEUED, interrupted RUNNING and retained
+  SUCCEEDED completions reuse verified output, with one finish event per pack. An injected
+  running cancellation produces no file; API tests cover queued and late cancellation, plus
+  unsupported-kind cleanup and foreign-job isolation. Existing import cancellation/cleanup
+  rollback tests: **2 passed in 24.14 seconds**. Source Mypy, Ruff lint/format, whitespace pass.
+- Logs `/private/tmp/evidence-worker-{db,final,retry,cancel-regression}.log`; all terminal.
+  Close witness retains seeded journal/close-run setup and approved reconciliation omissions;
+  it is not full operational accounting acceptance. Archived waiver-population notes verbatim.
+  Public creation/download and request idempotency, automatic enqueue/NTF-06, other kinds,
+  variance, current release gates and independent accounting approval remain open. No
+  RPS-16/CTL-041 or production-readiness claim. Validated direct main; no deployment.
