@@ -64,7 +64,9 @@ from erev_api.db.tables import (
     judgement_record,
     ledger_chain_head,
     lock_snapshot,
+    notification,
     numbering_series,
+    outbox_message,
     period_lock,
     period_state,
     period_state_transition,
@@ -78,6 +80,7 @@ from erev_api.db.transitions import apply
 from erev_api.domain.close import commands as close_commands
 from erev_api.domain.close import dependencies as close_dependencies
 from erev_api.domain.close import gates, queries
+from erev_api.domain.platform import audit_jobs  # noqa: F401 — register the real audit worker
 from erev_api.domain.reports import (
     evidence,
     evidence_archive,
@@ -114,6 +117,7 @@ from erev_api.registry.resolve import resolve as resolve_setting
 from erev_api.schemas.common import JobOut
 from erev_api.schemas.evidence_packs import ClosePackCreateIn
 from erev_api.schemas.periods import PeriodLockRequestIn, PeriodPermanentLockRequestIn
+from erev_api.uow import UnitOfWork
 from erev_engine.canonical import sha256_hex
 from fastapi import FastAPI
 from sqlalchemy import func, insert, select, update
@@ -1090,6 +1094,12 @@ def _observations(world: CloseWorld, request_id: UUID) -> dict[str, Any]:
             "dataset_files": count(
                 file_object, file_object.c.purpose == FilePurpose.SNAPSHOT_DATASET.value
             ),
+            "jobs": count(job),
+            "packs": count(evidence_pack),
+            "reports": count(report_run),
+            "notifications": count(notification),
+            "outbox_messages": count(outbox_message),
+            "lock_audits": count(audit_event, audit_event.c.action == close_commands.LOCK_ACTION),
             "decisions": count(
                 approval_decision, approval_decision.c.approval_request_id == request_id
             ),
@@ -1173,8 +1183,9 @@ def _writes_seen(session: Session, world: CloseWorld) -> dict[str, Any]:
     }
 
 
+@pytest.mark.parametrize("failure_point", ["control", "lock_audit"])
 def test_failed_lock_callback_rolls_back_everything(
-    world: CloseWorld, clock: FrozenClock, monkeypatch: pytest.MonkeyPatch
+    world: CloseWorld, clock: FrozenClock, monkeypatch: pytest.MonkeyPatch, failure_point: str
 ) -> None:
     """Durable rollback (CLO6-R3 (9); residual (3)): when the ``PERIOD_LOCK`` callback fails after
     every write — the lock row, transition and current lock, the snapshot rows and dataset files,
@@ -1187,8 +1198,9 @@ def test_failed_lock_callback_rolls_back_everything(
     (b) nothing of it persists: no decision, the request PENDING, state / version / history
     unchanged, no lock, no snapshot, no dataset ``file_object`` (store objects, if any, are the
     SCH-14 orphan sweep's), CONTROLLER_CERTIFIED still FAILED, reconciliations unchanged, October
-    still ``future``. The only test double is the recorder; the run-reference enum, the snapshot
-    registry and the engine are the real producers by name."""
+    still ``future``. Failures are injected at the control recorder or final lock audit, after
+    notifications. Jobs, packs, report runs, notifications and outbox messages also roll back.
+    The run-reference enum, snapshot registry and engine are real producers by name."""
     _start_close(world)
     _pass_gates(world)
     request_id, _ = _request_lock(world)
@@ -1198,19 +1210,39 @@ def test_failed_lock_callback_rolls_back_everything(
     assert [row[1:] for row in before["reconciliations"]] == [("REVIEWED", None, None)] * 2
     resolve_recorder = close_dependencies.control_evidence
     reached: list[dict[str, Any]] = []
+    recorded_calls: list[dict[str, Any]] = []
+    real_audit = UnitOfWork.audit
+
+    def failing_audit(uow: UnitOfWork, **kwargs: Any) -> None:
+        real_audit(uow, **kwargs)
+        if (
+            kwargs.get("action") == close_commands.LOCK_ACTION
+            and kwargs.get("object_type") == close_commands.LOCK_OBJECT
+        ):
+            assert (
+                uow.session.scalar(select(func.count()).select_from(notification))
+                > before["notifications"]
+            )
+            reached.append({"writes": _writes_seen(uow.session, world), "call": recorded_calls[-1]})
+            raise RuntimeError(RECORDER_FAILURE)
 
     def failing_recorder() -> close_dependencies.ControlEvidence:
         real = resolve_recorder()  # P4's registry by name; ProducerMissing when absent
 
         def record_execution(uow: Any, **kwargs: Any) -> None:
-            reached.append({"writes": _writes_seen(uow.session, world), "call": dict(kwargs)})
-            raise RuntimeError(RECORDER_FAILURE)
+            recorded_calls.append(dict(kwargs))
+            if failure_point == "control":
+                reached.append({"writes": _writes_seen(uow.session, world), "call": dict(kwargs)})
+                raise RuntimeError(RECORDER_FAILURE)
+            real.record_execution(uow, **kwargs)
 
         return close_dependencies.ControlEvidence(
             run_ref_type=real.run_ref_type, record_execution=record_execution
         )
 
     monkeypatch.setattr(close_dependencies, "control_evidence", failing_recorder)
+    if failure_point == "lock_audit":
+        monkeypatch.setattr(UnitOfWork, "audit", failing_audit)
     decided = approve(world.app, str(request_id), _controller(world.app, clock, world.tenant_id))
     assert decided.status_code == 500, decided.text
     # (a) the failure was injected after every intended write.

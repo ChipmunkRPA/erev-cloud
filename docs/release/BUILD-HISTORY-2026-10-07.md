@@ -2968,3 +2968,28 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   Public creation/download and request idempotency, automatic enqueue/NTF-06, other kinds,
   variance, current release gates and independent accounting approval remain open. No
   RPS-16/CTL-041 or production-readiness claim. Validated direct main; no deployment.
+
+## Atomic close-pack creation command — October 8, 2026 (RPS-16 continued)
+
+- Continued from clean published b06824b; previous turn integrated the first-close worker.
+  Added `evidence_commands.create_close`: checks caller source/export permissions and entity
+  scope, refuses unsupported re-locks, validates approval/journal/reconciliation evidence as
+  the caller, prepares immutable sources with an explicit completed audit verification, then
+  numbers/inserts the pack and queues its worker. One transaction owns five source report
+  runs, six jobs, the binding, numbering and evidence.create audit; caller owns commit.
+- Creation deliberately does not choose a latest digest or create one in a separate transaction.
+  The pending HTTP/idempotency boundary must orchestrate a completed verification; this internal
+  argument is not a new API request field. Other pack kinds and automatic lock enqueue remain
+  open. A returned JobOut describes the queued worker; no new public route was exposed.
+- Initial creation/worker/audit witnesses: **6 passed in 23.46 seconds**. Final close/re-lock,
+  source-binding, storage and audit-classification regression: **55 passed in 27.84 seconds**.
+  Commit produces exactly one pack/five reports/six jobs, all dispatched, with source IDs in
+  the create audit. Rollback restores rows and numbering. Missing or out-of-scope permissions,
+  invalid verification, unsigned reconciliation fixtures and unsupported re-locks refuse.
+  Existing encrypted worker/retry/cancellation checks run through command-created close packs.
+- Logs `/private/tmp/evidence-create-{db,final}.log`; all processes terminal. Source Mypy,
+  Ruff lint/format and whitespace pass. Archived completeness-refusal notes verbatim. The close
+  witness still uses seeded journal/close-run setup and approved omissions, not full accounting
+  acceptance. Public creation/download with request idempotency, verification orchestration,
+  NTF-06/automatic enqueue, other kinds, variance and current release/accounting approvals
+  remain open. RPS-16/CTL-041 unclaimed. Direct main; no deployment or external notifications.

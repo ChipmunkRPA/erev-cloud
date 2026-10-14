@@ -2,6 +2,30 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Lock rollback and independent verification — October 14, 2026
+
+- Broader lock-workflow baseline on 052e907: **39 passed, 2 failed in 145.30 seconds**.
+  Both failures were the queued audit worker in the first-close evidence test: the test module
+  did not import its real handler and previously passed only when another collected test did.
+  Production worker already imports it. Added explicit test registration; no worker replacement.
+- Extended rollback coverage to fail at the final lock audit after real notifications exist,
+  as well as at the earlier control recorder. Both cases compare retained lock/state/snapshot/
+  reconciliation/approval data plus jobs, packs, report runs, notifications, outbox messages and
+  lock audits with their pre-decision values. This guards transaction atomicity; it does not
+  establish automatic pack generation, which remains unimplemented.
+- Corrected worker registration run: **41 passed, 1 failed in 175.04 seconds**. The new fault
+  injector initially matched the earlier period-state audit, which shares the period.lock action.
+  Restricted it to object_type=period_lock so it reaches the final audit after notifications;
+  both rollback cases then **passed in 51.42 seconds**. Other cases were not rerun after this
+  test-only correction. Ruff lint/format and whitespace checks pass. Logs under .run:
+  lock-workflow-baseline.log, lock-workflow-final.log, lock-rollback-corrected.log; all terminal.
+  No deployment, full release-suite or production-readiness claim.
+- Automatic lock generation still needs a durable post-commit preparation job: source validation
+  depends on committed approval/audit/freeze records. A process-only after-commit callback is
+  insufficient; queued preparation must retain stable identity across retries. Availability
+  notification must follow successful pack retention. Re-lock variance and other pack kinds,
+  operational CTL-041 acceptance, current release gates and independent accounting approval remain.
+
 ## Checkout recovery and dependency remediation — October 14, 2026
 
 - Re-established current state from GitHub main 37e21a7: the old temporary checkout had lost
@@ -160,31 +184,6 @@
   request idempotency and verification orchestration, automatic enqueue/NTF-06, other kinds,
   variance and current release/accounting approval remain open. RPS-16/CTL-041 and production
   readiness unclaimed. Direct main; no deployment or external notifications.
-
-## Atomic close-pack creation command — October 8, 2026 (RPS-16 continued)
-
-- Continued from clean published b06824b; previous turn integrated the first-close worker.
-  Added `evidence_commands.create_close`: checks caller source/export permissions and entity
-  scope, refuses unsupported re-locks, validates approval/journal/reconciliation evidence as
-  the caller, prepares immutable sources with an explicit completed audit verification, then
-  numbers/inserts the pack and queues its worker. One transaction owns five source report
-  runs, six jobs, the binding, numbering and evidence.create audit; caller owns commit.
-- Creation deliberately does not choose a latest digest or create one in a separate transaction.
-  The pending HTTP/idempotency boundary must orchestrate a completed verification; this internal
-  argument is not a new API request field. Other pack kinds and automatic lock enqueue remain
-  open. A returned JobOut describes the queued worker; no new public route was exposed.
-- Initial creation/worker/audit witnesses: **6 passed in 23.46 seconds**. Final close/re-lock,
-  source-binding, storage and audit-classification regression: **55 passed in 27.84 seconds**.
-  Commit produces exactly one pack/five reports/six jobs, all dispatched, with source IDs in
-  the create audit. Rollback restores rows and numbering. Missing or out-of-scope permissions,
-  invalid verification, unsigned reconciliation fixtures and unsupported re-locks refuse.
-  Existing encrypted worker/retry/cancellation checks run through command-created close packs.
-- Logs `/private/tmp/evidence-create-{db,final}.log`; all processes terminal. Source Mypy,
-  Ruff lint/format and whitespace pass. Archived completeness-refusal notes verbatim. The close
-  witness still uses seeded journal/close-run setup and approved omissions, not full accounting
-  acceptance. Public creation/download with request idempotency, verification orchestration,
-  NTF-06/automatic enqueue, other kinds, variance and current release/accounting approvals
-  remain open. RPS-16/CTL-041 unclaimed. Direct main; no deployment or external notifications.
 
 ## Outstanding release verification
 
