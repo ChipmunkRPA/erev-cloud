@@ -1,7 +1,8 @@
 """EVIDENCE_PACK worker: retained first-close completion, failure and cancellation.
 
-Other pack kinds and re-lock driver variance remain unavailable. Public creation
-and download commands are separate; no worker capability is a caller permission.
+PREPARE_CLOSE performs the durable post-lock handoff before the bound build. Other pack
+kinds and re-lock driver variance remain unavailable. Public creation and download commands
+are separate; no worker capability is a caller permission.
 """
 
 from __future__ import annotations
@@ -16,6 +17,7 @@ from sqlalchemy import and_, select
 from erev_api.db.session import of_session_tenant
 from erev_api.db.tables import evidence_pack, job
 from erev_api.db.transitions import apply
+from erev_api.domain.reports import evidence_preparation
 from erev_api.domain.reports.evidence_readiness import close_ready
 from erev_api.domain.reports.evidence_sources import checked_row
 from erev_api.domain.reports.evidence_storage import finish_close
@@ -111,6 +113,11 @@ def pack_failed(uow: UnitOfWork, params: Mapping[str, Any], problem: Mapping[str
 
 
 def guard_cancel(uow: UnitOfWork, params: Mapping[str, Any], job_id: UUID) -> None:
+    if params.get("mode") == evidence_preparation.MODE:
+        scope = evidence_preparation.selected_lock(uow.session, job_id, params)
+        if evidence_preparation.retained_pack(uow.session, job_id, scope) is not None:
+            raise Problem("invalid-transition", "The close pack has already been queued.")
+        return
     row = _pack(uow, params, job_id)
     if row is not None and row["status"] == "SUCCEEDED":
         raise Problem("invalid-transition", "The evidence pack has already completed.")
@@ -132,6 +139,8 @@ def pack_cancelled(uow: UnitOfWork, params: Mapping[str, Any], job_id: UUID) -> 
     cancel_guard=guard_cancel,
 )
 def build_pack(jc: JobContext, params: Mapping[str, Any]) -> JobOutcome:
+    if params.get("mode") == evidence_preparation.MODE:
+        return evidence_preparation.prepare(jc, params)
     if jc.principal.kind != PrincipalKind.SYSTEM:
         raise Problem("forbidden")
     with jc.unit_of_work() as uow:

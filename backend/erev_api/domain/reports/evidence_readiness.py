@@ -15,13 +15,16 @@ from sqlalchemy.orm import Session
 
 from erev_api.db.session import of_session_tenant
 from erev_api.db.tables import evidence_pack, job, report_run
-from erev_api.domain.reports import evidence_verification
+from erev_api.domain.reports import evidence_preparation, evidence_verification
 from erev_api.domain.reports.evidence_sources import QueuedCloseSources, checked_row
 from erev_api.problems import Problem
 
 
 def close_ready(session: Session, job_id: UUID, params: Mapping[str, Any]) -> bool:
-    """Wait only for the exact saved report jobs; terminal/missing sources fail the parent."""
+    """Validate preparation identity, or wait for a build's exact retained source jobs."""
+    if params.get("mode") == evidence_preparation.MODE:
+        evidence_preparation.selected_lock(session, job_id, params)
+        return True
     try:
         pack_id = UUID(str(params["evidence_pack_id"]))
     except (KeyError, ValueError, TypeError) as error:

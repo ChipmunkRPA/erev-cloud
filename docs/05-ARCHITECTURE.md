@@ -1077,6 +1077,19 @@ cleanup; a malformed foreign job cannot stop another pack. Worker source-reader 
 are internal and restricted to the retained entity; public creation/download still must authorize
 the actual caller. This is first-close worker support, not public API or automatic generation.
 
+October 14, 2026 automatic first-close preparation: a successful LOCK transaction defers an
+`EVIDENCE_PACK` job with `{mode: "PREPARE_CLOSE", period_lock_id}` and its `period_state` subject.
+The normal after-commit dispatch and stranded-job recovery apply. The preparation reader validates
+that persisted job/lock/transition association before restricting SYSTEM capabilities to the lock's
+entity. It creates the pack, dedicated audit verification and supporting reports in one transaction,
+under the preparation job row lock. The build job retains `parent_job_id` pointing to preparation;
+a retry after commit reuses that exact child pack and refuses ambiguous or inconsistent results.
+Preparation success means the pack is queued, not that its archive is ready. Cancellation before
+creation produces no child pack; cancellation after creation is refused at the preparation job
+(the build job has its own cancellation lifecycle). Existing lock notification copy continues to
+promise stored snapshots only. Availability notification, re-lock variance and other pack kinds
+remain incomplete; a re-lock preparation fails explicitly at the existing variance prerequisite.
+
 Execution profiles (E-14):
 
 | Job kind | Queue | Retry | Lock (`queueing_lock` or `lock`) | Statement timeout |

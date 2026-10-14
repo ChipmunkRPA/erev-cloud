@@ -2,6 +2,29 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Automatic first-close preparation — October 14, 2026 (RPS-16 continued)
+
+- From clean ae545bc, lock approval now defers EVIDENCE_PACK/PREPARE_CLOSE in its transaction.
+  Preparation reads committed approval/freeze/audit sources, validates the job/lock/period-state
+  association and grants only the selected entity's internal source capabilities. It creates
+  one bound pack and seven source/build jobs. The build's immutable parent_job_id retains its
+  preparation association; the preparation row lock serializes creation and crash retry reuses
+  the exact saved pack. No source rebinding, migration or public request change.
+- Initial actual-worker/crash/lock-rollback tests: **3 passed in 56.25 seconds**. A simulated
+  post-commit crash retained one pack, one evidence.create event and the same seven jobs; real
+  audit/report/build workers completed its 36-file archive. Lock rollback leaves no preparation
+  job. Expanded tests add invalid selectors/job associations and cancellation before creation.
+- Preparation success only means queued; cancellation after creation is refused there while the
+  build job keeps its own cancellation lifecycle. Existing lock notices still promise snapshots.
+  Re-lock jobs are queued but fail the explicit variance prerequisite. Completion notification,
+  variance, other kinds, operational CTL-041, release gates and accounting approval remain open.
+- Full lock-module plus retained-binding regression: **81 passed in 183.79 seconds**. This
+  includes automatic preparation crash/reuse, exact source job completion, pre-creation
+  cancellation without children, invalid selector/job rejection and prior manual pack paths.
+  Logs .run/automatic-close-preparation.log and .run/automatic-close-regression.log; all terminal.
+  Five source files pass Mypy; six changed Python files pass Ruff lint/format; whitespace clean.
+  Public schemas unchanged. Direct main, no deployment or production-readiness claim.
+
 ## Lock rollback and independent verification — October 14, 2026
 
 - Broader lock-workflow baseline on 052e907: **39 passed, 2 failed in 145.30 seconds**.
@@ -160,30 +183,6 @@
   /private/tmp/evidence-post-{db,final,retry}.log. Automatic verification orchestration, listing,
   enqueue on lock/NTF-06, other kinds, re-lock variance and current release/accounting approval
   remain open. RPS-16/CTL-041 and production readiness remain unclaimed. Direct main; no deployment.
-
-## Verified close-pack read/download API — October 8, 2026 (RPS-16 continued)
-
-- Continued from clean published caf33b7; previous turn added atomic internal pack creation.
-  Added GET /evidence-packs/{id} and /download for retained CLOSE packs. Header reads expose
-  status, source identities and manifest/hash, with a download href only for SUCCEEDED.
-  Download rechecks current source/export permissions and entity scope, verifies original
-  encrypted file metadata, ZIP/manifest and exact retained-source bytes, then commits one
-  evidence.export audit before returning application/zip with attachment/sandbox/no-store.
-- Split read-only retained verification from completion: a GET never finishes pending work or
-  regenerates damaged output. Pending/failed downloads refuse 409; tampered bytes refuse 422.
-  Source permission denials are audited; generic file routes remain closed. Creation/listing
-  and other pack kinds are not exposed by this change. Updated user guide, data model and limits.
-- Initial real HTTP close/download and route/audit architecture run: **17 passed in 35.57
-  seconds**. Added damaged-byte injection and each source-permission scope refusal; final
-  archive/storage/OpenAPI/route/audit/close regression: **83 passed in 54.79 seconds**. Two
-  downloads return exact saved bytes and two export events; damage creates no export event;
-  role revocation blocks header/download. The seeded-journal/approved-omission caveat remains.
-- Logs `/private/tmp/evidence-download-{db,final}.log`; all processes terminal. Source Mypy,
-  Ruff lint/format, whitespace, regenerated OpenAPI/client types, staleness check and frontend
-  tsc --noEmit pass. Archived initial assembly notes verbatim. Public creation/listing with
-  request idempotency and verification orchestration, automatic enqueue/NTF-06, other kinds,
-  variance and current release/accounting approval remain open. RPS-16/CTL-041 and production
-  readiness unclaimed. Direct main; no deployment or external notifications.
 
 ## Outstanding release verification
 

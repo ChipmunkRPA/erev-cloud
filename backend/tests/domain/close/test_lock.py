@@ -88,6 +88,7 @@ from erev_api.domain.reports import (
     evidence_audit,
     evidence_certification,
     evidence_commands,
+    evidence_preparation,
     evidence_queries,
     evidence_readiness,
     evidence_reconciliation_population,
@@ -2954,3 +2955,122 @@ def test_first_close_archive_verifies_every_component_before_returning_bytes(
         headers=creation_headers,
     )
     assert (denied_replay.status_code, slug(denied_replay)) == (403, "forbidden")
+
+
+@pytest.mark.parametrize("cancel_requested", [False, True])
+def test_lock_queues_close_pack_once_across_preparation_commit_crash(
+    world: CloseWorld, clock: FrozenClock, monkeypatch: pytest.MonkeyPatch, cancel_requested: bool
+) -> None:
+    """Automatic handoff and actual child workers; journal/close-run gate setup remains seeded."""
+    lock, _ = _close_for_population(world, clock, waive_missing=True)
+    clock.set(lock["cutoff_known_at"] + timedelta(seconds=1))
+    with system_session(world) as session:
+        preparation = (
+            session.execute(
+                select(job).where(
+                    job.c.kind == "EVIDENCE_PACK",
+                    job.c.params["mode"].astext == "PREPARE_CLOSE",
+                    job.c.params["period_lock_id"].astext == str(lock["id"]),
+                )
+            )
+            .mappings()
+            .one()
+        )
+        assert preparation["subject_type"] == "period_state"
+        assert preparation["subject_id"] == world.state_id
+        assert preparation["state"] == "QUEUED"
+        assert preparation["procrastinate_job_id"] is not None
+        assert session.scalar(select(func.count()).select_from(evidence_pack)) == 0
+        before_jobs = session.scalar(select(func.count()).select_from(job))
+    params = job_registry.handler_params(preparation["params"])
+    with system_session(world) as session:
+        for invalid in (
+            {**params, "period_lock_id": str(UUID(int=0))},
+            {**params, "entity_code": "OTHER"},
+            {**params, "evidence_pack_id": str(UUID(int=0))},
+        ):
+            with pytest.raises(Problem):
+                evidence_preparation.selected_lock(session, preparation["id"], invalid)
+        with pytest.raises(Problem):
+            evidence_preparation.selected_lock(session, UUID(int=0), params)
+    original = job_registry.HANDLERS[JobKind.EVIDENCE_PACK]
+    if cancel_requested:
+
+        def cancel_before_preparation(jc: JobContext, params: Mapping[str, Any]) -> Any:
+            with world.place.uow() as uow:
+                evidence.guard_cancel(uow, params, jc.job_id)
+                uow.session.execute(
+                    update(job).where(job.c.id == jc.job_id).values(cancel_requested_at=uow.now)
+                )
+                uow.commit()
+            return original.handler(jc, params)
+
+        monkeypatch.setitem(
+            job_registry.HANDLERS,
+            JobKind.EVIDENCE_PACK,
+            replace(original, handler=cancel_before_preparation),
+        )
+        cancelled = run_journal_job(world, preparation["id"], attempts=1)
+        assert cancelled["state"] == "CANCELLED", cancelled
+        with system_session(world) as session:
+            assert session.scalar(select(func.count()).select_from(evidence_pack)) == 0
+            assert session.scalar(select(func.count()).select_from(job)) == before_jobs
+        return
+    interrupted = False
+    first_pack_id: UUID | None = None
+
+    def crash_after_prepare(jc: JobContext, params: Mapping[str, Any]) -> Any:
+        nonlocal interrupted, first_pack_id
+        outcome = original.handler(jc, params)
+        if jc.job_id == preparation["id"] and not interrupted:
+            with system_session(world) as session:
+                first_pack_id = session.execute(select(evidence_pack.c.id)).scalar_one()
+                assert session.scalar(select(func.count()).select_from(job)) == before_jobs + 7
+            with jc.unit_of_work() as uow, pytest.raises(Problem, match="already been queued"):
+                evidence.guard_cancel(uow, params, jc.job_id)
+            interrupted = True
+            raise RuntimeError("Simulated process loss after automatic preparation commit")
+        return outcome
+
+    monkeypatch.setitem(
+        job_registry.HANDLERS,
+        JobKind.EVIDENCE_PACK,
+        replace(original, handler=crash_after_prepare),
+    )
+    result = run_journal_job(world, preparation["id"], attempts=2)
+    assert interrupted
+    assert result["state"] == "SUCCEEDED", result
+    assert result["result"]["href"] == f"/api/v1/evidence-packs/{first_pack_id}"
+    with system_session(world) as session:
+        pack = session.execute(select(evidence_pack)).mappings().one()
+        assert pack["id"] == first_pack_id
+        bound = evidence_sources.checked_row(pack)
+        assert isinstance(bound, evidence_sources.QueuedCloseSources)
+        assert bound.request.period_lock_id == lock["id"]
+        assert session.scalar(select(func.count()).select_from(job)) == before_jobs + 7
+        assert (
+            session.scalar(select(job.c.parent_job_id).where(job.c.id == pack["job_id"]))
+            == preparation["id"]
+        )
+        assert (
+            session.scalar(
+                select(func.count())
+                .select_from(audit_event)
+                .where(
+                    audit_event.c.action == "evidence.create",
+                    audit_event.c.object_id == first_pack_id,
+                )
+            )
+            == 1
+        )
+    children = [bound.audit_verification_job_id, *[r.job_id for r in bound.supporting_reports]]
+    for child_id in children:
+        child = run_journal_job(world, child_id, attempts=1)
+        assert child["state"] == "SUCCEEDED", child
+    finished = run_journal_job(world, pack["job_id"], attempts=1)
+    assert finished["state"] == "SUCCEEDED", finished
+    assert finished["result"]["counts"] == {"packs": 1, "files": 36}
+    with system_session(world) as session:
+        retained = session.execute(select(evidence_pack)).mappings().one()
+        assert retained["status"] == "SUCCEEDED"
+        assert retained["file_id"] is not None

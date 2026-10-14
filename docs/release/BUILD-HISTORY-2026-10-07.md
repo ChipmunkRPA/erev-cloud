@@ -2993,3 +2993,27 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   acceptance. Public creation/download with request idempotency, verification orchestration,
   NTF-06/automatic enqueue, other kinds, variance and current release/accounting approvals
   remain open. RPS-16/CTL-041 unclaimed. Direct main; no deployment or external notifications.
+
+## Verified close-pack read/download API — October 8, 2026 (RPS-16 continued)
+
+- Continued from clean published caf33b7; previous turn added atomic internal pack creation.
+  Added GET /evidence-packs/{id} and /download for retained CLOSE packs. Header reads expose
+  status, source identities and manifest/hash, with a download href only for SUCCEEDED.
+  Download rechecks current source/export permissions and entity scope, verifies original
+  encrypted file metadata, ZIP/manifest and exact retained-source bytes, then commits one
+  evidence.export audit before returning application/zip with attachment/sandbox/no-store.
+- Split read-only retained verification from completion: a GET never finishes pending work or
+  regenerates damaged output. Pending/failed downloads refuse 409; tampered bytes refuse 422.
+  Source permission denials are audited; generic file routes remain closed. Creation/listing
+  and other pack kinds are not exposed by this change. Updated user guide, data model and limits.
+- Initial real HTTP close/download and route/audit architecture run: **17 passed in 35.57
+  seconds**. Added damaged-byte injection and each source-permission scope refusal; final
+  archive/storage/OpenAPI/route/audit/close regression: **83 passed in 54.79 seconds**. Two
+  downloads return exact saved bytes and two export events; damage creates no export event;
+  role revocation blocks header/download. The seeded-journal/approved-omission caveat remains.
+- Logs `/private/tmp/evidence-download-{db,final}.log`; all processes terminal. Source Mypy,
+  Ruff lint/format, whitespace, regenerated OpenAPI/client types, staleness check and frontend
+  tsc --noEmit pass. Archived initial assembly notes verbatim. Public creation/listing with
+  request idempotency and verification orchestration, automatic enqueue/NTF-06, other kinds,
+  variance and current release/accounting approval remain open. RPS-16/CTL-041 and production
+  readiness unclaimed. Direct main; no deployment or external notifications.

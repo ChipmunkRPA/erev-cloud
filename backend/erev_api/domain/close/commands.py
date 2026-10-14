@@ -80,6 +80,7 @@ from erev_api.enums import (
     ChecklistGateKind,
     ChecklistStatus,
     ControlResult,
+    JobKind,
     LockKind,
     NotificationKind,
     PeriodState,
@@ -2407,6 +2408,14 @@ def _period_lock_approved(uow: UnitOfWork, subject_id: UUID, approval_request_id
         )
         # again, after every lock write
         freeze.assert_covered(principal.tenant_id, scope, cutoff, at_freeze, reader=reader.session)
+    # Persist the handoff with the lock. Source binding is prepared only after this
+    # transaction's approval, audit and freeze records have committed.
+    uow.defer(
+        JobKind.EVIDENCE_PACK,
+        {"mode": "PREPARE_CLOSE", "period_lock_id": str(lock_id)},
+        subject_type="period_state",
+        subject_id=subject_id,
+    )
     notify(
         uow,
         recipient_membership_ids=role_holders(

@@ -735,3 +735,22 @@ No governed document is changed for release 1.0 by this file. Where a sentence o
 | `docs/01-DECISIONS.md`, D-25a; `docs/GLOSSARY.md`, "FX layer" | "An approved contract-level override may treat refundable advance consideration as monetary, remeasured at the closing rate, in the ASC606 book." | No policy override can be created, so the exception is not delivered: POL-163 takes the value set for the legal entity. `docs/03-REQUIREMENTS.md` REQ-FX-002 says so; these two sentences were left as they stand. | B1-1 |
 | `docs/design/SCREENS.md`, §15.7 | The delegate choices are read from `GET /approval-delegations/delegates?q=`, "so "New delegation" opens for every member who sees the screen". | The read is not built, and the paragraph's interim state stands: the choices come from the member directory, which needs `user.manage`. | B6-8 |
 | `docs/design/SCREENS.md`, SCR-IA-01, the rail's row "Approvals" | The destination's badge is the "count of `PENDING` requests where `can_decide = true`". | The rail takes the count and no screen gives it one, so no badge shows; the same count stands beside the tab "Waiting for me". | read on main at `b8f4b9e29` |
+
+
+## October 14, 2026 — automatic first-close preparation
+
+Lock approval now queues a durable EVIDENCE_PACK/PREPARE_CLOSE job in the lock transaction.
+After commit it prepares the retained CLOSE pack and seven source/build jobs atomically. The
+build job's parent_job_id associates it with preparation; a post-commit crash reuses the same
+pack without creating another set of source jobs. SYSTEM source capabilities are limited to the
+validated lock entity. Cancellation before preparation creates no pack; after creation, the
+preparation job cannot be cancelled and the pack build has its own cancellation lifecycle.
+Preparation success is not archive availability. Existing lock notices promise stored snapshots;
+NTF-06 availability notification is still pending. Re-lock preparation refuses without the
+variance report. Other pack kinds, report-catalogue PACK builders and operational CTL-041
+acceptance remain incomplete. Local tests use seeded journal/close-run gates and do not prove
+operational accounting acceptance. No deployment or independent accounting approval is claimed.
+
+Validation for this change: lock-module and retained-binding regression **81 passed in 183.79
+seconds**; source Mypy and changed-file Ruff lint/format pass. This is scoped evidence, not a
+current full backend, browser, release, or accounting acceptance result.

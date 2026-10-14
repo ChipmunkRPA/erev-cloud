@@ -1,7 +1,8 @@
 """Transactional creation of retained first-close packs (RPS-16).
 
-The API/idempotency boundary owns commit. Creation queues a dedicated audit
-verification unless its caller supplies an explicit completed verification ID. It never verifies
+The API/idempotency boundary or automatic preparation worker owns commit. Creation queues a
+dedicated audit verification unless its caller supplies an explicit completed verification ID.
+It never verifies
 in a separate transaction; all report jobs, numbering and pack state roll back
 with the caller. Other pack kinds and re-lock variance remain pending.
 """
@@ -26,7 +27,7 @@ from erev_api.domain.reports import (
     evidence_selection,
     evidence_sources,
 )
-from erev_api.enums import JobKind
+from erev_api.enums import JobKind, PrincipalKind
 from erev_api.numbering import next_number
 from erev_api.problems import Problem
 from erev_api.schemas.common import JobOut
@@ -39,9 +40,15 @@ PERMISSIONS = frozenset(
 
 
 def create_close(
-    uow: UnitOfWork, request: ClosePackCreateIn, *, verification_id: UUID | None = None
+    uow: UnitOfWork,
+    request: ClosePackCreateIn,
+    *,
+    verification_id: UUID | None = None,
+    parent_job_id: UUID | None = None,
 ) -> tuple[UUID, JobOut]:
     """Create the bound pack and its source jobs, atomically in the caller's transaction."""
+    if parent_job_id is not None and uow.principal.kind != PrincipalKind.SYSTEM:
+        raise Problem("forbidden")
     if not PERMISSIONS <= uow.principal.permissions:
         raise Problem("forbidden")
     selection = evidence_selection.resolve(uow, request)
@@ -68,6 +75,7 @@ def create_close(
     parent = uow.defer(
         JobKind.EVIDENCE_PACK,
         {"evidence_pack_id": str(pack_id)},
+        parent_job_id=parent_job_id,
         subject_type="evidence_pack",
         subject_id=pack_id,
     )
