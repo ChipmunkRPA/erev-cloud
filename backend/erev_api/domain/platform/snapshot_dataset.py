@@ -380,6 +380,7 @@ RULES: Final[Mapping[str, TableRule]] = MappingProxyType(
         "contract_event": _copied(_K.FACT, "streams with recorded_at ≤ known_at (SBX-03)"),
         "contract_hold": _copied(_K.FACT, "holds applied to contracts (ruling Q-1: COPIED)"),
         "estimate": _copied(_K.FACT, "estimates (SBX-03)"),
+        "material_right": _copied(_K.FACT, "material-right option terms (T-CON-14)"),
         "estimate_version": _copied(_K.FACT, "estimate versions (SBX-03)"),
         "policy_override": _copied(_K.FACT, "policy overrides (SBX-03)"),
         "judgement_record": _copied(_K.FACT, "judgement records (SBX-03)"),
@@ -524,7 +525,6 @@ def _pending(
 PENDING: Final[Mapping[str, PendingTable]] = MappingProxyType(
     dict(
         (
-            _pending("material_right", _C.COPIED, _K.FACT, "CTR", "option terms (T-CON-14)"),
             _pending(
                 "contract_cost_asset",
                 _C.COPIED,
@@ -656,6 +656,7 @@ LOAD_ORDER: Final[tuple[str, ...]] = (
     "contract_hold",
     "estimate",
     "estimate_version",
+    "material_right",
     "policy_override",
     "manual_adjustment",
     "migration_batch",
@@ -700,6 +701,7 @@ ALIASES: Final[Mapping[str, str]] = MappingProxyType(
         "reconciliation_report_run_id": "report_run",  # T-MIG-01
         "released_event_id": "contract_event",
         "supersedes_event_id": "contract_event",
+        "likelihood_estimate_id": "estimate",
         "parent_obligation_id": "obligation",
         "regrouped_from_obligation_id": "obligation",
         "routing_rule_set_version_id": "rule_set_version",
@@ -972,6 +974,7 @@ CUTOFF_RULES: Final[Mapping[str, CutoffRule]] = MappingProxyType(
         "contract_source_link": _CREATED,
         "contract_hold": CutoffRule(_TS, "applied_at"),
         "estimate": _CREATED,
+        "material_right": _CREATED,
         "estimate_version": _CREATED,
         "judgement_record": _CREATED,
         "policy_override": _CREATED,

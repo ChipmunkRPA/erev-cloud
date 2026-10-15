@@ -3366,3 +3366,35 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   ListPage types. All processes terminal. No deployment or new PR; direct main.
 - RPS-20 stays incomplete: re-lock variance, other pack kinds/forms, remaining presentation
   and real browser/accessibility acceptance. Independent accounting sign-off remains absent.
+
+## First-close contents checklist — October 14, 2026 (RPS-20 continued)
+
+- Detail now lists required sections and exact missing payload filenames, identifies the
+  retained lock, sorts file paths and provides named keyboard-accessible file/manifest hash
+  copy. Manifest presence does not claim byte verification; download verification is unchanged.
+  The separately hashed manifest is correctly outside its own payload list.
+- Direct comparison with the backend assembler confirmed all 36 required payload paths match.
+  Tests cover complete/missing sections, a missing supporting source, manifest treatment,
+  retained lock and exact clipboard bytes. Focused: 16 passed (1.68s). Full frontend:
+  195 files / 2,093 tests passed (70.48s); TypeScript, full ESLint and production build passed.
+  Existing build chunk-size and jsdom navigation warnings remain. All checks are terminal.
+- No backend accounting behavior changed, no database tests rerun, no deployment. RPS-20
+  remains open for other kinds, re-lock variance, remaining presentation and real browser
+  acceptance. Independent accounting approval and broader release gates remain outstanding.
+
+## Evidence metadata read audit — October 14, 2026 (RPS-16 continued)
+
+- Successful register/detail HTTP reads now commit evidence.read before returning no-store
+  responses. Register facts contain only authorized returned-page IDs (the existing AUD-FACT
+  digest rule bounds large pages), including empty pages. Detail facts bind status, retained
+  lock and manifest hash. Internal header reads during download add no duplicate read event.
+- Regression verifies durable actor/object metadata, exact cursor-page populations, empty
+  pages, invalid filters/missing records, revoked access, unchanged export counts, and failure
+  after audit append rolling back both the event and successful metadata delivery.
+- Final evidence/close, audit-writer and complete MFA regression: 37 passed in 170.41s.
+  Ruff formatting/lint, source mypy and OpenAPI compatibility passed. Earlier test iterations
+  corrected actor identity/count expectations and fault injection before the final passing run.
+  All processes are terminal. Frontend unchanged; its earlier results remain historical.
+- Archived the oldest publication notebook section verbatim to the build history to preserve
+  the 20 KB limit. No deployment or accounting-calculation change. Other pack kinds, re-lock
+  variance, browser/release gates and independent accounting approval remain outstanding.

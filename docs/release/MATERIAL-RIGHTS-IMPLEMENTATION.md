@@ -1,6 +1,6 @@
 # Material-right product implementation gap
 
-Verified against main 54354e5 on October 14, 2026. This is an implementation worklist,
+Initially traced against main 54354e5 on October 14, 2026; persistence progress updated below. This is an implementation worklist,
 not evidence of completed product support or accounting acceptance.
 
 ## Current evidence
@@ -8,7 +8,9 @@ not evidence of completed product support or accounting acceptance.
 - `backend/erev_api/domain/contracts/bundles.py::_header` unconditionally sets
   `ContractInput.material_rights=()`. Native computations therefore never receive option
   terms, including the renewal option needed to reach POL-029.
-- T-CON-14 is specified in `docs/04-DATA_MODEL.md` but has no SQLAlchemy table or migration.
+- Revision 0145 now implements T-CON-14, its enum, immutable-row guards, ownership/currency
+  constraints and tenant RLS. Snapshot inventory includes it and remaps its three references.
+  There is still no native command that writes it.
 - `domain/contracts/obligations.py::material_right_out` checks obligation visibility and
   then always raises not-found. `queries.py` also emits `material_right=None`.
 - `events/payloads.py::ContractLineV1` has no option-terms member. There is no native
@@ -63,3 +65,19 @@ not evidence of completed product support or accounting acceptance.
 
 Independent accounting review and the existing release gates remain necessary.
 Nothing in this worklist authorizes deployment or external outreach.
+
+
+## Persistence verification, October 14
+
+77 focused tests passed (9.99s): database guards, tenant isolation, catalogue lint,
+ORM/migration/data-model agreement and snapshot inventory/serialization checks.
+The final parent-currency guard and migration round-trip tests passed (2 tests, 7.59s).
+Full production typecheck passed (878 source files plus frontend); focused test/migration
+Mypy and Ruff passed. Logs: `.run/material-right-schema-currency-fk.log`,
+`.run/material-right-parent-guard.log`, `.run/material-right-types.log` and
+`.run/material-right-focused-types.log`.
+
+Earlier runs exposed missing snapshot pending/reference registrations and stale inventory
+counts; corrected before publication. A broader row-builder completeness check also found
+an existing missing `period_reopen_basis` builder. That separate failure is not resolved here.
+Populated material-right snapshot/restore and API lifecycle acceptance are still required.

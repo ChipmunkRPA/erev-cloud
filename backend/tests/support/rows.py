@@ -2752,6 +2752,22 @@ def estimate_row(ctx: RowContext, session: Session) -> dict[str, Any]:
     return estimate_values(ctx.tenant_id, contract_id=rows.contract_id)
 
 
+def material_right_row(ctx: RowContext, session: Session) -> dict[str, Any]:
+    """T-CON-14: entered-amount option of a probe obligation."""
+    parent = obligation_row(ctx, session)
+    _insert_visible(session, obligation, parent)
+    return {
+        "tenant_id": ctx.tenant_id,
+        "id": new_id(),
+        "contract_id": parent["contract_id"],
+        "obligation_id": parent["id"],
+        "option_type": "RENEWAL_OPTION",
+        "currency": "USD",
+        "ssp_method": "ENTERED_AMOUNT",
+        **_CREATED,
+    }
+
+
 def estimate_version_values(tenant_id: UUID, *, estimate_id: UUID, **extra: Any) -> dict[str, Any]:
     """T-CON-13: a DRAFT version 1 of an element (CTR-12)."""
     return {
@@ -4870,6 +4886,7 @@ ROW_BUILDERS: Final[Mapping[str, RowBuilder]] = MappingProxyType(
         "dimension_value": dimension_value_row,
         "disclosure_snapshot": disclosure_snapshot_row,
         "estimate": estimate_row,
+        "material_right": material_right_row,
         "estimate_version": estimate_version_row,
         "entity_book": entity_book_row,
         "event_submission": event_submission_row,

@@ -1005,7 +1005,7 @@ Event payloads are versioned Pydantic models `erev_api.events.payloads.<PascalCa
 | E-89 | `principal_agent` | `PRINCIPAL`, `AGENT`, `NOT_ASSESSED` | Research 04 §2.5. |
 | E-90 | `licence_nature` | `FUNCTIONAL`, `SYMBOLIC`, `NOT_APPLICABLE` | Research 04 §2.6. |
 | E-91 | `warranty_type` | `ASSURANCE`, `SERVICE`, `NONE` | Research 04 §2.4. |
-| E-92 | `option_type` | `DISCOUNT_VOUCHER`, `LOYALTY_POINTS`, `RENEWAL_OPTION`, `TIERED_DISCOUNT`, `OTHER` | Research 04 §2.3. PostgreSQL type pending (owed by CTR-14, `NNNN_ctr_14_costs_material_rights_loss_fx.py`; D-98 66, rev 1.29). |
+| E-92 | `option_type` | `DISCOUNT_VOUCHER`, `LOYALTY_POINTS`, `RENEWAL_OPTION`, `TIERED_DISCOUNT`, `OTHER` | PostgreSQL enum created by revision 0145. |
 | E-93 | `manual_adjustment_kind` | `SCHEDULE_OVERRIDE`, `MANUAL_RELEASE`, `MANUAL_DEFER`, `MANUAL_JOURNAL`, `ACCOUNT_RECLASS` | Research 07 §5.3. |
 | E-94 | `manual_adjustment_status` | `DRAFT`, `SUBMITTED`, `APPROVED`, `POSTED`, `REJECTED`, `VOIDED` | PRD SM-10. DB-03 pairs (rev 1.120; supervisor ruling R-51 (b)): DRAFT → SUBMITTED, SUBMITTED → APPROVED, APPROVED → POSTED, SUBMITTED → REJECTED, SUBMITTED → DRAFT, REJECTED → DRAFT, DRAFT → VOIDED, POSTED → VOIDED (T-SL-05 `status`). |
 | E-95 | `combination_status` | `PROPOSED`, `SUBMITTED`, `APPROVED`, `APPLIED`, `REJECTED`, `VOIDED` | Research 04 §1.3. `VOIDED` since rev 1.289 (revision 0126): a proposal discarded before its submission, `PROPOSED` → `VOIDED` by `POST /combination-groups/{id}/discard`; no pair leaves it. |
@@ -3940,6 +3940,18 @@ A later amendment that adds a property adds it as optional first, so approved ve
 | SC-C | | | | |
 
 Keys: `PRIMARY KEY (tenant_id, id)`; `ux_material_right__obligation (tenant_id, obligation_id)`.
+
+Revision 0145 implements this table, with `ix_material_right__contract (tenant_id, contract_id)`.
+Discount-times-likelihood terms require a ratio, expected purchase amount and likelihood estimate.
+The ratio is between 0 and 1; the purchase amount is nonnegative. Tenant-scoped foreign keys bind
+contract, obligation and estimate. The ownership trigger requires the obligation and exercise-
+likelihood estimate to belong to the stated contract (and, when the estimate names an obligation,
+to this obligation). Currency must match the contract; a composite foreign key also prevents a
+later parent-currency change from invalidating the terms. `ux_contract__material_right_currency`
+supports that foreign key. IM-A guards and grants prohibit update, delete and truncate.
+Native term entry, lifecycle commands and API reads are still unfinished; table creation alone
+is not product support.
+
 
 ### T-CON-15 `contract_cost_asset`
 

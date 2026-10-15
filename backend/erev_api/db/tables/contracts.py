@@ -51,6 +51,7 @@ from erev_api.enums import (
     ModificationStatus,
     ModificationTemplateMode,
     ModificationTreatment,
+    OptionType,
 )
 
 # Created by revision 0038 (CTR-1): E-03, E-17, E-26, E-95.
@@ -401,4 +402,32 @@ estimate_version: Final = Table(
     # the INSERT only (no column UPDATE grant).
     Column("modification_id", Uuid(), nullable=True),
     *_sc_c_sc_m(),
+)
+
+
+# T-CON-14 (revision 0145): immutable option terms, scoped by tenant.
+material_right: Final = Table(
+    "material_right",
+    metadata,
+    Column("tenant_id", Uuid(), primary_key=True),
+    Column("id", Uuid(), primary_key=True),
+    Column("obligation_id", Uuid(), nullable=False),
+    Column("contract_id", Uuid(), nullable=False),
+    Column("option_type", _enum(OptionType, "option_type"), nullable=False),
+    Column("incremental_discount_ratio", ExactType(), nullable=True),
+    Column(
+        "is_discount_available_without_contract",
+        Boolean(),
+        nullable=False,
+        server_default=text("false"),
+    ),
+    Column("expected_purchase_amount", MoneyType(), nullable=True),
+    Column("currency", CHAR(3), nullable=False),
+    Column("ssp_method", Text(), nullable=False),
+    Column("expiry_date", Date(), nullable=True),
+    Column("likelihood_estimate_id", Uuid(), nullable=True),
+    Column(
+        "is_legacy_quantity_ssp_dollars", Boolean(), nullable=False, server_default=text("false")
+    ),
+    *_sc_c(),
 )

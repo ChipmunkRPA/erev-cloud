@@ -159,7 +159,6 @@ UNBUILT_04_TABLES: frozenset[str] = frozenset(
         "deal_preview",
         "forecast_event_set",
         "forecast_run",
-        "material_right",
         # "modification" left this set with 0068_ctr_17_modifications (CTR-17, D-98 140): 17 → 16
         # pinned names; the table is now compared (ORM / migration / 04) like every built table.
         # "integration_connection", "sync_run" and "external_id_map" left this set with
