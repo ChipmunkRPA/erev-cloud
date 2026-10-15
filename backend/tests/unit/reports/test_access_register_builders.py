@@ -1176,8 +1176,9 @@ def test_the_catalogue_a_caller_reads() -> None:
     def listed(principal: Any) -> list[str]:
         return [code for code in codes if framework.definition_listed(principal, code)]
 
-    assert listed(_role("viewer")) == listed(_role("auditor")) == codes
-    assert sorted(listed(_role("tenant_admin"))) == sorted(THREE)
+    assert listed(_role("viewer")) == codes  # includes ai.use
+    assert listed(_role("auditor")) == [code for code in codes if code != "ai_call_log_export"]
+    assert sorted(listed(_role("tenant_admin"))) == sorted((*THREE, "ai_call_log_export"))
     assert listed(_role("service_account")) == []
 
 

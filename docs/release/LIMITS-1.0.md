@@ -76,13 +76,15 @@ it. The REPORT_RUN handler reconstructs the human, checks before transitions/com
 builds under that identity, and checks again before storing bytes. Both formats pass real queued
 build tests; OWN stays OWN after promotion and permission loss prevents stored outputs. Call
 exports omit accounting ledger-head metadata. Source capture is explicitly OPEN/live.
-This does not yet expose export: the public catalogue definition is deliberately not seeded.
+Migration 0158 registers the public CSV/XLSX definition with an empty, closed parameter schema.
+It captures current authorized call evidence; reruns evaluate the live population again.
+Downgrade refuses removal while export runs reference the definition.
 Report API admission now uses ai.use or workspace-wide settings.manage plus report.export for
 this code, including source MFA, without granting accounting-report access. An optional command
 replay guard authorizes the actual retained reply after lookup; protected exports refresh session
 and grants after that potentially waiting lookup. OWN replay remains OWN after promotion, while
-TENANT replay refuses demotion. Public definition registration and the UI download menu remain.
-CSV/XLSX export, linked-proposal navigation, hash-copy controls, standard demo/J-19 and full
+TENANT replay refuses demotion. The UI download menu remains pending.
+Linked-proposal navigation, hash-copy controls, standard demo/J-19 and full
 audit-lifecycle verification remain open.
 
 Migrations 0147–0150 retain append-only call logs, immutable proposal content with guarded

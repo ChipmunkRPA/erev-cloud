@@ -157,3 +157,35 @@ def test_retained_exports_are_private_and_recheck_current_grants(
         assert session.scalar(
             select(report_run.c.ai_export_access).where(report_run.c.id == UUID(str(own_id)))
         ) == own.model_dump(mode="json")
+
+    # Revisions commit separately: removing the unused 0158 definition succeeded before
+    # 0157 refused loss of the inventory bindings. Restore it for the direct FK guard probe.
+    command.upgrade(alembic_config(), "head")
+    # Unlike the inventory fixtures above, this row references the public export definition.
+    with tenant_session(principal.db_context) as session:
+        exported = report_run_row(RowContext(owner.tenant_id, owner.user_id), session)
+        exported.update(
+            report_code="ai_call_log_export",
+            report_version=1,
+            created_by=owner.user_id,
+            created_by_kind="USER",
+            ai_export_access=own.model_dump(mode="json"),
+        )
+        session.execute(insert(report_run).values(**exported))
+    with pytest.raises(exc.IntegrityError, match="fk_report_run__report_definition"):
+        command.downgrade(alembic_config(), "0157")
+    with committed_db.owner_engine.connect() as connection:
+        assert connection.scalar(text("SELECT version_num FROM erev.alembic_version")) == "0158"
+        assert (
+            connection.scalar(
+                text(
+                    "SELECT tgenabled FROM pg_trigger "
+                    "WHERE tgname = 'tg_report_definition__immutable'"
+                )
+            )
+            == "O"
+        )
+    with tenant_session(principal.db_context, read_only=True) as session:
+        assert session.scalar(
+            select(report_run.c.ai_export_access).where(report_run.c.id == exported["id"])
+        ) == own.model_dump(mode="json")

@@ -5,8 +5,10 @@ from __future__ import annotations
 
 import importlib.util
 import re
+from dataclasses import replace
 from hashlib import sha256
 
+import pytest
 from erev_api.domain.reports.catalogue import (
     DEFINITIONS,
     DEFINITIONS_BY_CODE,
@@ -60,16 +62,16 @@ def _screens_index() -> dict[str, tuple[str, str, tuple[str, ...]]]:
 
 
 def test_seeded_codes() -> None:
-    # 04 T-RPT-01 and PHASES §5.4 (RPS-1): 56 current version-1 definitions in the seeded order,
-    # 52 RPS, 2 LMG and 2 FCS codes; names, kinds and formats of SCREENS_B §5.6; tie-outs from table
+    # 04 T-RPT-01 and PHASES §5.4 (RPS-1): 57 current version-1 definitions in the seeded order,
+    # 53 RPS, 2 LMG and 2 FCS codes; names, kinds and formats of SCREENS_B §5.6; tie-outs from table
     # 10-T only.
     seeded = _seeded_codes()
-    assert len(seeded) == 56
+    assert len(seeded) == 57
     current = [definition for definition in DEFINITIONS if definition.is_current]
     assert [definition.code for definition in current] == seeded
     assert all(definition.version == 1 for definition in DEFINITIONS)
     phases = _phase_codes()
-    assert {phase: len(codes) for phase, codes in phases.items()} == {"RPS": 52, "LMG": 2, "FCS": 2}
+    assert {phase: len(codes) for phase, codes in phases.items()} == {"RPS": 53, "LMG": 2, "FCS": 2}
     assert sorted(code for codes in phases.values() for code in codes) == sorted(seeded)
 
     pack = DEFINITIONS_BY_CODE["disclosure_pack"]
@@ -103,11 +105,15 @@ def test_parameter_schemas_closed() -> None:
         assert schema["type"] == "object", definition.code
         assert schema["additionalProperties"] is False, definition.code
         properties = schema["properties"]
-        assert {KNOWN_AT_KEY, ENTITY_SCOPE_KEY, KNOWN_AT_BASIS_KEY} <= set(properties), (
-            definition.code
-        )
-        basis = properties[KNOWN_AT_BASIS_KEY]
-        assert basis["enum"] == [RECORD_BASIS, HISTORICAL_BASIS], definition.code
+        if definition.code == "ai_call_log_export":
+            assert properties == {}
+            assert definition.output_formats == ("CSV", "XLSX")
+        else:
+            assert {KNOWN_AT_KEY, ENTITY_SCOPE_KEY, KNOWN_AT_BASIS_KEY} <= set(properties), (
+                definition.code
+            )
+            basis = properties[KNOWN_AT_BASIS_KEY]
+            assert basis["enum"] == [RECORD_BASIS, HISTORICAL_BASIS], definition.code
         declared = dict.fromkeys(properties)
         assert unknown_parameter_keys(definition, declared) == (), definition.code
         assert unknown_parameter_keys(definition, {**declared, "not_a_parameter": 1}) == (
@@ -161,3 +167,18 @@ def test_historical_revision_seed_is_frozen() -> None:
     assert module.OUTPUT_FORMATS == OUTPUT_FORMATS
     assert module.REPORT_KINDS == REPORT_KINDS
     assert len(seed_statement().splitlines()) == 1 + len(DEFINITIONS)
+
+
+def test_live_call_export_rejects_misleading_filter_schemas() -> None:
+    definition = DEFINITIONS_BY_CODE["ai_call_log_export"]
+    for key in ("entity_codes", "known_at", "actor_id", "scope", "period_lock_id"):
+        assert unknown_parameter_keys(definition, {key: "ignored"}) == (key,)
+        with pytest.raises(ValueError, match="accept no caller-selected filters"):
+            replace(
+                definition,
+                parameters_schema={
+                    "type": "object",
+                    "additionalProperties": False,
+                    "properties": {key: {"type": "string"}},
+                },
+            )

@@ -77,7 +77,7 @@ def test_report_definition_read_only(committed_db: TestDatabase, keyring: KeyRin
     current = report_definition.c.is_current
     with tenant_session(context) as session:
         codes = list(session.scalars(select(report_definition.c.code).where(current)))
-        assert len(codes) == 56
+        assert len(codes) == 57
         assert {"revenue_waterfall", "disclosure_pack", "forecast_outputs"} <= set(codes)
         tenant_defined = {
             "code": "tenant_report",
@@ -103,7 +103,7 @@ def test_report_definition_read_only(committed_db: TestDatabase, keyring: KeyRin
         assert name == "Revenue waterfall"
     with identity_session(request_id="tests-rps-1-catalogue") as session:
         total = session.execute(select(func.count()).select_from(report_definition)).scalar_one()
-        assert total == 56
+        assert total == 57
 
     with committed_db.owner_engine.connect() as connection:
         connection.begin()

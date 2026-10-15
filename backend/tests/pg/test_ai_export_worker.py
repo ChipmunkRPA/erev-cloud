@@ -35,41 +35,17 @@ from tests.domain.reports.test_framework import runtime as runtime  # noqa: F401
 pytestmark = pytest.mark.pg
 
 
-def _definition(database: TestDatabase) -> None:
-    # Test-only registration. The public catalogue remains disabled until request/replay
-    # authorization and its screen menu are integrated. Exercise the real report pipeline.
-    with database.owner_engine.begin() as connection:
-        connection.execute(
-            insert(report_definition).values(
-                code=CODE,
-                version=1,
-                name="AI call log export",
-                kind="EXTRACT",
-                description="Current authorized call evidence; reruns are new live evaluations.",
-                parameters_schema={
-                    "type": "object",
-                    "properties": {},
-                    "additionalProperties": False,
-                },
-                output_formats=["CSV", "XLSX"],
-                ipe_logic={
-                    "version": 1,
-                    "source_tables": ["ai_model_log"],
-                    "joins": [],
-                    "filters": ["Original requester scope and current source/export permissions"],
-                    "parameters": [],
-                },
-                tie_outs=[],
-            )
-        )
-
-
 @pytest.fixture(autouse=True)
 def export_definition(test_database: TestDatabase) -> Iterator[None]:
-    # Global catalogue rows must not leak to other tests. This isolated test database uses
-    # the same reset discipline as migration probes, with no change to real seed migrations.
+    # Exercise the production migration seed, with a clean database for each worker probe.
     fresh_head()
-    _definition(test_database)
+    with test_database.owner_engine.connect() as connection:
+        assert (
+            connection.scalar(
+                select(report_definition.c.code).where(report_definition.c.code == CODE)
+            )
+            == CODE
+        )
     try:
         yield
     finally:

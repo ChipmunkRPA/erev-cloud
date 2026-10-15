@@ -2,6 +2,17 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Public call-export catalogue — October 15, 2026
+
+- Migration 0158 registers ai_call_log_export for CSV/XLSX through the existing report API.
+  Its closed, empty parameter schema refuses misleading entity/history/owner filters; the
+  requester binding supplies scope, and reruns evaluate the current authorized population.
+- Worker tests now use the actual migration seed instead of temporary registration. Catalogue
+  metadata, specification inventories and default-role visibility expectations include the code.
+- Definition removal must refuse while retained runs reference it. Migration/worker verification
+  is recorded in docs/release/CI-2026-10-15.md. The call-log download menu remains pending.
+- No deployment or live provider calls. Overall release gates and accounting sign-off remain open.
+
 ## Call-export API authorization and cached replies — October 15, 2026
 
 - Source-only AI users/settings administrators can use this export with report.export; these

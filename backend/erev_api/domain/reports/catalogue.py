@@ -1,15 +1,16 @@
 """Standard report catalogue (04 T-RPT-01 and table 10-T; SCREENS_B §5.6; BUILD_SPEC RPS-1).
 
 ``DEFINITIONS`` holds one version-1 definition per seeded code of 04 T-RPT-01, in that list's order:
-the 52 RPS codes, the 2 LMG codes and the 2 FCS codes of PHASES §5.4. Tenants cannot modify a
+the 53 RPS codes, the 2 LMG codes and the 2 FCS codes of PHASES §5.4. Tenants cannot modify a
 definition (REQ-RPT-001). A changed definition is a new version, seeded by a later revision.
 
 ``parameters_schema`` is a closed JSON Schema (``additionalProperties: false``, T-RPT-01 rule 1). It
 declares the parameter keys of the report's SCREENS_B §5.6 table, the ``currency_view`` key where
-the specification says "Currency view: yes" (RPT-R-03), and always ``known_at`` and the entity scope
-``entity_codes`` (T-RPT-01 rule 1, RPT-R-01). ``ipe_logic`` documents the source tables, joins,
-filters, parameters and definition version (REQ-RPT-027). ``tie_outs`` lists codes of
-``TIE_OUT_CODES`` only (REQ-RPT-003).
+the specification says "Currency view: yes" (RPT-R-03), and ``known_at`` and the entity scope
+``entity_codes`` for accounting reports (T-RPT-01 rule 1, RPT-R-01). The live actor-scoped
+``ai_call_log_export`` instead accepts no caller-selected parameters. ``ipe_logic`` documents
+the source tables, joins, filters, parameters and definition version (REQ-RPT-027).
+``tie_outs`` lists codes of ``TIE_OUT_CODES`` only (REQ-RPT-003).
 
 The RPS-1 revision seeds ``report_definition`` with the statement ``seed_statement`` renders, as a
 literal. A revision may not import this domain module (DG-LAY-03), so the literal is compared with a
@@ -98,6 +99,14 @@ class ReportDefinition:
         unknown = [code for code in self.tie_outs if code not in TIE_OUT_NAMES]
         if unknown:
             raise ValueError(f"{self.code}: tie-out codes outside table 10-T: {unknown}")
+        if self.code == "ai_call_log_export":
+            if self.parameters_schema != {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": False,
+            }:
+                raise ValueError("live call exports accept no caller-selected filters")
+            return
         properties = self.parameters_schema.get("properties", {})
         if self.parameters_schema.get("additionalProperties") is not False or not {
             ENTITY_SCOPE_KEY,
@@ -2058,6 +2067,22 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "a locked period reads the disclosure_snapshot rows frozen at lock",
             "quarter true: the fiscal quarter-to-date column",
         ),
+    ),
+    ReportDefinition(
+        code="ai_call_log_export",
+        version=1,
+        name="AI call log export",
+        kind="EXTRACT",
+        description="Current authorized call evidence; reruns are new live evaluations.",
+        parameters_schema={"type": "object", "properties": {}, "additionalProperties": False},
+        output_formats=("CSV", "XLSX"),
+        ipe_logic={
+            "version": 1,
+            "source_tables": ["ai_model_log"],
+            "joins": [],
+            "filters": ["Original requester scope and current source/export permissions"],
+            "parameters": [],
+        },
     ),
 )
 
