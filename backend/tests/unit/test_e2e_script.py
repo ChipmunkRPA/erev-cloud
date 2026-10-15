@@ -30,6 +30,8 @@ CLEARED = (
     "CLOSE",
     "EREV_E2E_UNTIL",
     "EREV_E2E_CLOSE",
+    "EREV_E2E_ARTIFACTS_DIR",
+    "EREV_E2E_RUNTIME_DIR",
 )
 PLAYWRIGHT_CALL = "test -c frontend/e2e/playwright.config.ts"
 
@@ -67,7 +69,13 @@ fi
 echo "${EREV_E2E_CLOSE:+EREV_E2E_CLOSE=$EREV_E2E_CLOSE }$args" >>"$STUB_CALLS"
 printf '{"stats": {"expected": 1, "unexpected": 0, "flaky": 0, "skipped": 0}}\\n' \\
   >"$PLAYWRIGHT_JSON_OUTPUT_FILE"
-exit 0
+mkdir -p "$EREV_E2E_RUNTIME_DIR/auth"
+printf private-session >"$EREV_E2E_RUNTIME_DIR/auth/persona.json"
+printf %s "$EREV_E2E_RUNTIME_DIR" >"$STUB_CALLS.runtime"
+mkdir -p "$EREV_E2E_ARTIFACTS_DIR/screens" "$EREV_E2E_ARTIFACTS_DIR/playwright"
+printf capture >"$EREV_E2E_ARTIFACTS_DIR/screens/example.png"
+printf trace >"$EREV_E2E_ARTIFACTS_DIR/playwright/trace.zip"
+exit "${STUB_EXIT:-0}"
 """
 
 
@@ -328,3 +336,23 @@ def test_dg_mk_00e_port_lock(run_dir: Path) -> None:
     # Another run's lock stays in place; nothing was started.
     assert (lock / "pid").read_text(encoding="utf-8").strip() == str(os.getpid())
     assert list(run_dir.glob("*.pid")) == []
+
+
+@pytest.mark.parametrize("exit_code", [0, 1])
+def test_browser_artifacts_are_retained_per_run(run_dir: Path, exit_code: int) -> None:
+    """A failed invocation retains evidence too; a second run cannot reuse old screenshots."""
+    previous = None
+    for _ in range(2):
+        result = _stubbed_main(run_dir, PROJECT="screens", STUB_EXIT=str(exit_code))
+        assert result.returncode == exit_code, result.stdout + result.stderr
+        report = _report(run_dir)
+        relative = Path(report["artifacts"])
+        assert not relative.is_absolute() and relative.parts[0] == "artifacts"
+        assert relative != previous
+        previous = relative
+        artifacts = run_dir / "reports" / "e2e" / relative / "1-screens"
+        assert (artifacts / "screens" / "example.png").read_bytes() == b"capture"
+        assert (artifacts / "playwright" / "trace.zip").read_bytes() == b"trace"
+        assert not (artifacts / "auth").exists()
+        runtime = Path((run_dir / "calls.txt.runtime").read_text())
+        assert not runtime.exists(), "temporary authentication state is removed"

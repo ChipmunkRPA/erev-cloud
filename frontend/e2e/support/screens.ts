@@ -10,8 +10,11 @@ import { fileURLToPath } from "node:url";
 import { expect, type Page, type TestInfo } from "@playwright/test";
 
 export const E2E_DIR = fileURLToPath(new URL("..", import.meta.url));
-export const SCREENS_DIR = join(E2E_DIR, ".screens");
-export const RESULTS_DIR = join(E2E_DIR, ".results");
+// Gate runs write captures under their retained report; auth state stays in .results.
+export const SCREENS_DIR = process.env.EREV_E2E_ARTIFACTS_DIR
+  ? join(process.env.EREV_E2E_ARTIFACTS_DIR, "screens")
+  : join(E2E_DIR, ".screens");
+export const RESULTS_DIR = process.env.EREV_E2E_RUNTIME_DIR ?? join(E2E_DIR, ".results");
 export const INDEX_FILE = join(SCREENS_DIR, "index.json");
 
 export const THEMES = ["light", "dark"] as const;

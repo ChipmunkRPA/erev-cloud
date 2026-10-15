@@ -1,6 +1,8 @@
 // Playwright harness (docs/dev-guide.md §9.8 binding shape; DG-E2E-01 to DG-E2E-12; PRD E2E-04 to
 // E2E-06). scripts/e2e.sh runs each project as its own invocation (DG-E2E-02) against the production
 // build served by `vite preview` on the e2e ports (DG-RUN-04 to DG-RUN-06).
+import { join } from "node:path";
+
 import { defineConfig } from "@playwright/test";
 
 // DG-E2E-02 rev 1.277: `make e2e CLOSE=1` is a run of its own on the world seeded with its closed
@@ -13,7 +15,10 @@ const CLOSED_WORLD = process.env.EREV_E2E_CLOSE === "1";
 
 export default defineConfig({
   testDir: "./projects",
-  outputDir: "./.results",
+  // Each gate invocation retains traces independently of temporary checkout cleanup.
+  outputDir: process.env.EREV_E2E_ARTIFACTS_DIR
+    ? join(process.env.EREV_E2E_ARTIFACTS_DIR, "playwright")
+    : "./.results",
   forbidOnly: true,
   retries: 0,
   timeout: 120_000,

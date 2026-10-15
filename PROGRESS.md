@@ -2,6 +2,22 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Retained browser artifacts — October 14, 2026
+
+- Browser gate reports now name a unique artifact directory for each run. Each Playwright
+  invocation writes screenshots and failure traces below it, so immutable-context cleanup
+  copies them with the report. Earlier runs cannot supply screenshots to a later result.
+- Authentication/network runtime state has a separate invocation directory and is removed
+  on completion. Direct Playwright usage retains its existing default paths.
+- Regression checks: 43 script/context tests passed (34.69s), including successful/failed
+  gates retaining nested files after context deletion. A real Chromium probe produced both
+  PNG captures and a valid trace ZIP from an intentional failure after capture; this is
+  artifact verification, not an application acceptance pass. Final script checks also cover
+  runtime-session cleanup: 10 passed (5.74s). Ruff, ESLint, shell syntax and full typecheck pass.
+- Logs: .run/e2e-artifact-{all-tests,script-final,typecheck-final,real-browser}.log.
+  The earlier closed-world gate remains bound to 3e60e6a and its lost screenshots cannot be
+  recovered. Full backend CI on 165d63c is still live; broader readiness remains open.
+
 ## Fresh closed-world browser gate — October 14, 2026
 
 - Immutable make e2e CLOSE=1 PROJECT=closed on 3e60e6a passed all 10 tests in

@@ -869,3 +869,12 @@ subsequent backend changes, re-lock variance, other pack kinds and independent a
 approval remain open. The gate discarded screenshots with its temporary context; JSON
 results are retained, but screenshot retention needs repair. See
 [BROWSER-2026-10-14.md](BROWSER-2026-10-14.md) for exact scope and source binding.
+
+## October 14, 2026 — browser artifact retention repair
+
+New gate runs retain screenshots and failure traces beneath the report's relative
+`artifacts` directory, separated by invocation number and project. Runtime session state
+is isolated and removed on completion. Regression tests exercise success, failure, repeat
+runs and immutable-context removal; a real Chromium probe verifies capture/trace output.
+This repairs the retention mechanism but does not recover the earlier gate's deleted
+screenshots or establish another application acceptance run.

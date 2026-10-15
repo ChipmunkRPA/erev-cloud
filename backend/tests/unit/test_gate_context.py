@@ -1006,3 +1006,27 @@ def test_reused_artifacts_inconsistent_with_the_context_lock_fail_closed(
 
 def platform_version() -> str:
     return ".".join(str(part) for part in sys.version_info[:3])
+
+
+@pytest.mark.parametrize("exit_code", [0, 1])
+def test_browser_artifacts_survive_context_cleanup(scratch: Path, exit_code: int) -> None:
+    repo, _, _ = _repo(scratch)
+    writer = repo / ".run" / "writer.py"
+    writer.write_text(
+        writer.read_text().replace(
+            '(report_dir / "extra.txt").write_text("kept\\n")',
+            '(report_dir / "extra.txt").write_text("kept\\n")\n'
+            'artifacts = report_dir / "artifacts" / "run-example" / "1-closed"\n'
+            '(artifacts / "screens").mkdir(parents=True)\n'
+            '(artifacts / "screens" / "capture.png").write_bytes(b"capture")\n'
+            '(artifacts / "playwright").mkdir()\n'
+            '(artifacts / "playwright" / "trace.zip").write_bytes(b"trace")',
+        )
+    )
+    result = _entry(repo, "e2e", sys.executable, str(writer), "e2e", str(exit_code))
+    assert result.returncode == exit_code, result.stdout + result.stderr
+    report = _report(repo, "e2e")
+    assert not Path(report["source_binding"]["context_path"]).exists()
+    artifacts = repo / ".run/reports/e2e/artifacts/run-example/1-closed"
+    assert (artifacts / "screens/capture.png").read_bytes() == b"capture"
+    assert (artifacts / "playwright/trace.zip").read_bytes() == b"trace"

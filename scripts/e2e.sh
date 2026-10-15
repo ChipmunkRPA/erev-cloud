@@ -47,6 +47,7 @@ FINISHED=0
 E2E_EXIT=0
 RUN_INDEX=0
 STARTED_AT=""
+ARTIFACT_RUN_DIR=""
 E2E_API_PORT=""
 E2E_WEB_PORT=""
 
@@ -348,7 +349,9 @@ run_project() {
   workers="$(workers_of "$project")"
   report="playwright-$RUN_INDEX-$project.json"
   echo "== e2e: project $project --workers=$workers${item:+ SPEC $item} =="
-  PLAYWRIGHT_JSON_OUTPUT_FILE="$REPORT_DIR/$report" pw "$project" "$item" --workers="$workers"
+  EREV_E2E_RUNTIME_DIR="$ROOT/frontend/e2e/.results/$(basename "$ARTIFACT_RUN_DIR")/$RUN_INDEX-$project" \
+    EREV_E2E_ARTIFACTS_DIR="$ARTIFACT_RUN_DIR/$RUN_INDEX-$project" \
+    PLAYWRIGHT_JSON_OUTPUT_FILE="$REPORT_DIR/$report" pw "$project" "$item" --workers="$workers"
   rc=$?
   record project "$project" spec "$item" workers "$workers" exit_code "$rc" report "$report"
   note_exit "$rc"
@@ -382,7 +385,7 @@ run_projects() {
 # DG-MK-00g: the gate report, on success and on failure, with Playwright's per-project statistics.
 write_report() {
   mkdir -p "$REPORT_DIR"
-  "$PY" - "$ROOT" "$REPORT_DIR" "$E2E_EXIT" "$STARTED_AT" "${EREV_E2E_COMMAND:-scripts/e2e.sh}" <<'PY'
+  "$PY" - "$ROOT" "$REPORT_DIR" "$E2E_EXIT" "$STARTED_AT" "${EREV_E2E_COMMAND:-scripts/e2e.sh}" "$ARTIFACT_RUN_DIR" <<'PY'
 import json
 import sys
 from pathlib import Path
@@ -435,6 +438,7 @@ report = {
     "counts": counts,
     "failures": failures,
     "projects": projects,
+    "artifacts": str(Path(sys.argv[6]).relative_to(directory)) if sys.argv[6] else None,
 }
 (directory / "report.json").write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
 skipped = [entry["project"] for entry in projects if entry.get("skipped") == "no tests yet"]
@@ -453,6 +457,9 @@ finish() {
   if [[ "$LOCK_TAKEN" == "1" ]]; then
     stack_down
     write_report
+    if [[ -n "$ARTIFACT_RUN_DIR" ]]; then
+      rm -rf "$ROOT/frontend/e2e/.results/$(basename "$ARTIFACT_RUN_DIR")"
+    fi
   fi
   release_lock
 }
@@ -464,6 +471,8 @@ main() {
   e2e_ports
   take_lock || return 1
   rm -f "$REPORT_DIR/projects.jsonl" "$REPORT_DIR/list.json" "$REPORT_DIR"/playwright-*.json
+  mkdir -p "$REPORT_DIR/artifacts" || { note_exit 1; finish; return 1; }
+  ARTIFACT_RUN_DIR="$(mktemp -d "$REPORT_DIR/artifacts/run-XXXXXX")" || { note_exit 1; finish; return 1; }
   if stack_up; then
     run_projects
   else
