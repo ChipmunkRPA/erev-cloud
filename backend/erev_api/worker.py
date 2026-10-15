@@ -28,6 +28,7 @@ from uuid import UUID
 
 import procrastinate
 
+from erev_api.adapters.ai.provider import get_provider
 from erev_api.adapters.billing import stripe
 from erev_api.adapters.crm import salesforce
 from erev_api.adapters.email import build_email_sender
@@ -45,6 +46,9 @@ from erev_api.controls.operator_alert_sinks import build_alert_sinks
 from erev_api.controls.release import EngineRelease, log_release, stamp_release
 from erev_api.controls.startup import refuse_unsafe_production
 from erev_api.db.session import dispose_engines, set_component
+from erev_api.domain.ai import jobs as ai_jobs
+from erev_api.domain.ai.gateway import AiGateway
+from erev_api.domain.ai.ports import AIProvider
 from erev_api.domain.close import data_quality_sweep as sch10_data_quality_sweep
 from erev_api.domain.contracts import dirty_sweep
 from erev_api.domain.integrations import sweeps as sch09_integration_sweeps
@@ -86,6 +90,7 @@ STARTUP_REQUEST_ID: Final = "startup-worker"
 # Modules whose `jobs.registry.task` handlers the worker registers; items that build handlers add
 # their module here (DG-KRN-JOB-01; BS-D-07).
 HANDLER_MODULES: Final[tuple[str, ...]] = (
+    "erev_api.domain.ai.jobs",
     "erev_api.events.outbox",
     "erev_api.events.webhooks",
     "erev_api.domain.platform.retention",
@@ -413,6 +418,25 @@ def build_runtime(
     """The services of ``erev worker`` from the settings: key ring by EREV_KEY_PROVIDER, file
     store by EREV_FILE_BACKEND (CFG-05) and, under the gcs backend, the SAR-31 digest exporter
     to the write-once bucket. Constructing them performs no network call."""
+
+    def ai_provider() -> AIProvider:
+        # The gateway has already reloaded tenant admission before this lazy call.
+        provider = get_provider(settings, tenant_ai_enabled=True)
+        if provider is None:
+            raise ValueError("AI_DISABLED")
+        return provider
+
+    def ai_wait(delay: timedelta) -> None:
+        threading.Event().wait(delay.total_seconds())
+
+    ai_jobs.configure(
+        AiGateway(
+            provider=settings.ai_provider,
+            provider_factory=ai_provider,
+            platform_kill_switch=lambda: settings.ai_kill_switch,
+        ),
+        ai_wait,
+    )
     # DG-LAY-03: how the SYNC_RUN job reaches ``integration_connection.base_url`` (SAR-15 guard;
     # loopback and http admitted in the local environments for the in-process mocks, ADP-20).
     build_client = client_factory(settings.env)

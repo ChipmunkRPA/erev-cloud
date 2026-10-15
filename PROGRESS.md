@@ -2,6 +2,22 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Narrative worker dispatch — October 15, 2026
+
+- Registered the narrative AI_TASK handler and connected the worker to the existing gateway.
+  Queue payloads admit source selectors only; invalid/extra input is refused without persisting
+  its values in validation diagnostics. Provider construction remains lazy after admission.
+- The gateway owns provider retries and waiting; registry retry policy remains one attempt.
+  Completion returns the durable proposal identity, including a retained provider-failure
+  proposal, and does not signify human acceptance or accounting approval.
+- Verification: 33 unit/worker/layer checks passed; 13 real-database retry/recovery scenarios
+  passed, with completed paths dispatched through the new handler and repeated without a new
+  provider call. Strict typing passed 773 sources; full make lint passed. Logs:
+  .run/ai-job-dispatch-{tests,pg,types-final,lint}.log. No live provider calls or deployment.
+- Public submission, other AI operations, admission-failure evidence, notifications, human
+  review and unknown-outcome/usage reconciliation remain open; this does not close AI lifecycle
+  verification or establish production readiness.
+
 ## Full PostgreSQL revalidation — October 15, 2026
 
 - Complete PostgreSQL selection on unchanged 80fba4c: 669 passed, six failed (439.45s), recorded
@@ -219,23 +235,6 @@
 - Dedicated proposal/document-text response APIs, extraction job integration and write-ahead
   call recovery remain unfinished, along with other implementation and release gates.
   No deployment or production-readiness claim; independent accounting sign-off is still open.
-
-## AI proposal evidence retention and encrypted text — October 15, 2026
-
-- Source and extracted-text references now hold their files against direct shredding even
-  after proposal expiry. Existing Controller-reviewed EVIDENCE_SHRED approvals lift the holds;
-  no durable entity binding exists, so review must cover every tenant entity.
-- AI_DOCUMENT_TEXT now uses per-file encryption. The integration test proves ciphertext at
-  rest, decryption before erasure, direct-refusal audit, separate approval, sidecar destruction,
-  FILE_SHREDDED on later reads, and retention of the expired proposal/source references.
-- Verification: 33 retention/erasure/registry checks passed; the strengthened byte-level test
-  passed separately; strict typing passed for 768 sources; Ruff/diff passed. Logs:
-  .run/ai-file-retention-final.log, .run/ai-file-erasure-bytes.log and
-  .run/ai-file-retention-types.log. Fixed two pre-existing test typing issues found by that run.
-- The evidence-registry failure is resolved. Proposal file-read ownership remains open, as do
-  extraction workflow integration, call recovery and other release gaps. Experimental plaintext
-  AI_DOCUMENT_TEXT objects from older builds require explicit migration or regeneration;
-  there is no plaintext fallback. No deployment or production-readiness claim.
 
 ## Outstanding release verification
 

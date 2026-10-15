@@ -10,6 +10,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, NoReturn
 from unittest.mock import MagicMock
+from uuid import UUID
 
 import pytest
 from erev_api.adapters.ai.anthropic import AnthropicProvider
@@ -18,6 +19,7 @@ from erev_api.clock import FrozenClock
 from erev_api.db import new_id
 from erev_api.db.session import tenant_session
 from erev_api.db.tables import ai_call_intent, ai_model_log, ai_proposal
+from erev_api.domain.ai import jobs as ai_jobs
 from erev_api.domain.ai.attempts import AttemptEvidenceRefused
 from erev_api.domain.ai.budget import AIBudgetRefused, budget_guard
 from erev_api.domain.ai.gateway import AiGateway, NarrativeSource, source_sha256
@@ -223,7 +225,18 @@ def test_retry_evidence_and_terminal_outcome(
             gateway.run_narrative(context, source, max_tokens=1000, wait=wait)
         proposal = None
     else:
-        proposal = gateway.run_narrative(context, source, max_tokens=1000, wait=wait)
+        monkeypatch.setattr(ai_jobs, "_gateway", gateway)
+        monkeypatch.setattr(ai_jobs, "_wait", wait)
+        params = {
+            "operation": "narrative",
+            "object_type": source.object_type,
+            "object_id": str(source.object_id),
+            "measure": source.measure,
+            "max_tokens": 1000,
+        }
+        outcome = ai_jobs.run(context, params)
+        proposal = UUID(outcome.result["proposal_id"])
+        assert ai_jobs.run(context, params).result == outcome.result
     if proposal is not None:
         assert gateway.run_narrative(context, source, max_tokens=1000, wait=wait) == proposal
     assert len(observed) == calls

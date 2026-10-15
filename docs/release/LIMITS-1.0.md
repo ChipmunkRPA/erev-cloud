@@ -69,9 +69,12 @@ Permanent/exhausted failure proposals and previously completed delivery do not m
 and remain recoverable. Reconciliation is still absent: there is no automatic expiry or override.
 The guard does not estimate missing usage,
 reserve unknown response tokens, reconcile returned provider errors without usage, or infer
-historical calls that never had retained intents. The worker still needs real dispatch/waiting, registered
-AI_TASK handlers, notifications and public submission/acceptance/rejection workflows. The AI
-audit-lifecycle gate remains open; internal gateway tests do not satisfy the full lifecycle.
+historical calls that never had retained intents. The worker now registers a narrative AI_TASK
+handler with validated source selectors, lazy provider construction and gateway-owned waiting.
+It reports the persisted proposal identity, not human approval. Other AI operations, durable
+admission-failure evidence, notifications and public submission/acceptance/rejection workflows
+remain unfinished. The AI audit-lifecycle gate remains open; worker dispatch and internal
+gateway tests do not satisfy the full lifecycle.
 
 The Anthropic adapter is mock-tested, uses the official SDK, disables SDK retries and telemetry,
 and resolves secrets lazily. Contract-review and explain-narrative prompts have retained bytes,

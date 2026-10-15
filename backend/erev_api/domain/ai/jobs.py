@@ -1,0 +1,74 @@
+"""Worker entry point for persisted narrative AI tasks.
+
+Submission and human review remain separate workflows. The gateway owns provider
+retries and durable recovery; the job runner must not multiply those attempts.
+"""
+
+from __future__ import annotations
+
+from collections.abc import Callable, Mapping
+from datetime import date, timedelta
+from typing import Any, Literal
+from uuid import UUID
+
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, StrictInt, ValidationError
+
+from erev_api.domain.ai.gateway import AiGateway, NarrativeSource
+from erev_api.enums import JobKind
+from erev_api.jobs.context import JobContext
+from erev_api.jobs.registry import JobOutcome, RetryPolicy, task
+from erev_api.schemas.explain import ExplainObjectType
+
+
+class NarrativeTask(BaseModel):
+    """Only source selectors enter the queue; prompts and provider settings do not."""
+
+    model_config = ConfigDict(extra="forbid")
+    operation: Literal["narrative"]
+    object_type: ExplainObjectType
+    object_id: UUID
+    measure: str = Field(min_length=1, max_length=128)
+    period: str | None = None
+    book_code: str | None = None
+    as_of: date | None = None
+    known_at: AwareDatetime | None = None
+    max_tokens: StrictInt = Field(gt=0)
+
+    def source(self) -> NarrativeSource:
+        return NarrativeSource(
+            object_type=self.object_type,
+            object_id=self.object_id,
+            measure=self.measure,
+            period=self.period,
+            book_code=self.book_code,
+            as_of=self.as_of,
+            known_at=self.known_at,
+        )
+
+
+_gateway: AiGateway | None = None
+_wait: Callable[[timedelta], None] | None = None
+
+
+def configure(gateway: AiGateway, wait: Callable[[timedelta], None]) -> None:
+    """Bind worker-owned services without importing adapters into the domain."""
+    global _gateway, _wait
+    _gateway, _wait = gateway, wait
+
+
+@task(JobKind.AI_TASK, retry=RetryPolicy(max_attempts=1))
+def run(context: JobContext, params: Mapping[str, Any]) -> JobOutcome:
+    try:
+        request = NarrativeTask.model_validate(params)
+    except ValidationError:
+        # Pydantic errors include input values; never persist them in job diagnostics.
+        raise ValueError("AI_INVALID_TASK") from None
+    gateway, wait = _gateway, _wait
+    if gateway is None or wait is None:
+        raise RuntimeError("AI_WORKER_NOT_CONFIGURED")
+    proposal_id = gateway.run_narrative(
+        context, request.source(), max_tokens=request.max_tokens, wait=wait
+    )
+    # A failed provider result may itself be a durably completed proposal. Job
+    # completion reports persistence, never acceptance or accounting approval.
+    return JobOutcome(state="SUCCEEDED", result={"proposal_id": str(proposal_id)})

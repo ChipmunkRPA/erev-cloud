@@ -4741,3 +4741,20 @@ cleanup in the shared database session kernel was also repaired and regression-t
   retention remain open. This is not a complete architecture or release-suite pass.
 - Work remains on call-intent gateway integration and the other implementation/release gaps.
   No deployment or readiness claim; direct main publication continues.
+
+## AI proposal evidence retention and encrypted text — October 15, 2026
+
+- Source and extracted-text references now hold their files against direct shredding even
+  after proposal expiry. Existing Controller-reviewed EVIDENCE_SHRED approvals lift the holds;
+  no durable entity binding exists, so review must cover every tenant entity.
+- AI_DOCUMENT_TEXT now uses per-file encryption. The integration test proves ciphertext at
+  rest, decryption before erasure, direct-refusal audit, separate approval, sidecar destruction,
+  FILE_SHREDDED on later reads, and retention of the expired proposal/source references.
+- Verification: 33 retention/erasure/registry checks passed; the strengthened byte-level test
+  passed separately; strict typing passed for 768 sources; Ruff/diff passed. Logs:
+  .run/ai-file-retention-final.log, .run/ai-file-erasure-bytes.log and
+  .run/ai-file-retention-types.log. Fixed two pre-existing test typing issues found by that run.
+- The evidence-registry failure is resolved. Proposal file-read ownership remains open, as do
+  extraction workflow integration, call recovery and other release gaps. Experimental plaintext
+  AI_DOCUMENT_TEXT objects from older builds require explicit migration or regeneration;
+  there is no plaintext fallback. No deployment or production-readiness claim.
