@@ -3515,3 +3515,19 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   screenshots. Existing worktree screenshots predate this run and cannot prove its visuals.
   Artifact retention needs repair. Backend CI on 165d63c remains live with known failures;
   later backend repairs and independent accounting acceptance are not covered by this gate.
+
+## Retained browser artifacts — October 14, 2026
+
+- Browser gate reports now name a unique artifact directory for each run. Each Playwright
+  invocation writes screenshots and failure traces below it, so immutable-context cleanup
+  copies them with the report. Earlier runs cannot supply screenshots to a later result.
+- Authentication/network runtime state has a separate invocation directory and is removed
+  on completion. Direct Playwright usage retains its existing default paths.
+- Regression checks: 43 script/context tests passed (34.69s), including successful/failed
+  gates retaining nested files after context deletion. A real Chromium probe produced both
+  PNG captures and a valid trace ZIP from an intentional failure after capture; this is
+  artifact verification, not an application acceptance pass. Final script checks also cover
+  runtime-session cleanup: 10 passed (5.74s). Ruff, ESLint, shell syntax and full typecheck pass.
+- Logs: .run/e2e-artifact-{all-tests,script-final,typecheck-final,real-browser}.log.
+  The earlier closed-world gate remains bound to 3e60e6a and its lost screenshots cannot be
+  recovered. Full backend CI on 165d63c is still live; broader readiness remains open.

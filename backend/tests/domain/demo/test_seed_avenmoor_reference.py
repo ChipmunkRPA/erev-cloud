@@ -141,6 +141,7 @@ ROUTING_ROWS: tuple[tuple[frozenset[str], str | None, int], ...] = (
     (frozenset({_S.ESTIMATE_VERSION}), None, 1),
     (frozenset({_S.ESTIMATE_VERSION}), "amount.functional", 2),
     (frozenset({_S.MANUAL_EVENT}), None, 1),
+    (frozenset({_S.STEP1_EVENT}), None, 1),
     (frozenset({_S.JUDGEMENT_RECORD}), None, 1),
     (frozenset({_S.COMBINATION_GROUP}), None, 1),
     (frozenset({_S.SSP_OVERRIDE}), None, 1),
@@ -668,6 +669,13 @@ def test_routing_and_auto_approval_rule_sets(world: World) -> None:
     every_subject = {member.value for member in ApprovalSubjectType}
     auto_only = {ApprovalSubjectType.MIGRATION_SSP_REPLAY.value}
     assert covered == every_subject - auto_only
+    step1_rules = [
+        item for item in routing_rules if _subjects(item["conditions"]) == {"STEP1_EVENT"}
+    ]
+    assert len(step1_rules) == 1
+    assert step1_rules[0]["outputs"]["steps"] == [
+        {"name": "Step 1 event review", "permission": "event.approve", "min_approvers": 1}
+    ]
 
     auto, auto_rules = _rule_set(world, "AUTO_APPROVAL")
     assert (str(auto["kind"]), auto["version_no"], str(auto["status"])) == (

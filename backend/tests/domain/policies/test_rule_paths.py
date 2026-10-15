@@ -201,12 +201,13 @@ def test_every_demo_routing_rule_answers_alike_in_evaluation_and_at_submission(
     # yet (``subjects.PENDING_SUBJECTS``: two rules of the sample world name them). The three
     # rules of ``MANUAL_ADJUSTMENT`` are compared since CLO-12 gave the subject its specification,
     # and the rule of ``EVIDENCE_SHRED`` since the subject came with its routing row (lane
-    # SECFIX-IMP part B, 2c45103d; rulings R-49 (a), R-86): 37 + 1.
+    # SECFIX-IMP part B, 2c45103d; rulings R-49 (a), R-86). STEP1_EVENT also
+    # has an explicit human-review routing row: 37 + 1 + 1.
     assert (compared, unsubmittable) == (
         sum(len(rule.subjects) for rule in demo.ROUTING_RULES) - unsubmittable,
         sum(subject not in SUBJECTS for rule in demo.ROUTING_RULES for subject in rule.subjects),
     )
-    assert (compared, unsubmittable) == (38, 2)
+    assert (compared, unsubmittable) == (39, 2)
 
 
 def test_every_seeded_and_demo_auto_approval_rule_answers_alike_on_both_paths(

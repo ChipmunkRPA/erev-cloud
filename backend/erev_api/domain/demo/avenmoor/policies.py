@@ -350,6 +350,12 @@ ROUTING_RULES: Final[tuple[RoutingRule, ...]] = (
         "Manual event: one approver.",
     ),
     RoutingRule(
+        "ROUTE-STEP1-01",
+        (_S.STEP1_EVENT,),
+        _one("Step 1 event review", "event.approve"),
+        "Revenue-affecting Step 1 event: one independent event approver.",
+    ),
+    RoutingRule(
         "ROUTE-JDG-01",
         (_S.JUDGEMENT_RECORD,),
         _one("Judgement review", "judgement.review"),

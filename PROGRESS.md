@@ -2,6 +2,22 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Seeded Step 1 event routing — October 14, 2026
+
+- Reproduced the demo-reference failure from the ongoing backend CI: STEP1_EVENT
+  lacked a seeded human-review routing rule. Added ROUTE-STEP1-01 with one
+  event.approve approver, matching the subject specification and existing kernel floor.
+  This closes a seed-coverage gap; the kernel already supplied fallback routing.
+- Reference coverage verifies the exact permission/count; evaluation/submission parity
+  now covers 39 subject/rule combinations. Seed determinism, routing parity and approval
+  floors: 73 passed (24.58s). Strict Mypy for all three changed files and Ruff pass.
+  Logs: .run/demo-routing-baseline.log, .run/demo-routing-regression-fixed.log,
+  .run/demo-routing-types.log. Initial regression assertions were corrected for the
+  output field name and the additional routing case.
+- GitHub has no open PRs and only remote main. Continue verified direct-main publication,
+  without deployment. Full CI on the older 165d63c snapshot remains in progress;
+  its results will not establish acceptance of current main. Release gaps remain open.
+
 ## Expiry isolation, rollback and concurrent requests — October 14, 2026
 
 - Added native refusal checks for DRAFT, premature declared expiry, read-only access,
@@ -244,22 +260,6 @@
   snapshot files were gone, so its 500 response is not an application acceptance result.
   Screenshots and failure trace were retained. A fresh closed gate on bce381c is now running
   with a matching local database/file store; full backend CI on 165d63c also remains live.
-
-## Retained browser artifacts — October 14, 2026
-
-- Browser gate reports now name a unique artifact directory for each run. Each Playwright
-  invocation writes screenshots and failure traces below it, so immutable-context cleanup
-  copies them with the report. Earlier runs cannot supply screenshots to a later result.
-- Authentication/network runtime state has a separate invocation directory and is removed
-  on completion. Direct Playwright usage retains its existing default paths.
-- Regression checks: 43 script/context tests passed (34.69s), including successful/failed
-  gates retaining nested files after context deletion. A real Chromium probe produced both
-  PNG captures and a valid trace ZIP from an intentional failure after capture; this is
-  artifact verification, not an application acceptance pass. Final script checks also cover
-  runtime-session cleanup: 10 passed (5.74s). Ruff, ESLint, shell syntax and full typecheck pass.
-- Logs: .run/e2e-artifact-{all-tests,script-final,typecheck-final,real-browser}.log.
-  The earlier closed-world gate remains bound to 3e60e6a and its lost screenshots cannot be
-  recovered. Full backend CI on 165d63c is still live; broader readiness remains open.
 
 ## Outstanding release verification
 
