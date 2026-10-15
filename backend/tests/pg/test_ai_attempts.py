@@ -6,21 +6,23 @@ import json
 from dataclasses import replace
 from hashlib import sha256
 from pathlib import Path
+from typing import Any
 
 import pytest
 from erev_api.auth.keyring import KeyRing
 from erev_api.auth.principal import Principal, system_principal
 from erev_api.clock import FrozenClock
+from erev_api.db import new_id
 from erev_api.db.session import tenant_session
-from erev_api.db.tables import ai_model_log, audit_event
-from erev_api.domain.ai.attempts import AttemptEvidenceRefused, record_attempt
+from erev_api.db.tables import ai_call_intent, ai_model_log, audit_event, job
+from erev_api.domain.ai.attempts import AttemptEvidenceRefused, record_attempt, record_intent
 from erev_api.domain.ai.ports import AIRequest, AIResponse
 from erev_api.domain.ai.preparation import prepare_request
 from erev_api.domain.ai.templates import load_template
 from erev_api.enums import PrincipalKind
 from erev_api.files.store import LocalFileStore
 from erev_api.jobs.context import JobRuntime, system_unit_of_work
-from sqlalchemy import func, select
+from sqlalchemy import func, insert, select
 from support.db import TestDatabase
 from support.principals import member
 
@@ -29,10 +31,10 @@ SOURCE_TEXT = "Sensitive contract paragraph never retained in a model log"
 RESPONSE_TEXT = "Sensitive provider answer never retained in a model log"
 
 
-def request() -> AIRequest:
+def request(model: str = "configured-model") -> AIRequest:
     return prepare_request(
         template=load_template("contract-review", 1),
-        model="configured-model",
+        model=model,
         max_tokens=1000,
         inputs={},
         contract_text=SOURCE_TEXT,
@@ -211,3 +213,174 @@ def test_success_and_failure_evidence_cannot_be_mixed(world: tuple[Principal, Jo
         with pytest.raises(AttemptEvidenceRefused, match="AI_INVALID_ATTEMPT_RESPONSE"):
             record_attempt(uow, request=request(), provider="fake", outcome="SUCCESS")
         assert uow.drain_audit_events() == []
+
+
+def test_intent_commit_unknown_outcome_binding_and_attempt_limit(
+    world: tuple[Principal, JobRuntime],
+) -> None:
+    principal, runtime = world
+    job_id = new_id()
+    with tenant_session(principal.db_context) as session:
+        session.execute(
+            insert(job).values(
+                tenant_id=principal.tenant_id,
+                id=job_id,
+                kind="AI_TASK",
+                queue="ai",
+                params={},
+                state="RUNNING",
+                created_by=principal.id,
+                created_by_kind="USER",
+                updated_by_kind="USER",
+                updated_by=principal.id,
+            )
+        )
+    prepared = request()
+    source = "b" * 64
+    # A rolled-back start leaves neither evidence nor an audit fact.
+    with system_unit_of_work(runtime, principal, request_id="intent-rollback") as uow:
+        record_intent(uow, request=prepared, provider="fake", job_id=job_id, source_sha256=source)
+    with tenant_session(principal.db_context, read_only=True) as session:
+        assert session.scalar(select(func.count()).select_from(ai_call_intent)) == 0
+        assert (
+            session.scalar(
+                select(func.count())
+                .select_from(audit_event)
+                .where(audit_event.c.action == "ai_call_intent.record")
+            )
+            == 0
+        )
+    for number in range(1, 4):
+        with system_unit_of_work(runtime, principal, request_id=f"intent-{number}") as uow:
+            intent_id = record_intent(
+                uow, request=prepared, provider="fake", job_id=job_id, source_sha256=source
+            )
+            uow.commit()
+        # Simulate a worker disappearing after start, before any known outcome.
+        with pytest.raises(AttemptEvidenceRefused, match="AI_OUTCOME_UNKNOWN"):
+            with system_unit_of_work(runtime, principal, request_id="unknown-outcome") as uow:
+                record_intent(
+                    uow, request=prepared, provider="fake", job_id=job_id, source_sha256=source
+                )
+        for changes in (
+            {"provider": "anthropic"},
+            {"request": request("changed")},
+            {"intent_id": new_id()},
+            {"outcome": "DISABLED", "failure": "disabled", "response": None},
+        ):
+            with pytest.raises(AttemptEvidenceRefused):
+                with system_unit_of_work(runtime, principal, request_id="mismatch") as uow:
+                    arguments: dict[str, Any] = dict(
+                        request=prepared,
+                        provider="fake",
+                        outcome="SUCCESS",
+                        response=response(),
+                        intent_id=intent_id,
+                    )
+                    arguments.update(changes)
+                    record_attempt(uow, **arguments)
+        with pytest.raises(AttemptEvidenceRefused, match="AI_INTENT_MISMATCH"):
+            with system_unit_of_work(
+                runtime, replace(principal, id=new_id()), request_id="wrong-human"
+            ) as uow:
+                record_attempt(
+                    uow,
+                    request=prepared,
+                    provider="fake",
+                    outcome="ERROR",
+                    failure="provider_error",
+                    intent_id=intent_id,
+                )
+        with tenant_session(principal.db_context, read_only=True) as session:
+            assert session.scalar(select(func.count()).select_from(ai_model_log)) == number - 1
+        with system_unit_of_work(runtime, principal, request_id="outcome") as uow:
+            record_attempt(
+                uow,
+                request=prepared,
+                provider="fake",
+                outcome="ERROR",
+                failure="provider_error",
+                intent_id=intent_id,
+            )
+            uow.commit()
+        with pytest.raises(AttemptEvidenceRefused, match="AI_INTENT_ALREADY_RECORDED"):
+            with system_unit_of_work(runtime, principal, request_id="duplicate-outcome") as uow:
+                record_attempt(
+                    uow,
+                    request=prepared,
+                    provider="fake",
+                    outcome="ERROR",
+                    failure="provider_error",
+                    intent_id=intent_id,
+                )
+        with pytest.raises(AttemptEvidenceRefused, match="AI_JOB_INPUT_CHANGED"):
+            with system_unit_of_work(runtime, principal, request_id="changed-source") as uow:
+                record_intent(
+                    uow, request=prepared, provider="fake", job_id=job_id, source_sha256="c" * 64
+                )
+    with pytest.raises(AttemptEvidenceRefused, match="AI_ATTEMPTS_EXHAUSTED"):
+        with system_unit_of_work(runtime, principal, request_id="exhausted") as uow:
+            record_intent(
+                uow, request=prepared, provider="fake", job_id=job_id, source_sha256=source
+            )
+    with tenant_session(principal.db_context, read_only=True) as session:
+        intents = (
+            session.execute(select(ai_call_intent).order_by(ai_call_intent.c.attempt_no))
+            .mappings()
+            .all()
+        )
+        assert [row["attempt_no"] for row in intents] == [1, 2, 3]
+        events = (
+            session.execute(
+                select(audit_event).where(audit_event.c.action == "ai_call_intent.record")
+            )
+            .mappings()
+            .all()
+        )
+        assert len(events) == 3
+        assert {event["detail"]["ids"][0] for event in events} == {
+            str(row["id"]) for row in intents
+        }
+        assert all(event["object_id"] is None for event in events)
+        retained = json.dumps(
+            [dict(row) for row in intents] + [dict(event) for event in events], default=str
+        )
+        assert SOURCE_TEXT not in retained and RESPONSE_TEXT not in retained
+        assert session.scalar(select(func.count()).select_from(ai_model_log)) == 3
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"state": "QUEUED"},
+        {"kind": "AUDIT_CHAIN_VERIFY"},
+        {"created_by_kind": "SYSTEM", "created_by": None},
+        {"created_by": new_id()},
+    ],
+)
+def test_intent_refuses_unowned_or_nonrunning_ai_job(
+    world: tuple[Principal, JobRuntime],
+    change: dict[str, Any],
+) -> None:
+    principal, runtime = world
+    job_id = new_id()
+    values = dict(
+        tenant_id=principal.tenant_id,
+        id=job_id,
+        kind="AI_TASK",
+        queue="ai",
+        params={},
+        state="RUNNING",
+        created_by=principal.id,
+        created_by_kind="USER",
+        updated_by_kind="SYSTEM",
+    )
+    with tenant_session(principal.db_context) as session:
+        session.execute(insert(job).values(**(values | change)))
+    with pytest.raises(AttemptEvidenceRefused, match="AI_INVALID_JOB_BINDING"):
+        with system_unit_of_work(runtime, principal, request_id="invalid-intent-job") as uow:
+            record_intent(
+                uow, request=request(), provider="fake", job_id=job_id, source_sha256="b" * 64
+            )
+    with tenant_session(principal.db_context, read_only=True) as session:
+        assert session.scalar(select(func.count()).select_from(ai_call_intent)) == 0

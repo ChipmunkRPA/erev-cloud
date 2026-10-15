@@ -271,6 +271,7 @@ NO_LABEL: Final = frozenset(
         "approval_delegation",
         "audit_chain_verification",
         "ai_proposal",  # proposal identity is its id; no business label.
+        "ai_call_intent",  # AUD-FACT: hashes-only provider start evidence.
         "ai_model_log",  # AUD-FACT: retained ids in detail, no object label.
         "calc_trace",
         "close_checklist_item",

@@ -96,6 +96,7 @@ WHERE_NAMED: Final = frozenset(
 )
 OTHER: Final = frozenset(
     {
+        "ai_call_intent",  # AUD-FACT: hashes-only provider start evidence.
         "ai_model_log",  # tenant-level call evidence; proposals carry their subjects.
         # identity, access and the workspace
         "tenant",

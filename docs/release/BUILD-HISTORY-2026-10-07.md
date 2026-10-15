@@ -4533,3 +4533,23 @@ cleanup in the shared database session kernel was also repaired and regression-t
   Operational gateway execution, budget serialization, per-source permissions, attempt and
   proposal/audit persistence, settings command lifecycle and human acceptance remain open.
   No provider call or deployment; isolated test database stopped after verification.
+
+## Serialized AI budget admission and lost-connection cleanup — October 15, 2026
+
+- Added one autocommit session lock per tenant, `erev-ai-budget:<tenant>`, held across
+  admission, provider work and committed usage logging by the future gateway. Busy callers
+  get no lease. Usage sums all outcomes' input/output tokens in the UTC calendar month;
+  equality with the budget and a zero budget refuse before provider work can be admitted.
+- PostgreSQL cases prove competing admissions cannot use a stale total, tenant isolation,
+  month boundaries/error usage, zero budget, exception release and lost-lease refusal.
+  The final focused check also observes the lock connection idle with no open transaction.
+- Lost-connection testing found and repaired shared cleanup that accessed connection.info
+  while invalidated, masking the original error with a reconnect/rollback failure. Cleanup
+  now preserves the original error and discards context without reconnecting; context-free
+  SQL remains refused. Two existing session-test annotations were corrected for strict typing.
+- Combined checks: 215 passed, two Linux parser-limit tests skipped; strict API/test typing:
+  761 sources; Ruff passes. Final budget cases: 6 passed. Logs: .run/ai-budget-{final,types,final-pg}.log.
+- This is committed-usage admission, not a reservation for unknown future tokens. Crash
+  recovery for a provider call whose usage was never logged remains open, as do the gateway,
+  durable per-attempt/proposal auditing and human acceptance. No live calls or deployment.
+  Isolated local test database stopped after verification.

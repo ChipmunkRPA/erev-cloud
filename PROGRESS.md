@@ -2,6 +2,23 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Audited AI call-intent writer — October 15, 2026
+
+- Added a transaction-bound writer that locks the human-owned RUNNING AI_TASK job,
+  validates exact request/source hashes, assigns consecutive starts up to three and writes
+  immutable intent plus AUD-FACT evidence atomically. Unresolved prior starts refuse without
+  creating a usage log. The caller must commit before executing a provider call.
+- Attempt outcomes can now link to an intent only when provider, request hash and human
+  match; duplicate outcomes and budget/disabled admission records cannot close an intent.
+  Shared request validation keeps arbitrary parameters and model text out of retained evidence.
+- Tests cover rollback/audit atomicity, unknown outcomes, changed input, wrong human/provider,
+  duplicate outcomes, attempt exhaustion and invalid/nonrunning job ownership. Broad AI and
+  audit-key regression: 224 passed, two Linux parser-limit tests skipped; strict typing:
+  768 sources; Ruff/diff passed. Logs: .run/ai-intent-writer-{final,types}.log.
+- This is a required writer foundation, not operational crash protection: gateway integration,
+  durable retry classification/recovery and unknown-usage handling remain open, as do the
+  other implementation/release gates and independent accounting sign-off. No deployment.
+
 ## AI document file-read authorization — October 15, 2026
 
 - Registered proposal source references without granting source access. Derived text now
@@ -223,26 +240,6 @@
   strict typing passed for 761 sources. Ruff and diff checks pass.
 - The operational gateway, proposal creation/acceptance and full AI audit lifecycle
   remain unfinished. No live provider calls or deployment; no readiness claim.
-
-## Serialized AI budget admission and lost-connection cleanup — October 15, 2026
-
-- Added one autocommit session lock per tenant, `erev-ai-budget:<tenant>`, held across
-  admission, provider work and committed usage logging by the future gateway. Busy callers
-  get no lease. Usage sums all outcomes' input/output tokens in the UTC calendar month;
-  equality with the budget and a zero budget refuse before provider work can be admitted.
-- PostgreSQL cases prove competing admissions cannot use a stale total, tenant isolation,
-  month boundaries/error usage, zero budget, exception release and lost-lease refusal.
-  The final focused check also observes the lock connection idle with no open transaction.
-- Lost-connection testing found and repaired shared cleanup that accessed connection.info
-  while invalidated, masking the original error with a reconnect/rollback failure. Cleanup
-  now preserves the original error and discards context without reconnecting; context-free
-  SQL remains refused. Two existing session-test annotations were corrected for strict typing.
-- Combined checks: 215 passed, two Linux parser-limit tests skipped; strict API/test typing:
-  761 sources; Ruff passes. Final budget cases: 6 passed. Logs: .run/ai-budget-{final,types,final-pg}.log.
-- This is committed-usage admission, not a reservation for unknown future tokens. Crash
-  recovery for a provider call whose usage was never logged remains open, as do the gateway,
-  durable per-attempt/proposal auditing and human acceptance. No live calls or deployment.
-  Isolated local test database stopped after verification.
 
 ## Outstanding release verification
 

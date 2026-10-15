@@ -5868,8 +5868,13 @@ Keys: `PRIMARY KEY (tenant_id, id)`; `ix_ai_model_log__created (tenant_id, creat
 
 Keys: `PRIMARY KEY (tenant_id, id)`; `ux_ai_call_intent__attempt (tenant_id, job_id, attempt_no)`.
 Migration 0150 refuses downgrade when intents exist. The unique tenant/intent link on
-ai_model_log permits at most one recorded outcome per intent. Runtime write-ahead admission
-and uncertain-outcome recovery must use these records before they provide crash protection.
+ai_model_log permits at most one recorded outcome per intent. The transaction-bound intent writer
+locks the human-owned RUNNING AI_TASK job, validates request/source digests, assigns consecutive
+attempts up to three and refuses an unresolved prior start. It writes an `ai_call_intent.record`
+AUD-FACT event with intent IDs, job ID and attempt number, without prompt/response text. A linked
+outcome must match provider, request digest and human; disabled/budget admission logs cannot
+close a call intent. Runtime write-ahead admission and uncertain-outcome recovery must call and
+commit these writers before they provide crash protection.
 
 
 ### T-MIG-01 `migration_batch`

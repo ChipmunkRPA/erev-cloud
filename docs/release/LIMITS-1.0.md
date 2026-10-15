@@ -22,6 +22,10 @@ provider errors produce failed proposals linked to existing attempt evidence.
 Migrations 0147–0150 retain append-only call logs, immutable proposal content with guarded
 human-decision fields, completed-job/source bindings and immutable call intents with one
 optional outcome link. Populated completion/intent evidence prevents destructive downgrade.
+A transaction-bound writer now validates and audits call intents, serializes starts on the
+persisted human-owned RUNNING AI_TASK job, enforces consecutive attempts up to three, refuses
+unresolved starts and validates linked outcomes against the request/provider/human. Tests cover
+rollback, missing outcomes, mismatches and duplicate outcomes without inventing usage.
 Call intents are not yet written by the gateway: write-ahead admission, durable retry counting,
 unknown usage and recovery after a provider call but before committed evidence remain open.
 A monthly lease serializes known usage; it does not reserve an unknown response or reconstruct
