@@ -1,4 +1,4 @@
-"""Worker entry point for persisted narrative AI tasks.
+"""Worker entry point for persisted narrative and extraction AI tasks.
 
 Submission and human review remain separate workflows. The gateway owns provider
 retries and durable recovery; the job runner must not multiply those attempts.
@@ -8,11 +8,20 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping
 from datetime import date, timedelta
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 from uuid import UUID
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, StrictInt, ValidationError
+from pydantic import (
+    AwareDatetime,
+    BaseModel,
+    ConfigDict,
+    Field,
+    StrictInt,
+    TypeAdapter,
+    ValidationError,
+)
 
+from erev_api.domain.ai.extraction_gateway import ExtractionGateway, ExtractionSource
 from erev_api.domain.ai.gateway import (
     AICancelled,
     AiGateway,
@@ -53,6 +62,27 @@ class NarrativeTask(BaseModel):
         )
 
 
+class ExtractionTask(BaseModel):
+    """Server-selected source/hash and field paths; no prompt, model or document text."""
+
+    model_config = ConfigDict(extra="forbid")
+    operation: Literal["extraction"]
+    file_id: UUID
+    file_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    allowed_paths: frozenset[Annotated[str, Field(min_length=1, max_length=128)]] = Field(
+        min_length=1, max_length=128
+    )
+    max_tokens: StrictInt = Field(gt=0)
+
+    def source(self) -> ExtractionSource:
+        return ExtractionSource(self.file_id, self.file_sha256, self.allowed_paths)
+
+
+_TASK: TypeAdapter[NarrativeTask | ExtractionTask] = TypeAdapter(
+    Annotated[NarrativeTask | ExtractionTask, Field(discriminator="operation")]
+)
+
+
 _gateway: AiGateway | None = None
 _wait: Callable[[timedelta], None] | None = None
 
@@ -79,7 +109,7 @@ def retry_wait(context: JobContext, delay: timedelta, wait: Callable[[timedelta]
 @task(JobKind.AI_TASK, retry=RetryPolicy(max_attempts=1))
 def run(context: JobContext, params: Mapping[str, Any]) -> JobOutcome:
     try:
-        request = NarrativeTask.model_validate(params)
+        request = _TASK.validate_python(params)
     except ValidationError:
         # Pydantic errors include input values; never persist them in job diagnostics.
         raise ValueError("AI_INVALID_TASK") from None
@@ -87,12 +117,22 @@ def run(context: JobContext, params: Mapping[str, Any]) -> JobOutcome:
     if gateway is None or wait is None:
         raise RuntimeError("AI_WORKER_NOT_CONFIGURED")
     try:
-        proposal_id = gateway.run_narrative(
-            context,
-            request.source(),
-            max_tokens=request.max_tokens,
-            wait=lambda delay: retry_wait(context, delay, wait),
-        )
+        if isinstance(request, ExtractionTask):
+            if not isinstance(gateway, ExtractionGateway):
+                raise RuntimeError("AI_EXTRACTION_WORKER_NOT_CONFIGURED")
+            proposal_id = gateway.run_extraction(
+                context,
+                request.source(),
+                max_tokens=request.max_tokens,
+                wait=lambda delay: retry_wait(context, delay, wait),
+            )
+        else:
+            proposal_id = gateway.run_narrative(
+                context,
+                request.source(),
+                max_tokens=request.max_tokens,
+                wait=lambda delay: retry_wait(context, delay, wait),
+            )
     except AICancelled:
         # The registry reads the durable cancellation flag and settles CANCELLED.
         # No synthetic proposal or successful model result is created here.

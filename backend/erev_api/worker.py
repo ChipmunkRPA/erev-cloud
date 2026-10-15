@@ -32,6 +32,7 @@ import procrastinate
 from erev_api.adapters.ai.provider import get_provider
 from erev_api.adapters.billing import stripe
 from erev_api.adapters.crm import salesforce
+from erev_api.adapters.documents.isolated_pdf import extract_pdf_pages_isolated
 from erev_api.adapters.email import build_email_sender
 from erev_api.adapters.gl import netsuite, quickbooks
 from erev_api.adapters.gl.csv import CsvGl
@@ -49,7 +50,7 @@ from erev_api.controls.startup import refuse_unsafe_production
 from erev_api.db.session import dispose_engines, set_component
 from erev_api.domain.ai import expiry as ai_expiry
 from erev_api.domain.ai import jobs as ai_jobs
-from erev_api.domain.ai.gateway import AiGateway
+from erev_api.domain.ai.extraction_gateway import ExtractionGateway
 from erev_api.domain.ai.ports import AIProvider
 from erev_api.domain.close import data_quality_sweep as sch10_data_quality_sweep
 from erev_api.domain.contracts import dirty_sweep
@@ -445,10 +446,11 @@ def build_runtime(
         threading.Event().wait(delay.total_seconds())
 
     ai_jobs.configure(
-        AiGateway(
+        ExtractionGateway(
             provider=settings.ai_provider,
             provider_factory=ai_provider,
             platform_kill_switch=lambda: settings.ai_kill_switch,
+            extract_pages=extract_pdf_pages_isolated,
         ),
         ai_wait,
     )

@@ -2,6 +2,30 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Extraction gateway and worker dispatch — October 15, 2026
+
+- Connected extraction execution to fresh human/source/settings admission, the tenant budget
+  lease, committed text/call intent, audited outcomes and proposal persistence. Retries reuse
+  retained input without reparsing, observe durable 5/10-second backoff and stop at three calls.
+  Permanent/exhausted errors finalize against the last log. Completed replay makes no new call;
+  uncertain outcomes/usage block execution. Mid-call disable/revocation retains usage without
+  creating a proposal. Cancelling an uncertain job preserves its evidence and budget hold.
+- AI_TASK now validates narrative or extraction selectors, rejecting prompts/model/text input.
+  The worker composition root supplies the isolated PDF parser and lazy provider. Worker retry
+  count remains one; the gateway owns provider attempts. Human review/acceptance remains separate.
+- Verification: 38 AI PostgreSQL cases passed, including a real queued extraction job, interrupted
+  wait/failure recovery, lease release across waits, exact retained requests, cancellation,
+  disabled/text-off/budget admission, invalid output and known/unknown usage. Three final cases
+  passed after the uncertain-call cancellation correction. Thirty-nine dispatch/layer checks
+  and nine worker/probe checks passed. Full lint/typecheck passed (932 Python sources plus
+  frontend); final focused typing passed 784 sources and final formatting/lint checks passed.
+  Logs: .run/ai-extraction-gateway-{pg-fixed,regressions,final-pg,unit,worker-unit,lint,
+  typecheck-last,types-last}.log. An initial test-only mappingproxy serialization mistake and
+  two strict-typing issues were corrected. Fake providers/parsers only; no deployment/live AI.
+- Public extraction submission, approved field catalogue, document-text/proposal review APIs,
+  human acceptance and broader release/accounting gates remain unfinished. Linux parser resource
+  enforcement and live-provider operation are not proved by these local worker tests.
+
 ## Extraction recovery from retained input — October 15, 2026
 
 - Added a worker-only recovery reader that freshly authorizes the initiating human, selects
@@ -196,40 +220,6 @@
 - The initial permission fixture was corrected to use an auditor without ai.use; test import
   typing was corrected before the final checks. Anomaly/extraction/Q&A submission, proposal
   read/review and durable AI admission-failure evidence remain open. No deployment/live calls.
-
-## Sensitive AI configuration approval — October 15, 2026
-
-- Model changes, including returning a custom model to the catalogue default, and enabling
-  contract-text sending now require independent workspace-administrator review in addition to
-  configuration approval. The submitted whole values are compared with their predecessor and
-  defaults, so inherited values and unrelated edits do not create extra approval requirements.
-- The rule applies while AI is disabled too. Approved model/text changes alone never clear the
-  emergency switch. Turning text sending off retains normal routing. Existing first-enable,
-  re-enable, publication replay and budget-edit behavior remains covered.
-- Verification: 25 database regression cases passed, followed by five API cases checking actual
-  resolved settings after publication. 53 unit/layer checks, strict typing (773 sources) and
-  full make lint passed. A test's nullable timestamp assertion was made explicit for typing.
-  Logs: .run/ai-sensitive-{regressions,effective-settings,unit,types-final,lint}.log.
-- Provider selection remains process configuration; tenant approval gating of provider changes
-  is still open, along with public submission/review and other release requirements. No live
-  provider calls or deployment; this is development evidence, not a full release pass.
-
-## Approved AI re-enable publication — October 15, 2026
-
-- A new AI policy publication with ai.enabled=true clears the emergency switch in the same
-  transaction, with ai.enabled audit evidence linked to its approval and registry version.
-  Replaying an already-published version cannot undo a later disable; false publications leave
-  the switch intact. No direct enable command was added.
-- First enablement and clearing a switch require independent human configuration approval plus
-  workspace-wide settings.manage. This also covers inherited ai.enabled=true values. A refused
-  reviewer rolls back the decision/publication. Budget-only edits while enabled retain normal
-  routing; tenant locking serializes switch changes with the publication decision.
-- Final verification: 21 database lifecycle/approval/scope/disable cases passed; 53 unit/layer
-  checks passed. Full make lint and make typecheck passed (922 Python sources plus frontend).
-  Logs: .run/ai-reenable-{regressions-final,unit-final,lint-final,typecheck-final}.log.
-  The initial test used an older non-MFA author session; it was corrected to the enrolled session.
-- Public submission/review, broader AI sensitive-setting approval coverage, unknown usage/outcome
-  reconciliation and the other release gaps remain open. No live provider calls or deployment.
 
 ## Outstanding release verification
 

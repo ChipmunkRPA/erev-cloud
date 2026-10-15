@@ -28,6 +28,8 @@ from erev_api.domain.ai.attempts import (
 )
 from erev_api.domain.ai.attempts import RETRYABLE_PROVIDER_CODES as _RETRYABLE_PROVIDER_CODES
 from erev_api.domain.ai.budget import AIBudgetRefused, budget_guard
+from erev_api.domain.ai.document_retrieval import RetrievedExtraction
+from erev_api.domain.ai.extraction_recovery import RecoveredExtraction
 from erev_api.domain.ai.ports import AIProvider, AIResponse, AIUsage, ProviderError
 from erev_api.domain.ai.preparation import PreparationRefused
 from erev_api.domain.ai.proposals import (
@@ -143,7 +145,7 @@ class AiGateway:
     def _record_error(
         self,
         context: JobContext,
-        retrieved: RetrievedNarrative,
+        retrieved: RetrievedNarrative | RetrievedExtraction | RecoveredExtraction,
         *,
         response: AIResponse | None,
         timeout: bool = False,

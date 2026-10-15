@@ -129,7 +129,7 @@ and resolves secrets lazily. Contract-review and explain-narrative prompts have 
 digests and deterministic fixtures. Request preparation minimizes and redacts inputs with
 immutable coordinate mappings; extraction validation verifies allowed paths, confidence and
 source citation spans, rejecting an entire malformed proposal. Confidence below 0.75 is marked
-for review. Command-specific field schemas, human semantic review, extraction worker integration and
+for review. Command-specific field schemas, human semantic review, extraction submission and
 acceptance, anomaly and Q&A workflows remain unfinished.
 
 The worker-only document retrieval helper now checks the current initiating human, AI switches,
@@ -144,12 +144,13 @@ bound to the source digest and initiating job. It rebuilds requests and citation
 those bytes, verifies the call intent, and atomically records model usage, validated extraction
 fields and audit evidence. Invalid/uncited output and refusals produce failed proposals without
 retaining rejected response text. Database tests cover encryption, cross-job text/intent
-refusal, changed request fields, missing permission and rollback. These components still need
-extraction dispatch, budget admission, provider retry/recovery and submission integration.
+refusal, changed request fields, missing permission and rollback. Public extraction submission
+and review integration remain unfinished.
 Terminal provider-failure persistence now also rebuilds retained document evidence and verifies
 the existing failure log against its request, initiating human and job intent. It links that log
 without recording another attempt, preserving reported or unknown usage. Tests cover changed
-failure codes, unrelated logs and rollback; the gateway still must decide when retries end.
+failure codes, unrelated logs and rollback. The extraction gateway finalizes permanent failures
+or exhaustion after three calls, without duplicating the last attempt log.
 Migration 0155 adds paired source/text links to immutable call intents, so recovery can locate
 the retained input before a proposal exists. Both files have evidence holds from call start;
 reviewed erasure remains required and the links grant no extra read access. Intent retries and
@@ -158,15 +159,23 @@ A worker-only recovery reader now reauthorizes the human and reconstructs exact 
 from intent-linked retained text without reparsing the PDF. It returns an existing proposal or
 validated failure/usage/backoff metadata; an unresolved start or unclassified outcome refuses
 automatic recovery. Completed evidence remains readable with AI disabled but not after access
-revocation. New-call admission and retry execution remain separate integration work.
-These persistence/recovery components do not implement a complete extraction workflow.
+revocation. The extraction gateway now uses that reader before each attempt, rechecks settings
+and source access, holds the tenant budget lease through committed usage and limits execution
+to three calls with 5/10-second backoff. Interrupted waits preserve remaining delay, retries
+reuse the retained request, unknown outcomes/usage block new calls, and mid-call invalidation
+records usage without a proposal. No model fallback or SDK-level retry is introduced.
+AI_TASK dispatch accepts bounded extraction selectors, source hash and field paths; the worker
+composition root supplies the isolated PDF parser and lazy provider factory. The public API
+still needs an approved field catalogue, extraction submission and human review/acceptance.
 
 The PDF adapter has file/page/text and parser limits, an isolated subprocess, timeout cleanup
 and a sanitized environment. A four-page fixture covers the nine documented extraction fields.
 Linux address-space/CPU enforcement is implemented but actual Linux success/exhaustion checks
 remain unverified: two tests skip on this Mac, and Docker's daemon is unavailable. This is
-process resource containment, not a filesystem/network sandbox. No registered AI job yet
-connects authorized source reads, parsing, document-text storage and proposal production.
+process resource containment, not a filesystem/network sandbox. The registered extraction job
+connects authorized reads, isolated parsing, retained text and proposal production. Local
+gateway/worker database tests inject a deterministic parser and fake provider; they do not
+prove the production Linux parser or a live provider works.
 
 Proposal source and extracted-text references hold files against direct erasure, including
 after expiry. The Controller-reviewed EVIDENCE_SHRED flow can lift the holds; without durable

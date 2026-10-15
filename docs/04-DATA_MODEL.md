@@ -5892,6 +5892,14 @@ work; a missing outcome is not recorded as a zero-token failure. Unresolved inte
 budget admissions across the tenant without monthly expiry. The live budget lease may bind
 only its own newly committed human-attributed intent after admission, so the current response
 can be recorded while a different job or replacement lease remains blocked.
+
+The extraction AI_TASK dispatcher accepts a source file ID/digest, bounded allowed field paths
+and an output-token limit; it rejects caller prompts, model selection and document text. The
+worker supplies the isolated parser and lazy provider factory. Its gateway commits text and
+intent before execution, keeps the budget lease through recorded usage, reuses retained text
+on retries, and enforces three calls with durable 5/10-second backoff. Uncertain calls remain
+held even after job cancellation. Public submission and the approved field catalogue remain
+unfinished; worker completion means proposal persistence, not accounting acceptance.
 New attempt logs also retain a writer-derived `usage_evidence` parameter: `REPORTED` when
 validated response or provider-error counters exist (including an actual zero), `NOT_SENT` for disabled/budget
 admission refusals, and `UNKNOWN` for outcomes without reported usage. Zero compatibility counters

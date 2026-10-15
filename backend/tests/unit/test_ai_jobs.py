@@ -9,6 +9,7 @@ from uuid import uuid4
 
 import pytest
 from erev_api.domain.ai import jobs
+from erev_api.domain.ai.extraction_gateway import ExtractionGateway
 from erev_api.domain.ai.gateway import AICancelled, AiGateway
 from erev_api.enums import JobKind
 from erev_api.jobs.context import JobContext, JobLost
@@ -121,3 +122,52 @@ def test_retry_wait_stops_when_attempt_loses_job() -> None:
     with pytest.raises(JobLost):
         jobs.retry_wait(context, timedelta(seconds=5), wait)
     wait.assert_not_called()
+
+
+def extraction_payload() -> dict[str, Any]:
+    return {
+        "operation": "extraction",
+        "file_id": str(uuid4()),
+        "file_sha256": "a" * 64,
+        "allowed_paths": ["amount"],
+        "max_tokens": 1024,
+    }
+
+
+def test_extraction_dispatch_preserves_source_and_context(monkeypatch: pytest.MonkeyPatch) -> None:
+    gateway = Mock(spec=ExtractionGateway)
+    proposal_id = uuid4()
+    gateway.run_extraction.return_value = proposal_id
+    monkeypatch.setattr(jobs, "_gateway", gateway)
+    monkeypatch.setattr(jobs, "_wait", Mock())
+    context = Mock(spec=JobContext)
+    params = extraction_payload()
+    outcome = jobs.run(context, params)
+    assert outcome.result == {"proposal_id": str(proposal_id)}
+    gateway.run_extraction.assert_called_once_with(
+        context, jobs.ExtractionTask.model_validate(params).source(), max_tokens=1024, wait=ANY
+    )
+    gateway.run_narrative.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"file_sha256": "private text"},
+        {"allowed_paths": []},
+        {"allowed_paths": [""]},
+        {"max_tokens": True},
+        {"model": "unapproved"},
+        {"text": "private text"},
+    ],
+)
+def test_invalid_extraction_payload_is_sanitized(
+    changes: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    gateway = Mock(spec=ExtractionGateway)
+    monkeypatch.setattr(jobs, "_gateway", gateway)
+    monkeypatch.setattr(jobs, "_wait", Mock())
+    with pytest.raises(ValueError, match="^AI_INVALID_TASK$"):
+        jobs.run(Mock(spec=JobContext), extraction_payload() | changes)
+    gateway.run_extraction.assert_not_called()
+    gateway.run_narrative.assert_not_called()
