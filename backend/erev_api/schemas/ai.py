@@ -70,3 +70,14 @@ class AIProposalRejectIn(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
     reason: str = Field(min_length=1, max_length=4000)
+
+
+class AIDocumentPageOut(BaseModel):
+    page_no: int
+    text: str
+
+
+class AIDocumentTextOut(BaseModel):
+    proposal_id: UUID
+    file_object_id: UUID
+    pages: list[AIDocumentPageOut]

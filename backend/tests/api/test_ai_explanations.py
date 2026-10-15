@@ -152,6 +152,13 @@ def test_submission_is_authorized_idempotent_and_processed_by_worker(
     assert saved.json()["created_by"]["id"] == str(actor.member.user_id)
     assert saved.headers["ETag"]
     assert "job_source_sha256" not in saved.json()
+    no_document = call(
+        world.app,
+        "GET",
+        f"{proposal_path}/document-text",
+        headers=cookie_headers(actor.token, actor.csrf_token),
+    )
+    assert no_document.status_code == 404, no_document.text
     assert read_as(reader).status_code == 403
     foreign = holding(world.app, member(keyring, clock, name="foreign"), "viewer")
     assert read_as(foreign).status_code == 404

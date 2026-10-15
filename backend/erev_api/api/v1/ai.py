@@ -31,11 +31,12 @@ from erev_api.auth.dependencies import require
 from erev_api.auth.principal import RequestContext
 from erev_api.db.session import tenant_session
 from erev_api.db.tables import ai_proposal
-from erev_api.domain.ai import commands, queries
+from erev_api.domain.ai import commands, extraction_reads, queries
 from erev_api.domain.platform.jobs import job_out_of
 from erev_api.enums import AiProposalKind, AiProposalStatus
 from erev_api.schemas.ai import (
     AIContractExtractionIn,
+    AIDocumentTextOut,
     AIExplanationIn,
     AIExtractionProposalOut,
     AIProposalOut,
@@ -239,3 +240,18 @@ def contract_extractions_create(
     return run_command(
         cmd, deps, handle, status_code=202, location=lambda result: f"{API_PREFIX}/jobs/{result.id}"
     )
+
+
+@router.get(
+    "/ai/proposals/{id}/document-text",
+    operation_id="ai_proposals_document_text",
+    response_model=AIDocumentTextOut,
+    responses=problem_responses("unauthenticated", "session-expired", "forbidden", "not-found"),
+)
+def proposals_document_text(
+    id: UUID,
+    ctx: Annotated[RequestContext, Depends(require("ai.use"))],
+    deps: Annotated[KernelDeps, Depends(kernel_deps)],
+) -> AIDocumentTextOut:
+    """Return audited retained original pages for an authorized extraction proposal."""
+    return extraction_reads.document_text(ctx, id, files=deps.files, keyring=deps.keyring)

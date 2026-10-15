@@ -2,6 +2,25 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Audited extraction document-text reads — October 15, 2026
+
+- Implemented GET /ai/proposals/{id}/document-text for retained extraction evidence. Current
+  source access is checked before the normal encrypted file reader rechecks ownership and
+  commits a file.download audit as the human reader. The response preserves original pages and
+  order with one-based page numbers. AI-off reads work; other kinds and shredded text return 404.
+- Shared the canonical envelope decoder with worker persistence. Both paths validate exact
+  source/job bindings; the public read additionally checks stored size/digest, while the decoder
+  rejects malformed/noncanonical envelopes, wrong bindings, invalid page types and exceeded
+  page/text limits. Reads neither parse the PDF nor call a provider.
+- Verification: six PostgreSQL API/persistence tests passed, including AI-off text, actor audit,
+  denied/unreadable sources, non-extraction proposals, shredded text/source and retained evidence
+  rollback/regressions. Forty-one unit/architecture checks passed, including 17 text-envelope
+  cases. Full lint/typecheck passed (934 Python sources plus frontend), focused typing passed
+  787 sources, OpenAPI/frontend generation and final diff checks passed. Logs:
+  .run/ai-document-text-{pg-final,unit,lint,typecheck,types-final,openapi}.log.
+- Extraction list integration, human review/acceptance, broader release checks and independent
+  accounting sign-off remain outstanding. No deployment or live provider calls.
+
 ## Authorized extraction proposal detail — October 15, 2026
 
 - GET /ai/proposals/{id} now returns CONTRACT_EXTRACTION evidence as a distinct response shape
@@ -207,26 +226,6 @@
   is copied to a dictionary at the shared serializer boundary to satisfy strict typing.
 - Acceptance, extraction, anomaly summaries, Q&A and broader release/accounting requirements
   remain open. No deployment or live provider calls; no production-readiness claim.
-
-## Scheduled AI proposal expiry — October 15, 2026
-
-- Wired SCH-11 into the worker at 03:20 UTC daily. Each tenant is processed in batches of
-  at most 100 locked rows; concurrent review locks are skipped for a later sweep. Only due
-  proposed rows become expired, with a row-version increment and SYSTEM audit in one transaction.
-  Content, citations, call logs, files and terminal proposal states remain intact; AI switches
-  do not govern maintenance. Existing rejection checks enforce expiry between daily sweeps.
-- Migration 0154 adds the tenant/expiry/id index. The application-role EXPLAIN test proves
-  expires_at bounds the expiry query under RLS; migration upgrade/downgrade/upgrade checks pass.
-- Verification: eight PostgreSQL migration/index cases, the real proposal lifecycle case on
-  the new head, and 22 worker/layer checks passed. The lifecycle checks the boundary, newer and
-  terminal rows, two tenants, review locks, interrupted-batch rollback, multi-batch expiry,
-  repeat runs, audit cardinality and retained reads. Full lint and typecheck passed (926 Python
-  sources plus frontend); focused typing passed 780 sources. Logs:
-  .run/ai-expiry-{head-pg,migrations,unit,typecheck,types-verified,lint-final}.log.
-  Initial fixtures were corrected to provision a real second tenant and import the transition
-  helper directly for strict typing. No production code was loosened for those fixes.
-- Listing, acceptance, extraction and other AI operations remain open, along with the broader
-  accounting/verification backlog and independent sign-off. No deployment or live AI calls.
 
 ## Outstanding release verification
 

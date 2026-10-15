@@ -431,6 +431,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/ai/proposals/{id}/document-text": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Proposals Document Text
+     * @description Return audited retained original pages for an authorized extraction proposal.
+     */
+    get: operations["ai_proposals_document_text"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/ai/proposals/{id}/reject": {
     parameters: {
       query?: never;
@@ -7795,6 +7815,28 @@ export interface components {
        * Format: uuid
        */
       file_id: string;
+    };
+    /** AIDocumentPageOut */
+    AIDocumentPageOut: {
+      /** Page No */
+      page_no: number;
+      /** Text */
+      text: string;
+    };
+    /** AIDocumentTextOut */
+    AIDocumentTextOut: {
+      /**
+       * File Object Id
+       * Format: uuid
+       */
+      file_object_id: string;
+      /** Pages */
+      pages: components["schemas"]["AIDocumentPageOut"][];
+      /**
+       * Proposal Id
+       * Format: uuid
+       */
+      proposal_id: string;
     };
     /** AIExplanationIn */
     AIExplanationIn: {
@@ -24916,6 +24958,67 @@ export interface operations {
           "application/json":
             | components["schemas"]["AIProposalOut"]
             | components["schemas"]["AIExtractionProposalOut"];
+        };
+      };
+      /** @description Problem: unauthenticated, session-expired */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: not-found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  ai_proposals_document_text: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AIDocumentTextOut"];
         };
       };
       /** @description Problem: unauthenticated, session-expired */

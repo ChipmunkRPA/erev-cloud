@@ -15,7 +15,7 @@ import pytest
 from erev_api.auth.keyring import KeyRing
 from erev_api.clock import FrozenClock
 from erev_api.db.session import tenant_session
-from erev_api.db.tables import ai_model_log, ai_proposal, file_object, job, tenant
+from erev_api.db.tables import ai_model_log, ai_proposal, audit_event, file_object, job, tenant
 from erev_api.domain.ai import jobs as ai_jobs
 from erev_api.domain.ai.commands import EXTRACTION_MAX_TOKENS
 from erev_api.domain.ai.extraction_fields import CONTRACT_EXTRACTION_PATHS
@@ -241,6 +241,27 @@ def test_extraction_submission_and_worker(
     assert detail.json()["content"] == proposal["content"]
     assert detail.json()["citations"] == proposal["citations"]
     assert detail.headers["ETag"]
+    text_path = f"{detail_path}/document-text"
+    text_response = call(world.app, "GET", text_path, headers=headers)
+    assert text_response.status_code == 200, text_response.text
+    assert text_response.json() == {
+        "proposal_id": str(proposal_id),
+        "file_object_id": str(file_id),
+        "pages": [{"page_no": 1, "text": "Customer Kinsley Marrow Foods Inc."}],
+    }
+    with tenant_session(world.place.principal.db_context, read_only=True) as session:
+        downloads = (
+            session.execute(
+                select(audit_event).where(
+                    audit_event.c.action == "file.download",
+                    audit_event.c.object_id == proposal["document_text_file_id"],
+                )
+            )
+            .mappings()
+            .all()
+        )
+        assert len(downloads) == 1
+        assert downloads[0]["actor_id"] == actor.member.user_id
     assert len(observed) == len(parsed) == 1
     forbidden = call(
         world.app, "GET", detail_path, headers=cookie_headers(reader.token, reader.csrf_token)
@@ -251,8 +272,29 @@ def test_extraction_submission_and_worker(
         world.app, "GET", detail_path, headers=cookie_headers(other.token, other.csrf_token)
     )
     assert hidden_detail.status_code == 404, hidden_detail.text
+    for denied_actor, expected_status in ((reader, 403), (other, 404)):
+        denied_text = call(
+            world.app,
+            "GET",
+            text_path,
+            headers=cookie_headers(denied_actor.token, denied_actor.csrf_token),
+        )
+        assert denied_text.status_code == expected_status, denied_text.text
     missing = call(world.app, "GET", f"/api/v1/ai/proposals/{uuid4()}", headers=headers)
     assert missing.status_code == 404, missing.text
+    with tenant_session(world.place.principal.db_context) as session:
+        session.execute(
+            update(file_object)
+            .where(file_object.c.id == proposal["document_text_file_id"])
+            .values(
+                shredded_at=clock.now(),
+                shredded_by=actor.member.user_id,
+                shredded_by_kind="USER",
+                shred_reason="fixture unavailable text",
+            )
+        )
+    shredded_text = call(world.app, "GET", text_path, headers=headers)
+    assert shredded_text.status_code == 404, shredded_text.text
     with tenant_session(world.place.principal.db_context) as session:
         # Model a subsequently unavailable source in the fixture; replay must recheck it.
         session.execute(
@@ -269,6 +311,8 @@ def test_extraction_submission_and_worker(
     assert replay_denied.status_code == 404, replay_denied.text
     unavailable = call(world.app, "GET", detail_path, headers=headers)
     assert unavailable.status_code == 404, unavailable.text
+    unavailable_text = call(world.app, "GET", text_path, headers=headers)
+    assert unavailable_text.status_code == 404, unavailable_text.text
     assert len(observed) == 1
 
 

@@ -1901,7 +1901,8 @@ AI proposal source references add no file-read grant: existing uploader and atta
 rules still decide source access. Extracted text requires `ai.use` plus current access to an
 unshredded source attachment of a `CONTRACT_EXTRACTION` proposal in the same tenant. Other
 source purposes cannot form recursive read chains. Disabling model calls does not disable
-retained evidence reads. The dedicated document-text response API remains separate work.
+retained evidence reads. The dedicated document-text response uses the same source-access rule
+and audited file reader, and validates the retained source/job envelope before serving pages.
 
 **Binding (authoritative; rev 1.189; REQ-PLT-012; ruling R-111 (1)).** A command that takes a file id from its caller — to parse the file, to make it the source or the evidence of a record, to attach it — binds it through one function, `erev_api.domain.platform.file_access.bound`, which answers the file's row only when the id names a file the caller may read (Read access above). A file that does not exist and a file the caller may not read are one answer, the answer of the table, and it is given before anything of the file is looked at — purpose, media type, shred state, name or content — so that no answer of the command tells an unreadable file from a missing one. The job that later works on a bound file reads it as SYSTEM. The request members that name a file:
 
@@ -8048,7 +8049,7 @@ and `object_label`, following the existing computation-fact audit convention.
   ATTACHMENT/PDF. Source ownership is checked before selecting suggested fields or citations.
   The response includes file_object_id, document_text_file_id and the retained content array;
   it does not decrypt text or call a provider. AI disable does not revoke retained reads.
-  Extraction list integration and the document-text response below remain unimplemented.
+  Extraction list integration remains unimplemented.
 - `POST /ai/contract-extractions` accepts `{file_id}` only and returns 202 API-S-Job with
   `Location: /api/v1/jobs/{id}`. Permission `ai.use`, human initiator, current readable unshredded
   ATTACHMENT/PDF and enabled AI/text consent are required. Missing and unreadable sources both
@@ -8058,6 +8059,9 @@ and `object_label`, following the existing computation-fact audit convention.
   against emergency disable, and the worker independently rechecks source/settings/budget.
   Submission reads no document bytes and does not call a provider or create a contract.
 - `GET /ai/proposals/{id}/document-text` returns `{proposal_id, file_object_id, pages: array<{page_no, text}>}` from `ai_proposal.document_text_file_id`. It calls no model and works while AI is disabled; other proposal kinds return 404 `not-found`. Permission `ai.use`.
+  The implemented read verifies current source access, decrypts through the audited file reader,
+  and checks the retained digest, canonical envelope and source/job bindings. Page numbers are
+  one-based; the original page ordering and text are preserved. Shredded text returns 404.
 - `POST /ai/proposals/{id}/accept` takes `{field_decisions: array<{path (R), decision (E-121, R), value (R for EDIT), reason (R for EDIT and REJECT)}>, command (R; `contract.create_draft` in 1.0), entity_code (R)}`. Every `content[].path` of the proposal appears exactly once, otherwise 422 `validation-failed`. `ACCEPT` takes the proposed value, `EDIT` takes `value`, `REJECT` leaves the field unset. The command runs `POST /contracts` as the caller (permission `contract.create`) and returns 201 `{contract_id}`; the proposal becomes `accepted` with `field_decisions` stored. A proposal that is not `proposed`, or has expired, returns 409 `invalid-transition`.
 - `POST /ai/explanations` accepts either `{object_type, id, measure, period}` (an API-R-49 object type; proposal kind `NUMBER_EXPLANATION`) or `{subject_type: "exception_item", subject_id}` (proposal kind `ANOMALY_FLAG`, an anomaly summary). It returns 202 API-S-Job (`AI_TASK`); flags and explanations never change data.
   The number-explanation form validates the caller's overlapping `ai.use` and `contract.read`

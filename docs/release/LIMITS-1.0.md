@@ -119,7 +119,7 @@ current human ai.use grant and original ATTACHMENT/PDF access through the file o
 It selects only binding metadata before authorization, then returns suggested fields, citations,
 source/text file IDs and the common status/actor/ETag metadata. Unreadable or shredded sources
 return 404; AI disable does not prevent retained reads. Other kinds still fail closed. Extraction
-list integration and document-text responses remain unfinished.
+list integration remains unfinished.
 POST /ai/proposals/{id}/reject now supports these number-explanation proposals for a human
 with current source access, a nonempty reason and the current If-Match ETag. Rejection locks
 the proposal, advances its row version and records the reviewer and audit event in one
@@ -180,7 +180,7 @@ reuse the retained request, unknown outcomes/usage block new calls, and mid-call
 records usage without a proposal. No model fallback or SDK-level retry is introduced.
 AI_TASK dispatch accepts bounded extraction selectors, source hash and field paths; the worker
 composition root supplies the isolated PDF parser and lazy provider factory. The public API
-still needs extraction list/document-text reads and human review/acceptance. Queue selectors and gateway paths
+still needs extraction list integration and human review/acceptance. Queue selectors and gateway paths
 now use the fixed catalogue; arbitrary accounting fields cannot be requested.
 
 The PDF adapter has file/page/text and parser limits, an isolated subprocess, timeout cleanup
@@ -203,7 +203,11 @@ File-read ownership is registered. Derived text requires ai.use and current acce
 source attachment of a same-tenant CONTRACT_EXTRACTION proposal. Source references add no
 read grant; attachment entity scope and voiding remain effective. Derived-to-derived links
 refuse without recursion, and disabling calls does not disable retained evidence reads.
-The dedicated proposal/document-text response API and extraction workflow remain open.
+GET /ai/proposals/{id}/document-text now returns original numbered pages after current source
+access checks and an audited encrypted-file read. It verifies plaintext size/digest and the
+canonical source/job envelope, enforces page/text bounds, refuses shredded text, and works with
+AI disabled. Other proposal kinds return 404. No model call or document parsing occurs during
+review. Extraction list integration and human acceptance remain open.
 
 Earlier architecture failures and subsequent fixes are preserved in the build history.
 The October 15 full architecture plus file API run passed 292 checks in 226.83 seconds

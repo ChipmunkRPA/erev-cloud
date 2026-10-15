@@ -68,6 +68,52 @@
         "title": "AIContractExtractionIn",
         "type": "object"
       },
+      "AIDocumentPageOut": {
+        "properties": {
+          "page_no": {
+            "title": "Page No",
+            "type": "integer"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "page_no",
+          "text"
+        ],
+        "title": "AIDocumentPageOut",
+        "type": "object"
+      },
+      "AIDocumentTextOut": {
+        "properties": {
+          "file_object_id": {
+            "format": "uuid",
+            "title": "File Object Id",
+            "type": "string"
+          },
+          "pages": {
+            "items": {
+              "$ref": "#/components/schemas/AIDocumentPageOut"
+            },
+            "title": "Pages",
+            "type": "array"
+          },
+          "proposal_id": {
+            "format": "uuid",
+            "title": "Proposal Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "proposal_id",
+          "file_object_id",
+          "pages"
+        ],
+        "title": "AIDocumentTextOut",
+        "type": "object"
+      },
       "AIExplanationIn": {
         "additionalProperties": false,
         "properties": {
@@ -44138,6 +44184,96 @@
           }
         },
         "summary": "Proposals Get",
+        "tags": [
+          "API-R-47 AI"
+        ],
+        "x-erev-permission": "ai.use"
+      }
+    },
+    "/api/v1/ai/proposals/{id}/document-text": {
+      "get": {
+        "description": "Return audited retained original pages for an authorized extraction proposal.",
+        "operationId": "ai_proposals_document_text",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AIDocumentTextOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: unauthenticated, session-expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: not-found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Proposals Document Text",
         "tags": [
           "API-R-47 AI"
         ],

@@ -5115,3 +5115,23 @@ cleanup in the shared database session kernel was also repaired and regression-t
   Expiry and revocation fixtures were corrected to use the UOW clock and revocation metadata.
 - Acceptance, extraction review, other proposal kinds, listing, expiry processing and broader
   release gates remain open. No deployment or live provider calls; no production sign-off.
+
+## Scheduled AI proposal expiry — October 15, 2026
+
+- Wired SCH-11 into the worker at 03:20 UTC daily. Each tenant is processed in batches of
+  at most 100 locked rows; concurrent review locks are skipped for a later sweep. Only due
+  proposed rows become expired, with a row-version increment and SYSTEM audit in one transaction.
+  Content, citations, call logs, files and terminal proposal states remain intact; AI switches
+  do not govern maintenance. Existing rejection checks enforce expiry between daily sweeps.
+- Migration 0154 adds the tenant/expiry/id index. The application-role EXPLAIN test proves
+  expires_at bounds the expiry query under RLS; migration upgrade/downgrade/upgrade checks pass.
+- Verification: eight PostgreSQL migration/index cases, the real proposal lifecycle case on
+  the new head, and 22 worker/layer checks passed. The lifecycle checks the boundary, newer and
+  terminal rows, two tenants, review locks, interrupted-batch rollback, multi-batch expiry,
+  repeat runs, audit cardinality and retained reads. Full lint and typecheck passed (926 Python
+  sources plus frontend); focused typing passed 780 sources. Logs:
+  .run/ai-expiry-{head-pg,migrations,unit,typecheck,types-verified,lint-final}.log.
+  Initial fixtures were corrected to provision a real second tenant and import the transition
+  helper directly for strict typing. No production code was loosened for those fixes.
+- Listing, acceptance, extraction and other AI operations remain open, along with the broader
+  accounting/verification backlog and independent sign-off. No deployment or live AI calls.

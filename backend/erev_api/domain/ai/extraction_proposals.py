@@ -17,6 +17,7 @@ from erev_api.db import new_id
 from erev_api.db.tables import ai_proposal, file_object
 from erev_api.domain.ai.attempts import record_attempt
 from erev_api.domain.ai.document_preparation import (
+    MAX_PAGES,
     MAX_TEXT_BYTES,
     PreparedExtraction,
     prepare_extraction,
@@ -156,6 +157,26 @@ def _retained_pages(
         or sha256(payload).hexdigest() != str(row["sha256"]).strip()
     ):
         raise ProposalEvidenceRefused("AI_DOCUMENT_EVIDENCE_MISMATCH")
+    return decode_retained_pages(
+        payload,
+        document_id=document_id,
+        job_id=job_id,
+        job_source_sha256=job_source_sha256,
+        source_sha256=source_sha256,
+    )
+
+
+def decode_retained_pages(
+    payload: bytes,
+    *,
+    document_id: UUID,
+    job_id: UUID,
+    job_source_sha256: str,
+    source_sha256: str,
+) -> tuple[str, ...]:
+    """Validate the canonical text envelope against its immutable source/job bindings."""
+    if len(payload) > MAX_RECORD_BYTES:
+        raise ProposalEvidenceRefused("AI_DOCUMENT_EVIDENCE_MISMATCH")
     try:
         document = json.loads(payload)
         expected = {
@@ -176,7 +197,14 @@ def _retained_pages(
             raise ValueError("invalid retained text")
     except (ValueError, KeyError, TypeError, RecursionError):
         raise ProposalEvidenceRefused("AI_DOCUMENT_EVIDENCE_MISMATCH") from None
-    return tuple(document["pages"])
+    pages = document["pages"]
+    if (
+        not pages
+        or len(pages) > MAX_PAGES
+        or sum(len(page.encode("utf-8")) for page in pages) > MAX_TEXT_BYTES
+    ):
+        raise ProposalEvidenceRefused("AI_DOCUMENT_EVIDENCE_MISMATCH")
+    return tuple(pages)
 
 
 def _retained(
