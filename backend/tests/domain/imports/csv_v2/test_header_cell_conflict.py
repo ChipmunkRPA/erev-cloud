@@ -439,6 +439,73 @@ def test_a_contract_is_not_booked_against_a_later_row_of_its_file(j03: J03World)
     assert _booked(imports, "SF-ORD-3100%") == [("SF-ORD-31004", "2026-09-01")]
 
 
+def test_contract_terms_survive_csv_commit_and_draft_replacement(j03: J03World) -> None:
+    """False is a stated answer, blanks remain unknown, and a replacement uses its own terms."""
+    imports = importer(j03.place)
+    names = ["CSV-TERMS-YES", "CSV-TERMS-NO", "CSV-TERMS-UNKNOWN"]
+    states: list[tuple[bool | None, bool | None]] = [(True, False), (False, True), (None, None)]
+
+    def content(terms: list[tuple[bool | None, bool | None]]) -> bytes:
+        rows = []
+        for name, answers in zip(names, terms, strict=True):
+            members = _contract_rows(j03.customer_id, name, later_inception="2026-09-01")
+            for column, answer in zip(("acceptance_clause", "side_letter"), answers, strict=True):
+                members[0][CONTRACT_HEADERS.index(column)] = (
+                    "" if answer is None else str(answer).lower()
+                )
+            # Blank later cells inherit the first row; they must not erase a stated false.
+            rows.extend(members)
+        return csv_bytes(CONTRACT_HEADERS, rows)
+
+    def stored() -> dict[str, tuple[bool | None, bool | None]]:
+        return {
+            row["external_id"]: (row["acceptance_clause"], row["side_letter"])
+            for row in imports.rows(
+                select(
+                    contract.c.external_id, contract.c.acceptance_clause, contract.c.side_letter
+                ).where(contract.c.external_id.in_(names))
+            )
+        }
+
+    for index, terms in enumerate((states, [(None, None), (False, False), (True, True)])):
+        before = stored()
+        import_id, validated = imported(imports, f"terms-{index}.csv", content(terms), "contracts")
+        assert validated["status"] == "VALIDATED", validated
+        assert stored() == before  # Validation must not book or replace a contract.
+        done = taken(imports, j03.priya, import_id)
+        assert done["status"] == "COMMITTED", done
+        assert stored() == dict(zip(names, terms, strict=True))
+        for name, answers in zip(names, terms, strict=True):
+            (event,) = imports.rows(
+                select(contract_event.c.payload)
+                .join(contract, contract.c.id == contract_event.c.contract_id)
+                .where(
+                    contract.c.external_id == name,
+                    contract_event.c.event_type == "CONTRACT_BOOKED",
+                )
+                .order_by(contract_event.c.stream_version.desc())
+                .limit(1)
+            )
+            assert (
+                tuple(event["payload"].get(key) for key in ("acceptance_clause", "side_letter"))
+                == answers
+            )
+
+
+@pytest.mark.parametrize("column", ["acceptance_clause", "side_letter"])
+def test_conflicting_contract_terms_refuse_the_csv(j03: J03World, column: str) -> None:
+    imports = importer(j03.place)
+    rows = _contract_rows(j03.customer_id, "CSV-TERMS-CONFLICT", later_inception="2026-09-01")
+    rows[0][CONTRACT_HEADERS.index(column)] = "false"
+    rows[1][CONTRACT_HEADERS.index(column)] = "true"
+    import_id, validated = imported(
+        imports, "terms-conflict.csv", csv_bytes(CONTRACT_HEADERS, rows), "contracts"
+    )
+    assert validated["status"] == "INVALID", validated
+    assert codes_of(imports, import_id) == {3: [CODE]}
+    assert _booked(imports, "CSV-TERMS-CONFLICT") == []
+
+
 # --- estimates ----------------------------------------------------------------------------------
 
 ESTIMATE_HEADERS = [column.name for column in flatten(EstimatesIn)]

@@ -2,12 +2,19 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## CSV acceptance and side-letter evidence — October 15, 2026
+
+- CSV v2 already supports these terms. New PostgreSQL regressions verify approved booking and
+  replacement preserve true/false/null in events and projections, and reject contradictory rows.
+- Three tests and backend typing pass; evidence is in docs/release/CI-2026-10-15.md.
+  Omitted terms remain unknown. No production behavior, activation policy or deployment change.
+
 ## Manual acceptance and side-letter terms — October 15, 2026
 
 - Manual create/edit forms now state acceptance clauses and side letters as Yes, No or Not
   stated. New drafts leave both unknown; edits preserve saved answers and can clear them.
 - This fixes draft edits silently dropping existing terms. Activation controls remain unchanged;
-  CSV/import gaps are retained in LIMITS-1.0.md. Verification is in CI-2026-10-15.md.
+  omitted import terms remain unknown; see LIMITS-1.0.md. Verification is in CI-2026-10-15.md.
 - No deployment or accounting-policy change; broader release gates and sign-off remain open.
 
 ## Privacy catalogue coverage gate — October 15, 2026
@@ -243,19 +250,6 @@
   Detailed verification is in docs/release/CI-2026-10-15.md.
 - The settings editor and full J-19/demo journey remain unfinished. No deployment. Frozen CI
   on 3cf8f5b remains running; independent accounting sign-off and release gates remain open.
-
-## Administrator AI version discovery — October 15, 2026
-
-- Added GET /ai/settings/versions with workspace-wide settings.manage, fixed tenant AI scope,
-  status filtering, sorting, counts and cursor pagination. It shares the individual-read scope
-  predicate, so refresh can rediscover drafts, pending requests and publication history.
-- Tenant Admin already includes config.read; those broader read grants are unchanged. This
-  endpoint gives the AI workflow its own scoped read boundary. Accounting authoring is unchanged.
-  The settings editor, effective-status presentation and standard J-19/demo journey remain open.
-- OpenAPI and TypeScript contracts regenerated. Route/scope architecture checks pass (11),
-  backend typing passes 795 files, frontend typing and full lint pass (503 control markers).
-  API verification and evidence are recorded in docs/release/CI-2026-10-15.md.
-- No deployment or provider calls; frozen CI on 3cf8f5b remains active on its own database.
 
 ## Outstanding release verification
 
