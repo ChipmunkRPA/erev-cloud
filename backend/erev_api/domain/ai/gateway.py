@@ -48,6 +48,7 @@ class NarrativeSource:
     book_code: str | None = None
     as_of: date | None = None
     known_at: datetime | None = None
+    expected_trace_id: UUID | None = None
 
 
 def source_sha256(source: NarrativeSource, max_tokens: int) -> str:
@@ -61,6 +62,11 @@ def source_sha256(source: NarrativeSource, max_tokens: int) -> str:
             "as_of": source.as_of.isoformat() if source.as_of is not None else None,
             "known_at": source.known_at.isoformat() if source.known_at is not None else None,
             "max_tokens": max_tokens,
+            **(
+                {"expected_trace_id": str(source.expected_trace_id)}
+                if source.expected_trace_id is not None
+                else {}
+            ),
         }
     )
 
@@ -121,7 +127,7 @@ class AiGateway:
     def _retrieve(
         self, context: JobContext, source: NarrativeSource, settings: AISettings, max_tokens: int
     ) -> RetrievedNarrative:
-        return retrieve_narrative(
+        retrieved = retrieve_narrative(
             context,
             object_type=source.object_type,
             object_id=source.object_id,
@@ -134,6 +140,12 @@ class AiGateway:
             max_tokens=max_tokens,
             redact_contact_details=settings.redact_contact_details,
         )
+        if (
+            source.expected_trace_id is not None
+            and retrieved.prepared.trace_id != source.expected_trace_id
+        ):
+            raise PreparationRefused("AI_INPUT_CHANGED")
+        return retrieved
 
     def _record_error(
         self,
@@ -206,6 +218,10 @@ class AiGateway:
             or row["created_by"] != context.principal.on_behalf_of_id
             or row["kind"] != "NUMBER_EXPLANATION"
             or row["subject_type"] != "calc_trace"
+            or (
+                source.expected_trace_id is not None
+                and row["subject_id"] != source.expected_trace_id
+            )
         ):
             raise PreparationRefused("AI_JOB_INPUT_CHANGED")
         # A completed result bypasses new-call admission, never current read permissions.

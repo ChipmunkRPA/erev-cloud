@@ -4827,3 +4827,17 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - This blocks unobserved calls; it does not invent usage or add a reconciliation override.
   Returned provider errors without token counts, unknown-usage reconciliation, public workflows
   and other release gates remain open. No deployment or production-readiness claim.
+
+## Distinguish missing AI usage from reported zero — October 15, 2026
+
+- Attempt logs now derive immutable usage_evidence metadata: REPORTED for validated response
+  counters, NOT_SENT for disabled/budget admission refusals, UNKNOWN for response-less errors.
+  Caller request parameters cannot supply the marker; historical logs are not rewritten.
+- Failed-proposal recovery recognizes the marker while requiring UNKNOWN for a response-less
+  provider failure. Exact request hashes and strict metadata comparisons remain enforced.
+- Regression: 230 passed, two Linux-only parser skips (66.77s); typing passed for 768 sources;
+  Ruff and diff checks passed. Logs: .run/ai-usage-evidence-{final,types}.log. Six zero-counter
+  cases distinguish evidence categories; a forged request marker refuses without log/audit writes.
+- This is durable evidence groundwork. Budget admission still needs enforcement/reconciliation
+  for returned errors with unknown usage, including historical evidence and bounded retries.
+  Public AI workflows and all other release gates remain open. No deployment or readiness claim.

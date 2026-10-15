@@ -37,6 +37,7 @@ class NarrativeTask(BaseModel):
     book_code: str | None = None
     as_of: date | None = None
     known_at: AwareDatetime | None = None
+    expected_trace_id: UUID | None = None
     max_tokens: StrictInt = Field(gt=0)
 
     def source(self) -> NarrativeSource:
@@ -48,6 +49,7 @@ class NarrativeTask(BaseModel):
             book_code=self.book_code,
             as_of=self.as_of,
             known_at=self.known_at,
+            expected_trace_id=self.expected_trace_id,
         )
 
 

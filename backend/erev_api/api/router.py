@@ -9,6 +9,7 @@ from fastapi import APIRouter
 from erev_api.api.v1 import (
     access_reviews,
     accounts,
+    ai,
     api_clients,
     approvals,
     audit,
@@ -116,6 +117,7 @@ ROUTERS: Final[tuple[APIRouter, ...]] = (
     exceptions.router,
     source_records.router,
     explain.router,
+    ai.router,
     reports.router,
     evidence_packs.router,
     dashboard.router,

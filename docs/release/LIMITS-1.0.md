@@ -76,7 +76,7 @@ before another call and during retry waits it stops without a synthetic proposal
 started call still retains its usage and result. Retry waits heartbeat and check cancellation
 at one-second boundaries, with no database transaction or budget lease held while sleeping.
 This does not interrupt a network call already in progress. Other AI operations, durable
-admission-failure evidence, notifications and public submission/acceptance/rejection workflows
+admission-failure evidence, notifications, other submission routes and proposal read/decision workflows
 remain unfinished. The AI audit-lifecycle gate remains open; worker dispatch and internal
 gateway tests do not satisfy the full lifecycle.
 
@@ -88,11 +88,20 @@ approval with workspace-wide settings.manage, in addition to configuration appro
 enablement and emergency-switch clearing withhold automatic approval; an unrelated budget edit
 while AI remains enabled keeps normal routing. Publication replay cannot undo a later disable,
 and publishing ai.enabled=false leaves the switch intact. There is no direct enable command.
-Public submission must serialize admission with the tenant switch when implemented. Model changes,
+Number-explanation submission now serializes admission with the tenant switch. Model changes,
 including a reset to the catalogue default, and enabling contract-text sending now require an
 independent administrator decision even while AI is off. Turning text sending off retains normal
 routing. These changes alone do not clear an emergency switch. Provider selection remains process
 configuration (EREV_AI_PROVIDER); tenant approval gating for provider changes is not implemented.
+
+POST /ai/explanations now accepts the number-explanation form and returns an idempotent AI_TASK
+job with a Location header. It checks overlapping ai.use/contract.read source access and the AI
+switch before enqueueing, without calling a provider in HTTP. New jobs bind the validated trace
+and use a server-selected 2048 output-token limit; the worker refuses a changed trace before a
+call. Existing jobs without a trace binding retain their source fingerprint format. Anomaly
+submission, proposal read/review endpoints, extraction and Q&A remain unfinished; a persisted
+worker proposal is not a completed human workflow. Budget admission is still checked by the
+worker, and durable AI-specific admission-failure evidence remains outstanding.
 
 The Anthropic adapter is mock-tested, uses the official SDK, disables SDK retries and telemetry,
 and resolves secrets lazily. Contract-review and explain-narrative prompts have retained bytes,

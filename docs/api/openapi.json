@@ -53,6 +53,56 @@
       }
     },
     "schemas": {
+      "AIExplanationIn": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "measure": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Measure",
+            "type": "string"
+          },
+          "object_type": {
+            "enum": [
+              "contract_version",
+              "obligation",
+              "obligation_version",
+              "schedule_line",
+              "subledger_line",
+              "journal_line",
+              "contract_version_balance",
+              "loss_provision_version"
+            ],
+            "title": "Object Type",
+            "type": "string"
+          },
+          "period": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Period"
+          }
+        },
+        "required": [
+          "object_type",
+          "id",
+          "measure"
+        ],
+        "title": "AIExplanationIn",
+        "type": "object"
+      },
       "AccessPackCreateIn": {
         "additionalProperties": false,
         "description": "Access evidence as of an explicit date.",
@@ -43209,6 +43259,119 @@
           "API-R-20 Chart of accounts and mapping"
         ],
         "x-erev-permission": "config.author"
+      }
+    },
+    "/api/v1/ai/explanations": {
+      "post": {
+        "description": "Queue a number explanation after checking the human's current source access.",
+        "operationId": "ai_explanations_create",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AIExplanationIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: unauthenticated, session-expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: not-found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: idempotency-in-progress, ai-disabled"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: validation-failed, idempotency-key-reused"
+          }
+        },
+        "summary": "Explanations Create",
+        "tags": [
+          "API-R-47 AI"
+        ],
+        "x-erev-permission": "ai.use"
       }
     },
     "/api/v1/api-clients": {
@@ -97435,6 +97598,9 @@
     },
     {
       "name": "API-R-45 Integrations"
+    },
+    {
+      "name": "API-R-47 AI"
     },
     {
       "name": "API-R-48 Migrations"

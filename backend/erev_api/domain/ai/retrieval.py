@@ -14,8 +14,9 @@ from erev_api.db.session import tenant_session
 from erev_api.domain.ai.access import AIAccessRefused, authorize_job
 from erev_api.domain.ai.narratives import PreparedNarrative, prepare_narrative
 from erev_api.domain.contracts import obligations, queries, to_date
+from erev_api.enums import PrincipalKind
 from erev_api.explain import service
-from erev_api.jobs.context import JobContext
+from erev_api.jobs.context import JobAttempt, JobContext
 from erev_api.problems import Problem
 from erev_api.schemas.explain import ExplainObjectType
 
@@ -42,14 +43,57 @@ def retrieve_narrative(
 ) -> RetrievedNarrative:
     """Reauthorize every attempt; intersect AI and contract-read entity grants.
 
-    This does not enable AI or invoke a provider. The gateway still owes settings,
-    budget admission, per-attempt logging and durable proposals. No system-scoped
-    session may read the trace. Returned data is detached before provider work.
+    The gateway owns settings, budget admission and durable attempt evidence.
+    No system-scoped session may read the trace. Returned data is detached before
+    provider work; submission uses the same read path without invoking a provider.
     """
-    if known_at is not None and known_at.utcoffset() is None:
-        raise AIAccessRefused("AI_INVALID_READ_CUTOFF")
     with context.read_session() as session:
         principal = authorize_job(context, session)
+    attempt = context.runtime.attempt
+    if attempt is None:
+        raise AIAccessRefused("AI_JOB_CONTEXT_REQUIRED")
+    return retrieve_for_user(
+        principal,
+        now=context.clock.now(),
+        object_type=object_type,
+        object_id=object_id,
+        measure=measure,
+        model=model,
+        max_tokens=max_tokens,
+        period=period,
+        book_code=book_code,
+        as_of=as_of,
+        known_at=known_at,
+        redact_contact_details=redact_contact_details,
+        attempt=attempt,
+    )
+
+
+def retrieve_for_user(
+    principal: Principal,
+    *,
+    now: datetime,
+    object_type: ExplainObjectType,
+    object_id: UUID,
+    measure: str,
+    model: str,
+    max_tokens: int,
+    period: str | None = None,
+    book_code: str | None = None,
+    as_of: date | None = None,
+    known_at: datetime | None = None,
+    redact_contact_details: bool = True,
+    attempt: JobAttempt | None = None,
+) -> RetrievedNarrative:
+    """Shared submission/worker read admission; never constructs or calls a provider."""
+    if (
+        principal.kind is not PrincipalKind.USER
+        or principal.id is None
+        or "ai.use" not in principal.permissions
+    ):
+        raise AIAccessRefused("AI_HUMAN_INITIATOR_REQUIRED")
+    if known_at is not None and known_at.utcoffset() is None:
+        raise AIAccessRefused("AI_INVALID_READ_CUTOFF")
     read_scope = principal.permission_scopes.get("contract.read", frozenset())
     ai_scope = principal.permission_scopes.get("ai.use", frozenset())
     if "contract.read" not in principal.permissions or not read_scope:
@@ -64,10 +108,8 @@ def retrieve_narrative(
         raise AIAccessRefused("AI_READ_PERMISSION_DENIED")
     principal = replace(principal, entity_scope="*" if scope == "*" else tuple(sorted(scope)))
     with tenant_session(principal.db_context, read_only=True) as session:
-        attempt = context.runtime.attempt
-        if attempt is None:
-            raise AIAccessRefused("AI_JOB_CONTEXT_REQUIRED")
-        attempt.require(session)
+        if attempt is not None:
+            attempt.require(session)
         # Match the public Explain route's to-date period selection.
         name = service.MEASURE_ALIASES.get(measure, measure)
         if (
@@ -85,7 +127,7 @@ def retrieve_narrative(
                 object_id,
                 name,
                 params=queries.ReadParams(book=book_code, as_of=as_of, known_at=known_at),
-                now=context.clock.now(),
+                now=now,
             )
             if measured is None:
                 raise Problem("not-found", service.NOT_TRACED)

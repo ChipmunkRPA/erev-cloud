@@ -3,15 +3,24 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Final
+from uuid import UUID
 
 from sqlalchemy import select, update
 
 from erev_api.auth import mfa
 from erev_api.db.tables import job, tenant
 from erev_api.db.transitions import apply
+from erev_api.domain.ai.access import AIAccessRefused
+from erev_api.domain.ai.preparation import PreparationRefused
+from erev_api.domain.ai.retrieval import retrieve_for_user
+from erev_api.domain.ai.settings import AISettingsRefused, load_settings
 from erev_api.enums import JobKind, JobState, PrincipalKind
 from erev_api.problems import Problem
+from erev_api.schemas.explain import ExplainObjectType
 from erev_api.uow import UnitOfWork
+
+EXPLANATION_MAX_TOKENS: Final = 2048
 
 
 def disable(uow: UnitOfWork, *, comment: str) -> datetime:
@@ -96,3 +105,66 @@ def disable(uow: UnitOfWork, *, comment: str) -> datetime:
         comment=comment.strip(),
     )
     return uow.now
+
+
+def request_explanation(
+    uow: UnitOfWork,
+    *,
+    object_type: ExplainObjectType,
+    object_id: UUID,
+    measure: str,
+    period: str | None,
+    platform_kill_switch: bool,
+) -> UUID:
+    """Authorize the source, then queue selectors as the human; no provider call here."""
+    principal = uow.principal
+    # Shared with disable and approved re-enable: the queue insertion and AI
+    # admission must commit before a competing switch can finish its cancellation.
+    uow.session.execute(
+        select(tenant.c.id)
+        .where(tenant.c.id == principal.tenant_id)
+        .with_for_update(key_share=True)
+    ).scalar_one()
+    try:
+        settings = load_settings(
+            uow.session,
+            tenant_id=principal.tenant_id,
+            now=uow.now,
+            platform_kill_switch=platform_kill_switch,
+        )
+        settings.require_available()
+    except AISettingsRefused as error:
+        if str(error) == "AI_DISABLED":
+            raise Problem("ai-disabled") from None
+        raise Problem("validation-failed", "AI configuration is unavailable.") from None
+    try:
+        retrieved = retrieve_for_user(
+            principal,
+            now=uow.now,
+            object_type=object_type,
+            object_id=object_id,
+            measure=measure,
+            period=period,
+            model=settings.model,
+            max_tokens=EXPLANATION_MAX_TOKENS,
+            redact_contact_details=settings.redact_contact_details,
+        )
+    except AIAccessRefused:
+        raise Problem("forbidden") from None
+    except PreparationRefused:
+        raise Problem(
+            "validation-failed", "This source cannot be prepared for AI explanation."
+        ) from None
+    requested = uow.defer(
+        JobKind.AI_TASK,
+        {
+            "operation": "narrative",
+            "object_type": object_type,
+            "object_id": str(object_id),
+            "measure": measure,
+            "period": period,
+            "max_tokens": EXPLANATION_MAX_TOKENS,
+            "expected_trace_id": str(retrieved.prepared.trace_id),
+        },
+    )
+    return UUID(str(requested["id"]))

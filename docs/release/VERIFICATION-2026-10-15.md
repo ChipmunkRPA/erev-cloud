@@ -251,3 +251,21 @@ evidence. No deployment occurred.
 - Provider selection remains process configuration; tenant approval gating of provider changes
   is still open, along with public submission/review and other release requirements. No live
   provider calls or deployment; this is development evidence, not a full release pass.
+
+## Number-explanation submission — October 15, 2026
+
+- Added POST /ai/explanations for the number-explanation form: 202 API-S-Job with Location,
+  normal idempotency and the initiating human. HTTP validates source access through overlapping
+  ai.use/contract.read scope and the shared narrative read path, but makes no provider call.
+- Queue insertion and AI switch admission share the tenant lock. A concurrent disable completes
+  before a waiting submission can proceed, causing ai-disabled with no new job. New jobs retain
+  selectors, a validated trace ID and a 2048 output-token limit; prompts/model settings are not
+  queued. The worker rejects a changed trace before calling; old unbound fingerprints are intact.
+- Verification: 21 AI/API database cases passed, followed by both final API cases (including
+  real lock contention, idempotency, scope refusal, HTTP-to-worker persistence and changed-trace
+  refusal). 40 unit/route/layer checks passed. Full lint, OpenAPI generation and full typecheck
+  passed (924 Python sources plus frontend); focused strict typing passed 775 sources. Logs:
+  .run/ai-submission-{regressions,api-final,unit,lint,openapi,typecheck,types-final}.log.
+- The initial permission fixture was corrected to use an auditor without ai.use; test import
+  typing was corrected before the final checks. Anomaly/extraction/Q&A submission, proposal
+  read/review and durable AI admission-failure evidence remain open. No deployment/live calls.
