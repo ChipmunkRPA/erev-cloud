@@ -524,6 +524,8 @@ describe("SF-03:new draft contract form", () => {
       signature_date: null,
       document_ref: null,
       payment_terms: null,
+      acceptance_clause: null,
+      side_letter: null,
       termination: null,
       has_commercial_substance: true,
       region: null,
@@ -1330,4 +1332,72 @@ describe("reviewed draft confirmation", () => {
     expect(submit).toHaveBeenCalledTimes(2);
     expect(sent).toEqual([]);
   });
+});
+
+describe("acceptance clauses and side letters", () => {
+  it.each([
+    ["Yes", "No", true, false],
+    ["No", "Yes", false, true],
+    ["Not stated", "Not stated", null, null],
+  ] as const)(
+    "creates a draft with acceptance %s and side letter %s",
+    async (acceptance, side, acceptanceValue, sideValue) => {
+      const sent: Sent[] = [];
+      serve(sent);
+      await openNewForm();
+      fillHeader();
+      expect(
+        screen.getByRole("combobox", { name: "Customer acceptance clause (optional)" }).textContent,
+      ).toContain("Not stated");
+      select("Customer acceptance clause (optional)", acceptance);
+      select("Side letter (optional)", side);
+      pick("Product, line 1", "PLAT", "AVM-PLAT-100 · Avenmoor Platform, 100 seats");
+      type("Quantity, line 1", "1");
+      type("Total price, line 1", "120000.00");
+      fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
+      await waitFor(() => expect(sent).toHaveLength(1));
+      expect(sent[0]?.body).toMatchObject({
+        acceptance_clause: acceptanceValue,
+        side_letter: sideValue,
+      });
+    },
+  );
+
+  it.each([false, true])(
+    "preserves existing answers on edit (clear to unknown: %s)",
+    async (clear) => {
+      const sent: Sent[] = [];
+      serve(sent);
+      serveStream([
+        {
+          ...BOOKING,
+          payload: {
+            ...(BOOKING.payload as Record<string, unknown>),
+            acceptance_clause: true,
+            side_letter: false,
+          },
+        },
+      ]);
+      renderForm(`/contracts/${CONTRACT_ID}/edit?${CONTEXT}`);
+      await screen.findByRole("textbox", { name: "Obligation key, line 1" });
+      expect(
+        screen.getByRole("combobox", { name: "Customer acceptance clause (optional)" }).textContent,
+      ).toContain("Yes");
+      expect(
+        screen.getByRole("combobox", { name: "Side letter (optional)" }).textContent,
+      ).toContain("No");
+      if (clear) {
+        select("Customer acceptance clause (optional)", "Not stated");
+        select("Side letter (optional)", "Not stated");
+      }
+      type("Total price, line 1", "132000.00");
+      fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
+      await waitFor(() => expect(sent).toHaveLength(1));
+      expect(sent[0]?.path).toBe(`/api/v1/contracts/${CONTRACT_ID}/replace-draft`);
+      expect(sent[0]?.body).toMatchObject({
+        acceptance_clause: clear ? null : true,
+        side_letter: clear ? null : false,
+      });
+    },
+  );
 });

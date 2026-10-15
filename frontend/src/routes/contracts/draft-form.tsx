@@ -749,6 +749,8 @@ const HEADER_FIELDS = [
   "signatureDate",
   "documentRef",
   "paymentTerms",
+  "acceptanceClause",
+  "sideLetter",
   "terminationParty",
   "hasPenalty",
   "noticeDays",
@@ -1134,6 +1136,10 @@ function DraftFormView({
     { value: "YES", label: t("contracts.drawer.yes") },
     { value: "NO", label: t("contracts.drawer.no") },
   ];
+  const statedTerms: readonly { readonly value: YesNo | "NOT_STATED"; readonly label: string }[] = [
+    { value: "NOT_STATED", label: t("contracts.draft.field.notStated") },
+    ...yesNo,
+  ];
   const problem = server?.problem ?? null;
 
   return (
@@ -1328,6 +1334,27 @@ function DraftFormView({
             value={form.paymentTerms}
             onChange={(value) => set("paymentTerms", value)}
             error={shown("paymentTerms")}
+          />
+        </Section>
+        <Section title={t("contracts.draft.section.acceptance")}>
+          <p className="text-body-sm text-fg-2">{t("contracts.draft.field.statedTermsHelp")}</p>
+          <SelectField<YesNo | "NOT_STATED">
+            name="acceptanceClause"
+            label={t("contracts.draft.field.acceptanceClause")}
+            optional
+            options={statedTerms}
+            value={form.acceptanceClause ?? "NOT_STATED"}
+            onChange={(value) => set("acceptanceClause", value === "NOT_STATED" ? null : value)}
+            error={shown("acceptanceClause")}
+          />
+          <SelectField<YesNo | "NOT_STATED">
+            name="sideLetter"
+            label={t("contracts.draft.field.sideLetter")}
+            optional
+            options={statedTerms}
+            value={form.sideLetter ?? "NOT_STATED"}
+            onChange={(value) => set("sideLetter", value === "NOT_STATED" ? null : value)}
+            error={shown("sideLetter")}
           />
         </Section>
         <Section title={t("contracts.draft.section.termination")}>

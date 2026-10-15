@@ -2,6 +2,14 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Manual acceptance and side-letter terms — October 15, 2026
+
+- Manual create/edit forms now state acceptance clauses and side letters as Yes, No or Not
+  stated. New drafts leave both unknown; edits preserve saved answers and can clear them.
+- This fixes draft edits silently dropping existing terms. Activation controls remain unchanged;
+  CSV/import gaps are retained in LIMITS-1.0.md. Verification is in CI-2026-10-15.md.
+- No deployment or accounting-policy change; broader release gates and sign-off remain open.
+
 ## Privacy catalogue coverage gate — October 15, 2026
 
 - Classified the new private navigation history and the retained AI file references/export

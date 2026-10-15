@@ -126,6 +126,8 @@ export interface DraftForm {
   readonly signatureDate: string;
   readonly documentRef: string;
   readonly paymentTerms: string;
+  readonly acceptanceClause: YesNo | null;
+  readonly sideLetter: YesNo | null;
   readonly terminationParty: TerminationParty | null;
   readonly hasPenalty: YesNo | null;
   readonly noticeDays: string;
@@ -249,6 +251,8 @@ export function emptyDraft(firstLineId: string): DraftForm {
     signatureDate: "",
     documentRef: "",
     paymentTerms: "",
+    acceptanceClause: null,
+    sideLetter: null,
     terminationParty: null,
     hasPenalty: null,
     noticeDays: "",
@@ -495,6 +499,8 @@ export function buildDraft(form: DraftForm): BuiltDraft {
     signature_date: signature,
     document_ref: blankToNull(form.documentRef),
     payment_terms: blankToNull(form.paymentTerms),
+    acceptance_clause: form.acceptanceClause === null ? null : form.acceptanceClause === "YES",
+    side_letter: form.sideLetter === null ? null : form.sideLetter === "YES",
     termination:
       form.terminationParty === null
         ? null
@@ -598,6 +604,14 @@ export function draftFromBooking(
     signatureDate: dateText(booking.signature_date),
     documentRef: text(booking.document_ref),
     paymentTerms: text(booking.payment_terms),
+    acceptanceClause:
+      typeof booking.acceptance_clause === "boolean"
+        ? booking.acceptance_clause
+          ? "YES"
+          : "NO"
+        : null,
+    sideLetter:
+      typeof booking.side_letter === "boolean" ? (booking.side_letter ? "YES" : "NO") : null,
     terminationParty: partyOf(termination.party),
     hasPenalty: typeof penalty === "boolean" ? (penalty ? "YES" : "NO") : null,
     noticeDays: typeof days === "number" ? String(days) : "",
@@ -669,6 +683,8 @@ const HEADER_FIELDS: Readonly<Record<string, string>> = {
   signature_date: "signatureDate",
   document_ref: "documentRef",
   payment_terms: "paymentTerms",
+  acceptance_clause: "acceptanceClause",
+  side_letter: "sideLetter",
   termination: "terminationParty",
   "termination.party": "terminationParty",
   "termination.has_penalty": "hasPenalty",
