@@ -5279,3 +5279,25 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Public extraction submission, approved field catalogue, document-text/proposal review APIs,
   human acceptance and broader release/accounting gates remain unfinished. Linux parser resource
   enforcement and live-provider operation are not proved by these local worker tests.
+
+## Typed extraction field catalogue — October 15, 2026
+
+- Defined the documented contract-review fields: seven header/review paths plus lines.0 through
+  lines.499, matching contract line capacity. Queue and gateway selectors refuse other paths.
+  Values require bounded nonblank text, exact ISO dates, positive whole JSON month counts and
+  line objects containing only product_code and an exact signed decimal-string amount. Review
+  terms remain text; no customer/product resolution, currency inference or accounting decision
+  is made. The worker selector capacity now covers the full 507-path catalogue.
+- Typed checks run on original parsed JSON before canonicalization: Decimal values would
+  otherwise become strings and let a numeric money value masquerade as valid API-C-06 text.
+  One invalid value refuses the whole proposal; rejected content is not retained. The documented
+  four-page PDF fixture passes these field checks without changing its retained prompt bytes.
+- Verification: 143 unit/architecture cases passed, including path/value boundaries, numeric
+  money/coercion attacks, invalid dates, extra accounting fields and all catalogue selectors.
+  Forty AI PostgreSQL cases passed, including the real worker, recovery and narrative regressions;
+  unsupported selectors make no provider call and numeric amounts persist only an empty failed
+  proposal. Full lint/typecheck passed (933 Python sources plus frontend), focused typing passed
+  787 sources, and final formatting/diff checks passed. Logs:
+  .run/ai-extraction-fields-{unit,pg,lint,typecheck,types}.log.
+- Public submission, extraction review APIs, human conversion/acceptance and broader release and
+  independent accounting verification remain unfinished. No deployment or live provider calls.

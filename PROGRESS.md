@@ -2,6 +2,23 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Worker-to-draft acceptance evidence — October 15, 2026
+
+- Added an integrated PostgreSQL witness using the real four-page synthetic PDF, real PDF
+  text extraction, queued AI_TASK dispatch and a deterministic provider response. It reads the
+  worker's retained proposal/pages, edits the suggested customer to an explicit existing customer
+  with a reason, and accepts through the public draft endpoint. Original content/citations and
+  model-log linkage survive unchanged; the reviewed value is retained separately.
+- A different authorized reader cannot see the unattached source/proposal, then can read the
+  accepted proposal and identical retained pages through the new contract attachment. The draft
+  carries AI_ASSISTED and provenance into its activation review basis, with no revenue posting
+  and exactly one provider call. This does not prove browser review, independent activation,
+  live-provider behavior or Linux parser isolation: the test uses the real in-process parser.
+- Both acceptance tests passed, focused typing passed 789 sources and full lint passed. Logs:
+  .run/ai-worker-acceptance-{verified,final-types,lint}.log. Earlier pg/pg-fixed logs retain test
+  setup failures (missing retry callback and reused command idempotency key); verified is the
+  corrected run. Broader release/accounting and structured-term gaps remain open. No deployment.
+
 ## Atomic reviewed extraction draft acceptance — October 15, 2026
 
 - Enabled POST /ai/proposals/{id}/accept for new drafts, requiring explicit complete draft
@@ -209,28 +226,6 @@
   failure; api-final-pass verifies its correction. No live provider calls or deployment.
 - Extraction proposal/document-text reads, human review/acceptance and broader release and
   independent accounting verification remain outstanding.
-
-## Typed extraction field catalogue — October 15, 2026
-
-- Defined the documented contract-review fields: seven header/review paths plus lines.0 through
-  lines.499, matching contract line capacity. Queue and gateway selectors refuse other paths.
-  Values require bounded nonblank text, exact ISO dates, positive whole JSON month counts and
-  line objects containing only product_code and an exact signed decimal-string amount. Review
-  terms remain text; no customer/product resolution, currency inference or accounting decision
-  is made. The worker selector capacity now covers the full 507-path catalogue.
-- Typed checks run on original parsed JSON before canonicalization: Decimal values would
-  otherwise become strings and let a numeric money value masquerade as valid API-C-06 text.
-  One invalid value refuses the whole proposal; rejected content is not retained. The documented
-  four-page PDF fixture passes these field checks without changing its retained prompt bytes.
-- Verification: 143 unit/architecture cases passed, including path/value boundaries, numeric
-  money/coercion attacks, invalid dates, extra accounting fields and all catalogue selectors.
-  Forty AI PostgreSQL cases passed, including the real worker, recovery and narrative regressions;
-  unsupported selectors make no provider call and numeric amounts persist only an empty failed
-  proposal. Full lint/typecheck passed (933 Python sources plus frontend), focused typing passed
-  787 sources, and final formatting/diff checks passed. Logs:
-  .run/ai-extraction-fields-{unit,pg,lint,typecheck,types}.log.
-- Public submission, extraction review APIs, human conversion/acceptance and broader release and
-  independent accounting verification remain unfinished. No deployment or live provider calls.
 
 ## Outstanding release verification
 

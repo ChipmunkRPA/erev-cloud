@@ -169,7 +169,12 @@ creation, source-PDF attachment, combination suggestions, rule holds, acceptance
 audit commit together. It returns 201 with the contract ID and Location; it never submits for
 activation or posts revenue. Retained review works with AI disabled. Existing-record acceptance
 still needs its separate approval subject. Full browser review and structured-term conversion
-remain unfinished; local API witnesses do not establish full extraction-to-activation readiness.
+remain unfinished. A local PostgreSQL witness now runs real synthetic-PDF text extraction,
+queued worker dispatch with a deterministic provider, retained-text reads and human-edited draft
+acceptance. It verifies unchanged original evidence, shared reader access through the attachment,
+AI_ASSISTED activation provenance, one provider call and zero revenue postings. This uses the
+in-process parser and does not prove Linux isolation, browser review, live-provider operation or
+full extraction-to-independent-activation readiness.
 
 The Anthropic adapter is mock-tested, uses the official SDK, disables SDK retries and telemetry,
 and resolves secrets lazily. Contract-review and explain-narrative prompts have retained bytes,

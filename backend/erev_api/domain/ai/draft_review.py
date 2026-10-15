@@ -18,8 +18,8 @@ def review_draft_lines(
 
     Rejected suggestions cannot be mapped. Additional human-authored draft lines are allowed.
     Quantity, obligation identity, currency and other required draft data come from the request;
-    no missing value is inferred. Header/reference/structured-term binding and approval remain
-    separate required work before this can participate in an acceptance command.
+    no missing value is inferred. The combined reviewer below binds supported headers;
+    the acceptance command owns authorization, fresh references and atomic persistence.
     """
     reviewed = review_fields(proposed, request.field_decisions)
     lines = {path: value for path, value in reviewed.values.items() if path.startswith("lines.")}
@@ -45,7 +45,7 @@ def review_draft(
 ) -> ReviewedFields:
     """Bind supported header facts as well as lines, refusing every unbound retained fact.
 
-    An existing customer must be freshly resolved by the eventual command under tenant/source
+    An existing customer must be freshly resolved by the acceptance command under tenant/source
     authorization; the tuple's ID must match the explicit draft customer ID. Names are compared
     exactly, never searched or inferred. The human selects whether an extracted effective date
     represents inception or signature. Structured review terms require a separate implementation.
