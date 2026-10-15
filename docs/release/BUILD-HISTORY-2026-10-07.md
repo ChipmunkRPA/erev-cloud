@@ -3920,3 +3920,20 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   .run/entered-option-ui-final.log and .run/entered-option-native-types.log.
 - Migration capture/promotion remains unfinished and refuses option records. No deployment
   or readiness claim. Older immutable CI 165d63c remains live at 37%.
+
+## Converted option opening units — October 14, 2026
+
+- Found that POL-212 books quantity one but opening payloads retained dollar-unit quantities.
+  Converted payload quantities now divide by source quantity and per-unit rates multiply
+  by it. Monetary balances and immutable source/staging rows remain unchanged. Legacy
+  KEEP behavior is unchanged; inexact conversions refuse rather than round.
+- Regression reproduced 10 remaining units instead of 0.4 for source quantity 25.
+  Real API-to-engine adapter and stage-07 witnesses pass under ASC606/IFRS15, preserving
+  remaining SSP 10, allocation 62.5 and posted baseline revenue 37.50.
+- 45 migration/capture/onboarding tests passed (1.33s); strict production Mypy (881 sources),
+  test Mypy and Ruff pass. Logs: .run/option-opening-baseline.log,
+  .run/option-opening-final.log, .run/option-opening-types.log and
+  .run/option-opening-test-types.log.
+- Capture still refuses option records: its writer and MIGRATION_PROMOTION approval
+  subject remain missing. No deployment or readiness claim. Older immutable CI remains
+  live at 39%, with a new audit-coverage failure to investigate when its evidence is ready.

@@ -414,7 +414,8 @@ def test_upgrade_downgrade_upgrade(test_database: TestDatabase) -> None:
     # 0064 (lane ENG-C6, T-SL-12 subledger_line_event) adds none: IM-A and RLS-T attach the existing
     # 0001 tg_forbid_mutation and the RLS policies; no DB-03 transition, no new function.
     assert (
-        len(first["functions"]) == 88  # 0065 REPLACES tg_report_run__transition (frps3b): +0
+        len(first["functions"]) == 89  # 0145 adds tg_material_right__ownership; 0147 adds none.
+        # 0065 REPLACES tg_report_run__transition (frps3b): +0
     )  # 76 + tg_tenant_snapshot__transition + __target (0062); 0064 +0; 0067 +0 (IM-A / RLS-T
     # attach the existing tg_forbid_mutation and policies; no DB-03 transition, no new function);
     # 0068 +1 (lane F-CTR CTR-17: the DB-03 tg_modification__transition; IM-S and RLS-TE attach

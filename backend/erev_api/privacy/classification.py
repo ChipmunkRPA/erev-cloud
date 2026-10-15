@@ -3319,7 +3319,6 @@ TABLES: Final[tuple[TableClassification, ...]] = (
             ),
             R02: _cols("parameters error_detail"),
         },
-        status=Status.PENDING,
     ),
     # ---- MIG tables (04 T-MIG-nn; landed by revision 0056, lane F-LMG, 2026-09-20)
     _table(

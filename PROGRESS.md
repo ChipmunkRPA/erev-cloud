@@ -2,6 +2,21 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Immutable AI call evidence storage — October 14, 2026
+
+- Migration 0147 adds T-AI-02 ai_model_log with tenant RLS, append-only grants and
+  owner mutation guards. Provider/outcome values, SHA-256 digests and nonnegative
+  token/latency counters are checked; raw prompt/response text has no column.
+- Registered ORM, privacy classification, isolation row builder and sandbox treatment:
+  call evidence stays with the source tenant and is regenerated in a sandbox.
+- Corrected the migration test's old function count for the existing 0145 ownership
+  trigger. API production plus new PG-test strict typing passes (744 sources); Ruff passes.
+- Combined migration round trip, DB lint, immutability, RLS, schema/privacy/snapshot
+  and import-cycle verification: 127 passed (31.44s), .run/ai-model-log-final.log.
+  Typing evidence: .run/ai-model-log-types.log.
+- Proposal table/transitions, gateway writes/audit facts and human acceptance remain
+  unfinished. The AI lifecycle audit gap remains open; no AI enablement or deployment.
+
 ## AI provider foundation — October 14, 2026
 
 - Implemented the DG §6.7 request/response protocol and deterministic FakeProvider.
@@ -232,23 +247,6 @@
 - The category sweep still requires the unimplemented AI proposal lifecycle. No exemption
   or success claim was added. Full current-main route walk/release gates remain open.
   Older immutable CI 165d63c remains live at 42%; no deployment or readiness claim.
-
-## Converted option opening units — October 14, 2026
-
-- Found that POL-212 books quantity one but opening payloads retained dollar-unit quantities.
-  Converted payload quantities now divide by source quantity and per-unit rates multiply
-  by it. Monetary balances and immutable source/staging rows remain unchanged. Legacy
-  KEEP behavior is unchanged; inexact conversions refuse rather than round.
-- Regression reproduced 10 remaining units instead of 0.4 for source quantity 25.
-  Real API-to-engine adapter and stage-07 witnesses pass under ASC606/IFRS15, preserving
-  remaining SSP 10, allocation 62.5 and posted baseline revenue 37.50.
-- 45 migration/capture/onboarding tests passed (1.33s); strict production Mypy (881 sources),
-  test Mypy and Ruff pass. Logs: .run/option-opening-baseline.log,
-  .run/option-opening-final.log, .run/option-opening-types.log and
-  .run/option-opening-test-types.log.
-- Capture still refuses option records: its writer and MIGRATION_PROMOTION approval
-  subject remain missing. No deployment or readiness claim. Older immutable CI remains
-  live at 39%, with a new audit-coverage failure to investigate when its evidence is ready.
 
 ## Outstanding release verification
 

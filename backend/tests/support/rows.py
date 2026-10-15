@@ -4875,8 +4875,29 @@ def migration_population_obligation_row(ctx: RowContext, session: Session) -> di
     )
 
 
+def ai_model_log_row(ctx: RowContext, session: Session) -> dict[str, Any]:
+    """T-AI-02: synthetic successful provider-call evidence, without prompt text."""
+    return {
+        "tenant_id": ctx.tenant_id,
+        "id": new_id(),
+        "provider": "fake",
+        "model_id": "test-model",
+        "prompt_template_id": "contract-review",
+        "prompt_template_version": "1",
+        "parameters": {},
+        "input_sha256": "a" * 64,
+        "response_sha256": "b" * 64,
+        "input_tokens": 10,
+        "output_tokens": 5,
+        "latency_ms": 0,
+        "outcome": "SUCCESS",
+        **_CREATED,
+    }
+
+
 ROW_BUILDERS: Final[Mapping[str, RowBuilder]] = MappingProxyType(
     {
+        "ai_model_log": ai_model_log_row,
         "access_review_campaign": access_review_campaign_row,
         "access_review_item": access_review_item_row,
         "account_mapping_rule": account_mapping_rule_row,

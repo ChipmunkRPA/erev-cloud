@@ -12,6 +12,7 @@ from sqlalchemy import MetaData
 
 metadata: Final[MetaData] = MetaData(schema="erev")
 
+from erev_api.db.tables.ai import ai_model_log  # noqa: E402
 from erev_api.db.tables.close import (  # noqa: E402
     close_checklist_item,
     close_checklist_template,
@@ -184,6 +185,7 @@ from erev_api.db.tables.subledger import (  # noqa: E402
 )
 
 __all__ = [
+    "ai_model_log",
     "access_review_campaign",
     "access_review_item",
     "account_mapping_rule",
