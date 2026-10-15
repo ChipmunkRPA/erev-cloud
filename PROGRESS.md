@@ -2,6 +2,26 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Composed narrative gateway attempt — October 15, 2026
+
+- Connected current persisted-job authorization, effective switches/settings, serialized
+  budget admission, read-only source retrieval, lazy provider construction and committed
+  narrative proposal evidence. The budget lease spans provider work through the usage commit;
+  no SQL transaction spans provider execution. Busy admission performs no model call.
+- Settings and human/source authorization are rechecked after a response. If a switch or
+  permission changes mid-call, usage is retained without retaining the returned narrative.
+  Typed provider errors/timeouts are logged and propagated for the future retry policy.
+- Real K-01/fake-provider test verifies default disablement, competing admission, success,
+  timeout, mid-call platform disablement and grant revocation, then exact budget exhaustion.
+  It observes no idle-in-transaction SQL session during provider work and no competing lease.
+- Verification: 272 combined tests passed, two Linux-only parser tests skipped; the expanded
+  final gateway scenario passed; strict typing passed for 766 sources; Ruff/diff checks pass.
+  Logs: .run/ai-gateway-{checks,final,types}.log. Local test cluster stopped afterward.
+- Still no registered AI_TASK handler/public submission: retry scheduling, durable failure
+  proposals for rejected admission/provider errors, notification and crash/unlogged-call
+  recovery remain open. Existing request/proposal idempotency is not yet a gateway guarantee.
+  Other AI tasks and human acceptance remain unfinished. No deployment or live provider calls.
+
 ## Atomic narrative proposal persistence — October 15, 2026
 
 - Added NUMBER_EXPLANATION persistence under a scoped human unit of work. Before writing,
@@ -219,34 +239,6 @@
 - This does not implement the gateway or complete AIX-3. Other prompt kinds, retained response
   fixtures, job authorization/budgets, audited attempt persistence and human acceptance remain
   open. No provider call or deployment; no production-readiness claim.
-
-## Source citation offsets after redaction — October 14, 2026
-
-- PRV-08 now exposes immutable substitution coordinates alongside its existing redacted
-  text/counts. Email and international/local phone precedence stays shared with ordinary
-  redaction. The mapping stores no removed contact values and stays outside provider input.
-- Extraction validation can validate outgoing redacted pages and restore citations to source
-  Unicode coordinates. Boundaries inside replacement placeholders refuse the entire proposal;
-  complete placeholders map to complete source spans, subject to human viewing authorization.
-- Privacy/extraction/architecture checks: 167 passed; strict API/test typing: 751 sources.
-  Logs: .run/ai-offsets-checks.log and .run/ai-offsets-types.log. Ruff/formatting pass.
-- The future gateway must retain the exact page mappings used for its prompt. Durable
-  document extraction, authorized gateway jobs, value schemas, narrative-number checks,
-  budgets, lifecycle auditing and human acceptance remain unfinished. No live calls/deployment.
-
-## AI extraction output validation — October 14, 2026
-
-- Added an atomic extraction validator: response digest/completion, strict JSON and unique
-  allowed paths, confidence range, authorised document identity and Unicode page-span bounds.
-  Low confidence below 0.75 is marked for review; no field is automatically accepted.
-- Invalid fields refuse the entire proposal. Duplicate JSON keys, nonfinite numbers,
-  oversized/deep responses and excessive decimal expansion refuse with safe error codes.
-  Immutable canonical values preserve exact decimals without binary floating-point rounding.
-- AI/provider/architecture checks: 128 passed; strict API/test typing: 750 sources.
-  Evidence: .run/ai-extraction-validation.log and .run/ai-extraction-types.log.
-- This helper is not connected to a gateway. Command-specific value schemas, redaction-offset
-  mapping, semantic citation review, narrative-number checks, authorised jobs, budgets,
-  persistence/auditing and human acceptance remain open. No live calls or deployment.
 
 ## Outstanding release verification
 

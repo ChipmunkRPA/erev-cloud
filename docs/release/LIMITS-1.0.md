@@ -44,6 +44,13 @@ records together. Real-contract tests verify rollback, rejected-text exclusion a
 accounting changes. This does not finish the gateway, retries/crash recovery, public API,
 other proposal kinds or human acceptance; the full AI lifecycle gate remains open.
 
+A narrative gateway attempt now composes authorization, effective settings, budget admission,
+read-only retrieval, lazy provider execution and committed proposal evidence. Typed provider
+errors are logged; a mid-call switch or grant change retains usage without model narrative.
+The fake-provider/real-contract path is verified, but no AI_TASK handler or public submission
+is registered. Retry scheduling, terminal failure proposals for admission/provider errors,
+notifications, idempotent completion and crash/unlogged-call recovery remain unfinished.
+
 Migration 0148 adds immutable proposal content/citations, tenant-bound evidence references
 and SM-11 state guards. The schema and full migration round trip are verified; proposal
 creation/acceptance APIs, approval integration and lifecycle audit events remain absent.
