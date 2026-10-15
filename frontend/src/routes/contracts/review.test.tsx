@@ -87,6 +87,18 @@ afterEach(() => {
 });
 
 describe("SF-20 retained review", () => {
+  it("requires low-confidence decisions and reasons before leaving source review", async () => {
+    show();
+    const accept = await screen.findByRole("radio", { name: "Accept" });
+    expect((accept as HTMLInputElement).checked).toBe(false);
+    fireEvent.click(screen.getByRole("button", { name: "Continue to draft" }));
+    expect(await screen.findByText("Choose a decision for Customer.")).toBeTruthy();
+    fireEvent.click(screen.getByRole("radio", { name: "Edit" }));
+    fireEvent.click(screen.getByRole("button", { name: "Continue to draft" }));
+    expect(await screen.findByText(/10.*4,?000/)).toBeTruthy();
+    expect(screen.getByRole("textbox", { name: "Edited value for Customer" })).toBeTruthy();
+  });
+
   it("highlights Python character offsets, focuses the citation and returns on Escape", async () => {
     show();
     const citation = await screen.findByRole("button", { name: "Page 1, characters 2–10" });

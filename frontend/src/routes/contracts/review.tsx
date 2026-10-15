@@ -9,6 +9,7 @@ import { Banner } from "../../components/feedback/Banner";
 import { EmptyState } from "../../components/feedback/EmptyState";
 import { RefusalBanner } from "../../components/feedback/RefusalBanner";
 import { Skeleton } from "../../components/feedback/Skeleton";
+import { Field, controlClass } from "../../components/form/Field";
 import { ReasonField, reasonError } from "../../components/form/ReasonField";
 import { Button } from "../../components/ui/Button";
 import { Modal } from "../../components/ui/Modal";
@@ -17,6 +18,7 @@ import { useCommand } from "../../lib/api/commands";
 import { ApiProblem } from "../../lib/api/problems";
 import {
   AI_USE_PERMISSION,
+  type AcceptedDraft,
   documentTextKey,
   type DocumentText,
   type ExtractionProposal,
@@ -28,6 +30,14 @@ import {
 import { queryKey } from "../../lib/api/query-keys";
 import { formatTimestamp, instantMs } from "../../lib/format";
 import { hasMessage, t } from "../../lib/i18n/t";
+import { ReviewedContractDraft } from "./draft-form";
+import {
+  fieldChoice,
+  prepareReview,
+  type FieldChoice,
+  type PreparedReview,
+  type Decision,
+} from "./review-decisions";
 
 interface Citation {
   readonly page: number;
@@ -84,12 +94,33 @@ function ReviewEvidence({
   proposal,
   etag,
   text,
+  canCreate,
 }: {
   readonly proposal: ExtractionProposal;
   readonly etag: string | null;
   readonly text: DocumentText | undefined;
+  readonly canCreate: boolean;
 }) {
   const [selected, setSelected] = useState<{ citation: Citation; label: string } | null>(null);
+  const [choices, setChoices] = useState(() =>
+    proposal.content.map((field) =>
+      fieldChoice(field, citationOf(field.citation, proposal.file_object_id) !== null),
+    ),
+  );
+  const [dateTarget, setDateTarget] = useState<"inception_date" | "signature_date" | null>(null);
+  const [reviewError, setReviewError] = useState<string | null>(null);
+  const [prepared, setPrepared] = useState<{ review: PreparedReview; etag: string } | null>(null);
+  const accept = useCommand<AcceptedDraft>({
+    method: "POST",
+    path: `${proposalPath(proposal.id)}/accept`,
+    invalidates: [queryKey("ai-proposals", "tenant"), queryKey("contracts", "tenant")],
+  });
+  const updateChoice = (index: number, update: Partial<FieldChoice>) => {
+    setChoices((current) =>
+      current.map((choice, at) => (at === index ? { ...choice, ...update } : choice)),
+    );
+    setReviewError(null);
+  };
   const trigger = useRef<HTMLButtonElement | null>(null);
   const highlight = useRef<HTMLElement | null>(null);
   useEffect(() => {
@@ -127,8 +158,62 @@ function ReviewEvidence({
     if (result.kind === "succeeded") setRejecting(false);
     else setUnreached(result.kind === "network-error");
   };
+  const editable = canReject && canCreate;
+  const prepare = () => {
+    if (!editable || etag === null || text === undefined) return;
+    for (const [index, field] of proposal.content.entries()) {
+      if (choices[index]?.decision === "REJECT") continue;
+      const cite = citationOf(field.citation, proposal.file_object_id);
+      const page = text.pages.find((item) => item.page_no === cite?.page);
+      if (
+        cite === null ||
+        page === undefined ||
+        citedParts(page.text, cite.start, cite.end) === null
+      ) {
+        setReviewError(t("ai.review.decision.error.citation", { field: labelOf(field.path) }));
+        return;
+      }
+    }
+    const result = prepareReview(proposal, choices, dateTarget);
+    if (!result.ok) {
+      setReviewError(
+        t(`ai.review.decision.error.${result.error}`, { field: labelOf(result.path) }),
+      );
+      return;
+    }
+    setPrepared({ review: result.review, etag });
+  };
+  if (prepared !== null && proposal.status === "proposed")
+    return (
+      <ReviewedContractDraft
+        initial={prepared.review.initial}
+        submit={(draft) =>
+          accept.submit(
+            {
+              command: "contract.create_draft",
+              entity_code: draft.contracting_entity_code,
+              draft,
+              field_decisions: prepared.review.decisions,
+              header_bindings: prepared.review.headers,
+              line_bindings: prepared.review.lines,
+            },
+            { ifMatch: prepared.etag },
+          )
+        }
+      />
+    );
   return (
     <>
+      {reviewError === null ? null : <Banner tone="negative" title={reviewError} />}
+      {editable ? (
+        <Button
+          variant="primary"
+          disabledReason={text === undefined ? t("ai.review.decision.needText") : undefined}
+          onClick={prepare}
+        >
+          {t("ai.review.decision.continue")}
+        </Button>
+      ) : null}
       <RefusalBanner problem={command.problem} conflict={command.banner} />
       {expired ? (
         <Banner
@@ -257,6 +342,90 @@ function ReviewEvidence({
                       </Button>
                     </dd>
                   ) : null}
+                  {editable && choices[index] !== undefined ? (
+                    <dd className="mt-2 flex flex-col gap-2">
+                      <fieldset className="flex flex-wrap gap-3">
+                        <legend className="text-body-sm">
+                          {t("ai.review.decision.for", { field: label })}
+                        </legend>
+                        {(["ACCEPT", "EDIT", "REJECT"] as const)
+                          .filter((decision) => valid || decision === "REJECT")
+                          .map((decision: Decision) => (
+                            <label key={decision} className="flex items-center gap-1 text-body-sm">
+                              <input
+                                type="radio"
+                                name={`decision-${String(index)}`}
+                                value={decision}
+                                checked={choices[index]?.decision === decision}
+                                onChange={() => updateChoice(index, { decision })}
+                              />
+                              {t(`ai.review.decision.${decision}`)}
+                            </label>
+                          ))}
+                      </fieldset>
+                      {choices[index]?.decision === "EDIT" ? (
+                        <>
+                          {typeof field.path === "string" && field.path.startsWith("lines.") ? (
+                            <Field
+                              name={`product-${String(index)}`}
+                              label={t("ai.review.decision.product", { field: label })}
+                            >
+                              {(control) => (
+                                <input
+                                  {...control}
+                                  className={controlClass(false)}
+                                  value={choices[index]?.product ?? ""}
+                                  onChange={(event) =>
+                                    updateChoice(index, { product: event.target.value })
+                                  }
+                                />
+                              )}
+                            </Field>
+                          ) : null}
+                          <Field
+                            name={`edit-${String(index)}`}
+                            label={t("ai.review.decision.value", { field: label })}
+                          >
+                            {(control) => (
+                              <input
+                                {...control}
+                                className={controlClass(false)}
+                                value={choices[index]?.value ?? ""}
+                                onChange={(event) =>
+                                  updateChoice(index, { value: event.target.value })
+                                }
+                              />
+                            )}
+                          </Field>
+                        </>
+                      ) : null}
+                      {choices[index]?.decision === "EDIT" ||
+                      choices[index]?.decision === "REJECT" ? (
+                        <ReasonField
+                          name={`reason-${String(index)}`}
+                          label={t("ai.review.decision.reason", { field: label })}
+                          value={choices[index]?.reason ?? ""}
+                          onChange={(reason) => updateChoice(index, { reason })}
+                        />
+                      ) : null}
+                      {field.path === "effective_date" && choices[index]?.decision !== "REJECT" ? (
+                        <fieldset className="flex gap-3">
+                          <legend>{t("ai.review.decision.dateTarget")}</legend>
+                          {(["inception_date", "signature_date"] as const).map((target) => (
+                            <label key={target}>
+                              <input
+                                type="radio"
+                                name="effective-date-target"
+                                checked={dateTarget === target}
+                                onChange={() => setDateTarget(target)}
+                              />
+                              {t(`ai.review.decision.${target}`)}
+                            </label>
+                          ))}
+                        </fieldset>
+                      ) : null}
+                    </dd>
+                  ) : null}
                   {recorded === undefined ? null : (
                     <dd className="text-body-sm text-fg-2">
                       <p>{t("ai.review.decision", { decision: String(recorded.decision) })}</p>
@@ -359,6 +528,7 @@ export function ContractReview() {
         proposal={proposal}
         etag={read.data.etag}
         text={document.isError ? undefined : document.data}
+        canCreate={access.holdsAnywhere("contract.create")}
       />
     </div>
   );

@@ -2,6 +2,22 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Per-field review and confirmed draft handoff — October 15, 2026
+
+- Added Accept/Edit/Reject controls, explicit low-confidence choices, edit/rejection reasons,
+  citation checks and an explicit effective-date target. Decimal amounts remain strings;
+  customer identity/code, entity, currency and quantities require normal draft inputs.
+  Unsupported retained accounting terms stop continuation rather than being interpreted.
+- Reused ordinary draft validation and inputs, then a separate confirmation sends atomic
+  proposal acceptance with captured ETag, decisions and bindings. No activation action is
+  offered. A failed request keeps the form; successful acceptance opens the draft workbench.
+- 58 focused frontend review/upload/API/form tests, frontend typing and full lint passed. Logs:
+  .run/ai-review-decisions-{tests,types,lint}.log. These are component/API-boundary checks,
+  not a live browser/provider workflow or current full-release verification.
+- Back-navigation to field choices, unsupported terms, DOCX, responsive tabs, full browser
+  acceptance, broader release gates and independent accounting sign-off remain open.
+  No deployment or provider calls.
+
 ## Review-source upload and resumable job navigation — October 15, 2026
 
 - Added SF-20:new at /contracts/review/new, activating the existing Contracts entry. It validates
@@ -207,24 +223,6 @@
 - Per-field decisions, structured acceptance and broader release/accounting verification remain
   open. No deployment or live provider calls.
 
-## Extraction proposal rejection — October 15, 2026
-
-- Extended POST /ai/proposals/{id}/reject to extraction evidence, sharing the existing reason,
-  If-Match, idempotency and audit controls. Source authorization now runs in the review command's
-  transaction; the proposal row is locked before checking version/status/expiry and transitioning.
-  Current source access also gates cached command responses. Rejection preserves suggestions
-  and citations, works with AI disabled, and does not call a provider or write accounting data.
-- Verification: five PostgreSQL API tests passed, including extraction and narrative review.
-  Two simultaneous extraction reviewers using the same ETag yield one 200 and one 412, with
-  one audit event; exact expiry and terminal rows refuse rejection. Successful replay matches
-  the first response, while replay after source shredding returns 404. Unauthorized reviewers
-  cannot act; retained fields/citations and one provider usage record remain unchanged.
-  Twenty-four architecture checks passed. Full typecheck passed (934 Python sources plus
-  frontend), focused typing passed 786 sources, and OpenAPI/frontend artifacts were regenerated.
-  Full lint and final diff checks passed.
-  Logs: .run/ai-extraction-reject-{api,architecture,typecheck,types,openapi,lint}.log.
-- Extraction list integration, per-field decisions and structured acceptance remain unfinished,
-  alongside broader release/accounting gates. No deployment or live provider calls.
 
 ## Outstanding release verification
 

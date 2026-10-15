@@ -5360,3 +5360,22 @@ cleanup in the shared database session kernel was also repaired and regression-t
   .run/ai-document-text-{pg-final,unit,lint,typecheck,types-final,openapi}.log.
 - Extraction list integration, human review/acceptance, broader release checks and independent
   accounting sign-off remain outstanding. No deployment or live provider calls.
+
+## Extraction proposal rejection — October 15, 2026
+
+- Extended POST /ai/proposals/{id}/reject to extraction evidence, sharing the existing reason,
+  If-Match, idempotency and audit controls. Source authorization now runs in the review command's
+  transaction; the proposal row is locked before checking version/status/expiry and transitioning.
+  Current source access also gates cached command responses. Rejection preserves suggestions
+  and citations, works with AI disabled, and does not call a provider or write accounting data.
+- Verification: five PostgreSQL API tests passed, including extraction and narrative review.
+  Two simultaneous extraction reviewers using the same ETag yield one 200 and one 412, with
+  one audit event; exact expiry and terminal rows refuse rejection. Successful replay matches
+  the first response, while replay after source shredding returns 404. Unauthorized reviewers
+  cannot act; retained fields/citations and one provider usage record remain unchanged.
+  Twenty-four architecture checks passed. Full typecheck passed (934 Python sources plus
+  frontend), focused typing passed 786 sources, and OpenAPI/frontend artifacts were regenerated.
+  Full lint and final diff checks passed.
+  Logs: .run/ai-extraction-reject-{api,architecture,typecheck,types,openapi,lint}.log.
+- Extraction list integration, per-field decisions and structured acceptance remain unfinished,
+  alongside broader release/accounting gates. No deployment or live provider calls.

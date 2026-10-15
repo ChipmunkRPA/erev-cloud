@@ -193,8 +193,16 @@ uploads for this pre-contract review, without granting attachment-to-record or o
 permissions; the normal ownership, file bounds and audit rules apply. The frontend submits
 file_id only, matching the implemented API; entity selection belongs to explicit draft creation.
 A local Chromium probe used mocked HTTP responses for upload/job navigation, not a live provider.
-DOCX extraction, field-decision controls, responsive panel tabs, draft-form integration and full
-browser acceptance remain unfinished.
+Field controls now record Accept/Edit/Reject choices, require explicit low-confidence choices
+and reasons for edits/rejections, and seed the ordinary draft form through explicit bindings.
+Effective dates require a chosen meaning. Unsupported retained terms prevent continuation;
+rejection requires a human reason. Draft creation requires normal form validation and a separate
+confirmation, then calls atomic acceptance with the source proposal ETag. This path offers no
+activation action. Component tests cover confirmation, retry and navigation; they do not prove
+a live browser/API workflow. DOCX extraction, responsive panel tabs, returning to field review
+from a prepared draft, unsupported accounting-term mappings and full browser acceptance remain
+unfinished. Changing a bound draft field/key can cause the server to refuse the acceptance;
+the UI does not silently change the recorded field decision to match it.
 
 The Anthropic adapter is mock-tested, uses the official SDK, disables SDK retries and telemetry,
 and resolves secrets lazily. Contract-review and explain-narrative prompts have retained bytes,

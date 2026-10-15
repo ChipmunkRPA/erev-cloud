@@ -8,7 +8,7 @@
 import { cleanup, configure, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import type { RouteObject } from "react-router";
-import { afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { SCREEN_ROUTES } from "../../app/router";
 import { type ContractEvent, draftEditOf } from "../../lib/api/queries/contracts";
@@ -21,6 +21,9 @@ import {
 } from "../../test/app";
 import { customer } from "../../test/customers";
 import { apiUrl, installMswServer, problemResponse, server } from "../../test/msw";
+
+import { emptyDraft } from "../../lib/forms/contract";
+import { ReviewedContractDraft, type ReviewedDraftSubmit } from "./draft-form";
 
 installMswServer();
 installMemoryStorage();
@@ -1233,5 +1236,61 @@ describe("SCR-PERM-01 on the draft form", () => {
       ),
     ).toBeTruthy();
     expect(screen.queryByRole("grid", { name: "Contract lines" })).toBeNull();
+  });
+});
+
+describe("reviewed draft confirmation", () => {
+  it("validates, confirms, then uses only the acceptance command", async () => {
+    const sent: Sent[] = [];
+    serve(sent);
+    const submit = vi
+      .fn<ReviewedDraftSubmit>()
+      .mockResolvedValue({ kind: "network-error", error: new Error("Offline") });
+    const { router } = renderApp("/contracts/review/test", {
+      me: MAYA,
+      screenRoutes: [
+        {
+          path: "/contracts/review/test",
+          element: <ReviewedContractDraft initial={emptyDraft("l1")} submit={submit} />,
+        },
+        ...ROUTES,
+      ],
+    });
+    await screen.findByRole("grid", { name: "Contract lines" });
+    expect(screen.queryByRole("button", { name: /Save and submit/ })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Create draft contract" }));
+    expect(submit).not.toHaveBeenCalled();
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    fillHeader();
+    pick("Product, line 1", "PLAT", "AVM-PLAT-100 · Avenmoor Platform, 100 seats");
+    type("Quantity, line 1", "1");
+    type("Total price, line 1", "120000.50");
+    fireEvent.click(screen.getByRole("button", { name: "Create draft contract" }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(submit).not.toHaveBeenCalled();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Create draft contract" }));
+    await waitFor(() => expect(submit).toHaveBeenCalledTimes(1));
+    expect(submit.mock.calls[0]?.[0]).toMatchObject({
+      external_id: "SF-ORD-30001",
+      submit_for_activation: false,
+    });
+    expect(sent).toEqual([]);
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect((screen.getByRole("textbox", { name: "External id" }) as HTMLInputElement).value).toBe(
+      "SF-ORD-30001",
+    );
+    submit.mockResolvedValue({
+      kind: "succeeded",
+      data: { contract_id: CONTRACT_ID },
+      response: new Response(null, { status: 201 }),
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Create draft contract" }));
+    const retry = await screen.findByRole("alertdialog");
+    fireEvent.click(within(retry).getByRole("button", { name: "Create draft contract" }));
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe(`/contracts/${CONTRACT_ID}/obligations`),
+    );
+    expect(submit).toHaveBeenCalledTimes(2);
+    expect(sent).toEqual([]);
   });
 });

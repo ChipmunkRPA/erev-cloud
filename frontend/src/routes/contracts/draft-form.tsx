@@ -60,7 +60,7 @@ import { Button } from "../../components/ui/Button";
 import { Modal } from "../../components/ui/Modal";
 import { chipFor, statusMessageKey } from "../../components/ui/StatusChip";
 import { StickyFooter } from "../../components/ui/StickyFooter";
-import { useCommand, useCommandKeys } from "../../lib/api/commands";
+import { type CommandOutcome, useCommand, useCommandKeys } from "../../lib/api/commands";
 import { ApiProblem } from "../../lib/api/problems";
 import { currencyRegistered } from "../../lib/api/queries/approvals";
 import {
@@ -93,6 +93,7 @@ import {
 import type { components } from "../../lib/api/schema";
 import {
   buildDraft,
+  type ContractCreateBody,
   type DraftCustomer,
   type DraftForm,
   draftFromBooking,
@@ -787,8 +788,59 @@ interface ServerProblem {
   readonly unplaced: readonly string[];
 }
 
+export type ReviewedDraftSubmit = (
+  body: ContractCreateBody,
+) => Promise<CommandOutcome<{ contract_id: string }>>;
+
+/** Use the ordinary draft inputs/validation, with one atomic reviewed acceptance command. */
+export function ReviewedContractDraft({
+  initial,
+  submit,
+}: {
+  readonly initial: DraftForm;
+  readonly submit: ReviewedDraftSubmit;
+}) {
+  const me = useMe();
+  const permissions = me.data?.permissions ?? [];
+  const allowed =
+    permissions.includes(CONTRACT_CREATE_PERMISSION) &&
+    permissions.includes(STRUCTURE_READ_PERMISSION);
+  const lookups = useDraftChoices(allowed);
+  if (me.isError) return <Banner tone="negative" title={me.error.message} />;
+  if (me.isPending) return <Skeleton region={t("contracts.draft.new.title")} />;
+  if (!permissions.includes(CONTRACT_CREATE_PERMISSION))
+    return <AccessLimited permission={t("contracts.draft.access.permission")} />;
+  if (!permissions.includes(STRUCTURE_READ_PERMISSION))
+    return <AccessLimited permission={t("settings.access.permission.configRead")} />;
+  if (lookups.error !== null)
+    return (
+      <LoadError
+        title={t("contracts.draft.loadError")}
+        problem={lookups.error}
+        onRetry={lookups.retry}
+      />
+    );
+  if (lookups.choices === null) return <Skeleton region={t("contracts.draft.new.title")} />;
+  return (
+    <section className="flex flex-col gap-4">
+      <h2 id="draft-form-title" className="text-title-sm text-fg-1">
+        {t("ai.review.draft.title")}
+      </h2>
+      <p className="text-body-sm text-fg-2">{t("ai.review.draft.help")}</p>
+      <DraftFormView
+        mode={{ kind: "new" }}
+        initial={initial}
+        choices={lookups.choices}
+        ctxSearch=""
+        reviewSubmit={submit}
+      />
+    </section>
+  );
+}
+
 interface DraftFormViewProps {
   readonly mode: DraftMode;
+  readonly reviewSubmit?: ReviewedDraftSubmit | undefined;
   readonly initial: DraftForm;
   readonly choices: DraftChoices;
   readonly ctxSearch: string;
@@ -796,13 +848,21 @@ interface DraftFormViewProps {
   readonly onReload?: (() => void) | undefined;
 }
 
-function DraftFormView({ mode, initial, choices, ctxSearch, onReload }: DraftFormViewProps) {
+function DraftFormView({
+  mode,
+  initial,
+  choices,
+  ctxSearch,
+  onReload,
+  reviewSubmit,
+}: DraftFormViewProps) {
   const navigate = useNavigate();
   const toast = useToast();
   const refresh = useRefreshRecord();
   const editing = mode.kind === "edit";
   const [form, setForm] = useState(initial);
   const [attempted, setAttempted] = useState(false);
+  const [reviewConfirm, setReviewConfirm] = useState(false);
   // Moves focus to the error summary (two or more errors) or to the one wrong field.
   const [focusTick, setFocusTick] = useState(0);
   const [formatErrors, setFormatErrors] = useState<Readonly<Record<string, string>>>({});
@@ -951,15 +1011,34 @@ function DraftFormView({ mode, initial, choices, ctxSearch, onReload }: DraftFor
     void navigate(editing ? workbenchPath(mode.contract.id) : `/contracts${ctxSearch}`);
   };
 
-  const save = async (submitAfter: boolean) => {
+  const save = async (submitAfter: boolean, confirmed = false) => {
     setAttempted(true);
     setUnreached(false);
     if (built.body === null) {
       setFocusTick((tick) => tick + 1);
       return;
     }
+    if (reviewSubmit !== undefined && !confirmed) {
+      setReviewConfirm(true);
+      return;
+    }
     setServer(null);
     setSaving(submitAfter ? "submit" : "draft");
+    if (reviewSubmit !== undefined) {
+      const reviewed = await reviewSubmit(built.body);
+      setReviewConfirm(false);
+      if (reviewed.kind === "succeeded" && reviewed.data !== null) {
+        leave(reviewed.data.contract_id);
+      } else {
+        if (reviewed.kind === "failed") {
+          setServer({ problem: reviewed.problem, ...placeProblem(reviewed.problem, form) });
+          setFocusTick((tick) => tick + 1);
+        }
+        setUnreached(reviewed.kind === "network-error");
+        setSaving(null);
+      }
+      return;
+    }
     const outcome = await command.submit(
       built.body,
       editing ? { ifMatch: contractIfMatch(mode.head) } : {},
@@ -1380,18 +1459,34 @@ function DraftFormView({ mode, initial, choices, ctxSearch, onReload }: DraftFor
             disabledReason={saving === "submit" ? t("common.dialog.submitting") : undefined}
             onClick={() => void save(false)}
           >
-            {t("contracts.draft.save")}
+            {reviewSubmit === undefined ? t("contracts.draft.save") : t("ai.review.draft.create")}
           </Button>
-          <Button
-            variant="primary"
-            loading={saving === "submit"}
-            disabledReason={saving === "draft" ? t("common.dialog.submitting") : undefined}
-            onClick={() => void save(true)}
-          >
-            {t("contracts.draft.saveAndSubmit")}
-          </Button>
+          {reviewSubmit === undefined ? (
+            <Button
+              variant="primary"
+              loading={saving === "submit"}
+              disabledReason={saving === "draft" ? t("common.dialog.submitting") : undefined}
+              onClick={() => void save(true)}
+            >
+              {t("contracts.draft.saveAndSubmit")}
+            </Button>
+          ) : null}
         </div>
       </StickyFooter>
+      <Modal
+        open={reviewConfirm}
+        variant="confirmation"
+        title={t("ai.review.draft.create")}
+        description={t("ai.review.draft.consequence")}
+        submitting={busy}
+        primaryAction={{
+          label: t("ai.review.draft.create"),
+          onAction: () => {
+            void save(false, true);
+          },
+        }}
+        onClose={() => setReviewConfirm(false)}
+      />
       <Modal
         open={blocker.state === "blocked"}
         variant="confirmation"
