@@ -3191,3 +3191,27 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
 - Follow-up documentation URL scan found only owner links, internal/example addresses and a local
   URL-validation regex. `git diff --check` passed. No application source changed; no application
   tests rerun. Replaced the public root with an exact force-with-lease against the verified head.
+
+## Lock rollback and independent verification — October 14, 2026
+
+- Broader lock-workflow baseline on 052e907: **39 passed, 2 failed in 145.30 seconds**.
+  Both failures were the queued audit worker in the first-close evidence test: the test module
+  did not import its real handler and previously passed only when another collected test did.
+  Production worker already imports it. Added explicit test registration; no worker replacement.
+- Extended rollback coverage to fail at the final lock audit after real notifications exist,
+  as well as at the earlier control recorder. Both cases compare retained lock/state/snapshot/
+  reconciliation/approval data plus jobs, packs, report runs, notifications, outbox messages and
+  lock audits with their pre-decision values. This guards transaction atomicity; it does not
+  establish automatic pack generation, which remains unimplemented.
+- Corrected worker registration run: **41 passed, 1 failed in 175.04 seconds**. The new fault
+  injector initially matched the earlier period-state audit, which shares the period.lock action.
+  Restricted it to object_type=period_lock so it reaches the final audit after notifications;
+  both rollback cases then **passed in 51.42 seconds**. Other cases were not rerun after this
+  test-only correction. Ruff lint/format and whitespace checks pass. Logs under .run:
+  lock-workflow-baseline.log, lock-workflow-final.log, lock-rollback-corrected.log; all terminal.
+  No deployment, full release-suite or production-readiness claim.
+- Automatic lock generation still needs a durable post-commit preparation job: source validation
+  depends on committed approval/audit/freeze records. A process-only after-commit callback is
+  insufficient; queued preparation must retain stable identity across retries. Availability
+  notification must follow successful pack retention. Re-lock variance and other pack kinds,
+  operational CTL-041 acceptance, current release gates and independent accounting approval remain.

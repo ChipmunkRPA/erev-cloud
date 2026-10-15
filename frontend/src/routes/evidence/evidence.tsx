@@ -96,7 +96,7 @@ function PackRegister() {
         kind: "text",
         value: (p) => p.pack_no,
         render: (p) => (
-          <Link className="underline" to={evidencePackRoute(p.id)}>
+          <Link className="inline-flex min-h-6 items-center underline" to={evidencePackRoute(p.id)}>
             {p.pack_no}
           </Link>
         ),

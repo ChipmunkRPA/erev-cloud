@@ -849,3 +849,13 @@ Register facts describe only the authorized returned page; detail facts bind the
 retained lock/status/hash. Failed reads do not record successful access. This closes the
 read-audit gap in SF-09 but does not implement the outstanding pack kinds or re-lock variance,
 and does not supply independent accounting approval or complete release verification.
+
+## October 14, 2026 — first-close browser acceptance
+
+A focused real-browser test now passes for generation from a retained first-close lock,
+contents display, manifest digest comparison, manifest/ZIP downloads, and light/dark
+accessibility. The initial full closed-world run passed nine tests and failed the new test
+on the register link target size; the link was enlarged and the focused retry passed.
+This uses the retained local demo world and does not establish a passing fresh full-browser
+or release gate. Other pack kinds, re-lock variance, remaining RPS-20 acceptance and
+independent accounting approval remain open. See PROGRESS.md for exact evidence.

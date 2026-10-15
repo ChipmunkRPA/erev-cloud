@@ -2,6 +2,25 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## First-close browser acceptance — October 14, 2026 (RPS-20 continued)
+
+- Added a real-browser workflow that selects a retained first-close lock, creates a pack,
+  waits for successful retention, checks all 12 contents sections, downloads manifest/ZIP,
+  compares the downloaded manifest SHA-256 with the displayed value, and checks every file
+  path/hash/copy control. Light/dark accessibility checks cover register, form and detail.
+- The initial closed-world run passed 9 tests and failed this new test on the register pack
+  link target size. Enlarged the link to 24px minimum height. A focused retry then exposed a
+  test interaction error: the shared combobox opens with Arrow Down, not input click alone.
+  Corrected that interaction and waited for loaded register data before screen capture.
+- Final focused browser run: 1 passed in 46.9s against the retained local demo world; this
+  is not a fresh full-browser gate. Evidence components: 70 tests passed in four files.
+  TypeScript and targeted ESLint passed. Reviewed register, form and detail screenshots.
+  All browser test servers stopped. Logs: .run/evidence-browser-retry-2.log and
+  .run/evidence-browser-regression.log. Initial full-run failure remains preserved.
+- Full immutable CI on 165d63c is still running and has known failures; this entry does not
+  claim a passing full release gate. Other pack kinds, re-lock variance, broader acceptance
+  and independent accounting approval remain open. No deployment.
+
 ## Current CI preflight and direction-aware evidence tables — October 14, 2026
 
 - Immutable make ci on fcbfaa3 reached lint after local-only environment repair: a missing
@@ -201,30 +220,6 @@
   Logs .run/automatic-close-preparation.log and .run/automatic-close-regression.log; all terminal.
   Five source files pass Mypy; six changed Python files pass Ruff lint/format; whitespace clean.
   Public schemas unchanged. Direct main, no deployment or production-readiness claim.
-
-## Lock rollback and independent verification — October 14, 2026
-
-- Broader lock-workflow baseline on 052e907: **39 passed, 2 failed in 145.30 seconds**.
-  Both failures were the queued audit worker in the first-close evidence test: the test module
-  did not import its real handler and previously passed only when another collected test did.
-  Production worker already imports it. Added explicit test registration; no worker replacement.
-- Extended rollback coverage to fail at the final lock audit after real notifications exist,
-  as well as at the earlier control recorder. Both cases compare retained lock/state/snapshot/
-  reconciliation/approval data plus jobs, packs, report runs, notifications, outbox messages and
-  lock audits with their pre-decision values. This guards transaction atomicity; it does not
-  establish automatic pack generation, which remains unimplemented.
-- Corrected worker registration run: **41 passed, 1 failed in 175.04 seconds**. The new fault
-  injector initially matched the earlier period-state audit, which shares the period.lock action.
-  Restricted it to object_type=period_lock so it reaches the final audit after notifications;
-  both rollback cases then **passed in 51.42 seconds**. Other cases were not rerun after this
-  test-only correction. Ruff lint/format and whitespace checks pass. Logs under .run:
-  lock-workflow-baseline.log, lock-workflow-final.log, lock-rollback-corrected.log; all terminal.
-  No deployment, full release-suite or production-readiness claim.
-- Automatic lock generation still needs a durable post-commit preparation job: source validation
-  depends on committed approval/audit/freeze records. A process-only after-commit callback is
-  insufficient; queued preparation must retain stable identity across retries. Availability
-  notification must follow successful pack retention. Re-lock variance and other pack kinds,
-  operational CTL-041 acceptance, current release gates and independent accounting approval remain.
 
 ## Outstanding release verification
 

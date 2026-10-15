@@ -18,6 +18,9 @@
 // of January opens as locked on the lock of its close, which API-S-Period names as `dataset_lock`. A
 // permanent lock cannot be undone: a project that runs on this world after this one finds January
 // permanently locked and an approved request of AVM-US, and nothing else changed (DG-E2E-02).
+import { createHash } from "node:crypto";
+import { readFile } from "node:fs/promises";
+
 import type { APIRequestContext, Locator, Page } from "@playwright/test";
 
 import { ApiClient, json } from "../support/api";
@@ -819,4 +822,96 @@ test.describe("SF-05 Close cockpit of a locked period (RT-26 /close/:entity/:boo
       expect((await avmUsPeriod(marcus.request, "FY2026-P01")).state).toBe("closed");
     });
   }
+});
+
+test("SF-09 first-close evidence generation and retained downloads hannah", async ({
+  personas,
+  screens,
+  a11y,
+}) => {
+  test.setTimeout(240_000);
+  const page = await personas.page("hannah");
+  const lockId = await augustLock(page.request);
+  await page.goto(`/reports/evidence?${AUGUST}`);
+  await expect(page.getByRole("heading", { name: "Auditor requests (20)" })).toBeVisible();
+  await expect(page.getByTestId("SF-09-grid-auditor-requests").getByRole("row")).toHaveCount(21);
+  await expect(
+    page.getByTestId("SF-09-row-a-01").getByRole("link", { name: "Run report" }),
+  ).toBeVisible();
+  await expect(page.getByRole("link", { name: /^EVP-/ }).first()).toBeVisible({ timeout: 60_000 });
+  await screens.capture(page, "sf-09-first-close-register", { surface: "SF-09" });
+  await a11y.check(page, "SF-09");
+
+  await page.getByRole("button", { name: "Generate close evidence pack" }).click();
+  const dialog = page.getByRole("dialog", { name: "Generate close evidence pack" });
+  await dialog.getByRole("combobox", { name: /Retained lock/ }).press("ArrowDown");
+  await expect(page.getByRole("option")).toHaveCount(1);
+  await page.getByRole("option").click();
+  await screens.capture(page, "sf-09-generate-first-close", { surface: "SF-09" });
+  await a11y.check(page, "SF-09", { state: "generate-first-close" });
+
+  const creation = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      new URL(response.url()).pathname === "/api/v1/evidence-packs",
+  );
+  await dialog.getByRole("button", { name: "Generate pack", exact: true }).click();
+  const response = await creation;
+  expect(response.status(), await response.text()).toBe(202);
+  expect(response.request().postDataJSON()).toEqual({
+    kind: "CLOSE",
+    entity_code: "AVM-US",
+    book: "ASC606",
+    period_key: "FY2026-P08",
+    period_lock_id: lockId,
+  });
+  const packId = response.headers()["x-erev-evidence-pack-id"] ?? "";
+  expect(packId).toMatch(new RegExp(`^${UUID}$`));
+  await expect(page).toHaveURL(new RegExp(`/reports/evidence/${packId}$`));
+  await expect(page.getByRole("button", { name: "Download pack", exact: true })).toBeVisible({
+    timeout: 180_000,
+  });
+  await expect(page.getByText(lockId, { exact: true })).toBeVisible();
+  const contents = page.getByRole("table", { name: "Contents", exact: true });
+  await expect(contents.getByText("Missing", { exact: true })).toHaveCount(0);
+  await expect(contents.getByText("Present", { exact: true })).toHaveCount(12);
+  await screens.capture(page, "sf-09-first-close-pack", { surface: "SF-09:pack" });
+  await a11y.check(page, "SF-09:pack");
+
+  const manifestDownload = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Download manifest", exact: true }).click();
+  const manifestFile = await manifestDownload;
+  expect(await manifestFile.failure()).toBeNull();
+  expect(manifestFile.suggestedFilename()).toMatch(/^EVP-.*\.manifest\.json$/);
+  const manifestPath = await manifestFile.path();
+  expect(manifestPath).not.toBeNull();
+  const manifestBytes = await readFile(manifestPath ?? "");
+  const digest = createHash("sha256").update(manifestBytes).digest("hex");
+  await expect(page.getByText(digest, { exact: true })).toBeVisible();
+  const manifest = JSON.parse(manifestBytes.toString("utf8")) as {
+    files: { path: string; sha256: string; bytes: number }[];
+  };
+  expect(manifest.files.length).toBeGreaterThanOrEqual(36);
+  const files = page.getByRole("table", { name: "Files", exact: true });
+  for (const file of manifest.files) {
+    const row = files.getByRole("row").filter({
+      has: page.getByRole("rowheader", { name: file.path, exact: true }),
+    });
+    await expect(row).toHaveCount(1);
+    await expect(row.getByText(file.sha256, { exact: true })).toBeVisible();
+    await expect(
+      row.getByRole("button", { name: `Copy SHA-256 of ${file.path}`, exact: true }),
+    ).toBeVisible();
+  }
+
+  const zipDownload = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Download pack", exact: true }).click();
+  const zipFile = await zipDownload;
+  expect(await zipFile.failure()).toBeNull();
+  expect(zipFile.suggestedFilename()).toMatch(/^EVP-.*\.zip$/);
+  const zipPath = await zipFile.path();
+  expect(zipPath).not.toBeNull();
+  const zipBytes = await readFile(zipPath ?? "");
+  expect([...zipBytes.subarray(0, 4)]).toEqual([0x50, 0x4b, 0x03, 0x04]);
+  expect(zipBytes.length).toBeGreaterThan(manifestBytes.length);
 });
