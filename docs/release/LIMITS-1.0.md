@@ -39,6 +39,11 @@ inside placeholders. The future gateway must retain the exact mapping for each o
 durable document extraction and gateway integration remain absent.
 Neither span validation nor a high confidence score establishes accounting correctness.
 
+Contract-review v1 now has a retained prompt file, reviewed digest manifest and bounded
+loader. Exact file bytes, including metadata, become the system message and template digest;
+unknown versions and changed files refuse. The built wheel retains identical prompt bytes.
+Other prompt kinds, retained fake-response fixtures and the operational gateway remain open.
+
 October 14 audit continuation: native option entry/expiry and CLOSE evidence-pack creation
 now have catalogue entries and real request scenarios in the audit walk. Material-right
 AUD-FACT summaries require a contract key and retain the created ids in detail. Evidence-pack

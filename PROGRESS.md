@@ -2,6 +2,20 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Retained contract-review prompt — October 15, 2026
+
+- Added the versioned contract-review v1 file with id/version/purpose/output-schema front
+  matter, citation rules and instructions to treat document text as untrusted evidence.
+- A checked-in digest manifest and bounded loader require registered identifiers, exact file
+  bytes and matching metadata. Changes require a new version; no latest-version fallback.
+  The complete file is the system message, so preparation binds its full file digest.
+- AI/architecture checks: 129 passed (12.01s); strict API/test typing: 752 sources; Ruff passes.
+  Offline wheel build passed and packaged prompt bytes match the reviewed source exactly.
+  Logs: .run/ai-templates-{checks,types,wheel,package}.log.
+- This does not implement the gateway or complete AIX-3. Other prompt kinds, retained response
+  fixtures, job authorization/budgets, audited attempt persistence and human acceptance remain
+  open. No provider call or deployment; no production-readiness claim.
+
 ## Source citation offsets after redaction — October 14, 2026
 
 - PRV-08 now exposes immutable substitution coordinates alongside its existing redacted
@@ -237,22 +251,6 @@
 - Output reproduction under current configuration, policy publication, activation admission
   and independent approval/live creation remain unfinished. Public option import/promotion
   stay unavailable. Older immutable CI is live at 52%; no deployment/readiness claim.
-
-## Durable migration promotion review basis — October 14, 2026
-
-- Extracted the shared read-only reconciliation assessment and added promotion review of
-  retained evidence. It requires RECONCILED/SUBMITTED opening-balance status, reassesses all
-  figures, verifies source-row hashes and requires the complete stored line set to match.
-- The review fingerprint binds source/capture/reconciliation artifacts and the recorded
-  profile, including replayed SSP references. It stays stable across SUBMITTED and changes
-  with the SSP profile. Review alone writes no audit events or live contracts.
-- Three PostgreSQL cases passed (9.56s), including missing/duplicate/changed stored-line
-  refusals and status/profile binding. 68 related checks passed (9.20s); strict production
-  Mypy (885 files), test Mypy and Ruff passed. Logs: .run/migration-promotion-review-*.log.
-- This is a foundation for promotion, not the approval subject: current configuration/report
-  checks, policy publication, activation admission, reproduction and atomic live creation,
-  independent reviewer/MFA and submit route remain unfinished. Public option import stays
-  unavailable. Older immutable CI remains live at 46%; no deployment/readiness claim.
 
 ## Outstanding release verification
 

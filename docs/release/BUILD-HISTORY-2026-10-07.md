@@ -4010,3 +4010,19 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   .run/option-reconciliation-types.log and .run/option-reconciliation-test-types.log.
 - Full import/approved promotion remains incomplete, and the public option refusal stays.
   Older immutable CI 165d63c remains live at 46%; no deployment or readiness claim.
+
+## Durable migration promotion review basis — October 14, 2026
+
+- Extracted the shared read-only reconciliation assessment and added promotion review of
+  retained evidence. It requires RECONCILED/SUBMITTED opening-balance status, reassesses all
+  figures, verifies source-row hashes and requires the complete stored line set to match.
+- The review fingerprint binds source/capture/reconciliation artifacts and the recorded
+  profile, including replayed SSP references. It stays stable across SUBMITTED and changes
+  with the SSP profile. Review alone writes no audit events or live contracts.
+- Three PostgreSQL cases passed (9.56s), including missing/duplicate/changed stored-line
+  refusals and status/profile binding. 68 related checks passed (9.20s); strict production
+  Mypy (885 files), test Mypy and Ruff passed. Logs: .run/migration-promotion-review-*.log.
+- This is a foundation for promotion, not the approval subject: current configuration/report
+  checks, policy publication, activation admission, reproduction and atomic live creation,
+  independent reviewer/MFA and submit route remain unfinished. Public option import stays
+  unavailable. Older immutable CI remains live at 46%; no deployment/readiness claim.
