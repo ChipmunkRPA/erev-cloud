@@ -2,6 +2,14 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Runtime audit and local container verification — October 15, 2026
+
+- make audit-deps passed on clean 74bd148: all 86 pinned Python runtime packages audited,
+  with zero Python vulnerabilities and zero npm runtime advisories. Source binding is verified.
+- Local Compose verification also passed on 74bd148: migrations, readiness, CSP and worker
+  health, followed by verified cleanup. The earlier host-mount stall did not recur.
+- Evidence is in docs/release/CI-2026-10-15.md. Final-candidate checks remain required.
+
 ## SSP override entity context — October 15, 2026
 
 - New override previews retain the contract and source-book entities, all-entity scope and
@@ -246,28 +254,15 @@
 - No deployment or provider calls. Standard demo/J-19 and accounting sign-off remain open.
   Frozen CI on 3cf8f5b remains running; its snapshot predates these changes.
 
-## Effective AI status for administrator settings — October 15, 2026
-
-- Added read-only GET /ai/settings under workspace-wide settings.manage. It uses the AI job
-  settings reader, distinguishing published enablement from effective availability, workspace
-  emergency disable and platform disable. Provider identity and model/budget/text/redaction
-  values are returned without credentials, provider construction or provider calls.
-- API/PostgreSQL checks pass (31), covering draft exclusion, publication, both switches,
-  defaults, tenant isolation and administrator denial. Backend typing passes 795 files.
-  OpenAPI/TypeScript regenerated; frontend readers cover status and retained version pagination.
-  Detailed verification is in docs/release/CI-2026-10-15.md.
-- The settings editor and full J-19/demo journey remain unfinished. No deployment. Frozen CI
-  on 3cf8f5b remains running; independent accounting sign-off and release gates remain open.
-
 ## Outstanding release verification
 
 These checks need current release-candidate evidence. Historical October 3 results
 remain in the dated build history; they do not verify current main. This list does
 not authorize deployment, provisioning or changes to a live database.
 
-- SUPERVISOR VERIFICATION NEEDED: make audit-deps (October 14 development audit passed; rerun on a clean final candidate).
+- make audit-deps passed on clean 74bd148 (October 15): all 86 pinned Python runtime packages and npm runtime dependencies report zero advisories. Rerun on the final candidate.
 - make docker-build passed on clean b4b8210 (October 15); rerun on the final candidate.
-- SUPERVISOR VERIFICATION NEEDED: make compose-verify
+- make compose-verify passed on clean 74bd148 (October 15), including cleanup. Rerun on the final candidate.
 - SUPERVISOR VERIFICATION NEEDED: make zap-baseline
 - SUPERVISOR VERIFICATION NEEDED: make tf-validate (October 14 backend-disabled development validation passed; rerun on a clean final candidate).
 - SUPERVISOR VERIFICATION NEEDED: make backup, make restore-verify (isolated local drill only)

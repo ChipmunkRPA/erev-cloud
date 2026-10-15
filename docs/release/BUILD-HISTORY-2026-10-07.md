@@ -5843,3 +5843,16 @@ cleanup in the shared database session kernel was also repaired and regression-t
   backend typing passes 795 files, frontend typing and full lint pass (503 control markers).
   API verification and evidence are recorded in docs/release/CI-2026-10-15.md.
 - No deployment or provider calls; frozen CI on 3cf8f5b remains active on its own database.
+
+## Effective AI status for administrator settings — October 15, 2026
+
+- Added read-only GET /ai/settings under workspace-wide settings.manage. It uses the AI job
+  settings reader, distinguishing published enablement from effective availability, workspace
+  emergency disable and platform disable. Provider identity and model/budget/text/redaction
+  values are returned without credentials, provider construction or provider calls.
+- API/PostgreSQL checks pass (31), covering draft exclusion, publication, both switches,
+  defaults, tenant isolation and administrator denial. Backend typing passes 795 files.
+  OpenAPI/TypeScript regenerated; frontend readers cover status and retained version pagination.
+  Detailed verification is in docs/release/CI-2026-10-15.md.
+- The settings editor and full J-19/demo journey remain unfinished. No deployment. Frozen CI
+  on 3cf8f5b remains running; independent accounting sign-off and release gates remain open.
