@@ -204,7 +204,15 @@ def record_extraction(
         job_source_sha256=job_source_sha256,
         source_sha256=source_sha256,
     )
-    require_intent_binding(uow, intent_id, job_id, job_source_sha256, rebuilt.request.input_sha256)
+    require_intent_binding(
+        uow,
+        intent_id,
+        job_id,
+        job_source_sha256,
+        rebuilt.request.input_sha256,
+        file_object_id=prepared.document_id,
+        document_text_file_id=document_text_file_id,
+    )
     problem: str | None = None
     content: list[dict[str, Any]] = []
     citations: list[dict[str, Any]] = []
@@ -274,6 +282,8 @@ def record_extraction_failure(
         code=code,
         job_id=job_id,
         job_source_sha256=job_source_sha256,
+        file_object_id=prepared.document_id,
+        document_text_file_id=document_text_file_id,
     )
     if intent_id is None:
         raise ProposalEvidenceRefused("AI_INVALID_INTENT_BINDING")

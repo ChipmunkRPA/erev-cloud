@@ -1865,6 +1865,7 @@ An upload over its purpose limit, or of a media type outside its list, returns 4
 | `ATTACHMENT` | uploader | the principal that uploaded the file | - |
 | `ATTACHMENT` | `file_attachment.file_object_id` | rule: the subject of a live attachment (T-PLT-30) | - |
 | `ATTACHMENT` | `ai_proposal.file_object_id` | route: internal | - |
+| `ATTACHMENT` | `ai_call_intent.file_object_id` | route: internal | - |
 | `SSP_STUDY` | uploader | the principal that uploaded the file | - |
 | `SSP_STUDY` | `file_attachment.file_object_id` | rule: the subject of a live attachment (T-PLT-30) | - |
 | `LEGACY_DATABASE` | uploader | the principal that uploaded the file | - |
@@ -1891,6 +1892,7 @@ An upload over its purpose limit, or of a media type outside its list, returns 4
 | `AUDIT_DIGEST` | `audit_chain_verification.digest_file_id` | `audit.read` | tenant |
 | `POSTING_RESPONSE` | `posting_ack.response_file_id` | route: internal | - |
 | `AI_PROMPT_LOG` | none | nobody | - |
+| `AI_DOCUMENT_TEXT` | `ai_call_intent.document_text_file_id` | route: internal | - |
 | `AI_DOCUMENT_TEXT` | `ai_proposal.document_text_file_id` | rule: ai.use and current source attachment access | - |
 
 Evidence-pack files are reserved for API-R-42 so every download can reauthorize the complete retained population and record `evidence.export` with the pack id (PRD J-17-AC-4). Generic file metadata/content routes return 404 even to an all-entity Auditor. The initial endpoint serves retained first-close packs; other pack kinds remain pending. The owner retains its entity binding for file-destruction scope checks.
@@ -1944,6 +1946,7 @@ The file's own routes ask the read question themselves: `GET /files/{id}` and `G
 | `file_attachment.file_object_id` | rev 1.142 (R-86 (c)): evidence in the cases below — until rev 1.268 exactly the two in which the product makes the file a condition of a submission —, each lifted by an approved `EVIDENCE_SHRED` request — (1) the live (`voided_at IS NULL`) `SSP_STUDY` attachment of an SSP book version whose status is not `DRAFT`, `REJECTED` or `WITHDRAWN` (`ssp-study-required`; entity: the book's, every entity for a book without one); (2) the live attachment of a manual adjustment whose approval request (`approval_request_id`, T-SL-05) carries the flag `ABOVE_THRESHOLD` — from USD 10,000.00, compared in USD at the spot rate of the effective date, the request needs an attachment (PRD §2.5; §16.14) — while the adjustment is `SUBMITTED` (also when deferred past lock), `APPROVED` or `POSTED`, or `VOIDED` after it was applied (`applied_event_id` set); an adjustment that is `DRAFT` — never submitted, withdrawn, returned for revision — `REJECTED`, or discarded from `DRAFT` holds nothing (entity: the adjustment's). Rev 1.268 (item EVT-EVIDENCE-1; the supervisor's ruling of 2026-10-02), two more: (3) the live attachment of an approval request whose subject is an event submission — `MANUAL_EVENT` or `ATTRIBUTE_CHANGE` — that is `SUBMITTED`, `APPROVED` or `APPLIED` (T-CON-24): the evidence of events that wait for approval or were recorded; a `REJECTED` or `VOIDED` submission — rejected, withdrawn, voided as stale — put nothing in force and holds nothing (entity: the submission's contracting entity); (4) the live attachment of a contract event (T-PLT-30 subject `contract_event`), whichever road wrote it — the approval of a request or the caller of a direct append: a recorded fact rests on it (entity: the event's contracting entity). Every other attachment is not evidence: a document a person attached is the erasure target of 05 PRV-07 b; the attachment row and the SHA-256 remain | 05 PRV-06; runbook RB-14 step 3; REQ-SSP-008; PRD §2.5; R-86 (c) |
 | `reconciliation.source_file_id` | rev 1.142 (R-86 (b)): the reconciliation carries a sign-off or a certification — every E-59 status but `DRAFT`: `PREPARED`, `REVIEWED` and `CERTIFIED` (also after a later generation has superseded the row), `AUTO_CERTIFIED`, and `REOPENED`, which is reached only from a signed status and keeps its sign-offs. Lifted by an approved `EVIDENCE_SHRED` request; entity: the reconciliation's | T-CLS-06, T-CLS-08; REQ-CLS-015 to -017; R-86 (b) |
 | `migration_batch.source_file_id` | rev 1.142 (R-86 (b)): the batch's capture is relied on — `IMPORTING`, `IMPORTED`, `RECONCILED`, `SUBMITTED` or `PROMOTED`, from the import that writes `capture_operation_id` to the promotion. Not while `UPLOADED`, `PROFILING` or `PROFILED` (no capture exists), nor once `FAILED` or `CANCELLED` (the batch has released its source, `ux_migration_batch__source`). Lifted by an approved `EVIDENCE_SHRED` request; a batch has no entity, so the approval covers every entity | T-MIG-01; REQ-MIG-004; R-86 (b) |
+| `ai_call_intent.file_object_id`; `ai_call_intent.document_text_file_id` | always: a committed call preserves source and retained text even without an outcome/proposal. Approved `EVIDENCE_SHRED` may lift these holds, with review covering all tenant entities. | T-AI-03; call evidence |
 | `ai_proposal.file_object_id`; `ai_proposal.document_text_file_id` | always: acceptance expiry does not discard source/citation provenance. Direct shred is refused; an approved `EVIDENCE_SHRED` request may lift the hold. With no durable entity binding, the approval must cover every tenant entity. Extracted text is encrypted with a per-file key so approved erasure destroys its key while retaining hashes and proposal references. | T-AI-01; proposal evidence |
 | `tenant_snapshot.manifest_file_id` | not evidence: the manifest of a sandbox copy or stored backup is a copy, kept under the snapshot retention families (confirmed, R-86 (c)) | T-PLT-34 |
 | `file_upload.file_object_id` | not evidence: the record that a principal uploaded the file's bytes names the file and holds nothing against a shred; the row and the SHA-256 remain (rev 1.189) | T-PLT-49 |
@@ -5798,7 +5801,7 @@ Keys: `PRIMARY KEY (tenant_id, id)`; `ix_deal_preview__created (tenant_id, creat
 | `subject_type` | text | Y | | |
 | `subject_id` | uuid | Y | | |
 | `file_object_id` | uuid | Y | | Contract document for extraction. |
-| `document_text_file_id` | uuid | Y | | FK → `file_object` (purpose `AI_DOCUMENT_TEXT`): the page text extracted in the worker (05 AIA-13), written with the proposal, served by `GET /ai/proposals/{id}/document-text` and never re-sent to a model. Set for `CONTRACT_EXTRACTION` proposals (rev 1.2; SCREENS_B OQ-B-14). |
+| `document_text_file_id` | uuid | Y | | FK → `file_object` (purpose `AI_DOCUMENT_TEXT`): the page text extracted in the worker (05 AIA-13), retained before the call and linked from its intent/proposal, served by `GET /ai/proposals/{id}/document-text` and never re-sent to a model. Set for `CONTRACT_EXTRACTION` proposals (rev 1.2; SCREENS_B OQ-B-14). |
 | `content` | jsonb | N | | Proposed fields `[{path, value, confidence}]`, narrative or answer. |
 | `citations` | jsonb | N | `'[]'` | `[{ref_type: 'record'\|'report_run'\|'document', ref_id, page, char_start, char_end}]`; an uncited figure marks the answer unsupported (REQ-AI-008). |
 | `ai_model_log_id` | uuid | N | | |
@@ -5866,10 +5869,16 @@ Keys: `PRIMARY KEY (tenant_id, id)`; `ix_ai_model_log__created (tenant_id, creat
 | `provider` | text | N | | fake or anthropic. |
 | `input_sha256` | erev.sha256 | N | | Exact intended request hash. |
 | `source_sha256` | erev.sha256 | N | | Job/source fingerprint. |
+| `file_object_id` | uuid | Y | | Tenant-bound FK to source file_object; paired with document_text_file_id. |
+| `document_text_file_id` | uuid | Y | | Tenant-bound FK to retained AI_DOCUMENT_TEXT file; paired with file_object_id. |
 | SC-C | | | | Human USER attribution with non-null created_by. |
 
 Keys: `PRIMARY KEY (tenant_id, id)`; `ux_ai_call_intent__attempt (tenant_id, job_id, attempt_no)`.
-Migration 0150 refuses downgrade when intents exist. The unique tenant/intent link on
+Migration 0155 adds paired immutable source/text links; its downgrade refuses to discard any
+retained document binding. Existing narrative intents have both links null. The intent writer
+checks file purposes and requires retries to retain the same links. Extraction proposal
+persistence verifies its source/text IDs against the intent, including provider failures.
+Call links retain evidence but add no public read grant. Migration 0150 refuses downgrade when intents exist. The unique tenant/intent link on
 ai_model_log permits at most one recorded outcome per intent. The transaction-bound intent writer
 locks the human-owned RUNNING AI_TASK job, validates request/source digests, assigns consecutive
 attempts up to three and refuses an unresolved prior start. It writes an `ai_call_intent.record`

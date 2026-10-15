@@ -12,7 +12,7 @@ from sqlalchemy import insert, select
 
 from erev_api.audit.writer import record_facts
 from erev_api.db import new_id
-from erev_api.db.tables import ai_call_intent, ai_model_log, job
+from erev_api.db.tables import ai_call_intent, ai_model_log, file_object, job
 from erev_api.domain.ai.ports import AIRequest, AIResponse, AIUsage
 from erev_api.enums import PrincipalKind
 from erev_api.uow import UnitOfWork
@@ -258,6 +258,8 @@ def record_intent(
     provider: Literal["fake", "anthropic"],
     job_id: UUID,
     source_sha256: str,
+    file_object_id: UUID | None = None,
+    document_text_file_id: UUID | None = None,
 ) -> UUID:
     """Reserve the next immutable call start; the caller commits before calling the provider.
 
@@ -278,6 +280,25 @@ def record_intent(
         or re.fullmatch(r"[0-9a-f]{64}", source_sha256) is None
     ):
         raise AttemptEvidenceRefused("AI_INVALID_INTENT_CONFIGURATION")
+    if (file_object_id is None) != (document_text_file_id is None):
+        raise AttemptEvidenceRefused("AI_INVALID_DOCUMENT_BINDING")
+    for file_id, purpose in (
+        (file_object_id, "ATTACHMENT"),
+        (document_text_file_id, "AI_DOCUMENT_TEXT"),
+    ):
+        if (
+            file_id is not None
+            and uow.session.scalar(
+                select(file_object.c.id).where(
+                    file_object.c.tenant_id == principal.tenant_id,
+                    file_object.c.id == file_id,
+                    file_object.c.purpose == purpose,
+                    file_object.c.shredded_at.is_(None),
+                )
+            )
+            is None
+        ):
+            raise AttemptEvidenceRefused("AI_INVALID_DOCUMENT_BINDING")
     owned = uow.session.scalar(
         select(job.c.id)
         .where(
@@ -318,6 +339,8 @@ def record_intent(
             or row["provider"] != provider
             or row["input_sha256"] != request.input_sha256
             or row["source_sha256"] != source_sha256
+            or row["file_object_id"] != file_object_id
+            or row["document_text_file_id"] != document_text_file_id
             or row["created_by"] != principal.id
         ):
             raise AttemptEvidenceRefused("AI_JOB_INPUT_CHANGED")
@@ -335,6 +358,8 @@ def record_intent(
             provider=provider,
             input_sha256=request.input_sha256,
             source_sha256=source_sha256,
+            file_object_id=file_object_id,
+            document_text_file_id=document_text_file_id,
             created_at=uow.now,
             created_by=principal.id,
             created_by_kind="USER",

@@ -2,6 +2,28 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Durable extraction call document links — October 15, 2026
+
+- Migration 0155 adds paired source/text file references to immutable AI call intents, with
+  tenant-bound foreign keys and a downgrade guard against losing populated links. A worker can
+  locate exact retained text through the committed call before any proposal exists. Intent
+  writers validate paired purposes and unshredded files; retries preserve both links. Extraction
+  success/failure persistence verifies its file IDs against the call intent.
+- Both references now hold evidence independently of proposal creation or outcome. They grant
+  no extra read access. Direct shred is refused; existing independently reviewed EVIDENCE_SHRED
+  can lift the holds and destroy the text key, preserving immutable references and digests.
+- Verification: 29 PostgreSQL migration/AI regressions passed, including full migration round
+  trip, tenant FK/null-pair checks, immutable intent and lossy downgrade guards. Three final
+  cases passed for extraction retry-link rejection and proposal/call-only reviewed erasure.
+  The latter prove direct refusal, independent approval, key destruction and failed decrypted
+  reads after erasure. Thirty-two architecture/unit checks passed. Full lint/typecheck passed
+  (930 Python sources plus frontend); focused typing passed 782 and erasure typing 781 sources.
+  Logs: .run/ai-intent-documents-{pg,erasure-pg,unit,access,lint,typecheck,types-final,
+  erasure-types}.log. No deployment or live provider calls.
+- This closes a prerequisite discovered at gateway integration: call evidence previously could
+  not locate or protect retained text before proposal persistence. Extraction execution/recovery,
+  submission and human review remain unfinished, alongside the broader release/accounting gates.
+
 ## Extraction provider-failure evidence — October 15, 2026
 
 - Added terminal extraction failure persistence using the existing committed attempt log.
@@ -203,24 +225,6 @@
 - One initial typing issue on a database timestamp was corrected with an explicit type check.
   No deployment or live provider calls. Policy-publication clearing of the emergency switch,
   public AI submission, proposal review and other outstanding readiness work remain open.
-
-## AI cancellation boundaries — October 15, 2026
-
-- Narrative tasks now stop cooperatively before another provider call and during retry waits.
-  Waits use one-second chunks with attempt-fenced heartbeats and cancellation checks, outside
-  transactions and the tenant budget lease. A lost attempt stops without another wait/call.
-- An already-started call retains its usage and outcome; cancellation does not erase logs or
-  completed proposals. The handler returns control for the registry to settle CANCELLED.
-- Real registry checks passed for cancellation before dispatch and during a retry wait, proving
-  zero/one calls respectively and retained evidence without a synthetic proposal. The fixture
-  now inserts final immutable queue parameters rather than attempting to rewrite them.
-- Unit/worker/layer selection: 36 passed; final focused unit selection: 15 passed. Strict typing
-  passed 773 sources. Initial test-only issues (single-call token expectation, immutable fixture
-  params and an explicit duplicate mypy source) were corrected. Logs are .run/ai-cancellation-*.log.
-- Full AI domain database selection passed all 19 cases (.run/ai-cancellation-all-pg.log);
-  full make lint passed (.run/ai-cancellation-lint-final.log).
-- Public AI workflows and independent accounting acceptance remain unfinished. No live provider
-  calls or deployment; this change is not a full readiness or immutable-CI result.
 
 ## Outstanding release verification
 

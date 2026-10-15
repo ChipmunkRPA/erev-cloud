@@ -81,5 +81,7 @@ ai_call_intent: Final = Table(
     Column("provider", Text(), nullable=False),
     Column("input_sha256", CHAR(64), nullable=False),
     Column("source_sha256", CHAR(64), nullable=False),
+    Column("file_object_id", Uuid(), nullable=True),
+    Column("document_text_file_id", Uuid(), nullable=True),
     *_sc_c(),
 )

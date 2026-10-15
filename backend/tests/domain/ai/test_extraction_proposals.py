@@ -21,7 +21,7 @@ from erev_api.db.tables import (
     contract_version,
     file_object,
 )
-from erev_api.domain.ai.attempts import record_attempt, record_intent
+from erev_api.domain.ai.attempts import AttemptEvidenceRefused, record_attempt, record_intent
 from erev_api.domain.ai.document_retrieval import RetrievedExtraction, retrieve_document
 from erev_api.domain.ai.extraction_proposals import (
     record_extraction,
@@ -30,6 +30,7 @@ from erev_api.domain.ai.extraction_proposals import (
 )
 from erev_api.domain.ai.ports import AIResponse, AIUsage
 from erev_api.domain.ai.proposals import ProposalEvidenceRefused
+from erev_api.domain.platform import file_evidence
 from erev_api.enums import FilePurpose, RegistryCategory
 from erev_api.files.store import open_file, store_file
 from erev_api.jobs.context import JobContext, system_unit_of_work
@@ -100,14 +101,39 @@ def test_retained_extraction_evidence_success_failure_and_rollback(
                 store_document_text(uow, retrieved, job_id=context.job_id, job_source_sha256=digest)
                 == text_id
             )
+            for source_id, derived_id in ((None, text_id), (source["id"], source["id"])):
+                with pytest.raises(AttemptEvidenceRefused, match="AI_INVALID_DOCUMENT_BINDING"):
+                    record_intent(
+                        uow,
+                        request=retrieved.prepared.request,
+                        provider="fake",
+                        job_id=context.job_id,
+                        source_sha256=digest,
+                        file_object_id=source_id,
+                        document_text_file_id=derived_id,
+                    )
             intent_id = record_intent(
                 uow,
                 request=retrieved.prepared.request,
                 provider="fake",
                 job_id=context.job_id,
                 source_sha256=digest,
+                file_object_id=source["id"],
+                document_text_file_id=text_id,
             )
             uow.commit()
+        # The committed intent protects provenance even before a proposal/outcome exists.
+        for evidence_id, column in (
+            (source["id"], "file_object_id"),
+            (text_id, "document_text_file_id"),
+        ):
+            assert any(
+                hold.held_by == f"ai_call_intent.{column}"
+                and hold.row_id == intent_id
+                and hold.reference.approval
+                and hold.entity_ids is None
+                for hold in file_evidence.holds(world.place.tenant_id, evidence_id)
+            )
         return context, retrieved, text_id, intent_id
 
     context, retrieved, text_id, intent_id = start()
@@ -196,6 +222,18 @@ def test_retained_extraction_evidence_success_failure_and_rollback(
                 usage=usage,
             )
             uow.commit()
+
+        with pytest.raises(AttemptEvidenceRefused, match="AI_JOB_INPUT_CHANGED"):
+            with system_unit_of_work(
+                failed_ctx.runtime, failed_item.principal, request_id="retry-drops-documents"
+            ) as uow:
+                record_intent(
+                    uow,
+                    request=failed_item.prepared.request,
+                    provider="fake",
+                    job_id=failed_ctx.job_id,
+                    source_sha256=digest,
+                )
 
         def finalize(
             *,

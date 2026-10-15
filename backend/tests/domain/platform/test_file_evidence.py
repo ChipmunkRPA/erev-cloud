@@ -1312,31 +1312,34 @@ def test_sc6_every_refusal_of_file_shred_is_audited_as_denied(
     }
 
 
+@pytest.mark.parametrize("owner_kind", ["proposal", "intent"])
 def test_ai_proposal_source_requires_reviewed_erasure(
-    app: FastAPI, keyring: KeyRing, clock: FrozenClock, files: LocalFileStore
+    app: FastAPI, keyring: KeyRing, clock: FrozenClock, files: LocalFileStore, owner_kind: str
 ) -> None:
     """A proposal's source survives expiry and cannot be shredded by its administrator."""
     from erev_api.db import new_id
-    from erev_api.db.tables import ai_proposal
+    from erev_api.db.tables import ai_call_intent, ai_proposal
     from erev_api.files.store import open_file
     from erev_api.problems import Problem
-    from support.rows import RowContext, ai_proposal_row
+    from support.rows import RowContext, ai_call_intent_row, ai_proposal_row
 
     world = close_world(app, keyring, clock, files)
     tess = tenant_admin(app, clock, world.tenant_id)
     source = stored(world, FilePurpose.ATTACHMENT, "ai-source")
     text_id = stored(world, FilePurpose.AI_DOCUMENT_TEXT, "ai-extracted-text")
+    owner = ai_proposal if owner_kind == "proposal" else ai_call_intent
     with system_session(world) as session:
-        row = ai_proposal_row(RowContext(world.tenant_id, new_id()), session) | {
-            "kind": "CONTRACT_EXTRACTION",
-            "file_object_id": source,
-            "document_text_file_id": text_id,
-            "status": "expired",
-        }
-        session.execute(insert(ai_proposal).values(**row))
+        ctx = RowContext(world.tenant_id, new_id())
+        row = (
+            ai_proposal_row(ctx, session) | {"kind": "CONTRACT_EXTRACTION", "status": "expired"}
+            if owner_kind == "proposal"
+            else ai_call_intent_row(ctx, session)
+        )
+        row.update(file_object_id=source, document_text_file_id=text_id)
+        session.execute(insert(owner).values(**row))
     for file_id, column in ((source, "file_object_id"), (text_id, "document_text_file_id")):
         (hold,) = file_evidence.holds(world.tenant_id, file_id)
-        assert hold.held_by == f"ai_proposal.{column}"
+        assert hold.held_by == f"{owner.name}.{column}"
         assert hold.row_id == row["id"]
         assert hold.entity_ids is None  # no invented narrowing of review scope
         assert hold.reference.approval
@@ -1344,7 +1347,9 @@ def test_ai_proposal_source_requires_reviewed_erasure(
         shred(app, tess, source),
         world.tenant_id,
         source,
-        "the source document of an AI proposal",
+        "the source document of an AI proposal"
+        if owner_kind == "proposal"
+        else "the source document of an AI call",
         rule=APPROVAL_RULE,
     )
     cora = controller(app, clock, world.tenant_id, "ai-cora")
@@ -1360,7 +1365,7 @@ def test_ai_proposal_source_requires_reviewed_erasure(
     assert (
         rows_of(
             world.tenant_id,
-            select(ai_proposal.c.file_object_id).where(ai_proposal.c.id == row["id"]),
+            select(owner.c.file_object_id).where(owner.c.id == row["id"]),
         )[0]["file_object_id"]
         == source
     )
@@ -1379,7 +1384,9 @@ def test_ai_proposal_source_requires_reviewed_erasure(
         shred(app, tess, text_id),
         world.tenant_id,
         text_id,
-        "the cited text of an AI proposal",
+        "the cited text of an AI proposal"
+        if owner_kind == "proposal"
+        else "the retained text of an AI call",
         rule=APPROVAL_RULE,
     )
     text_request = request_shred(app, tess, text_id)

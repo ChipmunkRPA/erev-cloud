@@ -60,6 +60,7 @@ from erev_api.db.session import DbContext, tenant_session
 from erev_api.db.tables import (
     access_review_campaign,
     account_mapping_version,
+    ai_call_intent,
     ai_proposal,
     approval_request,
     audit_chain_verification,
@@ -967,7 +968,11 @@ FILE_READ_ACCESS: Final[Mapping[FilePurpose, PurposeAccess]] = MappingProxyType(
         ),
         FilePurpose.ATTACHMENT: PurposeAccess(
             uploader=True,
-            owners=(_ATTACHED, FileOwner(ai_proposal, "file_object_id", route=INTERNAL)),
+            owners=(
+                _ATTACHED,
+                FileOwner(ai_proposal, "file_object_id", route=INTERNAL),
+                FileOwner(ai_call_intent, "file_object_id", route=INTERNAL),
+            ),
         ),
         FilePurpose.SSP_STUDY: PurposeAccess(uploader=True, owners=(_ATTACHED,)),
         FilePurpose.LEGACY_DATABASE: PurposeAccess(
@@ -1096,6 +1101,7 @@ FILE_READ_ACCESS: Final[Mapping[FilePurpose, PurposeAccess]] = MappingProxyType(
         FilePurpose.AI_PROMPT_LOG: PurposeAccess(),
         FilePurpose.AI_DOCUMENT_TEXT: PurposeAccess(
             owners=(
+                FileOwner(ai_call_intent, "document_text_file_id", route=INTERNAL),
                 FileOwner(
                     ai_proposal,
                     "document_text_file_id",

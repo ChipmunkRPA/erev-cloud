@@ -517,6 +517,13 @@ EVIDENCE: Final[tuple[EvidenceReference, ...]] = (
         approval=True,
         entities=_event_entity,
     ),
+    # Committed calls retain source/text even if no proposal or outcome is ever written.
+    EvidenceReference(
+        "ai_call_intent", "file_object_id", "the source document of an AI call", approval=True
+    ),
+    EvidenceReference(
+        "ai_call_intent", "document_text_file_id", "the retained text of an AI call", approval=True
+    ),
     # Proposal expiry closes acceptance, not the provenance of its source and citations.
     # With no durable entity binding, reviewed erasure must cover every tenant entity.
     EvidenceReference(

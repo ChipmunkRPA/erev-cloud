@@ -110,6 +110,9 @@ def require_intent_binding(
     job_id: UUID | None,
     source_sha256: str | None,
     input_sha256: str,
+    *,
+    file_object_id: UUID | None = None,
+    document_text_file_id: UUID | None = None,
 ) -> None:
     if intent_id is None:
         return
@@ -124,6 +127,8 @@ def require_intent_binding(
                 ai_call_intent.c.source_sha256 == source_sha256,
                 ai_call_intent.c.input_sha256 == input_sha256,
                 ai_call_intent.c.created_by == uow.principal.id,
+                ai_call_intent.c.file_object_id == file_object_id,
+                ai_call_intent.c.document_text_file_id == document_text_file_id,
             )
         )
         is None
@@ -255,6 +260,8 @@ def require_failure_binding(
     code: str,
     job_id: UUID | None,
     job_source_sha256: str | None,
+    file_object_id: UUID | None = None,
+    document_text_file_id: UUID | None = None,
 ) -> UUID | None:
     """Validate a retained provider failure against its request, human and job intent."""
     if code not in PROVIDER_FAILURE_CODES:
@@ -301,7 +308,15 @@ def require_failure_binding(
             expected["output_tokens"] = log["output_tokens"]
     if log is None or any(log[key] != value for key, value in expected.items()):
         raise ProposalEvidenceRefused("AI_ATTEMPT_EVIDENCE_MISMATCH")
-    require_intent_binding(uow, log["intent_id"], job_id, job_source_sha256, request.input_sha256)
+    require_intent_binding(
+        uow,
+        log["intent_id"],
+        job_id,
+        job_source_sha256,
+        request.input_sha256,
+        file_object_id=file_object_id,
+        document_text_file_id=document_text_file_id,
+    )
     return None if log["intent_id"] is None else UUID(str(log["intent_id"]))
 
 

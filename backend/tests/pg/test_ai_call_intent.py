@@ -7,11 +7,11 @@ from alembic import command
 from erev_api.auth.keyring import KeyRing
 from erev_api.db import new_id
 from erev_api.db.session import DbContext, tenant_session
-from erev_api.db.tables import ai_call_intent, ai_model_log
+from erev_api.db.tables import ai_call_intent, ai_model_log, file_object
 from sqlalchemy import delete, exc, insert, select, text, update
 from support.db import TestDatabase, alembic_config, fresh_head
 from support.factories import tenant_factory, tenant_id_of
-from support.rows import RowContext, ai_call_intent_row, ai_model_log_row
+from support.rows import RowContext, ai_call_intent_row, ai_model_log_row, file_object_row
 from tests.pg.test_db_invariants import _fails
 from tests.pg.test_immutability_and_grants import _owner_failure
 
@@ -95,3 +95,54 @@ def test_intent_constraints_and_retained_unknown_outcome(
             == "0150"
         )
     command.upgrade(alembic_config(), "head")
+
+
+def test_document_links_are_tenant_bound_and_retained(
+    committed_db: TestDatabase, keyring: KeyRing
+) -> None:
+    fresh_head()
+    tenant = tenant_id_of(tenant_factory(keyring=keyring))
+    other = tenant_id_of(tenant_factory(keyring=keyring))
+    with tenant_session(DbContext(other, None, "*")) as session:
+        foreign = file_object_row(RowContext(other, new_id()), session)
+        session.execute(insert(file_object).values(**foreign))
+    with tenant_session(DbContext(tenant, None, "*")) as session:
+        ctx = RowContext(tenant, new_id())
+        source = file_object_row(ctx, session)
+        extracted = file_object_row(ctx, session) | {"purpose": "AI_DOCUMENT_TEXT"}
+        session.execute(insert(file_object).values(**source))
+        session.execute(insert(file_object).values(**extracted))
+        row = ai_call_intent_row(ctx, session) | {
+            "file_object_id": source["id"],
+            "document_text_file_id": extracted["id"],
+        }
+        for column in ("file_object_id", "document_text_file_id"):
+            assert (
+                _fails(session, insert(ai_call_intent).values(**(row | {column: None})))[0]
+                == "23514"
+            )
+            assert (
+                _fails(session, insert(ai_call_intent).values(**(row | {column: foreign["id"]})))[0]
+                == "23503"
+            )
+        session.execute(insert(ai_call_intent).values(**row))
+        assert (
+            _fails(session, update(ai_call_intent).values(document_text_file_id=source["id"]))[0]
+            == "42501"
+        )
+    with pytest.raises(exc.DBAPIError) as error:
+        command.downgrade(alembic_config(), "0154")
+    assert getattr(error.value.orig, "sqlstate", None) == "23514"
+    with tenant_session(DbContext(tenant, None, "*")) as session:
+        kept = (
+            session.execute(select(ai_call_intent).where(ai_call_intent.c.id == row["id"]))
+            .mappings()
+            .one()
+        )
+        assert kept["file_object_id"] == source["id"]
+        assert kept["document_text_file_id"] == extracted["id"]
+    with committed_db.owner_engine.connect() as connection:
+        assert (
+            connection.exec_driver_sql("SELECT version_num FROM erev.alembic_version").scalar_one()
+            == "0155"
+        )

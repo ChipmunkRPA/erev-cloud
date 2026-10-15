@@ -138,12 +138,14 @@ def test_the_holds_an_approval_lifts_are_the_ruled_ones() -> None:
     nothing against a shred); every other attachment stays erasable because no entry's
     condition names it."""
     lifted = [item for item in file_evidence.EVIDENCE if item.approval]
-    assert [(item.table, item.column) for item in lifted[-2:]] == [
+    assert [(item.table, item.column) for item in lifted[-4:]] == [
+        ("ai_call_intent", "file_object_id"),
+        ("ai_call_intent", "document_text_file_id"),
         ("ai_proposal", "file_object_id"),
         ("ai_proposal", "document_text_file_id"),
     ]
-    assert all(item.standing is None and item.entities is None for item in lifted[-2:])
-    lifted = lifted[:-2]
+    assert all(item.standing is None and item.entities is None for item in lifted[-4:])
+    lifted = lifted[:-4]
     assert [(item.table, item.column) for item in lifted] == [
         ("import_upload", "file_object_id"),
         ("reconciliation", "source_file_id"),

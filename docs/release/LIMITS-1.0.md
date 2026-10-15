@@ -150,6 +150,10 @@ Terminal provider-failure persistence now also rebuilds retained document eviden
 the existing failure log against its request, initiating human and job intent. It links that log
 without recording another attempt, preserving reported or unknown usage. Tests cover changed
 failure codes, unrelated logs and rollback; the gateway still must decide when retries end.
+Migration 0155 adds paired source/text links to immutable call intents, so recovery can locate
+the retained input before a proposal exists. Both files have evidence holds from call start;
+reviewed erasure remains required and the links grant no extra read access. Intent retries and
+proposal persistence must preserve these links. Populated bindings block lossy downgrade.
 These persistence components do not implement a complete extraction workflow.
 
 The PDF adapter has file/page/text and parser limits, an isolated subprocess, timeout cleanup
