@@ -2,6 +2,19 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## AI provider foundation — October 14, 2026
+
+- Implemented the DG §6.7 request/response protocol and deterministic FakeProvider.
+  Exact input-hash fixtures precede version-local defaults; malformed exact fixtures fail
+  without fallback. Digests cover exact UTF-8 response text; token/latency fields and path
+  selectors are validated. No sockets, sleeps, accounting writes or external calls.
+- Provider/configuration/architecture checks: 92 passed (20.88s); strict typing: three
+  sources; Ruff/formatting pass. Evidence: .run/ai-provider-final.log and
+  .run/ai-provider-types.log.
+- AIX remains incomplete: provider selection/live adapter, retained fixtures, schema,
+  gateway/jobs, human acceptance and audit lifecycle still required. No AI enablement,
+  audit-category exemption, deployment or readiness claim.
+
 ## Reopening report verification — October 14, 2026
 
 - Updated the lock/relock regression for required independently reviewed reopening evidence:

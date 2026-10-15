@@ -5,6 +5,11 @@ October 14 full backend CI completed on the older `165d63c` snapshot with 33 fai
 Current-main repairs and remaining failure/expected-failure evidence are tracked in
 [the CI record](CI-2026-10-14.md). Targeted passes do not establish a current full release pass.
 
+October 14 AI foundation: the request/response protocol and deterministic fixture provider
+are implemented, with 32 provider/configuration checks passing. This does not enable AI:
+provider selection/live adapter, proposal/log tables, gateway jobs, human acceptance and
+lifecycle audit evidence remain unfinished. The AI audit-category failure remains visible.
+
 October 14 audit continuation: native option entry/expiry and CLOSE evidence-pack creation
 now have catalogue entries and real request scenarios in the audit walk. Material-right
 AUD-FACT summaries require a contract key and retain the created ids in detail. Evidence-pack
