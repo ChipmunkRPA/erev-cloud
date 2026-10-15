@@ -3,14 +3,23 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from dataclasses import replace
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import ColumnElement, or_, select
 from sqlalchemy.orm import Session
 
 from erev_api.auth.permissions import effective_grants
 from erev_api.auth.principal import Principal
-from erev_api.db.tables import app_user, job, tenant, tenant_membership
+from erev_api.db.tables import (
+    app_user,
+    calc_trace,
+    combination_group_member,
+    contract,
+    job,
+    tenant,
+    tenant_membership,
+)
 from erev_api.enums import JobKind, MembershipStatus, PrincipalKind, TenantStatus, UserStatus
 from erev_api.jobs.context import JobContext
 
@@ -103,4 +112,47 @@ def authorize_job(
         support_grant_id=None,
         on_behalf_of_id=None,
         role_scopes=grants.role_scopes,
+    )
+
+
+def narrative_reader(principal: Principal) -> Principal:
+    """Narrow narrative evidence reads to overlapping current AI/source grants."""
+    if "ai.use" not in principal.permissions:
+        raise AIAccessRefused("AI_PERMISSION_DENIED")
+    read_scope = principal.permission_scopes.get("contract.read", frozenset())
+    ai_scope = principal.permission_scopes.get("ai.use", frozenset())
+    if "contract.read" not in principal.permissions or not read_scope:
+        raise AIAccessRefused("AI_READ_PERMISSION_DENIED")
+    if ai_scope == "*":
+        scope = read_scope
+    elif read_scope == "*":
+        scope = ai_scope
+    else:
+        scope = ai_scope & read_scope
+    if not scope:
+        raise AIAccessRefused("AI_READ_PERMISSION_DENIED")
+    return replace(principal, entity_scope="*" if scope == "*" else tuple(sorted(scope)))
+
+
+def visible_narrative_trace() -> ColumnElement[bool]:
+    """Match Explain's current/past member access; calc_trace itself is tenant-only RLS."""
+    members = (
+        select(combination_group_member.c.contract_id)
+        .where(
+            combination_group_member.c.tenant_id == calc_trace.c.tenant_id,
+            combination_group_member.c.combination_group_id == calc_trace.c.combination_group_id,
+        )
+        .correlate(calc_trace)
+    )
+    return (
+        select(contract.c.id)
+        .where(
+            contract.c.tenant_id == calc_trace.c.tenant_id,
+            or_(
+                contract.c.combination_group_id == calc_trace.c.combination_group_id,
+                contract.c.id.in_(members),
+            ),
+        )
+        .correlate(calc_trace)
+        .exists()
     )

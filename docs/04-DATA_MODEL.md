@@ -6340,6 +6340,14 @@ Rev 1.13 pending problem (D-96) — lifted: `release-validation-pending` is a ca
 | API-R-56 | Source records (rev 1.2; SCREENS R-22) | Schema API-S-SourceRecord (§16.14): `GET /source-records/{id}` | none | no | `contract.read` for all entities, or through a contract the caller reads (API-C-03, rev 1.219) | INT, DAT |
 | API-R-57 | Configuration test cases (rev 1.2; SCREENS R-30) | `GET, POST /config-test-cases`; `PATCH, DELETE /config-test-cases/{id}`: rows of T-REF-27 for any subject type, writable while the subject version is DRAFT or TESTED (DB-04) | `subject_type` (`rule_set_version`, `pob_template_version`, `account_mapping_version`, `registry_version`), `subject_id` | no | `config.read` / `config.author` | POL |
 
+API-R-47 implementation note (October 15, 2026): `GET /ai/proposals/{id}` currently supports
+`NUMBER_EXPLANATION` proposals bound to `calc_trace`. It returns retained content/citations,
+status, source and job IDs, model-log ID, expiry/problem, API-S-Actor creation/update fields and
+row version with ETag. Each read requires overlapping `ai.use` and `contract.read` entity scope
+and a visible current or past member contract of that trace's combination group, as Explain does.
+Other proposal kinds return not-found until their source authorization exists. Disabling AI does
+not revoke evidence reads. Listing and review commands remain in the planned API scope.
+
 SCIM (`/scim/v2/*`) and SAML routes are reserved and not built (REQ-PLT-007).
 
 Mock adapter routes under `/api/v1/__mocks__/<adapter>` (D-72; DG-API-09) are excluded from this catalogue and from the OpenAPI document. They mount only when `EREV_ENV` ∈ {`dev`, `test`, `e2e`}, and no problem slug, permission code or schema in this document applies to them (rev 1.1).

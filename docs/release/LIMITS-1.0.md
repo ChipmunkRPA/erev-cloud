@@ -76,7 +76,7 @@ before another call and during retry waits it stops without a synthetic proposal
 started call still retains its usage and result. Retry waits heartbeat and check cancellation
 at one-second boundaries, with no database transaction or budget lease held while sleeping.
 This does not interrupt a network call already in progress. Other AI operations, durable
-admission-failure evidence, notifications, other submission routes and proposal read/decision workflows
+admission-failure evidence, notifications, other submission routes, proposal listing and decision workflows
 remain unfinished. The AI audit-lifecycle gate remains open; worker dispatch and internal
 gateway tests do not satisfy the full lifecycle.
 
@@ -99,9 +99,17 @@ job with a Location header. It checks overlapping ai.use/contract.read source ac
 switch before enqueueing, without calling a provider in HTTP. New jobs bind the validated trace
 and use a server-selected 2048 output-token limit; the worker refuses a changed trace before a
 call. Existing jobs without a trace binding retain their source fingerprint format. Anomaly
-submission, proposal read/review endpoints, extraction and Q&A remain unfinished; a persisted
+submission, proposal listing/review endpoints, extraction and Q&A remain unfinished; a persisted
 worker proposal is not a completed human workflow. Budget admission is still checked by the
 worker, and durable AI-specific admission-failure evidence remains outstanding.
+
+GET /ai/proposals/{id} now returns retained NUMBER_EXPLANATION evidence, including content,
+citations, status, actors and row-version ETag. Each read intersects current ai.use and
+contract.read entity grants and requires a visible current or past member contract of the
+retained calculation trace. Tenant-only trace RLS is insufficient by itself; the same member
+check now protects completed-job recovery. Reads remain available with AI disabled and make
+no provider call. Other proposal kinds fail closed until their source authorization is built.
+This endpoint does not implement acceptance, rejection, expiry transitions or human review.
 
 The Anthropic adapter is mock-tested, uses the official SDK, disables SDK retries and telemetry,
 and resolves secrets lazily. Contract-review and explain-narrative prompts have retained bytes,

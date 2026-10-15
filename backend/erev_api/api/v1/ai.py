@@ -1,8 +1,9 @@
-"""API-R-47: enqueue number explanations; all provider work belongs to the worker."""
+"""API-R-47: number-explanation submission and authorized retained proposal reads."""
 
 from __future__ import annotations
 
 from typing import Annotated
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, Response
 
@@ -14,11 +15,14 @@ from erev_api.api.deps import (
     command,
     kernel_deps,
     problem_responses,
+    row_etag,
     run_command,
 )
-from erev_api.domain.ai import commands
+from erev_api.auth.dependencies import require
+from erev_api.auth.principal import RequestContext
+from erev_api.domain.ai import commands, queries
 from erev_api.domain.platform.jobs import job_out_of
-from erev_api.schemas.ai import AIExplanationIn
+from erev_api.schemas.ai import AIExplanationIn, AIProposalOut
 from erev_api.schemas.common import JobOut
 from erev_api.uow import UnitOfWork
 
@@ -66,3 +70,20 @@ def explanations_create(
         status_code=202,
         location=lambda result: f"{API_PREFIX}/jobs/{result.id}",
     )
+
+
+@router.get(
+    "/ai/proposals/{id}",
+    operation_id="ai_proposals_get",
+    response_model=AIProposalOut,
+    responses=problem_responses("unauthenticated", "session-expired", "forbidden", "not-found"),
+)
+def proposals_get(
+    id: UUID,
+    response: Response,
+    ctx: Annotated[RequestContext, Depends(require("ai.use"))],
+) -> AIProposalOut:
+    """Read retained number explanations under the caller's current source permissions."""
+    out = queries.proposal(ctx.principal, id)
+    response.headers["ETag"] = row_etag(out.row_version)
+    return out

@@ -17,7 +17,7 @@ from sqlalchemy import select
 
 from erev_api.db.session import tenant_session
 from erev_api.db.tables import ai_call_intent, ai_model_log, ai_proposal, calc_trace
-from erev_api.domain.ai.access import AIAccessRefused, authorize_job
+from erev_api.domain.ai.access import AIAccessRefused, authorize_job, visible_narrative_trace
 from erev_api.domain.ai.attempts import (
     PROVIDER_FAILURE_CODES,
     AttemptEvidenceRefused,
@@ -243,6 +243,7 @@ class AiGateway:
                 select(calc_trace.c.id).where(
                     calc_trace.c.tenant_id == context.tenant_id,
                     calc_trace.c.id == row["subject_id"],
+                    visible_narrative_trace(),
                 )
             )
         if visible is None:

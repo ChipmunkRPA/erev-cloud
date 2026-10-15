@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from datetime import date, datetime
 from uuid import UUID
 
@@ -11,7 +11,7 @@ from erev_engine.money import EXACT_PLACES
 
 from erev_api.auth.principal import Principal
 from erev_api.db.session import tenant_session
-from erev_api.domain.ai.access import AIAccessRefused, authorize_job
+from erev_api.domain.ai.access import AIAccessRefused, authorize_job, narrative_reader
 from erev_api.domain.ai.narratives import PreparedNarrative, prepare_narrative
 from erev_api.domain.contracts import obligations, queries, to_date
 from erev_api.enums import PrincipalKind
@@ -94,19 +94,7 @@ def retrieve_for_user(
         raise AIAccessRefused("AI_HUMAN_INITIATOR_REQUIRED")
     if known_at is not None and known_at.utcoffset() is None:
         raise AIAccessRefused("AI_INVALID_READ_CUTOFF")
-    read_scope = principal.permission_scopes.get("contract.read", frozenset())
-    ai_scope = principal.permission_scopes.get("ai.use", frozenset())
-    if "contract.read" not in principal.permissions or not read_scope:
-        raise AIAccessRefused("AI_READ_PERMISSION_DENIED")
-    if ai_scope == "*":
-        scope = read_scope
-    elif read_scope == "*":
-        scope = ai_scope
-    else:
-        scope = ai_scope & read_scope
-    if not scope:
-        raise AIAccessRefused("AI_READ_PERMISSION_DENIED")
-    principal = replace(principal, entity_scope="*" if scope == "*" else tuple(sorted(scope)))
+    principal = narrative_reader(principal)
     with tenant_session(principal.db_context, read_only=True) as session:
         if attempt is not None:
             attempt.require(session)

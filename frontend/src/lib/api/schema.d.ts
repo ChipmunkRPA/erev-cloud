@@ -371,6 +371,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/ai/proposals/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Proposals Get
+     * @description Read retained number explanations under the caller's current source permissions.
+     */
+    get: operations["ai_proposals_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/api-clients": {
     parameters: {
       query?: never;
@@ -7734,6 +7754,71 @@ export interface components {
       period?: string | null;
     };
     /**
+     * AIProposalOut
+     * @description Retained number-explanation evidence authorized through its source trace.
+     */
+    AIProposalOut: {
+      /**
+       * Ai Model Log Id
+       * Format: uuid
+       */
+      ai_model_log_id: string;
+      /** Citations */
+      citations: {
+        [key: string]: unknown;
+      }[];
+      /** Content */
+      content: {
+        [key: string]: unknown;
+      };
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      created_by: components["schemas"]["ActorOut"];
+      /**
+       * Expires At
+       * Format: date-time
+       */
+      expires_at: string;
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Job Id */
+      job_id: string | null;
+      /**
+       * Kind
+       * @constant
+       */
+      kind: "NUMBER_EXPLANATION";
+      /** Problem */
+      problem: {
+        [key: string]: unknown;
+      } | null;
+      /** Row Version */
+      row_version: number;
+      status: components["schemas"]["AiProposalStatus"];
+      /**
+       * Subject Id
+       * Format: uuid
+       */
+      subject_id: string;
+      /**
+       * Subject Type
+       * @constant
+       */
+      subject_type: "calc_trace";
+      /**
+       * Updated At
+       * Format: date-time
+       */
+      updated_at: string;
+      updated_by: components["schemas"]["ActorOut"];
+    };
+    /**
      * AccessPackCreateIn
      * @description Access evidence as of an explicit date.
      */
@@ -8327,6 +8412,12 @@ export interface components {
        */
       purpose: "POSTING" | "DEFER_PAST_LOCK";
     };
+    /**
+     * AiProposalStatus
+     * @description E-74 ``ai_proposal_status`` (04 §3.4).
+     * @enum {string}
+     */
+    AiProposalStatus: "proposed" | "accepted" | "rejected" | "expired" | "failed";
     /** AllocationLineOut */
     AllocationLineOut: {
       allocated: components["schemas"]["MoneyOut"];
@@ -24505,6 +24596,67 @@ export interface operations {
         content: {
           "application/json": components["schemas"]["ProblemOut"];
           "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+    };
+  };
+  ai_proposals_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AIProposalOut"];
+        };
+      };
+      /** @description Problem: unauthenticated, session-expired */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: not-found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };

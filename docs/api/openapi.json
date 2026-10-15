@@ -103,6 +103,121 @@
         "title": "AIExplanationIn",
         "type": "object"
       },
+      "AIProposalOut": {
+        "description": "Retained number-explanation evidence authorized through its source trace.",
+        "properties": {
+          "ai_model_log_id": {
+            "format": "uuid",
+            "title": "Ai Model Log Id",
+            "type": "string"
+          },
+          "citations": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Citations",
+            "type": "array"
+          },
+          "content": {
+            "additionalProperties": true,
+            "title": "Content",
+            "type": "object"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_by": {
+            "$ref": "#/components/schemas/ActorOut"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "job_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Id"
+          },
+          "kind": {
+            "const": "NUMBER_EXPLANATION",
+            "title": "Kind",
+            "type": "string"
+          },
+          "problem": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Problem"
+          },
+          "row_version": {
+            "title": "Row Version",
+            "type": "integer"
+          },
+          "status": {
+            "$ref": "#/components/schemas/AiProposalStatus"
+          },
+          "subject_id": {
+            "format": "uuid",
+            "title": "Subject Id",
+            "type": "string"
+          },
+          "subject_type": {
+            "const": "calc_trace",
+            "title": "Subject Type",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "updated_by": {
+            "$ref": "#/components/schemas/ActorOut"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "status",
+          "job_id",
+          "subject_type",
+          "subject_id",
+          "content",
+          "citations",
+          "ai_model_log_id",
+          "expires_at",
+          "problem",
+          "created_at",
+          "created_by",
+          "updated_at",
+          "updated_by",
+          "row_version"
+        ],
+        "title": "AIProposalOut",
+        "type": "object"
+      },
       "AccessPackCreateIn": {
         "additionalProperties": false,
         "description": "Access evidence as of an explicit date.",
@@ -1587,6 +1702,18 @@
         ],
         "title": "AdjustmentRequestOut",
         "type": "object"
+      },
+      "AiProposalStatus": {
+        "description": "E-74 ``ai_proposal_status`` (04 §3.4).",
+        "enum": [
+          "proposed",
+          "accepted",
+          "rejected",
+          "expired",
+          "failed"
+        ],
+        "title": "AiProposalStatus",
+        "type": "string"
       },
       "AllocationLineOut": {
         "properties": {
@@ -43368,6 +43495,96 @@
           }
         },
         "summary": "Explanations Create",
+        "tags": [
+          "API-R-47 AI"
+        ],
+        "x-erev-permission": "ai.use"
+      }
+    },
+    "/api/v1/ai/proposals/{id}": {
+      "get": {
+        "description": "Read retained number explanations under the caller's current source permissions.",
+        "operationId": "ai_proposals_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AIProposalOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: unauthenticated, session-expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: not-found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Proposals Get",
         "tags": [
           "API-R-47 AI"
         ],

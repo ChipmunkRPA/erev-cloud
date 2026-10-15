@@ -2,6 +2,23 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Retained number-explanation reads — October 15, 2026
+
+- Added GET /ai/proposals/{id} for NUMBER_EXPLANATION evidence with content/citations,
+  status, actors and ETag. Current ai.use/contract.read grants are intersected; reads require
+  a visible current or past member contract of the retained trace's group. Unsupported kinds
+  fail closed. AI switches do not prevent authorized evidence reads or trigger provider calls.
+- Calculation traces have tenant-only RLS, so a trace join alone does not authorize entity
+  access. Added explicit member visibility to proposal reads and completed-job recovery.
+- Verification: 21 AI/API database regressions and 54 unit/route/layer checks passed. API cases
+  cover content, cross-tenant and entity refusal, revoked grants, peer reads and both AI switches.
+  Full lint, OpenAPI generation and typecheck passed (925 Python sources plus frontend).
+  Focused strict typing passed 776 sources. Logs: .run/ai-proposal-read-{regressions,unit,lint,
+  openapi,typecheck,types}.log. An initial test used a nonexistent disable-reason field; corrected
+  to the actual actor-kind column before the passing database run.
+- Listing, other proposal kinds, review commands and broader release gates remain open.
+  No deployment or live provider calls; this is development evidence, not production sign-off.
+
 ## Number-explanation submission — October 15, 2026
 
 - Added POST /ai/explanations for the number-explanation form: 202 API-S-Job with Location,
@@ -221,23 +238,6 @@
   Logs: .run/ai-adapter-usage-{final,types,boundary}.log.
 - No live provider calls or deployment. Unknown-usage reconciliation and the remaining product,
   accounting and release-verification gates are still open; this is not production readiness.
-
-## Budget admission for unknown provider usage — October 15, 2026
-
-- Tenant admission now refuses returned errors with unknown usage, including historical
-  response-less errors without a marker. The refusal spans jobs and month boundaries; the
-  current intent's lease exemption cannot hide a committed unknown-usage outcome.
-- ProviderError can carry typed AIUsage. The writer validates counters, rejects conflicting
-  response/admission evidence, and retains reported error usage without a response body.
-  Fresh admission counts this usage; bounded retries and terminal/restarted failure recovery
-  preserve reported counters. Legacy unsent admission records remain distinguishable.
-- The current Anthropic adapter reports no usage on exceptions, so those errors block new
-  calls. No reconciliation command, automatic expiry, zero estimate or override was added.
-  Reconciliation and the remaining public workflows/release gates are still outstanding.
-- Broad AI/budget regression: 260 passed, two Linux-only parser-limit skips (84.25s);
-  final gateway recovery verification: 12 passed (57.50s), .run/ai-unknown-usage-recovery.log.
-  Strict typing passed for 771 sources; Ruff/diff checks passed. Logs:
-  .run/ai-unknown-usage-{final,types}.log. No deployment or production-readiness claim.
 
 ## Outstanding release verification
 

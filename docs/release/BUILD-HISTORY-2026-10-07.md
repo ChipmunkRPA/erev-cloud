@@ -4841,3 +4841,21 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - This is durable evidence groundwork. Budget admission still needs enforcement/reconciliation
   for returned errors with unknown usage, including historical evidence and bounded retries.
   Public AI workflows and all other release gates remain open. No deployment or readiness claim.
+
+## Budget admission for unknown provider usage — October 15, 2026
+
+- Tenant admission now refuses returned errors with unknown usage, including historical
+  response-less errors without a marker. The refusal spans jobs and month boundaries; the
+  current intent's lease exemption cannot hide a committed unknown-usage outcome.
+- ProviderError can carry typed AIUsage. The writer validates counters, rejects conflicting
+  response/admission evidence, and retains reported error usage without a response body.
+  Fresh admission counts this usage; bounded retries and terminal/restarted failure recovery
+  preserve reported counters. Legacy unsent admission records remain distinguishable.
+- The current Anthropic adapter reports no usage on exceptions, so those errors block new
+  calls. No reconciliation command, automatic expiry, zero estimate or override was added.
+  Reconciliation and the remaining public workflows/release gates are still outstanding.
+- Broad AI/budget regression: 260 passed, two Linux-only parser-limit skips (84.25s);
+  final gateway recovery verification: 12 passed (57.50s), .run/ai-unknown-usage-recovery.log.
+  Strict typing passed for 771 sources; Ruff/diff checks passed. Logs:
+  .run/ai-unknown-usage-{final,types}.log. No deployment or production-readiness claim.
+

@@ -14,7 +14,7 @@ import pytest
 from erev_api.auth.keyring import KeyRing
 from erev_api.clock import FrozenClock
 from erev_api.db.session import DbContext, tenant_session
-from erev_api.db.tables import ai_model_log, ai_proposal, audit_event, job, tenant
+from erev_api.db.tables import ai_model_log, ai_proposal, audit_event, job, role_assignment, tenant
 from erev_api.domain.ai import gateway as gateway_module
 from erev_api.domain.ai import jobs as ai_jobs
 from erev_api.domain.ai.gateway import AiGateway
@@ -25,7 +25,7 @@ from erev_api.jobs.context import JobRuntime
 from erev_api.jobs.registry import run_job
 from sqlalchemy import func, select, text, update
 from support.http import HttpResponse, call
-from support.principals import colleague, cookie_headers
+from support.principals import colleague, cookie_headers, member
 from support.reference import assign, entity, holding
 from support.rows import publish_registry_version
 from tests.api.test_explain_api import World, k01_computed, september_line
@@ -136,6 +136,24 @@ def test_submission_is_authorized_idempotent_and_processed_by_worker(
             == 1
         )
 
+    proposal_path = f"/api/v1/ai/proposals/{proposal['id']}"
+
+    def read_as(who: Any) -> HttpResponse:
+        return call(
+            world.app, "GET", proposal_path, headers=cookie_headers(who.token, who.csrf_token)
+        )
+
+    saved = read_as(actor)
+    assert saved.status_code == 200, saved.text
+    assert saved.json()["content"] == proposal["content"]
+    assert saved.json()["citations"] == proposal["citations"]
+    assert saved.json()["created_by"]["id"] == str(actor.member.user_id)
+    assert saved.headers["ETag"]
+    assert "job_source_sha256" not in saved.json()
+    assert read_as(reader).status_code == 403
+    foreign = holding(world.app, member(keyring, clock, name="foreign"), "viewer")
+    assert read_as(foreign).status_code == 404
+
     germany = entity(
         world.app,
         actor,
@@ -150,12 +168,14 @@ def test_submission_is_authorized_idempotent_and_processed_by_worker(
         world.app, "POST", PATH, json=body, headers=cookie_headers(scoped.token, scoped.csrf_token)
     )
     assert hidden.status_code == 404, hidden.text
+    assert read_as(scoped).status_code == 404
     with monkeypatch.context() as patch:
         patch.setattr(
             world.app.state,
             "settings",
             world.app.state.settings.model_copy(update={"ai_kill_switch": True}),
         )
+        assert read_as(actor).json() == saved.json()
         stopped = call(
             world.app,
             "POST",
@@ -171,6 +191,39 @@ def test_submission_is_authorized_idempotent_and_processed_by_worker(
             session.scalar(select(func.count()).select_from(job).where(job.c.kind == "AI_TASK"))
             == 1
         )
+
+    # A different authorized member may read, but revocation takes effect immediately.
+    peer = holding(world.app, colleague(world.place.tenant_id, "peer"), "viewer")
+    assert read_as(peer).status_code == 200
+    with tenant_session(db) as session:
+        session.execute(
+            update(role_assignment)
+            .where(role_assignment.c.membership_id == peer.member.membership_id)
+            .values(valid_to=clock.now())
+        )
+    assert read_as(peer).status_code == 403
+    with tenant_session(db) as session:
+        session.execute(
+            update(tenant)
+            .where(tenant.c.id == world.place.tenant_id)
+            .values(
+                ai_disabled_at=clock.now(),
+                ai_disabled_by=actor.member.user_id,
+                ai_disabled_by_kind="USER",
+            )
+        )
+    assert read_as(actor).json() == saved.json()
+    with tenant_session(db) as session:
+        session.execute(
+            update(tenant)
+            .where(tenant.c.id == world.place.tenant_id)
+            .values(
+                ai_disabled_at=None,
+                ai_disabled_by=None,
+                ai_disabled_by_kind=None,
+            )
+        )
+    assert len(observed) == 1
 
     # A source re-resolved to another trace must not reach the provider. The
     # retrieval double models that concurrent source change after HTTP admission.
