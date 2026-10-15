@@ -8072,6 +8072,14 @@ and `object_label`, following the existing computation-fact audit convention.
   and checks the retained digest, canonical envelope and source/job bindings. Page numbers are
   one-based; the original page ordering and text are preserved. Shredded text returns 404.
 - `POST /ai/proposals/{id}/accept` takes `{field_decisions: array<{path (R), decision (E-121, R), value (R for EDIT), reason (R for EDIT and REJECT)}>, command (R; `contract.create_draft` in 1.0), entity_code (R)}`. Every `content[].path` of the proposal appears exactly once, otherwise 422 `validation-failed`. `ACCEPT` takes the proposed value, `EDIT` takes `value`, `REJECT` leaves the field unset. The command runs `POST /contracts` as the caller (permission `contract.create`) and returns 201 `{contract_id}`; the proposal becomes `accepted` with `field_decisions` stored. A proposal that is not `proposed`, or has expired, returns 409 `invalid-transition`.
+  Implementation status: the field-decision schema and pure review resolver are built; the
+  acceptance route remains unimplemented. EDIT must explicitly supply a typed value; ACCEPT and
+  REJECT cannot carry replacement values. EDIT/REJECT require bounded nonblank reasons. Every
+  retained field is validated and decided exactly once; accepted values retain their exact
+  representation and rejected fields remain unset. No defaults or reference resolution occur.
+  Draft conversion requires further explicit inputs for required contract identity, currency,
+  quantities and obligation keys, plus normal permission/expiry/SoD and transaction controls.
+
 - `POST /ai/explanations` accepts either `{object_type, id, measure, period}` (an API-R-49 object type; proposal kind `NUMBER_EXPLANATION`) or `{subject_type: "exception_item", subject_id}` (proposal kind `ANOMALY_FLAG`, an anomaly summary). It returns 202 API-S-Job (`AI_TASK`); flags and explanations never change data.
   The number-explanation form validates the caller's overlapping `ai.use` and `contract.read`
   source access before queueing. It returns `Location: /api/v1/jobs/{id}` and uses normal command

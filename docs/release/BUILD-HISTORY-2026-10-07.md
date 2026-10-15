@@ -5174,3 +5174,22 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - The broader run exposed a prior expiry test counting other committed tenants. Local exact
   assertions now name its tenant; global fan-out and repeat-run checks remain, with exact audit
   checks for its proposals. Production expiry code was unchanged. No deployment/live AI calls.
+
+## Encrypted extraction proposal evidence — October 15, 2026
+
+- Added a persistence component for original document pages and received extraction responses.
+  Text is encrypted per file and bound to the source digest, human and running AI job; repeated
+  retention for that job reuses the same file. Saving a proposal rebuilds the request and citation
+  mappings from retained bytes, checks the call intent and records usage, content and audit
+  evidence atomically. Refused, invalid or uncited responses become failed proposals without
+  retaining rejected provider text. Shared job/intent binding checks also serve narratives.
+- Verification: 20 existing AI database cases passed in the broader run; its new case exposed
+  a missing test-helper argument, now fixed. The final focused PostgreSQL case passed, covering
+  ciphertext, original citation offsets, low confidence, refusals, cross-job text/intent swaps,
+  changed request fields, missing permission, deduplication, rollback and human audit attribution.
+  71 preparation/validation/layer tests passed. Strict focused typing passed 780 sources; full
+  typecheck passed 929 Python sources plus frontend. Full lint passed. Logs:
+  .run/ai-extraction-persistence-{regressions,pg-final,unit,types-final,typecheck,lint}.log.
+- Extraction dispatch, budget/provider recovery, submission, field schemas and human acceptance
+  remain open. These components do not invoke a provider or apply accounting changes. Broader
+  release verification and independent accounting sign-off remain outstanding. No deployment.

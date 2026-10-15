@@ -2,6 +2,26 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Explicit extraction field-review decisions — October 15, 2026
+
+- Added the ACCEPT/EDIT/REJECT request item schema and pure review resolver. Every retained path
+  must appear exactly once; invalid originals, missing/duplicate/unknown paths and oversized
+  reviews refuse. EDIT explicitly supplies a typed value; ACCEPT/REJECT cannot hide replacement
+  values. EDIT/REJECT require bounded nonblank reasons. Accepted values retain exact types and
+  decimal-string representation, edits use the field catalogue, and rejections leave fields unset.
+- Resolved values and decision records are detached copies in proposal order. Rejecting every
+  field produces no defaults. This component does not write contracts or enable acceptance;
+  conversion still requires explicit contract identity, currency, quantities, obligation keys
+  and structured terms, with command-level source/permission/status/expiry/SoD and atomicity.
+- Verification: 35 final unit cases passed, covering full 507-field capacity, overflow, exact
+  coverage, malformed reasons, forbidden replacements, invalid dates/months/numeric money,
+  invalid retained values, all-rejected reviews and detached mutable inputs. Seventeen layer
+  checks also passed in the initial 50-case run. Full lint/typecheck passed (935 Python sources
+  plus frontend), final focused typing passed 786 sources and final formatting/lint/diff checks
+  passed. Logs: .run/ai-field-review-{unit,boundaries,lint,typecheck,types-final}.log.
+- Structured acceptance remains unimplemented; broader release/accounting and large-tenant list
+  performance gates remain open. No deployment or live provider calls.
+
 ## Authorized extraction review list — October 15, 2026
 
 - GET /ai/proposals now includes extraction evidence alongside number explanations, with the
@@ -208,25 +228,6 @@
 - The gateway still owns admission and retry exhaustion. Extraction dispatch, provider recovery,
   submission, review/acceptance and the broader release/accounting gates remain unfinished.
   No deployment or live provider call; no production-readiness claim.
-
-## Encrypted extraction proposal evidence — October 15, 2026
-
-- Added a persistence component for original document pages and received extraction responses.
-  Text is encrypted per file and bound to the source digest, human and running AI job; repeated
-  retention for that job reuses the same file. Saving a proposal rebuilds the request and citation
-  mappings from retained bytes, checks the call intent and records usage, content and audit
-  evidence atomically. Refused, invalid or uncited responses become failed proposals without
-  retaining rejected provider text. Shared job/intent binding checks also serve narratives.
-- Verification: 20 existing AI database cases passed in the broader run; its new case exposed
-  a missing test-helper argument, now fixed. The final focused PostgreSQL case passed, covering
-  ciphertext, original citation offsets, low confidence, refusals, cross-job text/intent swaps,
-  changed request fields, missing permission, deduplication, rollback and human audit attribution.
-  71 preparation/validation/layer tests passed. Strict focused typing passed 780 sources; full
-  typecheck passed 929 Python sources plus frontend. Full lint passed. Logs:
-  .run/ai-extraction-persistence-{regressions,pg-final,unit,types-final,typecheck,lint}.log.
-- Extraction dispatch, budget/provider recovery, submission, field schemas and human acceptance
-  remain open. These components do not invoke a provider or apply accounting changes. Broader
-  release verification and independent accounting sign-off remain outstanding. No deployment.
 
 ## Outstanding release verification
 

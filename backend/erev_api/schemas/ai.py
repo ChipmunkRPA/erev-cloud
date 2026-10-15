@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Literal
+from typing import Any, Literal, Self
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from erev_api.enums import AiProposalStatus
+from erev_api.enums import AiFieldDecision, AiProposalStatus
 from erev_api.schemas.common import ActorOut
 from erev_api.schemas.explain import ExplainObjectType
 
@@ -81,3 +81,34 @@ class AIDocumentTextOut(BaseModel):
     proposal_id: UUID
     file_object_id: UUID
     pages: list[AIDocumentPageOut]
+
+
+class AIFieldDecisionIn(BaseModel):
+    """An explicit human decision; values remain uncoerced JSON for typed field checks."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    path: str = Field(min_length=1, max_length=128)
+    decision: AiFieldDecision
+    value: Any = None
+    reason: str | None = Field(default=None, max_length=4000)
+
+    @field_validator("reason")
+    @classmethod
+    def reason_text(cls, value: str | None) -> str | None:
+        if value is not None:
+            value = value.strip()
+            if not value or "\x00" in value:
+                raise ValueError("Provide a nonblank review reason.")
+        return value
+
+    @model_validator(mode="after")
+    def explicit_decision(self) -> Self:
+        if self.decision is AiFieldDecision.EDIT:
+            if "value" not in self.model_fields_set:
+                raise ValueError("An edit requires an explicit value.")
+        elif "value" in self.model_fields_set:
+            raise ValueError("Only an edit may supply a replacement value.")
+        if self.decision in (AiFieldDecision.EDIT, AiFieldDecision.REJECT) and self.reason is None:
+            raise ValueError("Edits and rejections require a reason.")
+        return self

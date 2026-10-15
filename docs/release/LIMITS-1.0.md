@@ -135,7 +135,15 @@ accounting writes. It remains available with AI off.
 SCH-11 now expires overdue proposed rows daily at 03:20 UTC, in bounded tenant transactions
 with row locks and SYSTEM audit events. Locked review rows wait for a later sweep; terminal
 states and retained evidence are untouched. Rejection already enforces the exact expiry
-boundary between sweeps. Acceptance, extraction field decisions and other proposal kinds remain unfinished.
+boundary between sweeps. Acceptance and other proposal kinds remain unfinished.
+The field-review component now validates explicit ACCEPT/EDIT/REJECT decisions against every
+retained path exactly once. It preserves accepted values, validates edits without coercion,
+requires reasons for edits/rejections, omits rejected values and produces detached decision
+records in proposal order. Unknown paths, ambiguous replacement values, invalid retained fields
+and incomplete/duplicate decisions fail closed. This is a tested domain component, not an enabled
+acceptance route. Draft conversion still needs explicit contract identity, currency, quantities,
+obligation keys and structured terms; those cannot be inferred from the extraction catalogue.
+Permission/source/expiry/SoD checks and atomic draft-plus-acceptance persistence remain to be wired.
 
 The Anthropic adapter is mock-tested, uses the official SDK, disables SDK retries and telemetry,
 and resolves secrets lazily. Contract-review and explain-narrative prompts have retained bytes,
