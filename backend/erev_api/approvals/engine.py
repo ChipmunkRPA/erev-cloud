@@ -2299,14 +2299,14 @@ def consume_fresh_basis(
     consumes its approved request: called under the authoritative locks (the named contracts'
     groups, then the contracts — DG-KRN-DB-08) and BEFORE any effect, so a stale basis is refused
     atomically (``StaleBasis``; nothing was written). The request must name the subject
-    (``LookupError`` otherwise). Returns the composition relationship the job carries into the
-    hooks it drives (DG-KRN-APR-05 rev 1.51; D-98 candidate 119; Codex 0216)."""
-    request = _own_request(
+    (``LookupError`` otherwise) and be APPROVED (409 otherwise). Returns the composition
+    relationship the job carries into the hooks it drives (DG-KRN-APR-05 rev 1.51;
+    D-98 candidate 119; Codex 0216)."""
+    # Fresh content is not authorization: use the same decided-status guard as a direct
+    # approval hook before yielding a composition that can authorize activation.
+    assert_own_fresh_basis(
         uow, approval_request_id, subject_type=subject_type, subject_id=subject_id
     )
-    spec = spec_for(ApprovalSubjectType(subject_type))
-    if current_content_sha256(uow, spec, request) != str(request["subject_content_sha256"]):
-        raise StaleBasis()
     return ConsumedBasis(
         approval_request_id=approval_request_id,
         subject_type=ApprovalSubjectType(subject_type),

@@ -3843,3 +3843,23 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
 - Full CI on older 165d63c remains live at 34%. Exercise, correction, migration/UI,
   broader release acceptance and independent accounting review remain open. No deployment;
   publish reviewed changes directly to main.
+
+## Native option workbench controls — October 14, 2026
+
+- Obligation Overview now displays persisted option terms/status and links its likelihood
+  estimate. Entity-scoped, current-view controls permit draft entry and active/open expiry.
+  Forms support the three SSP methods, approved applicable likelihood selection, decimal
+  strings, dates, expiry reasons/evidence, ETag/idempotency and cache refresh/refusal handling.
+- Queued expiry retains job progress, prevents duplicate submission, and distinguishes
+  recorded expiry from failed computation. A failure never claims the event rolled back.
+  Embedded terms now use MaterialRightOut in OpenAPI instead of an untyped dictionary.
+- UI/workbench regressions: 79 passed; final option/evidence-link suite: 14 passed.
+  API/read/import-cycle checks: 34 passed (27.93s). Full typecheck (880 sources/frontend),
+  final frontend types, ESLint and Ruff pass. Desktop/mobile form captures were inspected;
+  five screenshots in .run/option-*.png, browser reported no page errors.
+- Logs: .run/material-right-ui-tests-final.log, .run/material-right-ui-tests-last-fixed.log,
+  .run/material-right-ui-api-fixed.log, .run/material-right-ui-full-types.log and
+  .run/material-right-ui-visual.log. Initial checks caught a closed drawer and loose schema;
+  fixture corrections covered select events, currency reference and the API test filename.
+- This is component/API evidence, not live full-browser accounting acceptance. Governed
+  exercise/correction, migration and release/accountant sign-off remain open. Build passed; no deployment.

@@ -2,6 +2,20 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Approved status for composed activation — October 14, 2026
+
+- consume_fresh_basis now shares the direct approval-hook guard: the request must name the
+  subject, be APPROVED and still hash to its reviewed content before it can confer authority
+  on a child action. Non-approved requests refuse before content evaluation. Existing import
+  activation benefits; the migration promotion subject remains unregistered.
+- PostgreSQL tests cover all five request states. Final unit/PG suite: 106 passed (9.01s).
+  All 18 import commit cases also passed; 124 unique cases verified across the two runs.
+  Four new test-only recorder assertions were corrected before the final successful run.
+  Strict production plus PG-test typing (889 sources) and Ruff pass. Evidence:
+  .run/approval-consumption-status-{tests,final,types}.log.
+- Judgement creation under independent approval, policy/report checks, final activation and
+  atomic promotion remain outstanding. Publish directly to main; no deployment/readiness claim.
+
 ## Migration activation prerequisites — October 14, 2026
 
 - Review basis v3 binds each reproduced contract's complete pre-activation checklist. Missing,
@@ -227,26 +241,6 @@
   two-options/same-catalogue acceptance case in MATERIAL-RIGHTS-IMPLEMENTATION.md.
   Conversion refusal remains until the complete amount/promotion/replay path is implemented.
 - Older full CI 165d63c remains live at 35%. No readiness claim or deployment; publish to main.
-
-## Native option workbench controls — October 14, 2026
-
-- Obligation Overview now displays persisted option terms/status and links its likelihood
-  estimate. Entity-scoped, current-view controls permit draft entry and active/open expiry.
-  Forms support the three SSP methods, approved applicable likelihood selection, decimal
-  strings, dates, expiry reasons/evidence, ETag/idempotency and cache refresh/refusal handling.
-- Queued expiry retains job progress, prevents duplicate submission, and distinguishes
-  recorded expiry from failed computation. A failure never claims the event rolled back.
-  Embedded terms now use MaterialRightOut in OpenAPI instead of an untyped dictionary.
-- UI/workbench regressions: 79 passed; final option/evidence-link suite: 14 passed.
-  API/read/import-cycle checks: 34 passed (27.93s). Full typecheck (880 sources/frontend),
-  final frontend types, ESLint and Ruff pass. Desktop/mobile form captures were inspected;
-  five screenshots in .run/option-*.png, browser reported no page errors.
-- Logs: .run/material-right-ui-tests-final.log, .run/material-right-ui-tests-last-fixed.log,
-  .run/material-right-ui-api-fixed.log, .run/material-right-ui-full-types.log and
-  .run/material-right-ui-visual.log. Initial checks caught a closed drawer and loose schema;
-  fixture corrections covered select events, currency reference and the API test filename.
-- This is component/API evidence, not live full-browser accounting acceptance. Governed
-  exercise/correction, migration and release/accountant sign-off remain open. Build passed; no deployment.
 
 ## Outstanding release verification
 

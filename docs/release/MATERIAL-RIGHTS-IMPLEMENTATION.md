@@ -655,3 +655,22 @@ production plus both changed test files passes (890 sources); Ruff passes. Logs:
 `.run/migration-activation-review-{pg,unit,types}.log`. The public promotion route and converted
 option import remain unavailable; independent approval, policy/report checks, atomic live
 creation, current release verification and accounting sign-off are still outstanding.
+
+## Approved status before composed activation authority, October 14
+
+While preparing promotion judgement composition, consume_fresh_basis was found to check subject
+identity and current content without requiring APPROVED status. It now uses the same
+assert_own_fresh_basis guard as direct approval hooks. PENDING, REJECTED, VOIDED and WITHDRAWN
+requests refuse with 409 before content evaluation or creation of a ConsumedBasis. Approved
+requests retain the single content-hash check, stale-content refusal, subject identity and
+transaction/key coverage checks. This protects existing import activation composition and is a
+prerequisite for the future migration writer; it does not register MIGRATION_PROMOTION.
+
+A real PostgreSQL request test covers all five statuses. Final lock-order/import-consumption
+unit plus PostgreSQL run: 106 passed (9.01s). All 18 import commit cases passed in the initial
+broader run; four new unit assertions initially expected a request read in a recorder that
+tracks only contract/group/judgement locks, then passed after correcting that test-only assertion.
+The combined verified coverage is 124 unique cases. Strict production plus the database test
+passes (889 sources); Ruff passes. Evidence: `.run/approval-consumption-status-{tests,final,types}.log`.
+Promotion judgement creation, independent approval/MFA, policy/report checks and atomic activation
+remain unfinished. No deployment or readiness claim.

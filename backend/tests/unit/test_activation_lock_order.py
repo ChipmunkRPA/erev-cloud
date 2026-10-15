@@ -1460,6 +1460,30 @@ def test_consume_fresh_basis_validates_once_and_yields_the_composition(
         )
 
 
+@pytest.mark.parametrize("status", ["PENDING", "REJECTED", "VOIDED", "WITHDRAWN"])
+def test_consume_fresh_basis_refuses_undecided_or_invalidated_request(
+    monkeypatch: pytest.MonkeyPatch,
+    status: str,
+) -> None:
+    # Matching content may not turn a non-approved request into authority for a child act.
+    def must_not_hash(*args: Any, **kwargs: Any) -> str:
+        pytest.fail("a non-approved request must be refused before content is evaluated")
+
+    monkeypatch.setattr(approvals_engine, "current_content_sha256", must_not_hash)
+    session = _Session(request={**IMPORT_REQUEST, "status": status})
+    with pytest.raises(Problem) as refused:
+        approvals_engine.consume_fresh_basis(
+            _Uow(session),  # type: ignore[arg-type]
+            APPROVAL_REQUEST,
+            subject_type=approvals_engine.ApprovalSubjectType.IMPORT_COMMIT,
+            subject_id=UUID(int=20),
+            keys=["SF-ORD-1"],
+        )
+    assert refused.value.slug == "invalid-transition"
+    assert status in str(refused.value)
+    assert session.calls == []  # no contract/group/judgement locks or effects
+
+
 def test_lock_groups_then_contracts_takes_every_group_before_every_contract() -> None:
     """``locking.lock_groups_then_contracts`` (the import's consumption locks): groups ascending,
     then contracts ascending, equality re-verified; an empty set locks nothing."""
