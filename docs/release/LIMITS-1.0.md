@@ -44,6 +44,13 @@ loader. Exact file bytes, including metadata, become the system message and temp
 unknown versions and changed files refuse. The built wheel retains identical prompt bytes.
 Other prompt kinds, retained fake-response fixtures and the operational gateway remain open.
 
+October 15 document preparation now binds ordered pages, document identity, allowed paths,
+retained template and local redaction mappings into the prepared extraction request. It refuses
+text-disabled input, more than 600 pages, and source/redacted UTF-8 text exceeding 2 MiB.
+The fake-provider path verifies source citation restoration. This accepts already-extracted
+page text; PDF worker extraction, authorized file access, durable document-text storage and
+operational gateway execution remain unimplemented.
+
 October 14 audit continuation: native option entry/expiry and CLOSE evidence-pack creation
 now have catalogue entries and real request scenarios in the audit walk. Material-right
 AUD-FACT summaries require a contract key and retain the created ids in detail. Evidence-pack

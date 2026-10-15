@@ -4026,3 +4026,20 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   checks, policy publication, activation admission, reproduction and atomic live creation,
   independent reviewer/MFA and submit route remain unfinished. Public option import stays
   unavailable. Older immutable CI remains live at 46%; no deployment/readiness claim.
+
+## Retained opening choices and input reconstruction — October 14, 2026
+
+- Successful imports retain complete confirmed parameters/entity mapping and staging/plan
+  hashes. Promotion review restores from retained source/cutover and compares bookings,
+  opening balances, customer identity and immutable option terms with captured input.
+  Missing plans require re-import; no current defaults are substituted.
+- A newly hashed plan with changed conversion or entity mapping refuses against the original
+  capture. Decimal option terms compare exactly (25 equals stored 25.0000); no rounding.
+- The registered import worker with non-identity mapping retains a reconstructable four-
+  contract plan: 1 check passed (12.72s). Domain/import/reconciliation/architecture checks:
+  70 passed (9.96s). Three converted-option database checks passed (12.10s), covering
+  missing/changed plans and review invariants. Strict production Mypy (886 files), two test
+  files, the final plan helper and Ruff pass. Evidence: .run/migration-opening-plan-*.log.
+- Output reproduction under current configuration, policy publication, activation admission
+  and independent approval/live creation remain unfinished. Public option import/promotion
+  stay unavailable. Older immutable CI is live at 52%; no deployment/readiness claim.

@@ -2,6 +2,23 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Document preparation and citation binding — October 15, 2026
+
+- Added extraction preparation over ordered worker-provided page text. Text sharing disabled
+  refuses before page inspection; documents must have 1–600 pages and at most 2 MiB UTF-8
+  text before and after redaction. Blank pages retain their original page numbers.
+- The retained contract-review template, document UUID and allowed paths feed immutable
+  request preparation. Exact outgoing page text is checked against retained redaction maps;
+  any serialization/redaction mismatch refuses. Provider payloads exclude source mappings.
+- A fake-provider integration check follows preparation through response validation and
+  confirms that the cited amount addresses original source characters with low-confidence
+  review still required. Tests also cover mutation, Unicode limits and redaction expansion.
+- AI/privacy/architecture checks: 195 passed (16.54s); strict API/test typing: 753 sources;
+  Ruff passes. Logs: .run/ai-document-preparation-{checks,types}.log.
+- PDF extraction/worker limits, authorized file reads, durable text storage, operational
+  gateway jobs/budgets/auditing and human acceptance remain open. This helper enables no
+  route and makes no live call; no deployment or readiness claim.
+
 ## Retained contract-review prompt — October 15, 2026
 
 - Added the versioned contract-review v1 file with id/version/purpose/output-schema front
@@ -234,23 +251,6 @@
   testing also found stage 03's raw ValueError for AGENT without reviewed PRINCIPAL_AGENT;
   typed admission handling remains outstanding. Older immutable CI remains live at 53%.
 - Published directly to main; no deployment, readiness or accounting sign-off claim.
-
-## Retained opening choices and input reconstruction — October 14, 2026
-
-- Successful imports retain complete confirmed parameters/entity mapping and staging/plan
-  hashes. Promotion review restores from retained source/cutover and compares bookings,
-  opening balances, customer identity and immutable option terms with captured input.
-  Missing plans require re-import; no current defaults are substituted.
-- A newly hashed plan with changed conversion or entity mapping refuses against the original
-  capture. Decimal option terms compare exactly (25 equals stored 25.0000); no rounding.
-- The registered import worker with non-identity mapping retains a reconstructable four-
-  contract plan: 1 check passed (12.72s). Domain/import/reconciliation/architecture checks:
-  70 passed (9.96s). Three converted-option database checks passed (12.10s), covering
-  missing/changed plans and review invariants. Strict production Mypy (886 files), two test
-  files, the final plan helper and Ruff pass. Evidence: .run/migration-opening-plan-*.log.
-- Output reproduction under current configuration, policy publication, activation admission
-  and independent approval/live creation remain unfinished. Public option import/promotion
-  stay unavailable. Older immutable CI is live at 52%; no deployment/readiness claim.
 
 ## Outstanding release verification
 
