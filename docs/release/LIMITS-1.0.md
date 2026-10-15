@@ -25,6 +25,12 @@ establishes numeric membership: authorized retrieval, semantic/citation checks, 
 proposal generation and deterministic fallback integration remain outstanding. Unsupported
 numeric formats refuse rather than being guessed; percentages require displayed units.
 
+Narrative preparation and response selection now use a retained explain-narrative prompt,
+strict response hashes/schema, snapshot-bound node citations and cited-only numeric evidence.
+Invalid responses select the original deterministic explanation without model text. This is
+verified through the fake provider, but remains unconnected to authorized retrieval, AI_TASK,
+proposal persistence and the public Explain/API workflow. It is not completed AIX-7 coverage.
+
 Migration 0148 adds immutable proposal content/citations, tenant-bound evidence references
 and SM-11 state guards. The schema and full migration round trip are verified; proposal
 creation/acceptance APIs, approval integration and lifecycle audit events remain absent.

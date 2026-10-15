@@ -4183,3 +4183,18 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   Typing evidence: .run/ai-model-log-types.log.
 - Proposal table/transitions, gateway writes/audit facts and human acceptance remain
   unfinished. The AI lifecycle audit gap remains open; no AI enablement or deployment.
+
+## AI proposal evidence and state guards — October 14, 2026
+
+- Migration 0148 adds T-AI-01, E-73/E-74 and the generated SM-11 transition guard.
+  Content/citations and evidence links cannot change. Acceptance/rejection fields are
+  set once, complete only in their matching state, and terminal records are frozen.
+  Decisions must be a nonempty array; acceptance permissions and decision semantics
+  still belong to the forthcoming human command. Expiry is explicitly supplied by its writer.
+- Tenant-bound foreign keys reject another tenant's call log or document. Registered
+  ORM, privacy, sandbox-regeneration, enum and isolation inventories; updated pinned head.
+- Full migration round trip, DB lint, state/immutability/RLS, schema/privacy/snapshot
+  and import-cycle checks: 140 passed; single-head check: 1 passed. Strict API/test typing
+  passes (745 sources). Evidence: .run/ai-proposal-final.log, .run/ai-proposal-head.log,
+  .run/ai-proposal-types.log. Provider/gateway, human acceptance and audit lifecycle
+  remain incomplete; AI stays unavailable. No deployment or readiness claim.

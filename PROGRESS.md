@@ -2,6 +2,23 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Cited narrative selection and deterministic fallback — October 15, 2026
+
+- Added the retained explain-narrative v1 prompt and a preparation/selection boundary.
+  It snapshots already-authorized explanation nodes, sends minimized trace fields,
+  excludes other currencies and refuses privacy transformations that change evidence.
+- Responses need exact hashes, complete output, strict JSON and nonempty unique node
+  citations from the snapshot. Only cited nodes contribute allowed figures. Unsupported
+  output returns the original deterministic narrative with no model text or citations.
+- Fake-provider tests cover supported/untraced output; additional cases cover malformed
+  responses, refusal/truncation, forged citations, immutable evidence and currency precision.
+- Verification: 244 AI/architecture tests passed, two Linux-only parser tests skipped;
+  typing passed for 763 sources; Ruff/diff checks pass. Offline wheel build passed and
+  packaged prompt bytes match source. Logs: .run/ai-narrative-{checks,types,wheel}.log.
+- This does not register an AI_TASK handler or endpoint, persist proposals or establish
+  authorized retrieval. Those gateway responsibilities and the human acceptance workflow
+  remain open. No live provider calls, deployment or production-readiness claim.
+
 ## Numeric-token boundary repairs — October 15, 2026
 
 - Reproduced false acceptances where Unicode separators/invisible characters or malformed
@@ -228,21 +245,6 @@
 - Gateway/jobs, retained prompt fixtures, human acceptance and lifecycle auditing remain
   unfinished. SUPERVISOR VERIFICATION NEEDED: live Anthropic provider smoke test (not run;
   no live calls authorized here). No deployment or production-readiness claim.
-
-## AI proposal evidence and state guards — October 14, 2026
-
-- Migration 0148 adds T-AI-01, E-73/E-74 and the generated SM-11 transition guard.
-  Content/citations and evidence links cannot change. Acceptance/rejection fields are
-  set once, complete only in their matching state, and terminal records are frozen.
-  Decisions must be a nonempty array; acceptance permissions and decision semantics
-  still belong to the forthcoming human command. Expiry is explicitly supplied by its writer.
-- Tenant-bound foreign keys reject another tenant's call log or document. Registered
-  ORM, privacy, sandbox-regeneration, enum and isolation inventories; updated pinned head.
-- Full migration round trip, DB lint, state/immutability/RLS, schema/privacy/snapshot
-  and import-cycle checks: 140 passed; single-head check: 1 passed. Strict API/test typing
-  passes (745 sources). Evidence: .run/ai-proposal-final.log, .run/ai-proposal-head.log,
-  .run/ai-proposal-types.log. Provider/gateway, human acceptance and audit lifecycle
-  remain incomplete; AI stays unavailable. No deployment or readiness claim.
 
 ## Outstanding release verification
 
