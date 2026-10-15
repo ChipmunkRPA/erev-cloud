@@ -5893,7 +5893,11 @@ only with no intent, no response hash and zero counters. Invalid markers do not 
 A typed AIUsage on ProviderError can supply reported counters without a response body; the
 writer rejects negative, boolean, overflowing or conflicting counters. These counters participate
 in the normal budget sum and permit bounded retries after fresh admission. Reconciliation remains
-unfinished; the current Anthropic error adapter supplies no usage and therefore blocks new calls.
+unfinished. Anthropic SDK exceptions supply no usage and block new calls. For returned messages,
+the adapter validates required counters and sums uncached, cache-creation and cache-read input
+counts; output and cache breakdowns are not added twice. It preserves valid totals on rejected
+metadata/content as reported error usage. Missing/malformed counters or integer overflow remain
+unknown, with no fabricated response hash or raw response body retained.
 
 
 ### T-MIG-01 `migration_batch`

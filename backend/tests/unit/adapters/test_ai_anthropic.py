@@ -5,11 +5,12 @@ from __future__ import annotations
 from dataclasses import replace
 from hashlib import sha256
 from types import SimpleNamespace
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
 from erev_api.adapters.ai import anthropic as adapter
-from erev_api.adapters.ai.provider import AIRequest, ProviderError
+from erev_api.adapters.ai.provider import AIRequest, AIUsage, ProviderError
 from pydantic import SecretStr
 from support import ai_sdk
 
@@ -110,6 +111,7 @@ def test_exception_classification(name: str, status: int, code: str, retryable: 
         adapter.AnthropicProvider(lambda: client).complete(REQUEST)
     assert caught.value.code == code
     assert caught.value.retryable is retryable
+    assert caught.value.usage is None
     assert str(caught.value) == code
     assert caught.value.__suppress_context__
     client.messages.create.assert_called_once()
@@ -126,8 +128,10 @@ def test_unexpected_failure_is_not_misclassified() -> None:
 
 def test_missing_stop_reason_is_refused() -> None:
     client = client_result(stop_reason=None)
-    with pytest.raises(ProviderError, match="AI_INVALID_RESPONSE"):
+    with pytest.raises(ProviderError, match="AI_INVALID_RESPONSE") as caught:
         adapter.AnthropicProvider(lambda: client).complete(REQUEST)
+    assert caught.value.usage == AIUsage(1200, 300)
+    assert caught.value.retryable is False
 
 
 @pytest.mark.parametrize("message", [{"role": "system", "content": "x"}, {"role": "user"}])
@@ -136,3 +140,86 @@ def test_invalid_message_does_not_construct_client(message: dict[str, str]) -> N
     with pytest.raises(ValueError):
         adapter.AnthropicProvider(factory).complete(replace(REQUEST, messages=(message,)))
     factory.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "cache_write,cache_read,total", [(None, None, 1200), (0, 0, 1200), (200, 400, 1800)]
+)
+def test_cache_components_count_once(
+    cache_write: int | None, cache_read: int | None, total: int
+) -> None:
+    client = client_result()
+    usage = client.messages.create.return_value.usage
+    usage.cache_creation_input_tokens = cache_write
+    usage.cache_read_input_tokens = cache_read
+    # These breakdowns must not be added again to inclusive counters.
+    usage.cache_creation = SimpleNamespace(
+        ephemeral_5m_input_tokens=100, ephemeral_1h_input_tokens=100
+    )
+    usage.output_tokens_details = SimpleNamespace(thinking_tokens=100)
+    result = adapter.AnthropicProvider(lambda: client).complete(REQUEST)
+    assert (result.input_tokens, result.output_tokens) == (total, 300)
+
+
+@pytest.mark.parametrize(
+    "name",
+    ["input_tokens", "output_tokens", "cache_creation_input_tokens", "cache_read_input_tokens"],
+)
+@pytest.mark.parametrize("value", [True, -1, 1.5, "12", 2147483648])
+def test_malformed_usage_is_unknown(name: str, value: Any) -> None:
+    client = client_result()
+    setattr(client.messages.create.return_value.usage, name, value)
+    with pytest.raises(ProviderError, match="AI_INVALID_RESPONSE") as caught:
+        adapter.AnthropicProvider(lambda: client).complete(REQUEST)
+    assert caught.value.usage is None
+    assert caught.value.retryable is False
+    assert str(caught.value) == "AI_INVALID_RESPONSE"
+
+
+@pytest.mark.parametrize("missing", ["usage", "input_tokens", "output_tokens"])
+def test_missing_required_usage_is_unknown(missing: str) -> None:
+    client = client_result()
+    response = client.messages.create.return_value
+    delattr(response if missing == "usage" else response.usage, missing)
+    with pytest.raises(ProviderError) as caught:
+        adapter.AnthropicProvider(lambda: client).complete(REQUEST)
+    assert caught.value.usage is None
+
+
+def test_total_cache_input_overflow_is_unknown() -> None:
+    client = client_result()
+    client.messages.create.return_value.usage.cache_read_input_tokens = 2147483647
+    with pytest.raises(ProviderError) as caught:
+        adapter.AnthropicProvider(lambda: client).complete(REQUEST)
+    assert caught.value.usage is None
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("stop_reason", None),
+        ("stop_reason", ""),
+        ("stop_reason", 123),
+        ("model", "model with secret text"),
+        ("model", None),
+        ("model", "m" * 257),
+        ("content", None),
+        ("content", [SimpleNamespace(type="text", text=123)]),
+        ("content", [SimpleNamespace(type="text", text="\ud800")]),
+        ("content", [SimpleNamespace(type="text")]),
+    ],
+)
+def test_invalid_result_preserves_valid_usage(field: str, value: Any) -> None:
+    client = client_result()
+    response = client.messages.create.return_value
+    response.usage.cache_creation_input_tokens = 200
+    response.usage.cache_read_input_tokens = 400
+    setattr(response, field, value)
+    with pytest.raises(ProviderError) as caught:
+        adapter.AnthropicProvider(lambda: client).complete(REQUEST)
+    assert caught.value.usage == AIUsage(1800, 300)
+    assert caught.value.code == "AI_INVALID_RESPONSE"
+    assert caught.value.retryable is False
+    assert str(caught.value) == "AI_INVALID_RESPONSE"
+    assert caught.value.__suppress_context__
+    client.messages.create.assert_called_once()

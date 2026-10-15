@@ -7,9 +7,12 @@ from dataclasses import replace
 from datetime import timedelta
 from hashlib import sha256
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any, NoReturn
+from unittest.mock import MagicMock
 
 import pytest
+from erev_api.adapters.ai.anthropic import AnthropicProvider
 from erev_api.auth.keyring import KeyRing
 from erev_api.clock import FrozenClock
 from erev_api.db import new_id
@@ -41,6 +44,8 @@ from tests.domain.ai.test_narrative_retrieval import context_for
         ("unknown_usage", 1, None),
         ("resume_unknown_usage", 1, None),
         ("permanent", 1, "failed"),
+        ("adapter_known", 1, "failed"),
+        ("adapter_unknown", 1, "failed"),
         ("recover", 3, "proposed"),
         ("disabled", 1, None),
         ("crash", 1, None),
@@ -101,6 +106,21 @@ def test_retry_evidence_and_terminal_outcome(
                 assert len(starts) == len(observed) + 1
                 assert all(row["input_sha256"] == request.input_sha256 for row in starts)
             observed.append(request)
+            if mode in {"adapter_known", "adapter_unknown"}:
+                client = MagicMock()
+                client.__enter__.return_value = client
+                client.messages.create.return_value = SimpleNamespace(
+                    model=request.model,
+                    stop_reason=None,
+                    content=[],
+                    usage=SimpleNamespace(
+                        input_tokens=20 if mode == "adapter_known" else -1,
+                        output_tokens=10,
+                        cache_creation_input_tokens=4,
+                        cache_read_input_tokens=6,
+                    ),
+                )
+                return AnthropicProvider(lambda: client).complete(request)
             if mode == "crash":
                 raise RuntimeError("simulated worker crash during provider call")
             if mode not in {"recover", "lost_result"} or (mode == "recover" and len(observed) < 3):
@@ -120,7 +140,9 @@ def test_retry_evidence_and_terminal_outcome(
             )
 
     gateway = AiGateway(
-        provider="fake", provider_factory=Provider, platform_kill_switch=lambda: disabled[0]
+        provider="anthropic" if mode.startswith("adapter_") else "fake",
+        provider_factory=Provider,
+        platform_kill_switch=lambda: disabled[0],
     )
     waits: list[timedelta] = []
 
@@ -207,7 +229,8 @@ def test_retry_evidence_and_terminal_outcome(
     assert len(observed) == calls
     assert waits == (
         []
-        if mode in {"permanent", "resume_permanent", "resume_exhausted"}
+        if mode
+        in {"permanent", "resume_permanent", "resume_exhausted", "adapter_known", "adapter_unknown"}
         else [timedelta(seconds=5)]
         if mode == "disabled"
         else [timedelta(seconds=5), timedelta(seconds=10)]
@@ -233,7 +256,9 @@ def test_retry_evidence_and_terminal_outcome(
             if status == "failed":
                 assert row["content"] == {} and row["citations"] == []
                 assert row["problem"] == {
-                    "code": "AI_AUTHENTICATION"
+                    "code": "AI_INVALID_RESPONSE"
+                    if mode.startswith("adapter_")
+                    else "AI_AUTHENTICATION"
                     if mode in {"permanent", "resume_permanent"}
                     else "AI_TIMEOUT"
                 }
@@ -241,6 +266,18 @@ def test_retry_evidence_and_terminal_outcome(
             else:
                 assert row["problem"] is None
                 assert sum(item["input_tokens"] + item["output_tokens"] for item in logs) == 36
+
+    if mode.startswith("adapter_"):
+        with budget_guard(context.principal.db_context) as guard:
+            assert guard is not None
+            if mode == "adapter_known":
+                assert guard.require_available(now=clock.now(), monthly_budget=1000).tokens == 40
+                assert logs[0]["parameters"]["usage_evidence"] == "REPORTED"
+            else:
+                with pytest.raises(AIBudgetRefused, match="AI_BUDGET_USAGE_UNCERTAIN"):
+                    guard.require_available(now=clock.now(), monthly_budget=1000)
+                assert logs[0]["parameters"]["usage_evidence"] == "UNKNOWN"
+        return
 
     if status == "failed":
         fresh = retrieve_narrative(

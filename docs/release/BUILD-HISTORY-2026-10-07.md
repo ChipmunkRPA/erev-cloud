@@ -4630,3 +4630,23 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Gateway/settings/budget integration, provider execution, persistence, public endpoints
   and human decisions remain open. This does not authorize deployment or establish
   end-to-end AI readiness. No live provider calls or external accounting sign-off.
+
+## Atomic narrative proposal persistence — October 15, 2026
+
+- Added NUMBER_EXPLANATION persistence under a scoped human unit of work. Before writing,
+  it reloads the retained trace, rebuilds the request and validates the complete request
+  against the prepared evidence; caller-substituted value mappings cannot support figures.
+- Successful output writes a proposed trace-subject narrative and node citations; unsupported
+  output writes a failed proposal with a fixed problem code and empty content/citations.
+  Both retain usage and human attribution, default to 30-day expiry and leave acceptance empty.
+- Attempt log, proposal and AUD-CMD/AUD-FACT events share the caller's transaction. Proposal
+  audit events name the trace version's visible obligation contracts and retain content/citation
+  hashes rather than narrative text. Registered the proposal audit type and unlabelled identity.
+- Real K-01 integration verifies commit, failure, rollback, request tampering, scope refusal,
+  forged value mappings, audit attribution and unchanged accounting versions. Fixed explicit
+  SQL NULL handling for the successful proposal's JSONB problem column.
+- Verification: 241 targeted tests passed, two Linux-only parser tests skipped; strict typing
+  passed for 765 sources; Ruff/diff checks pass. Logs: .run/ai-proposal-write-{final,types}.log.
+- The caller still owes fresh authorization, settings/budget admission and commit before lease
+  release. Gateway/job dispatch, public APIs, other proposal kinds and human decisions remain
+  unfinished; the full AI audit-lifecycle gate stays open. No deployment or readiness claim.

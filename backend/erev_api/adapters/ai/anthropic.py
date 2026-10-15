@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable
 from hashlib import sha256
 from typing import cast
@@ -9,7 +10,7 @@ from typing import cast
 import anthropic as anthropic
 from pydantic import SecretStr
 
-from erev_api.adapters.ai.provider import AIRequest, AIResponse, ProviderError
+from erev_api.adapters.ai.provider import AIRequest, AIResponse, AIUsage, ProviderError
 from erev_api.adapters.secrets.store import SecretStore
 from erev_api.clock import monotonic as monotonic_seconds
 
@@ -35,6 +36,23 @@ def build_client(store: SecretStore) -> anthropic.Anthropic:
         max_retries=0,
         open_telemetry=False,
     )
+
+
+def _reported_usage(value: object) -> AIUsage:
+    # Cache counters are separate input components, not subsets of input_tokens.
+    # Optional absent/null cache counts mean no cache usage. Required counts never
+    # default to zero, and any malformed component makes the complete total unknown.
+    counters = [getattr(value, "input_tokens", None), getattr(value, "output_tokens", None)]
+    for name in ("cache_creation_input_tokens", "cache_read_input_tokens"):
+        cached = getattr(value, name, None)
+        counters.append(0 if cached is None else cached)
+    if any(type(count) is not int or not 0 <= count <= 2147483647 for count in counters):
+        raise ProviderError("AI_INVALID_RESPONSE", retryable=False)
+    validated = cast(list[int], counters)
+    total_input = validated[0] + validated[2] + validated[3]
+    if total_input > 2147483647:
+        raise ProviderError("AI_INVALID_RESPONSE", retryable=False)
+    return AIUsage(total_input, validated[1])
 
 
 class AnthropicProvider:
@@ -80,14 +98,25 @@ class AnthropicProvider:
             raise ProviderError("AI_PERMISSION", retryable=False) from None
         except anthropic.APIError:
             raise ProviderError("AI_PROVIDER_ERROR", retryable=False) from None
-        if response.stop_reason is None:
-            raise ProviderError("AI_INVALID_RESPONSE", retryable=False)
-        text = "".join(block.text for block in response.content if block.type == "text")
+        usage = _reported_usage(getattr(response, "usage", None))
+        try:
+            if (
+                not isinstance(response.stop_reason, str)
+                or not response.stop_reason
+                or not isinstance(response.model, str)
+                or re.fullmatch(r"[A-Za-z0-9._:-]{1,256}", response.model) is None
+            ):
+                raise ValueError("invalid response metadata")
+            text = "".join(block.text for block in response.content if block.type == "text")
+            digest = sha256(text.encode("utf-8")).hexdigest()
+        except (AttributeError, TypeError, ValueError, UnicodeEncodeError):
+            # A malformed result does not erase valid provider-reported usage.
+            raise ProviderError("AI_INVALID_RESPONSE", retryable=False, usage=usage) from None
         return AIResponse(
             text=text,
-            response_sha256=sha256(text.encode("utf-8")).hexdigest(),
-            input_tokens=response.usage.input_tokens,
-            output_tokens=response.usage.output_tokens,
+            response_sha256=digest,
+            input_tokens=usage.input_tokens,
+            output_tokens=usage.output_tokens,
             latency_ms=max(0, round((self._monotonic() - started) * 1000)),
             model=response.model,
             stop_reason=response.stop_reason,

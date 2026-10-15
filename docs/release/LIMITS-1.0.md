@@ -40,7 +40,11 @@ response or provider-error counters (`REPORTED`), unsent admission refusals (`NO
 from zero compatibility counters on failures. Historical logs are not rewritten. The guard now blocks new calls for returned errors with unknown usage, including legacy errors
 with no response evidence, across months and jobs. Invalid markers also refuse. Typed reported
 error counters are validated, counted and allow bounded retries after fresh admission; the current
-Anthropic error adapter supplies none, so its errors quarantine new calls until reconciliation.
+Anthropic SDK exception path supplies none, so those errors quarantine new calls until reconciliation.
+Returned messages now include cache-read/cache-creation tokens in total input usage. Rejected
+metadata/content retains validated totals on the error; missing/malformed/overflowing counters
+stay unknown. Cache/output breakdowns are not double-counted. This uses mocked SDK coverage;
+there have been no live provider calls.
 Permanent/exhausted failure proposals and previously completed delivery do not make new calls
 and remain recoverable. Reconciliation is still absent: there is no automatic expiry or override.
 The guard does not estimate missing usage,

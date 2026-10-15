@@ -2,6 +2,23 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Provider response usage preservation — October 15, 2026
+
+- Anthropic message usage now validates strict nonnegative counters and includes cache-read
+  plus cache-creation input tokens in the total. Optional absent/null cache fields count as zero;
+  output/cache breakdowns are not counted twice, and stored totals must fit int32.
+- Rejected response metadata/content preserves valid usage via ProviderError. Missing/malformed
+  usage remains UNKNOWN; SDK exceptions never invent counts. No raw response body or fabricated
+  response hash is retained on these errors.
+- Mocked adapter-to-gateway checks verify a failed proposal links to reported usage and counts
+  40 tokens, while invalid counters produce unknown usage and keep tenant admission blocked.
+  Unit coverage includes cache totals, invalid/absent counters, overflow, invalid metadata and
+  malformed content. Regression: 312 passed, two Linux parser-limit skips (67.12s); typing passed
+  for 769 sources; final adapter/import-boundary checks: 69 passed (10.23s); Ruff/diff passed.
+  Logs: .run/ai-adapter-usage-{final,types,boundary}.log.
+- No live provider calls or deployment. Unknown-usage reconciliation and the remaining product,
+  accounting and release-verification gates are still open; this is not production readiness.
+
 ## Budget admission for unknown provider usage — October 15, 2026
 
 - Tenant admission now refuses returned errors with unknown usage, including historical
@@ -209,26 +226,6 @@
   proposals for rejected admission/provider errors, notification and crash/unlogged-call
   recovery remain open. Existing request/proposal idempotency is not yet a gateway guarantee.
   Other AI tasks and human acceptance remain unfinished. No deployment or live provider calls.
-
-## Atomic narrative proposal persistence — October 15, 2026
-
-- Added NUMBER_EXPLANATION persistence under a scoped human unit of work. Before writing,
-  it reloads the retained trace, rebuilds the request and validates the complete request
-  against the prepared evidence; caller-substituted value mappings cannot support figures.
-- Successful output writes a proposed trace-subject narrative and node citations; unsupported
-  output writes a failed proposal with a fixed problem code and empty content/citations.
-  Both retain usage and human attribution, default to 30-day expiry and leave acceptance empty.
-- Attempt log, proposal and AUD-CMD/AUD-FACT events share the caller's transaction. Proposal
-  audit events name the trace version's visible obligation contracts and retain content/citation
-  hashes rather than narrative text. Registered the proposal audit type and unlabelled identity.
-- Real K-01 integration verifies commit, failure, rollback, request tampering, scope refusal,
-  forged value mappings, audit attribution and unchanged accounting versions. Fixed explicit
-  SQL NULL handling for the successful proposal's JSONB problem column.
-- Verification: 241 targeted tests passed, two Linux-only parser tests skipped; strict typing
-  passed for 765 sources; Ruff/diff checks pass. Logs: .run/ai-proposal-write-{final,types}.log.
-- The caller still owes fresh authorization, settings/budget admission and commit before lease
-  release. Gateway/job dispatch, public APIs, other proposal kinds and human decisions remain
-  unfinished; the full AI audit-lifecycle gate stays open. No deployment or readiness claim.
 
 ## Outstanding release verification
 
