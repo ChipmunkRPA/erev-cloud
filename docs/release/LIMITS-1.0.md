@@ -109,7 +109,11 @@ contract.read entity grants and requires a visible current or past member contra
 retained calculation trace. Tenant-only trace RLS is insufficient by itself; the same member
 check now protects completed-job recovery. Reads remain available with AI disabled and make
 no provider call. Other proposal kinds fail closed until their source authorization is built.
-This endpoint does not implement acceptance, rejection, expiry transitions or human review.
+POST /ai/proposals/{id}/reject now supports these number-explanation proposals for a human
+with current source access, a nonempty reason and the current If-Match ETag. Rejection locks
+the proposal, advances its row version and records the reviewer and audit event in one
+transaction; expired or terminal items cannot be rejected. It remains available with AI off.
+Acceptance, extraction review, expiry transitions and other proposal kinds remain unfinished.
 
 The Anthropic adapter is mock-tested, uses the official SDK, disables SDK retries and telemetry,
 and resolves secrets lazily. Contract-review and explain-narrative prompts have retained bytes,

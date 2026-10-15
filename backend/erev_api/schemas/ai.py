@@ -41,3 +41,12 @@ class AIProposalOut(BaseModel):
     updated_at: datetime
     updated_by: ActorOut
     row_version: int
+    rejected_by: ActorOut | None
+    rejected_at: datetime | None
+    rejection_reason: str | None
+
+
+class AIProposalRejectIn(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    reason: str = Field(min_length=1, max_length=4000)

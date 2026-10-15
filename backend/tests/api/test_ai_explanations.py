@@ -15,6 +15,7 @@ from erev_api.auth.keyring import KeyRing
 from erev_api.clock import FrozenClock
 from erev_api.db.session import DbContext, tenant_session
 from erev_api.db.tables import ai_model_log, ai_proposal, audit_event, job, role_assignment, tenant
+from erev_api.domain.ai import commands as ai_commands
 from erev_api.domain.ai import gateway as gateway_module
 from erev_api.domain.ai import jobs as ai_jobs
 from erev_api.domain.ai.gateway import AiGateway
@@ -23,6 +24,7 @@ from erev_api.domain.ai.retrieval import RetrievedNarrative, retrieve_narrative
 from erev_api.enums import RegistryCategory
 from erev_api.jobs.context import JobRuntime
 from erev_api.jobs.registry import run_job
+from erev_api.problems import Problem
 from sqlalchemy import func, select, text, update
 from support.http import HttpResponse, call
 from support.principals import colleague, cookie_headers, member
@@ -259,6 +261,112 @@ def test_submission_is_authorized_idempotent_and_processed_by_worker(
     with tenant_session(db, read_only=True) as session:
         assert session.scalar(select(job.c.state).where(job.c.id == changed_job)) == "FAILED"
         assert session.scalar(select(func.count()).select_from(ai_model_log)) == 1
+
+    reject_path = proposal_path + "/reject"
+    reject_body = {"reason": "  Superseded by the reviewed explanation.  "}
+
+    def reject_as(who: Any, etag: str | None = None, payload: Any = reject_body) -> HttpResponse:
+        request_headers = cookie_headers(who.token, who.csrf_token)
+        if etag is not None:
+            request_headers["If-Match"] = etag
+        return call(world.app, "POST", reject_path, json=payload, headers=request_headers)
+
+    assert reject_as(actor).status_code == 428
+    assert reject_as(reader, saved.headers["ETag"]).status_code == 403
+    assert reject_as(scoped, saved.headers["ETag"]).status_code == 404
+    assert reject_as(foreign, saved.headers["ETag"]).status_code == 404
+    assert reject_as(actor, saved.headers["ETag"], {"reason": "   "}).status_code == 422
+    assert read_as(actor).json()["status"] == "proposed"
+    # A broad ai.use session must still obey a narrower contract.read grant.
+    restricted_reader = replace(
+        world.place.principal,
+        permission_scopes={
+            **world.place.principal.permission_scopes,
+            "ai.use": "*",
+            "contract.read": frozenset({UUID(germany["id"])}),
+        },
+    )
+    with pytest.raises(Problem) as outside_source:
+        with world.place.uow(restricted_reader) as uow:
+            ai_commands.reject_proposal(
+                uow, proposal["id"], reason="Out of scope", check_version=lambda _version: None
+            )
+    assert outside_source.value.slug == "not-found"
+    # At the exact expiry boundary a still-proposed row cannot be acted on.
+    with pytest.raises(Problem) as expired:
+        with replace(world.place, clock=FrozenClock(proposal["expires_at"])).uow() as uow:
+            ai_commands.reject_proposal(
+                uow, proposal["id"], reason="Too late", check_version=lambda _version: None
+            )
+    assert expired.value.slug == "invalid-transition"
+    assert read_as(actor).json()["status"] == "proposed"
+    # Competing reviewers holding the same ETag cannot both win the transition.
+    with monkeypatch.context() as patch:
+        patch.setattr(
+            world.app.state,
+            "settings",
+            world.app.state.settings.model_copy(update={"ai_kill_switch": True}),
+        )
+        review_headers = [cookie_headers(actor.token, actor.csrf_token) for _ in range(2)]
+        for request_headers in review_headers:
+            request_headers["If-Match"] = saved.headers["ETag"]
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            futures = [
+                pool.submit(
+                    call, world.app, "POST", reject_path, json=reject_body, headers=request_headers
+                )
+                for request_headers in review_headers
+            ]
+            outcomes = [future.result(timeout=20) for future in futures]
+    assert sorted(response.status_code for response in outcomes) == [200, 412], [
+        response.text for response in outcomes
+    ]
+    rejected = next(response for response in outcomes if response.status_code == 200)
+    winning_headers = review_headers[outcomes.index(rejected)]
+    replayed_rejection = call(
+        world.app, "POST", reject_path, json=reject_body, headers=winning_headers
+    )
+    assert replayed_rejection.status_code == 200
+    assert replayed_rejection.json() == rejected.json()
+    assert rejected.json()["status"] == "rejected"
+    assert rejected.json()["rejection_reason"] == reject_body["reason"].strip()
+    assert rejected.json()["rejected_by"]["id"] == str(actor.member.user_id)
+    assert rejected.json()["content"] == saved.json()["content"]
+    assert rejected.json()["row_version"] == saved.json()["row_version"] + 1
+    assert reject_as(actor, rejected.headers["ETag"]).status_code == 409
+    assert read_as(actor).json() == rejected.json()
+    with tenant_session(db, read_only=True) as session:
+        events = (
+            session.execute(
+                select(audit_event).where(
+                    audit_event.c.action == "ai_proposal.reject",
+                    audit_event.c.object_id == proposal["id"],
+                )
+            )
+            .mappings()
+            .all()
+        )
+        assert len(events) == 1
+        assert events[0]["actor_id"] == actor.member.user_id
+        assert session.scalar(select(func.count()).select_from(ai_model_log)) == 1
+    assert len(observed) == 1
+
+    # A cached successful response must not bypass subsequently narrowed source access.
+    with tenant_session(db) as session:
+        session.execute(
+            update(role_assignment)
+            .where(role_assignment.c.membership_id == actor.member.membership_id)
+            .values(
+                valid_to=clock.now(),
+                revoked_at=clock.now(),
+                revoked_by=actor.member.user_id,
+                revoked_by_kind="USER",
+            )
+        )
+    assign(actor.member, "viewer", entity_ids=[UUID(germany["id"])])
+    revoked_replay = call(world.app, "POST", reject_path, json=reject_body, headers=winning_headers)
+    assert revoked_replay.status_code == 404, revoked_replay.text
+    assert read_as(actor).status_code == 404
 
 
 def test_disable_serializes_with_explanation_admission(world: World, clock: FrozenClock) -> None:

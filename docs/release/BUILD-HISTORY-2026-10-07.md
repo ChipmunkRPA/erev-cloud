@@ -4858,3 +4858,20 @@ cleanup in the shared database session kernel was also repaired and regression-t
   final gateway recovery verification: 12 passed (57.50s), .run/ai-unknown-usage-recovery.log.
   Strict typing passed for 771 sources; Ruff/diff checks passed. Logs:
   .run/ai-unknown-usage-{final,types}.log. No deployment or production-readiness claim.
+
+## Provider response usage preservation — October 15, 2026
+
+- Anthropic message usage now validates strict nonnegative counters and includes cache-read
+  plus cache-creation input tokens in the total. Optional absent/null cache fields count as zero;
+  output/cache breakdowns are not counted twice, and stored totals must fit int32.
+- Rejected response metadata/content preserves valid usage via ProviderError. Missing/malformed
+  usage remains UNKNOWN; SDK exceptions never invent counts. No raw response body or fabricated
+  response hash is retained on these errors.
+- Mocked adapter-to-gateway checks verify a failed proposal links to reported usage and counts
+  40 tokens, while invalid counters produce unknown usage and keep tenant admission blocked.
+  Unit coverage includes cache totals, invalid/absent counters, overflow, invalid metadata and
+  malformed content. Regression: 312 passed, two Linux parser-limit skips (67.12s); typing passed
+  for 769 sources; final adapter/import-boundary checks: 69 passed (10.23s); Ruff/diff passed.
+  Logs: .run/ai-adapter-usage-{final,types,boundary}.log.
+- No live provider calls or deployment. Unknown-usage reconciliation and the remaining product,
+  accounting and release-verification gates are still open; this is not production readiness.

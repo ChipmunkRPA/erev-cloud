@@ -12,6 +12,7 @@ from erev_api.api.deps import (
     CommandContext,
     GuardedRoute,
     KernelDeps,
+    assert_version,
     command,
     kernel_deps,
     problem_responses,
@@ -22,7 +23,7 @@ from erev_api.auth.dependencies import require
 from erev_api.auth.principal import RequestContext
 from erev_api.domain.ai import commands, queries
 from erev_api.domain.platform.jobs import job_out_of
-from erev_api.schemas.ai import AIExplanationIn, AIProposalOut
+from erev_api.schemas.ai import AIExplanationIn, AIProposalOut, AIProposalRejectIn
 from erev_api.schemas.common import JobOut
 from erev_api.uow import UnitOfWork
 
@@ -87,3 +88,48 @@ def proposals_get(
     out = queries.proposal(ctx.principal, id)
     response.headers["ETag"] = row_etag(out.row_version)
     return out
+
+
+def _proposal_reject_access(
+    id: UUID,
+    ctx: Annotated[RequestContext, Depends(require("ai.use"))],
+) -> None:
+    """Check current source access before command middleware can replay a saved response."""
+    queries.proposal(ctx.principal, id)
+
+
+@router.post(
+    "/ai/proposals/{id}/reject",
+    operation_id="ai_proposals_reject",
+    dependencies=[Depends(_proposal_reject_access)],
+    response_model=AIProposalOut,
+    responses=problem_responses(
+        "unauthenticated",
+        "session-expired",
+        "forbidden",
+        "not-found",
+        "validation-failed",
+        "invalid-transition",
+        "precondition-required",
+        "precondition-failed",
+        "idempotency-key-reused",
+        "idempotency-in-progress",
+    ),
+)
+def proposals_reject(
+    id: UUID,
+    body: AIProposalRejectIn,
+    cmd: Annotated[CommandContext, Depends(command("ai.use", precondition="row"))],
+    deps: Annotated[KernelDeps, Depends(kernel_deps)],
+) -> Response:
+    """Reject a number explanation with a reason and its current row-version ETag."""
+
+    def handle(uow: UnitOfWork) -> AIProposalOut:
+        return commands.reject_proposal(
+            uow,
+            id,
+            reason=body.reason,
+            check_version=lambda actual: assert_version(cmd.expected_version, actual),
+        )
+
+    return run_command(cmd, deps, handle, etag=lambda result: row_etag(result.row_version))

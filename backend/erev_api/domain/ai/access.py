@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import replace
+from typing import Literal
 from uuid import UUID
 
-from sqlalchemy import ColumnElement, or_, select
+from sqlalchemy import ColumnElement, or_, select, true
 from sqlalchemy.orm import Session
 
 from erev_api.auth.permissions import effective_grants
@@ -134,7 +135,9 @@ def narrative_reader(principal: Principal) -> Principal:
     return replace(principal, entity_scope="*" if scope == "*" else tuple(sorted(scope)))
 
 
-def visible_narrative_trace() -> ColumnElement[bool]:
+def visible_narrative_trace(
+    scope: Literal["*"] | tuple[UUID, ...] = "*",
+) -> ColumnElement[bool]:
     """Match Explain's current/past member access; calc_trace itself is tenant-only RLS."""
     members = (
         select(combination_group_member.c.contract_id)
@@ -148,6 +151,7 @@ def visible_narrative_trace() -> ColumnElement[bool]:
         select(contract.c.id)
         .where(
             contract.c.tenant_id == calc_trace.c.tenant_id,
+            true() if scope == "*" else contract.c.contracting_entity_id.in_(scope),
             or_(
                 contract.c.combination_group_id == calc_trace.c.combination_group_id,
                 contract.c.id.in_(members),

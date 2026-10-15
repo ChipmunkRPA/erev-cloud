@@ -2,6 +2,26 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Number-explanation rejection — October 15, 2026
+
+- Added POST /ai/proposals/{id}/reject for supported number explanations. A human with current
+  source access supplies a nonblank reason and current If-Match ETag. The locked transition
+  records reviewer/time/reason, increments row version and audits once in the same transaction.
+  Expired or terminal items cannot be rejected. No provider or accounting command is called.
+- Source permission intersection is explicit in SQL inside the existing command transaction.
+  A source-access dependency runs before idempotency replay, preventing cached content from
+  bypassing later scope restrictions. Rejection remains available while AI is disabled.
+- Verification: all 19 AI domain regressions passed; both final API cases passed, including
+  overlapping permissions, expiry boundary, simultaneous reviewers (200/412), replay, narrowing
+  access after success, reason/precondition validation and one human audit event. 54 unit/layer
+  checks and 25 final route/layer checks passed. OpenAPI generation, full typecheck (925 Python
+  sources plus frontend), focused typing (776 sources), and lint passed. Logs:
+  .run/ai-reject-{regressions,api-verified,unit,architecture-final,openapi-final,typecheck,
+  types-verified,lint-final}.log. Early tests caught a missing row-version increment; corrected.
+  Expiry and revocation fixtures were corrected to use the UOW clock and revocation metadata.
+- Acceptance, extraction review, other proposal kinds, listing, expiry processing and broader
+  release gates remain open. No deployment or live provider calls; no production sign-off.
+
 ## Retained number-explanation reads — October 15, 2026
 
 - Added GET /ai/proposals/{id} for NUMBER_EXPLANATION evidence with content/citations,
@@ -221,23 +241,6 @@
 - Details: docs/release/VERIFICATION-2026-10-15.md. Public visibility, main default, research
   exclusions and noncommercial licence verified. These development checks are not full CI,
   independent accounting sign-off or production readiness. No deployment.
-
-## Provider response usage preservation — October 15, 2026
-
-- Anthropic message usage now validates strict nonnegative counters and includes cache-read
-  plus cache-creation input tokens in the total. Optional absent/null cache fields count as zero;
-  output/cache breakdowns are not counted twice, and stored totals must fit int32.
-- Rejected response metadata/content preserves valid usage via ProviderError. Missing/malformed
-  usage remains UNKNOWN; SDK exceptions never invent counts. No raw response body or fabricated
-  response hash is retained on these errors.
-- Mocked adapter-to-gateway checks verify a failed proposal links to reported usage and counts
-  40 tokens, while invalid counters produce unknown usage and keep tenant admission blocked.
-  Unit coverage includes cache totals, invalid/absent counters, overflow, invalid metadata and
-  malformed content. Regression: 312 passed, two Linux parser-limit skips (67.12s); typing passed
-  for 769 sources; final adapter/import-boundary checks: 69 passed (10.23s); Ruff/diff passed.
-  Logs: .run/ai-adapter-usage-{final,types,boundary}.log.
-- No live provider calls or deployment. Unknown-usage reconciliation and the remaining product,
-  accounting and release-verification gates are still open; this is not production readiness.
 
 ## Outstanding release verification
 

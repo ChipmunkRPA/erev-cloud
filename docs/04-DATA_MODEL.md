@@ -6346,7 +6346,13 @@ status, source and job IDs, model-log ID, expiry/problem, API-S-Actor creation/u
 row version with ETag. Each read requires overlapping `ai.use` and `contract.read` entity scope
 and a visible current or past member contract of that trace's combination group, as Explain does.
 Other proposal kinds return not-found until their source authorization exists. Disabling AI does
-not revoke evidence reads. Listing and review commands remain in the planned API scope.
+not revoke evidence reads. `POST /ai/proposals/{id}/reject` supports the same number-explanation evidence: request
+`{reason}` (nonblank, at most 4000 characters), current row-version `If-Match`, normal command
+idempotency and permission `ai.use` plus current source read access. Only a human can reject an
+unexpired `proposed` item; the row lock, reviewer/time/reason, row-version increment and
+`ai_proposal.reject` audit event share one transaction. The response is the updated proposal
+with ETag. AI disable does not prevent rejection. Listing, acceptance and other proposal kinds
+remain in the planned API scope.
 
 SCIM (`/scim/v2/*`) and SAML routes are reserved and not built (REQ-PLT-007).
 

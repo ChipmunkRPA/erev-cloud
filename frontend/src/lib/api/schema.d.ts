@@ -391,6 +391,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/ai/proposals/{id}/reject": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Proposals Reject
+     * @description Reject a number explanation with a reason and its current row-version ETag.
+     */
+    post: operations["ai_proposals_reject"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/api-clients": {
     parameters: {
       query?: never;
@@ -7798,6 +7818,11 @@ export interface components {
       problem: {
         [key: string]: unknown;
       } | null;
+      /** Rejected At */
+      rejected_at: string | null;
+      rejected_by: components["schemas"]["ActorOut"] | null;
+      /** Rejection Reason */
+      rejection_reason: string | null;
       /** Row Version */
       row_version: number;
       status: components["schemas"]["AiProposalStatus"];
@@ -7817,6 +7842,11 @@ export interface components {
        */
       updated_at: string;
       updated_by: components["schemas"]["ActorOut"];
+    };
+    /** AIProposalRejectIn */
+    AIProposalRejectIn: {
+      /** Reason */
+      reason: string;
     };
     /**
      * AccessPackCreateIn
@@ -24657,6 +24687,105 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  ai_proposals_reject: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description API-C-04: one key per user intent (8-255 characters); a repeat with the same key and body replays the stored response, another body is 422 idempotency-key-reused. */
+        "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+      };
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["AIProposalRejectIn"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AIProposalOut"];
+        };
+      };
+      /** @description Problem: unauthenticated, session-expired */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: not-found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: invalid-transition, idempotency-in-progress */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: precondition-failed */
+      412: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: validation-failed, idempotency-key-reused */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: precondition-required */
+      428: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
         };
       };
     };

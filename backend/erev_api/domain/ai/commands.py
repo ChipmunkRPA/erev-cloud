@@ -2,21 +2,25 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import datetime
 from typing import Final
 from uuid import UUID
 
 from sqlalchemy import select, update
 
+from erev_api.audit.writer import record
 from erev_api.auth import mfa
 from erev_api.db.tables import job, tenant
 from erev_api.db.transitions import apply
 from erev_api.domain.ai.access import AIAccessRefused
 from erev_api.domain.ai.preparation import PreparationRefused
+from erev_api.domain.ai.queries import proposal_in
 from erev_api.domain.ai.retrieval import retrieve_for_user
 from erev_api.domain.ai.settings import AISettingsRefused, load_settings
 from erev_api.enums import JobKind, JobState, PrincipalKind
 from erev_api.problems import Problem
+from erev_api.schemas.ai import AIProposalOut
 from erev_api.schemas.explain import ExplainObjectType
 from erev_api.uow import UnitOfWork
 
@@ -168,3 +172,46 @@ def request_explanation(
         },
     )
     return UUID(str(requested["id"]))
+
+
+def reject_proposal(
+    uow: UnitOfWork, proposal_id: UUID, *, reason: str, check_version: Callable[[int], None]
+) -> AIProposalOut:
+    """Reject retained evidence as a human, with no provider or accounting side effects."""
+    principal = uow.principal
+    if principal.kind is not PrincipalKind.USER or principal.id is None:
+        raise Problem("forbidden")
+    reason = reason.strip()
+    if not reason or len(reason) > 4000:
+        raise Problem("validation-failed", "Provide a rejection reason.")
+    current = proposal_in(uow.session, principal, proposal_id, lock=True)
+    check_version(current.row_version)
+    if current.status != "proposed" or current.expires_at <= uow.now:
+        raise Problem("invalid-transition", "Only an unexpired proposed item can be rejected.")
+    apply(
+        uow.session,
+        "ai_proposal",
+        proposal_id,
+        to_status="rejected",
+        expected_status="proposed",
+        expected_row_version=current.row_version,
+        set_values={
+            "row_version": current.row_version + 1,
+            "rejected_by": principal.id,
+            "rejected_at": uow.now,
+            "rejection_reason": reason,
+            "updated_by": principal.id,
+            "updated_by_kind": principal.kind.value,
+            "updated_at": uow.now,
+        },
+    )
+    record(
+        uow,
+        action="ai_proposal.reject",
+        object_type="ai_proposal",
+        object_id=proposal_id,
+        before={"status": "proposed"},
+        after={"status": "rejected"},
+        detail={"reason": reason},
+    )
+    return proposal_in(uow.session, principal, proposal_id)
