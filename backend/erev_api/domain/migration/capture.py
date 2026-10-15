@@ -41,7 +41,7 @@ from decimal import Decimal
 from typing import Any, Final, Protocol
 from uuid import UUID
 
-from erev_engine.errors import EngineError
+from erev_engine.errors import EngineError, PrincipalAgentInputError
 from erev_engine.upgrade import encode_input, raw_digest
 from sqlalchemy import and_, or_, select
 
@@ -868,6 +868,11 @@ class PlatformApplier:
             bundle = bundles.build(session, group_id, uow.now, (), ComputationTrigger.COMMAND)
             output = computation.default_engine()(bundle)
             stored = computation.persist(uow, bundle, output)
+        except PrincipalAgentInputError as error:
+            raise _refuse(
+                f"Contract {contract.external_id} needs a reviewed principal-agent assessment "
+                "with valid gross-to-net terms before migration computation."
+            ) from error
         except EngineError as error:
             raise computation_refusal(contract.external_id, error) from error
         if POPULATION_BOOK not in dict(stored.get("contract_version_ids") or {}):

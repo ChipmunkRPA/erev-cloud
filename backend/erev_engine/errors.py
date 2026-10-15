@@ -11,7 +11,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-__all__ = ["EngineError", "MaterialRightInputError"]
+__all__ = ["EngineError", "MaterialRightInputError", "PrincipalAgentInputError"]
 
 
 class EngineError(Exception):
@@ -65,4 +65,12 @@ class MaterialRightInputError(ValueError):
 
     Callers accepting native terms can report this as input validation without treating
     unrelated ValueError failures inside the engine as user-correctable input.
+    """
+
+
+class PrincipalAgentInputError(ValueError):
+    """Missing or malformed reviewed gross-to-net terms for an agent line (CV-45).
+
+    This remains a ValueError for engine callers, but application boundaries can distinguish
+    correctable assessment inputs from unexpected implementation failures.
     """

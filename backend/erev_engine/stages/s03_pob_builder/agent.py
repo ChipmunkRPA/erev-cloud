@@ -16,7 +16,7 @@ from typing import Final
 
 from erev_engine.bundle import ContractInput, JudgementInput
 from erev_engine.enums import PrincipalAgent
-from erev_engine.errors import EngineError
+from erev_engine.errors import EngineError, PrincipalAgentInputError
 from erev_engine.money import format_exact, largest_remainder, round_half_up, to_fraction
 from erev_engine.stages.s01_canonicalize import contract_subject_key, obligation_subject_key
 from erev_engine.stages.s02_contract_identification import IdentifiedState
@@ -50,7 +50,7 @@ def apply(
     ``largest_remainder(P_minor, [ρ, 1 − ρ], [retained, supplier])[0]``; ``FIXED_FEE`` → amount;
     ``SUPPLIER_COST`` → P − amount) becomes the stated price, ``gross_amount_memo`` = P, and the
     supplier share P − R leaves the transaction price. An agent line without a reviewed basis
-    raises ``ValueError`` (CV-45); R outside [0, P] raises
+    raises ``PrincipalAgentInputError`` (a ``ValueError``, CV-45); R outside [0, P] raises
     ``EngineError("ENGINE_INVARIANT_VIOLATED")`` (S03-INV-05).
     """
     header = st.canonical.contracts[draft.contract_key].header
@@ -76,12 +76,14 @@ def apply(
     if conclusion != PrincipalAgent.AGENT:
         return dataclasses.replace(draft, principal_agent=conclusion)
     if record is None:
-        raise ValueError(
+        raise PrincipalAgentInputError(
             f"{draft.subject_key}: an agent line needs a reviewed PRINCIPAL_AGENT record"
         )
     basis = record.outcome.get("gross_to_net_basis")
     if basis not in BASES:
-        raise ValueError(f"{record.judgement_key}: gross_to_net_basis is not a S03-R-09 basis")
+        raise PrincipalAgentInputError(
+            f"{record.judgement_key}: gross_to_net_basis is not a S03-R-09 basis"
+        )
     gross = draft.stated_price
     minor_unit = ctx.currencies[ctx.txn_currency].minor_unit
     scale: int = 10**minor_unit
@@ -224,8 +226,13 @@ def _record(header: ContractInput, book_code: str, draft: PobDraft) -> Judgement
 def _member(record: JudgementInput, name: str) -> Fraction:
     value = record.outcome.get(name)
     if value is None:
-        raise ValueError(f"{record.judgement_key}: outcome member {name} is required")
-    return to_fraction(value)
+        raise PrincipalAgentInputError(f"{record.judgement_key}: outcome member {name} is required")
+    try:
+        return to_fraction(value)
+    except (ValueError, TypeError) as error:
+        raise PrincipalAgentInputError(
+            f"{record.judgement_key}: outcome member {name} must be an exact number"
+        ) from error
 
 
 def _latest_status(st: IdentifiedState, contract_key: str) -> str:

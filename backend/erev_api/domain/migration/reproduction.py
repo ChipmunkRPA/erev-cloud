@@ -8,7 +8,7 @@ from typing import Any
 
 from erev_engine.bundle import OutputBundle
 from erev_engine.canonical import sha256_hex
-from erev_engine.errors import EngineError
+from erev_engine.errors import EngineError, PrincipalAgentInputError
 from erev_engine.upgrade import decode_input
 
 from erev_api.domain.contracts import computation
@@ -59,6 +59,8 @@ def verify(
             raise _refuse("The captured reproduction population contains a duplicate contract.")
         try:
             output = run(bundle)
+        except PrincipalAgentInputError as error:
+            raise _refuse(f"Retained agent assessment inputs are incomplete for {key}.") from error
         except EngineError as error:
             raise _refuse(f"Retained output replay failed for {key}: {error.code}.") from error
         if output.sha256() != str(row["output_sha256"]):
@@ -74,6 +76,10 @@ def verify(
             applied = capture.platform_applier.apply(child, batch=batch, contract=contract)
             try:
                 fresh = run(decode_input(applied.input_evidence))
+            except PrincipalAgentInputError as error:
+                raise _refuse(
+                    f"Fresh agent assessment inputs are incomplete for {contract.external_id}."
+                ) from error
             except EngineError as error:
                 raise _refuse(
                     f"Fresh output replay failed for {contract.external_id}: {error.code}."

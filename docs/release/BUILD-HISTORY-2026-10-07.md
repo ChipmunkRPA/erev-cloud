@@ -3825,3 +3825,21 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   retained, and neither research-harness nor docs/research tracked. Full CI on older
   165d63c remains live; release acceptance and accounting sign-off remain outstanding.
   No deployment. Publish reviewed changes directly to main.
+
+## Native option creation failure recovery — October 14, 2026
+
+- Reproduced an injected engine crash being returned as cached 422 during native option
+  entry. Creation now aborts FAILED computation with sanitized 500, rolls back its facts
+  and abandons that idempotency attempt. The identical request/key succeeds after recovery.
+- Known incomplete option inputs/missing dated likelihood pins use a specific ValueError
+  subtype, caught as validation by native entry. Unrelated ValueError crashes are not
+  classified as bad terms. Missing approved likelihood and business refusals retain 422.
+- The regression checks unchanged DRAFT/head, terms, computations, events, ledger and
+  exceptions after failure, then successful retry/replay and independent activation review.
+  API entry/invalid/discount cases plus the stage-03 suite: 45 passed (62.35s).
+- Full typecheck (880 source files plus frontend), strict test Mypy, Ruff and diff checks
+  pass. Logs: .run/material-right-create-retry-baseline.log,
+  .run/material-right-create-retry-fixed.log and .run/material-right-create-retry-types.log.
+- Full CI on older 165d63c remains live at 34%. Exercise, correction, migration/UI,
+  broader release acceptance and independent accounting review remain open. No deployment;
+  publish reviewed changes directly to main.

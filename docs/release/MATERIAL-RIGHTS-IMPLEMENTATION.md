@@ -610,5 +610,26 @@ This is preflight only. Policy publication, report validation, activation admiss
 locking through approval/live creation, independent reviewer/MFA and the public promotion route
 still need implementation. Converted-option import remains guarded. During negative testing,
 changing a product to AGENT without a reviewed PRINCIPAL_AGENT record exposed a raw ValueError
-from stage 03; typed admission/error handling for that case remains outstanding. No deployment
+from stage 03; the following entry records its typed error-handling correction. No deployment
 or production/accounting sign-off is claimed.
+
+## Principal-agent reproduction input refusal, October 14
+
+Missing reviewed principal-agent records, unsupported gross-to-net bases, absent rate/amount
+members and malformed exact numbers now raise PrincipalAgentInputError (a ValueError subclass
+preserving CV-45). Migration capture returns a named 422 validation problem for these known
+input failures; retained/fresh replay also reports a named refusal. Gross-to-net arithmetic and
+S03-INV-05 range invariants remain unchanged. Unexpected engine ValueErrors still propagate;
+they are not relabelled as correctable user inputs.
+
+The real converted-option reproduction witness changes the current product to AGENT without
+a review, asserts 422, and verifies rollback of contracts, option terms and child audit events.
+A separate injected unexpected ValueError also rolls back and remains unexpected; the original
+review basis still reproduces afterward. Specialist/agent-billing/capture checks: 46 passed
+(16.49s); final PostgreSQL/architecture checks: 66 passed (31.00s), including the added unexpected
+failure regression. These runs overlap in three database cases. Production plus database-test
+strict typing passes (888 sources), and Ruff passes. Direct strict checking of the older
+specialist test file reports 28 unchanged helper typing diagnostics; the same errors reproduce
+from the prior committed file. Evidence: `.run/agent-input-refusal-*.log` and
+`.run/agent-specialist-baseline-types.log`. This does not implement principal-agent review entry,
+promotion approval, activation admission, or accounting sign-off.

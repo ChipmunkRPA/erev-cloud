@@ -2,6 +2,21 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Named principal-agent migration refusal — October 14, 2026
+
+- Stage 03 now distinguishes incomplete reviewed agent terms with PrincipalAgentInputError,
+  preserving the ValueError contract. Migration capture maps these failures to named 422
+  validation; output replay refuses by name. Arithmetic and range invariants are unchanged.
+- Real PostgreSQL reproduction verifies an unreviewed AGENT product refuses and rolls back
+  temporary contracts/options/audits. An injected unexpected ValueError remains unexpected,
+  rolls back, and leaves the original review basis reproducible.
+- Engine/agent-billing/capture suite: 46 passed (16.49s); final PG/architecture suite: 66 passed
+  (31.00s), with three overlapping database cases. Strict production plus PG-test typing
+  passes (888 sources); Ruff passes. The specialist test's 28 existing helper typing errors
+  reproduce unchanged from prior main. Logs: .run/agent-input-refusal-*.log.
+- Promotion approval, policy/report/activation checks and independent accounting sign-off
+  remain outstanding. No deployment; verified changes published directly to main.
+
 ## Complete opening output reproduction — October 14, 2026
 
 - Promotion preflight replays verified retained inputs and requires the captured full output
@@ -217,24 +232,6 @@
   fixture corrections covered select events, currency reference and the API test filename.
 - This is component/API evidence, not live full-browser accounting acceptance. Governed
   exercise/correction, migration and release/accountant sign-off remain open. Build passed; no deployment.
-
-## Native option creation failure recovery — October 14, 2026
-
-- Reproduced an injected engine crash being returned as cached 422 during native option
-  entry. Creation now aborts FAILED computation with sanitized 500, rolls back its facts
-  and abandons that idempotency attempt. The identical request/key succeeds after recovery.
-- Known incomplete option inputs/missing dated likelihood pins use a specific ValueError
-  subtype, caught as validation by native entry. Unrelated ValueError crashes are not
-  classified as bad terms. Missing approved likelihood and business refusals retain 422.
-- The regression checks unchanged DRAFT/head, terms, computations, events, ledger and
-  exceptions after failure, then successful retry/replay and independent activation review.
-  API entry/invalid/discount cases plus the stage-03 suite: 45 passed (62.35s).
-- Full typecheck (880 source files plus frontend), strict test Mypy, Ruff and diff checks
-  pass. Logs: .run/material-right-create-retry-baseline.log,
-  .run/material-right-create-retry-fixed.log and .run/material-right-create-retry-types.log.
-- Full CI on older 165d63c remains live at 34%. Exercise, correction, migration/UI,
-  broader release acceptance and independent accounting review remain open. No deployment;
-  publish reviewed changes directly to main.
 
 ## Outstanding release verification
 

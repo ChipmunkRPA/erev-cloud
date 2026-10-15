@@ -391,6 +391,19 @@ def test_platform_applier_captures_converted_option_and_rolls_back(
         assert session.execute(select(material_right.c.id)).first() is None
         assert tuple(uow.audit_events) == before
 
+        # Missing reviewed agent terms are correctable input, not an unhandled server error.
+        nested = session.begin_nested()
+        try:
+            session.execute(update(product).values(principal_agent="AGENT"))
+            with pytest.raises(Problem, match="reviewed principal-agent") as agent_refusal:
+                promotion_review.review_basis(uow, batch["id"])
+            assert agent_refusal.value.to_json(instance="agent-input")["status"] == 422
+        finally:
+            nested.rollback()
+        assert session.execute(select(contract.c.id)).first() is None
+        assert session.execute(select(material_right.c.id)).first() is None
+        assert tuple(uow.audit_events) == before
+
         # Enabling another book changes the full result even if ASC606 reconciliation
         # still ties. It must require a new capture, not silently extend approved outputs.
         nested = session.begin_nested()
@@ -449,6 +462,21 @@ def test_platform_applier_captures_converted_option_and_rolls_back(
         assert session.execute(select(material_right.c.id)).first() is None
         assert tuple(uow.audit_events) == before
         assert promotion_review.review_basis(uow, batch["id"]) == basis
+
+        def unexpected_failure(value: InputBundle) -> OutputBundle:
+            if value.sha256() != retained_hash:
+                raise ValueError("unexpected engine implementation fault")
+            return engine(value)
+
+        with monkeypatch.context() as patch:
+            patch.setattr(computation, "default_engine", lambda: unexpected_failure)
+            with pytest.raises(ValueError, match="unexpected engine implementation fault"):
+                promotion_review.review_basis(uow, batch["id"])
+        assert session.execute(select(contract.c.id)).first() is None
+        assert session.execute(select(material_right.c.id)).first() is None
+        assert tuple(uow.audit_events) == before
+        assert promotion_review.review_basis(uow, batch["id"]) == basis
+
         source_rows = [item.source for item in opening.rows]
         keep_parameters = BatchParameters(material_right_convention="KEEP_QUANTITY_CONVENTION")
         keep = opening_balances.stage(source_rows, CUTOVER, keep_parameters)

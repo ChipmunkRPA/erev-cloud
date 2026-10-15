@@ -39,7 +39,7 @@ from erev_engine.enums import (
     SatisfactionPattern,
     WarrantyType,
 )
-from erev_engine.errors import EngineError
+from erev_engine.errors import EngineError, PrincipalAgentInputError
 from erev_engine.stages import (
     s01_canonicalize,
     s02_contract_identification,
@@ -539,6 +539,32 @@ def test_ex_03_c_agent_net() -> None:
         )
     assert raised.value.code == "ENGINE_INVARIANT_VIOLATED"
     assert raised.value.detail["invariant"] == "S03-INV-05"
+
+
+@pytest.mark.parametrize(
+    "outcome",
+    [
+        {"conclusion": "AGENT"},
+        {"conclusion": "AGENT", "gross_to_net_basis": "UNKNOWN"},
+        {"conclusion": "AGENT", "gross_to_net_basis": "COMMISSION_RATE"},
+        {"conclusion": "AGENT", "gross_to_net_basis": "FIXED_FEE"},
+        {"conclusion": "AGENT", "gross_to_net_basis": "SUPPLIER_COST"},
+        {"conclusion": "AGENT", "gross_to_net_basis": "COMMISSION_RATE", "rate": "1e-1"},
+        {"conclusion": "AGENT", "gross_to_net_basis": "FIXED_FEE", "amount": "NaN"},
+    ],
+)
+def test_agent_incomplete_review_has_typed_input_refusal(outcome: dict[str, str]) -> None:
+    with pytest.raises(PrincipalAgentInputError):
+        pob_only(marketplace(outcome))
+
+
+def test_agent_without_review_has_typed_input_refusal() -> None:
+    value = marketplace({"conclusion": "AGENT"}, principal_agent="AGENT")
+    value = dataclasses.replace(
+        value, contracts=tuple(dataclasses.replace(item, judgements=()) for item in value.contracts)
+    )
+    with pytest.raises(PrincipalAgentInputError, match="reviewed PRINCIPAL_AGENT"):
+        pob_only(value)
 
 
 def test_s03_r09_principal_agent_not_assessed() -> None:
