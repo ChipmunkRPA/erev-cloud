@@ -2,6 +2,14 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## SSP override entity context — October 15, 2026
+
+- New override previews retain the contract and source-book entities, all-entity scope and
+  mismatch indicator; the approval table names them explicitly. Older previews stay unchanged.
+- Source-book access and approved-book scope protections remain in force. Cross-entity pricing
+  policy and additional-review requirements remain open; this change makes the facts visible.
+- Verification is recorded in docs/release/CI-2026-10-15.md. No deployment.
+
 ## CSV acceptance and side-letter evidence — October 15, 2026
 
 - CSV v2 already supports these terms. New PostgreSQL regressions verify approved booking and

@@ -32,7 +32,7 @@ from sqlalchemy import and_, func, select
 from support.db import TestDatabase
 from support.http import HttpResponse
 from support.principals import Actor, colleague, enrolled
-from support.reference import approve, assign, fields, post
+from support.reference import approve, assign, fields, get, patch, post
 from tests.domain.ssp.test_calculator import ENTERPRISE, SSP_BOOKS, VERSIONS, attach, submit
 from tests.domain.ssp.test_calculator_reach import World as ReachWorld
 from tests.domain.ssp.test_calculator_reach import built
@@ -50,6 +50,7 @@ class World:
     reach: ReachWorld
     dora: Actor  # Revenue Accountant of AVM-DE alone
     de_obligation: UUID  # O1 of SF-ORD-30101, the contract of AVM-DE
+    us_book: str
     us_version: str  # US-2026, the approved version of A-US-ONLY, the book of AVM-US
 
 
@@ -120,6 +121,7 @@ def world(app: FastAPI, keyring: KeyRing, clock: FrozenClock, app_settings: Sett
         reach=reach,
         dora=enrolled(app, clock, someone),
         de_obligation=UUID(str(de_obligation)),
+        us_book=str(book.json()["id"]),
         us_version=us_version,
     )
 
@@ -167,6 +169,15 @@ def test_ssp_entity_scope_1_an_override_names_a_version_its_requester_may_read(
         body = {"ssp_book_version_id": version_id, "justification": JUSTIFICATION}
         return post(app, path, actor, body)
 
+    def preview_of(response: HttpResponse) -> dict[str, Any]:
+        request_id = response.json()["approval_request_id"]
+        detail = get(app, f"{APPROVALS}/{request_id}", world.reach.base.priya)
+        assert detail.status_code == 200, detail.text
+        file_id = detail.json()["impact_preview"]["file_id"]
+        content = get(app, f"/api/v1/files/{file_id}/content", world.reach.base.priya)
+        assert content.status_code == 200, content.text
+        return dict(content.json()["after"])
+
     before = written(world)
     unknown = asked(world.dora, NOBODY)
     assert (unknown.status_code, fields(unknown)) == NOT_A_VERSION, unknown.text
@@ -178,6 +189,11 @@ def test_ssp_entity_scope_1_an_override_names_a_version_its_requester_may_read(
     hers = asked(world.dora, world.reach.base.h1_id)
     assert hers.status_code == 200, hers.text
     assert set(hers.json()) == {"approval_request_id"}
+    global_preview = preview_of(hers)
+    assert global_preview["contracting_entity_code"] == "AVM-DE"
+    assert global_preview["ssp_book_entity_code"] is None
+    assert global_preview["ssp_book_all_entities"] is True
+    assert global_preview["ssp_entity_mismatch"] is False
     withdrawn = post(
         app,
         f"{APPROVALS}/{hers.json()['approval_request_id']}/withdraw",
@@ -188,4 +204,44 @@ def test_ssp_entity_scope_1_an_override_names_a_version_its_requester_may_read(
     # ... and the member of every entity names the version of AVM-US's book, as before.
     whole = asked(world.reach.maya, world.us_version)
     assert whole.status_code == 200, whole.text
+    cross_entity_preview = preview_of(whole)
+    assert cross_entity_preview["contracting_entity_code"] == "AVM-DE"
+    assert cross_entity_preview["ssp_book_entity_code"] == "AVM-US"
+    assert cross_entity_preview["ssp_book_all_entities"] is False
+    assert cross_entity_preview["ssp_entity_mismatch"] is True
     assert written(world)[0] == before[0] + 2
+
+    # The reviewed scope cannot be moved after the version is approved.
+    book_path = f"{SSP_BOOKS}/{world.us_book}"
+    book = get(app, book_path, world.reach.maya)
+    assert book.status_code == 200, book.text
+    changed = patch(
+        app,
+        book_path,
+        world.reach.maya,
+        {"entity_code": "AVM-DE"},
+        if_match=f'"r{book.json()["row_version"]}"',
+    )
+    assert (changed.status_code, fields(changed)) == (422, [("entity_code", "DB-05")]), changed.text
+    approved = approve(app, whole.json()["approval_request_id"], world.reach.base.priya)
+    assert (approved.status_code, approved.json()["status"]) == (200, "APPROVED"), approved.text
+
+    with tenant_session(_everyone(world.reach), read_only=True) as session:
+        us_obligation = session.execute(
+            select(obligation.c.id)
+            .join(contract, contract.c.id == obligation.c.contract_id)
+            .where(contract.c.external_id == "SF-ORD-20101")
+        ).scalar_one()
+    same_entity = post(
+        app,
+        f"{OBLIGATIONS}/{us_obligation}/request-ssp-override",
+        world.reach.maya,
+        {"ssp_book_version_id": world.us_version, "justification": JUSTIFICATION},
+    )
+    assert same_entity.status_code == 200, same_entity.text
+    same_preview = preview_of(same_entity)
+    assert (
+        same_preview["contracting_entity_code"] == same_preview["ssp_book_entity_code"] == "AVM-US"
+    )
+    assert same_preview["ssp_book_all_entities"] is False
+    assert same_preview["ssp_entity_mismatch"] is False

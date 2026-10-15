@@ -684,6 +684,11 @@ def request_ssp_override(
         version_label=label,
         justification=justification,
     )
+    proposal.update(
+        subjects.ssp_override_entity_context(
+            session, contract_id=UUID(str(current["id"])), version_id=ssp_book_version_id
+        )
+    )
     before = {"ssp_book_version_ids": subjects.obligation_ssp_pins(session, obligation_id)}
     request = approvals.submit(
         uow,

@@ -653,6 +653,51 @@ describe("SF-12:request and REQ-UX-012", () => {
     ]);
   });
 
+  it("shows SSP book entity mismatches in the approval review table", async () => {
+    const document = {
+      before: {},
+      after: {
+        contracting_entity_code: "AVM-DE",
+        ssp_book_entity_code: "AVM-US",
+        ssp_book_all_entities: false,
+        ssp_entity_mismatch: true,
+      },
+    };
+    const details = fieldChanges(document);
+    expect(details.map(({ field, proposed }) => [field, proposed])).toEqual([
+      ["Contracting entity", "AVM-DE"],
+      ["SSP book entity", "AVM-US"],
+      ["SSP book covers all entities", "No"],
+      ["SSP book belongs to a different entity", "Yes"],
+    ]);
+    const request = approval({
+      subject: { ...approval().subject, type: "SSP_OVERRIDE" },
+      impact_preview: {
+        file_id: PREVIEW_FILE,
+        sha256: PREVIEW_HASH,
+        summary: {
+          revenue_by_period_before: null,
+          revenue_by_period_after: null,
+          balances_before: null,
+          balances_after: null,
+          journal_lines: null,
+          catch_up_total: null,
+          criteria_met: null,
+        },
+      },
+    });
+    serve({ details: { [REQUEST_A]: request }, list: [request] });
+    server.use(
+      http.get(apiUrl(`/api/v1/files/${PREVIEW_FILE}/content`), () => HttpResponse.json(document)),
+    );
+    renderRequest(`/approvals/requests/${REQUEST_A}`);
+    const diff = await screen.findByTestId("SF-12-diff");
+    for (const { field, proposed } of details) {
+      const row = within(diff).getByRole("rowheader", { name: field }).closest("tr");
+      expect(row?.textContent).toContain(proposed);
+    }
+  });
+
   it("shows the reviewed draft status transition for a Step 1 assessment", () => {
     expect(
       fieldChanges(

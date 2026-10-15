@@ -3512,6 +3512,51 @@ def obligation_ssp_pins(session: Session, obligation_id: UUID) -> list[str]:
     return sorted({str(value) for value in pins if value is not None})
 
 
+def ssp_override_entity_context(
+    session: Session, *, contract_id: UUID, version_id: UUID
+) -> dict[str, Any]:
+    """Entity facts retained in the reviewed proposal; approved SSP book scope is frozen."""
+    contracting = session.execute(
+        select(contract.c.contracting_entity_id, legal_entity.c.code)
+        .join(
+            legal_entity,
+            and_(
+                legal_entity.c.tenant_id == contract.c.tenant_id,
+                legal_entity.c.id == contract.c.contracting_entity_id,
+            ),
+        )
+        .where(contract.c.id == contract_id)
+    ).one()
+    source = session.execute(
+        select(ssp_book.c.entity_id, legal_entity.c.code)
+        .select_from(
+            ssp_book_version.join(
+                ssp_book,
+                and_(
+                    ssp_book.c.tenant_id == ssp_book_version.c.tenant_id,
+                    ssp_book.c.id == ssp_book_version.c.ssp_book_id,
+                ),
+            )
+        )
+        .outerjoin(
+            legal_entity,
+            and_(
+                legal_entity.c.tenant_id == ssp_book.c.tenant_id,
+                legal_entity.c.id == ssp_book.c.entity_id,
+            ),
+        )
+        .where(ssp_book_version.c.id == version_id)
+    ).one()
+    return {
+        "contracting_entity_code": str(contracting.code),
+        "ssp_book_entity_code": source.code,
+        "ssp_book_all_entities": source.entity_id is None,
+        "ssp_entity_mismatch": (
+            source.entity_id is not None and source.entity_id != contracting.contracting_entity_id
+        ),
+    }
+
+
 def ssp_override_content(session: Session, proposal: Mapping[str, Any]) -> dict[str, Any]:
     """The proposal with the state it changes: whether the obligation exists, the versions it is
     priced from and the proposed version's status, so an approval after a recomputation, or after
