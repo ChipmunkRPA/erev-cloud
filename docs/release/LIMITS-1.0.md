@@ -51,6 +51,14 @@ The fake-provider/real-contract path is verified, but no AI_TASK handler or publ
 is registered. Retry scheduling, terminal failure proposals for admission/provider errors,
 notifications, idempotent completion and crash/unlogged-call recovery remain unfinished.
 
+The narrative gateway now allows at most three provider attempts with injected 5/10-second
+waits. Only classified transient errors retry; each attempt re-enters admission and commits
+its log before waiting. Permanent/exhausted provider errors create a failed proposal linked
+to the final existing log after reauthorization and evidence checks, without duplicate usage.
+The worker still needs to supply real waiting/dispatch, enforce job delivery idempotency and
+handle admission failures, notifications and crash recovery. This is not registered job/API
+coverage or a completed AI lifecycle gate.
+
 Migration 0148 adds immutable proposal content/citations, tenant-bound evidence references
 and SM-11 state guards. The schema and full migration round trip are verified; proposal
 creation/acceptance APIs, approval integration and lifecycle audit events remain absent.

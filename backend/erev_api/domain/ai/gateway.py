@@ -1,7 +1,7 @@
 """One persisted-job narrative attempt: admission, provider work and durable evidence.
 
-Retry scheduling, terminal failed proposals for admission/provider errors, public
-submission and crash recovery remain responsibilities of the unfinished job handler.
+Public submission, durable admission failures, notifications, idempotent completion
+and crash recovery remain responsibilities of the unfinished job handler.
 """
 
 from __future__ import annotations
@@ -17,7 +17,11 @@ from erev_api.domain.ai.attempts import record_attempt
 from erev_api.domain.ai.budget import AIBudgetRefused, budget_guard
 from erev_api.domain.ai.ports import AIProvider, AIResponse, ProviderError
 from erev_api.domain.ai.preparation import PreparationRefused
-from erev_api.domain.ai.proposals import record_narrative
+from erev_api.domain.ai.proposals import (
+    PROVIDER_FAILURE_CODES,
+    record_narrative,
+    record_provider_failure,
+)
 from erev_api.domain.ai.retrieval import RetrievedNarrative, retrieve_narrative
 from erev_api.domain.ai.settings import AISettings, AISettingsRefused, load_settings
 from erev_api.jobs.context import JobContext, system_unit_of_work
@@ -34,6 +38,28 @@ class NarrativeSource:
     book_code: str | None = None
     as_of: date | None = None
     known_at: datetime | None = None
+
+
+_RETRYABLE_PROVIDER_CODES = frozenset(
+    {
+        "AI_TIMEOUT",
+        "AI_RATE_LIMIT",
+        "AI_PROVIDER_UNAVAILABLE",
+        "AI_CONNECTION",
+    }
+)
+
+
+class _ProviderAttemptFailed(ProviderError):
+    """Internal retry evidence; exception text remains a safe provider code."""
+
+    def __init__(self, error: ProviderError, log_id: UUID, retrieved: RetrievedNarrative) -> None:
+        code = error.code if error.code in PROVIDER_FAILURE_CODES else "AI_PROVIDER_ERROR"
+        super().__init__(
+            code, retryable=error.retryable and error.code in _RETRYABLE_PROVIDER_CODES
+        )
+        self.log_id = log_id
+        self.retrieved = retrieved
 
 
 class AiGateway:
@@ -89,7 +115,7 @@ class AiGateway:
         timeout: bool = False,
         invalidated: bool = False,
         latency_ms: int = 0,
-    ) -> None:
+    ) -> UUID:
         # This is accounting for a call already authorized/made, not permission to
         # retain its narrative. Keep known usage even if a switch changed mid-call.
         with system_unit_of_work(
@@ -98,7 +124,7 @@ class AiGateway:
             request_id=f"ai-attempt-{context.job_id}",
             clock=context.clock,
         ) as uow:
-            record_attempt(
+            log_id = record_attempt(
                 uow,
                 request=retrieved.prepared.request,
                 provider=self.provider,
@@ -110,6 +136,7 @@ class AiGateway:
                 latency_ms=latency_ms,
             )
             uow.commit()
+            return log_id
 
     def run_narrative_attempt(
         self, context: JobContext, source: NarrativeSource, *, max_tokens: int
@@ -117,7 +144,7 @@ class AiGateway:
         """Run one attempt, keeping the tenant budget lease through committed usage.
 
         No DB transaction spans provider execution. ProviderError remains typed for
-        the future retry policy; a busy budget lease is a deferral, not a model call.
+        the retry policy; a busy budget lease is a deferral, not a model call.
         No retries or model fallback happen in this method.
         """
         with context.read_session() as session:
@@ -140,14 +167,14 @@ class AiGateway:
                 response = provider.complete(retrieved.prepared.request)
             except ProviderError as error:
                 elapsed = max(0, (context.clock.now() - started) // timedelta(milliseconds=1))
-                self._record_error(
+                log_id = self._record_error(
                     context,
                     retrieved,
                     response=None,
                     timeout=error.code == "AI_TIMEOUT",
                     latency_ms=elapsed,
                 )
-                raise
+                raise _ProviderAttemptFailed(error, log_id, retrieved) from None
             try:
                 if self._settings(context) != settings:
                     raise AISettingsRefused("AI_CONFIGURATION_CHANGED")
@@ -177,3 +204,60 @@ class AiGateway:
                 )
                 uow.commit()
             return proposal
+
+    def run_narrative(
+        self,
+        context: JobContext,
+        source: NarrativeSource,
+        *,
+        max_tokens: int,
+        wait: Callable[[timedelta], None],
+    ) -> UUID:
+        """At most three provider attempts, with 5/10-second waits (AIA-06).
+
+        The worker supplies the wait implementation. No transaction or budget lease
+        spans a wait. Every retry goes through fresh admission; a refused admission
+        is propagated immediately. Permanent/exhausted provider errors yield a failed
+        proposal linked to the last committed log, without duplicating usage.
+        """
+        for index in range(3):
+            try:
+                return self.run_narrative_attempt(context, source, max_tokens=max_tokens)
+            except _ProviderAttemptFailed as failure:
+                if failure.retryable and index < 2:
+                    wait(timedelta(seconds=5 * 2**index))
+                    continue
+                # Reauthorize the source before persisting terminal evidence. Retain
+                # the failed attempt's model/configuration, not a newer request hash.
+                previous = failure.retrieved.prepared
+                fresh = retrieve_narrative(
+                    context,
+                    object_type=source.object_type,
+                    object_id=source.object_id,
+                    measure=source.measure,
+                    period=source.period,
+                    book_code=source.book_code,
+                    as_of=source.as_of,
+                    known_at=source.known_at,
+                    model=previous.request.model,
+                    max_tokens=previous.request.max_tokens,
+                    redact_contact_details=previous.request.parameters["redact_contact_details"],
+                )
+                if fresh.prepared.request != previous.request:
+                    raise PreparationRefused("AI_INPUT_CHANGED") from None
+                with system_unit_of_work(
+                    context.runtime,
+                    fresh.principal,
+                    request_id=f"ai-failure-{context.job_id}",
+                    clock=context.clock,
+                ) as uow:
+                    proposal = record_provider_failure(
+                        uow,
+                        prepared=fresh.prepared,
+                        log_id=failure.log_id,
+                        provider=self.provider,
+                        code=failure.code,
+                    )
+                    uow.commit()
+                return proposal
+        raise AssertionError("bounded AI retry loop exhausted without a result")

@@ -2,6 +2,24 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Bounded narrative retries and terminal provider failure — October 15, 2026
+
+- Added a three-attempt gateway wrapper with injected 5/10-second waits. Only classified
+  transient codes retry, even when a provider mislabels a permanent error as retryable.
+  Each attempt repeats admission; no SQL transaction or tenant budget lease spans a wait.
+- Permanent/exhausted provider errors create a failed proposal linked to the final committed
+  attempt. The writer rechecks source evidence, human/scope, log ownership, request/model/
+  template parameters, outcome and absence of a response; usage is not logged twice.
+- Real-contract tests cover three failures, one permanent failure, eventual success,
+  disablement during a wait, committed logs before waits and success-log substitution refusal.
+  Refactored shared trace verification and proposal insertion without changing normal output.
+- Verification: 262 targeted tests passed, two Linux-only parser tests skipped; strict typing
+  passed for 766 sources; Ruff/diff checks pass. Logs: .run/ai-retries-{final,types}.log.
+  The isolated local test cluster was stopped after checks.
+- The worker must still supply waiting/dispatch and delivery idempotency. Durable admission
+  failures, notifications, crash/unlogged-call recovery and other proposal workflows remain
+  open; no AI_TASK handler/public API is registered. No deployment or readiness claim.
+
 ## Composed narrative gateway attempt — October 15, 2026
 
 - Connected current persisted-job authorization, effective switches/settings, serialized
@@ -225,20 +243,6 @@
 - PDF extraction/worker limits, authorized file reads, durable text storage, operational
   gateway jobs/budgets/auditing and human acceptance remain open. This helper enables no
   route and makes no live call; no deployment or readiness claim.
-
-## Retained contract-review prompt — October 15, 2026
-
-- Added the versioned contract-review v1 file with id/version/purpose/output-schema front
-  matter, citation rules and instructions to treat document text as untrusted evidence.
-- A checked-in digest manifest and bounded loader require registered identifiers, exact file
-  bytes and matching metadata. Changes require a new version; no latest-version fallback.
-  The complete file is the system message, so preparation binds its full file digest.
-- AI/architecture checks: 129 passed (12.01s); strict API/test typing: 752 sources; Ruff passes.
-  Offline wheel build passed and packaged prompt bytes match the reviewed source exactly.
-  Logs: .run/ai-templates-{checks,types,wheel,package}.log.
-- This does not implement the gateway or complete AIX-3. Other prompt kinds, retained response
-  fixtures, job authorization/budgets, audited attempt persistence and human acceptance remain
-  open. No provider call or deployment; no production-readiness claim.
 
 ## Outstanding release verification
 

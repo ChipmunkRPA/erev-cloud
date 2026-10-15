@@ -14,9 +14,9 @@ from sqlalchemy import insert, null, select
 
 from erev_api.audit.writer import record
 from erev_api.db import new_id
-from erev_api.db.tables import ai_proposal, calc_trace, obligation_version
+from erev_api.db.tables import ai_model_log, ai_proposal, calc_trace, obligation_version
 from erev_api.domain.ai.attempts import record_attempt
-from erev_api.domain.ai.narratives import PreparedNarrative, prepare_narrative
+from erev_api.domain.ai.narratives import NarrativeSelection, PreparedNarrative, prepare_narrative
 from erev_api.domain.ai.ports import AIResponse
 from erev_api.enums import PrincipalKind
 from erev_api.explain import service, store
@@ -27,19 +27,9 @@ class ProposalEvidenceRefused(ValueError):
     """Fixed evidence error without source text."""
 
 
-def record_narrative(
-    uow: UnitOfWork,
-    *,
-    prepared: PreparedNarrative,
-    response: AIResponse,
-    provider: Literal["fake", "anthropic"],
-) -> UUID:
-    """Revalidate the immutable trace, then buffer log/proposal/audit atomically.
-
-    Caller owns fresh authorization, the scoped USER unit of work and its commit
-    before releasing the budget lease. The proposal's subject is the retained trace;
-    citations identify its nodes. A failure stores no rejected provider narrative.
-    """
+def _evidence(
+    uow: UnitOfWork, prepared: PreparedNarrative
+) -> tuple[PreparedNarrative, tuple[UUID, ...]]:
     principal = uow.principal
     if (
         principal.kind is not PrincipalKind.USER
@@ -91,8 +81,6 @@ def record_narrative(
         raise ProposalEvidenceRefused("AI_TRACE_EVIDENCE_MISMATCH") from None
     if rebuilt.request != prepared.request:
         raise ProposalEvidenceRefused("AI_TRACE_EVIDENCE_MISMATCH")
-    # Use the rebuilt immutable evidence, never the caller's mutable/forged values.
-    selected = rebuilt.select(response)
     contracts = tuple(
         uow.session.scalars(
             select(obligation_version.c.contract_id)
@@ -105,6 +93,24 @@ def record_narrative(
     )
     if not contracts:
         raise ProposalEvidenceRefused("AI_TRACE_CONTRACTS_UNAVAILABLE")
+    return rebuilt, contracts
+
+
+def record_narrative(
+    uow: UnitOfWork,
+    *,
+    prepared: PreparedNarrative,
+    response: AIResponse,
+    provider: Literal["fake", "anthropic"],
+) -> UUID:
+    """Revalidate the immutable trace, then buffer log/proposal/audit atomically.
+
+    Caller owns fresh authorization, the scoped USER unit of work and its commit
+    before releasing the budget lease. The proposal's subject is the retained trace;
+    citations identify its nodes. A failure stores no rejected provider narrative.
+    """
+    rebuilt, contracts = _evidence(uow, prepared)
+    selected = rebuilt.select(response)
     log_id = record_attempt(
         uow,
         request=rebuilt.request,
@@ -115,6 +121,17 @@ def record_narrative(
         if selected.proposed
         else ("refusal" if selected.problem_code == "AI_REFUSAL" else "invalid_output"),
     )
+    return _insert_narrative(uow, rebuilt, log_id, selected, contracts)
+
+
+def _insert_narrative(
+    uow: UnitOfWork,
+    prepared: PreparedNarrative,
+    log_id: UUID,
+    selected: NarrativeSelection,
+    contracts: tuple[UUID, ...],
+) -> UUID:
+    principal = uow.principal
     proposal_id = new_id()
     status = "proposed" if selected.proposed else "failed"
     content = {"narrative": list(selected.narrative)} if selected.proposed else {}
@@ -158,3 +175,63 @@ def record_narrative(
         contract_ids=contracts,
     )
     return proposal_id
+
+
+PROVIDER_FAILURE_CODES = frozenset(
+    {
+        "AI_MODEL_NOT_FOUND",
+        "AI_TIMEOUT",
+        "AI_RATE_LIMIT",
+        "AI_PROVIDER_UNAVAILABLE",
+        "AI_CONNECTION",
+        "AI_BAD_REQUEST",
+        "AI_AUTHENTICATION",
+        "AI_PERMISSION",
+        "AI_PROVIDER_ERROR",
+        "AI_INVALID_RESPONSE",
+    }
+)
+
+
+def record_provider_failure(
+    uow: UnitOfWork,
+    *,
+    prepared: PreparedNarrative,
+    log_id: UUID,
+    provider: Literal["fake", "anthropic"],
+    code: str,
+) -> UUID:
+    """Finalize a provider failure using its already committed attempt, without relogging it."""
+    if code not in PROVIDER_FAILURE_CODES:
+        raise ProposalEvidenceRefused("AI_INVALID_PROVIDER_FAILURE")
+    rebuilt, contracts = _evidence(uow, prepared)
+    log = (
+        uow.session.execute(
+            select(ai_model_log).where(
+                ai_model_log.c.tenant_id == uow.principal.tenant_id,
+                ai_model_log.c.id == log_id,
+            )
+        )
+        .mappings()
+        .one_or_none()
+    )
+    expected = {
+        "created_by": uow.principal.id,
+        "created_by_kind": "USER",
+        "provider": provider,
+        "input_sha256": rebuilt.request.input_sha256,
+        "response_sha256": None,
+        "model_id": rebuilt.request.model,
+        "prompt_template_id": rebuilt.request.template_id,
+        "prompt_template_version": str(rebuilt.request.template_version),
+        "parameters": dict(rebuilt.request.parameters),
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "outcome": "TIMEOUT" if code == "AI_TIMEOUT" else "ERROR",
+        "error_detail": "timeout" if code == "AI_TIMEOUT" else "provider_error",
+    }
+    if log is None or any(log[key] != value for key, value in expected.items()):
+        raise ProposalEvidenceRefused("AI_ATTEMPT_EVIDENCE_MISMATCH")
+    return _insert_narrative(
+        uow, rebuilt, log_id, NarrativeSelection(False, (), (), code), contracts
+    )

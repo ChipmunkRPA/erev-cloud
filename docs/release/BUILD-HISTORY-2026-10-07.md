@@ -4262,3 +4262,17 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
 - The future gateway must retain the exact page mappings used for its prompt. Durable
   document extraction, authorized gateway jobs, value schemas, narrative-number checks,
   budgets, lifecycle auditing and human acceptance remain unfinished. No live calls/deployment.
+
+## Retained contract-review prompt — October 15, 2026
+
+- Added the versioned contract-review v1 file with id/version/purpose/output-schema front
+  matter, citation rules and instructions to treat document text as untrusted evidence.
+- A checked-in digest manifest and bounded loader require registered identifiers, exact file
+  bytes and matching metadata. Changes require a new version; no latest-version fallback.
+  The complete file is the system message, so preparation binds its full file digest.
+- AI/architecture checks: 129 passed (12.01s); strict API/test typing: 752 sources; Ruff passes.
+  Offline wheel build passed and packaged prompt bytes match the reviewed source exactly.
+  Logs: .run/ai-templates-{checks,types,wheel,package}.log.
+- This does not implement the gateway or complete AIX-3. Other prompt kinds, retained response
+  fixtures, job authorization/budgets, audited attempt persistence and human acceptance remain
+  open. No provider call or deployment; no production-readiness claim.
