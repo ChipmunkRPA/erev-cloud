@@ -462,7 +462,7 @@ export interface paths {
     put?: never;
     /**
      * Proposals Reject
-     * @description Reject a number explanation with a reason and its current row-version ETag.
+     * @description Reject retained suggestions with a reason and their current row-version ETag.
      */
     post: operations["ai_proposals_reject"];
     delete?: never;
@@ -25086,7 +25086,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["AIProposalOut"];
+          "application/json":
+            | components["schemas"]["AIProposalOut"]
+            | components["schemas"]["AIExtractionProposalOut"];
         };
       };
       /** @description Problem: unauthenticated, session-expired */

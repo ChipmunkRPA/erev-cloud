@@ -6370,8 +6370,9 @@ API-R-47 implementation note (October 15, 2026): `GET /ai/proposals/{id}` curren
 status, source and job IDs, model-log ID, expiry/problem, API-S-Actor creation/update fields and
 row version with ETag. Each read requires overlapping `ai.use` and `contract.read` entity scope
 and a visible current or past member contract of that trace's combination group, as Explain does.
-Other proposal kinds return not-found until their source authorization exists. Disabling AI does
-not revoke evidence reads. `POST /ai/proposals/{id}/reject` supports the same number-explanation evidence: request
+The same detail route supports `CONTRACT_EXTRACTION` after checking current original PDF
+access, returning source/text file IDs and a suggested-field array. Other kinds remain unavailable.
+Disabling AI does not revoke evidence reads. `POST /ai/proposals/{id}/reject` supports number explanations and contract extractions: request
 `{reason}` (nonblank, at most 4000 characters), current row-version `If-Match`, normal command
 idempotency and permission `ai.use` plus current source read access. Only a human can reject an
 unexpired `proposed` item; the row lock, reviewer/time/reason, row-version increment and
@@ -8043,6 +8044,11 @@ and `object_label`, following the existing computation-fact audit convention.
 **API-S-EvidencePackCreate** (`POST /evidence-packs`; SCREENS_B OQ-B-10). Fields `kind` (E-66, R), `entity_code`, `book`, `period_key`, `period_lock_id`, `contract_external_ids` (array<string>), `from_date`, `to_date`, `as_of` (date). Required per kind: `CLOSE` needs `entity_code`, `book`, `period_key` and `period_lock_id`; `CONTRACT_SAMPLE` needs `contract_external_ids` (1 to 50) and `as_of`; `CHANGE` needs `from_date` and `to_date`; `ACCESS` needs `as_of`. A field not used by the kind returns 422 `validation-failed`. Response 202 API-S-Job (kind `EVIDENCE_PACK`) with header `X-Erev-Evidence-Pack-Id`; the pack follows the T-RPT-04 checks and manifest layout.
 
 **AI proposals and settings** (API-R-47, API-R-04; SCREENS_B OQ-B-14, OQ-B-18, OQ-B-26).
+- `POST /ai/proposals/{id}/reject` supports extraction and number-explanation evidence with a
+  nonblank reason and current If-Match ETag. Source access is required before replay and inside
+  the command transaction. Rejection locks the row, advances row_version, stores the human and
+  reason, and appends ai_proposal.reject atomically. Expired/terminal proposals refuse review;
+  content and citations remain retained. AI disable does not prevent rejection.
 - `GET /ai/proposals/{id}` supports number explanations and contract extractions, returning a
   kind-specific response with common status, actors, timestamps, citations and row-version ETag.
   Extraction detail requires a current human ai.use grant and readable, unshredded original

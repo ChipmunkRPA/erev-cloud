@@ -103,6 +103,14 @@ def proposal_detail(
     ctx: RequestContext, proposal_id: UUID
 ) -> AIProposalOut | AIExtractionProposalOut:
     """Authorize extraction source metadata before selecting any suggestions or citations."""
+    with tenant_session(ctx.principal.db_context, read_only=True) as session:
+        return proposal_detail_in(session, ctx, proposal_id)
+
+
+def proposal_detail_in(
+    session: Session, ctx: RequestContext, proposal_id: UUID, *, lock: bool = False
+) -> AIProposalOut | AIExtractionProposalOut:
+    """Authorize retained evidence inside the reader or review command transaction."""
     principal = ctx.principal
     held = principal.permission_scopes.get("ai.use", frozenset())
     if (
@@ -116,47 +124,37 @@ def proposal_detail(
         )
     ):
         raise Problem("forbidden")
-    with tenant_session(principal.db_context, read_only=True) as session:
-        binding = (
-            session.execute(
-                select(ai_proposal.c.kind, ai_proposal.c.file_object_id).where(
-                    ai_proposal.c.tenant_id == principal.tenant_id,
-                    ai_proposal.c.id == proposal_id,
-                )
+    binding = (
+        session.execute(
+            select(ai_proposal.c.kind, ai_proposal.c.file_object_id).where(
+                ai_proposal.c.tenant_id == principal.tenant_id,
+                ai_proposal.c.id == proposal_id,
             )
-            .mappings()
-            .one_or_none()
         )
-        if binding is None:
-            raise Problem("not-found", "AI proposal not found.")
-        if binding["kind"] != "CONTRACT_EXTRACTION":
-            return proposal_in(session, principal, proposal_id)
-        source = file_access.bound(session, ctx, binding["file_object_id"])
-        if (
-            source is None
-            or source["shredded_at"] is not None
-            or source["purpose"] != "ATTACHMENT"
-            or source["media_type"] != "application/pdf"
-        ):
-            raise Problem("not-found", "AI proposal not found.")
-        row = (
-            session.execute(
-                select(
-                    ai_proposal,
-                    actors.named(ai_proposal.c.created_by, tenant_id=ai_proposal.c.tenant_id).label(
-                        "creator"
-                    ),
-                    actors.named(ai_proposal.c.updated_by, tenant_id=ai_proposal.c.tenant_id).label(
-                        "updater"
-                    ),
-                    actors.named(
-                        ai_proposal.c.rejected_by, tenant_id=ai_proposal.c.tenant_id
-                    ).label("rejector"),
-                ).where(
-                    ai_proposal.c.tenant_id == principal.tenant_id, ai_proposal.c.id == proposal_id
-                )
-            )
-            .mappings()
-            .one()
-        )
-        return AIExtractionProposalOut.model_validate(_actor_data(dict(row)))
+        .mappings()
+        .one_or_none()
+    )
+    if binding is None:
+        raise Problem("not-found", "AI proposal not found.")
+    if binding["kind"] != "CONTRACT_EXTRACTION":
+        return proposal_in(session, principal, proposal_id, lock=lock)
+    source = file_access.bound(session, ctx, binding["file_object_id"])
+    if (
+        source is None
+        or source["shredded_at"] is not None
+        or source["purpose"] != "ATTACHMENT"
+        or source["media_type"] != "application/pdf"
+    ):
+        raise Problem("not-found", "AI proposal not found.")
+    statement = select(
+        ai_proposal,
+        actors.named(ai_proposal.c.created_by, tenant_id=ai_proposal.c.tenant_id).label("creator"),
+        actors.named(ai_proposal.c.updated_by, tenant_id=ai_proposal.c.tenant_id).label("updater"),
+        actors.named(ai_proposal.c.rejected_by, tenant_id=ai_proposal.c.tenant_id).label(
+            "rejector"
+        ),
+    ).where(ai_proposal.c.tenant_id == principal.tenant_id, ai_proposal.c.id == proposal_id)
+    if lock:
+        statement = statement.with_for_update(of=ai_proposal)
+    row = session.execute(statement).mappings().one()
+    return AIExtractionProposalOut.model_validate(_actor_data(dict(row)))

@@ -158,14 +158,14 @@ def _proposal_reject_access(
     ctx: Annotated[RequestContext, Depends(require("ai.use"))],
 ) -> None:
     """Check current source access before command middleware can replay a saved response."""
-    queries.proposal(ctx.principal, id)
+    queries.proposal_detail(ctx, id)
 
 
 @router.post(
     "/ai/proposals/{id}/reject",
     operation_id="ai_proposals_reject",
     dependencies=[Depends(_proposal_reject_access)],
-    response_model=AIProposalOut,
+    response_model=AIProposalOut | AIExtractionProposalOut,
     responses=problem_responses(
         "unauthenticated",
         "session-expired",
@@ -185,9 +185,9 @@ def proposals_reject(
     cmd: Annotated[CommandContext, Depends(command("ai.use", precondition="row"))],
     deps: Annotated[KernelDeps, Depends(kernel_deps)],
 ) -> Response:
-    """Reject a number explanation with a reason and its current row-version ETag."""
+    """Reject retained suggestions with a reason and their current row-version ETag."""
 
-    def handle(uow: UnitOfWork) -> AIProposalOut:
+    def handle(uow: UnitOfWork) -> AIProposalOut | AIExtractionProposalOut:
         return commands.reject_proposal(
             uow,
             id,

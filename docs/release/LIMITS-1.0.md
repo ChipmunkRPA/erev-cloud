@@ -120,14 +120,17 @@ It selects only binding metadata before authorization, then returns suggested fi
 source/text file IDs and the common status/actor/ETag metadata. Unreadable or shredded sources
 return 404; AI disable does not prevent retained reads. Other kinds still fail closed. Extraction
 list integration remains unfinished.
-POST /ai/proposals/{id}/reject now supports these number-explanation proposals for a human
+POST /ai/proposals/{id}/reject supports number-explanation and extraction proposals for a human
 with current source access, a nonempty reason and the current If-Match ETag. Rejection locks
 the proposal, advances its row version and records the reviewer and audit event in one
-transaction; expired or terminal items cannot be rejected. It remains available with AI off.
+transaction; expired or terminal items cannot be rejected. Current extraction source access is
+checked before cached response replay and again inside the command. Competing reviewers using
+the same ETag cannot both succeed. Rejection preserves content/citations and makes no provider or
+accounting writes. It remains available with AI off.
 SCH-11 now expires overdue proposed rows daily at 03:20 UTC, in bounded tenant transactions
 with row locks and SYSTEM audit events. Locked review rows wait for a later sweep; terminal
 states and retained evidence are untouched. Rejection already enforces the exact expiry
-boundary between sweeps. Acceptance, extraction review and other proposal kinds remain unfinished.
+boundary between sweeps. Acceptance, extraction field decisions and other proposal kinds remain unfinished.
 
 The Anthropic adapter is mock-tested, uses the official SDK, disables SDK retries and telemetry,
 and resolves secrets lazily. Contract-review and explain-narrative prompts have retained bytes,

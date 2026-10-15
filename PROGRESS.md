@@ -2,6 +2,25 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Extraction proposal rejection — October 15, 2026
+
+- Extended POST /ai/proposals/{id}/reject to extraction evidence, sharing the existing reason,
+  If-Match, idempotency and audit controls. Source authorization now runs in the review command's
+  transaction; the proposal row is locked before checking version/status/expiry and transitioning.
+  Current source access also gates cached command responses. Rejection preserves suggestions
+  and citations, works with AI disabled, and does not call a provider or write accounting data.
+- Verification: five PostgreSQL API tests passed, including extraction and narrative review.
+  Two simultaneous extraction reviewers using the same ETag yield one 200 and one 412, with
+  one audit event; exact expiry and terminal rows refuse rejection. Successful replay matches
+  the first response, while replay after source shredding returns 404. Unauthorized reviewers
+  cannot act; retained fields/citations and one provider usage record remain unchanged.
+  Twenty-four architecture checks passed. Full typecheck passed (934 Python sources plus
+  frontend), focused typing passed 786 sources, and OpenAPI/frontend artifacts were regenerated.
+  Full lint and final diff checks passed.
+  Logs: .run/ai-extraction-reject-{api,architecture,typecheck,types,openapi,lint}.log.
+- Extraction list integration, per-field decisions and structured acceptance remain unfinished,
+  alongside broader release/accounting gates. No deployment or live provider calls.
+
 ## Audited extraction document-text reads — October 15, 2026
 
 - Implemented GET /ai/proposals/{id}/document-text for retained extraction evidence. Current
@@ -209,23 +228,6 @@
 - The broader run exposed a prior expiry test counting other committed tenants. Local exact
   assertions now name its tenant; global fan-out and repeat-run checks remain, with exact audit
   checks for its proposals. Production expiry code was unchanged. No deployment/live AI calls.
-
-## Authorized AI proposal list — October 15, 2026
-
-- Added GET /ai/proposals for supported number explanations using API-C-09 cursor pagination,
-  kind/status filters, optional totals and id/created_at sorts (default newest created_at,
-  then descending id). The SQL source-authorization predicate is shared with detail/rejection;
-  hidden and unsupported proposals cannot occupy page rows or inflate counts.
-- Every page checks current overlapping ai.use/contract.read grants. Tests cover foreign and
-  out-of-scope cursor reuse, and the same user's scope narrowing between pages. Unsupported
-  kinds return empty results until their source authorization is implemented.
-- Verification: three API database cases passed after the final change, covering submission,
-  reads, rejection and listing; 25 route/layer checks passed. Full lint, OpenAPI generation and
-  typecheck passed (927 Python sources plus frontend); focused typing passed 778 sources.
-  Logs: .run/ai-list-{api-final,architecture,openapi,typecheck,types-final,lint}.log. A row mapping
-  is copied to a dictionary at the shared serializer boundary to satisfy strict typing.
-- Acceptance, extraction, anomaly summaries, Q&A and broader release/accounting requirements
-  remain open. No deployment or live provider calls; no production-readiness claim.
 
 ## Outstanding release verification
 

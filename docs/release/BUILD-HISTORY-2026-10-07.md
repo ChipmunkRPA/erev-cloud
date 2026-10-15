@@ -5135,3 +5135,20 @@ cleanup in the shared database session kernel was also repaired and regression-t
   helper directly for strict typing. No production code was loosened for those fixes.
 - Listing, acceptance, extraction and other AI operations remain open, along with the broader
   accounting/verification backlog and independent sign-off. No deployment or live AI calls.
+
+## Authorized AI proposal list — October 15, 2026
+
+- Added GET /ai/proposals for supported number explanations using API-C-09 cursor pagination,
+  kind/status filters, optional totals and id/created_at sorts (default newest created_at,
+  then descending id). The SQL source-authorization predicate is shared with detail/rejection;
+  hidden and unsupported proposals cannot occupy page rows or inflate counts.
+- Every page checks current overlapping ai.use/contract.read grants. Tests cover foreign and
+  out-of-scope cursor reuse, and the same user's scope narrowing between pages. Unsupported
+  kinds return empty results until their source authorization is implemented.
+- Verification: three API database cases passed after the final change, covering submission,
+  reads, rejection and listing; 25 route/layer checks passed. Full lint, OpenAPI generation and
+  typecheck passed (927 Python sources plus frontend); focused typing passed 778 sources.
+  Logs: .run/ai-list-{api-final,architecture,openapi,typecheck,types-final,lint}.log. A row mapping
+  is copied to a dictionary at the shared serializer boundary to satisfy strict typing.
+- Acceptance, extraction, anomaly summaries, Q&A and broader release/accounting requirements
+  remain open. No deployment or live provider calls; no production-readiness claim.

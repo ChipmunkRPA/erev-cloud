@@ -44282,7 +44282,7 @@
     },
     "/api/v1/ai/proposals/{id}/reject": {
       "post": {
-        "description": "Reject a number explanation with a reason and its current row-version ETag.",
+        "description": "Reject retained suggestions with a reason and their current row-version ETag.",
         "operationId": "ai_proposals_reject",
         "parameters": [
           {
@@ -44314,7 +44314,15 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AIProposalOut"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/AIProposalOut"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AIExtractionProposalOut"
+                    }
+                  ],
+                  "title": "Response Ai Proposals Reject"
                 }
               }
             },

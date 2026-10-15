@@ -5,6 +5,7 @@ from __future__ import annotations
 import io
 import json
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import replace
 from datetime import timedelta
 from hashlib import sha256
 from pathlib import Path
@@ -16,6 +17,7 @@ from erev_api.auth.keyring import KeyRing
 from erev_api.clock import FrozenClock
 from erev_api.db.session import tenant_session
 from erev_api.db.tables import ai_model_log, ai_proposal, audit_event, file_object, job, tenant
+from erev_api.domain.ai import commands as ai_commands
 from erev_api.domain.ai import jobs as ai_jobs
 from erev_api.domain.ai.commands import EXTRACTION_MAX_TOKENS
 from erev_api.domain.ai.extraction_fields import CONTRACT_EXTRACTION_PATHS
@@ -25,6 +27,7 @@ from erev_api.enums import FilePurpose, RegistryCategory
 from erev_api.files.store import store_file
 from erev_api.jobs.context import JobRuntime
 from erev_api.jobs.registry import run_job
+from erev_api.problems import Problem
 from sqlalchemy import func, insert, select, text, update
 from support.http import HttpResponse, call
 from support.principals import colleague, cookie_headers
@@ -282,6 +285,64 @@ def test_extraction_submission_and_worker(
         assert denied_text.status_code == expected_status, denied_text.text
     missing = call(world.app, "GET", f"/api/v1/ai/proposals/{uuid4()}", headers=headers)
     assert missing.status_code == 404, missing.text
+    reject_path = f"{detail_path}/reject"
+    reject_body = {"reason": "  Incorrect customer suggestion.  "}
+    for denied_actor, expected in ((reader, 403), (other, 404)):
+        denied_headers = cookie_headers(denied_actor.token, denied_actor.csrf_token)
+        denied_headers["If-Match"] = detail.headers["ETag"]
+        denied_reject = call(
+            world.app, "POST", reject_path, json=reject_body, headers=denied_headers
+        )
+        assert denied_reject.status_code == expected, denied_reject.text
+    with pytest.raises(Problem) as expired:
+        with replace(world.place, clock=FrozenClock(proposal["expires_at"])).uow() as uow:
+            ai_commands.reject_proposal(
+                uow, proposal_id, reason="Too late", check_version=lambda _version: None
+            )
+    assert expired.value.slug == "invalid-transition"
+    review_headers = [cookie_headers(actor.token, actor.csrf_token) for _ in range(2)]
+    for request_headers in review_headers:
+        request_headers["If-Match"] = detail.headers["ETag"]
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        futures = [
+            pool.submit(
+                call, world.app, "POST", reject_path, json=reject_body, headers=request_headers
+            )
+            for request_headers in review_headers
+        ]
+        outcomes = [future.result(timeout=20) for future in futures]
+    assert sorted(result.status_code for result in outcomes) == [200, 412], [
+        r.text for r in outcomes
+    ]
+    rejected = next(result for result in outcomes if result.status_code == 200)
+    winning_headers = review_headers[outcomes.index(rejected)]
+    replay_rejection = call(
+        world.app, "POST", reject_path, json=reject_body, headers=winning_headers
+    )
+    assert replay_rejection.status_code == 200 and replay_rejection.json() == rejected.json()
+    assert rejected.json()["status"] == "rejected"
+    assert rejected.json()["rejection_reason"] == reject_body["reason"].strip()
+    assert rejected.json()["rejected_by"]["id"] == str(actor.member.user_id)
+    assert rejected.json()["content"] == detail.json()["content"]
+    assert rejected.json()["citations"] == detail.json()["citations"]
+    assert rejected.json()["row_version"] == detail.json()["row_version"] + 1
+    terminal_headers = cookie_headers(actor.token, actor.csrf_token)
+    terminal_headers["If-Match"] = rejected.headers["ETag"]
+    terminal = call(world.app, "POST", reject_path, json=reject_body, headers=terminal_headers)
+    assert terminal.status_code == 409, terminal.text
+    with tenant_session(world.place.principal.db_context, read_only=True) as session:
+        reviews = (
+            session.execute(
+                select(audit_event).where(
+                    audit_event.c.action == "ai_proposal.reject",
+                    audit_event.c.object_id == proposal_id,
+                )
+            )
+            .mappings()
+            .all()
+        )
+        assert len(reviews) == 1 and reviews[0]["actor_id"] == actor.member.user_id
+        assert session.scalar(select(func.count()).select_from(ai_model_log)) == 1
     with tenant_session(world.place.principal.db_context) as session:
         session.execute(
             update(file_object)
@@ -313,6 +374,10 @@ def test_extraction_submission_and_worker(
     assert unavailable.status_code == 404, unavailable.text
     unavailable_text = call(world.app, "GET", text_path, headers=headers)
     assert unavailable_text.status_code == 404, unavailable_text.text
+    unavailable_replay = call(
+        world.app, "POST", reject_path, json=reject_body, headers=winning_headers
+    )
+    assert unavailable_replay.status_code == 404, unavailable_replay.text
     assert len(observed) == 1
 
 
