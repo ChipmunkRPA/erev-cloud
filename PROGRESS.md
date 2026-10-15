@@ -2,6 +2,25 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Bind the known extraction fixture to real upload requests — October 15, 2026
+
+- Found that the bundled fake extraction response matched only its original fixed document ID,
+  model and nine-path request. Real upload IDs/full worker catalogues had no fixture. Added a
+  bundled-only fallback that reconstructs the complete known redacted-document request before
+  reusing retained values, filtering allowed fields and rebinding citations to the upload ID.
+  Arbitrary source text, prompts and inconsistent hashes still fail. Custom fixture roots retain
+  exact/default semantics. No network calls or accounting writes are introduced.
+- AI unit suite: 250 passed, two Linux resource checks skipped on macOS. Focused strict typing
+  passes 790 sources; full lint passes. Evidence: .run/ai-upload-fixture-first-failure.log (completed unit run),
+  .run/ai-upload-fixture-types.log. Combined AI/architecture run: 508 passed, 12 failed,
+  two skipped in .run/ai-upload-fixture-tests.log. Failures identify existing AI audit writers
+  without contract keys, unlisted expiry SYSTEM/platform-directory callers and AI_TASK still
+  marked pending after registration. No broad pass is claimed; these require follow-up repair.
+- Full frozen CI remains live on 3cf8f5b against isolated PostgreSQL 55439, in engine tests.
+  Do not restart it or run other database tests there. Known-document fixture adaptation does
+  not complete demo/browser seeding, Linux parser proof, browser acceptance or accounting sign-off.
+  No deployment or live provider calls.
+
 ## Broad frontend verification and frozen CI — October 15, 2026
 
 - Full frontend testing found two inventory failures: omitted SF-20 route IDs and no crawl
@@ -211,26 +230,6 @@
   Full lint also passed. Logs: .run/ai-draft-review-{verified,typecheck,types-final,lint}.log.
 - Broader release/accounting verification and large-tenant list performance remain open. No
   deployment or live provider calls; the acceptance route remains disabled.
-
-## Explicit extraction field-review decisions — October 15, 2026
-
-- Added the ACCEPT/EDIT/REJECT request item schema and pure review resolver. Every retained path
-  must appear exactly once; invalid originals, missing/duplicate/unknown paths and oversized
-  reviews refuse. EDIT explicitly supplies a typed value; ACCEPT/REJECT cannot hide replacement
-  values. EDIT/REJECT require bounded nonblank reasons. Accepted values retain exact types and
-  decimal-string representation, edits use the field catalogue, and rejections leave fields unset.
-- Resolved values and decision records are detached copies in proposal order. Rejecting every
-  field produces no defaults. This component does not write contracts or enable acceptance;
-  conversion still requires explicit contract identity, currency, quantities, obligation keys
-  and structured terms, with command-level source/permission/status/expiry/SoD and atomicity.
-- Verification: 35 final unit cases passed, covering full 507-field capacity, overflow, exact
-  coverage, malformed reasons, forbidden replacements, invalid dates/months/numeric money,
-  invalid retained values, all-rejected reviews and detached mutable inputs. Seventeen layer
-  checks also passed in the initial 50-case run. Full lint/typecheck passed (935 Python sources
-  plus frontend), final focused typing passed 786 sources and final formatting/lint/diff checks
-  passed. Logs: .run/ai-field-review-{unit,boundaries,lint,typecheck,types-final}.log.
-- Structured acceptance remains unimplemented; broader release/accounting and large-tenant list
-  performance gates remain open. No deployment or live provider calls.
 
 
 ## Outstanding release verification

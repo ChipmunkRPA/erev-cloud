@@ -211,6 +211,16 @@ responsive panel tabs, unsupported accounting-term mappings and full browser acc
 unfinished. Changing a bound draft field/key can cause the server to refuse acceptance; the UI
 does not silently change a recorded field decision to match it.
 
+The bundled deterministic extraction fixture now accepts a real upload identity and the
+worker's full allowed-field catalogue only after reconstructing and matching the entire
+known redacted-document request. It reuses retained sample values/confidences and rebinds
+source citations; unrelated documents/prompts/digests are refused. This is a prerequisite
+for live browser fixtures, not evidence that demo seeding, Linux parsing or complete browser
+acceptance already works. AI unit checks pass locally; two Linux resource checks remain skipped.
+Broad architecture verification also identified existing missing contract-key arguments in AI
+proposal audit writers, unlisted expiry SYSTEM/platform callers and a stale pending AI_TASK
+registry entry. The diagnostic has 12 failures across these causes; they remain open.
+
 The Anthropic adapter is mock-tested, uses the official SDK, disables SDK retries and telemetry,
 and resolves secrets lazily. Contract-review and explain-narrative prompts have retained bytes,
 digests and deterministic fixtures. Request preparation minimizes and redacts inputs with

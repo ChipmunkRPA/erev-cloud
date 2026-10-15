@@ -143,3 +143,69 @@ def test_file_size_refused_before_reader(monkeypatch: pytest.MonkeyPatch) -> Non
     monkeypatch.setattr(adapter, "MAX_PDF_BYTES", 5)
     with pytest.raises(PDFExtractionRefused, match="AI_DOCUMENT_FILE_LIMIT"):
         extract_pdf_pages(b"%PDF-1.7", send_contract_text=True)
+
+
+@pytest.mark.parametrize("selected", [None, frozenset({"customer_name", "lines.1"})])
+def test_known_document_fixture_binds_real_upload_identity_and_worker_request(
+    selected: frozenset[str] | None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from hashlib import sha256
+    from uuid import uuid4
+
+    from erev_api.domain.ai.extraction_fields import CONTRACT_EXTRACTION_PATHS
+
+    def no_network(*args: object, **kwargs: object) -> None:
+        pytest.fail("Known document fixture attempted network access")
+
+    monkeypatch.setattr("socket.socket", no_network)
+    source = uuid4()
+    prepared = prepare_extraction(
+        document_id=source,
+        pages=extract_pdf_pages(FIXTURE.read_bytes(), send_contract_text=True),
+        allowed_paths=CONTRACT_EXTRACTION_PATHS if selected is None else selected,
+        model="configured-worker-model",
+        max_tokens=16000,
+        send_contract_text=True,
+    )
+    provider = FakeProvider()
+    response = provider.complete(prepared.request)
+    assert response == provider.complete(prepared.request)
+    assert response.model == "configured-worker-model"
+    assert response.response_sha256 == sha256(response.text.encode()).hexdigest()
+    fields = prepared.validate(response, validate_value=validate_contract_value)
+    assert len(fields) == (9 if selected is None else len(selected))
+    assert all(field.citation.document_id == source for field in fields)
+    if selected is not None:
+        assert {field.path for field in fields} == selected
+
+
+def test_known_document_fixture_refuses_changed_business_text_and_request_metadata() -> None:
+    from dataclasses import replace
+    from uuid import uuid4
+
+    pages = extract_pdf_pages(FIXTURE.read_bytes(), send_contract_text=True)
+    prepared = prepare_extraction(
+        document_id=uuid4(),
+        pages=pages,
+        allowed_paths=frozenset({"customer_name"}),
+        model="configured-worker-model",
+        max_tokens=16000,
+        send_contract_text=True,
+    )
+    for changed in (
+        replace(prepared.request, system=prepared.request.system + " Different instructions"),
+        replace(prepared.request, input_sha256="0" * 64),
+        replace(prepared.request, messages=()),
+    ):
+        with pytest.raises(FileNotFoundError):
+            FakeProvider().complete(changed)
+    different = prepare_extraction(
+        document_id=uuid4(),
+        pages=tuple(page.replace("Kinsley Marrow", "Another Customer") for page in pages),
+        allowed_paths=frozenset({"customer_name"}),
+        model="configured-worker-model",
+        max_tokens=16000,
+        send_contract_text=True,
+    )
+    with pytest.raises(FileNotFoundError):
+        FakeProvider().complete(different.request)

@@ -1,7 +1,6 @@
 """AI provider boundary and deterministic fixtures (DG-AI-02; 05 AIA-01, AIA-03).
 
-This adapter performs no database writes. Gateway/job integration remains separate
-work; a fixture result is never an accepted accounting input.
+This adapter performs no database writes; a fixture result is never an accepted accounting input.
 """
 
 from __future__ import annotations
@@ -36,11 +35,14 @@ class FakeProvider:
     """Read an exact input fixture, or the template/version's explicit default.
 
     Fixtures contain text, input_tokens, output_tokens, latency_ms and stop_reason.
+    With bundled fixtures only, the known WLD-F-29 redacted document can bind its
+    retained response to the current upload after full request reconstruction.
     The model comes from the request and the response digest from the exact UTF-8
     text, so neither can be accidentally stale in a fixture. No network or sleep.
     """
 
     def __init__(self, fixture_root: Path | None = None) -> None:
+        self._bundled = fixture_root is None
         self.fixture_root = (
             fixture_root
             if fixture_root is not None
@@ -60,7 +62,14 @@ class FakeProvider:
         try:
             raw = exact.read_text(encoding="utf-8")
         except FileNotFoundError:
-            raw = (directory / "default.json").read_text(encoding="utf-8")
+            try:
+                raw = (directory / "default.json").read_text(encoding="utf-8")
+            except FileNotFoundError:
+                if not self._bundled:
+                    raise
+                from erev_api.adapters.ai.contract_fixture import known_contract_response
+
+                raw = known_contract_response(request, self.fixture_root)
         value = json.loads(raw)
         fields = {"text", "input_tokens", "output_tokens", "latency_ms", "stop_reason"}
         if not isinstance(value, dict) or set(value) != fields:

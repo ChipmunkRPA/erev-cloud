@@ -15,7 +15,12 @@ document UUID `00000000-0000-0000-0000-000000000029`, model `fixture-model`, 16,
 maximum tokens, contact redaction enabled, and the nine field paths in
 `test_pdf_extraction.py`. Token usage in the response is synthetic. The test loads
 this retained response through FakeProvider; it does not invoke a model or write a
-proposal. There is no default-response fallback for unrelated documents.
+proposal. Bundled FakeProvider now also reconstructs the full known redacted-document
+request for a real upload ID, configured model/token limit and allowed field selection.
+Only an exact reconstructed request receives the retained values with citations rebound
+to that upload. Unrelated business text, changed prompts or inconsistent digests are refused.
+Explicit fixture roots keep their existing exact/default lookup semantics. Token counters
+remain synthetic; this is not model accuracy or live provider evidence.
 
 These paths are extraction proposal paths. Applying them through the production
 contract command schema, approval workflow and human acceptance remains separate work.
