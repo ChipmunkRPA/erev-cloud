@@ -4724,3 +4724,20 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Runtime write-ahead admission, durable retry counting and uncertain-call recovery are
   still required. This storage foundation does not yet prevent duplicate provider calls.
   No deployment or production-readiness claim; independent accounting sign-off remains open.
+
+## Architecture repair after broad verification — October 15, 2026
+
+- Provider timing now uses erev_api.clock.monotonic, retaining the injected duration source.
+  The absolute-path template rejection fixture no longer names a reserved temporary directory.
+- Registered the AI initiator's existing ACTIVE user/membership identity query with its reason.
+  Updated computation-scope and stream-ending registries to name the shared _record_events
+  function introduced for option expiry; both public event paths retain the same guards.
+- Registered MaterialRightExpireIn evidence through the existing evidence_errors/file_access
+  binder, matching the route and the authoritative data-model table.
+- Verification: 49 provider/template/architecture checks and five file-binding checks passed;
+  strict typing passed for 767 sources; Ruff/diff passed. Logs: .run/architecture-repair-
+  checks.log and .run/expiry-binding-checks.log. Five of the seven
+  outstanding architecture failures are resolved; AI proposal file ownership and evidence
+  retention remain open. This is not a complete architecture or release-suite pass.
+- Work remains on call-intent gateway integration and the other implementation/release gaps.
+  No deployment or readiness claim; direct main publication continues.

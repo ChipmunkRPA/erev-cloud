@@ -908,6 +908,8 @@ def test_dg_tst_21_subledger_grants(test_database: TestDatabase) -> None:
         ("subledger_posting_seal", "tg_subledger_posting_seal__insert"),
         ("subledger_line", "tg_subledger_line__insert"),
         ("subledger_line", "tg_subledger_line__period_guard"),
+        ("subledger_line", "zz_subledger_line__server_time"),
+        ("subledger_posting_seal", "zz_subledger_seal__server_time"),
     }
 
 

@@ -2,6 +2,25 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Full PostgreSQL revalidation — October 15, 2026
+
+- Complete PostgreSQL selection on unchanged 80fba4c: 669 passed, six failed (439.45s), recorded
+  in .run/seal-time-full-pg.log. Full typecheck passed 919 Python sources and frontend checks
+  (.run/seal-time-full-typecheck.log). This was a failed database run, not a release pass.
+- Four failures came from the AI proposal index placing enum filters before created_at under
+  RLS. New migration 0153 moves the date ahead of those filters; ALLOWED is unchanged. A real
+  application-role plan now proves the date bounds the scan and enums remain filters.
+- The trigger inventory now names both server timestamp triggers. The AI-log retention test
+  separately verifies ordinary truncate's FK refusal and CASCADE reaching the append-only guard,
+  then checks all retained rows are unchanged. No permission or retention rule was relaxed.
+- Focused revalidation: 21 passed (31.41s), including all failed cases and a full migration
+  round trip. Strict typing passed 772 sources. An initial missing unique=False migration helper
+  argument was caught and corrected before this recheck. Logs: .run/full-pg-repairs-recheck.log
+  and .run/full-pg-repair-types-recheck.log.
+- Full lint passed (.run/full-pg-repairs-lint.log). Complete PostgreSQL rerun: 676 passed
+  (496.12s), .run/full-pg-repairs-all.log. This is development verification; full immutable CI,
+  remaining implementation and independent accounting sign-off are still required. No deployment.
+
 ## Historical posting completion — October 15, 2026
 
 - Migration 0152 adds database-owned sealed_server_at after balance/chain validation. Historical
@@ -217,23 +236,6 @@
   extraction workflow integration, call recovery and other release gaps. Experimental plaintext
   AI_DOCUMENT_TEXT objects from older builds require explicit migration or regeneration;
   there is no plaintext fallback. No deployment or production-readiness claim.
-
-## Architecture repair after broad verification — October 15, 2026
-
-- Provider timing now uses erev_api.clock.monotonic, retaining the injected duration source.
-  The absolute-path template rejection fixture no longer names a reserved temporary directory.
-- Registered the AI initiator's existing ACTIVE user/membership identity query with its reason.
-  Updated computation-scope and stream-ending registries to name the shared _record_events
-  function introduced for option expiry; both public event paths retain the same guards.
-- Registered MaterialRightExpireIn evidence through the existing evidence_errors/file_access
-  binder, matching the route and the authoritative data-model table.
-- Verification: 49 provider/template/architecture checks and five file-binding checks passed;
-  strict typing passed for 767 sources; Ruff/diff passed. Logs: .run/architecture-repair-
-  checks.log and .run/expiry-binding-checks.log. Five of the seven
-  outstanding architecture failures are resolved; AI proposal file ownership and evidence
-  retention remain open. This is not a complete architecture or release-suite pass.
-- Work remains on call-intent gateway integration and the other implementation/release gaps.
-  No deployment or readiness claim; direct main publication continues.
 
 ## Outstanding release verification
 

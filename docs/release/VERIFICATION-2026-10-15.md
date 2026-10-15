@@ -129,6 +129,37 @@ The expected failure still proves the missing overlapping-commit exclusion. A se
 instant is not a PostgreSQL commit timestamp. Full release CI, broader gates and independent
 accounting sign-off remain outstanding; no deployment occurred.
 
+## Complete PostgreSQL run and index repair
+
+The complete PostgreSQL selection on unchanged `80fba4c` finished with **669 passed, 6 failed**
+(439.45s); `.run/seal-time-full-pg.log`. The full typecheck on that snapshot passed 919 Python
+sources and the frontend target; `.run/seal-time-full-typecheck.log`.
+
+Four failures exposed one real index-order defect: `ai_proposal.ix_ai_proposal__status` put enum
+keys ahead of `created_at`, so the date did not bound an application scan under row-level
+security. Migration 0153 moves the timestamp immediately after the tenant key. It preserves
+rows and constraints and reversibly recreates the prior index on downgrade. The index-condition
+allowlist is unchanged. A new application-role EXPLAIN test proves the tenant and date are the
+leading index conditions while kind/status remain filters; it tests admissible bounds, not a
+production-volume performance claim.
+
+The remaining two failures were test assumptions. The exact subledger trigger inventory now
+includes both server timestamp triggers. The AI-log retention test separately verifies plain
+TRUNCATE's foreign-key refusal and TRUNCATE CASCADE reaching the append-only guard, then checks
+all retained log rows are unchanged. No production permission or retention rule was relaxed.
+
+Focused revalidation: **21 passed** (31.41s), including all six failures, the new plan test and a
+full migration round trip; `.run/full-pg-repairs-recheck.log`. An initial repair attempt exposed a
+missing explicit `unique=False` helper argument; it was corrected before that successful run.
+Strict typing passed 772 sources; `.run/full-pg-repair-types-recheck.log`. Full lint passed with
+502 control-tagged tests collected; `.run/full-pg-repairs-lint.log`.
+
+The complete PostgreSQL rerun passed: **676 passed** (496.12s),
+`.run/full-pg-repairs-all.log`. The extra test is the application-role AI proposal index-plan
+regression. Production/test sources stayed unchanged during this rerun; verification prose was
+updated separately. These are development checks, not immutable complete CI or production-readiness
+evidence. No deployment occurred.
+
 ## Remaining scope
 
 - The backend unit/architecture selection above does not include all backend API/domain/engine/PG

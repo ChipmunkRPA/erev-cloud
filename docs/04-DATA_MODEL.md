@@ -5815,7 +5815,7 @@ Keys: `PRIMARY KEY (tenant_id, id)`; `ix_deal_preview__created (tenant_id, creat
 | `problem` | jsonb | Y | | For `failed`. |
 | SC-C, SC-M | | | | |
 
-Keys: `PRIMARY KEY (tenant_id, id)`; `ix_ai_proposal__status (tenant_id, kind, status, created_at)`.
+Keys: `PRIMARY KEY (tenant_id, id)`; `ix_ai_proposal__status (tenant_id, created_at, kind, status)` (0153: date bounds precede enum filters under RLS; NC-20).
 Migration 0149 adds `ux_ai_proposal__job (tenant_id, job_id)` where job_id is not null.
 Job/source bindings are immutable; downgrade refuses to discard populated bindings.
 

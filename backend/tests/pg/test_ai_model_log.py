@@ -53,11 +53,21 @@ def test_ai_model_log_constraints(committed_db: TestDatabase, keyring: KeyRing) 
         transaction = connection.begin()
         try:
             connection.exec_driver_sql("ALTER TABLE erev.ai_model_log NO FORCE ROW LEVEL SECURITY")
+            # The plain truncate first meets the referencing proposal FK. CASCADE reaches
+            # the append-only retention trigger; neither form may discard the evidence.
+            assert "foreign key constraint" in _owner_failure(
+                connection, text("TRUNCATE erev.ai_model_log")
+            )
             for statement in (
                 update(ai_model_log).values(input_tokens=999),
                 delete(ai_model_log),
-                text("TRUNCATE erev.ai_model_log"),
+                text("TRUNCATE erev.ai_model_log CASCADE"),
             ):
                 assert "EREV-IMM-001" in _owner_failure(connection, statement)
         finally:
             transaction.rollback()
+    with tenant_session(DbContext(tenant_id=tenant, user_id=None, entity_scope="*")) as session:
+        retained = session.execute(select(ai_model_log)).mappings().all()
+        assert {entry["id"]: dict(entry) for entry in retained} == {
+            entry["id"]: dict(entry) for entry in rows
+        }
