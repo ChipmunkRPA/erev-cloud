@@ -2,6 +2,20 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Bound stalled Compose startup and retain failure evidence — October 15, 2026
+
+- Compose verification now bounds up -d (600s default, configurable separately from health
+  polling). It stops the client/plugin group, records startup exit 124 and attempts cleanup.
+  Eleven Compose checks, focused typing, shell syntax and full lint pass. The first test run
+  had one manifest failure during source editing; the stable full selection passes.
+- An actual development run at 30s reproduced the host-mount startup stall and failed cleanly;
+  cleanup removed all test containers, volumes and network. Logs:
+  .run/compose-start-timeout-{verified,types,lint,local}.log; Compose report remains failed.
+- Earlier unbounded runs, including a temporary checkout outside Documents, were interrupted
+  and cleaned up. That checkout was removed; diagnostics retained. Container hardening/Linux
+  PDF checks remain passed on b4b8210, but Compose readiness is unverified. Frozen CI on
+  3cf8f5b remains active. No deployment or independent accounting sign-off.
+
 ## Container build and Linux extraction verification — October 15, 2026
 
 - Clean b4b8210 passed make docker-build: API/worker/web image hardening and embedded-manifest
@@ -210,23 +224,6 @@
   .run/ai-review-read-{pg,typecheck,focused-types,frontend-types,lint,openapi}.log.
   Broader release/accounting, structured-term conversion and browser gates remain open.
   No deployment or live provider calls.
-
-## Worker-to-draft acceptance evidence — October 15, 2026
-
-- Added an integrated PostgreSQL witness using the real four-page synthetic PDF, real PDF
-  text extraction, queued AI_TASK dispatch and a deterministic provider response. It reads the
-  worker's retained proposal/pages, edits the suggested customer to an explicit existing customer
-  with a reason, and accepts through the public draft endpoint. Original content/citations and
-  model-log linkage survive unchanged; the reviewed value is retained separately.
-- A different authorized reader cannot see the unattached source/proposal, then can read the
-  accepted proposal and identical retained pages through the new contract attachment. The draft
-  carries AI_ASSISTED and provenance into its activation review basis, with no revenue posting
-  and exactly one provider call. This does not prove browser review, independent activation,
-  live-provider behavior or Linux parser isolation: the test uses the real in-process parser.
-- Both acceptance tests passed, focused typing passed 789 sources and full lint passed. Logs:
-  .run/ai-worker-acceptance-{verified,final-types,lint}.log. Earlier pg/pg-fixed logs retain test
-  setup failures (missing retry callback and reused command idempotency key); verified is the
-  corrected run. Broader release/accounting and structured-term gaps remain open. No deployment.
 
 ## Outstanding release verification
 

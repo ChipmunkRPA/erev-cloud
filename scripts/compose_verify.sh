@@ -109,6 +109,8 @@ DATABASE_PASSWORD_NAMES="EREV_COMPOSE_POSTGRES_PASSWORD EREV_COMPOSE_OWNER_PASSW
 READYZ_URL="${EREV_COMPOSE_VERIFY_READYZ_URL:-http://127.0.0.1:8195/api/v1/readyz}"
 ROOT_URL="${EREV_COMPOSE_VERIFY_ROOT_URL:-http://127.0.0.1:8195/}"
 TIMEOUT_SECONDS="${EREV_COMPOSE_VERIFY_TIMEOUT_SECONDS:-180}"
+# Bound startup itself: readiness polling cannot start while a host mount hangs.
+START_TIMEOUT_SECONDS="${EREV_COMPOSE_VERIFY_START_TIMEOUT_SECONDS:-600}"
 KEEP_UP="${EREV_COMPOSE_VERIFY_KEEP_UP:-}"
 PORTS_DEFAULT="8195 5436"
 PORTS_OVERRIDE="${EREV_COMPOSE_VERIFY_PORTS:-}"
@@ -140,12 +142,59 @@ DOWN_FAILED=""
 utc_now() { "$PY" -c 'import datetime as d; print(d.datetime.now(d.UTC).strftime("%Y-%m-%dT%H:%M:%S.%fZ"))'; }
 build_sha() { git -C "$EXEC_ROOT" rev-parse HEAD 2>/dev/null || echo "nogit"; }
 sample_dirty() { if [[ -n "$(git -C "$EXEC_ROOT" status --porcelain 2>/dev/null)" ]]; then echo "true"; else echo "false"; fi; }
-compose() { "$DOCKER" compose -f "$ROOT/$COMPOSE_FILE" --env-file "$ROOT/$ENV_FILE" -p "$PROJECT" "$@"; }
+compose() {
+  if [[ "$1" != "up" ]]; then
+    "$DOCKER" compose -f "$ROOT/$COMPOSE_FILE" --env-file "$ROOT/$ENV_FILE" -p "$PROJECT" "$@"
+    return $?
+  fi
+  "$PY" - "$START_TIMEOUT_SECONDS" "$DOCKER" compose -f "$ROOT/$COMPOSE_FILE" --env-file "$ROOT/$ENV_FILE" -p "$PROJECT" "$@" <<'PY_START'
+import os
+import signal
+import subprocess
+import sys
+
+try:
+    budget = int(sys.argv[1])
+    if budget < 1:
+        raise ValueError
+except ValueError:
+    sys.exit("compose startup timeout must be a positive number of seconds")
+def interrupted(signum, _frame):
+    raise SystemExit(128 + signum)
+
+signal.signal(signal.SIGTERM, interrupted)
+process = subprocess.Popen(sys.argv[2:], start_new_session=True)
+try:
+    code = process.wait(timeout=budget)
+except BaseException as error:
+    # Kill the CLI and its plugin children, including on interruption. The shell's
+    # existing exit trap then attempts compose down -v for this test project.
+    try:
+        os.killpg(process.pid, signal.SIGTERM)
+    except ProcessLookupError:
+        pass
+    try:
+        process.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        pass
+    # A plugin may outlive its CLI parent; stop remaining group members.
+    try:
+        os.killpg(process.pid, signal.SIGKILL)
+    except ProcessLookupError:
+        pass
+    process.wait()
+    if not isinstance(error, subprocess.TimeoutExpired):
+        raise
+    sys.stderr.write(f"compose startup exceeded {budget}s; client processes stopped\n")
+    code = 124
+sys.exit(code)
+PY_START
+}
 
 write_report() {
   mkdir -p "$REPORT_DIR"
   REPORT_TARGET="$TARGET" REPORT_COMMAND="$COMMAND" REPORT_BUILD_SHA="$BUILD_SHA" REPORT_DIRTY="$DIRTY" \
-    REPORT_STARTED="$STARTED_AT" REPORT_FINISHED="$(utc_now)" REPORT_EXIT="$1" REPORT_RESULT="$2" \
+    REPORT_START_TIMEOUT="$START_TIMEOUT_SECONDS" REPORT_STARTED="$STARTED_AT" REPORT_FINISHED="$(utc_now)" REPORT_EXIT="$1" REPORT_RESULT="$2" \
     REPORT_STAGES="$STAGES_PASSED" REPORT_STAGES_SKIPPED="$STAGES_SKIPPED" REPORT_FAIL_STAGE="$FAIL_STAGE" \
     REPORT_FAIL_EXIT="$FAIL_EXIT" REPORT_PROJECT="$PROJECT" REPORT_PORTS="$PORTS" REPORT_READY_SECONDS="$READY_SECONDS" \
     REPORT_CSP="$CSP_PRESENT" REPORT_WORKER="$WORKER_HEALTH" REPORT_KEEP_UP="$KEEP_UP" REPORT_TIMEOUT="$TIMEOUT_SECONDS" \
@@ -204,6 +253,7 @@ report = {
     "readyz_url": env["REPORT_READYZ_URL"],
     "root_url": env["REPORT_ROOT_URL"],
     "timeout_seconds": int(env["REPORT_TIMEOUT"]),
+    "startup_timeout_seconds": int(env["REPORT_START_TIMEOUT"]),
     "csp_present": None if env["REPORT_CSP"] == "" else env["REPORT_CSP"] == "true",
     "worker_health": env["REPORT_WORKER"] or None,
     "kept_up": env["REPORT_KEEP_UP"] == "1",

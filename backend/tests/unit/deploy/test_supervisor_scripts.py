@@ -203,10 +203,10 @@ def test_tf_validate_report_is_usable_gate_evidence(scratch: Path) -> None:
         assert report["target"] == "tf-validate", name
         assert isinstance(report["exit_code"], int) and isinstance(report["counts"], dict), name
         assert isinstance(report["failures"], list) and isinstance(report["worktree_dirty"], bool)
-        assert has_population(report["counts"]), name  # type: ignore[arg-type]
+        assert has_population(report["counts"]), name
         assert usable_evidence(report, "tf-validate", str(report["build_sha"])) is None, name
         assert usable_evidence(report, "tf-validate", "0" * 40) is not None, name  # identity
-        stages = report["counts"]["stages"]  # type: ignore[index]
+        stages = report["counts"]["stages"]
         assert set(stages) >= {"init", "fmt", "validate"}, name
     # The skipped path is a populated, classifiable record, not an empty one.
     skipped = cases["skipped-not-installed"]
@@ -632,7 +632,10 @@ case "$1" in
       manifest_at "${STUB_MANIFEST_AT_BUILD:-}"
       exit "${STUB_COMPOSE_BUILD_RC:-0}"
     fi
-    if [[ "$sub" == "up" ]]; then exit "${STUB_COMPOSE_UP_RC:-0}"; fi
+    if [[ "$sub" == "up" ]]; then
+      if [[ "${STUB_COMPOSE_HANG_UP:-0}" == "1" ]]; then sleep 600 & wait; fi
+      exit "${STUB_COMPOSE_UP_RC:-0}"
+    fi
     if [[ "$sub" == "down" ]]; then exit "${STUB_COMPOSE_DOWN_RC:-0}"; fi
     exit 0 ;;
   run)
@@ -1187,7 +1190,7 @@ def test_audit_deps_rejects_error_incomplete_and_inconsistent_results(scratch: P
     no_vulns_field = {"dependencies": [{"name": "alembic", "version": "1.20.0"}], "fixes": []}
     done, report = run("pip-incomplete", no_vulns_field, STUB_PIP_AUDIT_RC="0")
     assert done.returncode == 1 and report["result"] == "pip-audit-invalid"
-    partial: dict[str, Any] = _npm_audit()  # type: ignore[assignment]
+    partial: dict[str, Any] = _npm_audit()
     del partial["metadata"]["vulnerabilities"]["high"]
     done, report = run("npm-partial", partial, STUB_NPM_AUDIT_RC="0")
     assert done.returncode == 1 and report["result"] == "npm-audit-invalid"
@@ -1627,6 +1630,28 @@ def test_compose_verify_brings_up_smokes_and_tears_down(scratch: Path) -> None:
         )
         done = _run_dep5("scripts/compose_verify.sh", root, env)
     assert done.returncode == 1 and "the worker container is starting, not healthy" in done.stdout
+
+
+def test_compose_verify_stalled_startup_fails_and_cleans_up(scratch: Path) -> None:
+    root = _dep5_root(scratch)
+    env = _dep5_env(
+        scratch,
+        root,
+        STUB_COMPOSE_HANG_UP="1",
+        EREV_COMPOSE_VERIFY_START_TIMEOUT_SECONDS="2",
+    )
+    done = _run_dep5("scripts/compose_verify.sh", root, env)
+    assert done.returncode != 0
+    report = _report_of(root, "compose-verify")
+    assert report["result"] == "up-failed"
+    assert report["startup_timeout_seconds"] == 2
+    assert report["failures"] == [{"stage": "up", "exit_code": 124}]
+    assert report["counts"]["stages"]["up"] == "fail"
+    assert report["counts"]["stages"]["ready"] == "not-run"
+    assert report["counts"]["stages"]["down"] == "pass"
+    assert any(line.endswith("-p erev-verify down -v") for line in _calls(scratch).splitlines())
+    log = root / ".run/reports/compose-verify/compose-up.log"
+    assert "startup exceeded 2s; client processes stopped" in log.read_text()
 
 
 def test_compose_verify_writes_the_embedded_manifest_before_the_build(scratch: Path) -> None:

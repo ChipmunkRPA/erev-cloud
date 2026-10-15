@@ -5511,3 +5511,21 @@ cleanup in the shared database session kernel was also repaired and regression-t
   final-unit,final-lint}.log. Structured-term mappings, existing-record acceptance approval,
   complete browser review, broad release verification and independent accounting sign-off remain
   open. No deployment or live provider calls.
+
+
+## Worker-to-draft acceptance evidence — October 15, 2026
+
+- Added an integrated PostgreSQL witness using the real four-page synthetic PDF, real PDF
+  text extraction, queued AI_TASK dispatch and a deterministic provider response. It reads the
+  worker's retained proposal/pages, edits the suggested customer to an explicit existing customer
+  with a reason, and accepts through the public draft endpoint. Original content/citations and
+  model-log linkage survive unchanged; the reviewed value is retained separately.
+- A different authorized reader cannot see the unattached source/proposal, then can read the
+  accepted proposal and identical retained pages through the new contract attachment. The draft
+  carries AI_ASSISTED and provenance into its activation review basis, with no revenue posting
+  and exactly one provider call. This does not prove browser review, independent activation,
+  live-provider behavior or Linux parser isolation: the test uses the real in-process parser.
+- Both acceptance tests passed, focused typing passed 789 sources and full lint passed. Logs:
+  .run/ai-worker-acceptance-{verified,final-types,lint}.log. Earlier pg/pg-fixed logs retain test
+  setup failures (missing retry callback and reused command idempotency key); verified is the
+  corrected run. Broader release/accounting and structured-term gaps remain open. No deployment.
