@@ -1,8 +1,8 @@
 """Prepare bounded extraction input and retain its exact citation mapping locally.
 
 The worker document retrieval path authorizes and parses inputs through an injected isolated
-extractor. Extraction dispatch, durable text storage, budget enforcement and audited
-attempt/proposal persistence remain separate integration work.
+extractor; extraction_proposals retains text and audited attempt/proposal evidence.
+Extraction dispatch and budget enforcement remain separate integration work.
 """
 
 from __future__ import annotations

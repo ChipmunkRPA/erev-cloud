@@ -129,7 +129,7 @@ and resolves secrets lazily. Contract-review and explain-narrative prompts have 
 digests and deterministic fixtures. Request preparation minimizes and redacts inputs with
 immutable coordinate mappings; extraction validation verifies allowed paths, confidence and
 source citation spans, rejecting an entire malformed proposal. Confidence below 0.75 is marked
-for review. Command-specific field schemas, human semantic review, extraction persistence and
+for review. Command-specific field schemas, human semantic review, extraction worker integration and
 acceptance, anomaly and Q&A workflows remain unfinished.
 
 The worker-only document retrieval helper now checks the current initiating human, AI switches,
@@ -137,8 +137,16 @@ text consent, readable ATTACHMENT/PDF source, file size and digest before invoki
 isolated extractor. It audits decrypted reads as that human, heartbeats around parsing and
 rechecks cancellation, grants, settings and source access afterward before preparing redacted
 input with retained citation mappings. It holds no SQL transaction while parsing. This is a
-preparation component: extraction dispatch/provider retries, encrypted text persistence and
-proposal persistence are not yet connected, and no extraction submission endpoint is enabled.
+preparation component; no extraction submission endpoint is enabled.
+
+A separate persistence component retains original pages as encrypted AI_DOCUMENT_TEXT files
+bound to the source digest and initiating job. It rebuilds requests and citation mappings from
+those bytes, verifies the call intent, and atomically records model usage, validated extraction
+fields and audit evidence. Invalid/uncited output and refusals produce failed proposals without
+retaining rejected response text. Database tests cover encryption, cross-job text/intent
+refusal, changed request fields, missing permission and rollback. These components still need
+extraction dispatch, budget admission, provider retry/recovery and submission integration;
+received-response persistence alone does not implement a complete extraction workflow.
 
 The PDF adapter has file/page/text and parser limits, an isolated subprocess, timeout cleanup
 and a sanitized environment. A four-page fixture covers the nine documented extraction fields.

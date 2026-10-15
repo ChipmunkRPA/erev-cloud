@@ -2,6 +2,25 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Encrypted extraction proposal evidence — October 15, 2026
+
+- Added a persistence component for original document pages and received extraction responses.
+  Text is encrypted per file and bound to the source digest, human and running AI job; repeated
+  retention for that job reuses the same file. Saving a proposal rebuilds the request and citation
+  mappings from retained bytes, checks the call intent and records usage, content and audit
+  evidence atomically. Refused, invalid or uncited responses become failed proposals without
+  retaining rejected provider text. Shared job/intent binding checks also serve narratives.
+- Verification: 20 existing AI database cases passed in the broader run; its new case exposed
+  a missing test-helper argument, now fixed. The final focused PostgreSQL case passed, covering
+  ciphertext, original citation offsets, low confidence, refusals, cross-job text/intent swaps,
+  changed request fields, missing permission, deduplication, rollback and human audit attribution.
+  71 preparation/validation/layer tests passed. Strict focused typing passed 780 sources; full
+  typecheck passed 929 Python sources plus frontend. Full lint passed. Logs:
+  .run/ai-extraction-persistence-{regressions,pg-final,unit,types-final,typecheck,lint}.log.
+- Extraction dispatch, budget/provider recovery, submission, field schemas and human acceptance
+  remain open. These components do not invoke a provider or apply accounting changes. Broader
+  release verification and independent accounting sign-off remain outstanding. No deployment.
+
 ## Authorized extraction input preparation — October 15, 2026
 
 - Added a worker-only document retrieval component: reauthorize the current human and attempt,
@@ -199,41 +218,6 @@
 - Public submission, other AI operations, admission-failure evidence, notifications, human
   review and unknown-outcome/usage reconciliation remain open; this does not close AI lifecycle
   verification or establish production readiness.
-
-## Full PostgreSQL revalidation — October 15, 2026
-
-- Complete PostgreSQL selection on unchanged 80fba4c: 669 passed, six failed (439.45s), recorded
-  in .run/seal-time-full-pg.log. Full typecheck passed 919 Python sources and frontend checks
-  (.run/seal-time-full-typecheck.log). This was a failed database run, not a release pass.
-- Four failures came from the AI proposal index placing enum filters before created_at under
-  RLS. New migration 0153 moves the date ahead of those filters; ALLOWED is unchanged. A real
-  application-role plan now proves the date bounds the scan and enums remain filters.
-- The trigger inventory now names both server timestamp triggers. The AI-log retention test
-  separately verifies ordinary truncate's FK refusal and CASCADE reaching the append-only guard,
-  then checks all retained rows are unchanged. No permission or retention rule was relaxed.
-- Focused revalidation: 21 passed (31.41s), including all failed cases and a full migration
-  round trip. Strict typing passed 772 sources. An initial missing unique=False migration helper
-  argument was caught and corrected before this recheck. Logs: .run/full-pg-repairs-recheck.log
-  and .run/full-pg-repair-types-recheck.log.
-- Full lint passed (.run/full-pg-repairs-lint.log). Complete PostgreSQL rerun: 676 passed
-  (496.12s), .run/full-pg-repairs-all.log. This is development verification; full immutable CI,
-  remaining implementation and independent accounting sign-off are still required. No deployment.
-
-## Historical posting completion — October 15, 2026
-
-- Migration 0152 adds database-owned sealed_server_at after balance/chain validation. Historical
-  predicates now require the complete posting's seal by the cutoff, as well as line insertion;
-  record/current/close behavior remains on its application-clock basis. Entity scope stays on
-  the outer line query; the tenant-scoped seal prevents hidden sibling lines from splitting it.
-- Core database checks: 19 passed, one strict expected failure for overlapping commit visibility
-  (140.88s). Follow-up: nine passed (52.00s), including forged timestamp override, application/owner
-  immutability, APIs, tenant isolation, older migration guards and retained AI intents.
-- Unit/architecture selection: 1,192 passed (17.77s). Strict typing passed 771 sources. Logs:
-  .run/seal-time-{core,followup,unit,types-final}.log. Full make lint passed;
-  .run/seal-time-lint.log (502 control-tagged tests collected).
-- Populated seals cannot cross 0152: the earlier server completion instant cannot be reconstructed
-  and downgrade cannot discard it. The stamp is immutable seal metadata outside the line hash.
-  PostgreSQL commit visibility remains open; no deployment or production-readiness claim.
 
 ## Outstanding release verification
 

@@ -4941,3 +4941,38 @@ cleanup in the shared database session kernel was also repaired and regression-t
   registry/fixture checks and 502 control-tagged tests collected successfully.
 - Insertion time is not commit time. The 0152 follow-up above closes posting splits; overlapping
   commits remain unresolved. See LIMITS-1.0.md. No readiness claim or deployment.
+
+## Historical posting completion — October 15, 2026
+
+- Migration 0152 adds database-owned sealed_server_at after balance/chain validation. Historical
+  predicates now require the complete posting's seal by the cutoff, as well as line insertion;
+  record/current/close behavior remains on its application-clock basis. Entity scope stays on
+  the outer line query; the tenant-scoped seal prevents hidden sibling lines from splitting it.
+- Core database checks: 19 passed, one strict expected failure for overlapping commit visibility
+  (140.88s). Follow-up: nine passed (52.00s), including forged timestamp override, application/owner
+  immutability, APIs, tenant isolation, older migration guards and retained AI intents.
+- Unit/architecture selection: 1,192 passed (17.77s). Strict typing passed 771 sources. Logs:
+  .run/seal-time-{core,followup,unit,types-final}.log. Full make lint passed;
+  .run/seal-time-lint.log (502 control-tagged tests collected).
+- Populated seals cannot cross 0152: the earlier server completion instant cannot be reconstructed
+  and downgrade cannot discard it. The stamp is immutable seal metadata outside the line hash.
+  PostgreSQL commit visibility remains open; no deployment or production-readiness claim.
+
+## Full PostgreSQL revalidation — October 15, 2026
+
+- Complete PostgreSQL selection on unchanged 80fba4c: 669 passed, six failed (439.45s), recorded
+  in .run/seal-time-full-pg.log. Full typecheck passed 919 Python sources and frontend checks
+  (.run/seal-time-full-typecheck.log). This was a failed database run, not a release pass.
+- Four failures came from the AI proposal index placing enum filters before created_at under
+  RLS. New migration 0153 moves the date ahead of those filters; ALLOWED is unchanged. A real
+  application-role plan now proves the date bounds the scan and enums remain filters.
+- The trigger inventory now names both server timestamp triggers. The AI-log retention test
+  separately verifies ordinary truncate's FK refusal and CASCADE reaching the append-only guard,
+  then checks all retained rows are unchanged. No permission or retention rule was relaxed.
+- Focused revalidation: 21 passed (31.41s), including all failed cases and a full migration
+  round trip. Strict typing passed 772 sources. An initial missing unique=False migration helper
+  argument was caught and corrected before this recheck. Logs: .run/full-pg-repairs-recheck.log
+  and .run/full-pg-repair-types-recheck.log.
+- Full lint passed (.run/full-pg-repairs-lint.log). Complete PostgreSQL rerun: 676 passed
+  (496.12s), .run/full-pg-repairs-all.log. This is development verification; full immutable CI,
+  remaining implementation and independent accounting sign-off are still required. No deployment.

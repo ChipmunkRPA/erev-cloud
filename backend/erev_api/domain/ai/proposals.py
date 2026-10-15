@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from datetime import timedelta
 from typing import Literal
 from uuid import UUID
@@ -103,7 +104,7 @@ def _evidence(
     return rebuilt, contracts
 
 
-def _intent_binding(
+def require_intent_binding(
     uow: UnitOfWork,
     intent_id: UUID | None,
     job_id: UUID | None,
@@ -130,6 +131,30 @@ def _intent_binding(
         raise ProposalEvidenceRefused("AI_INVALID_INTENT_BINDING")
 
 
+def require_job_binding(
+    uow: UnitOfWork, job_id: UUID | None, job_source_sha256: str | None
+) -> None:
+    """A proposal is bound to the initiating human's running AI job."""
+    principal = uow.principal
+    if (job_id is None) != (job_source_sha256 is None) or (
+        job_source_sha256 is not None and re.fullmatch(r"[0-9a-f]{64}", job_source_sha256) is None
+    ):
+        raise ProposalEvidenceRefused("AI_INVALID_JOB_BINDING")
+    if job_id is not None:
+        owned = uow.session.scalar(
+            select(job.c.id).where(
+                job.c.tenant_id == principal.tenant_id,
+                job.c.id == job_id,
+                job.c.kind == "AI_TASK",
+                job.c.created_by == principal.id,
+                job.c.created_by_kind == "USER",
+                job.c.state == "RUNNING",
+            )
+        )
+        if owned is None:
+            raise ProposalEvidenceRefused("AI_INVALID_JOB_BINDING")
+
+
 def record_narrative(
     uow: UnitOfWork,
     *,
@@ -147,7 +172,7 @@ def record_narrative(
     citations identify its nodes. A failure stores no rejected provider narrative.
     """
     rebuilt, contracts = _evidence(uow, prepared)
-    _intent_binding(uow, intent_id, job_id, job_source_sha256, rebuilt.request.input_sha256)
+    require_intent_binding(uow, intent_id, job_id, job_source_sha256, rebuilt.request.input_sha256)
     selected = rebuilt.select(response)
     log_id = record_attempt(
         uow,
@@ -173,21 +198,7 @@ def _insert_narrative(
     job_source_sha256: str | None,
 ) -> UUID:
     principal = uow.principal
-    if (job_id is None) != (job_source_sha256 is None):
-        raise ProposalEvidenceRefused("AI_INVALID_JOB_BINDING")
-    if job_id is not None:
-        owned = uow.session.scalar(
-            select(job.c.id).where(
-                job.c.tenant_id == principal.tenant_id,
-                job.c.id == job_id,
-                job.c.kind == "AI_TASK",
-                job.c.created_by == principal.id,
-                job.c.created_by_kind == "USER",
-                job.c.state == "RUNNING",
-            )
-        )
-        if owned is None:
-            raise ProposalEvidenceRefused("AI_INVALID_JOB_BINDING")
+    require_job_binding(uow, job_id, job_source_sha256)
     proposal_id = new_id()
     status = "proposed" if selected.proposed else "failed"
     content = {"narrative": list(selected.narrative)} if selected.proposed else {}
@@ -291,7 +302,9 @@ def record_provider_failure(
             expected["output_tokens"] = log["output_tokens"]
     if log is None or any(log[key] != value for key, value in expected.items()):
         raise ProposalEvidenceRefused("AI_ATTEMPT_EVIDENCE_MISMATCH")
-    _intent_binding(uow, log["intent_id"], job_id, job_source_sha256, rebuilt.request.input_sha256)
+    require_intent_binding(
+        uow, log["intent_id"], job_id, job_source_sha256, rebuilt.request.input_sha256
+    )
     return _insert_narrative(
         uow,
         rebuilt,
