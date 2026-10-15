@@ -83,16 +83,8 @@ function serve(
         redact_contact_details: true,
       }),
     ),
-    http.get(apiUrl("/api/v1/registry/parameters"), () =>
-      HttpResponse.json({
-        items: [{ code: "ai.model", default_asc606: "default-model" }],
-        next_cursor: null,
-      }),
-    ),
-    http.get(apiUrl("/api/v1/policies/resolve"), ({ request }) =>
-      HttpResponse.json({
-        value: BASE[new URL(request.url).searchParams.get("key") as keyof typeof BASE],
-      }),
+    http.get(apiUrl("/api/v1/ai/settings/values"), () =>
+      HttpResponse.json({ values: BASE, defaults: { ...BASE, "ai.model": "default-model" } }),
     ),
     http.get(apiUrl("/api/v1/ai/settings/versions"), ({ request }) =>
       HttpResponse.json({
@@ -156,7 +148,7 @@ function serve(
   );
   return calls;
 }
-function renderSettings(permissions = ["settings.manage", "config.read"]) {
+function renderSettings(permissions = ["settings.manage"]) {
   const me = signedInMe({ permissions });
   server.use(http.get(apiUrl("/api/v1/me"), () => HttpResponse.json(me)));
   return renderApp("/settings/ai", {

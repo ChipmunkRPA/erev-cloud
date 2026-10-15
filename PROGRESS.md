@@ -2,6 +2,21 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## AI settings without general configuration read access — October 15, 2026
+
+- Added GET /ai/settings/values under workspace-wide settings.manage, returning only effective
+  AI values and their reset defaults. The form no longer calls general configuration routes.
+  Parameter choices are fixed by the server's AI catalogue; accounting keys cannot be selected.
+- A custom role holding only settings.manage now passes form reads, validation-job reads,
+  submission and a different custom-role administrator's approval. General policy/catalogue
+  reads remain 403; draft values and another tenant's values are excluded. A real Chromium
+  submission with this limited role passes and leaves AI off pending approval.
+- Fifteen focused frontend tests, frontend typing, backend typing (795 files), route/scope checks
+  and full lint pass. API evidence includes the corrected custom-role lifecycle after advancing
+  its frozen clock past its predecessor publication. Details: docs/release/CI-2026-10-15.md.
+- No deployment, provider call or new role grant. Standard demo/J-19, release gates and independent
+  accounting sign-off remain open. Frozen CI on 3cf8f5b continues on its separate database.
+
 ## Administrator AI settings screen — October 15, 2026
 
 - Added /settings/ai and its workspace-wide settings.manage navigation guard. The page shows
@@ -221,26 +236,6 @@
 - The full frozen CI on 3cf8f5b remains live on 55439 and predates these repairs. No restart,
   deployment or live model call. Browser fixtures/acceptance, remaining implementation and release
   gates, and independent accounting sign-off remain open.
-
-## Bind the known extraction fixture to real upload requests — October 15, 2026
-
-- Found that the bundled fake extraction response matched only its original fixed document ID,
-  model and nine-path request. Real upload IDs/full worker catalogues had no fixture. Added a
-  bundled-only fallback that reconstructs the complete known redacted-document request before
-  reusing retained values, filtering allowed fields and rebinding citations to the upload ID.
-  Arbitrary source text, prompts and inconsistent hashes still fail. Custom fixture roots retain
-  exact/default semantics. No network calls or accounting writes are introduced.
-- AI unit suite: 250 passed, two Linux resource checks skipped on macOS. Focused strict typing
-  passes 790 sources; full lint passes. Evidence: .run/ai-upload-fixture-first-failure.log (completed unit run),
-  .run/ai-upload-fixture-types.log. Combined AI/architecture run: 508 passed, 12 failed,
-  two skipped in .run/ai-upload-fixture-tests.log. Failures identify existing AI audit writers
-  without contract keys, unlisted expiry SYSTEM/platform-directory callers and AI_TASK still
-  marked pending after registration. No broad pass is claimed; these require follow-up repair.
-- Full frozen CI remains live on 3cf8f5b against isolated PostgreSQL 55439, in engine tests.
-  Do not restart it or run other database tests there. Known-document fixture adaptation does
-  not complete demo/browser seeding, Linux parser proof, browser acceptance or accounting sign-off.
-  No deployment or live provider calls.
-
 
 ## Outstanding release verification
 

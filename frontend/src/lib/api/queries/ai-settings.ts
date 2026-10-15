@@ -24,3 +24,7 @@ export function fetchAISettings(): Promise<AISettingsStatus> {
 export function fetchAISettingsVersions(query: ListQuery = {}, cursor: string | null = null) {
   return fetchListPage<AISettingsVersion>(AI_SETTINGS_VERSIONS_PATH, query, cursor);
 }
+
+export function fetchAISettingsValues(): Promise<components["schemas"]["AISettingsValuesOut"]> {
+  return unwrap(api.GET("/api/v1/ai/settings/values"));
+}

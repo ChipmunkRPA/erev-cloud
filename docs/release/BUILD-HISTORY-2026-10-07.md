@@ -5633,3 +5633,22 @@ cleanup in the shared database session kernel was also repaired and regression-t
   the inventory repair; its eventual results must remain attributed to that snapshot.
 - No full CI pass is claimed. Real retained-proposal browser fixtures, complete acceptance,
   broader release gates and accounting sign-off remain open. No deployment/provider calls.
+
+## Bind the known extraction fixture to real upload requests — October 15, 2026
+
+- Found that the bundled fake extraction response matched only its original fixed document ID,
+  model and nine-path request. Real upload IDs/full worker catalogues had no fixture. Added a
+  bundled-only fallback that reconstructs the complete known redacted-document request before
+  reusing retained values, filtering allowed fields and rebinding citations to the upload ID.
+  Arbitrary source text, prompts and inconsistent hashes still fail. Custom fixture roots retain
+  exact/default semantics. No network calls or accounting writes are introduced.
+- AI unit suite: 250 passed, two Linux resource checks skipped on macOS. Focused strict typing
+  passes 790 sources; full lint passes. Evidence: .run/ai-upload-fixture-first-failure.log (completed unit run),
+  .run/ai-upload-fixture-types.log. Combined AI/architecture run: 508 passed, 12 failed,
+  two skipped in .run/ai-upload-fixture-tests.log. Failures identify existing AI audit writers
+  without contract keys, unlisted expiry SYSTEM/platform-directory callers and AI_TASK still
+  marked pending after registration. No broad pass is claimed; these require follow-up repair.
+- Full frozen CI remains live on 3cf8f5b against isolated PostgreSQL 55439, in engine tests.
+  Do not restart it or run other database tests there. Known-document fixture adaptation does
+  not complete demo/browser seeding, Linux parser proof, browser acceptance or accounting sign-off.
+  No deployment or live provider calls.

@@ -112,6 +112,11 @@ links pending approval requests. Emergency disable requires confirmation and rem
 original values, row-version precondition and command keys; failed validation never submits.
 A lost response after committed submission is recovered by replaying that submission's own key.
 The page keeps the application's existing minimum-width guard; it is not a mobile settings editor.
+Effective form values and reset defaults now come from GET /ai/settings/values, guarded by
+workspace-wide settings.manage and limited to the AI catalogue. The page no longer calls general
+policy-resolution or registry-catalogue reads. A custom role holding only settings.manage passes
+form reads, validation-job reading, submission and independent approval; general configuration
+reads remain forbidden. A real-browser submission with that custom role also passes.
 
 New AI submissions now use AI_SETTINGS_VERSION and workspace-wide settings.manage for review,
 so a different Tenant Admin can read and approve without accounting configuration privileges.

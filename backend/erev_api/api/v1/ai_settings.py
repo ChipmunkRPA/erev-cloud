@@ -42,6 +42,7 @@ from erev_api.problems import Problem
 from erev_api.registry.versions import BASIS_PREDECESSOR
 from erev_api.schemas.ai_settings import (
     AISettingsStatusOut,
+    AISettingsValuesOut,
     AISettingsVersionIn,
     AISettingsVersionUpdateIn,
 )
@@ -98,6 +99,21 @@ def status(
         send_contract_text=effective.send_contract_text,
         redact_contact_details=effective.redact_contact_details,
     )
+
+
+@router.get(
+    "/ai/settings/values",
+    operation_id="ai_settings_values",
+    response_model=AISettingsValuesOut,
+    responses=problem_responses(*PROBLEMS),
+)
+def values(
+    ctx: Annotated[RequestContext, Depends(require_all_entities(PERMISSION))],
+) -> AISettingsValuesOut:
+    """Read AI form values and defaults without general configuration read access."""
+    with tenant_session(ctx.principal.db_context, read_only=True) as session:
+        current, defaults = configuration.form_values(session, known_at=ctx.now)
+    return AISettingsValuesOut(values=current, defaults=defaults)
 
 
 VERSION_LIST: Final = ListSpec(

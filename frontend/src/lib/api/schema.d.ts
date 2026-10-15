@@ -511,6 +511,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/ai/settings/values": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Values
+     * @description Read AI form values and defaults without general configuration read access.
+     */
+    get: operations["ai_settings_values"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/ai/settings/versions": {
     parameters: {
       query?: never;
@@ -8226,6 +8246,20 @@ export interface components {
       tenant_disabled_at: string | null;
       /** Workspace Active */
       workspace_active: boolean;
+    };
+    /**
+     * AISettingsValuesOut
+     * @description Effective and reset values for the fixed AI catalogue only.
+     */
+    AISettingsValuesOut: {
+      /** Defaults */
+      defaults: {
+        [key: string]: unknown;
+      };
+      /** Values */
+      values: {
+        [key: string]: unknown;
+      };
     };
     /** AISettingsVersionIn */
     AISettingsVersionIn: {
@@ -25559,6 +25593,76 @@ export interface operations {
         };
       };
       /** @description Problem: invalid-transition, idempotency-in-progress, ai-disabled */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: validation-failed, idempotency-key-reused */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+    };
+  };
+  ai_settings_values: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AISettingsValuesOut"];
+        };
+      };
+      /** @description Problem: unauthenticated, session-expired */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: forbidden, mfa-required */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: not-found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: invalid-transition, idempotency-in-progress */
       409: {
         headers: {
           [name: string]: unknown;

@@ -1,5 +1,6 @@
 """AI-scoped authoring must not grant administrators accounting configuration powers."""
 
+from datetime import timedelta
 from uuid import UUID
 
 import pytest
@@ -15,7 +16,12 @@ from fastapi import FastAPI
 from support.http import call
 from support.principals import Actor, colleague, cookie_headers, enrolled, member
 from support.reference import approve
-from support.rows import insert_registry_version, insert_role_assignment, publish_registry_version
+from support.rows import (
+    insert_custom_role,
+    insert_registry_version,
+    insert_role_assignment,
+    publish_registry_version,
+)
 from tests.api.test_tenant_api import app as app  # noqa: F401
 
 
@@ -497,3 +503,120 @@ def test_ai_status_requires_administrator_and_is_tenant_scoped(
         headers=cookie_headers(ordinary.token, ordinary.csrf_token),
     )
     assert refused.status_code == 403, refused.text
+
+
+def test_ai_form_values_need_only_settings_manage(
+    app: FastAPI,
+    keyring: KeyRing,
+    clock: FrozenClock,
+) -> None:
+    person = member(keyring, clock)
+    other = member(keyring, clock)
+    with tenant_session(DbContext(person.tenant_id, person.user_id, "*")) as session:
+        insert_custom_role(
+            session, tenant_id=person.tenant_id, code="ai_admin", permissions=["settings.manage"]
+        )
+        insert_role_assignment(
+            session,
+            tenant_id=person.tenant_id,
+            membership_id=person.membership_id,
+            role_code="ai_admin",
+        )
+        publish_registry_version(
+            session,
+            tenant_id=person.tenant_id,
+            category=RegistryCategory.AI,
+            values={"ai.model": "reviewed-model", "ai.anomaly.revenue_change_ratio": "0.25"},
+            at=clock.now(),
+        )
+    with tenant_session(DbContext(other.tenant_id, other.user_id, "*")) as session:
+        publish_registry_version(
+            session,
+            tenant_id=other.tenant_id,
+            category=RegistryCategory.AI,
+            values={"ai.model": "other-model"},
+            at=clock.now(),
+        )
+    actor = enrolled(app, clock, person)
+    headers = cookie_headers(actor.token, actor.csrf_token)
+    clock.advance(timedelta(seconds=1))
+    created = call(
+        app,
+        "POST",
+        "/api/v1/ai/settings/versions",
+        json={"values": {"ai.enabled": True, "ai.model": "unpublished-model"}},
+        headers=cookie_headers(actor.token, actor.csrf_token),
+    )
+    assert created.status_code == 201, created.text
+    draft_id = UUID(created.json()["id"])
+    response = call(app, "GET", "/api/v1/ai/settings/values", headers=headers)
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert (
+        set(body["values"])
+        == set(body["defaults"])
+        == {
+            "ai.enabled",
+            "ai.send_contract_text",
+            "ai.model",
+            "ai.monthly_token_budget",
+            "ai.redact_contact_details",
+            "ai.anomaly.revenue_change_ratio",
+            "ai.anomaly.revenue_ahead_of_billing_days",
+            "ai.anomaly.allocation_adjustment_ratio",
+        }
+    )
+    assert body["values"]["ai.model"] == "reviewed-model"
+    assert body["defaults"]["ai.model"] == "claude-opus-5"
+    assert body["values"]["ai.anomaly.revenue_change_ratio"] == "0.25"
+    assert body["values"]["ai.enabled"] is False
+    for path in (
+        "/api/v1/policies",
+        "/api/v1/registry/parameters",
+        "/api/v1/policies/resolve?key=billing.posting",
+    ):
+        denied = call(app, "GET", path, headers=headers)
+        assert denied.status_code == 403, denied.text
+    # The page must also be able to follow validation and independently approve
+    # with this exact custom permission, not just with the bundled Tenant Admin role.
+    path = f"/api/v1/ai/settings/versions/{draft_id}"
+    tested = call(app, "POST", path + "/test", json={"run_simulation": True}, headers=headers)
+    assert tested.status_code == 202, tested.text
+    job_id = UUID(tested.json()["id"])
+    run_job(
+        job_id,
+        person.tenant_id,
+        attempt=1,
+        runtime=JobRuntime(clock=clock, keyring=keyring, files=app.state.file_store),
+    )
+    job_read = call(app, "GET", f"/api/v1/jobs/{job_id}", headers=headers)
+    assert job_read.status_code == 200 and job_read.json()["state"] == "SUCCEEDED", job_read.text
+    submitted = call(
+        app,
+        "POST",
+        path + "/submit",
+        json={"comment": "Reviewed administrator settings"},
+        headers=cookie_headers(actor.token, actor.csrf_token),
+    )
+    assert submitted.status_code == 200, submitted.text
+    reviewer = colleague(person.tenant_id, "independent-ai-admin")
+    with tenant_session(DbContext(person.tenant_id, person.user_id, "*")) as session:
+        insert_role_assignment(
+            session,
+            tenant_id=person.tenant_id,
+            membership_id=reviewer.membership_id,
+            role_code="ai_admin",
+        )
+    reviewer_actor = enrolled(app, clock, reviewer)
+    decision = approve(app, submitted.json()["approval_request_id"], reviewer_actor)
+    assert decision.status_code == 200, decision.text
+    active = call(app, "GET", "/api/v1/ai/settings", headers=headers)
+    assert active.status_code == 200 and active.json()["enabled"], active.text
+    ordinary = enrolled(app, clock, other)
+    denied = call(
+        app,
+        "GET",
+        "/api/v1/ai/settings/values",
+        headers=cookie_headers(ordinary.token, ordinary.csrf_token),
+    )
+    assert denied.status_code == 403, denied.text

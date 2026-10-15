@@ -12,16 +12,15 @@ import { ReasonField, reasonError } from "../../components/form/ReasonField";
 import { Button } from "../../components/ui/Button";
 import { Modal } from "../../components/ui/Modal";
 import { useAccess } from "../../lib/access";
-import { api, send, unwrap } from "../../lib/api/client";
+import { send } from "../../lib/api/client";
 import { useCommandKeys } from "../../lib/api/commands";
 import { fetchJob, isTerminal } from "../../lib/api/jobs";
-import { fetchListPage } from "../../lib/api/lists";
-import type { RegistryParameter } from "../../lib/api/queries/policies";
 import { ApiProblem, readProblem } from "../../lib/api/problems";
 import {
   aiSettingsKey,
   aiSettingsVersionsKey,
   fetchAISettings,
+  fetchAISettingsValues,
   fetchAISettingsVersions,
   AI_SETTINGS_VERSIONS_PATH,
   type AISettingsVersion,
@@ -99,36 +98,16 @@ async function loadForm() {
         async (status) => (await fetchAISettingsVersions({ status })).items,
       ),
     ),
-    Promise.all(
-      FIELDS.map(
-        async ([code]) =>
-          [
-            code,
-            (
-              await unwrap(
-                api.GET("/api/v1/policies/resolve", { params: { query: { key: code } } }),
-              )
-            ).value as unknown,
-          ] as const,
-      ),
-    ),
+    fetchAISettingsValues(),
   ]);
   const open = versions.flat();
   if (open.length > 1) throw new Error(label("multipleOpen"));
   const version = open[0];
-  const stored = Object.fromEntries(resolved);
+  const stored = resolved.values;
   const current = { ...stored, ...(version?.values ?? {}) };
-  if ((version?.unset ?? []).length > 0) {
-    const catalogue = await fetchListPage<RegistryParameter>(
-      "/api/v1/registry/parameters",
-      { category: "AI" },
-      null,
-    );
-    for (const code of version?.unset ?? []) {
-      const parameter = catalogue.items.find((item) => item.code === code);
-      if (!parameter) throw new Error(label("invalidSettings"));
-      current[code] = parameter.default_asc606;
-    }
+  for (const code of version?.unset ?? []) {
+    if (!Object.hasOwn(resolved.defaults, code)) throw new Error(label("invalidSettings"));
+    current[code] = resolved.defaults[code];
   }
   const values: Values = Object.fromEntries(
     FIELDS.map(([code, , kind]) => {

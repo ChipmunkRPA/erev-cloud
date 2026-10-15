@@ -39,3 +39,12 @@ class AISettingsStatusOut(BaseModel):
     monthly_token_budget: int
     send_contract_text: bool
     redact_contact_details: bool
+
+
+class AISettingsValuesOut(BaseModel):
+    """Effective and reset values for the fixed AI catalogue only."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    values: dict[str, Any]
+    defaults: dict[str, Any]
