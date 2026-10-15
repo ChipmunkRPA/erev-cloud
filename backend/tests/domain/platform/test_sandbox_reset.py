@@ -221,6 +221,35 @@ def _row_counts(tenant_id: UUID) -> dict[str, int]:
     return counts
 
 
+def _business_rows(tenant_id: UUID) -> dict[str, list[dict[str, Any]]]:
+    """Every tenant-scoped source row outside the documented reset provenance writes."""
+    provenance = {
+        "audit_chain_head",
+        "audit_event",
+        "notification",
+        "outbox_message",
+        "tenant_snapshot",
+    }
+    rows = {}
+    with tenant_session(_context(tenant_id), read_only=True) as session:
+        for table in metadata.sorted_tables:
+            if (
+                "tenant_id" not in table.c
+                or not table.c.tenant_id.primary_key
+                or table.name in provenance
+            ):
+                continue
+            rows[table.name] = [
+                dict(row)
+                for row in session.execute(
+                    select(table)
+                    .where(table.c.tenant_id == tenant_id)
+                    .order_by(*table.primary_key.columns)
+                ).mappings()
+            ]
+    return rows
+
+
 def _events(tenant_id: UUID, action: str) -> list[dict[str, Any]]:
     with tenant_session(_context(tenant_id), read_only=True) as session:
         return [
@@ -311,6 +340,8 @@ def test_reset_to_copy(
     successor_id = UUID(accepted.headers["X-Erev-Sandbox-Tenant-Id"])
     before = _row_counts(copied.sandbox_id)
     production_before = _row_counts(copied.production_id)
+    business_before = _business_rows(copied.production_id)
+    assert business_before["contract"] and business_before["subledger_line"]
     ended = _run_reset(accepted, copied.sandbox_id, runtime)
     assert ended["state"] == "SUCCEEDED", ended["problem"]
     result = ended["result"]
@@ -371,6 +402,7 @@ def test_reset_to_copy(
     production_after = _row_counts(copied.production_id)
     changed = {n for n in production_after if production_after[n] != production_before[n]}
     assert changed <= {"audit_event", "notification", "outbox_message"}, changed
+    assert _business_rows(copied.production_id) == business_before
 
 
 def test_reset_empty(
@@ -392,6 +424,7 @@ def test_reset_empty(
         app, marcus, mode="EMPTY", tenant_snapshot_id=str(copied.snapshot_id), reason=REASON
     )
     assert named.status_code == 422, named.text  # an empty reset names no snapshot
+    business_before = _business_rows(copied.production_id)
     accepted = _reset(app, marcus, mode="EMPTY", reason=REASON)
     ended = _run_reset(accepted, copied.sandbox_id, runtime)
     assert ended["state"] == "SUCCEEDED", ended["problem"]
@@ -433,6 +466,7 @@ def test_reset_empty(
     assert membership["invitation_token_sha256"] is None
     created = _events(copied.production_id, sandbox_reset.ACTION_CREATED)
     assert [event["object_id"] for event in created] == [successor_id]  # SBX-02: both tenants
+    assert _business_rows(copied.production_id) == business_before
     # the requester's session is in the successor as its Tenant Admin — the grant of a newly
     # provisioned workspace, no more: ``sandbox.reset`` there takes a Controller grant
     me = get(app, f"{API}/me", marcus)
