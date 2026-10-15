@@ -65,6 +65,12 @@ class AIExtractionProposalOut(AIProposalEvidenceOut):
     file_object_id: UUID
     document_text_file_id: UUID
     content: list[dict[str, Any]]
+    accepted_command: str | None
+    field_decisions: list[dict[str, Any]] | None
+    accepted_object_type: str | None
+    accepted_object_id: UUID | None
+    accepted_by: ActorOut | None
+    accepted_at: datetime | None
 
 
 class AIProposalRejectIn(BaseModel):

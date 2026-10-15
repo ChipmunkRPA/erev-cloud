@@ -7912,6 +7912,15 @@ export interface components {
      * @description Extraction suggestions remain review evidence, never accepted contract values.
      */
     AIExtractionProposalOut: {
+      /** Accepted At */
+      accepted_at: string | null;
+      accepted_by: components["schemas"]["ActorOut"] | null;
+      /** Accepted Command */
+      accepted_command: string | null;
+      /** Accepted Object Id */
+      accepted_object_id: string | null;
+      /** Accepted Object Type */
+      accepted_object_type: string | null;
       /**
        * Ai Model Log Id
        * Format: uuid
@@ -7941,6 +7950,12 @@ export interface components {
        * Format: date-time
        */
       expires_at: string;
+      /** Field Decisions */
+      field_decisions:
+        | {
+            [key: string]: unknown;
+          }[]
+        | null;
       /**
        * File Object Id
        * Format: uuid

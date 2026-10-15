@@ -378,6 +378,28 @@ def test_worker_proposal_acceptance_preserves_evidence_and_shares_source(
     shared = call(world.app, "GET", path, headers=review_headers)
     assert shared.status_code == 200, shared.text
     assert shared.json()["status"] == "accepted"
+    assert shared.json()["accepted_object_id"] == str(contract_id)
+    assert shared.json()["accepted_object_type"] == "contract"
+    assert shared.json()["accepted_command"] == "contract.create_draft"
+    assert shared.json()["accepted_by"]["id"] == str(actor.member.user_id)
+    assert shared.json()["accepted_at"] is not None
+    assert shared.json()["field_decisions"] == [
+        {
+            "path": "customer_name",
+            "decision": "EDIT",
+            "value": name,
+            "reason": "Human selects the existing demo customer.",
+        }
+    ]
+    listed = call(
+        world.app,
+        "GET",
+        "/api/v1/ai/proposals",
+        params={"status": "accepted"},
+        headers=review_headers,
+    )
+    assert listed.status_code == 200, listed.text
+    assert listed.json()["items"] == [shared.json()]
     assert shared.json()["content"] == detail.json()["content"]
     assert shared.json()["citations"] == detail.json()["citations"]
     shared_text = call(world.app, "GET", path + "/document-text", headers=review_headers)

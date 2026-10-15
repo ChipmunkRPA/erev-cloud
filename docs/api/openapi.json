@@ -233,6 +233,62 @@
       "AIExtractionProposalOut": {
         "description": "Extraction suggestions remain review evidence, never accepted contract values.",
         "properties": {
+          "accepted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accepted At"
+          },
+          "accepted_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ActorOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "accepted_command": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accepted Command"
+          },
+          "accepted_object_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accepted Object Id"
+          },
+          "accepted_object_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accepted Object Type"
+          },
           "ai_model_log_id": {
             "format": "uuid",
             "title": "Ai Model Log Id",
@@ -271,6 +327,21 @@
             "format": "date-time",
             "title": "Expires At",
             "type": "string"
+          },
+          "field_decisions": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Field Decisions"
           },
           "file_object_id": {
             "format": "uuid",
@@ -379,7 +450,13 @@
           "kind",
           "file_object_id",
           "document_text_file_id",
-          "content"
+          "content",
+          "accepted_command",
+          "field_decisions",
+          "accepted_object_type",
+          "accepted_object_id",
+          "accepted_by",
+          "accepted_at"
         ],
         "title": "AIExtractionProposalOut",
         "type": "object"

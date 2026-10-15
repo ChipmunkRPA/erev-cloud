@@ -174,7 +174,12 @@ queued worker dispatch with a deterministic provider, retained-text reads and hu
 acceptance. It verifies unchanged original evidence, shared reader access through the attachment,
 AI_ASSISTED activation provenance, one provider call and zero revenue postings. This uses the
 in-process parser and does not prove Linux isolation, browser review, live-provider operation or
-full extraction-to-independent-activation readiness.
+full extraction-to-independent-activation readiness. Extraction detail/list reads now expose the
+accepted draft target, human/time and recorded decisions separately from original evidence.
+A typed frontend API module now covers proposal lists/detail, retained text, submission,
+rejection and acceptance, preserving server ETags and the existing command idempotency rules.
+The live SF-20 review route and draft-form integration remain unbuilt; this API layer is not
+browser workflow completion.
 
 The Anthropic adapter is mock-tested, uses the official SDK, disables SDK retries and telemetry,
 and resolves secrets lazily. Contract-review and explain-narrative prompts have retained bytes,

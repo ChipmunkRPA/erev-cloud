@@ -2,6 +2,25 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Retained acceptance reads and frontend API boundary — October 15, 2026
+
+- Extraction detail/list now return accepted command/target, accepting human/time and recorded
+  field decisions alongside unchanged original evidence. The fields remain protected by current
+  source access. The worker-to-acceptance PostgreSQL witness compares detail and list results,
+  reviewed values, actor and target; all seven acceptance/extraction/explanation API tests pass.
+- Added a typed frontend API module for proposal pages/detail, document text, extraction
+  submission, rejection and draft acceptance. It preserves server ETags, unmodified decimal
+  strings/review bodies, shared command keys across lost responses, opaque cursors and API
+  refusals. Retained reads require no AI-settings fetch; no automatic retries or draft inference.
+  This is the API layer for SF-20, not a live screen. The route, field-decision controls and
+  draft-form integration remain unbuilt.
+- Six frontend API tests pass. Full backend typing passed 938 sources and focused typing passed
+  789. Frontend typing initially caught omitted explicit default fields in the test draft; the
+  fixture now supplies them. Full lint passed. Logs: .run/ai-review-client-tests.log and
+  .run/ai-review-read-{pg,typecheck,focused-types,frontend-types,lint,openapi}.log.
+  Broader release/accounting, structured-term conversion and browser gates remain open.
+  No deployment or live provider calls.
+
 ## Worker-to-draft acceptance evidence — October 15, 2026
 
 - Added an integrated PostgreSQL witness using the real four-page synthetic PDF, real PDF
@@ -204,28 +223,6 @@
   Logs: .run/ai-extraction-read-{api,architecture,lint,typecheck,types-final,openapi}.log.
 - Extraction list integration, original document-text responses, human review/acceptance and
   broader release/accounting verification remain open. No deployment or live provider calls.
-
-## Authorized extraction submission API — October 15, 2026
-
-- Added POST /ai/contract-extractions with file_id as its only input. It requires a human
-  with ai.use, current access to an unshredded PDF attachment, enabled AI and text consent.
-  The server pins the digest, fixed 507-field catalogue and 16000 output-token limit, returning
-  an idempotent queued job with Location. HTTP performs no parsing or provider calls.
-- Current file access is checked before replaying saved command responses. Admission shares
-  the tenant lock with emergency disable; the worker independently rechecks access/settings.
-  Added the request file binding and regenerated OpenAPI and frontend types.
-- Verification: both extraction PostgreSQL API tests passed, including the actual queued worker
-  with injected parser/provider, proposal persistence, replay after source unavailability,
-  forbidden/hidden/missing/non-PDF inputs, text consent, rejected extra selectors and a proven
-  database lock wait against disable. The three existing explanation API regressions passed.
-  Twenty-two architecture checks, full lint, full typecheck (933 Python sources and frontend)
-  and final focused typing (784 sources) passed. Test setup was corrected for registry timing,
-  valid attachment types and the job registry's reserved engine release metadata.
-  Logs: .run/ai-extraction-submit-{api-final-pass,api-verified,architecture,lint,typecheck,
-  types-verified}.log. The combined api-verified log retains an earlier extraction assertion
-  failure; api-final-pass verifies its correction. No live provider calls or deployment.
-- Extraction proposal/document-text reads, human review/acceptance and broader release and
-  independent accounting verification remain outstanding.
 
 ## Outstanding release verification
 

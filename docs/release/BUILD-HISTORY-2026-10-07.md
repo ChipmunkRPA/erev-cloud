@@ -5301,3 +5301,25 @@ cleanup in the shared database session kernel was also repaired and regression-t
   .run/ai-extraction-fields-{unit,pg,lint,typecheck,types}.log.
 - Public submission, extraction review APIs, human conversion/acceptance and broader release and
   independent accounting verification remain unfinished. No deployment or live provider calls.
+
+## Authorized extraction submission API — October 15, 2026
+
+- Added POST /ai/contract-extractions with file_id as its only input. It requires a human
+  with ai.use, current access to an unshredded PDF attachment, enabled AI and text consent.
+  The server pins the digest, fixed 507-field catalogue and 16000 output-token limit, returning
+  an idempotent queued job with Location. HTTP performs no parsing or provider calls.
+- Current file access is checked before replaying saved command responses. Admission shares
+  the tenant lock with emergency disable; the worker independently rechecks access/settings.
+  Added the request file binding and regenerated OpenAPI and frontend types.
+- Verification: both extraction PostgreSQL API tests passed, including the actual queued worker
+  with injected parser/provider, proposal persistence, replay after source unavailability,
+  forbidden/hidden/missing/non-PDF inputs, text consent, rejected extra selectors and a proven
+  database lock wait against disable. The three existing explanation API regressions passed.
+  Twenty-two architecture checks, full lint, full typecheck (933 Python sources and frontend)
+  and final focused typing (784 sources) passed. Test setup was corrected for registry timing,
+  valid attachment types and the job registry's reserved engine release metadata.
+  Logs: .run/ai-extraction-submit-{api-final-pass,api-verified,architecture,lint,typecheck,
+  types-verified}.log. The combined api-verified log retains an earlier extraction assertion
+  failure; api-final-pass verifies its correction. No live provider calls or deployment.
+- Extraction proposal/document-text reads, human review/acceptance and broader release and
+  independent accounting verification remain outstanding.

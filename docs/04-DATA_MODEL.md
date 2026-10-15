@@ -8053,6 +8053,10 @@ and `object_label`, following the existing computation-fact audit convention.
   kind-specific response with common status, actors, timestamps, citations and row-version ETag.
   Extraction detail requires a current human ai.use grant and readable, unshredded original
   ATTACHMENT/PDF. Source ownership is checked before selecting suggested fields or citations.
+  Extraction detail and list responses also include accepted_command, field_decisions,
+  accepted_object_type/id, accepted_by (human actor) and accepted_at. These are null before
+  acceptance. Original content/citations remain separate from reviewed values; all these fields
+  require the same current source authorization as the proposal.
   The response includes file_object_id, document_text_file_id and the retained content array;
   it does not decrypt text or call a provider. AI disable does not revoke retained reads.
   The list endpoint includes both kinds. Extraction source metadata is authorized through all

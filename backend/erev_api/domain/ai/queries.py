@@ -49,6 +49,12 @@ def _actor_data(row: Mapping[str, Any]) -> dict[str, Any]:
         if row["rejected_by"] is None
         else actors.actor(row["rejected_by"], "USER", row["rejector"])
     )
+    if row["kind"] == "CONTRACT_EXTRACTION":
+        data["accepted_by"] = (
+            None
+            if row["accepted_by"] is None
+            else actors.actor(row["accepted_by"], "USER", row["acceptor"])
+        )
     return data
 
 
@@ -73,6 +79,9 @@ def proposal_statement(principal: Principal) -> Select[Any]:
             ),
             actors.named(ai_proposal.c.rejected_by, tenant_id=ai_proposal.c.tenant_id).label(
                 "rejector"
+            ),
+            actors.named(ai_proposal.c.accepted_by, tenant_id=ai_proposal.c.tenant_id).label(
+                "acceptor"
             ),
         )
         .select_from(
@@ -143,6 +152,9 @@ def list_proposals[P: Page](
                 actors.named(ai_proposal.c.rejected_by, tenant_id=ai_proposal.c.tenant_id).label(
                     "rejector"
                 ),
+                actors.named(ai_proposal.c.accepted_by, tenant_id=ai_proposal.c.tenant_id).label(
+                    "acceptor"
+                ),
             )
             .select_from(
                 ai_proposal.outerjoin(
@@ -205,6 +217,9 @@ def proposal_detail_in(
         actors.named(ai_proposal.c.updated_by, tenant_id=ai_proposal.c.tenant_id).label("updater"),
         actors.named(ai_proposal.c.rejected_by, tenant_id=ai_proposal.c.tenant_id).label(
             "rejector"
+        ),
+        actors.named(ai_proposal.c.accepted_by, tenant_id=ai_proposal.c.tenant_id).label(
+            "acceptor"
         ),
     ).where(ai_proposal.c.tenant_id == principal.tenant_id, ai_proposal.c.id == proposal_id)
     if lock:
