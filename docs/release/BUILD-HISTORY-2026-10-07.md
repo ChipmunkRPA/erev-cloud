@@ -3882,3 +3882,20 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   two-options/same-catalogue acceptance case in MATERIAL-RIGHTS-IMPLEMENTATION.md.
   Conversion refusal remains until the complete amount/promotion/replay path is implemented.
 - Older full CI 165d63c remains live at 35%. No readiness claim or deployment; publish to main.
+
+## Explicit entered option SSP engine path — October 14, 2026
+
+- Added optional per-option total SSP in contract currency. Stages 03 and 05 preserve
+  the entered amount instead of repricing against a shared catalogue; quantity does not
+  multiply it. Wrong method/currency and negative/nonfinite values refuse computation.
+- Input hashes bind explicit values while absent values keep the previous hash shape.
+  Old evidence decodes with None. Source-record trace evidence and formula reevaluation
+  preserve the actual option amount without claiming it came from the catalogue.
+- 397 engine stage-03/stage-05/kernel/upgrade tests passed (29.12s), including 13 new
+  tests covering allocation, ASC606/IFRS15 shared catalogue options, total semantics,
+  hash compatibility, codec replay and invalid inputs. Strict Mypy: 880 production
+  sources plus the new test file; Ruff passes. Logs: .run/entered-option-engine-final.log,
+  .run/entered-option-production-types.log and .run/entered-option-types.log.
+- Persistence, command/read/UI, adapter, snapshot/export and migration promotion remain
+  unfinished. Capture's option refusal remains. No readiness claim or deployment.
+  Older CI 165d63c is still running at 36%; it is not current-main release evidence.

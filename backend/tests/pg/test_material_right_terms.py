@@ -12,7 +12,7 @@ from erev_api.db.session import DbContext, tenant_session
 from erev_api.db.tables import contract, estimate, material_right
 from sqlalchemy import delete, insert, select, text, update
 from sqlalchemy.exc import IntegrityError
-from support.db import TestDatabase
+from support.db import TestDatabase, fresh_head
 from support.factories import tenant_factory, tenant_id_of
 from support.rows import RowContext, estimate_values, material_right_row
 from tests.pg.test_db_invariants import _fails
@@ -119,6 +119,7 @@ def test_material_right_guards(committed_db: TestDatabase, keyring: KeyRing) -> 
 
 
 def test_material_right_migration_round_trip(committed_db: TestDatabase) -> None:
+    fresh_head()
     migration = importlib.import_module("erev_api.db.migrations.versions.0145_material_right_terms")
     with committed_db.owner_engine.connect() as connection:
         transaction = connection.begin()
@@ -141,6 +142,7 @@ def test_material_right_migration_round_trip(committed_db: TestDatabase) -> None
 def test_entered_option_ssp_upgrade_and_downgrade_guard(
     committed_db: TestDatabase, keyring: KeyRing
 ) -> None:
+    fresh_head()
     migration = importlib.import_module("erev_api.db.migrations.versions.0146_entered_option_ssp")
     tenant = tenant_id_of(tenant_factory(keyring=keyring))
     with tenant_session(DbContext(tenant_id=tenant, user_id=None, entity_scope="*")) as session:
@@ -183,6 +185,7 @@ def test_entered_option_ssp_upgrade_and_downgrade_guard(
 def test_entered_option_ssp_migration_round_trip_preserves_old_terms(
     committed_db: TestDatabase, keyring: KeyRing
 ) -> None:
+    fresh_head()
     migration = importlib.import_module("erev_api.db.migrations.versions.0146_entered_option_ssp")
     tenant = tenant_id_of(tenant_factory(keyring=keyring))
     with tenant_session(DbContext(tenant_id=tenant, user_id=None, entity_scope="*")) as session:

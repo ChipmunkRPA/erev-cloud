@@ -37,7 +37,8 @@ IDENTITY_LOCKS: Final = {
     "auth/sessions.py": 6,
     "domain/platform/me.py": 1,  # a member's own preferences
     "domain/platform/privacy.py": 1,  # the erasure
-    "domain/platform/users.py": 1,  # the person of an invited membership
+    # Invitation and identity re-read after the removed membership lock.
+    "domain/platform/users.py": 2,
 }
 
 

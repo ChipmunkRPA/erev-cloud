@@ -22,6 +22,7 @@ from erev_api.db.session import (
     app_engine,
     build_engine,
     database_of,
+    dispose_engines,
     owner_engine,
 )
 from sqlalchemy import Engine, text
@@ -177,5 +178,8 @@ def fresh_head() -> None:
     because the server's shared lock table is full (SQLSTATE 53200) is waited out and started
     over from the reset; every other error raises at once.
     """
+    # Dropping/recreating enums invalidates prepared statements and cached type OIDs.
+    # Dispose idle app/owner connections; the checked-out session advisory lock survives.
+    dispose_engines()
     reset_schema(get_settings().owner_database_url())
     command.upgrade(alembic_config(), "head")

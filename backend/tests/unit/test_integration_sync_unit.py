@@ -359,6 +359,7 @@ def test_connection_out_carries_the_reference_name_only_and_the_newest_run() -> 
         "adapter": "SALESFORCE",
         "direction": "INBOUND",
         "entity_ids": [],
+        "owner_membership_id": None,
         "base_url": "/api/v1/__mocks__/salesforce",
         "config": {"default_performing_entity": "QUAY-US"},
         "secret_ref": "EREV_QUAYSIDE_SF_CLIENT_SECRET",

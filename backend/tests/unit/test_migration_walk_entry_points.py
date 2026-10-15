@@ -104,6 +104,9 @@ def test_every_downgrade_under_tests_pg_starts_from_a_fresh_head() -> None:
     assert walks == [
         "test_db_invariants.py::"
         "test_task_signature_cycles_preserve_other_uniqueness_and_refuse_lossy_downgrade",
+        "test_material_right_terms.py::test_material_right_migration_round_trip",
+        "test_material_right_terms.py::test_entered_option_ssp_upgrade_and_downgrade_guard",
+        "test_material_right_terms.py::test_entered_option_ssp_migration_round_trip_preserves_old_terms",
         "test_migration_0067_downgrade_guard.py::"
         "test_0067_downgrade_refuses_by_name_over_a_populated_database_and_downgrades_compatible_data",
         "test_migration_0084_lock_cutoff.py::"
@@ -122,6 +125,7 @@ def test_every_downgrade_under_tests_pg_starts_from_a_fresh_head() -> None:
         "test_migrations.py::test_step1_report_filter_migration_round_trip",
         "test_registry_parameter.py::_downgrade_to_base_or_skip",
         "test_registry_parameter.py::test_old_seed_forward_upgrade_appends_a_correction",
+        "test_report_tables.py::test_evidence_source_binding_is_immutable_and_cannot_be_discarded",
         "test_transition_pair_guard.py::"
         "test_activation_pair_1_downgrade_to_0069_restores_the_previous_body_byte_exactly",
     ], walks
@@ -138,7 +142,7 @@ def test_fresh_head_resets_the_schema_then_upgrades_to_head() -> None:
     function = _function(ROOT / "backend/tests/support/db.py", "fresh_head")
     calls = [_called_name(statement) for statement in function.body]
     calls = [call for call in calls if call is not None]
-    assert calls == ["reset_schema", "upgrade"], calls
+    assert calls == ["dispose_engines", "reset_schema", "upgrade"], calls
     upgrade = function.body[-1]
     assert isinstance(upgrade, ast.Expr) and isinstance(upgrade.value, ast.Call)
     target = upgrade.value.args[-1]

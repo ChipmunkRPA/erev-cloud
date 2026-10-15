@@ -2266,11 +2266,10 @@ TABLES: Final[tuple[TableClassification, ...]] = (
             ),
             R02: _cols(
                 "option_type incremental_discount_ratio is_discount_available_without_contract "
-                "expected_purchase_amount currency ssp_method expiry_date "
+                "expected_purchase_amount entered_ssp_amount currency ssp_method expiry_date "
                 "is_legacy_quantity_ssp_dollars"
             ),
         },
-        status=Status.PENDING,
     ),
     _table(
         "contract_cost_asset",
@@ -2851,7 +2850,7 @@ TABLES: Final[tuple[TableClassification, ...]] = (
         {
             R01: _cols(
                 "tenant_id id kind entity_id period_id period_state_transition_id "
-                "approval_request_id ledger_head_chain_seq ledger_head_sha256 "
+                "approval_request_id judgement_record_id ledger_head_chain_seq ledger_head_sha256 "
                 "audit_head_chain_seq audit_head_hmac snapshot_manifest_sha256 previous_lock_id "
                 "diff_report_file_id cutoff_known_at created_at created_by created_by_kind"
             ),
@@ -2919,6 +2918,19 @@ TABLES: Final[tuple[TableClassification, ...]] = (
                 "mfa_verified_at signed_at"
             ),
             R02: _cols("role statement"),
+        },
+    ),
+    _table(
+        "period_reopen_basis",
+        "T-CLS-09",
+        "Current reviewed judgement citation for a period reopen request (REQ-CLS-011).",
+        Retention.AUDIT_RETENTION_YEARS,
+        {
+            R01: _cols(
+                "tenant_id id period_state_id entity_id judgement_record_id "
+                "created_at created_by created_by_kind updated_at updated_by "
+                "updated_by_kind row_version"
+            ),
         },
     ),
     # ---- RPT tables (04 T-RPT-nn)
@@ -2991,7 +3003,7 @@ TABLES: Final[tuple[TableClassification, ...]] = (
                 "status manifest_sha256 file_id report_run_ids job_id created_at created_by "
                 "created_by_kind updated_at updated_by updated_by_kind row_version"
             ),
-            R02: _cols("book_code as_of_date from_date to_date manifest"),
+            R02: _cols("book_code as_of_date from_date to_date manifest source_binding"),
         },
     ),
     # ---- IMP tables (04 T-IMP-nn)
@@ -3124,7 +3136,8 @@ TABLES: Final[tuple[TableClassification, ...]] = (
         Retention.TENANT_LIFETIME,
         {
             R01: _cols(
-                "tenant_id id adapter entity_ids status last_test_at created_at created_by "
+                "tenant_id id adapter entity_ids owner_membership_id status last_test_at "
+                "created_at created_by "
                 "created_by_kind updated_at updated_by updated_by_kind row_version"
             ),
             R02: _cols(

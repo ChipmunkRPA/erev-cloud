@@ -21,7 +21,7 @@ from erev_api.db.tables import (
 from erev_api.domain.reports.catalogue import DEFINITIONS
 from sqlalchemy import Executable, delete, exc, func, insert, select, text, update
 from sqlalchemy.orm import Session
-from support.db import TestDatabase
+from support.db import TestDatabase, fresh_head
 from support.factories import tenant_factory, tenant_id_of
 from support.rows import (
     engine_release_values,
@@ -315,6 +315,7 @@ def test_evidence_source_binding_is_immutable_and_cannot_be_discarded(
     committed_db: TestDatabase,
     keyring: KeyRing,
 ) -> None:
+    fresh_head()  # downgrade guards must not depend on rows left by earlier tests
     tenant_id, context = _context(keyring)
     with tenant_session(context) as session:
         bad = evidence_pack_values(tenant_id, source_binding=["not an object"])

@@ -880,7 +880,9 @@ def test_only_the_modification_submission_hands_a_retained_snapshot_to_the_kerne
     # + the grant of an API client's scopes (lane SECFIX-APR; supervisor ruling R-38 (iii);
     # ``auth/api_clients.create_api_client``): ``before`` and ``after`` only — the grant's
     # proposal is the preview of its ``ROLE_ASSIGNMENT`` request.
-    assert sum(len(found) for found in others.values()) == 14 and len(others) == 12, sorted(others)
+    # Membership role assignment now also submits a kernel-stored before/after proposal.
+    assert calls["domain/platform/users.py"] == [{"before", "after"}]
+    assert sum(len(found) for found in others.values()) == 15 and len(others) == 13, sorted(others)
     assert all(keys == {"before", "after"} for found in others.values() for keys in found)
     submit = inspect.getsource(approvals.submit)
     assert "if impact_preview.retained_file_id is not None:" in submit

@@ -2,6 +2,23 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Full CI results and catalogue/isolation repairs — October 14, 2026
+
+- Immutable 165d63c backend run finished in 5h 11m 13s: 10,843 passed, 33 failed,
+  1 skipped, 3 xfailed, 640 deselected; CI failed at backend tests. This is an older snapshot.
+  Full failure/revalidation inventory: docs/release/CI-2026-10-14.md.
+- Reconciled privacy classifications with the current schema/native option terms; updated
+  reviewed scope/lock/preview inventories and integration response fixtures, clarified guide
+  API paths, and regenerated the frontend as-locked fixture from its API source.
+- Downgrade tests start from fresh head. Reset disposes idle app/owner pools to prevent stale
+  enum type OIDs after schema recreation; the checked-out database lock remains held.
+- Final affected CI-unit recheck: 20 passed (13.61s); privacy/migration isolation suite:
+  22 passed (35.33s); frontend as-locked checks: 90 passed (8.13s). Strict production/DB
+  support typing (890 sources, explicit package bases) and Ruff pass.
+- Remaining: historical report-seed equality, current-main revalidation of 12 other snapshot
+  failures, AI audit coverage, lock/relock figure expectations, three expected-failure gaps,
+  migration promotion and other release work. No deployment or readiness claim.
+
 ## Proposed migration judgement content — October 14, 2026
 
 - Basis v4 includes exact proposed conclusions/rationales/questionnaires and stable targets.
@@ -221,34 +238,17 @@
 - Migration capture/promotion remains unfinished and refuses option records. No deployment
   or readiness claim. Older immutable CI 165d63c remains live at 37%.
 
-## Explicit entered option SSP engine path — October 14, 2026
-
-- Added optional per-option total SSP in contract currency. Stages 03 and 05 preserve
-  the entered amount instead of repricing against a shared catalogue; quantity does not
-  multiply it. Wrong method/currency and negative/nonfinite values refuse computation.
-- Input hashes bind explicit values while absent values keep the previous hash shape.
-  Old evidence decodes with None. Source-record trace evidence and formula reevaluation
-  preserve the actual option amount without claiming it came from the catalogue.
-- 397 engine stage-03/stage-05/kernel/upgrade tests passed (29.12s), including 13 new
-  tests covering allocation, ASC606/IFRS15 shared catalogue options, total semantics,
-  hash compatibility, codec replay and invalid inputs. Strict Mypy: 880 production
-  sources plus the new test file; Ruff passes. Logs: .run/entered-option-engine-final.log,
-  .run/entered-option-production-types.log and .run/entered-option-types.log.
-- Persistence, command/read/UI, adapter, snapshot/export and migration promotion remain
-  unfinished. Capture's option refusal remains. No readiness claim or deployment.
-  Older CI 165d63c is still running at 36%; it is not current-main release evidence.
-
 ## Outstanding release verification
 
 These checks need current release-candidate evidence. Historical October 3 results
 remain in the dated build history; they do not verify current main. This list does
 not authorize deployment, provisioning or changes to a live database.
 
-- make audit-deps: October 14 development audit passed; rerun on a clean final candidate.
+- SUPERVISOR VERIFICATION NEEDED: make audit-deps (October 14 development audit passed; rerun on a clean final candidate).
 - SUPERVISOR VERIFICATION NEEDED: make docker-build
 - SUPERVISOR VERIFICATION NEEDED: make compose-verify
 - SUPERVISOR VERIFICATION NEEDED: make zap-baseline
-- make tf-validate: October 14 development validation passed; rerun on a clean final candidate.
+- SUPERVISOR VERIFICATION NEEDED: make tf-validate (October 14 backend-disabled development validation passed; rerun on a clean final candidate).
 - SUPERVISOR VERIFICATION NEEDED: make backup, make restore-verify (isolated local drill only)
 
 ## Historical release record

@@ -286,7 +286,7 @@ or is cancelled, the pack fails without producing a ZIP. A successful request re
 the job, its `Location`, and
 `X-Erev-Evidence-Pack-Id`. Repeating the same request/key returns those original IDs without
 creating another pack or choosing a newer digest. Using that key for different selectors refuses.
-Poll the job, then read `/api/v1/evidence-packs/{id}` and its `/download` route when complete.
+Poll the job, then read `/api/v1/evidence-packs/{id}` and `/api/v1/evidence-packs/{id}/download` when complete.
 
 `GET /api/v1/evidence-packs` lists retained first-close pack metadata with `report.run`,
 `audit.read` and `contract.read` in the entity's scope. Filter by `entity` (code, repeatable),
@@ -297,7 +297,7 @@ filtered population. Keep the same filters and sort when using a cursor. The lis
 queued, running, succeeded and failed packs, omits legacy unbound/unsupported packs, and does
 not verify archive bytes or supply a download link; open the individual record for those checks.
 
-For an existing first-close pack id, `GET /api/v1/evidence-packs/{id}` returns its status, manifest and separately retained `manifest_sha256`. A completed pack has a `download_href`; `GET /api/v1/evidence-packs/{id}/download` verifies the saved ZIP and its retained sources before returning it. A queued or failed pack cannot be downloaded. Each successful download records `evidence.export` with the pack id. Header reads require `report.run`, `audit.read` and `contract.read`; downloads additionally require `report.export` and `evidence.export`, with current access to the relevant entities and source records. A changed or inconsistent file is refused. Generic `/files` routes do not serve pack content or metadata.
+For an existing first-close pack id, `GET /api/v1/evidence-packs/{id}` returns its status, manifest and separately retained `manifest_sha256`. A completed pack has a `download_href`; `GET /api/v1/evidence-packs/{id}/download` verifies the saved ZIP and its retained sources before returning it. A queued or failed pack cannot be downloaded. Each successful download records `evidence.export` with the pack id. Header reads require `report.run`, `audit.read` and `contract.read`; downloads additionally require `report.export` and `evidence.export`, with current access to the relevant entities and source records. A changed or inconsistent file is refused. Generic `/api/v1/files` routes do not serve pack content or metadata.
 
 The audit log is read with `GET /api/v1/audit-events` (`audit.read` for all entities: an audit event carries no entity); `POST /api/v1/audit-events/verify` verifies the hash chain, for all entities too, and `GET /api/v1/audit-events/verifications` lists past verifications to any holder of `audit.read`.
 

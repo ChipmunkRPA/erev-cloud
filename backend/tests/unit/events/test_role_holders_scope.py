@@ -32,7 +32,8 @@ ENTITY = UUID(int=0xE1)
 # module → the scope each of its calls passes, in source order
 SCOPES = {
     "audit/verify.py": ["None"],  # NTF-09: the chain is the workspace's
-    "domain/close/commands.py": ["scope.entity_id", "scope.entity_id"],  # NTF-07, NTF-06
+    "domain/close/commands.py": ["scope.entity_id"],  # NTF-06 reopen
+    "domain/reports/evidence_notifications.py": ["scope.entity_id"],  # NTF-07 after pack completion
     "domain/close/monitors.py": ["finding.entity_id"],  # NTF-11
     "domain/close/rate_changes.py": ["entity_id"],  # NTF-11: the entity of the closed period
     "domain/journals/export.py": ["UUID(str(batch['entity_id']))"],  # NTF-10

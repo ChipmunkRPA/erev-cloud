@@ -56,6 +56,7 @@ SEVERAL_ENTITY_SUBJECTS: Final = frozenset(
         _S.CONTRACT_VOID,
         _S.MODIFICATION,
         _S.MANUAL_EVENT,
+        _S.STEP1_EVENT,  # the assessed contract names its current combination-group entities
         _S.ATTRIBUTE_CHANGE,
         _S.POLICY_OVERRIDE,
         _S.SSP_OVERRIDE,
