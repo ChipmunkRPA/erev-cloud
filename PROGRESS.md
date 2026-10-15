@@ -2,6 +2,22 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Runtime dependency and infrastructure validation — October 14, 2026
+
+- make audit-deps passes on HEAD 4542527 with pending backend edits: all 77 pinned Python
+  runtime distributions audited, zero vulnerabilities; npm production audit reports zero
+  advisories at every severity. Five environment markers removed so the audit includes the
+  whole pinned runtime set. Installed dependency bindings are consistent with both lockfiles.
+- make tf-validate passes using Terraform 1.16.4: backend-disabled init, format check and
+  validation of ten files/four providers. Input hashes agree before/after; provider versions
+  google/google-beta 6.50.0, archive 2.8.1 and random 3.9.1. No cloud state or credentials used.
+- Both runs are explicitly worktree-dirty development evidence, not immutable release gates.
+  Reports remain in .run/reports/{audit-deps,tf-validate}/report.json; logs are
+  .run/{audit-deps,tf-validate}-oct14-current.log. Docker client exists but its local daemon
+  is unavailable (.run/docker-availability.log), so no container validation is claimed.
+- Full backend CI on 165d63c remains live. Pending source/test repairs await database access;
+  independent accounting approval and broader release checks remain open. No deployment.
+
 ## Evidence navigation retains pack context — October 14, 2026
 
 - Browser screenshot review found that successful generation dropped entity/book/period
@@ -215,40 +231,17 @@
   Re-lock variance, other kinds, operational CTL-041, current release checks and independent
   accounting sign-off remain outstanding. No production-readiness claim.
 
-## Automatic first-close preparation — October 14, 2026 (RPS-16 continued)
-
-- From clean ae545bc, lock approval now defers EVIDENCE_PACK/PREPARE_CLOSE in its transaction.
-  Preparation reads committed approval/freeze/audit sources, validates the job/lock/period-state
-  association and grants only the selected entity's internal source capabilities. It creates
-  one bound pack and seven source/build jobs. The build's immutable parent_job_id retains its
-  preparation association; the preparation row lock serializes creation and crash retry reuses
-  the exact saved pack. No source rebinding, migration or public request change.
-- Initial actual-worker/crash/lock-rollback tests: **3 passed in 56.25 seconds**. A simulated
-  post-commit crash retained one pack, one evidence.create event and the same seven jobs; real
-  audit/report/build workers completed its 36-file archive. Lock rollback leaves no preparation
-  job. Expanded tests add invalid selectors/job associations and cancellation before creation.
-- Preparation success only means queued; cancellation after creation is refused there while the
-  build job keeps its own cancellation lifecycle. Existing lock notices still promise snapshots.
-  Re-lock jobs are queued but fail the explicit variance prerequisite. Completion notification,
-  variance, other kinds, operational CTL-041, release gates and accounting approval remain open.
-- Full lock-module plus retained-binding regression: **81 passed in 183.79 seconds**. This
-  includes automatic preparation crash/reuse, exact source job completion, pre-creation
-  cancellation without children, invalid selector/job rejection and prior manual pack paths.
-  Logs .run/automatic-close-preparation.log and .run/automatic-close-regression.log; all terminal.
-  Five source files pass Mypy; six changed Python files pass Ruff lint/format; whitespace clean.
-  Public schemas unchanged. Direct main, no deployment or production-readiness claim.
-
 ## Outstanding release verification
 
 These checks need current release-candidate evidence. Historical October 3 results
 remain in the dated build history; they do not verify current main. This list does
 not authorize deployment, provisioning or changes to a live database.
 
-- make audit-deps: passed on 87f53d1 October 7; rerun for the final release candidate.
+- make audit-deps: October 14 development audit passed; rerun on a clean final candidate.
 - SUPERVISOR VERIFICATION NEEDED: make docker-build
 - SUPERVISOR VERIFICATION NEEDED: make compose-verify
 - SUPERVISOR VERIFICATION NEEDED: make zap-baseline
-- make tf-validate: passed on 40ae405 October 7 (validation only); rerun for final candidate.
+- make tf-validate: October 14 development validation passed; rerun on a clean final candidate.
 - SUPERVISOR VERIFICATION NEEDED: make backup, make restore-verify (isolated local drill only)
 
 ## Historical release record

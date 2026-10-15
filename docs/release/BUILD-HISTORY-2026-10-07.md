@@ -3215,3 +3215,26 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   insufficient; queued preparation must retain stable identity across retries. Availability
   notification must follow successful pack retention. Re-lock variance and other pack kinds,
   operational CTL-041 acceptance, current release gates and independent accounting approval remain.
+
+## Automatic first-close preparation — October 14, 2026 (RPS-16 continued)
+
+- From clean ae545bc, lock approval now defers EVIDENCE_PACK/PREPARE_CLOSE in its transaction.
+  Preparation reads committed approval/freeze/audit sources, validates the job/lock/period-state
+  association and grants only the selected entity's internal source capabilities. It creates
+  one bound pack and seven source/build jobs. The build's immutable parent_job_id retains its
+  preparation association; the preparation row lock serializes creation and crash retry reuses
+  the exact saved pack. No source rebinding, migration or public request change.
+- Initial actual-worker/crash/lock-rollback tests: **3 passed in 56.25 seconds**. A simulated
+  post-commit crash retained one pack, one evidence.create event and the same seven jobs; real
+  audit/report/build workers completed its 36-file archive. Lock rollback leaves no preparation
+  job. Expanded tests add invalid selectors/job associations and cancellation before creation.
+- Preparation success only means queued; cancellation after creation is refused there while the
+  build job keeps its own cancellation lifecycle. Existing lock notices still promise snapshots.
+  Re-lock jobs are queued but fail the explicit variance prerequisite. Completion notification,
+  variance, other kinds, operational CTL-041, release gates and accounting approval remain open.
+- Full lock-module plus retained-binding regression: **81 passed in 183.79 seconds**. This
+  includes automatic preparation crash/reuse, exact source job completion, pre-creation
+  cancellation without children, invalid selector/job rejection and prior manual pack paths.
+  Logs .run/automatic-close-preparation.log and .run/automatic-close-regression.log; all terminal.
+  Five source files pass Mypy; six changed Python files pass Ruff lint/format; whitespace clean.
+  Public schemas unchanged. Direct main, no deployment or production-readiness claim.
