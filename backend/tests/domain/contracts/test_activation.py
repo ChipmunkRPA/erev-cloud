@@ -1854,7 +1854,7 @@ def test_material_right_invalid_entry_rolls_back_facts_and_computation(seats: Se
     )
     path = f"/api/v1/obligations/{option_id}/material-right"
     before = seats.place.scalar(select(func.count()).select_from(contract_computation))
-    invalid_terms = [
+    invalid_terms: list[dict[str, Any]] = [
         {"option_type": "RENEWAL_OPTION", "ssp_method": "DISCOUNT_X_LIKELIHOOD"},
         {"option_type": "OTHER", "ssp_method": "RENEWAL_ALTERNATIVE"},
         {
@@ -2026,3 +2026,91 @@ def test_persisted_option_and_represented_preparer_are_activation_routing_facts(
         assert routing_facts(unit.session, contract_id, None).flags == frozenset(
             {"MANUAL_ENTRY", "MATERIAL_RIGHT"}
         )
+
+
+@pytest.mark.parametrize(("rate", "expected_ssp"), [("0.8", "40"), ("0.5", "25")])
+def test_native_discount_option_uses_approved_likelihood(
+    seats: SeatWorld, rate: str, expected_ssp: str
+) -> None:
+    from support.worlds import estimate_version_approved
+
+    maya = seats.place.author
+    body = _seat_contract(seats, "OPTION-DISCOUNT", seats="50", price="12000.00")
+    line = body["lines"][0]
+    template = published_template(
+        seats.app,
+        maya,
+        seats.marcus,
+        code="TPL-OPTION-DISCOUNT",
+        outputs={
+            "obligation_kind": "MATERIAL_RIGHT",
+            "distinctness": "distinct",
+            "satisfaction_pattern": "POINT_IN_TIME",
+            "over_time_criterion": "NOT_APPLICABLE",
+            "recognition_method": "UNITS_DELIVERED",
+        },
+        case_line={**line, "total_price": "12000.00"},
+    )
+    product_id = seats.place.scalar(
+        select(product.c.id).where(product.c.code == line["product_code"])
+    )
+    set_default_template(seats.app, maya, str(product_id), template["template_id"])
+    contract_id = _created(seats.app, maya, body)
+    option_id = seats.place.scalar(
+        select(obligation.c.id).where(obligation.c.contract_id == contract_id)
+    )
+    element = post(
+        seats.app,
+        f"{CONTRACTS}/{contract_id}/estimates",
+        maya,
+        {
+            "estimate_kind": "EXERCISE_LIKELIHOOD",
+            "element_code": "OPTION-LIKELIHOOD",
+            "method": "ENTERED_AMOUNT",
+            "obligation_key": "O1",
+        },
+    )
+    assert element.status_code == 201, element.text
+    estimate_id = element.json()["id"]
+    terms = {
+        "option_type": "DISCOUNT_VOUCHER",
+        "ssp_method": "DISCOUNT_X_LIKELIHOOD",
+        "incremental_discount_ratio": "0.5",
+        "expected_purchase_amount": {"amount": "100.00", "currency": "USD"},
+        "likelihood_estimate_id": estimate_id,
+    }
+    path = f"/api/v1/obligations/{option_id}/material-right"
+    head = _header(seats, contract_id)[1]
+    missing_pin = post(seats.app, path, maya, terms, if_match=f'"s{head}"')
+    assert missing_pin.status_code == 422, missing_pin.text
+    assert seats.place.scalar(select(func.count()).select_from(material_right)) == 0
+    estimate_version_approved(
+        seats.app,
+        maya,
+        seats.marcus,
+        estimate_id,
+        {
+            "effective_date": "2026-09-01",
+            "rate": rate,
+            "rationale": "Expected option exercise based on documented customer history.",
+        },
+    )
+    head = _header(seats, contract_id)[1]
+    created = post(seats.app, path, maya, terms, if_match=f'"s{head}"')
+    assert created.status_code == 201, created.text
+    shown = get(seats.app, f"/api/v1/obligations/{option_id}", maya)
+    assert shown.status_code == 200, shown.text
+    assert Decimal(shown.json()["original"]["ssp_selected"]) == Decimal(expected_ssp)
+    assert Decimal(shown.json()["original"]["allocated_amount"]["amount"]) == Decimal("12000")
+    assert shown.json()["material_right"] == created.json()
+    head = _step1(seats.app, maya, seats.marcus, contract_id, head)
+    sent = _submit(seats.app, maya, contract_id, head)
+    assert sent.status_code == 200, sent.text
+    accepted = approve(seats.app, sent.headers[APPROVAL_HEADER], seats.marcus)
+    assert accepted.status_code == 200, accepted.text
+    assert _header(seats, contract_id)[0] == "ACTIVE"
+    active = get(seats.app, f"/api/v1/obligations/{option_id}", maya)
+    assert active.status_code == 200, active.text
+    assert Decimal(active.json()["original"]["ssp_selected"]) == Decimal(expected_ssp)
+    assert Decimal(active.json()["current"]["allocated_amount"]["amount"]) == Decimal("12000")
+    assert Decimal(active.json()["to_date"]["revenue"]["amount"]) == Decimal("0")

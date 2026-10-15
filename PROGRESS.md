@@ -2,6 +2,22 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Native discount-option calculation — October 14, 2026
+
+- Added ASC606 API cases for discount-times-likelihood: USD 100 expected purchases,
+  0.5 incremental discount and likelihoods 0.8/0.5 produce persisted selected SSP 40/25.
+  Missing approved likelihood refuses entry with no retained terms; evidence-backed
+  estimate approval permits entry, and independent activation retains the USD 12,000
+  allocation with zero revenue before exercise/expiry.
+- Final cases: 2 passed (31.40s), strict test-file Mypy and Ruff pass. Logs:
+  .run/material-right-discount-final.log and .run/material-right-discount-types.log.
+  Added an explicit heterogeneous-input annotation found by the strict check.
+- Attempting native expiry failed with 422 API-R-30: the generic route requires an
+  absent dedicated command. Retained .run/material-right-discount-expiry.log and
+  documented the required governed expiry/exercise commands and ledger acceptance.
+  These missing commands remain implementation work; no expiry support is claimed.
+- Full CI 165d63c is live around 32%. No deployment; direct-main publication.
+
 ## Reopen-basis isolation coverage — October 14, 2026
 
 - Reproduced the catalogue-completeness failure: period_reopen_basis had no shared
@@ -240,16 +256,6 @@
   isolated-idor-{clock-fixed,worlds-fixed,final}, pending-repairs-{architecture,full-lint,full-types}
   and idor-repair-types-final (all .log). Temporary repair server stopped. CI on 165d63c and
   browser gate on 3e60e6a remain live; no full-gate, deployment or accounting-approval claim.
-
-## Integration command unit fixture — October 14, 2026
-
-- Three CPU-only integration command tests failed because their fake human principal lacked
-  membership_id after connection ownership was introduced. Added the distinct membership ID
-  and explicit unassigned owner to the fake connection row; no permission assertion changed.
-- Actor and integration command unit regression: 25 passed in 1.03s after repair (previously
-  3 failed, 22 passed). Ruff lint/format pass. Logs .run/pending-repairs-units{,-fixed}.log.
-  Run used the working tree, including pending scope/identity repairs; only this fixture fix
-  is published here. Full architecture, backend CI and fresh closed-browser runs are ongoing.
 
 ## Outstanding release verification
 

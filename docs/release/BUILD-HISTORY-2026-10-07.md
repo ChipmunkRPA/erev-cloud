@@ -3468,3 +3468,13 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   is unavailable (.run/docker-availability.log), so no container validation is claimed.
 - Full backend CI on 165d63c remains live. Pending source/test repairs await database access;
   independent accounting approval and broader release checks remain open. No deployment.
+
+## Integration command unit fixture — October 14, 2026
+
+- Three CPU-only integration command tests failed because their fake human principal lacked
+  membership_id after connection ownership was introduced. Added the distinct membership ID
+  and explicit unassigned owner to the fake connection row; no permission assertion changed.
+- Actor and integration command unit regression: 25 passed in 1.03s after repair (previously
+  3 failed, 22 passed). Ruff lint/format pass. Logs .run/pending-repairs-units{,-fixed}.log.
+  Run used the working tree, including pending scope/identity repairs; only this fixture fix
+  is published here. Full architecture, backend CI and fresh closed-browser runs are ongoing.

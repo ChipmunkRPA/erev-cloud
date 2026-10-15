@@ -176,3 +176,32 @@ auto-approval control. Represented-preparer/persisted-record fixture and import-
 31 passed in 18.19s. Full typecheck, Ruff and diff checks passed. Logs:
 `.run/material-right-replacement-baseline.log`, `.run/material-right-routing-regression.log`,
 `.run/material-right-routing-facts.log`, `.run/material-right-routing-types.log`.
+
+## Native discount calculation and expiry boundary, October 14
+
+The preparer now enters DISCOUNT_X_LIKELIHOOD through ordinary API commands. A missing
+approved likelihood pin returns 422 and retains no terms. A separate reviewer approves the
+likelihood estimate, after which entry succeeds. With expected purchases of USD 100 and an
+incremental discount of 0.5, rates 0.8 and 0.5 produce persisted selected SSP of 40 and 25.
+The sole obligation retains its USD 12,000 allocation before and after independent activation;
+revenue remains zero while unexercised. These are ASC606 regression cases, not independent
+accounting acceptance or a complete relative-allocation/method matrix.
+
+Extending the same API flow to MATERIAL_RIGHT_EXPIRED failed with 422 API-R-30: the generic
+route requires a dedicated command that does not exist. Source inspection confirms that
+exercise/expiry were deliberately excluded from the generic route; do not bypass that guard.
+The failed attempt is retained in `.run/material-right-discount-expiry.log`.
+
+Next lifecycle implementation must provide dedicated expiry and exercise commands with
+entity permission, stream preconditions/idempotency, group/contract locks, current-option
+and lifecycle validation, effective-date/evidence rules, required manual-exercise review,
+audit and atomic append/compute. Expiry acceptance must prove EXPIRED/status_date, recognition
+of the remaining 12,000 in this case, zero remaining allocation and balanced posted journals.
+Also cover repeat/competing closure, future/effective/record cuts, partial exercise, additional
+consideration/new lines and governed corrections; no direct fixture insertion may stand in for
+these native commands.
+
+Final native calculation verification: two cases passed in 31.40s; strict test-file Mypy,
+Ruff and diff checks pass. `.run/material-right-discount-final.log` and
+`.run/material-right-discount-types.log`. The earlier expiry attempt remains a failed
+experiment documenting the missing command, not a passing lifecycle check.
