@@ -819,3 +819,14 @@ access and change generation remain unavailable; their visible actions do not su
 commands. The service-organization-report row explicitly identifies that external deliverable.
 The catalogue now links to the actual evidence workspace and requires its read permissions.
 RPS-20 still needs generation workflows, remaining presentation and real browser acceptance.
+
+
+## October 14, 2026 — first-close evidence generation form
+
+The evidence workspace now exposes the existing CLOSE creation API through an explicit
+entity/book/period/retained-lock form. It enforces the intersection of export/source scopes,
+reads historical choices across pages, and retains the original idempotency key when an
+uncertain request is retried. It offers only first-close locks with retained snapshot metadata.
+Historical inactive entities/books remain selectable; the server remains authoritative for
+source validity. Re-lock variance, contract sample/change/access generation and real browser
+acceptance are still unfinished. No new backend accounting behavior or deployment is included.

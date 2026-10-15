@@ -82,3 +82,11 @@ export async function downloadEvidencePack(
   if (!response.ok) throw await readProblem(response);
   return response.blob();
 }
+
+export function mayCreateEvidence(access: Access, entityId: string): boolean {
+  return EXPORT.every((permission) => access.holds(permission, { id: entityId }));
+}
+
+export function mayChooseEvidenceSources(access: Access): boolean {
+  return [...EXPORT, "config.read"].every((permission) => access.holdsAnywhere(permission));
+}

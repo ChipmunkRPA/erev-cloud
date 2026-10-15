@@ -3119,3 +3119,36 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   earlier readiness/download-boundary notes verbatim. Automatic pack enqueue on lock and truthful
   availability notification, other kinds, re-lock variance and current release/accounting gates
   remain open. RPS-16/CTL-041 and production readiness unclaimed. Direct main; no deployment.
+
+## Checkout recovery and dependency remediation — October 14, 2026
+
+- Re-established current state from GitHub main 37e21a7: the old temporary checkout had lost
+  tracked source/Git metadata and the prior Platonick workspace path no longer existed. Restored
+  a clean clone at /Users/raysang/Documents/eRev-Cloud. Keep future work here, outside /tmp.
+  Rechecked public visibility, main as the only remote branch and zero open PRs. No source was
+  recovered from the obsolete Desktop original, and no hosted environment was changed.
+- Reinstalled locked Python 3.12 and Node 24.5 dependencies. Created an isolated PostgreSQL 17
+  cluster at .run/postgres on loopback port 55438, with fresh local owner/app roles, disposable
+  test database erev_rv_oct14 and generated ignored .env keys. Prior credentials/processes/data
+  were not assumed or reused. This is a new test environment, not a backup-restoration drill.
+- On the recovered 37e21a7 backend, the close-pack/audit/source-binding baseline passed:
+  **52 tests in 39.59 seconds**, using the fresh database and migrations. This is scoped current
+  evidence, not a full backend or operational accounting acceptance run.
+- npm audit reported two high-severity dependency groups. Updated only four locked entries:
+  brace-expansion 1.1.18 → 1.1.21, 2.1.4 → 2.1.7, 5.0.9 → 5.0.12; source-map-js 1.2.1 → 1.2.2.
+  Preserved unrelated optional-platform metadata. Reinstalled from the patched lock; npm audit
+  reports zero known vulnerabilities across the dependency tree on October 14. Dependency
+  manifests, application code, noncommercial licensing and research exclusions are unchanged.
+- Full frontend suite: **192 files / 2,057 tests passed in 70.33 seconds**. TypeScript project
+  build (`tsc -b`), ESLint with zero warnings, Vite production build, official OpenAPI staleness
+  check and git whitespace check pass. A plain noEmit check initially lacked fresh referenced
+  project declarations; the documented build-mode check creates them and passes. Build retains
+  its >500 kB chunk warning; jsdom retains its unsupported-navigation warning. No browser,
+  accessibility, volume, full backend or hosted release gate is claimed by these results.
+- Published scope is the four dependency entries plus dated evidence. All test/tool processes
+  are terminal; the isolated local PostgreSQL server remains available for subsequent work.
+  .env, database files, dependencies and test logs are ignored. Public research paths remain
+  absent and PolyForm Noncommercial 1.0.0 remains unchanged. Direct main; no PR or deployment.
+- Local logs/evidence live under the new checkout's ignored .run/. Earlier October 8 evidence
+  remains historical. Automatic pack enqueue/availability notification, other pack kinds,
+  variance and current release/accounting gates remain outstanding. No deployment/readiness claim.

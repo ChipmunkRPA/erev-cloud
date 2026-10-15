@@ -4018,6 +4018,15 @@ Each action opens its target with the context entity, book and period; for a clo
 | Change (`CHANGE`) | "From", "To" (dates) | as above |
 | Access (`ACCESS`) | "As of" (timestamp) | as above |
 
+**Current first-close implementation (October 14, 2026).** The CLOSE modal selects an
+entity, book, period and explicit retained first-close `LOCK` record. Selectors include
+authorized historical entities/books that are now inactive and follow every source-list
+cursor. This implements the existing immutable first-close API; a Current source and
+re-lock packs are not offered. Changing a selector clears dependent selections. A lost
+response can be retried with the original intent key, including after closing/reopening
+the modal; an accepted response disables resubmission and opens the returned pack when
+its resource header is present. Contract sample, change and access forms remain pending.
+
 Download starts `GET /evidence-packs/{id}/download` (ZIP) and toasts "Downloaded <pack no>. Verify files against manifest.json."
 
 **Sample world.** J-17.2 (asserted): `hannah` downloads the AVM-US Sep 2026 close pack generated at re-lock; ZIP with `manifest.json`; every file SHA-256 matches; the pack includes both lock ids and the re-lock diff report. J-17.4 (asserted): `hannah` generates the contract sample pack for `PRJ-CB-2026-01`.

@@ -10298,6 +10298,10 @@ Author BS-3. Uses CTR (PHASES §1 row 12). Indicative size 16 items; this phase 
   - **Gates:** GK-01 `make ci`; GK-07 `make e2e SPEC=frontend/e2e/projects/screens.spec.ts`
 
 - [ ] **RPS-20 Evidence pack screens.**
+  - October 14 generation increment: the CLOSE form selects authorized entity, book,
+    period and an explicit retained first-close lock; follows paginated sources, retains
+    idempotency on uncertain retries, and opens the created pack. Other pack generators,
+    re-lock variance and browser acceptance remain outstanding.
   - October 14 follow-up: A-01 through A-20 now have their request text and sources,
     available report/navigation actions and context-preserving destinations. Access/change
     pack actions are visible but disabled until their backend generators exist; no fake

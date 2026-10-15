@@ -2,6 +2,29 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## First-close generation form — October 14, 2026 (RPS-20 continued)
+
+- Added a modal for entity, book, period and explicit retained first-close lock selection,
+  using the existing CLOSE API and command pipeline. It follows all entity/period cursors,
+  includes authorized inactive historical entities/books, clears dependent selections,
+  and requires all export/source permissions for the chosen entity plus selector-read access.
+  Re-lock/reopen records and locks without retained snapshot metadata are not offered.
+- A successful response opens the new pack. An accepted response without navigation
+  headers disables resubmission. Lost-response retries retain the original idempotency key,
+  including after closing/reopening the modal or reselecting the same lock. Backend
+  refusals remain visible; no optimistic pack or placeholder job is created on the client.
+- Final frontend suite: **2,089 passed across 195 files in 65.15 seconds**
+  (.run/close-pack-form-final-full.log). The 11 form tests also passed independently in
+  1.46 seconds (.run/close-pack-form-final-focused.log). TypeScript, full ESLint and Vite
+  build pass; existing jsdom navigation and large-chunk build warnings remain. No backend
+  code or accounting result changed, so no database test was restarted for this UI increment.
+- Earlier failures were test interactions: the combobox picks on mousedown, and the
+  accepted-state button is replaced by its tooltip wrapper. Assertions now target the
+  current accessible control. Initial pagination inference errors were fixed with explicit
+  ListPage types. All processes terminal. No deployment or new PR; direct main.
+- RPS-20 stays incomplete: re-lock variance, other pack kinds/forms, remaining presentation
+  and real browser/accessibility acceptance. Independent accounting sign-off remains absent.
+
 ## Auditor request navigation — October 14, 2026 (RPS-20 continued)
 
 - Added the 20 specified auditor requests, their available report sources, accessible
@@ -153,39 +176,6 @@
   insufficient; queued preparation must retain stable identity across retries. Availability
   notification must follow successful pack retention. Re-lock variance and other pack kinds,
   operational CTL-041 acceptance, current release gates and independent accounting approval remain.
-
-## Checkout recovery and dependency remediation — October 14, 2026
-
-- Re-established current state from GitHub main 37e21a7: the old temporary checkout had lost
-  tracked source/Git metadata and the prior Platonick workspace path no longer existed. Restored
-  a clean clone at /Users/raysang/Documents/eRev-Cloud. Keep future work here, outside /tmp.
-  Rechecked public visibility, main as the only remote branch and zero open PRs. No source was
-  recovered from the obsolete Desktop original, and no hosted environment was changed.
-- Reinstalled locked Python 3.12 and Node 24.5 dependencies. Created an isolated PostgreSQL 17
-  cluster at .run/postgres on loopback port 55438, with fresh local owner/app roles, disposable
-  test database erev_rv_oct14 and generated ignored .env keys. Prior credentials/processes/data
-  were not assumed or reused. This is a new test environment, not a backup-restoration drill.
-- On the recovered 37e21a7 backend, the close-pack/audit/source-binding baseline passed:
-  **52 tests in 39.59 seconds**, using the fresh database and migrations. This is scoped current
-  evidence, not a full backend or operational accounting acceptance run.
-- npm audit reported two high-severity dependency groups. Updated only four locked entries:
-  brace-expansion 1.1.18 → 1.1.21, 2.1.4 → 2.1.7, 5.0.9 → 5.0.12; source-map-js 1.2.1 → 1.2.2.
-  Preserved unrelated optional-platform metadata. Reinstalled from the patched lock; npm audit
-  reports zero known vulnerabilities across the dependency tree on October 14. Dependency
-  manifests, application code, noncommercial licensing and research exclusions are unchanged.
-- Full frontend suite: **192 files / 2,057 tests passed in 70.33 seconds**. TypeScript project
-  build (`tsc -b`), ESLint with zero warnings, Vite production build, official OpenAPI staleness
-  check and git whitespace check pass. A plain noEmit check initially lacked fresh referenced
-  project declarations; the documented build-mode check creates them and passes. Build retains
-  its >500 kB chunk warning; jsdom retains its unsupported-navigation warning. No browser,
-  accessibility, volume, full backend or hosted release gate is claimed by these results.
-- Published scope is the four dependency entries plus dated evidence. All test/tool processes
-  are terminal; the isolated local PostgreSQL server remains available for subsequent work.
-  .env, database files, dependencies and test logs are ignored. Public research paths remain
-  absent and PolyForm Noncommercial 1.0.0 remains unchanged. Direct main; no PR or deployment.
-- Local logs/evidence live under the new checkout's ignored .run/. Earlier October 8 evidence
-  remains historical. Automatic pack enqueue/availability notification, other pack kinds,
-  variance and current release/accounting gates remain outstanding. No deployment/readiness claim.
 
 ## Outstanding release verification
 
