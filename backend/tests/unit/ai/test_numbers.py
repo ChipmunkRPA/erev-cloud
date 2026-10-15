@@ -112,3 +112,28 @@ def test_accounting_negation_is_independent_of_decimal_context() -> None:
         result = validate_numbers("(1,234.56)", [Decimal("-1234.56")], minor_unit=2)
     assert result.valid
     assert result.numbers == (Decimal("-1234.56"),)
+
+
+@pytest.mark.parametrize("text", ["1٬000", "1٫000", "1\u200b000", "1\u2060000", "1'000", "1’000"])
+def test_unrecognized_separator_cannot_split_a_large_amount(text: str) -> None:
+    result = validate_numbers(text, [1, 0], minor_unit=2)
+    assert not result.valid
+    assert result.code == "AI_UNSUPPORTED_NUMBER"
+
+
+@pytest.mark.parametrize("separator", ["  ", "\t", "\n"])
+def test_french_grouping_cannot_split_into_smaller_values(separator: str) -> None:
+    assert not validate_numbers("1" + separator + "000", [1, 0], minor_unit=2, locale="fr-FR").valid
+
+
+@pytest.mark.parametrize("text", ["(100 USD)", "(100 €)", "(100USD)", "(USD 100 USD)"])
+def test_accounting_currency_suffix_keeps_negative_sign(text: str) -> None:
+    assert not validate_numbers(text, [100], minor_unit=2).valid
+    result = validate_numbers(text, [-100], minor_unit=2)
+    assert result.valid
+    assert result.numbers == (Decimal("-100"),)
+
+
+@pytest.mark.parametrize("text", ["100−", "100 -", "100 USD-", "100 € -"])
+def test_trailing_sign_cannot_be_discarded(text: str) -> None:
+    assert not validate_numbers(text, [100], minor_unit=2).valid

@@ -4168,3 +4168,18 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
 - AIX remains incomplete: provider selection/live adapter, retained fixtures, schema,
   gateway/jobs, human acceptance and audit lifecycle still required. No AI enablement,
   audit-category exemption, deployment or readiness claim.
+
+## Immutable AI call evidence storage — October 14, 2026
+
+- Migration 0147 adds T-AI-02 ai_model_log with tenant RLS, append-only grants and
+  owner mutation guards. Provider/outcome values, SHA-256 digests and nonnegative
+  token/latency counters are checked; raw prompt/response text has no column.
+- Registered ORM, privacy classification, isolation row builder and sandbox treatment:
+  call evidence stays with the source tenant and is regenerated in a sandbox.
+- Corrected the migration test's old function count for the existing 0145 ownership
+  trigger. API production plus new PG-test strict typing passes (744 sources); Ruff passes.
+- Combined migration round trip, DB lint, immutability, RLS, schema/privacy/snapshot
+  and import-cycle verification: 127 passed (31.44s), .run/ai-model-log-final.log.
+  Typing evidence: .run/ai-model-log-types.log.
+- Proposal table/transitions, gateway writes/audit facts and human acceptance remain
+  unfinished. The AI lifecycle audit gap remains open; no AI enablement or deployment.

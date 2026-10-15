@@ -2,6 +2,19 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Numeric-token boundary repairs — October 15, 2026
+
+- Reproduced false acceptances where Unicode separators/invisible characters or malformed
+  French grouping split a larger number into smaller allowed values. Those forms now refuse.
+- Currency suffixes inside accounting parentheses now preserve the negative sign; trailing
+  signs are refused rather than silently discarded. Added 17 regression cases.
+- Focused numeric suite: 49 passed; strict typing: 762 sources; Ruff/diff checks pass.
+  Broader AI/architecture checks: 185 passed, two Linux-only parser tests skipped;
+  log: .run/ai-number-boundaries-checks.log.
+- Rechecked publication boundaries: neither research-harness nor docs/research is tracked;
+  PolyForm Noncommercial 1.0.0 remains in place. No deployment. Numeric checking remains
+  a prerequisite, not evidence that the unfinished AI narrative workflow is complete.
+
 ## Numeric evidence validation for AI narratives — October 15, 2026
 
 - Implemented DG-AI-07 numeric membership validation using authorized caller-supplied
@@ -230,21 +243,6 @@
   passes (745 sources). Evidence: .run/ai-proposal-final.log, .run/ai-proposal-head.log,
   .run/ai-proposal-types.log. Provider/gateway, human acceptance and audit lifecycle
   remain incomplete; AI stays unavailable. No deployment or readiness claim.
-
-## Immutable AI call evidence storage — October 14, 2026
-
-- Migration 0147 adds T-AI-02 ai_model_log with tenant RLS, append-only grants and
-  owner mutation guards. Provider/outcome values, SHA-256 digests and nonnegative
-  token/latency counters are checked; raw prompt/response text has no column.
-- Registered ORM, privacy classification, isolation row builder and sandbox treatment:
-  call evidence stays with the source tenant and is regenerated in a sandbox.
-- Corrected the migration test's old function count for the existing 0145 ownership
-  trigger. API production plus new PG-test strict typing passes (744 sources); Ruff passes.
-- Combined migration round trip, DB lint, immutability, RLS, schema/privacy/snapshot
-  and import-cycle verification: 127 passed (31.44s), .run/ai-model-log-final.log.
-  Typing evidence: .run/ai-model-log-types.log.
-- Proposal table/transitions, gateway writes/audit facts and human acceptance remain
-  unfinished. The AI lifecycle audit gap remains open; no AI enablement or deployment.
 
 ## Outstanding release verification
 

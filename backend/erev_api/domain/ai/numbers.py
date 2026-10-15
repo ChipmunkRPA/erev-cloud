@@ -70,7 +70,12 @@ def validate_numbers(
             return ValidationResult(False, "AI_NARRATIVE_TOO_LARGE")
     except UnicodeEncodeError:
         return ValidationResult(False, "AI_INVALID_ENCODING")
-    if any(char.isnumeric() and not char.isdecimal() for char in text):
+    if any(
+        (char.isnumeric() and not char.isdecimal())
+        or unicodedata.category(char) == "Cf"
+        or char in "\u066b\u066c"
+        for char in text
+    ):
         return ValidationResult(False, "AI_UNSUPPORTED_NUMBER")
     normalized = unicodedata.normalize("NFKC", text).replace("−", "-")
     # Unicode decimal digits are normalized explicitly; other numeric glyphs refuse.
@@ -92,14 +97,14 @@ def validate_numbers(
         return " " * len(match.group())
 
     normalized = _DATE.sub(hide_date, normalized)
-    if re.search(r"\d\s*[/⁄]\s*\d", normalized):
+    if re.search(r"\d\s*[/⁄'’]\s*\d", normalized):
         return ValidationResult(False, "AI_UNSUPPORTED_NUMBER")
     decimal, grouping = _LOCALES[locale]
     if grouping != " " and re.search(r"\d\s+\d", normalized):
         return ValidationResult(False, "AI_UNSUPPORTED_NUMBER")
     token_pattern = _TOKEN
     if grouping == " ":
-        token_pattern = re.compile(r"[+\-]?(?:\d(?:[\d.,]| (?=\d))*(?:[eE][+\-]?\d+)?|[.,]\d+)")
+        token_pattern = re.compile(r"[+\-]?(?:\d(?:[\d.,]|\s+(?=\d))*(?:[eE][+\-]?\d+)?|[.,]\d+)")
     integer = rf"(?:[0-9]+|[0-9]{{1,3}}(?:{re.escape(grouping)}[0-9]{{3}})+)"
     grammar = re.compile(rf"[+-]?{integer}(?:{re.escape(decimal)}[0-9]+)?")
     numbers: list[Decimal] = []
@@ -127,6 +132,19 @@ def validate_numbers(
             return ValidationResult(False, "AI_UNSUPPORTED_NUMBER")
         while right < len(normalized) and normalized[right].isspace():
             right += 1
+        if right < len(normalized) and normalized[right] in "+-":
+            return ValidationResult(False, "AI_UNSUPPORTED_NUMBER")
+        # Currency suffixes belong inside accounting parentheses too: (100 USD).
+        if right < len(normalized) and normalized[right] in "$€£¥":
+            right += 1
+        elif re.fullmatch(r"[A-Z]{3}", normalized[right : right + 3]) and (
+            right + 3 == len(normalized) or not normalized[right + 3].isalpha()
+        ):
+            right += 3
+        while right < len(normalized) and normalized[right].isspace():
+            right += 1
+        if right < len(normalized) and normalized[right] in "+-":
+            return ValidationResult(False, "AI_UNSUPPORTED_NUMBER")
         if (
             left >= 0
             and normalized[left] == "("
