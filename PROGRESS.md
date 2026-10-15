@@ -2,6 +2,22 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Broader readiness verification — October 15, 2026
+
+- Full repository typing passed (917 Python sources plus frontend TypeScript); production build
+  and backend imports passed. All 2,109 frontend tests in 196 files passed (174.31s).
+- Full lint found a mocked SDK synthetic-key literal requiring an exact-line scanner exception,
+  and a test module-name collision between AI prompt and policy-template tests. Added only the
+  scoped fixture exception and renamed the AI test module without changing its assertions;
+  both modules now collect together (28 tests). Full lint passed, including collection of
+  12,015 tests and validation of 502 control-tagged tests.
+- Complete backend unit/architecture verification is still running in the isolated repair
+  environment; preserve the active process and inspect .run/readiness-unit-architecture-oct15.log
+  before starting another database test run. Other logs use .run/readiness-*-oct15.log.
+- Details: docs/release/VERIFICATION-2026-10-15.md. Public visibility, main default, research
+  exclusions and noncommercial licence verified. These development checks are not full CI,
+  independent accounting sign-off or production readiness. No deployment.
+
 ## Provider response usage preservation — October 15, 2026
 
 - Anthropic message usage now validates strict nonnegative counters and includes cache-read

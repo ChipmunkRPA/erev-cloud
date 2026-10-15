@@ -1,0 +1,43 @@
+# Local readiness verification — October 15, 2026
+
+This development verification starts from `519de8c`, with the exact synthetic-key scanner
+exception and AI prompt-test module rename described below. It is not an immutable full-CI
+release result, accounting sign-off or deployment approval.
+
+## Completed checks
+
+- `make lint`: passed after the repairs below, including formatting, source lint, design,
+  vocabulary, dependency licences, secrets, OpenAPI, seed/fixture checks, control-marker
+  validation (502 tagged tests out of 12,015 collected), and the single migration head check.
+  Log: `.run/readiness-lint-oct15.log`.
+
+- `make typecheck`: passed, including strict Python typing for 917 sources and frontend TypeScript.
+  Log: `.run/readiness-types-oct15.log`.
+- `make build`: passed frontend production build and backend imports. Vite reported its existing
+  large-chunk warning. No application was deployed. Log: `.run/readiness-build-oct15.log`.
+- `npm --prefix frontend run test -- --run`: 196 files, 2,109 tests passed (174.31s).
+  Log: `.run/readiness-frontend-oct15.log`. The run includes jsdom navigation diagnostics;
+  the test process exited successfully.
+- Collection of the AI prompt and policy-template modules together: 28 tests collected without
+  import mismatch. Log: `.run/readiness-collection-collision-oct15.log`.
+- Publication checks: GitHub repository remains public with default branch `main`; neither
+  `research-harness/` nor `docs/research/` is tracked. The PolyForm Noncommercial licence remains.
+
+## Repairs discovered by broader verification
+
+The secret scan flagged a synthetic key literal asserted against a mocked SDK constructor.
+Its exception is limited to that file, pattern and exact stripped-line hash. Real credentials,
+other files and edited lines remain subject to the scan; no scanner rule was relaxed.
+
+Full test collection imported two un-packaged `test_templates` modules under the same name.
+The AI prompt module is now `test_ai_prompt_templates.py`; its assertions are unchanged.
+Focused AI runs did not expose this collision with the policy-template suite.
+
+## In progress and remaining scope
+
+- The complete backend unit and architecture directories are running with the CI Hypothesis
+  profile against the local repair environment; `.run/readiness-unit-architecture-oct15.log`.
+  This does not include all backend API/domain/engine/PG test directories.
+- Full immutable CI, PostgreSQL/release gates, outstanding implementation, unknown AI usage
+  reconciliation and independent accounting sign-off remain required. Historical evidence in
+  `CI-2026-10-14.md` does not establish current-main completion.
