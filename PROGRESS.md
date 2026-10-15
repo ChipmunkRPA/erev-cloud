@@ -2,6 +2,23 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Explicit entered option SSP engine path — October 14, 2026
+
+- Added optional per-option total SSP in contract currency. Stages 03 and 05 preserve
+  the entered amount instead of repricing against a shared catalogue; quantity does not
+  multiply it. Wrong method/currency and negative/nonfinite values refuse computation.
+- Input hashes bind explicit values while absent values keep the previous hash shape.
+  Old evidence decodes with None. Source-record trace evidence and formula reevaluation
+  preserve the actual option amount without claiming it came from the catalogue.
+- 397 engine stage-03/stage-05/kernel/upgrade tests passed (29.12s), including 13 new
+  tests covering allocation, ASC606/IFRS15 shared catalogue options, total semantics,
+  hash compatibility, codec replay and invalid inputs. Strict Mypy: 880 production
+  sources plus the new test file; Ruff passes. Logs: .run/entered-option-engine-final.log,
+  .run/entered-option-production-types.log and .run/entered-option-types.log.
+- Persistence, command/read/UI, adapter, snapshot/export and migration promotion remain
+  unfinished. Capture's option refusal remains. No readiness claim or deployment.
+  Older CI 165d63c is still running at 36%; it is not current-main release evidence.
+
 ## Entity-scope reconciliation verification — October 14, 2026
 
 - Reproduced two CI failures in entity-scoped CSV contract quarantine. Both correctly
@@ -233,22 +250,6 @@
   implementation boundaries and next entry requirements are recorded in
   MATERIAL-RIGHTS-IMPLEMENTATION.md. Native entry and corrections remain unfinished.
 - Full CI 165d63c is still running independently. No deployment; publish directly to main.
-
-## Material-right bundle and reads — October 14, 2026
-
-- Connected immutable option terms to real engine bundles at known_at, with stable
-  obligation/estimate keys. Dedicated and embedded obligation reads now return terms
-  and status from non-voided exercise/expiry events at the effective and record cuts.
-  Contract visibility still governs access; expiry dates alone do not change status.
-- Added dedicated-read as_of/known_at parameters, offset validation and regenerated
-  OpenAPI/TypeScript schemas. Four database/API tests pass (22.83s): real computation
-  receives stored terms; both reads agree; historical absence, event voids and tenant
-  isolation hold. Route/import checks: 38 passed (18.71s). Full typecheck (879 source
-  files plus frontend) and Ruff pass. Evidence: MATERIAL-RIGHTS-IMPLEMENTATION.md.
-- Corrected fixture transaction/head/query-parameter mistakes found by initial runs;
-  production guards and expected results were retained. Tests insert terms explicitly:
-  native entry, governed corrections, migration conversion and populated snapshot
-  acceptance remain unfinished. Full CI 165d63c remains live. No deployment.
 
 ## Outstanding release verification
 

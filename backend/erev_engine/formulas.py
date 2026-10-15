@@ -1621,6 +1621,13 @@ def _option_ssp(inputs: Sequence[Fraction], params: Mapping[str, str]) -> Fracti
     formula_id = "pob.option_ssp.v1"
     if params.get("reason") == "NOT_MATERIAL":
         return Fraction(0)
+    if params.get("method") == "ENTERED_AMOUNT" and "entered_ssp_amount" in params:
+        amount = _decimal(params, "entered_ssp_amount")
+        if amount < 0:
+            raise ValueError(f"{formula_id}: entered SSP must be nonnegative")
+        if not inputs or inputs[0] != amount:
+            raise ValueError(f"{formula_id}: entered SSP input disagrees with params")
+        return _as_node(amount, params)
     if not inputs:
         raise ValueError(f"{formula_id} needs the likelihood or entry input")
     if _param(params, "method") != "DISCOUNT_X_LIKELIHOOD":

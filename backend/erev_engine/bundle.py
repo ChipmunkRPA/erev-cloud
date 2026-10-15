@@ -239,6 +239,15 @@ class MaterialRightInput:
     expiry_date: date | None
     likelihood_estimate_key: str | None  # EXERCISE_LIKELIHOOD element (T-CON-12)
     is_legacy_quantity_ssp_dollars: bool
+    # Total option SSP in contract currency; never multiplied by the line quantity.
+    entered_ssp_amount: Decimal | None = None
+
+    def hash_view(self) -> dict[str, object]:
+        """Preserve pre-extension input hashes when no explicit amount was supplied."""
+        view: dict[str, object] = {item.name: getattr(self, item.name) for item in fields(self)}
+        if self.entered_ssp_amount is None:
+            del view["entered_ssp_amount"]
+        return view
 
 
 @dataclass(frozen=True, slots=True)
@@ -325,6 +334,12 @@ class ContractInput:
     consideration_payable: tuple[PayableInput, ...]
     payment_schedule: tuple[PaymentPointInput, ...]
     scope_605_35: bool
+
+    def hash_view(self) -> dict[str, object]:
+        """Hash immutable option amounts while retaining absent-field compatibility."""
+        view: dict[str, object] = {item.name: getattr(self, item.name) for item in fields(self)}
+        view["material_rights"] = tuple(item.hash_view() for item in self.material_rights)
+        return view
 
 
 @dataclass(frozen=True, slots=True)
@@ -692,6 +707,7 @@ class InputBundle:
         ``reason_code`` only when set, S14-R-27; its ``rate_refs`` only when present, S14-R-28)."""
         view = {item.name: getattr(self, item.name) for item in fields(self)}
         del view["known_at"]
+        view["contracts"] = tuple(item.hash_view() for item in self.contracts)
         view["estimate_versions"] = tuple(item.hash_view() for item in self.estimate_versions)
         # D-97 (3): an entry's quantity_unit enters only when declared (SspEntryInput.hash_view).
         view["ssp_versions"] = tuple(item.hash_view() for item in self.ssp_versions)

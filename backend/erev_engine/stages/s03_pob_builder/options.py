@@ -71,7 +71,8 @@ def build(
     [0, 1] or a negative ratio yields ``NON_FINITE_AMOUNT`` (``ERROR``); a ratio of 0 is not a
     material right, so the line creates no obligation (``None``). ``RENEWAL_ALTERNATIVE``: no option
     SSP; the expected renewal line keeps its template terms and SSP entry with the option record
-    (606-10-55-45; ALG-05 §2.6.1). ``ENTERED_AMOUNT``: the SSP entry's point at quantity (or
+    (606-10-55-45; ALG-05 §2.6.1). ``ENTERED_AMOUNT``: the explicit total option SSP when
+    supplied, otherwise the SSP entry's point at quantity (or
     the range midpoint), and the obligation is units-delivered; an entry that stage 03 cannot read
     leaves the option SSP to stage 05. A line without an option record keeps its template terms
     (L2-2-Q-1). A missing member or pin raises ``MaterialRightInputError``
@@ -84,12 +85,22 @@ def build(
     if terms is None:
         return draft
     method = terms.ssp_method
+    entered = terms.entered_ssp_amount
+    if entered is not None:
+        if method != ENTERED_AMOUNT or terms.currency != ctx.txn_currency:
+            raise MaterialRightInputError(
+                "entered option SSP requires ENTERED_AMOUNT and contract currency"
+            )
+        if not entered.is_finite() or entered < 0:
+            raise MaterialRightInputError("entered option SSP must be finite and nonnegative")
     if method == RENEWAL_ALTERNATIVE:
         # ALG-05 §2.6.1: the contract includes the expected renewals, so the renewal line the
         # preparer books stays an obligation with its own SSP entry; no option SSP (L5-5-Q-19).
         return dataclasses.replace(draft, material_right=terms)
     if method == ENTERED_AMOUNT:
-        point = bundles.point_ssp(ctx, st, draft.line)
+        point = (
+            to_fraction(entered) if entered is not None else bundles.point_ssp(ctx, st, draft.line)
+        )
         return dataclasses.replace(
             draft,
             material_right=terms,
@@ -187,6 +198,15 @@ def emit(
         params["likelihood"] = format_exact(likelihood)
         inputs.append(
             SourceRef("estimate_version", pin.version_key, {"value": format_exact(likelihood)})
+        )
+    elif terms.entered_ssp_amount is not None:
+        params["entered_ssp_amount"] = format_exact(to_fraction(terms.entered_ssp_amount))
+        inputs.append(
+            SourceRef(
+                "source_record",
+                f"material_right:{draft.subject_key}",
+                {"member": "entered_ssp_amount", "value": params["entered_ssp_amount"]},
+            )
         )
     else:
         entry = bundles.ssp_entry(ctx, st, draft.line)

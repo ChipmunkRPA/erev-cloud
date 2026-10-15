@@ -495,6 +495,26 @@ def _resolve(
     terms = _option_terms(identified, draft)
     if draft.obligation_kind == ObligationKind.MATERIAL_RIGHT and terms is not None:
         if terms.ssp_method == "ENTERED_AMOUNT":
+            if terms.entered_ssp_amount is not None:
+                silent = _resolve_line(
+                    ctx, identified, draft.line, at, None, allocation_basis, None, record=record
+                )
+                return _bypass(
+                    draft,
+                    silent,
+                    to_fraction(terms.entered_ssp_amount),
+                    terms.ssp_method,
+                    (
+                        SourceRef(
+                            "source_record",
+                            f"material_right:{draft.subject_key}",
+                            {
+                                "member": "entered_ssp_amount",
+                                "value": format_exact(to_fraction(terms.entered_ssp_amount)),
+                            },
+                        ),
+                    ),
+                )
             found = _resolve_line(
                 ctx, identified, draft.line, at, None, allocation_basis, findings, record=record
             )

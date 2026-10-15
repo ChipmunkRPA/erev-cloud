@@ -365,3 +365,36 @@ options sharing one catalogue key but having different source quantities, plus o
 using the unchanged catalogue. Assert preserved relative allocation and opening measures,
 dry-run rollback, approved promotion and replay/restore. Keep the existing conversion refusal
 until those witnesses pass; this audit does not close migration acceptance or accounting review.
+
+
+## Explicit option SSP engine input, October 14
+
+The engine now accepts optional `MaterialRightInput.entered_ssp_amount`: a finite,
+nonnegative total in contract currency, valid only for ENTERED_AMOUNT. It is not multiplied
+by quantity. Stage 03 records the amount; stage 05 uses it for relative allocation instead
+of resolving the shared catalogue point as the selected amount. Catalogue metadata can still
+supply account/provenance context, but the amount trace references the material-right source
+record and carries its entered amount. Formula reevaluation checks that source value against
+the parameter. Absent amounts retain the existing catalogue-based behavior.
+
+The amount participates in InputBundle.sha256 when present. An absent amount is omitted only
+from the input hash view, preserving the earlier shape; ordinary dataclass/evidence encoding
+retains the member. Old evidence without the member decodes with None. This is not a claim
+of cross-engine-version output equivalence or completion of the engine release/replay gate.
+
+Focused acceptance includes two obligations sharing a catalogue entry with USD 25 and 75
+entered amounts alongside USD 100 ordinary SSP: USD 100 consideration allocates USD 50,
+12.50 and 37.50 in ASC606 and IFRS15. Separate tests cover zero, negative/nonfinite values,
+incompatible method/currency, quantity-five total semantics, changed input hashes, old-hash
+compatibility, old-codec decoding and input-evidence round-trip with trace reevaluation.
+
+This is the engine dependency only. T-CON-14 storage, native command/read/UI exposure,
+bundle assembly, snapshot/export and approved migration promotion still need the field.
+Capture continues refusing option records. The end-to-end migration acceptance above,
+release gates and independent accounting sign-off remain open.
+
+Validation: 397 stage-03/stage-05/kernel/upgrade tests passed (29.12s); strict Mypy
+passed for 880 production sources and the new test file; Ruff passed. Logs:
+`.run/entered-option-engine-final.log`, `.run/entered-option-production-types.log`,
+`.run/entered-option-types.log`. These witnesses do not exercise persisted native entry
+or migration promotion with an explicit amount.
