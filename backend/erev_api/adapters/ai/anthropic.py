@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import time
 from collections.abc import Callable
 from hashlib import sha256
 from typing import cast
@@ -12,6 +11,7 @@ from pydantic import SecretStr
 
 from erev_api.adapters.ai.provider import AIRequest, AIResponse, ProviderError
 from erev_api.adapters.secrets.store import SecretStore
+from erev_api.clock import monotonic as monotonic_seconds
 
 
 class ConfiguredAIKey:
@@ -42,7 +42,7 @@ class AnthropicProvider:
         self,
         client_factory: Callable[[], anthropic.Anthropic],
         *,
-        monotonic: Callable[[], float] = time.monotonic,
+        monotonic: Callable[[], float] = monotonic_seconds,
     ) -> None:
         self._client_factory = client_factory
         self._monotonic = monotonic

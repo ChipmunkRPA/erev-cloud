@@ -2,6 +2,23 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Architecture repair after broad verification — October 15, 2026
+
+- Provider timing now uses erev_api.clock.monotonic, retaining the injected duration source.
+  The absolute-path template rejection fixture no longer names a reserved temporary directory.
+- Registered the AI initiator's existing ACTIVE user/membership identity query with its reason.
+  Updated computation-scope and stream-ending registries to name the shared _record_events
+  function introduced for option expiry; both public event paths retain the same guards.
+- Registered MaterialRightExpireIn evidence through the existing evidence_errors/file_access
+  binder, matching the route and the authoritative data-model table.
+- Verification: 49 provider/template/architecture checks and five file-binding checks passed;
+  strict typing passed for 767 sources; Ruff/diff passed. Logs: .run/architecture-repair-
+  checks.log and .run/expiry-binding-checks.log. Five of the seven
+  outstanding architecture failures are resolved; AI proposal file ownership and evidence
+  retention remain open. This is not a complete architecture or release-suite pass.
+- Work remains on call-intent gateway integration and the other implementation/release gaps.
+  No deployment or readiness claim; direct main publication continues.
+
 ## Durable AI call-intent storage — October 15, 2026
 
 - Migration 0150 adds immutable human-attributed call intents with tenant/job FKs,
@@ -227,23 +244,6 @@
   serialization, authorized retrieval, durable attempt/proposal/audit writes and acceptance
   remain unfinished. The isolated local test database was stopped after verification.
   No deployment or production-readiness claim.
-
-## PDF subprocess resource boundary — October 15, 2026
-
-- Added the operational parser entry point as an isolated-interpreter subprocess with a
-  minimal environment, closed inherited descriptors, discarded parser stderr and strict
-  response validation. Text disablement and file caps refuse before child launch.
-- The Linux child applies 512 MiB address-space and 15-second CPU limits before importing
-  pypdf, and disallows core dumps/file writes through resource limits. The parent enforces
-  30-second wall time; real-child testing confirms timeout kill/reap and secret removal.
-  Unsupported hosts or unavailable resource limits fail closed, never parse in-process.
-- AI/architecture checks: 180 passed, two Linux-only enforcement tests skipped on this Mac;
-  strict API/test typing: 757 sources; Ruff passes. Logs: .run/ai-pdf-isolation-{checks,types}.log.
-- Docker executable exists but its daemon cannot be reached. SUPERVISOR VERIFICATION NEEDED:
-  Linux successful PDF parsing plus actual address-space/CPU exhaustion tests in the worker
-  environment. These are not established by the local transport tests. No deployment.
-- AI_TASK integration remains absent; the new subprocess entry point is not yet called by
-  an enabled job. File authorization/storage, gateway budgets/auditing and acceptance remain open.
 
 ## Outstanding release verification
 

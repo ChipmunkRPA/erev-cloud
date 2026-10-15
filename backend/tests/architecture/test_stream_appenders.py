@@ -95,7 +95,7 @@ APPENDERS: Final[dict[tuple[str, str], Ending]] = {
     (CONTRACTS + "estimates.py", "_approve_version"): Ending(
         COMPUTES, "an approved estimate version recomputes"
     ),
-    (CONTRACTS + "events.py", "record_events"): Ending(
+    (CONTRACTS + "events.py", "_record_events"): Ending(
         COMPUTES, "a recorded fact computes its group or defers it beyond the budget"
     ),
     (CONTRACTS + "holds.py", "apply_hold"): Ending(COMPUTES, "unit of work B: compute or defer"),
@@ -107,7 +107,7 @@ APPENDERS: Final[dict[tuple[str, str], Ending]] = {
         CALLER,
         "a release by the system: for a recorded assessment, and for a reviewed judgement",
         (
-            (CONTRACTS + "events.py", "record_events"),
+            (CONTRACTS + "events.py", "_record_events"),
             ("backend/erev_api/domain/policies/judgements.py", "review_judgement"),
         ),
     ),

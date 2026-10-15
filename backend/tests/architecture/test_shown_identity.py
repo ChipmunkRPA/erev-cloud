@@ -54,6 +54,10 @@ TAKES: Final = frozenset(
 # ``<module path under erev_api>:<function>`` → why the person of the membership it reads is never
 # one whose identity is withheld.
 OF_A_MEMBERSHIP: Final = {
+    "domain/ai/access.py:authorize_job": (
+        "the AI job initiator: the statement requires an ACTIVE membership and ACTIVE user "
+        "before reconstructing the delegated principal; no inactive member identity is read"
+    ),
     "auth/invitations.py:find_invitation": (
         "the invitation's own page, read with the invitation's token: the invited person reads "
         "their own name, and who invited them by that person's user id"

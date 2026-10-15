@@ -4311,3 +4311,20 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
 - Worker process memory/time enforcement remains unverified: parser caps are not a process
   sandbox. Authorized reads, durable AI_DOCUMENT_TEXT files, job integration, budgets, audit
   writes and human acceptance remain open. No live provider call, deployment or readiness claim.
+
+## PDF subprocess resource boundary — October 15, 2026
+
+- Added the operational parser entry point as an isolated-interpreter subprocess with a
+  minimal environment, closed inherited descriptors, discarded parser stderr and strict
+  response validation. Text disablement and file caps refuse before child launch.
+- The Linux child applies 512 MiB address-space and 15-second CPU limits before importing
+  pypdf, and disallows core dumps/file writes through resource limits. The parent enforces
+  30-second wall time; real-child testing confirms timeout kill/reap and secret removal.
+  Unsupported hosts or unavailable resource limits fail closed, never parse in-process.
+- AI/architecture checks: 180 passed, two Linux-only enforcement tests skipped on this Mac;
+  strict API/test typing: 757 sources; Ruff passes. Logs: .run/ai-pdf-isolation-{checks,types}.log.
+- Docker executable exists but its daemon cannot be reached. SUPERVISOR VERIFICATION NEEDED:
+  Linux successful PDF parsing plus actual address-space/CPU exhaustion tests in the worker
+  environment. These are not established by the local transport tests. No deployment.
+- AI_TASK integration remains absent; the new subprocess entry point is not yet called by
+  an enabled job. File authorization/storage, gateway budgets/auditing and acceptance remain open.

@@ -52,7 +52,7 @@ def test_changed_version_bytes_refused(tmp_path: Path, change: bytes) -> None:
     "name,version",
     [
         ("../contract-review", 1),
-        ("/tmp/prompt", 1),
+        ("/outside/prompt", 1),
         ("contract-review", True),
         ("contract-review", 0),
     ],

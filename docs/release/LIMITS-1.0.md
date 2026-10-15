@@ -75,7 +75,12 @@ The October 15 full architecture run additionally exposed unresolved checks for 
 scope/appender registries, AI proposal file ownership/evidence rules, material-right expiry file
 bindings, provider clock/test temporary-path rules and AI membership identity reads. The run
 recorded 337 passes and 10 failures (.run/ai-intent-checks.log); privacy/snapshot counts and
-AI proposal column order were subsequently corrected. Seven architecture checks remain open.
+AI proposal column order were subsequently corrected. A subsequent repair passed 54 targeted checks: the provider now uses the central monotonic
+clock; the active AI initiator and shared event-appending helper are correctly registered;
+the option-expiry evidence binding is documented; the template test retains an absolute-path
+refusal without using a reserved temporary directory. Two of those architecture checks remain
+open: AI proposal file ownership and file-evidence retention. The complete architecture suite
+and full release gates still require a fresh pass.
 
 Migration 0148 adds immutable proposal content/citations, tenant-bound evidence references
 and SM-11 state guards. The schema and full migration round trip are verified; proposal

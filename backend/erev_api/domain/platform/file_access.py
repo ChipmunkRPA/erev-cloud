@@ -1275,6 +1275,11 @@ FILE_BINDINGS: Final[Mapping[str, FileBinding]] = MappingProxyType(
             "erev_api.domain.imports.upload:_file",
             "422 validation-failed on file_id, rule API-R-43",
         ),
+        "MaterialRightExpireIn.evidence_file_ids": FileBinding(
+            "POST /obligations/{obligation_id}/expire-material-right",
+            "erev_api.domain.contracts.events:evidence_errors",
+            "422 validation-failed on evidence_file_ids[i], rule T-PLT-29",
+        ),
         "MigrationCreateIn.source_file_id": FileBinding(
             "POST /migrations",
             "erev_api.domain.migration.commands:recognise_stored_source",

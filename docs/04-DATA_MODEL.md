@@ -1901,6 +1901,7 @@ Evidence-pack files are reserved for API-R-42 so every download can reauthorize 
 | `AttachmentCreateIn.file_object_id` | `POST /attachments` | 422 `validation-failed` on `file_object_id` |
 | `EventAppendIn.evidence_file_ids` | `POST /contracts/{id}/events` | 422 `validation-failed` on `evidence_file_ids[i]`, rule T-PLT-29 |
 | `ImportCreateIn.file_id` | `POST /imports` | 422 `validation-failed` on `file_id`, rule API-R-43 |
+| `MaterialRightExpireIn.evidence_file_ids` | `POST /obligations/{obligation_id}/expire-material-right` | 422 `validation-failed` on `evidence_file_ids[i]`, rule T-PLT-29 |
 | `MigrationCreateIn.source_file_id` | `POST /migrations` | 404 `not-found` |
 | `ReconciliationAttachIn.file_id` | `POST /reconciliations/{id}/attach-trial-balance` | 422 `validation-failed` on `file_id`, rule REQ-CLS-016 |
 | `ReplayPlanItemIn.file_id` | `POST /migrations/{id}/import` | refused before any use: mode REPLAY is not built |

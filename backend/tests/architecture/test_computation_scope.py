@@ -130,7 +130,7 @@ DOOR: Final = {
     SYSTEM_SCOPE: {
         (
             "backend/erev_api/domain/contracts/events.py",
-            "record_events",
+            "_record_events",
         ): "Step 1 preview after contract authorization includes every performing entity",
         (
             "backend/erev_api/domain/contracts/step1_approval.py",
