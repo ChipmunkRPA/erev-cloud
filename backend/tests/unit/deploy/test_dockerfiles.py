@@ -223,7 +223,7 @@ def test_worker_image() -> None:
     assert runtime.all("EXPOSE") == []
     command = json.loads(runtime.one("CMD"))
     assert command == ["worker"], "all eight queues: no --queues (DG-KRN-JOB-11)"
-    assert healthcheck_command(runtime) == [EREV_BIN, "worker", "--check"]
+    assert healthcheck_command(runtime) == ["/app/.venv/bin/python", "-m", "erev_api.worker_health"]
 
 
 def active_config(text: str) -> str:

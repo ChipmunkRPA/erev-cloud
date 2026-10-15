@@ -51,4 +51,4 @@ WORKDIR /app
 USER 10001
 ENTRYPOINT ["/app/.venv/bin/erev"]
 CMD ["worker"]
-HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 CMD ["/app/.venv/bin/erev", "worker", "--check"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 CMD ["/app/.venv/bin/python", "-m", "erev_api.worker_health"]

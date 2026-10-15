@@ -68,12 +68,12 @@ from erev_api.jobs.context import JobRuntime
 from erev_api.jobs.pool import worker_pool
 from erev_api.jobs.registry import QUEUES, QueueName
 from erev_api.logging import configure_logging
+from erev_api.worker_health import heartbeat_is_fresh as heartbeat_is_fresh
 
 if TYPE_CHECKING:
     from procrastinate.job_context import JobContext
 
 HEARTBEAT_INTERVAL: Final = timedelta(seconds=15)  # DG-KRN-JOB-08
-HEARTBEAT_MAX_AGE: Final = timedelta(seconds=60)  # DG-RUN-02 readiness; `erev worker --check`
 SWEEP_TASK: Final = "erev.sweep_jobs"
 OUTBOX_SWEEP_TASK: Final = "erev.sweep_outbox"
 WEBHOOK_DELIVERY_DUE_TASK: Final = "erev.webhook_delivery_due"
@@ -396,15 +396,6 @@ class HeartbeatWriter:
         os.utime(self.path, (stamp, stamp))
         self._last = now
         return True
-
-
-def heartbeat_is_fresh(path: Path, clock: Clock) -> bool:
-    """Whether the heartbeat file was touched less than 60 seconds ago (DPL-02 health check)."""
-    try:
-        modified = datetime.fromtimestamp(path.stat().st_mtime, tz=UTC)
-    except FileNotFoundError:
-        return False
-    return clock.now() - modified < HEARTBEAT_MAX_AGE
 
 
 def _beat(writer: HeartbeatWriter, stop: threading.Event) -> None:

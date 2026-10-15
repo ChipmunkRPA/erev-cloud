@@ -614,14 +614,14 @@ Long operations run as `job` rows wrapping the Procrastinate task `erev.run_job`
 
 - `make worker` runs `backend/.venv/bin/erev worker` in the foreground on all eight queues (`compute`, `imports`, `close`, `outbox`, `reports`, `maintenance`, `integrations`, `ai`). The final line is `OK worker` after a clean stop.
 - `erev worker --queues compute,close` restricts a worker to named queues for a hosted split. An unknown name exits 2 with `unknown queue <name>`. `EREV_WORKER_QUEUES` sets the same list; `--queues` overrides it.
-- The worker writes `.run/worker.heartbeat` every 15 seconds (`--heartbeat-file` names another file). `erev worker --check` exits 0 while the file is younger than 60 seconds and 1 otherwise; container health checks call it.
+- The worker writes `.run/worker.heartbeat` every 15 seconds (`--heartbeat-file` names another file). `erev worker --check` exits 0 while the file is younger than 60 seconds and 1 otherwise. Container health checks run `python -m erev_api.worker_health`, reading `EREV_RUN_DIR/worker.heartbeat` with the same freshness rule but without importing the full worker.
 - `EREV_WORKER_CONCURRENCY` sets how many tasks one worker runs at once. Separately, one tenant runs at most its `platform.job_concurrency` jobs (a TENANT registry value; default 4) across all workers; a job without a free slot stays `QUEUED` and is retried after 5 seconds.
 
 ### Job monitoring
 
 Runbook entry RB-07 (05 JOB-06, JOB-07).
 
-- `make status` shows the `worker` line, for example `worker pid=4242 alive port=- ready=ready`. `ready=not-ready` means the heartbeat file is older than 60 seconds: read `.run/worker.log` and restart with `make dev-down` and `make dev-up`. Hosted deployments run `erev worker --check` as the health check.
+- `make status` shows the `worker` line, for example `worker pid=4242 alive port=- ready=ready`. `ready=not-ready` means the heartbeat file is older than 60 seconds: read `.run/worker.log` and restart with `make dev-down` and `make dev-up`. The container image uses the lightweight heartbeat probe; hosted HTTP worker probes retain the same freshness rule.
 - Holders of `audit.read` for all entities list failed jobs with `GET /api/v1/jobs?state=FAILED` and queued work with `GET /api/v1/jobs?state=QUEUED&state=RUNNING`. The job's `problem` explains a failure.
 - In the worker log, `job.retry_scheduled` marks a failed attempt that will run again and `job.failed` a job with no attempts left.
 - The audit log records every job except the outbox transport kinds (`OUTBOX_RELAY`, `EMAIL_DELIVERY`, `WEBHOOK_DELIVERY`): `job.start` when it is deferred (by the person or API client whose command deferred it, or by the system for a scheduled job), `job.finish` with its final state and the problem's slug, and `job.cancel` when someone cancels it (04 T-PLT-27). Filter `GET /api/v1/audit-events` by these actions to reconcile the job list with the audit log.

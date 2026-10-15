@@ -5856,3 +5856,21 @@ cleanup in the shared database session kernel was also repaired and regression-t
   Detailed verification is in docs/release/CI-2026-10-15.md.
 - The settings editor and full J-19/demo journey remain unfinished. No deployment. Frozen CI
   on 3cf8f5b remains running; independent accounting sign-off and release gates remain open.
+
+## Administrator AI settings screen — October 15, 2026
+
+- Added /settings/ai and its workspace-wide settings.manage navigation guard. The page shows
+  effective availability and platform disable, edits the eight documented values, resumes saved
+  versions and submits through validation plus independent approval. Emergency disable uses a
+  confirmation dialog and remains available during validation. Pending requests show their
+  number, preparer and review link.
+- Retries retain the original statement, row-version precondition and command keys. A newer read
+  cannot silently replace the edit precondition; even a SUBMITTED read replays the caller's own
+  submission key. Failed validation stops submission; reset-to-default drafts use catalogue values.
+- Full frontend suite: 2,160 tests pass in 202 files; 43 focused checks and typing also pass.
+  Real Chromium + API + PostgreSQL verifies creation, validation job and submission while AI
+  remains off; desktop and pending screenshots
+  inspected. A narrow viewport retains the existing minimum-width gate. Evidence is in
+  docs/release/CI-2026-10-15.md. The private browser harness remains excluded in .run.
+- No deployment or provider calls. Standard demo/J-19 and accounting sign-off remain open.
+  Frozen CI on 3cf8f5b remains running; its snapshot predates these changes.
