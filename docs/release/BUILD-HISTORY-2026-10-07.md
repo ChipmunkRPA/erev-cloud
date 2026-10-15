@@ -4858,4 +4858,3 @@ cleanup in the shared database session kernel was also repaired and regression-t
   final gateway recovery verification: 12 passed (57.50s), .run/ai-unknown-usage-recovery.log.
   Strict typing passed for 771 sources; Ruff/diff checks passed. Logs:
   .run/ai-unknown-usage-{final,types}.log. No deployment or production-readiness claim.
-
