@@ -312,6 +312,7 @@ def _acknowledged_run(
         release_id=UUID(str(release["id"])),
     )
     rows = insert_journal_rows(session, world.tenant_id, parts=parts, je_seqs=(je_seq,))
+    stamps: dict[str, Any]
     for state, stamps in (
         ("approved", {"approved_at": now}),
         ("exported", {"exported_at": now}),
@@ -946,7 +947,7 @@ def test_sc6_the_documents_a_record_rests_on_are_released_only_by_an_approval(
         uk = other_entity(session, world)
     cody = controller(app, clock, tenant_id, "cody", entity_ids=[uk])  # AVM-UK only
     ursula = controller(app, clock, tenant_id, "ursula", entity_ids=[world.entity_id])  # AVM-US
-    names = ("tb-signed", "tb-draft", "db-captured", "db-profiled")
+    names: tuple[str, ...] = ("tb-signed", "tb-draft", "db-captured", "db-profiled")
     names += ("support-large", "support-small", "support-draft")
     names += ("support-below", "support-discarded")
     purposes = {
@@ -1309,3 +1310,90 @@ def test_sc6_every_refusal_of_file_shred_is_audited_as_denied(
         "purpose": "AI_PROMPT_LOG",
         "reason": REASON,
     }
+
+
+def test_ai_proposal_source_requires_reviewed_erasure(
+    app: FastAPI, keyring: KeyRing, clock: FrozenClock, files: LocalFileStore
+) -> None:
+    """A proposal's source survives expiry and cannot be shredded by its administrator."""
+    from erev_api.db import new_id
+    from erev_api.db.tables import ai_proposal
+    from erev_api.files.store import open_file
+    from erev_api.problems import Problem
+    from support.rows import RowContext, ai_proposal_row
+
+    world = close_world(app, keyring, clock, files)
+    tess = tenant_admin(app, clock, world.tenant_id)
+    source = stored(world, FilePurpose.ATTACHMENT, "ai-source")
+    text_id = stored(world, FilePurpose.AI_DOCUMENT_TEXT, "ai-extracted-text")
+    with system_session(world) as session:
+        row = ai_proposal_row(RowContext(world.tenant_id, new_id()), session) | {
+            "kind": "CONTRACT_EXTRACTION",
+            "file_object_id": source,
+            "document_text_file_id": text_id,
+            "status": "expired",
+        }
+        session.execute(insert(ai_proposal).values(**row))
+    for file_id, column in ((source, "file_object_id"), (text_id, "document_text_file_id")):
+        (hold,) = file_evidence.holds(world.tenant_id, file_id)
+        assert hold.held_by == f"ai_proposal.{column}"
+        assert hold.row_id == row["id"]
+        assert hold.entity_ids is None  # no invented narrowing of review scope
+        assert hold.reference.approval
+    assert_held(
+        shred(app, tess, source),
+        world.tenant_id,
+        source,
+        "the source document of an AI proposal",
+        rule=APPROVAL_RULE,
+    )
+    cora = controller(app, clock, world.tenant_id, "ai-cora")
+    opened = request_shred(app, tess, source)
+    assert opened.status_code == 200, opened.text
+    request_id = opened.json()["approval_request_id"]
+    assert file_state(world.tenant_id, source)["shredded_at"] is None
+    approved = approve(app, request_id, cora)
+    assert approved.status_code == 200, approved.text
+    assert file_state(world.tenant_id, source)["shredded_at"] is not None
+    assert file_state(world.tenant_id, text_id)["shredded_at"] is None
+    # Erasure keeps the proposal and the source digest/reference for audit.
+    assert (
+        rows_of(
+            world.tenant_id,
+            select(ai_proposal.c.file_object_id).where(ai_proposal.c.id == row["id"]),
+        )[0]["file_object_id"]
+        == source
+    )
+
+    # Extracted text uses its own wrapped key and independently reviewed erasure.
+    (text_state,) = rows_of(world.tenant_id, select(file_object).where(file_object.c.id == text_id))
+    assert files.exists(str(text_state["storage_key"]) + ".dek")
+    with files.open(str(text_state["storage_key"])) as ciphertext:
+        assert not ciphertext.read().startswith(PDF)
+    with system_session(world) as session:
+        _, plaintext = open_file(session, text_id, files=files, keyring=keyring)
+        with plaintext:
+            assert plaintext.read().startswith(PDF)
+
+    assert_held(
+        shred(app, tess, text_id),
+        world.tenant_id,
+        text_id,
+        "the cited text of an AI proposal",
+        rule=APPROVAL_RULE,
+    )
+    text_request = request_shred(app, tess, text_id)
+    assert text_request.status_code == 200, text_request.text
+    text_approved = approve(app, text_request.json()["approval_request_id"], cora)
+    assert text_approved.status_code == 200, text_approved.text
+    (completed_text,) = rows_of(
+        world.tenant_id, select(file_object).where(file_object.c.id == text_id)
+    )
+    assert completed_text["shred_completed_at"] is not None
+    assert not files.exists(str(text_state["storage_key"]) + ".dek")
+
+    with system_session(world) as session:
+        with pytest.raises(Problem) as refused:
+            open_file(session, text_id, files=files, keyring=keyring)
+        assert refused.value.slug == "not-found"
+        assert refused.value.errors[0].rule_id == "FILE_SHREDDED"

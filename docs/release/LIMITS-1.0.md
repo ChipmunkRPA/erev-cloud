@@ -82,6 +82,15 @@ refusal without using a reserved temporary directory. Two of those architecture 
 open: AI proposal file ownership and file-evidence retention. The complete architecture suite
 and full release gates still require a fresh pass.
 
+AI proposal source and extracted-text references now hold their files against direct erasure,
+including after proposal expiry. The existing Controller-reviewed EVIDENCE_SHRED flow can
+lift those holds; without durable entity bindings it requires coverage of every tenant entity.
+AI_DOCUMENT_TEXT is now encrypted with a per-file key and can be cryptographically erased.
+The file-evidence registry check is now resolved; file-read ownership remains open. This does
+not complete proposal file-read authorization or the extraction job/storage workflow.
+Any experimental plaintext AI_DOCUMENT_TEXT object from an older build needs explicit migration
+or regeneration before use; there is no plaintext fallback or automatic conversion.
+
 Migration 0148 adds immutable proposal content/citations, tenant-bound evidence references
 and SM-11 state guards. The schema and full migration round trip are verified; proposal
 creation/acceptance APIs, approval integration and lifecycle audit events remain absent.

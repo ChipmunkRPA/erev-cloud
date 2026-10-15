@@ -42,6 +42,7 @@ ENCRYPTED_PURPOSES: Final = frozenset(
         FilePurpose.SSP_STUDY,
         FilePurpose.LEGACY_DATABASE,
         FilePurpose.SNAPSHOT_DATASET,
+        FilePurpose.AI_DOCUMENT_TEXT,
     }
 )
 # PRD ERR-37.

@@ -4328,3 +4328,20 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   environment. These are not established by the local transport tests. No deployment.
 - AI_TASK integration remains absent; the new subprocess entry point is not yet called by
   an enabled job. File authorization/storage, gateway budgets/auditing and acceptance remain open.
+
+## AI job initiator authorization — October 15, 2026
+
+- Added current-grant authorization for a persisted AI_TASK attempt. It verifies the live
+  job/task identity, requires the stored human creator to match the SYSTEM on-behalf-of id,
+  and requires active user, workspace and membership before resolving permissions.
+- The returned USER principal uses ai.use entity scope rather than SYSTEM's all-entity scope
+  or the union from unrelated roles. It carries no recreated login or MFA evidence. Callers
+  still owe per-file/report permissions and must use this narrowed context for retrieval.
+- Eight PostgreSQL cases cover scoped access, revoked grants, suspended membership/workspace,
+  disabled user, completed jobs, substituted initiators and inline/wrong-attempt refusal.
+  Combined AI/architecture checks: 172 passed, two Linux parser-limit tests skipped;
+  strict API/test typing: 758 sources; Ruff passes. Logs: .run/ai-access-{checks,types}.log.
+- This is not an enabled AI_TASK handler. Gateway settings/kill-switch checks, budget
+  serialization, authorized retrieval, durable attempt/proposal/audit writes and acceptance
+  remain unfinished. The isolated local test database was stopped after verification.
+  No deployment or production-readiness claim.

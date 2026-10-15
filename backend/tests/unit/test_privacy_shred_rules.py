@@ -51,13 +51,14 @@ def test_shred_supported_is_exactly_the_encrypted_purposes(purpose: FilePurpose)
     assert shred_supported(purpose) is (purpose in policy.ENCRYPTED_PURPOSES)
 
 
-def test_encrypted_purposes_are_the_five_of_bs1_d_21() -> None:
+def test_encrypted_purposes_include_ai_extracted_text() -> None:
     assert policy.ENCRYPTED_PURPOSES == {
         FilePurpose.IMPORT_SOURCE,
         FilePurpose.ATTACHMENT,
         FilePurpose.SSP_STUDY,
         FilePurpose.LEGACY_DATABASE,
         FilePurpose.SNAPSHOT_DATASET,
+        FilePurpose.AI_DOCUMENT_TEXT,
     }
 
 
@@ -134,6 +135,8 @@ def test_a_hold_an_approval_lifts_names_the_request_and_yields_to_one_without_ov
         "the supporting attachment of manual adjustment X-1, which has been submitted",
         "the evidence of approval request X-1, whose events wait for approval or are recorded",
         "the evidence of an event recorded on contract X-1",
+        "the source document of an AI proposal",
+        "the cited text of an AI proposal",
     ]
     committed = file_evidence.Hold(lifted[0], "IMP-000007")
     refusal = shred_refusal(row(purpose=FilePurpose.IMPORT_SOURCE.value), TODAY, held=committed)

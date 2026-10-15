@@ -2,6 +2,23 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## AI proposal evidence retention and encrypted text — October 15, 2026
+
+- Source and extracted-text references now hold their files against direct shredding even
+  after proposal expiry. Existing Controller-reviewed EVIDENCE_SHRED approvals lift the holds;
+  no durable entity binding exists, so review must cover every tenant entity.
+- AI_DOCUMENT_TEXT now uses per-file encryption. The integration test proves ciphertext at
+  rest, decryption before erasure, direct-refusal audit, separate approval, sidecar destruction,
+  FILE_SHREDDED on later reads, and retention of the expired proposal/source references.
+- Verification: 33 retention/erasure/registry checks passed; the strengthened byte-level test
+  passed separately; strict typing passed for 768 sources; Ruff/diff passed. Logs:
+  .run/ai-file-retention-final.log, .run/ai-file-erasure-bytes.log and
+  .run/ai-file-retention-types.log. Fixed two pre-existing test typing issues found by that run.
+- The evidence-registry failure is resolved. Proposal file-read ownership remains open, as do
+  extraction workflow integration, call recovery and other release gaps. Experimental plaintext
+  AI_DOCUMENT_TEXT objects from older builds require explicit migration or regeneration;
+  there is no plaintext fallback. No deployment or production-readiness claim.
+
 ## Architecture repair after broad verification — October 15, 2026
 
 - Provider timing now uses erev_api.clock.monotonic, retaining the injected duration source.
@@ -227,23 +244,6 @@
   Operational gateway execution, budget serialization, per-source permissions, attempt and
   proposal/audit persistence, settings command lifecycle and human acceptance remain open.
   No provider call or deployment; isolated test database stopped after verification.
-
-## AI job initiator authorization — October 15, 2026
-
-- Added current-grant authorization for a persisted AI_TASK attempt. It verifies the live
-  job/task identity, requires the stored human creator to match the SYSTEM on-behalf-of id,
-  and requires active user, workspace and membership before resolving permissions.
-- The returned USER principal uses ai.use entity scope rather than SYSTEM's all-entity scope
-  or the union from unrelated roles. It carries no recreated login or MFA evidence. Callers
-  still owe per-file/report permissions and must use this narrowed context for retrieval.
-- Eight PostgreSQL cases cover scoped access, revoked grants, suspended membership/workspace,
-  disabled user, completed jobs, substituted initiators and inline/wrong-attempt refusal.
-  Combined AI/architecture checks: 172 passed, two Linux parser-limit tests skipped;
-  strict API/test typing: 758 sources; Ruff passes. Logs: .run/ai-access-{checks,types}.log.
-- This is not an enabled AI_TASK handler. Gateway settings/kill-switch checks, budget
-  serialization, authorized retrieval, durable attempt/proposal/audit writes and acceptance
-  remain unfinished. The isolated local test database was stopped after verification.
-  No deployment or production-readiness claim.
 
 ## Outstanding release verification
 

@@ -517,6 +517,14 @@ EVIDENCE: Final[tuple[EvidenceReference, ...]] = (
         approval=True,
         entities=_event_entity,
     ),
+    # Proposal expiry closes acceptance, not the provenance of its source and citations.
+    # With no durable entity binding, reviewed erasure must cover every tenant entity.
+    EvidenceReference(
+        "ai_proposal", "file_object_id", "the source document of an AI proposal", approval=True
+    ),
+    EvidenceReference(
+        "ai_proposal", "document_text_file_id", "the cited text of an AI proposal", approval=True
+    ),
 )
 
 # The foreign keys to ``file_object`` that are NOT evidence, each with its reason.
