@@ -1,5 +1,5 @@
 // SF-15:ai-call-log. Retained evidence remains readable while AI is disabled.
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import { SavedViewSelector } from "../../components/data-grid/SavedViewSelector";
@@ -26,6 +26,11 @@ import {
 import { useMe } from "../../lib/api/queries/me";
 import { formatTimestamp, formatDuration, formatNumber } from "../../lib/format";
 import { t } from "../../lib/i18n/t";
+import { Button } from "../../components/ui/Button";
+import { CopySimple } from "../../components/icons/registry";
+import { announce } from "../../lib/a11y/announce";
+import { fetchProposals, AI_REVIEW_ROUTE } from "../../lib/api/queries/ai";
+import { queryKey } from "../../lib/api/query-keys";
 import { SettingsPageHeader } from "./index";
 import { CallLogExport } from "./ai-call-log-export";
 
@@ -198,8 +203,6 @@ function CallDetails({ id, onClose }: { readonly id: string; readonly onClose: (
             column.header,
             column.id === "created_at" ? formatTimestamp(row.created_at) : column.value(row),
           ]),
-          [label("inputHash"), row.input_sha256],
-          [label("responseHash"), row.response_sha256],
           [label("errorDetail"), row.error_detail],
         ];
   return (
@@ -233,7 +236,10 @@ function CallDetails({ id, onClose }: { readonly id: string; readonly onClose: (
                   <dd className="break-all">{value ?? "—"}</dd>
                 </div>
               ))}
+              <HashField name={label("inputHash")} value={row.input_sha256} />
+              <HashField name={label("responseHash")} value={row.response_sha256} />
             </dl>
+            <CallProposals id={row.id} />
             <h3>{label("parameters")}</h3>
             <dl className="grid grid-cols-1 gap-3">
               {Object.entries(row.parameters).map(([name, value]) => (
@@ -247,5 +253,94 @@ function CallDetails({ id, onClose }: { readonly id: string; readonly onClose: (
         )}
       </div>
     </Drawer>
+  );
+}
+
+function HashField({ name, value }: { readonly name: string; readonly value: string | null }) {
+  return (
+    <div>
+      <dt className="text-muted">{name}</dt>
+      <dd className="flex items-center gap-2">
+        <span className="break-all font-mono">{value ?? "—"}</span>
+        {value !== null && (
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={CopySimple}
+            aria-label={t("settings.aiCallLog.copyHash", { name })}
+            onClick={() => {
+              void (async () => {
+                try {
+                  await navigator.clipboard.writeText(value);
+                  announce(label("hashCopied"));
+                } catch {
+                  announce(label("hashCopyFailed"));
+                }
+              })();
+            }}
+          />
+        )}
+      </dd>
+    </div>
+  );
+}
+function CallProposals({ id }: { readonly id: string }) {
+  const access = useAccess();
+  const allowed = access.holdsAnywhere("ai.use");
+  const read = useInfiniteQuery({
+    queryKey: queryKey("ai-proposals", "tenant", { call: id }),
+    initialPageParam: null as string | null,
+    queryFn: ({ pageParam }) => fetchProposals({ ai_model_log_id: id }, pageParam),
+    getNextPageParam: (page) => page.nextCursor,
+    enabled: allowed,
+    staleTime: 0,
+    refetchOnMount: "always",
+  });
+  if (!allowed) return <p>{label("proposalsAccess")}</p>;
+  if (read.isError)
+    return (
+      <Banner tone="negative" title={label("proposalsError")}>
+        {read.error.message}
+      </Banner>
+    );
+  if (read.data === undefined || (read.isFetching && !read.isFetchingNextPage))
+    return <Skeleton region={label("proposals")} shape="rows" count={1} />;
+  const items = read.data.pages.flatMap((page) => page.items);
+  return (
+    <section aria-label={label("proposals")} className="flex flex-col gap-2">
+      <h3>{label("proposals")}</h3>
+      {items.length === 0 ? (
+        <p>{label("noProposals")}</p>
+      ) : (
+        <ul>
+          {items.map((proposal) => (
+            <li key={proposal.id}>
+              <Link
+                to={
+                  proposal.kind === "CONTRACT_EXTRACTION"
+                    ? `${AI_REVIEW_ROUTE}/${encodeURIComponent(proposal.id)}`
+                    : `/trace/${encodeURIComponent(proposal.subject_id)}?proposal=${encodeURIComponent(proposal.id)}`
+                }
+              >
+                {label(
+                  proposal.kind === "CONTRACT_EXTRACTION" ? "contractProposal" : "numberProposal",
+                )}{" "}
+                · {formatTimestamp(proposal.created_at)}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+      {read.hasNextPage && (
+        <Button
+          loading={read.isFetchingNextPage}
+          onClick={() => {
+            void read.fetchNextPage();
+          }}
+        >
+          {label("moreProposals")}
+        </Button>
+      )}
+    </section>
   );
 }

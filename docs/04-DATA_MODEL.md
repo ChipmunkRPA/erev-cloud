@@ -6385,7 +6385,7 @@ idempotency and permission `ai.use` plus current source read access. Only a huma
 unexpired `proposed` item; the row lock, reviewer/time/reason, row-version increment and
 `ai_proposal.reject` audit event share one transaction. The response is the updated proposal
 with ETag. AI disable does not prevent rejection. `GET /ai/proposals` pages authorized number explanations and contract extractions under API-C-09, with
-`kind`/`status` filters, optional authorized total counts, and `id`/`created_at` sorts (default
+`kind`/`status`/`ai_model_log_id` filters, optional authorized total counts, and `id`/`created_at` sorts (default
 `-created_at`, then id descending). Source authorization precedes pagination and counts on every
 request; unsupported proposal kinds are excluded. Acceptance and other proposal kinds remain
 in the planned API scope.

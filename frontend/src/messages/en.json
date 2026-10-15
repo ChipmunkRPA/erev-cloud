@@ -7391,5 +7391,21 @@
   "settings.aiCallLog.exportBusy": "An export is in progress.",
   "settings.aiCallLog.exportError": "Could not export AI calls",
   "settings.aiCallLog.exportUnexpected": "The export did not return a completed file. Please try again.",
-  "settings.aiCallLog.exportScope": "Exports all currently authorized calls, including columns hidden in this view."
+  "settings.aiCallLog.exportScope": "Exports all currently authorized calls, including columns hidden in this view.",
+  "settings.aiCallLog.copyHash": "Copy {name}",
+  "settings.aiCallLog.hashCopied": "Hash copied.",
+  "settings.aiCallLog.hashCopyFailed": "Could not copy the hash. Select and copy it manually.",
+  "settings.aiCallLog.proposals": "Linked proposals",
+  "settings.aiCallLog.proposalsAccess": "Reading linked proposals requires AI and source access.",
+  "settings.aiCallLog.proposalsError": "Could not load linked proposals",
+  "settings.aiCallLog.noProposals": "No linked proposals are available to you.",
+  "settings.aiCallLog.contractProposal": "Contract extraction",
+  "settings.aiCallLog.numberProposal": "Number explanation",
+  "settings.aiCallLog.moreProposals": "Load more proposals",
+  "ai.narrative.title": "Proposed explanation",
+  "ai.narrative.notice": "AI-generated explanation. It does not change the calculation or accounting records.",
+  "ai.narrative.unavailable": "This proposed explanation is not available for this trace.",
+  "ai.narrative.failed": "No proposed narrative was retained. The calculation trace remains authoritative.",
+  "ai.narrative.source": "Trace node {node}",
+  "ai.narrative.status": "Proposal status: {status}"
 }

@@ -451,6 +451,7 @@ def test_proposal_list_pages_only_currently_authorized_evidence(
     actor = world.maya
     db = DbContext(world.place.tenant_id, actor.member.user_id, "*")
     ids: list[str] = []
+    log_ids: list[str] = []
     with tenant_session(db) as session:
         ctx = RowContext(world.place.tenant_id, actor.member.user_id)
         for status in ("proposed", "proposed", "failed"):
@@ -466,6 +467,7 @@ def test_proposal_list_pages_only_currently_authorized_evidence(
                 row.update(content={}, problem={"code": "AI_REFUSAL"})
             session.execute(insert(ai_proposal).values(**row))
             ids.append(str(row["id"]))
+            log_ids.append(str(row["ai_model_log_id"]))
         # An unsupported kind cannot inflate counts or displace authorized page rows.
         session.execute(insert(ai_proposal).values(**ai_proposal_row(ctx, session)))
     path = "/api/v1/ai/proposals"
@@ -488,6 +490,12 @@ def test_proposal_list_pages_only_currently_authorized_evidence(
     filtered = page(actor, kind="NUMBER_EXPLANATION", status="proposed", count="true")
     assert filtered.status_code == 200 and filtered.headers["X-Erev-Total-Count"] == "2"
     assert {item["id"] for item in filtered.json()["items"]} == set(ids[:2])
+    by_call = page(actor, ai_model_log_id=log_ids[0], count="true")
+    assert by_call.status_code == 200, by_call.text
+    assert by_call.headers["X-Erev-Total-Count"] == "1"
+    assert [item["id"] for item in by_call.json()["items"]] == ids[:1]
+    assert page(actor, ai_model_log_id="not-a-uuid").status_code == 422
+    assert page(actor, ai_model_log_id=log_ids[0], cursor=cursor).status_code == 422
     assert page(actor, kind="QA_ANSWER").json()["items"] == []
     assert page(actor, kind="invented").status_code == 422
     assert page(actor, cursor=cursor, status="proposed").status_code == 422
@@ -525,3 +533,8 @@ def test_proposal_list_pages_only_currently_authorized_evidence(
     narrowed = page(actor, count="true", cursor=cursor)
     assert narrowed.status_code == 200 and narrowed.headers["X-Erev-Total-Count"] == "0"
     assert narrowed.json() == {"items": [], "next_cursor": None}
+
+    by_call_after_revocation = page(actor, ai_model_log_id=log_ids[0], count="true")
+    assert by_call_after_revocation.status_code == 200
+    assert by_call_after_revocation.json() == {"items": [], "next_cursor": None}
+    assert by_call_after_revocation.headers["X-Erev-Total-Count"] == "0"

@@ -44678,7 +44678,7 @@
     },
     "/api/v1/ai/proposals": {
       "get": {
-        "description": "Page authorized retained proposals with kind/status filters and stable cursor order.",
+        "description": "Page source-authorized proposals with call/kind/status filters and stable cursor order.",
         "operationId": "ai_proposals_list",
         "parameters": [
           {
@@ -44711,6 +44711,23 @@
                 }
               ],
               "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "ai_model_log_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ai Model Log Id"
             }
           },
           {

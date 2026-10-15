@@ -14,6 +14,7 @@ import { useQuery } from "@tanstack/react-query";
 import { type KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 
+import { RetainedNarrative } from "./RetainedNarrative";
 import { Banner } from "../../components/feedback/Banner";
 import { EmptyState } from "../../components/feedback/EmptyState";
 import { Skeleton } from "../../components/feedback/Skeleton";
@@ -237,11 +238,20 @@ export function CalculationTrace() {
     content = <Skeleton region={title} shape="rows" count={10} />;
   } else {
     content = (
-      <TraceView
-        key={`${trace.data.id}:${search.get(TRACE_NODE_PARAM) ?? ""}`}
-        trace={trace.data}
-        selectedNode={search.get(TRACE_NODE_PARAM)}
-      />
+      <>
+        {search.get("proposal") !== null && (
+          <RetainedNarrative
+            key={`${trace.data.id}:${search.get("proposal")}`}
+            traceId={trace.data.id}
+            proposalId={search.get("proposal") ?? ""}
+          />
+        )}
+        <TraceView
+          key={`${trace.data.id}:${search.get(TRACE_NODE_PARAM) ?? ""}`}
+          trace={trace.data}
+          selectedNode={search.get(TRACE_NODE_PARAM)}
+        />
+      </>
     );
   }
 

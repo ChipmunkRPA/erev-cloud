@@ -255,6 +255,24 @@ def test_extraction_submission_and_worker(
     assert listing.headers["X-Erev-Total-Count"] == "1"
     assert listing.json()["items"] == [detail.json()]
     assert listing.json()["next_cursor"] is None
+    by_call = call(
+        world.app,
+        "GET",
+        "/api/v1/ai/proposals",
+        params={"ai_model_log_id": str(proposal["ai_model_log_id"]), "count": "true"},
+        headers=headers,
+    )
+    assert by_call.status_code == 200, by_call.text
+    assert by_call.json()["items"] == [detail.json()]
+    unrelated = call(
+        world.app,
+        "GET",
+        "/api/v1/ai/proposals",
+        params={"ai_model_log_id": str(uuid4()), "count": "true"},
+        headers=headers,
+    )
+    assert unrelated.status_code == 200 and unrelated.headers["X-Erev-Total-Count"] == "0"
+    assert unrelated.json()["items"] == []
     text_path = f"{detail_path}/document-text"
     text_response = call(world.app, "GET", text_path, headers=headers)
     assert text_response.status_code == 200, text_response.text

@@ -87,8 +87,10 @@ TENANT replay refuses demotion. The call-log screen now provides CSV/XLSX export
 progress and authorized output fetching. It hides export without the required source/export
 scopes, prevents overlapping submissions, and reports permission loss instead of saving a file.
 Leaving the screen suppresses a late download; source-only users need no accounting-report page.
-Linked-proposal navigation, hash-copy controls, standard demo/J-19 and full
-audit-lifecycle verification remain open.
+Linked-proposal navigation and full-hash copy controls are implemented. The linked-proposal
+read retains source permissions; a bookmarked number explanation is reauthorized and must bind
+to the displayed calculation trace. Standard demo/J-19 and full audit-lifecycle verification
+remain open; this does not implement the Explain submission trigger or other AI operations.
 
 Migrations 0147–0150 retain append-only call logs, immutable proposal content with guarded
 human-decision fields, completed-job/source bindings and immutable call intents with one

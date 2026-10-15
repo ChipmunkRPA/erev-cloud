@@ -54,6 +54,9 @@ PROPOSAL_LIST: Final = ListSpec(
     sort_keys={"id": ai_proposal.c.id, "created_at": ai_proposal.c.created_at},
     default_sort="-created_at",
     filters={
+        "ai_model_log_id": FilterSpec(
+            name="ai_model_log_id", column=ai_proposal.c.ai_model_log_id, kind="exact"
+        ),
         "kind": FilterSpec(
             name="kind",
             column=ai_proposal.c.kind,
@@ -129,8 +132,9 @@ def proposals_list(
     params: Annotated[ListParams, Depends(list_params)],
     kind: Annotated[AiProposalKind | None, Query()] = None,
     status: Annotated[AiProposalStatus | None, Query()] = None,
+    ai_model_log_id: Annotated[UUID | None, Query()] = None,
 ) -> ListOut[AIProposalOut | AIExtractionProposalOut]:
-    """Page authorized retained proposals with kind/status filters and stable cursor order."""
+    """Page source-authorized proposals with call/kind/status filters and stable cursor order."""
     result, items = queries.list_proposals(
         ctx,
         page=lambda session, statement: paginate(session, statement, PROPOSAL_LIST, params),

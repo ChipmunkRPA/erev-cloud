@@ -5068,8 +5068,14 @@ Implementation note (October 15): the call drawer uses `drawer=call&call=<id>` a
 The route has the same tenant/owner visibility as the list. The API's `usage_known`
 flag uses the budget-admission evidence rule; false displays token counts as Unknown, with an
 explanation in the drawer, while confirmed zero remains zero. The grid and evidence drawer are
-implemented; CSV/XLSX export, proposal navigation and hash-copy controls remain
-tracked in LIMITS-1.0 and are not claimed complete by this screen increment. Saved views
+implemented. CSV/XLSX export uses the requester-bound report definition and reauthorizes output
+before saving; hidden grid columns are included. Hash buttons copy the complete retained value
+and report clipboard refusal; no response-hash copy appears when the hash is absent.
+Linked proposals use `GET /ai/proposals?ai_model_log_id=<call id>` under current AI/source access;
+settings-only readers cannot fetch proposal content. The drawer renders links only. Extraction
+links open contract review; number explanations open `/trace/<trace id>?proposal=<proposal id>`.
+The trace view freshly authorizes the proposal and checks its source binding before showing
+retained narrative text and same-trace citation links. Saved views
 now retain layout and sort under SF-15:ai-call-log; shared layouts do not carry call records
 or expand the reader's visibility, and drawer navigation preserves the current view.
 

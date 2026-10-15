@@ -440,7 +440,7 @@ export interface paths {
     };
     /**
      * Proposals List
-     * @description Page authorized retained proposals with kind/status filters and stable cursor order.
+     * @description Page source-authorized proposals with call/kind/status filters and stable cursor order.
      */
     get: operations["ai_proposals_list"];
     put?: never;
@@ -25382,6 +25382,7 @@ export interface operations {
       query?: {
         kind?: components["schemas"]["AiProposalKind"] | null;
         status?: components["schemas"]["AiProposalStatus"] | null;
+        ai_model_log_id?: string | null;
         limit?: number;
         cursor?: string | null;
         sort?: string | null;

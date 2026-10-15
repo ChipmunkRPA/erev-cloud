@@ -55,6 +55,9 @@ function serve(items: AIModelLog[] = [record]) {
       );
     }),
     http.get(apiUrl("/api/v1/ai/model-logs/:id"), () => HttpResponse.json(record)),
+    http.get(apiUrl("/api/v1/ai/proposals"), () =>
+      HttpResponse.json({ items: [], next_cursor: null }),
+    ),
   );
   return calls;
 }
@@ -416,4 +419,81 @@ it("does not save a late output response after leaving the call log", async () =
   release?.();
   await new Promise((resolve) => setTimeout(resolve, 50));
   expect(saves).toEqual([]);
+});
+
+it("copies each full retained hash and does not offer a copy for an absent hash", async () => {
+  serve();
+  const writeText = vi.fn().mockResolvedValue(undefined);
+  Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+  renderLog(["ai.use"], `?drawer=call&call=${id}`);
+  fireEvent.click(await screen.findByRole("button", { name: "Copy Input SHA-256" }));
+  fireEvent.click(screen.getByRole("button", { name: "Copy Response SHA-256" }));
+  expect(writeText.mock.calls).toEqual([[record.input_sha256], [record.response_sha256]]);
+});
+it("keeps a missing response hash unavailable for copying and handles clipboard refusal", async () => {
+  serve();
+  server.use(
+    http.get(apiUrl("/api/v1/ai/model-logs/:id"), () =>
+      HttpResponse.json({ ...record, response_sha256: null }),
+    ),
+  );
+  Object.defineProperty(navigator, "clipboard", { configurable: true, value: undefined });
+  renderLog(["ai.use"], `?drawer=call&call=${id}`);
+  fireEvent.click(await screen.findByRole("button", { name: "Copy Input SHA-256" }));
+  expect(
+    await screen.findByText("Could not copy the hash. Select and copy it manually."),
+  ).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Copy Response SHA-256" })).toBeNull();
+});
+it("links source-authorized proposals without rendering their content in the call log", async () => {
+  serve();
+  const proposalId = "cc390e1a-ea40-4002-afc2-6ce54f051032";
+  const traceId = "e3fd215e-07ef-4057-8b1f-691081afed59";
+  server.use(
+    http.get(apiUrl("/api/v1/ai/proposals"), ({ request }) => {
+      expect(new URL(request.url).searchParams.get("ai_model_log_id")).toBe(id);
+      return HttpResponse.json({
+        items: [
+          {
+            id: proposalId,
+            kind: "CONTRACT_EXTRACTION",
+            created_at: record.created_at,
+            content: [{ value: "PRIVATE CONTRACT WORDING" }],
+          },
+          {
+            id: "narrative-id",
+            kind: "NUMBER_EXPLANATION",
+            subject_id: traceId,
+            created_at: record.created_at,
+            content: { narrative: ["PRIVATE NARRATIVE"] },
+          },
+        ],
+        next_cursor: null,
+      });
+    }),
+  );
+  renderLog(["ai.use"], `?drawer=call&call=${id}`);
+  expect(
+    (await screen.findByRole("link", { name: /Contract extraction/ })).getAttribute("href"),
+  ).toBe(`/contracts/review/${proposalId}`);
+  expect(screen.getByRole("link", { name: /Number explanation/ }).getAttribute("href")).toBe(
+    `/trace/${traceId}?proposal=narrative-id`,
+  );
+  expect(screen.queryByText("PRIVATE CONTRACT WORDING")).toBeNull();
+  expect(screen.queryByText("PRIVATE NARRATIVE")).toBeNull();
+});
+it("does not fetch proposals under settings access alone", async () => {
+  serve();
+  let requests = 0;
+  server.use(
+    http.get(apiUrl("/api/v1/ai/proposals"), () => {
+      requests++;
+      return HttpResponse.json({ items: [], next_cursor: null });
+    }),
+  );
+  renderLog(["settings.manage"], `?drawer=call&call=${id}`);
+  expect(
+    await screen.findByText("Reading linked proposals requires AI and source access."),
+  ).toBeTruthy();
+  expect(requests).toBe(0);
 });
