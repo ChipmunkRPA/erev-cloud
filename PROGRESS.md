@@ -2,6 +2,16 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Saved call-log layouts — October 15, 2026
+
+- Connected SF-15:ai-call-log to the shared saved-view selector and controlled grid columns.
+  Private layouts persist under the current membership; shared layouts restore presentation
+  without changing call visibility. Call records and drawer ids are never saved in view config.
+- Opening a call now retains the active view and sort. Twenty-one screen/selector/settings
+  checks, frontend typing and full lint pass; evidence is in docs/release/CI-2026-10-15.md.
+- Export, linked proposals, hash-copy controls, J-19 and broader release/accounting gates stay
+  open. No deployment or provider calls. Publish directly to main after verification.
+
 ## Preserve unknown token usage in call evidence — October 15, 2026
 
 - Added usage_known to call-log list/detail, using the exact SQL evidence predicate used by
@@ -226,18 +236,6 @@
 - Updated release limitations for the responsive panes and page navigation. Full release evidence,
   live browser acceptance and independent accounting sign-off remain outstanding. Frozen CI on
   3cf8f5b is still live; Docker daemon remains unavailable. No deployment or live provider calls.
-
-## Responsive contract review panes — October 15, 2026
-
-- SF-20 now uses Document / Proposed fields panel tabs below 1440 px and two columns above,
-  with pane=document|fields in the URL. Field decisions, edited values and reasons survive pane
-  and viewport changes. Citations open Document and focus the source highlight; Escape waits
-  for the fields pane to become visible before returning focus to the originating citation.
-- 24 focused review/decision/tab tests, frontend type checking and full lint pass. A cached-data
-  Chromium preview verifies citation/Escape focus and retained edits at 768/1280/1440 px;
-  screenshots inspected. Logs: .run/ai-review-panes-{tests,types,lint,browser}.log.
-- This browser witness uses retained synthetic data, not a live upload-to-acceptance workflow.
-  Full frozen CI on 3cf8f5b remains active; repository readiness and accounting sign-off remain open.
 
 ## Outstanding release verification
 

@@ -52,8 +52,11 @@ confirmed zero usage remains zero. Stored compatibility counters are not rewritt
 presentation of existing evidence, not resolution of unknown usage or admission failures.
 This endpoint neither calls a provider nor depends on AI being enabled. The SF-15 call-log screen now renders calls, outcomes and a docked evidence drawer. Bookmarked
 drawers reread GET /ai/model-logs/{id} under the same current visibility as the list, including
-404 for another user or tenant. Its configuration-only content is escaped text. CSV/XLSX export,
-saved views, linked-proposal navigation, hash-copy controls, standard demo/J-19 and full
+404 for another user or tenant. Its configuration-only content is escaped text.
+Saved views now retain the column layout and sort under SF-15:ai-call-log; the selector can
+read shared layouts and creates private layouts. View configuration never stores call records
+or changes call visibility. Opening/closing evidence preserves the view and sort in the URL.
+CSV/XLSX export, linked-proposal navigation, hash-copy controls, standard demo/J-19 and full
 audit-lifecycle verification remain open.
 
 Migrations 0147–0150 retain append-only call logs, immutable proposal content with guarded

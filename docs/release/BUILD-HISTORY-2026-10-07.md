@@ -5687,3 +5687,15 @@ cleanup in the shared database session kernel was also repaired and regression-t
   Linux isolation, live-model accuracy or independent activation/accounting sign-off. Demo/browser
   fixture setup remains unfinished. Frozen CI on 3cf8f5b remains live on separate PostgreSQL 55439.
   No deployment or live provider calls.
+
+## Responsive contract review panes — October 15, 2026
+
+- SF-20 now uses Document / Proposed fields panel tabs below 1440 px and two columns above,
+  with pane=document|fields in the URL. Field decisions, edited values and reasons survive pane
+  and viewport changes. Citations open Document and focus the source highlight; Escape waits
+  for the fields pane to become visible before returning focus to the originating citation.
+- 24 focused review/decision/tab tests, frontend type checking and full lint pass. A cached-data
+  Chromium preview verifies citation/Escape focus and retained edits at 768/1280/1440 px;
+  screenshots inspected. Logs: .run/ai-review-panes-{tests,types,lint,browser}.log.
+- This browser witness uses retained synthetic data, not a live upload-to-acceptance workflow.
+  Full frozen CI on 3cf8f5b remains active; repository readiness and accounting sign-off remain open.

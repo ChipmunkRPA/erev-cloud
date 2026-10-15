@@ -5067,8 +5067,10 @@ Implementation note (October 15): the call drawer uses `drawer=call&call=<id>` a
 The route has the same tenant/owner visibility as the list. The API's `usage_known`
 flag uses the budget-admission evidence rule; false displays token counts as Unknown, with an
 explanation in the drawer, while confirmed zero remains zero. The grid and evidence drawer are
-implemented; CSV/XLSX export, saved views, proposal navigation and hash-copy controls remain
-tracked in LIMITS-1.0 and are not claimed complete by this screen increment.
+implemented; CSV/XLSX export, proposal navigation and hash-copy controls remain
+tracked in LIMITS-1.0 and are not claimed complete by this screen increment. Saved views
+now retain layout and sort under SF-15:ai-call-log; shared layouts do not carry call records
+or expand the reader's visibility, and drawer navigation preserves the current view.
 
 **Grid columns.**
 

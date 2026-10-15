@@ -1,7 +1,8 @@
 // SF-15:ai-call-log. Retained evidence remains readable while AI is disabled.
 import { useQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
+import { SavedViewSelector } from "../../components/data-grid/SavedViewSelector";
 import { DataGrid } from "../../components/data-grid/DataGrid";
 import {
   type GridColumn,
@@ -36,7 +37,20 @@ const outcomes = {
   DISABLED: "Disabled",
 } as const;
 const path = "/settings/ai/call-log";
-const callRoute = (id: string) => `${path}?drawer=call&call=${encodeURIComponent(id)}`;
+function callRoute(id: string, search: string) {
+  const params = new URLSearchParams(search);
+  params.set("drawer", "call");
+  params.set("call", id);
+  return `${path}?${params.toString()}`;
+}
+function CallLink({ row }: { readonly row: AIModelLog }) {
+  const location = useLocation();
+  return (
+    <Link to={callRoute(row.id, location.search)} className="whitespace-nowrap" data-volatile="">
+      {formatTimestamp(row.created_at)}
+    </Link>
+  );
+}
 const columns: readonly GridColumn<AIModelLog>[] = [
   {
     id: "created_at",
@@ -44,11 +58,7 @@ const columns: readonly GridColumn<AIModelLog>[] = [
     kind: "timestamp",
     value: (row) => row.created_at,
     sortKey: "created_at",
-    render: (row) => (
-      <Link to={callRoute(row.id)} className="whitespace-nowrap" data-volatile="">
-        {formatTimestamp(row.created_at)}
-      </Link>
-    ),
+    render: (row) => <CallLink row={row} />,
   },
   {
     id: "created_by",
@@ -98,6 +108,8 @@ const columns: readonly GridColumn<AIModelLog>[] = [
   },
 ];
 
+const DEFAULT_COLUMNS = initialColumnState(columns);
+
 export function AICallLog() {
   const me = useMe();
   const access = useAccess();
@@ -118,6 +130,8 @@ export function AICallLog() {
   );
 }
 function CallGrid() {
+  const me = useMe().data;
+  const [columnState, setColumnState] = useState(DEFAULT_COLUMNS);
   const location = useLocation();
   const navigate = useNavigate();
   const params = new URLSearchParams(location.search);
@@ -142,11 +156,24 @@ function CallGrid() {
           source={source}
           rowKey={(row) => row.id}
           rowLabel={(row) => formatTimestamp(row.created_at)}
-          rowHref={(row) => callRoute(row.id)}
+          rowHref={(row) => callRoute(row.id, location.search)}
           rowTestKey={(row) => row.prompt_template_id}
           testIdPrefix="SF-15"
           selectable={false}
-          defaultColumnState={initialColumnState(columns)}
+          columnState={columnState}
+          defaultColumnState={DEFAULT_COLUMNS}
+          onColumnStateChange={setColumnState}
+          viewSelector={
+            <SavedViewSelector
+              screenCode="SF-15:ai-call-log"
+              membershipId={me?.active_membership_id ?? null}
+              defaultLabel={label("grid")}
+              columnState={columnState}
+              defaultColumnState={DEFAULT_COLUMNS}
+              onApplyColumns={setColumnState}
+              testId="SF-15-ai-call-log-saved-view"
+            />
+          }
           countLabel={(count, formatted) =>
             `${formatted} ${label(count === 1 ? "singular" : "calls")}`
           }

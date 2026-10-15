@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, screen, fireEvent, within } from "@testing-library/react";
+import { cleanup, screen, fireEvent, within, waitFor } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { afterEach, beforeAll, expect, it } from "vitest";
 import { SCREEN_ROUTES } from "../../app/router";
@@ -35,6 +35,10 @@ const record: AIModelLog = {
 function serve(items: AIModelLog[] = [record]) {
   const calls: URL[] = [];
   server.use(
+    http.get(apiUrl("/api/v1/saved-views"), ({ request }) => {
+      expect(new URL(request.url).searchParams.get("screen_code")).toBe("SF-15:ai-call-log");
+      return HttpResponse.json({ items: [], next_cursor: null });
+    }),
     http.get(apiUrl("/api/v1/me/notifications"), () =>
       HttpResponse.json({ items: [], next_cursor: null }),
     ),
@@ -114,4 +118,94 @@ it("keeps confirmed zero usage visible", async () => {
   const grid = await screen.findByRole("grid", { name: "AI calls" });
   expect(await within(grid).findAllByText("0", {}, { timeout: 5000 })).toHaveLength(2);
   expect(within(grid).queryByText("Unknown")).toBeNull();
+});
+
+it("restores a shared layout while keeping call reads under the current user's API", async () => {
+  const calls = serve();
+  server.use(
+    http.get(apiUrl("/api/v1/saved-views"), () =>
+      HttpResponse.json({
+        items: [
+          {
+            id: "view-shared",
+            membership_id: "other-member",
+            screen_code: "SF-15:ai-call-log",
+            name: "Review layout",
+            is_shared: true,
+            is_favourite: false,
+            row_version: 1,
+            created_at: "2026-10-15T10:00:00Z",
+            updated_at: "2026-10-15T10:00:00Z",
+            config: {
+              columns: ["created_at", "template", "outcome"],
+              sort: "created_at",
+              filters: {},
+              query: "",
+              widths: {},
+              pinned: { start: [], end: [] },
+              currency_view: null,
+            },
+          },
+        ],
+        next_cursor: null,
+      }),
+    ),
+  );
+  const { router } = renderLog(["ai.use"], "?view=view-shared");
+  const viewButton = await screen.findByRole("button", { name: "View: Review layout" });
+  const grid = await screen.findByRole("grid", { name: "AI calls" });
+  await waitFor(() =>
+    expect(within(grid).queryByRole("columnheader", { name: "User" })).toBeNull(),
+  );
+  expect(within(grid).getByRole("columnheader", { name: /Template/ })).toBeTruthy();
+  await within(grid).findByText("contract-review v1", {}, { timeout: 5000 });
+  fireEvent.click(viewButton);
+  expect(screen.queryByRole("menuitem", { name: "Rename" })).toBeNull();
+  fireEvent.keyDown(screen.getByRole("menu"), { key: "Escape" });
+  fireEvent.click(within(grid).getByRole("link"));
+  expect(await screen.findByText(record.input_sha256)).toBeTruthy();
+  expect(new URLSearchParams(router.state.location.search).get("view")).toBe("view-shared");
+  expect(new URLSearchParams(router.state.location.search).get("sort")).toBe("created_at");
+  expect(
+    calls.every(
+      (url) => !url.searchParams.has("created_by") && !url.searchParams.has("membership_id"),
+    ),
+  ).toBe(true);
+});
+
+it("saves a call-log layout without storing call records or drawer ids", async () => {
+  serve();
+  let body: Record<string, unknown> | undefined;
+  let saved: Record<string, unknown> | undefined;
+  server.use(
+    http.get(apiUrl("/api/v1/saved-views"), () =>
+      HttpResponse.json({ items: saved ? [saved] : [], next_cursor: null }),
+    ),
+    http.post(apiUrl("/api/v1/saved-views"), async ({ request }) => {
+      body = (await request.json()) as Record<string, unknown>;
+      saved = {
+        ...body,
+        id: "view-own",
+        membership_id: signedInMe().active_membership_id,
+        row_version: 1,
+        created_at: "2026-10-15T10:00:00Z",
+        updated_at: "2026-10-15T10:00:00Z",
+      };
+      return HttpResponse.json(saved, { status: 201 });
+    }),
+  );
+  renderLog(["ai.use"], `?drawer=call&call=${id}`);
+  const button = await screen.findByRole("button", { name: "View: AI calls" });
+  fireEvent.click(button);
+  fireEvent.click(screen.getByRole("menuitem", { name: "Save as new view" }));
+  const dialog = screen.getByRole("dialog", { name: "Save as new view" });
+  fireEvent.change(within(dialog).getByRole("textbox", { name: /Name/ }), {
+    target: { value: "Call review" },
+  });
+  fireEvent.click(within(dialog).getByRole("button", { name: "Save view" }));
+  await waitFor(() => expect(body?.screen_code).toBe("SF-15:ai-call-log"));
+  expect(body?.is_shared).toBe(false);
+  expect(JSON.stringify(body)).not.toContain(record.input_sha256);
+  expect(JSON.stringify(body)).not.toContain(id);
+  expect(await screen.findByRole("button", { name: "View: Call review" })).toBeTruthy();
 });
