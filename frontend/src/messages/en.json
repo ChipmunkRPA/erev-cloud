@@ -7280,5 +7280,17 @@
   "ai.review.field.payment_terms": "Payment terms",
   "ai.review.field.termination": "Termination",
   "ai.review.field.variable_consideration_terms": "Variable consideration terms",
-  "ai.review.field.material_right_indicator": "Material-right indicators"
+  "ai.review.field.material_right_indicator": "Material-right indicators",
+  "ai.review.new.title": "Review a contract document",
+  "ai.review.new.description": "Review proposed fields alongside the source document. Nothing is applied until you accept fields and create a draft contract.",
+  "ai.review.new.chooseRequired": "Choose a contract document.",
+  "ai.review.new.fileRules": "PDF only, nonempty and at most 25 MiB.",
+  "ai.review.new.invalidJob": "The review job could not be identified.",
+  "ai.review.new.choose": "Choose file",
+  "ai.review.new.working": "The document review is being started.",
+  "ai.review.new.start": "Start review",
+  "ai.review.new.another": "Start another review",
+  "ai.review.new.cancelled": "The review was cancelled.",
+  "ai.review.new.disabled": "AI assistance is turned off for this workspace",
+  "ai.review.new.disabledHelp": "A workspace administrator can enable AI assistance."
 }

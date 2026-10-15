@@ -8063,6 +8063,9 @@ and `object_label`, following the existing computation-fact audit convention.
   file ownership rules before SQL pagination/counts, using a single UUID-array parameter for
   readable source IDs. This currently performs per-source ownership checks; high-volume latency
   verification remains outstanding.
+- Source upload for extraction uses `POST /files` with purpose `ATTACHMENT`. Permission `ai.use`
+  admits that purpose before a contract exists; attaching to a record still needs its own write
+  permission. Other purpose permissions and file ownership/size/audit controls are unchanged.
 - `POST /ai/contract-extractions` accepts `{file_id}` only and returns 202 API-S-Job with
   `Location: /api/v1/jobs/{id}`. Permission `ai.use`, human initiator, current readable unshredded
   ATTACHMENT/PDF and enabled AI/text consent are required. Missing and unreadable sources both

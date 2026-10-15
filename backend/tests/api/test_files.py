@@ -548,7 +548,7 @@ def test_r_111_8_an_upload_is_authenticated_before_its_body_is_read(
 
     # A caller who may upload for no purpose is refused a body above the envelope, unread; the
     # attempt is on record, naming every upload permission — no purpose was read.
-    vera = joined(app, tenant_id, "vera", "viewer")
+    vera = joined(app, tenant_id, "vera", "auditor")
     refused, pulled = streamed(
         app, cookie_headers(vera.token, vera.csrf_token), payload=2 * megabyte
     )
@@ -612,11 +612,11 @@ def test_r_111_8_the_requester_of_a_pending_request_uploads_its_evidence(
     app: FastAPI, keyring: KeyRing, clock: FrozenClock
 ) -> None:
     """Ruling R-111 (8) beside R-100 (b): the bound of an upload is what its caller may store,
-    and the requester of a pending approval request stores an attachment whatever they hold. A
-    Revenue Reviewer without a request is refused a body above the envelope, unread; with a
+    and the requester of a pending approval request stores an attachment whatever they hold. An
+    Auditor without a request is refused a body above the envelope, unread; with a
     pending request of their own the same body is read, and one above 25 MiB is not."""
     tenant_id = member(keyring, clock).tenant_id
-    rhea = joined(app, tenant_id, "rhea", "revenue_reviewer")  # no upload permission
+    rhea = joined(app, tenant_id, "rhea", "auditor")  # no upload permission or ai.use
     megabyte = 1024 * 1024
     headers = cookie_headers(rhea.token, rhea.csrf_token)
 
@@ -1311,8 +1311,10 @@ def test_att_requester_1_the_requester_attaches_to_their_own_pending_request(
 
     hers = reopen_request(requester)
     evidence = fx.PDF + b"% job cost report\n"
-    # Ravi has no request of his own: he uploads no attachment.
-    refused(upload(app, peer, "ATTACHMENT", "job-cost.pdf", fx.PDF + b"% ravi\n"))
+    # ai.use now permits a review source upload, but never attachment to another's request.
+    peer_upload = upload(app, peer, "ATTACHMENT", "job-cost.pdf", fx.PDF + b"% ravi\n")
+    assert peer_upload.status_code == 201, peer_upload.text
+    refused(attach_to(app, peer, peer_upload.json()["id"], "approval_request", hers))
     # Rhea uploads the evidence, attaches it to her request and reads it back.
     uploaded = upload(app, requester, "ATTACHMENT", "job-cost.pdf", evidence)
     assert uploaded.status_code == 201, uploaded.text
@@ -1370,7 +1372,10 @@ def test_att_requester_1_the_requester_attaches_to_their_own_pending_request(
                 reopen_request(requester, status=status),
             )
         )
-    refused(upload(app, requester, "ATTACHMENT", "late.pdf", fx.PDF + b"% late\n"))
+    # ai.use still permits an unattached source after the request is decided.
+    late = upload(app, requester, "ATTACHMENT", "late.pdf", fx.PDF + b"% late\n")
+    assert late.status_code == 201, late.text
+    refused(attach_to(app, requester, late.json()["id"], "approval_request", hers))
     # Nor does she take her evidence back once the request is decided: the rule was the
     # pending request's, and she holds no permission of the cell.
     refused(void(app, requester, linked.json()["id"]))

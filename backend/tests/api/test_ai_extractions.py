@@ -480,3 +480,56 @@ def test_disable_serializes_with_extraction_admission(world: World, clock: Froze
             session.scalar(select(func.count()).select_from(job).where(job.c.kind == "AI_TASK"))
             == 0
         )
+
+
+def test_ai_reviewer_upload_does_not_grant_attachment_or_other_uploads(
+    world: World, clock: FrozenClock
+) -> None:
+    reviewer = holding(world.app, colleague(world.place.tenant_id, "review_uploader"), "viewer")
+    data = (
+        Path(__file__).parents[1] / "fixtures/ai/documents/Kinsley-Marrow-Order-Form-2026-10.pdf"
+    ).read_bytes()
+    uploaded = call(
+        world.app,
+        "POST",
+        "/api/v1/files",
+        data={"purpose": "ATTACHMENT"},
+        files={"file": ("review.pdf", data, "application/pdf")},
+        headers=cookie_headers(reviewer.token, reviewer.csrf_token),
+    )
+    assert uploaded.status_code == 201, uploaded.text
+    source = uploaded.json()["id"]
+    denied = call(
+        world.app,
+        "POST",
+        "/api/v1/attachments",
+        json={"file_object_id": source, "subject_type": "contract", "subject_id": str(uuid4())},
+        headers=cookie_headers(reviewer.token, reviewer.csrf_token),
+    )
+    assert denied.status_code == 403, denied.text
+    study = call(
+        world.app,
+        "POST",
+        "/api/v1/files",
+        data={"purpose": "SSP_STUDY"},
+        files={"file": ("study.pdf", data, "application/pdf")},
+        headers=cookie_headers(reviewer.token, reviewer.csrf_token),
+    )
+    assert study.status_code == 403, study.text
+    enable(world, clock, send_text=True)
+    submitted = call(
+        world.app,
+        "POST",
+        PATH,
+        json={"file_id": source},
+        headers=cookie_headers(reviewer.token, reviewer.csrf_token),
+    )
+    assert submitted.status_code == 202, submitted.text
+    with tenant_session(world.place.principal.db_context, read_only=True) as session:
+        stored_job = (
+            session.execute(select(job).where(job.c.id == UUID(submitted.json()["id"])))
+            .mappings()
+            .one()
+        )
+        assert stored_job["created_by"] == reviewer.member.user_id
+        assert stored_job["params"]["file_id"] == source

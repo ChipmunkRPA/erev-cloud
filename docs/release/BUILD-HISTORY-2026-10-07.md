@@ -5341,3 +5341,22 @@ cleanup in the shared database session kernel was also repaired and regression-t
   Logs: .run/ai-extraction-read-{api,architecture,lint,typecheck,types-final,openapi}.log.
 - Extraction list integration, original document-text responses, human review/acceptance and
   broader release/accounting verification remain open. No deployment or live provider calls.
+
+## Audited extraction document-text reads — October 15, 2026
+
+- Implemented GET /ai/proposals/{id}/document-text for retained extraction evidence. Current
+  source access is checked before the normal encrypted file reader rechecks ownership and
+  commits a file.download audit as the human reader. The response preserves original pages and
+  order with one-based page numbers. AI-off reads work; other kinds and shredded text return 404.
+- Shared the canonical envelope decoder with worker persistence. Both paths validate exact
+  source/job bindings; the public read additionally checks stored size/digest, while the decoder
+  rejects malformed/noncanonical envelopes, wrong bindings, invalid page types and exceeded
+  page/text limits. Reads neither parse the PDF nor call a provider.
+- Verification: six PostgreSQL API/persistence tests passed, including AI-off text, actor audit,
+  denied/unreadable sources, non-extraction proposals, shredded text/source and retained evidence
+  rollback/regressions. Forty-one unit/architecture checks passed, including 17 text-envelope
+  cases. Full lint/typecheck passed (934 Python sources plus frontend), focused typing passed
+  787 sources, OpenAPI/frontend generation and final diff checks passed. Logs:
+  .run/ai-document-text-{pg-final,unit,lint,typecheck,types-final,openapi}.log.
+- Extraction list integration, human review/acceptance, broader release checks and independent
+  accounting sign-off remain outstanding. No deployment or live provider calls.

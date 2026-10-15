@@ -5,7 +5,8 @@ API-R-12 authorises "per subject", which one route permission cannot express, so
 authorise (SPEC-Q-157):
 
 - an upload needs a permission of its purpose: ``import.upload``, ``migration.run``,
-  ``ssp.create``, or for ``ATTACHMENT`` any permission that may attach to some subject;
+  ``ssp.create``, or for ``ATTACHMENT`` a subject write permission or ``ai.use``
+  for a source document reviewed before a contract exists;
 - attaching needs a write permission of the subject type held for the subject's legal entity, and
   a file the caller may read; voiding needs the write permission and is the uploader's own action
   (REQ-PLT-035);
@@ -78,7 +79,7 @@ UPLOAD_PERMISSIONS: Final[Mapping[FilePurpose, frozenset[str]]] = MappingProxyTy
         FilePurpose.IMPORT_SOURCE: frozenset({"import.upload"}),
         FilePurpose.LEGACY_DATABASE: frozenset({"migration.run"}),
         FilePurpose.SSP_STUDY: frozenset({"ssp.create"}),
-        FilePurpose.ATTACHMENT: ATTACH_PERMISSIONS,
+        FilePurpose.ATTACHMENT: ATTACH_PERMISSIONS | frozenset({"ai.use"}),
     }
 )
 

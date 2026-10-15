@@ -2,6 +2,27 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Review-source upload and resumable job navigation — October 15, 2026
+
+- Added SF-20:new at /contracts/review/new, activating the existing Contracts entry. It validates
+  nonempty PDFs up to 25 MiB, uploads ATTACHMENT, submits file_id, polls the returned AI_TASK and
+  opens its retained proposal. A job URL resumes after reload, including after AI disable.
+  Only the initiating human can cancel a running task. Failed/lost requests retain errors and
+  retry keys; the successful upload is reused if extraction submission fails. Unrelated jobs
+  and malformed result IDs cannot navigate. No entity or accounting values are inferred.
+- Corrected a permission mismatch: ai.use now admits ATTACHMENT upload before a contract exists,
+  without granting record-attachment or other-purpose writes. New API evidence checks upload,
+  extraction admission and refusal of contract attachment/SSP upload. Existing no-upload tests
+  now use a role without ai.use; request-attachment tests still refuse non-requesters and closed
+  requests even when an AI source upload is permitted. Earlier logs preserve old-role assertion
+  failures; the verified run passes all 25 extraction/file API tests.
+- 30 frontend route/API/navigation checks, frontend typing and full lint passed. Local Chromium
+  upload-to-job navigation with mocked HTTP returned no page errors; light/dark captures were
+  inspected. This is not live API/provider or complete browser acceptance evidence. Logs:
+  .run/ai-review-upload-{pg-verified,tests,types,python-types,lint,browser}.log.
+- DOCX, field decisions, responsive panel tabs, draft-form integration, broad release verification
+  and independent accounting sign-off remain open. No deployment or live provider calls.
+
 ## Contract review evidence screen — October 15, 2026
 
 - Added SF-20 /contracts/review/:proposalId with permission-gated retained proposal/document
@@ -204,25 +225,6 @@
   Logs: .run/ai-extraction-reject-{api,architecture,typecheck,types,openapi,lint}.log.
 - Extraction list integration, per-field decisions and structured acceptance remain unfinished,
   alongside broader release/accounting gates. No deployment or live provider calls.
-
-## Audited extraction document-text reads — October 15, 2026
-
-- Implemented GET /ai/proposals/{id}/document-text for retained extraction evidence. Current
-  source access is checked before the normal encrypted file reader rechecks ownership and
-  commits a file.download audit as the human reader. The response preserves original pages and
-  order with one-based page numbers. AI-off reads work; other kinds and shredded text return 404.
-- Shared the canonical envelope decoder with worker persistence. Both paths validate exact
-  source/job bindings; the public read additionally checks stored size/digest, while the decoder
-  rejects malformed/noncanonical envelopes, wrong bindings, invalid page types and exceeded
-  page/text limits. Reads neither parse the PDF nor call a provider.
-- Verification: six PostgreSQL API/persistence tests passed, including AI-off text, actor audit,
-  denied/unreadable sources, non-extraction proposals, shredded text/source and retained evidence
-  rollback/regressions. Forty-one unit/architecture checks passed, including 17 text-envelope
-  cases. Full lint/typecheck passed (934 Python sources plus frontend), focused typing passed
-  787 sources, OpenAPI/frontend generation and final diff checks passed. Logs:
-  .run/ai-document-text-{pg-final,unit,lint,typecheck,types-final,openapi}.log.
-- Extraction list integration, human review/acceptance, broader release checks and independent
-  accounting sign-off remain outstanding. No deployment or live provider calls.
 
 ## Outstanding release verification
 

@@ -151,6 +151,14 @@ export const SCREEN_ROUTES: readonly RouteObject[] = [
     }),
   },
   {
+    id: "SF-20:new",
+    path: "/contracts/review/new",
+    handle: { sf: "SF-20", screen: "SF-20:new", titleKey: "ai.review.new.title" },
+    lazy: async () => ({
+      Component: (await import("../routes/contracts/review-new")).NewContractReview,
+    }),
+  },
+  {
     id: "SF-20",
     path: "/contracts/review/:proposalId",
     handle: { sf: "SF-20", screen: "SF-20", titleKey: "ai.review.title" },

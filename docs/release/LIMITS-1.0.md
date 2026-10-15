@@ -184,8 +184,17 @@ and the draft link. Source citations highlight validated Unicode code-point span
 highlight and return focus on Escape. Reads are permission-gated; expired/missing-ETag items
 cannot be rejected, and rejected commands retain their reason and problem. Component/API tests
 and a local browser preview cover this evidence view, not the full workflow. The preview uses
-cached synthetic responses, not a live API. Upload/job navigation, field-decision controls,
-responsive panel tabs, draft-form integration and full browser acceptance remain unfinished.
+cached synthetic responses, not a live API. SF-20:new now supports nonempty PDFs up to 25 MiB,
+source upload, extraction submission, job polling/cancellation and navigation to the retained
+proposal. Its job URL resumes after reload, including when AI has since been disabled. Uploads
+are reused across failed submission attempts; successful upload does not create a contract.
+The Contracts entry uses existing AI permission/enablement checks. ai.use now permits ATTACHMENT
+uploads for this pre-contract review, without granting attachment-to-record or other upload
+permissions; the normal ownership, file bounds and audit rules apply. The frontend submits
+file_id only, matching the implemented API; entity selection belongs to explicit draft creation.
+A local Chromium probe used mocked HTTP responses for upload/job navigation, not a live provider.
+DOCX extraction, field-decision controls, responsive panel tabs, draft-form integration and full
+browser acceptance remain unfinished.
 
 The Anthropic adapter is mock-tested, uses the official SDK, disables SDK retries and telemetry,
 and resolves secrets lazily. Contract-review and explain-narrative prompts have retained bytes,
