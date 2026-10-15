@@ -2,6 +2,25 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Workspace-type refusal audit — October 14, 2026
+
+- Refused PATCH /tenant requests naming kind now append tenant.update / DENIED in the
+  caller's tenant and preserve the 409 tenant-kind-immutable response. The event identifies
+  the actor, tenant, refused field and problem; it survives rollback of the command.
+- Refusals read without an update lock, avoiding a conflict with the independent audit
+  transaction's tenant foreign key. Normal changes still lock and check row versions.
+  Permission and If-Match checks remain in place; refused mixed changes do not rename a tenant.
+- Isolated PostgreSQL API and sandbox tests: 2 passed (10.36s). Final actor assertion:
+  1 passed (9.76s). The first attempt could not connect because the local repair server
+  restarted on its default port; rerun used the intended separate port 55439. Server stopped.
+  Logs: .run/tenant-kind-audit-{tests-fixed-server,actor-final}.log. Full lint/typecheck
+  pass; audit/guard architecture checks: 8 passed (8.61s), logs with suffixes lint, types
+  and architecture.
+- A focused browser attempt against the old demo database found its temporary encrypted
+  snapshot files were gone, so its 500 response is not an application acceptance result.
+  Screenshots and failure trace were retained. A fresh closed gate on bce381c is now running
+  with a matching local database/file store; full backend CI on 165d63c also remains live.
+
 ## Retained browser artifacts — October 14, 2026
 
 - Browser gate reports now name a unique artifact directory for each run. Each Playwright
@@ -208,43 +227,6 @@
 - RPS-20 remains incomplete: generation forms and missing backend kinds, read-only
   presentation, remaining register details and real browser/accessibility acceptance.
   Repository only; direct main, no new PR or deployment.
-
-## Close evidence register and retained downloads — October 14, 2026 (RPS-20 partial)
-
-- SF-09 and SF-09:pack now expose the scoped paginated first-close register, status filters,
-  retained entity/period labels, file counts and manifest hashes, pending-state refresh,
-  manifest file list, and authorized ZIP/manifest downloads. Manifest download verifies
-  the archive and returns its exact retained bytes, with a committed export audit before
-  serving. Both artifact types require all five source/export permissions in entity scope.
-- Register counts/hashes use hash-consistent, schema-valid retained metadata and are null
-  before success; listing does not open or verify archive payloads. Download still verifies
-  archive/source integrity. Updated API docs, OpenAPI/client types, router inventory and
-  crawl seed. Evidence tab requires all three read permissions.
-- Actual API/worker/MFA/schema/metadata regression: **118 passed in 58.66 seconds**
-  (.run/evidence-screen-api-regression.log). Checks include returned labels/count/hash,
-  exact manifest bytes, pending/corrupt archive refusal, export audit artifacts/byte counts,
-  each source permission's entity scope, revoked roles, and the operational CTL-041 witness.
-- Full frontend suite before the final count/hash columns: **2,069 passed across 193 files
-  in 73.48 seconds** (.run/evidence-ui-final-regression.log). Final focused screen suite:
-  **12 passed in 1.53 seconds**, including those columns and filters/export refusals
-  (.run/evidence-register-columns-tests.log). TypeScript, full ESLint, Vite build, Python
-  Ruff/Mypy and OpenAPI checks pass. Existing Vite large-chunk warning remains.
-- Earlier full frontend runs found route/crawl/tab integration issues (2,062 pass / 4 fail)
-  and a test's incorrect filtered-empty expectation (2,067 pass / 1 fail); both are resolved.
-  Ten database-free metadata tests also passed independently. All runs are terminal.
-- RPS-20 stays unchecked: auditor-request table, generation forms, other pack kinds,
-  remaining register details and real browser/accessibility/volume acceptance are outstanding.
-  This is a tested repository increment, not a production-readiness claim. Direct main;
-  no deployment, new PR, accounting oracle change or permission relaxation.
-
-## Current control gate evidence — October 14, 2026
-
-- Immutable c214c47 control run: **497 passed in 1,076.97 seconds**. No tagged test failed;
-  47/49 controls are covered. CTL-045 (AI proposals) and CTL-048 (legacy migration promotion)
-  lack tagged tests, so the gate correctly fails. CTL-018 and CTL-041 now pass in this gate.
-- Source/dependency bindings match before/after execution. This result attests c214c47,
-  not the subsequent screen increment. See docs/release/CONTROLS-2026-10-14.md and local
-  .run/reports/controls-report/report.json. Independent accounting approval is still missing.
 
 ## Outstanding release verification
 

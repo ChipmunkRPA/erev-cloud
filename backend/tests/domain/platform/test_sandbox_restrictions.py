@@ -694,7 +694,21 @@ def test_tenant_kind_immutable(app: FastAPI, keyring: KeyRing, clock: FrozenCloc
         "sandbox",
         before.json()["display_name"],
     )
-    assert _count(sandbox, audit_event, audit_event.c.action == "tenant.update") == 0
+    assert (
+        _count(
+            sandbox,
+            audit_event,
+            audit_event.c.action == "tenant.update",
+            audit_event.c.outcome == "SUCCESS",
+        )
+        == 0
+    )
+    denials = [event for event in _denied(sandbox) if event["action"] == "tenant.update"]
+    assert len(denials) == 2
+    for event in denials:
+        assert event["object_type"] == "tenant" and event["object_id"] == sandbox
+        assert event["actor_id"] == tomas.member.user_id
+        assert event["detail"] == {"problem": "tenant-kind-immutable", "field": "kind"}
 
     # Positive control: the same request without ``kind`` is an ordinary rename.
     renamed = patch(app, TENANT, tomas, {"display_name": "Rehearsal copy"}, if_match=etag)

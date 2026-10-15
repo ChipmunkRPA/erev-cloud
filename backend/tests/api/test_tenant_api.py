@@ -106,12 +106,13 @@ def test_patch_tenant_with_if_match(app: FastAPI, keyring: KeyRing, clock: Froze
 
     with tenant_session(_context(tomas.tenant_id), read_only=True) as session:
         events = session.execute(
-            select(audit_event.c.action, audit_event.c.object_id).where(
+            select(audit_event.c.action, audit_event.c.object_id, audit_event.c.outcome).where(
                 audit_event.c.object_type == "tenant", audit_event.c.action == "tenant.update"
             )
         ).all()
-    assert [(action, object_id) for action, object_id in events] == [
-        ("tenant.update", tomas.tenant_id)
+    assert sorted((str(outcome), action, object_id) for action, object_id, outcome in events) == [
+        ("DENIED", "tenant.update", tomas.tenant_id),
+        ("SUCCESS", "tenant.update", tomas.tenant_id),
     ]
 
     vera = colleague(tomas.tenant_id, "vera")

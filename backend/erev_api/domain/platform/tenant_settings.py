@@ -3,7 +3,7 @@ API-C-08; PRD ERR-26; SCREENS_B SF-23 data bindings; BUILD_SPEC PLF-21).
 
 ``update_tenant`` changes ``display_name`` and ``default_locale`` of the locked row under the
 ``If-Match`` precondition. A request naming ``kind`` is refused with 409 ``tenant-kind-immutable``
-before anything is written; DB-05 guards the column as well. A change is AUD-CMD: one
+with a durable DENIED audit event; DB-05 guards the column as well. A change is AUD-CMD: one
 ``tenant.update`` event with the changed columns before and after (SPEC-Q-186).
 """
 
@@ -18,9 +18,11 @@ from uuid import UUID
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
+from erev_api.audit import writer as audit_writer
 from erev_api.db.session import tenant_session
 from erev_api.db.tables import tenant
 from erev_api.domain.platform import provisioning, sandboxes, users
+from erev_api.enums import AuditOutcome
 from erev_api.problems import Problem, ProblemError
 
 if TYPE_CHECKING:
@@ -89,9 +91,20 @@ def update_tenant(
     ``check_version`` applies the ``If-Match`` precondition to the locked row."""
     tenant_id = uow.principal.tenant_id
     session = uow.session
-    current = _row(session, tenant_id, lock=True)
+    # A kind change never mutates the row. Avoid holding its update lock while the
+    # independent denial transaction checks the audit event's tenant foreign key.
+    current = _row(session, tenant_id, lock=not kind_requested)
     check_version(int(current["row_version"]))
     if kind_requested:
+        audit_writer.record_now(
+            uow.ctx,
+            action=UPDATE_ACTION,
+            object_type=OBJECT_TYPE,
+            object_id=tenant_id,
+            outcome=AuditOutcome.DENIED,
+            detail={"problem": "tenant-kind-immutable", "field": "kind"},
+            keyring=uow.keyring,
+        )
         raise Problem("tenant-kind-immutable", KIND_IMMUTABLE)
     errors: list[ProblemError] = []
     values: dict[str, Any] = {}
