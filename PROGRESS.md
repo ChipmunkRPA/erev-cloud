@@ -2,6 +2,23 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## PDF subprocess resource boundary — October 15, 2026
+
+- Added the operational parser entry point as an isolated-interpreter subprocess with a
+  minimal environment, closed inherited descriptors, discarded parser stderr and strict
+  response validation. Text disablement and file caps refuse before child launch.
+- The Linux child applies 512 MiB address-space and 15-second CPU limits before importing
+  pypdf, and disallows core dumps/file writes through resource limits. The parent enforces
+  30-second wall time; real-child testing confirms timeout kill/reap and secret removal.
+  Unsupported hosts or unavailable resource limits fail closed, never parse in-process.
+- AI/architecture checks: 180 passed, two Linux-only enforcement tests skipped on this Mac;
+  strict API/test typing: 757 sources; Ruff passes. Logs: .run/ai-pdf-isolation-{checks,types}.log.
+- Docker executable exists but its daemon cannot be reached. SUPERVISOR VERIFICATION NEEDED:
+  Linux successful PDF parsing plus actual address-space/CPU exhaustion tests in the worker
+  environment. These are not established by the local transport tests. No deployment.
+- AI_TASK integration remains absent; the new subprocess entry point is not yet called by
+  an enabled job. File authorization/storage, gateway budgets/auditing and acceptance remain open.
+
 ## PDF extraction and retained WLD-F-29 evidence — October 15, 2026
 
 - Added pypdf 6.20.1 (BSD-3-Clause), worker-side PDF parsing and context-local stream/tree
@@ -238,21 +255,6 @@
 - Creating/reviewing judgements under approval, final activation admission, policy/report
   checks and atomic live creation remain unfinished. Current full CI is still running on
   an older snapshot at 64%. No deployment/readiness claim; publish directly to main.
-
-## Named principal-agent migration refusal — October 14, 2026
-
-- Stage 03 now distinguishes incomplete reviewed agent terms with PrincipalAgentInputError,
-  preserving the ValueError contract. Migration capture maps these failures to named 422
-  validation; output replay refuses by name. Arithmetic and range invariants are unchanged.
-- Real PostgreSQL reproduction verifies an unreviewed AGENT product refuses and rolls back
-  temporary contracts/options/audits. An injected unexpected ValueError remains unexpected,
-  rolls back, and leaves the original review basis reproducible.
-- Engine/agent-billing/capture suite: 46 passed (16.49s); final PG/architecture suite: 66 passed
-  (31.00s), with three overlapping database cases. Strict production plus PG-test typing
-  passes (888 sources); Ruff passes. The specialist test's 28 existing helper typing errors
-  reproduce unchanged from prior main. Logs: .run/agent-input-refusal-*.log.
-- Promotion approval, policy/report/activation checks and independent accounting sign-off
-  remain outstanding. No deployment; verified changes published directly to main.
 
 ## Outstanding release verification
 

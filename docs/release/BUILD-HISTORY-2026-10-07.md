@@ -4059,3 +4059,18 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   testing also found stage 03's raw ValueError for AGENT without reviewed PRINCIPAL_AGENT;
   typed admission handling remains outstanding. Older immutable CI remains live at 53%.
 - Published directly to main; no deployment, readiness or accounting sign-off claim.
+
+## Named principal-agent migration refusal — October 14, 2026
+
+- Stage 03 now distinguishes incomplete reviewed agent terms with PrincipalAgentInputError,
+  preserving the ValueError contract. Migration capture maps these failures to named 422
+  validation; output replay refuses by name. Arithmetic and range invariants are unchanged.
+- Real PostgreSQL reproduction verifies an unreviewed AGENT product refuses and rolls back
+  temporary contracts/options/audits. An injected unexpected ValueError remains unexpected,
+  rolls back, and leaves the original review basis reproducible.
+- Engine/agent-billing/capture suite: 46 passed (16.49s); final PG/architecture suite: 66 passed
+  (31.00s), with three overlapping database cases. Strict production plus PG-test typing
+  passes (888 sources); Ruff passes. The specialist test's 28 existing helper typing errors
+  reproduce unchanged from prior main. Logs: .run/agent-input-refusal-*.log.
+- Promotion approval, policy/report/activation checks and independent accounting sign-off
+  remain outstanding. No deployment; verified changes published directly to main.

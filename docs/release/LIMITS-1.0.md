@@ -60,6 +60,14 @@ authorized source reads, durable AI_DOCUMENT_TEXT storage, jobs and audited acce
 unfinished. Dependency licence and development vulnerability checks passed; final candidate
 audit and full release verification are still owed.
 
+October 15 PDF isolation continuation: the operational entry point now launches a private
+Python subprocess without inherited secrets, with wall timeout and strict output validation.
+The Linux child sets address-space/CPU limits before parser import; unsupported hosts fail
+closed. Local tests verify child transport, timeout cleanup, classified exits and unsupported
+host refusal. Actual Linux success and memory/CPU exhaustion remain unverified: two tests are
+skipped on this Mac, and the local Docker daemon is unavailable. No enabled AI job uses this
+entry point yet. This is process resource containment, not a filesystem/network sandbox.
+
 October 14 audit continuation: native option entry/expiry and CLOSE evidence-pack creation
 now have catalogue entries and real request scenarios in the audit walk. Material-right
 AUD-FACT summaries require a contract key and retain the created ids in detail. Evidence-pack
