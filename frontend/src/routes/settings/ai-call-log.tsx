@@ -27,6 +27,7 @@ import { useMe } from "../../lib/api/queries/me";
 import { formatTimestamp, formatDuration, formatNumber } from "../../lib/format";
 import { t } from "../../lib/i18n/t";
 import { SettingsPageHeader } from "./index";
+import { CallLogExport } from "./ai-call-log-export";
 
 const label = (key: string) => t("settings.aiCallLog." + key);
 const outcomes = {
@@ -163,6 +164,7 @@ function CallGrid() {
           columnState={columnState}
           defaultColumnState={DEFAULT_COLUMNS}
           onColumnStateChange={setColumnState}
+          toolbarActions={<CallLogExport key={me?.active_membership_id ?? "none"} />}
           viewSelector={
             <SavedViewSelector
               screenCode="SF-15:ai-call-log"

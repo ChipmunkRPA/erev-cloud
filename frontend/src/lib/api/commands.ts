@@ -63,6 +63,7 @@ export interface CommandState<T> {
   readonly banner: string | null;
   readonly jobId: string | null;
   readonly job: Job | undefined;
+  readonly jobError: Error | null;
 }
 
 type CommandListener = () => void;
@@ -260,6 +261,7 @@ export function useCommand<T = unknown>(options: CommandOptions): CommandState<T
     banner: conflict ? t("common.command.recordChanged") : null,
     jobId,
     job: job.data,
+    jobError: job.error,
   };
 }
 

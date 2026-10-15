@@ -2,6 +2,17 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Call-log CSV/XLSX download controls — October 15, 2026
+
+- The call-log toolbar creates requester-bound exports, polls their jobs, reads completed runs
+  and saves authorized output bytes. It explains that hidden grid columns are included.
+- Export requires the matching source/export scopes; source-only users stay on the call-log
+  screen. Duplicate submissions are disabled, failures are shown, and leaving the screen
+  suppresses late downloads. The command helper exposes job polling errors to this flow.
+- Frontend and real local Chromium/API/worker verification is recorded in
+  docs/release/CI-2026-10-15.md. No deployment or live provider calls; overall release gates,
+  remaining call-log navigation/copy controls and independent accounting sign-off remain open.
+
 ## Public call-export catalogue — October 15, 2026
 
 - Migration 0158 registers ai_call_log_export for CSV/XLSX through the existing report API.
@@ -223,24 +234,6 @@
   Earlier expanded runs caught test-fixture enum/key-reuse mistakes, corrected in the API rerun.
 - No deployment or provider calls. Frozen CI on 3cf8f5b remains active; independent accounting
   sign-off and broader release verification remain outstanding.
-
-## Expose administrator-only AI configuration gap — October 15, 2026
-
-- Preparing the standard J-19/demo fixture revealed that its Tomas/Grace Tenant Admin personas
-  cannot author or approve general registry policies. They hold settings.manage, not config.author
-  or config.approve. Existing AI re-enable tests add admin rights to accounting-role actors.
-- Added a strict expected-failure API regression for admin-only AI draft creation, accepting only
-  the confirmed forbidden response as the known failure. Other failures remain errors; success
-  becomes a strict XPASS requiring removal of the marker. A companion protects accounting-policy
-  denial. This records an unfinished workflow, not a production-readiness pass.
-- The corrective scope is an AI-specific admin lifecycle with independent approval and retained
-  policy evidence, without broadening accounting privileges or bypassing the emergency switch.
-  The standard demo fixture/E2E journey is not added through a permission bypass. Release
-  limitations now distinguish this gap from the successful local browser probe.
-- Six existing governance/boundary checks pass; the new workflow check is a confirmed strict
-  expected failure. Focused typing and full lint pass. Evidence: .run/ai-admin-workflow-{tests,types,lint}.log.
-  Frozen CI on 3cf8f5b remains active.
-  No deployment, provider call or independent accounting sign-off.
 
 ## Outstanding release verification
 

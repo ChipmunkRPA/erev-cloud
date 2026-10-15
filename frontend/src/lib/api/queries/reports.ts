@@ -242,3 +242,10 @@ export async function fetchReportCell(
 export function reportOutputHref(runId: string): string {
   return `${REPORT_RUNS_PATH}/${runId}/output`;
 }
+
+/** Fetch before saving, so permission loss is rendered as a problem rather than a file. */
+export async function fetchReportOutput(runId: string): Promise<Blob> {
+  const response = await send("GET", reportOutputHref(runId));
+  if (!response.ok) throw await readProblem(response);
+  return response.blob();
+}

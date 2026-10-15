@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, screen, fireEvent, within, waitFor } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
-import { afterEach, beforeAll, expect, it } from "vitest";
+import { afterEach, beforeAll, expect, it, vi } from "vitest";
 import { SCREEN_ROUTES } from "../../app/router";
 import { installMemoryStorage, preloadScreens, renderApp, signedInMe } from "../../test/app";
 import { installGridViewport } from "../../test/layout";
@@ -11,7 +11,10 @@ import type { AIModelLog } from "../../lib/api/queries/ai-model-logs";
 installMswServer();
 installMemoryStorage();
 installGridViewport();
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
 beforeAll(() => preloadScreens(SCREEN_ROUTES, ["SF-15:ai-call-log"]));
 const id = "a4bfe1a2-cb18-4110-886e-fca643b828ac";
 const record: AIModelLog = {
@@ -208,4 +211,209 @@ it("saves a call-log layout without storing call records or drawer ids", async (
   expect(JSON.stringify(body)).not.toContain(record.input_sha256);
   expect(JSON.stringify(body)).not.toContain(id);
   expect(await screen.findByRole("button", { name: "View: Call review" })).toBeTruthy();
+});
+
+const exportJobId = "8318b842-120c-4c8f-a11d-16e9e3a394a3";
+const exportRunId = "1f59c695-1c1f-4ed9-86f9-85b5a79a9c5d";
+function serveExport(options: { jobState?: string; deniedAt?: "job" | "run" | "output" } = {}) {
+  const bodies: unknown[] = [];
+  const reads: string[] = [];
+  const job = {
+    id: exportJobId,
+    kind: "REPORT_RUN",
+    state: options.jobState ?? "SUCCEEDED",
+    progress: { done: 1, total: 1 },
+    result: null,
+    problem: null,
+    created_by: { kind: "USER", id, display_name: "Maya" },
+    created_at: record.created_at,
+    started_at: null,
+    finished_at: null,
+  };
+  const denied = () =>
+    HttpResponse.json(
+      {
+        type: "https://erev.example/problems/not-found",
+        title: "Not found",
+        status: 404,
+        detail: "The export is no longer accessible.",
+      },
+      { status: 404, headers: { "Content-Type": "application/problem+json" } },
+    );
+  server.use(
+    http.get(apiUrl("/api/v1/report-definitions/ai_call_log_export"), () => {
+      reads.push("definition");
+      return HttpResponse.json({
+        code: "ai_call_log_export",
+        name: "AI call log export",
+        output_formats: ["CSV", "XLSX"],
+      });
+    }),
+    http.post(apiUrl("/api/v1/report-runs"), async ({ request }) => {
+      bodies.push(await request.json());
+      return HttpResponse.json(job, {
+        status: 202,
+        headers: {
+          Location: `/api/v1/jobs/${exportJobId}`,
+          "X-Erev-Report-Run-Id": exportRunId,
+        },
+      });
+    }),
+    http.get(apiUrl(`/api/v1/jobs/${exportJobId}`), () => {
+      reads.push("job");
+      return options.deniedAt === "job" ? denied() : HttpResponse.json(job);
+    }),
+    http.get(apiUrl(`/api/v1/report-runs/${exportRunId}`), () => {
+      reads.push("run");
+      return options.deniedAt === "run"
+        ? denied()
+        : HttpResponse.json({
+            id: exportRunId,
+            status: "SUCCEEDED",
+            report: { code: "ai_call_log_export" },
+            report_run_no: "RPT-42",
+          });
+    }),
+    http.get(apiUrl(`/api/v1/report-runs/${exportRunId}/output`), () => {
+      reads.push("output");
+      return options.deniedAt === "output" ? denied() : new HttpResponse("export bytes");
+    }),
+  );
+  return { bodies, reads };
+}
+function watchExportSaves() {
+  const saves: string[] = [];
+  vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (
+    this: HTMLAnchorElement,
+  ) {
+    saves.push(this.download);
+  });
+  Object.defineProperty(URL, "createObjectURL", {
+    configurable: true,
+    writable: true,
+    value: vi.fn(() => "blob:export"),
+  });
+  Object.defineProperty(URL, "revokeObjectURL", {
+    configurable: true,
+    writable: true,
+    value: vi.fn(),
+  });
+  return saves;
+}
+async function chooseExport(format = "CSV") {
+  fireEvent.click(await screen.findByRole("button", { name: "Export" }));
+  fireEvent.click(await screen.findByRole("menuitem", { name: format }));
+}
+it.each(["CSV", "XLSX"])(
+  "downloads a %s export without accounting-report permission",
+  async (format) => {
+    serve();
+    const api = serveExport();
+    const saves = watchExportSaves();
+    renderLog(["ai.use", "report.export"]);
+    await chooseExport(format);
+    await waitFor(() =>
+      expect(saves).toEqual([`ai-call-log-${exportRunId}.${format.toLowerCase()}`]),
+    );
+    expect(api.bodies).toEqual([
+      { report_code: "ai_call_log_export", parameters: {}, output_format: format },
+    ]);
+    expect(api.reads).toEqual(["definition", "job", "run", "output"]);
+    expect(
+      await screen.findByText(`Exported AI call log export as ${format}. Run RPT-42.`),
+    ).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Run details" })).toBeNull();
+  },
+);
+it("does not fetch an export definition without report.export", async () => {
+  serve();
+  const api = serveExport();
+  renderLog(["ai.use"]);
+  await screen.findByRole("grid", { name: "AI calls" });
+  expect(screen.queryByRole("button", { name: "Export" })).toBeNull();
+  expect(api.reads).toEqual([]);
+});
+it("allows a settings-only administrator to export without report.run", async () => {
+  serve();
+  serveExport();
+  const saves = watchExportSaves();
+  renderLog(["settings.manage", "report.export"]);
+  await chooseExport();
+  await waitFor(() => expect(saves).toHaveLength(1));
+});
+it.each(["job", "run", "output"] as const)(
+  "does not save or claim success when access is lost at %s",
+  async (deniedAt) => {
+    serve();
+    serveExport({ deniedAt });
+    const saves = watchExportSaves();
+    renderLog(["ai.use", "report.export"]);
+    await chooseExport();
+    expect(
+      await screen.findByText("The export is no longer accessible.", {}, { timeout: 5000 }),
+    ).toBeTruthy();
+    expect(saves).toEqual([]);
+    expect(screen.queryByText(/Exported AI call log export/)).toBeNull();
+  },
+);
+it("keeps a running export from being replaced by a second format", async () => {
+  serve();
+  const api = serveExport({ jobState: "RUNNING" });
+  renderLog(["ai.use", "report.export"]);
+  await chooseExport();
+  await waitFor(() => expect(api.reads).toContain("job"));
+  fireEvent.click(screen.getByRole("button", { name: "Export" }));
+  const xlsx = screen.getByRole("menuitem", { name: "XLSX" });
+  expect(xlsx.getAttribute("aria-disabled")).toBe("true");
+  fireEvent.click(xlsx);
+  expect(api.bodies).toHaveLength(1);
+});
+
+it("hides tenant-wide export when an administrator only has named-entity export scope", async () => {
+  serve();
+  const api = serveExport();
+  const me = signedInMe({
+    permissions: ["settings.manage", "report.export"],
+    permission_scopes: {
+      "settings.manage": "*",
+      "report.export": [id],
+    },
+  });
+  server.use(http.get(apiUrl("/api/v1/me"), () => HttpResponse.json(me)));
+  renderApp("/settings/ai/call-log", { me, screenRoutes: SCREEN_ROUTES });
+  await screen.findByRole("grid", { name: "AI calls" });
+  expect(screen.queryByRole("button", { name: "Export" })).toBeNull();
+  expect(api.reads).toEqual([]);
+});
+it.each(["FAILED", "CANCELLED"])("does not fetch output for a %s export job", async (jobState) => {
+  serve();
+  const api = serveExport({ jobState });
+  const saves = watchExportSaves();
+  renderLog(["ai.use", "report.export"]);
+  await chooseExport();
+  expect(await screen.findByText("Could not export AI calls")).toBeTruthy();
+  expect(api.reads).not.toContain("run");
+  expect(api.reads).not.toContain("output");
+  expect(saves).toEqual([]);
+});
+it("does not save a late output response after leaving the call log", async () => {
+  serve();
+  serveExport();
+  const saves = watchExportSaves();
+  let release: (() => void) | undefined;
+  server.use(
+    http.get(apiUrl(`/api/v1/report-runs/${exportRunId}/output`), async () => {
+      await new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      return new HttpResponse("late export bytes");
+    }),
+  );
+  renderLog(["ai.use", "report.export"]);
+  await chooseExport();
+  await waitFor(() => expect(release).toBeTypeOf("function"));
+  cleanup();
+  release?.();
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  expect(saves).toEqual([]);
 });

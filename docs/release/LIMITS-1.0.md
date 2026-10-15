@@ -83,7 +83,10 @@ Report API admission now uses ai.use or workspace-wide settings.manage plus repo
 this code, including source MFA, without granting accounting-report access. An optional command
 replay guard authorizes the actual retained reply after lookup; protected exports refresh session
 and grants after that potentially waiting lookup. OWN replay remains OWN after promotion, while
-TENANT replay refuses demotion. The UI download menu remains pending.
+TENANT replay refuses demotion. The call-log screen now provides CSV/XLSX export with job
+progress and authorized output fetching. It hides export without the required source/export
+scopes, prevents overlapping submissions, and reports permission loss instead of saving a file.
+Leaving the screen suppresses a late download; source-only users need no accounting-report page.
 Linked-proposal navigation, hash-copy controls, standard demo/J-19 and full
 audit-lifecycle verification remain open.
 

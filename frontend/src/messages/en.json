@@ -7387,5 +7387,9 @@
   "settings.aiCallLog.responseHash": "Response SHA-256",
   "settings.aiCallLog.errorDetail": "Error",
   "settings.aiCallLog.call": "AI call",
-  "settings.aiCallLog.parameters": "Parameters"
+  "settings.aiCallLog.parameters": "Parameters",
+  "settings.aiCallLog.exportBusy": "An export is in progress.",
+  "settings.aiCallLog.exportError": "Could not export AI calls",
+  "settings.aiCallLog.exportUnexpected": "The export did not return a completed file. Please try again.",
+  "settings.aiCallLog.exportScope": "Exports all currently authorized calls, including columns hidden in this view."
 }

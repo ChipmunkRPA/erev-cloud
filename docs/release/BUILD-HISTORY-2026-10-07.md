@@ -5773,3 +5773,22 @@ cleanup in the shared database session kernel was also repaired and regression-t
   .run/future-draft-browser-{tests,final}.log and .run/ai-live-browser-created.png.
   Full frozen CI remains active on 3cf8f5b; Compose and independent accounting sign-off remain open.
   No deployment. Temporary browser harness retained privately under .run.
+
+
+## Expose administrator-only AI configuration gap — October 15, 2026
+
+- Preparing the standard J-19/demo fixture revealed that its Tomas/Grace Tenant Admin personas
+  cannot author or approve general registry policies. They hold settings.manage, not config.author
+  or config.approve. Existing AI re-enable tests add admin rights to accounting-role actors.
+- Added a strict expected-failure API regression for admin-only AI draft creation, accepting only
+  the confirmed forbidden response as the known failure. Other failures remain errors; success
+  becomes a strict XPASS requiring removal of the marker. A companion protects accounting-policy
+  denial. This records an unfinished workflow, not a production-readiness pass.
+- The corrective scope is an AI-specific admin lifecycle with independent approval and retained
+  policy evidence, without broadening accounting privileges or bypassing the emergency switch.
+  The standard demo fixture/E2E journey is not added through a permission bypass. Release
+  limitations now distinguish this gap from the successful local browser probe.
+- Six existing governance/boundary checks pass; the new workflow check is a confirmed strict
+  expected failure. Focused typing and full lint pass. Evidence: .run/ai-admin-workflow-{tests,types,lint}.log.
+  Frozen CI on 3cf8f5b remains active.
+  No deployment, provider call or independent accounting sign-off.
