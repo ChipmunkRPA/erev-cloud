@@ -28,6 +28,8 @@ from decimal import Decimal
 from fractions import Fraction
 from typing import Any, Final
 
+from erev_engine.money import format_exact
+
 from erev_api.domain.migration import field_mapping, legacy_db
 from erev_api.domain.migration.field_mapping import (
     BatchParameters,
@@ -374,9 +376,44 @@ def option_records(contract: ContractOpening) -> list[dict[str, Any]]:
     ]
 
 
+def _opening_values(row: ObligationOpening) -> dict[str, str]:
+    """Change dollar-quantity units to one option without changing source facts or balances."""
+    values = {member: str(value) for member, value in row.values.items()}
+    option = row.mapped.option
+    if option is None:
+        return values
+    source_quantity = Fraction(option.source_quantity)
+    if source_quantity <= 0:
+        raise ValueError(f"{row.source.record_key}: POL-212 needs positive source quantity")
+    for member in (
+        "remaining_quantity",
+        "delivered_quantity_cum",
+        "unit_ssp",
+        "remaining_unit_revenue_rate",
+    ):
+        original = Fraction(row.values[member])
+        exact = (
+            original / source_quantity
+            if member in {"remaining_quantity", "delivered_quantity_cum"}
+            else original * source_quantity
+        )
+        text = format_exact(exact)
+        # format_exact is bounded to the engine's 18 places. Never emit its rounded result:
+        # conversion is allowed only when that text represents the exact rational value.
+        if Fraction(text) != exact:
+            raise ValueError(
+                f"{row.source.record_key} {member}: no exact decimal representation within "
+                "18 places for POL-212 quantity conversion; refused, not rounded"
+            )
+        values[member] = text
+    return values
+
+
 def opening_payload(contract: ContractOpening, cutover_date: date) -> dict[str, Any]:
     """The ``OPENING_BALANCE_ESTABLISHED`` payload (S07-R-11; 04 §16.3): ``reason``
     ``LEGACY_MIGRATION``, the cutover date and one row per obligation from LM-CL-39 to LM-CL-68.
+    POL-212 converted options express quantities/rates in option units; source rows and all
+    monetary balances stay unchanged. An inexact decimal conversion is refused, never rounded.
     """
     return {
         "reason": REASON,
@@ -384,7 +421,7 @@ def opening_payload(contract: ContractOpening, cutover_date: date) -> dict[str, 
         "rows": [
             {
                 "obligation_key": row.mapped.obligation_key,
-                **{member: str(value) for member, value in row.values.items()},
+                **_opening_values(row),
             }
             for row in contract.rows
         ],

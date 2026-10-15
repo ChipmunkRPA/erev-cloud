@@ -3666,3 +3666,21 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   implementation boundaries and next entry requirements are recorded in
   MATERIAL-RIGHTS-IMPLEMENTATION.md. Native entry and corrections remain unfinished.
 - Full CI 165d63c is still running independently. No deployment; publish directly to main.
+
+## Native material-right draft entry — October 14, 2026
+
+- Added the immutable option-term POST with contracting-entity permission, group/contract
+  locks, parent-stream If-Match, DRAFT/no-pending-review checks and atomic computation.
+  Invalid method, currency, likelihood or non-option classification leaves no terms
+  or computation. Dedicated reads use the contracting entity's date.
+- Reproduced and fixed an approval gap: a different term preparer could approve Maya's
+  activation submission. Option authors are now excluded by the approval kernel;
+  independent review succeeds. AUD-FACT represented-preparer identities are included.
+- Activation and route/import/scope checks: 62 passed (151.74s). Final API regressions:
+  2 passed (20.43s), including idempotent replay and one contract-bound creation audit.
+  Full typecheck (880 source files plus frontend), Ruff and diff checks pass.
+  Logs: .run/material-right-native-regression.log, .run/material-right-native-final.log,
+  .run/material-right-native-types.log. OpenAPI/TypeScript and command docs updated.
+- Corrections, draft replacement/race acceptance, full method matrix, UI, migration,
+  populated snapshot and independent accounting acceptance remain open. Original full
+  CI 165d63c remains live and is not current-candidate evidence. No deployment.

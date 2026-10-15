@@ -722,7 +722,10 @@ def opening_body(contract: ContractOpening, *, batch: Mapping[str, Any], currenc
     places is refused by name — never rounded (D-98 127 interim); at version 2 the exact text is
     handed to ``ExactMoneyIn`` and the model refuses an out-of-bound amount by name (API-C-06)."""
     version, model = opening_payload_model()
-    staged = opening_payload(contract, date.fromisoformat(str(batch["cutover_date"])))
+    try:
+        staged = opening_payload(contract, date.fromisoformat(str(batch["cutover_date"])))
+    except ValueError as error:
+        raise _refuse(str(error)) from error
     rows = []
     for row in staged["rows"]:
         item: dict[str, Any] = {"obligation_key": row["obligation_key"]}

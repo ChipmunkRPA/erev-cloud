@@ -2,6 +2,23 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Converted option opening units — October 14, 2026
+
+- Found that POL-212 books quantity one but opening payloads retained dollar-unit quantities.
+  Converted payload quantities now divide by source quantity and per-unit rates multiply
+  by it. Monetary balances and immutable source/staging rows remain unchanged. Legacy
+  KEEP behavior is unchanged; inexact conversions refuse rather than round.
+- Regression reproduced 10 remaining units instead of 0.4 for source quantity 25.
+  Real API-to-engine adapter and stage-07 witnesses pass under ASC606/IFRS15, preserving
+  remaining SSP 10, allocation 62.5 and posted baseline revenue 37.50.
+- 45 migration/capture/onboarding tests passed (1.33s); strict production Mypy (881 sources),
+  test Mypy and Ruff pass. Logs: .run/option-opening-baseline.log,
+  .run/option-opening-final.log, .run/option-opening-types.log and
+  .run/option-opening-test-types.log.
+- Capture still refuses option records: its writer and MIGRATION_PROMOTION approval
+  subject remain missing. No deployment or readiness claim. Older immutable CI remains
+  live at 39%, with a new audit-coverage failure to investigate when its evidence is ready.
+
 ## Persisted entered option SSP and native workflow — October 14, 2026
 
 - Revision 0146 adds immutable optional total SSP with method/nonnegative constraints.
@@ -237,24 +254,6 @@
 - Key/product removal, corrections, races, complete historical replacement, UI and
   migration acceptance remain open. Original CI 165d63c is live in demo/performance
   seeding. Noncommercial licensing and publication exclusions retained. No deployment.
-
-## Native material-right draft entry — October 14, 2026
-
-- Added the immutable option-term POST with contracting-entity permission, group/contract
-  locks, parent-stream If-Match, DRAFT/no-pending-review checks and atomic computation.
-  Invalid method, currency, likelihood or non-option classification leaves no terms
-  or computation. Dedicated reads use the contracting entity's date.
-- Reproduced and fixed an approval gap: a different term preparer could approve Maya's
-  activation submission. Option authors are now excluded by the approval kernel;
-  independent review succeeds. AUD-FACT represented-preparer identities are included.
-- Activation and route/import/scope checks: 62 passed (151.74s). Final API regressions:
-  2 passed (20.43s), including idempotent replay and one contract-bound creation audit.
-  Full typecheck (880 source files plus frontend), Ruff and diff checks pass.
-  Logs: .run/material-right-native-regression.log, .run/material-right-native-final.log,
-  .run/material-right-native-types.log. OpenAPI/TypeScript and command docs updated.
-- Corrections, draft replacement/race acceptance, full method matrix, UI, migration,
-  populated snapshot and independent accounting acceptance remain open. Original full
-  CI 165d63c remains live and is not current-candidate evidence. No deployment.
 
 ## Outstanding release verification
 

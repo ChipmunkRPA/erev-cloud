@@ -427,3 +427,29 @@ passed. Logs: `.run/entered-option-persisted-final.log`, `.run/entered-option-na
 `.run/entered-option-native.log`, `.run/entered-option-schema-final.log`,
 `.run/entered-option-ui-final.log`, `.run/entered-option-native-types.log`, and
 `.run/entered-option-ui-build.log`. No browser-to-live-API release acceptance is claimed.
+
+
+## Converted opening quantities, October 14
+
+POL-212 converts the booked quantity to one option. The opening payload must use the same
+unit: remaining and delivered quantities divide by the original dollar quantity; unit SSP and
+remaining unit revenue rate multiply by it. Monetary balances, cumulative SSP and the immutable
+source/staging rows remain unchanged. KEEP_QUANTITY_CONVENTION emits the previous values.
+The transformation uses rational arithmetic and refuses a result that cannot be represented
+exactly within 18 decimal places. Capture translates that refusal to its existing named Problem;
+there is no silent rounding. The raw legacy rows remain available for reconciliation.
+
+Regression first reproduced remaining quantity 10 instead of 0.4 for an original quantity 25,
+and acceptance of an unrepresentable fraction. The repaired payload flows through the actual
+API-to-engine payload adapter and stage-07 opening application in ASC606 and IFRS15. Witness:
+quantity 25, remaining 10, delivered 15, SSP 25 and unit revenue 2.5 become one option with
+remaining 0.4, delivered 0.6, unit SSP 25 and unit revenue 62.5. The opening segment preserves
+remaining SSP 10, total allocation 62.5 and posted revenue baseline 37.50.
+
+45 focused migration/capture/onboarding tests passed (1.33s); strict production Mypy passed
+(881 sources), strict test Mypy and Ruff passed. Logs: `.run/option-opening-baseline.log`,
+`.run/option-opening-final.log`, `.run/option-opening-types.log`, and
+`.run/option-opening-test-types.log`. This is a payload and engine-boundary witness, not
+capture/promotion acceptance. The option writer remains missing, capture still refuses option
+records, and MIGRATION_PROMOTION remains an unimplemented approval subject. Do not remove
+the refusal until immutable writes, rollback, reconciliation and approved promotion are verified.
