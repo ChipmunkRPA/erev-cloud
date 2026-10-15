@@ -106,3 +106,22 @@ query strings overwritten by the HTTP test helper's empty parameter mapping. Fix
 were corrected without changing expected results or weakening production guards.
 Native term entry, governed corrections, migration conversion and populated snapshot
 acceptance remain outstanding.
+
+
+## Activation approval basis, October 14
+
+Activation approval content now binds persisted option identities and accounting fields.
+No-terms contracts retain their existing content shape. A regression submitted a material-right
+contract for review, inserted option terms as a fault injection without changing the event head,
+and attempted approval. Before the fix approval incorrectly returned 200. Afterward it returns
+409 stale-approval, leaves the contract inactive with no postings, and requires a fresh submission;
+that new review successfully activates the contract.
+
+The full activation suite passed: 19 tests in 121.46s, including ordinary routing, separate
+reviewers, integration auto-approval restrictions and resubmission. Full typecheck and Ruff pass.
+Evidence: `.run/material-right-approval-baseline.log`, `.run/material-right-approval-fixed.log`,
+`.run/material-right-approval-regression.log`, `.run/material-right-approval-types.log`.
+The baseline test failed while interpreting the unexpected 200 response as a problem body;
+the request log confirms the unauthorized stale-basis acceptance, rather than an entry failure.
+This strengthens the review boundary; native entry still needs group/contract locking,
+permission and pending-review checks, audit, validation, and governed correction semantics.

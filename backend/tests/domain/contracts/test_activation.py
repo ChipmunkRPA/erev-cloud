@@ -22,10 +22,12 @@ from uuid import UUID, uuid4
 
 import pytest
 from erev_api.approvals import engine as approvals_engine
+from erev_api.approvals.subjects import contract_activation_content
 from erev_api.auth.keyring import KeyRing
 from erev_api.auth.principal import Principal
 from erev_api.clock import FrozenClock
 from erev_api.config import Settings
+from erev_api.db import new_id
 from erev_api.db.session import DbContext, tenant_session
 from erev_api.db.tables import (
     approval_decision,
@@ -37,6 +39,9 @@ from erev_api.db.tables import (
     contract_event,
     contract_version,
     exception_item,
+    material_right,
+    obligation,
+    product,
     role,
     schedule_line,
     subledger_line,
@@ -47,7 +52,7 @@ from erev_api.events.payloads import ContractBookedV1
 from erev_api.files.store import LocalFileStore
 from erev_api.main import create_app
 from fastapi import FastAPI
-from sqlalchemy import func, select
+from sqlalchemy import func, insert, select
 from support.api_clients import access_approver, issued_client
 from support.db import TestDatabase
 from support.factories import (
@@ -58,9 +63,11 @@ from support.factories import (
     customer_id,
     j03_world,
     k09_body,
+    published_template,
     seat_body,
     seat_line,
     seat_world,
+    set_default_template,
     sf_ord_20417_body,
     step1_criteria,
 )
@@ -1671,3 +1678,89 @@ def test_mandatory_product_attributes_block_booking_and_recheck_activation(
     assert "CONTRACT_ACTIVATED" in _event_types(seats, contract_id)
     created = post(app, CONTRACTS, maya, new_body)
     assert created.status_code == 201, created.text
+
+
+def test_activation_review_binds_material_right_terms(seats: SeatWorld) -> None:
+    """Fault injection: a fact inserted after submission must invalidate the approval basis."""
+    maya = seats.place.author
+    assign(seats.priya.member, "revenue_reviewer")
+    body = _seat_contract(seats, "OPTION-APPROVAL", seats="50", price="120000.00")
+    line = body["lines"][0]
+    template = published_template(
+        seats.app,
+        maya,
+        seats.marcus,
+        code="TPL-OPTION-APPROVAL",
+        outputs={
+            "obligation_kind": "MATERIAL_RIGHT",
+            "distinctness": "distinct",
+            "satisfaction_pattern": "POINT_IN_TIME",
+            "over_time_criterion": "NOT_APPLICABLE",
+            "recognition_method": "UNITS_DELIVERED",
+        },
+        case_line={**line, "total_price": "120000.00"},
+    )
+    product_id = seats.place.scalar(
+        select(product.c.id).where(product.c.code == line["product_code"])
+    )
+    set_default_template(seats.app, maya, str(product_id), template["template_id"])
+    contract_id = _created(seats.app, maya, body)
+    head = _step1(seats.app, maya, seats.marcus, contract_id, 1)
+    waiting = _submit(seats.app, maya, contract_id, head)
+    assert waiting.status_code == 200, waiting.text
+    request_id = waiting.headers[APPROVAL_HEADER]
+    before = _header(seats, contract_id)
+    option_id = seats.place.scalar(
+        select(obligation.c.id).where(obligation.c.contract_id == contract_id)
+    )
+    with seats.place.uow() as unit:
+        assert "material_rights" not in contract_activation_content(unit.session, contract_id)
+        right_id = new_id()
+        unit.session.execute(
+            insert(material_right).values(
+                tenant_id=seats.place.tenant_id,
+                id=right_id,
+                contract_id=contract_id,
+                obligation_id=option_id,
+                option_type="RENEWAL_OPTION",
+                currency="USD",
+                ssp_method="ENTERED_AMOUNT",
+                created_at=unit.now,
+                created_by_kind="SYSTEM",
+            )
+        )
+        content = contract_activation_content(unit.session, contract_id)
+        assert content["material_rights"] == [
+            {
+                "id": str(right_id),
+                "obligation_id": str(option_id),
+                "option_type": "RENEWAL_OPTION",
+                "incremental_discount_ratio": None,
+                "is_discount_available_without_contract": False,
+                "expected_purchase_amount": None,
+                "currency": "USD",
+                "ssp_method": "ENTERED_AMOUNT",
+                "expiry_date": None,
+                "likelihood_estimate_id": None,
+                "is_legacy_quantity_ssp_dollars": False,
+            }
+        ]
+        unit.commit()
+    refused = approve(seats.app, request_id, seats.priya)
+    assert refused.status_code == 409, refused.text
+    assert slug(refused) == "stale-approval"
+    assert _header(seats, contract_id) == before
+    assert "CONTRACT_ACTIVATED" not in _event_types(seats, contract_id)
+    assert (
+        seats.place.scalar(
+            select(func.count())
+            .select_from(subledger_line)
+            .where(subledger_line.c.contract_id == contract_id)
+        )
+        == 0
+    )
+    renewed = _submit(seats.app, maya, contract_id, head)
+    assert renewed.status_code == 200, renewed.text
+    accepted = approve(seats.app, renewed.headers[APPROVAL_HEADER], seats.priya)
+    assert accepted.status_code == 200, accepted.text
+    assert _header(seats, contract_id)[0] == "ACTIVE"

@@ -2,6 +2,22 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Activation approval binds material rights — October 14, 2026
+
+- Found and repaired a review gap before exposing native term entry: adding T-CON-14
+  terms after activation submission previously left the approval hash unchanged.
+  The baseline review returned 200. Activation content now binds identities and all
+  option accounting fields in deterministic order. Contracts without terms retain
+  their existing content shape and pending hashes.
+- A real API review now returns 409 stale-approval after injected terms, leaves the
+  contract inactive with no postings, and succeeds only after fresh submission and
+  review. The regression also checks the full bound content, including null fields.
+- Full activation suite: 19 passed (121.46s); .run/material-right-approval-regression.log.
+  Focused repair: 1 passed (14.05s). Full typecheck and Ruff pass. Baseline evidence,
+  implementation boundaries and next entry requirements are recorded in
+  MATERIAL-RIGHTS-IMPLEMENTATION.md. Native entry and corrections remain unfinished.
+- Full CI 165d63c is still running independently. No deployment; publish directly to main.
+
 ## Material-right bundle and reads — October 14, 2026
 
 - Connected immutable option terms to real engine bundles at known_at, with stable
@@ -235,23 +251,6 @@
 - Full immutable CI on 165d63c is still running and has known failures; this entry does not
   claim a passing full release gate. Other pack kinds, re-lock variance, broader acceptance
   and independent accounting approval remain open. No deployment.
-
-## Current CI preflight and direction-aware evidence tables — October 14, 2026
-
-- Immutable make ci on fcbfaa3 reached lint after local-only environment repair: a missing
-  demo TOTP seed was generated in ignored .env, and a separate allow-listed local CI dev
-  database was created. The existing development database remains unchanged; process-only
-  URL overrides select the new database, with no credentials printed or committed.
-- CI found three DS-LINT-10 violations: evidence contents, file and auditor-request tables
-  used text-left. Changed them to logical text-start for direction-aware alignment.
-- Full make lint passes: 2,049 Python files formatted; 510 design-scanned files, zero findings;
-  vocabulary, 133-package license scan, 3,478-file secret scan, OpenAPI, registry, 18 fixtures
-  and all 497 control markers pass. Marker validity does not prove the controls pass.
-  Full make typecheck passes (876 backend source files plus frontend).
-- The initial CI run is terminal, failed at design lint before tests. Its source hash is
-  fcbfaa365bdfb5ecf7a4b1184cafecb7ffd1eaec, tree b20a7f01135cda47153d1c8dc1b23b0dcbedcddc;
-  immutable source and dependency bindings matched. A clean post-fix full CI run is next.
-  No complete CI, deployment or production-readiness claim is made.
 
 ## Outstanding release verification
 

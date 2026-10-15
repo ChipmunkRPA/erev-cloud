@@ -180,6 +180,7 @@ from erev_api.db.tables import (
     judgement_record,
     legal_entity,
     manual_adjustment,
+    material_right,
     migration_batch,
     modification,
     obligation,
@@ -2145,6 +2146,43 @@ def contract_activation_content(session: Session, subject_id: UUID) -> Mapping[s
     )
     if criteria:
         content["criteria_met"] = [item.members() for item in criteria]
+    terms = list(
+        session.execute(
+            select(material_right)
+            .where(material_right.c.contract_id == subject_id)
+            .order_by(material_right.c.obligation_id, material_right.c.id)
+        ).mappings()
+    )
+    if terms:
+        # Omit the member for contracts without options, preserving existing pending hashes.
+        # Bind the values as well as their immutable identities: an administrative repair must
+        # not silently change what a pending activation review authorizes.
+        content["material_rights"] = [
+            {
+                "id": str(term["id"]),
+                "obligation_id": str(term["obligation_id"]),
+                "option_type": str(term["option_type"]),
+                "incremental_discount_ratio": None
+                if term["incremental_discount_ratio"] is None
+                else str(term["incremental_discount_ratio"]),
+                "is_discount_available_without_contract": bool(
+                    term["is_discount_available_without_contract"]
+                ),
+                "expected_purchase_amount": None
+                if term["expected_purchase_amount"] is None
+                else str(term["expected_purchase_amount"]),
+                "currency": str(term["currency"]).strip(),
+                "ssp_method": str(term["ssp_method"]),
+                "expiry_date": None
+                if term["expiry_date"] is None
+                else term["expiry_date"].isoformat(),
+                "likelihood_estimate_id": None
+                if term["likelihood_estimate_id"] is None
+                else str(term["likelihood_estimate_id"]),
+                "is_legacy_quantity_ssp_dollars": bool(term["is_legacy_quantity_ssp_dollars"]),
+            }
+            for term in terms
+        ]
     return content
 
 
