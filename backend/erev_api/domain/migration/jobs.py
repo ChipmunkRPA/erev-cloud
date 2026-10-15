@@ -68,7 +68,7 @@ from erev_api.domain.migration.population import (
     VersionRef,
     not_captured_copy,
 )
-from erev_api.domain.migration.reconciliation import ControlTotals, DeviationIndex
+from erev_api.domain.migration.reconciliation import ControlTotals, DeviationIndex, Line
 from erev_api.enums import JobKind, MigrationMode, MigrationStatus
 from erev_api.jobs.context import JobContext, system_unit_of_work
 from erev_api.jobs.registry import JobOutcome, task
@@ -89,6 +89,7 @@ __all__ = [
     "TraceLoader",
     "VersionsReader",
     "deviation_source",
+    "assess_batch",
     "import_batch",
     "import_failed",
     "import_migration",
@@ -173,6 +174,43 @@ def reconcile_batch(
     status = str(batch["status"])
     if status != MigrationStatus.IMPORTED.value:
         raise _refuse(NOT_IMPORTED_COPY.format(status=status))
+    lines = assess_batch(
+        uow,
+        batch,
+        legacy_rows_reader=legacy_rows_reader,
+        population_reader=population_reader,
+        versions_reader=versions_reader,
+        trace_loader=trace_loader,
+        evidence_verifier=evidence_verifier,
+        deviations=deviations,
+    )
+    totals = reconciliation.control_totals(lines)
+    if totals.unexplained:
+        raise _refuse(UNEXPLAINED_COPY.format(count=totals.unexplained))
+    repository.insert_reconciliation_lines(uow, batch_id, lines, exception_items={})
+    repository.transition(
+        uow,
+        batch_id,
+        to_status=MigrationStatus.RECONCILED,
+        expected_status=MigrationStatus.IMPORTED,
+        job_id=job_id,
+    )
+    return totals
+
+
+def assess_batch(
+    uow: UnitOfWork,
+    batch: Mapping[str, Any],
+    *,
+    legacy_rows_reader: LegacyRowsReader = repository.legacy_records,
+    population_reader: PopulationReader = repository.comparison_population,
+    versions_reader: VersionsReader = repository.population_obligation_versions,
+    trace_loader: TraceLoader = repository.trace_nodes,
+    evidence_verifier: EvidenceVerifier = repository.verify_capture_evidence,
+    deviations: DeviationSource = deviation_source,
+) -> tuple[Line, ...]:
+    """Reassess retained evidence without writing lines or changing batch state."""
+    batch_id = UUID(str(batch["id"]))
     latest = latest_rows(legacy_rows_reader(uow, batch_id))
     source = reconciliation.legacy_values(latest)
     try:
@@ -208,19 +246,7 @@ def reconcile_batch(
             option_reconciliation.require_exact_quantities(index, erev)
     except ExactSourceError as error:
         raise _evidence_failure(error) from error
-    lines = reconciliation.lines(source, erev, index)
-    totals = reconciliation.control_totals(lines)
-    if totals.unexplained:
-        raise _refuse(UNEXPLAINED_COPY.format(count=totals.unexplained))
-    repository.insert_reconciliation_lines(uow, batch_id, lines, exception_items={})
-    repository.transition(
-        uow,
-        batch_id,
-        to_status=MigrationStatus.RECONCILED,
-        expected_status=MigrationStatus.IMPORTED,
-        job_id=job_id,
-    )
-    return totals
+    return reconciliation.lines(source, erev, index)
 
 
 def _import_refuse(detail: str) -> Problem:

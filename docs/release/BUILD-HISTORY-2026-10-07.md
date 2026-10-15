@@ -3774,3 +3774,19 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   .run/material-right-expire-boundary-production-types.log.
 - Other-command races, closed-period/deferred failures, exercise/reversal and release
   acceptance remain open. Full CI 165d63c remains live at 32%. No deployment.
+
+## Seeded Step 1 event routing — October 14, 2026
+
+- Reproduced the demo-reference failure from the ongoing backend CI: STEP1_EVENT
+  lacked a seeded human-review routing rule. Added ROUTE-STEP1-01 with one
+  event.approve approver, matching the subject specification and existing kernel floor.
+  This closes a seed-coverage gap; the kernel already supplied fallback routing.
+- Reference coverage verifies the exact permission/count; evaluation/submission parity
+  now covers 39 subject/rule combinations. Seed determinism, routing parity and approval
+  floors: 73 passed (24.58s). Strict Mypy for all three changed files and Ruff pass.
+  Logs: .run/demo-routing-baseline.log, .run/demo-routing-regression-fixed.log,
+  .run/demo-routing-types.log. Initial regression assertions were corrected for the
+  output field name and the additional routing case.
+- GitHub has no open PRs and only remote main. Continue verified direct-main publication,
+  without deployment. Full CI on the older 165d63c snapshot remains in progress;
+  its results will not establish acceptance of current main. Release gaps remain open.

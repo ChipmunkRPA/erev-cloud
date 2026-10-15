@@ -528,3 +528,32 @@ passed (13.30s). Domain/repository/job/report/architecture checks: 93 passed (10
 This closes the demonstrated quantity-unit reconciliation gap. Public option import remains
 refused until the complete import and approved promotion journey is verified. The promotion
 subject is still unimplemented; independent accounting sign-off is not claimed.
+
+## Durable promotion review basis, October 14
+
+`jobs.assess_batch` now supplies the same read-only evidence/trace/source assessment to
+reconciliation and the new `promotion_review.review_basis`. The review refuses before
+RECONCILED (and outside opening-balance mode), rechecks every figure and explanation, requires
+no unexplained difference, and compares the entire stored line set with that assessment.
+Missing, duplicate or altered lines cannot pass by relying on the batch's status. Retained
+legacy rows must also match their original row hashes.
+
+The basis binds the source file/hash, cutover, capture operation, full stored source rows,
+verified captures, reconciliation rows, profile (including replayed SSP references), registry
+and reconciliation/report identities, and control totals. Approval linkage, lifecycle status
+and batch update timestamps are excluded: moving RECONCILED to SUBMITTED keeps the fingerprint,
+while a changed SSP profile changes it. It writes no facts, audit events or live contracts.
+The eventual submit/decision caller must hold its lifecycle lock while checking this basis.
+
+The actual PostgreSQL capture/reconcile witness exercises repeated stable reads, refusal before
+reconciliation, four malformed stored line sets, status stability and changed-profile binding.
+Three cases passed (9.56s), and 68 related job/repository/architecture/domain checks passed
+(9.20s). Strict production typing (885 sources), the test file and Ruff passed. Logs:
+`.run/migration-promotion-review-pg.log`, `.run/migration-promotion-review-unit.log`,
+`.run/migration-promotion-review-types.log` and `.run/migration-promotion-review-test-types.log`.
+
+This is the durable evidence portion of promotion, not the complete approval subject. It does
+not yet validate current configuration or report execution, publish the legacy policy preset,
+reproduce and compare approved contracts, enforce activation admission, or atomically create
+live contracts. The subject, route, independent approver/MFA journey and public option import
+remain unavailable until those pieces are implemented and verified together.

@@ -30,13 +30,15 @@ from erev_api.domain.migration import (
     jobs,
     opening_balances,
     option_reconciliation,
+    promotion_review,
     repository,
 )
 from erev_api.domain.migration.field_mapping import BatchParameters
-from erev_api.enums import ApprovalRequestStatus
+from erev_api.enums import ApprovalRequestStatus, MigrationStatus
 from erev_api.files.store import LocalFileStore
 from erev_api.problems import Problem
 from erev_api.uow import unit_of_work
+from erev_engine.canonical import sha256_hex
 from erev_engine.upgrade import decode_input
 from sqlalchemy import insert, select, update
 from support.db import TestDatabase
@@ -126,6 +128,7 @@ def test_platform_applier_captures_converted_option_and_rolls_back(
     clock: FrozenClock,
     tmp_path: Path,
     corrupt_quantity: str | None,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     tenant_id = tenant_id_of(tenant_factory(keyring=keyring))
     stamp_test_release()
@@ -299,6 +302,8 @@ def test_platform_applier_captures_converted_option_and_rolls_back(
                 == "IMPORTED"
             )
             return
+        with pytest.raises(Problem, match="Reconcile the migration"):
+            promotion_review.review_basis(uow, batch["id"])
         totals = jobs.reconcile_batch(uow, batch["id"])
         assert totals.unexplained == 0
         assert totals.explained == 1
@@ -324,4 +329,40 @@ def test_platform_applier_captures_converted_option_and_rolls_back(
             ).scalar_one()
             == "RECONCILED"
         )
+        assert session.execute(select(contract.c.id)).first() is None
+
+        before = tuple(uow.audit_events)
+        basis = promotion_review.review_basis(uow, batch["id"])
+        assert basis["control_totals"]["unexplained"] == 0
+        assert basis["source_sha256"] == batch["source_sha256"]
+        assert basis["capture_operation_id"] == batch["capture_operation_id"]
+        assert promotion_review.review_basis(uow, batch["id"]) == basis
+        assert tuple(uow.audit_events) == before
+        stored_lines = repository.reconciliation_rows(uow, batch["id"])
+        broken_sets = [
+            stored_lines[:-1],
+            stored_lines + [stored_lines[0]],
+            [dict(item) | {"erev_value": Decimal("999")} for item in stored_lines],
+            [dict(item) | {"deviation_ref": "UNREVIEWED"} for item in stored_lines],
+        ]
+        for broken in broken_sets:
+            with monkeypatch.context() as patch:
+                patch.setattr(repository, "reconciliation_rows", lambda *_args, value=broken: value)
+                with pytest.raises(Problem, match="does not match"):
+                    promotion_review.review_basis(uow, batch["id"])
+        repository.transition(
+            uow,
+            batch["id"],
+            to_status=MigrationStatus.SUBMITTED,
+            expected_status=MigrationStatus.RECONCILED,
+        )
+        assert sha256_hex(promotion_review.review_basis(uow, batch["id"])) == sha256_hex(basis)
+        session.execute(
+            update(migration_batch)
+            .where(migration_batch.c.id == batch["id"])
+            .values(
+                profile={"replayed_ssp_versions": [{"ssp_book_version_id": str(version["id"])}]}
+            )
+        )
+        assert sha256_hex(promotion_review.review_basis(uow, batch["id"])) != sha256_hex(basis)
         assert session.execute(select(contract.c.id)).first() is None

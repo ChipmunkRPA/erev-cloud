@@ -2,6 +2,22 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Durable migration promotion review basis — October 14, 2026
+
+- Extracted the shared read-only reconciliation assessment and added promotion review of
+  retained evidence. It requires RECONCILED/SUBMITTED opening-balance status, reassesses all
+  figures, verifies source-row hashes and requires the complete stored line set to match.
+- The review fingerprint binds source/capture/reconciliation artifacts and the recorded
+  profile, including replayed SSP references. It stays stable across SUBMITTED and changes
+  with the SSP profile. Review alone writes no audit events or live contracts.
+- Three PostgreSQL cases passed (9.56s), including missing/duplicate/changed stored-line
+  refusals and status/profile binding. 68 related checks passed (9.20s); strict production
+  Mypy (885 files), test Mypy and Ruff passed. Logs: .run/migration-promotion-review-*.log.
+- This is a foundation for promotion, not the approval subject: current configuration/report
+  checks, policy publication, activation admission, reproduction and atomic live creation,
+  independent reviewer/MFA and submit route remain unfinished. Public option import stays
+  unavailable. Older immutable CI remains live at 46%; no deployment/readiness claim.
+
 ## Evidence-bound option quantity reconciliation — October 14, 2026
 
 - Reconciliation consumes verified producing bundles and explains only the exact POL-212
@@ -221,22 +237,6 @@
   UI, full release gates and independent accounting acceptance remain open. Full CI on
   165d63c is still live and has a new CSV contract-header conflict failure to investigate.
   Publish verified work directly to main; no deployment.
-
-## Seeded Step 1 event routing — October 14, 2026
-
-- Reproduced the demo-reference failure from the ongoing backend CI: STEP1_EVENT
-  lacked a seeded human-review routing rule. Added ROUTE-STEP1-01 with one
-  event.approve approver, matching the subject specification and existing kernel floor.
-  This closes a seed-coverage gap; the kernel already supplied fallback routing.
-- Reference coverage verifies the exact permission/count; evaluation/submission parity
-  now covers 39 subject/rule combinations. Seed determinism, routing parity and approval
-  floors: 73 passed (24.58s). Strict Mypy for all three changed files and Ruff pass.
-  Logs: .run/demo-routing-baseline.log, .run/demo-routing-regression-fixed.log,
-  .run/demo-routing-types.log. Initial regression assertions were corrected for the
-  output field name and the additional routing case.
-- GitHub has no open PRs and only remote main. Continue verified direct-main publication,
-  without deployment. Full CI on the older 165d63c snapshot remains in progress;
-  its results will not establish acceptance of current main. Release gaps remain open.
 
 ## Outstanding release verification
 

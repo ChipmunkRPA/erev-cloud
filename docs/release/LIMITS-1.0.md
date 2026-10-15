@@ -13,8 +13,9 @@ snapshot recovery covers the explicit amount for open and expired options. Migra
 capture/promotion still refuses option records. The shared term writer is implemented with
 persistence/rollback checks and a real platform-applier witness. Exact quantity-unit
 reconciliation now passes through retained evidence, with drift and equal-raw-number refusals.
-Full import and approved promotion remain unfinished. See MATERIAL-RIGHTS-IMPLEMENTATION.md
-for evidence and remaining boundaries.
+A read-only promotion review now rechecks and fingerprints durable evidence, but current
+configuration, policy publication, live reproduction and the approval route remain unfinished.
+See MATERIAL-RIGHTS-IMPLEMENTATION.md for evidence and remaining boundaries.
 
 October 7 sandbox correction: monetary verification now reads and compares the stored
 `loss_provision_version` and `fx_layer_movement` results. These are reconstructed per-period
