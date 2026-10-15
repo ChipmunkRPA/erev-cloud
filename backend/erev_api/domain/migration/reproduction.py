@@ -12,7 +12,13 @@ from erev_engine.errors import EngineError, PrincipalAgentInputError
 from erev_engine.upgrade import decode_input
 
 from erev_api.domain.contracts import computation
-from erev_api.domain.migration import activation_review, capture, opening_balances, repository
+from erev_api.domain.migration import (
+    activation_review,
+    capture,
+    judgement_plan,
+    opening_balances,
+    repository,
+)
 from erev_api.problems import Problem, ProblemError
 from erev_api.uow import UnitOfWork
 
@@ -94,6 +100,12 @@ def verify(
             reviewed[contract.external_id] = {
                 "output_sha256": expected[contract.external_id],
                 "activation": activation_review.preview(fresh_input, contract.external_id),
+                "proposed_judgements": [
+                    item.review_content()
+                    for item in judgement_plan.plan(
+                        child.session, applied.contract_id, str(batch["migration_no"])
+                    )
+                ],
             }
     finally:
         savepoint.rollback()

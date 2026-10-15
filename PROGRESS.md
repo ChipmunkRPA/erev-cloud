@@ -2,6 +2,21 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Proposed migration judgement content — October 14, 2026
+
+- Basis v4 includes exact proposed conclusions/rationales/questionnaires and stable targets.
+  Distinctness follows published templates, binding version ids/hashes; collectibility has
+  one proposed probable assessment per enabled book at inception (BS3-D-23/26). These remain
+  proposals, with no fabricated reviewer or reviewed records. Fresh target resolution refuses
+  a missing obligation instead of falling back to the contract.
+- Real PostgreSQL witness: two obligation proposals and ASC606 collectibility, IFRS15 adds
+  its own proposal, no judgement rows persist, and rollback restores the original plan.
+  Final domain/PG/architecture suite: 84 passed (26.30s); strict production plus changed
+  tests (891 sources) and Ruff pass. Logs: .run/migration-judgement-plan-*.log.
+- Approved record creation, assessment events and their resulting output proof, final
+  activation, policy/report checks and atomic promotion remain unfinished. Older immutable
+  full CI is live at 94%. Publish directly to main; no deployment/readiness claim.
+
 ## Approved status for composed activation — October 14, 2026
 
 - consume_fresh_basis now shares the direct approval-hook guard: the request must name the
@@ -222,25 +237,6 @@
 - Persistence, command/read/UI, adapter, snapshot/export and migration promotion remain
   unfinished. Capture's option refusal remains. No readiness claim or deployment.
   Older CI 165d63c is still running at 36%; it is not current-main release evidence.
-
-## Entity-scope reconciliation verification — October 14, 2026
-
-- Reproduced two CI failures in entity-scoped CSV contract quarantine. Both correctly
-  committed the admitted contract; exact legacy total assertions rejected the newer
-  amount_sums and monetary_checks fields. Assertions now require only EVE-UK-0002/0003
-  in the respective stored evidence, matching source/stored lines of USD 96,000 and
-  24,000, USD 120,000 total, and exact loaded/quarantined counts. Refused contracts and
-  partial contract writes remain prohibited by the existing persisted-row checks.
-- Initial full file: 40 passed, 2 stale assertions failed (246.11s). Both corrected cases
-  plus out-of-scope submit/cancel denial: 3 passed (24.61s). Strict test Mypy and Ruff pass;
-  an empty command-body tuple received an explicit type. Logs: .run/import-scope-baseline.log,
-  .run/import-scope-fixed.log and .run/import-scope-types.log.
-- Audited migration conversion: staged option SSP equals original quantity times price,
-  but T-CON-14/bundle inputs do not preserve that per-option entered amount. Quantity-one
-  conversion cannot safely reuse a shared catalogue point. Recorded the dependency and
-  two-options/same-catalogue acceptance case in MATERIAL-RIGHTS-IMPLEMENTATION.md.
-  Conversion refusal remains until the complete amount/promotion/replay path is implemented.
-- Older full CI 165d63c remains live at 35%. No readiness claim or deployment; publish to main.
 
 ## Outstanding release verification
 

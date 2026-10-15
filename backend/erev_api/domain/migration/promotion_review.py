@@ -134,7 +134,7 @@ def review_basis(uow: UnitOfWork, batch_id: UUID) -> dict[str, Any]:
         .all()
     )
     return {
-        "basis_schema": 3,
+        "basis_schema": 4,
         "reproduced_contracts": reproduced,
         "migration_id": str(batch_id),
         "mode": str(batch["mode"]),

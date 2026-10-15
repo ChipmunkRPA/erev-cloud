@@ -3863,3 +3863,22 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   fixture corrections covered select events, currency reference and the API test filename.
 - This is component/API evidence, not live full-browser accounting acceptance. Governed
   exercise/correction, migration and release/accountant sign-off remain open. Build passed; no deployment.
+
+## Entity-scope reconciliation verification — October 14, 2026
+
+- Reproduced two CI failures in entity-scoped CSV contract quarantine. Both correctly
+  committed the admitted contract; exact legacy total assertions rejected the newer
+  amount_sums and monetary_checks fields. Assertions now require only EVE-UK-0002/0003
+  in the respective stored evidence, matching source/stored lines of USD 96,000 and
+  24,000, USD 120,000 total, and exact loaded/quarantined counts. Refused contracts and
+  partial contract writes remain prohibited by the existing persisted-row checks.
+- Initial full file: 40 passed, 2 stale assertions failed (246.11s). Both corrected cases
+  plus out-of-scope submit/cancel denial: 3 passed (24.61s). Strict test Mypy and Ruff pass;
+  an empty command-body tuple received an explicit type. Logs: .run/import-scope-baseline.log,
+  .run/import-scope-fixed.log and .run/import-scope-types.log.
+- Audited migration conversion: staged option SSP equals original quantity times price,
+  but T-CON-14/bundle inputs do not preserve that per-option entered amount. Quantity-one
+  conversion cannot safely reuse a shared catalogue point. Recorded the dependency and
+  two-options/same-catalogue acceptance case in MATERIAL-RIGHTS-IMPLEMENTATION.md.
+  Conversion refusal remains until the complete amount/promotion/replay path is implemented.
+- Older full CI 165d63c remains live at 35%. No readiness claim or deployment; publish to main.

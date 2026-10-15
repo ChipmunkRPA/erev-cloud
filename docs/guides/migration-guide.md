@@ -14,6 +14,9 @@ Every book, trace, schedule, posting intent and diagnostic must reproduce; tempo
 and audit buffers are discarded. Review also records all seven pre-activation checks and
 refuses failed prerequisites. Distinctness and collectibility reviews required by the migration
 approver remain explicitly pending and failed; they are not treated as satisfied by reproduction.
+The review basis includes the proposed judgement conclusions, rationales, questionnaires,
+obligation targets, published template references and dated collectibility proposal for each
+enabled book. These are proposals for independent review, not existing reviewed records.
 This preflight does not enable the promotion command.
 
 Converted-option import remains unavailable while promotion is unfinished. In the implemented

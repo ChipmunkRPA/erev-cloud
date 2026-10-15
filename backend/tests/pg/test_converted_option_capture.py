@@ -14,6 +14,7 @@ from erev_api.db.tables import (
     contract,
     entity_book,
     fiscal_calendar,
+    judgement_record,
     legal_entity,
     material_right,
     migration_batch,
@@ -32,6 +33,7 @@ from erev_api.domain.contracts import computation
 from erev_api.domain.migration import (
     capture,
     jobs,
+    judgement_plan,
     opening_balances,
     opening_plan,
     option_reconciliation,
@@ -249,6 +251,46 @@ def test_platform_applier_captures_converted_option_and_rolls_back(
             captured, rows = capture.read_version(
                 session, applied=applied, capture_operation_id=batch["capture_operation_id"]
             )
+            proposed = judgement_plan.plan(session, applied.contract_id, batch["migration_no"])
+            assert {item.obligation_key for item in proposed if item.obligation_key} == {
+                "OPTION",
+                "PAID",
+            }
+            collectibility = [item for item in proposed if item.obligation_key is None]
+            assert len(collectibility) == 1
+            assert collectibility[0].book == BookCode.ASC606
+            assert collectibility[0].assessment_date == opening.inception_date
+            assert session.execute(select(judgement_record.c.id)).first() is None
+            book_change = session.begin_nested()
+            try:
+                session.execute(
+                    update(book_table).where(book_table.c.code == "IFRS15").values(is_enabled=True)
+                )
+                session.execute(
+                    insert(entity_book).values(
+                        **entity_book_values(
+                            tenant_id,
+                            entity_id=entity["id"],
+                            first_period_id=january["id"],
+                            book_code=BookCode.IFRS15,
+                        )
+                    )
+                )
+                both_books = judgement_plan.plan(
+                    session, applied.contract_id, batch["migration_no"]
+                )
+                assert {item.book for item in both_books if item.obligation_key is None} == {
+                    BookCode.ASC606,
+                    BookCode.IFRS15,
+                }
+                assert [item for item in both_books if item.obligation_key is not None] == [
+                    item for item in proposed if item.obligation_key is not None
+                ]
+            finally:
+                book_change.rollback()
+            assert (
+                judgement_plan.plan(session, applied.contract_id, batch["migration_no"]) == proposed
+            )
             bundle = decode_input(applied.input_evidence)
             assert bundle.sha256() == applied.input_sha256
             assert len(rows) == 2
@@ -348,6 +390,13 @@ def test_platform_applier_captures_converted_option_and_rolls_back(
 
         before = tuple(uow.audit_events)
         basis = promotion_review.review_basis(uow, batch["id"])
+        proposed_content = basis["reproduced_contracts"][opening.external_id]["proposed_judgements"]
+        assert proposed_content == [item.review_content() for item in proposed]
+        assert all(
+            "subject to independent promotion review" in item["rationale"]
+            for item in proposed_content
+        )
+        assert session.execute(select(judgement_record.c.id)).first() is None
         preview = basis["reproduced_contracts"][opening.external_id]["activation"]
         assert not preview["ready_for_activation"]
         assert "STEP1_RECORD" in preview["pending_review_checks"]

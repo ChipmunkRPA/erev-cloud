@@ -674,3 +674,26 @@ The combined verified coverage is 124 unique cases. Strict production plus the d
 passes (889 sources); Ruff passes. Evidence: `.run/approval-consumption-status-{tests,final,types}.log`.
 Promotion judgement creation, independent approval/MFA, policy/report checks and atomic activation
 remain unfinished. No deployment or readiness claim.
+
+## Proposed promotion judgement content, October 14
+
+Review basis v4 includes the proposed judgements of each reproduced contract, using stable
+contract/obligation keys instead of temporary database identities. Each distinct/nondistinct
+obligation uses the current published template's flag, version id and content hash (the same
+selection as activation); series templates do not create distinctness proposals. Each enabled
+book has a collectibility proposal plus the proposed probable assessment dated at inception,
+as required by BS3-D-23/26. Conclusions, rationales and questionnaires are explicit review
+content. The rationale says the proposal awaits independent promotion review; no reviewer or
+REVIEWED status is fabricated. The body adapter resolves fresh ids after booking and refuses
+missing obligation targets rather than substituting the contract.
+
+The PostgreSQL converted-option witness produces two obligation proposals and one ASC606
+collectibility proposal without persisting a judgement. Enabling IFRS15 adds its own proposal
+without changing obligation content; rollback restores the original plan and repeated review
+remains stable. Final domain/PG/architecture suite: 84 passed (26.30s); strict production plus
+changed tests passed (891 sources); Ruff passed. Logs: `.run/migration-judgement-plan-*.log`.
+
+This prepares the exact content for approval. Creating/reviewing these records under the
+consumed promotion approval, appending the assessment events, proving the resulting accounting
+output, final activation checks, policy/report checks and atomic live creation remain unfinished.
+No public promotion route, converted-option import enablement, deployment or readiness claim.

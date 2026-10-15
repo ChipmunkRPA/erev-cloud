@@ -18,7 +18,8 @@ confirmed opening choices against captured input. It replays the retained output
 rebuilds contracts against current configuration inside a rollback-only savepoint, comparing
 all output fields except the input identity hash. Review binds the complete pre-activation
 checklist, rejects failed non-review prerequisites and exposes distinctness/collectibility
-reviews as pending, never passed. Creating/reviewing those judgements under approval and final
+reviews as pending, never passed. Its basis includes the exact proposed judgement content and
+per-book dated collectibility assessments. Creating/reviewing those judgements under approval and final
 activation admission remain unfinished, as do policy publication, report validation, atomic
 live creation and the approval route.
 See MATERIAL-RIGHTS-IMPLEMENTATION.md for evidence and remaining boundaries.
