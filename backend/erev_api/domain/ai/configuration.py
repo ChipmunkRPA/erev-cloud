@@ -2,11 +2,21 @@
 
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import ColumnElement, select
 from sqlalchemy.orm import Session
 
 from erev_api.db.tables import registry_version
 from erev_api.problems import Problem
+
+
+def version_scope() -> tuple[ColumnElement[bool], ...]:
+    """Fixed category and scope, applied in addition to the caller's tenant RLS."""
+    return (
+        registry_version.c.category == "AI",
+        registry_version.c.scope == "TENANT",
+        registry_version.c.entity_id.is_(None),
+        registry_version.c.book_code.is_(None),
+    )
 
 
 def require_version(session: Session, version_id: UUID) -> None:
@@ -14,10 +24,7 @@ def require_version(session: Session, version_id: UUID) -> None:
     found = session.scalar(
         select(registry_version.c.id).where(
             registry_version.c.id == version_id,
-            registry_version.c.category == "AI",
-            registry_version.c.scope == "TENANT",
-            registry_version.c.entity_id.is_(None),
-            registry_version.c.book_code.is_(None),
+            *version_scope(),
         )
     )
     if found is None:

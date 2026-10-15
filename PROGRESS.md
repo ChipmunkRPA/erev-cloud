@@ -2,6 +2,20 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+
+## Administrator AI version discovery — October 15, 2026
+
+- Added GET /ai/settings/versions with workspace-wide settings.manage, fixed tenant AI scope,
+  status filtering, sorting, counts and cursor pagination. It shares the individual-read scope
+  predicate, so refresh can rediscover drafts, pending requests and publication history.
+- Tenant Admin already includes config.read; those broader read grants are unchanged. This
+  endpoint gives the AI workflow its own scoped read boundary. Accounting authoring is unchanged.
+  The settings editor, effective-status presentation and standard J-19/demo journey remain open.
+- OpenAPI and TypeScript contracts regenerated. Route/scope architecture checks pass (11),
+  backend typing passes 795 files, frontend typing and full lint pass (503 control markers).
+  API verification and evidence are recorded in docs/release/CI-2026-10-15.md.
+- No deployment or provider calls; frozen CI on 3cf8f5b remains active on its own database.
+
 ## Independent administrator AI approvals — October 15, 2026
 
 - New AI submissions use AI_SETTINGS_VERSION with workspace-wide settings.manage review.

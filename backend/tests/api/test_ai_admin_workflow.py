@@ -15,7 +15,7 @@ from fastapi import FastAPI
 from support.http import call
 from support.principals import Actor, colleague, cookie_headers, enrolled, member
 from support.reference import approve
-from support.rows import insert_registry_version, insert_role_assignment
+from support.rows import insert_registry_version, insert_role_assignment, publish_registry_version
 from tests.api.test_tenant_api import app as app  # noqa: F401
 
 
@@ -277,3 +277,95 @@ def test_independent_admin_approves_ai_without_accounting_role(
             now=clock.now(),
             platform_kill_switch=False,
         ).enabled
+
+
+def test_admin_discovers_only_tenant_ai_versions(
+    app: FastAPI, administrator: Actor, keyring: KeyRing, clock: FrozenClock
+) -> None:
+    own = administrator.member
+    other = member(keyring, clock)
+    headers = cookie_headers(administrator.token, administrator.csrf_token)
+    path = "/api/v1/ai/settings/versions"
+    initial = call(app, "GET", path, headers=headers)
+    assert initial.status_code == 200, initial.text
+    assert len(initial.json()["items"]) == 1  # Provisioning publishes default tenant settings.
+    initial_id = initial.json()["items"][0]["id"]
+    with tenant_session(DbContext(own.tenant_id, own.user_id, "*")) as session:
+        published_id = publish_registry_version(
+            session,
+            tenant_id=own.tenant_id,
+            category=RegistryCategory.AI,
+            values={"ai.enabled": False},
+        )
+        insert_registry_version(
+            session,
+            tenant_id=own.tenant_id,
+            category=RegistryCategory.ACCOUNTING_POLICY,
+        )
+    with tenant_session(DbContext(other.tenant_id, other.user_id, "*")) as session:
+        insert_registry_version(session, tenant_id=other.tenant_id, category=RegistryCategory.AI)
+    headers = cookie_headers(administrator.token, administrator.csrf_token)
+    path = "/api/v1/ai/settings/versions"
+    created = call(app, "POST", path, json={"values": {"ai.enabled": True}}, headers=headers)
+    assert created.status_code == 201, created.text
+    draft_id = created.json()["id"]
+    first = call(app, "GET", path, params={"limit": 1, "count": "true"}, headers=headers)
+    assert first.status_code == 200, first.text
+    assert first.headers["X-Erev-Total-Count"] == "3"
+    assert [item["id"] for item in first.json()["items"]] == [draft_id]
+    cursor = first.json()["next_cursor"]
+    assert cursor
+    second = call(app, "GET", path, params={"limit": 1, "cursor": cursor}, headers=headers)
+    assert second.status_code == 200, second.text
+    assert [item["id"] for item in second.json()["items"]] == [str(published_id)]
+    third = call(
+        app,
+        "GET",
+        path,
+        params={"limit": 1, "cursor": second.json()["next_cursor"]},
+        headers=headers,
+    )
+    assert third.status_code == 200, third.text
+    assert [item["id"] for item in third.json()["items"]] == [initial_id]
+    assert third.json()["next_cursor"] is None
+    filtered = call(app, "GET", path, params={"status": "PUBLISHED"}, headers=headers)
+    assert filtered.status_code == 200, filtered.text
+    assert [item["id"] for item in filtered.json()["items"]] == [str(published_id)]
+    rebound = call(
+        app,
+        "GET",
+        path,
+        params={"cursor": cursor, "status": "DRAFT"},
+        headers=headers,
+    )
+    assert rebound.status_code == 422, rebound.text
+    # Tenant Admin already has config.read; its broader read remains unchanged.
+    general = call(app, "GET", "/api/v1/policies", headers=headers)
+    assert general.status_code == 200, general.text
+    assert any(item["category"] == "ACCOUNTING_POLICY" for item in general.json()["items"])
+
+
+@pytest.mark.parametrize("query", ["category=ACCOUNTING_POLICY", "scope=ENTITY", "status=INVALID"])
+def test_ai_version_list_refuses_scope_changes_and_invalid_filters(
+    app: FastAPI, administrator: Actor, query: str
+) -> None:
+    response = call(
+        app,
+        "GET",
+        f"/api/v1/ai/settings/versions?{query}",
+        headers=cookie_headers(administrator.token, administrator.csrf_token),
+    )
+    assert response.status_code == 422, response.text
+
+
+def test_ai_version_list_requires_administrator(
+    app: FastAPI, keyring: KeyRing, clock: FrozenClock
+) -> None:
+    ordinary = enrolled(app, clock, member(keyring, clock))
+    response = call(
+        app,
+        "GET",
+        "/api/v1/ai/settings/versions",
+        headers=cookie_headers(ordinary.token, ordinary.csrf_token),
+    )
+    assert response.status_code == 403, response.text

@@ -21,16 +21,25 @@ from erev_api.api.deps import (
     row_etag,
     run_command,
 )
+from erev_api.api.lists import (
+    TOTAL_COUNT_HEADER,
+    FilterSpec,
+    ListParams,
+    ListSpec,
+    list_params,
+    paginate,
+)
 from erev_api.auth.dependencies import require_all_entities
 from erev_api.auth.principal import RequestContext
 from erev_api.db.session import tenant_session
+from erev_api.db.tables import registry_version
 from erev_api.domain.ai import configuration
 from erev_api.domain.platform.jobs import job_out_of
 from erev_api.domain.policies import registry_versions
-from erev_api.enums import RegistryCategory, RegistryScope
+from erev_api.enums import ConfigStatus, RegistryCategory, RegistryScope
 from erev_api.registry.versions import BASIS_PREDECESSOR
 from erev_api.schemas.ai_settings import AISettingsVersionIn, AISettingsVersionUpdateIn
-from erev_api.schemas.common import JobOut
+from erev_api.schemas.common import JobOut, ListOut
 from erev_api.schemas.policies import PolicyCommentIn, PolicyOut, PolicyTestIn
 from erev_api.uow import UnitOfWork
 
@@ -48,6 +57,51 @@ PROBLEMS: Final = (
     "idempotency-in-progress",
 )
 router = APIRouter(prefix=API_PREFIX, tags=["API-R-47 AI settings"], route_class=GuardedRoute)
+
+
+VERSION_LIST: Final = ListSpec(
+    resource="ai-settings-versions",
+    sort_keys={
+        "id": registry_version.c.id,
+        "version_no": registry_version.c.version_no,
+        "created_at": registry_version.c.created_at,
+    },
+    default_sort="-version_no",
+    filters={
+        "status": FilterSpec(
+            name="status",
+            column=registry_version.c.status,
+            kind="exact",
+            choices=frozenset(status.value for status in ConfigStatus),
+        ),
+    },
+)
+
+
+@router.get(
+    PATH,
+    operation_id="ai_settings_versions_list",
+    response_model=ListOut[PolicyOut],
+    responses=problem_responses(*PROBLEMS),
+)
+def list_versions(
+    response: Response,
+    ctx: Annotated[RequestContext, Depends(require_all_entities(PERMISSION))],
+    params: Annotated[ListParams, Depends(list_params)],
+    deps: Annotated[KernelDeps, Depends(kernel_deps)],
+) -> ListOut[PolicyOut]:
+    """Discover tenant AI versions without access to accounting policies."""
+    with tenant_session(ctx.principal.db_context, read_only=True) as session:
+        statement = registry_versions.policy_select().where(*configuration.version_scope())
+        result = paginate(session, statement, VERSION_LIST, params)
+        items = registry_versions.policy_outs(
+            session, result.items, files=deps.files, keyring=deps.keyring
+        )
+    if result.total_count is not None:
+        response.headers[TOTAL_COUNT_HEADER] = result.total_count
+    return ListOut[PolicyOut](
+        items=[PolicyOut.model_validate(item) for item in items], next_cursor=result.next_cursor
+    )
 
 
 def _out(uow: UnitOfWork, version_id: UUID) -> PolicyOut:

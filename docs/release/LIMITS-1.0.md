@@ -92,13 +92,17 @@ original configuration approval permission. First
 enablement and emergency-switch clearing withhold automatic approval; an unrelated budget edit
 while AI remains enabled keeps normal routing. Publication replay cannot undo a later disable,
 and publishing ai.enabled=false leaves the switch intact. There is no direct enable command.
-Administrator-only AI authoring is now available at `/api/v1/ai/settings/versions`: create,
+Administrator-only AI authoring is now available at `/api/v1/ai/settings/versions`: list, create,
 read, update with If-Match, queue the existing policy validation/simulation job, submit and
 withdraw. These endpoints require workspace-wide settings.manage and its MFA guard, fix the
 category/scope to tenant AI, and refuse other-category or other-tenant version IDs. They reuse
 the registry version, audit, hashing and simulation lifecycle and expose no publish/enable
 shortcut. General accounting authoring still requires config.author. Generated OpenAPI and
 TypeScript definitions include the new endpoints; the settings UI is not yet wired to them.
+The version list supports status filtering, version/date sorting, counts and cursor pagination.
+It fixes category/scope to tenant AI before pagination and shares the individual-read scope
+predicate. Administrators can rediscover drafts, submitted requests and published history without
+accounting read permission. Effective-value display and the settings editor remain unfinished.
 
 New AI submissions now use AI_SETTINGS_VERSION and workspace-wide settings.manage for review,
 so a different Tenant Admin can read and approve without accounting configuration privileges.
