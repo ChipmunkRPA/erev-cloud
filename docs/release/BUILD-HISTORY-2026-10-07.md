@@ -5152,3 +5152,25 @@ cleanup in the shared database session kernel was also repaired and regression-t
   is copied to a dictionary at the shared serializer boundary to satisfy strict typing.
 - Acceptance, extraction, anomaly summaries, Q&A and broader release/accounting requirements
   remain open. No deployment or live provider calls; no production-readiness claim.
+
+## Authorized extraction input preparation — October 15, 2026
+
+- Added a worker-only document retrieval component: reauthorize the current human and attempt,
+  require enabled AI and text consent, bind a readable ATTACHMENT/PDF source, enforce its size
+  and hash, and audit decrypted reads as the human. An injected isolated parser runs outside
+  SQL sessions; heartbeats and fresh admission afterward check cancellation, grants, settings
+  and source access before redacted request preparation. Original pages/citation mappings stay
+  local. The PDF byte limit is shared with the adapter; cancellation guard exports stay compatible.
+- This component does not call a provider, reserve tokens or create a proposal. Extraction
+  dispatch, durable encrypted text, provider recovery, proposal persistence and submission still
+  need integration. No accounting command or automatic field application was introduced.
+- Verification: 20 AI database regressions passed, plus the final focused expiry case. The new
+  test reads an encrypted fixture through the file service, checks disabled/text-off/hash/access
+  refusals, user download audits, redaction, disable/revocation during parsing and cancellation.
+  52 parser/preparation/layer cases passed; two Linux resource-limit cases skipped on this Mac.
+  Full lint and typecheck passed (928 Python sources plus frontend); focused typing passed 780
+  sources. Logs: .run/ai-document-read-{regressions-final,expiry-final,unit,lint,typecheck,
+  types-verified}.log. A nullable tenant-kind read was tightened to scalar_one for typing.
+- The broader run exposed a prior expiry test counting other committed tenants. Local exact
+  assertions now name its tenant; global fan-out and repeat-run checks remain, with exact audit
+  checks for its proposals. Production expiry code was unchanged. No deployment/live AI calls.

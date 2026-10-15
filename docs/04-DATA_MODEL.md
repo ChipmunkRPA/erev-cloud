@@ -6377,7 +6377,7 @@ Disabling AI does not revoke evidence reads. `POST /ai/proposals/{id}/reject` su
 idempotency and permission `ai.use` plus current source read access. Only a human can reject an
 unexpired `proposed` item; the row lock, reviewer/time/reason, row-version increment and
 `ai_proposal.reject` audit event share one transaction. The response is the updated proposal
-with ETag. AI disable does not prevent rejection. `GET /ai/proposals` pages the same authorized number explanations under API-C-09, with
+with ETag. AI disable does not prevent rejection. `GET /ai/proposals` pages authorized number explanations and contract extractions under API-C-09, with
 `kind`/`status` filters, optional authorized total counts, and `id`/`created_at` sorts (default
 `-created_at`, then id descending). Source authorization precedes pagination and counts on every
 request; unsupported proposal kinds are excluded. Acceptance and other proposal kinds remain
@@ -8055,7 +8055,10 @@ and `object_label`, following the existing computation-fact audit convention.
   ATTACHMENT/PDF. Source ownership is checked before selecting suggested fields or citations.
   The response includes file_object_id, document_text_file_id and the retained content array;
   it does not decrypt text or call a provider. AI disable does not revoke retained reads.
-  Extraction list integration remains unimplemented.
+  The list endpoint includes both kinds. Extraction source metadata is authorized through all
+  file ownership rules before SQL pagination/counts, using a single UUID-array parameter for
+  readable source IDs. This currently performs per-source ownership checks; high-volume latency
+  verification remains outstanding.
 - `POST /ai/contract-extractions` accepts `{file_id}` only and returns 202 API-S-Job with
   `Location: /api/v1/jobs/{id}`. Permission `ai.use`, human initiator, current readable unshredded
   ATTACHMENT/PDF and enabled AI/text consent are required. Missing and unreadable sources both

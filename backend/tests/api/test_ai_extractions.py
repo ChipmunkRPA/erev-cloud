@@ -244,6 +244,17 @@ def test_extraction_submission_and_worker(
     assert detail.json()["content"] == proposal["content"]
     assert detail.json()["citations"] == proposal["citations"]
     assert detail.headers["ETag"]
+    listing = call(
+        world.app,
+        "GET",
+        "/api/v1/ai/proposals",
+        params={"kind": "CONTRACT_EXTRACTION", "count": "true", "limit": 1},
+        headers=headers,
+    )
+    assert listing.status_code == 200, listing.text
+    assert listing.headers["X-Erev-Total-Count"] == "1"
+    assert listing.json()["items"] == [detail.json()]
+    assert listing.json()["next_cursor"] is None
     text_path = f"{detail_path}/document-text"
     text_response = call(world.app, "GET", text_path, headers=headers)
     assert text_response.status_code == 200, text_response.text
@@ -275,6 +286,16 @@ def test_extraction_submission_and_worker(
         world.app, "GET", detail_path, headers=cookie_headers(other.token, other.csrf_token)
     )
     assert hidden_detail.status_code == 404, hidden_detail.text
+    hidden_list = call(
+        world.app,
+        "GET",
+        "/api/v1/ai/proposals",
+        params={"count": "true"},
+        headers=cookie_headers(other.token, other.csrf_token),
+    )
+    assert hidden_list.status_code == 200, hidden_list.text
+    assert hidden_list.headers["X-Erev-Total-Count"] == "0"
+    assert hidden_list.json() == {"items": [], "next_cursor": None}
     for denied_actor, expected_status in ((reader, 403), (other, 404)):
         denied_text = call(
             world.app,
@@ -326,6 +347,24 @@ def test_extraction_submission_and_worker(
     assert rejected.json()["content"] == detail.json()["content"]
     assert rejected.json()["citations"] == detail.json()["citations"]
     assert rejected.json()["row_version"] == detail.json()["row_version"] + 1
+    rejected_list = call(
+        world.app,
+        "GET",
+        "/api/v1/ai/proposals",
+        params={"kind": "CONTRACT_EXTRACTION", "status": "rejected", "count": "true"},
+        headers=headers,
+    )
+    assert rejected_list.status_code == 200, rejected_list.text
+    assert rejected_list.headers["X-Erev-Total-Count"] == "1"
+    assert rejected_list.json()["items"] == [rejected.json()]
+    proposed_list = call(
+        world.app,
+        "GET",
+        "/api/v1/ai/proposals",
+        params={"status": "proposed", "count": "true"},
+        headers=headers,
+    )
+    assert proposed_list.status_code == 200 and proposed_list.headers["X-Erev-Total-Count"] == "0"
     terminal_headers = cookie_headers(actor.token, actor.csrf_token)
     terminal_headers["If-Match"] = rejected.headers["ETag"]
     terminal = call(world.app, "POST", reject_path, json=reject_body, headers=terminal_headers)
@@ -378,6 +417,12 @@ def test_extraction_submission_and_worker(
         world.app, "POST", reject_path, json=reject_body, headers=winning_headers
     )
     assert unavailable_replay.status_code == 404, unavailable_replay.text
+    unavailable_list = call(
+        world.app, "GET", "/api/v1/ai/proposals", params={"count": "true"}, headers=headers
+    )
+    assert unavailable_list.status_code == 200, unavailable_list.text
+    assert unavailable_list.headers["X-Erev-Total-Count"] == "0"
+    assert unavailable_list.json() == {"items": [], "next_cursor": None}
     assert len(observed) == 1
 
 

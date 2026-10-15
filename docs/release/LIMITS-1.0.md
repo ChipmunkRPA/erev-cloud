@@ -103,10 +103,15 @@ submission, proposal acceptance, extraction review and Q&A remain unfinished; a 
 worker proposal is not a completed human workflow. Budget admission is still checked by the
 worker, and durable AI-specific admission-failure evidence remains outstanding.
 
-GET /ai/proposals now pages authorized NUMBER_EXPLANATION evidence, with kind/status filters,
+GET /ai/proposals now pages authorized NUMBER_EXPLANATION and CONTRACT_EXTRACTION evidence, with kind/status filters,
 optional authorized totals and stable cursor pagination (created_at descending, then id descending
 by default; id and created_at sorts supported). Source checks happen in SQL before paging and
-counting, and apply again on every page. Unsupported kinds are excluded, including from totals.
+counting, and apply again on every page. For extraction, only distinct referenced source-file
+metadata is inspected through the existing ownership rules before SQL paging/counting; no
+proposal body or document text is read during authorization. Readable IDs use one UUID-array
+parameter. This preserves shared-upload and attachment permissions but still performs per-source
+authorization work; large-tenant latency/load verification and optimization remain outstanding.
+Unsupported kinds are excluded, including from totals.
 The shared list protocol refuses invalid filters/cursors and cursors with changed filters/sorts.
 
 GET /ai/proposals/{id} now returns retained NUMBER_EXPLANATION evidence, including content,
@@ -119,7 +124,7 @@ current human ai.use grant and original ATTACHMENT/PDF access through the file o
 It selects only binding metadata before authorization, then returns suggested fields, citations,
 source/text file IDs and the common status/actor/ETag metadata. Unreadable or shredded sources
 return 404; AI disable does not prevent retained reads. Other kinds still fail closed. Extraction
-list integration remains unfinished.
+list integration now uses the same source ownership checks before pagination.
 POST /ai/proposals/{id}/reject supports number-explanation and extraction proposals for a human
 with current source access, a nonempty reason and the current If-Match ETag. Rejection locks
 the proposal, advances its row version and records the reviewer and audit event in one
@@ -183,7 +188,7 @@ reuse the retained request, unknown outcomes/usage block new calls, and mid-call
 records usage without a proposal. No model fallback or SDK-level retry is introduced.
 AI_TASK dispatch accepts bounded extraction selectors, source hash and field paths; the worker
 composition root supplies the isolated PDF parser and lazy provider factory. The public API
-still needs extraction list integration and human review/acceptance. Queue selectors and gateway paths
+still needs extraction field decisions and human acceptance. Queue selectors and gateway paths
 now use the fixed catalogue; arbitrary accounting fields cannot be requested.
 
 The PDF adapter has file/page/text and parser limits, an isolated subprocess, timeout cleanup
@@ -210,7 +215,7 @@ GET /ai/proposals/{id}/document-text now returns original numbered pages after c
 access checks and an audited encrypted-file read. It verifies plaintext size/digest and the
 canonical source/job envelope, enforces page/text bounds, refuses shredded text, and works with
 AI disabled. Other proposal kinds return 404. No model call or document parsing occurs during
-review. Extraction list integration and human acceptance remain open.
+review. Extraction field decisions and human acceptance remain open.
 
 Earlier architecture failures and subsequent fixes are preserved in the build history.
 The October 15 full architecture plus file API run passed 292 checks in 226.83 seconds

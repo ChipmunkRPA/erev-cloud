@@ -2,6 +2,27 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Authorized extraction review list — October 15, 2026
+
+- GET /ai/proposals now includes extraction evidence alongside number explanations, with the
+  shared kind/status filters, authorized totals and stable cursor pagination. Extraction source
+  metadata is checked through the existing file ownership rules before SQL paging/counting or
+  selecting proposal content. Shredded/non-PDF sources and unsupported kinds cannot enter results.
+- Only distinct referenced source-file metadata is scanned, in batches; readable UUIDs use one
+  array parameter. This preserves uploader/shared-upload and attachment access semantics but
+  still performs per-source authorization work. Large-tenant latency/load verification and
+  optimization remain outstanding. Missing contract.read grants exclude narrative evidence
+  without preventing otherwise authorized extraction reads.
+- Verification: five PostgreSQL API cases passed, covering extraction inclusion, exact counts,
+  kind/status filters, denied source owners, disappearance after shredding, and narrative cursor,
+  grant-narrowing and review regressions. Twenty-eight architecture/list-contract checks passed.
+  Full typecheck passed (934 Python sources plus frontend), focused typing passed 786 sources,
+  and OpenAPI/frontend generation passed. Logs:
+  .run/ai-extraction-list-{api,architecture,typecheck,types-final,openapi,lint}.log.
+  Full lint and final diff checks also passed.
+- Per-field decisions, structured acceptance and broader release/accounting verification remain
+  open. No deployment or live provider calls.
+
 ## Extraction proposal rejection — October 15, 2026
 
 - Extended POST /ai/proposals/{id}/reject to extraction evidence, sharing the existing reason,
@@ -206,28 +227,6 @@
 - Extraction dispatch, budget/provider recovery, submission, field schemas and human acceptance
   remain open. These components do not invoke a provider or apply accounting changes. Broader
   release verification and independent accounting sign-off remain outstanding. No deployment.
-
-## Authorized extraction input preparation — October 15, 2026
-
-- Added a worker-only document retrieval component: reauthorize the current human and attempt,
-  require enabled AI and text consent, bind a readable ATTACHMENT/PDF source, enforce its size
-  and hash, and audit decrypted reads as the human. An injected isolated parser runs outside
-  SQL sessions; heartbeats and fresh admission afterward check cancellation, grants, settings
-  and source access before redacted request preparation. Original pages/citation mappings stay
-  local. The PDF byte limit is shared with the adapter; cancellation guard exports stay compatible.
-- This component does not call a provider, reserve tokens or create a proposal. Extraction
-  dispatch, durable encrypted text, provider recovery, proposal persistence and submission still
-  need integration. No accounting command or automatic field application was introduced.
-- Verification: 20 AI database regressions passed, plus the final focused expiry case. The new
-  test reads an encrypted fixture through the file service, checks disabled/text-off/hash/access
-  refusals, user download audits, redaction, disable/revocation during parsing and cancellation.
-  52 parser/preparation/layer cases passed; two Linux resource-limit cases skipped on this Mac.
-  Full lint and typecheck passed (928 Python sources plus frontend); focused typing passed 780
-  sources. Logs: .run/ai-document-read-{regressions-final,expiry-final,unit,lint,typecheck,
-  types-verified}.log. A nullable tenant-kind read was tightened to scalar_one for typing.
-- The broader run exposed a prior expiry test counting other committed tenants. Local exact
-  assertions now name its tenant; global fan-out and repeat-run checks remain, with exact audit
-  checks for its proposals. Production expiry code was unchanged. No deployment/live AI calls.
 
 ## Outstanding release verification
 

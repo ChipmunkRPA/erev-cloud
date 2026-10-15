@@ -400,7 +400,7 @@ export interface paths {
     };
     /**
      * Proposals List
-     * @description Page authorized number explanations, with kind/status filters and stable cursor order.
+     * @description Page authorized retained proposals with kind/status filters and stable cursor order.
      */
     get: operations["ai_proposals_list"];
     put?: never;
@@ -15342,13 +15342,6 @@ export interface components {
        */
       status: "PASS" | "FAIL";
     };
-    /** ListOut[AIProposalOut] */
-    ListOut_AIProposalOut_: {
-      /** Items */
-      items: components["schemas"]["AIProposalOut"][];
-      /** Next Cursor */
-      next_cursor: string | null;
-    };
     /** ListOut[AccessReviewItemOut] */
     ListOut_AccessReviewItemOut_: {
       /** Items */
@@ -16004,6 +15997,15 @@ export interface components {
     ListOut_TenantSnapshotOut_: {
       /** Items */
       items: components["schemas"]["TenantSnapshotOut"][];
+      /** Next Cursor */
+      next_cursor: string | null;
+    };
+    /** ListOut[Union[AIProposalOut, AIExtractionProposalOut]] */
+    ListOut_Union_AIProposalOut__AIExtractionProposalOut__: {
+      /** Items */
+      items: (
+        components["schemas"]["AIProposalOut"] | components["schemas"]["AIExtractionProposalOut"]
+      )[];
       /** Next Cursor */
       next_cursor: string | null;
     };
@@ -24903,7 +24905,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ListOut_AIProposalOut_"];
+          "application/json": components["schemas"]["ListOut_Union_AIProposalOut__AIExtractionProposalOut__"];
         };
       };
       /** @description Problem: unauthenticated, session-expired */

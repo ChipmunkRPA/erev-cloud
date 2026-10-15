@@ -19260,34 +19260,6 @@
         "title": "LintResultOut",
         "type": "object"
       },
-      "ListOut_AIProposalOut_": {
-        "properties": {
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/AIProposalOut"
-            },
-            "title": "Items",
-            "type": "array"
-          },
-          "next_cursor": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Next Cursor"
-          }
-        },
-        "required": [
-          "items",
-          "next_cursor"
-        ],
-        "title": "ListOut[AIProposalOut]",
-        "type": "object"
-      },
       "ListOut_AccessReviewItemOut_": {
         "properties": {
           "items": {
@@ -21918,6 +21890,41 @@
           "next_cursor"
         ],
         "title": "ListOut[TenantSnapshotOut]",
+        "type": "object"
+      },
+      "ListOut_Union_AIProposalOut__AIExtractionProposalOut__": {
+        "properties": {
+          "items": {
+            "items": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/AIProposalOut"
+                },
+                {
+                  "$ref": "#/components/schemas/AIExtractionProposalOut"
+                }
+              ]
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor"
+        ],
+        "title": "ListOut[Union[AIProposalOut, AIExtractionProposalOut]]",
         "type": "object"
       },
       "ListOut_UserOut_": {
@@ -43922,7 +43929,7 @@
     },
     "/api/v1/ai/proposals": {
       "get": {
-        "description": "Page authorized number explanations, with kind/status filters and stable cursor order.",
+        "description": "Page authorized retained proposals with kind/status filters and stable cursor order.",
         "operationId": "ai_proposals_list",
         "parameters": [
           {
@@ -44033,7 +44040,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ListOut_AIProposalOut_"
+                  "$ref": "#/components/schemas/ListOut_Union_AIProposalOut__AIExtractionProposalOut__"
                 }
               }
             },

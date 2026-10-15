@@ -114,7 +114,7 @@ def explanations_create(
 @router.get(
     "/ai/proposals",
     operation_id="ai_proposals_list",
-    response_model=ListOut[AIProposalOut],
+    response_model=ListOut[AIProposalOut | AIExtractionProposalOut],
     responses=problem_responses(
         "unauthenticated", "session-expired", "forbidden", "validation-failed"
     ),
@@ -125,15 +125,17 @@ def proposals_list(
     params: Annotated[ListParams, Depends(list_params)],
     kind: Annotated[AiProposalKind | None, Query()] = None,
     status: Annotated[AiProposalStatus | None, Query()] = None,
-) -> ListOut[AIProposalOut]:
-    """Page authorized number explanations, with kind/status filters and stable cursor order."""
+) -> ListOut[AIProposalOut | AIExtractionProposalOut]:
+    """Page authorized retained proposals with kind/status filters and stable cursor order."""
     result, items = queries.list_proposals(
-        ctx.principal,
+        ctx,
         page=lambda session, statement: paginate(session, statement, PROPOSAL_LIST, params),
     )
     if result.total_count is not None:
         response.headers[TOTAL_COUNT_HEADER] = result.total_count
-    return ListOut[AIProposalOut](items=items, next_cursor=result.next_cursor)
+    return ListOut[AIProposalOut | AIExtractionProposalOut](
+        items=items, next_cursor=result.next_cursor
+    )
 
 
 @router.get(

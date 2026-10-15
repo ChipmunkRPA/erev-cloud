@@ -6,12 +6,13 @@ from collections.abc import Callable, Mapping
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import Select, select
+from sqlalchemy import ColumnElement, Select, Uuid, any_, bindparam, false, or_, select
+from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Session
 
 from erev_api.auth.principal import Principal, RequestContext
 from erev_api.db.session import tenant_session
-from erev_api.db.tables import ai_proposal, calc_trace
+from erev_api.db.tables import ai_proposal, calc_trace, file_object
 from erev_api.domain.ai.access import AIAccessRefused, narrative_reader, visible_narrative_trace
 from erev_api.domain.platform import actors, file_access
 from erev_api.domain.platform.approval_queries import Page
@@ -91,12 +92,75 @@ def proposal_statement(principal: Principal) -> Select[Any]:
 
 
 def list_proposals[P: Page](
-    principal: Principal, *, page: Callable[[Session, Select[Any]], P]
-) -> tuple[P, list[AIProposalOut]]:
-    statement = proposal_statement(principal)
+    ctx: RequestContext, *, page: Callable[[Session, Select[Any]], P]
+) -> tuple[P, list[AIProposalOut | AIExtractionProposalOut]]:
+    """Authorize source metadata before SQL pagination, totals, or loading proposal content."""
+    principal = ctx.principal
+    require_reader(ctx)
+    narrative: ColumnElement[bool]
+    try:
+        reader = narrative_reader(principal)
+        narrative = (
+            (ai_proposal.c.kind == "NUMBER_EXPLANATION")
+            & (ai_proposal.c.subject_type == "calc_trace")
+            & visible_narrative_trace(reader.entity_scope)
+        )
+    except AIAccessRefused:
+        narrative = false()
     with tenant_session(principal.db_context, read_only=True) as session:
+        # Reuse every ownership rule, including shared uploads and attachment subjects.
+        # Scan only distinct referenced file metadata, never proposal bodies or document bytes.
+        sources = session.execute(
+            select(file_object)
+            .where(
+                file_object.c.tenant_id == principal.tenant_id,
+                file_object.c.purpose == "ATTACHMENT",
+                file_object.c.media_type == "application/pdf",
+                file_object.c.shredded_at.is_(None),
+                file_object.c.id.in_(
+                    select(ai_proposal.c.file_object_id).where(
+                        ai_proposal.c.tenant_id == principal.tenant_id,
+                        ai_proposal.c.kind == "CONTRACT_EXTRACTION",
+                    )
+                ),
+            )
+            .execution_options(yield_per=256)
+        ).mappings()
+        readable = [row["id"] for row in sources if file_access.readable(session, ctx, row)]
+        extraction = (ai_proposal.c.kind == "CONTRACT_EXTRACTION") & (
+            ai_proposal.c.file_object_id
+            == any_(bindparam("readable_extraction_sources", readable, type_=ARRAY(Uuid())))
+        )
+        statement = (
+            select(
+                ai_proposal,
+                actors.named(ai_proposal.c.created_by, tenant_id=ai_proposal.c.tenant_id).label(
+                    "creator"
+                ),
+                actors.named(ai_proposal.c.updated_by, tenant_id=ai_proposal.c.tenant_id).label(
+                    "updater"
+                ),
+                actors.named(ai_proposal.c.rejected_by, tenant_id=ai_proposal.c.tenant_id).label(
+                    "rejector"
+                ),
+            )
+            .select_from(
+                ai_proposal.outerjoin(
+                    calc_trace,
+                    (calc_trace.c.tenant_id == ai_proposal.c.tenant_id)
+                    & (calc_trace.c.id == ai_proposal.c.subject_id),
+                )
+            )
+            .where(ai_proposal.c.tenant_id == principal.tenant_id, or_(narrative, extraction))
+        )
         result = page(session, statement)
-        return result, [proposal_out(row) for row in result.items]
+        items: list[AIProposalOut | AIExtractionProposalOut] = [
+            AIExtractionProposalOut.model_validate(_actor_data(row))
+            if row["kind"] == "CONTRACT_EXTRACTION"
+            else proposal_out(row)
+            for row in result.items
+        ]
+        return result, items
 
 
 def proposal_detail(
@@ -112,18 +176,7 @@ def proposal_detail_in(
 ) -> AIProposalOut | AIExtractionProposalOut:
     """Authorize retained evidence inside the reader or review command transaction."""
     principal = ctx.principal
-    held = principal.permission_scopes.get("ai.use", frozenset())
-    if (
-        principal.kind is not PrincipalKind.USER
-        or principal.id is None
-        or "ai.use" not in principal.permissions
-        or not held
-        or (
-            held != "*"
-            and (principal.entity_scope == "*" or not set(principal.entity_scope).issubset(held))
-        )
-    ):
-        raise Problem("forbidden")
+    require_reader(ctx)
     binding = (
         session.execute(
             select(ai_proposal.c.kind, ai_proposal.c.file_object_id).where(
@@ -158,3 +211,20 @@ def proposal_detail_in(
         statement = statement.with_for_update(of=ai_proposal)
     row = session.execute(statement).mappings().one()
     return AIExtractionProposalOut.model_validate(_actor_data(dict(row)))
+
+
+def require_reader(ctx: RequestContext) -> None:
+    """Require a human whose active entity scope fits the AI grant."""
+    principal = ctx.principal
+    held = principal.permission_scopes.get("ai.use", frozenset())
+    if (
+        principal.kind is not PrincipalKind.USER
+        or principal.id is None
+        or "ai.use" not in principal.permissions
+        or not held
+        or (
+            held != "*"
+            and (principal.entity_scope == "*" or not set(principal.entity_scope).issubset(held))
+        )
+    ):
+        raise Problem("forbidden")
