@@ -40,6 +40,7 @@ from datetime import date, datetime
 from typing import Any, Final
 from uuid import UUID
 
+from erev_engine.bundle import InputBundle
 from sqlalchemy import func, insert, select
 from sqlalchemy.exc import DBAPIError
 
@@ -869,7 +870,7 @@ def trace_nodes(uow: UnitOfWork, ref: VersionRef) -> NodeLookup:
     return by_id.get
 
 
-def verify_input_evidence(row: Mapping[str, Any]) -> None:
+def verify_input_evidence(row: Mapping[str, Any]) -> InputBundle:
     """Codex 0515 R1: the retained T-CON-25 input evidence of a T-MIG-04 row must be the producing
     bundle — re-encoded it reproduces ``input_evidence_sha256``, decoded it hashes (CV-25) to
     ``input_sha256``, its ``known_at`` is ``bundle_known_at``, its member keys are the row's
@@ -931,8 +932,12 @@ def verify_input_evidence(row: Mapping[str, Any]) -> None:
             "bound (opening_event_binding_sha256 mismatch)"
         )
 
+    return bundle
 
-def verify_capture_evidence(uow: UnitOfWork, population: ComparisonPopulation) -> None:
+
+def verify_capture_evidence(
+    uow: UnitOfWork, population: ComparisonPopulation
+) -> tuple[InputBundle, ...]:
     """Every bound version's retained input evidence verified (``verify_input_evidence``) — the
     reconcile's step between binding and extraction; the job maps a failure to DG-PAR-05."""
     table = migration_population_version
@@ -958,6 +963,7 @@ def verify_capture_evidence(uow: UnitOfWork, population: ComparisonPopulation) -
                 "this batch"
             )
         found[version_id] = dict(mapping)
+    bundles: list[InputBundle] = []
     for ref in population.versions:
         evidence_row = found.get(ref.contract_version_id)
         if evidence_row is None:
@@ -969,7 +975,8 @@ def verify_capture_evidence(uow: UnitOfWork, population: ComparisonPopulation) -
                 f"contract version {ref.contract_version_id}: the evidence row is not the bound "
                 "capture (calc_trace_id differs)"
             )
-        verify_input_evidence(evidence_row)
+        bundles.append(verify_input_evidence(evidence_row))
+    return tuple(bundles)
 
 
 def captured_operation(uow: UnitOfWork, batch: Mapping[str, Any]) -> Mapping[str, Any] | None:

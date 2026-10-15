@@ -22,6 +22,10 @@ Contract 3 POB #5 for its documented pair NULL → 1,268.1139, PRD J-21.3), whil
 allocation`` and the other fields that are no measure never explain a line; documented
 differences on such fields are kept as ``DeviationIndex.unmeasured`` (empty over the shipped
 documents since 04 rev 1.35).
+For opening-balance conversion, ``option_reconciliation`` also supplies an exact POL-212
+quantity-unit explanation from verified producing input and original legacy facts. Both values
+and their numerical difference remain unchanged; unequal converted quantities refuse before
+comparison, including raw numbers that happen to be equal despite different units.
 ``control_totals`` and ``tie_out_result`` give RPT-41's totals and
 ``TO_MIGRATION_UNEXPLAINED_ZERO``, which promotion requires to pass (BR-MIG-02; CTL-048).
 

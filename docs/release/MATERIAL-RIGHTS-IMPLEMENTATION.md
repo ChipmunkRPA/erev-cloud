@@ -500,3 +500,31 @@ REMAINING_QTY in legacy dollar-units and compares it directly with the native op
 measure. That comparison must account explicitly for the selected POL-212 conversion without
 changing retained source values or hiding genuine differences. MIGRATION_PROMOTION is still
 missing. Both are prerequisites to removing the public option refusal.
+
+## Exact conversion explanations in reconciliation, October 14
+
+Opening-balance reconciliation now uses the verified producing bundles returned by the evidence
+verifier. A POL-212 quantity explanation requires a legacy material-right row, matching contract,
+obligation and product, exactly one quantity-one booking, and immutable nonlegacy ENTERED_AMOUNT
+terms whose total SSP equals the source dollar-quantity in contract currency. Missing, ambiguous
+or inconsistent evidence supplies no explanation. Replay mode retains its existing behavior.
+
+The report retains both original values and the raw difference: source 10, native 0.4,
+difference -9.6, outside numeric tolerance, explained by `POL-212:CONVERT_TO_OPTION_RECORD`.
+The explanation uses an exact expected ratio and zero tolerance. Incorrect native quantities
+refuse before comparison, including native 10 (which would otherwise look numerically equal
+to source 10), missing quantities and small drift. A conflicting documented quantity explanation
+also refuses. Monetary differences never receive this explanation. Source rows, retained input,
+traces, report values and golden deviation files are not rewritten.
+
+The real PostgreSQL platform-capture witness now retains its source rows and captured population
+after rolling back live contracts, then runs `reconcile_batch` through the default evidence,
+trace and population readers. It reaches RECONCILED with exactly one explained difference.
+Two fault injections change both the captured quantity and its canonical row digest; native 10
+and 0.40000001 each refuse with no reconciliation lines and status still IMPORTED. Three cases
+passed (13.30s). Domain/repository/job/report/architecture checks: 93 passed (10.57s). Logs:
+`.run/option-reconciliation-pg.log` and `.run/option-reconciliation-unit.log`.
+
+This closes the demonstrated quantity-unit reconciliation gap. Public option import remains
+refused until the complete import and approved promotion journey is verified. The promotion
+subject is still unimplemented; independent accounting sign-off is not claimed.

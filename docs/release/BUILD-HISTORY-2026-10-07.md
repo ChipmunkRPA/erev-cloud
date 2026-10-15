@@ -3756,3 +3756,21 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   race/security/closed-period/failure cases and complete release/accounting acceptance remain
   open. Full CI 165d63c is live around 32%, with another demo-reference failure awaiting
   diagnostics. No deployment; publish directly to main.
+
+## Expiry isolation, rollback and concurrent requests — October 14, 2026
+
+- Added native refusal checks for DRAFT, premature declared expiry, read-only access,
+  another entity and another tenant. Injected an engine crash and verified no change
+  to head, expiry events, computations, subledger lines, exception rows or OPEN status.
+- Reproduced a retry defect: a crashed expiry computation became cached 422. FAILED
+  now returns sanitized 500 and abandons that idempotency attempt; the same request/key
+  succeeds after recovery. Business quarantine remains validation failure.
+- Two competing requests were observed as distinct PostgreSQL waiters on the group
+  lock. The holder then took the contract lock without inversion. After release:
+  one 201, one 412, one expiry event/head increment and USD 12,000 revenue.
+- Both boundary tests passed (44.53s), full typecheck (880 source files plus frontend),
+  strict test Mypy and Ruff pass. Logs: .run/material-right-expire-boundaries.log
+  (retry baseline), .run/material-right-expire-boundaries-fixed.log and
+  .run/material-right-expire-boundary-production-types.log.
+- Other-command races, closed-period/deferred failures, exercise/reversal and release
+  acceptance remain open. Full CI 165d63c remains live at 32%. No deployment.

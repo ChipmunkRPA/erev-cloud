@@ -47,12 +47,15 @@ from pathlib import Path
 from typing import Any, Final
 from uuid import UUID
 
+from erev_engine.bundle import InputBundle
+
 from erev_api.domain.migration import (
     capture,
     exact_values,
     field_mapping,
     legacy_db,
     opening_balances,
+    option_reconciliation,
     prerequisites,
     reconciliation,
     repository,
@@ -124,7 +127,7 @@ type VersionsReader = Callable[[UnitOfWork, ComparisonPopulation], Sequence[Mapp
 type TraceLoader = Callable[[UnitOfWork, VersionRef], NodeLookup]
 type DeviationSource = Callable[[], DeviationIndex]
 # The retained input evidence of every bound version verified before extraction (Codex 0515 R1).
-type EvidenceVerifier = Callable[[UnitOfWork, ComparisonPopulation], None]
+type EvidenceVerifier = Callable[[UnitOfWork, ComparisonPopulation], Sequence[InputBundle] | None]
 
 
 def deviation_source() -> DeviationIndex:
@@ -170,7 +173,8 @@ def reconcile_batch(
     status = str(batch["status"])
     if status != MigrationStatus.IMPORTED.value:
         raise _refuse(NOT_IMPORTED_COPY.format(status=status))
-    source = reconciliation.legacy_values(latest_rows(legacy_rows_reader(uow, batch_id)))
+    latest = latest_rows(legacy_rows_reader(uow, batch_id))
+    source = reconciliation.legacy_values(latest)
     try:
         # the capture / read boundary: a known population-validation failure (a supplier that
         # materialises an invalid binding, a foreign population, rows outside or short of the
@@ -191,16 +195,20 @@ def reconcile_batch(
         # the retained producing input of every bound version is verified first (Codex 0515 R1),
         # then every bound version's OWN trace is validated (id / book / hash), including a version
         # whose captured output is empty — a check driven by rows alone would skip it
-        evidence_verifier(uow, population)
+        verified_bundles = evidence_verifier(uow, population)
         lookups: dict[UUID, NodeLookup] = {
             ref.contract_version_id: trace_loader(uow, ref) for ref in population.versions
         }
         erev = exact_values.erev_values(
             rows, lambda row: lookups[UUID(str(row["contract_version_id"]))]
         )
+        index = deviations()
+        if population.mode is MigrationMode.OPENING_BALANCES and verified_bundles:
+            index = option_reconciliation.explanations(index, latest, verified_bundles)
+            option_reconciliation.require_exact_quantities(index, erev)
     except ExactSourceError as error:
         raise _evidence_failure(error) from error
-    lines = reconciliation.lines(source, erev, deviations())
+    lines = reconciliation.lines(source, erev, index)
     totals = reconciliation.control_totals(lines)
     if totals.unexplained:
         raise _refuse(UNEXPLAINED_COPY.format(count=totals.unexplained))

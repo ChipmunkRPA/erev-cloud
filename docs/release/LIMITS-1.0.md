@@ -11,8 +11,10 @@ October 14 entered-option SSP continuation: immutable storage, native entry/read
 activation content and bundle assembly now preserve an optional total SSP. Populated
 snapshot recovery covers the explicit amount for open and expired options. Migration
 capture/promotion still refuses option records. The shared term writer is implemented with
-persistence/rollback checks and a real platform-applier witness. Full import, quantity-unit
-reconciliation and approved promotion remain unfinished. See MATERIAL-RIGHTS-IMPLEMENTATION.md for evidence and remaining boundaries.
+persistence/rollback checks and a real platform-applier witness. Exact quantity-unit
+reconciliation now passes through retained evidence, with drift and equal-raw-number refusals.
+Full import and approved promotion remain unfinished. See MATERIAL-RIGHTS-IMPLEMENTATION.md
+for evidence and remaining boundaries.
 
 October 7 sandbox correction: monetary verification now reads and compares the stored
 `loss_provision_version` and `fx_layer_movement` results. These are reconstructed per-period

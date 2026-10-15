@@ -1,5 +1,6 @@
 """Real platform booking/computation of converted options with rollback of staging facts."""
 
+from dataclasses import replace
 from decimal import Decimal
 from pathlib import Path
 
@@ -13,6 +14,8 @@ from erev_api.db.tables import (
     fiscal_calendar,
     legal_entity,
     material_right,
+    migration_batch,
+    migration_reconciliation_line,
     period,
     period_state,
     pob_template,
@@ -22,7 +25,13 @@ from erev_api.db.tables import (
     ssp_entry,
     ssp_range,
 )
-from erev_api.domain.migration import capture, opening_balances
+from erev_api.domain.migration import (
+    capture,
+    jobs,
+    opening_balances,
+    option_reconciliation,
+    repository,
+)
 from erev_api.domain.migration.field_mapping import BatchParameters
 from erev_api.enums import ApprovalRequestStatus
 from erev_api.files.store import LocalFileStore
@@ -34,10 +43,12 @@ from support.db import TestDatabase
 from support.factories import stamp_test_release, tenant_factory, tenant_id_of
 from support.legacy_replay import _publish_parity_templates
 from support.rows import (
+    RowContext,
     entity_book_values,
     fiscal_calendar_values,
     insert_approval_request,
     legal_entity_values,
+    migration_batch_row,
     period_state_values,
     period_values,
     product_values,
@@ -49,7 +60,6 @@ from support.rows import (
 from tests.domain.migration.test_field_mapping import CODEX_MATERIAL_RIGHT, _synthetic_row
 from tests.domain.migration.test_option_opening_units import CUTOVER
 from tests.pg.test_migration_capture_pg import _ctx
-from tests.unit.test_migration_capture import _batch
 
 pytestmark = pytest.mark.pg
 
@@ -109,8 +119,13 @@ def _opening() -> opening_balances.ContractOpening:
     ).contracts[0]
 
 
+@pytest.mark.parametrize("corrupt_quantity", [None, "10", "0.40000001"])
 def test_platform_applier_captures_converted_option_and_rolls_back(
-    committed_db: TestDatabase, keyring: KeyRing, clock: FrozenClock, tmp_path: Path
+    committed_db: TestDatabase,
+    keyring: KeyRing,
+    clock: FrozenClock,
+    tmp_path: Path,
+    corrupt_quantity: str | None,
 ) -> None:
     tenant_id = tenant_id_of(tenant_factory(keyring=keyring))
     stamp_test_release()
@@ -203,7 +218,9 @@ def test_platform_applier_captures_converted_option_and_rolls_back(
             .where(where)
             .values(status="APPROVED", approval_request_id=request_id)
         )
-        batch = _batch(id=new_id(), capture_operation_id=new_id(), cutover_date=CUTOVER)
+        batch = migration_batch_row(RowContext(tenant_id, new_id()), session)
+        batch.update(status="IMPORTED", capture_operation_id=new_id(), cutover_date=CUTOVER)
+        session.execute(insert(migration_batch).values(**batch))
         child = capture.migration_unit(uow)
         savepoint = session.begin_nested()
         try:
@@ -243,3 +260,68 @@ def test_platform_applier_captures_converted_option_and_rolls_back(
             child.drain_audit_events()
         assert session.execute(select(contract.c.id)).first() is None
         assert session.execute(select(material_right.c.id)).first() is None
+
+        if corrupt_quantity is not None:
+            # Fault injection: even a self-consistent row/document digest must not turn an
+            # incorrect option-unit result into an explained conversion or equal raw number.
+            changed = []
+            for captured_row in rows:
+                if captured_row.obligation_key == "OPTION":
+                    document, digest = capture.canonical_row(
+                        dict(captured_row.row) | {"remaining_quantity": corrupt_quantity}
+                    )
+                    captured_row = replace(
+                        captured_row,
+                        remaining_quantity=Decimal(corrupt_quantity),
+                        row=document,
+                        row_sha256=digest,
+                    )
+                changed.append(captured_row)
+            rows = tuple(changed)
+        retained = capture.Capture(
+            batch_id=batch["id"],
+            capture_operation_id=batch["capture_operation_id"],
+            cutover_date=CUTOVER,
+            versions=(captured,),
+            obligations=rows,
+        )
+        repository.insert_legacy_rows(uow, batch["id"], [row.source for row in opening.rows])
+        repository.insert_population(uow, batch["id"], retained)
+        if corrupt_quantity is not None:
+            with pytest.raises(Problem) as refused:
+                jobs.reconcile_batch(uow, batch["id"])
+            assert "exact POL-212" in str(refused.value.to_json(instance="quantity-fault"))
+            assert session.execute(select(migration_reconciliation_line.c.id)).first() is None
+            assert (
+                session.execute(
+                    select(migration_batch.c.status).where(migration_batch.c.id == batch["id"])
+                ).scalar_one()
+                == "IMPORTED"
+            )
+            return
+        totals = jobs.reconcile_batch(uow, batch["id"])
+        assert totals.unexplained == 0
+        assert totals.explained == 1
+        line = (
+            session.execute(
+                select(migration_reconciliation_line).where(
+                    migration_reconciliation_line.c.migration_batch_id == batch["id"],
+                    migration_reconciliation_line.c.obligation_key == "OPTION",
+                    migration_reconciliation_line.c.measure == "REMAINING_QTY",
+                )
+            )
+            .mappings()
+            .one()
+        )
+        assert line["source_value"] == Decimal("10")
+        assert line["erev_value"] == Decimal("0.4")
+        assert line["difference"] == Decimal("-9.6")
+        assert line["deviation_ref"] == option_reconciliation.REFERENCE
+        assert not line["is_within_tolerance"]
+        assert (
+            session.execute(
+                select(migration_batch.c.status).where(migration_batch.c.id == batch["id"])
+            ).scalar_one()
+            == "RECONCILED"
+        )
+        assert session.execute(select(contract.c.id)).first() is None

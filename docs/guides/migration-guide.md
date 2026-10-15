@@ -6,6 +6,13 @@ What release 1.0 does not do for a migration — replay mode and promotion, a le
 
 A migration is a record (`MIG-000001`, …) with a mode, a source file and a status: `UPLOADED`, `PROFILING`, `PROFILED`, `IMPORTING`, `IMPORTED`, `RECONCILED`, `SUBMITTED`, `PROMOTED`, or `FAILED` and `CANCELLED`. Running a migration needs `migration.run` for all entities — a migration is an act on the workspace: the database holds the contracts of any entity and the import creates entities, so every route under `/api/v1/migrations` answers a member whose role names entities 403; approving its promotion needs `migration.approve` by a user other than the runner. The detail screen is `/data/migrations/:migrationId` with the steps profile, mapping, import, reconciliation and promotion; the migrations list and the new-migration screens are not routed at this revision, so a migration is created through the API and then opened by its id.
 
+Converted-option import remains unavailable while promotion is unfinished. In the implemented
+reconciliation path, `POL-212:CONVERT_TO_OPTION_RECORD` identifies an evidenced change from
+legacy dollar-units to quantity-one option units. The report preserves both quantities and the
+numerical difference; for example, 10 remaining dollar-units out of 25 become 0.4 options.
+This explanation applies only to an exact conversion supported by retained capture evidence.
+Quantity drift refuses reconciliation, and monetary differences still require their own review.
+
 ## Mode (a): opening balances with a cutover
 
 Mode (a) takes the latest version of each obligation in `Contract_Live` as opening balances (allocation, cumulative revenue, cumulative billing, positions, remaining quantities) as of a cutover date you choose. The full legacy version history is attached read-only, labelled "Migrated, unattributed", and is never presented as audit-trail evidence: the audit log holds only the migration commands (REQ-MIG-001).

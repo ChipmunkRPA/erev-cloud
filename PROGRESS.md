@@ -2,6 +2,25 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Evidence-bound option quantity reconciliation — October 14, 2026
+
+- Reconciliation consumes verified producing bundles and explains only the exact POL-212
+  quantity conversion. Contract/obligation/product, quantity-one booking, currency and total
+  option SSP must match source facts. Reports retain source 10, actual 0.4 and difference
+  -9.6 with a named policy explanation; no source, trace, money value or golden file changes.
+- Exact expected-quantity checks reject drift and the deceptive case of 10 native options
+  numerically matching 10 source dollar-units. Conflicting quantity explanations refuse.
+  No monetary discrepancy receives the conversion explanation; replay behavior is unchanged.
+- The actual platform-capture/database witness now runs default reconciliation readers over
+  retained evidence and reaches RECONCILED. Two altered-quantity/digest cases refuse without
+  lines or status transition. Three database checks passed (13.30s); 93 focused domain,
+  repository/job/report/architecture checks passed (10.57s). Logs:
+  .run/option-reconciliation-pg.log and .run/option-reconciliation-unit.log.
+- Strict production Mypy (884 files), two test files and Ruff pass. Logs:
+  .run/option-reconciliation-types.log and .run/option-reconciliation-test-types.log.
+- Full import/approved promotion remains incomplete, and the public option refusal stays.
+  Older immutable CI 165d63c remains live at 46%; no deployment or readiness claim.
+
 ## Converted option platform capture witness — October 14, 2026
 
 - Added a PostgreSQL witness through the real platform booking, activation-event, engine,
@@ -218,24 +237,6 @@
 - GitHub has no open PRs and only remote main. Continue verified direct-main publication,
   without deployment. Full CI on the older 165d63c snapshot remains in progress;
   its results will not establish acceptance of current main. Release gaps remain open.
-
-## Expiry isolation, rollback and concurrent requests — October 14, 2026
-
-- Added native refusal checks for DRAFT, premature declared expiry, read-only access,
-  another entity and another tenant. Injected an engine crash and verified no change
-  to head, expiry events, computations, subledger lines, exception rows or OPEN status.
-- Reproduced a retry defect: a crashed expiry computation became cached 422. FAILED
-  now returns sanitized 500 and abandons that idempotency attempt; the same request/key
-  succeeds after recovery. Business quarantine remains validation failure.
-- Two competing requests were observed as distinct PostgreSQL waiters on the group
-  lock. The holder then took the contract lock without inversion. After release:
-  one 201, one 412, one expiry event/head increment and USD 12,000 revenue.
-- Both boundary tests passed (44.53s), full typecheck (880 source files plus frontend),
-  strict test Mypy and Ruff pass. Logs: .run/material-right-expire-boundaries.log
-  (retry baseline), .run/material-right-expire-boundaries-fixed.log and
-  .run/material-right-expire-boundary-production-types.log.
-- Other-command races, closed-period/deferred failures, exercise/reversal and release
-  acceptance remain open. Full CI 165d63c remains live at 32%. No deployment.
 
 ## Outstanding release verification
 
