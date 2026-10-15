@@ -6,11 +6,12 @@ from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
 from dataclasses import replace
 from datetime import timedelta
-from hashlib import sha256
+from pathlib import Path
 from typing import Any
 from uuid import UUID
 
 import pytest
+from erev_api.adapters.ai.provider import FakeProvider
 from erev_api.adapters.documents.pdf import extract_pdf_pages
 from erev_api.approvals import subjects
 from erev_api.approvals.ai_provenance import accepted_draft_proposals
@@ -22,6 +23,7 @@ from erev_api.db.tables import (
     ai_proposal,
     audit_event,
     contract,
+    contract_event,
     customer,
     file_attachment,
     file_object,
@@ -256,37 +258,28 @@ def test_worker_proposal_acceptance_preserves_evidence_and_shares_source(
     world: World, clock: FrozenClock, keyring: KeyRing, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Real fixture PDF parsing and queued worker; deterministic provider, no live model."""
-    source = source_file(world)
-    enable(world, clock, send_text=True)
     actor = world.maya
+    pdf = (
+        Path(__file__).parents[1] / "fixtures/ai/documents/Kinsley-Marrow-Order-Form-2026-10.pdf"
+    ).read_bytes()
+    uploaded = call(
+        world.app,
+        "POST",
+        "/api/v1/files",
+        data={"purpose": "ATTACHMENT"},
+        files={"file": ("review.pdf", pdf, "application/pdf")},
+        headers=cookie_headers(actor.token, actor.csrf_token),
+    )
+    assert uploaded.status_code == 201, uploaded.text
+    source = UUID(uploaded.json()["id"])
+    enable(world, clock, send_text=True)
     provider_calls: list[AIRequest] = []
+    fixture_provider = FakeProvider()
 
     class Provider:
         def complete(self, request: AIRequest) -> AIResponse:
             provider_calls.append(request)
-            outgoing = json.loads(request.messages[0]["content"])
-            page = json.loads(outgoing["contract_text"])[0]
-            suggested = "Kinsley Marrow Foods Inc."
-            start = page["text"].index(suggested)
-            raw = json.dumps(
-                [
-                    {
-                        "path": "customer_name",
-                        "value": suggested,
-                        "confidence": 0.97,
-                        "citation": {
-                            "ref_type": "document",
-                            "ref_id": str(source),
-                            "page": 1,
-                            "char_start": start,
-                            "char_end": start + len(suggested),
-                        },
-                    }
-                ]
-            )
-            return AIResponse(
-                raw, sha256(raw.encode()).hexdigest(), 40, 20, 1, request.model, "end_turn"
-            )
+            return fixture_provider.complete(request)
 
     monkeypatch.setattr(
         ai_jobs,
@@ -331,11 +324,18 @@ def test_worker_proposal_acceptance_preserves_evidence_and_shares_source(
     assert pages.status_code == 200, pages.text
     assert len(pages.json()["pages"]) == 4
     assert "Kinsley Marrow Foods Inc." in pages.json()["pages"][0]["text"]
+    content = {field["path"]: field for field in detail.json()["content"]}
+    assert len(content) == 9
+    assert content["lines.0"]["value"] == {"product_code": "AVM-PLAT-100", "amount": "96000.00"}
+    assert content["variable_consideration_terms"]["check"] is True
+    assert content["material_right_indicator"]["check"] is True
+    assert all(field["citation"]["ref_id"] == str(source) for field in content.values())
+
     reviewer = holding(world.app, colleague(world.place.tenant_id, "evidence_reader"), "viewer")
     review_headers = cookie_headers(reviewer.token, reviewer.csrf_token)
     before = call(world.app, "GET", path, headers=review_headers)
     assert before.status_code == 404, before.text
-    body = {
+    body: dict[str, Any] = {
         "command": "contract.create_draft",
         "entity_code": "AVM-US",
         "field_decisions": [
@@ -344,23 +344,51 @@ def test_worker_proposal_acceptance_preserves_evidence_and_shares_source(
                 "decision": "EDIT",
                 "value": name,
                 "reason": "Human selects the existing demo customer.",
-            }
+            },
+            {"path": "effective_date", "decision": "ACCEPT"},
+            {"path": "payment_terms", "decision": "ACCEPT"},
+            {
+                "path": "lines.0",
+                "decision": "EDIT",
+                "value": {"product_code": PLATFORM, "amount": "96000.00"},
+                "reason": "Human selects the configured product and retains the source amount.",
+            },
+            *[
+                {
+                    "path": path,
+                    "decision": "REJECT",
+                    "reason": "Reviewer excludes this field; separate review required.",
+                }
+                for path in (
+                    "term_months",
+                    "termination",
+                    "lines.1",
+                    "variable_consideration_terms",
+                    "material_right_indicator",
+                )
+            ],
         ],
-        "header_bindings": {"customer_name": "customer"},
+        "header_bindings": {
+            "customer_name": "customer",
+            "effective_date": "inception_date",
+            "payment_terms": "payment_terms",
+        },
+        "line_bindings": {"lines.0": "O1"},
         "draft": {
             "external_id": "AI-WORKER-DRAFT-01",
             "customer_id": str(world.customer_id),
             "contracting_entity_code": "AVM-US",
             "transaction_currency": "USD",
-            "inception_date": "2026-01-01",
+            "inception_date": "2026-10-01",
+            "payment_terms": "Net 30",
             "lines": [
                 {
                     "obligation_key": "O1",
                     "product_code": PLATFORM,
                     "quantity": "1",
-                    "total_price": {"amount": "120.00", "currency": "USD"},
-                    "start_date": "2026-01-01",
-                    "end_date": "2026-12-31",
+                    "total_price": {"amount": "96000.00", "currency": "USD"},
+                    "start_date": "2026-10-01",
+                    "end_date": "2027-09-30",
                 }
             ],
         },
@@ -383,14 +411,11 @@ def test_worker_proposal_acceptance_preserves_evidence_and_shares_source(
     assert shared.json()["accepted_command"] == "contract.create_draft"
     assert shared.json()["accepted_by"]["id"] == str(actor.member.user_id)
     assert shared.json()["accepted_at"] is not None
-    assert shared.json()["field_decisions"] == [
-        {
-            "path": "customer_name",
-            "decision": "EDIT",
-            "value": name,
-            "reason": "Human selects the existing demo customer.",
-        }
-    ]
+    decisions = {item["path"]: item for item in shared.json()["field_decisions"]}
+    expected_decisions = {item["path"]: dict(item) for item in body["field_decisions"]}
+    expected_decisions["effective_date"]["value"] = "2026-10-01"
+    expected_decisions["payment_terms"]["value"] = "Net 30"
+    assert decisions == expected_decisions
     listed = call(
         world.app,
         "GET",
@@ -409,6 +434,18 @@ def test_worker_proposal_acceptance_preserves_evidence_and_shares_source(
         assert saved["field_decisions"][0]["value"] == name
         assert saved["field_decisions"][0]["decision"] == "EDIT"
         assert saved["ai_model_log_id"] == proposal["ai_model_log_id"]
+        booking = session.scalar(
+            select(contract_event.c.payload).where(
+                contract_event.c.contract_id == contract_id,
+                contract_event.c.event_type == "CONTRACT_BOOKED",
+            )
+        )
+        assert booking is not None
+        assert booking["inception_date"] == "2026-10-01"
+        assert booking["payment_terms"] == "Net 30"
+        assert len(booking["lines"]) == 1
+        assert booking["lines"][0]["total_price"] == {"amount": "96000.00", "currency": "USD"}
+        assert booking["termination"] is None
         assert "AI_ASSISTED" in activation.activation_flags(session, contract_id)
         provenance = subjects.contract_activation_content(session, contract_id)["ai_assisted"]
         assert provenance[0]["proposal_id"] == str(proposal["id"])

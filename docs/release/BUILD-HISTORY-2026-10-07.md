@@ -5441,3 +5441,25 @@ cleanup in the shared database session kernel was also repaired and regression-t
   Full lint also passed. Logs: .run/ai-draft-review-{verified,typecheck,types-final,lint}.log.
 - Broader release/accounting verification and large-tenant list performance remain open. No
   deployment or live provider calls; the acceptance route remains disabled.
+
+## Explicit extraction header bindings — October 15, 2026
+
+- Added combined draft review for retained customer name, effective date and payment terms,
+  alongside the existing line checks. The reviewer explicitly maps an effective date to draft
+  inception or signature; payment terms and the selected date must match exactly. Customer
+  names match either the explicit inline reference or a resolved ID/name whose ID equals the
+  draft's selected customer. No name search, date inference or accounting classification occurs.
+- Every retained header must have an implemented mapping; rejected headers cannot be mapped.
+  Term months, termination, variable-consideration terms and material-right text currently refuse
+  combined review rather than disappearing silently. Existing customer resolution must still be
+  wired to fresh tenant-authorized reads in the eventual acceptance command. Approval, structured
+  term mappings and atomic persistence remain unfinished; acceptance is not enabled.
+- Verification: 91 unit/layer cases passed, including 15 new header tests. A final 39-case draft
+  suite passed after a typing-only iteration correction. Cases include explicit date meaning,
+  missing/mismatched dates and payment terms, exact inline/resolved customer identity, rejected
+  or unbound headers, unsupported structured terms and JSON round-trip with omitted replacement
+  values preserved. Focused typing passed 788 sources. Logs:
+  .run/ai-draft-headers-{unit,final,types-final,typecheck,lint}.log. Full lint and typecheck
+  passed (936 Python sources plus frontend), as did final formatting/lint/diff checks.
+- Broader release/accounting and list-performance gates remain open. No deployment or live
+  provider calls.

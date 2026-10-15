@@ -2,6 +2,23 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Bundled extraction fixture through upload and draft acceptance — October 15, 2026
+
+- Strengthened the worker/acceptance witness: source now enters through POST /files and the
+  configured fake provider serves the complete nine-field bundled document fixture, replacing
+  the test-only one-field provider. The uploaded ID is checked in every citation. Explicit human
+  customer/product edits, accepted date/payment terms and rejected terms/second line are recorded
+  separately from unchanged original evidence. Persisted booking values, attachment-based access,
+  AI_ASSISTED review provenance, one provider call and zero revenue postings are asserted.
+- Both acceptance regressions pass on isolated PostgreSQL 55441, with focused strict typing
+  (791 sources), Ruff and full lint. Logs: .run/ai-bundled-acceptance-{final,types,lint}.log.
+  Earlier attempts retain two corrected fixture assumptions: the test tenant uses a different
+  product code, and stored ACCEPT decisions also snapshot their accepted values.
+- This is API/worker/database evidence using an in-process PDF parser, not browser interaction,
+  Linux isolation, live-model accuracy or independent activation/accounting sign-off. Demo/browser
+  fixture setup remains unfinished. Frozen CI on 3cf8f5b remains live on separate PostgreSQL 55439.
+  No deployment or live provider calls.
+
 ## Repair AI lifecycle audit references and worker inventories — October 15, 2026
 
 - Narrative rejection and expiry now pass distinct source contract IDs to the audit writer
@@ -205,28 +222,6 @@
 - New-draft acceptance still requires atomic command integration, source/expiry validation and
   structured-term handling. Broader release/accounting and list-performance gates remain open.
   No deployment or live provider calls.
-
-## Explicit extraction header bindings — October 15, 2026
-
-- Added combined draft review for retained customer name, effective date and payment terms,
-  alongside the existing line checks. The reviewer explicitly maps an effective date to draft
-  inception or signature; payment terms and the selected date must match exactly. Customer
-  names match either the explicit inline reference or a resolved ID/name whose ID equals the
-  draft's selected customer. No name search, date inference or accounting classification occurs.
-- Every retained header must have an implemented mapping; rejected headers cannot be mapped.
-  Term months, termination, variable-consideration terms and material-right text currently refuse
-  combined review rather than disappearing silently. Existing customer resolution must still be
-  wired to fresh tenant-authorized reads in the eventual acceptance command. Approval, structured
-  term mappings and atomic persistence remain unfinished; acceptance is not enabled.
-- Verification: 91 unit/layer cases passed, including 15 new header tests. A final 39-case draft
-  suite passed after a typing-only iteration correction. Cases include explicit date meaning,
-  missing/mismatched dates and payment terms, exact inline/resolved customer identity, rejected
-  or unbound headers, unsupported structured terms and JSON round-trip with omitted replacement
-  values preserved. Focused typing passed 788 sources. Logs:
-  .run/ai-draft-headers-{unit,final,types-final,typecheck,lint}.log. Full lint and typecheck
-  passed (936 Python sources plus frontend), as did final formatting/lint/diff checks.
-- Broader release/accounting and list-performance gates remain open. No deployment or live
-  provider calls.
 
 
 ## Outstanding release verification

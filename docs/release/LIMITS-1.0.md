@@ -172,9 +172,12 @@ creation, source-PDF attachment, combination suggestions, rule holds, acceptance
 audit commit together. It returns 201 with the contract ID and Location; it never submits for
 activation or posts revenue. Retained review works with AI disabled. Existing-record acceptance
 still needs its separate approval subject. Full browser review and structured-term conversion
-remain unfinished. A local PostgreSQL witness now runs real synthetic-PDF text extraction,
-queued worker dispatch with a deterministic provider, retained-text reads and human-edited draft
-acceptance. It verifies unchanged original evidence, shared reader access through the attachment,
+remain unfinished. A local PostgreSQL witness now uploads the synthetic PDF through the files
+API, runs real PDF text extraction and queued worker dispatch with the bundled deterministic
+provider's nine-field response, reads retained text and accepts a human-reviewed draft. Customer
+and product edits are explicit; accepted payment/date values and the source amount are checked
+in the persisted booking, and rejected terms/lines do not enter it. It verifies unchanged original
+evidence, all nine recorded field decisions, shared reader access through the attachment,
 AI_ASSISTED activation provenance, one provider call and zero revenue postings. This uses the
 in-process parser and does not prove Linux isolation, browser review, live-provider operation or
 full extraction-to-independent-activation readiness. Extraction detail/list reads now expose the
