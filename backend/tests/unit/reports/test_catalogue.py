@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import importlib.util
 import re
+from hashlib import sha256
 
 from erev_api.domain.reports.catalogue import (
     DEFINITIONS,
@@ -136,10 +137,11 @@ def test_parameter_schemas_closed() -> None:
     assert mode["enum"] == ["GROSS", "DELTA"]
 
 
-def test_revision_seed_equals_fresh_rendering() -> None:
-    # DG-MIG-07 with the DG-ARC-07 pattern (RPS-1; L4-2-Q-27): the revision that seeds
-    # report_definition embeds exactly catalogue.seed_statement(), and its check literals equal the
-    # catalogue's kinds, formats and tie-out codes.
+def test_historical_revision_seed_is_frozen() -> None:
+    # DG-MIG-07 / DG-ARC-07: 0048 is historical data, not today's catalogue. Forward
+    # migrations update definitions (including 0139 approval subjects and 0143 report
+    # sources). Preserve the original seed; the PG column-by-column test in
+    # test_report_tables verifies that the complete migration chain matches DEFINITIONS.
     candidates = [
         path
         for path in sorted((ROOT / VERSIONS).glob("*.py"))
@@ -151,7 +153,10 @@ def test_revision_seed_equals_fresh_rendering() -> None:
     assert spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    assert module.REPORT_DEFINITION_SEED == seed_statement()
+    assert candidates[0].name == "0048_report_tables.py"
+    assert sha256(module.REPORT_DEFINITION_SEED.encode("utf-8")).hexdigest() == (
+        "8d781dc1cd5891bbd96753dce4fe08dbc8b09d6c00813cab0b25a7b216b50f7d"
+    )
     assert module.TIE_OUT_CODES == TIE_OUT_CODES
     assert module.OUTPUT_FORMATS == OUTPUT_FORMATS
     assert module.REPORT_KINDS == REPORT_KINDS

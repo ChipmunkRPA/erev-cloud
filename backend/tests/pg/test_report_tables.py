@@ -125,7 +125,9 @@ def test_report_definition_read_only(committed_db: TestDatabase, keyring: KeyRin
 
 
 def test_report_definition_seed_equals_catalogue(test_database: TestDatabase) -> None:
-    # DG-MIG-07 (RPS-1): the rows the revision seeds equal catalogue.DEFINITIONS column by column.
+    # DG-MIG-07 (RPS-1): a fresh database at migration head, including all forward
+    # catalogue amendments, equals DEFINITIONS column by column. The original 0048
+    # seed remains frozen; comparing it alone with current definitions is insufficient.
     with identity_session(request_id="tests-rps-1-seed") as session:
         rows = session.execute(select(report_definition)).mappings().all()
     stored = {str(row["code"]): dict(row) for row in rows}

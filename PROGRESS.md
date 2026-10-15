@@ -2,6 +2,15 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Migrated report catalogue verification — October 14, 2026
+
+- Revalidated the remaining 12 integration failures on c8bc3fc: 10 passed, 2 failed
+  (142.69s). AI audit lifecycle coverage and lock/relock version expectations remain open.
+- Corrected the historical seed test to preserve migration 0048. The full migration-chain
+  PostgreSQL comparison verifies all current catalogue fields; four catalogue checks pass
+  (6.77s), Ruff/formatting pass. No historical migration changes.
+- Evidence and remaining gaps: docs/release/CI-2026-10-14.md. No deployment or readiness claim.
+
 ## Full CI results and catalogue/isolation repairs — October 14, 2026
 
 - Immutable 165d63c backend run finished in 5h 11m 13s: 10,843 passed, 33 failed,
