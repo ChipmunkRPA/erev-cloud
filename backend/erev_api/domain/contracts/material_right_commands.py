@@ -7,6 +7,7 @@ from decimal import Decimal
 from uuid import UUID
 
 from erev_engine.bundle import InputBundle, OutputBundle
+from erev_engine.errors import MaterialRightInputError
 from erev_engine.stages.s01_canonicalize import obligation_subject_key
 from sqlalchemy import insert, or_, select
 
@@ -158,7 +159,14 @@ def create(
     engine = computation.default_engine()
 
     def checked(bundle: InputBundle) -> OutputBundle:
-        output = engine(bundle)
+        try:
+            output = engine(bundle)
+        except MaterialRightInputError as error:
+            raise _invalid(
+                "ssp_method",
+                "These option terms are incomplete. Check the method inputs "
+                "and approved likelihood estimate at the pricing date.",
+            ) from error
         kinds = [
             str(item.columns.get("obligation_kind"))
             for book in output.books
@@ -173,6 +181,9 @@ def create(
         return output
 
     computed = compute_job.compute_group(uow, group_id, engine=checked)
+    if computed.status is ComputationStatus.FAILED:
+        # Abort the outer command and abandon its idempotency attempt, just as expiry does.
+        raise RuntimeError("Material-right creation computation failed")
     if computed.status is not ComputationStatus.SUCCEEDED:
         raise _invalid(
             "ssp_method",

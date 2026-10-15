@@ -289,3 +289,24 @@ Evidence: `.run/material-right-snapshot-final.log`, `.run/material-right-snapsho
 and `.run/material-right-snapshot-types.log`. Initial fixture errors were a misspelled ledger
 column and reuse of a globally unique sandbox code; corrected with the actual column and
 separate sandbox names. No production restore behavior was changed for these checks.
+
+## Native entry crash recovery, October 14
+
+A fault-injection regression reproduced native entry converting an unexpected engine ValueError
+into a cached 422 response. Creation now treats FAILED computations as unexpected failures:
+return sanitized 500, roll back the terms/computation together and abandon the idempotency
+attempt. Repeating the exact request and key after recovery creates the terms successfully;
+a subsequent repeat replays that successful result without another creation audit record.
+
+Incomplete option inputs and missing dated exercise-likelihood pins now have the specific
+MaterialRightInputError subtype of ValueError. Native entry translates only that known input
+failure into 422; arbitrary ValueError crashes no longer masquerade as invalid terms.
+Quarantined business refusals still return 422. The regression checks unchanged contract
+status/head, terms, computations, events, subledger and exception counts after failure,
+then successful retry/replay and independent activation approval.
+
+The native entry, invalid-terms and approved-discount cases plus all stage-03 tests pass:
+45 tests in 62.35s. Full production/frontend typecheck, strict test Mypy, Ruff and diff checks
+pass. Evidence: `.run/material-right-create-retry-baseline.log`,
+`.run/material-right-create-retry-fixed.log`, `.run/material-right-create-retry-types.log`.
+Other lifecycle and release requirements remain open.

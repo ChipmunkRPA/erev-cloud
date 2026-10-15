@@ -2,6 +2,24 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Native option creation failure recovery — October 14, 2026
+
+- Reproduced an injected engine crash being returned as cached 422 during native option
+  entry. Creation now aborts FAILED computation with sanitized 500, rolls back its facts
+  and abandons that idempotency attempt. The identical request/key succeeds after recovery.
+- Known incomplete option inputs/missing dated likelihood pins use a specific ValueError
+  subtype, caught as validation by native entry. Unrelated ValueError crashes are not
+  classified as bad terms. Missing approved likelihood and business refusals retain 422.
+- The regression checks unchanged DRAFT/head, terms, computations, events, ledger and
+  exceptions after failure, then successful retry/replay and independent activation review.
+  API entry/invalid/discount cases plus the stage-03 suite: 45 passed (62.35s).
+- Full typecheck (880 source files plus frontend), strict test Mypy, Ruff and diff checks
+  pass. Logs: .run/material-right-create-retry-baseline.log,
+  .run/material-right-create-retry-fixed.log and .run/material-right-create-retry-types.log.
+- Full CI on older 165d63c remains live at 34%. Exercise, correction, migration/UI,
+  broader release acceptance and independent accounting review remain open. No deployment;
+  publish reviewed changes directly to main.
+
 ## CSV quarantine reconciliation assertions — October 14, 2026
 
 - Reproduced two failures observed in the ongoing backend CI. Contract-header conflict
@@ -241,25 +259,6 @@
   still-missing API-entry, answer-key and independent accounting acceptance.
 - Full backend CI 165d63c remains running around 29%; existing known failures have
   later repairs. Repo only, direct main publication, no deployment.
-
-## Point-in-time royalty licences — October 14, 2026
-
-- Repaired the API/DB mismatch that rejected the engine's supported point-in-time
-  royalty licence template. Migration 0144 permits only the LICENCE/ROYALTY exception;
-  non-licence obligations remain restricted. Updated T-REF-23's documented constraint.
-- API-driven RPO tests verify a 15,000 statement against a 12,000 guarantee adds 3,000,
-  recognition waits for delivery, April delivery releases 15,000, and a May downward
-  correction reverses 1,000. Both initial delivery states reconcile with zero unexplained.
-- Initial tests exposed template rejection; the next attempt exposed a missing trigger
-  in the new delivery fixture. Corrected fixture and expanded checks: 4 passed (21.56s).
-  Final full template/RPO files and DB invariant: 22 passed (70.78s), recorded in
-  .run/rpo-royalty-regression.log. Full production typecheck, focused report-test Mypy,
-  Ruff and formatting pass. Standalone Mypy of all selected test files encountered
-  existing fixture-import/row-typing issues; it is not claimed as passing.
-- Fresh closed browser gate bce381c passed 10/10 and retained 22 PNGs after cleanup;
-  see BROWSER-2026-10-14.md. Full backend CI 165d63c remains in progress.
-- B4-2's combined cases and other release limitations remain open. No deployment or
-  accounting sign-off; publish directly to main without a PR.
 
 ## Outstanding release verification
 

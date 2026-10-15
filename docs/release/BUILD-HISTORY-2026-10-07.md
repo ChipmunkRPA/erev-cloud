@@ -3566,3 +3566,22 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
 - Updated browser gate documentation to locate screenshots/traces via the report's artifacts
   field. Fresh closed browser gate bce381c and backend CI 165d63c remain live. These checks
   do not establish full CTL-043, release acceptance or accounting sign-off.
+
+## Point-in-time royalty licences — October 14, 2026
+
+- Repaired the API/DB mismatch that rejected the engine's supported point-in-time
+  royalty licence template. Migration 0144 permits only the LICENCE/ROYALTY exception;
+  non-licence obligations remain restricted. Updated T-REF-23's documented constraint.
+- API-driven RPO tests verify a 15,000 statement against a 12,000 guarantee adds 3,000,
+  recognition waits for delivery, April delivery releases 15,000, and a May downward
+  correction reverses 1,000. Both initial delivery states reconcile with zero unexplained.
+- Initial tests exposed template rejection; the next attempt exposed a missing trigger
+  in the new delivery fixture. Corrected fixture and expanded checks: 4 passed (21.56s).
+  Final full template/RPO files and DB invariant: 22 passed (70.78s), recorded in
+  .run/rpo-royalty-regression.log. Full production typecheck, focused report-test Mypy,
+  Ruff and formatting pass. Standalone Mypy of all selected test files encountered
+  existing fixture-import/row-typing issues; it is not claimed as passing.
+- Fresh closed browser gate bce381c passed 10/10 and retained 22 PNGs after cleanup;
+  see BROWSER-2026-10-14.md. Full backend CI 165d63c remains in progress.
+- B4-2's combined cases and other release limitations remain open. No deployment or
+  accounting sign-off; publish directly to main without a PR.

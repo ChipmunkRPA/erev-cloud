@@ -11,7 +11,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-__all__ = ["EngineError"]
+__all__ = ["EngineError", "MaterialRightInputError"]
 
 
 class EngineError(Exception):
@@ -58,3 +58,11 @@ def _restore(
     detail: dict[str, str],
 ) -> EngineError:
     return EngineError(code, message, subject_key=subject_key, formula_id=formula_id, detail=detail)
+
+
+class MaterialRightInputError(ValueError):
+    """Incomplete option terms or a missing dated likelihood pin (CV-45).
+
+    Callers accepting native terms can report this as input validation without treating
+    unrelated ValueError failures inside the engine as user-correctable input.
+    """

@@ -16,6 +16,7 @@ from typing import Final
 from erev_engine.bundle import ContractInput, EstimateVersionInput, MaterialRightInput, TimeTrigger
 from erev_engine.dates import add_months
 from erev_engine.enums import ObligationKind, RecognitionMethod
+from erev_engine.errors import MaterialRightInputError
 from erev_engine.money import format_exact, round_half_up, to_fraction
 from erev_engine.stages.s01_canonicalize import contract_subject_key, obligation_subject_key
 from erev_engine.stages.s02_contract_identification import IdentifiedState
@@ -73,7 +74,8 @@ def build(
     (606-10-55-45; ALG-05 §2.6.1). ``ENTERED_AMOUNT``: the SSP entry's point at quantity (or
     the range midpoint), and the obligation is units-delivered; an entry that stage 03 cannot read
     leaves the option SSP to stage 05. A line without an option record keeps its template terms
-    (L2-2-Q-1). A missing member or pin raises ``ValueError`` (CV-45).
+    (L2-2-Q-1). A missing member or pin raises ``MaterialRightInputError``
+    (a ``ValueError``; CV-45).
     """
     if draft.obligation_kind != ObligationKind.MATERIAL_RIGHT:
         return draft
@@ -95,7 +97,7 @@ def build(
             recognition_method=RecognitionMethod.UNITS_DELIVERED,
         )
     if method != DISCOUNT_X_LIKELIHOOD:
-        raise ValueError(f"{draft.subject_key}: {method!r} is not a POL-026 option")
+        raise MaterialRightInputError(f"{draft.subject_key}: {method!r} is not a POL-026 option")
     likelihood, ratio, _ = _factors(st, terms, draft.pricing_date)
     if not 0 <= likelihood <= 1 or ratio < 0:
         detail = {
@@ -210,7 +212,9 @@ def emit(
 
 def _amount(terms: MaterialRightInput) -> Fraction:
     if terms.expected_purchase_amount is None:
-        raise ValueError(f"{terms.obligation_key}: DISCOUNT_X_LIKELIHOOD needs its amounts")
+        raise MaterialRightInputError(
+            f"{terms.obligation_key}: DISCOUNT_X_LIKELIHOOD needs its amounts"
+        )
     return to_fraction(terms.expected_purchase_amount)
 
 
@@ -219,12 +223,18 @@ def _factors(
 ) -> tuple[Fraction, Fraction, EstimateVersionInput]:
     """(L, incremental discount ratio, the pinned ``EXERCISE_LIKELIHOOD`` version) at ``at``."""
     if terms.incremental_discount_ratio is None or terms.expected_purchase_amount is None:
-        raise ValueError(f"{terms.obligation_key}: DISCOUNT_X_LIKELIHOOD needs its amounts")
+        raise MaterialRightInputError(
+            f"{terms.obligation_key}: DISCOUNT_X_LIKELIHOOD needs its amounts"
+        )
     if terms.likelihood_estimate_key is None:
-        raise ValueError(f"{terms.obligation_key}: DISCOUNT_X_LIKELIHOOD needs a likelihood")
+        raise MaterialRightInputError(
+            f"{terms.obligation_key}: DISCOUNT_X_LIKELIHOOD needs a likelihood"
+        )
     pin = st.canonical.estimates.pin(terms.likelihood_estimate_key, at)
     if pin is None or pin.rate is None:
-        raise ValueError(f"{terms.likelihood_estimate_key}: no EXERCISE_LIKELIHOOD pin at {at}")
+        raise MaterialRightInputError(
+            f"{terms.likelihood_estimate_key}: no EXERCISE_LIKELIHOOD pin at {at}"
+        )
     return to_fraction(pin.rate), to_fraction(terms.incremental_discount_ratio), pin
 
 

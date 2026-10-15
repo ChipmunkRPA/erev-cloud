@@ -3949,8 +3949,8 @@ likelihood estimate to belong to the stated contract (and, when the estimate nam
 to this obligation). Currency must match the contract; a composite foreign key also prevents a
 later parent-currency change from invalidating the terms. `ux_contract__material_right_currency`
 supports that foreign key. IM-A guards and grants prohibit update, delete and truncate.
-Native term entry and lifecycle commands are still unfinished. Bundle translation and dedicated/
-embedded reads now consume persisted terms; this does not establish product entry support.
+Native draft term entry and expiry are implemented below. Bundle translation and dedicated/
+embedded reads consume persisted terms; governed exercise and correction remain unfinished.
 
 
 Native entry: `POST /api/v1/obligations/{obligation_id}/material-right` requires
@@ -3964,7 +3964,9 @@ requires `incremental_discount_ratio`, `expected_purchase_amount` (`amount`, `cu
 The command locks the group then contract and permits stored DRAFT only with no pending
 activation review. Missing/stale preconditions return 428/412; duplicate terms or an invalid
 lifecycle return 409. Terms must compute as MATERIAL_RIGHT in every returned book; invalid
-terms or computation refusal return 422 and roll back the terms and computation together.
+terms, missing dated likelihood pins or quarantined business refusal return 422 and roll back
+the terms and computation together. An unexpected computation failure returns a sanitized 500
+and abandons that idempotency attempt, so the same request/key can retry after recovery.
 Successful creation returns 201 with the dedicated-read Location and records AUD-FACT.
 The terms are immutable and do not append a contract event; activation content binds them,
 and their authors are excluded from approving activation, including via delegation.

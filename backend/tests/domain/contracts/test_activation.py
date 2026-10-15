@@ -1766,7 +1766,9 @@ def test_activation_review_binds_material_right_terms(seats: SeatWorld) -> None:
     assert _header(seats, contract_id)[0] == "ACTIVE"
 
 
-def test_native_material_right_entry_and_distinct_activation_reviewer(seats: SeatWorld) -> None:
+def test_native_material_right_entry_and_distinct_activation_reviewer(
+    seats: SeatWorld, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Terms entered by a different preparer still require independent activation review."""
     maya = seats.place.author
     assign(seats.priya.member, "revenue_accountant")
@@ -1803,6 +1805,25 @@ def test_native_material_right_entry_and_distinct_activation_reviewer(seats: Sea
     assert stale.status_code == 412, stale.text
     headers = cookie_headers(seats.priya.token, seats.priya.csrf_token, key=True)
     headers["If-Match"] = '"s1"'
+    from erev_api.domain.contracts import computation
+    from erev_engine.bundle import InputBundle, OutputBundle
+
+    tables = (material_right, contract_computation, contract_event, subledger_line, exception_item)
+    before = [seats.place.scalar(select(func.count()).select_from(table)) for table in tables]
+
+    def crash(bundle: InputBundle) -> OutputBundle:
+        raise ValueError("private native option compute failure")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(computation, "default_engine", lambda: crash)
+        failed = call(seats.app, "POST", path, json=terms, headers=headers)
+    assert failed.status_code == 500, failed.text
+    assert "private native option compute failure" not in failed.text
+    assert [
+        seats.place.scalar(select(func.count()).select_from(table)) for table in tables
+    ] == before
+    assert _header(seats, contract_id) == ("DRAFT", 1)
+    # The exact request/key must remain retryable after an unexpected computation failure.
     created = call(seats.app, "POST", path, json=terms, headers=headers)
     assert created.status_code == 201, created.text
     replayed = call(seats.app, "POST", path, json=terms, headers=headers)
