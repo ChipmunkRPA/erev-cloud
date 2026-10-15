@@ -5699,3 +5699,16 @@ cleanup in the shared database session kernel was also repaired and regression-t
   screenshots inspected. Logs: .run/ai-review-panes-{tests,types,lint,browser}.log.
 - This browser witness uses retained synthetic data, not a live upload-to-acceptance workflow.
   Full frozen CI on 3cf8f5b remains active; repository readiness and accounting sign-off remain open.
+
+## Source-page navigation for retained contract review — October 15, 2026
+
+- The document pane now renders one selected source page instead of every page. The labelled
+  selector is available for multipage documents; citations select their page and focus its
+  highlight. Manual navigation clears the old highlight without changing field decisions.
+- Twelve route tests and a cached-data Chromium probe cover page navigation, citation jumps,
+  Escape focus and retained edits. Screenshots inspected at 1280/1440 px. Logs:
+  .run/ai-review-pages-{tests,types-final,lint,browser}.log. Frontend typing and full lint pass;
+  the initial type-check caught two Field API mistakes corrected before the final run.
+- Updated release limitations for the responsive panes and page navigation. Full release evidence,
+  live browser acceptance and independent accounting sign-off remain outstanding. Frozen CI on
+  3cf8f5b is still live; Docker daemon remains unavailable. No deployment or live provider calls.

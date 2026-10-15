@@ -56,6 +56,11 @@ drawers reread GET /ai/model-logs/{id} under the same current visibility as the 
 Saved views now retain the column layout and sort under SF-15:ai-call-log; the selector can
 read shared layouts and creates private layouts. View configuration never stores call records
 or changes call visibility. Opening/closing evidence preserves the view and sort in the URL.
+An internal export dataset builder now reuses the log's current owner/tenant predicate and
+standard CSV/XLSX writers. Unknown counters remain empty/Unknown with explicit usage_known and
+known-only control totals. The builder refuses system/operator and missing-ID contexts; jobs
+must reconstruct the current caller before invoking it. This does not yet expose export:
+queued execution, retained-file ownership/revocation checks and the UI download remain unfinished.
 CSV/XLSX export, linked-proposal navigation, hash-copy controls, standard demo/J-19 and full
 audit-lifecycle verification remain open.
 

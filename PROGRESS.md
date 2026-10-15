@@ -2,6 +2,19 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Authorized AI export dataset foundation — October 15, 2026
+
+- Added the internal call-export dataset using current owner/tenant visibility and standard
+  CSV/XLSX writers. Unknown usage stays distinct from zero; totals name only known usage.
+- Real PostgreSQL plus parsed CSV/XLSX witnesses prove scope, spreadsheet-formula escaping and
+  unknown/zero cells. An initial test caught unrestricted system identity access; the builder
+  now requires a user/API-client identity and refuses system/operator/missing-ID contexts.
+- Six API/export/formula checks, the final identity check, backend typing (796 files) and full
+  lint pass. Evidence: docs/release/CI-2026-10-15.md.
+- Export is NOT yet public: next wire queued execution/current-grant reconstruction, retained
+  output ownership/revocation checks and the download menu. No deployment/provider calls.
+  Other call-log and broader release/accounting gates remain open.
+
 ## Saved call-log layouts — October 15, 2026
 
 - Connected SF-15:ai-call-log to the shared saved-view selector and controlled grid columns.
@@ -223,19 +236,6 @@
   packaging defect; Linux base-image pull session remains active, without a completed image.
   Container hardening, Linux PDF limits and full browser upload/acceptance remain unverified.
   Frozen CI on 3cf8f5b continues independently. No deployment or live provider calls.
-
-## Source-page navigation for retained contract review — October 15, 2026
-
-- The document pane now renders one selected source page instead of every page. The labelled
-  selector is available for multipage documents; citations select their page and focus its
-  highlight. Manual navigation clears the old highlight without changing field decisions.
-- Twelve route tests and a cached-data Chromium probe cover page navigation, citation jumps,
-  Escape focus and retained edits. Screenshots inspected at 1280/1440 px. Logs:
-  .run/ai-review-pages-{tests,types-final,lint,browser}.log. Frontend typing and full lint pass;
-  the initial type-check caught two Field API mistakes corrected before the final run.
-- Updated release limitations for the responsive panes and page navigation. Full release evidence,
-  live browser acceptance and independent accounting sign-off remain outstanding. Frozen CI on
-  3cf8f5b is still live; Docker daemon remains unavailable. No deployment or live provider calls.
 
 ## Outstanding release verification
 
