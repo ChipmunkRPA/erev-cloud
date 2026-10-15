@@ -1,7 +1,7 @@
 // SF-20 retained extraction evidence. Commands use the read ETag; original text is never HTML.
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
-import { Link, useParams } from "react-router";
+import { Link, useParams, useSearchParams } from "react-router";
 
 import { ProposalBlock } from "../../components/ai/ProposalBlock";
 import { AccessLimited } from "../../components/feedback/AccessLimited";
@@ -40,6 +40,7 @@ import {
   type PreparedReview,
   type Decision,
 } from "./review-decisions";
+import { ReviewPanes } from "./review-panes";
 
 interface Citation {
   readonly page: number;
@@ -103,6 +104,18 @@ function ReviewEvidence({
   readonly text: DocumentText | undefined;
   readonly canCreate: boolean;
 }) {
+  const [search, setSearch] = useSearchParams();
+  const pane = search.get("pane") === "fields" ? "fields" : "document";
+  const changePane = (next: string) => {
+    setSearch(
+      (current) => {
+        const updated = new URLSearchParams(current);
+        updated.set("pane", next);
+        return updated;
+      },
+      { replace: true },
+    );
+  };
   const [selected, setSelected] = useState<{ citation: Citation; label: string } | null>(null);
   const [choices, setChoices] = useState(() =>
     proposal.content.map((field) =>
@@ -127,21 +140,30 @@ function ReviewEvidence({
     setReviewError(null);
   };
   const trigger = useRef<HTMLButtonElement | null>(null);
+  const triggerIndex = useRef<number | null>(null);
+  const returning = useRef(false);
   const highlight = useRef<HTMLElement | null>(null);
   useEffect(() => {
-    if (selected !== null) {
+    if (returning.current && pane === "fields") {
+      trigger.current?.focus();
+      returning.current = false;
+    } else if (selected !== null && pane === "document") {
       highlight.current?.focus();
       highlight.current?.scrollIntoView?.({ block: "nearest" });
     }
+  }, [selected, pane]);
+  useEffect(() => {
     const returnToCitation = (event: KeyboardEvent) => {
       if (event.key === "Escape" && document.activeElement === highlight.current) {
         event.preventDefault();
-        trigger.current?.focus();
+        returning.current = true;
+        setSelected(null);
+        changePane("fields");
       }
     };
     document.addEventListener("keydown", returnToCitation);
     return () => document.removeEventListener("keydown", returnToCitation);
-  }, [selected]);
+  });
   const [rejecting, setRejecting] = useState(false);
   const [reason, setReason] = useState("");
   const [attempted, setAttempted] = useState(false);
@@ -252,209 +274,224 @@ function ReviewEvidence({
           {t("ai.review.openDraft")}
         </Link>
       ) : null}
-      <div className="grid gap-4 xl:grid-cols-2">
-        <section
-          aria-label={t("ai.review.document")}
-          data-testid="SF-20-pane-document"
-          className="min-w-0 rounded-lg border border-hairline p-[var(--panel-pad)]"
-        >
-          <h2 className="text-title-sm text-fg-1">{t("ai.review.document")}</h2>
-          {text?.pages.map((page) => {
-            const active = selected?.citation.page === page.page_no ? selected : null;
-            const parts =
-              active === null
-                ? null
-                : citedParts(page.text, active.citation.start, active.citation.end);
-            return (
-              <section
-                key={page.page_no}
-                aria-label={t("ai.review.page", { page: page.page_no })}
-                className="mt-4"
-              >
-                <h3 className="text-caption text-fg-3">
-                  {t("ai.review.page", { page: page.page_no })}
-                </h3>
-                <div className="whitespace-pre-wrap break-words text-body text-fg-1">
-                  {parts === null ? (
-                    page.text
-                  ) : (
-                    <>
-                      {parts[0]}
-                      <mark
-                        tabIndex={-1}
-                        aria-label={t("ai.review.cited", { field: active?.label ?? "" })}
-                        className="bg-accent-subtle text-fg-1"
-                        ref={highlight}
-                      >
-                        {parts[1]}
-                      </mark>
-                      {parts[2]}
-                    </>
-                  )}
-                </div>
-              </section>
-            );
-          })}
-        </section>
-        <ProposalBlock
-          state={
-            proposal.status === "accepted"
-              ? "accepted"
-              : proposal.status === "failed"
-                ? "failed"
-                : "ready"
-          }
-          source={formatTimestamp(proposal.created_at)}
-          acceptedBy={proposal.accepted_by?.display_name}
-        >
-          {proposal.status === "rejected" ? (
-            <p>
-              {t("ai.review.rejected", {
-                by: proposal.rejected_by?.display_name ?? "",
-                reason: proposal.rejection_reason ?? "",
-              })}
-            </p>
-          ) : null}
-          {proposal.status === "accepted" && proposal.accepted_at !== null ? (
-            <p>{t("ai.review.acceptedAt", { at: formatTimestamp(proposal.accepted_at) })}</p>
-          ) : null}
-          <dl className="flex flex-col gap-4">
-            {proposal.content.map((field, index) => {
-              const label = labelOf(field.path);
-              const citation = citationOf(field.citation, proposal.file_object_id);
-              const page = text?.pages.find((item) => item.page_no === citation?.page);
-              const valid =
-                citation !== null &&
-                page !== undefined &&
-                citedParts(page.text, citation.start, citation.end) !== null;
-              const recorded = proposal.field_decisions?.find(
-                (decision) => decision.path === field.path,
-              );
+      <ReviewPanes
+        pane={pane}
+        onChange={changePane}
+        document={
+          <section
+            aria-label={t("ai.review.document")}
+            data-testid="SF-20-pane-document"
+            className="min-w-0 rounded-lg border border-hairline p-[var(--panel-pad)]"
+          >
+            <h2 className="text-title-sm text-fg-1">{t("ai.review.document")}</h2>
+            {text?.pages.map((page) => {
+              const active = selected?.citation.page === page.page_no ? selected : null;
+              const parts =
+                active === null
+                  ? null
+                  : citedParts(page.text, active.citation.start, active.citation.end);
               return (
-                <div key={`${String(field.path)}-${String(index)}`}>
-                  <dt className="text-body-sm font-medium text-fg-1">{label}</dt>
-                  <dd className="whitespace-pre-wrap break-words">{valueText(field.value)}</dd>
-                  {typeof field.confidence === "string" ? (
-                    <dd className="text-caption text-fg-3">
-                      {t("ai.review.confidence", { value: field.confidence })}
-                      {field.check === true ? ` · ${t("ai.review.check")}` : ""}
-                    </dd>
-                  ) : null}
-                  {valid && citation !== null ? (
-                    <dd>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(event) => {
-                          trigger.current = event.currentTarget;
-                          setSelected({ citation, label });
-                        }}
-                      >
-                        {t("ai.review.citation", {
-                          page: citation.page,
-                          start: citation.start,
-                          end: citation.end,
-                        })}
-                      </Button>
-                    </dd>
-                  ) : null}
-                  {editable && choices[index] !== undefined ? (
-                    <dd className="mt-2 flex flex-col gap-2">
-                      <fieldset className="flex flex-wrap gap-3">
-                        <legend className="text-body-sm">
-                          {t("ai.review.decision.for", { field: label })}
-                        </legend>
-                        {(["ACCEPT", "EDIT", "REJECT"] as const)
-                          .filter((decision) => valid || decision === "REJECT")
-                          .map((decision: Decision) => (
-                            <label key={decision} className="flex items-center gap-1 text-body-sm">
-                              <input
-                                type="radio"
-                                name={`decision-${String(index)}`}
-                                value={decision}
-                                checked={choices[index]?.decision === decision}
-                                onChange={() => updateChoice(index, { decision })}
-                              />
-                              {t(`ai.review.decision.${decision}`)}
-                            </label>
-                          ))}
-                      </fieldset>
-                      {choices[index]?.decision === "EDIT" ? (
-                        <>
-                          {typeof field.path === "string" && field.path.startsWith("lines.") ? (
+                <section
+                  key={page.page_no}
+                  aria-label={t("ai.review.page", { page: page.page_no })}
+                  className="mt-4"
+                >
+                  <h3 className="text-caption text-fg-3">
+                    {t("ai.review.page", { page: page.page_no })}
+                  </h3>
+                  <div className="whitespace-pre-wrap break-words text-body text-fg-1">
+                    {parts === null ? (
+                      page.text
+                    ) : (
+                      <>
+                        {parts[0]}
+                        <mark
+                          tabIndex={-1}
+                          aria-label={t("ai.review.cited", { field: active?.label ?? "" })}
+                          className="bg-accent-subtle text-fg-1"
+                          ref={highlight}
+                        >
+                          {parts[1]}
+                        </mark>
+                        {parts[2]}
+                      </>
+                    )}
+                  </div>
+                </section>
+              );
+            })}
+          </section>
+        }
+        fields={
+          <ProposalBlock
+            state={
+              proposal.status === "accepted"
+                ? "accepted"
+                : proposal.status === "failed"
+                  ? "failed"
+                  : "ready"
+            }
+            source={formatTimestamp(proposal.created_at)}
+            acceptedBy={proposal.accepted_by?.display_name}
+          >
+            {proposal.status === "rejected" ? (
+              <p>
+                {t("ai.review.rejected", {
+                  by: proposal.rejected_by?.display_name ?? "",
+                  reason: proposal.rejection_reason ?? "",
+                })}
+              </p>
+            ) : null}
+            {proposal.status === "accepted" && proposal.accepted_at !== null ? (
+              <p>{t("ai.review.acceptedAt", { at: formatTimestamp(proposal.accepted_at) })}</p>
+            ) : null}
+            <dl className="flex flex-col gap-4">
+              {proposal.content.map((field, index) => {
+                const label = labelOf(field.path);
+                const citation = citationOf(field.citation, proposal.file_object_id);
+                const page = text?.pages.find((item) => item.page_no === citation?.page);
+                const valid =
+                  citation !== null &&
+                  page !== undefined &&
+                  citedParts(page.text, citation.start, citation.end) !== null;
+                const recorded = proposal.field_decisions?.find(
+                  (decision) => decision.path === field.path,
+                );
+                return (
+                  <div key={`${String(field.path)}-${String(index)}`}>
+                    <dt className="text-body-sm font-medium text-fg-1">{label}</dt>
+                    <dd className="whitespace-pre-wrap break-words">{valueText(field.value)}</dd>
+                    {typeof field.confidence === "string" ? (
+                      <dd className="text-caption text-fg-3">
+                        {t("ai.review.confidence", { value: field.confidence })}
+                        {field.check === true ? ` · ${t("ai.review.check")}` : ""}
+                      </dd>
+                    ) : null}
+                    {valid && citation !== null ? (
+                      <dd>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          ref={(element) => {
+                            if (triggerIndex.current === index) trigger.current = element;
+                          }}
+                          onClick={(event) => {
+                            trigger.current = event.currentTarget;
+                            triggerIndex.current = index;
+                            changePane("document");
+                            setSelected({ citation, label });
+                          }}
+                        >
+                          {t("ai.review.citation", {
+                            page: citation.page,
+                            start: citation.start,
+                            end: citation.end,
+                          })}
+                        </Button>
+                      </dd>
+                    ) : null}
+                    {editable && choices[index] !== undefined ? (
+                      <dd className="mt-2 flex flex-col gap-2">
+                        <fieldset className="flex flex-wrap gap-3">
+                          <legend className="text-body-sm">
+                            {t("ai.review.decision.for", { field: label })}
+                          </legend>
+                          {(["ACCEPT", "EDIT", "REJECT"] as const)
+                            .filter((decision) => valid || decision === "REJECT")
+                            .map((decision: Decision) => (
+                              <label
+                                key={decision}
+                                className="flex items-center gap-1 text-body-sm"
+                              >
+                                <input
+                                  type="radio"
+                                  name={`decision-${String(index)}`}
+                                  value={decision}
+                                  checked={choices[index]?.decision === decision}
+                                  onChange={() => updateChoice(index, { decision })}
+                                />
+                                {t(`ai.review.decision.${decision}`)}
+                              </label>
+                            ))}
+                        </fieldset>
+                        {choices[index]?.decision === "EDIT" ? (
+                          <>
+                            {typeof field.path === "string" && field.path.startsWith("lines.") ? (
+                              <Field
+                                name={`product-${String(index)}`}
+                                label={t("ai.review.decision.product", { field: label })}
+                              >
+                                {(control) => (
+                                  <input
+                                    {...control}
+                                    className={controlClass(false)}
+                                    value={choices[index]?.product ?? ""}
+                                    onChange={(event) =>
+                                      updateChoice(index, { product: event.target.value })
+                                    }
+                                  />
+                                )}
+                              </Field>
+                            ) : null}
                             <Field
-                              name={`product-${String(index)}`}
-                              label={t("ai.review.decision.product", { field: label })}
+                              name={`edit-${String(index)}`}
+                              label={t("ai.review.decision.value", { field: label })}
                             >
                               {(control) => (
                                 <input
                                   {...control}
                                   className={controlClass(false)}
-                                  value={choices[index]?.product ?? ""}
+                                  value={choices[index]?.value ?? ""}
                                   onChange={(event) =>
-                                    updateChoice(index, { product: event.target.value })
+                                    updateChoice(index, { value: event.target.value })
                                   }
                                 />
                               )}
                             </Field>
-                          ) : null}
-                          <Field
-                            name={`edit-${String(index)}`}
-                            label={t("ai.review.decision.value", { field: label })}
-                          >
-                            {(control) => (
-                              <input
-                                {...control}
-                                className={controlClass(false)}
-                                value={choices[index]?.value ?? ""}
-                                onChange={(event) =>
-                                  updateChoice(index, { value: event.target.value })
-                                }
-                              />
-                            )}
-                          </Field>
-                        </>
-                      ) : null}
-                      {choices[index]?.decision === "EDIT" ||
-                      choices[index]?.decision === "REJECT" ? (
-                        <ReasonField
-                          name={`reason-${String(index)}`}
-                          label={t("ai.review.decision.reason", { field: label })}
-                          value={choices[index]?.reason ?? ""}
-                          onChange={(reason) => updateChoice(index, { reason })}
-                        />
-                      ) : null}
-                      {field.path === "effective_date" && choices[index]?.decision !== "REJECT" ? (
-                        <fieldset className="flex gap-3">
-                          <legend>{t("ai.review.decision.dateTarget")}</legend>
-                          {(["inception_date", "signature_date"] as const).map((target) => (
-                            <label key={target}>
-                              <input
-                                type="radio"
-                                name="effective-date-target"
-                                checked={dateTarget === target}
-                                onChange={() => setDateTarget(target)}
-                              />
-                              {t(`ai.review.decision.${target}`)}
-                            </label>
-                          ))}
-                        </fieldset>
-                      ) : null}
-                    </dd>
-                  ) : null}
-                  {recorded === undefined ? null : (
-                    <dd className="text-body-sm text-fg-2">
-                      <p>{t("ai.review.decision", { decision: String(recorded.decision) })}</p>
-                      {recorded.decision === "EDIT" ? <p>{valueText(recorded.value)}</p> : null}
-                      {typeof recorded.reason === "string" ? <p>{recorded.reason}</p> : null}
-                    </dd>
-                  )}
-                </div>
-              );
-            })}
-          </dl>
-        </ProposalBlock>
-      </div>
+                          </>
+                        ) : null}
+                        {choices[index]?.decision === "EDIT" ||
+                        choices[index]?.decision === "REJECT" ? (
+                          <ReasonField
+                            name={`reason-${String(index)}`}
+                            label={t("ai.review.decision.reason", { field: label })}
+                            value={choices[index]?.reason ?? ""}
+                            onChange={(reason) => updateChoice(index, { reason })}
+                          />
+                        ) : null}
+                        {field.path === "effective_date" &&
+                        choices[index]?.decision !== "REJECT" ? (
+                          <fieldset className="flex gap-3">
+                            <legend>{t("ai.review.decision.dateTarget")}</legend>
+                            {(["inception_date", "signature_date"] as const).map((target) => (
+                              <label key={target}>
+                                <input
+                                  type="radio"
+                                  name="effective-date-target"
+                                  checked={dateTarget === target}
+                                  onChange={() => setDateTarget(target)}
+                                />
+                                {t(`ai.review.decision.${target}`)}
+                              </label>
+                            ))}
+                          </fieldset>
+                        ) : null}
+                      </dd>
+                    ) : null}
+                    {recorded === undefined ? null : (
+                      <dd className="text-body-sm text-fg-2">
+                        <p>{t("ai.review.decision", { decision: String(recorded.decision) })}</p>
+                        {recorded.decision === "EDIT" ? <p>{valueText(recorded.value)}</p> : null}
+                        {typeof recorded.reason === "string" ? <p>{recorded.reason}</p> : null}
+                      </dd>
+                    )}
+                  </div>
+                );
+              })}
+            </dl>
+          </ProposalBlock>
+        }
+      />
       <Modal
         open={rejecting}
         variant="confirmation"

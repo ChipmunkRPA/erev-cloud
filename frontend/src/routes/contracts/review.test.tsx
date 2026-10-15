@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -105,6 +105,67 @@ afterEach(() => {
 });
 
 describe("SF-20 retained review", () => {
+  it("keeps edits across responsive panes and returns citation focus after resize", async () => {
+    const media = new EventTarget();
+    let wide = false;
+    vi.stubGlobal("matchMedia", () => ({
+      get matches() {
+        return wide;
+      },
+      addEventListener: media.addEventListener.bind(media),
+      removeEventListener: media.removeEventListener.bind(media),
+    }));
+    show();
+    const fields = await screen.findByRole("tab", { name: "Proposed fields" });
+    const documentTab = screen.getByRole("tab", { name: "Document" });
+    documentTab.focus();
+    fireEvent.keyDown(documentTab, { key: "ArrowRight" });
+    expect(document.activeElement).toBe(fields);
+    fireEvent.click(screen.getByRole("radio", { name: "Edit" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Edited value for Customer" }), {
+      target: { value: "Reviewed customer" },
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: "Reason for Customer" }), {
+      target: { value: "Confirmed against signed source" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Page 1, characters 2–10" }));
+    expect(screen.getByRole("tab", { name: "Document" }).getAttribute("aria-selected")).toBe(
+      "true",
+    );
+    expect(document.activeElement?.tagName).toBe("MARK");
+    expect(screen.queryByRole("textbox", { name: "Edited value for Customer" })).toBeNull();
+    act(() => {
+      wide = true;
+      media.dispatchEvent(new Event("change"));
+    });
+    expect(screen.queryByRole("tab")).toBeNull();
+    expect(
+      (screen.getByRole("textbox", { name: "Edited value for Customer" }) as HTMLInputElement)
+        .value,
+    ).toBe("Reviewed customer");
+    act(() => {
+      wide = false;
+      media.dispatchEvent(new Event("change"));
+    });
+    const mark = document.querySelector("mark");
+    if (mark === null) throw new Error("Missing source highlight");
+    mark.focus();
+    fireEvent.keyDown(mark, { key: "Escape" });
+    expect(screen.getByRole("tab", { name: "Proposed fields" }).getAttribute("aria-selected")).toBe(
+      "true",
+    );
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: "Page 1, characters 2–10" }),
+    );
+    expect(
+      (screen.getByRole("textbox", { name: "Edited value for Customer" }) as HTMLInputElement)
+        .value,
+    ).toBe("Reviewed customer");
+    expect(
+      (screen.getByRole("textbox", { name: "Reason for Customer" }) as HTMLTextAreaElement).value,
+    ).toBe("Confirmed against signed source");
+  });
+
   it("requires low-confidence decisions and reasons before leaving source review", async () => {
     show();
     const accept = await screen.findByRole("radio", { name: "Accept" });
