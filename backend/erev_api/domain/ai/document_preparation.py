@@ -1,7 +1,8 @@
 """Prepare bounded extraction input and retain its exact citation mapping locally.
 
-The worker still owes authorized file reads, PDF extraction, durable text storage,
-job-only execution, budget enforcement and audited attempt/proposal persistence.
+The worker document retrieval path authorizes and parses inputs through an injected isolated
+extractor. Extraction dispatch, durable text storage, budget enforcement and audited
+attempt/proposal persistence remain separate integration work.
 """
 
 from __future__ import annotations
@@ -20,6 +21,7 @@ from erev_api.domain.ai.preparation import PreparationRefused, prepare_request
 from erev_api.domain.ai.templates import load_template
 from erev_api.privacy.patterns import MappedRedaction, Redaction, redact_with_offsets
 
+MAX_PDF_BYTES = 25 * 1024 * 1024
 MAX_PAGES = 600
 MAX_TEXT_BYTES = 2 * 1024 * 1024
 

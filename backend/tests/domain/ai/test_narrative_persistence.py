@@ -171,7 +171,7 @@ def test_proposal_attempt_audit_and_rollback(
             uow, prepared=prepared, response=response(str(line["amount"])), provider="fake"
         )
         uow.commit()
-    assert expiry.expire_due(runtime) == 0
+    assert expiry.expire_tenant(runtime, world.place.tenant_id) == 0
     clock.advance(timedelta(days=1))
     other_tenant = member(keyring, clock, name="expiry_other")
     assert expiry.expire_tenant(runtime, other_tenant.tenant_id) == 0
@@ -182,7 +182,7 @@ def test_proposal_attempt_audit_and_rollback(
             .where(ai_proposal.c.id.in_([proposed, second]))
             .with_for_update()
         )
-        assert expiry.expire_due(runtime) == 0
+        assert expiry.expire_tenant(runtime, world.place.tenant_id) == 0
 
     def interrupted(*args: Any, **kwargs: Any) -> Any:
         real_apply(*args, **kwargs)
@@ -191,7 +191,7 @@ def test_proposal_attempt_audit_and_rollback(
     with monkeypatch.context() as patch:
         patch.setattr(expiry, "apply", interrupted)
         with pytest.raises(RuntimeError, match="expiry interrupted"):
-            expiry.expire_due(runtime)
+            expiry.expire_tenant(runtime, world.place.tenant_id)
     with tenant_session(retrieved.principal.db_context, read_only=True) as session:
         assert (
             session.scalar(select(ai_proposal.c.status).where(ai_proposal.c.id == proposed))
@@ -206,7 +206,8 @@ def test_proposal_attempt_audit_and_rollback(
             == 0
         )
     monkeypatch.setattr(expiry, "BATCH_SIZE", 1)
-    assert expiry.expire_due(runtime) == 2
+    # Other committed test tenants may also have overdue proposals.
+    assert expiry.expire_due(runtime) >= 2
     assert expiry.expire_due(runtime) == 0
     with tenant_session(retrieved.principal.db_context, read_only=True) as session:
         rows = {row["id"]: row for row in session.execute(select(ai_proposal)).mappings()}

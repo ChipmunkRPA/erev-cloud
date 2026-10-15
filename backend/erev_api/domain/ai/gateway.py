@@ -18,6 +18,8 @@ from sqlalchemy import select
 from erev_api.db.session import tenant_session
 from erev_api.db.tables import ai_call_intent, ai_model_log, ai_proposal, calc_trace
 from erev_api.domain.ai.access import AIAccessRefused, authorize_job, visible_narrative_trace
+from erev_api.domain.ai.access import AICancelled as AICancelled
+from erev_api.domain.ai.access import require_not_cancelled as require_not_cancelled
 from erev_api.domain.ai.attempts import (
     PROVIDER_FAILURE_CODES,
     AttemptEvidenceRefused,
@@ -69,15 +71,6 @@ def source_sha256(source: NarrativeSource, max_tokens: int) -> str:
             ),
         }
     )
-
-
-class AICancelled(Exception):
-    """Cooperative stop before another provider call; retained evidence stays intact."""
-
-
-def require_not_cancelled(context: JobContext) -> None:
-    if context.cancel_requested():
-        raise AICancelled("AI_CANCELLED")
 
 
 class _ProviderAttemptFailed(ProviderError):

@@ -160,3 +160,12 @@ def visible_narrative_trace(
         .correlate(calc_trace)
         .exists()
     )
+
+
+class AICancelled(Exception):
+    """Cooperative stop before further AI processing; retained evidence stays intact."""
+
+
+def require_not_cancelled(context: JobContext) -> None:
+    if context.cancel_requested():
+        raise AICancelled("AI_CANCELLED")

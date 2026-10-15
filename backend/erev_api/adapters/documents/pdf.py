@@ -12,8 +12,8 @@ from pypdf import PdfReader, apply_configuration
 from pypdf.errors import LimitReachedError, PyPdfError
 
 from erev_api.domain.ai.document_preparation import MAX_PAGES, MAX_TEXT_BYTES
+from erev_api.domain.ai.document_preparation import MAX_PDF_BYTES as MAX_PDF_BYTES
 
-MAX_PDF_BYTES = 25 * 1024 * 1024
 MAX_STREAM_BYTES = 8 * 1024 * 1024
 
 

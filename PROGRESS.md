@@ -2,6 +2,28 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Authorized extraction input preparation — October 15, 2026
+
+- Added a worker-only document retrieval component: reauthorize the current human and attempt,
+  require enabled AI and text consent, bind a readable ATTACHMENT/PDF source, enforce its size
+  and hash, and audit decrypted reads as the human. An injected isolated parser runs outside
+  SQL sessions; heartbeats and fresh admission afterward check cancellation, grants, settings
+  and source access before redacted request preparation. Original pages/citation mappings stay
+  local. The PDF byte limit is shared with the adapter; cancellation guard exports stay compatible.
+- This component does not call a provider, reserve tokens or create a proposal. Extraction
+  dispatch, durable encrypted text, provider recovery, proposal persistence and submission still
+  need integration. No accounting command or automatic field application was introduced.
+- Verification: 20 AI database regressions passed, plus the final focused expiry case. The new
+  test reads an encrypted fixture through the file service, checks disabled/text-off/hash/access
+  refusals, user download audits, redaction, disable/revocation during parsing and cancellation.
+  52 parser/preparation/layer cases passed; two Linux resource-limit cases skipped on this Mac.
+  Full lint and typecheck passed (928 Python sources plus frontend); focused typing passed 780
+  sources. Logs: .run/ai-document-read-{regressions-final,expiry-final,unit,lint,typecheck,
+  types-verified}.log. A nullable tenant-kind read was tightened to scalar_one for typing.
+- The broader run exposed a prior expiry test counting other committed tenants. Local exact
+  assertions now name its tenant; global fan-out and repeat-run checks remain, with exact audit
+  checks for its proposals. Production expiry code was unchanged. No deployment/live AI calls.
+
 ## Authorized AI proposal list — October 15, 2026
 
 - Added GET /ai/proposals for supported number explanations using API-C-09 cursor pagination,
@@ -212,28 +234,6 @@
 - Populated seals cannot cross 0152: the earlier server completion instant cannot be reconstructed
   and downgrade cannot discard it. The stamp is immutable seal metadata outside the line hash.
   PostgreSQL commit visibility remains open; no deployment or production-readiness claim.
-
-## Historical line insertion cutoff — October 15, 2026
-
-- Migration 0151 adds a database-owned insertion stamp included in new line seals.
-  Historical report/API predicates use it; record/current/close predicates retain recorded_at.
-- Nine focused tests passed (72.72s): upgrade/downgrade refuse populated ledgers without
-  changing rows or seals; 0124 historical fixture remains valid; a transaction begun before
-  the cutoff cannot expose its later insert. Log: .run/server-time-migration-guards.log.
-- Mypy passed 771 sources; 1,141 report/journal unit tests passed (7.04s), recorded in
-  .run/server-time-unit-reports.log. Changed Python formatting and Ruff checks passed.
-- Broad report/ledger/API/privacy/snapshot/migration run finished: 379 passed, one failed
-  (1,701.70s). The API test still expected historical visibility at the frozen application clock;
-  it now checks database instants before/after posting and excludes the earlier business stamp.
-  Follow-up: 26 passed, one strict expected failure for overlapping commit visibility (123.56s).
-  Log: .run/server-time-followup.log; full evidence in VERIFICATION-2026-10-15.md.
-- Architecture: 269 passed, one column-order mismatch (231.36s); documentation corrected and
-  the exact failed check passed (1.22s). Logs: .run/server-time-architecture.log and
-  .run/server-time-drift-recheck.log. Full architecture selection not repeated.
-- make lint passed (.run/server-time-lint.log): 142 dependency licenses, zero secret findings,
-  registry/fixture checks and 502 control-tagged tests collected successfully.
-- Insertion time is not commit time. The 0152 follow-up above closes posting splits; overlapping
-  commits remain unresolved. See LIMITS-1.0.md. No readiness claim or deployment.
 
 ## Outstanding release verification
 

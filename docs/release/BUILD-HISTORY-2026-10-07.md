@@ -4919,3 +4919,25 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - No broad backend process remains running. Complete CI and other implementation/release gates,
   unknown AI usage reconciliation and independent accounting sign-off remain outstanding.
   Details: docs/release/VERIFICATION-2026-10-15.md. No deployment or readiness claim.
+
+## Historical line insertion cutoff — October 15, 2026
+
+- Migration 0151 adds a database-owned insertion stamp included in new line seals.
+  Historical report/API predicates use it; record/current/close predicates retain recorded_at.
+- Nine focused tests passed (72.72s): upgrade/downgrade refuse populated ledgers without
+  changing rows or seals; 0124 historical fixture remains valid; a transaction begun before
+  the cutoff cannot expose its later insert. Log: .run/server-time-migration-guards.log.
+- Mypy passed 771 sources; 1,141 report/journal unit tests passed (7.04s), recorded in
+  .run/server-time-unit-reports.log. Changed Python formatting and Ruff checks passed.
+- Broad report/ledger/API/privacy/snapshot/migration run finished: 379 passed, one failed
+  (1,701.70s). The API test still expected historical visibility at the frozen application clock;
+  it now checks database instants before/after posting and excludes the earlier business stamp.
+  Follow-up: 26 passed, one strict expected failure for overlapping commit visibility (123.56s).
+  Log: .run/server-time-followup.log; full evidence in VERIFICATION-2026-10-15.md.
+- Architecture: 269 passed, one column-order mismatch (231.36s); documentation corrected and
+  the exact failed check passed (1.22s). Logs: .run/server-time-architecture.log and
+  .run/server-time-drift-recheck.log. Full architecture selection not repeated.
+- make lint passed (.run/server-time-lint.log): 142 dependency licenses, zero secret findings,
+  registry/fixture checks and 502 control-tagged tests collected successfully.
+- Insertion time is not commit time. The 0152 follow-up above closes posting splits; overlapping
+  commits remain unresolved. See LIMITS-1.0.md. No readiness claim or deployment.

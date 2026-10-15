@@ -132,6 +132,14 @@ source citation spans, rejecting an entire malformed proposal. Confidence below 
 for review. Command-specific field schemas, human semantic review, extraction persistence and
 acceptance, anomaly and Q&A workflows remain unfinished.
 
+The worker-only document retrieval helper now checks the current initiating human, AI switches,
+text consent, readable ATTACHMENT/PDF source, file size and digest before invoking an injected
+isolated extractor. It audits decrypted reads as that human, heartbeats around parsing and
+rechecks cancellation, grants, settings and source access afterward before preparing redacted
+input with retained citation mappings. It holds no SQL transaction while parsing. This is a
+preparation component: extraction dispatch/provider retries, encrypted text persistence and
+proposal persistence are not yet connected, and no extraction submission endpoint is enabled.
+
 The PDF adapter has file/page/text and parser limits, an isolated subprocess, timeout cleanup
 and a sanitized environment. A four-page fixture covers the nine documented extraction fields.
 Linux address-space/CPU enforcement is implemented but actual Linux success/exhaustion checks

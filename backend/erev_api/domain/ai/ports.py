@@ -53,3 +53,9 @@ class ProviderError(RuntimeError):
         self.code = code
         self.retryable = retryable
         self.usage = usage
+
+
+class DocumentExtractor(Protocol):
+    """Worker-owned bounded parser; operational implementations must isolate untrusted PDFs."""
+
+    def __call__(self, data: bytes, *, send_contract_text: bool) -> tuple[str, ...]: ...
