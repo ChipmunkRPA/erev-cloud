@@ -2,6 +2,24 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## AI cancellation boundaries — October 15, 2026
+
+- Narrative tasks now stop cooperatively before another provider call and during retry waits.
+  Waits use one-second chunks with attempt-fenced heartbeats and cancellation checks, outside
+  transactions and the tenant budget lease. A lost attempt stops without another wait/call.
+- An already-started call retains its usage and outcome; cancellation does not erase logs or
+  completed proposals. The handler returns control for the registry to settle CANCELLED.
+- Real registry checks passed for cancellation before dispatch and during a retry wait, proving
+  zero/one calls respectively and retained evidence without a synthetic proposal. The fixture
+  now inserts final immutable queue parameters rather than attempting to rewrite them.
+- Unit/worker/layer selection: 36 passed; final focused unit selection: 15 passed. Strict typing
+  passed 773 sources. Initial test-only issues (single-call token expectation, immutable fixture
+  params and an explicit duplicate mypy source) were corrected. Logs are .run/ai-cancellation-*.log.
+- Full AI domain database selection passed all 19 cases (.run/ai-cancellation-all-pg.log);
+  full make lint passed (.run/ai-cancellation-lint-final.log).
+- Public AI workflows and independent accounting acceptance remain unfinished. No live provider
+  calls or deployment; this change is not a full readiness or immutable-CI result.
+
 ## Narrative worker dispatch — October 15, 2026
 
 - Registered the narrative AI_TASK handler and connected the worker to the existing gateway.
@@ -218,23 +236,6 @@
 - This is a required writer foundation, not operational crash protection: gateway integration,
   durable retry classification/recovery and unknown-usage handling remain open, as do the
   other implementation/release gates and independent accounting sign-off. No deployment.
-
-## AI document file-read authorization — October 15, 2026
-
-- Registered proposal source references without granting source access. Derived text now
-  requires ai.use and current access to an unshredded source attachment of a same-tenant
-  CONTRACT_EXTRACTION proposal. Non-extraction, missing-source and recursive text links refuse.
-- PostgreSQL tests cover uploader access, another contract reader's entity permissions,
-  attachment voiding, lost AI permission, source shredding, operator/foreign-tenant denial,
-  reads while AI is disabled and conservative all-entity erasure scope.
-- Focused checks: 14 passed; strict typing: 768 sources; Ruff/diff passed. Logs:
-  .run/ai-file-read-{final,types}.log. Full architecture plus existing file API checks:
-  292 passed in 226.83s (.run/ai-file-access-regression.log); this is not full release CI.
-- Consolidated contradictory historical AI paragraphs in LIMITS-1.0.md into current status;
-  preserved the superseded notes in BUILD-HISTORY-2026-10-07.md.
-- Dedicated proposal/document-text response APIs, extraction job integration and write-ahead
-  call recovery remain unfinished, along with other implementation and release gates.
-  No deployment or production-readiness claim; independent accounting sign-off is still open.
 
 ## Outstanding release verification
 

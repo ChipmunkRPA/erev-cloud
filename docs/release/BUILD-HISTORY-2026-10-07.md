@@ -4758,3 +4758,20 @@ cleanup in the shared database session kernel was also repaired and regression-t
   extraction workflow integration, call recovery and other release gaps. Experimental plaintext
   AI_DOCUMENT_TEXT objects from older builds require explicit migration or regeneration;
   there is no plaintext fallback. No deployment or production-readiness claim.
+
+## AI document file-read authorization — October 15, 2026
+
+- Registered proposal source references without granting source access. Derived text now
+  requires ai.use and current access to an unshredded source attachment of a same-tenant
+  CONTRACT_EXTRACTION proposal. Non-extraction, missing-source and recursive text links refuse.
+- PostgreSQL tests cover uploader access, another contract reader's entity permissions,
+  attachment voiding, lost AI permission, source shredding, operator/foreign-tenant denial,
+  reads while AI is disabled and conservative all-entity erasure scope.
+- Focused checks: 14 passed; strict typing: 768 sources; Ruff/diff passed. Logs:
+  .run/ai-file-read-{final,types}.log. Full architecture plus existing file API checks:
+  292 passed in 226.83s (.run/ai-file-access-regression.log); this is not full release CI.
+- Consolidated contradictory historical AI paragraphs in LIMITS-1.0.md into current status;
+  preserved the superseded notes in BUILD-HISTORY-2026-10-07.md.
+- Dedicated proposal/document-text response APIs, extraction job integration and write-ahead
+  call recovery remain unfinished, along with other implementation and release gates.
+  No deployment or production-readiness claim; independent accounting sign-off is still open.

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from datetime import date
+from typing import Any
 from uuid import UUID
 
 import pytest
@@ -24,7 +25,9 @@ from tests.api.test_explain_api import app as app  # noqa: F401
 from tests.api.test_explain_api import world as world
 
 
-def context_for(actor: Member, clock: FrozenClock) -> JobContext:
+def context_for(
+    actor: Member, clock: FrozenClock, *, queued_params: dict[str, Any] | None = None
+) -> JobContext:
     job_id = new_id()
     with tenant_session(DbContext(actor.tenant_id, actor.user_id, "*")) as session:
         session.execute(
@@ -33,8 +36,8 @@ def context_for(actor: Member, clock: FrozenClock) -> JobContext:
                 id=job_id,
                 kind="AI_TASK",
                 queue="ai",
-                state="RUNNING",
-                params={},
+                state="RUNNING" if queued_params is None else "QUEUED",
+                params={} if queued_params is None else queued_params,
                 created_by=actor.user_id,
                 created_by_kind="USER",
                 updated_by=actor.user_id,

@@ -13,7 +13,12 @@ from uuid import UUID
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, StrictInt, ValidationError
 
-from erev_api.domain.ai.gateway import AiGateway, NarrativeSource
+from erev_api.domain.ai.gateway import (
+    AICancelled,
+    AiGateway,
+    NarrativeSource,
+    require_not_cancelled,
+)
 from erev_api.enums import JobKind
 from erev_api.jobs.context import JobContext
 from erev_api.jobs.registry import JobOutcome, RetryPolicy, task
@@ -56,6 +61,19 @@ def configure(gateway: AiGateway, wait: Callable[[timedelta], None]) -> None:
     _gateway, _wait = gateway, wait
 
 
+def retry_wait(context: JobContext, delay: timedelta, wait: Callable[[timedelta], None]) -> None:
+    """Wait without a transaction, noticing cancellation at one-second boundaries."""
+    remaining = delay
+    while remaining > timedelta():
+        context.heartbeat()
+        require_not_cancelled(context)
+        chunk = min(remaining, timedelta(seconds=1))
+        wait(chunk)
+        remaining -= chunk
+    context.heartbeat()
+    require_not_cancelled(context)
+
+
 @task(JobKind.AI_TASK, retry=RetryPolicy(max_attempts=1))
 def run(context: JobContext, params: Mapping[str, Any]) -> JobOutcome:
     try:
@@ -66,9 +84,17 @@ def run(context: JobContext, params: Mapping[str, Any]) -> JobOutcome:
     gateway, wait = _gateway, _wait
     if gateway is None or wait is None:
         raise RuntimeError("AI_WORKER_NOT_CONFIGURED")
-    proposal_id = gateway.run_narrative(
-        context, request.source(), max_tokens=request.max_tokens, wait=wait
-    )
+    try:
+        proposal_id = gateway.run_narrative(
+            context,
+            request.source(),
+            max_tokens=request.max_tokens,
+            wait=lambda delay: retry_wait(context, delay, wait),
+        )
+    except AICancelled:
+        # The registry reads the durable cancellation flag and settles CANCELLED.
+        # No synthetic proposal or successful model result is created here.
+        return JobOutcome(state="SUCCEEDED", result={"cancelled": True})
     # A failed provider result may itself be a durably completed proposal. Job
     # completion reports persistence, never acceptance or accounting approval.
     return JobOutcome(state="SUCCEEDED", result={"proposal_id": str(proposal_id)})

@@ -65,6 +65,15 @@ def source_sha256(source: NarrativeSource, max_tokens: int) -> str:
     )
 
 
+class AICancelled(Exception):
+    """Cooperative stop before another provider call; retained evidence stays intact."""
+
+
+def require_not_cancelled(context: JobContext) -> None:
+    if context.cancel_requested():
+        raise AICancelled("AI_CANCELLED")
+
+
 class _ProviderAttemptFailed(ProviderError):
     """Internal retry evidence; exception text remains a safe provider code."""
 
@@ -325,6 +334,7 @@ class AiGateway:
             completed = self._completed(context, source, max_tokens)
             if completed is not None:
                 return completed
+            require_not_cancelled(context)
             previous = self._previous(context, source, max_tokens)
             if previous is not None and (
                 previous["attempt_no"] >= 3
@@ -341,6 +351,7 @@ class AiGateway:
                 raise AISettingsRefused("AI_CONFIGURATION_CHANGED")
             # No provider is constructed until the persisted job, current grants,
             # effective settings, source reads and budget have all been admitted.
+            require_not_cancelled(context)
             provider = self.provider_factory()
             with system_unit_of_work(
                 context.runtime,
@@ -436,6 +447,8 @@ class AiGateway:
                     ai_proposal.c.job_id == context.job_id,
                 )
             )
+        if completed is None:
+            require_not_cancelled(context)
         resumed_previous = (
             None if completed is not None else self._previous(context, source, max_tokens)
         )
@@ -456,6 +469,7 @@ class AiGateway:
                 return self.run_narrative_attempt(context, source, max_tokens=max_tokens)
             except _ProviderAttemptFailed as failure:
                 if failure.retryable and failure.attempt_no < 3:
+                    require_not_cancelled(context)
                     wait(timedelta(seconds=5 * 2 ** (failure.attempt_no - 1)))
                     continue
                 # Reauthorize the source before persisting terminal evidence. Retain

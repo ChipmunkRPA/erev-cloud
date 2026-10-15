@@ -71,7 +71,11 @@ The guard does not estimate missing usage,
 reserve unknown response tokens, reconcile returned provider errors without usage, or infer
 historical calls that never had retained intents. The worker now registers a narrative AI_TASK
 handler with validated source selectors, lazy provider construction and gateway-owned waiting.
-It reports the persisted proposal identity, not human approval. Other AI operations, durable
+It reports the persisted proposal identity, not human approval. Cancellation is cooperative:
+before another call and during retry waits it stops without a synthetic proposal; an already
+started call still retains its usage and result. Retry waits heartbeat and check cancellation
+at one-second boundaries, with no database transaction or budget lease held while sleeping.
+This does not interrupt a network call already in progress. Other AI operations, durable
 admission-failure evidence, notifications and public submission/acceptance/rejection workflows
 remain unfinished. The AI audit-lifecycle gate remains open; worker dispatch and internal
 gateway tests do not satisfy the full lifecycle.

@@ -183,3 +183,21 @@ evidence. No deployment occurred.
 - Public submission, other AI operations, admission-failure evidence, notifications, human
   review and unknown-outcome/usage reconciliation remain open; this does not close AI lifecycle
   verification or establish production readiness.
+
+## AI cancellation boundaries — October 15, 2026
+
+- Narrative tasks now stop cooperatively before another provider call and during retry waits.
+  Waits use one-second chunks with attempt-fenced heartbeats and cancellation checks, outside
+  transactions and the tenant budget lease. A lost attempt stops without another wait/call.
+- An already-started call retains its usage and outcome; cancellation does not erase logs or
+  completed proposals. The handler returns control for the registry to settle CANCELLED.
+- Real registry checks passed for cancellation before dispatch and during a retry wait, proving
+  zero/one calls respectively and retained evidence without a synthetic proposal. The fixture
+  now inserts final immutable queue parameters rather than attempting to rewrite them.
+- Unit/worker/layer selection: 36 passed; final focused unit selection: 15 passed. Strict typing
+  passed 773 sources. Initial test-only issues (single-call token expectation, immutable fixture
+  params and an explicit duplicate mypy source) were corrected. Logs are .run/ai-cancellation-*.log.
+- Full AI domain database selection passed all 19 cases (.run/ai-cancellation-all-pg.log);
+  full make lint passed (.run/ai-cancellation-lint-final.log).
+- Public AI workflows and independent accounting acceptance remain unfinished. No live provider
+  calls or deployment; this change is not a full readiness or immutable-CI result.
