@@ -2,6 +2,13 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Security scan report validation — October 15, 2026
+
+- Fixed a demonstrated false pass for empty ZAP reports. The gate now requires the target site,
+  explicit alert arrays and known risk codes. Valid zero-alert reports remain accepted.
+- Script regressions, typing and lint pass; evidence is in docs/release/CI-2026-10-15.md.
+  Live verification of the committed gate is next. No deployment or alert suppression.
+
 ## Runtime audit and local container verification — October 15, 2026
 
 - make audit-deps passed on clean 74bd148: all 86 pinned Python runtime packages audited,

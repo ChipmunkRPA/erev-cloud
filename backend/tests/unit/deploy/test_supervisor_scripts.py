@@ -1936,6 +1936,52 @@ def test_compose_verify_keep_up_contract(scratch: Path) -> None:
     assert not (root / ".run" / "reports" / "compose-verify").exists()
 
 
+@pytest.mark.parametrize(
+    "document",
+    [
+        _zap_json(),
+        {},
+        {"site": []},
+        {"site": [{"@name": "http://wrong-target.invalid", "alerts": []}]},
+        {"site": [{"@name": "http://host.docker.internal:8195"}]},
+        {"site": [{"@name": "http://host.docker.internal:8195", "alerts": None}]},
+        {"site": [{"@name": "http://host.docker.internal:8195", "alerts": [{"riskcode": "9"}]}]},
+    ],
+    ids=[
+        "clean-target",
+        "missing-sites",
+        "empty-sites",
+        "wrong-target",
+        "missing-alerts",
+        "null-alerts",
+        "unknown-risk",
+    ],
+)
+def test_zap_baseline_requires_complete_scan_evidence(scratch: Path, document: object) -> None:
+    root = _dep5_root(scratch)
+    zap_json = scratch / "zap.json"
+    zap_json.write_text(json.dumps(document), "utf-8")
+    with _scratch_http() as base:
+        done = _run_dep5(
+            "scripts/zap_baseline.sh",
+            root,
+            _dep5_env(
+                scratch,
+                root,
+                EREV_COMPOSE_VERIFY_READYZ_URL=f"{base}/api/v1/readyz",
+                EREV_COMPOSE_VERIFY_ROOT_URL=f"{base}/",
+                STUB_ZAP_JSON=str(zap_json),
+                STUB_ZAP_RC="0",
+            ),
+        )
+    clean_target = document == _zap_json()
+    assert done.returncode == (0 if clean_target else 1), done.stdout + done.stderr
+    assert _report_of(root, "zap-baseline")["result"] == (
+        "clean" if clean_target else "no-zap-json"
+    )
+    assert _downs(scratch) == 1
+
+
 def test_zap_baseline_reuses_the_bring_up_and_owns_the_down(scratch: Path) -> None:
     root = _dep5_root(scratch)
     zap_json = scratch / "zap.json"

@@ -288,15 +288,30 @@ bring_down
 
 # (5) the image digest and the alert counts by risk (zap.json: site[].alerts[].riskcode).
 IMAGE_DIGEST="$("$DOCKER" image inspect --format '{{index .RepoDigests 0}}' "$ZAP_IMAGE" 2>/dev/null | head -n 1 || true)"
-ALERT_COUNTS="$("$PY" - "$REPORT_DIR/zap.json" "$ZAP_RC" <<'PY'
+ALERT_COUNTS="$("$PY" - "$REPORT_DIR/zap.json" "$ZAP_RC" "$ZAP_TARGET_URL" <<'PY'
 import json, sys
 names = {"0": "informational", "1": "low", "2": "medium", "3": "high"}
 counts = {name: 0 for name in names.values()}
 try:
     document = json.load(open(sys.argv[1], encoding="utf-8"))
-    for site in document.get("site") or []:
-        for alert in site.get("alerts") or []:
-            counts[names.get(str(alert.get("riskcode")), "informational")] += 1
+    sites = document.get("site")
+    if not isinstance(sites, list) or not sites:
+        raise ValueError("no scanned sites")
+    target = sys.argv[3].rstrip("/")
+    found_target = False
+    for site in sites:
+        if not isinstance(site, dict) or not isinstance(site.get("@name"), str):
+            raise ValueError("invalid scanned site")
+        found_target |= site["@name"].rstrip("/") == target
+        alerts = site.get("alerts")
+        if not isinstance(alerts, list):
+            raise ValueError("missing alert inventory")
+        for alert in alerts:
+            if not isinstance(alert, dict) or str(alert.get("riskcode")) not in names:
+                raise ValueError("unknown alert risk")
+            counts[names[str(alert["riskcode"])]] += 1
+    if not found_target:
+        raise ValueError("target site was not reported")
 except Exception:
     print("")
     sys.exit(0)
@@ -304,7 +319,7 @@ counts["fail"] = 1 if sys.argv[2] == "1" else 0
 print(" ".join(f"{k}={v}" for k, v in counts.items()))
 PY
 )"
-[[ -n "$ALERT_COUNTS" ]] || fail "counts" 1 "no-zap-json" "zap.json is missing or unreadable (see $(basename "$REPORT_DIR")/zap.log)"
+[[ -n "$ALERT_COUNTS" ]] || fail "counts" 1 "no-zap-json" "zap.json is missing, invalid or does not cover the target (see $(basename "$REPORT_DIR")/zap.log)"
 STAGES_PASSED="$STAGES_PASSED counts"
 if [[ "$ZAP_RC" == "1" ]]; then
   FAIL_STAGE=""
