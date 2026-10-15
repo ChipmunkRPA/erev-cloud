@@ -5255,3 +5255,27 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Gateway admission, retry execution, worker dispatch, submission and human acceptance remain
   unfinished. This reader supplies recovery evidence; it does not authorize another provider call.
   Broader release verification and independent accounting sign-off remain outstanding.
+
+## Extraction gateway and worker dispatch — October 15, 2026
+
+- Connected extraction execution to fresh human/source/settings admission, the tenant budget
+  lease, committed text/call intent, audited outcomes and proposal persistence. Retries reuse
+  retained input without reparsing, observe durable 5/10-second backoff and stop at three calls.
+  Permanent/exhausted errors finalize against the last log. Completed replay makes no new call;
+  uncertain outcomes/usage block execution. Mid-call disable/revocation retains usage without
+  creating a proposal. Cancelling an uncertain job preserves its evidence and budget hold.
+- AI_TASK now validates narrative or extraction selectors, rejecting prompts/model/text input.
+  The worker composition root supplies the isolated PDF parser and lazy provider. Worker retry
+  count remains one; the gateway owns provider attempts. Human review/acceptance remains separate.
+- Verification: 38 AI PostgreSQL cases passed, including a real queued extraction job, interrupted
+  wait/failure recovery, lease release across waits, exact retained requests, cancellation,
+  disabled/text-off/budget admission, invalid output and known/unknown usage. Three final cases
+  passed after the uncertain-call cancellation correction. Thirty-nine dispatch/layer checks
+  and nine worker/probe checks passed. Full lint/typecheck passed (932 Python sources plus
+  frontend); final focused typing passed 784 sources and final formatting/lint checks passed.
+  Logs: .run/ai-extraction-gateway-{pg-fixed,regressions,final-pg,unit,worker-unit,lint,
+  typecheck-last,types-last}.log. An initial test-only mappingproxy serialization mistake and
+  two strict-typing issues were corrected. Fake providers/parsers only; no deployment/live AI.
+- Public extraction submission, approved field catalogue, document-text/proposal review APIs,
+  human acceptance and broader release/accounting gates remain unfinished. Linux parser resource
+  enforcement and live-provider operation are not proved by these local worker tests.

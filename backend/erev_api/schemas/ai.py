@@ -141,3 +141,7 @@ class AIExtractionDraftIn(BaseModel):
         if len(set(targets)) != len(targets) or not set(targets).issubset(keys):
             raise ValueError("Each line binding must name a different draft obligation key.")
         return self
+
+
+class AIProposalAcceptedOut(BaseModel):
+    contract_id: UUID

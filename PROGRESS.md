@@ -2,6 +2,28 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Atomic reviewed extraction draft acceptance — October 15, 2026
+
+- Enabled POST /ai/proposals/{id}/accept for new drafts, requiring explicit complete draft
+  inputs, field decisions and supported header/line mappings. Fresh tenant customer resolution,
+  human ai.use plus contract.create for the selected entity, source access, If-Match and exact
+  expiry checks precede writes. At least one retained field is required. Cached replay also
+  rechecks current permissions/source access.
+- Normal contract creation, source-PDF attachment, combination suggestions, rule holds, accepted
+  proposal provenance and audit commit in one transaction. Acceptance creates only a DRAFT;
+  it does not submit activation or post revenue. Existing AI_ASSISTED activation controls apply.
+  Retained review works with AI off. OpenAPI and frontend API types regenerated.
+- PostgreSQL regression: 8 tests passed across acceptance, extraction/explanation submission,
+  authorized lists and emergency disable. Acceptance covers competing reviewers (201/412),
+  idempotent replay, no create permission, missing If-Match, exact expiry, mismatched amount,
+  empty acceptance, injected rollback including attachment, one successful audit/provenance
+  record, zero revenue postings and unavailable-source replay. The acceptance test seeds retained
+  proposal evidence; it does not prove a full worker-to-activation or browser workflow.
+- 98 unit/architecture checks and full lint passed; focused typing passed 789 sources. Logs: .run/ai-acceptance-{regression,final-types,
+  final-unit,final-lint}.log. Structured-term mappings, existing-record acceptance approval,
+  complete browser review, broad release verification and independent accounting sign-off remain
+  open. No deployment or live provider calls.
+
 ## AI-assisted draft activation control — October 15, 2026
 
 - Corrected the earlier acceptance prerequisite: PRD SM-11/BR-AI-05 permits a normal human command
@@ -209,30 +231,6 @@
   .run/ai-extraction-fields-{unit,pg,lint,typecheck,types}.log.
 - Public submission, extraction review APIs, human conversion/acceptance and broader release and
   independent accounting verification remain unfinished. No deployment or live provider calls.
-
-## Extraction gateway and worker dispatch — October 15, 2026
-
-- Connected extraction execution to fresh human/source/settings admission, the tenant budget
-  lease, committed text/call intent, audited outcomes and proposal persistence. Retries reuse
-  retained input without reparsing, observe durable 5/10-second backoff and stop at three calls.
-  Permanent/exhausted errors finalize against the last log. Completed replay makes no new call;
-  uncertain outcomes/usage block execution. Mid-call disable/revocation retains usage without
-  creating a proposal. Cancelling an uncertain job preserves its evidence and budget hold.
-- AI_TASK now validates narrative or extraction selectors, rejecting prompts/model/text input.
-  The worker composition root supplies the isolated PDF parser and lazy provider. Worker retry
-  count remains one; the gateway owns provider attempts. Human review/acceptance remains separate.
-- Verification: 38 AI PostgreSQL cases passed, including a real queued extraction job, interrupted
-  wait/failure recovery, lease release across waits, exact retained requests, cancellation,
-  disabled/text-off/budget admission, invalid output and known/unknown usage. Three final cases
-  passed after the uncertain-call cancellation correction. Thirty-nine dispatch/layer checks
-  and nine worker/probe checks passed. Full lint/typecheck passed (932 Python sources plus
-  frontend); final focused typing passed 784 sources and final formatting/lint checks passed.
-  Logs: .run/ai-extraction-gateway-{pg-fixed,regressions,final-pg,unit,worker-unit,lint,
-  typecheck-last,types-last}.log. An initial test-only mappingproxy serialization mistake and
-  two strict-typing issues were corrected. Fake providers/parsers only; no deployment/live AI.
-- Public extraction submission, approved field catalogue, document-text/proposal review APIs,
-  human acceptance and broader release/accounting gates remain unfinished. Linux parser resource
-  enforcement and live-provider operation are not proved by these local worker tests.
 
 ## Outstanding release verification
 

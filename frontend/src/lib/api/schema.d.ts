@@ -431,6 +431,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/ai/proposals/{id}/accept": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Proposals Accept
+     * @description Create a reviewed draft and accept its extraction proposal atomically as the human.
+     */
+    post: operations["ai_proposals_accept"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/ai/proposals/{id}/document-text": {
     parameters: {
       query?: never;
@@ -7864,6 +7884,30 @@ export interface components {
       period?: string | null;
     };
     /**
+     * AIExtractionDraftIn
+     * @description Explicit draft inputs for review; this model does not enable acceptance.
+     */
+    AIExtractionDraftIn: {
+      /**
+       * Command
+       * @constant
+       */
+      command: "contract.create_draft";
+      draft: components["schemas"]["ContractCreateIn"];
+      /** Entity Code */
+      entity_code: string;
+      /** Field Decisions */
+      field_decisions: components["schemas"]["AIFieldDecisionIn"][];
+      /** Header Bindings */
+      header_bindings?: {
+        [key: string]: "customer" | "inception_date" | "signature_date" | "payment_terms";
+      };
+      /** Line Bindings */
+      line_bindings?: {
+        [key: string]: string;
+      };
+    };
+    /**
      * AIExtractionProposalOut
      * @description Extraction suggestions remain review evidence, never accepted contract values.
      */
@@ -7932,6 +7976,27 @@ export interface components {
        */
       updated_at: string;
       updated_by: components["schemas"]["ActorOut"];
+    };
+    /**
+     * AIFieldDecisionIn
+     * @description An explicit human decision; values remain uncoerced JSON for typed field checks.
+     */
+    AIFieldDecisionIn: {
+      decision: components["schemas"]["AiFieldDecision"];
+      /** Path */
+      path: string;
+      /** Reason */
+      reason?: string | null;
+      /** Value */
+      value?: unknown;
+    };
+    /** AIProposalAcceptedOut */
+    AIProposalAcceptedOut: {
+      /**
+       * Contract Id
+       * Format: uuid
+       */
+      contract_id: string;
     };
     /**
      * AIProposalOut
@@ -8602,6 +8667,12 @@ export interface components {
        */
       purpose: "POSTING" | "DEFER_PAST_LOCK";
     };
+    /**
+     * AiFieldDecision
+     * @description E-121 ``ai_field_decision`` (04 §3.4; API only).
+     * @enum {string}
+     */
+    AiFieldDecision: "ACCEPT" | "EDIT" | "REJECT";
     /**
      * AiProposalKind
      * @description E-73 ``ai_proposal_kind`` (04 §3.4).
@@ -24999,6 +25070,105 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  ai_proposals_accept: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description API-C-04: one key per user intent (8-255 characters); a repeat with the same key and body replays the stored response, another body is 422 idempotency-key-reused. */
+        "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+      };
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["AIExtractionDraftIn"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AIProposalAcceptedOut"];
+        };
+      };
+      /** @description Problem: unauthenticated, session-expired */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: not-found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: invalid-transition, idempotency-in-progress */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: precondition-failed */
+      412: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: validation-failed, idempotency-key-reused */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: precondition-required */
+      428: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
         };
       };
     };

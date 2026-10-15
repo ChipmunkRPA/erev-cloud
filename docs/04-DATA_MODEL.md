@@ -8072,26 +8072,29 @@ and `object_label`, following the existing computation-fact audit convention.
   and checks the retained digest, canonical envelope and source/job bindings. Page numbers are
   one-based; the original page ordering and text are preserved. Shredded text returns 404.
 - `POST /ai/proposals/{id}/accept` takes `{field_decisions: array<{path (R), decision (E-121, R), value (R for EDIT), reason (R for EDIT and REJECT)}>, command (R; `contract.create_draft` in 1.0), entity_code (R)}`. Every `content[].path` of the proposal appears exactly once, otherwise 422 `validation-failed`. `ACCEPT` takes the proposed value, `EDIT` takes `value`, `REJECT` leaves the field unset. The command runs `POST /contracts` as the caller (permission `contract.create`) and returns 201 `{contract_id}`; the proposal becomes `accepted` with `field_decisions` stored. A proposal that is not `proposed`, or has expired, returns 409 `invalid-transition`.
-  Implementation status: the field-decision schema and pure review resolver are built; the
-  acceptance route remains unimplemented. EDIT must explicitly supply a typed value; ACCEPT and
+  Implementation status: the new-draft acceptance route is implemented with required `draft`
+  (ContractCreateIn), `line_bindings` and `header_bindings` review inputs. EDIT must explicitly supply a typed value; ACCEPT and
   REJECT cannot carry replacement values. EDIT/REJECT require bounded nonblank reasons. Every
   retained field is validated and decided exactly once; accepted values retain their exact
   representation and rejected fields remain unset. No defaults or reference resolution occur.
-  Draft conversion requires further explicit inputs for required contract identity, currency,
-  quantities and obligation keys, plus normal permission/expiry/SoD and transaction controls.
+  Draft conversion requires explicit contract identity, currency, quantities and obligation keys.
   Draft-intake preparation now accepts a complete ContractCreateIn plus explicit line_bindings
   from retained extraction paths to draft obligation keys. Targets are unique existing keys;
   retained lines must all be mapped, rejected lines cannot be mapped, and product/amount/currency
   must agree. The entity codes must match and submit_for_activation must be false. This intake
-  is not yet exposed by the acceptance route; structured-term conversion and atomic draft
-  creation/acceptance still require implementation. AI_PROPOSAL_ACCEPTANCE applies to existing
+  is exposed by the acceptance route; structured-term conversion remains unfinished. AI_PROPOSAL_ACCEPTANCE applies to existing
   records under SM-11; new drafts instead carry AI_ASSISTED into activation review.
   Combined draft validation now supports explicit header_bindings for customer_name to customer,
   effective_date to inception_date or signature_date, and payment_terms to payment_terms. Values
   must match exactly. An existing customer requires a matching resolved ID/name supplied by the
-  eventual tenant-authorized command; no reference lookup is performed by this pure validator.
+  tenant-authorized acceptance command; no reference lookup is performed by this pure validator.
   Retained structured terms without implemented mappings refuse validation; no header is silently
-  omitted. The acceptance route remains unimplemented.
+  omitted. The command checks current human ai.use and contract.create for the selected entity
+  and source access before cached replay and under a proposal row lock. If-Match and at least one
+  retained field are required. Normal draft creation, source-PDF attachment, combination
+  suggestions, rule holds, acceptance metadata and audit are atomic. It returns 201 with the
+  contract ID and Location, without submitting activation or posting revenue. Review remains
+  available with AI disabled.
   Activation derives AI_ASSISTED from accepted CONTRACT_EXTRACTION proposals whose immutable
   contract.create_draft target is that contract. Any such flag prevents automatic activation.
   The activation content hash includes provenance IDs, accepting human/time and decision hashes;

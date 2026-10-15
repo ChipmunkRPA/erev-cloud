@@ -164,6 +164,72 @@
         "title": "AIExplanationIn",
         "type": "object"
       },
+      "AIExtractionDraftIn": {
+        "additionalProperties": false,
+        "description": "Explicit draft inputs for review; this model does not enable acceptance.",
+        "properties": {
+          "command": {
+            "const": "contract.create_draft",
+            "title": "Command",
+            "type": "string"
+          },
+          "draft": {
+            "$ref": "#/components/schemas/ContractCreateIn"
+          },
+          "entity_code": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Entity Code",
+            "type": "string"
+          },
+          "field_decisions": {
+            "items": {
+              "$ref": "#/components/schemas/AIFieldDecisionIn"
+            },
+            "maxItems": 507,
+            "minItems": 1,
+            "title": "Field Decisions",
+            "type": "array"
+          },
+          "header_bindings": {
+            "additionalProperties": {
+              "enum": [
+                "customer",
+                "inception_date",
+                "signature_date",
+                "payment_terms"
+              ],
+              "type": "string"
+            },
+            "maxProperties": 3,
+            "propertyNames": {
+              "enum": [
+                "customer_name",
+                "effective_date",
+                "payment_terms"
+              ]
+            },
+            "title": "Header Bindings",
+            "type": "object"
+          },
+          "line_bindings": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "maxProperties": 500,
+            "title": "Line Bindings",
+            "type": "object"
+          }
+        },
+        "required": [
+          "command",
+          "entity_code",
+          "field_decisions",
+          "draft"
+        ],
+        "title": "AIExtractionDraftIn",
+        "type": "object"
+      },
       "AIExtractionProposalOut": {
         "description": "Extraction suggestions remain review evidence, never accepted contract values.",
         "properties": {
@@ -316,6 +382,56 @@
           "content"
         ],
         "title": "AIExtractionProposalOut",
+        "type": "object"
+      },
+      "AIFieldDecisionIn": {
+        "additionalProperties": false,
+        "description": "An explicit human decision; values remain uncoerced JSON for typed field checks.",
+        "properties": {
+          "decision": {
+            "$ref": "#/components/schemas/AiFieldDecision"
+          },
+          "path": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Path",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "value": {
+            "title": "Value"
+          }
+        },
+        "required": [
+          "path",
+          "decision"
+        ],
+        "title": "AIFieldDecisionIn",
+        "type": "object"
+      },
+      "AIProposalAcceptedOut": {
+        "properties": {
+          "contract_id": {
+            "format": "uuid",
+            "title": "Contract Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "contract_id"
+        ],
+        "title": "AIProposalAcceptedOut",
         "type": "object"
       },
       "AIProposalOut": {
@@ -1969,6 +2085,16 @@
         ],
         "title": "AdjustmentRequestOut",
         "type": "object"
+      },
+      "AiFieldDecision": {
+        "description": "E-121 ``ai_field_decision`` (04 §3.4; API only).",
+        "enum": [
+          "ACCEPT",
+          "EDIT",
+          "REJECT"
+        ],
+        "title": "AiFieldDecision",
+        "type": "string"
       },
       "AiProposalKind": {
         "description": "E-73 ``ai_proposal_kind`` (04 §3.4).",
@@ -44191,6 +44317,159 @@
           }
         },
         "summary": "Proposals Get",
+        "tags": [
+          "API-R-47 AI"
+        ],
+        "x-erev-permission": "ai.use"
+      }
+    },
+    "/api/v1/ai/proposals/{id}/accept": {
+      "post": {
+        "description": "Create a reviewed draft and accept its extraction proposal atomically as the human.",
+        "operationId": "ai_proposals_accept",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Id",
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AIExtractionDraftIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AIProposalAcceptedOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: unauthenticated, session-expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: not-found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: invalid-transition, idempotency-in-progress"
+          },
+          "412": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: precondition-failed"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: validation-failed, idempotency-key-reused"
+          },
+          "428": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: precondition-required"
+          }
+        },
+        "summary": "Proposals Accept",
         "tags": [
           "API-R-47 AI"
         ],

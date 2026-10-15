@@ -76,7 +76,7 @@ before another call and during retry waits it stops without a synthetic proposal
 started call still retains its usage and result. Retry waits heartbeat and check cancellation
 at one-second boundaries, with no database transaction or budget lease held while sleeping.
 This does not interrupt a network call already in progress. Other AI operations, durable
-admission-failure evidence, notifications, other submission routes and proposal acceptance workflows
+admission-failure evidence, notifications, other submission routes and remaining proposal acceptance workflows
 remain unfinished. The AI audit-lifecycle gate remains open; worker dispatch and internal
 gateway tests do not satisfy the full lifecycle.
 
@@ -99,7 +99,7 @@ job with a Location header. It checks overlapping ai.use/contract.read source ac
 switch before enqueueing, without calling a provider in HTTP. New jobs bind the validated trace
 and use a server-selected 2048 output-token limit; the worker refuses a changed trace before a
 call. Existing jobs without a trace binding retain their source fingerprint format. Anomaly
-submission, proposal acceptance, extraction review and Q&A remain unfinished; a persisted
+submission, full browser extraction review, existing-record acceptance and Q&A remain unfinished; a persisted
 worker proposal is not a completed human workflow. Budget admission is still checked by the
 worker, and durable AI-specific admission-failure evidence remains outstanding.
 
@@ -135,19 +135,18 @@ accounting writes. It remains available with AI off.
 SCH-11 now expires overdue proposed rows daily at 03:20 UTC, in bounded tenant transactions
 with row locks and SYSTEM audit events. Locked review rows wait for a later sweep; terminal
 states and retained evidence are untouched. Rejection already enforces the exact expiry
-boundary between sweeps. Acceptance and other proposal kinds remain unfinished.
+boundary between sweeps. Other proposal kinds remain unfinished.
 The field-review component now validates explicit ACCEPT/EDIT/REJECT decisions against every
 retained path exactly once. It preserves accepted values, validates edits without coercion,
 requires reasons for edits/rejections, omits rejected values and produces detached decision
 records in proposal order. Unknown paths, ambiguous replacement values, invalid retained fields
-and incomplete/duplicate decisions fail closed. This is a tested domain component, not an enabled
-acceptance route. Draft conversion still needs explicit contract identity, currency, quantities,
+and incomplete/duplicate decisions fail closed. Draft conversion requires explicit contract identity, currency, quantities,
 obligation keys and structured terms; those cannot be inferred from the extraction catalogue.
 Explicit draft intake now reuses ContractCreateIn, requires matching review/draft entity codes,
 forbids activation and accepts one-to-one mappings from retained line paths to draft obligation
 keys. Mapped product, exact amount and explicit draft currency must agree; rejected lines cannot
 be mapped, and missing quantities/identity/currency are not inferred. Additional human-authored
-lines remain possible. This is also a domain component, not a published acceptance route.
+lines remain possible.
 Combined draft review now requires explicit header mappings for customer name, effective date
 and payment terms. Names must match the explicitly supplied inline customer or a matching
 resolved customer ID/name; no name search or fuzzy resolution occurs. The human chooses inception
@@ -155,17 +154,22 @@ or signature for an effective date, and the selected draft date must match exact
 terms also match exactly. Every retained header must be mapped: term months, termination,
 variable-consideration terms and material-right review text currently refuse combined review
 rather than being silently ignored or converted to accounting classifications. Rejected headers
-cannot be mapped. The eventual command must freshly resolve existing customers in the caller's
-tenant. Structured-term mappings, permission/source/expiry checks and atomic draft-plus-acceptance
-persistence remain to be wired. Correction to the earlier implementation notes: SM-11/BR-AI-05
+cannot be mapped. The acceptance command freshly resolves existing customers in the caller's
+tenant. Structured-term mappings remain unfinished. Correction to the earlier implementation notes: SM-11/BR-AI-05
 requires AI_PROPOSAL_ACCEPTANCE for changes to existing records, not creation of a new draft.
 New drafts are accepted as the human and require AI_ASSISTED activation review. Activation now
 derives that flag from immutable accepted extraction-to-contract links, preventing auto-approval
 regardless of amount. It includes proposal/model-log IDs, accepting human/time and a decision
 hash in the activation approval basis, preserving historical hashes for contracts with no AI
 provenance. The accepting human is excluded from deciding activation, including by delegation.
-The draft acceptance endpoint remains unfinished; existing-record acceptance still needs its
-separate approval subject.
+The draft acceptance endpoint now checks human ai.use and contract.create for the selected
+entity and current source access before cached replay and again under the proposal lock. It
+requires If-Match, an unexpired proposed row and at least one retained field. Normal draft
+creation, source-PDF attachment, combination suggestions, rule holds, acceptance metadata and
+audit commit together. It returns 201 with the contract ID and Location; it never submits for
+activation or posts revenue. Retained review works with AI disabled. Existing-record acceptance
+still needs its separate approval subject. Full browser review and structured-term conversion
+remain unfinished; local API witnesses do not establish full extraction-to-activation readiness.
 
 The Anthropic adapter is mock-tested, uses the official SDK, disables SDK retries and telemetry,
 and resolves secrets lazily. Contract-review and explain-narrative prompts have retained bytes,
@@ -178,7 +182,7 @@ line suggestions containing only product code and exact decimal amount. Values a
 original parsed JSON before canonicalization: money numbers, impossible/non-ISO dates, coerced
 terms, unknown paths and extra line keys refuse the entire proposal. These are review facts;
 customer/product resolution, currency, structured contract conversion, semantic review and
-human acceptance remain unfinished, alongside anomaly and Q&A workflows.
+full browser acceptance remain unfinished, alongside anomaly and Q&A workflows.
 
 The worker-only document retrieval helper now checks the current initiating human, AI switches,
 text consent, readable ATTACHMENT/PDF source, file size and digest before invoking an injected
@@ -197,7 +201,7 @@ those bytes, verifies the call intent, and atomically records model usage, valid
 fields and audit evidence. Invalid/uncited output and refusals produce failed proposals without
 retaining rejected response text. Database tests cover encryption, cross-job text/intent
 refusal, changed request fields, missing permission and rollback. Extraction review and
-acceptance integration remain unfinished.
+full browser acceptance remain unfinished.
 Terminal provider-failure persistence now also rebuilds retained document evidence and verifies
 the existing failure log against its request, initiating human and job intent. It links that log
 without recording another attempt, preserving reported or unknown usage. Tests cover changed
@@ -218,7 +222,7 @@ reuse the retained request, unknown outcomes/usage block new calls, and mid-call
 records usage without a proposal. No model fallback or SDK-level retry is introduced.
 AI_TASK dispatch accepts bounded extraction selectors, source hash and field paths; the worker
 composition root supplies the isolated PDF parser and lazy provider factory. The public API
-still needs extraction field decisions and human acceptance. Queue selectors and gateway paths
+still needs full browser review and acceptance. Queue selectors and gateway paths
 now use the fixed catalogue; arbitrary accounting fields cannot be requested.
 
 The PDF adapter has file/page/text and parser limits, an isolated subprocess, timeout cleanup
@@ -245,7 +249,7 @@ GET /ai/proposals/{id}/document-text now returns original numbered pages after c
 access checks and an audited encrypted-file read. It verifies plaintext size/digest and the
 canonical source/job envelope, enforces page/text bounds, refuses shredded text, and works with
 AI disabled. Other proposal kinds return 404. No model call or document parsing occurs during
-review. Extraction field decisions and human acceptance remain open.
+review. Full browser extraction review and structured-term acceptance remain open.
 
 Earlier architecture failures and subsequent fixes are preserved in the build history.
 The October 15 full architecture plus file API run passed 292 checks in 226.83 seconds

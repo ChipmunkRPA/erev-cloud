@@ -31,14 +31,16 @@ from erev_api.auth.dependencies import require
 from erev_api.auth.principal import RequestContext
 from erev_api.db.session import tenant_session
 from erev_api.db.tables import ai_proposal
-from erev_api.domain.ai import commands, extraction_reads, queries
+from erev_api.domain.ai import acceptance, commands, extraction_reads, queries
 from erev_api.domain.platform.jobs import job_out_of
 from erev_api.enums import AiProposalKind, AiProposalStatus
 from erev_api.schemas.ai import (
     AIContractExtractionIn,
     AIDocumentTextOut,
     AIExplanationIn,
+    AIExtractionDraftIn,
     AIExtractionProposalOut,
+    AIProposalAcceptedOut,
     AIProposalOut,
     AIProposalRejectIn,
 )
@@ -257,3 +259,49 @@ def proposals_document_text(
 ) -> AIDocumentTextOut:
     """Return audited retained original pages for an authorized extraction proposal."""
     return extraction_reads.document_text(ctx, id, files=deps.files, keyring=deps.keyring)
+
+
+def _proposal_accept_access(
+    id: UUID,
+    body: AIExtractionDraftIn,
+    ctx: Annotated[RequestContext, Depends(require("ai.use"))],
+) -> None:
+    with tenant_session(ctx.principal.db_context, read_only=True) as session:
+        acceptance.access(session, ctx, id, body)
+
+
+@router.post(
+    "/ai/proposals/{id}/accept",
+    operation_id="ai_proposals_accept",
+    status_code=201,
+    response_model=AIProposalAcceptedOut,
+    dependencies=[Depends(_proposal_accept_access)],
+    responses=problem_responses(
+        "unauthenticated",
+        "session-expired",
+        "forbidden",
+        "not-found",
+        "validation-failed",
+        "invalid-transition",
+        "precondition-required",
+        "precondition-failed",
+        "idempotency-key-reused",
+        "idempotency-in-progress",
+    ),
+)
+def proposals_accept(
+    id: UUID,
+    body: AIExtractionDraftIn,
+    cmd: Annotated[CommandContext, Depends(command("ai.use", precondition="row"))],
+    deps: Annotated[KernelDeps, Depends(kernel_deps)],
+) -> Response:
+    """Create a reviewed draft and accept its extraction proposal atomically as the human."""
+    return run_command(
+        cmd,
+        deps,
+        lambda uow: acceptance.accept_draft(
+            uow, id, body, check_version=lambda actual: assert_version(cmd.expected_version, actual)
+        ),
+        status_code=201,
+        location=lambda out: f"{API_PREFIX}/contracts/{out.contract_id}",
+    )
