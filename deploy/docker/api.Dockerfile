@@ -17,6 +17,8 @@ RUN uv sync --frozen --no-dev --extra gcp --no-install-project
 COPY backend/alembic.ini ./
 COPY backend/erev_api ./erev_api
 COPY backend/erev_engine ./erev_engine
+# Bundled fake-provider evidence is synthetic runtime data, not the test suite.
+COPY backend/tests/fixtures/ai ./tests/fixtures/ai
 RUN uv sync --frozen --no-dev --extra gcp
 
 FROM python:3.12-slim-bookworm AS runtime

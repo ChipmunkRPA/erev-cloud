@@ -9,8 +9,12 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
+import subprocess
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
+from uuid import UUID
 
 ROOT = Path(__file__).resolve().parents[4]
 DOCKER = ROOT / "deploy" / "docker"
@@ -156,6 +160,56 @@ def test_api_image() -> None:
         "--url",
         "http://127.0.0.1:8080/api/v1/healthz",
     ]
+
+
+def test_bundled_extraction_resolves_from_each_image_copy_tree(tmp_path: Path) -> None:
+    """Execute the provider from copied image inputs, with no test checkout fallback."""
+    probe = """
+import json, sys
+from uuid import UUID
+sys.path.insert(0, sys.argv[1])
+from erev_api.adapters.ai.provider import FakeProvider
+from erev_api.adapters.documents.pdf import extract_pdf_pages
+from erev_api.domain.ai.document_preparation import prepare_extraction
+provider = FakeProvider()
+source = provider.fixture_root / 'documents/Kinsley-Marrow-Order-Form-2026-10.pdf'
+request = prepare_extraction(
+    document_id=UUID(int=123),
+    pages=extract_pdf_pages(source.read_bytes(), send_contract_text=True),
+    allowed_paths=frozenset({'customer_name'}),
+    model='fixture-model', max_tokens=16000, send_contract_text=True,
+)
+response = provider.complete(request.request)
+print(response.text)
+"""
+    for name in ("api", "worker"):
+        image_backend = tmp_path / name / "app/backend"
+        image_backend.mkdir(parents=True)
+        # Materialize directory COPY inputs at the image's declared build WORKDIR.
+        # No fallback to the checkout's fixture directory is available to the copied provider.
+        for instruction in stages(DOCKER / f"{name}.Dockerfile")["build"].all("COPY"):
+            parts = instruction.split()
+            if len(parts) != 2 or parts[0].startswith("--"):
+                continue
+            source, destination = parts
+            if (ROOT / source).is_dir():
+                shutil.copytree(
+                    ROOT / source,
+                    image_backend / destination,
+                    ignore=shutil.ignore_patterns("__pycache__"),
+                )
+        result = subprocess.run(
+            [sys.executable, "-I", "-c", probe, str(image_backend)],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=30,
+        )
+        assert result.returncode == 0, result.stderr
+        response = json.loads(result.stdout)
+        assert len(response) == 1
+        assert response[0]["value"] == "Kinsley Marrow Foods Inc."
+        assert response[0]["citation"]["ref_id"] == str(UUID(int=123))
 
 
 def test_worker_image() -> None:

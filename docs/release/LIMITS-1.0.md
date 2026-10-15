@@ -223,7 +223,10 @@ worker's full allowed-field catalogue only after reconstructing and matching the
 known redacted-document request. It reuses retained sample values/confidences and rebinds
 source citations; unrelated documents/prompts/digests are refused. This is a prerequisite
 for live browser fixtures, not evidence that demo seeding, Linux parsing or complete browser
-acceptance already works. AI unit checks pass locally; two Linux resource checks remain skipped.
+acceptance already works. AI unit checks pass locally; two Linux resource checks remain skipped. API and worker
+image inputs now include the synthetic AI fixture bundle; a copied-tree provider regression
+checks its availability without a checkout fallback. Actual image and Linux execution evidence
+is still required.
 Broad architecture verification identified missing contract-key arguments in AI proposal
 writers, unlisted expiry SYSTEM/platform callers and a stale pending AI_TASK entry. These
 identified defects are now repaired: narrative rejection/expiry audit events name their source

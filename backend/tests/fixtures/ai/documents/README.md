@@ -10,6 +10,9 @@ metadata and compressed page streams. All four rendered pages were visually chec
 ReportLab is an authoring tool, not a runtime dependency. The committed PDF is the
 source artifact consumed by tests through the pinned pypdf extraction adapter.
 
+The API and worker images include this synthetic AI fixture bundle so the configured fake
+provider has the same evidence as local development. They do not include the test suite.
+
 The exact-input response is retained under `../contract-review/v1/`. The request uses
 document UUID `00000000-0000-0000-0000-000000000029`, model `fixture-model`, 16,000
 maximum tokens, contact redaction enabled, and the nine field paths in
