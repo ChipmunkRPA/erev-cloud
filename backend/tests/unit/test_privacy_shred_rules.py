@@ -59,6 +59,8 @@ def test_encrypted_purposes_include_ai_extracted_text() -> None:
         FilePurpose.LEGACY_DATABASE,
         FilePurpose.SNAPSHOT_DATASET,
         FilePurpose.AI_DOCUMENT_TEXT,
+        FilePurpose.COMPUTATION_INPUT,
+        FilePurpose.COMPUTATION_OUTPUT,
     }
 
 

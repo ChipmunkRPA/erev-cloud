@@ -42,6 +42,7 @@ from erev_api.db.tables.contracts import (  # noqa: E402
 )
 from erev_api.db.tables.engine_output import (  # noqa: E402
     calc_trace,
+    computation_evidence,
     contract_computation,
     contract_version,
     contract_version_balance,
@@ -206,6 +207,7 @@ __all__ = [
     "audit_event_contract",
     "book",
     "calc_trace",
+    "computation_evidence",
     "fx_layer_movement",
     "loss_provision_version",
     "loss_provision_eac",

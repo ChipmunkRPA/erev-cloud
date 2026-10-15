@@ -17,6 +17,7 @@ this checkout, ``erev_engine.compute`` in the L3 merge gate (V-C). The frozen cl
 
 from __future__ import annotations
 
+import hashlib
 from collections.abc import Mapping
 from dataclasses import dataclass, replace
 from datetime import date
@@ -34,10 +35,13 @@ from erev_api.db.tables import (
     audit_event,
     calc_trace,
     combination_group,
+    computation_evidence,
     contract,
     contract_computation,
     contract_event,
     contract_version,
+    file_object,
+    ledger_chain_head,
     obligation_version,
     period,
     product,
@@ -46,16 +50,19 @@ from erev_api.db.tables import (
     schedule_line,
     ssp_entry,
     ssp_range,
+    subledger_posting,
 )
 from erev_api.domain.contracts import bundles, computation
+from erev_api.domain.contracts import computation_evidence as evidence_writer
+from erev_api.domain.platform import file_evidence
 from erev_api.enums import ContractEventType
 from erev_api.events.payloads import SignificantChangeFlaggedV1
 from erev_api.events.stream import EventIn, append_events
 from erev_api.explain import store
-from erev_api.files.store import LocalFileStore
+from erev_api.files.store import LocalFileStore, open_file, store_file
 from erev_api.main import create_app
 from erev_api.registry.policies import POLICY_PARAMETERS
-from erev_engine import ENGINE_VERSION
+from erev_engine import ENGINE_VERSION, upgrade
 from erev_engine.bundle import OutputBundle
 from erev_engine.errors import EngineError
 from erev_engine.trace import reevaluate
@@ -82,7 +89,7 @@ from support.factories import (
     world_calendar,
 )
 from support.principals import Actor, colleague, enrolled, member
-from support.reference import assign, holding
+from support.reference import assign, get, holding
 
 PLATFORM = "AVM-PLAT-ENT"
 IMPLEMENTATION = "AVM-IMPL-STD"
@@ -264,7 +271,9 @@ def test_bundle_pins_reference_versions(world: World) -> None:
         (1, "CONTRACT_BOOKED"),
         (2, "CONTRACT_ACTIVATED"),
     ]
-    assert bundle.events[0].payload["lines"][0]["total_price"] == "120000.00"
+    first_lines = bundle.events[0].payload["lines"]
+    assert isinstance(first_lines, list)
+    assert first_lines[0]["total_price"] == "120000.00"
     assert [version.version_key for version in bundle.ssp_versions] == ["US-LIST@v1"]
     assert [item.version_key for item in bundle.pob_template_versions] == [
         "TPL-SUB-DAILY@v1",
@@ -298,7 +307,7 @@ def test_bundle_pins_reference_versions(world: World) -> None:
     # 04 T-CON-07 rev 1.110 (security ruling R-21): the computation of a contract past DRAFT also
     # records each product as it used it — the ``ProductInput`` members and the level-P values
     # of the product's obligations — and the next computation reads the product from here.
-    unset = {
+    unset: dict[str, Any] = {
         "sku_number": None,
         "product_family": None,
         "principal_agent": "PRINCIPAL",
@@ -601,6 +610,10 @@ def test_persist_idempotent_on_input_hash(world: World) -> None:
         schedule,
         schedule_line,
         calc_trace,
+        computation_evidence,
+        ledger_chain_head,
+        subledger_posting,
+        file_object,
         audit_event,
     )
     before = [count(world, table) for table in tables]
@@ -784,3 +797,133 @@ def test_computation_persists_selected_range_identity(world: World) -> None:
                     )
                     == row.ssp_entry_id
                 )
+
+
+def test_computation_retains_typed_original_evidence(world: World) -> None:
+    booked = k01(world)
+    with world.place.uow() as uow:
+        bundle = bundles.build(uow.session, booked.combination_group["id"], uow.now)
+        output = engine()(bundle)
+        cutoffs = dict(
+            uow.session.execute(
+                select(ledger_chain_head.c.book_code, ledger_chain_head.c.last_chain_seq)
+            )
+            .tuples()
+            .all()
+        )
+        produced = computation.persist(uow, bundle, output)
+        row = (
+            uow.session.execute(
+                select(computation_evidence).where(
+                    computation_evidence.c.contract_computation_id == produced["id"]
+                )
+            )
+            .mappings()
+            .one()
+        )
+        assert row["captured"] == "AT_COMPUTATION"
+        assert row["ledger_cutoff"] == {
+            book.book_code: cutoffs[book.book_code] for book in bundle.books
+        }
+        assert row["input_sha256"] == bundle.sha256()
+        assert row["output_sha256"] == output.sha256()
+        assert row["book_codes"] == [
+            book.book_code for book in output.books if book.contract_version is not None
+        ]
+        contents = []
+        for name in ("input", "output"):
+            meta, stream = open_file(
+                uow.session, row[f"{name}_file_id"], files=uow.files, keyring=uow.keyring
+            )
+            with stream:
+                content = stream.read()
+            assert (
+                hashlib.sha256(content).hexdigest() == row[f"{name}_file_sha256"] == meta["sha256"]
+            )
+            assert meta["purpose"] == f"COMPUTATION_{name.upper()}"
+            assert uow.files.exists(str(meta["storage_key"]) + ".dek")
+            holds = file_evidence.holds_in(uow.session, row[f"{name}_file_id"])
+            assert any(hold.reference.table == "computation_evidence" for hold in holds)
+            assert file_evidence.first_refusing(holds) is not None
+            contents.append(content)
+        restored = upgrade.decode_input(contents[0])
+        assert restored == bundle
+        assert restored.known_at == bundle.known_at
+        assert engine()(restored).sha256() == output.sha256()
+        assert contents[1] == upgrade.encode_output(output)
+        uow.commit()
+    # Evidence is append-only, just like the computed versions it proves.
+    with (
+        pytest.raises(
+            exc.ProgrammingError, match="permission denied for table computation_evidence"
+        ),
+        world.place.uow() as uow,
+    ):
+        uow.session.execute(
+            update(computation_evidence)
+            .where(computation_evidence.c.contract_computation_id == produced["id"])
+            .values(input_sha256="0" * 64)
+        )
+        uow.commit()
+
+
+def test_computation_evidence_failure_rolls_back_before_posting(
+    world: World, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    booked = k01(world)
+    observed_tables = (
+        contract_computation,
+        computation_evidence,
+        contract_version,
+        subledger_posting,
+        file_object,
+    )
+    before = [count(world, table) for table in observed_tables]
+    store_original = store_file
+    calls = 0
+
+    def fail_output(*args: Any, **kwargs: Any) -> Any:
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            raise OSError("simulated output storage failure")
+        return store_original(*args, **kwargs)
+
+    monkeypatch.setattr(evidence_writer, "store_file", fail_output)
+    with pytest.raises(OSError, match="simulated output storage failure"), world.place.uow() as uow:
+        bundle = bundles.build(uow.session, booked.combination_group["id"], uow.now)
+        computation.persist(uow, bundle, engine()(bundle))
+        uow.commit()
+    assert calls == 2
+    assert [count(world, table) for table in observed_tables] == before
+
+
+def test_computation_evidence_links_predecessor_and_has_no_generic_download(world: World) -> None:
+    booked = k01(world)
+    group_id = booked.combination_group["id"]
+    computed(world.place, group_id)
+    (first,) = world.place.rows(select(computation_evidence))
+    assert first["previous_computation_id"] is None
+    flag_change(world, booked.contract["id"], 2)
+    computed(world.place, group_id)
+    rows = world.place.rows(select(computation_evidence))
+    assert len(rows) == 2
+    second = next(
+        row for row in rows if row["contract_computation_id"] != first["contract_computation_id"]
+    )
+    assert second["previous_computation_id"] == first["contract_computation_id"]
+    assert (
+        next(
+            row
+            for row in rows
+            if row["contract_computation_id"] == first["contract_computation_id"]
+        )
+        == first
+    )
+    for row in rows:
+        for column in ("input_file_id", "output_file_id"):
+            for suffix in ("", "/content"):
+                response = get(
+                    world.app, f"/api/v1/files/{row[column]}{suffix}", world.place.author
+                )
+                assert response.status_code == 404, response.text

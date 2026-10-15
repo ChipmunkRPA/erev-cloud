@@ -59,6 +59,7 @@ def test_every_registry_entry_names_real_columns_and_a_record() -> None:
     for item in file_evidence.EVIDENCE:
         table = tables.metadata.tables[f"erev.{item.table}"]
         assert item.column in table.c, (item.table, item.column)
+        assert item.identity_column in table.c, (item.table, item.identity_column)
         if item.label is not None:
             assert item.label in table.c, (item.table, item.label)
         assert item.label is None or item.label_of is None, (item.table, item.column)

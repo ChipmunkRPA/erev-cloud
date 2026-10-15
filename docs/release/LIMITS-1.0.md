@@ -1319,3 +1319,13 @@ is isolated and removed on completion. Regression tests exercise success, failur
 runs and immutable-context removal; a real Chromium probe verifies capture/trace output.
 This repairs the retention mechanism but does not recover the earlier gate's deleted
 screenshots or establish another application acceptance run.
+
+
+October 15 computation evidence: revision 0160 now retains encrypted full typed inputs and
+canonical outputs for newly persisted computations, with original digests, logical hashes,
+book coverage, ledger positions before posting, and predecessor identity. Fourteen database
+regressions pass, including the close/reopen/re-lock flow, failed-storage rollback, idempotency,
+typed replay, retained-file holds and generic download denial. This is source retention, not
+completion of replay or release validation: historical computations are not backfilled, the
+T-CON-26 verification workflow remains absent, and RPT-38 still needs replay orchestration
+and driver attribution. Current-candidate recovery and full-suite evidence remain required.

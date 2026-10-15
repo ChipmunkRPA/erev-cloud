@@ -105,7 +105,13 @@ from erev_api.db.tables import (
     subledger_posting,
 )
 from erev_api.db.types import ExactType, MoneyType
-from erev_api.domain.contracts import bundles, fx_layers, loss_provisions, period_ends
+from erev_api.domain.contracts import (
+    bundles,
+    computation_evidence,
+    fx_layers,
+    loss_provisions,
+    period_ends,
+)
 from erev_api.domain.journals import subledger
 from erev_api.enums import (
     ComputationStatus,
@@ -1445,6 +1451,14 @@ def _persist(
         **_stamps(uow),
     }
     session.execute(insert(contract_computation).values(**computation_row))
+    predecessor = found.group["head_computation_id"]
+    computation_evidence.retain(
+        uow,
+        bundle,
+        output,
+        computation_id=computation_id,
+        previous_computation_id=None if predecessor is None else UUID(str(predecessor)),
+    )
     cause_event_ids = _cause_event_ids(bundle, found)
     facts: dict[str, list[UUID]] = {
         name: []
@@ -1516,6 +1530,7 @@ def _persist(
         detail=detail,
         contract_ids=members,
     )
+    facts["computation_evidence"] = [computation_id]
     for object_type, ids in facts.items():
         if ids:
             record_facts(

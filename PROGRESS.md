@@ -2,6 +2,17 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Typed computation evidence — October 15, 2026
+
+- Revision 0160 retains encrypted typed inputs and canonical outputs for new computations,
+  with original file digests, logical hashes, book coverage, predecessor and ledger cutoffs
+  captured before their own postings. Storage failure rolls back the computation.
+- Existing computations are not reconstructed or backfilled. Evidence has no generic download
+  route and remains held against deletion. Verified backfill and replay jobs remain open.
+- Fourteen database regressions pass, including the close/reopen/re-lock workflow. Schema,
+  privacy, typing and lint verification is recorded in docs/release/CI-2026-10-15.md.
+- This supplies new source evidence needed by RPT-38; its replay integration and report remain open.
+
 ## Close comparison navigation — October 15, 2026
 
 - The history grid, drawer and keyboard action now traverse reopen records to the prior
@@ -249,19 +260,6 @@
   screenshots inspected and the drawer layout corrected. Details: docs/release/CI-2026-10-15.md.
 - CSV/XLSX export, saved views, linked proposals and hash-copy controls remain open, as do J-19,
   broader release gates and independent accounting sign-off. No deployment or provider calls.
-
-## Authorized AI call evidence API — October 15, 2026
-
-- Added GET /ai/model-logs with newest-first cursor pagination, optional counts and typed
-  configuration/hash/token/outcome/actor evidence. No provider call or proposal content read.
-- Workspace-wide settings.manage sees tenant calls; ai.use sees only its own actor id and kind.
-  These predicates apply before counts and pagination. A scoped administrator is refused unless
-  also holding ai.use, which still returns only that actor's calls. Unsupported filters refuse.
-- Two PostgreSQL API tests and eight route architecture checks pass. Backend typing (795 files),
-  frontend typing, generated OpenAPI/types and full lint pass. The full frozen CI remains active
-  on 3cf8f5b and is not evidence for this change. See docs/release/CI-2026-10-15.md.
-- Call-log UI/drawer/export, standard J-19 and remaining release/accounting gates stay open.
-  No deployment or provider call. Published directly to main after verification.
 
 ## Outstanding release verification
 

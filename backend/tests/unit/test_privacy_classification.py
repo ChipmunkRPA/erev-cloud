@@ -409,7 +409,8 @@ def test_prv_01_pending_entries_reconcile() -> None:
             declared = section_declarations(name)
             assert declared.format in ("literal", "hybrid", "prose"), name
             doc_only, cat_only = declaration_mismatch(
-                frozenset(declared.columns), catalogue_columns(name, pending_only=True)
+                frozenset(declared.columns),
+                catalogue_columns(name, pending_only=table.status is Status.PENDING),
             )
             assert not doc_only, f"{name}: declared in 04, not catalogued: {sorted(doc_only)}"
             assert not cat_only, f"{name}: catalogued, not declared in 04: {sorted(cat_only)}"
@@ -464,7 +465,8 @@ def test_prv_01_catalogue_matches_04_tables() -> None:
                     )
         else:
             doc_only, cat_only = declaration_mismatch(
-                frozenset(declared.columns), catalogue_columns(name, pending_only=True)
+                frozenset(declared.columns),
+                catalogue_columns(name, pending_only=table.status is Status.PENDING),
             )
             assert not doc_only and not cat_only, (name, sorted(doc_only), sorted(cat_only))
     # 154 (incl. T-PLT-47, 04 1.59) + T-MIG-04 / T-MIG-05 (04 rev 1.60, lane F-LMG) = 156 literal
@@ -472,7 +474,8 @@ def test_prv_01_catalogue_matches_04_tables() -> None:
     # + T-PLT-49 file_upload (04 rev 1.189, lane SECFIX-PLT) = 158
     # + T-CLS-09 period_reopen_basis = 160 literal tables.
     # + T-CON-27 private contract navigation history (0159) = 162.
-    assert formats == {"literal": 162, "hybrid": 2, "prose": 5}, formats
+    # + computation_evidence promoted from hybrid (0160) = 163.
+    assert formats == {"literal": 163, "hybrid": 1, "prose": 5}, formats
     assert [t.name for t in TABLES] == list(sections), "catalogue follows 04 document order"
 
 
@@ -550,14 +553,17 @@ def test_p8_f1_control_added_declared_column_is_detected() -> None:
     )
     assert doc_only == {"new_personal_email"} and cat_only == frozenset()
 
-    ref, hybrid_body = doc_sections()["computation_evidence"]
+    ref, hybrid_body = doc_sections()["computation_verification"]
     assert hybrid_body.count("\n| SC-C | |\n") == 1
     mutated_hybrid = hybrid_body.replace(
         "\n| SC-C | |\n", "\n| `new_personal_email` text Y | a note |\n| SC-C | |\n"
     )
-    declared = extract_declarations(mutated_hybrid, "computation_evidence (mutated)", own_ref=ref)
+    declared = extract_declarations(
+        mutated_hybrid, "computation_verification (mutated)", own_ref=ref
+    )
     doc_only, cat_only = declaration_mismatch(
-        frozenset(declared.columns), catalogue_columns("computation_evidence", pending_only=True)
+        frozenset(declared.columns),
+        catalogue_columns("computation_verification", pending_only=True),
     )
     assert doc_only == {"new_personal_email"} and cat_only == frozenset()
 
@@ -569,11 +575,11 @@ def test_p8_f1_control_cross_table_mention_is_not_a_declaration() -> None:
     _, body = doc_sections()["computation_evidence"]
     assert "shred_reason" in body, "the control relies on the cross-table mention at 04 T-CON-25"
     declared = section_declarations("computation_evidence")
-    assert declared.format == "hybrid"
+    assert declared.format == "literal"
     assert "shred_reason" not in declared.columns
-    # Referenced objects' fields in the hybrid notes are not declarations either.
+    # Referenced objects' fields in the column notes are not declarations either.
     assert not {"last_chain_seq", "chain_seq", "previous_stream_heads"} & set(declared.columns)
-    mutated = catalogue_columns("computation_evidence", pending_only=True) | {"shred_reason"}
+    mutated = catalogue_columns("computation_evidence") | {"shred_reason"}
     doc_only, cat_only = declaration_mismatch(frozenset(declared.columns), mutated)
     assert doc_only == frozenset() and cat_only == {"shred_reason"}
 
@@ -615,11 +621,25 @@ _R1_PK_PASSAGE: Final = (
 )
 
 
+# Keep the original hybrid parser regression independent of this table's promotion to a
+# literal schema in 0160. The ambiguity being tested still applies to pending hybrid tables.
+_R1_HYBRID_BODY: Final = """
+- **Key.** `PRIMARY KEY (tenant_id, contract_computation_id)`.
+
+| Column | Notes |
+|---|---|
+| `previous_computation_id` uuid Y | source of `previous_stream_heads` |
+| `output_file_id` uuid N | `book_codes` text[] N |
+| `captured` text N | `backfill_verification_id` uuid Y |
+| SC-C | |
+"""
+
+
 def test_p8_f1_r1_control_referenced_notes_declaration_is_refused() -> None:
     """R1 passage 1: a typed foreign ``shred_reason`` inside T-CON-25's Notes with reference-only
     wording is refused as ambiguous rather than extracted; a leading-position variant naming the
     other table is refused too; the legitimate Notes declarations still count."""
-    ref, body = doc_sections()["computation_evidence"]
+    ref, body = "T-CON-25", _R1_HYBRID_BODY
     assert body.count(_R1_NOTES_ANCHOR) == 1
     with pytest.raises(UnsupportedSectionFormat, match="reference position"):
         extract_declarations(
@@ -634,7 +654,7 @@ def test_p8_f1_r1_control_referenced_notes_declaration_is_refused() -> None:
             "computation_evidence (R1 passage 1, leading)",
             own_ref=ref,
         )
-    declared = section_declarations("computation_evidence")
+    declared = extract_declarations(body, "historical computation_evidence", own_ref=ref)
     assert {"book_codes", "backfill_verification_id"} <= set(declared.columns)
     assert "shred_reason" not in declared.columns
     # A typed declaration following a foreign reference in a literal section's paragraph is
@@ -667,7 +687,7 @@ def test_p8_f1_r1_control_foreign_primary_key_is_refused() -> None:
     """R1 passage 2: a foreign ``PRIMARY KEY (tenant_id, foreign_object_id)`` reference is refused
     whether it stands as its own paragraph or is appended to the section's own key bullet; the
     own primary key still declares ``contract_computation_id``."""
-    ref, body = doc_sections()["computation_evidence"]
+    ref, body = "T-CON-25", _R1_HYBRID_BODY
     with pytest.raises(UnsupportedSectionFormat, match="PRIMARY KEY"):
         extract_declarations(
             body.rstrip("\n") + "\n\n" + _R1_PK_PASSAGE + "\n",
@@ -682,7 +702,7 @@ def test_p8_f1_r1_control_foreign_primary_key_is_refused() -> None:
             "computation_evidence (R1 passage 2, on the own key line)",
             own_ref=ref,
         )
-    declared = section_declarations("computation_evidence")
+    declared = extract_declarations(body, "historical computation_evidence", own_ref=ref)
     assert "contract_computation_id" in declared.columns
     assert "foreign_object_id" not in declared.columns
     # The prose form's own key (T-SL-11, inside its Columns line) still counts as well.

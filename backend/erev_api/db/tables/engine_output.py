@@ -429,3 +429,25 @@ loss_provision_eac: Final = Table(
     Column("entity_id", Uuid(), nullable=False),
     *_sc_c(),
 )
+
+
+# T-CON-25: typed immutable computation evidence, captured before posting.
+computation_evidence: Final = Table(
+    "computation_evidence",
+    metadata,
+    Column("tenant_id", Uuid(), primary_key=True),
+    Column("contract_computation_id", Uuid(), primary_key=True),
+    Column("input_file_id", Uuid(), nullable=False),
+    Column("input_file_sha256", CHAR(64), nullable=False),
+    Column("input_sha256", CHAR(64), nullable=False),
+    Column("output_file_id", Uuid(), nullable=False),
+    Column("output_file_sha256", CHAR(64), nullable=False),
+    Column("output_sha256", CHAR(64), nullable=False),
+    Column("book_codes", ARRAY(Text()), nullable=False),
+    Column("codec", JSONB(), nullable=False),
+    Column("ledger_cutoff", JSONB(), nullable=False),
+    Column("previous_computation_id", Uuid(), nullable=True),
+    Column("captured", Text(), nullable=False),
+    Column("backfill_verification_id", Uuid(), nullable=True),
+    *_sc_c(),
+)

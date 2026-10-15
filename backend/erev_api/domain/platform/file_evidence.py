@@ -182,6 +182,7 @@ class EvidenceReference:
     # the legal entity, or the entities, of the record (a uuid or a uuid[] expression); None = the
     # record has no entity, so the approval that lifts its hold covers every entity (R-25, R-41)
     entities: Callable[[Table], ColumnElement[Any]] | None = None
+    identity_column: str = "id"
 
 
 def _table(name: str) -> Table:
@@ -517,6 +518,18 @@ EVIDENCE: Final[tuple[EvidenceReference, ...]] = (
         approval=True,
         entities=_event_entity,
     ),
+    EvidenceReference(
+        "computation_evidence",
+        "input_file_id",
+        "the retained input of a computation",
+        identity_column="contract_computation_id",
+    ),
+    EvidenceReference(
+        "computation_evidence",
+        "output_file_id",
+        "the retained output of a computation",
+        identity_column="contract_computation_id",
+    ),
     # Committed calls retain source/text even if no proposal or outcome is ever written.
     EvidenceReference(
         "ai_call_intent", "file_object_id", "the source document of an AI call", approval=True
@@ -607,14 +620,13 @@ def holds_in(session: Session, file_id: UUID) -> tuple[Hold, ...]:
             else (None if reference.label_of is None else reference.label_of(table))
         )
         entities = None if reference.entities is None else reference.entities(table)
-        columns: list[Any] = [table.c.id]
+        identity = table.c[reference.identity_column]
+        columns: list[Any] = [identity.label("id")]
         if label is not None:
             columns.append(label.label("hold_label"))
         if entities is not None:
             columns.append(entities.label("hold_entities"))
-        statement = (
-            select(*columns).where(table.c[reference.column] == file_id).order_by(table.c.id)
-        )
+        statement = select(*columns).where(table.c[reference.column] == file_id).order_by(identity)
         if reference.standing is not None:
             statement = statement.where(reference.standing(table))
         for row in session.execute(statement).mappings():

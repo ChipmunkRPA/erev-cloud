@@ -65,7 +65,8 @@ def test_class_totals_and_reasons_are_pinned() -> None:
         # + modification (T-CON-06; CTR-17 / D-98 140, revision 0068)
         # + migration_population_version, migration_population_obligation (04 rev 1.60, F-LMG)
         sd.SnapshotClass.REPLAY_REFERENCE: 3,
-        sd.SnapshotClass.REGENERATED: 56,  # + control_execution, migration_reconciliation_line,
+        sd.SnapshotClass.REGENERATED: 57,  # + computation_evidence (0160)
+        # + control_execution, migration_reconciliation_line,
         # subledger_line_event (T-SL-12, lane ENG-C6); + sync_run, external_id_map (DIN-12, 0072);
         # + audit_event_contract (T-PLT-48, revision 0101: the index of the sandbox's own events);
         # + file_upload (T-PLT-49, revision 0103: the sandbox's own uploads)
@@ -78,7 +79,7 @@ def test_class_totals_and_reasons_are_pinned() -> None:
     # (DIN-12, revision 0072)
     # Private contract navigation history is regenerated, never copied (0159).
     # AI call evidence and intents are regenerated per tenant (0147, 0150); never copied.
-    assert len(sd.PENDING) == 15
+    assert len(sd.PENDING) == 14
     for item in sd.PENDING.values():
         assert item.reason and item.lane
         assert item.planned is not sd.SnapshotClass.PENDING

@@ -13724,7 +13724,9 @@ export interface components {
       | "AI_PROMPT_LOG"
       | "AUDIT_DIGEST"
       | "POSTING_RESPONSE"
-      | "AI_DOCUMENT_TEXT";
+      | "AI_DOCUMENT_TEXT"
+      | "COMPUTATION_INPUT"
+      | "COMPUTATION_OUTPUT";
     /**
      * FileShredIn
      * @description ``POST /files/{id}/shred`` (05 PRV-07 b): the reason is required and recorded on the row.

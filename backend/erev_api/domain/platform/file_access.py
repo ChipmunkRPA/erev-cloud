@@ -64,6 +64,7 @@ from erev_api.db.tables import (
     ai_proposal,
     approval_request,
     audit_chain_verification,
+    computation_evidence,
     contract,
     contract_event,
     control_execution,
@@ -1096,6 +1097,12 @@ FILE_READ_ACCESS: Final[Mapping[FilePurpose, PurposeAccess]] = MappingProxyType(
         ),
         FilePurpose.POSTING_RESPONSE: PurposeAccess(
             owners=(FileOwner(posting_ack, "response_file_id", route=INTERNAL),),
+        ),
+        FilePurpose.COMPUTATION_INPUT: PurposeAccess(
+            owners=(FileOwner(computation_evidence, "input_file_id", route=INTERNAL),),
+        ),
+        FilePurpose.COMPUTATION_OUTPUT: PurposeAccess(
+            owners=(FileOwner(computation_evidence, "output_file_id", route=INTERNAL),),
         ),
         # Raw prompt logs have no reader; model logs retain hashes, not prompt text.
         FilePurpose.AI_PROMPT_LOG: PurposeAccess(),

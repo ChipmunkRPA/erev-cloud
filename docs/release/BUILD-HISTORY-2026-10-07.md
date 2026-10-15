@@ -5889,3 +5889,16 @@ cleanup in the shared database session kernel was also repaired and regression-t
   its frozen clock past its predecessor publication. Details: docs/release/CI-2026-10-15.md.
 - No deployment, provider call or new role grant. Standard demo/J-19, release gates and independent
   accounting sign-off remain open. Frozen CI on 3cf8f5b continues on its separate database.
+
+## Authorized AI call evidence API — October 15, 2026
+
+- Added GET /ai/model-logs with newest-first cursor pagination, optional counts and typed
+  configuration/hash/token/outcome/actor evidence. No provider call or proposal content read.
+- Workspace-wide settings.manage sees tenant calls; ai.use sees only its own actor id and kind.
+  These predicates apply before counts and pagination. A scoped administrator is refused unless
+  also holding ai.use, which still returns only that actor's calls. Unsupported filters refuse.
+- Two PostgreSQL API tests and eight route architecture checks pass. Backend typing (795 files),
+  frontend typing, generated OpenAPI/types and full lint pass. The full frozen CI remains active
+  on 3cf8f5b and is not evidence for this change. See docs/release/CI-2026-10-15.md.
+- Call-log UI/drawer/export, standard J-19 and remaining release/accounting gates stay open.
+  No deployment or provider call. Published directly to main after verification.

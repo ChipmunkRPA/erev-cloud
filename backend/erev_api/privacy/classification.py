@@ -2541,7 +2541,6 @@ TABLES: Final[tuple[TableClassification, ...]] = (
             ),
             SPEC_C2_LEDGER: _cols("book_codes ledger_cutoff"),
         },
-        status=Status.PENDING,
     ),
     _table(
         "computation_verification",
