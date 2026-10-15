@@ -43,11 +43,30 @@ Full test collection imported two un-packaged `test_templates` modules under the
 The AI prompt module is now `test_ai_prompt_templates.py`; its assertions are unchanged.
 Focused AI runs did not expose this collision with the policy-template suite.
 
-## In progress and remaining scope
+## Backend unit/architecture result and repairs
 
-- The complete backend unit and architecture directories are running with the CI Hypothesis
-  profile against the local repair environment; `.run/readiness-unit-architecture-oct15.log`.
-  This does not include all backend API/domain/engine/PG test directories.
+The complete unit and architecture directories finished with **5,609 passed, two failed,
+two Linux-only skips** in 1,364.71s (22m44s). Log:
+`.run/readiness-unit-architecture-oct15.log`. This is the original result, not a green run.
+
+- The migration-walk guard found that `test_ai_call_intent.py` and `test_ai_job_binding.py`
+  did not reset to a data-free head before attempting downgrades. They now call `fresh_head()`
+  first, and the guarded inventory includes them. The actual constraint/immutability/downgrade
+  assertions remain intact.
+- The process-script lifecycle test inherited the repair runner's `EREV_RUN_DIR` while looking
+  for its PID file under the default `.run` directory. Its subprocess environment now explicitly
+  matches the probe paths; production process-script behavior is unchanged.
+
+Focused revalidation: **15 passed** (44.72s), covering both failed unit checks, all process-script
+checks, both AI database guards and the full migration round trip. Strict typing for the four
+changed test modules and Ruff/diff checks passed. Logs:
+`.run/readiness-isolation-repairs-oct15.log`, `.run/readiness-isolation-types-oct15.log`.
+The full 5,613-test selection has not been repeated after these repairs.
+
+## Remaining scope
+
+- The backend unit/architecture selection above does not include all backend API/domain/engine/PG
+  test directories. Fresh complete CI and release-gate results remain outstanding.
 - Full immutable CI, PostgreSQL/release gates, outstanding implementation, unknown AI usage
   reconciliation and independent accounting sign-off remain required. Historical evidence in
   `CI-2026-10-14.md` does not establish current-main completion.

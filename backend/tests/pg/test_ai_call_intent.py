@@ -9,7 +9,7 @@ from erev_api.db import new_id
 from erev_api.db.session import DbContext, tenant_session
 from erev_api.db.tables import ai_call_intent, ai_model_log
 from sqlalchemy import delete, exc, insert, select, text, update
-from support.db import TestDatabase, alembic_config
+from support.db import TestDatabase, alembic_config, fresh_head
 from support.factories import tenant_factory, tenant_id_of
 from support.rows import RowContext, ai_call_intent_row, ai_model_log_row
 from tests.pg.test_db_invariants import _fails
@@ -21,6 +21,7 @@ pytestmark = pytest.mark.pg
 def test_intent_constraints_and_retained_unknown_outcome(
     committed_db: TestDatabase, keyring: KeyRing
 ) -> None:
+    fresh_head()
     tenant = tenant_id_of(tenant_factory(keyring=keyring))
     other = tenant_id_of(tenant_factory(keyring=keyring))
     with tenant_session(DbContext(other, None, "*")) as session:

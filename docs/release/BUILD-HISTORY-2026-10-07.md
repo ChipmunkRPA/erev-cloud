@@ -4670,3 +4670,21 @@ cleanup in the shared database session kernel was also repaired and regression-t
   proposals for rejected admission/provider errors, notification and crash/unlogged-call
   recovery remain open. Existing request/proposal idempotency is not yet a gateway guarantee.
   Other AI tasks and human acceptance remain unfinished. No deployment or live provider calls.
+
+## Bounded narrative retries and terminal provider failure — October 15, 2026
+
+- Added a three-attempt gateway wrapper with injected 5/10-second waits. Only classified
+  transient codes retry, even when a provider mislabels a permanent error as retryable.
+  Each attempt repeats admission; no SQL transaction or tenant budget lease spans a wait.
+- Permanent/exhausted provider errors create a failed proposal linked to the final committed
+  attempt. The writer rechecks source evidence, human/scope, log ownership, request/model/
+  template parameters, outcome and absence of a response; usage is not logged twice.
+- Real-contract tests cover three failures, one permanent failure, eventual success,
+  disablement during a wait, committed logs before waits and success-log substitution refusal.
+  Refactored shared trace verification and proposal insertion without changing normal output.
+- Verification: 262 targeted tests passed, two Linux-only parser tests skipped; strict typing
+  passed for 766 sources; Ruff/diff checks pass. Logs: .run/ai-retries-{final,types}.log.
+  The isolated local test cluster was stopped after checks.
+- The worker must still supply waiting/dispatch and delivery idempotency. Durable admission
+  failures, notifications, crash/unlogged-call recovery and other proposal workflows remain
+  open; no AI_TASK handler/public API is registered. No deployment or readiness claim.

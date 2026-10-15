@@ -102,6 +102,8 @@ def test_every_downgrade_under_tests_pg_starts_from_a_fresh_head() -> None:
     assert late == [], f"no reset before the first downgrade: {late}"
     # The walks this rule holds today; a new one joins the list and takes the rule with it.
     assert walks == [
+        "test_ai_call_intent.py::test_intent_constraints_and_retained_unknown_outcome",
+        "test_ai_job_binding.py::test_job_binding_constraints_and_downgrade_guard",
         "test_db_invariants.py::"
         "test_task_signature_cycles_preserve_other_uniqueness_and_refuse_lossy_downgrade",
         "test_material_right_terms.py::test_material_right_migration_round_trip",

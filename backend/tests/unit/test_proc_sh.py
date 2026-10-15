@@ -26,8 +26,15 @@ ABSENT_DOTENV = str(ROOT / ".run" / "tmp" / "absent.env")
 
 
 def _proc(*args: str) -> subprocess.CompletedProcess[str]:
+    # Match the probe paths even when the test runner has its own EREV_RUN_DIR.
     return subprocess.run(
-        [*PROC, *args], cwd=ROOT, capture_output=True, text=True, check=False, timeout=90
+        [*PROC, *args],
+        cwd=ROOT,
+        env=_port_env(EREV_RUN_DIR=str(PID_FILE.parent)),
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=90,
     )
 
 

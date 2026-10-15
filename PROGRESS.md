@@ -2,6 +2,21 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Backend broad-run isolation repairs — October 15, 2026
+
+- The complete unit/architecture selection finished: 5,609 passed, two failed, two Linux-only
+  skips in 1,364.71s. Preserve this as a failed original run, not a full green gate.
+- AI intent/job-binding downgrade tests now reset to a data-free head first and are included
+  in the migration-walk inventory. The process-script lifecycle test explicitly selects the
+  runtime directory matching its probe paths instead of inheriting the repair runner's override.
+- Focused revalidation: 15 passed (44.72s), including both failures, process-script checks,
+  both actual AI database downgrade guards and the full migration round trip. Strict typing
+  for four changed tests, Ruff and diff checks passed. Logs:
+  .run/readiness-isolation-{repairs,types}-oct15.log. Full selection not repeated after repairs.
+- No broad backend process remains running. Complete CI and other implementation/release gates,
+  unknown AI usage reconciliation and independent accounting sign-off remain outstanding.
+  Details: docs/release/VERIFICATION-2026-10-15.md. No deployment or readiness claim.
+
 ## Immutable dependency audit — October 15, 2026
 
 - make audit-deps passed on clean 621d412 in an immutable context: 86 of 86 pinned Python
@@ -9,8 +24,8 @@
   Eight platform markers were removed for complete pinned-package coverage. Source and
   installed dependency hashes remained unchanged. Report and digest are recorded in
   docs/release/VERIFICATION-2026-10-15.md; log .run/readiness-audit-deps-oct15.log.
-- Backend unit/architecture verification remains active. Preserve its process and inspect
-  .run/readiness-unit-architecture-oct15.log before launching another database test run.
+- Backend unit/architecture verification has since completed; its failures and focused repairs
+  are recorded in the latest note and docs/release/VERIFICATION-2026-10-15.md.
   Historical-report cutoff repair also requires ledger-seal compatibility: LINE_MEMBERS
   dynamically includes every stored line column, so adding a timestamp alone changes hashes.
 - Full implementation/release verification and independent accounting sign-off remain open.
@@ -25,9 +40,8 @@
   scoped fixture exception and renamed the AI test module without changing its assertions;
   both modules now collect together (28 tests). Full lint passed, including collection of
   12,015 tests and validation of 502 control-tagged tests.
-- Complete backend unit/architecture verification is still running in the isolated repair
-  environment; preserve the active process and inspect .run/readiness-unit-architecture-oct15.log
-  before starting another database test run. Other logs use .run/readiness-*-oct15.log.
+- Complete backend unit/architecture verification subsequently finished; see the latest note
+  and .run/readiness-unit-architecture-oct15.log. Other logs use .run/readiness-*-oct15.log.
 - Details: docs/release/VERIFICATION-2026-10-15.md. Public visibility, main default, research
   exclusions and noncommercial licence verified. These development checks are not full CI,
   independent accounting sign-off or production readiness. No deployment.
@@ -218,24 +232,6 @@
 - This protects completed results. Recovery between a provider call and its committed result,
   retry-count recovery for unfinished jobs, admission failures, job/API registration and the
   remaining AI workflows are still open. No deployment or production-readiness claim.
-
-## Bounded narrative retries and terminal provider failure — October 15, 2026
-
-- Added a three-attempt gateway wrapper with injected 5/10-second waits. Only classified
-  transient codes retry, even when a provider mislabels a permanent error as retryable.
-  Each attempt repeats admission; no SQL transaction or tenant budget lease spans a wait.
-- Permanent/exhausted provider errors create a failed proposal linked to the final committed
-  attempt. The writer rechecks source evidence, human/scope, log ownership, request/model/
-  template parameters, outcome and absence of a response; usage is not logged twice.
-- Real-contract tests cover three failures, one permanent failure, eventual success,
-  disablement during a wait, committed logs before waits and success-log substitution refusal.
-  Refactored shared trace verification and proposal insertion without changing normal output.
-- Verification: 262 targeted tests passed, two Linux-only parser tests skipped; strict typing
-  passed for 766 sources; Ruff/diff checks pass. Logs: .run/ai-retries-{final,types}.log.
-  The isolated local test cluster was stopped after checks.
-- The worker must still supply waiting/dispatch and delivery idempotency. Durable admission
-  failures, notifications, crash/unlogged-call recovery and other proposal workflows remain
-  open; no AI_TASK handler/public API is registered. No deployment or readiness claim.
 
 ## Outstanding release verification
 
