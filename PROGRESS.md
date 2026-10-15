@@ -2,6 +2,23 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Durable AI call-intent storage — October 15, 2026
+
+- Migration 0150 adds immutable human-attributed call intents with tenant/job FKs,
+  request/source digests, attempt numbers 1–3 and unique job/attempt keys. A nullable,
+  unique tenant/intent model-log link permits at most one outcome. Populated intent
+  evidence blocks downgrade, including starts with no outcome. Metadata/privacy and
+  sandbox classifications match; intents are never copied into another tenant.
+- PostgreSQL tests verify committed unresolved starts, tenant isolation, duplicate
+  rejection, application/owner immutability and downgrade refusal. Fixed proposal ORM
+  column order to match the data model and restored head after the older downgrade test.
+- Final migration/metadata/privacy/snapshot checks: 100 passed; strict typing: 769 sources;
+  Ruff/diff passed. Logs: .run/ai-intent-{final,types}.log. Broader architecture run found
+  seven still-open checks, recorded in LIMITS-1.0.md; this is not a full-suite pass.
+- Runtime write-ahead admission, durable retry counting and uncertain-call recovery are
+  still required. This storage foundation does not yet prevent duplicate provider calls.
+  No deployment or production-readiness claim; independent accounting sign-off remains open.
+
 ## Completed AI job redelivery protection — October 15, 2026
 
 - Migration 0149 adds optional immutable proposal job/source-hash bindings with a tenant

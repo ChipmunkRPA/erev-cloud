@@ -3314,10 +3314,23 @@ TABLES: Final[tuple[TableClassification, ...]] = (
         {
             R01: _cols(
                 "tenant_id id provider model_id prompt_template_id prompt_template_version "
-                "input_sha256 response_sha256 input_tokens output_tokens latency_ms outcome "
+                "intent_id input_sha256 response_sha256 input_tokens output_tokens "
+                "latency_ms outcome "
                 "created_at created_by created_by_kind"
             ),
             R02: _cols("parameters error_detail"),
+        },
+    ),
+    _table(
+        "ai_call_intent",
+        "T-AI-03",
+        "Immutable intended provider attempt, retained even if its outcome is unknown.",
+        Retention.AUDIT_RETENTION_YEARS,
+        {
+            R01: _cols(
+                "tenant_id id job_id attempt_no provider input_sha256 source_sha256 "
+                "created_at created_by created_by_kind"
+            )
         },
     ),
     # ---- MIG tables (04 T-MIG-nn; landed by revision 0056, lane F-LMG, 2026-09-20)

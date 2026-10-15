@@ -74,8 +74,7 @@ def test_job_binding_constraints_and_downgrade_guard(
     assert getattr(error.value.orig, "sqlstate", None) == "23514"
     with committed_db.owner_engine.connect() as connection:
         assert (
-            connection.exec_driver_sql(
-                "SELECT version_num FROM erev.alembic_version"
-            ).scalar_one()
+            connection.exec_driver_sql("SELECT version_num FROM erev.alembic_version").scalar_one()
             == "0149"
         )
+    command.upgrade(alembic_config(), "head")

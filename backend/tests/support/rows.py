@@ -63,6 +63,7 @@ from erev_api.db.tables import (
     import_row,
     import_upload,
     integration_connection,
+    job,
     journal_batch,
     journal_entry,
     journal_line,
@@ -4876,6 +4877,23 @@ def migration_population_obligation_row(ctx: RowContext, session: Session) -> di
     )
 
 
+def ai_call_intent_row(ctx: RowContext, session: Session) -> dict[str, Any]:
+    planned_job = job_row(ctx, session)
+    planned_job["kind"], planned_job["queue"] = "AI_TASK", "ai"
+    job_id = _insert_visible(session, job, planned_job)
+    return {
+        "tenant_id": ctx.tenant_id,
+        "id": new_id(),
+        "job_id": job_id,
+        "attempt_no": 1,
+        "provider": "fake",
+        "input_sha256": "a" * 64,
+        "source_sha256": "b" * 64,
+        "created_by_kind": "USER",
+        "created_by": ctx.user_id,
+    }
+
+
 def ai_model_log_row(ctx: RowContext, session: Session) -> dict[str, Any]:
     """T-AI-02: synthetic successful provider-call evidence, without prompt text."""
     return {
@@ -4915,6 +4933,7 @@ def ai_proposal_row(ctx: RowContext, session: Session) -> dict[str, Any]:
 
 ROW_BUILDERS: Final[Mapping[str, RowBuilder]] = MappingProxyType(
     {
+        "ai_call_intent": ai_call_intent_row,
         "ai_model_log": ai_model_log_row,
         "ai_proposal": ai_proposal_row,
         "access_review_campaign": access_review_campaign_row,

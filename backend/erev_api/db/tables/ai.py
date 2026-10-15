@@ -14,6 +14,7 @@ ai_model_log: Final = Table(
     metadata,
     Column("tenant_id", Uuid(), primary_key=True),
     Column("id", Uuid(), primary_key=True),
+    Column("intent_id", Uuid(), nullable=True),
     Column("provider", Text(), nullable=False),
     Column("model_id", Text(), nullable=False),
     Column("prompt_template_id", Text(), nullable=False),
@@ -36,14 +37,14 @@ ai_proposal: Final = Table(
     Column("tenant_id", Uuid(), primary_key=True),
     Column("id", Uuid(), primary_key=True),
     Column("kind", _enum(AiProposalKind, "ai_proposal_kind"), nullable=False),
-    Column("job_id", Uuid(), nullable=True),
-    Column("job_source_sha256", CHAR(64), nullable=True),
     Column(
         "status",
         _enum(AiProposalStatus, "ai_proposal_status"),
         nullable=False,
         server_default=text("'proposed'"),
     ),
+    Column("job_id", Uuid(), nullable=True),
+    Column("job_source_sha256", CHAR(64), nullable=True),
     Column("subject_type", Text(), nullable=True),
     Column("subject_id", Uuid(), nullable=True),
     Column("file_object_id", Uuid(), nullable=True),
@@ -67,4 +68,18 @@ ai_proposal: Final = Table(
     ),
     Column("problem", JSONB(), nullable=True),
     *_sc_c_sc_m(),
+)
+
+
+ai_call_intent: Final = Table(
+    "ai_call_intent",
+    metadata,
+    Column("tenant_id", Uuid(), primary_key=True),
+    Column("id", Uuid(), primary_key=True),
+    Column("job_id", Uuid(), nullable=False),
+    Column("attempt_no", Integer(), nullable=False),
+    Column("provider", Text(), nullable=False),
+    Column("input_sha256", CHAR(64), nullable=False),
+    Column("source_sha256", CHAR(64), nullable=False),
+    *_sc_c(),
 )

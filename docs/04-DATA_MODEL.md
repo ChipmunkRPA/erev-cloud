@@ -612,7 +612,7 @@ Diagrams show tables and relationships only; columns are in §4-§13. Every tena
 | IMP | T-IMP-01 `import_template`, 02 `import_upload`, 03 `import_row`, 04 `import_row_lineage`, 05 `exception_item`, 06 `import_mapping_profile` |
 | INT | T-INT-01 `integration_connection`, 02 `sync_run`, 03 `outbox_message`, 04 `external_id_map` |
 | FC | T-FC-01 `scenario`, 02 `forecast_event_set`, 03 `forecast_run`, 04 `deal_preview` |
-| AI | T-AI-01 `ai_proposal`, 02 `ai_model_log` |
+| AI | T-AI-01 `ai_proposal`, 02 `ai_model_log`, 03 `ai_call_intent` |
 | MIG | T-MIG-01 `migration_batch`, 02 `migrated_legacy_row`, 03 `migration_reconciliation_line` |
 
 Reconciliation with the canonical entities of research 04 §14.1 and the table summary of research 06 §21 (closes C-05):
@@ -5824,6 +5824,7 @@ no narrative text copied into the audit event. Acceptance remains a separate wor
 | Column | Type | Null | Default | Constraints and notes |
 |---|---|---|---|---|
 | SC-T | | | | |
+| `intent_id` | uuid | Y | | Tenant-bound FK to ai_call_intent; unique when present. Historical logs may be unbound. |
 | `provider` | text | N | | `CHECK (provider IN ('fake','anthropic'))` |
 | `model_id` | text | N | | |
 | `prompt_template_id` | text | N | | |
@@ -5839,6 +5840,28 @@ no narrative text copied into the audit event. Acceptance remains a separate wor
 | SC-C | | | | |
 
 Keys: `PRIMARY KEY (tenant_id, id)`; `ix_ai_model_log__created (tenant_id, created_at)`.
+
+### T-AI-03 `ai_call_intent`
+
+- **Purpose.** Durable evidence that a provider call was intended; absence of a linked
+  model log means the outcome is uncertain, never proof that no call occurred.
+- **Class.** IM-A; RLS-T; PT-N; AUD-FACT. No prompt or response text.
+
+| Column | Type | Null | Default | Constraints and notes |
+|---|---|---|---|---|
+| SC-T | | | | |
+| `job_id` | uuid | N | | Tenant-bound FK to job. |
+| `attempt_no` | integer | N | | 1 through 3; unique within the tenant/job. |
+| `provider` | text | N | | fake or anthropic. |
+| `input_sha256` | erev.sha256 | N | | Exact intended request hash. |
+| `source_sha256` | erev.sha256 | N | | Job/source fingerprint. |
+| SC-C | | | | Human USER attribution with non-null created_by. |
+
+Keys: `PRIMARY KEY (tenant_id, id)`; `ux_ai_call_intent__attempt (tenant_id, job_id, attempt_no)`.
+Migration 0150 refuses downgrade when intents exist. The unique tenant/intent link on
+ai_model_log permits at most one recorded outcome per intent. Runtime write-ahead admission
+and uncertain-outcome recovery must use these records before they provide crash protection.
+
 
 ### T-MIG-01 `migration_batch`
 

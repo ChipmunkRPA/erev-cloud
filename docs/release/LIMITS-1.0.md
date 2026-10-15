@@ -65,6 +65,18 @@ without another model call, including after budget exhaustion or disablement. Mi
 real-contract tests verify these cases. This does not recover unfinished provider calls or
 retry counts after a crash, and does not complete job registration or public API delivery.
 
+Migration 0150 adds immutable, tenant-bound provider-call intents, numbered 1–3 per job,
+with one optional linked model-log outcome. Populated intent evidence prevents downgrade;
+an unlinked intent survives as an uncertain outcome. Gateway write-ahead admission, durable
+retry counting and uncertain-call recovery are not connected yet: schema storage alone does
+not prevent duplicate calls or account for unknown usage.
+
+The October 15 full architecture run additionally exposed unresolved checks for contract-event
+scope/appender registries, AI proposal file ownership/evidence rules, material-right expiry file
+bindings, provider clock/test temporary-path rules and AI membership identity reads. The run
+recorded 337 passes and 10 failures (.run/ai-intent-checks.log); privacy/snapshot counts and
+AI proposal column order were subsequently corrected. Seven architecture checks remain open.
+
 Migration 0148 adds immutable proposal content/citations, tenant-bound evidence references
 and SM-11 state guards. The schema and full migration round trip are verified; proposal
 creation/acceptance APIs, approval integration and lifecycle audit events remain absent.

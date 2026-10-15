@@ -294,6 +294,7 @@ def _shared(reason: str) -> TableRule:
 RULES: Final[Mapping[str, TableRule]] = MappingProxyType(
     {
         "ai_proposal": _regenerated(_K.OPERATIONAL, "AI proposals belong to their source tenant"),
+        "ai_call_intent": _regenerated(_K.AUDIT, "AI call intents belong to their source tenant"),
         "ai_model_log": _regenerated(_K.AUDIT, "AI call evidence belongs to its source tenant"),
         # --- copied configuration (SBX-03: reference data and all configuration versions) -----
         "fiscal_calendar": _copied(_K.CONFIGURATION, "reference data: calendars (SBX-03)"),
