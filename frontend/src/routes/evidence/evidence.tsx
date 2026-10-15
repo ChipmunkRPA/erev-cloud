@@ -23,6 +23,7 @@ import {
 } from "../../lib/api/queries/evidence-packs";
 import { formatTimestamp } from "../../lib/format";
 import { t } from "../../lib/i18n/t";
+import { AuditorRequests } from "./requests";
 import { ReportsHeader } from "../reports/frame";
 import { bookLabel, hashPrefix } from "../reports/viewer/RunStamp";
 
@@ -201,7 +202,10 @@ export function EvidencePacksPage() {
         ) : !mayReadEvidence(access) ? (
           <EvidenceAccessLimited />
         ) : (
-          <PackRegister />
+          <>
+            <AuditorRequests />
+            <PackRegister />
+          </>
         )}
       </div>
     </div>

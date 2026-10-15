@@ -808,3 +808,14 @@ The separate immutable c214c47 control run passed all 497 tagged tests, covering
 CTL-045 and CTL-048 remain missing, so the control gate fails. Details and binding are recorded
 in CONTROLS-2026-10-14.md. No full release, independent accounting sign-off or production
 readiness is claimed, and no deployment was performed.
+
+
+## October 14, 2026 — auditor request navigation
+
+The evidence workspace now includes A-01 through A-20 with report sources, context-preserving
+navigation, selected-period reconciliation access and the viewer's own audit-event filter.
+Report actions are only offered for definitions returned by the API. Contract sample,
+access and change generation remain unavailable; their visible actions do not submit placeholder
+commands. The service-organization-report row explicitly identifies that external deliverable.
+The catalogue now links to the actual evidence workspace and requires its read permissions.
+RPS-20 still needs generation workflows, remaining presentation and real browser acceptance.

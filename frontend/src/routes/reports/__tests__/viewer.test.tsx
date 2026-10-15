@@ -915,6 +915,42 @@ describe("SF-08:report viewer", () => {
 });
 
 describe("SF-08 catalogue", () => {
+  it.each([true, false])(
+    "pack catalogue navigation requires evidence read access: %s",
+    async (allowed) => {
+      serve(WATERFALL, {}, []);
+      server.use(
+        http.get(apiUrl("/api/v1/report-definitions"), () =>
+          HttpResponse.json({
+            items: [
+              {
+                ...WATERFALL,
+                code: "period_evidence_pack",
+                name: "Period evidence pack",
+                kind: "PACK",
+                output_formats: ["ZIP"],
+              },
+            ],
+          }),
+        ),
+        http.get(apiUrl("/api/v1/report-runs"), () =>
+          HttpResponse.json({ items: [], next_cursor: null }),
+        ),
+      );
+      const member = allowed
+        ? signedInMe({ permissions: [...MARCUS.permissions, "audit.read"] })
+        : MARCUS;
+      renderApp(`/reports?${CONTEXT}&known_at=2026-09-30T00%3A00%3A00Z`, {
+        me: member,
+        screenRoutes: SCREEN_ROUTES,
+      });
+      const row = await screen.findByTestId("SF-08-row-period-evidence-pack");
+      const link = within(row).queryByRole("link", { name: "Period evidence pack" });
+      if (allowed) expect(link?.getAttribute("href")).toBe(`/reports/evidence?${CONTEXT}`);
+      else expect(link).toBeNull();
+    },
+  );
+
   it("groups the definitions and hides the forecast and migration codes", async () => {
     const definition = (code: string, name: string, kind: string): ReportDefinition => ({
       ...WATERFALL,

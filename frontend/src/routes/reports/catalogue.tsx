@@ -20,6 +20,8 @@ import { Skeleton } from "../../components/feedback/Skeleton";
 import { Button } from "../../components/ui/Button";
 import { chipFor, OutlineChip, StatusChip } from "../../components/ui/StatusChip";
 import { Tooltip } from "../../components/ui/Tooltip";
+import { useAccess } from "../../lib/access";
+import { EVIDENCE_PACKS_ROUTE, mayReadEvidence } from "../../lib/api/queries/evidence-packs";
 import { useMe } from "../../lib/api/queries/me";
 import {
   fetchRecentReportRuns,
@@ -49,7 +51,6 @@ const CONTEXT = ["entity", "period", "book"] as const;
 const REPORT_CONTEXT = ["entity", "period", "book", "currency_view", "known_at"] as const;
 const RECENT_DAYS = 30;
 const RECENT_ROWS = 10;
-const EVIDENCE_ROUTE = "/evidence";
 const KINDS = ["STANDARD", "REGISTER", "DISCLOSURE", "EXTRACT", "PACK", "LEGACY_EXPORT"] as const;
 
 /** The context parameters of `names` that a report link keeps, in that order. */
@@ -90,6 +91,7 @@ function matches(
 export function ReportCatalogue() {
   const location = useLocation();
   const me = useMe();
+  const access = useAccess();
   const built = useBuiltPaths();
   const definitions = useQuery({
     queryKey: reportDefinitionsKey(),
@@ -169,7 +171,7 @@ export function ReportCatalogue() {
         group={group}
         items={items}
         search={reportSearch}
-        packsBuilt={built.has(EVIDENCE_ROUTE)}
+        packsBuilt={built.has(EVIDENCE_PACKS_ROUTE) && mayReadEvidence(access)}
       />
     ));
   }
@@ -299,7 +301,11 @@ function GroupTable({
                   item.name
                 ) : (
                   <Link
-                    to={pack ? EVIDENCE_ROUTE : `/reports/${item.code}${search}`}
+                    to={
+                      pack
+                        ? `${EVIDENCE_PACKS_ROUTE}${contextSearch(search, CONTEXT)}`
+                        : `/reports/${item.code}${search}`
+                    }
                     className="text-accent-fg hover:underline"
                   >
                     {item.name}

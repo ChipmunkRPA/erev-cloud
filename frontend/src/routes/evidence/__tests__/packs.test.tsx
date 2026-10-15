@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
-import { afterEach, beforeAll, expect, it } from "vitest";
+import { afterEach, beforeAll, beforeEach, expect, it } from "vitest";
 import { SCREEN_ROUTES } from "../../../app/router";
 import { type EvidencePack, mayDownloadEvidence } from "../../../lib/api/queries/evidence-packs";
 import { accessOf } from "../../../lib/access";
@@ -14,6 +14,11 @@ installMemoryStorage();
 installGridViewport();
 beforeAll(async () => {
   await preloadScreens(SCREEN_ROUTES, ["SF-09", "SF-09:pack"]);
+});
+beforeEach(() => {
+  server.use(
+    http.get(apiUrl("/api/v1/report-definitions"), () => HttpResponse.json({ items: [] })),
+  );
 });
 afterEach(() => cleanup());
 const permissions = [

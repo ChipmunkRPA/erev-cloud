@@ -10298,6 +10298,11 @@ Author BS-3. Uses CTR (PHASES §1 row 12). Indicative size 16 items; this phase 
   - **Gates:** GK-01 `make ci`; GK-07 `make e2e SPEC=frontend/e2e/projects/screens.spec.ts`
 
 - [ ] **RPS-20 Evidence pack screens.**
+  - October 14 follow-up: A-01 through A-20 now have their request text and sources,
+    available report/navigation actions and context-preserving destinations. Access/change
+    pack actions are visible but disabled until their backend generators exist; no fake
+    generation command is sent. Remaining forms, read-only presentation and actual browser
+    acceptance still prevent completing this item.
   - October 14 repository increment: first-close register/detail and verified ZIP/manifest
     downloads implemented; API/MFA/worker/schema checks 118 passed, focused UI checks 12 passed.
     Full frontend 2,069 passed before the final count/hash columns (focused/static/build checks
