@@ -53,7 +53,7 @@ import {
 } from "../../lib/api/queries/reports";
 import { type Period, periodLabel, type PeriodState } from "../../lib/api/queries/tenant";
 import { queryKey } from "../../lib/api/query-keys";
-import { formatNumber, formatTimestamp } from "../../lib/format";
+import { formatNumber, formatTimestamp, instantMs } from "../../lib/format";
 import { hasMessage, t } from "../../lib/i18n/t";
 import { withParams } from "../../lib/url/params";
 import { hashPrefix } from "../reports/viewer/RunStamp";
@@ -427,50 +427,75 @@ function lockName(lock: PeriodLockRow): string {
 
 interface DiffProps {
   readonly lock: PeriodLockRow;
+  readonly locks: readonly PeriodLockRow[];
   readonly permissions: readonly string[];
   readonly ctxSearch: string;
   readonly inGrid?: boolean;
 }
 
-/**
- * SF-08:report `variance_between_closes` between the lock a record follows and the record itself
- * (`p.from_period_lock_id`, `p.to_period_lock_id`), for a holder of `report.run`; null otherwise.
- */
+/** Resolve the prior frozen close through reopen records in this period's history. */
+function previousDatasetLock(
+  lock: PeriodLockRow,
+  locks: readonly PeriodLockRow[],
+): PeriodLockRow | null {
+  if (lock.kind !== "LOCK") return null;
+  const byId = new Map(locks.map((row) => [row.id, row]));
+  const seen = new Set([lock.id]);
+  let parentId = lock.previous_lock_id;
+  let childTime = instantMs(lock.created_at);
+  while (parentId !== null && !seen.has(parentId)) {
+    seen.add(parentId);
+    const parent = byId.get(parentId);
+    if (parent === undefined) return null;
+    const parentTime = instantMs(parent.created_at);
+    if (!(parentTime < childTime)) return null;
+    if (parent.kind === "LOCK") return parent;
+    if (parent.kind !== "REOPEN") return null;
+    childTime = parentTime;
+    parentId = parent.previous_lock_id;
+  }
+  return null;
+}
+
+/** RPT-38 compares two freezing LOCK records, never a REOPEN or PERMANENT_LOCK. */
 function diffReportRoute(
   lock: PeriodLockRow,
+  locks: readonly PeriodLockRow[],
   permissions: readonly string[],
   reportsBuilt: boolean,
   ctxSearch: string,
 ): string | null {
   if (
-    lock.kind === "REOPEN" ||
+    lock.kind !== "LOCK" ||
     lock.previous_lock_id === null ||
     !reportsBuilt ||
     !permissions.includes(REPORT_RUN_PERMISSION)
   ) {
     return null;
   }
+  const previous = previousDatasetLock(lock, locks);
+  if (previous === null) return null;
   const search = withParams(ctxSearch, {
-    "p.from_period_lock_id": lock.previous_lock_id,
+    "p.from_period_lock_id": previous.id,
     "p.to_period_lock_id": lock.id,
   });
   return `/reports/${DIFF_REPORT}${search}`;
 }
 
 /**
- * SCREENS_B §1.4 "Diff report": a record that follows another lock opens the report between the two
+ * SCREENS_B §1.4 "Diff report": a re-lock opens the report against the prior freezing lock
  * (`report.run`) and downloads the stored file (`report.export` or `evidence.export`); a first lock
- * has nothing to compare with, and a reopen record changes no figure.
+ * has nothing to compare with; reopen and permanent-lock records freeze no dataset.
  */
-function DiffReport({ lock, permissions, ctxSearch, inGrid = false }: DiffProps) {
+function DiffReport({ lock, locks, permissions, ctxSearch, inGrid = false }: DiffProps) {
   const built = useBuiltPaths();
-  if (lock.kind === "REOPEN") {
+  if (lock.kind !== "LOCK") {
     return <NoValue />;
   }
   if (lock.previous_lock_id === null) {
     return <span className="text-fg-2">{t("close.history.diff.none")}</span>;
   }
-  const report = diffReportRoute(lock, permissions, built.has(REPORT_ROUTE), ctxSearch);
+  const report = diffReportRoute(lock, locks, permissions, built.has(REPORT_ROUTE), ctxSearch);
   const mayDownload =
     lock.diff_report_file_id !== null &&
     (permissions.includes(REPORT_EXPORT_PERMISSION) ||
@@ -860,16 +885,22 @@ export function lockColumns({
       header: t("close.history.locks.column.diff"),
       kind: "text",
       value: (lock) =>
-        lock.kind === "REOPEN"
+        lock.kind !== "LOCK"
           ? null
           : lock.previous_lock_id === null
             ? t("close.history.diff.none")
             : t("close.history.diff.open"),
       render: (lock) => (
-        <DiffReport lock={lock} permissions={permissions} ctxSearch={ctxSearch} inGrid />
+        <DiffReport
+          lock={lock}
+          locks={locks ?? []}
+          permissions={permissions}
+          ctxSearch={ctxSearch}
+          inGrid
+        />
       ),
       activate: (lock) => {
-        const to = diffReportRoute(lock, permissions, reportsBuilt, ctxSearch);
+        const to = diffReportRoute(lock, locks ?? [], permissions, reportsBuilt, ctxSearch);
         if (to === null) {
           open(lock);
         } else {
@@ -1178,7 +1209,7 @@ function LockDrawer({
             )}
           </Definition>
           <Definition term={t("close.history.locks.column.diff")}>
-            <DiffReport lock={lock} permissions={permissions} ctxSearch={ctxSearch} />
+            <DiffReport lock={lock} locks={locks} permissions={permissions} ctxSearch={ctxSearch} />
           </Definition>
         </dl>
         {lock.certification.length === 0 ? null : <Certification gates={lock.certification} />}

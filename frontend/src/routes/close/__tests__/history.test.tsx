@@ -265,7 +265,7 @@ const LOCKS: readonly PeriodLockRow[] = [
     audit_head_chain_seq: 9112,
     snapshot_manifest_sha256: MANIFEST,
     cutoff_known_at: "2026-10-02T10:02:09Z",
-    previous_lock_id: FIRST_LOCK,
+    previous_lock_id: REOPEN,
     diff_report_file_id: DIFF_FILE,
     approval_request_no: "APR-000540",
     certification: certification("2026-10-02T10:01:40Z", "HOLDS_REVIEWED"),
@@ -590,6 +590,55 @@ describe("SF-05:history", () => {
     expect(columns.find((column) => column.id === "cutoff")?.width).toBeGreaterThanOrEqual(216);
     // "Previous lock" names a record by kind and instant: "Reopen, recorded 01 Oct 2026 16:40 UTC".
     expect(columns.find((column) => column.id === "previous")?.width).toBeGreaterThanOrEqual(296);
+  });
+
+  it.each(["missing reopen", "missing earlier lock", "cycle", "later parent", "permanent parent"])(
+    "does not invent comparison sources for %s; retained download remains available",
+    async (fault) => {
+      const locks = LOCKS.filter(
+        (row) =>
+          !(fault === "missing reopen" && row.id === REOPEN) &&
+          !(fault === "missing earlier lock" && row.id === FIRST_LOCK),
+      ).map((row): PeriodLockRow => {
+        if (row.id !== REOPEN) return row;
+        if (fault === "cycle") return { ...row, previous_lock_id: RELOCK };
+        if (fault === "later parent") return { ...row, created_at: "2026-10-03T10:00:00Z" };
+        if (fault === "permanent parent") return { ...row, kind: "PERMANENT_LOCK" };
+        return row;
+      });
+      serve({ locks });
+      open(MARCUS);
+      const grid = await screen.findByRole("grid", { name: "Locks" });
+      await within(grid).findByRole("link", { name: "Download file" });
+      expect(within(grid).queryByRole("link", { name: "Open diff report" })).toBeNull();
+      expect(within(grid).getByRole("link", { name: "Download file" }).getAttribute("href")).toBe(
+        `/api/v1/files/${DIFF_FILE}/content`,
+      );
+    },
+  );
+
+  it("keyboard activation resolves the same prior frozen lock as the visible link", () => {
+    const destinations: string[] = [];
+    const columns = lockColumns({
+      locks: LOCKS,
+      approvals: new Map(),
+      permissions: ["report.run"],
+      ctxSearch: CONTEXT,
+      requestsBuilt: true,
+      reportsBuilt: true,
+      onOpen: () => {
+        throw new Error("Expected report navigation");
+      },
+      navigate: (path) => {
+        destinations.push(String(path));
+      },
+    });
+    const relock = LOCKS.find((row) => row.id === RELOCK);
+    if (relock === undefined) throw new Error("Missing re-lock fixture");
+    columns.find((column) => column.id === "diff")?.activate?.(relock);
+    expect(destinations).toEqual([
+      `/reports/variance_between_closes?${CONTEXT}&p.from_period_lock_id=${FIRST_LOCK}&p.to_period_lock_id=${RELOCK}`,
+    ]);
   });
 
   it("lock records with their approvals and the re-lock's difference; state changes as activity", async () => {

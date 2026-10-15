@@ -2,6 +2,15 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Close comparison navigation — October 15, 2026
+
+- The history grid, drawer and keyboard action now traverse reopen records to the prior
+  freezing lock before constructing RPT-38 selectors. Incomplete, cyclic or out-of-order
+  history produces no comparison link; permanent-lock records are not report snapshots.
+- Correcting the synthetic history to the real backend chain reproduced two link failures.
+  All 16 history tests, frontend typing and repository lint pass.
+- The missing RPT-38 builder and driver attribution remain open. This repairs its entry path.
+
 ## Re-lock snapshot integrity — October 15, 2026
 
 - Re-lock comparisons now verify the stored hash and row count of both the previous and newly
