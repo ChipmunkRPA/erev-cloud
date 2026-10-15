@@ -5,9 +5,9 @@
 // Overview, Attributes, SSP and allocation, Schedule and Events (`pane=` with `history.replace`). Every
 // figure is an Explain trigger; the pane never computes allocated = recognized + scheduled + awaiting
 // trigger (REQ-REC-021). "Change price" opens SF-07 with the kind and the obligation preselected
-// (§5.8, LTM-06; rev 1.29). "Change attributes", "Request SSP override" and the material-right commands
-// are not rendered (XR-14; L5-4-Q-32). "Request policy override" is not rendered either (§4.9.7 rev
-// 1.80; supervisor ruling R-126 (c)): release 1.0 takes no policy override.
+// (§5.8, LTM-06; rev 1.29). "Change attributes" and "Request SSP override" are not rendered
+// (XR-14; L5-4-Q-32). Native option terms and expiry appear in Overview.
+// "Request policy override" is not rendered either (§4.9.7 rev 1.80; supervisor ruling R-126 (c)): release 1.0 takes no policy override.
 import { useQuery } from "@tanstack/react-query";
 import { type ReactNode, useState } from "react";
 import { Link } from "react-router";
@@ -68,6 +68,7 @@ import { t } from "../../lib/i18n/t";
 import { type Choice, SelectField, useRefreshRecord } from "./drawers/common";
 import { type EventKind, eventKindsFor } from "./drawers/record-event";
 import { eventOriginText } from "./event-origin";
+import { MaterialRightPanel } from "./material-right";
 
 export const PANE_TABS = ["overview", "attributes", "ssp", "schedule", "events"] as const;
 export type PaneTab = (typeof PANE_TABS)[number];
@@ -1397,6 +1398,21 @@ export function ObligationPane({
             }
           }}
         >
+          {tab === "overview" ? (
+            <MaterialRightPanel
+              key={obligation.id}
+              contract={contract}
+              obligation={obligation}
+              canCreate={
+                !commandsHidden &&
+                access.holds(CONTRACT_CREATE_PERMISSION, contract.contracting_entity)
+              }
+              canExpire={
+                !commandsHidden &&
+                access.holds(EVENT_RECORD_PERMISSION, contract.contracting_entity)
+              }
+            />
+          ) : null}
           {panel}
         </PanelTabs>
       </div>

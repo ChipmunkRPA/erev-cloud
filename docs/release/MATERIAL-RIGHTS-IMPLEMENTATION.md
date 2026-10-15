@@ -310,3 +310,34 @@ The native entry, invalid-terms and approved-discount cases plus all stage-03 te
 pass. Evidence: `.run/material-right-create-retry-baseline.log`,
 `.run/material-right-create-retry-fixed.log`, `.run/material-right-create-retry-types.log`.
 Other lifecycle and release requirements remain open.
+
+## Workbench entry and expiry, October 14
+
+Obligation Overview displays option type, SSP method, status/date, expiry date, discount
+ratio and expected purchase amount, with a link to the stored likelihood estimate.
+Current views offer Enter option terms on a DRAFT without terms and Record option expiry
+on an ACTIVE contract's OPEN option, subject to the contracting-entity permissions.
+Pending-review, completed, closed-option and historical views offer no such command.
+
+Entry supports the three native methods and restricts renewal alternative to renewal options.
+Discount-times-likelihood selects a contract/obligation-compatible estimate with a current
+approved version; the API remains authoritative for its pricing-date applicability. Numeric
+inputs stay decimal strings. Expiry accepts its date, reason and optional evidence uploads.
+Both commands use the parent stream ETag and shared idempotency/refusal/cache handling.
+Accepted expiry jobs retain progress and disable repeat submission. Failed or cancelled
+computation says that expiry was recorded and requires review; it does not promise rollback.
+Embedded option terms now use the same typed MaterialRightOut schema as the dedicated read.
+
+79 UI/workbench regressions passed before the final read-only evidence link; the final
+14-test option suite also passed. Backend read/API/import-cycle checks: 34 passed (27.93s).
+Full typecheck (880 sources plus frontend), final frontend types, ESLint and Ruff pass.
+Five local desktop/mobile form captures were generated, with discount desktop and expiry
+mobile inspected for layout; no browser page errors. Evidence is in
+`.run/material-right-ui-tests-final.log`, `.run/material-right-ui-tests-last-fixed.log`,
+`.run/material-right-ui-api-fixed.log`, `.run/material-right-ui-full-types.log`, and
+`.run/material-right-ui-visual.log`. These are isolated component and API checks, not a
+complete browser-to-live-API accounting acceptance run. Governed exercise, correction,
+migration conversion and the other lifecycle/release/accounting requirements remain open.
+
+Production frontend build passed (4.25s); the existing large-chunk advisory remains.
+Evidence: `.run/material-right-ui-build.log`. Local preview files/server were removed.

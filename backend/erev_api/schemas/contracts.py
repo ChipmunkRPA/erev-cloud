@@ -43,6 +43,7 @@ from erev_api.events.payloads import (
 )
 from erev_api.money import MONEY_MESSAGE, RULE_ID, MoneyIn, MoneyOut
 from erev_api.schemas.common import ActorOut, ContextOut, RefOut
+from erev_api.schemas.obligations import MaterialRightOut
 
 __all__ = [
     "ActivationChecklistItemOut",
@@ -447,7 +448,7 @@ class ObligationOut(BaseModel):
     # released against the stream's head. The version reads list none (a hold is no fact of a
     # version). A contract-level hold is listed by API-S-Contract ``holds``.
     holds: list[HoldOut]
-    material_right: dict[str, Any] | None
+    material_right: MaterialRightOut | None
     context: ContextOut
     links: ObligationLinksOut
 

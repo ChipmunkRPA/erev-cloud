@@ -25300,14 +25300,12 @@
           "material_right": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "$ref": "#/components/schemas/MaterialRightOut"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Material Right"
+            ]
           },
           "memo_1": {
             "anyOf": [

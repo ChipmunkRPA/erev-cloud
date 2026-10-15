@@ -16992,10 +16992,7 @@ export interface components {
       /** Licence Nature */
       licence_nature: string;
       links: components["schemas"]["ObligationLinksOut"];
-      /** Material Right */
-      material_right: {
-        [key: string]: unknown;
-      } | null;
+      material_right: components["schemas"]["MaterialRightOut"] | null;
       /** Memo 1 */
       memo_1: string | null;
       /** Memo 2 */

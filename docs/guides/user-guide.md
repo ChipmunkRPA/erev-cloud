@@ -424,3 +424,26 @@ The demo users are one named persona per default role, `<name>@demo.erev`: Maya 
 **The month of the demo workspaces.** Avenmoor Holdings is seeded as of September 2026: its periods January to September 2026 are open and October 2026 onwards are still to come (state "Future"). `make seed CLOSE=1` (`erev seed demo --with-close`) also closes January to August 2026 for Avenmoor Inc. (`AVM-US`) in its primary book, `ASC606`, month by month as the personas would: Maya Chen runs the close, exports the journal as a CSV file, records the document reference of the ledger and reconciles, Priya Raman approves the journal and reviews the reconciliations, and Marcus Webb locks the month. A lock took two and a half to three minutes when it was measured, which is why a seed closes only when it is asked. The trial balance of a seeded month is written from the subledger, so its reconciliation shows how the tie-out reads, not two independent books. The other entities and the `IFRS15` book stay open, and the reopening of June of the specified history is pending. A workspace that was seeded without its close is not closed by a later seed, because its open items hold every lock: the command says so and names `make seed RESET=1 CLOSE=1`. The scheduler that opens a period on its start date leaves the demo workspaces alone, so they keep this month whatever the day they are used. A later period opens when someone opens it by hand (`POST /periods/{id}/open`) or when the period before it is locked.
 
 - **Dating a contract today (known limitation).** "Today" on a screen is the date of the wall clock. A contract or an event dated today in a demo workspace therefore lies in a period that is still to come, and a contract in GBP, EUR or JPY finds no exchange rate for that date: the seeded rates end on 30 September 2026. Date it within September 2026, or open the later period and load its rates first (Settings, "Currencies and rates").
+
+## Entering and expiring option terms
+
+Open a material-right obligation from its contract and select **Overview**. The Option terms
+section shows the saved method, dates and status. A linked likelihood estimate opens its
+contract estimate record.
+
+On a draft, **Enter option terms** is available to a preparer with permission for that entity.
+Choose the option type and SSP method. Discount times likelihood also requires a decimal
+incremental-discount ratio, expected purchase amount in the contract currency and an approved
+exercise-likelihood estimate. Prepare and approve a missing estimate in the contract's
+Estimates tab first. Renewal alternative requires a renewal option. Save terms before
+submitting activation: saved terms are immutable and their preparer cannot approve activation.
+
+On an active contract with an open option, an authorized event recorder can select
+**Record option expiry**, enter the actual effective date and reason, and attach evidence.
+The API checks that any stated expiry date has been reached and that the posting date is
+allowed. A changed contract requires reloading before retrying. If computation is queued,
+its progress remains visible. A failed computation requires reviewing jobs and exceptions;
+the expiry event may already have been recorded. Do not submit a duplicate expiry.
+
+These controls are hidden in historical views. Governed manual exercise and correction are
+still outstanding; the expiry command does not implement either operation.

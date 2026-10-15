@@ -1744,9 +1744,7 @@ def obligation_outs(
                 satisfaction_status=status,
                 satisfied_date=row["satisfied_date"],
                 holds=listed.get((_uuid(row["contract_id"]), _uuid(obligation_id)), []),
-                material_right=None
-                if obligation_id not in rights
-                else rights[obligation_id].model_dump(mode="json"),
+                material_right=rights.get(obligation_id),
                 context=own,
                 links=ObligationLinksOut(
                     self=f"{API}/obligations/{obligation_id}",

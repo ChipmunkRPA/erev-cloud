@@ -3585,3 +3585,22 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   see BROWSER-2026-10-14.md. Full backend CI 165d63c remains in progress.
 - B4-2's combined cases and other release limitations remain open. No deployment or
   accounting sign-off; publish directly to main without a PR.
+
+## Renewal benefit-period engine verification — October 14, 2026
+
+- Added eight B3-24 regressions through canonicalization, obligation construction,
+  allocation and full-engine posted revenue, for ASC606 and IFRS15. A 12,000 renewal
+  right spans 24 months at 500/month when the inception estimate says 24 months;
+  without an estimate it keeps the booked 12-month term at 1,000/month.
+- A later 36-month estimate does not change inception pricing. A discount voucher
+  keeps its own term rather than inheriting the renewal estimate. Tests check exact
+  period keys, posted amounts, total, option SSP and obligation dates.
+- Initial fixture omitted the explicit MONTHLY_EVEN policy and therefore produced
+  daily amounts; corrected the fixture's convention, preserving expected figures.
+  A subsequent negative-case fixture used a nonexistent GroupInput field; corrected
+  it to replace only the contract input. No engine implementation changed.
+- Entire stage-03 suite: 41 passed (3.02s), .run/benefit-period-s03-final.log.
+  Strict Mypy, Ruff and formatting pass. B3-24 now distinguishes this evidence from
+  still-missing API-entry, answer-key and independent accounting acceptance.
+- Full backend CI 165d63c remains running around 29%; existing known failures have
+  later repairs. Repo only, direct main publication, no deployment.

@@ -2,6 +2,26 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Native option workbench controls — October 14, 2026
+
+- Obligation Overview now displays persisted option terms/status and links its likelihood
+  estimate. Entity-scoped, current-view controls permit draft entry and active/open expiry.
+  Forms support the three SSP methods, approved applicable likelihood selection, decimal
+  strings, dates, expiry reasons/evidence, ETag/idempotency and cache refresh/refusal handling.
+- Queued expiry retains job progress, prevents duplicate submission, and distinguishes
+  recorded expiry from failed computation. A failure never claims the event rolled back.
+  Embedded terms now use MaterialRightOut in OpenAPI instead of an untyped dictionary.
+- UI/workbench regressions: 79 passed; final option/evidence-link suite: 14 passed.
+  API/read/import-cycle checks: 34 passed (27.93s). Full typecheck (880 sources/frontend),
+  final frontend types, ESLint and Ruff pass. Desktop/mobile form captures were inspected;
+  five screenshots in .run/option-*.png, browser reported no page errors.
+- Logs: .run/material-right-ui-tests-final.log, .run/material-right-ui-tests-last-fixed.log,
+  .run/material-right-ui-api-fixed.log, .run/material-right-ui-full-types.log and
+  .run/material-right-ui-visual.log. Initial checks caught a closed drawer and loose schema;
+  fixture corrections covered select events, currency reference and the API test filename.
+- This is component/API evidence, not live full-browser accounting acceptance. Governed
+  exercise/correction, migration and release/accountant sign-off remain open. Build passed; no deployment.
+
 ## Native option creation failure recovery — October 14, 2026
 
 - Reproduced an injected engine crash being returned as cached 422 during native option
@@ -240,25 +260,6 @@
   persistence, governed entry, historical reads, migration, UI and acceptance coverage.
   Preserve the migration refusal until the complete terms path exists. No runtime
   change or claim of product support; full backend CI remains running.
-
-## Renewal benefit-period engine verification — October 14, 2026
-
-- Added eight B3-24 regressions through canonicalization, obligation construction,
-  allocation and full-engine posted revenue, for ASC606 and IFRS15. A 12,000 renewal
-  right spans 24 months at 500/month when the inception estimate says 24 months;
-  without an estimate it keeps the booked 12-month term at 1,000/month.
-- A later 36-month estimate does not change inception pricing. A discount voucher
-  keeps its own term rather than inheriting the renewal estimate. Tests check exact
-  period keys, posted amounts, total, option SSP and obligation dates.
-- Initial fixture omitted the explicit MONTHLY_EVEN policy and therefore produced
-  daily amounts; corrected the fixture's convention, preserving expected figures.
-  A subsequent negative-case fixture used a nonexistent GroupInput field; corrected
-  it to replace only the contract input. No engine implementation changed.
-- Entire stage-03 suite: 41 passed (3.02s), .run/benefit-period-s03-final.log.
-  Strict Mypy, Ruff and formatting pass. B3-24 now distinguishes this evidence from
-  still-missing API-entry, answer-key and independent accounting acceptance.
-- Full backend CI 165d63c remains running around 29%; existing known failures have
-  later repairs. Repo only, direct main publication, no deployment.
 
 ## Outstanding release verification
 
