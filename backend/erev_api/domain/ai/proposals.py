@@ -25,7 +25,7 @@ from erev_api.db.tables import (
 )
 from erev_api.domain.ai.attempts import PROVIDER_FAILURE_CODES, record_attempt
 from erev_api.domain.ai.narratives import NarrativeSelection, PreparedNarrative, prepare_narrative
-from erev_api.domain.ai.ports import AIResponse
+from erev_api.domain.ai.ports import AIRequest, AIResponse
 from erev_api.enums import PrincipalKind
 from erev_api.explain import service, store
 from erev_api.uow import UnitOfWork
@@ -246,20 +246,19 @@ def _insert_narrative(
     return proposal_id
 
 
-def record_provider_failure(
+def require_failure_binding(
     uow: UnitOfWork,
     *,
-    prepared: PreparedNarrative,
+    request: AIRequest,
     log_id: UUID,
     provider: Literal["fake", "anthropic"],
     code: str,
-    job_id: UUID | None = None,
-    job_source_sha256: str | None = None,
-) -> UUID:
-    """Finalize a provider failure using its already committed attempt, without relogging it."""
+    job_id: UUID | None,
+    job_source_sha256: str | None,
+) -> UUID | None:
+    """Validate a retained provider failure against its request, human and job intent."""
     if code not in PROVIDER_FAILURE_CODES:
         raise ProposalEvidenceRefused("AI_INVALID_PROVIDER_FAILURE")
-    rebuilt, contracts = _evidence(uow, prepared)
     log = (
         uow.session.execute(
             select(ai_model_log).where(
@@ -270,16 +269,16 @@ def record_provider_failure(
         .mappings()
         .one_or_none()
     )
-    expected_parameters = dict(rebuilt.request.parameters)
+    expected_parameters = dict(request.parameters)
     expected = {
         "created_by": uow.principal.id,
         "created_by_kind": "USER",
         "provider": provider,
-        "input_sha256": rebuilt.request.input_sha256,
+        "input_sha256": request.input_sha256,
         "response_sha256": None,
-        "model_id": rebuilt.request.model,
-        "prompt_template_id": rebuilt.request.template_id,
-        "prompt_template_version": str(rebuilt.request.template_version),
+        "model_id": request.model,
+        "prompt_template_id": request.template_id,
+        "prompt_template_version": str(request.template_version),
         "parameters": expected_parameters,
         "input_tokens": 0,
         "output_tokens": 0,
@@ -302,8 +301,30 @@ def record_provider_failure(
             expected["output_tokens"] = log["output_tokens"]
     if log is None or any(log[key] != value for key, value in expected.items()):
         raise ProposalEvidenceRefused("AI_ATTEMPT_EVIDENCE_MISMATCH")
-    require_intent_binding(
-        uow, log["intent_id"], job_id, job_source_sha256, rebuilt.request.input_sha256
+    require_intent_binding(uow, log["intent_id"], job_id, job_source_sha256, request.input_sha256)
+    return None if log["intent_id"] is None else UUID(str(log["intent_id"]))
+
+
+def record_provider_failure(
+    uow: UnitOfWork,
+    *,
+    prepared: PreparedNarrative,
+    log_id: UUID,
+    provider: Literal["fake", "anthropic"],
+    code: str,
+    job_id: UUID | None = None,
+    job_source_sha256: str | None = None,
+) -> UUID:
+    """Finalize a provider failure using its already committed attempt, without relogging it."""
+    rebuilt, contracts = _evidence(uow, prepared)
+    require_failure_binding(
+        uow,
+        request=rebuilt.request,
+        log_id=log_id,
+        provider=provider,
+        code=code,
+        job_id=job_id,
+        job_source_sha256=job_source_sha256,
     )
     return _insert_narrative(
         uow,

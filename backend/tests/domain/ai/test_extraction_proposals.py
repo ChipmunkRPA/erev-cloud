@@ -21,10 +21,14 @@ from erev_api.db.tables import (
     contract_version,
     file_object,
 )
-from erev_api.domain.ai.attempts import record_intent
+from erev_api.domain.ai.attempts import record_attempt, record_intent
 from erev_api.domain.ai.document_retrieval import RetrievedExtraction, retrieve_document
-from erev_api.domain.ai.extraction_proposals import record_extraction, store_document_text
-from erev_api.domain.ai.ports import AIResponse
+from erev_api.domain.ai.extraction_proposals import (
+    record_extraction,
+    record_extraction_failure,
+    store_document_text,
+)
+from erev_api.domain.ai.ports import AIResponse, AIUsage
 from erev_api.domain.ai.proposals import ProposalEvidenceRefused
 from erev_api.enums import FilePurpose, RegistryCategory
 from erev_api.files.store import open_file, store_file
@@ -175,6 +179,108 @@ def test_retained_extraction_evidence_success_failure_and_rollback(
             )
             uow.commit()
         failed_ids.append((failed_id, code))
+    for failure_code, usage in (("AI_TIMEOUT", None), ("AI_PERMISSION", AIUsage(12, 3))):
+        failed_ctx, failed_item, failed_text, failed_intent = start()
+        with system_unit_of_work(
+            failed_ctx.runtime, failed_item.principal, request_id="provider-failure-log"
+        ) as uow:
+            failure_log = record_attempt(
+                uow,
+                request=failed_item.prepared.request,
+                provider="fake",
+                outcome="TIMEOUT" if failure_code == "AI_TIMEOUT" else "ERROR",
+                failure="timeout" if failure_code == "AI_TIMEOUT" else "provider_error",
+                intent_id=failed_intent,
+                provider_failure_code=failure_code,
+                provider_retryable=failure_code == "AI_TIMEOUT",
+                usage=usage,
+            )
+            uow.commit()
+
+        def finalize(
+            *,
+            failed_ctx: JobContext = failed_ctx,
+            failed_item: RetrievedExtraction = failed_item,
+            failed_text: UUID = failed_text,
+            selected_log: UUID = failure_log,
+            code: str = failure_code,
+            rollback: bool = False,
+        ) -> UUID:
+            with system_unit_of_work(
+                failed_ctx.runtime, failed_item.principal, request_id="provider-failure-proposal"
+            ) as uow:
+                proposal = record_extraction_failure(
+                    uow,
+                    prepared=failed_item.prepared,
+                    document_text_file_id=failed_text,
+                    source_sha256=failed_item.source_sha256,
+                    log_id=selected_log,
+                    provider="fake",
+                    code=code,
+                    job_id=failed_ctx.job_id,
+                    job_source_sha256=digest,
+                )
+                if rollback:
+                    raise RuntimeError("rollback failure proposal")
+                uow.commit()
+                return proposal
+
+        with pytest.raises(ProposalEvidenceRefused, match="AI_INVALID_PROVIDER_FAILURE"):
+            finalize(code="untrusted provider message")
+        with pytest.raises(ProposalEvidenceRefused, match="AI_ATTEMPT_EVIDENCE_MISMATCH"):
+            finalize(code="AI_BAD_REQUEST")
+        with tenant_session(world.place.principal.db_context, read_only=True) as session:
+            other_log = session.scalar(
+                select(ai_proposal.c.ai_model_log_id).where(ai_proposal.c.id == proposed)
+            )
+            assert other_log is not None
+            before = dict(
+                session.execute(select(ai_model_log).where(ai_model_log.c.id == failure_log))
+                .mappings()
+                .one()
+            )
+        with pytest.raises(ProposalEvidenceRefused, match="AI_ATTEMPT_EVIDENCE_MISMATCH"):
+            finalize(selected_log=other_log)
+        with system_unit_of_work(
+            failed_ctx.runtime, failed_item.principal, request_id="unbound-failure-log"
+        ) as uow:
+            unbound_log = record_attempt(
+                uow,
+                request=failed_item.prepared.request,
+                provider="fake",
+                outcome="TIMEOUT" if failure_code == "AI_TIMEOUT" else "ERROR",
+                failure="timeout" if failure_code == "AI_TIMEOUT" else "provider_error",
+                provider_failure_code=failure_code,
+                usage=usage,
+            )
+            uow.commit()
+        with pytest.raises(ProposalEvidenceRefused, match="AI_INVALID_INTENT_BINDING"):
+            finalize(selected_log=unbound_log)
+        with pytest.raises(RuntimeError, match="rollback failure proposal"):
+            finalize(rollback=True)
+        with tenant_session(world.place.principal.db_context, read_only=True) as session:
+            assert (
+                session.scalar(
+                    select(func.count())
+                    .select_from(ai_proposal)
+                    .where(ai_proposal.c.job_id == failed_ctx.job_id)
+                )
+                == 0
+            )
+        failed_ids.append((finalize(), failure_code))
+        with tenant_session(world.place.principal.db_context, read_only=True) as session:
+            after = dict(
+                session.execute(select(ai_model_log).where(ai_model_log.c.id == failure_log))
+                .mappings()
+                .one()
+            )
+            assert after == before
+            assert after["parameters"]["usage_evidence"] == (
+                "UNKNOWN" if usage is None else "REPORTED"
+            )
+            assert (after["input_tokens"], after["output_tokens"]) == (
+                (0, 0) if usage is None else (12, 3)
+            )
     ctx, item, text_file, intent = start()
 
     def write(
@@ -229,7 +335,7 @@ def test_retained_extraction_evidence_success_failure_and_rollback(
     with tenant_session(world.place.principal.db_context, read_only=True) as session:
         rows = {row["id"]: row for row in session.execute(select(ai_proposal)).mappings()}
         success = rows[proposed]
-        assert len(rows) == 3 and success["kind"] == "CONTRACT_EXTRACTION"
+        assert len(rows) == 5 and success["kind"] == "CONTRACT_EXTRACTION"
         assert (
             success["file_object_id"] == source["id"]
             and success["document_text_file_id"] == text_id
@@ -252,8 +358,8 @@ def test_retained_extraction_evidence_success_failure_and_rollback(
         assert kept["pages"] == [original] and kept["source_sha256"] == source["sha256"]
         with world.app.state.file_store.open(text_row["storage_key"]) as encrypted:
             assert original.encode() not in encrypted.read()
-        assert session.scalar(select(func.count()).select_from(ai_model_log)) == 3
-        assert session.scalar(select(func.count()).select_from(ai_call_intent)) == 4
+        assert session.scalar(select(func.count()).select_from(ai_model_log)) == 7
+        assert session.scalar(select(func.count()).select_from(ai_call_intent)) == 6
         assert session.scalar(select(func.count()).select_from(contract_version)) == 0
         events = list(
             session.execute(
@@ -262,7 +368,7 @@ def test_retained_extraction_evidence_success_failure_and_rollback(
                 )
             ).mappings()
         )
-        assert len(events) == 7
+        assert len(events) == 11
         assert all(
             event["actor_id"] == world.maya.member.user_id and event["actor_kind"] == "USER"
             for event in events
@@ -274,5 +380,5 @@ def test_retained_extraction_evidence_success_failure_and_rollback(
                 .select_from(file_object)
                 .where(file_object.c.purpose == "AI_DOCUMENT_TEXT")
             )
-            == 4
+            == 6
         )

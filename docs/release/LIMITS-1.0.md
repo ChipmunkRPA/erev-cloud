@@ -145,8 +145,12 @@ those bytes, verifies the call intent, and atomically records model usage, valid
 fields and audit evidence. Invalid/uncited output and refusals produce failed proposals without
 retaining rejected response text. Database tests cover encryption, cross-job text/intent
 refusal, changed request fields, missing permission and rollback. These components still need
-extraction dispatch, budget admission, provider retry/recovery and submission integration;
-received-response persistence alone does not implement a complete extraction workflow.
+extraction dispatch, budget admission, provider retry/recovery and submission integration.
+Terminal provider-failure persistence now also rebuilds retained document evidence and verifies
+the existing failure log against its request, initiating human and job intent. It links that log
+without recording another attempt, preserving reported or unknown usage. Tests cover changed
+failure codes, unrelated logs and rollback; the gateway still must decide when retries end.
+These persistence components do not implement a complete extraction workflow.
 
 The PDF adapter has file/page/text and parser limits, an isolated subprocess, timeout cleanup
 and a sanitized environment. A four-page fixture covers the nine documented extraction fields.

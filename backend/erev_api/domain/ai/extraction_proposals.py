@@ -26,6 +26,7 @@ from erev_api.domain.ai.extraction_validation import OutputRefused
 from erev_api.domain.ai.ports import AIResponse
 from erev_api.domain.ai.proposals import (
     ProposalEvidenceRefused,
+    require_failure_binding,
     require_intent_binding,
     require_job_binding,
 )
@@ -226,6 +227,81 @@ def record_extraction(
         if problem == "AI_REFUSAL"
         else "invalid_output",
     )
+    return _insert_extraction(
+        uow,
+        prepared=rebuilt,
+        document_text_file_id=document_text_file_id,
+        log_id=log_id,
+        job_id=job_id,
+        job_source_sha256=job_source_sha256,
+        content=content,
+        citations=citations,
+        problem=problem,
+    )
+
+
+def record_extraction_failure(
+    uow: UnitOfWork,
+    *,
+    prepared: PreparedExtraction,
+    document_text_file_id: UUID,
+    source_sha256: str,
+    log_id: UUID,
+    provider: Literal["fake", "anthropic"],
+    code: str,
+    job_id: UUID,
+    job_source_sha256: str,
+) -> UUID:
+    """Finalize a failed extraction from existing attempt evidence without charging again.
+
+    The gateway owns retry exhaustion and fresh admission. This only persists the terminal
+    proposal, with retained source provenance and no invented response or token counters.
+    """
+    require_job_binding(uow, job_id, job_source_sha256)
+    rebuilt = _retained(
+        uow,
+        prepared,
+        document_text_file_id,
+        job_id=job_id,
+        job_source_sha256=job_source_sha256,
+        source_sha256=source_sha256,
+    )
+    intent_id = require_failure_binding(
+        uow,
+        request=rebuilt.request,
+        log_id=log_id,
+        provider=provider,
+        code=code,
+        job_id=job_id,
+        job_source_sha256=job_source_sha256,
+    )
+    if intent_id is None:
+        raise ProposalEvidenceRefused("AI_INVALID_INTENT_BINDING")
+    return _insert_extraction(
+        uow,
+        prepared=rebuilt,
+        document_text_file_id=document_text_file_id,
+        log_id=log_id,
+        job_id=job_id,
+        job_source_sha256=job_source_sha256,
+        content=[],
+        citations=[],
+        problem=code,
+    )
+
+
+def _insert_extraction(
+    uow: UnitOfWork,
+    *,
+    prepared: PreparedExtraction,
+    document_text_file_id: UUID,
+    log_id: UUID,
+    job_id: UUID,
+    job_source_sha256: str,
+    content: list[dict[str, Any]],
+    citations: list[dict[str, Any]],
+    problem: str | None,
+) -> UUID:
     proposal_id = new_id()
     status = "proposed" if problem is None else "failed"
     uow.session.execute(

@@ -2,6 +2,25 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Extraction provider-failure evidence — October 15, 2026
+
+- Added terminal extraction failure persistence using the existing committed attempt log.
+  It rebuilds retained document evidence, validates request/provider/error metadata and the
+  initiating human/job intent, then writes a failed proposal with empty content/citations.
+  It neither duplicates the attempt nor changes its reported/unknown usage. Narrative failures
+  share the evidence validator; extraction additionally requires a call intent.
+- Verification: 21 AI PostgreSQL cases passed, including narrative retries and extraction
+  failure/rollback. The final focused extraction case also passed after adding missing-intent
+  refusal and explicitly binding test-loop captures. Tests cover timeout with unknown usage,
+  permission failure with reported usage, unchanged log bytes/metadata, wrong error codes,
+  unrelated response logs, no intent, rollback and audit attribution. Seventeen architecture
+  checks passed. Full lint/typecheck passed (929 Python sources plus frontend); final focused
+  typing passed 780 sources. Logs: .run/ai-extraction-failure-{pg,pg-final,layers,lint,
+  types-final,typecheck}.log.
+- The gateway still owns admission and retry exhaustion. Extraction dispatch, provider recovery,
+  submission, review/acceptance and the broader release/accounting gates remain unfinished.
+  No deployment or live provider call; no production-readiness claim.
+
 ## Encrypted extraction proposal evidence — October 15, 2026
 
 - Added a persistence component for original document pages and received extraction responses.
@@ -202,22 +221,6 @@
   full make lint passed (.run/ai-cancellation-lint-final.log).
 - Public AI workflows and independent accounting acceptance remain unfinished. No live provider
   calls or deployment; this change is not a full readiness or immutable-CI result.
-
-## Narrative worker dispatch — October 15, 2026
-
-- Registered the narrative AI_TASK handler and connected the worker to the existing gateway.
-  Queue payloads admit source selectors only; invalid/extra input is refused without persisting
-  its values in validation diagnostics. Provider construction remains lazy after admission.
-- The gateway owns provider retries and waiting; registry retry policy remains one attempt.
-  Completion returns the durable proposal identity, including a retained provider-failure
-  proposal, and does not signify human acceptance or accounting approval.
-- Verification: 33 unit/worker/layer checks passed; 13 real-database retry/recovery scenarios
-  passed, with completed paths dispatched through the new handler and repeated without a new
-  provider call. Strict typing passed 773 sources; full make lint passed. Logs:
-  .run/ai-job-dispatch-{tests,pg,types-final,lint}.log. No live provider calls or deployment.
-- Public submission, other AI operations, admission-failure evidence, notifications, human
-  review and unknown-outcome/usage reconciliation remain open; this does not close AI lifecycle
-  verification or establish production readiness.
 
 ## Outstanding release verification
 

@@ -4976,3 +4976,19 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Full lint passed (.run/full-pg-repairs-lint.log). Complete PostgreSQL rerun: 676 passed
   (496.12s), .run/full-pg-repairs-all.log. This is development verification; full immutable CI,
   remaining implementation and independent accounting sign-off are still required. No deployment.
+
+## Narrative worker dispatch — October 15, 2026
+
+- Registered the narrative AI_TASK handler and connected the worker to the existing gateway.
+  Queue payloads admit source selectors only; invalid/extra input is refused without persisting
+  its values in validation diagnostics. Provider construction remains lazy after admission.
+- The gateway owns provider retries and waiting; registry retry policy remains one attempt.
+  Completion returns the durable proposal identity, including a retained provider-failure
+  proposal, and does not signify human acceptance or accounting approval.
+- Verification: 33 unit/worker/layer checks passed; 13 real-database retry/recovery scenarios
+  passed, with completed paths dispatched through the new handler and repeated without a new
+  provider call. Strict typing passed 773 sources; full make lint passed. Logs:
+  .run/ai-job-dispatch-{tests,pg,types-final,lint}.log. No live provider calls or deployment.
+- Public submission, other AI operations, admission-failure evidence, notifications, human
+  review and unknown-outcome/usage reconciliation remain open; this does not close AI lifecycle
+  verification or establish production readiness.
