@@ -6351,8 +6351,11 @@ not revoke evidence reads. `POST /ai/proposals/{id}/reject` supports the same nu
 idempotency and permission `ai.use` plus current source read access. Only a human can reject an
 unexpired `proposed` item; the row lock, reviewer/time/reason, row-version increment and
 `ai_proposal.reject` audit event share one transaction. The response is the updated proposal
-with ETag. AI disable does not prevent rejection. Listing, acceptance and other proposal kinds
-remain in the planned API scope.
+with ETag. AI disable does not prevent rejection. `GET /ai/proposals` pages the same authorized number explanations under API-C-09, with
+`kind`/`status` filters, optional authorized total counts, and `id`/`created_at` sorts (default
+`-created_at`, then id descending). Source authorization precedes pagination and counts on every
+request; unsupported proposal kinds are excluded. Acceptance and other proposal kinds remain
+in the planned API scope.
 
 SCIM (`/scim/v2/*`) and SAML routes are reserved and not built (REQ-PLT-007).
 

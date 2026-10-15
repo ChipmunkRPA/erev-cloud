@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Final
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, Query, Response
 
 from erev_api.api.deps import (
     API_PREFIX,
@@ -19,13 +19,43 @@ from erev_api.api.deps import (
     row_etag,
     run_command,
 )
+from erev_api.api.lists import (
+    TOTAL_COUNT_HEADER,
+    FilterSpec,
+    ListParams,
+    ListSpec,
+    list_params,
+    paginate,
+)
 from erev_api.auth.dependencies import require
 from erev_api.auth.principal import RequestContext
+from erev_api.db.tables import ai_proposal
 from erev_api.domain.ai import commands, queries
 from erev_api.domain.platform.jobs import job_out_of
+from erev_api.enums import AiProposalKind, AiProposalStatus
 from erev_api.schemas.ai import AIExplanationIn, AIProposalOut, AIProposalRejectIn
-from erev_api.schemas.common import JobOut
+from erev_api.schemas.common import JobOut, ListOut
 from erev_api.uow import UnitOfWork
+
+PROPOSAL_LIST: Final = ListSpec(
+    resource="ai_proposals",
+    sort_keys={"id": ai_proposal.c.id, "created_at": ai_proposal.c.created_at},
+    default_sort="-created_at",
+    filters={
+        "kind": FilterSpec(
+            name="kind",
+            column=ai_proposal.c.kind,
+            kind="exact",
+            choices=frozenset(value.value for value in AiProposalKind),
+        ),
+        "status": FilterSpec(
+            name="status",
+            column=ai_proposal.c.status,
+            kind="exact",
+            choices=frozenset(value.value for value in AiProposalStatus),
+        ),
+    },
+)
 
 router = APIRouter(prefix=API_PREFIX, tags=["API-R-47 AI"], route_class=GuardedRoute)
 
@@ -71,6 +101,31 @@ def explanations_create(
         status_code=202,
         location=lambda result: f"{API_PREFIX}/jobs/{result.id}",
     )
+
+
+@router.get(
+    "/ai/proposals",
+    operation_id="ai_proposals_list",
+    response_model=ListOut[AIProposalOut],
+    responses=problem_responses(
+        "unauthenticated", "session-expired", "forbidden", "validation-failed"
+    ),
+)
+def proposals_list(
+    response: Response,
+    ctx: Annotated[RequestContext, Depends(require("ai.use"))],
+    params: Annotated[ListParams, Depends(list_params)],
+    kind: Annotated[AiProposalKind | None, Query()] = None,
+    status: Annotated[AiProposalStatus | None, Query()] = None,
+) -> ListOut[AIProposalOut]:
+    """Page authorized number explanations, with kind/status filters and stable cursor order."""
+    result, items = queries.list_proposals(
+        ctx.principal,
+        page=lambda session, statement: paginate(session, statement, PROPOSAL_LIST, params),
+    )
+    if result.total_count is not None:
+        response.headers[TOTAL_COUNT_HEADER] = result.total_count
+    return ListOut[AIProposalOut](items=items, next_cursor=result.next_cursor)
 
 
 @router.get(

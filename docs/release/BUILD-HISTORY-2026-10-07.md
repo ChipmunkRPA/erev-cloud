@@ -4904,3 +4904,18 @@ cleanup in the shared database session kernel was also repaired and regression-t
   dynamically includes every stored line column, so adding a timestamp alone changes hashes.
 - Full implementation/release verification and independent accounting sign-off remain open.
   No deployment. Verified dependency audit is not a production-readiness claim.
+
+## Backend broad-run isolation repairs — October 15, 2026
+
+- The complete unit/architecture selection finished: 5,609 passed, two failed, two Linux-only
+  skips in 1,364.71s. Preserve this as a failed original run, not a full green gate.
+- AI intent/job-binding downgrade tests now reset to a data-free head first and are included
+  in the migration-walk inventory. The process-script lifecycle test explicitly selects the
+  runtime directory matching its probe paths instead of inheriting the repair runner's override.
+- Focused revalidation: 15 passed (44.72s), including both failures, process-script checks,
+  both actual AI database downgrade guards and the full migration round trip. Strict typing
+  for four changed tests, Ruff and diff checks passed. Logs:
+  .run/readiness-isolation-{repairs,types}-oct15.log. Full selection not repeated after repairs.
+- No broad backend process remains running. Complete CI and other implementation/release gates,
+  unknown AI usage reconciliation and independent accounting sign-off remain outstanding.
+  Details: docs/release/VERIFICATION-2026-10-15.md. No deployment or readiness claim.

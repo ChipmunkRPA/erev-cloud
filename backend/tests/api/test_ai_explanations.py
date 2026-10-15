@@ -25,11 +25,11 @@ from erev_api.enums import RegistryCategory
 from erev_api.jobs.context import JobRuntime
 from erev_api.jobs.registry import run_job
 from erev_api.problems import Problem
-from sqlalchemy import func, select, text, update
+from sqlalchemy import func, insert, select, text, update
 from support.http import HttpResponse, call
 from support.principals import colleague, cookie_headers, member
 from support.reference import assign, entity, holding
-from support.rows import publish_registry_version
+from support.rows import RowContext, ai_proposal_row, publish_registry_version
 from tests.api.test_explain_api import World, k01_computed, september_line
 from tests.api.test_explain_api import app as app  # noqa: F401
 from tests.api.test_explain_api import world as world  # noqa: F401
@@ -434,3 +434,87 @@ def test_disable_serializes_with_explanation_admission(world: World, clock: Froz
             session.scalar(select(func.count()).select_from(job).where(job.c.kind == "AI_TASK"))
             == 0
         )
+
+
+def test_proposal_list_pages_only_currently_authorized_evidence(
+    world: World, clock: FrozenClock, keyring: KeyRing
+) -> None:
+    k01_computed(world)
+    line = september_line(world)
+    actor = world.maya
+    db = DbContext(world.place.tenant_id, actor.member.user_id, "*")
+    ids: list[str] = []
+    with tenant_session(db) as session:
+        ctx = RowContext(world.place.tenant_id, actor.member.user_id)
+        for status in ("proposed", "proposed", "failed"):
+            row = ai_proposal_row(ctx, session)
+            row.update(
+                kind="NUMBER_EXPLANATION",
+                status=status,
+                subject_type="calc_trace",
+                subject_id=line["calc_trace_id"],
+                content={"narrative": ["Synthetic retained evidence"]},
+            )
+            if status == "failed":
+                row.update(content={}, problem={"code": "AI_REFUSAL"})
+            session.execute(insert(ai_proposal).values(**row))
+            ids.append(str(row["id"]))
+        # An unsupported kind cannot inflate counts or displace authorized page rows.
+        session.execute(insert(ai_proposal).values(**ai_proposal_row(ctx, session)))
+    path = "/api/v1/ai/proposals"
+
+    def page(who: Any, **params: Any) -> HttpResponse:
+        return call(
+            world.app, "GET", path, params=params, headers=cookie_headers(who.token, who.csrf_token)
+        )
+
+    first = page(actor, limit=1, count="true")
+    assert first.status_code == 200, first.text
+    assert first.headers["X-Erev-Total-Count"] == "3"
+    assert [item["id"] for item in first.json()["items"]] == ids[-1:]
+    cursor = first.json()["next_cursor"]
+    assert cursor
+    second = page(actor, limit=1, cursor=cursor)
+    third = page(actor, limit=1, cursor=second.json()["next_cursor"])
+    assert [item["id"] for item in second.json()["items"] + third.json()["items"]] == ids[-2::-1]
+    assert third.json()["next_cursor"] is None
+    filtered = page(actor, kind="NUMBER_EXPLANATION", status="proposed", count="true")
+    assert filtered.status_code == 200 and filtered.headers["X-Erev-Total-Count"] == "2"
+    assert {item["id"] for item in filtered.json()["items"]} == set(ids[:2])
+    assert page(actor, kind="QA_ANSWER").json()["items"] == []
+    assert page(actor, kind="invented").status_code == 422
+    assert page(actor, cursor=cursor, status="proposed").status_code == 422
+    assert page(actor, cursor="malformed").status_code == 422
+    auditor = holding(world.app, colleague(world.place.tenant_id, "list_auditor"), "auditor")
+    assert page(auditor).status_code == 403
+    foreign = holding(world.app, member(keyring, clock, name="list_foreign"), "viewer")
+    germany = entity(
+        world.app,
+        actor,
+        code="LIST-DE",
+        calendar_id=world.calendar_id,
+        functional_currency="EUR",
+        time_zone="Europe/Berlin",
+    )
+    scoped = holding(
+        world.app,
+        colleague(world.place.tenant_id, "list_scoped"),
+        "viewer",
+        entity_ids=[UUID(germany["id"])],
+    )
+    for reader in (foreign, scoped):
+        hidden = page(reader, count="true", cursor=cursor)
+        assert hidden.status_code == 200, hidden.text
+        assert hidden.json() == {"items": [], "next_cursor": None}
+        assert hidden.headers["X-Erev-Total-Count"] == "0"
+
+    with tenant_session(db) as session:
+        session.execute(
+            update(role_assignment)
+            .where(role_assignment.c.membership_id == actor.member.membership_id)
+            .values(revoked_at=clock.now(), revoked_by=actor.member.user_id, revoked_by_kind="USER")
+        )
+    assign(actor.member, "viewer", entity_ids=[UUID(germany["id"])])
+    narrowed = page(actor, count="true", cursor=cursor)
+    assert narrowed.status_code == 200 and narrowed.headers["X-Erev-Total-Count"] == "0"
+    assert narrowed.json() == {"items": [], "next_cursor": None}

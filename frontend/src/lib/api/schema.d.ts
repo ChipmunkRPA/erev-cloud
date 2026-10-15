@@ -371,6 +371,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/ai/proposals": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Proposals List
+     * @description Page authorized number explanations, with kind/status filters and stable cursor order.
+     */
+    get: operations["ai_proposals_list"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/ai/proposals/{id}": {
     parameters: {
       query?: never;
@@ -8443,6 +8463,12 @@ export interface components {
       purpose: "POSTING" | "DEFER_PAST_LOCK";
     };
     /**
+     * AiProposalKind
+     * @description E-73 ``ai_proposal_kind`` (04 §3.4).
+     * @enum {string}
+     */
+    AiProposalKind: "CONTRACT_EXTRACTION" | "NUMBER_EXPLANATION" | "ANOMALY_FLAG" | "QA_ANSWER";
+    /**
      * AiProposalStatus
      * @description E-74 ``ai_proposal_status`` (04 §3.4).
      * @enum {string}
@@ -15175,6 +15201,13 @@ export interface components {
        * @enum {string}
        */
       status: "PASS" | "FAIL";
+    };
+    /** ListOut[AIProposalOut] */
+    ListOut_AIProposalOut_: {
+      /** Items */
+      items: components["schemas"]["AIProposalOut"][];
+      /** Next Cursor */
+      next_cursor: string | null;
     };
     /** ListOut[AccessReviewItemOut] */
     ListOut_AccessReviewItemOut_: {
@@ -24619,6 +24652,64 @@ export interface operations {
         };
       };
       /** @description Problem: validation-failed, idempotency-key-reused */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+    };
+  };
+  ai_proposals_list: {
+    parameters: {
+      query?: {
+        kind?: components["schemas"]["AiProposalKind"] | null;
+        status?: components["schemas"]["AiProposalStatus"] | null;
+        limit?: number;
+        cursor?: string | null;
+        sort?: string | null;
+        q?: string | null;
+        count?: boolean;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ListOut_AIProposalOut_"];
+        };
+      };
+      /** @description Problem: unauthenticated, session-expired */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: validation-failed */
       422: {
         headers: {
           [name: string]: unknown;

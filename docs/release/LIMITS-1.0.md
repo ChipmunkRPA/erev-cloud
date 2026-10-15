@@ -76,7 +76,7 @@ before another call and during retry waits it stops without a synthetic proposal
 started call still retains its usage and result. Retry waits heartbeat and check cancellation
 at one-second boundaries, with no database transaction or budget lease held while sleeping.
 This does not interrupt a network call already in progress. Other AI operations, durable
-admission-failure evidence, notifications, other submission routes, proposal listing and decision workflows
+admission-failure evidence, notifications, other submission routes and proposal acceptance workflows
 remain unfinished. The AI audit-lifecycle gate remains open; worker dispatch and internal
 gateway tests do not satisfy the full lifecycle.
 
@@ -99,9 +99,15 @@ job with a Location header. It checks overlapping ai.use/contract.read source ac
 switch before enqueueing, without calling a provider in HTTP. New jobs bind the validated trace
 and use a server-selected 2048 output-token limit; the worker refuses a changed trace before a
 call. Existing jobs without a trace binding retain their source fingerprint format. Anomaly
-submission, proposal listing/review endpoints, extraction and Q&A remain unfinished; a persisted
+submission, proposal acceptance, extraction and Q&A remain unfinished; a persisted
 worker proposal is not a completed human workflow. Budget admission is still checked by the
 worker, and durable AI-specific admission-failure evidence remains outstanding.
+
+GET /ai/proposals now pages authorized NUMBER_EXPLANATION evidence, with kind/status filters,
+optional authorized totals and stable cursor pagination (created_at descending, then id descending
+by default; id and created_at sorts supported). Source checks happen in SQL before paging and
+counting, and apply again on every page. Unsupported kinds are excluded, including from totals.
+The shared list protocol refuses invalid filters/cursors and cursors with changed filters/sorts.
 
 GET /ai/proposals/{id} now returns retained NUMBER_EXPLANATION evidence, including content,
 citations, status, actors and row-version ETag. Each read intersects current ai.use and

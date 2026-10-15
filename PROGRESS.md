@@ -2,6 +2,23 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Authorized AI proposal list — October 15, 2026
+
+- Added GET /ai/proposals for supported number explanations using API-C-09 cursor pagination,
+  kind/status filters, optional totals and id/created_at sorts (default newest created_at,
+  then descending id). The SQL source-authorization predicate is shared with detail/rejection;
+  hidden and unsupported proposals cannot occupy page rows or inflate counts.
+- Every page checks current overlapping ai.use/contract.read grants. Tests cover foreign and
+  out-of-scope cursor reuse, and the same user's scope narrowing between pages. Unsupported
+  kinds return empty results until their source authorization is implemented.
+- Verification: three API database cases passed after the final change, covering submission,
+  reads, rejection and listing; 25 route/layer checks passed. Full lint, OpenAPI generation and
+  typecheck passed (927 Python sources plus frontend); focused typing passed 778 sources.
+  Logs: .run/ai-list-{api-final,architecture,openapi,typecheck,types-final,lint}.log. A row mapping
+  is copied to a dictionary at the shared serializer boundary to satisfy strict typing.
+- Acceptance, extraction, anomaly summaries, Q&A and broader release/accounting requirements
+  remain open. No deployment or live provider calls; no production-readiness claim.
+
 ## Scheduled AI proposal expiry — October 15, 2026
 
 - Wired SCH-11 into the worker at 03:20 UTC daily. Each tenant is processed in batches of
@@ -217,21 +234,6 @@
   registry/fixture checks and 502 control-tagged tests collected successfully.
 - Insertion time is not commit time. The 0152 follow-up above closes posting splits; overlapping
   commits remain unresolved. See LIMITS-1.0.md. No readiness claim or deployment.
-
-## Backend broad-run isolation repairs — October 15, 2026
-
-- The complete unit/architecture selection finished: 5,609 passed, two failed, two Linux-only
-  skips in 1,364.71s. Preserve this as a failed original run, not a full green gate.
-- AI intent/job-binding downgrade tests now reset to a data-free head first and are included
-  in the migration-walk inventory. The process-script lifecycle test explicitly selects the
-  runtime directory matching its probe paths instead of inheriting the repair runner's override.
-- Focused revalidation: 15 passed (44.72s), including both failures, process-script checks,
-  both actual AI database downgrade guards and the full migration round trip. Strict typing
-  for four changed tests, Ruff and diff checks passed. Logs:
-  .run/readiness-isolation-{repairs,types}-oct15.log. Full selection not repeated after repairs.
-- No broad backend process remains running. Complete CI and other implementation/release gates,
-  unknown AI usage reconciliation and independent accounting sign-off remain outstanding.
-  Details: docs/release/VERIFICATION-2026-10-15.md. No deployment or readiness claim.
 
 ## Outstanding release verification
 
