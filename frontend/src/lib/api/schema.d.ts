@@ -391,6 +391,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/ai/model-logs": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Model Logs List
+     * @description Page call evidence after applying tenant and owner visibility to counts and rows.
+     */
+    get: operations["ai_model_logs_list"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/ai/proposals": {
     parameters: {
       query?: never;
@@ -8135,6 +8155,55 @@ export interface components {
       /** Value */
       value?: unknown;
     };
+    /**
+     * AIModelLogOut
+     * @description Immutable call configuration evidence; never prompt or response content.
+     */
+    AIModelLogOut: {
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      created_by: components["schemas"]["ActorOut"];
+      /** Error Detail */
+      error_detail: string | null;
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Input Sha256 */
+      input_sha256: string;
+      /** Input Tokens */
+      input_tokens: number;
+      /** Latency Ms */
+      latency_ms: number;
+      /** Model Id */
+      model_id: string;
+      /**
+       * Outcome
+       * @enum {string}
+       */
+      outcome: "SUCCESS" | "ERROR" | "TIMEOUT" | "BUDGET_EXCEEDED" | "DISABLED";
+      /** Output Tokens */
+      output_tokens: number;
+      /** Parameters */
+      parameters: {
+        [key: string]: unknown;
+      };
+      /** Prompt Template Id */
+      prompt_template_id: string;
+      /** Prompt Template Version */
+      prompt_template_version: string;
+      /**
+       * Provider
+       * @enum {string}
+       */
+      provider: "fake" | "anthropic";
+      /** Response Sha256 */
+      response_sha256: string | null;
+    };
     /** AIProposalAcceptedOut */
     AIProposalAcceptedOut: {
       /**
@@ -15621,6 +15690,13 @@ export interface components {
        * @enum {string}
        */
       status: "PASS" | "FAIL";
+    };
+    /** ListOut[AIModelLogOut] */
+    ListOut_AIModelLogOut_: {
+      /** Items */
+      items: components["schemas"]["AIModelLogOut"][];
+      /** Next Cursor */
+      next_cursor: string | null;
     };
     /** ListOut[AccessReviewItemOut] */
     ListOut_AccessReviewItemOut_: {
@@ -25151,6 +25227,62 @@ export interface operations {
         };
       };
       /** @description Problem: validation-failed, idempotency-key-reused */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+    };
+  };
+  ai_model_logs_list: {
+    parameters: {
+      query?: {
+        limit?: number;
+        cursor?: string | null;
+        sort?: string | null;
+        q?: string | null;
+        count?: boolean;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ListOut_AIModelLogOut_"];
+        };
+      };
+      /** @description Problem: unauthenticated, session-expired */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: forbidden, mfa-required */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: validation-failed */
       422: {
         headers: {
           [name: string]: unknown;

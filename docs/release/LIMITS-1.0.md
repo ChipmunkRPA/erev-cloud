@@ -42,6 +42,13 @@ semantic correctness or independent accounting acceptance. The gateway retries c
 transient failures up to three times with injected 5/10-second waits; permanent/exhausted
 provider errors produce failed proposals linked to existing attempt evidence.
 
+The read-only `/ai/model-logs` API now exposes retained call configuration, hashes, outcome,
+token counters and actor metadata. Workspace-wide settings.manage can read tenant calls;
+ai.use alone sees only calls with its own actor identity and kind. Visibility is applied before
+counts and cursor pagination; an entity-scoped settings grant cannot read the workspace log.
+This endpoint neither calls a provider nor depends on AI being enabled. The SF-15 call-log
+screen, drawer/export, standard demo/J-19 and full audit-lifecycle verification remain open.
+
 Migrations 0147–0150 retain append-only call logs, immutable proposal content with guarded
 human-decision fields, completed-job/source bindings and immutable call intents with one
 optional outcome link. Populated completion/intent evidence prevents destructive downgrade.

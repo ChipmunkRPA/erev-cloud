@@ -151,3 +151,23 @@ class AIExtractionDraftIn(BaseModel):
 
 class AIProposalAcceptedOut(BaseModel):
     contract_id: UUID
+
+
+class AIModelLogOut(BaseModel):
+    """Immutable call configuration evidence; never prompt or response content."""
+
+    id: UUID
+    provider: Literal["fake", "anthropic"]
+    model_id: str
+    prompt_template_id: str
+    prompt_template_version: str
+    parameters: dict[str, Any]
+    input_sha256: str
+    response_sha256: str | None
+    input_tokens: int
+    output_tokens: int
+    latency_ms: int
+    outcome: Literal["SUCCESS", "ERROR", "TIMEOUT", "BUDGET_EXCEEDED", "DISABLED"]
+    error_detail: str | None
+    created_at: datetime
+    created_by: ActorOut

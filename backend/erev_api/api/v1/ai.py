@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Annotated, Final
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, Response
+from fastapi import APIRouter, Depends, Query, Request, Response
 
 from erev_api.api.deps import (
     API_PREFIX,
@@ -27,10 +27,11 @@ from erev_api.api.lists import (
     list_params,
     paginate,
 )
-from erev_api.auth.dependencies import require
+from erev_api.auth.dependencies import require, require_authenticated
+from erev_api.auth.entity_scope import holds_all
 from erev_api.auth.principal import RequestContext
 from erev_api.db.session import tenant_session
-from erev_api.db.tables import ai_proposal
+from erev_api.db.tables import ai_model_log, ai_proposal
 from erev_api.domain.ai import acceptance, commands, extraction_reads, queries
 from erev_api.domain.platform.jobs import job_out_of
 from erev_api.enums import AiProposalKind, AiProposalStatus
@@ -40,6 +41,7 @@ from erev_api.schemas.ai import (
     AIExplanationIn,
     AIExtractionDraftIn,
     AIExtractionProposalOut,
+    AIModelLogOut,
     AIProposalAcceptedOut,
     AIProposalOut,
     AIProposalRejectIn,
@@ -305,3 +307,43 @@ def proposals_accept(
         status_code=201,
         location=lambda out: f"{API_PREFIX}/contracts/{out.contract_id}",
     )
+
+
+MODEL_LOG_LIST: Final = ListSpec(
+    resource="ai-model-logs",
+    sort_keys={"id": ai_model_log.c.id, "created_at": ai_model_log.c.created_at},
+    default_sort="-created_at",
+    filters={},
+)
+
+
+def _model_log_reader(
+    request: Request,
+    ctx: Annotated[RequestContext, Depends(require_authenticated())],
+) -> RequestContext:
+    # A scoped settings role cannot expand visibility to the whole workspace.
+    permission = "settings.manage" if holds_all(ctx.principal, "settings.manage") else "ai.use"
+    return require(permission)(request, ctx)
+
+
+@router.get(
+    "/ai/model-logs",
+    operation_id="ai_model_logs_list",
+    response_model=ListOut[AIModelLogOut],
+    responses=problem_responses(
+        "unauthenticated", "session-expired", "forbidden", "mfa-required", "validation-failed"
+    ),
+)
+def model_logs_list(
+    response: Response,
+    ctx: Annotated[RequestContext, Depends(_model_log_reader)],
+    params: Annotated[ListParams, Depends(list_params)],
+) -> ListOut[AIModelLogOut]:
+    """Page call evidence after applying tenant and owner visibility to counts and rows."""
+    result, items = queries.list_model_logs(
+        ctx,
+        page=lambda session, statement: paginate(session, statement, MODEL_LOG_LIST, params),
+    )
+    if result.total_count is not None:
+        response.headers[TOTAL_COUNT_HEADER] = result.total_count
+    return ListOut[AIModelLogOut](items=items, next_cursor=result.next_cursor)

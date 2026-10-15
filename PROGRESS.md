@@ -2,6 +2,19 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Authorized AI call evidence API — October 15, 2026
+
+- Added GET /ai/model-logs with newest-first cursor pagination, optional counts and typed
+  configuration/hash/token/outcome/actor evidence. No provider call or proposal content read.
+- Workspace-wide settings.manage sees tenant calls; ai.use sees only its own actor id and kind.
+  These predicates apply before counts and pagination. A scoped administrator is refused unless
+  also holding ai.use, which still returns only that actor's calls. Unsupported filters refuse.
+- Two PostgreSQL API tests and eight route architecture checks pass. Backend typing (795 files),
+  frontend typing, generated OpenAPI/types and full lint pass. The full frozen CI remains active
+  on 3cf8f5b and is not evidence for this change. See docs/release/CI-2026-10-15.md.
+- Call-log UI/drawer/export, standard J-19 and remaining release/accounting gates stay open.
+  No deployment or provider call. Published directly to main after verification.
+
 ## AI settings without general configuration read access — October 15, 2026
 
 - Added GET /ai/settings/values under workspace-wide settings.manage, returning only effective
@@ -218,24 +231,6 @@
   Linux isolation, live-model accuracy or independent activation/accounting sign-off. Demo/browser
   fixture setup remains unfinished. Frozen CI on 3cf8f5b remains live on separate PostgreSQL 55439.
   No deployment or live provider calls.
-
-## Repair AI lifecycle audit references and worker inventories — October 15, 2026
-
-- Narrative rejection and expiry now pass distinct source contract IDs to the audit writer
-  inside their tenant transaction; missing source contracts refuse rather than writing an
-  unlinked event. Extraction creation/rejection explicitly names no pre-existing draft contract.
-  Database tests verify hashed detail, the contract audit index, rollback and retained evidence.
-- Reviewed expiry's limited tenant-directory read and bounded tenant SYSTEM transitions; added
-  the reasons to TXN-07 and caller inventories. Removed the implemented AI_TASK from the pending
-  registry while preserving detector checks for omissions, duplication and wrong build phases.
-- 24 targeted architecture checks, eight PostgreSQL lifecycle/API checks, strict typing (793
-  sources) and full lint pass. Separate cross-tenant source check: .run/ai-audit-keys-tenant-check.log.
-  PostgreSQL verification ran on a new isolated instance at 55441; initial encoding setup errors
-  are retained separately from the verified UTF-8 run. Logs: .run/ai-audit-architecture.log and
-  .run/ai-audit-keys-{pg-verified,types,lint}.log. See docs/release/CI-2026-10-15.md.
-- The full frozen CI on 3cf8f5b remains live on 55439 and predates these repairs. No restart,
-  deployment or live model call. Browser fixtures/acceptance, remaining implementation and release
-  gates, and independent accounting sign-off remain open.
 
 ## Outstanding release verification
 

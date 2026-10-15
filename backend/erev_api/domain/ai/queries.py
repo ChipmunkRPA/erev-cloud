@@ -10,15 +10,16 @@ from sqlalchemy import ColumnElement, Select, Uuid, any_, bindparam, false, or_,
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Session
 
+from erev_api.auth.entity_scope import holds_all
 from erev_api.auth.principal import Principal, RequestContext
 from erev_api.db.session import tenant_session
-from erev_api.db.tables import ai_proposal, calc_trace, file_object
+from erev_api.db.tables import ai_model_log, ai_proposal, calc_trace, file_object
 from erev_api.domain.ai.access import AIAccessRefused, narrative_reader, visible_narrative_trace
 from erev_api.domain.platform import actors, file_access
 from erev_api.domain.platform.approval_queries import Page
 from erev_api.enums import PrincipalKind
 from erev_api.problems import Problem
-from erev_api.schemas.ai import AIExtractionProposalOut, AIProposalOut
+from erev_api.schemas.ai import AIExtractionProposalOut, AIModelLogOut, AIProposalOut
 
 
 def proposal(principal: Principal, proposal_id: UUID) -> AIProposalOut:
@@ -243,3 +244,34 @@ def require_reader(ctx: RequestContext) -> None:
         )
     ):
         raise Problem("forbidden")
+
+
+def list_model_logs[P: Page](
+    ctx: RequestContext, *, page: Callable[[Session, Select[Any]], P]
+) -> tuple[P, list[AIModelLogOut]]:
+    """Configuration evidence has no source payload and never joins proposal content."""
+    principal = ctx.principal
+    administrator = holds_all(principal, "settings.manage")
+    if not administrator and ("ai.use" not in principal.permissions or principal.id is None):
+        raise Problem("forbidden")
+    statement = select(
+        ai_model_log,
+        actors.named(ai_model_log.c.created_by, tenant_id=ai_model_log.c.tenant_id).label(
+            "creator"
+        ),
+    ).where(ai_model_log.c.tenant_id == principal.tenant_id)
+    if not administrator:
+        statement = statement.where(
+            ai_model_log.c.created_by == principal.id,
+            ai_model_log.c.created_by_kind == principal.kind.value,
+        )
+    with tenant_session(principal.db_context, read_only=True) as session:
+        result = page(session, statement)
+        items = []
+        for row in result.items:
+            data = dict(row)
+            data["created_by"] = actors.actor(
+                row["created_by"], row["created_by_kind"], row["creator"]
+            )
+            items.append(AIModelLogOut.model_validate(data))
+        return result, items

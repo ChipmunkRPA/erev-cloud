@@ -5652,3 +5652,21 @@ cleanup in the shared database session kernel was also repaired and regression-t
   Do not restart it or run other database tests there. Known-document fixture adaptation does
   not complete demo/browser seeding, Linux parser proof, browser acceptance or accounting sign-off.
   No deployment or live provider calls.
+
+## Repair AI lifecycle audit references and worker inventories — October 15, 2026
+
+- Narrative rejection and expiry now pass distinct source contract IDs to the audit writer
+  inside their tenant transaction; missing source contracts refuse rather than writing an
+  unlinked event. Extraction creation/rejection explicitly names no pre-existing draft contract.
+  Database tests verify hashed detail, the contract audit index, rollback and retained evidence.
+- Reviewed expiry's limited tenant-directory read and bounded tenant SYSTEM transitions; added
+  the reasons to TXN-07 and caller inventories. Removed the implemented AI_TASK from the pending
+  registry while preserving detector checks for omissions, duplication and wrong build phases.
+- 24 targeted architecture checks, eight PostgreSQL lifecycle/API checks, strict typing (793
+  sources) and full lint pass. Separate cross-tenant source check: .run/ai-audit-keys-tenant-check.log.
+  PostgreSQL verification ran on a new isolated instance at 55441; initial encoding setup errors
+  are retained separately from the verified UTF-8 run. Logs: .run/ai-audit-architecture.log and
+  .run/ai-audit-keys-{pg-verified,types,lint}.log. See docs/release/CI-2026-10-15.md.
+- The full frozen CI on 3cf8f5b remains live on 55439 and predates these repairs. No restart,
+  deployment or live model call. Browser fixtures/acceptance, remaining implementation and release
+  gates, and independent accounting sign-off remain open.

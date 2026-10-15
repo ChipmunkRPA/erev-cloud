@@ -497,6 +497,117 @@
         "title": "AIFieldDecisionIn",
         "type": "object"
       },
+      "AIModelLogOut": {
+        "description": "Immutable call configuration evidence; never prompt or response content.",
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_by": {
+            "$ref": "#/components/schemas/ActorOut"
+          },
+          "error_detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Detail"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "input_sha256": {
+            "title": "Input Sha256",
+            "type": "string"
+          },
+          "input_tokens": {
+            "title": "Input Tokens",
+            "type": "integer"
+          },
+          "latency_ms": {
+            "title": "Latency Ms",
+            "type": "integer"
+          },
+          "model_id": {
+            "title": "Model Id",
+            "type": "string"
+          },
+          "outcome": {
+            "enum": [
+              "SUCCESS",
+              "ERROR",
+              "TIMEOUT",
+              "BUDGET_EXCEEDED",
+              "DISABLED"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "output_tokens": {
+            "title": "Output Tokens",
+            "type": "integer"
+          },
+          "parameters": {
+            "additionalProperties": true,
+            "title": "Parameters",
+            "type": "object"
+          },
+          "prompt_template_id": {
+            "title": "Prompt Template Id",
+            "type": "string"
+          },
+          "prompt_template_version": {
+            "title": "Prompt Template Version",
+            "type": "string"
+          },
+          "provider": {
+            "enum": [
+              "fake",
+              "anthropic"
+            ],
+            "title": "Provider",
+            "type": "string"
+          },
+          "response_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Response Sha256"
+          }
+        },
+        "required": [
+          "id",
+          "provider",
+          "model_id",
+          "prompt_template_id",
+          "prompt_template_version",
+          "parameters",
+          "input_sha256",
+          "response_sha256",
+          "input_tokens",
+          "output_tokens",
+          "latency_ms",
+          "outcome",
+          "error_detail",
+          "created_at",
+          "created_by"
+        ],
+        "title": "AIModelLogOut",
+        "type": "object"
+      },
       "AIProposalAcceptedOut": {
         "properties": {
           "contract_id": {
@@ -19635,6 +19746,34 @@
           "linted_at"
         ],
         "title": "LintResultOut",
+        "type": "object"
+      },
+      "ListOut_AIModelLogOut_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AIModelLogOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor"
+        ],
+        "title": "ListOut[AIModelLogOut]",
         "type": "object"
       },
       "ListOut_AccessReviewItemOut_": {
@@ -44302,6 +44441,145 @@
           "API-R-47 AI"
         ],
         "x-erev-permission": "ai.use"
+      }
+    },
+    "/api/v1/ai/model-logs": {
+      "get": {
+        "description": "Page call evidence after applying tenant and owner visibility to counts and rows.",
+        "operationId": "ai_model_logs_list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sort"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "count",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Count",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListOut_AIModelLogOut_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: unauthenticated, session-expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: forbidden, mfa-required"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: validation-failed"
+          }
+        },
+        "summary": "Model Logs List",
+        "tags": [
+          "API-R-47 AI"
+        ]
       }
     },
     "/api/v1/ai/proposals": {
