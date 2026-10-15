@@ -267,3 +267,25 @@ frontend), strict test Mypy, Ruff and diff checks pass. Retry baseline:
 `.run/material-right-expire-boundary-production-types.log` and
 `.run/material-right-expire-boundary-types.log`. The first fixture attempt passed a UUID
 where the entity HTTP helper required a JSON string; corrected before measuring these cases.
+
+## Populated stored-backup recovery, October 14
+
+Native entered-amount and discount-times-likelihood options now have populated snapshot
+acceptance witnesses in OPEN and EXPIRED states. The latter method includes a real approved
+exercise-likelihood estimate. Each case books through commands, enters terms, independently
+approves activation, optionally expires, exports a stored backup and restores it into a new
+sandbox through the dispatched job. No expected result rows are inserted.
+
+All four cases passed (42.27s): the export contains one material_right row, restore reuses
+that export and leaves its manifest hash unchanged, recomputes one group with no reported
+derived mismatch, preserves every terms column except tenant_id, and yields the expected
+status and revenue credit (zero while OPEN, USD 12,000 when EXPIRED) in both tenants.
+This verifies the populated terms and likelihood-reference load path for these ASC606 cases;
+it does not establish the complete restore release gate or native IFRS15/renewal acceptance.
+
+The shared helper's existing expiry permission, failure rollback/retry and concurrent-request
+regressions also passed in the preceding run. Strict test Mypy, Ruff and diff checks pass.
+Evidence: `.run/material-right-snapshot-final.log`, `.run/material-right-snapshot-fixed.log`,
+and `.run/material-right-snapshot-types.log`. Initial fixture errors were a misspelled ledger
+column and reuse of a globally unique sandbox code; corrected with the actual column and
+separate sandbox names. No production restore behavior was changed for these checks.

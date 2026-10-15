@@ -2203,7 +2203,7 @@ def test_native_discount_option_uses_approved_likelihood(
     assert dedicated.json() == final.json()["material_right"]
 
 
-def _active_expiry_option(seats: SeatWorld) -> tuple[UUID, UUID]:
+def _active_expiry_option(seats: SeatWorld, *, discount: bool = False) -> tuple[UUID, UUID]:
     maya = seats.place.author
     body = _seat_contract(seats, "OPTION-EXPIRY-GUARDS", seats="50", price="12000.00")
     line = body["lines"][0]
@@ -2229,24 +2229,53 @@ def _active_expiry_option(seats: SeatWorld) -> tuple[UUID, UUID]:
     option_id = seats.place.scalar(
         select(obligation.c.id).where(obligation.c.contract_id == contract_id)
     )
+    terms_body: dict[str, Any] = {
+        "option_type": "DISCOUNT_VOUCHER",
+        "ssp_method": "ENTERED_AMOUNT",
+        "expiry_date": "2026-09-12",
+    }
+    if discount:
+        from support.worlds import estimate_version_approved
+
+        element = post(
+            seats.app,
+            f"{CONTRACTS}/{contract_id}/estimates",
+            maya,
+            {
+                "estimate_kind": "EXERCISE_LIKELIHOOD",
+                "element_code": "OPTION-LIKELIHOOD",
+                "method": "ENTERED_AMOUNT",
+                "obligation_key": "O1",
+            },
+        )
+        assert element.status_code == 201, element.text
+        estimate_id = element.json()["id"]
+        estimate_version_approved(
+            seats.app,
+            maya,
+            seats.marcus,
+            estimate_id,
+            {
+                "effective_date": "2026-09-01",
+                "rate": "0.8",
+                "rationale": "Expected exercise supported by customer history.",
+            },
+        )
+        terms_body.update(
+            ssp_method="DISCOUNT_X_LIKELIHOOD",
+            incremental_discount_ratio="0.5",
+            expected_purchase_amount={"amount": "100.00", "currency": "USD"},
+            likelihood_estimate_id=estimate_id,
+        )
+    head = _header(seats, contract_id)[1]
     terms_path = f"/api/v1/obligations/{option_id}/material-right"
-    terms = post(
-        seats.app,
-        terms_path,
-        maya,
-        {
-            "option_type": "DISCOUNT_VOUCHER",
-            "ssp_method": "ENTERED_AMOUNT",
-            "expiry_date": "2026-09-12",
-        },
-        if_match='"s1"',
-    )
+    terms = post(seats.app, terms_path, maya, terms_body, if_match=f'"s{head}"')
     assert terms.status_code == 201, terms.text
     path = f"/api/v1/obligations/{option_id}/expire-material-right"
     expiry = {"effective_date": "2026-09-12", "comment": "Unused option expired."}
-    draft = post(seats.app, path, maya, expiry, if_match='"s1"')
+    draft = post(seats.app, path, maya, expiry, if_match=f'"s{head}"')
     assert draft.status_code == 409, draft.text
-    head = _step1(seats.app, maya, seats.marcus, contract_id, 1)
+    head = _step1(seats.app, maya, seats.marcus, contract_id, head)
     sent = _submit(seats.app, maya, contract_id, head)
     assert sent.status_code == 200, sent.text
     accepted = approve(seats.app, sent.headers[APPROVAL_HEADER], seats.marcus)
@@ -2370,3 +2399,122 @@ def test_competing_option_expiries_wait_on_group_and_append_once(seats: SeatWorl
     assert shown.status_code == 200, shown.text
     assert shown.json()["material_right"]["status"] == "EXPIRED"
     assert Decimal(shown.json()["to_date"]["revenue"]["amount"]) == Decimal("12000")
+
+
+@pytest.mark.parametrize("discount", [False, True])
+@pytest.mark.parametrize("expired", [False, True])
+def test_native_option_snapshot_restore_recomputes_same_state(
+    seats: SeatWorld,
+    clock: FrozenClock,
+    keyring: KeyRing,
+    app_settings: Settings,
+    monkeypatch: pytest.MonkeyPatch,
+    expired: bool,
+    discount: bool,
+) -> None:
+    """Populated immutable terms survive stored backup and real sandbox recomputation."""
+    from datetime import date
+
+    from erev_api.db.tables import tenant_snapshot
+    from erev_api.domain.contracts import material_rights
+    from erev_api.domain.platform import sandboxes, snapshot_job
+    from erev_api.enums import JobKind
+    from erev_api.jobs import registry
+    from erev_api.jobs.context import JobRuntime
+    from support.factories import stamp_test_release
+    from support.rows import tenant_snapshot_values
+    from support.snapshots import confirm_retention, cutoff_after, run_dispatched_snapshot
+
+    contract_id, option_id = _active_expiry_option(seats, discount=discount)
+    maya = seats.place.author
+    if expired:
+        head = get(seats.app, f"{CONTRACTS}/{contract_id}", maya).headers["etag"]
+        response = post(
+            seats.app,
+            f"/api/v1/obligations/{option_id}/expire-material-right",
+            maya,
+            {"effective_date": "2026-09-12", "comment": "Unused option expired."},
+            if_match=head,
+        )
+        assert response.status_code == 201, response.text
+    source_id = maya.member.tenant_id
+    source_ctx = DbContext(tenant_id=source_id, user_id=None, entity_scope="*")
+    with tenant_session(source_ctx) as session:
+        confirm_retention(session, source_id, at=clock.now() - timedelta(days=1))
+    known_at = cutoff_after(source_id, clock)
+    stamp_test_release()
+    monkeypatch.setitem(
+        registry.HANDLERS,
+        JobKind.TENANT_SNAPSHOT,
+        registry.HandlerSpec(
+            handler=snapshot_job.tenant_snapshot_export,
+            retry=snapshot_job.SNAPSHOT_RETRY,
+            on_failure=snapshot_job.snapshot_failed,
+        ),
+    )
+    runtime = JobRuntime(clock=clock, keyring=keyring, files=LocalFileStore(app_settings.file_root))
+    with tenant_session(source_ctx) as session:
+        snapshot = tenant_snapshot_values(source_id, known_at=known_at, purpose="STORED_BACKUP")
+        session.execute(insert(tenant_snapshot).values(**snapshot))
+    params: dict[str, Any] = {
+        "tenant_snapshot_id": str(snapshot["id"]),
+        "known_at": known_at.isoformat(),
+        "purpose": "STORED_BACKUP",
+    }
+    exported = run_dispatched_snapshot(source_id, params, runtime=runtime, now=known_at)
+    assert exported["state"] == "SUCCEEDED", exported["problem"]
+    with tenant_session(source_ctx, read_only=True) as session:
+        stored = (
+            session.execute(select(tenant_snapshot).where(tenant_snapshot.c.id == snapshot["id"]))
+            .mappings()
+            .one()
+        )
+        assert stored["row_counts"]["material_right"] == 1
+        manifest_hash = stored["manifest_sha256"]
+    sandbox_id = new_id()
+    loaded = run_dispatched_snapshot(
+        source_id,
+        {
+            **params,
+            **sandboxes.load_params_of(
+                sandbox_tenant_id=sandbox_id,
+                name=f"Restored native option {sandbox_id}",
+                requested_by=seats.marcus.member.user_id,
+                restore=True,
+            ),
+        },
+        runtime=runtime,
+        now=known_at,
+    )
+    assert loaded["state"] == "SUCCEEDED", str(loaded["problem"])
+    result = loaded["result"]
+    assert isinstance(result, dict)
+    assert result["counts"]["derived_mismatches"] == 0, result
+    assert result["counts"]["groups_recomputed"] == 1, result
+    assert result["counts"]["already_done"] == 1, result
+    terms = []
+    for tenant_id in (source_id, sandbox_id):
+        ctx = DbContext(tenant_id=tenant_id, user_id=None, entity_scope="*")
+        with tenant_session(ctx, read_only=True) as session:
+            row = session.execute(select(material_right)).mappings().one()
+            terms.append({k: v for k, v in row.items() if k != "tenant_id"})
+            right = material_rights.outputs(
+                session, [contract_id], known_at=None, as_of=date(2026, 9, 12)
+            )[option_id]
+            assert right.status == ("EXPIRED" if expired else "OPEN")
+            revenue = session.execute(
+                select(func.coalesce(func.sum(subledger_line.c.amount_functional), 0)).where(
+                    subledger_line.c.account_role == "REVENUE"
+                )
+            ).scalar_one()
+            assert revenue == (Decimal("-12000") if expired else Decimal("0"))
+    assert terms[0] == terms[1]
+    with tenant_session(source_ctx, read_only=True) as session:
+        assert (
+            session.execute(
+                select(tenant_snapshot.c.manifest_sha256).where(
+                    tenant_snapshot.c.id == snapshot["id"]
+                )
+            ).scalar_one()
+            == manifest_hash
+        )

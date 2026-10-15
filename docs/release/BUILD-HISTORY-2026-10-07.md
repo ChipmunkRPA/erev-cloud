@@ -3531,3 +3531,22 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
 - Logs: .run/e2e-artifact-{all-tests,script-final,typecheck-final,real-browser}.log.
   The earlier closed-world gate remains bound to 3e60e6a and its lost screenshots cannot be
   recovered. Full backend CI on 165d63c is still live; broader readiness remains open.
+
+## Workspace-type refusal audit — October 14, 2026
+
+- Refused PATCH /tenant requests naming kind now append tenant.update / DENIED in the
+  caller's tenant and preserve the 409 tenant-kind-immutable response. The event identifies
+  the actor, tenant, refused field and problem; it survives rollback of the command.
+- Refusals read without an update lock, avoiding a conflict with the independent audit
+  transaction's tenant foreign key. Normal changes still lock and check row versions.
+  Permission and If-Match checks remain in place; refused mixed changes do not rename a tenant.
+- Isolated PostgreSQL API and sandbox tests: 2 passed (10.36s). Final actor assertion:
+  1 passed (9.76s). The first attempt could not connect because the local repair server
+  restarted on its default port; rerun used the intended separate port 55439. Server stopped.
+  Logs: .run/tenant-kind-audit-{tests-fixed-server,actor-final}.log. Full lint/typecheck
+  pass; audit/guard architecture checks: 8 passed (8.61s), logs with suffixes lint, types
+  and architecture.
+- A focused browser attempt against the old demo database found its temporary encrypted
+  snapshot files were gone, so its 500 response is not an application acceptance result.
+  Screenshots and failure trace were retained. A fresh closed gate on bce381c is now running
+  with a matching local database/file store; full backend CI on 165d63c also remains live.

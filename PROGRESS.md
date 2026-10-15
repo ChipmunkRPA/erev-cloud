@@ -2,6 +2,24 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Populated option snapshot recovery — October 14, 2026
+
+- Added stored-export/load acceptance for native entered-amount and approved
+  discount-times-likelihood options, each OPEN and EXPIRED. Actual commands prepare
+  and independently approve activation; stored backup is restored into a new sandbox.
+- Four cases passed (42.27s): one exported terms row, unchanged manifest, export reused,
+  one group recomputed, no reported derived mismatch, identical terms except tenant id,
+  preserved status and revenue credits of zero/open or USD 12,000/expired in both tenants.
+- Shared expiry security/rollback/concurrency cases also passed in the preceding run.
+  Strict test Mypy, Ruff and diff checks pass. Logs: .run/material-right-snapshot-final.log,
+  .run/material-right-snapshot-fixed.log and .run/material-right-snapshot-types.log.
+  Initial fixture failures used the wrong ledger column and reused a sandbox name;
+  corrected the fixture, without changing restore or accounting behavior.
+- Renewal methods, IFRS15 native lifecycle, correction/exercise, migration conversion,
+  UI, full release gates and independent accounting acceptance remain open. Full CI on
+  165d63c is still live and has a new CSV contract-header conflict failure to investigate.
+  Publish verified work directly to main; no deployment.
+
 ## Seeded Step 1 event routing — October 14, 2026
 
 - Reproduced the demo-reference failure from the ongoing backend CI: STEP1_EVENT
@@ -241,25 +259,6 @@
 - Updated browser gate documentation to locate screenshots/traces via the report's artifacts
   field. Fresh closed browser gate bce381c and backend CI 165d63c remain live. These checks
   do not establish full CTL-043, release acceptance or accounting sign-off.
-
-## Workspace-type refusal audit — October 14, 2026
-
-- Refused PATCH /tenant requests naming kind now append tenant.update / DENIED in the
-  caller's tenant and preserve the 409 tenant-kind-immutable response. The event identifies
-  the actor, tenant, refused field and problem; it survives rollback of the command.
-- Refusals read without an update lock, avoiding a conflict with the independent audit
-  transaction's tenant foreign key. Normal changes still lock and check row versions.
-  Permission and If-Match checks remain in place; refused mixed changes do not rename a tenant.
-- Isolated PostgreSQL API and sandbox tests: 2 passed (10.36s). Final actor assertion:
-  1 passed (9.76s). The first attempt could not connect because the local repair server
-  restarted on its default port; rerun used the intended separate port 55439. Server stopped.
-  Logs: .run/tenant-kind-audit-{tests-fixed-server,actor-final}.log. Full lint/typecheck
-  pass; audit/guard architecture checks: 8 passed (8.61s), logs with suffixes lint, types
-  and architecture.
-- A focused browser attempt against the old demo database found its temporary encrypted
-  snapshot files were gone, so its 500 response is not an application acceptance result.
-  Screenshots and failure trace were retained. A fresh closed gate on bce381c is now running
-  with a matching local database/file store; full backend CI on 165d63c also remains live.
 
 ## Outstanding release verification
 
