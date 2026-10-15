@@ -398,3 +398,32 @@ passed for 880 production sources and the new test file; Ruff passed. Logs:
 `.run/entered-option-engine-final.log`, `.run/entered-option-production-types.log`,
 `.run/entered-option-types.log`. These witnesses do not exercise persisted native entry
 or migration promotion with an explicit amount.
+
+
+## Explicit option SSP storage and native workflow, October 14
+
+Revision 0146 adds nullable immutable `entered_ssp_amount` to T-CON-14 with method and
+nonnegative constraints. The money domain rejects nonfinite amounts. Existing rows keep
+NULL/catalogue semantics; downgrade refuses a populated explicit amount. Native draft entry
+accepts optional NonNegativeMoney only for ENTERED_AMOUNT in contract currency. Reads and
+bundle assembly retain the value. Activation content includes a present amount, while an
+absent value remains omitted to preserve pre-extension approval content hashes.
+
+The workbench offers an optional total SSP field with catalogue-fallback guidance and shows
+the saved amount. OpenAPI and generated types carry both command and read fields. Snapshot
+inventory already copies every material-right column, so the new amount uses the same
+immutable ownership, tenant isolation and reference remapping as the original terms.
+
+Migration capture/promotion still requires implementation and retains its option refusal.
+Native exercise/correction, remaining accounting witnesses and release gates remain open.
+
+Verification: final persisted-entry/migration suite 5 passed (46.85s), including selected SSP
+123.45 for quantity 50 and bound approval content. Prior native runs passed all four
+snapshot/recompute cases (explicit amount or discount; open or expired), approval binding,
+invalid-input rollback and bundle/API reads; failures were migration test-fixture isolation,
+subsequently corrected. Schema/ORM/migration/snapshot checks: 80 passed. UI: 16 passed.
+Full typecheck passed (881 sources plus frontend), strict test types, Ruff, ESLint and build
+passed. Logs: `.run/entered-option-persisted-final.log`, `.run/entered-option-native-final.log`,
+`.run/entered-option-native.log`, `.run/entered-option-schema-final.log`,
+`.run/entered-option-ui-final.log`, `.run/entered-option-native-types.log`, and
+`.run/entered-option-ui-build.log`. No browser-to-live-API release acceptance is claimed.

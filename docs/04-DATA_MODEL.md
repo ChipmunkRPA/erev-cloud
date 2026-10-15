@@ -3932,6 +3932,7 @@ A later amendment that adds a property adds it as optional first, so approved ve
 | `incremental_discount_ratio` | erev.exact | Y | | |
 | `is_discount_available_without_contract` | boolean | N | `false` | |
 | `expected_purchase_amount` | erev.money | Y | | |
+| `entered_ssp_amount` | erev.money | Y | | Optional nonnegative total SSP in contract currency; only ENTERED_AMOUNT. Never multiplied by quantity. NULL retains catalogue selection. |
 | `currency` | erev.currency_code | N | | |
 | `ssp_method` | text | N | | `CHECK (ssp_method IN ('DISCOUNT_X_LIKELIHOOD','RENEWAL_ALTERNATIVE','ENTERED_AMOUNT'))` (POL-026). |
 | `expiry_date` | date | Y | | |
@@ -3941,6 +3942,8 @@ A later amendment that adds a property adds it as optional first, so approved ve
 
 Keys: `PRIMARY KEY (tenant_id, id)`; `ux_material_right__obligation (tenant_id, obligation_id)`.
 
+Revision 0146 adds `entered_ssp_amount` and its method/nonnegative guard. Downgrade refuses
+when any explicit amount exists, so it cannot silently reprice existing contracts.
 Revision 0145 implements this table, with `ix_material_right__contract (tenant_id, contract_id)`.
 Discount-times-likelihood terms require a ratio, expected purchase amount and likelihood estimate.
 The ratio is between 0 and 1; the purchase amount is nonnegative. Tenant-scoped foreign keys bind
@@ -3959,7 +3962,10 @@ Native entry: `POST /api/v1/obligations/{obligation_id}/material-right` requires
 `is_discount_available_without_contract` (default false). `DISCOUNT_X_LIKELIHOOD` additionally
 requires `incremental_discount_ratio`, `expected_purchase_amount` (`amount`, `currency`) and
 `likelihood_estimate_id`; other methods omit these three fields. `RENEWAL_ALTERNATIVE` requires
-`RENEWAL_OPTION`. Currency derives from the contract; native input cannot set the legacy flag.
+`RENEWAL_OPTION`. ENTERED_AMOUNT optionally accepts `entered_ssp_amount` (`amount`,
+`currency`) as a total SSP; its currency must match the contract. Omission retains catalogue
+selection. Other methods reject this field. Currency derives from the contract; native input
+cannot set the legacy flag.
 
 The command locks the group then contract and permits stored DRAFT only with no pending
 activation review. Missing/stale preconditions return 428/412; duplicate terms or an invalid
@@ -6781,7 +6787,7 @@ Field tables use `Field | Type | Req | Notes`. Types: `uuid`, `string`, `boolean
 | `satisfaction_status` | `satisfaction_status` | — | At the cut of API-C-10 (rev 1.132; ENGINE_SPEC_B S09-R-46): `SATISFIED` when the progress at the cut is 1, `UNSATISFIED` when revenue and progress at the cut are 0, else `PARTIALLY_SATISFIED`; `CANCELLED` stays. |
 | `satisfied_date` | date or null | — | The version's (rev 1.132: not re-measured at the cut). |
 | `holds` | array | — | `{id, level, hold_type, hold_source, reason, applied_by, applied_at, release_refusal}` — rev 1.299 (item HOLD-RELEASE-READ-1): the obligation's OPEN holds (T-CON-20), oldest first; until then the member was stated and answered empty. `id` is the `hold_id` that `POST /contracts/{id}/release-hold` takes — the id of the hold's `HOLD_APPLIED` event (§16.3). `level` is `obligation` here and `contract` in API-S-Contract `holds` (§16.1), which lists the holds of the whole contract; an obligation does not repeat them. `hold_type` E-45; `hold_source` E-46; `applied_by` API-S-Actor — who recorded that event, SYSTEM for the hold of a judgement record; `applied_at` datetime. `release_refusal` string or null: the sentence `release-hold` would answer for this hold as it stands, or null where the command would take it — as `void_refusal` of API-S-Event is for a void (§16.3) — so that a screen offers the release only where it can be made, says why where it cannot and keeps no rule of its own; the caller's permission and `If-Match` are not answered, and the command's 409 stays the backstop. Open NOW, whatever `as_of` and `known_at` the answer is read at: a hold is released against the stream's head. The version reads — `GET /obligations/{id}/versions` and API-S-ContractVersion — list none: a hold is no fact of a version. Entity scope: the obligation's — T-CON-20 is RLS-T, and the read binds each hold to its visible contract. |
-| `material_right` | object or null | — | `{option_type, incremental_discount_ratio, expected_purchase_amount, expiry_date, ssp_method, likelihood_estimate_id, status (E-115), status_date}`; `status_date` is the effective date of the exercise or expiry event, null while `OPEN` (rev 1.2; SCREENS R-25) Immutable terms are visible when created_at ≤ known_at; status follows non-voided exercise/expiry events effective by as_of and recorded by known_at. The dedicated read accepts these two cuts, defaults them to the request time (entity-local date for as_of), requires an offset on known_at, and returns 404 when terms are absent. |
+| `material_right` | object or null | — | `{option_type, incremental_discount_ratio, expected_purchase_amount, entered_ssp_amount, expiry_date, ssp_method, likelihood_estimate_id, status (E-115), status_date}`; `status_date` is the effective date of the exercise or expiry event, null while `OPEN` (rev 1.2; SCREENS R-25) Immutable terms are visible when created_at ≤ known_at; status follows non-voided exercise/expiry events effective by as_of and recorded by known_at. The dedicated read accepts these two cuts, defaults them to the request time (entity-local date for as_of), requires an offset on known_at, and returns 404 when terms are absent. |
 | `context` | API-S-Context | — | |
 | `links` | object | — | `{self, versions, schedule, events, explain_revenue_to_date, explain_billed_to_date, explain_allocated_amount}`. (rev 1.132) `explain_revenue_to_date` and `explain_billed_to_date` (string or null) name the nodes that hold `to_date.revenue` and `to_date.billed`: the obligation's `revenue_cum` and `billed_cum` period nodes read at the cut, as `…?period=<period key>`. The revenue node's period is one of the performing entity's, the item's `measured_period`; the billing node's is one of the contracting entity's, which may name its periods otherwise. Without `period` — the version reads, and an `as_of` before the first period the version measures — they name the version's nodes. |
 

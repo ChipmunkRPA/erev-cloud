@@ -2,6 +2,27 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Persisted entered option SSP and native workflow — October 14, 2026
+
+- Revision 0146 adds immutable optional total SSP with method/nonnegative constraints.
+  Native entry enforces contract currency; reads, bundle assembly, activation approval
+  content and workbench entry/display preserve the amount. Absence retains catalogue
+  selection and old approval content. Updated OpenAPI/types and user/data-model docs.
+- Native entry proves USD 123.45 persists as selected SSP for quantity 50, with idempotent
+  retry, separate activation reviewer and bound approval content. Final native/migration
+  checks: 5 passed (46.85s). Four snapshot cases (explicit/discount, open/expired) and
+  approval binding passed in preceding runs. Invalid method/currency/negative entry and
+  API/bundle reads also passed. Initial downgrade fixtures had shared data and owner RLS
+  issues; corrected with transaction-scoped fixture data and verified refusal/round-trip.
+- Schema/ORM/migration/snapshot checks: 80 passed; removed a stale pending option_type
+  enum entry now implemented by 0145. UI: 16 passed; full typecheck: 881 sources/frontend;
+  strict test types, Ruff, ESLint and production build pass (existing chunk advisory).
+  Logs: .run/entered-option-persisted-final.log, .run/entered-option-native-final.log,
+  .run/entered-option-native.log, .run/entered-option-schema-final.log,
+  .run/entered-option-ui-final.log and .run/entered-option-native-types.log.
+- Migration capture/promotion remains unfinished and refuses option records. No deployment
+  or readiness claim. Older immutable CI 165d63c remains live at 37%.
+
 ## Explicit entered option SSP engine path — October 14, 2026
 
 - Added optional per-option total SSP in contract currency. Stages 03 and 05 preserve
@@ -234,22 +255,6 @@
 - Corrections, draft replacement/race acceptance, full method matrix, UI, migration,
   populated snapshot and independent accounting acceptance remain open. Original full
   CI 165d63c remains live and is not current-candidate evidence. No deployment.
-
-## Activation approval binds material rights — October 14, 2026
-
-- Found and repaired a review gap before exposing native term entry: adding T-CON-14
-  terms after activation submission previously left the approval hash unchanged.
-  The baseline review returned 200. Activation content now binds identities and all
-  option accounting fields in deterministic order. Contracts without terms retain
-  their existing content shape and pending hashes.
-- A real API review now returns 409 stale-approval after injected terms, leaves the
-  contract inactive with no postings, and succeeds only after fresh submission and
-  review. The regression also checks the full bound content, including null fields.
-- Full activation suite: 19 passed (121.46s); .run/material-right-approval-regression.log.
-  Focused repair: 1 passed (14.05s). Full typecheck and Ruff pass. Baseline evidence,
-  implementation boundaries and next entry requirements are recorded in
-  MATERIAL-RIGHTS-IMPLEMENTATION.md. Native entry and corrections remain unfinished.
-- Full CI 165d63c is still running independently. No deployment; publish directly to main.
 
 ## Outstanding release verification
 

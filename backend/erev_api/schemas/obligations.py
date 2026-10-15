@@ -63,6 +63,7 @@ class MaterialRightCreateIn(BaseModel):
     incremental_discount_ratio: Ratio | None = None
     is_discount_available_without_contract: bool = False
     expected_purchase_amount: NonNegativeMoney | None = None
+    entered_ssp_amount: NonNegativeMoney | None = None
     expiry_date: date | None = None
     likelihood_estimate_id: uuid.UUID | None = None
 
@@ -83,6 +84,7 @@ class MaterialRightOut(BaseModel):
     option_type: str
     incremental_discount_ratio: str | None
     expected_purchase_amount: str | None
+    entered_ssp_amount: str | None = None
     expiry_date: date | None
     ssp_method: str | None
     likelihood_estimate_id: uuid.UUID | None

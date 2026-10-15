@@ -15945,6 +15945,7 @@ export interface components {
      * @description Immutable native option terms, entered against a draft contract's stream ETag.
      */
     MaterialRightCreateIn: {
+      entered_ssp_amount?: components["schemas"]["MoneyIn"] | null;
       expected_purchase_amount?: components["schemas"]["MoneyIn"] | null;
       /** Expiry Date */
       expiry_date?: string | null;
@@ -15984,6 +15985,8 @@ export interface components {
      * @description API-S-Obligation ``material_right`` (04 §16.2, T-CON-14; SCREENS R-25).
      */
     MaterialRightOut: {
+      /** Entered Ssp Amount */
+      entered_ssp_amount?: string | null;
       /** Expected Purchase Amount */
       expected_purchase_amount: string | null;
       /** Expiry Date */

@@ -3650,3 +3650,19 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   production guards and expected results were retained. Tests insert terms explicitly:
   native entry, governed corrections, migration conversion and populated snapshot
   acceptance remain unfinished. Full CI 165d63c remains live. No deployment.
+
+## Activation approval binds material rights — October 14, 2026
+
+- Found and repaired a review gap before exposing native term entry: adding T-CON-14
+  terms after activation submission previously left the approval hash unchanged.
+  The baseline review returned 200. Activation content now binds identities and all
+  option accounting fields in deterministic order. Contracts without terms retain
+  their existing content shape and pending hashes.
+- A real API review now returns 409 stale-approval after injected terms, leaves the
+  contract inactive with no postings, and succeeds only after fresh submission and
+  review. The regression also checks the full bound content, including null fields.
+- Full activation suite: 19 passed (121.46s); .run/material-right-approval-regression.log.
+  Focused repair: 1 passed (14.05s). Full typecheck and Ruff pass. Baseline evidence,
+  implementation boundaries and next entry requirements are recorded in
+  MATERIAL-RIGHTS-IMPLEMENTATION.md. Native entry and corrections remain unfinished.
+- Full CI 165d63c is still running independently. No deployment; publish directly to main.

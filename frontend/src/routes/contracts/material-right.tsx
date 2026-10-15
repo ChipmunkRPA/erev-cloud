@@ -76,6 +76,12 @@ export function MaterialRightPanel({
           ],
           [message("ratio"), right.incremental_discount_ratio ?? NO_VALUE],
           [
+            message("enteredAmount"),
+            right.entered_ssp_amount == null
+              ? NO_VALUE
+              : formatMoney(right.entered_ssp_amount, obligation.currency),
+          ],
+          [
             message("amount"),
             right.expected_purchase_amount === null
               ? NO_VALUE
@@ -150,6 +156,7 @@ export function MaterialRightDrawer({
   const [method, setMethod] = useState<Terms["ssp_method"]>("ENTERED_AMOUNT");
   const [ratio, setRatio] = useState("");
   const [amount, setAmount] = useState("");
+  const [enteredAmount, setEnteredAmount] = useState("");
   const [estimate, setEstimate] = useState<string | null>(null);
   const [date, setDate] = useState("");
   const [comment, setComment] = useState("");
@@ -206,6 +213,14 @@ export function MaterialRightDrawer({
               ssp_method: method,
               expiry_date: effective,
               is_discount_available_without_contract: available === "true",
+              ...(method === "ENTERED_AMOUNT" && enteredAmount.trim() !== ""
+                ? {
+                    entered_ssp_amount: {
+                      amount: enteredAmount.trim(),
+                      currency: obligation.currency,
+                    },
+                  }
+                : {}),
               ...(discount
                 ? {
                     incremental_discount_ratio: ratio.trim(),
@@ -316,6 +331,16 @@ export function MaterialRightDrawer({
                 ]}
                 onChange={setAvailable}
               />
+              {method === "ENTERED_AMOUNT" ? (
+                <TextField
+                  name="option-entered-amount"
+                  label={message("enteredAmount")}
+                  help={`${message("enteredAmountHelp")} ${obligation.currency}`}
+                  value={enteredAmount}
+                  onChange={setEnteredAmount}
+                  inputMode="decimal"
+                />
+              ) : null}
               {discount ? (
                 <>
                   <TextField

@@ -206,6 +206,7 @@ def test_persisted_option_reaches_bundle_and_both_reads(
                 option_type="RENEWAL_OPTION",
                 currency="USD",
                 ssp_method="ENTERED_AMOUNT",
+                entered_ssp_amount=Decimal("123.45"),
                 created_at=created,
                 created_by_kind="SYSTEM",
             )
@@ -214,11 +215,13 @@ def test_persisted_option_reaches_bundle_and_both_reads(
         (right,) = value.contracts[0].material_rights
         assert right.obligation_key == "O1" and right.ssp_method == "ENTERED_AMOUNT"
         assert right.option_type == "RENEWAL_OPTION"
+        assert right.entered_ssp_amount == Decimal("123.45")
         unit.commit()
     computed(world.place, booked.combination_group["id"])
     dedicated = get(app, f"{OBLIGATIONS}/{o1}/material-right", author)
     assert dedicated.status_code == 200, dedicated.text
     assert dedicated.json()["status"] == "OPEN"
+    assert Decimal(dedicated.json()["entered_ssp_amount"]) == Decimal("123.45")
     shown = get(app, f"{OBLIGATIONS}/{o1}", author)
     assert shown.status_code == 200, shown.text
     assert shown.json()["obligation_kind"] == "MATERIAL_RIGHT"

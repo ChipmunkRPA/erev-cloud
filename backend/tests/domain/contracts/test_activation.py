@@ -1798,7 +1798,11 @@ def test_native_material_right_entry_and_distinct_activation_reviewer(
         select(obligation.c.id).where(obligation.c.contract_id == contract_id)
     )
     path = f"/api/v1/obligations/{option_id}/material-right"
-    terms = {"option_type": "RENEWAL_OPTION", "ssp_method": "ENTERED_AMOUNT"}
+    terms = {
+        "option_type": "RENEWAL_OPTION",
+        "ssp_method": "ENTERED_AMOUNT",
+        "entered_ssp_amount": {"amount": "123.45", "currency": "USD"},
+    }
     missing = post(seats.app, path, seats.priya, terms)
     assert missing.status_code == 428, missing.text
     stale = post(seats.app, path, seats.priya, terms, if_match='"s0"')
@@ -1844,6 +1848,24 @@ def test_native_material_right_entry_and_distinct_activation_reviewer(
     )
     assert created.headers["location"] == path
     assert created.json()["ssp_method"] == "ENTERED_AMOUNT"
+    assert Decimal(created.json()["entered_ssp_amount"]) == Decimal("123.45")
+    from erev_api.db.tables import obligation_version
+
+    assert seats.place.scalar(
+        select(obligation_version.c.original_ssp_selected)
+        .where(obligation_version.c.obligation_id == option_id)
+        .order_by(obligation_version.c.version_no.desc())
+        .limit(1)
+    ) == Decimal("123.45")
+    with seats.place.uow() as unit:
+        bound_terms = contract_activation_content(unit.session, contract_id)["material_rights"]
+        assert isinstance(bound_terms, list)
+        assert Decimal(bound_terms[0]["entered_ssp_amount"]) == Decimal("123.45")
+    assert seats.place.scalar(
+        select(material_right.c.entered_ssp_amount).where(
+            material_right.c.obligation_id == option_id
+        )
+    ) == Decimal("123.45")
     shown = get(seats.app, path, maya)
     assert shown.status_code == 200, shown.text
     assert shown.json() == created.json()
@@ -1876,6 +1898,21 @@ def test_material_right_invalid_entry_rolls_back_facts_and_computation(seats: Se
     path = f"/api/v1/obligations/{option_id}/material-right"
     before = seats.place.scalar(select(func.count()).select_from(contract_computation))
     invalid_terms: list[dict[str, Any]] = [
+        {
+            "option_type": "RENEWAL_OPTION",
+            "ssp_method": "RENEWAL_ALTERNATIVE",
+            "entered_ssp_amount": {"amount": "25", "currency": "USD"},
+        },
+        {
+            "option_type": "RENEWAL_OPTION",
+            "ssp_method": "ENTERED_AMOUNT",
+            "entered_ssp_amount": {"amount": "25", "currency": "EUR"},
+        },
+        {
+            "option_type": "RENEWAL_OPTION",
+            "ssp_method": "ENTERED_AMOUNT",
+            "entered_ssp_amount": {"amount": "-1", "currency": "USD"},
+        },
         {"option_type": "RENEWAL_OPTION", "ssp_method": "DISCOUNT_X_LIKELIHOOD"},
         {"option_type": "OTHER", "ssp_method": "RENEWAL_ALTERNATIVE"},
         {
@@ -2224,7 +2261,9 @@ def test_native_discount_option_uses_approved_likelihood(
     assert dedicated.json() == final.json()["material_right"]
 
 
-def _active_expiry_option(seats: SeatWorld, *, discount: bool = False) -> tuple[UUID, UUID]:
+def _active_expiry_option(
+    seats: SeatWorld, *, discount: bool = False, entered: str | None = None
+) -> tuple[UUID, UUID]:
     maya = seats.place.author
     body = _seat_contract(seats, "OPTION-EXPIRY-GUARDS", seats="50", price="12000.00")
     line = body["lines"][0]
@@ -2255,6 +2294,8 @@ def _active_expiry_option(seats: SeatWorld, *, discount: bool = False) -> tuple[
         "ssp_method": "ENTERED_AMOUNT",
         "expiry_date": "2026-09-12",
     }
+    if entered is not None:
+        terms_body["entered_ssp_amount"] = {"amount": entered, "currency": "USD"}
     if discount:
         from support.worlds import estimate_version_approved
 
@@ -2446,7 +2487,9 @@ def test_native_option_snapshot_restore_recomputes_same_state(
     from support.rows import tenant_snapshot_values
     from support.snapshots import confirm_retention, cutoff_after, run_dispatched_snapshot
 
-    contract_id, option_id = _active_expiry_option(seats, discount=discount)
+    contract_id, option_id = _active_expiry_option(
+        seats, discount=discount, entered=None if discount else "123.45"
+    )
     maya = seats.place.author
     if expired:
         head = get(seats.app, f"{CONTRACTS}/{contract_id}", maya).headers["etag"]

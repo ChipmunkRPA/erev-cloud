@@ -7249,5 +7249,7 @@
   "contracts.option.computed": "Option computation completed.",
   "contracts.option.computationFailed": "Expiry computation needs attention",
   "contracts.option.recordedDespiteFailure": "Expiry was recorded, but computation did not finish successfully. Review the contract jobs and exceptions before proceeding.",
+  "contracts.option.enteredAmount": "Entered total option SSP",
+  "contracts.option.enteredAmountHelp": "Optional. Leave blank to use the SSP catalogue. Enter the total for this option, not a per-unit price.",
   "contracts.option.openEstimate": "Open likelihood estimate"
 }

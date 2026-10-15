@@ -1,5 +1,11 @@
 # eRev Cloud 1.0: stated limits of the release
 
+October 14 entered-option SSP continuation: immutable storage, native entry/read/UI,
+activation content and bundle assembly now preserve an optional total SSP. Populated
+snapshot recovery covers the explicit amount for open and expired options. Migration
+capture/promotion still refuses option records until its writer and acceptance witnesses
+are complete. See MATERIAL-RIGHTS-IMPLEMENTATION.md for evidence and remaining boundaries.
+
 October 7 sandbox correction: monetary verification now reads and compares the stored
 `loss_provision_version` and `fx_layer_movement` results. These are reconstructed per-period
 loss tests and FX history within each computation version, rather than predecessor deltas.

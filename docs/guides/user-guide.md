@@ -432,7 +432,10 @@ section shows the saved method, dates and status. A linked likelihood estimate o
 contract estimate record.
 
 On a draft, **Enter option terms** is available to a preparer with permission for that entity.
-Choose the option type and SSP method. Discount times likelihood also requires a decimal
+Choose the option type and SSP method. For Entered amount, optionally enter the total option
+SSP in the contract currency. It is not multiplied by quantity; leave it blank to use the SSP
+catalogue. The saved total appears in Overview and is included in activation review.
+Discount times likelihood also requires a decimal
 incremental-discount ratio, expected purchase amount in the contract currency and an approved
 exercise-likelihood estimate. Prepare and approve a missing estimate in the contract's
 Estimates tab first. Renewal alternative requires a renewal option. Save terms before

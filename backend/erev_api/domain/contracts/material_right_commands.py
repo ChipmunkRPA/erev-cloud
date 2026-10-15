@@ -116,6 +116,13 @@ def create(
         raise _invalid(
             "expected_purchase_amount.currency", "Use the contract's transaction currency."
         )
+    if body.entered_ssp_amount is not None:
+        if body.ssp_method != "ENTERED_AMOUNT":
+            raise _invalid("entered_ssp_amount", "This field applies only to Entered amount.")
+        if body.entered_ssp_amount.currency != currency:
+            raise _invalid(
+                "entered_ssp_amount.currency", "Use the contract's transaction currency."
+            )
     if body.likelihood_estimate_id is not None:
         found = session.execute(
             select(estimate.c.id).where(
@@ -146,6 +153,9 @@ def create(
             expected_purchase_amount=None
             if body.expected_purchase_amount is None
             else Decimal(body.expected_purchase_amount.amount),
+            entered_ssp_amount=None
+            if body.entered_ssp_amount is None
+            else Decimal(body.entered_ssp_amount.amount),
             currency=currency,
             expiry_date=body.expiry_date,
             likelihood_estimate_id=body.likelihood_estimate_id,

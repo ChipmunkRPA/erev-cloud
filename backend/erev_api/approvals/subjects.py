@@ -2182,6 +2182,7 @@ def contract_activation_content(session: Session, subject_id: UUID) -> Mapping[s
     )
     if terms:
         # Omit the member for contracts without options, preserving existing pending hashes.
+        # Absent entered SSP stays omitted so pre-extension pending reviews keep their hash.
         # Bind the values as well as their immutable identities: an administrative repair must
         # not silently change what a pending activation review authorizes.
         content["material_rights"] = [
@@ -2198,6 +2199,11 @@ def contract_activation_content(session: Session, subject_id: UUID) -> Mapping[s
                 "expected_purchase_amount": None
                 if term["expected_purchase_amount"] is None
                 else str(term["expected_purchase_amount"]),
+                **(
+                    {}
+                    if term["entered_ssp_amount"] is None
+                    else {"entered_ssp_amount": str(term["entered_ssp_amount"])}
+                ),
                 "currency": str(term["currency"]).strip(),
                 "ssp_method": str(term["ssp_method"]),
                 "expiry_date": None

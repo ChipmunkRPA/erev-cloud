@@ -422,6 +422,7 @@ material_right: Final = Table(
         server_default=text("false"),
     ),
     Column("expected_purchase_amount", MoneyType(), nullable=True),
+    Column("entered_ssp_amount", MoneyType(), nullable=True),
     Column("currency", CHAR(3), nullable=False),
     Column("ssp_method", Text(), nullable=False),
     Column("expiry_date", Date(), nullable=True),

@@ -74,6 +74,7 @@ def inputs(
                     row["is_discount_available_without_contract"]
                 ),
                 expected_purchase_amount=row["expected_purchase_amount"],
+                entered_ssp_amount=row["entered_ssp_amount"],
                 currency=str(row["currency"]).strip(),
                 ssp_method=str(row["ssp_method"]),
                 expiry_date=row["expiry_date"],
@@ -148,6 +149,7 @@ def outputs(
             option_type=str(row["option_type"]),
             incremental_discount_ratio=_decimal(row["incremental_discount_ratio"]),
             expected_purchase_amount=_decimal(row["expected_purchase_amount"]),
+            entered_ssp_amount=_decimal(row["entered_ssp_amount"]),
             expiry_date=row["expiry_date"],
             ssp_method=str(row["ssp_method"]),
             likelihood_estimate_id=row["likelihood_estimate_id"],

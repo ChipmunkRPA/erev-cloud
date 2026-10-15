@@ -63,40 +63,48 @@ it.each([
   },
 );
 
-it("sends native terms with the parent stream and idempotency key", async () => {
-  const received = vi.fn();
-  const close = vi.fn();
-  server.use(
-    http.post(apiUrl(`${path}/material-right`), async ({ request }) => {
-      received(
-        await request.json(),
-        request.headers.get("if-match"),
-        request.headers.get("idempotency-key"),
-      );
-      return HttpResponse.json(obligation("OPEN").material_right, { status: 201 });
-    }),
-  );
-  renderWithApp(
-    <MaterialRightDrawer
-      contract={contract()}
-      obligation={obligation()}
-      mode="create"
-      onClose={close}
-    />,
-  );
-  fireEvent.click(await screen.findByRole("button", { name: "Save option terms" }));
-  await waitFor(() => expect(close).toHaveBeenCalledOnce());
-  expect(received).toHaveBeenCalledWith(
-    {
-      option_type: "DISCOUNT_VOUCHER",
-      ssp_method: "ENTERED_AMOUNT",
-      expiry_date: null,
-      is_discount_available_without_contract: false,
-    },
-    '"s7"',
-    expect.any(String),
-  );
-});
+it.each(["", "123.45"])(
+  "sends native terms and optional total SSP %s with stream and key",
+  async (amount) => {
+    const received = vi.fn();
+    const close = vi.fn();
+    server.use(
+      http.post(apiUrl(`${path}/material-right`), async ({ request }) => {
+        received(
+          await request.json(),
+          request.headers.get("if-match"),
+          request.headers.get("idempotency-key"),
+        );
+        return HttpResponse.json(obligation("OPEN").material_right, { status: 201 });
+      }),
+    );
+    renderWithApp(
+      <MaterialRightDrawer
+        contract={contract()}
+        obligation={obligation()}
+        mode="create"
+        onClose={close}
+      />,
+    );
+    if (amount !== "")
+      fireEvent.change(screen.getByRole("textbox", { name: "Entered total option SSP" }), {
+        target: { value: amount },
+      });
+    fireEvent.click(await screen.findByRole("button", { name: "Save option terms" }));
+    await waitFor(() => expect(close).toHaveBeenCalledOnce());
+    expect(received).toHaveBeenCalledWith(
+      {
+        option_type: "DISCOUNT_VOUCHER",
+        ssp_method: "ENTERED_AMOUNT",
+        expiry_date: null,
+        is_discount_available_without_contract: false,
+        ...(amount === "" ? {} : { entered_ssp_amount: { amount, currency: "USD" } }),
+      },
+      '"s7"',
+      expect.any(String),
+    );
+  },
+);
 
 it("sends exact decimal inputs and only offers applicable approved likelihoods", async () => {
   const selected = estimateRow({
@@ -301,5 +309,23 @@ it("shows stored terms and links their likelihood evidence for a read-only viewe
   expect(screen.getByRole("link", { name: "Open likelihood estimate" }).getAttribute("href")).toBe(
     `/contracts/${CONTRACT_ID}/estimates/${item.material_right.likelihood_estimate_id}`,
   );
+  expect(screen.queryByRole("button")).toBeNull();
+});
+
+it("shows the saved total option SSP to a read-only viewer", () => {
+  registerCurrencies([{ code: "USD", minor_unit: 2 }]);
+  const item = obligation("OPEN");
+  if (item.material_right === null) throw new Error("Option fixture missing terms");
+  item.material_right.entered_ssp_amount = "123.45";
+  renderWithApp(
+    <MaterialRightPanel
+      contract={contract("ACTIVE")}
+      obligation={item}
+      canCreate={false}
+      canExpire={false}
+    />,
+  );
+  expect(screen.getByText("Entered total option SSP")).toBeTruthy();
+  expect(screen.getByText(/123\.45/)).toBeTruthy();
   expect(screen.queryByRole("button")).toBeNull();
 });

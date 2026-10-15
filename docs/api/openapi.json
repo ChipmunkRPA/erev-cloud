@@ -22284,6 +22284,16 @@
         "additionalProperties": false,
         "description": "Immutable native option terms, entered against a draft contract's stream ETag.",
         "properties": {
+          "entered_ssp_amount": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MoneyIn"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "expected_purchase_amount": {
             "anyOf": [
               {
@@ -22389,6 +22399,17 @@
       "MaterialRightOut": {
         "description": "API-S-Obligation ``material_right`` (04 §16.2, T-CON-14; SCREENS R-25).",
         "properties": {
+          "entered_ssp_amount": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entered Ssp Amount"
+          },
           "expected_purchase_amount": {
             "anyOf": [
               {
