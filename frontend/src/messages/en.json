@@ -7293,6 +7293,8 @@
   "ai.review.new.cancelled": "The review was cancelled.",
   "ai.review.new.disabled": "AI assistance is turned off for this workspace",
   "ai.review.new.disabledHelp": "A workspace administrator can enable AI assistance.",
+  "ai.review.draft.saved": "Your draft inputs are kept while you review. Changed choices replace the corresponding values; rejected lines are removed.",
+  "ai.review.draft.back": "Back to field review",
   "ai.review.draft.title": "Complete the reviewed draft",
   "ai.review.draft.help": "Supply the contract reference, customer, entity, currency and quantities. Reviewed values must still match the field decisions.",
   "ai.review.draft.create": "Create draft contract",

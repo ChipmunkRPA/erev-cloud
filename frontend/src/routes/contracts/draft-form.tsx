@@ -796,9 +796,11 @@ export type ReviewedDraftSubmit = (
 export function ReviewedContractDraft({
   initial,
   submit,
+  onReview,
 }: {
   readonly initial: DraftForm;
   readonly submit: ReviewedDraftSubmit;
+  readonly onReview?: ((draft: DraftForm) => void) | undefined;
 }) {
   const me = useMe();
   const permissions = me.data?.permissions ?? [];
@@ -833,6 +835,7 @@ export function ReviewedContractDraft({
         choices={lookups.choices}
         ctxSearch=""
         reviewSubmit={submit}
+        onReview={onReview}
       />
     </section>
   );
@@ -841,6 +844,7 @@ export function ReviewedContractDraft({
 interface DraftFormViewProps {
   readonly mode: DraftMode;
   readonly reviewSubmit?: ReviewedDraftSubmit | undefined;
+  readonly onReview?: ((draft: DraftForm) => void) | undefined;
   readonly initial: DraftForm;
   readonly choices: DraftChoices;
   readonly ctxSearch: string;
@@ -855,6 +859,7 @@ function DraftFormView({
   ctxSearch,
   onReload,
   reviewSubmit,
+  onReview,
 }: DraftFormViewProps) {
   const navigate = useNavigate();
   const toast = useToast();
@@ -869,7 +874,12 @@ function DraftFormView({
   const [server, setServer] = useState<ServerProblem | null>(null);
   const [unreached, setUnreached] = useState(false);
   const [saving, setSaving] = useState<"draft" | "submit" | null>(null);
-  const lineIds = useRef(initial.lines.length);
+  const lineIds = useRef(
+    initial.lines.reduce((maximum, line) => {
+      const match = /^l(\d+)$/.exec(line.id);
+      return match === null ? maximum : Math.max(maximum, Number(match[1]));
+    }, 0),
+  );
   const pendingFocus = useRef<string | null>(null);
   const leaving = useRef(false);
   const command = useCommand<Contract>({
@@ -1450,6 +1460,15 @@ function DraftFormView({
           (DESIGN_SYSTEM rev 1.9). */}
       <StickyFooter cueTestId="SF-03-more-below">
         <div className="flex justify-end gap-2">
+          {onReview === undefined ? null : (
+            <Button
+              variant="ghost"
+              disabledReason={busy ? t("common.dialog.submitting") : undefined}
+              onClick={() => onReview(form)}
+            >
+              {t("ai.review.draft.back")}
+            </Button>
+          )}
           <Button variant="ghost" onClick={cancel}>
             {t("contracts.draft.cancel")}
           </Button>

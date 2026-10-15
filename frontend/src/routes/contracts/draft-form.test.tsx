@@ -1240,9 +1240,36 @@ describe("SCR-PERM-01 on the draft form", () => {
 });
 
 describe("reviewed draft confirmation", () => {
+  it("allocates unique row identities when a restored draft has gaps", async () => {
+    serve([]);
+    const onReview = vi.fn();
+    const submit = vi.fn<ReviewedDraftSubmit>();
+    renderApp("/contracts/review/test", {
+      me: MAYA,
+      screenRoutes: [
+        {
+          path: "/contracts/review/test",
+          element: (
+            <ReviewedContractDraft initial={emptyDraft("l9")} submit={submit} onReview={onReview} />
+          ),
+        },
+      ],
+    });
+    await screen.findByRole("grid", { name: "Contract lines" });
+    fireEvent.click(screen.getByRole("button", { name: "Add line" }));
+    fireEvent.click(screen.getByRole("button", { name: "Back to field review" }));
+    expect(onReview).toHaveBeenCalledWith(
+      expect.objectContaining({
+        lines: [expect.objectContaining({ id: "l9" }), expect.objectContaining({ id: "l10" })],
+      }),
+    );
+    expect(submit).not.toHaveBeenCalled();
+  });
+
   it("validates, confirms, then uses only the acceptance command", async () => {
     const sent: Sent[] = [];
     serve(sent);
+    const onReview = vi.fn();
     const submit = vi
       .fn<ReviewedDraftSubmit>()
       .mockResolvedValue({ kind: "network-error", error: new Error("Offline") });
@@ -1251,7 +1278,9 @@ describe("reviewed draft confirmation", () => {
       screenRoutes: [
         {
           path: "/contracts/review/test",
-          element: <ReviewedContractDraft initial={emptyDraft("l1")} submit={submit} />,
+          element: (
+            <ReviewedContractDraft initial={emptyDraft("l1")} submit={submit} onReview={onReview} />
+          ),
         },
         ...ROUTES,
       ],
@@ -1265,6 +1294,14 @@ describe("reviewed draft confirmation", () => {
     pick("Product, line 1", "PLAT", "AVM-PLAT-100 · Avenmoor Platform, 100 seats");
     type("Quantity, line 1", "1");
     type("Total price, line 1", "120000.50");
+    fireEvent.click(screen.getByRole("button", { name: "Back to field review" }));
+    expect(onReview).toHaveBeenCalledWith(
+      expect.objectContaining({
+        externalId: "SF-ORD-30001",
+        lines: [expect.objectContaining({ quantity: "1", totalPrice: "120000.50" })],
+      }),
+    );
+    expect(submit).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Create draft contract" }));
     const dialog = await screen.findByRole("alertdialog");
     expect(submit).not.toHaveBeenCalled();

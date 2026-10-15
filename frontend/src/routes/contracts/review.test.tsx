@@ -9,6 +9,7 @@ import {
   fetchProposal,
   type ExtractionProposal,
 } from "../../lib/api/queries/ai";
+import type { DraftForm } from "../../lib/forms/contract";
 import { citedParts, ContractReview } from "./review";
 
 const access = vi.hoisted(() => ({ allowed: true }));
@@ -17,6 +18,23 @@ vi.mock("../../lib/api/queries/ai", async (original) => ({
   ...(await original<typeof import("../../lib/api/queries/ai")>()),
   fetchProposal: vi.fn(),
   fetchDocumentText: vi.fn(),
+}));
+vi.mock("./draft-form", () => ({
+  ReviewedContractDraft: ({
+    initial,
+    onReview,
+  }: {
+    initial: DraftForm;
+    onReview: (form: DraftForm) => void;
+  }) => (
+    <div>
+      <p>Draft reference: {initial.externalId}</p>
+      <p>Draft customer: {initial.customer?.kind === "new" ? initial.customer.name : ""}</p>
+      <button onClick={() => onReview({ ...initial, externalId: "HUMAN-REFERENCE" })}>
+        Back to field review
+      </button>
+    </div>
+  ),
 }));
 const ID = "00000000-0000-4000-8000-000000000001";
 const actor = { id: ID, display_name: "Reviewer", kind: "USER" as const };
@@ -97,6 +115,25 @@ describe("SF-20 retained review", () => {
     fireEvent.click(screen.getByRole("button", { name: "Continue to draft" }));
     expect(await screen.findByText(/10.*4,?000/)).toBeTruthy();
     expect(screen.getByRole("textbox", { name: "Edited value for Customer" })).toBeTruthy();
+  });
+
+  it("returns to field choices and preserves human draft inputs on continuation", async () => {
+    show();
+    fireEvent.click(await screen.findByRole("radio", { name: "Accept" }));
+    fireEvent.click(screen.getByRole("button", { name: "Continue to draft" }));
+    expect(await screen.findByText("Draft customer: Original customer")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Back to field review" }));
+    expect((screen.getByRole("radio", { name: "Accept" }) as HTMLInputElement).checked).toBe(true);
+    fireEvent.click(screen.getByRole("radio", { name: "Edit" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Edited value for Customer" }), {
+      target: { value: "Corrected customer" },
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: "Reason for Customer" }), {
+      target: { value: "Verified against the signed document" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Continue to draft" }));
+    expect(await screen.findByText("Draft reference: HUMAN-REFERENCE")).toBeTruthy();
+    expect(screen.getByText("Draft customer: Corrected customer")).toBeTruthy();
   });
 
   it("highlights Python character offsets, focuses the citation and returns on Escape", async () => {

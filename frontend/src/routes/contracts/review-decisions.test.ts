@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ExtractionProposal } from "../../lib/api/queries/ai";
-import { fieldChoice, prepareReview } from "./review-decisions";
+import { fieldChoice, prepareReview, resumeDraft } from "./review-decisions";
 const ID = "00000000-0000-4000-8000-000000000001";
 const actor = { id: ID, display_name: "Reviewer", kind: "USER" as const };
 const proposal: ExtractionProposal = {
@@ -128,5 +128,114 @@ describe("extraction field decisions", () => {
       ok: false,
       error: "empty",
     });
+  });
+});
+
+describe("returning to field review", () => {
+  const fields = [
+    { path: "payment_terms", value: "Net 30", confidence: "0.9" },
+    { path: "lines.0", value: { product_code: "A", amount: "100.00" }, confidence: "0.9" },
+    { path: "lines.1", value: { product_code: "B", amount: "200.00" }, confidence: "0.9" },
+  ];
+  function prepared(choices = fields.map((field) => fieldChoice(field, true))) {
+    const result = prepareReview({ ...proposal, content: fields }, choices, null);
+    if (!result.ok) throw new Error("Expected prepared review");
+    return result.review;
+  }
+  it("preserves human inputs and rebinds renamed rows across an unchanged review", () => {
+    const previous = prepared();
+    const current = {
+      ...previous.initial,
+      externalId: "HUMAN-1",
+      entity: "US",
+      currency: "USD",
+      paymentTerms: "Human correction",
+      lines: previous.initial.lines.map((line) => ({
+        ...line,
+        obligationKey: `H-${line.obligationKey}`,
+        quantity: "12",
+        startDate: "2026-10-01",
+      })),
+    };
+    const next = resumeDraft(previous, current, prepared());
+    expect(next.initial).toEqual(current);
+    expect(next.lines).toEqual({ "lines.0": "H-O1", "lines.1": "H-O2" });
+  });
+  it("applies changed reviewed values, removes rejected rows and keeps quantities and human rows", () => {
+    const previous = prepared();
+    const current = {
+      ...previous.initial,
+      externalId: "HUMAN-1",
+      lines: previous.initial.lines.map((line) => ({ ...line, quantity: "12" })),
+    };
+    const first = current.lines[0];
+    if (first === undefined) throw new Error("Missing fixture row");
+    current.lines.push({ ...first, id: "l3", obligationKey: "O3", productCode: "HUMAN" });
+    const choices = fields.map((field) => fieldChoice(field, true));
+    choices[0] = {
+      ...fieldChoice(fields[0] ?? {}, true),
+      decision: "REJECT",
+      reason: "Not an agreed payment term",
+    };
+    choices[1] = {
+      ...fieldChoice(fields[1] ?? {}, true),
+      decision: "REJECT",
+      reason: "Duplicated source line item",
+    };
+    choices[2] = {
+      ...fieldChoice(fields[2] ?? {}, true),
+      decision: "EDIT",
+      product: "CORRECTED",
+      value: "150.25",
+      reason: "Verified amount against signed source",
+    };
+    const result = resumeDraft(previous, current, prepared(choices));
+    expect(result.initial.externalId).toBe("HUMAN-1");
+    expect(result.initial.paymentTerms).toBe("");
+    expect(result.initial.lines).toHaveLength(2);
+    expect(result.initial.lines[0]).toMatchObject({
+      id: "l2",
+      productCode: "CORRECTED",
+      totalPrice: "150.25",
+      quantity: "12",
+    });
+    expect(result.initial.lines[1]).toMatchObject({ id: "l3", productCode: "HUMAN" });
+    expect(result.lines).toEqual({ "lines.1": "O2" });
+    expect(current.lines).toHaveLength(3);
+  });
+  it("moves an explicitly remapped effective date without changing unrelated inputs", () => {
+    const content = [{ path: "effective_date", value: "2026-10-01", confidence: "0.9" }];
+    const choices = content.map((field) => fieldChoice(field, true));
+    const first = prepareReview({ ...proposal, content }, choices, "inception_date");
+    const next = prepareReview({ ...proposal, content }, choices, "signature_date");
+    if (!first.ok || !next.ok) throw new Error("Expected prepared dates");
+    const result = resumeDraft(
+      first.review,
+      { ...first.review.initial, paymentTerms: "Net 60" },
+      next.review,
+    );
+    expect(result.initial).toMatchObject({
+      inceptionDate: "",
+      signatureDate: "2026-10-01",
+      paymentTerms: "Net 60",
+    });
+    expect(result.headers.effective_date).toBe("signature_date");
+  });
+  it("restores retained deleted rows without colliding with new human rows", () => {
+    const previous = prepared();
+    const row = previous.initial.lines[0];
+    if (row === undefined) throw new Error("Missing fixture row");
+    const result = resumeDraft(
+      previous,
+      {
+        ...previous.initial,
+        lines: [{ ...row, id: "l9", obligationKey: "O1", productCode: "HUMAN" }],
+      },
+      prepared(),
+    );
+    expect(result.initial.lines).toHaveLength(3);
+    expect(new Set(result.initial.lines.map((line) => line.id)).size).toBe(3);
+    expect(new Set(result.initial.lines.map((line) => line.obligationKey)).size).toBe(3);
+    expect(result.initial.lines[0]?.productCode).toBe("HUMAN");
   });
 });

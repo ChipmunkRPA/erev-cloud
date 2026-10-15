@@ -199,10 +199,14 @@ Effective dates require a chosen meaning. Unsupported retained terms prevent con
 rejection requires a human reason. Draft creation requires normal form validation and a separate
 confirmation, then calls atomic acceptance with the source proposal ETag. This path offers no
 activation action. Component tests cover confirmation, retry and navigation; they do not prove
-a live browser/API workflow. DOCX extraction, responsive panel tabs, returning to field review
-from a prepared draft, unsupported accounting-term mappings and full browser acceptance remain
-unfinished. Changing a bound draft field/key can cause the server to refuse the acceptance;
-the UI does not silently change the recorded field decision to match it.
+a live browser/API workflow. Returning to field review now preserves local draft inputs and
+reapplies changed review choices to their matching fields/rows. Rejected source rows are removed;
+human-added rows remain. Retained deleted rows are restored with unique identities and keys.
+Renamed keys are rebound on continuation; draft value changes still require matching field
+decisions. This recovery is in-memory, not a saved draft across reloads. DOCX extraction,
+responsive panel tabs, unsupported accounting-term mappings and full browser acceptance remain
+unfinished. Changing a bound draft field/key can cause the server to refuse acceptance; the UI
+does not silently change a recorded field decision to match it.
 
 The Anthropic adapter is mock-tested, uses the official SDK, disables SDK retries and telemetry,
 and resolves secrets lazily. Contract-review and explain-narrative prompts have retained bytes,

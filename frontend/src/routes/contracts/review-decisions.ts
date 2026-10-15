@@ -11,8 +11,8 @@ export interface FieldChoice {
 }
 export interface PreparedReview {
   readonly decisions: ExtractionDraft["field_decisions"];
-  readonly headers: ExtractionDraft["header_bindings"];
-  readonly lines: ExtractionDraft["line_bindings"];
+  readonly headers: NonNullable<ExtractionDraft["header_bindings"]>;
+  readonly lines: NonNullable<ExtractionDraft["line_bindings"]>;
   readonly initial: DraftForm;
 }
 export type ReviewError =
@@ -119,4 +119,69 @@ export function prepareReview(
   if (retained === 0) return { ok: false, error: "empty", path: "" };
   if (retainedLines.length) draft = { ...draft, lines: retainedLines };
   return { ok: true, review: { decisions, headers, lines, initial: draft } };
+}
+
+/** Reapply changed review choices while preserving unrelated human draft work. */
+export function resumeDraft(
+  previous: PreparedReview,
+  current: DraftForm,
+  next: PreparedReview,
+): PreparedReview {
+  let draft = { ...current };
+  const changed = (path: string) =>
+    JSON.stringify(previous.decisions.find((item) => item.path === path)) !==
+    JSON.stringify(next.decisions.find((item) => item.path === path));
+  if (changed("customer_name"))
+    draft = { ...draft, customer: next.initial.customer, customerCode: "" };
+  if (changed("payment_terms")) draft = { ...draft, paymentTerms: next.initial.paymentTerms };
+  if (
+    changed("effective_date") ||
+    previous.headers.effective_date !== next.headers.effective_date
+  ) {
+    if (previous.headers.effective_date === "inception_date") draft.inceptionDate = "";
+    if (previous.headers.effective_date === "signature_date") draft.signatureDate = "";
+    if (next.headers.effective_date === "inception_date")
+      draft.inceptionDate = next.initial.inceptionDate;
+    if (next.headers.effective_date === "signature_date")
+      draft.signatureDate = next.initial.signatureDate;
+  }
+  const oldRows = new Map(
+    Object.entries(previous.lines).map(([path, key]) => [
+      path,
+      previous.initial.lines.find((line) => line.obligationKey === key),
+    ]),
+  );
+  const rejectedIds = new Set(
+    [...oldRows].filter(([path]) => !(path in next.lines)).map(([, line]) => line?.id),
+  );
+  const reservedIds = new Set(previous.initial.lines.map((line) => line.id));
+  const rows = current.lines.filter((line) => !rejectedIds.has(line.id));
+  const bindings: PreparedReview["lines"] = {};
+  for (const [path, key] of Object.entries(next.lines)) {
+    const seed = next.initial.lines.find((line) => line.obligationKey === key);
+    if (seed === undefined) continue;
+    const old = oldRows.get(path);
+    const at = old === undefined ? -1 : rows.findIndex((line) => line.id === old.id);
+    const existing = rows[at];
+    if (existing !== undefined) {
+      if (changed(path))
+        rows[at] = { ...existing, productCode: seed.productCode, totalPrice: seed.totalPrice };
+      bindings[path] = existing.obligationKey;
+    } else {
+      // A removed retained row must be restored; newly retained rows cannot reuse human row IDs.
+      let index = 1;
+      while (
+        reservedIds.has(`l${String(index)}`) ||
+        rows.some(
+          (line) => line.id === `l${String(index)}` || line.obligationKey === `O${String(index)}`,
+        )
+      )
+        index += 1;
+      const row = { ...seed, id: `l${String(index)}`, obligationKey: `O${String(index)}` };
+      rows.push(row);
+      bindings[path] = row.obligationKey;
+    }
+  }
+  draft = { ...draft, lines: rows };
+  return { ...next, initial: draft, lines: bindings };
 }

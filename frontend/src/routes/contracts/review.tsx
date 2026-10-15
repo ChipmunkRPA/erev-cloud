@@ -28,12 +28,14 @@ import {
   proposalPath,
 } from "../../lib/api/queries/ai";
 import { queryKey } from "../../lib/api/query-keys";
+import type { DraftForm } from "../../lib/forms/contract";
 import { formatTimestamp, instantMs } from "../../lib/format";
 import { hasMessage, t } from "../../lib/i18n/t";
 import { ReviewedContractDraft } from "./draft-form";
 import {
   fieldChoice,
   prepareReview,
+  resumeDraft,
   type FieldChoice,
   type PreparedReview,
   type Decision,
@@ -110,6 +112,9 @@ function ReviewEvidence({
   const [dateTarget, setDateTarget] = useState<"inception_date" | "signature_date" | null>(null);
   const [reviewError, setReviewError] = useState<string | null>(null);
   const [prepared, setPrepared] = useState<{ review: PreparedReview; etag: string } | null>(null);
+  const [savedDraft, setSavedDraft] = useState<{ review: PreparedReview; form: DraftForm } | null>(
+    null,
+  );
   const accept = useCommand<AcceptedDraft>({
     method: "POST",
     path: `${proposalPath(proposal.id)}/accept`,
@@ -181,12 +186,20 @@ function ReviewEvidence({
       );
       return;
     }
-    setPrepared({ review: result.review, etag });
+    const review =
+      savedDraft === null
+        ? result.review
+        : resumeDraft(savedDraft.review, savedDraft.form, result.review);
+    setPrepared({ review, etag });
   };
   if (prepared !== null && proposal.status === "proposed")
     return (
       <ReviewedContractDraft
         initial={prepared.review.initial}
+        onReview={(form) => {
+          setSavedDraft({ review: prepared.review, form });
+          setPrepared(null);
+        }}
         submit={(draft) =>
           accept.submit(
             {
@@ -204,6 +217,9 @@ function ReviewEvidence({
     );
   return (
     <>
+      {savedDraft === null ? null : (
+        <p className="text-body-sm text-fg-2">{t("ai.review.draft.saved")}</p>
+      )}
       {reviewError === null ? null : <Banner tone="negative" title={reviewError} />}
       {editable ? (
         <Button

@@ -2,6 +2,22 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Review round-trip preserves draft work — October 15, 2026
+
+- Added Back to field review with an in-memory draft snapshot. Continuing preserves unrelated
+  human inputs and applies changed decisions to corresponding headers and source rows. Rejected
+  source rows are removed; human-added rows remain. Renamed obligation keys are rebound explicitly
+  when returning to the draft. No field decision is inferred from a changed draft value.
+- Fixed row identity collisions when restoring deleted retained rows and when adding rows after
+  reopening a draft with gaps in its local row identities. Tests exercise both failures plus
+  field-review/form round trips and changed customer/amount decisions.
+- 50 focused tests, frontend typing and full lint passed. Evidence:
+  .run/ai-review-recovery-{tests,types,lint}.log. Recovery is local component state,
+  not persistence across reloads or live browser/API acceptance evidence. Existing server version
+  preconditions remain authoritative; returning to review captures the current displayed ETag
+  only on explicit continuation. Broader release verification and accounting sign-off remain open.
+  No deployment or live provider calls.
+
 ## Per-field review and confirmed draft handoff — October 15, 2026
 
 - Added Accept/Edit/Reject controls, explicit low-confidence choices, edit/rejection reasons,
@@ -201,27 +217,6 @@
   passed. Logs: .run/ai-field-review-{unit,boundaries,lint,typecheck,types-final}.log.
 - Structured acceptance remains unimplemented; broader release/accounting and large-tenant list
   performance gates remain open. No deployment or live provider calls.
-
-## Authorized extraction review list — October 15, 2026
-
-- GET /ai/proposals now includes extraction evidence alongside number explanations, with the
-  shared kind/status filters, authorized totals and stable cursor pagination. Extraction source
-  metadata is checked through the existing file ownership rules before SQL paging/counting or
-  selecting proposal content. Shredded/non-PDF sources and unsupported kinds cannot enter results.
-- Only distinct referenced source-file metadata is scanned, in batches; readable UUIDs use one
-  array parameter. This preserves uploader/shared-upload and attachment access semantics but
-  still performs per-source authorization work. Large-tenant latency/load verification and
-  optimization remain outstanding. Missing contract.read grants exclude narrative evidence
-  without preventing otherwise authorized extraction reads.
-- Verification: five PostgreSQL API cases passed, covering extraction inclusion, exact counts,
-  kind/status filters, denied source owners, disappearance after shredding, and narrative cursor,
-  grant-narrowing and review regressions. Twenty-eight architecture/list-contract checks passed.
-  Full typecheck passed (934 Python sources plus frontend), focused typing passed 786 sources,
-  and OpenAPI/frontend generation passed. Logs:
-  .run/ai-extraction-list-{api,architecture,typecheck,types-final,openapi,lint}.log.
-  Full lint and final diff checks also passed.
-- Per-field decisions, structured acceptance and broader release/accounting verification remain
-  open. No deployment or live provider calls.
 
 
 ## Outstanding release verification

@@ -5379,3 +5379,24 @@ cleanup in the shared database session kernel was also repaired and regression-t
   Logs: .run/ai-extraction-reject-{api,architecture,typecheck,types,openapi,lint}.log.
 - Extraction list integration, per-field decisions and structured acceptance remain unfinished,
   alongside broader release/accounting gates. No deployment or live provider calls.
+
+## Authorized extraction review list — October 15, 2026
+
+- GET /ai/proposals now includes extraction evidence alongside number explanations, with the
+  shared kind/status filters, authorized totals and stable cursor pagination. Extraction source
+  metadata is checked through the existing file ownership rules before SQL paging/counting or
+  selecting proposal content. Shredded/non-PDF sources and unsupported kinds cannot enter results.
+- Only distinct referenced source-file metadata is scanned, in batches; readable UUIDs use one
+  array parameter. This preserves uploader/shared-upload and attachment access semantics but
+  still performs per-source authorization work. Large-tenant latency/load verification and
+  optimization remain outstanding. Missing contract.read grants exclude narrative evidence
+  without preventing otherwise authorized extraction reads.
+- Verification: five PostgreSQL API cases passed, covering extraction inclusion, exact counts,
+  kind/status filters, denied source owners, disappearance after shredding, and narrative cursor,
+  grant-narrowing and review regressions. Twenty-eight architecture/list-contract checks passed.
+  Full typecheck passed (934 Python sources plus frontend), focused typing passed 786 sources,
+  and OpenAPI/frontend generation passed. Logs:
+  .run/ai-extraction-list-{api,architecture,typecheck,types-final,openapi,lint}.log.
+  Full lint and final diff checks also passed.
+- Per-field decisions, structured acceptance and broader release/accounting verification remain
+  open. No deployment or live provider calls.
