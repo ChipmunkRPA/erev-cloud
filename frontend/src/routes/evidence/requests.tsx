@@ -108,7 +108,7 @@ export function AuditorRequests() {
         />
       ) : null}
       <div className="max-h-80 overflow-auto rounded-md border border-hairline">
-        <table data-testid="SF-09-grid-auditor-requests" className="w-full text-left text-body-sm">
+        <table data-testid="SF-09-grid-auditor-requests" className="w-full text-start text-body-sm">
           <caption className="sr-only">{t("evidence.requests.title")}</caption>
           <thead>
             <tr>

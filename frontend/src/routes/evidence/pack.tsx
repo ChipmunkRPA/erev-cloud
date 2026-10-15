@@ -152,7 +152,7 @@ function PackRecord({ id }: { readonly id: string }) {
             </dd>
           </dl>
           <div className="overflow-auto">
-            <table className="w-full text-left text-body-sm">
+            <table className="w-full text-start text-body-sm">
               <caption className="sr-only">{t("evidence.packs.files")}</caption>
               <thead>
                 <tr>

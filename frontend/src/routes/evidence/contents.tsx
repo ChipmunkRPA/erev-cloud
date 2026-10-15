@@ -68,7 +68,7 @@ export function ClosePackContents({ pack }: { readonly pack: EvidencePack }) {
     <section className="space-y-4">
       <h2 className="text-title-md">{t("evidence.contents.title")}</h2>
       <p>{t("evidence.contents.description")}</p>
-      <table className="w-full text-left text-body-sm" data-testid="SF-09-grid-pack-contents">
+      <table className="w-full text-start text-body-sm" data-testid="SF-09-grid-pack-contents">
         <caption className="sr-only">{t("evidence.contents.title")}</caption>
         <thead>
           <tr>
