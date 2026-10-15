@@ -72,7 +72,7 @@ from support.factories import (
     step1_criteria,
 )
 from support.http import call
-from support.principals import Actor, colleague, enrolled
+from support.principals import Actor, colleague, cookie_headers, enrolled
 from support.reference import approve, assign, fields, get, new_product, post, put, reject, slug
 from support.rows import publish_rule_set
 from support.worlds import estimate_version_ready
@@ -1764,3 +1764,126 @@ def test_activation_review_binds_material_right_terms(seats: SeatWorld) -> None:
     accepted = approve(seats.app, renewed.headers[APPROVAL_HEADER], seats.priya)
     assert accepted.status_code == 200, accepted.text
     assert _header(seats, contract_id)[0] == "ACTIVE"
+
+
+def test_native_material_right_entry_and_distinct_activation_reviewer(seats: SeatWorld) -> None:
+    """Terms entered by a different preparer still require independent activation review."""
+    maya = seats.place.author
+    assign(seats.priya.member, "revenue_accountant")
+    assign(seats.priya.member, "revenue_reviewer")
+    body = _seat_contract(seats, "OPTION-NATIVE", seats="50", price="120000.00")
+    line = body["lines"][0]
+    template = published_template(
+        seats.app,
+        maya,
+        seats.marcus,
+        code="TPL-OPTION-NATIVE",
+        outputs={
+            "obligation_kind": "MATERIAL_RIGHT",
+            "distinctness": "distinct",
+            "satisfaction_pattern": "POINT_IN_TIME",
+            "over_time_criterion": "NOT_APPLICABLE",
+            "recognition_method": "UNITS_DELIVERED",
+        },
+        case_line={**line, "total_price": "120000.00"},
+    )
+    product_id = seats.place.scalar(
+        select(product.c.id).where(product.c.code == line["product_code"])
+    )
+    set_default_template(seats.app, maya, str(product_id), template["template_id"])
+    contract_id = _created(seats.app, maya, body)
+    option_id = seats.place.scalar(
+        select(obligation.c.id).where(obligation.c.contract_id == contract_id)
+    )
+    path = f"/api/v1/obligations/{option_id}/material-right"
+    terms = {"option_type": "RENEWAL_OPTION", "ssp_method": "ENTERED_AMOUNT"}
+    missing = post(seats.app, path, seats.priya, terms)
+    assert missing.status_code == 428, missing.text
+    stale = post(seats.app, path, seats.priya, terms, if_match='"s0"')
+    assert stale.status_code == 412, stale.text
+    headers = cookie_headers(seats.priya.token, seats.priya.csrf_token, key=True)
+    headers["If-Match"] = '"s1"'
+    created = call(seats.app, "POST", path, json=terms, headers=headers)
+    assert created.status_code == 201, created.text
+    replayed = call(seats.app, "POST", path, json=terms, headers=headers)
+    assert replayed.status_code == 201, replayed.text
+    assert replayed.json() == created.json()
+    assert seats.place.scalar(select(func.count()).select_from(material_right)) == 1
+    assert (
+        seats.place.scalar(
+            select(func.count())
+            .select_from(audit_event)
+            .where(
+                audit_event.c.action == "material_right.create",
+                audit_event.c.actor_id == seats.priya.member.user_id,
+                audit_event.c.detail["contract_id"].astext == str(contract_id),
+            )
+        )
+        == 1
+    )
+    assert created.headers["location"] == path
+    assert created.json()["ssp_method"] == "ENTERED_AMOUNT"
+    shown = get(seats.app, path, maya)
+    assert shown.status_code == 200, shown.text
+    assert shown.json() == created.json()
+    duplicate = post(seats.app, path, maya, terms, if_match='"s1"')
+    assert duplicate.status_code == 409, duplicate.text
+    head = _step1(seats.app, maya, seats.marcus, contract_id, 1)
+    waiting = _submit(seats.app, maya, contract_id, head)
+    assert waiting.status_code == 200, waiting.text
+    pending = post(seats.app, path, maya, terms, if_match=f'"s{head}"')
+    assert pending.status_code == 409, pending.text
+    request_id = waiting.headers[APPROVAL_HEADER]
+    own_terms = approve(seats.app, request_id, seats.priya)
+    assert own_terms.status_code == 403, own_terms.text
+    assert slug(own_terms) == "self-approval"
+    assert _header(seats, contract_id)[0] == "DRAFT"
+    accepted = approve(seats.app, request_id, seats.marcus)
+    assert accepted.status_code == 200, accepted.text
+    assert _header(seats, contract_id)[0] == "ACTIVE"
+    active = post(seats.app, path, maya, terms, if_match=f'"s{head + 1}"')
+    assert active.status_code == 409, active.text
+
+
+def test_material_right_invalid_entry_rolls_back_facts_and_computation(seats: SeatWorld) -> None:
+    maya = seats.place.author
+    body = _seat_contract(seats, "OPTION-INVALID", seats="50", price="120000.00")
+    contract_id = _created(seats.app, maya, body)
+    option_id = seats.place.scalar(
+        select(obligation.c.id).where(obligation.c.contract_id == contract_id)
+    )
+    path = f"/api/v1/obligations/{option_id}/material-right"
+    before = seats.place.scalar(select(func.count()).select_from(contract_computation))
+    invalid_terms = [
+        {"option_type": "RENEWAL_OPTION", "ssp_method": "DISCOUNT_X_LIKELIHOOD"},
+        {"option_type": "OTHER", "ssp_method": "RENEWAL_ALTERNATIVE"},
+        {
+            "option_type": "OTHER",
+            "ssp_method": "ENTERED_AMOUNT",
+            "incremental_discount_ratio": "0.5",
+        },
+        {
+            "option_type": "DISCOUNT_VOUCHER",
+            "ssp_method": "DISCOUNT_X_LIKELIHOOD",
+            "incremental_discount_ratio": "0.5",
+            "expected_purchase_amount": {"amount": "100.00", "currency": "EUR"},
+            "likelihood_estimate_id": str(uuid4()),
+        },
+        {
+            "option_type": "DISCOUNT_VOUCHER",
+            "ssp_method": "DISCOUNT_X_LIKELIHOOD",
+            "incremental_discount_ratio": "0.5",
+            "expected_purchase_amount": {"amount": "100.00", "currency": "USD"},
+            "likelihood_estimate_id": str(uuid4()),
+        },
+        # Valid terms, but the engine classifies this product as a service, not an option.
+        {"option_type": "RENEWAL_OPTION", "ssp_method": "ENTERED_AMOUNT"},
+    ]
+    for terms in invalid_terms:
+        refused = post(seats.app, path, maya, terms, if_match='"s1"')
+        assert refused.status_code == 422, refused.text
+        assert slug(refused) == "validation-failed"
+        assert seats.place.scalar(select(func.count()).select_from(material_right)) == 0
+        assert seats.place.scalar(select(func.count()).select_from(contract_computation)) == before
+        assert _header(seats, contract_id) == ("DRAFT", 1)
+    assert get(seats.app, path, maya).status_code == 404

@@ -22280,6 +22280,80 @@
         "title": "MappingProfileUpdateIn",
         "type": "object"
       },
+      "MaterialRightCreateIn": {
+        "additionalProperties": false,
+        "description": "Immutable native option terms, entered against a draft contract's stream ETag.",
+        "properties": {
+          "expected_purchase_amount": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MoneyIn"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expiry_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expiry Date"
+          },
+          "incremental_discount_ratio": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Incremental Discount Ratio"
+          },
+          "is_discount_available_without_contract": {
+            "default": false,
+            "title": "Is Discount Available Without Contract",
+            "type": "boolean"
+          },
+          "likelihood_estimate_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Likelihood Estimate Id"
+          },
+          "option_type": {
+            "$ref": "#/components/schemas/OptionType"
+          },
+          "ssp_method": {
+            "enum": [
+              "DISCOUNT_X_LIKELIHOOD",
+              "RENEWAL_ALTERNATIVE",
+              "ENTERED_AMOUNT"
+            ],
+            "title": "Ssp Method",
+            "type": "string"
+          }
+        },
+        "required": [
+          "option_type",
+          "ssp_method"
+        ],
+        "title": "MaterialRightCreateIn",
+        "type": "object"
+      },
       "MaterialRightOut": {
         "description": "API-S-Obligation ``material_right`` (04 §16.2, T-CON-14; SCREENS R-25).",
         "properties": {
@@ -25831,6 +25905,18 @@
         ],
         "title": "OperatorTenantSummaryOut",
         "type": "object"
+      },
+      "OptionType": {
+        "description": "E-92 ``option_type`` (04 §3.4).",
+        "enum": [
+          "DISCOUNT_VOUCHER",
+          "LOYALTY_POINTS",
+          "RENEWAL_OPTION",
+          "TIERED_DISCOUNT",
+          "OTHER"
+        ],
+        "title": "OptionType",
+        "type": "string"
       },
       "OutputFormat": {
         "enum": [
@@ -74240,6 +74326,157 @@
           "API-R-29 Obligations"
         ],
         "x-erev-permission": "contract.read"
+      },
+      "post": {
+        "description": "Create immutable option terms on a draft, using the parent contract's stream If-Match.\n\nA pending activation review or existing terms prevents entry. The updated draft is computed\natomically; terms are included in the subsequent activation approval content.",
+        "operationId": "obligation_material_right_create",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "obligation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Obligation Id",
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MaterialRightCreateIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialRightOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: unauthenticated, session-expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: not-found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: idempotency-in-progress, invalid-transition"
+          },
+          "412": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: precondition-failed"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: validation-failed, idempotency-key-reused"
+          },
+          "428": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: precondition-required"
+          }
+        },
+        "summary": "Obligation Material Right Create",
+        "tags": [
+          "API-R-29 Obligations"
+        ],
+        "x-erev-permission": "contract.create"
       }
     },
     "/api/v1/obligations/{obligation_id}/request-ssp-override": {

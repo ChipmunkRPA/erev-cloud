@@ -39,13 +39,18 @@ from erev_api.auth.dependencies import require
 from erev_api.auth.principal import RequestContext
 from erev_api.clock import Clock, get_clock
 from erev_api.db.tables import contract_event, obligation_version, schedule_line
-from erev_api.domain.contracts import obligations, queries
+from erev_api.domain.contracts import material_right_commands, obligations, queries
 from erev_api.domain.policies import overrides
 from erev_api.enums import BookCode
 from erev_api.schemas.common import ListOut
 from erev_api.schemas.contracts import ObligationOut, ScheduleLineOut
 from erev_api.schemas.events import EventOut
-from erev_api.schemas.obligations import MaterialRightOut, SspOverrideIn, SspOverrideOut
+from erev_api.schemas.obligations import (
+    MaterialRightCreateIn,
+    MaterialRightOut,
+    SspOverrideIn,
+    SspOverrideOut,
+)
 from erev_api.uow import UnitOfWork
 
 TAG: Final = "API-R-29 Obligations"
@@ -268,6 +273,41 @@ def obligation_material_right_get(
         lambda session: obligations.material_right_out(
             session, obligation_id, params=params, now=clock.now()
         ),
+    )
+
+
+@router.post(
+    "/obligations/{obligation_id}/material-right",
+    operation_id="obligation_material_right_create",
+    response_model=MaterialRightOut,
+    status_code=201,
+    responses=problem_responses(
+        *_COMMAND_PROBLEMS,
+        "not-found",
+        "invalid-transition",
+        "precondition-required",
+        "precondition-failed",
+    ),
+)
+def obligation_material_right_create(
+    obligation_id: uuid.UUID,
+    body: MaterialRightCreateIn,
+    cmd: Annotated[CommandContext, Depends(command(CREATE, precondition="contract"))],
+    deps: Annotated[KernelDeps, Depends(kernel_deps)],
+) -> Response:
+    """Create immutable option terms on a draft, using the parent contract's stream If-Match.
+
+    A pending activation review or existing terms prevents entry. The updated draft is computed
+    atomically; terms are included in the subsequent activation approval content.
+    """
+    return run_command(
+        cmd,
+        deps,
+        lambda uow: material_right_commands.create(
+            uow, obligation_id, body, expected_stream_version=cmd.expected_version
+        ),
+        status_code=201,
+        location=lambda _: f"{API_PREFIX}/obligations/{obligation_id}/material-right",
     )
 
 

@@ -6,15 +6,15 @@ not evidence of completed product support or accounting acceptance.
 ## Current evidence
 
 - The bundle adapter now loads persisted option terms at known_at with deterministic
-  obligation keys and contract/estimate keys. Native entry is still missing.
+  obligation keys and contract/estimate keys. Draft entry is implemented below.
 - Revision 0145 now implements T-CON-14, its enum, immutable-row guards, ownership/currency
   constraints and tenant RLS. Snapshot inventory includes it and remaps its three references.
-  There is still no native command that writes it.
+  The draft command now writes it with audited creation.
 - Dedicated and embedded obligation reads now return stored terms and event-derived
   status, respecting record/effective cuts and contract visibility. Missing terms are
   still 404 on the dedicated read and null on the embedded read.
-- `events/payloads.py::ContractLineV1` has no option-terms member. There is no native
-  command to persist the missing record.
+- `events/payloads.py::ContractLineV1` has no option-terms member. A separate native
+  draft command creates the immutable record; correction/replacement acceptance remains open.
 - `domain/migration/opening_balances.py` produces converted option records, but
   `domain/migration/capture.py::capture` explicitly refuses staging containing them.
   This refusal must remain until capture can persist and compute their actual terms.
@@ -125,3 +125,30 @@ The baseline test failed while interpreting the unexpected 200 response as a pro
 the request log confirms the unauthorized stale-basis acceptance, rather than an entry failure.
 This strengthens the review boundary; native entry still needs group/contract locking,
 permission and pending-review checks, audit, validation, and governed correction semantics.
+
+## Native draft entry, October 14
+
+The dedicated POST now creates terms under group/contract locks, contracting-entity permission,
+parent stream precondition and a DRAFT/no-pending-review guard. It validates method inputs,
+currency and likelihood ownership, computes the group and checks material-right classification,
+then records AUD-FACT atomically. Invalid computations roll back creation. Generated OpenAPI
+and TypeScript types include the payload and endpoint. See T-CON-14 for the command contract.
+
+An actual API regression reproduced a separation-of-duties gap: Priya entered terms, Maya
+submitted activation, and Priya could approve (200). Activation now excludes option authors
+using the shared authorship reader, which also handles represented uploaders and delegation.
+The regression now returns 403 self-approval, then allows Marcus to activate independently.
+It also exercises missing/stale preconditions, duplicate entry, dedicated-read consistency,
+and refusal during pending review and after activation. A separate test checks invalid method,
+currency, likelihood and non-option classification with no retained terms or computation.
+
+Governed corrections, replacement/concurrency acceptance, valid discount and renewal API
+calculations, UI, migration conversion and populated snapshot acceptance remain outstanding.
+This is not complete material-right support or accounting sign-off.
+
+Verification: activation plus route/import/scope checks passed, 62 tests in 151.74s.
+After the AUD-FACT represented-preparer lookup and replay/audit assertions, the two native
+API tests passed again in 20.43s. Full typecheck (880 production files plus frontend),
+Ruff and diff checks pass. Logs: `.run/material-right-native-baseline.log` (reproduced
+self-approval), `.run/material-right-native-fixed.log`, `.run/material-right-native-regression.log`,
+`.run/material-right-native-final.log`, `.run/material-right-native-types.log`.

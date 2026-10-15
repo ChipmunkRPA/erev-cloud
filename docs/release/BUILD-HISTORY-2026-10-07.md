@@ -3415,3 +3415,23 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   fcbfaa365bdfb5ecf7a4b1184cafecb7ffd1eaec, tree b20a7f01135cda47153d1c8dc1b23b0dcbedcddc;
   immutable source and dependency bindings matched. A clean post-fix full CI run is next.
   No complete CI, deployment or production-readiness claim is made.
+
+
+## First-close browser acceptance — October 14, 2026 (RPS-20 continued)
+
+- Added a real-browser workflow that selects a retained first-close lock, creates a pack,
+  waits for successful retention, checks all 12 contents sections, downloads manifest/ZIP,
+  compares the downloaded manifest SHA-256 with the displayed value, and checks every file
+  path/hash/copy control. Light/dark accessibility checks cover register, form and detail.
+- The initial closed-world run passed 9 tests and failed this new test on the register pack
+  link target size. Enlarged the link to 24px minimum height. A focused retry then exposed a
+  test interaction error: the shared combobox opens with Arrow Down, not input click alone.
+  Corrected that interaction and waited for loaded register data before screen capture.
+- Final focused browser run: 1 passed in 46.9s against the retained local demo world; this
+  is not a fresh full-browser gate. Evidence components: 70 tests passed in four files.
+  TypeScript and targeted ESLint passed. Reviewed register, form and detail screenshots.
+  All browser test servers stopped. Logs: .run/evidence-browser-retry-2.log and
+  .run/evidence-browser-regression.log. Initial full-run failure remains preserved.
+- Full immutable CI on 165d63c is still running and has known failures; this entry does not
+  claim a passing full release gate. Other pack kinds, re-lock variance, broader acceptance
+  and independent accounting approval remain open. No deployment.

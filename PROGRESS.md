@@ -2,6 +2,24 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Native material-right draft entry — October 14, 2026
+
+- Added the immutable option-term POST with contracting-entity permission, group/contract
+  locks, parent-stream If-Match, DRAFT/no-pending-review checks and atomic computation.
+  Invalid method, currency, likelihood or non-option classification leaves no terms
+  or computation. Dedicated reads use the contracting entity's date.
+- Reproduced and fixed an approval gap: a different term preparer could approve Maya's
+  activation submission. Option authors are now excluded by the approval kernel;
+  independent review succeeds. AUD-FACT represented-preparer identities are included.
+- Activation and route/import/scope checks: 62 passed (151.74s). Final API regressions:
+  2 passed (20.43s), including idempotent replay and one contract-bound creation audit.
+  Full typecheck (880 source files plus frontend), Ruff and diff checks pass.
+  Logs: .run/material-right-native-regression.log, .run/material-right-native-final.log,
+  .run/material-right-native-types.log. OpenAPI/TypeScript and command docs updated.
+- Corrections, draft replacement/race acceptance, full method matrix, UI, migration,
+  populated snapshot and independent accounting acceptance remain open. Original full
+  CI 165d63c remains live and is not current-candidate evidence. No deployment.
+
 ## Activation approval binds material rights — October 14, 2026
 
 - Found and repaired a review gap before exposing native term entry: adding T-CON-14
@@ -232,25 +250,6 @@
 - Browser test servers stopped. Full CI on 165d63c remains live with known failures;
   pending backend identity/IDOR repairs are not part of this frontend change. No deployment
   or complete release-gate claim. Broader release and accounting review gaps remain open.
-
-## First-close browser acceptance — October 14, 2026 (RPS-20 continued)
-
-- Added a real-browser workflow that selects a retained first-close lock, creates a pack,
-  waits for successful retention, checks all 12 contents sections, downloads manifest/ZIP,
-  compares the downloaded manifest SHA-256 with the displayed value, and checks every file
-  path/hash/copy control. Light/dark accessibility checks cover register, form and detail.
-- The initial closed-world run passed 9 tests and failed this new test on the register pack
-  link target size. Enlarged the link to 24px minimum height. A focused retry then exposed a
-  test interaction error: the shared combobox opens with Arrow Down, not input click alone.
-  Corrected that interaction and waited for loaded register data before screen capture.
-- Final focused browser run: 1 passed in 46.9s against the retained local demo world; this
-  is not a fresh full-browser gate. Evidence components: 70 tests passed in four files.
-  TypeScript and targeted ESLint passed. Reviewed register, form and detail screenshots.
-  All browser test servers stopped. Logs: .run/evidence-browser-retry-2.log and
-  .run/evidence-browser-regression.log. Initial full-run failure remains preserved.
-- Full immutable CI on 165d63c is still running and has known failures; this entry does not
-  claim a passing full release gate. Other pack kinds, re-lock variance, broader acceptance
-  and independent accounting approval remain open. No deployment.
 
 ## Outstanding release verification
 

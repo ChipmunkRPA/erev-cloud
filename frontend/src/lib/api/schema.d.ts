@@ -4553,7 +4553,14 @@ export interface paths {
      */
     get: operations["obligation_material_right_get"];
     put?: never;
-    post?: never;
+    /**
+     * Obligation Material Right Create
+     * @description Create immutable option terms on a draft, using the parent contract's stream If-Match.
+     *
+     *     A pending activation review or existing terms prevents entry. The updated draft is computed
+     *     atomically; terms are included in the subsequent activation approval content.
+     */
+    post: operations["obligation_material_right_create"];
     delete?: never;
     options?: never;
     head?: never;
@@ -15914,6 +15921,30 @@ export interface components {
       name?: string | null;
     };
     /**
+     * MaterialRightCreateIn
+     * @description Immutable native option terms, entered against a draft contract's stream ETag.
+     */
+    MaterialRightCreateIn: {
+      expected_purchase_amount?: components["schemas"]["MoneyIn"] | null;
+      /** Expiry Date */
+      expiry_date?: string | null;
+      /** Incremental Discount Ratio */
+      incremental_discount_ratio?: string | null;
+      /**
+       * Is Discount Available Without Contract
+       * @default false
+       */
+      is_discount_available_without_contract: boolean;
+      /** Likelihood Estimate Id */
+      likelihood_estimate_id?: string | null;
+      option_type: components["schemas"]["OptionType"];
+      /**
+       * Ssp Method
+       * @enum {string}
+       */
+      ssp_method: "DISCOUNT_X_LIKELIHOOD" | "RENEWAL_ALTERNATIVE" | "ENTERED_AMOUNT";
+    };
+    /**
      * MaterialRightOut
      * @description API-S-Obligation ``material_right`` (04 §16.2, T-CON-14; SCREENS R-25).
      */
@@ -17127,6 +17158,13 @@ export interface components {
       /** Reporting Currency */
       reporting_currency: string;
     };
+    /**
+     * OptionType
+     * @description E-92 ``option_type`` (04 §3.4).
+     * @enum {string}
+     */
+    OptionType:
+      "DISCOUNT_VOUCHER" | "LOYALTY_POINTS" | "RENEWAL_OPTION" | "TIERED_DISCOUNT" | "OTHER";
     /** @enum {string} */
     OutputFormat: "XLSX" | "CSV" | "PDF" | "JSON" | "ZIP";
     /**
@@ -41101,6 +41139,105 @@ export interface operations {
       };
       /** @description Problem: validation-failed */
       422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+    };
+  };
+  obligation_material_right_create: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description API-C-04: one key per user intent (8-255 characters); a repeat with the same key and body replays the stored response, another body is 422 idempotency-key-reused. */
+        "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+      };
+      path: {
+        obligation_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["MaterialRightCreateIn"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["MaterialRightOut"];
+        };
+      };
+      /** @description Problem: unauthenticated, session-expired */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: not-found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: idempotency-in-progress, invalid-transition */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: precondition-failed */
+      412: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: validation-failed, idempotency-key-reused */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: precondition-required */
+      428: {
         headers: {
           [name: string]: unknown;
         };

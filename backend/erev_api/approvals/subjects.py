@@ -153,6 +153,7 @@ from erev_api.db.tables import (
     api_client,
     app_user,
     approval_request,
+    audit_event,
     close_checklist_item,
     close_checklist_template,
     combination_group,
@@ -2108,6 +2109,32 @@ CONTROLLER_ROLE: Final = "controller"
 CONTRACT_LINK: Final = "/contracts/{contract_id}"  # SCREENS SF-03
 # PRD §2.5 CONTRACT_VOID rows; 04 T-PLT-17 flag examples; demo ROUTE-VOID-02 (BUILD_SPEC CTR-11).
 POSTED_LINES: Final = "POSTED_LINES"
+
+
+def contract_option_authors(session: Session, subject_id: UUID) -> frozenset[UUID]:
+    """Option preparers cannot approve activation, including through a delegate.
+
+    Use the shared authorship reader to include an uploader represented by SYSTEM,
+    as well as the USER creator stamped on the immutable terms.
+    """
+    read = draft_authors(material_right)
+    people: set[UUID] = set()
+    for right_id in session.execute(
+        select(material_right.c.id).where(material_right.c.contract_id == subject_id)
+    ).scalars():
+        people.update(read(session, right_id))
+        # AUD-FACT summaries have no object_id: the immutable fact ids live in detail.
+        represented = session.execute(
+            select(audit_event.c.on_behalf_of_id).where(
+                audit_event.c.action == "material_right.create",
+                audit_event.c.object_type == "material_right",
+                audit_event.c.outcome == "SUCCESS",
+                audit_event.c.detail["ids"].contains([str(right_id)]),
+                audit_event.c.on_behalf_of_id.is_not(None),
+            )
+        ).scalars()
+        people.update(UUID(str(person)) for person in represented)
+    return frozenset(people)
 
 
 def contract_activation_content(session: Session, subject_id: UUID) -> Mapping[str, Any]:
@@ -4507,6 +4534,8 @@ SUBJECTS: Final[dict[ApprovalSubjectType, SubjectSpec]] = {
         revenue_affecting=True,  # the activation dry run is the impact preview (REQ-PLT-015)
         min_approvers=1,
         content=contract_activation_content,
+        excluded_deciders=contract_option_authors,
+        excluded_detail=AUTHOR_DETAIL,
         entity_id=_resolved_by_entities,
         entities=contract_subject_entities,
         # Item ACT-FLAGS-1: the consideration in the entity's functional currency, converted by

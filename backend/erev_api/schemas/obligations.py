@@ -16,16 +16,18 @@ from __future__ import annotations
 
 import uuid
 from datetime import date, datetime
-from typing import Any, Final
+from typing import Any, Final, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from erev_api.enums import ConfigStatus, RegistryScope
+from erev_api.enums import ConfigStatus, OptionType, RegistryScope
+from erev_api.events.payloads import NonNegativeMoney, Ratio
 from erev_api.schemas.users import MEMO_LENGTH
 
 KEY_LENGTH: Final = 200
 
 __all__ = [
+    "MaterialRightCreateIn",
     "MaterialRightOut",
     "PolicyOverrideCommentIn",
     "PolicyOverrideIn",
@@ -48,6 +50,20 @@ class SspOverrideOut(BaseModel):
     """200 of ``request-ssp-override``: the ``SSP_OVERRIDE`` request."""
 
     approval_request_id: uuid.UUID
+
+
+class MaterialRightCreateIn(BaseModel):
+    """Immutable native option terms, entered against a draft contract's stream ETag."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    option_type: OptionType
+    ssp_method: Literal["DISCOUNT_X_LIKELIHOOD", "RENEWAL_ALTERNATIVE", "ENTERED_AMOUNT"]
+    incremental_discount_ratio: Ratio | None = None
+    is_discount_available_without_contract: bool = False
+    expected_purchase_amount: NonNegativeMoney | None = None
+    expiry_date: date | None = None
+    likelihood_estimate_id: uuid.UUID | None = None
 
 
 class MaterialRightOut(BaseModel):

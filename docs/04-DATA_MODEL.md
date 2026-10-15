@@ -3953,6 +3953,25 @@ Native term entry and lifecycle commands are still unfinished. Bundle translatio
 embedded reads now consume persisted terms; this does not establish product entry support.
 
 
+Native entry: `POST /api/v1/obligations/{obligation_id}/material-right` requires
+`contract.create` for the contracting entity, `Idempotency-Key` and the parent contract's
+`If-Match: "sN"`. It takes `option_type`, `ssp_method`, optional `expiry_date`, and
+`is_discount_available_without_contract` (default false). `DISCOUNT_X_LIKELIHOOD` additionally
+requires `incremental_discount_ratio`, `expected_purchase_amount` (`amount`, `currency`) and
+`likelihood_estimate_id`; other methods omit these three fields. `RENEWAL_ALTERNATIVE` requires
+`RENEWAL_OPTION`. Currency derives from the contract; native input cannot set the legacy flag.
+
+The command locks the group then contract and permits stored DRAFT only with no pending
+activation review. Missing/stale preconditions return 428/412; duplicate terms or an invalid
+lifecycle return 409. Terms must compute as MATERIAL_RIGHT in every returned book; invalid
+terms or computation refusal return 422 and roll back the terms and computation together.
+Successful creation returns 201 with the dedicated-read Location and records AUD-FACT.
+The terms are immutable and do not append a contract event; activation content binds them,
+and their authors are excluded from approving activation, including via delegation.
+Historical reads retain the existing recorded/effective cut semantics. Governed correction,
+draft replacement acceptance, native UI, and migration conversion remain separate unfinished work.
+
+
 ### T-CON-15 `contract_cost_asset`
 
 - **Purpose.** Identity and terms of a capitalised cost to obtain or fulfil a contract (REQ-CST-001 to -003).
