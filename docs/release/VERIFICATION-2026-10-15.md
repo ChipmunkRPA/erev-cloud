@@ -2,9 +2,19 @@
 
 This development verification starts from `519de8c`, with the exact synthetic-key scanner
 exception and AI prompt-test module rename described below. It is not an immutable full-CI
-release result, accounting sign-off or deployment approval.
+release result, accounting sign-off or deployment approval. The separate dependency audit below
+was subsequently run in an immutable context on `621d412fcaa21bd35af898b5d48aec3761908309`.
 
 ## Completed checks
+
+- `make audit-deps` on clean `621d412`: passed in an immutable source context. All 86 pinned
+  Python dependencies were audited; eight environment markers were removed to include packages
+  used by other target platforms. Python vulnerabilities: zero. npm advisories: zero at every
+  severity. The context hashes before/after matched; dependency installations remained consistent.
+  Result digest: `89ed52d71a2a2afbb288e638b931f0d0021ad18719856b59ce7f2631d9ebd203`.
+  Logs/report: `.run/readiness-audit-deps-oct15.log`, `.run/reports/audit-deps/report.json`.
+  This is dependency-advisory evidence as of the run, not proof that all application security
+  and release requirements are satisfied.
 
 - `make lint`: passed after the repairs below, including formatting, source lint, design,
   vocabulary, dependency licences, secrets, OpenAPI, seed/fixture checks, control-marker

@@ -4650,3 +4650,23 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - The caller still owes fresh authorization, settings/budget admission and commit before lease
   release. Gateway/job dispatch, public APIs, other proposal kinds and human decisions remain
   unfinished; the full AI audit-lifecycle gate stays open. No deployment or readiness claim.
+
+## Composed narrative gateway attempt — October 15, 2026
+
+- Connected current persisted-job authorization, effective switches/settings, serialized
+  budget admission, read-only source retrieval, lazy provider construction and committed
+  narrative proposal evidence. The budget lease spans provider work through the usage commit;
+  no SQL transaction spans provider execution. Busy admission performs no model call.
+- Settings and human/source authorization are rechecked after a response. If a switch or
+  permission changes mid-call, usage is retained without retaining the returned narrative.
+  Typed provider errors/timeouts are logged and propagated for the future retry policy.
+- Real K-01/fake-provider test verifies default disablement, competing admission, success,
+  timeout, mid-call platform disablement and grant revocation, then exact budget exhaustion.
+  It observes no idle-in-transaction SQL session during provider work and no competing lease.
+- Verification: 272 combined tests passed, two Linux-only parser tests skipped; the expanded
+  final gateway scenario passed; strict typing passed for 766 sources; Ruff/diff checks pass.
+  Logs: .run/ai-gateway-{checks,final,types}.log. Local test cluster stopped afterward.
+- Still no registered AI_TASK handler/public submission: retry scheduling, durable failure
+  proposals for rejected admission/provider errors, notification and crash/unlogged-call
+  recovery remain open. Existing request/proposal idempotency is not yet a gateway guarantee.
+  Other AI tasks and human acceptance remain unfinished. No deployment or live provider calls.

@@ -2,6 +2,20 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Immutable dependency audit — October 15, 2026
+
+- make audit-deps passed on clean 621d412 in an immutable context: 86 of 86 pinned Python
+  packages audited, zero Python vulnerabilities; zero npm advisories at all severities.
+  Eight platform markers were removed for complete pinned-package coverage. Source and
+  installed dependency hashes remained unchanged. Report and digest are recorded in
+  docs/release/VERIFICATION-2026-10-15.md; log .run/readiness-audit-deps-oct15.log.
+- Backend unit/architecture verification remains active. Preserve its process and inspect
+  .run/readiness-unit-architecture-oct15.log before launching another database test run.
+  Historical-report cutoff repair also requires ledger-seal compatibility: LINE_MEMBERS
+  dynamically includes every stored line column, so adding a timestamp alone changes hashes.
+- Full implementation/release verification and independent accounting sign-off remain open.
+  No deployment. Verified dependency audit is not a production-readiness claim.
+
 ## Broader readiness verification — October 15, 2026
 
 - Full repository typing passed (917 Python sources plus frontend TypeScript); production build
@@ -222,26 +236,6 @@
 - The worker must still supply waiting/dispatch and delivery idempotency. Durable admission
   failures, notifications, crash/unlogged-call recovery and other proposal workflows remain
   open; no AI_TASK handler/public API is registered. No deployment or readiness claim.
-
-## Composed narrative gateway attempt — October 15, 2026
-
-- Connected current persisted-job authorization, effective switches/settings, serialized
-  budget admission, read-only source retrieval, lazy provider construction and committed
-  narrative proposal evidence. The budget lease spans provider work through the usage commit;
-  no SQL transaction spans provider execution. Busy admission performs no model call.
-- Settings and human/source authorization are rechecked after a response. If a switch or
-  permission changes mid-call, usage is retained without retaining the returned narrative.
-  Typed provider errors/timeouts are logged and propagated for the future retry policy.
-- Real K-01/fake-provider test verifies default disablement, competing admission, success,
-  timeout, mid-call platform disablement and grant revocation, then exact budget exhaustion.
-  It observes no idle-in-transaction SQL session during provider work and no competing lease.
-- Verification: 272 combined tests passed, two Linux-only parser tests skipped; the expanded
-  final gateway scenario passed; strict typing passed for 766 sources; Ruff/diff checks pass.
-  Logs: .run/ai-gateway-{checks,final,types}.log. Local test cluster stopped afterward.
-- Still no registered AI_TASK handler/public submission: retry scheduling, durable failure
-  proposals for rejected admission/provider errors, notification and crash/unlogged-call
-  recovery remain open. Existing request/proposal idempotency is not yet a gateway guarantee.
-  Other AI tasks and human acceptance remain unfinished. No deployment or live provider calls.
 
 ## Outstanding release verification
 
