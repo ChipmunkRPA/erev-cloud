@@ -9,14 +9,15 @@ from uuid import UUID
 from sqlalchemy import Select, select
 from sqlalchemy.orm import Session
 
-from erev_api.auth.principal import Principal
+from erev_api.auth.principal import Principal, RequestContext
 from erev_api.db.session import tenant_session
 from erev_api.db.tables import ai_proposal, calc_trace
 from erev_api.domain.ai.access import AIAccessRefused, narrative_reader, visible_narrative_trace
-from erev_api.domain.platform import actors
+from erev_api.domain.platform import actors, file_access
 from erev_api.domain.platform.approval_queries import Page
+from erev_api.enums import PrincipalKind
 from erev_api.problems import Problem
-from erev_api.schemas.ai import AIProposalOut
+from erev_api.schemas.ai import AIExtractionProposalOut, AIProposalOut
 
 
 def proposal(principal: Principal, proposal_id: UUID) -> AIProposalOut:
@@ -38,7 +39,7 @@ def proposal_in(
     return proposal_out(dict(row))
 
 
-def proposal_out(row: Mapping[str, Any]) -> AIProposalOut:
+def _actor_data(row: Mapping[str, Any]) -> dict[str, Any]:
     data = dict(row)
     for name, lookup in (("created_by", "creator"), ("updated_by", "updater")):
         data[name] = actors.actor(row[name], row[f"{name}_kind"], row[lookup])
@@ -47,7 +48,11 @@ def proposal_out(row: Mapping[str, Any]) -> AIProposalOut:
         if row["rejected_by"] is None
         else actors.actor(row["rejected_by"], "USER", row["rejector"])
     )
-    return AIProposalOut.model_validate(data)
+    return data
+
+
+def proposal_out(row: Mapping[str, Any]) -> AIProposalOut:
+    return AIProposalOut.model_validate(_actor_data(row))
 
 
 def proposal_statement(principal: Principal) -> Select[Any]:
@@ -92,3 +97,66 @@ def list_proposals[P: Page](
     with tenant_session(principal.db_context, read_only=True) as session:
         result = page(session, statement)
         return result, [proposal_out(row) for row in result.items]
+
+
+def proposal_detail(
+    ctx: RequestContext, proposal_id: UUID
+) -> AIProposalOut | AIExtractionProposalOut:
+    """Authorize extraction source metadata before selecting any suggestions or citations."""
+    principal = ctx.principal
+    held = principal.permission_scopes.get("ai.use", frozenset())
+    if (
+        principal.kind is not PrincipalKind.USER
+        or principal.id is None
+        or "ai.use" not in principal.permissions
+        or not held
+        or (
+            held != "*"
+            and (principal.entity_scope == "*" or not set(principal.entity_scope).issubset(held))
+        )
+    ):
+        raise Problem("forbidden")
+    with tenant_session(principal.db_context, read_only=True) as session:
+        binding = (
+            session.execute(
+                select(ai_proposal.c.kind, ai_proposal.c.file_object_id).where(
+                    ai_proposal.c.tenant_id == principal.tenant_id,
+                    ai_proposal.c.id == proposal_id,
+                )
+            )
+            .mappings()
+            .one_or_none()
+        )
+        if binding is None:
+            raise Problem("not-found", "AI proposal not found.")
+        if binding["kind"] != "CONTRACT_EXTRACTION":
+            return proposal_in(session, principal, proposal_id)
+        source = file_access.bound(session, ctx, binding["file_object_id"])
+        if (
+            source is None
+            or source["shredded_at"] is not None
+            or source["purpose"] != "ATTACHMENT"
+            or source["media_type"] != "application/pdf"
+        ):
+            raise Problem("not-found", "AI proposal not found.")
+        row = (
+            session.execute(
+                select(
+                    ai_proposal,
+                    actors.named(ai_proposal.c.created_by, tenant_id=ai_proposal.c.tenant_id).label(
+                        "creator"
+                    ),
+                    actors.named(ai_proposal.c.updated_by, tenant_id=ai_proposal.c.tenant_id).label(
+                        "updater"
+                    ),
+                    actors.named(
+                        ai_proposal.c.rejected_by, tenant_id=ai_proposal.c.tenant_id
+                    ).label("rejector"),
+                ).where(
+                    ai_proposal.c.tenant_id == principal.tenant_id, ai_proposal.c.id == proposal_id
+                )
+            )
+            .mappings()
+            .one()
+        )
+        return AIExtractionProposalOut.model_validate(_actor_data(dict(row)))

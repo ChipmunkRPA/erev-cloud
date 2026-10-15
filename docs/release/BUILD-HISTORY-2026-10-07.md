@@ -5095,3 +5095,23 @@ cleanup in the shared database session kernel was also repaired and regression-t
   to the actual actor-kind column before the passing database run.
 - Listing, other proposal kinds, review commands and broader release gates remain open.
   No deployment or live provider calls; this is development evidence, not production sign-off.
+
+## Number-explanation rejection — October 15, 2026
+
+- Added POST /ai/proposals/{id}/reject for supported number explanations. A human with current
+  source access supplies a nonblank reason and current If-Match ETag. The locked transition
+  records reviewer/time/reason, increments row version and audits once in the same transaction.
+  Expired or terminal items cannot be rejected. No provider or accounting command is called.
+- Source permission intersection is explicit in SQL inside the existing command transaction.
+  A source-access dependency runs before idempotency replay, preventing cached content from
+  bypassing later scope restrictions. Rejection remains available while AI is disabled.
+- Verification: all 19 AI domain regressions passed; both final API cases passed, including
+  overlapping permissions, expiry boundary, simultaneous reviewers (200/412), replay, narrowing
+  access after success, reason/precondition validation and one human audit event. 54 unit/layer
+  checks and 25 final route/layer checks passed. OpenAPI generation, full typecheck (925 Python
+  sources plus frontend), focused typing (776 sources), and lint passed. Logs:
+  .run/ai-reject-{regressions,api-verified,unit,architecture-final,openapi-final,typecheck,
+  types-verified,lint-final}.log. Early tests caught a missing row-version increment; corrected.
+  Expiry and revocation fixtures were corrected to use the UOW clock and revocation metadata.
+- Acceptance, extraction review, other proposal kinds, listing, expiry processing and broader
+  release gates remain open. No deployment or live provider calls; no production sign-off.

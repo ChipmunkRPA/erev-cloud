@@ -114,7 +114,12 @@ citations, status, actors and row-version ETag. Each read intersects current ai.
 contract.read entity grants and requires a visible current or past member contract of the
 retained calculation trace. Tenant-only trace RLS is insufficient by itself; the same member
 check now protects completed-job recovery. Reads remain available with AI disabled and make
-no provider call. Other proposal kinds fail closed until their source authorization is built.
+no provider call. The detail route also returns CONTRACT_EXTRACTION evidence after checking a
+current human ai.use grant and original ATTACHMENT/PDF access through the file ownership rules.
+It selects only binding metadata before authorization, then returns suggested fields, citations,
+source/text file IDs and the common status/actor/ETag metadata. Unreadable or shredded sources
+return 404; AI disable does not prevent retained reads. Other kinds still fail closed. Extraction
+list integration and document-text responses remain unfinished.
 POST /ai/proposals/{id}/reject now supports these number-explanation proposals for a human
 with current source access, a nonempty reason and the current If-Match ETag. Rejection locks
 the proposal, advances its row version and records the reviewer and audit event in one
@@ -175,7 +180,7 @@ reuse the retained request, unknown outcomes/usage block new calls, and mid-call
 records usage without a proposal. No model fallback or SDK-level retry is introduced.
 AI_TASK dispatch accepts bounded extraction selectors, source hash and field paths; the worker
 composition root supplies the isolated PDF parser and lazy provider factory. The public API
-still needs extraction proposal/document-text reads and human review/acceptance. Queue selectors and gateway paths
+still needs extraction list/document-text reads and human review/acceptance. Queue selectors and gateway paths
 now use the fixed catalogue; arbitrary accounting fields cannot be requested.
 
 The PDF adapter has file/page/text and parser limits, an isolated subprocess, timeout cleanup

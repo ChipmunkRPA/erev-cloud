@@ -2,6 +2,24 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Authorized extraction proposal detail — October 15, 2026
+
+- GET /ai/proposals/{id} now returns CONTRACT_EXTRACTION evidence as a distinct response shape
+  alongside number explanations. Common actor/status/citation/ETag metadata is shared; extraction
+  responses include source/text file IDs and the retained suggested-field array.
+- The query selects binding metadata first, requires a current human ai.use grant and current
+  original ATTACHMENT/PDF ownership access, and only then loads content/citations. Unreadable or
+  shredded sources return 404. Reads work with AI disabled and neither decrypt text nor call a
+  provider. Existing narrative source checks and narrative-only rejection/list paths are retained.
+- Verification: five PostgreSQL API tests passed, including worker-produced evidence, AI-off
+  reads, forbidden readers, another AI-enabled user without source access, missing/shredded
+  sources and existing narrative list/rejection regressions. Twenty-four layer/file-access
+  checks passed. Full lint and typecheck passed (933 Python sources plus frontend), focused
+  typing passed 784 sources, OpenAPI/frontend regeneration and formatting/diff checks passed.
+  Logs: .run/ai-extraction-read-{api,architecture,lint,typecheck,types-final,openapi}.log.
+- Extraction list integration, original document-text responses, human review/acceptance and
+  broader release/accounting verification remain open. No deployment or live provider calls.
+
 ## Authorized extraction submission API — October 15, 2026
 
 - Added POST /ai/contract-extractions with file_id as its only input. It requires a human
@@ -209,26 +227,6 @@
   helper directly for strict typing. No production code was loosened for those fixes.
 - Listing, acceptance, extraction and other AI operations remain open, along with the broader
   accounting/verification backlog and independent sign-off. No deployment or live AI calls.
-
-## Number-explanation rejection — October 15, 2026
-
-- Added POST /ai/proposals/{id}/reject for supported number explanations. A human with current
-  source access supplies a nonblank reason and current If-Match ETag. The locked transition
-  records reviewer/time/reason, increments row version and audits once in the same transaction.
-  Expired or terminal items cannot be rejected. No provider or accounting command is called.
-- Source permission intersection is explicit in SQL inside the existing command transaction.
-  A source-access dependency runs before idempotency replay, preventing cached content from
-  bypassing later scope restrictions. Rejection remains available while AI is disabled.
-- Verification: all 19 AI domain regressions passed; both final API cases passed, including
-  overlapping permissions, expiry boundary, simultaneous reviewers (200/412), replay, narrowing
-  access after success, reason/precondition validation and one human audit event. 54 unit/layer
-  checks and 25 final route/layer checks passed. OpenAPI generation, full typecheck (925 Python
-  sources plus frontend), focused typing (776 sources), and lint passed. Logs:
-  .run/ai-reject-{regressions,api-verified,unit,architecture-final,openapi-final,typecheck,
-  types-verified,lint-final}.log. Early tests caught a missing row-version increment; corrected.
-  Expiry and revocation fixtures were corrected to use the UOW clock and revocation metadata.
-- Acceptance, extraction review, other proposal kinds, listing, expiry processing and broader
-  release gates remain open. No deployment or live provider calls; no production sign-off.
 
 ## Outstanding release verification
 

@@ -118,6 +118,160 @@
         "title": "AIExplanationIn",
         "type": "object"
       },
+      "AIExtractionProposalOut": {
+        "description": "Extraction suggestions remain review evidence, never accepted contract values.",
+        "properties": {
+          "ai_model_log_id": {
+            "format": "uuid",
+            "title": "Ai Model Log Id",
+            "type": "string"
+          },
+          "citations": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Citations",
+            "type": "array"
+          },
+          "content": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Content",
+            "type": "array"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_by": {
+            "$ref": "#/components/schemas/ActorOut"
+          },
+          "document_text_file_id": {
+            "format": "uuid",
+            "title": "Document Text File Id",
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "file_object_id": {
+            "format": "uuid",
+            "title": "File Object Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "job_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Id"
+          },
+          "kind": {
+            "const": "CONTRACT_EXTRACTION",
+            "title": "Kind",
+            "type": "string"
+          },
+          "problem": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Problem"
+          },
+          "rejected_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rejected At"
+          },
+          "rejected_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ActorOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rejection_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rejection Reason"
+          },
+          "row_version": {
+            "title": "Row Version",
+            "type": "integer"
+          },
+          "status": {
+            "$ref": "#/components/schemas/AiProposalStatus"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "updated_by": {
+            "$ref": "#/components/schemas/ActorOut"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "job_id",
+          "citations",
+          "ai_model_log_id",
+          "expires_at",
+          "problem",
+          "created_at",
+          "created_by",
+          "updated_at",
+          "updated_by",
+          "row_version",
+          "rejected_by",
+          "rejected_at",
+          "rejection_reason",
+          "kind",
+          "file_object_id",
+          "document_text_file_id",
+          "content"
+        ],
+        "title": "AIExtractionProposalOut",
+        "type": "object"
+      },
       "AIProposalOut": {
         "description": "Retained number-explanation evidence authorized through its source trace.",
         "properties": {
@@ -247,12 +401,8 @@
         },
         "required": [
           "id",
-          "kind",
           "status",
           "job_id",
-          "subject_type",
-          "subject_id",
-          "content",
           "citations",
           "ai_model_log_id",
           "expires_at",
@@ -264,7 +414,11 @@
           "row_version",
           "rejected_by",
           "rejected_at",
-          "rejection_reason"
+          "rejection_reason",
+          "kind",
+          "subject_type",
+          "subject_id",
+          "content"
         ],
         "title": "AIProposalOut",
         "type": "object"
@@ -43894,7 +44048,7 @@
     },
     "/api/v1/ai/proposals/{id}": {
       "get": {
-        "description": "Read retained number explanations under the caller's current source permissions.",
+        "description": "Read retained evidence under the caller's current source permissions.",
         "operationId": "ai_proposals_get",
         "parameters": [
           {
@@ -43913,7 +44067,15 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AIProposalOut"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/AIProposalOut"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AIExtractionProposalOut"
+                    }
+                  ],
+                  "title": "Response Ai Proposals Get"
                 }
               }
             },

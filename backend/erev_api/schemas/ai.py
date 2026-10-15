@@ -28,16 +28,12 @@ class AIContractExtractionIn(BaseModel):
     file_id: UUID
 
 
-class AIProposalOut(BaseModel):
-    """Retained number-explanation evidence authorized through its source trace."""
+class AIProposalEvidenceOut(BaseModel):
+    """Common retained proposal metadata."""
 
     id: UUID
-    kind: Literal["NUMBER_EXPLANATION"]
     status: AiProposalStatus
     job_id: UUID | None
-    subject_type: Literal["calc_trace"]
-    subject_id: UUID
-    content: dict[str, Any]
     citations: list[dict[str, Any]]
     ai_model_log_id: UUID
     expires_at: datetime
@@ -50,6 +46,24 @@ class AIProposalOut(BaseModel):
     rejected_by: ActorOut | None
     rejected_at: datetime | None
     rejection_reason: str | None
+
+
+class AIProposalOut(AIProposalEvidenceOut):
+    """Retained number-explanation evidence authorized through its source trace."""
+
+    kind: Literal["NUMBER_EXPLANATION"]
+    subject_type: Literal["calc_trace"]
+    subject_id: UUID
+    content: dict[str, Any]
+
+
+class AIExtractionProposalOut(AIProposalEvidenceOut):
+    """Extraction suggestions remain review evidence, never accepted contract values."""
+
+    kind: Literal["CONTRACT_EXTRACTION"]
+    file_object_id: UUID
+    document_text_file_id: UUID
+    content: list[dict[str, Any]]
 
 
 class AIProposalRejectIn(BaseModel):

@@ -420,7 +420,7 @@ export interface paths {
     };
     /**
      * Proposals Get
-     * @description Read retained number explanations under the caller's current source permissions.
+     * @description Read retained evidence under the caller's current source permissions.
      */
     get: operations["ai_proposals_get"];
     put?: never;
@@ -7820,6 +7820,76 @@ export interface components {
         | "loss_provision_version";
       /** Period */
       period?: string | null;
+    };
+    /**
+     * AIExtractionProposalOut
+     * @description Extraction suggestions remain review evidence, never accepted contract values.
+     */
+    AIExtractionProposalOut: {
+      /**
+       * Ai Model Log Id
+       * Format: uuid
+       */
+      ai_model_log_id: string;
+      /** Citations */
+      citations: {
+        [key: string]: unknown;
+      }[];
+      /** Content */
+      content: {
+        [key: string]: unknown;
+      }[];
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      created_by: components["schemas"]["ActorOut"];
+      /**
+       * Document Text File Id
+       * Format: uuid
+       */
+      document_text_file_id: string;
+      /**
+       * Expires At
+       * Format: date-time
+       */
+      expires_at: string;
+      /**
+       * File Object Id
+       * Format: uuid
+       */
+      file_object_id: string;
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Job Id */
+      job_id: string | null;
+      /**
+       * Kind
+       * @constant
+       */
+      kind: "CONTRACT_EXTRACTION";
+      /** Problem */
+      problem: {
+        [key: string]: unknown;
+      } | null;
+      /** Rejected At */
+      rejected_at: string | null;
+      rejected_by: components["schemas"]["ActorOut"] | null;
+      /** Rejection Reason */
+      rejection_reason: string | null;
+      /** Row Version */
+      row_version: number;
+      status: components["schemas"]["AiProposalStatus"];
+      /**
+       * Updated At
+       * Format: date-time
+       */
+      updated_at: string;
+      updated_by: components["schemas"]["ActorOut"];
     };
     /**
      * AIProposalOut
@@ -24843,7 +24913,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["AIProposalOut"];
+          "application/json":
+            | components["schemas"]["AIProposalOut"]
+            | components["schemas"]["AIExtractionProposalOut"];
         };
       };
       /** @description Problem: unauthenticated, session-expired */

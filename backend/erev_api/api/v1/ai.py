@@ -37,6 +37,7 @@ from erev_api.enums import AiProposalKind, AiProposalStatus
 from erev_api.schemas.ai import (
     AIContractExtractionIn,
     AIExplanationIn,
+    AIExtractionProposalOut,
     AIProposalOut,
     AIProposalRejectIn,
 )
@@ -137,16 +138,16 @@ def proposals_list(
 @router.get(
     "/ai/proposals/{id}",
     operation_id="ai_proposals_get",
-    response_model=AIProposalOut,
+    response_model=AIProposalOut | AIExtractionProposalOut,
     responses=problem_responses("unauthenticated", "session-expired", "forbidden", "not-found"),
 )
 def proposals_get(
     id: UUID,
     response: Response,
     ctx: Annotated[RequestContext, Depends(require("ai.use"))],
-) -> AIProposalOut:
-    """Read retained number explanations under the caller's current source permissions."""
-    out = queries.proposal(ctx.principal, id)
+) -> AIProposalOut | AIExtractionProposalOut:
+    """Read retained evidence under the caller's current source permissions."""
+    out = queries.proposal_detail(ctx, id)
     response.headers["ETag"] = row_etag(out.row_version)
     return out
 

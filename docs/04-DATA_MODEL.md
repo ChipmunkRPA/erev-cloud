@@ -8042,6 +8042,13 @@ and `object_label`, following the existing computation-fact audit convention.
 **API-S-EvidencePackCreate** (`POST /evidence-packs`; SCREENS_B OQ-B-10). Fields `kind` (E-66, R), `entity_code`, `book`, `period_key`, `period_lock_id`, `contract_external_ids` (array<string>), `from_date`, `to_date`, `as_of` (date). Required per kind: `CLOSE` needs `entity_code`, `book`, `period_key` and `period_lock_id`; `CONTRACT_SAMPLE` needs `contract_external_ids` (1 to 50) and `as_of`; `CHANGE` needs `from_date` and `to_date`; `ACCESS` needs `as_of`. A field not used by the kind returns 422 `validation-failed`. Response 202 API-S-Job (kind `EVIDENCE_PACK`) with header `X-Erev-Evidence-Pack-Id`; the pack follows the T-RPT-04 checks and manifest layout.
 
 **AI proposals and settings** (API-R-47, API-R-04; SCREENS_B OQ-B-14, OQ-B-18, OQ-B-26).
+- `GET /ai/proposals/{id}` supports number explanations and contract extractions, returning a
+  kind-specific response with common status, actors, timestamps, citations and row-version ETag.
+  Extraction detail requires a current human ai.use grant and readable, unshredded original
+  ATTACHMENT/PDF. Source ownership is checked before selecting suggested fields or citations.
+  The response includes file_object_id, document_text_file_id and the retained content array;
+  it does not decrypt text or call a provider. AI disable does not revoke retained reads.
+  Extraction list integration and the document-text response below remain unimplemented.
 - `POST /ai/contract-extractions` accepts `{file_id}` only and returns 202 API-S-Job with
   `Location: /api/v1/jobs/{id}`. Permission `ai.use`, human initiator, current readable unshredded
   ATTACHMENT/PDF and enabled AI/text consent are required. Missing and unreadable sources both

@@ -222,6 +222,38 @@ def test_extraction_submission_and_worker(
         proposal = session.execute(select(ai_proposal)).mappings().one()
         assert proposal["status"] == "proposed" and proposal["file_object_id"] == file_id
         assert proposal["created_by"] == actor.member.user_id
+        proposal_id = proposal["id"]
+        session.execute(
+            update(tenant)
+            .where(tenant.c.id == world.place.tenant_id)
+            .values(
+                ai_disabled_at=clock.now(),
+                ai_disabled_by=actor.member.user_id,
+                ai_disabled_by_kind="USER",
+            )
+        )
+    detail_path = f"/api/v1/ai/proposals/{proposal_id}"
+    detail = call(world.app, "GET", detail_path, headers=headers)
+    assert detail.status_code == 200, detail.text
+    assert detail.json()["kind"] == "CONTRACT_EXTRACTION"
+    assert detail.json()["file_object_id"] == str(file_id)
+    assert detail.json()["document_text_file_id"] == str(proposal["document_text_file_id"])
+    assert detail.json()["content"] == proposal["content"]
+    assert detail.json()["citations"] == proposal["citations"]
+    assert detail.headers["ETag"]
+    assert len(observed) == len(parsed) == 1
+    forbidden = call(
+        world.app, "GET", detail_path, headers=cookie_headers(reader.token, reader.csrf_token)
+    )
+    assert forbidden.status_code == 403, forbidden.text
+    other = holding(world.app, colleague(world.place.tenant_id, "other_viewer"), "viewer")
+    hidden_detail = call(
+        world.app, "GET", detail_path, headers=cookie_headers(other.token, other.csrf_token)
+    )
+    assert hidden_detail.status_code == 404, hidden_detail.text
+    missing = call(world.app, "GET", f"/api/v1/ai/proposals/{uuid4()}", headers=headers)
+    assert missing.status_code == 404, missing.text
+    with tenant_session(world.place.principal.db_context) as session:
         # Model a subsequently unavailable source in the fixture; replay must recheck it.
         session.execute(
             update(file_object)
@@ -235,6 +267,8 @@ def test_extraction_submission_and_worker(
         )
     replay_denied = call(world.app, "POST", PATH, json=body, headers=headers)
     assert replay_denied.status_code == 404, replay_denied.text
+    unavailable = call(world.app, "GET", detail_path, headers=headers)
+    assert unavailable.status_code == 404, unavailable.text
     assert len(observed) == 1
 
 
