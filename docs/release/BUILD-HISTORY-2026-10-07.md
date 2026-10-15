@@ -5566,3 +5566,24 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Upload/job navigation, field decisions, responsive panel tabs and draft-form integration remain
   unfinished. Broader release and independent accounting gates stay open. No deployment or live
   provider calls. The preview server was stopped after inspection.
+
+## Review-source upload and resumable job navigation — October 15, 2026
+
+- Added SF-20:new at /contracts/review/new, activating the existing Contracts entry. It validates
+  nonempty PDFs up to 25 MiB, uploads ATTACHMENT, submits file_id, polls the returned AI_TASK and
+  opens its retained proposal. A job URL resumes after reload, including after AI disable.
+  Only the initiating human can cancel a running task. Failed/lost requests retain errors and
+  retry keys; the successful upload is reused if extraction submission fails. Unrelated jobs
+  and malformed result IDs cannot navigate. No entity or accounting values are inferred.
+- Corrected a permission mismatch: ai.use now admits ATTACHMENT upload before a contract exists,
+  without granting record-attachment or other-purpose writes. New API evidence checks upload,
+  extraction admission and refusal of contract attachment/SSP upload. Existing no-upload tests
+  now use a role without ai.use; request-attachment tests still refuse non-requesters and closed
+  requests even when an AI source upload is permitted. Earlier logs preserve old-role assertion
+  failures; the verified run passes all 25 extraction/file API tests.
+- 30 frontend route/API/navigation checks, frontend typing and full lint passed. Local Chromium
+  upload-to-job navigation with mocked HTTP returned no page errors; light/dark captures were
+  inspected. This is not live API/provider or complete browser acceptance evidence. Logs:
+  .run/ai-review-upload-{pg-verified,tests,types,python-types,lint,browser}.log.
+- DOCX, field decisions, responsive panel tabs, draft-form integration, broad release verification
+  and independent accounting sign-off remain open. No deployment or live provider calls.

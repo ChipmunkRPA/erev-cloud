@@ -2,6 +2,25 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Administrator AI version authoring — October 15, 2026
+
+- Added AI-scoped create/read/edit/test/submit/withdraw endpoints under /ai/settings/versions.
+  Workspace-wide settings.manage and MFA are required; category and scope cannot be changed.
+  Existing registry validation, hashes, simulation jobs, audit and If-Match behavior are reused.
+  No publish endpoint or enable shortcut. General accounting authoring remains restricted.
+- Admin-only authoring now passes instead of xfail. Lifecycle coverage confirms submission keeps
+  AI disabled; isolation checks cover other categories/tenants and invalid accounting values.
+  The independent administrator approval-read regression remains strict xfail because generic
+  REGISTRY_VERSION routing still needs config.approve. AI-specific routing/visibility and UI are
+  next; the standard demo/J-19 workflow is not claimed complete.
+- Generated OpenAPI/TypeScript contracts add five paths (six operations); existing paths are
+  unchanged. Eight API checks pass and one approval-read check is strict xfail; 34 other
+  authority/governance/route checks passed in the expanded run. Typing (794 files) and full
+  lint pass. Evidence: .run/ai-settings-author-{api-final,verified-final,types-final,openapi,lint}.log.
+  Earlier expanded runs caught test-fixture enum/key-reuse mistakes, corrected in the API rerun.
+- No deployment or provider calls. Frozen CI on 3cf8f5b remains active; independent accounting
+  sign-off and broader release verification remain outstanding.
+
 ## Expose administrator-only AI configuration gap — October 15, 2026
 
 - Preparing the standard J-19/demo fixture revealed that its Tomas/Grace Tenant Admin personas
@@ -205,27 +224,6 @@
 - Back-navigation to field choices, unsupported terms, DOCX, responsive tabs, full browser
   acceptance, broader release gates and independent accounting sign-off remain open.
   No deployment or provider calls.
-
-## Review-source upload and resumable job navigation — October 15, 2026
-
-- Added SF-20:new at /contracts/review/new, activating the existing Contracts entry. It validates
-  nonempty PDFs up to 25 MiB, uploads ATTACHMENT, submits file_id, polls the returned AI_TASK and
-  opens its retained proposal. A job URL resumes after reload, including after AI disable.
-  Only the initiating human can cancel a running task. Failed/lost requests retain errors and
-  retry keys; the successful upload is reused if extraction submission fails. Unrelated jobs
-  and malformed result IDs cannot navigate. No entity or accounting values are inferred.
-- Corrected a permission mismatch: ai.use now admits ATTACHMENT upload before a contract exists,
-  without granting record-attachment or other-purpose writes. New API evidence checks upload,
-  extraction admission and refusal of contract attachment/SSP upload. Existing no-upload tests
-  now use a role without ai.use; request-attachment tests still refuse non-requesters and closed
-  requests even when an AI source upload is permitted. Earlier logs preserve old-role assertion
-  failures; the verified run passes all 25 extraction/file API tests.
-- 30 frontend route/API/navigation checks, frontend typing and full lint passed. Local Chromium
-  upload-to-job navigation with mocked HTTP returned no page errors; light/dark captures were
-  inspected. This is not live API/provider or complete browser acceptance evidence. Logs:
-  .run/ai-review-upload-{pg-verified,tests,types,python-types,lint,browser}.log.
-- DOCX, field decisions, responsive panel tabs, draft-form integration, broad release verification
-  and independent accounting sign-off remain open. No deployment or live provider calls.
 
 
 ## Outstanding release verification

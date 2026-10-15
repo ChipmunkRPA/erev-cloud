@@ -771,6 +771,7 @@ def require_authority(
     entity_id: UUID | None,
     action: str,
     version_id: UUID | None = None,
+    category: RegistryCategory | str | None = None,
 ) -> None:
     """Pass when the caller holds ``config.author`` FOR THE VERSION'S SCOPE (module docstring,
     "Who authors a version"; PRD BR-UX-06 rev 1.203): for all entities when the version is a
@@ -781,8 +782,19 @@ def require_authority(
     the workspace's version, the scope asked — like the answer it names no entity. SYSTEM —
     provisioning, a seed, a job — holds every permission for all entities
     (``entity_scope.held_scope``). A scope that is not ENTITY, or names no entity, is the
-    workspace's: the check fails closed."""
+    workspace's: the check fails closed. A tenant AI version additionally admits a holder
+    of workspace-wide settings.manage through the AI-specific authoring routes; other
+    categories and scopes keep the configuration-author requirement."""
     principal = uow.principal
+    # AI settings are workspace administration. This exception never authorizes
+    # an accounting category, a book version or an entity-scoped version.
+    if (
+        category == RegistryCategory.AI
+        and RegistryScope(scope) is RegistryScope.TENANT
+        and entity_id is None
+        and entity_scope.holds_all(principal, "settings.manage")
+    ):
+        return
     workspace = RegistryScope(scope) is not RegistryScope.ENTITY or entity_id is None
     if workspace:
         covered = entity_scope.holds_all(principal, AUTHOR_PERMISSION)
@@ -829,6 +841,7 @@ def _require_authority_over(uow: UnitOfWork, version: Mapping[str, Any], *, acti
         entity_id=_uuid(version["entity_id"]),
         action=action,
         version_id=UUID(str(version["id"])),
+        category=str(version["category"]),
     )
 
 
@@ -852,7 +865,9 @@ def create_policy(
     entity_id, resolved = scope_key(
         session, scope=scope, entity_code=entity_code, book_code=book_code
     )
-    require_authority(uow, scope=scope, entity_id=entity_id, action=presets.CREATE_ACTION)
+    require_authority(
+        uow, scope=scope, entity_id=entity_id, action=presets.CREATE_ACTION, category=category
+    )
     problem = statement_problem(category=category, values=values, unset=unset)
     if problem is not None:
         raise problem
