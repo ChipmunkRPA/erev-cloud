@@ -2,6 +2,24 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Expose administrator-only AI configuration gap — October 15, 2026
+
+- Preparing the standard J-19/demo fixture revealed that its Tomas/Grace Tenant Admin personas
+  cannot author or approve general registry policies. They hold settings.manage, not config.author
+  or config.approve. Existing AI re-enable tests add admin rights to accounting-role actors.
+- Added a strict expected-failure API regression for admin-only AI draft creation, accepting only
+  the confirmed forbidden response as the known failure. Other failures remain errors; success
+  becomes a strict XPASS requiring removal of the marker. A companion protects accounting-policy
+  denial. This records an unfinished workflow, not a production-readiness pass.
+- The corrective scope is an AI-specific admin lifecycle with independent approval and retained
+  policy evidence, without broadening accounting privileges or bypassing the emergency switch.
+  The standard demo fixture/E2E journey is not added through a permission bypass. Release
+  limitations now distinguish this gap from the successful local browser probe.
+- Six existing governance/boundary checks pass; the new workflow check is a confirmed strict
+  expected failure. Focused typing and full lint pass. Evidence: .run/ai-admin-workflow-{tests,types,lint}.log.
+  Frozen CI on 3cf8f5b remains active.
+  No deployment, provider call or independent accounting sign-off.
+
 ## Future-starting draft reader and browser acceptance — October 15, 2026
 
 - Real browser acceptance exposed GET contract returning 422 after a successful creation:
@@ -208,24 +226,6 @@
   .run/ai-review-upload-{pg-verified,tests,types,python-types,lint,browser}.log.
 - DOCX, field decisions, responsive panel tabs, draft-form integration, broad release verification
   and independent accounting sign-off remain open. No deployment or live provider calls.
-
-## Contract review evidence screen — October 15, 2026
-
-- Added SF-20 /contracts/review/:proposalId with permission-gated retained proposal/document
-  reads, original text and field values, confidence/check indicators, accepted reviewer/time,
-  recorded edited values/reasons and an accepted-draft link. Whole-proposal rejection requires
-  a reason and the read ETag, preserves failure information, and refreshes retained evidence.
-  Expired or missing-ETag proposals withhold rejection. Document failures offer reload.
-- Citation spans must refer to the original file and fit the page. Highlighting uses Unicode code
-  points to match Python offsets, never HTML, then focuses the highlight; Escape returns to the
-  citation. Corrected focus handling so unrelated renders cannot steal focus back from a form.
-- 19 route/API/permission checks, frontend typing and full lint passed. Local Chromium preview had no
-  page errors and confirmed highlight/focus; light/dark 1440 and dark 1280 captures retained in
-  .run/ai-review-screen-*.png. This preview mounts the component with cached synthetic responses,
-  not the full shell or live backend. Logs: .run/ai-review-screen-{tests,types,browser,lint}.log.
-- Upload/job navigation, field decisions, responsive panel tabs and draft-form integration remain
-  unfinished. Broader release and independent accounting gates stay open. No deployment or live
-  provider calls. The preview server was stopped after inspection.
 
 
 ## Outstanding release verification

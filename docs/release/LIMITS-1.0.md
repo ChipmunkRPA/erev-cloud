@@ -90,7 +90,18 @@ publication whose whole values enable AI now clears the switch under independent
 approval with workspace-wide settings.manage, in addition to configuration approval. First
 enablement and emergency-switch clearing withhold automatic approval; an unrelated budget edit
 while AI remains enabled keeps normal routing. Publication replay cannot undo a later disable,
-and publishing ai.enabled=false leaves the switch intact. There is no direct enable command.
+and publishing ai.enabled=false leaves the switch intact. There is no direct enable command. The J-19.9 administrator-only workflow is
+also missing: the demo's Tomas/Grace hold tenant_admin, which gives settings.manage but neither
+config.author nor config.approve. POST /policies therefore refuses their AI draft before approval.
+Existing re-enable tests add tenant_admin to an accountant/Controller and do not establish that
+these administrator-only personas can complete J-19.9. The strict expected failure in
+`backend/tests/api/test_ai_admin_workflow.py` records this distinction; it is an open defect, not
+passing release evidence. Its companion verifies administrators remain unable to author accounting
+policies. A future fix must supply category-scoped AI authoring and independent admin approval,
+including normal version hashes, scope checks, MFA and anti-self-approval, without granting general
+accounting configuration permissions or making enablement an immediate switch. The demo AI fixture
+and standard J-19 journey remain blocked on this implementation; the active engineering goal is not.
+
 Number-explanation submission now serializes admission with the tenant switch. Model changes,
 including a reset to the catalogue default, and enabling contract-text sending now require an
 independent administrator decision even while AI is off. Turning text sending off retains normal

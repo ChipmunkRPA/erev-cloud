@@ -5548,3 +5548,21 @@ cleanup in the shared database session kernel was also repaired and regression-t
   .run/ai-review-read-{pg,typecheck,focused-types,frontend-types,lint,openapi}.log.
   Broader release/accounting, structured-term conversion and browser gates remain open.
   No deployment or live provider calls.
+
+## Contract review evidence screen — October 15, 2026
+
+- Added SF-20 /contracts/review/:proposalId with permission-gated retained proposal/document
+  reads, original text and field values, confidence/check indicators, accepted reviewer/time,
+  recorded edited values/reasons and an accepted-draft link. Whole-proposal rejection requires
+  a reason and the read ETag, preserves failure information, and refreshes retained evidence.
+  Expired or missing-ETag proposals withhold rejection. Document failures offer reload.
+- Citation spans must refer to the original file and fit the page. Highlighting uses Unicode code
+  points to match Python offsets, never HTML, then focuses the highlight; Escape returns to the
+  citation. Corrected focus handling so unrelated renders cannot steal focus back from a form.
+- 19 route/API/permission checks, frontend typing and full lint passed. Local Chromium preview had no
+  page errors and confirmed highlight/focus; light/dark 1440 and dark 1280 captures retained in
+  .run/ai-review-screen-*.png. This preview mounts the component with cached synthetic responses,
+  not the full shell or live backend. Logs: .run/ai-review-screen-{tests,types,browser,lint}.log.
+- Upload/job navigation, field decisions, responsive panel tabs and draft-form integration remain
+  unfinished. Broader release and independent accounting gates stay open. No deployment or live
+  provider calls. The preview server was stopped after inspection.
