@@ -5255,7 +5255,18 @@ reauthorizes all retained source readers and verifies file metadata, ZIP/manifes
 source bytes before committing one evidence.export audit. Only then are application/zip bytes
 returned with attachment, sandbox and no-store headers. Pending/failed packs return 409;
 verification failure returns 422. Reads never complete pending work or regenerate output.
-These read routes do not themselves create packs. Automatic generation remains pending.
+These read routes do not themselves create packs. Automatic post-lock first-close
+preparation and retained completion are implemented; re-lock variance and other pack kinds
+remain pending.
+
+**Evidence metadata read audit (October 14, 2026).**
+Successful register and detail GETs commit `evidence.read` before returning metadata,
+with `Cache-Control: no-store`. Register reads record only returned page IDs through
+AUD-FACT (including an empty page; large pages use its digest rule), not unseen rows.
+Detail reads name the pack, status, retained lock and manifest hash. Authorization,
+validation or audit-commit failure produces no successful-read event or successful
+metadata response. Internal source/header reads during download do not add a separate
+read event; the successful download still records `evidence.export`.
 
 **Retained manifest download (October 14, 2026).**
 `GET /evidence-packs/{id}/manifest` uses the same five source/export permissions,

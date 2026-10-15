@@ -10160,6 +10160,10 @@ Author BS-3. Uses CTR (PHASES §1 row 12). Indicative size 16 items; this phase 
   - **Gates:** GK-01 `make ci`; GK-03 `make openapi`
 
 - [ ] **RPS-16 Period evidence packs and contract sample packs.**
+  - October 14 read-audit increment: successful register/detail HTTP reads commit
+    evidence.read before returning metadata; no-store prevents cached responses from
+    bypassing a fresh read. Failed reads do not record successful access. Downloads
+    retain their separate evidence.export event. Other kinds and re-lock remain open.
   - October 14, 2026 partial implementation: first-close creation/list/read/download and automatic post-lock preparation are implemented, with retained source readiness, audit verification, atomic retention and retry reuse. Lock approval atomically queues a preparation job; preparation success means a pack is queued, not ready. Automatic first-close completion notification is atomic with archive retention and retry-safe. Other kinds and re-lock variance remain incomplete. The named CTL-041 first-close manifest test now passes through real close/journal/reconciliation commands; its synthetic ledger reference is not independent accounting approval, and the full controls/release gates remain unclaimed.
   - **Prerequisites:** RPS-15
   - **Scope:**

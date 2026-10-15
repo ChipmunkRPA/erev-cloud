@@ -3152,3 +3152,42 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
 - Local logs/evidence live under the new checkout's ignored .run/. Earlier October 8 evidence
   remains historical. Automatic pack enqueue/availability notification, other pack kinds,
   variance and current release/accounting gates remain outstanding. No deployment/readiness claim.
+
+
+## Public repository publication — October 5, 2026 (America/Los_Angeles)
+
+- Owner requested public publication with commercial use prohibited. Prepared the supplied directory
+  snapshot for `https://github.com/ChipmunkRPA/erev-cloud`, using PolyForm Noncommercial 1.0.0.
+- Updated LICENSE, NOTICE, bundled web copies, Python/npm package metadata, README and About dialog.
+  Third-party notices remain intact. Previously granted MIT rights are not revoked.
+- Excluded the entire `research-harness/` and `docs/research/` directories at the owner's explicit request; retained application
+  source, fixtures, screenshots and documentation. See `docs/release/PUBLICATION-2026-10-05.md`.
+- Actual validation: locked `npm ci --ignore-scripts --no-audit --no-fund`; AboutDialog vitest 4/4 passed;
+  frontend Vite production build passed (existing large-chunk warning). `python3 scripts/secrets_check.py`:
+  4,053 files scanned, 8 allow-listed, zero findings and zero unused entries before this note.
+- Additional redacted Gitleaks scan reviewed: test constants, placeholder JWT, accounting identifiers
+  and historical test references; research-harness findings removed with the entire directory.
+  Targeted credential-pattern scan found only intentional self-test fixtures. These are targeted
+  publication checks, not a full security audit. No generated dependencies or real environment/state
+  files are staged.
+- Backend/integration/accounting suites were not rerun for this licensing/publication change. Earlier
+  results below remain historical. No deployment or cloud mutation; production/accounting blockers
+  in LIMITS-1.0.md remain. Publication supersedes the earlier private-only instruction in this notebook.
+
+### Publication correction — October 5, 2026
+
+- Removed the entire research-harness and docs/research directories from the publication and replaced the initial root
+  commit, so main has no ancestor containing those files. Used an exact force-with-lease against the
+  previously verified remote commit. No application code changed; application tests were not rerun
+  for this directory removal. External clones and GitHub cached/unreachable objects cannot be recalled
+  by a branch rewrite alone.
+
+### Public report website cleanup — October 5, 2026
+
+- Scanned the repository for website references and reviewed documentation matches. Removed 155
+  external website URLs plus bare domains across 12 documents and removed the design source
+  bibliography. Kept explicit citation-removal markers, mandatory third-party notices, dependency
+  metadata and operational endpoints. This does not revalidate the remaining historical prose.
+- Follow-up documentation URL scan found only owner links, internal/example addresses and a local
+  URL-validation regex. `git diff --check` passed. No application source changed; no application
+  tests rerun. Replaced the public root with an exact force-with-lease against the verified head.

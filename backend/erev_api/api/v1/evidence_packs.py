@@ -24,6 +24,7 @@ from erev_api.api.lists import (
     list_params,
     paginate,
 )
+from erev_api.audit.writer import record_facts
 from erev_api.auth.dependencies import require
 from erev_api.auth.principal import RequestContext
 from erev_api.db.tables import evidence_pack, legal_entity, period
@@ -100,6 +101,16 @@ def evidence_packs_list(
             uow.session, evidence_queries.list_statement(uow.principal), PACK_LIST, params
         )
         items = [evidence_queries.summary(row) for row in result.items]
+        record_facts(
+            uow,
+            action="evidence.read",
+            object_type="evidence_pack",
+            ids=[item.id for item in items],
+            contract_ids=[],
+            detail={"view": "register", "returned_count": len(items)},
+        )
+        uow.commit()
+    response.headers["Cache-Control"] = "no-store"
     if result.total_count is not None:
         response.headers[TOTAL_COUNT_HEADER] = result.total_count
     return ListOut[ClosePackSummaryOut](items=items, next_cursor=result.next_cursor)
@@ -150,11 +161,29 @@ def evidence_packs_create(
     responses=problem_responses(*PROBLEMS),
 )
 def evidence_packs_get(
-    pack_id: UUID, ctx: Annotated[RequestContext, Depends(require("report.run"))], deps: Deps
+    pack_id: UUID,
+    response: Response,
+    ctx: Annotated[RequestContext, Depends(require("report.run"))],
+    deps: Deps,
 ) -> ClosePackOut:
     """Read a retained CLOSE header and manifest under current source scope."""
     with unit_of_work(ctx, clock=deps.clock, keyring=deps.keyring, files=deps.files) as uow:
-        return evidence_queries.get_close(uow, pack_id)
+        result = evidence_queries.get_close(uow, pack_id)
+        uow.audit(
+            action="evidence.read",
+            object_type="evidence_pack",
+            object_id=pack_id,
+            contract_ids=[],
+            detail={
+                "view": "detail",
+                "status": result.status.value,
+                "period_lock_id": str(result.period_lock_id),
+                "manifest_sha256": result.manifest_sha256,
+            },
+        )
+        uow.commit()
+    response.headers["Cache-Control"] = "no-store"
+    return result
 
 
 @router.get(

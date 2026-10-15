@@ -840,3 +840,12 @@ keyboard-accessible hash-copy controls. Presence is distinct from archive verifi
 the download boundary continues to verify original bytes and retained sources. The manifest
 is separately hashed, not listed inside itself. Re-lock variance, other pack kinds, remaining
 presentation and actual browser acceptance remain outstanding; this does not complete RPS-20.
+
+
+## October 14, 2026 — evidence metadata read audits
+
+Register and detail HTTP reads now commit evidence.read before returning no-store responses.
+Register facts describe only the authorized returned page; detail facts bind the pack's
+retained lock/status/hash. Failed reads do not record successful access. This closes the
+read-audit gap in SF-09 but does not implement the outstanding pack kinds or re-lock variance,
+and does not supply independent accounting approval or complete release verification.

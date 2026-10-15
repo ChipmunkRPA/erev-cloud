@@ -39,6 +39,7 @@ from zoneinfo import ZoneInfo
 
 import pytest
 from erev_api.approvals.engine import ROLE_REQUIRED_DETAIL
+from erev_api.audit import chain as audit_chain
 from erev_api.audit import verify as audit_verify
 from erev_api.auth.keyring import KeyRing
 from erev_api.clock import FrozenClock
@@ -2612,14 +2613,61 @@ def test_first_close_archive_verifies_every_component_before_returning_bytes(
     header_path = f"/api/v1/evidence-packs/{pack['id']}"
     download_path = header_path + "/download"
     manifest_path = header_path + "/manifest"
+
+    def read_events() -> list[Mapping[str, Any]]:
+        with world.place.uow(reader) as uow:
+            return list(
+                uow.session.execute(
+                    select(audit_event)
+                    .where(
+                        audit_event.c.action == "evidence.read",
+                        audit_event.c.actor_id == auditor.member.user_id,
+                    )
+                    .order_by(audit_event.c.id)
+                ).mappings()
+            )
+
+    assert read_events() == []
     pending = get(world.app, header_path, auditor)
     assert pending.status_code == 200, pending.text
+    assert pending.headers["cache-control"] == "no-store"
+    reads = read_events()
+    assert len(reads) == 1
+    assert reads[0]["object_id"] == pack["id"]
+    assert reads[0]["outcome"] == "SUCCESS"
+    assert reads[0]["detail"]["view"] == "detail"
+    assert reads[0]["detail"]["status"] == "QUEUED"
+    assert reads[0]["detail"]["period_lock_id"] == str(lock["id"])
+    assert reads[0]["detail"]["manifest_sha256"] is None
     assert pending.json()["status"] == "QUEUED" and pending.json()["manifest"] is None
     assert pending.json()["download_href"] is None
     assert pending.json()["file_count"] is None
     assert pending.json()["manifest_sha256"] is None
     assert pending.json()["entity_code"] == bound.request.entity_code
     assert pending.json()["period_key"] == bound.request.period_key
+    original_flush = audit_chain.flush
+    failed_reads: list[str] = []
+
+    def fail_read_commit(uow: UnitOfWork) -> int:
+        read = next(
+            (event for event in uow.audit_events if event["action"] == "evidence.read"), None
+        )
+        appended = original_flush(uow)
+        if read is not None:
+            failed_reads.append(read["detail"]["view"])
+            raise RuntimeError("read audit commit fault")
+        return appended
+
+    # Fail after the event was appended inside the transaction: no metadata or audit survives.
+    with monkeypatch.context() as patch:
+        patch.setattr(audit_chain, "flush", fail_read_commit)
+        for path in (header_path, "/api/v1/evidence-packs"):
+            failed_read = get(world.app, path, auditor)
+            assert failed_read.status_code == 500
+            assert pack["pack_no"] not in failed_read.text
+            assert str(pack["id"]) not in failed_read.text
+    assert failed_reads == ["detail", "register"]
+    assert read_events() == reads
     unavailable = get(world.app, download_path, auditor)
     assert (unavailable.status_code, slug(unavailable)) == (409, "invalid-transition")
     unavailable_manifest = get(world.app, manifest_path, auditor)
@@ -2641,6 +2689,13 @@ def test_first_close_archive_verifies_every_component_before_returning_bytes(
     listing_path = "/api/v1/evidence-packs"
     listed = get(world.app, listing_path, auditor, params={"count": "true", "status": "QUEUED"})
     assert listed.status_code == 200, listed.text
+    assert listed.headers["cache-control"] == "no-store"
+    reads = read_events()
+    assert len(reads) == 2
+    register = next(row for row in reads if row["detail"]["view"] == "register")
+    assert register["object_id"] is None
+    assert register["detail"]["ids"] == [str(pack["id"])]
+    assert register["detail"]["returned_count"] == 1
     assert listed.headers["X-Erev-Total-Count"] == "1"
     assert [item["id"] for item in listed.json()["items"]] == [str(pack["id"])]
     assert "manifest" not in listed.json()["items"][0]
@@ -2667,6 +2722,14 @@ def test_first_close_archive_verifies_every_component_before_returning_bytes(
     for invalid_filters in ({"status": "MISSING"}, {"sort": "manifest"}, {"unknown": "x"}):
         invalid_list = get(world.app, listing_path, auditor, params=invalid_filters)
         assert (invalid_list.status_code, slug(invalid_list)) == (422, "validation-failed")
+    reads = read_events()
+    assert len(reads) == 5  # One detail, one populated register and three empty pages.
+    empty_reads = [row for row in reads if row["detail"].get("returned_count") == 0]
+    assert len(empty_reads) == 3
+    assert all(row["detail"]["ids"] == [] for row in empty_reads)
+    missing_header = get(world.app, f"/api/v1/evidence-packs/{UUID(int=0)}", auditor)
+    assert missing_header.status_code == 404
+    assert read_events() == reads
     with world.place.uow(reader) as uow:
         assert not evidence_readiness.close_ready(uow.session, parent["id"], parent["params"])
     # Readiness rejects terminal children and contradictory job/report states. These
@@ -2831,6 +2894,7 @@ def test_first_close_archive_verifies_every_component_before_returning_bytes(
         uow.commit()
     filters = {"entity": "AVM-US", "book": "ASC606", "period": "FY2026-P09", "kind": "CLOSE"}
     for sort in ("-id", "created_at", "pack_no"):
+        before_page_ids = {event["id"] for event in read_events()}
         first = get(
             world.app,
             listing_path,
@@ -2860,6 +2924,13 @@ def test_first_close_archive_verifies_every_component_before_returning_bytes(
             params={**filters, "sort": sort, "cursor": cursor, "status": "QUEUED"},
         )
         assert (changed_filter.status_code, slug(changed_filter)) == (422, "validation-failed")
+        page_reads = [event for event in read_events() if event["id"] not in before_page_ids]
+        assert len(page_reads) == 2
+        assert {tuple(event["detail"]["ids"]) for event in page_reads} == {
+            (first.json()["items"][0]["id"],),
+            (second.json()["items"][0]["id"],),
+        }
+        assert all(event["detail"]["returned_count"] == 1 for event in page_reads)
     fresh_finished = run_journal_job(world, fresh_job["id"], attempts=1)
     assert fresh_finished["state"] == "SUCCEEDED", fresh_finished
     lost_ack = True
@@ -2925,6 +2996,13 @@ def test_first_close_archive_verifies_every_component_before_returning_bytes(
     assert completed_summary["file_count"] == len(manifest["files"])
     assert completed_summary["manifest_sha256"] == archive.manifest_sha256
     assert shown.json()["download_href"] == download_path
+    reads_before_downloads = read_events()
+    assert len(reads_before_downloads) == 13  # Includes six cursor-page reads above.
+    completed_reads = [
+        row for row in reads_before_downloads if row["detail"].get("status") == "SUCCEEDED"
+    ]
+    assert len(completed_reads) == 1
+    assert completed_reads[0]["detail"]["manifest_sha256"] == archive.manifest_sha256
     for _ in range(2):
         downloaded = get(world.app, download_path, auditor)
         assert downloaded.status_code == 200, downloaded.text[:200]
@@ -2990,6 +3068,8 @@ def test_first_close_archive_verifies_every_component_before_returning_bytes(
     for path in (listing_path, header_path, download_path, manifest_path):
         denied_response = get(world.app, path, auditor)
         assert (denied_response.status_code, slug(denied_response)) == (403, "forbidden")
+    # Downloads have their own export audits; failures/revocations are never successful reads.
+    assert read_events() == reads_before_downloads
     denied_replay = call(
         world.app,
         "POST",

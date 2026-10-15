@@ -2,6 +2,23 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Evidence metadata read audit — October 14, 2026 (RPS-16 continued)
+
+- Successful register/detail HTTP reads now commit evidence.read before returning no-store
+  responses. Register facts contain only authorized returned-page IDs (the existing AUD-FACT
+  digest rule bounds large pages), including empty pages. Detail facts bind status, retained
+  lock and manifest hash. Internal header reads during download add no duplicate read event.
+- Regression verifies durable actor/object metadata, exact cursor-page populations, empty
+  pages, invalid filters/missing records, revoked access, unchanged export counts, and failure
+  after audit append rolling back both the event and successful metadata delivery.
+- Final evidence/close, audit-writer and complete MFA regression: 37 passed in 170.41s.
+  Ruff formatting/lint, source mypy and OpenAPI compatibility passed. Earlier test iterations
+  corrected actor identity/count expectations and fault injection before the final passing run.
+  All processes are terminal. Frontend unchanged; its earlier results remain historical.
+- Archived the oldest publication notebook section verbatim to the build history to preserve
+  the 20 KB limit. No deployment or accounting-calculation change. Other pack kinds, re-lock
+  variance, browser/release gates and independent accounting approval remain outstanding.
+
 ## First-close contents checklist — October 14, 2026 (RPS-20 continued)
 
 - Detail now lists required sections and exact missing payload filenames, identifies the
@@ -204,44 +221,6 @@ not authorize deployment, provisioning or changes to a live database.
 - SUPERVISOR VERIFICATION NEEDED: make zap-baseline
 - make tf-validate: passed on 40ae405 October 7 (validation only); rerun for final candidate.
 - SUPERVISOR VERIFICATION NEEDED: make backup, make restore-verify (isolated local drill only)
-
-## Public repository publication — October 5, 2026 (America/Los_Angeles)
-
-- Owner requested public publication with commercial use prohibited. Prepared the supplied directory
-  snapshot for `https://github.com/ChipmunkRPA/erev-cloud`, using PolyForm Noncommercial 1.0.0.
-- Updated LICENSE, NOTICE, bundled web copies, Python/npm package metadata, README and About dialog.
-  Third-party notices remain intact. Previously granted MIT rights are not revoked.
-- Excluded the entire `research-harness/` and `docs/research/` directories at the owner's explicit request; retained application
-  source, fixtures, screenshots and documentation. See `docs/release/PUBLICATION-2026-10-05.md`.
-- Actual validation: locked `npm ci --ignore-scripts --no-audit --no-fund`; AboutDialog vitest 4/4 passed;
-  frontend Vite production build passed (existing large-chunk warning). `python3 scripts/secrets_check.py`:
-  4,053 files scanned, 8 allow-listed, zero findings and zero unused entries before this note.
-- Additional redacted Gitleaks scan reviewed: test constants, placeholder JWT, accounting identifiers
-  and historical test references; research-harness findings removed with the entire directory.
-  Targeted credential-pattern scan found only intentional self-test fixtures. These are targeted
-  publication checks, not a full security audit. No generated dependencies or real environment/state
-  files are staged.
-- Backend/integration/accounting suites were not rerun for this licensing/publication change. Earlier
-  results below remain historical. No deployment or cloud mutation; production/accounting blockers
-  in LIMITS-1.0.md remain. Publication supersedes the earlier private-only instruction in this notebook.
-
-### Publication correction — October 5, 2026
-
-- Removed the entire research-harness and docs/research directories from the publication and replaced the initial root
-  commit, so main has no ancestor containing those files. Used an exact force-with-lease against the
-  previously verified remote commit. No application code changed; application tests were not rerun
-  for this directory removal. External clones and GitHub cached/unreachable objects cannot be recalled
-  by a branch rewrite alone.
-
-### Public report website cleanup — October 5, 2026
-
-- Scanned the repository for website references and reviewed documentation matches. Removed 155
-  external website URLs plus bare domains across 12 documents and removed the design source
-  bibliography. Kept explicit citation-removal markers, mandatory third-party notices, dependency
-  metadata and operational endpoints. This does not revalidate the remaining historical prose.
-- Follow-up documentation URL scan found only owner links, internal/example addresses and a local
-  URL-validation regex. `git diff --check` passed. No application source changed; no application
-  tests rerun. Replaced the public root with an exact force-with-lease against the verified head.
 
 ## Historical release record
 
