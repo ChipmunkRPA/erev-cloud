@@ -209,9 +209,13 @@ a live browser/API workflow. Returning to field review now preserves local draft
 reapplies changed review choices to their matching fields/rows. Rejected source rows are removed;
 human-added rows remain. Retained deleted rows are restored with unique identities and keys.
 Renamed keys are rebound on continuation; draft value changes still require matching field
-decisions. This recovery is in-memory, not a saved draft across reloads. DOCX extraction,
-responsive panel tabs, unsupported accounting-term mappings and full browser acceptance remain
-unfinished. Changing a bound draft field/key can cause the server to refuse acceptance; the UI
+decisions. This recovery is in-memory, not a saved draft across reloads. Below 1440 px,
+Document / Proposed fields panel tabs retain choices across pane and viewport changes;
+citations switch to Document and Escape returns focus after the fields pane becomes visible.
+The document page selector renders one source page at a time, and citations select their source
+page before focusing the highlight. Component checks and a cached-data Chromium preview cover
+these interactions; they do not establish a live browser/API acceptance workflow. DOCX extraction,
+unsupported accounting-term mappings and full browser acceptance remain unfinished. Changing a bound draft field/key can cause the server to refuse acceptance; the UI
 does not silently change a recorded field decision to match it.
 
 The bundled deterministic extraction fixture now accepts a real upload identity and the

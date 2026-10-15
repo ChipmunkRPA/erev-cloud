@@ -7256,6 +7256,7 @@
   "ai.review.title": "Contract review",
   "ai.review.field": "Proposed field",
   "ai.review.document": "Document",
+  "ai.review.selectPage": "Document page",
   "ai.review.fields": "Proposed fields",
   "ai.review.panes": "Contract review panes",
   "ai.review.page": "Page {page}",

@@ -5463,3 +5463,28 @@ cleanup in the shared database session kernel was also repaired and regression-t
   passed (936 Python sources plus frontend), as did final formatting/lint/diff checks.
 - Broader release/accounting and list-performance gates remain open. No deployment or live
   provider calls.
+
+
+## AI-assisted draft activation control — October 15, 2026
+
+- Corrected the earlier acceptance prerequisite: PRD SM-11/BR-AI-05 permits a normal human command
+  to create a new draft; AI_PROPOSAL_ACCEPTANCE applies to changes to existing records. New
+  drafts instead require AI_ASSISTED activation review. The separate existing-record subject
+  remains open, but is not a prerequisite for the new-draft acceptance route.
+- Activation now derives AI_ASSISTED from immutable accepted extraction-to-contract links, so
+  published auto-approval cannot bypass human review at any amount. Approval content includes
+  provenance IDs, accepting human/time and a hash of field decisions, without quoted review text.
+  Contracts without provenance retain their historical hash shape. Accepting humans are excluded
+  from deciding activation, including via delegation, using the existing authorship mechanism.
+- Verification: the PostgreSQL witness proves the AI-assisted contract waits under a published
+  auto-approval rule, the ordinary control auto-approves, self-approval is refused and an
+  independent reviewer can activate. The existing multi-flag activation regression also passed.
+  A test assertion was updated for the expected MANUAL_ENTRY flag induced by human authorship.
+  113 unit/layer/routing checks passed. Full typecheck passed (937 Python sources plus frontend),
+  focused typing passed 788 sources, and final lint/diff checks passed. Logs:
+  .run/ai-activation-provenance-{unit,verified,pg-final,typecheck,types-final,lint}.log. Full lint
+  also passed. The pg-final
+  log retains the earlier flag assertion failure; verified records its successful correction.
+- New-draft acceptance still requires atomic command integration, source/expiry validation and
+  structured-term handling. Broader release/accounting and list-performance gates remain open.
+  No deployment or live provider calls.

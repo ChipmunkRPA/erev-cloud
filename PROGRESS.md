@@ -2,6 +2,19 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Source-page navigation for retained contract review — October 15, 2026
+
+- The document pane now renders one selected source page instead of every page. The labelled
+  selector is available for multipage documents; citations select their page and focus its
+  highlight. Manual navigation clears the old highlight without changing field decisions.
+- Twelve route tests and a cached-data Chromium probe cover page navigation, citation jumps,
+  Escape focus and retained edits. Screenshots inspected at 1280/1440 px. Logs:
+  .run/ai-review-pages-{tests,types-final,lint,browser}.log. Frontend typing and full lint pass;
+  the initial type-check caught two Field API mistakes corrected before the final run.
+- Updated release limitations for the responsive panes and page navigation. Full release evidence,
+  live browser acceptance and independent accounting sign-off remain outstanding. Frozen CI on
+  3cf8f5b is still live; Docker daemon remains unavailable. No deployment or live provider calls.
+
 ## Responsive contract review panes — October 15, 2026
 
 - SF-20 now uses Document / Proposed fields panel tabs below 1440 px and two columns above,
@@ -210,31 +223,6 @@
   final-unit,final-lint}.log. Structured-term mappings, existing-record acceptance approval,
   complete browser review, broad release verification and independent accounting sign-off remain
   open. No deployment or live provider calls.
-
-## AI-assisted draft activation control — October 15, 2026
-
-- Corrected the earlier acceptance prerequisite: PRD SM-11/BR-AI-05 permits a normal human command
-  to create a new draft; AI_PROPOSAL_ACCEPTANCE applies to changes to existing records. New
-  drafts instead require AI_ASSISTED activation review. The separate existing-record subject
-  remains open, but is not a prerequisite for the new-draft acceptance route.
-- Activation now derives AI_ASSISTED from immutable accepted extraction-to-contract links, so
-  published auto-approval cannot bypass human review at any amount. Approval content includes
-  provenance IDs, accepting human/time and a hash of field decisions, without quoted review text.
-  Contracts without provenance retain their historical hash shape. Accepting humans are excluded
-  from deciding activation, including via delegation, using the existing authorship mechanism.
-- Verification: the PostgreSQL witness proves the AI-assisted contract waits under a published
-  auto-approval rule, the ordinary control auto-approves, self-approval is refused and an
-  independent reviewer can activate. The existing multi-flag activation regression also passed.
-  A test assertion was updated for the expected MANUAL_ENTRY flag induced by human authorship.
-  113 unit/layer/routing checks passed. Full typecheck passed (937 Python sources plus frontend),
-  focused typing passed 788 sources, and final lint/diff checks passed. Logs:
-  .run/ai-activation-provenance-{unit,verified,pg-final,typecheck,types-final,lint}.log. Full lint
-  also passed. The pg-final
-  log retains the earlier flag assertion failure; verified records its successful correction.
-- New-draft acceptance still requires atomic command integration, source/expiry validation and
-  structured-term handling. Broader release/accounting and list-performance gates remain open.
-  No deployment or live provider calls.
-
 
 ## Outstanding release verification
 

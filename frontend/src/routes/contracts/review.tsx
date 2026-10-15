@@ -116,6 +116,8 @@ function ReviewEvidence({
       { replace: true },
     );
   };
+  const [pageNumber, setPageNumber] = useState<number | null>(null);
+  const visiblePage = text?.pages.find((page) => page.page_no === pageNumber) ?? text?.pages[0];
   const [selected, setSelected] = useState<{ citation: Citation; label: string } | null>(null);
   const [choices, setChoices] = useState(() =>
     proposal.content.map((field) =>
@@ -284,7 +286,28 @@ function ReviewEvidence({
             className="min-w-0 rounded-lg border border-hairline p-[var(--panel-pad)]"
           >
             <h2 className="text-title-sm text-fg-1">{t("ai.review.document")}</h2>
-            {text?.pages.map((page) => {
+            {text !== undefined && text.pages.length > 1 ? (
+              <Field name="document-page" label={t("ai.review.selectPage")}>
+                {(fieldProps) => (
+                  <select
+                    {...fieldProps}
+                    className={controlClass(false)}
+                    value={visiblePage?.page_no ?? ""}
+                    onChange={(event) => {
+                      setPageNumber(Number(event.currentTarget.value));
+                      setSelected(null);
+                    }}
+                  >
+                    {text.pages.map((page) => (
+                      <option key={page.page_no} value={page.page_no}>
+                        {t("ai.review.page", { page: page.page_no })}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </Field>
+            ) : null}
+            {(visiblePage === undefined ? [] : [visiblePage]).map((page) => {
               const active = selected?.citation.page === page.page_no ? selected : null;
               const parts =
                 active === null
@@ -378,6 +401,7 @@ function ReviewEvidence({
                           onClick={(event) => {
                             trigger.current = event.currentTarget;
                             triggerIndex.current = index;
+                            setPageNumber(citation.page);
                             changePane("document");
                             setSelected({ citation, label });
                           }}

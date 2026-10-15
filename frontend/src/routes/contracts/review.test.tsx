@@ -166,6 +166,56 @@ describe("SF-20 retained review", () => {
     ).toBe("Confirmed against signed source");
   });
 
+  it("renders one source page and opens a cited page without losing review edits", async () => {
+    vi.mocked(fetchDocumentText).mockResolvedValue({
+      ...text,
+      pages: [
+        { page_no: 1, text: "First page introduction" },
+        { page_no: 2, text: "Second page customer" },
+        { page_no: 3, text: "Third page terms" },
+      ],
+    });
+    vi.mocked(fetchProposal).mockResolvedValue({
+      etag: '"r1"',
+      proposal: {
+        ...proposal,
+        content: [
+          {
+            ...proposal.content[0],
+            citation: { ref_type: "document", ref_id: ID, page: 2, char_start: 12, char_end: 20 },
+          },
+        ],
+      },
+    });
+    show();
+    const selector = await screen.findByRole("combobox", { name: "Document page" });
+    expect(screen.getByText("First page introduction")).toBeTruthy();
+    expect(screen.queryByText("Third page terms")).toBeNull();
+    fireEvent.change(selector, { target: { value: "3" } });
+    expect(screen.getByText("Third page terms")).toBeTruthy();
+    expect(screen.queryByText("First page introduction")).toBeNull();
+    fireEvent.click(screen.getByRole("radio", { name: "Edit" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Edited value for Customer" }), {
+      target: { value: "Confirmed customer" },
+    });
+    const citation = screen.getByRole("button", { name: "Page 2, characters 12–20" });
+    fireEvent.click(citation);
+    expect((selector as HTMLSelectElement).value).toBe("2");
+    expect(screen.queryByText("Third page terms")).toBeNull();
+    const mark = document.querySelector("mark");
+    expect(mark?.textContent).toBe("customer");
+    expect(document.activeElement).toBe(mark);
+    if (mark === null) throw new Error("Missing highlight");
+    fireEvent.keyDown(mark, { key: "Escape" });
+    expect(document.activeElement).toBe(citation);
+    expect(
+      (screen.getByRole("textbox", { name: "Edited value for Customer" }) as HTMLInputElement)
+        .value,
+    ).toBe("Confirmed customer");
+    fireEvent.change(selector, { target: { value: "1" } });
+    expect(document.querySelector("mark")).toBeNull();
+  });
+
   it("requires low-confidence decisions and reasons before leaving source review", async () => {
     show();
     const accept = await screen.findByRole("radio", { name: "Accept" });
