@@ -441,6 +441,7 @@ def _insert_extraction(
     record(
         uow,
         action="ai_proposal.create",
+        contract_ids=(),
         object_type="ai_proposal",
         object_id=proposal_id,
         after={"kind": "CONTRACT_EXTRACTION", "status": status},

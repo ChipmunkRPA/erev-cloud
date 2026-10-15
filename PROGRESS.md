@@ -2,6 +2,24 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Repair AI lifecycle audit references and worker inventories — October 15, 2026
+
+- Narrative rejection and expiry now pass distinct source contract IDs to the audit writer
+  inside their tenant transaction; missing source contracts refuse rather than writing an
+  unlinked event. Extraction creation/rejection explicitly names no pre-existing draft contract.
+  Database tests verify hashed detail, the contract audit index, rollback and retained evidence.
+- Reviewed expiry's limited tenant-directory read and bounded tenant SYSTEM transitions; added
+  the reasons to TXN-07 and caller inventories. Removed the implemented AI_TASK from the pending
+  registry while preserving detector checks for omissions, duplication and wrong build phases.
+- 24 targeted architecture checks, eight PostgreSQL lifecycle/API checks, strict typing (793
+  sources) and full lint pass. Separate cross-tenant source check: .run/ai-audit-keys-tenant-check.log.
+  PostgreSQL verification ran on a new isolated instance at 55441; initial encoding setup errors
+  are retained separately from the verified UTF-8 run. Logs: .run/ai-audit-architecture.log and
+  .run/ai-audit-keys-{pg-verified,types,lint}.log. See docs/release/CI-2026-10-15.md.
+- The full frozen CI on 3cf8f5b remains live on 55439 and predates these repairs. No restart,
+  deployment or live model call. Browser fixtures/acceptance, remaining implementation and release
+  gates, and independent accounting sign-off remain open.
+
 ## Bind the known extraction fixture to real upload requests — October 15, 2026
 
 - Found that the bundled fake extraction response matched only its original fixed document ID,
@@ -209,27 +227,6 @@
   passed (936 Python sources plus frontend), as did final formatting/lint/diff checks.
 - Broader release/accounting and list-performance gates remain open. No deployment or live
   provider calls.
-
-## Explicit extraction draft inputs and line bindings — October 15, 2026
-
-- Added draft-intake preparation using the existing ContractCreateIn schema, explicit entity,
-  field decisions and line_bindings from retained paths to obligation keys. Entity codes must
-  agree, activation is forbidden, mapping targets must exist and be unique, and every retained
-  line must map exactly once. Rejected lines cannot be mapped. Mapped product and exact amount
-  must agree with reviewed values, and line currency must match the explicit draft currency.
-- Required contract identity, currency, quantities and obligation keys come from human input;
-  no source value fills missing fields. Additional human-authored lines remain possible. This
-  is not an acceptance endpoint. Header/customer/structured-term binding, the pending approval
-  subject AI_PROPOSAL_ACCEPTANCE, command authorization/expiry/SoD and atomic persistence remain.
-- Verification: 76 unit/layer tests passed, including 24 new draft cases, 35 field-review cases
-  and 17 architecture checks. Tests cover required inputs, entity/activation/command refusals,
-  mapping coverage/uniqueness, product/sign/amount/currency mismatches, edit consistency and
-  rejected lines. Initial fixture/scalar comparisons were corrected to use API-S-Money objects
-  and decimal-string quantities; guards were retained. Full typecheck passed (936 Python sources
-  plus frontend), focused typing passed 788 sources and final formatting/lint/diff checks passed.
-  Full lint also passed. Logs: .run/ai-draft-review-{verified,typecheck,types-final,lint}.log.
-- Broader release/accounting verification and large-tenant list performance remain open. No
-  deployment or live provider calls; the acceptance route remains disabled.
 
 
 ## Outstanding release verification

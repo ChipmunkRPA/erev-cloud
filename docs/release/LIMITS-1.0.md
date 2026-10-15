@@ -217,9 +217,12 @@ known redacted-document request. It reuses retained sample values/confidences an
 source citations; unrelated documents/prompts/digests are refused. This is a prerequisite
 for live browser fixtures, not evidence that demo seeding, Linux parsing or complete browser
 acceptance already works. AI unit checks pass locally; two Linux resource checks remain skipped.
-Broad architecture verification also identified existing missing contract-key arguments in AI
-proposal audit writers, unlisted expiry SYSTEM/platform callers and a stale pending AI_TASK
-registry entry. The diagnostic has 12 failures across these causes; they remain open.
+Broad architecture verification identified missing contract-key arguments in AI proposal
+writers, unlisted expiry SYSTEM/platform callers and a stale pending AI_TASK entry. These
+identified defects are now repaired: narrative rejection/expiry audit events name their source
+contracts, while unaccepted extraction events explicitly name none. All 24 targeted architecture
+checks and eight isolated PostgreSQL lifecycle/API checks pass. See CI-2026-10-15.md; these
+repairs do not constitute a new full CI or browser acceptance pass.
 
 The Anthropic adapter is mock-tested, uses the official SDK, disables SDK retries and telemetry,
 and resolves secrets lazily. Contract-review and explain-narrative prompts have retained bytes,

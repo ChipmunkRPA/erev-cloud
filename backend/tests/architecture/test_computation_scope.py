@@ -264,6 +264,9 @@ DOOR: Final = {
 JOB: Final = "a job, a sweep or a scheduler tick: its own transaction, no person behind it"
 HOOK: Final = "an approval's effect, stamped SYSTEM inside the decider's transaction"
 SYSTEM_BUILDERS: Final = {
+    ("backend/erev_api/domain/ai/expiry.py", "expire_tenant"): (
+        "SCH-11: tenant-scoped expiry of overdue proposed AI evidence; no computation or acceptance"
+    ),
     ("backend/erev_api/domain/contracts/dirty_sweep.py", "run"): JOB,
     (UOW, "UnitOfWork.as_system"): "the computation of a group (this rule)",
     ("backend/erev_api/jobs/registry.py", "run_job"): JOB,

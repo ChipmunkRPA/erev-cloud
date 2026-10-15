@@ -45,6 +45,11 @@ Call = tuple[str, str]  # repository-relative module path, enclosing function
 
 # Who opens a platform session, under which scope, and why.
 CALLERS: Final[Mapping[Call, tuple[str, str]]] = {
+    ("backend/erev_api/domain/ai/expiry.py", "expire_due"): (
+        "tenant_directory",
+        "SCH-11: read tenant IDs only, then expire overdue AI evidence "
+        "in bounded tenant transactions",
+    ),
     ("backend/erev_api/auth/invitations.py", "find_invitation"): (
         "tenant_directory",
         "an invitation is found by its token before any tenant is known (04 §16.12)",

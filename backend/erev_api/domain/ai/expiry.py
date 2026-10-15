@@ -11,6 +11,7 @@ from erev_api.auth.principal import system_principal
 from erev_api.db.session import platform_session
 from erev_api.db.tables import ai_proposal, tenant
 from erev_api.db.transitions import apply
+from erev_api.domain.ai.audit_keys import proposal_contract_ids
 from erev_api.jobs.context import JobRuntime, system_unit_of_work
 
 BATCH_SIZE: Final = 100
@@ -35,7 +36,12 @@ def expire_tenant(runtime: JobRuntime, tenant_id: UUID) -> int:
         ) as uow:
             rows = tuple(
                 uow.session.execute(
-                    select(ai_proposal.c.id, ai_proposal.c.row_version)
+                    select(
+                        ai_proposal.c.id,
+                        ai_proposal.c.row_version,
+                        ai_proposal.c.kind,
+                        ai_proposal.c.subject_id,
+                    )
                     .where(
                         ai_proposal.c.tenant_id == tenant_id,
                         ai_proposal.c.status == "proposed",
@@ -63,6 +69,9 @@ def expire_tenant(runtime: JobRuntime, tenant_id: UUID) -> int:
                 )
                 uow.audit(
                     action="ai_proposal.expire",
+                    contract_ids=proposal_contract_ids(
+                        uow, kind=row["kind"], subject_id=row["subject_id"]
+                    ),
                     object_type="ai_proposal",
                     object_id=row["id"],
                     before={"status": "proposed"},

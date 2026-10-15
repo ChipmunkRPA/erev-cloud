@@ -32,7 +32,6 @@ _JOB_COLUMN: Final = 2
 _OUTBOX_COLUMN: Final = 3
 
 PENDING_JOB_HANDLERS: tuple[tuple[str, str], ...] = (
-    ("AI_TASK", "AIX"),
     ("DEAL_PREVIEW", "FCS"),
     ("FORECAST_RUN", "FCS"),
     ("REPLAY_VERIFY", "SOP"),
@@ -157,15 +156,17 @@ def test_dg_arc_08_job_registries() -> None:
         "JOB_QUEUE does not cover E-14 exactly",
         "JOB_QUEUE[SYNC_RUN] differs from the 05 §5.6 execution profile",
     ]
-    assert findings(pending=PENDING_JOB_HANDLERS[1:]) == [
+    assert findings(handlers=handlers - {"AI_TASK"}) == [
         "literals without a registration or PENDING_JOB_HANDLERS entry: AI_TASK"
     ]
-    assert findings(handlers={*handlers, "AI_TASK"}) == ["AI_TASK is registered and pending"]
     assert findings(pending=(*PENDING_JOB_HANDLERS, ("AI_TASK", "AIX"))) == [
+        "AI_TASK is registered and pending"
+    ]
+    assert findings(pending=(*PENDING_JOB_HANDLERS, ("DEAL_PREVIEW", "FCS"))) == [
         "PENDING_JOB_HANDLERS repeats a literal"
     ]
-    assert findings(pending=(("AI_TASK", "PLF"), *PENDING_JOB_HANDLERS[1:])) == [
-        "AI_TASK is built in AIX, not PLF (PHASES §5.3)"
+    assert findings(pending=(("DEAL_PREVIEW", "PLF"), *PENDING_JOB_HANDLERS[1:])) == [
+        "DEAL_PREVIEW is built in FCS, not PLF (PHASES §5.3)"
     ]
 
 

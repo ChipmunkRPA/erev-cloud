@@ -18,6 +18,7 @@ from erev_api.db.tables import (
     ai_model_log,
     ai_proposal,
     audit_event,
+    audit_event_contract,
     contract_version,
     file_object,
     role_assignment,
@@ -462,6 +463,11 @@ def test_retained_extraction_evidence_success_failure_and_rollback(
             ).mappings()
         )
         assert len(events) == 11
+        assert all(
+            "contract_id" not in event["detail"] and "contract_ids" not in event["detail"]
+            for event in events
+        )
+        assert session.scalar(select(func.count()).select_from(audit_event_contract)) == 0
         assert all(
             event["actor_id"] == world.maya.member.user_id and event["actor_kind"] == "USER"
             for event in events

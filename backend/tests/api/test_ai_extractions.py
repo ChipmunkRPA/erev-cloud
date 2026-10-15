@@ -381,6 +381,8 @@ def test_extraction_submission_and_worker(
             .all()
         )
         assert len(reviews) == 1 and reviews[0]["actor_id"] == actor.member.user_id
+        assert "contract_id" not in reviews[0]["detail"]
+        assert "contract_ids" not in reviews[0]["detail"]
         assert session.scalar(select(func.count()).select_from(ai_model_log)) == 1
     with tenant_session(world.place.principal.db_context) as session:
         session.execute(

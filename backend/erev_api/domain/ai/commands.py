@@ -16,6 +16,7 @@ from erev_api.auth.principal import RequestContext
 from erev_api.db.tables import job, tenant
 from erev_api.db.transitions import apply
 from erev_api.domain.ai.access import AIAccessRefused
+from erev_api.domain.ai.audit_keys import proposal_contract_ids
 from erev_api.domain.ai.document_preparation import MAX_PDF_BYTES
 from erev_api.domain.ai.extraction_fields import CONTRACT_EXTRACTION_PATHS
 from erev_api.domain.ai.preparation import PreparationRefused
@@ -214,6 +215,11 @@ def reject_proposal(
     record(
         uow,
         action="ai_proposal.reject",
+        contract_ids=proposal_contract_ids(
+            uow,
+            kind=current.kind,
+            subject_id=current.subject_id if current.kind == "NUMBER_EXPLANATION" else None,
+        ),
         object_type="ai_proposal",
         object_id=proposal_id,
         before={"status": "proposed"},

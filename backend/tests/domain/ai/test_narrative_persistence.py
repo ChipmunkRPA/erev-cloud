@@ -12,11 +12,19 @@ from typing import Any
 
 import pytest
 from erev_api.auth.keyring import KeyRing
+from erev_api.auth.principal import system_principal
 from erev_api.clock import FrozenClock
 from erev_api.db.session import tenant_session
-from erev_api.db.tables import ai_model_log, ai_proposal, audit_event, contract_version
+from erev_api.db.tables import (
+    ai_model_log,
+    ai_proposal,
+    audit_event,
+    audit_event_contract,
+    contract_version,
+)
 from erev_api.db.transitions import apply as real_apply
 from erev_api.domain.ai import expiry, queries
+from erev_api.domain.ai.audit_keys import proposal_contract_ids
 from erev_api.domain.ai.commands import reject_proposal
 from erev_api.domain.ai.ports import AIResponse
 from erev_api.domain.ai.proposals import ProposalEvidenceRefused, record_narrative
@@ -39,7 +47,7 @@ def test_proposal_attempt_audit_and_rollback(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    k01_computed(world)
+    booked, _ = k01_computed(world)
     line = september_line(world)
     assign(world.maya.member, "viewer")
     retrieved = retrieve_narrative(
@@ -175,6 +183,12 @@ def test_proposal_attempt_audit_and_rollback(
     clock.advance(timedelta(days=1))
     other_tenant = member(keyring, clock, name="expiry_other")
     assert expiry.expire_tenant(runtime, other_tenant.tenant_id) == 0
+    with pytest.raises(ValueError, match="AI_AUDIT_CONTRACTS_UNAVAILABLE"):
+        with system_unit_of_work(
+            runtime, system_principal(other_tenant.tenant_id), request_id="foreign-audit-source"
+        ) as uow:
+            proposal_contract_ids(uow, kind="NUMBER_EXPLANATION", subject_id=prepared.trace_id)
+
     # Another transaction owns a review lock; the sweep progresses without taking it.
     with tenant_session(retrieved.principal.db_context) as session:
         session.execute(
@@ -225,6 +239,27 @@ def test_proposal_attempt_audit_and_rollback(
         )
         assert {event["object_id"] for event in events} == {proposed, second}
         assert len(events) == 2 and all(event["actor_kind"] == "SYSTEM" for event in events)
+        lifecycle = (
+            session.execute(
+                select(audit_event).where(
+                    audit_event.c.object_type == "ai_proposal",
+                    audit_event.c.action.in_(["ai_proposal.reject", "ai_proposal.expire"]),
+                )
+            )
+            .mappings()
+            .all()
+        )
+        assert len(lifecycle) == 3
+        for event in lifecycle:
+            assert event["detail"]["contract_id"] == str(booked.contract["id"])
+            assert tuple(
+                session.scalars(
+                    select(audit_event_contract.c.contract_id).where(
+                        audit_event_contract.c.audit_event_id == event["id"]
+                    )
+                )
+            ) == (booked.contract["id"],)
+
         assert session.scalar(select(func.count()).select_from(ai_model_log)) == 5
         assert session.scalar(select(func.count()).select_from(contract_version)) == versions_before
 

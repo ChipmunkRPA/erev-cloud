@@ -5420,3 +5420,24 @@ cleanup in the shared database session kernel was also repaired and regression-t
   passed. Logs: .run/ai-field-review-{unit,boundaries,lint,typecheck,types-final}.log.
 - Structured acceptance remains unimplemented; broader release/accounting and large-tenant list
   performance gates remain open. No deployment or live provider calls.
+
+## Explicit extraction draft inputs and line bindings — October 15, 2026
+
+- Added draft-intake preparation using the existing ContractCreateIn schema, explicit entity,
+  field decisions and line_bindings from retained paths to obligation keys. Entity codes must
+  agree, activation is forbidden, mapping targets must exist and be unique, and every retained
+  line must map exactly once. Rejected lines cannot be mapped. Mapped product and exact amount
+  must agree with reviewed values, and line currency must match the explicit draft currency.
+- Required contract identity, currency, quantities and obligation keys come from human input;
+  no source value fills missing fields. Additional human-authored lines remain possible. This
+  is not an acceptance endpoint. Header/customer/structured-term binding, the pending approval
+  subject AI_PROPOSAL_ACCEPTANCE, command authorization/expiry/SoD and atomic persistence remain.
+- Verification: 76 unit/layer tests passed, including 24 new draft cases, 35 field-review cases
+  and 17 architecture checks. Tests cover required inputs, entity/activation/command refusals,
+  mapping coverage/uniqueness, product/sign/amount/currency mismatches, edit consistency and
+  rejected lines. Initial fixture/scalar comparisons were corrected to use API-S-Money objects
+  and decimal-string quantities; guards were retained. Full typecheck passed (936 Python sources
+  plus frontend), focused typing passed 788 sources and final formatting/lint/diff checks passed.
+  Full lint also passed. Logs: .run/ai-draft-review-{verified,typecheck,types-final,lint}.log.
+- Broader release/accounting verification and large-tenant list performance remain open. No
+  deployment or live provider calls; the acceptance route remains disabled.
