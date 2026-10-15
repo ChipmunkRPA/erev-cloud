@@ -16,7 +16,7 @@ from erev_api.domain.ai.access import AIAccessRefused
 from erev_api.domain.ai.attempts import AttemptEvidenceRefused
 from erev_api.domain.ai.budget import AIBudgetRefused, budget_guard
 from erev_api.domain.ai.gateway import AiGateway, NarrativeSource
-from erev_api.domain.ai.ports import AIRequest, AIResponse, ProviderError
+from erev_api.domain.ai.ports import AIRequest, AIResponse, AIUsage, ProviderError
 from erev_api.domain.ai.preparation import PreparationRefused
 from erev_api.domain.ai.retrieval import retrieve_narrative
 from erev_api.domain.ai.settings import AISettingsRefused
@@ -77,7 +77,7 @@ def test_admitted_call_failure_kill_switch_and_exhaustion(
                     == 0
                 )
             if state["mode"] == "timeout":
-                raise ProviderError("AI_TIMEOUT", retryable=True)
+                raise ProviderError("AI_TIMEOUT", retryable=True, usage=AIUsage(0, 0))
             if state["mode"] == "disable":
                 switch["disabled"] = True
             if state["mode"] == "revoke":

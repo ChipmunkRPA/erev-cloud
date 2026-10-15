@@ -22,6 +22,9 @@ from erev_api.domain.ai.ports import (
     AIResponse as AIResponse,
 )
 from erev_api.domain.ai.ports import (
+    AIUsage as AIUsage,
+)
+from erev_api.domain.ai.ports import (
     ProviderError as ProviderError,
 )
 

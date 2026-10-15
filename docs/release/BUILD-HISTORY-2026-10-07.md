@@ -4612,3 +4612,21 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - This does not register an AI_TASK handler or endpoint, persist proposals or establish
   authorized retrieval. Those gateway responsibilities and the human acceptance workflow
   remain open. No live provider calls, deployment or production-readiness claim.
+
+## Authorized read-only AI explanation retrieval — October 15, 2026
+
+- Added a worker retrieval boundary that reauthorizes the persisted AI job's human,
+  intersects ai.use and contract.read entity scopes, and reads under that user's
+  PostgreSQL read-only context. The job attempt is rechecked in the read transaction.
+- Explain now exposes its existing resolver/trace-integrity path as one trace-id and
+  explanation snapshot. AI retrieval matches the public route's to-date period selection
+  and derives numeric precision from the resolved currency table before preparation.
+- PostgreSQL tests verify actor/scope settings, write refusal, revoked read permission
+  and disjoint grants. A real computed K-01 contract verifies stored trace/amount identity,
+  August historical-period selection and not-found for an out-of-scope entity reader.
+- Verification: 232 targeted checks passed, two Linux-only parser tests skipped;
+  strict typing passed for 765 sources; Ruff/diff checks pass. Logs:
+  .run/ai-retrieval-{final,types}.log. Isolated local test cluster stopped afterward.
+- Gateway/settings/budget integration, provider execution, persistence, public endpoints
+  and human decisions remain open. This does not authorize deployment or establish
+  end-to-end AI readiness. No live provider calls or external accounting sign-off.

@@ -18,7 +18,7 @@ from erev_api.db.tables import ai_call_intent, ai_model_log, ai_proposal
 from erev_api.domain.ai.attempts import AttemptEvidenceRefused
 from erev_api.domain.ai.budget import AIBudgetRefused, budget_guard
 from erev_api.domain.ai.gateway import AiGateway, NarrativeSource, source_sha256
-from erev_api.domain.ai.ports import AIRequest, AIResponse, ProviderError
+from erev_api.domain.ai.ports import AIRequest, AIResponse, AIUsage, ProviderError
 from erev_api.domain.ai.proposals import ProposalEvidenceRefused, record_provider_failure
 from erev_api.domain.ai.retrieval import retrieve_narrative
 from erev_api.domain.ai.settings import AISettingsRefused
@@ -38,6 +38,8 @@ from tests.domain.ai.test_narrative_retrieval import context_for
     "mode,calls,status",
     [
         ("transient", 3, "failed"),
+        ("unknown_usage", 1, None),
+        ("resume_unknown_usage", 1, None),
         ("permanent", 1, "failed"),
         ("recover", 3, "proposed"),
         ("disabled", 1, None),
@@ -107,6 +109,9 @@ def test_retry_evidence_and_terminal_outcome(
                     if mode in {"permanent", "resume_permanent"}
                     else "AI_TIMEOUT",
                     retryable=True,
+                    usage=None
+                    if mode in {"unknown_usage", "resume_unknown_usage"}
+                    else AIUsage(2, 1),
                 )
             root = json.loads(request.messages[0]["content"])["facts"]["root_node_id"]
             answer = json.dumps({"narrative": f"Revenue USD {line['amount']}.", "node_ids": [root]})
@@ -133,8 +138,9 @@ def test_retry_evidence_and_terminal_outcome(
     source = NarrativeSource("schedule_line", line["id"], "amount")
     if mode.startswith("resume_"):
         for _ in range(3 if mode == "resume_exhausted" else 1):
-            with pytest.raises(ProviderError):
+            with pytest.raises(ProviderError) as caught:
                 gateway.run_narrative_attempt(context, source, max_tokens=1000)
+            assert caught.value.usage == (None if mode == "resume_unknown_usage" else AIUsage(2, 1))
         # Reconstruct the gateway with no in-memory retry state, as a restarted worker does.
         gateway = AiGateway(
             provider="fake", provider_factory=Provider, platform_kill_switch=lambda: disabled[0]
@@ -169,6 +175,26 @@ def test_retry_evidence_and_terminal_outcome(
         with pytest.raises(AIBudgetRefused, match="AI_BUDGET_USAGE_UNCERTAIN"):
             gateway.run_narrative(peer_context, source, max_tokens=1000, wait=wait)
         assert len(observed) == 1 and waits == []
+        return
+    if mode in {"unknown_usage", "resume_unknown_usage"}:
+        with pytest.raises(AIBudgetRefused, match="AI_BUDGET_USAGE_UNCERTAIN"):
+            gateway.run_narrative(context, source, max_tokens=1000, wait=wait)
+        assert len(observed) == 1
+        peer = context_for(world.maya.member, clock)
+        peer_context = JobContext(
+            job_id=peer.job_id,
+            tenant_id=peer.tenant_id,
+            kind=peer.kind,
+            principal=peer.principal,
+            runtime=replace(peer.runtime, keyring=keyring, files=LocalFileStore(tmp_path)),
+        )
+        with pytest.raises(AIBudgetRefused, match="AI_BUDGET_USAGE_UNCERTAIN"):
+            gateway.run_narrative(peer_context, source, max_tokens=1000, wait=wait)
+        assert len(observed) == 1
+        with tenant_session(context.principal.db_context, read_only=True) as session:
+            logs = session.execute(select(ai_model_log)).mappings().all()
+            assert len(logs) == 1 and logs[0]["parameters"]["usage_evidence"] == "UNKNOWN"
+            assert session.scalar(select(func.count()).select_from(ai_proposal)) == 0
         return
     if status is None:
         with pytest.raises(AISettingsRefused, match="AI_DISABLED"):
@@ -214,7 +240,7 @@ def test_retry_evidence_and_terminal_outcome(
                 assert all(item["response_sha256"] is None for item in logs)
             else:
                 assert row["problem"] is None
-                assert sum(item["input_tokens"] + item["output_tokens"] for item in logs) == 30
+                assert sum(item["input_tokens"] + item["output_tokens"] for item in logs) == 36
 
     if status == "failed":
         fresh = retrieve_narrative(

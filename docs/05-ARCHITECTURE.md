@@ -1184,6 +1184,16 @@ Periodic tasks use `@app.periodic(cron=…)`; each fan-out task reads the tenant
 
 ### 5.10 AI provider architecture (D-46)
 
+**Usage admission — October 15, 2026.** The tenant lease refuses a new call while any committed
+intent has no outcome, or any recorded outcome has unknown usage. This holds across month
+boundaries and jobs; a retryable error code is not proof of zero usage. `ProviderError` may carry
+`AIUsage(input_tokens, output_tokens)` reported by the provider; the writer validates and retains
+these counters with `usage_evidence=REPORTED` without a response body. A response-less error
+without counters retains `UNKNOWN` and blocks admission. Bounded retries below apply only after
+fresh admission succeeds. The current Anthropic exception adapter supplies no counts, and unknown
+usage reconciliation is not implemented. No new calls are required to recover an already completed
+proposal or finalize a permanent/exhausted failure. Historical evidence is never rewritten.
+
 ```text
 command or job (user principal)
   -> AiGateway.run(template_id, inputs, user)

@@ -16,7 +16,7 @@ from erev_api.db import new_id
 from erev_api.db.session import tenant_session
 from erev_api.db.tables import ai_call_intent, ai_model_log, audit_event, job
 from erev_api.domain.ai.attempts import AttemptEvidenceRefused, record_attempt, record_intent
-from erev_api.domain.ai.ports import AIRequest, AIResponse
+from erev_api.domain.ai.ports import AIRequest, AIResponse, AIUsage
 from erev_api.domain.ai.preparation import prepare_request
 from erev_api.domain.ai.templates import load_template
 from erev_api.enums import PrincipalKind
@@ -468,6 +468,73 @@ def test_request_cannot_assert_its_own_usage_evidence(world: tuple[Principal, Jo
         with pytest.raises(AttemptEvidenceRefused, match="AI_INVALID_ATTEMPT_CONFIGURATION"):
             record_attempt(
                 uow, request=forged, provider="fake", outcome="ERROR", failure="provider_error"
+            )
+        assert uow.session.scalar(select(func.count()).select_from(ai_model_log)) == 0
+        assert uow.drain_audit_events() == []
+
+
+@pytest.mark.parametrize("tokens", [0, 12])
+def test_provider_error_retains_reported_usage_without_response(
+    world: tuple[Principal, JobRuntime], tokens: int
+) -> None:
+    principal, runtime = world
+    with system_unit_of_work(runtime, principal, request_id="error-usage") as uow:
+        log_id = record_attempt(
+            uow,
+            request=request(),
+            provider="fake",
+            outcome="TIMEOUT",
+            failure="timeout",
+            usage=AIUsage(tokens, tokens + 1),
+            provider_failure_code="AI_TIMEOUT",
+            provider_retryable=True,
+        )
+        uow.commit()
+    with tenant_session(principal.db_context, read_only=True) as session:
+        row = (
+            session.execute(select(ai_model_log).where(ai_model_log.c.id == log_id))
+            .mappings()
+            .one()
+        )
+        assert row["parameters"]["usage_evidence"] == "REPORTED"
+        assert (row["input_tokens"], row["output_tokens"]) == (tokens, tokens + 1)
+        assert row["response_sha256"] is None
+
+
+@pytest.mark.parametrize("usage", [AIUsage(True, 0), AIUsage(-1, 0), AIUsage(0, 2147483648)])
+def test_invalid_error_usage_cannot_create_evidence(
+    world: tuple[Principal, JobRuntime], usage: AIUsage
+) -> None:
+    principal, runtime = world
+    with system_unit_of_work(runtime, principal, request_id="invalid-error-usage") as uow:
+        with pytest.raises(AttemptEvidenceRefused, match="AI_INVALID_ATTEMPT_COUNTERS"):
+            record_attempt(
+                uow,
+                request=request(),
+                provider="fake",
+                outcome="ERROR",
+                failure="provider_error",
+                usage=usage,
+            )
+        assert uow.session.scalar(select(func.count()).select_from(ai_model_log)) == 0
+        assert uow.drain_audit_events() == []
+
+
+@pytest.mark.parametrize("returned", [False, True])
+def test_separate_usage_cannot_override_response_or_unsent_admission(
+    world: tuple[Principal, JobRuntime], returned: bool
+) -> None:
+    principal, runtime = world
+    with system_unit_of_work(runtime, principal, request_id="conflicting-usage") as uow:
+        with pytest.raises(AttemptEvidenceRefused, match="AI_INVALID_ATTEMPT_USAGE"):
+            record_attempt(
+                uow,
+                request=request(),
+                provider="fake",
+                outcome="SUCCESS" if returned else "DISABLED",
+                response=response() if returned else None,
+                failure=None if returned else "disabled",
+                usage=AIUsage(0, 0),
             )
         assert uow.session.scalar(select(func.count()).select_from(ai_model_log)) == 0
         assert uow.drain_audit_events() == []

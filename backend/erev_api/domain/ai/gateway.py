@@ -26,7 +26,7 @@ from erev_api.domain.ai.attempts import (
 )
 from erev_api.domain.ai.attempts import RETRYABLE_PROVIDER_CODES as _RETRYABLE_PROVIDER_CODES
 from erev_api.domain.ai.budget import AIBudgetRefused, budget_guard
-from erev_api.domain.ai.ports import AIProvider, AIResponse, ProviderError
+from erev_api.domain.ai.ports import AIProvider, AIResponse, AIUsage, ProviderError
 from erev_api.domain.ai.preparation import PreparationRefused
 from erev_api.domain.ai.proposals import (
     record_narrative,
@@ -73,7 +73,9 @@ class _ProviderAttemptFailed(ProviderError):
     ) -> None:
         code = error.code if error.code in PROVIDER_FAILURE_CODES else "AI_PROVIDER_ERROR"
         super().__init__(
-            code, retryable=error.retryable and error.code in _RETRYABLE_PROVIDER_CODES
+            code,
+            retryable=error.retryable and error.code in _RETRYABLE_PROVIDER_CODES,
+            usage=error.usage,
         )
         self.attempt_no = attempt_no
         self.log_id = log_id
@@ -155,6 +157,7 @@ class AiGateway:
                 else ("invalid_output" if invalidated else "provider_error"),
                 latency_ms=latency_ms,
                 intent_id=intent_id,
+                usage=error.usage if error else None,
                 provider_failure_code=(
                     error.code if error.code in PROVIDER_FAILURE_CODES else "AI_PROVIDER_ERROR"
                 )
@@ -233,6 +236,8 @@ class AiGateway:
                         ai_model_log.c.created_at.label("outcome_at"),
                         ai_model_log.c.model_id,
                         ai_model_log.c.parameters,
+                        ai_model_log.c.input_tokens,
+                        ai_model_log.c.output_tokens,
                     )
                     .outerjoin(
                         ai_model_log,
@@ -294,6 +299,9 @@ class AiGateway:
             ProviderError(
                 previous["parameters"]["provider_failure_code"],
                 retryable=previous["parameters"]["provider_retryable"],
+                usage=AIUsage(previous["input_tokens"], previous["output_tokens"])
+                if previous["parameters"].get("usage_evidence") == "REPORTED"
+                else None,
             ),
             UUID(str(previous["log_id"])),
             fresh,

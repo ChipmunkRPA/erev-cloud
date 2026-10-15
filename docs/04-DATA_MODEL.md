@@ -5882,12 +5882,18 @@ budget admissions across the tenant without monthly expiry. The live budget leas
 only its own newly committed human-attributed intent after admission, so the current response
 can be recorded while a different job or replacement lease remains blocked.
 New attempt logs also retain a writer-derived `usage_evidence` parameter: `REPORTED` when
-validated response counters exist (including an actual zero), `NOT_SENT` for disabled/budget
-admission refusals, and `UNKNOWN` for outcomes without a response. Zero compatibility counters
+validated response or provider-error counters exist (including an actual zero), `NOT_SENT` for disabled/budget
+admission refusals, and `UNKNOWN` for outcomes without reported usage. Zero compatibility counters
 on an unknown outcome are not proof of zero usage. The marker is outcome metadata, excluded
 from the request hash and forbidden in caller-supplied request parameters. Historical logs are
-not rewritten; absence of the marker is not evidence of known zero usage. Admission handling
-of returned errors with unknown usage and reconciliation remain unfinished.
+not rewritten; absence of the marker is not evidence of known zero usage. Budget admission refuses returned errors with unknown usage across the whole tenant without
+monthly expiry, including historical response-less errors without the marker. Historical response
+hashes demonstrate retained response evidence; legacy disabled/budget records qualify as unsent
+only with no intent, no response hash and zero counters. Invalid markers do not clear uncertainty.
+A typed AIUsage on ProviderError can supply reported counters without a response body; the
+writer rejects negative, boolean, overflowing or conflicting counters. These counters participate
+in the normal budget sum and permit bounded retries after fresh admission. Reconciliation remains
+unfinished; the current Anthropic error adapter supplies no usage and therefore blocks new calls.
 
 
 ### T-MIG-01 `migration_batch`

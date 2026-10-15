@@ -283,8 +283,12 @@ def record_provider_failure(
             provider_retryable=log["parameters"].get("provider_retryable"),
         )
     if log is not None and "usage_evidence" in log["parameters"]:
-        # A response-less provider failure cannot assert reported or unsent usage.
-        expected_parameters["usage_evidence"] = "UNKNOWN"
+        # Failure counters can be reported without retaining a response body.
+        reported = log["parameters"]["usage_evidence"] == "REPORTED"
+        expected_parameters["usage_evidence"] = "REPORTED" if reported else "UNKNOWN"
+        if reported:
+            expected["input_tokens"] = log["input_tokens"]
+            expected["output_tokens"] = log["output_tokens"]
     if log is None or any(log[key] != value for key, value in expected.items()):
         raise ProposalEvidenceRefused("AI_ATTEMPT_EVIDENCE_MISMATCH")
     _intent_binding(uow, log["intent_id"], job_id, job_source_sha256, rebuilt.request.input_sha256)

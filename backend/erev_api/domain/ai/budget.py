@@ -2,7 +2,8 @@
 
 The gateway must hold the slot through the provider call and committed attempt
 log. Busy callers must requeue without calling a provider. An unresolved call
-blocks new admissions across the tenant; usage reconciliation remains separate work.
+blocks new admissions across the tenant, as does a recorded error with unknown usage.
+Usage reconciliation remains separate work.
 """
 
 from __future__ import annotations
@@ -13,7 +14,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from uuid import UUID
 
-from sqlalchemy import BigInteger, Select, cast, func, select, text
+from sqlalchemy import BigInteger, Select, cast, func, or_, select, text
 from sqlalchemy.engine import Connection
 
 from erev_api.db.session import DbContext, lock_connection, tenant_session
@@ -114,6 +115,26 @@ class BudgetGuard:
             if self._intent_id is not None:
                 pending = pending.where(ai_call_intent.c.id != self._intent_id)
             if session.execute(pending.limit(1)).first() is not None:
+                raise AIBudgetRefused("AI_BUDGET_USAGE_UNCERTAIN")
+            marker = func.coalesce(ai_model_log.c.parameters["usage_evidence"].astext, "LEGACY")
+            unsent = (
+                ai_model_log.c.outcome.in_(["BUDGET_EXCEEDED", "DISABLED"])
+                & ai_model_log.c.intent_id.is_(None)
+                & (ai_model_log.c.input_tokens == 0)
+                & (ai_model_log.c.output_tokens == 0)
+                & ai_model_log.c.response_sha256.is_(None)
+            )
+            known = or_(
+                marker == "REPORTED",
+                (marker == "NOT_SENT") & unsent,
+                (marker == "LEGACY") & (ai_model_log.c.response_sha256.is_not(None) | unsent),
+            )
+            # A recorded error resolves the outcome, not necessarily its usage.
+            # Do not drop uncertainty at a month boundary or exempt the current intent.
+            uncertain = select(ai_model_log.c.id).where(
+                ai_model_log.c.tenant_id == self._context.tenant_id, ~known
+            )
+            if session.execute(uncertain.limit(1)).first() is not None:
                 raise AIBudgetRefused("AI_BUDGET_USAGE_UNCERTAIN")
             tokens = session.execute(
                 select(

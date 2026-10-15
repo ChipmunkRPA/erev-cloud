@@ -37,10 +37,19 @@ class AIProvider(Protocol):
     def complete(self, request: AIRequest) -> AIResponse: ...
 
 
+@dataclass(frozen=True, slots=True)
+class AIUsage:
+    """Counters reported by a provider, including on a failed call."""
+
+    input_tokens: int
+    output_tokens: int
+
+
 class ProviderError(RuntimeError):
     """A safe error code for gateway evidence; never retain the SDK response body."""
 
-    def __init__(self, code: str, *, retryable: bool) -> None:
+    def __init__(self, code: str, *, retryable: bool, usage: AIUsage | None = None) -> None:
         super().__init__(code)
         self.code = code
         self.retryable = retryable
+        self.usage = usage

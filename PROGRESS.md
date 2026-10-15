@@ -2,6 +2,23 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Budget admission for unknown provider usage — October 15, 2026
+
+- Tenant admission now refuses returned errors with unknown usage, including historical
+  response-less errors without a marker. The refusal spans jobs and month boundaries; the
+  current intent's lease exemption cannot hide a committed unknown-usage outcome.
+- ProviderError can carry typed AIUsage. The writer validates counters, rejects conflicting
+  response/admission evidence, and retains reported error usage without a response body.
+  Fresh admission counts this usage; bounded retries and terminal/restarted failure recovery
+  preserve reported counters. Legacy unsent admission records remain distinguishable.
+- The current Anthropic adapter reports no usage on exceptions, so those errors block new
+  calls. No reconciliation command, automatic expiry, zero estimate or override was added.
+  Reconciliation and the remaining public workflows/release gates are still outstanding.
+- Broad AI/budget regression: 260 passed, two Linux-only parser-limit skips (84.25s);
+  final gateway recovery verification: 12 passed (57.50s), .run/ai-unknown-usage-recovery.log.
+  Strict typing passed for 771 sources; Ruff/diff checks passed. Logs:
+  .run/ai-unknown-usage-{final,types}.log. No deployment or production-readiness claim.
+
 ## Distinguish missing AI usage from reported zero — October 15, 2026
 
 - Attempt logs now derive immutable usage_evidence metadata: REPORTED for validated response
@@ -212,24 +229,6 @@
 - The caller still owes fresh authorization, settings/budget admission and commit before lease
   release. Gateway/job dispatch, public APIs, other proposal kinds and human decisions remain
   unfinished; the full AI audit-lifecycle gate stays open. No deployment or readiness claim.
-
-## Authorized read-only AI explanation retrieval — October 15, 2026
-
-- Added a worker retrieval boundary that reauthorizes the persisted AI job's human,
-  intersects ai.use and contract.read entity scopes, and reads under that user's
-  PostgreSQL read-only context. The job attempt is rechecked in the read transaction.
-- Explain now exposes its existing resolver/trace-integrity path as one trace-id and
-  explanation snapshot. AI retrieval matches the public route's to-date period selection
-  and derives numeric precision from the resolved currency table before preparation.
-- PostgreSQL tests verify actor/scope settings, write refusal, revoked read permission
-  and disjoint grants. A real computed K-01 contract verifies stored trace/amount identity,
-  August historical-period selection and not-found for an out-of-scope entity reader.
-- Verification: 232 targeted checks passed, two Linux-only parser tests skipped;
-  strict typing passed for 765 sources; Ruff/diff checks pass. Logs:
-  .run/ai-retrieval-{final,types}.log. Isolated local test cluster stopped afterward.
-- Gateway/settings/budget integration, provider execution, persistence, public endpoints
-  and human decisions remain open. This does not authorize deployment or establish
-  end-to-end AI readiness. No live provider calls or external accounting sign-off.
 
 ## Outstanding release verification
 

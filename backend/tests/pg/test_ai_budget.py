@@ -27,6 +27,8 @@ def record(
     *,
     outcome: str = "SUCCESS",
     intent_id: UUID | None = None,
+    marker: str | None = None,
+    has_response: bool = True,
 ) -> None:
     with tenant_session(DbContext(target, None, "*")) as session:
         row = ai_model_log_row(RowContext(target, new_id()), session)
@@ -40,6 +42,8 @@ def record(
                         "output_tokens": 0,
                         "created_at": at,
                         "outcome": outcome,
+                        "parameters": {} if marker is None else {"usage_evidence": marker},
+                        "response_sha256": "b" * 64 if has_response else None,
                     }
                 )
             )
@@ -228,5 +232,64 @@ def test_current_lease_cannot_bind_another_humans_intent(
         pending = intent(target, new_id(), NOW)
         with pytest.raises(AIBudgetRefused, match="AI_BUDGET_INTENT_BINDING_REFUSED"):
             guard.bind_intent(pending)
+        with pytest.raises(AIBudgetRefused, match="AI_BUDGET_USAGE_UNCERTAIN"):
+            guard.require_available(now=NOW, monthly_budget=2000)
+
+
+@pytest.mark.parametrize("marker", [None, "UNKNOWN", "NOT_SENT", "invalid"])
+def test_response_less_errors_quarantine_usage_across_months(
+    committed_db: TestDatabase, keyring: KeyRing, marker: str | None
+) -> None:
+    target, other = [tenant_id_of(tenant_factory(keyring=keyring)) for _ in range(2)]
+    record(target, 0, NOW - timedelta(days=370), outcome="ERROR", marker=marker, has_response=False)
+    with budget_guard(DbContext(target, None, "*")) as guard:
+        assert guard is not None
+        for at in (NOW, NOW + timedelta(days=400)):
+            with pytest.raises(AIBudgetRefused, match="AI_BUDGET_USAGE_UNCERTAIN"):
+                guard.require_available(now=at, monthly_budget=2000)
+    with budget_guard(DbContext(other, None, "*")) as guard:
+        assert guard is not None
+        assert guard.require_available(now=NOW, monthly_budget=2000).tokens == 0
+
+
+@pytest.mark.parametrize("tokens", [0, 40])
+def test_reported_error_usage_without_response_is_counted(
+    committed_db: TestDatabase, keyring: KeyRing, tokens: int
+) -> None:
+    target = tenant_id_of(tenant_factory(keyring=keyring))
+    record(target, tokens, NOW, outcome="ERROR", marker="REPORTED", has_response=False)
+    with budget_guard(DbContext(target, None, "*")) as guard:
+        assert guard is not None
+        assert guard.require_available(now=NOW, monthly_budget=tokens + 1).tokens == tokens
+        with pytest.raises(AIBudgetRefused, match="AI_BUDGET_EXHAUSTED"):
+            guard.require_available(now=NOW, monthly_budget=tokens)
+
+
+@pytest.mark.parametrize("marker", [None, "NOT_SENT"])
+@pytest.mark.parametrize("outcome", ["BUDGET_EXCEEDED", "DISABLED"])
+def test_unsent_admission_records_do_not_quarantine(
+    committed_db: TestDatabase, keyring: KeyRing, marker: str | None, outcome: str
+) -> None:
+    target = tenant_id_of(tenant_factory(keyring=keyring))
+    record(target, 0, NOW, outcome=outcome, marker=marker, has_response=False)
+    with budget_guard(DbContext(target, None, "*")) as guard:
+        assert guard is not None
+        assert guard.require_available(now=NOW, monthly_budget=100).tokens == 0
+
+
+def test_bound_intent_does_not_exempt_a_committed_unknown_usage_error(
+    committed_db: TestDatabase, keyring: KeyRing
+) -> None:
+    target = tenant_id_of(tenant_factory(keyring=keyring))
+    ctx = DbContext(target, new_id(), "*")
+    assert ctx.user_id is not None
+    with budget_guard(ctx) as guard:
+        assert guard is not None
+        guard.require_available(now=NOW, monthly_budget=2000)
+        started = intent(target, ctx.user_id, NOW)
+        guard.bind_intent(started)
+        record(
+            target, 0, NOW, outcome="ERROR", marker="UNKNOWN", has_response=False, intent_id=started
+        )
         with pytest.raises(AIBudgetRefused, match="AI_BUDGET_USAGE_UNCERTAIN"):
             guard.require_available(now=NOW, monthly_budget=2000)

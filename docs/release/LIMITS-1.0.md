@@ -35,10 +35,15 @@ open. An unobserved call now blocks new admissions for the entire tenant, across
 until outcome evidence exists. Only the currently admitted lease can bind its newly committed,
 human-owned intent for the post-call check; another job/lease cannot exempt that start. The
 monthly lease still accounts for known committed usage. New attempt logs distinguish validated
-response counters (`REPORTED`), unsent admission refusals (`NOT_SENT`) and missing usage
+response or provider-error counters (`REPORTED`), unsent admission refusals (`NOT_SENT`) and missing usage
 (`UNKNOWN`) in writer-derived immutable metadata. Actual zero responses remain distinguishable
-from zero compatibility counters on failures. Historical logs are not rewritten. The guard does
-not yet enforce this marker for returned errors; that budget gap remains open. It does not estimate missing usage,
+from zero compatibility counters on failures. Historical logs are not rewritten. The guard now blocks new calls for returned errors with unknown usage, including legacy errors
+with no response evidence, across months and jobs. Invalid markers also refuse. Typed reported
+error counters are validated, counted and allow bounded retries after fresh admission; the current
+Anthropic error adapter supplies none, so its errors quarantine new calls until reconciliation.
+Permanent/exhausted failure proposals and previously completed delivery do not make new calls
+and remain recoverable. Reconciliation is still absent: there is no automatic expiry or override.
+The guard does not estimate missing usage,
 reserve unknown response tokens, reconcile returned provider errors without usage, or infer
 historical calls that never had retained intents. The worker still needs real dispatch/waiting, registered
 AI_TASK handlers, notifications and public submission/acceptance/rejection workflows. The AI

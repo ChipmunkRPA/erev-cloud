@@ -13,7 +13,7 @@ from sqlalchemy import insert, select
 from erev_api.audit.writer import record_facts
 from erev_api.db import new_id
 from erev_api.db.tables import ai_call_intent, ai_model_log, job
-from erev_api.domain.ai.ports import AIRequest, AIResponse
+from erev_api.domain.ai.ports import AIRequest, AIResponse, AIUsage
 from erev_api.enums import PrincipalKind
 from erev_api.uow import UnitOfWork
 
@@ -114,6 +114,7 @@ def record_attempt(
     intent_id: UUID | None = None,
     provider_failure_code: str | None = None,
     provider_retryable: bool = False,
+    usage: AIUsage | None = None,
 ) -> UUID:
     """Insert evidence and buffer its audit event in the caller's transaction.
 
@@ -154,7 +155,11 @@ def record_attempt(
         parameters["provider_retryable"] = provider_retryable
     elif provider_retryable:
         raise AttemptEvidenceRefused("AI_INVALID_PROVIDER_FAILURE")
+    if usage is not None and (response is not None or outcome not in {"ERROR", "TIMEOUT"}):
+        raise AttemptEvidenceRefused("AI_INVALID_ATTEMPT_USAGE")
     input_tokens = output_tokens = 0
+    if usage is not None:
+        input_tokens, output_tokens = usage.input_tokens, usage.output_tokens
     response_hash = None
     if response is not None:
         if re.fullmatch(r"[A-Za-z0-9._:-]{1,256}", response.model) is None:
@@ -208,7 +213,7 @@ def record_attempt(
     # caller-supplied request parameters or infer it from a retryable error code.
     parameters["usage_evidence"] = (
         "REPORTED"
-        if response is not None
+        if response is not None or usage is not None
         else "NOT_SENT"
         if outcome in {"BUDGET_EXCEEDED", "DISABLED"}
         else "UNKNOWN"
