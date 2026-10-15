@@ -3991,3 +3991,22 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
 - The public capture refusal stays: reconciliation still compares raw legacy dollar-unit
   quantity 10 against option quantity 0.4, and MIGRATION_PROMOTION is unimplemented. Full
   import/reconcile/promotion acceptance remains open. Older CI 165d63c is live at 45%.
+
+## Evidence-bound option quantity reconciliation — October 14, 2026
+
+- Reconciliation consumes verified producing bundles and explains only the exact POL-212
+  quantity conversion. Contract/obligation/product, quantity-one booking, currency and total
+  option SSP must match source facts. Reports retain source 10, actual 0.4 and difference
+  -9.6 with a named policy explanation; no source, trace, money value or golden file changes.
+- Exact expected-quantity checks reject drift and the deceptive case of 10 native options
+  numerically matching 10 source dollar-units. Conflicting quantity explanations refuse.
+  No monetary discrepancy receives the conversion explanation; replay behavior is unchanged.
+- The actual platform-capture/database witness now runs default reconciliation readers over
+  retained evidence and reaches RECONCILED. Two altered-quantity/digest cases refuse without
+  lines or status transition. Three database checks passed (13.30s); 93 focused domain,
+  repository/job/report/architecture checks passed (10.57s). Logs:
+  .run/option-reconciliation-pg.log and .run/option-reconciliation-unit.log.
+- Strict production Mypy (884 files), two test files and Ruff pass. Logs:
+  .run/option-reconciliation-types.log and .run/option-reconciliation-test-types.log.
+- Full import/approved promotion remains incomplete, and the public option refusal stays.
+  Older immutable CI 165d63c remains live at 46%; no deployment or readiness claim.

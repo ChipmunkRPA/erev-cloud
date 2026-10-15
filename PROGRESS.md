@@ -2,6 +2,20 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## AI extraction output validation — October 14, 2026
+
+- Added an atomic extraction validator: response digest/completion, strict JSON and unique
+  allowed paths, confidence range, authorised document identity and Unicode page-span bounds.
+  Low confidence below 0.75 is marked for review; no field is automatically accepted.
+- Invalid fields refuse the entire proposal. Duplicate JSON keys, nonfinite numbers,
+  oversized/deep responses and excessive decimal expansion refuse with safe error codes.
+  Immutable canonical values preserve exact decimals without binary floating-point rounding.
+- AI/provider/architecture checks: 128 passed; strict API/test typing: 750 sources.
+  Evidence: .run/ai-extraction-validation.log and .run/ai-extraction-types.log.
+- This helper is not connected to a gateway. Command-specific value schemas, redaction-offset
+  mapping, semantic citation review, narrative-number checks, authorised jobs, budgets,
+  persistence/auditing and human acceptance remain open. No live calls or deployment.
+
 ## AI request preparation boundary — October 14, 2026
 
 - Moved provider contracts to domain ports, preserving adapter exports, so the forthcoming
@@ -225,25 +239,6 @@
   checks, policy publication, activation admission, reproduction and atomic live creation,
   independent reviewer/MFA and submit route remain unfinished. Public option import stays
   unavailable. Older immutable CI remains live at 46%; no deployment/readiness claim.
-
-## Evidence-bound option quantity reconciliation — October 14, 2026
-
-- Reconciliation consumes verified producing bundles and explains only the exact POL-212
-  quantity conversion. Contract/obligation/product, quantity-one booking, currency and total
-  option SSP must match source facts. Reports retain source 10, actual 0.4 and difference
-  -9.6 with a named policy explanation; no source, trace, money value or golden file changes.
-- Exact expected-quantity checks reject drift and the deceptive case of 10 native options
-  numerically matching 10 source dollar-units. Conflicting quantity explanations refuse.
-  No monetary discrepancy receives the conversion explanation; replay behavior is unchanged.
-- The actual platform-capture/database witness now runs default reconciliation readers over
-  retained evidence and reaches RECONCILED. Two altered-quantity/digest cases refuse without
-  lines or status transition. Three database checks passed (13.30s); 93 focused domain,
-  repository/job/report/architecture checks passed (10.57s). Logs:
-  .run/option-reconciliation-pg.log and .run/option-reconciliation-unit.log.
-- Strict production Mypy (884 files), two test files and Ruff pass. Logs:
-  .run/option-reconciliation-types.log and .run/option-reconciliation-test-types.log.
-- Full import/approved promotion remains incomplete, and the public option refusal stays.
-  Older immutable CI 165d63c remains live at 46%; no deployment or readiness claim.
 
 ## Outstanding release verification
 

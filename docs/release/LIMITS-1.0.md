@@ -29,6 +29,13 @@ for its explicit document-text argument, and hashes immutable outgoing content a
 The gateway must still select authorised/minimised facts, enforce job execution and budgets,
 validate outputs, and persist audited results. No provider-facing route is enabled by this helper.
 
+Extraction output validation now checks response integrity/completion, unique allowed paths,
+confidence and authorised document citation spans, with bounded parsing and decimal expansion.
+It refuses an entire invalid proposal and marks confidence below 0.75 for review. This is an
+unconnected domain helper: command-specific value schemas, mapping redacted-text offsets back
+to retained source text, semantic citation review and narrative-number verification remain open.
+Neither span validation nor a high confidence score establishes accounting correctness.
+
 October 14 audit continuation: native option entry/expiry and CLOSE evidence-pack creation
 now have catalogue entries and real request scenarios in the audit walk. Material-right
 AUD-FACT summaries require a contract key and retain the created ids in detail. Evidence-pack
