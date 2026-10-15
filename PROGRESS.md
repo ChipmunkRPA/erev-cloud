@@ -2,6 +2,25 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Renewal benefit-period engine verification — October 14, 2026
+
+- Added eight B3-24 regressions through canonicalization, obligation construction,
+  allocation and full-engine posted revenue, for ASC606 and IFRS15. A 12,000 renewal
+  right spans 24 months at 500/month when the inception estimate says 24 months;
+  without an estimate it keeps the booked 12-month term at 1,000/month.
+- A later 36-month estimate does not change inception pricing. A discount voucher
+  keeps its own term rather than inheriting the renewal estimate. Tests check exact
+  period keys, posted amounts, total, option SSP and obligation dates.
+- Initial fixture omitted the explicit MONTHLY_EVEN policy and therefore produced
+  daily amounts; corrected the fixture's convention, preserving expected figures.
+  A subsequent negative-case fixture used a nonexistent GroupInput field; corrected
+  it to replace only the contract input. No engine implementation changed.
+- Entire stage-03 suite: 41 passed (3.02s), .run/benefit-period-s03-final.log.
+  Strict Mypy, Ruff and formatting pass. B3-24 now distinguishes this evidence from
+  still-missing API-entry, answer-key and independent accounting acceptance.
+- Full backend CI 165d63c remains running around 29%; existing known failures have
+  later repairs. Repo only, direct main publication, no deployment.
+
 ## Point-in-time royalty licences — October 14, 2026
 
 - Repaired the API/DB mismatch that rejected the engine's supported point-in-time
@@ -219,29 +238,6 @@
 - No backend accounting behavior changed, no database tests rerun, no deployment. RPS-20
   remains open for other kinds, re-lock variance, remaining presentation and real browser
   acceptance. Independent accounting approval and broader release gates remain outstanding.
-
-## First-close generation form — October 14, 2026 (RPS-20 continued)
-
-- Added a modal for entity, book, period and explicit retained first-close lock selection,
-  using the existing CLOSE API and command pipeline. It follows all entity/period cursors,
-  includes authorized inactive historical entities/books, clears dependent selections,
-  and requires all export/source permissions for the chosen entity plus selector-read access.
-  Re-lock/reopen records and locks without retained snapshot metadata are not offered.
-- A successful response opens the new pack. An accepted response without navigation
-  headers disables resubmission. Lost-response retries retain the original idempotency key,
-  including after closing/reopening the modal or reselecting the same lock. Backend
-  refusals remain visible; no optimistic pack or placeholder job is created on the client.
-- Final frontend suite: **2,089 passed across 195 files in 65.15 seconds**
-  (.run/close-pack-form-final-full.log). The 11 form tests also passed independently in
-  1.46 seconds (.run/close-pack-form-final-focused.log). TypeScript, full ESLint and Vite
-  build pass; existing jsdom navigation and large-chunk build warnings remain. No backend
-  code or accounting result changed, so no database test was restarted for this UI increment.
-- Earlier failures were test interactions: the combobox picks on mousedown, and the
-  accepted-state button is replaced by its tooltip wrapper. Assertions now target the
-  current accessible control. Initial pagination inference errors were fixed with explicit
-  ListPage types. All processes terminal. No deployment or new PR; direct main.
-- RPS-20 stays incomplete: re-lock variance, other pack kinds/forms, remaining presentation
-  and real browser/accessibility acceptance. Independent accounting sign-off remains absent.
 
 ## Outstanding release verification
 

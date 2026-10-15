@@ -3343,3 +3343,26 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
 - RPS-20 remains incomplete: generation forms and missing backend kinds, read-only
   presentation, remaining register details and real browser/accessibility acceptance.
   Repository only; direct main, no new PR or deployment.
+
+## First-close generation form — October 14, 2026 (RPS-20 continued)
+
+- Added a modal for entity, book, period and explicit retained first-close lock selection,
+  using the existing CLOSE API and command pipeline. It follows all entity/period cursors,
+  includes authorized inactive historical entities/books, clears dependent selections,
+  and requires all export/source permissions for the chosen entity plus selector-read access.
+  Re-lock/reopen records and locks without retained snapshot metadata are not offered.
+- A successful response opens the new pack. An accepted response without navigation
+  headers disables resubmission. Lost-response retries retain the original idempotency key,
+  including after closing/reopening the modal or reselecting the same lock. Backend
+  refusals remain visible; no optimistic pack or placeholder job is created on the client.
+- Final frontend suite: **2,089 passed across 195 files in 65.15 seconds**
+  (.run/close-pack-form-final-full.log). The 11 form tests also passed independently in
+  1.46 seconds (.run/close-pack-form-final-focused.log). TypeScript, full ESLint and Vite
+  build pass; existing jsdom navigation and large-chunk build warnings remain. No backend
+  code or accounting result changed, so no database test was restarted for this UI increment.
+- Earlier failures were test interactions: the combobox picks on mousedown, and the
+  accepted-state button is replaced by its tooltip wrapper. Assertions now target the
+  current accessible control. Initial pagination inference errors were fixed with explicit
+  ListPage types. All processes terminal. No deployment or new PR; direct main.
+- RPS-20 stays incomplete: re-lock variance, other pack kinds/forms, remaining presentation
+  and real browser/accessibility acceptance. Independent accounting sign-off remains absent.
