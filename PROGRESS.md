@@ -2,6 +2,22 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Tenant budget quarantine for unobserved calls — October 15, 2026
+
+- Budget admission now refuses while any tenant call intent lacks an outcome, across month
+  boundaries. Another job cannot consume an understated total after a worker crash.
+- After successful admission, the live lease binds one newly committed intent of its human
+  caller. Only that intent is excluded from the post-response check; another unresolved start,
+  replacement lease, different human or anonymous context cannot use the exemption.
+- Tests cover old unresolved calls, tenant isolation, current-call completion, fresh-lease
+  refusal, known-outcome release/usage accounting, other-human binding refusal and a separate
+  gateway job after simulated crash/lost result. AI/session regression: 233 passed, two Linux
+  parser-limit skips; two additional ownership tests passed; typing: 769 sources; Ruff/diff pass.
+  Logs: .run/ai-uncertain-budget-{final,types}.log and .run/ai-budget-intent-owner.log.
+- This blocks unobserved calls; it does not invent usage or add a reconciliation override.
+  Returned provider errors without token counts, unknown-usage reconciliation, public workflows
+  and other release gates remain open. No deployment or production-readiness claim.
+
 ## Gateway call intents and restart recovery — October 15, 2026
 
 - The narrative gateway now commits an intent before calling the provider, then links each
@@ -217,19 +233,6 @@
 - This does not register an AI_TASK handler or endpoint, persist proposals or establish
   authorized retrieval. Those gateway responsibilities and the human acceptance workflow
   remain open. No live provider calls, deployment or production-readiness claim.
-
-## Numeric-token boundary repairs — October 15, 2026
-
-- Reproduced false acceptances where Unicode separators/invisible characters or malformed
-  French grouping split a larger number into smaller allowed values. Those forms now refuse.
-- Currency suffixes inside accounting parentheses now preserve the negative sign; trailing
-  signs are refused rather than silently discarded. Added 17 regression cases.
-- Focused numeric suite: 49 passed; strict typing: 762 sources; Ruff/diff checks pass.
-  Broader AI/architecture checks: 185 passed, two Linux-only parser tests skipped;
-  log: .run/ai-number-boundaries-checks.log.
-- Rechecked publication boundaries: neither research-harness nor docs/research is tracked;
-  PolyForm Noncommercial 1.0.0 remains in place. No deployment. Numeric checking remains
-  a prerequisite, not evidence that the unfinished AI narrative workflow is complete.
 
 ## Outstanding release verification
 

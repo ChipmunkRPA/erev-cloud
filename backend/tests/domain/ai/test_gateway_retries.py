@@ -16,7 +16,7 @@ from erev_api.db import new_id
 from erev_api.db.session import tenant_session
 from erev_api.db.tables import ai_call_intent, ai_model_log, ai_proposal
 from erev_api.domain.ai.attempts import AttemptEvidenceRefused
-from erev_api.domain.ai.budget import budget_guard
+from erev_api.domain.ai.budget import AIBudgetRefused, budget_guard
 from erev_api.domain.ai.gateway import AiGateway, NarrativeSource, source_sha256
 from erev_api.domain.ai.ports import AIRequest, AIResponse, ProviderError
 from erev_api.domain.ai.proposals import ProposalEvidenceRefused, record_provider_failure
@@ -158,6 +158,16 @@ def test_retry_evidence_and_terminal_outcome(
             assert session.scalar(select(func.count()).select_from(ai_call_intent)) == 1
             assert session.scalar(select(func.count()).select_from(ai_model_log)) == 0
             assert session.scalar(select(func.count()).select_from(ai_proposal)) == 0
+        peer = context_for(world.maya.member, clock)
+        peer_context = JobContext(
+            job_id=peer.job_id,
+            tenant_id=peer.tenant_id,
+            kind=peer.kind,
+            principal=peer.principal,
+            runtime=replace(peer.runtime, keyring=keyring, files=LocalFileStore(tmp_path)),
+        )
+        with pytest.raises(AIBudgetRefused, match="AI_BUDGET_USAGE_UNCERTAIN"):
+            gateway.run_narrative(peer_context, source, max_tokens=1000, wait=wait)
         assert len(observed) == 1 and waits == []
         return
     if status is None:

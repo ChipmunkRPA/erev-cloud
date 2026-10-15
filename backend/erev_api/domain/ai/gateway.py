@@ -348,6 +348,7 @@ class AiGateway:
                     source_sha256=source_sha256(source, max_tokens),
                 )
                 uow.commit()
+            guard.bind_intent(intent_id)
             attempt_no = 1 if previous is None else previous["attempt_no"] + 1
             started = context.clock.now()
             try:

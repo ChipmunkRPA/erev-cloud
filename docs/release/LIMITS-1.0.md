@@ -31,8 +31,12 @@ with AI_RECOVERY_REQUIRED. Neither case silently sends the call again or creates
 log. Current source/permission checks and exact job/input bindings remain in force.
 
 Unknown outcome reconciliation, unknown token usage and durable admission failures remain
-open. The monthly lease serializes known committed usage; it does not reserve an unknown
-response or reconstruct lost usage. The worker still needs real dispatch/waiting, registered
+open. An unobserved call now blocks new admissions for the entire tenant, across month boundaries,
+until outcome evidence exists. Only the currently admitted lease can bind its newly committed,
+human-owned intent for the post-call check; another job/lease cannot exempt that start. The
+monthly lease still accounts for known committed usage. It does not estimate missing usage,
+reserve unknown response tokens, reconcile returned provider errors without usage, or infer
+historical calls that never had retained intents. The worker still needs real dispatch/waiting, registered
 AI_TASK handlers, notifications and public submission/acceptance/rejection workflows. The AI
 audit-lifecycle gate remains open; internal gateway tests do not satisfy the full lifecycle.
 

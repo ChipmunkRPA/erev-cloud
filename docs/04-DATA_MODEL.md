@@ -5877,7 +5877,10 @@ close a call intent. The narrative gateway commits the intent before provider ex
 links its eventual log. A start without an outcome blocks automatic redelivery; known provider
 failures retain `provider_failure_code` and `provider_retryable` in model-log parameters, enabling
 bounded retries and terminal proposal recovery. Unknown usage/reconciliation remains separate
-work; a missing outcome is not recorded as a zero-token failure.
+work; a missing outcome is not recorded as a zero-token failure. Unresolved intents block new
+budget admissions across the tenant without monthly expiry. The live budget lease may bind
+only its own newly committed human-attributed intent after admission, so the current response
+can be recorded while a different job or replacement lease remains blocked.
 
 
 ### T-MIG-01 `migration_batch`

@@ -9,18 +9,25 @@ import pytest
 from erev_api.auth.keyring import KeyRing
 from erev_api.db import new_id
 from erev_api.db.session import DbContext, tenant_session
-from erev_api.db.tables import ai_model_log
+from erev_api.db.tables import ai_call_intent, ai_model_log
 from erev_api.domain.ai.budget import AIBudgetRefused, budget_guard, month_window
 from sqlalchemy import insert, text
 from support.db import TestDatabase
 from support.factories import tenant_factory, tenant_id_of
-from support.rows import RowContext, ai_model_log_row
+from support.rows import RowContext, ai_call_intent_row, ai_model_log_row
 
 pytestmark = pytest.mark.pg
 NOW = datetime(2026, 10, 15, tzinfo=UTC)
 
 
-def record(target: UUID, tokens: int, at: datetime, *, outcome: str = "SUCCESS") -> None:
+def record(
+    target: UUID,
+    tokens: int,
+    at: datetime,
+    *,
+    outcome: str = "SUCCESS",
+    intent_id: UUID | None = None,
+) -> None:
     with tenant_session(DbContext(target, None, "*")) as session:
         row = ai_model_log_row(RowContext(target, new_id()), session)
         session.execute(
@@ -29,6 +36,7 @@ def record(target: UUID, tokens: int, at: datetime, *, outcome: str = "SUCCESS")
                     row
                     | {
                         "input_tokens": tokens,
+                        "intent_id": intent_id,
                         "output_tokens": 0,
                         "created_at": at,
                         "outcome": outcome,
@@ -140,3 +148,85 @@ def test_lost_connection_cannot_continue_admission(
     with budget_guard(ctx) as fresh:
         assert fresh is not None
         assert fresh.require_available(now=NOW, monthly_budget=2000).tokens == 0
+
+
+def intent(target: UUID, user: UUID, at: datetime) -> UUID:
+    with tenant_session(DbContext(target, user, "*")) as session:
+        row = ai_call_intent_row(RowContext(target, user), session) | {"created_at": at}
+        session.execute(insert(ai_call_intent).values(**row))
+        return UUID(str(row["id"]))
+
+
+def test_unobserved_call_blocks_tenant_admission_without_monthly_expiry(
+    committed_db: TestDatabase, keyring: KeyRing
+) -> None:
+    target, other = [tenant_id_of(tenant_factory(keyring=keyring)) for _ in range(2)]
+    user = new_id()
+    pending = intent(target, user, NOW - timedelta(days=370))
+    ctx = DbContext(target, user, "*")
+    with budget_guard(ctx) as guard:
+        assert guard is not None
+        for at in (NOW, NOW + timedelta(days=400)):
+            with pytest.raises(AIBudgetRefused, match="AI_BUDGET_USAGE_UNCERTAIN"):
+                guard.require_available(now=at, monthly_budget=2000)
+        # An old unknown call cannot be claimed as this lease's new call.
+        with pytest.raises(AIBudgetRefused, match="AI_BUDGET_INTENT_BINDING_REFUSED"):
+            guard.bind_intent(pending)
+        with budget_guard(DbContext(other, user, "*")) as independent:
+            assert independent is not None
+            assert independent.require_available(now=NOW, monthly_budget=2000).tokens == 0
+    # Only recorded outcome evidence clears the uncertainty; known usage is still counted.
+    record(target, 40, NOW, intent_id=pending)
+    with budget_guard(ctx) as guard:
+        assert guard is not None
+        assert guard.require_available(now=NOW, monthly_budget=41).tokens == 40
+        with pytest.raises(AIBudgetRefused, match="AI_BUDGET_EXHAUSTED"):
+            guard.require_available(now=NOW, monthly_budget=40)
+
+
+def test_only_the_admitted_lease_can_ignore_its_current_start(
+    committed_db: TestDatabase, keyring: KeyRing
+) -> None:
+    target = tenant_id_of(tenant_factory(keyring=keyring))
+    user = new_id()
+    ctx = DbContext(target, user, "*")
+    with budget_guard(ctx) as guard:
+        assert guard is not None
+        assert guard.require_available(now=NOW, monthly_budget=2000).tokens == 0
+        pending = intent(target, user, NOW)
+        with pytest.raises(AIBudgetRefused, match="AI_BUDGET_INTENT_BINDING_REFUSED"):
+            guard.bind_intent(new_id())
+        guard.bind_intent(pending)
+        assert guard.require_available(now=NOW, monthly_budget=2000).tokens == 0
+        with pytest.raises(AIBudgetRefused, match="AI_BUDGET_INTENT_BINDING_REFUSED"):
+            guard.bind_intent(pending)
+        # This exemption never hides a second unresolved start.
+        second = intent(target, user, NOW)
+        with pytest.raises(AIBudgetRefused, match="AI_BUDGET_USAGE_UNCERTAIN"):
+            guard.require_available(now=NOW, monthly_budget=2000)
+        record(target, 10, NOW, intent_id=second)
+        assert guard.require_available(now=NOW, monthly_budget=2000).tokens == 10
+    with budget_guard(ctx) as fresh:
+        assert fresh is not None
+        with pytest.raises(AIBudgetRefused, match="AI_BUDGET_USAGE_UNCERTAIN"):
+            fresh.require_available(now=NOW, monthly_budget=2000)
+    with pytest.raises(AIBudgetRefused, match="AI_BUDGET_LEASE_LOST"):
+        guard.bind_intent(pending)
+
+
+@pytest.mark.parametrize("anonymous", [False, True])
+def test_current_lease_cannot_bind_another_humans_intent(
+    committed_db: TestDatabase,
+    keyring: KeyRing,
+    anonymous: bool,
+) -> None:
+    target = tenant_id_of(tenant_factory(keyring=keyring))
+    ctx = DbContext(target, None if anonymous else new_id(), "*")
+    with budget_guard(ctx) as guard:
+        assert guard is not None
+        guard.require_available(now=NOW, monthly_budget=2000)
+        pending = intent(target, new_id(), NOW)
+        with pytest.raises(AIBudgetRefused, match="AI_BUDGET_INTENT_BINDING_REFUSED"):
+            guard.bind_intent(pending)
+        with pytest.raises(AIBudgetRefused, match="AI_BUDGET_USAGE_UNCERTAIN"):
+            guard.require_available(now=NOW, monthly_budget=2000)

@@ -1,8 +1,8 @@
 """Serialize AI admission and read committed UTC-month usage (05 §5.10 step 3).
 
 The gateway must hold the slot through the provider call and committed attempt
-log. Busy callers must requeue without calling a provider. This does not reserve
-unknown provider usage or recover an unlogged call after a process crash.
+log. Busy callers must requeue without calling a provider. An unresolved call
+blocks new admissions across the tenant; usage reconciliation remains separate work.
 """
 
 from __future__ import annotations
@@ -11,12 +11,13 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from uuid import UUID
 
-from sqlalchemy import BigInteger, cast, func, select, text
+from sqlalchemy import BigInteger, Select, cast, func, select, text
 from sqlalchemy.engine import Connection
 
 from erev_api.db.session import DbContext, lock_connection, tenant_session
-from erev_api.db.tables import ai_model_log
+from erev_api.db.tables import ai_call_intent, ai_model_log
 
 _TRY_LOCK = text("SELECT pg_try_advisory_lock(hashtextextended(:key, 0))")
 _UNLOCK = text("SELECT pg_advisory_unlock(hashtextextended(:key, 0))")
@@ -52,16 +53,68 @@ class BudgetGuard:
         self._context = context
         self._connection = connection
         self._active = True
+        self._admitted = False
+        self._intent_id: UUID | None = None
 
-    def require_available(self, *, now: datetime, monthly_budget: int) -> MonthlyUsage:
+    def _require_live(self) -> None:
         if not self._active or self._connection.closed or self._connection.invalidated:
             raise AIBudgetRefused("AI_BUDGET_LEASE_LOST")
+        # Never reconnect an invalidated session and continue without its lock.
+        self._connection.execute(select(1)).scalar_one()
+
+    @staticmethod
+    def _pending() -> Select[tuple[UUID, UUID | None]]:
+        return (
+            select(ai_call_intent.c.id, ai_call_intent.c.created_by)
+            .outerjoin(
+                ai_model_log,
+                (ai_model_log.c.tenant_id == ai_call_intent.c.tenant_id)
+                & (ai_model_log.c.intent_id == ai_call_intent.c.id),
+            )
+            .where(ai_model_log.c.id.is_(None))
+        )
+
+    def bind_intent(self, intent_id: UUID) -> None:
+        """Bind this lease's newly committed start, after admission and before execution.
+
+        Only this one unresolved start may be ignored during the post-call usage check.
+        A fresh lease cannot exempt a previous worker's unobserved call.
+        """
+        self._require_live()
+        if not self._admitted or self._intent_id is not None:
+            raise AIBudgetRefused("AI_BUDGET_INTENT_BINDING_REFUSED")
+        with tenant_session(self._context, read_only=True) as session:
+            pending = (
+                session.execute(
+                    self._pending()
+                    .where(
+                        ai_call_intent.c.tenant_id == self._context.tenant_id,
+                    )
+                    .limit(2)
+                )
+                .mappings()
+                .all()
+            )
+        if (
+            len(pending) != 1
+            or pending[0]["id"] != intent_id
+            or self._context.user_id is None
+            or pending[0]["created_by"] != self._context.user_id
+        ):
+            raise AIBudgetRefused("AI_BUDGET_INTENT_BINDING_REFUSED")
+        self._intent_id = intent_id
+
+    def require_available(self, *, now: datetime, monthly_budget: int) -> MonthlyUsage:
+        self._require_live()
         if type(monthly_budget) is not int or monthly_budget < 0:
             raise AIBudgetRefused("AI_INVALID_TOKEN_BUDGET")
-        # Never silently reconnect an invalidated session and continue without its lock.
-        self._connection.execute(select(1)).scalar_one()
         start, end = month_window(now)
         with tenant_session(self._context, read_only=True) as session:
+            pending = self._pending().where(ai_call_intent.c.tenant_id == self._context.tenant_id)
+            if self._intent_id is not None:
+                pending = pending.where(ai_call_intent.c.id != self._intent_id)
+            if session.execute(pending.limit(1)).first() is not None:
+                raise AIBudgetRefused("AI_BUDGET_USAGE_UNCERTAIN")
             tokens = session.execute(
                 select(
                     func.coalesce(
@@ -80,6 +133,7 @@ class BudgetGuard:
         usage = MonthlyUsage(start, end, int(tokens))
         if usage.tokens >= monthly_budget:
             raise AIBudgetRefused("AI_BUDGET_EXHAUSTED")
+        self._admitted = True
         return usage
 
 

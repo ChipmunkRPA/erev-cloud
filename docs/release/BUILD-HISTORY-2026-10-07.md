@@ -4582,3 +4582,16 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Numeric membership does not prove semantic support or citation authorization. Narrative
   generation, proposal persistence and deterministic fallback integration remain open,
   along with the broader AI gateway and human workflow. No deployment or readiness claim.
+
+## Numeric-token boundary repairs — October 15, 2026
+
+- Reproduced false acceptances where Unicode separators/invisible characters or malformed
+  French grouping split a larger number into smaller allowed values. Those forms now refuse.
+- Currency suffixes inside accounting parentheses now preserve the negative sign; trailing
+  signs are refused rather than silently discarded. Added 17 regression cases.
+- Focused numeric suite: 49 passed; strict typing: 762 sources; Ruff/diff checks pass.
+  Broader AI/architecture checks: 185 passed, two Linux-only parser tests skipped;
+  log: .run/ai-number-boundaries-checks.log.
+- Rechecked publication boundaries: neither research-harness nor docs/research is tracked;
+  PolyForm Noncommercial 1.0.0 remains in place. No deployment. Numeric checking remains
+  a prerequisite, not evidence that the unfinished AI narrative workflow is complete.
