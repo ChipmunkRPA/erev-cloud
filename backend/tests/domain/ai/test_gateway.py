@@ -13,6 +13,7 @@ from erev_api.clock import FrozenClock
 from erev_api.db.session import tenant_session
 from erev_api.db.tables import ai_model_log, ai_proposal, role_assignment
 from erev_api.domain.ai.access import AIAccessRefused
+from erev_api.domain.ai.attempts import AttemptEvidenceRefused
 from erev_api.domain.ai.budget import AIBudgetRefused, budget_guard
 from erev_api.domain.ai.gateway import AiGateway, NarrativeSource
 from erev_api.domain.ai.ports import AIRequest, AIResponse, ProviderError
@@ -165,6 +166,9 @@ def test_admitted_call_failure_kill_switch_and_exhaustion(
         gateway.run_narrative_attempt(context, source, max_tokens=1000)
     assert counts() == (4, 4)
     assign(world.maya.member, "viewer")
+    with pytest.raises(AttemptEvidenceRefused, match="AI_RECOVERY_REQUIRED"):
+        gateway.run_narrative_attempt(context, source, max_tokens=1000)
+    context = next_context()
     with pytest.raises(AIBudgetRefused, match="AI_BUDGET_EXHAUSTED"):
         gateway.run_narrative_attempt(context, source, max_tokens=1000)
     assert counts() == (4, 4)

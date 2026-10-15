@@ -1,29 +1,34 @@
-"""One persisted-job narrative attempt: admission, provider work and durable evidence.
+"""Persisted-job narrative calls with committed starts and bounded recovery.
 
-Public submission, durable admission failures, notifications, idempotent completion
-and crash recovery remain responsibilities of the unfinished job handler.
+Public submission, durable admission failures, notifications and reconciliation of
+unknown outcomes/usage remain responsibilities of the unfinished job workflow.
 """
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
-from typing import Literal
+from typing import Any, Literal
 from uuid import UUID
 
 from erev_engine.canonical import sha256_hex
 from sqlalchemy import select
 
 from erev_api.db.session import tenant_session
-from erev_api.db.tables import ai_model_log, ai_proposal, calc_trace
+from erev_api.db.tables import ai_call_intent, ai_model_log, ai_proposal, calc_trace
 from erev_api.domain.ai.access import AIAccessRefused, authorize_job
-from erev_api.domain.ai.attempts import record_attempt
+from erev_api.domain.ai.attempts import (
+    PROVIDER_FAILURE_CODES,
+    AttemptEvidenceRefused,
+    record_attempt,
+    record_intent,
+)
+from erev_api.domain.ai.attempts import RETRYABLE_PROVIDER_CODES as _RETRYABLE_PROVIDER_CODES
 from erev_api.domain.ai.budget import AIBudgetRefused, budget_guard
 from erev_api.domain.ai.ports import AIProvider, AIResponse, ProviderError
 from erev_api.domain.ai.preparation import PreparationRefused
 from erev_api.domain.ai.proposals import (
-    PROVIDER_FAILURE_CODES,
     record_narrative,
     record_provider_failure,
 )
@@ -60,24 +65,17 @@ def source_sha256(source: NarrativeSource, max_tokens: int) -> str:
     )
 
 
-_RETRYABLE_PROVIDER_CODES = frozenset(
-    {
-        "AI_TIMEOUT",
-        "AI_RATE_LIMIT",
-        "AI_PROVIDER_UNAVAILABLE",
-        "AI_CONNECTION",
-    }
-)
-
-
 class _ProviderAttemptFailed(ProviderError):
     """Internal retry evidence; exception text remains a safe provider code."""
 
-    def __init__(self, error: ProviderError, log_id: UUID, retrieved: RetrievedNarrative) -> None:
+    def __init__(
+        self, error: ProviderError, log_id: UUID, retrieved: RetrievedNarrative, attempt_no: int
+    ) -> None:
         code = error.code if error.code in PROVIDER_FAILURE_CODES else "AI_PROVIDER_ERROR"
         super().__init__(
             code, retryable=error.retryable and error.code in _RETRYABLE_PROVIDER_CODES
         )
+        self.attempt_no = attempt_no
         self.log_id = log_id
         self.retrieved = retrieved
 
@@ -135,6 +133,8 @@ class AiGateway:
         timeout: bool = False,
         invalidated: bool = False,
         latency_ms: int = 0,
+        intent_id: UUID,
+        error: ProviderError | None = None,
     ) -> UUID:
         # This is accounting for a call already authorized/made, not permission to
         # retain its narrative. Keep known usage even if a switch changed mid-call.
@@ -154,6 +154,15 @@ class AiGateway:
                 if timeout
                 else ("invalid_output" if invalidated else "provider_error"),
                 latency_ms=latency_ms,
+                intent_id=intent_id,
+                provider_failure_code=(
+                    error.code if error.code in PROVIDER_FAILURE_CODES else "AI_PROVIDER_ERROR"
+                )
+                if error
+                else None,
+                provider_retryable=bool(
+                    error and error.retryable and error.code in _RETRYABLE_PROVIDER_CODES
+                ),
             )
             uow.commit()
             return log_id
@@ -212,6 +221,85 @@ class AiGateway:
             raise AIAccessRefused("AI_TRACE_UNAVAILABLE")
         return UUID(str(row["id"]))
 
+    def _previous(
+        self, context: JobContext, source: NarrativeSource, max_tokens: int
+    ) -> Mapping[str, Any] | None:
+        with context.read_session() as session:
+            row = (
+                session.execute(
+                    select(
+                        ai_call_intent,
+                        ai_model_log.c.id.label("log_id"),
+                        ai_model_log.c.created_at.label("outcome_at"),
+                        ai_model_log.c.model_id,
+                        ai_model_log.c.parameters,
+                    )
+                    .outerjoin(
+                        ai_model_log,
+                        (ai_model_log.c.tenant_id == ai_call_intent.c.tenant_id)
+                        & (ai_model_log.c.intent_id == ai_call_intent.c.id),
+                    )
+                    .where(
+                        ai_call_intent.c.tenant_id == context.tenant_id,
+                        ai_call_intent.c.job_id == context.job_id,
+                    )
+                    .order_by(ai_call_intent.c.attempt_no.desc())
+                    .limit(1)
+                )
+                .mappings()
+                .one_or_none()
+            )
+        if row is None:
+            return None
+        if (
+            row["source_sha256"] != source_sha256(source, max_tokens)
+            or row["provider"] != self.provider
+            or row["created_by"] != context.principal.on_behalf_of_id
+        ):
+            raise PreparationRefused("AI_JOB_INPUT_CHANGED")
+        if row["log_id"] is None:
+            raise AttemptEvidenceRefused("AI_OUTCOME_UNKNOWN")
+        parameters = row["parameters"]
+        code = parameters.get("provider_failure_code")
+        if (
+            code not in PROVIDER_FAILURE_CODES
+            or type(parameters.get("provider_retryable")) is not bool
+        ):
+            raise AttemptEvidenceRefused("AI_RECOVERY_REQUIRED")
+        return dict(row)
+
+    def _resume_failure(
+        self,
+        context: JobContext,
+        source: NarrativeSource,
+        max_tokens: int,
+        previous: Mapping[str, Any],
+    ) -> _ProviderAttemptFailed:
+        fresh = retrieve_narrative(
+            context,
+            object_type=source.object_type,
+            object_id=source.object_id,
+            measure=source.measure,
+            period=source.period,
+            book_code=source.book_code,
+            as_of=source.as_of,
+            known_at=source.known_at,
+            model=previous["model_id"],
+            max_tokens=max_tokens,
+            redact_contact_details=previous["parameters"]["redact_contact_details"],
+        )
+        if fresh.prepared.request.input_sha256 != previous["input_sha256"]:
+            raise PreparationRefused("AI_INPUT_CHANGED")
+        return _ProviderAttemptFailed(
+            ProviderError(
+                previous["parameters"]["provider_failure_code"],
+                retryable=previous["parameters"]["provider_retryable"],
+            ),
+            UUID(str(previous["log_id"])),
+            fresh,
+            previous["attempt_no"],
+        )
+
     def run_narrative_attempt(
         self, context: JobContext, source: NarrativeSource, *, max_tokens: int
     ) -> UUID:
@@ -229,6 +317,13 @@ class AiGateway:
             completed = self._completed(context, source, max_tokens)
             if completed is not None:
                 return completed
+            previous = self._previous(context, source, max_tokens)
+            if previous is not None and (
+                previous["attempt_no"] >= 3
+                or not previous["parameters"]["provider_retryable"]
+                or previous["parameters"]["provider_failure_code"] not in _RETRYABLE_PROVIDER_CODES
+            ):
+                raise self._resume_failure(context, source, max_tokens, previous)
             settings = self._settings(context)
             guard.require_available(
                 now=context.clock.now(), monthly_budget=settings.monthly_token_budget
@@ -239,6 +334,21 @@ class AiGateway:
             # No provider is constructed until the persisted job, current grants,
             # effective settings, source reads and budget have all been admitted.
             provider = self.provider_factory()
+            with system_unit_of_work(
+                context.runtime,
+                retrieved.principal,
+                request_id=f"ai-intent-{context.job_id}",
+                clock=context.clock,
+            ) as uow:
+                intent_id = record_intent(
+                    uow,
+                    request=retrieved.prepared.request,
+                    provider=self.provider,
+                    job_id=context.job_id,
+                    source_sha256=source_sha256(source, max_tokens),
+                )
+                uow.commit()
+            attempt_no = 1 if previous is None else previous["attempt_no"] + 1
             started = context.clock.now()
             try:
                 response = provider.complete(retrieved.prepared.request)
@@ -250,8 +360,10 @@ class AiGateway:
                     response=None,
                     timeout=error.code == "AI_TIMEOUT",
                     latency_ms=elapsed,
+                    intent_id=intent_id,
+                    error=error,
                 )
-                raise _ProviderAttemptFailed(error, log_id, retrieved) from None
+                raise _ProviderAttemptFailed(error, log_id, retrieved, attempt_no) from None
             try:
                 if self._settings(context) != settings:
                     raise AISettingsRefused("AI_CONFIGURATION_CHANGED")
@@ -268,7 +380,9 @@ class AiGateway:
                 AIBudgetRefused,
                 Problem,
             ):
-                self._record_error(context, retrieved, response=response, invalidated=True)
+                self._record_error(
+                    context, retrieved, response=response, invalidated=True, intent_id=intent_id
+                )
                 raise
             with system_unit_of_work(
                 context.runtime,
@@ -279,6 +393,7 @@ class AiGateway:
                 proposal = record_narrative(
                     uow,
                     prepared=fresh.prepared,
+                    intent_id=intent_id,
                     response=response,
                     provider=self.provider,
                     job_id=context.job_id,
@@ -302,12 +417,37 @@ class AiGateway:
         is propagated immediately. Permanent/exhausted provider errors yield a failed
         proposal linked to the last committed log, without duplicating usage.
         """
-        for index in range(3):
+        # A new worker also observes the remaining backoff of a committed failure.
+        # No transaction or budget lease survives into the injected wait.
+        with context.read_session() as session:
+            authorize_job(context, session)
+            completed = session.scalar(
+                select(ai_proposal.c.id).where(
+                    ai_proposal.c.tenant_id == context.tenant_id,
+                    ai_proposal.c.job_id == context.job_id,
+                )
+            )
+        resumed_previous = (
+            None if completed is not None else self._previous(context, source, max_tokens)
+        )
+        if (
+            resumed_previous is not None
+            and resumed_previous["attempt_no"] < 3
+            and resumed_previous["parameters"]["provider_retryable"]
+            and resumed_previous["parameters"]["provider_failure_code"] in _RETRYABLE_PROVIDER_CODES
+        ):
+            due = resumed_previous["outcome_at"] + timedelta(
+                seconds=5 * 2 ** (resumed_previous["attempt_no"] - 1)
+            )
+            remaining = due - context.clock.now()
+            if remaining > timedelta():
+                wait(remaining)
+        for _ in range(3):
             try:
                 return self.run_narrative_attempt(context, source, max_tokens=max_tokens)
             except _ProviderAttemptFailed as failure:
-                if failure.retryable and index < 2:
-                    wait(timedelta(seconds=5 * 2**index))
+                if failure.retryable and failure.attempt_no < 3:
+                    wait(timedelta(seconds=5 * 2 ** (failure.attempt_no - 1)))
                     continue
                 # Reauthorize the source before persisting terminal evidence. Retain
                 # the failed attempt's model/configuration, not a newer request hash.

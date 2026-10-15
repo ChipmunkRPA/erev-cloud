@@ -384,3 +384,34 @@ def test_intent_refuses_unowned_or_nonrunning_ai_job(
             )
     with tenant_session(principal.db_context, read_only=True) as session:
         assert session.scalar(select(func.count()).select_from(ai_call_intent)) == 0
+
+
+@pytest.mark.parametrize(
+    "classification",
+    [
+        {"provider_failure_code": "raw provider diagnostic"},
+        {"provider_failure_code": "AI_TIMEOUT"},
+        {"provider_failure_code": "AI_AUTHENTICATION", "provider_retryable": True},
+        {"provider_retryable": True},
+        {"provider_failure_code": "AI_PROVIDER_ERROR", "provider_retryable": "yes"},
+    ],
+)
+def test_provider_failure_classification_refuses_untrusted_metadata(
+    world: tuple[Principal, JobRuntime],
+    classification: dict[str, Any],
+) -> None:
+    principal, runtime = world
+    with pytest.raises(AttemptEvidenceRefused, match="AI_INVALID_PROVIDER_FAILURE"):
+        with system_unit_of_work(
+            runtime, principal, request_id="bad-failure-classification"
+        ) as uow:
+            record_attempt(
+                uow,
+                request=request(),
+                provider="fake",
+                outcome="ERROR",
+                failure="provider_error",
+                **classification,
+            )
+    with tenant_session(principal.db_context, read_only=True) as session:
+        assert session.scalar(select(func.count()).select_from(ai_model_log)) == 0

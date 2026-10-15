@@ -2,6 +2,25 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Gateway call intents and restart recovery — October 15, 2026
+
+- The narrative gateway now commits an intent before calling the provider, then links each
+  outcome to that intent. Completed proposals keep their existing idempotent delivery path.
+  Unobserved outcomes refuse AI_OUTCOME_UNKNOWN; returned but invalidated results require
+  reconciliation. Neither path silently calls again or invents a zero-usage outcome.
+- Logs retain allow-listed provider failure codes and retry decisions. Restarted gateways
+  honor remaining backoff and the durable three-attempt limit; permanent/exhausted failures
+  finalize their failed proposal without another call. Proposal writers verify intent/job/
+  source bindings, preventing evidence reuse under another job.
+- Tests verify committed starts visible inside provider execution, crash during the call,
+  lost result before commit, restarted transient/permanent/exhausted failures, bounded calls,
+  waits without budget leases, complete intent/outcome linkage and metadata refusals.
+- Full AI/architecture regression: 493 passed, two Linux-only parser-limit skips (262.18s);
+  strict typing passed for 770 sources; Ruff/diff passed. Logs: .run/ai-recovery-{final,types}.log.
+- Unknown usage/reconciliation, durable admission failures, registered jobs, public AI/human
+  workflows and the other release gates remain open. This is not full release CI or accounting
+  sign-off. No deployment; verified work is published directly to main.
+
 ## Audited AI call-intent writer — October 15, 2026
 
 - Added a transaction-bound writer that locks the human-owned RUNNING AI_TASK job,
@@ -211,35 +230,6 @@
 - Rechecked publication boundaries: neither research-harness nor docs/research is tracked;
   PolyForm Noncommercial 1.0.0 remains in place. No deployment. Numeric checking remains
   a prerequisite, not evidence that the unfinished AI narrative workflow is complete.
-
-## Numeric evidence validation for AI narratives — October 15, 2026
-
-- Implemented DG-AI-07 numeric membership validation using authorized caller-supplied
-  evidence and the engine's exact half-up comparison at the supplied currency minor unit.
-  English, German and French numeric formats are explicit; accounting negatives and
-  Unicode decimal digits normalize without binary floats or ambient Decimal rounding.
-- Valid ISO calendar dates are excluded. Malformed grouping, scientific notation,
-  fractions, ambiguous signs, nonfinite evidence and oversized inputs refuse safely.
-  Percentages require evidence in displayed units; no implicit scaling is inferred.
-- Verification: 197 AI/architecture checks passed, two Linux parser-limit tests skipped;
-  final numeric suite 32 passed after the Decimal-context regression fix. Strict typing
-  passed for 762 sources; Ruff passes. Logs: .run/ai-numbers-{checks,final,types}.log.
-- Numeric membership does not prove semantic support or citation authorization. Narrative
-  generation, proposal persistence and deterministic fallback integration remain open,
-  along with the broader AI gateway and human workflow. No deployment or readiness claim.
-
-## Atomic AI attempt evidence — October 15, 2026
-
-- Added a transaction-bound writer for model-log metadata and its AUD-FACT event.
-  It requires a user with ai.use, verifies request/response hashes, validates counters
-  and fixed outcome/failure codes, and retains no prompt or response text. Requested
-  and resolved model identifiers remain distinguishable. The caller owns commit.
-- PostgreSQL tests cover commit/rollback, rejected metadata, human attribution and
-  usage retained for invalid output. Audit inventories now recognize the log facts.
-- Focused verification: 202 passed, two Linux-only resource-limit tests skipped;
-  strict typing passed for 761 sources. Ruff and diff checks pass.
-- The operational gateway, proposal creation/acceptance and full AI audit lifecycle
-  remain unfinished. No live provider calls or deployment; no readiness claim.
 
 ## Outstanding release verification
 

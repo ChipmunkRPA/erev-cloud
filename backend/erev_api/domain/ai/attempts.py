@@ -33,6 +33,32 @@ _PARAMETERS = frozenset(
 )
 
 
+PROVIDER_FAILURE_CODES = frozenset(
+    {
+        "AI_MODEL_NOT_FOUND",
+        "AI_TIMEOUT",
+        "AI_RATE_LIMIT",
+        "AI_PROVIDER_UNAVAILABLE",
+        "AI_CONNECTION",
+        "AI_BAD_REQUEST",
+        "AI_AUTHENTICATION",
+        "AI_PERMISSION",
+        "AI_PROVIDER_ERROR",
+        "AI_INVALID_RESPONSE",
+    }
+)
+
+
+RETRYABLE_PROVIDER_CODES = frozenset(
+    {
+        "AI_TIMEOUT",
+        "AI_RATE_LIMIT",
+        "AI_PROVIDER_UNAVAILABLE",
+        "AI_CONNECTION",
+    }
+)
+
+
 class AttemptEvidenceRefused(ValueError):
     """Fixed failure code; never contains request/response text or provider errors."""
 
@@ -86,6 +112,8 @@ def record_attempt(
     failure: Failure | None = None,
     latency_ms: int = 0,
     intent_id: UUID | None = None,
+    provider_failure_code: str | None = None,
+    provider_retryable: bool = False,
 ) -> UUID:
     """Insert evidence and buffer its audit event in the caller's transaction.
 
@@ -112,6 +140,20 @@ def record_attempt(
     ):
         raise AttemptEvidenceRefused("AI_INVALID_ATTEMPT_RESPONSE")
     parameters = _request_parameters(request)
+    if provider_failure_code is not None:
+        if (
+            provider_failure_code not in PROVIDER_FAILURE_CODES
+            or (provider_retryable and provider_failure_code not in RETRYABLE_PROVIDER_CODES)
+            or response is not None
+            or type(provider_retryable) is not bool
+            or outcome != ("TIMEOUT" if provider_failure_code == "AI_TIMEOUT" else "ERROR")
+            or failure != ("timeout" if provider_failure_code == "AI_TIMEOUT" else "provider_error")
+        ):
+            raise AttemptEvidenceRefused("AI_INVALID_PROVIDER_FAILURE")
+        parameters["provider_failure_code"] = provider_failure_code
+        parameters["provider_retryable"] = provider_retryable
+    elif provider_retryable:
+        raise AttemptEvidenceRefused("AI_INVALID_PROVIDER_FAILURE")
     input_tokens = output_tokens = 0
     response_hash = None
     if response is not None:

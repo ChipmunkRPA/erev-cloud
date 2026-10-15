@@ -14,8 +14,15 @@ from sqlalchemy import insert, null, select
 
 from erev_api.audit.writer import record
 from erev_api.db import new_id
-from erev_api.db.tables import ai_model_log, ai_proposal, calc_trace, job, obligation_version
-from erev_api.domain.ai.attempts import record_attempt
+from erev_api.db.tables import (
+    ai_call_intent,
+    ai_model_log,
+    ai_proposal,
+    calc_trace,
+    job,
+    obligation_version,
+)
+from erev_api.domain.ai.attempts import PROVIDER_FAILURE_CODES, record_attempt
 from erev_api.domain.ai.narratives import NarrativeSelection, PreparedNarrative, prepare_narrative
 from erev_api.domain.ai.ports import AIResponse
 from erev_api.enums import PrincipalKind
@@ -96,6 +103,33 @@ def _evidence(
     return rebuilt, contracts
 
 
+def _intent_binding(
+    uow: UnitOfWork,
+    intent_id: UUID | None,
+    job_id: UUID | None,
+    source_sha256: str | None,
+    input_sha256: str,
+) -> None:
+    if intent_id is None:
+        return
+    if (
+        job_id is None
+        or source_sha256 is None
+        or uow.session.scalar(
+            select(ai_call_intent.c.id).where(
+                ai_call_intent.c.tenant_id == uow.principal.tenant_id,
+                ai_call_intent.c.id == intent_id,
+                ai_call_intent.c.job_id == job_id,
+                ai_call_intent.c.source_sha256 == source_sha256,
+                ai_call_intent.c.input_sha256 == input_sha256,
+                ai_call_intent.c.created_by == uow.principal.id,
+            )
+        )
+        is None
+    ):
+        raise ProposalEvidenceRefused("AI_INVALID_INTENT_BINDING")
+
+
 def record_narrative(
     uow: UnitOfWork,
     *,
@@ -104,6 +138,7 @@ def record_narrative(
     provider: Literal["fake", "anthropic"],
     job_id: UUID | None = None,
     job_source_sha256: str | None = None,
+    intent_id: UUID | None = None,
 ) -> UUID:
     """Revalidate the immutable trace, then buffer log/proposal/audit atomically.
 
@@ -112,10 +147,12 @@ def record_narrative(
     citations identify its nodes. A failure stores no rejected provider narrative.
     """
     rebuilt, contracts = _evidence(uow, prepared)
+    _intent_binding(uow, intent_id, job_id, job_source_sha256, rebuilt.request.input_sha256)
     selected = rebuilt.select(response)
     log_id = record_attempt(
         uow,
         request=rebuilt.request,
+        intent_id=intent_id,
         response=response,
         provider=provider,
         outcome="SUCCESS" if selected.proposed else "ERROR",
@@ -198,22 +235,6 @@ def _insert_narrative(
     return proposal_id
 
 
-PROVIDER_FAILURE_CODES = frozenset(
-    {
-        "AI_MODEL_NOT_FOUND",
-        "AI_TIMEOUT",
-        "AI_RATE_LIMIT",
-        "AI_PROVIDER_UNAVAILABLE",
-        "AI_CONNECTION",
-        "AI_BAD_REQUEST",
-        "AI_AUTHENTICATION",
-        "AI_PERMISSION",
-        "AI_PROVIDER_ERROR",
-        "AI_INVALID_RESPONSE",
-    }
-)
-
-
 def record_provider_failure(
     uow: UnitOfWork,
     *,
@@ -253,8 +274,17 @@ def record_provider_failure(
         "outcome": "TIMEOUT" if code == "AI_TIMEOUT" else "ERROR",
         "error_detail": "timeout" if code == "AI_TIMEOUT" else "provider_error",
     }
+    if log is not None and "provider_failure_code" in log["parameters"]:
+        if type(log["parameters"].get("provider_retryable")) is not bool:
+            raise ProposalEvidenceRefused("AI_ATTEMPT_EVIDENCE_MISMATCH")
+        expected["parameters"] = {
+            **rebuilt.request.parameters,
+            "provider_failure_code": code,
+            "provider_retryable": log["parameters"].get("provider_retryable"),
+        }
     if log is None or any(log[key] != value for key, value in expected.items()):
         raise ProposalEvidenceRefused("AI_ATTEMPT_EVIDENCE_MISMATCH")
+    _intent_binding(uow, log["intent_id"], job_id, job_source_sha256, rebuilt.request.input_sha256)
     return _insert_narrative(
         uow,
         rebuilt,

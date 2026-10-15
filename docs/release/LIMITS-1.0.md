@@ -22,16 +22,19 @@ provider errors produce failed proposals linked to existing attempt evidence.
 Migrations 0147–0150 retain append-only call logs, immutable proposal content with guarded
 human-decision fields, completed-job/source bindings and immutable call intents with one
 optional outcome link. Populated completion/intent evidence prevents destructive downgrade.
-A transaction-bound writer now validates and audits call intents, serializes starts on the
-persisted human-owned RUNNING AI_TASK job, enforces consecutive attempts up to three, refuses
-unresolved starts and validates linked outcomes against the request/provider/human. Tests cover
-rollback, missing outcomes, mismatches and duplicate outcomes without inventing usage.
-Call intents are not yet written by the gateway: write-ahead admission, durable retry counting,
-unknown usage and recovery after a provider call but before committed evidence remain open.
-A monthly lease serializes known usage; it does not reserve an unknown response or reconstruct
-lost usage. The worker still needs dispatch/waiting, registered AI_TASK handlers, durable
-admission failures, notifications and public submission/acceptance/rejection workflows. The
-AI audit-lifecycle gate remains open; storage and internal gateway tests do not satisfy it.
+The gateway now commits a validated/audited call intent before provider execution and links
+the outcome atomically to its log/proposal. Retained failure codes and retry decisions allow a
+new worker to resume within the same three-call limit and observe remaining 5/10-second
+backoff. A permanent or exhausted failure can be finalized after restart without another call.
+A missing outcome refuses with AI_OUTCOME_UNKNOWN; a returned but invalidated result refuses
+with AI_RECOVERY_REQUIRED. Neither case silently sends the call again or creates a zero-usage
+log. Current source/permission checks and exact job/input bindings remain in force.
+
+Unknown outcome reconciliation, unknown token usage and durable admission failures remain
+open. The monthly lease serializes known committed usage; it does not reserve an unknown
+response or reconstruct lost usage. The worker still needs real dispatch/waiting, registered
+AI_TASK handlers, notifications and public submission/acceptance/rejection workflows. The AI
+audit-lifecycle gate remains open; internal gateway tests do not satisfy the full lifecycle.
 
 The Anthropic adapter is mock-tested, uses the official SDK, disables SDK retries and telemetry,
 and resolves secrets lazily. Contract-review and explain-narrative prompts have retained bytes,
@@ -64,7 +67,9 @@ The dedicated proposal/document-text response API and extraction workflow remain
 Earlier architecture failures and subsequent fixes are preserved in the build history.
 The October 15 full architecture plus file API run passed 292 checks in 226.83 seconds
 (.run/ai-file-access-regression.log); 14 focused file-read checks passed separately. These
-passes do not establish a full release pass. Current results are recorded in PROGRESS.md. Independent accounting sign-off and the other release gates remain open.
+passes do not establish a full release pass. A subsequent gateway-recovery/AI/full-architecture
+run passed 493 checks with two Linux-only parser-limit skips (.run/ai-recovery-final.log).
+Current results are recorded in PROGRESS.md. Independent accounting sign-off and the other release gates remain open.
 
 October 14 audit continuation: native option entry/expiry and CLOSE evidence-pack creation
 now have catalogue entries and real request scenarios in the audit walk. Material-right

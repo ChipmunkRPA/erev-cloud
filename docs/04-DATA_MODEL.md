@@ -5873,8 +5873,11 @@ locks the human-owned RUNNING AI_TASK job, validates request/source digests, ass
 attempts up to three and refuses an unresolved prior start. It writes an `ai_call_intent.record`
 AUD-FACT event with intent IDs, job ID and attempt number, without prompt/response text. A linked
 outcome must match provider, request digest and human; disabled/budget admission logs cannot
-close a call intent. Runtime write-ahead admission and uncertain-outcome recovery must call and
-commit these writers before they provide crash protection.
+close a call intent. The narrative gateway commits the intent before provider execution and
+links its eventual log. A start without an outcome blocks automatic redelivery; known provider
+failures retain `provider_failure_code` and `provider_retryable` in model-log parameters, enabling
+bounded retries and terminal proposal recovery. Unknown usage/reconciliation remains separate
+work; a missing outcome is not recorded as a zero-token failure.
 
 
 ### T-MIG-01 `migration_batch`

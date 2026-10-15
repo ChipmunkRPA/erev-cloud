@@ -4553,3 +4553,32 @@ cleanup in the shared database session kernel was also repaired and regression-t
   recovery for a provider call whose usage was never logged remains open, as do the gateway,
   durable per-attempt/proposal auditing and human acceptance. No live calls or deployment.
   Isolated local test database stopped after verification.
+
+## Atomic AI attempt evidence — October 15, 2026
+
+- Added a transaction-bound writer for model-log metadata and its AUD-FACT event.
+  It requires a user with ai.use, verifies request/response hashes, validates counters
+  and fixed outcome/failure codes, and retains no prompt or response text. Requested
+  and resolved model identifiers remain distinguishable. The caller owns commit.
+- PostgreSQL tests cover commit/rollback, rejected metadata, human attribution and
+  usage retained for invalid output. Audit inventories now recognize the log facts.
+- Focused verification: 202 passed, two Linux-only resource-limit tests skipped;
+  strict typing passed for 761 sources. Ruff and diff checks pass.
+- The operational gateway, proposal creation/acceptance and full AI audit lifecycle
+  remain unfinished. No live provider calls or deployment; no readiness claim.
+
+## Numeric evidence validation for AI narratives — October 15, 2026
+
+- Implemented DG-AI-07 numeric membership validation using authorized caller-supplied
+  evidence and the engine's exact half-up comparison at the supplied currency minor unit.
+  English, German and French numeric formats are explicit; accounting negatives and
+  Unicode decimal digits normalize without binary floats or ambient Decimal rounding.
+- Valid ISO calendar dates are excluded. Malformed grouping, scientific notation,
+  fractions, ambiguous signs, nonfinite evidence and oversized inputs refuse safely.
+  Percentages require evidence in displayed units; no implicit scaling is inferred.
+- Verification: 197 AI/architecture checks passed, two Linux parser-limit tests skipped;
+  final numeric suite 32 passed after the Decimal-context regression fix. Strict typing
+  passed for 762 sources; Ruff passes. Logs: .run/ai-numbers-{checks,final,types}.log.
+- Numeric membership does not prove semantic support or citation authorization. Narrative
+  generation, proposal persistence and deterministic fallback integration remain open,
+  along with the broader AI gateway and human workflow. No deployment or readiness claim.
