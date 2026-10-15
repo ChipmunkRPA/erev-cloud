@@ -13,6 +13,8 @@
   the exact scoped URL, successful generation, downloads and light/dark accessibility.
   Reviewed the resulting screenshot: header shows AVM-US/August locked, matching the pack.
   Logs: .run/evidence-context-tests.log and .run/evidence-context-browser.log.
+- Full frontend on df95848: 195 files / 2,093 tests passed (108.82s);
+  log .run/frontend-df95848-full.log. Existing jsdom navigation warning remains.
 - Browser test servers stopped. Full CI on 165d63c remains live with known failures;
   pending backend identity/IDOR repairs are not part of this frontend change. No deployment
   or complete release-gate claim. Broader release and accounting review gaps remain open.
