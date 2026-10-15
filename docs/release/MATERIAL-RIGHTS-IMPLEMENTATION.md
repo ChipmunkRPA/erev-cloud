@@ -453,3 +453,27 @@ remaining SSP 10, total allocation 62.5 and posted revenue baseline 37.50.
 capture/promotion acceptance. The option writer remains missing, capture still refuses option
 records, and MIGRATION_PROMOTION remains an unimplemented approval subject. Do not remove
 the refusal until immutable writes, rollback, reconciliation and approved promotion are verified.
+
+## Shared native and migration term writer, October 14
+
+Native entry and the migration platform applier now share `material_right_facts.insert_terms`.
+The helper validates method inputs, currency, obligation ownership and likelihood ownership;
+callers retain authorization, lifecycle locks, computation, audit and transaction control.
+Converted POL-212 records persist their explicit total SSP before activation/computation.
+Legacy records do not supply a commercial option subtype, so the writer uses OTHER and
+leaves expiry/likelihood absent. KEEP rows do not create option terms. The applier buffers
+contract-keyed fact audit only after successful computation and opening-evidence validation.
+
+Database witnesses preserve total SSP 25 through the real stored-term bundle adapter, including
+source decimal 25.00000000. Savepoint rollback removes both parent and option. Wrong-contract
+ownership, incomplete discount inputs, negative amounts and unsupported native money precision
+refuse without facts; no rounding is introduced. Five database witnesses plus existing capture
+and opening-unit tests passed: 25 checks (8.09s). Native entry, failed-computation retry,
+independent activation, invalid entry and both approved likelihood cases passed in the earlier
+six-check run (65.49s). Logs: `.run/shared-option-writer.log` and
+`.run/shared-option-writer-final.log`.
+
+This is persistence-level evidence, not a complete converted-option import. Capture retains
+its option refusal. End-to-end platform capture with real prerequisites, reconciliation and
+approved MIGRATION_PROMOTION remain outstanding; the promotion subject is still missing.
+The native four-decimal money boundary is also enforced for imported option terms.

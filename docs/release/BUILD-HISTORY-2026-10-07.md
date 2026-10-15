@@ -3717,3 +3717,19 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   package bases. No production runtime or schema change.
 - Full CI 165d63c remains live around 32%; this focused repair does not establish a
   passing release gate. Original exclusions/noncommercial license retained; no deployment.
+
+## Native discount-option calculation — October 14, 2026
+
+- Added ASC606 API cases for discount-times-likelihood: USD 100 expected purchases,
+  0.5 incremental discount and likelihoods 0.8/0.5 produce persisted selected SSP 40/25.
+  Missing approved likelihood refuses entry with no retained terms; evidence-backed
+  estimate approval permits entry, and independent activation retains the USD 12,000
+  allocation with zero revenue before exercise/expiry.
+- Final cases: 2 passed (31.40s), strict test-file Mypy and Ruff pass. Logs:
+  .run/material-right-discount-final.log and .run/material-right-discount-types.log.
+  Added an explicit heterogeneous-input annotation found by the strict check.
+- Attempting native expiry failed with 422 API-R-30: the generic route requires an
+  absent dedicated command. Retained .run/material-right-discount-expiry.log and
+  documented the required governed expiry/exercise commands and ledger acceptance.
+  These missing commands remain implementation work; no expiry support is claimed.
+- Full CI 165d63c is live around 32%. No deployment; direct-main publication.

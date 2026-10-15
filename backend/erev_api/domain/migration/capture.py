@@ -16,9 +16,10 @@ T-MIG-05. The reconcile (``MIGRATION_RECONCILE``) binds and reads that capture, 
 version (``population``).
 
 Refusals are by name (no silent substitution, no fabrication): a staged row pending a POL-211
-decision; POL-212 option records (their writer is a later slice); a booking prerequisite the tenant
-lacks — a ``Selling Entity`` code, a product for a legacy SKU, a product whose default template is
-not the row's parity template, the reporting currency not enabled (creating them is the LMG-2
+decision; POL-212 option records (capture/promotion acceptance remains incomplete); a booking
+prerequisite the tenant lacks — a ``Selling Entity`` code, a product for a legacy SKU, a product
+whose default template is not the row's parity template, the reporting currency not enabled
+(creating them is the LMG-2
 import-phase follow-up: LM-CL-09 ``create_missing_entities`` needs calendar / time-zone inputs the
 mapping does not carry; products come from the SKU import in mode (b)); a legacy money value the
 REGISTERED ``OPENING_BALANCE_ESTABLISHED`` payload version cannot carry — under version 1
@@ -45,6 +46,7 @@ from erev_engine.upgrade import encode_input, raw_digest
 from sqlalchemy import and_, or_, select
 
 from erev_api import money
+from erev_api.audit.writer import record_facts
 from erev_api.auth.principal import Principal, system_principal
 from erev_api.db.tables import (
     calc_trace,
@@ -67,6 +69,7 @@ from erev_api.domain.imports.legacy_v1.contract_setup import (
     write_vc_element,
 )
 from erev_api.domain.imports.legacy_v1.sku_ssp import approved_midpoints
+from erev_api.domain.migration import option_terms
 from erev_api.domain.migration.opening_balances import (
     ContractOpening,
     Staging,
@@ -152,8 +155,8 @@ PENDING_COPY: Final = (
     "{count} staged row(s) await a POL-211 decision ({keys}); the import cannot book them."
 )
 OPTIONS_COPY: Final = (
-    "{count} POL-212 option record(s) are staged; the option writer is a later slice, so the "
-    "import refuses rather than book without them."
+    "{count} POL-212 option record(s) are staged; option capture and approved promotion "
+    "are not yet verified, so the import remains unavailable for these records."
 )
 PREREQUISITE_COPY: Final = (
     "The tenant lacks a booking prerequisite of {contract}: {what}. Creating it is the "
@@ -827,6 +830,9 @@ class PlatformApplier:
         booked = book_contract(uow, body=body, origin="MIGRATION")
         contract_id = UUID(str(booked.contract["id"]))
         group_id = UUID(str(booked.combination_group["id"]))
+        option_ids = option_terms.persist(
+            uow, opening=contract, contract_id=contract_id, currency=currency
+        )
         # S07-R-11 / POL-213: a staged VC row is a VC line of the booking AND its contract-level VC
         # element (S01-R-06), so the transaction price carries the row's amount before the
         # opening balance is checked against it (S07-R-03)
@@ -884,6 +890,14 @@ class PlatformApplier:
                     contract=contract.external_id,
                     status="without the OPENING_BALANCE_ESTABLISHED input naming this migration",
                 )
+            )
+        if option_ids:
+            record_facts(
+                uow,
+                action="material_right.create",
+                object_type="material_right",
+                ids=option_ids,
+                contract_id=contract_id,
             )
         return Applied(
             contract_id=contract_id,

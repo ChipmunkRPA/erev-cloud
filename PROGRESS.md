@@ -2,6 +2,23 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Shared option term persistence — October 14, 2026
+
+- Native entry and the migration applier share validated immutable term insertion. Converted
+  records carry their explicit total SSP, quantity-one convention and unclassified OTHER
+  subtype; no renewal, expiry or likelihood is invented. Native guards and compute/audit
+  ordering remain intact. The migration applier audits only after successful computation.
+- 25 focused migration/database checks passed (8.09s), including stored adapter values,
+  savepoint parent/term rollback, cross-contract refusal and exact money precision. Six
+  native entry/approval/likelihood/rollback cases passed (65.49s). Logs:
+  .run/shared-option-writer.log and .run/shared-option-writer-final.log.
+- 19 architecture/lock-order checks passed; strict production Mypy (883 files), test
+  Mypy and Ruff passed. See .run/shared-option-writer-architecture.log and *-types.log.
+- Converted-option capture still refuses until full platform capture, reconciliation and
+  approved promotion are verified. MIGRATION_PROMOTION remains unimplemented. This change
+  verifies term persistence, not complete import acceptance. No deployment/readiness claim.
+- Older immutable CI 165d63c remains live at 44%; it is not current-main release evidence.
+
 ## Native command audit coverage — October 14, 2026
 
 - Current catalogue checks exposed missing option-entry, option-expiry and evidence-pack
@@ -225,22 +242,6 @@
   race/security/closed-period/failure cases and complete release/accounting acceptance remain
   open. Full CI 165d63c is live around 32%, with another demo-reference failure awaiting
   diagnostics. No deployment; publish directly to main.
-
-## Native discount-option calculation — October 14, 2026
-
-- Added ASC606 API cases for discount-times-likelihood: USD 100 expected purchases,
-  0.5 incremental discount and likelihoods 0.8/0.5 produce persisted selected SSP 40/25.
-  Missing approved likelihood refuses entry with no retained terms; evidence-backed
-  estimate approval permits entry, and independent activation retains the USD 12,000
-  allocation with zero revenue before exercise/expiry.
-- Final cases: 2 passed (31.40s), strict test-file Mypy and Ruff pass. Logs:
-  .run/material-right-discount-final.log and .run/material-right-discount-types.log.
-  Added an explicit heterogeneous-input annotation found by the strict check.
-- Attempting native expiry failed with 422 API-R-30: the generic route requires an
-  absent dedicated command. Retained .run/material-right-discount-expiry.log and
-  documented the required governed expiry/exercise commands and ledger acceptance.
-  These missing commands remain implementation work; no expiry support is claimed.
-- Full CI 165d63c is live around 32%. No deployment; direct-main publication.
 
 ## Outstanding release verification
 

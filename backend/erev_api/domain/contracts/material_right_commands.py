@@ -3,22 +3,19 @@
 from __future__ import annotations
 
 from datetime import date
-from decimal import Decimal
 from uuid import UUID
 
 from erev_engine.bundle import InputBundle, OutputBundle
 from erev_engine.errors import MaterialRightInputError
 from erev_engine.stages.s01_canonicalize import obligation_subject_key
-from sqlalchemy import insert, or_, select
+from sqlalchemy import select
 
 from erev_api.audit.writer import record_facts
 from erev_api.auth.dependencies import require_for_entity
 from erev_api.clock import to_entity_date
-from erev_api.db import new_id
 from erev_api.db.tables import (
     approval_request,
     contract_version,
-    estimate,
     legal_entity,
     material_right,
     obligation,
@@ -28,13 +25,14 @@ from erev_api.domain.contracts import (
     computation,
     compute_job,
     events,
+    material_right_facts,
     material_rights,
     obligations,
     queries,
     repo,
 )
 from erev_api.enums import ComputationStatus, ContractEventType
-from erev_api.problems import Problem, ProblemError
+from erev_api.problems import Problem
 from erev_api.schemas.common import JobOut
 from erev_api.schemas.events import EventAppendIn, EventAppendItemIn, EventsAppendedOut
 from erev_api.schemas.obligations import (
@@ -43,14 +41,6 @@ from erev_api.schemas.obligations import (
     MaterialRightOut,
 )
 from erev_api.uow import UnitOfWork
-
-
-def _invalid(field: str, message: str) -> Problem:
-    return Problem(
-        "validation-failed",
-        message,
-        errors=[ProblemError(field=field, rule_id="MATERIAL_RIGHT_TERMS", message=message)],
-    )
 
 
 def create(
@@ -91,79 +81,12 @@ def create(
         select(material_right.c.id).where(material_right.c.obligation_id == obligation_id)
     ).first():
         raise Problem("invalid-transition", "This obligation already has immutable option terms.")
-    discount = body.ssp_method == "DISCOUNT_X_LIKELIHOOD"
-    for field in (
-        "incremental_discount_ratio",
-        "expected_purchase_amount",
-        "likelihood_estimate_id",
-    ):
-        present = getattr(body, field) is not None
-        if discount and not present:
-            raise _invalid(
-                field,
-                "Discount-times-likelihood requires a discount, expected purchase amount "
-                "and likelihood estimate.",
-            )
-        if not discount and present:
-            raise _invalid(field, "This field applies only to Discount times likelihood.")
-    if body.ssp_method == "RENEWAL_ALTERNATIVE" and body.option_type != "RENEWAL_OPTION":
-        raise _invalid("option_type", "The renewal alternative requires a renewal option.")
-    currency = str(current["transaction_currency"]).strip()
-    if (
-        body.expected_purchase_amount is not None
-        and body.expected_purchase_amount.currency != currency
-    ):
-        raise _invalid(
-            "expected_purchase_amount.currency", "Use the contract's transaction currency."
-        )
-    if body.entered_ssp_amount is not None:
-        if body.ssp_method != "ENTERED_AMOUNT":
-            raise _invalid("entered_ssp_amount", "This field applies only to Entered amount.")
-        if body.entered_ssp_amount.currency != currency:
-            raise _invalid(
-                "entered_ssp_amount.currency", "Use the contract's transaction currency."
-            )
-    if body.likelihood_estimate_id is not None:
-        found = session.execute(
-            select(estimate.c.id).where(
-                estimate.c.id == body.likelihood_estimate_id,
-                estimate.c.contract_id == contract_id,
-                estimate.c.estimate_kind == "EXERCISE_LIKELIHOOD",
-                or_(estimate.c.obligation_id.is_(None), estimate.c.obligation_id == obligation_id),
-            )
-        ).first()
-        if found is None:
-            raise _invalid(
-                "likelihood_estimate_id",
-                "Choose an exercise-likelihood estimate of this contract and obligation.",
-            )
-    right_id = new_id()
-    session.execute(
-        insert(material_right).values(
-            tenant_id=uow.principal.tenant_id,
-            id=right_id,
-            contract_id=contract_id,
-            obligation_id=obligation_id,
-            option_type=body.option_type.value,
-            ssp_method=body.ssp_method,
-            incremental_discount_ratio=None
-            if body.incremental_discount_ratio is None
-            else Decimal(body.incremental_discount_ratio),
-            is_discount_available_without_contract=body.is_discount_available_without_contract,
-            expected_purchase_amount=None
-            if body.expected_purchase_amount is None
-            else Decimal(body.expected_purchase_amount.amount),
-            entered_ssp_amount=None
-            if body.entered_ssp_amount is None
-            else Decimal(body.entered_ssp_amount.amount),
-            currency=currency,
-            expiry_date=body.expiry_date,
-            likelihood_estimate_id=body.likelihood_estimate_id,
-            is_legacy_quantity_ssp_dollars=False,
-            created_at=uow.now,
-            created_by=uow.principal.id,
-            created_by_kind=uow.principal.kind.value,
-        )
+    right_id = material_right_facts.insert_terms(
+        uow,
+        contract_id=contract_id,
+        obligation_id=obligation_id,
+        currency=str(current["transaction_currency"]).strip(),
+        body=body,
     )
     target = obligation_subject_key(str(current["external_id"]), str(line["obligation_key"]))
     engine = computation.default_engine()
@@ -172,7 +95,7 @@ def create(
         try:
             output = engine(bundle)
         except MaterialRightInputError as error:
-            raise _invalid(
+            raise material_right_facts.invalid(
                 "ssp_method",
                 "These option terms are incomplete. Check the method inputs "
                 "and approved likelihood estimate at the pricing date.",
@@ -184,7 +107,7 @@ def create(
             if item.subject_key == target
         ]
         if not kinds or any(kind != "MATERIAL_RIGHT" for kind in kinds):
-            raise _invalid(
+            raise material_right_facts.invalid(
                 "obligation_id",
                 "Option terms require a current material-right obligation in every book.",
             )
@@ -195,7 +118,7 @@ def create(
         # Abort the outer command and abandon its idempotency attempt, just as expiry does.
         raise RuntimeError("Material-right creation computation failed")
     if computed.status is not ComputationStatus.SUCCEEDED:
-        raise _invalid(
+        raise material_right_facts.invalid(
             "ssp_method",
             "These option terms could not be computed. Check the template, SSP "
             "and approved likelihood estimate.",
@@ -271,9 +194,13 @@ def expire(
     ).scalar_one()
     today = to_entity_date(uow.now, str(zone))
     if body.effective_date > today or body.effective_date < current["inception_date"]:
-        raise _invalid("effective_date", "Use a date from contract inception through today.")
+        raise material_right_facts.invalid(
+            "effective_date", "Use a date from contract inception through today."
+        )
     if right.expiry_date is not None and body.effective_date < right.expiry_date:
-        raise _invalid("effective_date", "The option has not reached its stated expiry date.")
+        raise material_right_facts.invalid(
+            "effective_date", "The option has not reached its stated expiry date."
+        )
     captured = events.record_option_expiry(
         uow,
         contract_id=contract_id,
@@ -299,5 +226,7 @@ def expire(
         # command kernel abandon this idempotency attempt so the same request can retry.
         raise RuntimeError("Option expiry computation failed")
     if captured.appended.computation.status is not ComputationStatus.SUCCEEDED:
-        raise _invalid("effective_date", "Expiry could not be computed; no expiry was recorded.")
+        raise material_right_facts.invalid(
+            "effective_date", "Expiry could not be computed; no expiry was recorded."
+        )
     return captured.appended
