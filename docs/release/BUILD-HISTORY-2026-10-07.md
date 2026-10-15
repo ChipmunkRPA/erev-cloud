@@ -5738,3 +5738,17 @@ cleanup in the shared database session kernel was also repaired and regression-t
   config; a stalled host mount was replaced with stdin. No saved credentials changed or images
   pushed. Local Compose verification on b4b8210 and frozen CI on 3cf8f5b remain active.
   Full browser acceptance and independent accounting sign-off remain open; no deployment.
+
+## Bound stalled Compose startup and retain failure evidence — October 15, 2026
+
+- Compose verification now bounds up -d (600s default, configurable separately from health
+  polling). It stops the client/plugin group, records startup exit 124 and attempts cleanup.
+  Eleven Compose checks, focused typing, shell syntax and full lint pass. The first test run
+  had one manifest failure during source editing; the stable full selection passes.
+- An actual development run at 30s reproduced the host-mount startup stall and failed cleanly;
+  cleanup removed all test containers, volumes and network. Logs:
+  .run/compose-start-timeout-{verified,types,lint,local}.log; Compose report remains failed.
+- Earlier unbounded runs, including a temporary checkout outside Documents, were interrupted
+  and cleaned up. That checkout was removed; diagnostics retained. Container hardening/Linux
+  PDF checks remain passed on b4b8210, but Compose readiness is unverified. Frozen CI on
+  3cf8f5b remains active. No deployment or independent accounting sign-off.

@@ -19,6 +19,7 @@ from datetime import date, datetime
 from typing import Any, Final
 from uuid import UUID
 
+from erev_api.auth.principal import RequestContext
 from erev_api.domain.reports.outputs import ReportData, utc_text
 from erev_api.problems import Problem, ProblemError
 from erev_api.uow import UnitOfWork
@@ -233,6 +234,9 @@ class ReportParams:
     # a live build, which records what it consumes into ``sources`` for the framework to bind.
     binding: SourceBinding | None = None
     sources: SourceCollector | None = field(default=None, compare=False)
+    # Server-only execution context and retained authorization; never request parameters.
+    requester: RequestContext | None = field(default=None, compare=False)
+    access_binding: Mapping[str, Any] | None = field(default=None, compare=False)
 
 
 type Builder = Callable[[UnitOfWork, ReportParams], ReportData]

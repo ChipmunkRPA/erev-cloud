@@ -2,6 +2,17 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Queued call-export execution and revocation — October 15, 2026
+
+- Internal run creation captures the requester binding; reruns preserve its maximum scope.
+  REPORT_RUN reloads the human's current grants before start, completed replay, build and output
+  storage. Dataset reads use that human context, not SYSTEM. API-client execution refuses.
+- Call exports omit ledger-head metadata and declare live/open source capture. Real queued
+  CSV/XLSX tests cover promotion, retained OWN scope, replay and permission loss before execution
+  and during rendering. Public catalogue/API activation and the download UI remain unfinished.
+- Report unit verification passes 941 checks; detailed worker, typing and lint evidence is in
+  docs/release/CI-2026-10-15.md. No deployment/provider calls/sign-off; broader gates remain open.
+
 ## Retained export ownership across report and job reads — October 15, 2026
 
 - Migration 0157 adds an immutable, validated requester binding to report_run. It refuses
@@ -230,20 +241,6 @@
   .run/future-draft-browser-{tests,final}.log and .run/ai-live-browser-created.png.
   Full frozen CI remains active on 3cf8f5b; Compose and independent accounting sign-off remain open.
   No deployment. Temporary browser harness retained privately under .run.
-
-## Bound stalled Compose startup and retain failure evidence — October 15, 2026
-
-- Compose verification now bounds up -d (600s default, configurable separately from health
-  polling). It stops the client/plugin group, records startup exit 124 and attempts cleanup.
-  Eleven Compose checks, focused typing, shell syntax and full lint pass. The first test run
-  had one manifest failure during source editing; the stable full selection passes.
-- An actual development run at 30s reproduced the host-mount startup stall and failed cleanly;
-  cleanup removed all test containers, volumes and network. Logs:
-  .run/compose-start-timeout-{verified,types,lint,local}.log; Compose report remains failed.
-- Earlier unbounded runs, including a temporary checkout outside Documents, were interrupted
-  and cleaned up. That checkout was removed; diagnostics retained. Container hardening/Linux
-  PDF checks remain passed on b4b8210, but Compose readiness is unverified. Frozen CI on
-  3cf8f5b remains active. No deployment or independent accounting sign-off.
 
 ## Outstanding release verification
 

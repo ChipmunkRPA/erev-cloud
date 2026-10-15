@@ -4,7 +4,7 @@ Read using the caller's current context, never a worker's unrestricted system pr
 No public export route or retained-file authorization is implied by this builder.
 """
 
-from typing import Any, Final, Literal
+from typing import TYPE_CHECKING, Any, Final, Literal
 from uuid import UUID
 
 from erev_engine.canonical import canonical_bytes
@@ -20,6 +20,11 @@ from erev_api.domain.reports.outputs import Column, ReportData
 from erev_api.enums import PrincipalKind
 from erev_api.problems import Problem
 from erev_api.schemas.ai import AIModelLogOut
+
+if TYPE_CHECKING:
+    from erev_api.domain.reports.builders import ReportParams
+    from erev_api.uow import UnitOfWork
+
 
 COLUMNS: Final = (
     Column("id", "Call id", "code"),
@@ -161,3 +166,10 @@ def dataset(ctx: RequestContext, access: ExportAccess) -> ReportData:
             "known_output_tokens": output_tokens,
         },
     )
+
+
+def build(uow: "UnitOfWork", params: "ReportParams") -> ReportData:
+    """Registered report builder; the worker must supply its reauthorized requester context."""
+    if params.requester is None or params.access_binding is None:
+        raise Problem("forbidden", "Call export requires a reauthorized requester.")
+    return dataset(params.requester, ExportAccess.model_validate(params.access_binding))

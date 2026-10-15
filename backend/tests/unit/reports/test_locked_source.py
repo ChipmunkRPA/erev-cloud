@@ -25,7 +25,7 @@ import pytest
 from erev_api.domain.reports import framework, locked
 from erev_api.domain.reports.catalogue import DEFINITIONS_BY_CODE
 from erev_api.domain.reports.outputs import ROW_KEY, RunStamp
-from erev_api.enums import SnapshotKind
+from erev_api.enums import PrincipalKind, SnapshotKind
 from erev_api.problems import Problem
 from erev_engine.stages.s15_disclosures import snapshots as engine
 
@@ -590,6 +590,8 @@ def test_visibility_requires_the_locks_entity_to_be_the_runs_scope() -> None:
     from sqlalchemy.dialects import postgresql
 
     class _Principal:
+        kind = PrincipalKind.USER
+        id = None
         permission_scopes = {framework.RUN_PERMISSION: frozenset({ENTITY_B})}
 
     statement = framework.visible(
@@ -616,6 +618,8 @@ def test_an_inconsistent_as_locked_run_is_refused_by_name_when_addressed() -> No
             return _Result(None if self.calls == 1 else hidden)
 
     class _Principal:
+        kind = PrincipalKind.USER
+        id = None
         permission_scopes = {framework.RUN_PERMISSION: "*"}
 
     session = _Session()
@@ -634,6 +638,8 @@ def test_a_run_absent_from_scope_stays_a_plain_not_found() -> None:
             return _Result(None)
 
     class _Principal:
+        kind = PrincipalKind.USER
+        id = None
         permission_scopes = {framework.RUN_PERMISSION: "*"}
 
     with pytest.raises(Problem) as caught:
@@ -654,6 +660,8 @@ def test_visibility_reconciles_book_period_and_parameters_with_the_lock() -> Non
     from sqlalchemy.dialects import postgresql
 
     class _Principal:
+        kind = PrincipalKind.USER
+        id = None
         permission_scopes = {framework.RUN_PERMISSION: "*"}
 
     statement = framework.visible(
@@ -684,6 +692,8 @@ def test_visibility_admits_exactly_the_admitted_parameter_keys() -> None:
     from sqlalchemy.dialects import postgresql
 
     class _Principal:
+        kind = PrincipalKind.USER
+        id = None
         permission_scopes = {framework.RUN_PERMISSION: "*"}
 
     compiled = framework.visible(
@@ -708,6 +718,8 @@ class _ScopeRow:
 
 
 class _AllScopes:
+    kind = PrincipalKind.USER
+    id = None
     permission_scopes = {framework.RUN_PERMISSION: "*"}
 
 

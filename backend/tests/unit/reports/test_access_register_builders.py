@@ -29,6 +29,7 @@ from erev_api.domain.reports.builders import user_access_listing as access
 from erev_api.domain.reports.catalogue import DEFINITIONS_BY_CODE
 from erev_api.domain.reports.outputs import NOT_SHOWN
 from erev_api.domain.ssp import publication
+from erev_api.enums import PrincipalKind
 from erev_api.problems import Problem
 from sqlalchemy.dialects import postgresql
 from support import report_specs
@@ -1054,7 +1055,9 @@ def _holder(**scopes: Any) -> Any:
     from types import SimpleNamespace
 
     named = {code.replace("_", "."): scope for code, scope in scopes.items()}
-    return SimpleNamespace(permissions=frozenset(named), permission_scopes=named)
+    return SimpleNamespace(
+        kind=PrincipalKind.USER, id=None, permissions=frozenset(named), permission_scopes=named
+    )
 
 
 def _role(code: str) -> Any:
@@ -1193,11 +1196,13 @@ def test_a_run_is_visible_under_the_run_permission_of_its_report() -> None:
     within = "erev.report_run.entity_ids <@"
     # a Tenant Admin: the runs of the three registers, of every entity
     sql, bound = compiled(audit_read="*")
-    assert f"WHERE {in_three}" in sql and not_in_three not in sql and within not in sql
+    assert in_three in sql and not_in_three not in sql and within not in sql
+    assert "WHERE NOT (" in sql and "ai_export_access IS NOT NULL" in sql
+    assert "ai_call_log_export" in bound.values()
     assert set(THREE) <= {value for value in bound.values() if isinstance(value, str)}
     # a viewer: every other report's runs, never the three
     sql, _ = compiled(report_run="*")
-    assert f"WHERE ({not_in_three}" in sql and in_three not in sql.replace(not_in_three, "")
+    assert f"({not_in_three}" in sql and in_three not in sql.replace(not_in_three, "")
     # report.run for one entity, audit.read for every entity: each family under its own scope
     entity = _id(7)
     sql, bound = compiled(report_run=frozenset({entity}), audit_read="*")

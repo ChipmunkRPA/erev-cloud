@@ -114,7 +114,8 @@ from erev_api.db.tables import (
     subledger_line,
 )
 from erev_api.db.transitions import apply
-from erev_api.domain.ai import export_visibility
+from erev_api.domain.ai import export_visibility, log_export
+from erev_api.domain.ai.access import job_requester
 from erev_api.domain.platform import approval_queries
 from erev_api.domain.platform.jobs import job_outs
 from erev_api.domain.reports import catalogue, locked, tie_outs
@@ -206,7 +207,7 @@ from erev_api.domain.reports.outputs import csv as csv_output
 from erev_api.domain.reports.outputs import manifest as manifest_output
 from erev_api.domain.reports.outputs import pdf as pdf_output
 from erev_api.domain.reports.outputs import xlsx as xlsx_output
-from erev_api.enums import ControlResult, FilePurpose, JobKind, RunStatus
+from erev_api.enums import ControlResult, FilePurpose, JobKind, PrincipalKind, RunStatus
 from erev_api.files.store import FileStore, open_file, store_file
 from erev_api.jobs.context import JobContext
 from erev_api.jobs.registry import JobOutcome, RetryPolicy, task
@@ -344,6 +345,7 @@ _DATE: Final = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}$")
 
 BUILDERS: Final[Mapping[str, Builder]] = MappingProxyType(
     {
+        export_visibility.CODE: log_export.build,
         api_client_inventory_builder.CODE: api_client_inventory_builder.build,
         revenue_waterfall_builder.CODE: revenue_waterfall_builder.build,
         contract_balances_builder.CODE: contract_balances_builder.build,
@@ -550,6 +552,11 @@ _OPEN_ONLY: Final = (
 )
 SOURCE_CONTRACTS: Final[Mapping[str, SourceContract]] = MappingProxyType(
     {
+        export_visibility.CODE: SourceContract(
+            OPEN,
+            _OPEN_ONLY,
+            ("Current authorized call log population; a rerun is a new live evaluation.",),
+        ),
         rpo_builder.CODE: SourceContract(
             ADAPTER,
             (
@@ -1172,6 +1179,7 @@ class _Resolved:
     historical: bool = False
     # frps3b (S15-R-24): a rerun carries the original's stored binding into the new run.
     source_binding: Mapping[str, Any] | None = None
+    ai_export_access: log_export.ExportAccess | None = None
 
 
 def _scope_ids(principal: Principal, permission: str) -> frozenset[UUID] | None:
@@ -1497,6 +1505,14 @@ def _insert_run(
     rerun_of: UUID | None,
 ) -> tuple[UUID, JobOut]:
     session = uow.session
+    access = resolved.ai_export_access
+    if str(definition["code"]) == export_visibility.CODE:
+        if uow.principal.kind is not PrincipalKind.USER:
+            raise Problem("forbidden", "Queued call export currently requires a human requester.")
+        access = access or log_export.capture_access(uow.ctx)
+        log_export.require_access(uow.ctx, access)
+    elif access is not None:
+        raise Problem("validation-failed", "Call export binding requires its report definition.")
     release_id = _release_id(session)
     run_id = new_id()
     run_no = next_number(uow, SERIES)
@@ -1510,6 +1526,7 @@ def _insert_run(
         "report_version": definition["version"],
         "status": QUEUED,
         "parameters": resolved.parameters,
+        "ai_export_access": None if access is None else access.model_dump(mode="json"),
         "entity_ids": list(resolved.entity_ids),
         "book_code": resolved.book_code,
         "as_of_date": resolved.as_of_date,
@@ -1609,6 +1626,9 @@ def rerun(uow: UnitOfWork, run_id: UUID) -> tuple[UUID, JobOut]:
         as_of_date=original["as_of_date"],
         period_lock_id=original["period_lock_id"],
         source_binding=copied,
+        ai_export_access=None
+        if original.get("ai_export_access") is None
+        else log_export.ExportAccess.model_validate(original["ai_export_access"]),
     )
     # T-RPT-01 rule 6: a rerun copies its run and resolves nothing, so the rule is asked here as
     # well. An entity's calendar does not change: only a run stored before the rule meets it.
@@ -2034,12 +2054,39 @@ def run_failed(uow: UnitOfWork, params: Mapping[str, Any], problem: Mapping[str,
     )
 
 
+def _export_requester(
+    jc: JobContext, uow: UnitOfWork, run: Mapping[str, Any]
+) -> RequestContext | None:
+    """Recheck before transitions, completed-job replay, building and output persistence."""
+    stored = run.get("ai_export_access")
+    if str(run["report_code"]) != export_visibility.CODE:
+        if stored is not None:
+            raise Problem(
+                "invalid-transition", "Call export binding has the wrong report definition."
+            )
+        return None
+    if stored is None or run["job_id"] != jc.job_id or run["period_lock_id"] is not None:
+        raise Problem("invalid-transition", "Call export is missing its execution binding.")
+    access = log_export.ExportAccess.model_validate(stored)
+    if (
+        access.tenant_id != run["tenant_id"]
+        or access.actor_id != run["created_by"]
+        or access.actor_kind != run["created_by_kind"]
+    ):
+        raise Problem("invalid-transition", "Call export requester binding is inconsistent.")
+    principal = job_requester(jc, uow.session, kind=JobKind.REPORT_RUN)
+    ctx = replace(uow.ctx, principal=principal, now=uow.now)
+    log_export.require_access(ctx, access)
+    return ctx
+
+
 @task(JobKind.REPORT_RUN, retry=REPORT_RUN_RETRY, on_failure=run_failed)
 def run_report(jc: JobContext, params: Mapping[str, Any]) -> JobOutcome:
     """``REPORT_RUN``: build, render, store and stamp the run named by ``params.report_run_id``."""
     run_id = UUID(str(params["report_run_id"]))
     with jc.unit_of_work() as uow:
         run = _lock_run(uow.session, run_id)
+        _export_requester(jc, uow, run)
         if run["period_lock_id"] is not None:
             # CLO8-SCOPE-R1 (Codex 1622 residual): reconcile before ANY path, the SUCCEEDED fast
             # path included — an inconsistent as-locked run yields no outcome from the worker.
@@ -2070,11 +2117,12 @@ def run_report(jc: JobContext, params: Mapping[str, Any]) -> JobOutcome:
     with jc.unit_of_work() as uow:
         session = uow.session
         run = _lock_run(session, run_id)
+        requester = _export_requester(jc, uow, run)
         definition = definition_row(session, str(run["report_code"]), int(run["report_version"]))
         builder = BUILDERS.get(str(run["report_code"]))
         if definition is None:
             raise Problem("validation-failed", NOT_AVAILABLE)
-        heads = _ledger_heads(session)
+        heads = {} if requester is not None else _ledger_heads(session)
         style = str(setting(session, NEGATIVE_NUMBER_STYLE, known_at=uow.now))
         if run["period_lock_id"] is not None:
             # S15-R-19 (rev 1.31; D-98 candidate 96): an as-locked run reads the lock's frozen
@@ -2097,13 +2145,23 @@ def run_report(jc: JobContext, params: Mapping[str, Any]) -> JobOutcome:
             build_params = report_params(run)
             contract = SOURCE_CONTRACTS[str(run["report_code"])]
             collector = SourceCollector() if build_params.binding is None else None
-            data = builder(uow, replace(build_params, sources=collector))
+            data = builder(
+                uow,
+                replace(
+                    build_params,
+                    sources=collector,
+                    requester=requester,
+                    access_binding=run.get("ai_export_access"),
+                ),
+            )
             jc.heartbeat()
             rendered = _render(session, run, definition, data, style)
             if collector is not None:
                 if collector.cutoff is None:  # a builder that selects no versions: the basis cutoff
                     collector.record_cutoff(
-                        tie_outs.version_cutoff(
+                        uow.now
+                        if requester is not None
+                        else tie_outs.version_cutoff(
                             session, build_params.known_at, historical=build_params.historical
                         )
                     )
@@ -2116,6 +2174,7 @@ def run_report(jc: JobContext, params: Mapping[str, Any]) -> JobOutcome:
                 ).to_stored()
             else:
                 source_binding = dict(run["source_binding"])
+        _export_requester(jc, uow, run)
         output_file_id = _store(
             uow,
             rendered.content,

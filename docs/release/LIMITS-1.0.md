@@ -65,15 +65,20 @@ binding; later promotion cannot widen OWN, and TENANT still requires current wor
 settings.manage. A reusable read guard rejects owner/tenant/kind mismatches and permission loss.
 Export guards now also require report.export (workspace-wide for TENANT). Persisted-job
 requester reconstruction verifies a live attempt and active human and refreshes current grants;
-its REPORT_RUN path is tested but not yet connected to this export. Existing AI jobs still
+its REPORT_RUN path is now connected to the internal export worker. Existing AI jobs still
 narrow entity access to ai.use. API-client queued execution is not implemented.
 Migration 0157 now retains an immutable ai_export_access binding on report_run, checks its
 shape/tenant/creator and refuses lossy downgrade. Shared report list/addressed-read and job
 list/detail predicates enforce bound ownership and current source/export grants, including
 against audit readers; ordinary unbound reports keep their existing rules. The job lookup has
-a partial tenant/job index. This is storage/read integration; submission does not populate it yet.
-This does not yet expose export:
-queued execution, retained-file ownership/revocation checks and the UI download remain unfinished.
+a partial tenant/job index. Internal report creation now captures the binding and reruns preserve
+it. The REPORT_RUN handler reconstructs the human, checks before transitions/completed replay,
+builds under that identity, and checks again before storing bytes. Both formats pass real queued
+build tests; OWN stays OWN after promotion and permission loss prevents stored outputs. Call
+exports omit accounting ledger-head metadata. Source capture is explicitly OPEN/live.
+This does not yet expose export: the public catalogue definition is deliberately not seeded.
+Remaining integration is source-permission admission and MFA on the report API, authorization
+before cached create/rerun responses, public definition registration and the UI download menu.
 CSV/XLSX export, linked-proposal navigation, hash-copy controls, standard demo/J-19 and full
 audit-lifecycle verification remain open.
 

@@ -3397,7 +3397,7 @@ Totals: none. Tie-out: none. Empty copy: title "No SSP overrides from <from> to 
 | Parameter key | Label | Control | Default | Validation copy |
 |---|---|---|---|---|
 | `from_date`, `to_date` | "Approved from", "Approved to" | dates | first day of the context fiscal year; today | as RPT-19 |
-| `subject_types` | "Change types" | multi-select of E-08 subjects `REGISTRY_VERSION`, `RULE_SET_VERSION`, `POB_TEMPLATE_VERSION`, `ACCOUNT_MAPPING_VERSION`, `FX_RATE_SET_VERSION`, `SSP_BOOK_VERSION`, `MAPPING_PROFILE_VERSION`, `ROLE_CHANGE`, `PRINCIPAL_AGENT_CHANGE` with labels "Policy registry", "Rule set", "Obligation template", "Account mapping", "FX rate set", "SSP book", "Mapping profile", "Role", "Principal or agent" | all | none |
+| `subject_types` | "Change types" | multi-select of E-08 subjects `REGISTRY_VERSION`, `AI_SETTINGS_VERSION`, `RULE_SET_VERSION`, `POB_TEMPLATE_VERSION`, `ACCOUNT_MAPPING_VERSION`, `FX_RATE_SET_VERSION`, `SSP_BOOK_VERSION`, `MAPPING_PROFILE_VERSION`, `ROLE_CHANGE`, `PRINCIPAL_AGENT_CHANGE` with labels "Policy registry", "AI settings", "Rule set", "Obligation template", "Account mapping", "FX rate set", "SSP book", "Mapping profile", "Role", "Principal or agent" | all | none |
 
 Rows: one per decided configuration approval request; `row_key` `change:<request no>`. Population (rev 1.76; item SCOPE-WORKSPACE-LISTS-1; supervisor rulings R-28 and R-121 (c); 04 T-PLT-17): a request is stated when the run's entities cover EVERY entity it names — the one of a request of one entity, each of a request of several — a request of all entities only by a run that names every entity of the workspace, and a tenant-level request always. A run of one entity states nothing of a request that also names another.
 
