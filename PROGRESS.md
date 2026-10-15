@@ -2,13 +2,22 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Re-lock snapshot integrity — October 15, 2026
+
+- Re-lock comparisons now verify the stored hash and row count of both the previous and newly
+  frozen datasets before comparing them. A mismatch refuses the comparison; no live fallback.
+- Focused corruption and comparison tests and backend typing pass. The database re-lock workflow and lint
+  pass; evidence is recorded in docs/release/CI-2026-10-15.md.
+- RPT-38 driver attribution and the pre-approval diff remain outstanding.
+
 ## Current report availability — October 15, 2026
 
 - Reconciled LIMITS B4-6/C-11 against the runtime registry: 40 builders among 57 definitions,
   with 17 generic builders still absent. First-close evidence packs use their separate API.
 - Labelled the old fifteen-test failure list as historical; registration is not accounting
   acceptance. Four catalogue checks pass; details are in docs/release/CI-2026-10-15.md.
-- The isolated all-workspace recovery drill is running on frozen d7e8715; no pass is claimed.
+- The isolated all-workspace recovery drill passed on frozen d7e8715: eight tenants, 306 files,
+  702 tables, no missing or reduced table counts, and verified cleanup. No deployment.
 
 ## Worker container health probe — October 15, 2026
 
@@ -245,21 +254,6 @@
 - Call-log UI/drawer/export, standard J-19 and remaining release/accounting gates stay open.
   No deployment or provider call. Published directly to main after verification.
 
-## AI settings without general configuration read access — October 15, 2026
-
-- Added GET /ai/settings/values under workspace-wide settings.manage, returning only effective
-  AI values and their reset defaults. The form no longer calls general configuration routes.
-  Parameter choices are fixed by the server's AI catalogue; accounting keys cannot be selected.
-- A custom role holding only settings.manage now passes form reads, validation-job reads,
-  submission and a different custom-role administrator's approval. General policy/catalogue
-  reads remain 403; draft values and another tenant's values are excluded. A real Chromium
-  submission with this limited role passes and leaves AI off pending approval.
-- Fifteen focused frontend tests, frontend typing, backend typing (795 files), route/scope checks
-  and full lint pass. API evidence includes the corrected custom-role lifecycle after advancing
-  its frozen clock past its predecessor publication. Details: docs/release/CI-2026-10-15.md.
-- No deployment, provider call or new role grant. Standard demo/J-19, release gates and independent
-  accounting sign-off remain open. Frozen CI on 3cf8f5b continues on its separate database.
-
 ## Outstanding release verification
 
 These checks need current release-candidate evidence. Historical October 3 results
@@ -271,7 +265,8 @@ not authorize deployment, provisioning or changes to a live database.
 - make compose-verify passed on clean 74bd148 (October 15), including cleanup. Rerun on the final candidate.
 - make zap-baseline passed on clean 4c4b583 (October 15), including cleanup; one documented low COEP warning and three informational alerts remain. Unauthenticated surface only; rerun on the final candidate.
 - SUPERVISOR VERIFICATION NEEDED: make tf-validate (October 14 backend-disabled development validation passed; rerun on a clean final candidate).
-- SUPERVISOR VERIFICATION NEEDED: make backup, make restore-verify (isolated local drill only)
+- make restore-drill passed on frozen d7e8715 (October 15), exercising backup and restore-verify
+  on a fresh disposable server. Rerun on the final candidate; hosted recovery is outside this scope.
 
 ## Historical release record
 

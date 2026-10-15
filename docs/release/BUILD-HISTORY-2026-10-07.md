@@ -5874,3 +5874,18 @@ cleanup in the shared database session kernel was also repaired and regression-t
   docs/release/CI-2026-10-15.md. The private browser harness remains excluded in .run.
 - No deployment or provider calls. Standard demo/J-19 and accounting sign-off remain open.
   Frozen CI on 3cf8f5b remains running; its snapshot predates these changes.
+
+## AI settings without general configuration read access — October 15, 2026
+
+- Added GET /ai/settings/values under workspace-wide settings.manage, returning only effective
+  AI values and their reset defaults. The form no longer calls general configuration routes.
+  Parameter choices are fixed by the server's AI catalogue; accounting keys cannot be selected.
+- A custom role holding only settings.manage now passes form reads, validation-job reads,
+  submission and a different custom-role administrator's approval. General policy/catalogue
+  reads remain 403; draft values and another tenant's values are excluded. A real Chromium
+  submission with this limited role passes and leaves AI off pending approval.
+- Fifteen focused frontend tests, frontend typing, backend typing (795 files), route/scope checks
+  and full lint pass. API evidence includes the corrected custom-role lifecycle after advancing
+  its frozen clock past its predecessor publication. Details: docs/release/CI-2026-10-15.md.
+- No deployment, provider call or new role grant. Standard demo/J-19, release gates and independent
+  accounting sign-off remain open. Frozen CI on 3cf8f5b continues on its separate database.

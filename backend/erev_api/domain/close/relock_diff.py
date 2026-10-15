@@ -30,12 +30,15 @@ never a fallback; the lock transaction rolls back with it. The key columns used 
 report (``key_columns``).
 
 ``diff`` is pure over the two sides' dataset bytes; ``report`` reads the sides through the lock
-transaction's session and file store and ``store_report`` writes the file.
+transaction's session and file store and ``store_report`` writes the file. Both stored sides
+are verified against their snapshot hash and row count before comparison; mismatches raise
+``RELOCK_DIFF_HASH_MISMATCH`` or ``RELOCK_DIFF_ROW_COUNT_MISMATCH`` and abort the lock transaction.
 """
 
 from __future__ import annotations
 
 import csv
+import hashlib
 import io
 import json
 import re
@@ -479,9 +482,25 @@ def encode(report: Mapping[str, Any]) -> bytes:
 # --- DB-bound -------------------------------------------------------------------------------------
 
 
-def _dataset_bytes(uow: UnitOfWork, file_id: UUID) -> bytes:
+def _dataset_bytes(
+    uow: UnitOfWork, file_id: UUID, *, kind: str, file_sha256: str, row_count: int
+) -> bytes:
+    """Verify the snapshot binding before its bytes enter the comparison (S15-INV-06)."""
     _, stream = open_file(uow.session, file_id, files=uow.files, keyring=uow.keyring)
-    return stream.read()
+    with stream:
+        content = stream.read()
+    if hashlib.sha256(content).hexdigest() != file_sha256:
+        raise RelockDiffRefusal(
+            "RELOCK_DIFF_HASH_MISMATCH", kind, f"file {file_id} does not match its snapshot hash"
+        )
+    _, rows = _rows(content)
+    if len(rows) != row_count:
+        raise RelockDiffRefusal(
+            "RELOCK_DIFF_ROW_COUNT_MISMATCH",
+            kind,
+            f"file {file_id} holds {len(rows)} rows; its snapshot records {row_count}",
+        )
+    return content
 
 
 def previous_side(uow: UnitOfWork, lock_id: UUID) -> LockSide:
@@ -515,7 +534,13 @@ def previous_side(uow: UnitOfWork, lock_id: UUID) -> LockSide:
             kind=str(getattr(row["snapshot_kind"], "value", row["snapshot_kind"])),
             file_sha256=str(row["file_sha256"]),
             row_count=int(row["row_count"]),
-            content=_dataset_bytes(uow, UUID(str(row["file_id"]))),
+            content=_dataset_bytes(
+                uow,
+                UUID(str(row["file_id"])),
+                kind=str(getattr(row["snapshot_kind"], "value", row["snapshot_kind"])),
+                file_sha256=str(row["file_sha256"]),
+                row_count=int(row["row_count"]),
+            ),
         )
         for row in rows
     }
@@ -546,7 +571,13 @@ def current_side(
                 kind=dataset.kind,
                 file_sha256=dataset.file_sha256,
                 row_count=dataset.row_count,
-                content=_dataset_bytes(uow, dataset.file_id),
+                content=_dataset_bytes(
+                    uow,
+                    dataset.file_id,
+                    kind=dataset.kind,
+                    file_sha256=dataset.file_sha256,
+                    row_count=dataset.row_count,
+                ),
             )
             for dataset in datasets
         },
