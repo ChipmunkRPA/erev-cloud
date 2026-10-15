@@ -2,6 +2,17 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Native material-right gap confirmed — October 14, 2026
+
+- Source tracing shows B3-24 needs implementation, not only another API test: bundles
+  always send empty material_rights, T-CON-14 is absent, the dedicated read always
+  returns 404 and the embedded read always returns null. Migration capture refuses
+  converted option records. Existing engine regressions bypass these missing paths.
+- Corrected the limitation and added MATERIAL-RIGHTS-IMPLEMENTATION.md with required
+  persistence, governed entry, historical reads, migration, UI and acceptance coverage.
+  Preserve the migration refusal until the complete terms path exists. No runtime
+  change or claim of product support; full backend CI remains running.
+
 ## Renewal benefit-period engine verification — October 14, 2026
 
 - Added eight B3-24 regressions through canonicalization, obligation construction,
