@@ -2097,7 +2097,8 @@ def allocation_walk(
 def _line_state(known_at: datetime | None) -> Any:
     """API-S-ScheduleLine ``state`` (04 rev 1.132; supervisor rulings R-76 (b) and R-79 (f)): a
     ``REVENUE`` schedule line of an obligation is RECOGNIZED when a ledger line recorded by
-    ``known_at`` exists for its contract, obligation, book and the ``REVENUE`` role in its period —
+    ``known_at`` exists in a posting sealed by that cutoff, for its contract, obligation, book
+    and the ``REVENUE`` role in its period —
     the ledger line's origin period when it has one, else its posting period. The engine posts
     cumulative role deltas and a posting intent names no schedule line, so
     ``subledger_line.schedule_line_id`` stays unwritten and is not the rule. A line of another

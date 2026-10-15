@@ -348,7 +348,7 @@ def test_single_head() -> None:
     # 0142: immutable evidence-pack source bindings.
     # 0143: out-of-period report metadata matches its existing late-event reader.
     # 0144 royalty template; 0145/0146 option terms; 0147 call logs; 0148 AI proposals.
-    assert lines[0].split()[0] == "0151"  # server-stamped subledger insertion time
+    assert lines[0].split()[0] == "0152"  # server-stamped posting completion time
 
 
 def test_upgrade_downgrade_upgrade(test_database: TestDatabase) -> None:
@@ -415,7 +415,7 @@ def test_upgrade_downgrade_upgrade(test_database: TestDatabase) -> None:
     # 0064 (lane ENG-C6, T-SL-12 subledger_line_event) adds none: IM-A and RLS-T attach the existing
     # 0001 tg_forbid_mutation and the RLS policies; no DB-03 transition, no new function.
     assert (
-        len(first["functions"]) == 91  # 0151 server-stamped subledger insertion time.
+        len(first["functions"]) == 92  # 0152 server-stamped posting completion time.
         # 0065 REPLACES tg_report_run__transition (frps3b): +0
     )  # 76 + tg_tenant_snapshot__transition + __target (0062); 0064 +0; 0067 +0 (IM-A / RLS-T
     # attach the existing tg_forbid_mutation and policies; no DB-03 transition, no new function);

@@ -5,13 +5,19 @@ insertion timestamp to new sealed lines. Explicit historical reads use that time
 record/current/close reads retain the application timestamp. The focused regression now excludes
 a later insertion even when its transaction began before the cutoff and its application clock
 is earlier. This is not proof of historical commit visibility: a transaction that inserts before
-a cutoff but commits afterward remains a separate gap. A cutoff falling between line insertions
-can also split a posting; an insertion-time predicate alone does not establish a transactionally
-complete historical ledger. Validation: 379 broad checks passed with one outdated API expectation;
-the revised API test and follow-up checks passed (26 passed, one strict expected failure for
-overlapping commit visibility). See VERIFICATION-2026-10-15.md for the full scope and limits.
-Both upgrade and downgrade refuse populated ledgers because the stamp changes the seal document;
-there is no supported in-place upgrade of an existing sealed ledger through 0151.
+a cutoff but commits afterward remains a separate gap. Migration 0152 adds a database-owned
+sealing timestamp: historical reads additionally require that the complete posting was sealed by
+the cutoff, so a cutoff between its lines cannot expose only part of that posting. This does not
+establish transaction-level commit visibility. Seals are tenant-scoped; line/entity scope remains
+on the outer read, so hidden sibling lines cannot make an incomplete posting appear complete. Revision 0151 validation: 379 broad checks passed with one outdated API expectation;
+the revised API and follow-up checks passed (26 passed, one expected commit-visibility failure).
+Revision 0152 validation: 19 core checks passed with that expected failure retained, followed by
+nine passing API, immutability, isolation and migration checks. See VERIFICATION-2026-10-15.md for the full scope and limits.
+Both upgrade and downgrade of 0151 refuse populated ledgers because its stamp changes the seal
+document. Revision 0152 likewise refuses populated seals: their historical server completion time
+cannot be reconstructed, nor may retained completion evidence be dropped. Its immutable metadata
+stamp, like sealed_at, is outside the canonical line hash. No in-place populated-ledger upgrade
+through these pre-release revisions is supported.
 
 
 

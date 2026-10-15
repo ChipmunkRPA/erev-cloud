@@ -41,7 +41,7 @@ from typing import TYPE_CHECKING, Any, Final
 
 from erev_engine.canonical import canonical_bytes, sha256_hex
 from erev_engine.currencies import ISO_4217
-from sqlalchemy import ColumnElement, Select, and_, insert, or_, select
+from sqlalchemy import ColumnElement, Select, and_, exists, insert, or_, select
 from sqlalchemy.orm import Session
 
 from erev_api.audit.writer import record_facts
@@ -708,9 +708,25 @@ def _primary_book(session: Session) -> str:
 
 
 def recorded_by(known_at: datetime, *, historical: bool) -> ColumnElement[bool]:
-    """Select the declared time basis without changing compatibility/close reads."""
-    stamp = subledger_line.c.recorded_server_at if historical else subledger_line.c.recorded_at
-    return stamp <= known_at
+    """Historical reads admit only complete postings, within the caller's existing line scope.
+
+    Seal rows are tenant-scoped, so an entity-scoped reader cannot admit a partial posting
+    merely because a later sibling line is outside that reader's scope. This is sealing time,
+    not commit time: overlapping transactions still need commit-visibility evidence.
+    """
+    if not historical:
+        return subledger_line.c.recorded_at <= known_at
+    completed = exists(
+        select(1)
+        .select_from(subledger_posting_seal)
+        .where(
+            subledger_posting_seal.c.tenant_id == subledger_line.c.tenant_id,
+            subledger_posting_seal.c.subledger_posting_id == subledger_line.c.subledger_posting_id,
+            subledger_posting_seal.c.sealed_server_at <= known_at,
+        )
+        .correlate(subledger_line)
+    )
+    return and_(subledger_line.c.recorded_server_at <= known_at, completed)
 
 
 def line_statement(session: Session, filters: LineFilters) -> Select[Any]:

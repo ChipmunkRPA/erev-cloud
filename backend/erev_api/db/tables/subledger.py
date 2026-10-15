@@ -103,6 +103,12 @@ subledger_posting_seal: Final = Table(
     Column("seal_sha256", CHAR(64), nullable=False),
     _timestamp("sealed_at", nullable=False, now_default=True),
     *_sc_c(),
+    Column(
+        "sealed_server_at",
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=sql_text("clock_timestamp()"),
+    ),
 )
 
 # T-SL-03: the ledger chain pointer of a book; its row lock serialises seals (IM-X, RLS-T).

@@ -2,6 +2,22 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Historical posting completion — October 15, 2026
+
+- Migration 0152 adds database-owned sealed_server_at after balance/chain validation. Historical
+  predicates now require the complete posting's seal by the cutoff, as well as line insertion;
+  record/current/close behavior remains on its application-clock basis. Entity scope stays on
+  the outer line query; the tenant-scoped seal prevents hidden sibling lines from splitting it.
+- Core database checks: 19 passed, one strict expected failure for overlapping commit visibility
+  (140.88s). Follow-up: nine passed (52.00s), including forged timestamp override, application/owner
+  immutability, APIs, tenant isolation, older migration guards and retained AI intents.
+- Unit/architecture selection: 1,192 passed (17.77s). Strict typing passed 771 sources. Logs:
+  .run/seal-time-{core,followup,unit,types-final}.log. Full make lint passed;
+  .run/seal-time-lint.log (502 control-tagged tests collected).
+- Populated seals cannot cross 0152: the earlier server completion instant cannot be reconstructed
+  and downgrade cannot discard it. The stamp is immutable seal metadata outside the line hash.
+  PostgreSQL commit visibility remains open; no deployment or production-readiness claim.
+
 ## Historical line insertion cutoff — October 15, 2026
 
 - Migration 0151 adds a database-owned insertion stamp included in new line seals.
@@ -21,8 +37,8 @@
   .run/server-time-drift-recheck.log. Full architecture selection not repeated.
 - make lint passed (.run/server-time-lint.log): 142 dependency licenses, zero secret findings,
   registry/fixture checks and 502 control-tagged tests collected successfully.
-- Insertion time is not commit time. Overlapping commits and cutoffs splitting a posting
-  remain unresolved; see LIMITS-1.0.md. No readiness claim or deployment.
+- Insertion time is not commit time. The 0152 follow-up above closes posting splits; overlapping
+  commits remain unresolved. See LIMITS-1.0.md. No readiness claim or deployment.
 
 ## Backend broad-run isolation repairs — October 15, 2026
 
@@ -218,23 +234,6 @@
   retention remain open. This is not a complete architecture or release-suite pass.
 - Work remains on call-intent gateway integration and the other implementation/release gaps.
   No deployment or readiness claim; direct main publication continues.
-
-## Durable AI call-intent storage — October 15, 2026
-
-- Migration 0150 adds immutable human-attributed call intents with tenant/job FKs,
-  request/source digests, attempt numbers 1–3 and unique job/attempt keys. A nullable,
-  unique tenant/intent model-log link permits at most one outcome. Populated intent
-  evidence blocks downgrade, including starts with no outcome. Metadata/privacy and
-  sandbox classifications match; intents are never copied into another tenant.
-- PostgreSQL tests verify committed unresolved starts, tenant isolation, duplicate
-  rejection, application/owner immutability and downgrade refusal. Fixed proposal ORM
-  column order to match the data model and restored head after the older downgrade test.
-- Final migration/metadata/privacy/snapshot checks: 100 passed; strict typing: 769 sources;
-  Ruff/diff passed. Logs: .run/ai-intent-{final,types}.log. Broader architecture run found
-  seven still-open checks, recorded in LIMITS-1.0.md; this is not a full-suite pass.
-- Runtime write-ahead admission, durable retry counting and uncertain-call recovery are
-  still required. This storage foundation does not yet prevent duplicate provider calls.
-  No deployment or production-readiness claim; independent accounting sign-off remains open.
 
 ## Outstanding release verification
 

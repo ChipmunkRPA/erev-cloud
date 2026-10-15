@@ -98,6 +98,37 @@ repairs. Insertion time is not PostgreSQL commit time and may split a posting wh
 between line inserts. Neither historical transaction visibility nor production readiness is claimed.
 No deployment or live provider call occurred.
 
+## Historical posting completion
+
+Follow-up development work based on `ea5a29c`. Migration 0152 adds immutable database-owned
+`sealed_server_at` metadata to each completed posting seal, after its balance and chain guard.
+Historical queries retain the line insertion cutoff and additionally require the seal by that
+cutoff. The correlated tenant/posting keys use the tenant-scoped seal while preserving the outer
+line's entity scope. A cutoff cannot expose only the earlier lines of an unfinished posting.
+Record/current/close reads retain their previous application-time behavior.
+
+The timestamp is outside the canonical line hash, like the existing seal metadata `sealed_at`.
+Both migration directions refuse populated seals: upgrade cannot invent their historical server
+completion instant, and downgrade cannot discard retained completion evidence. No sealed rows
+are rewritten or deleted. This remains a pre-release populated-database migration boundary.
+
+- Core database checks: **19 passed, 1 expected failure** (140.88s). Covers a cutoff after lines
+  but before sealing, exact-seal-time inclusion, historical/record report totals, both migration
+  refusal directions, older insertion-stamp protection and a full migration round trip.
+  `.run/seal-time-core.log`.
+- Final database selection: **9 passed** (52.00s). Covers forged timestamp replacement,
+  application and owner mutation refusal, subledger/schedule APIs, cross-tenant and entity
+  isolation, the 0124 historical fixture and retained AI call-intent downgrade evidence.
+  `.run/seal-time-followup.log`.
+- Report/journal/privacy unit and selected architecture checks: **1,192 passed** (17.77s).
+  `.run/seal-time-unit.log`. Strict typing passed **771 source files**;
+  `.run/seal-time-types-final.log`. Full `make lint` passed, including the license/secret scans,
+  registry/fixture checks and 502 control-tagged tests collected; `.run/seal-time-lint.log`.
+
+The expected failure still proves the missing overlapping-commit exclusion. A server sealing
+instant is not a PostgreSQL commit timestamp. Full release CI, broader gates and independent
+accounting sign-off remain outstanding; no deployment occurred.
+
 ## Remaining scope
 
 - The backend unit/architecture selection above does not include all backend API/domain/engine/PG

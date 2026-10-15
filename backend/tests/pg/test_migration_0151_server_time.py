@@ -26,6 +26,7 @@ def test_server_time_migration_preserves_populated_ledger(
 ) -> None:
     fresh_head()
     try:
+        command.downgrade(alembic_config(), "0151")
         if direction == "upgrade":
             command.downgrade(alembic_config(), "0150")
         test_database.app_engine.dispose()

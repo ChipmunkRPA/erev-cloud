@@ -16,7 +16,8 @@ The platform part of stage 15 reads persisted engine outputs (ENGINE_SPEC_B §15
   (``bundles.record_cutoff``, L3-1-Q-25), so a report reads versions by the same rule at its
   ``known_at``. Subledger and journal rows carry the application clock and are read by
   ``known_at`` itself on the record basis. Historical subledger reads instead use the sealed
-  database insertion stamp, ``recorded_server_at``; this is not a commit timestamp.
+  database insertion stamp, ``recorded_server_at``, and completion stamp, ``sealed_server_at``;
+  neither is a commit timestamp.
 - ``balances_at``: the labelled balances of each member contract and contracting entity at a period
   end (ENGINE_SPEC_B S15-R-07a, ``presented_at``), from the version's trace nodes
   ``<measure>:<contract>@<entity>:<period key>`` (T-ENG-03), looked up under the ENGINE'S subject

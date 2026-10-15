@@ -23,7 +23,8 @@ date lies in the inclusive window ``[from_date, to_date]`` at the legacy summary
   ``total_debit``, ``total_credit`` and ``net``.
 
 With ``known_at`` (report ``legacy_je_summary``, RPS-5) only the lines recorded at or before it are
-summarised. Historical basis uses server insertion time; record basis uses application time.
+summarised. Historical basis requires server insertion and sealing by the cutoff; record basis uses
+application time.
 
 Amounts are in the transaction currency (RPT-13 has no currency view). [J] L6-3-Q-36: the parity
 views hold one currency; a window with several currencies keeps them apart in every section and
@@ -53,6 +54,7 @@ from erev_api.db.tables import (
     obligation,
     subledger_line,
 )
+from erev_api.domain.journals import subledger
 from erev_api.enums import BookCode, JournalRunMode
 from erev_api.problems import Problem, ProblemError
 
@@ -299,8 +301,7 @@ def _consolidated(
         )
     )
     if known_at is not None:
-        stamp = subledger_line.c.recorded_server_at if historical else subledger_line.c.recorded_at
-        statement = statement.where(stamp <= known_at)
+        statement = statement.where(subledger.recorded_by(known_at, historical=historical))
     return [dict(row) for row in session.execute(statement).mappings()]
 
 

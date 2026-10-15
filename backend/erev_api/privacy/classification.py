@@ -2599,7 +2599,7 @@ TABLES: Final[tuple[TableClassification, ...]] = (
         {
             R01: _cols(
                 "tenant_id subledger_posting_id chain_seq line_count prev_seal_sha256 "
-                "seal_sha256 sealed_at created_at created_by created_by_kind"
+                "seal_sha256 sealed_at sealed_server_at created_at created_by created_by_kind"
             ),
             SPEC_C2_LEDGER: _cols("book_code control_totals"),
         },
