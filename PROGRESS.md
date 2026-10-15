@@ -2,6 +2,22 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Numeric evidence validation for AI narratives — October 15, 2026
+
+- Implemented DG-AI-07 numeric membership validation using authorized caller-supplied
+  evidence and the engine's exact half-up comparison at the supplied currency minor unit.
+  English, German and French numeric formats are explicit; accounting negatives and
+  Unicode decimal digits normalize without binary floats or ambient Decimal rounding.
+- Valid ISO calendar dates are excluded. Malformed grouping, scientific notation,
+  fractions, ambiguous signs, nonfinite evidence and oversized inputs refuse safely.
+  Percentages require evidence in displayed units; no implicit scaling is inferred.
+- Verification: 197 AI/architecture checks passed, two Linux parser-limit tests skipped;
+  final numeric suite 32 passed after the Decimal-context regression fix. Strict typing
+  passed for 762 sources; Ruff passes. Logs: .run/ai-numbers-{checks,final,types}.log.
+- Numeric membership does not prove semantic support or citation authorization. Narrative
+  generation, proposal persistence and deterministic fallback integration remain open,
+  along with the broader AI gateway and human workflow. No deployment or readiness claim.
+
 ## Atomic AI attempt evidence — October 15, 2026
 
 - Added a transaction-bound writer for model-log metadata and its AUD-FACT event.
@@ -229,30 +245,6 @@
   Typing evidence: .run/ai-model-log-types.log.
 - Proposal table/transitions, gateway writes/audit facts and human acceptance remain
   unfinished. The AI lifecycle audit gap remains open; no AI enablement or deployment.
-
-## AI provider foundation — October 14, 2026
-
-- Implemented the DG §6.7 request/response protocol and deterministic FakeProvider.
-  Exact input-hash fixtures precede version-local defaults; malformed exact fixtures fail
-  without fallback. Digests cover exact UTF-8 response text; token/latency fields and path
-  selectors are validated. No sockets, sleeps, accounting writes or external calls.
-- Provider/configuration/architecture checks: 92 passed (20.88s); strict typing: three
-  sources; Ruff/formatting pass. Evidence: .run/ai-provider-final.log and
-  .run/ai-provider-types.log.
-- AIX remains incomplete: provider selection/live adapter, retained fixtures, schema,
-  gateway/jobs, human acceptance and audit lifecycle still required. No AI enablement,
-  audit-category exemption, deployment or readiness claim.
-
-## Reopening report verification — October 14, 2026
-
-- Updated the lock/relock regression for required independently reviewed reopening evidence:
-  preserve the hold/release versions, verify the billing version at the latest event date,
-  and independently approve the specific late-event waiver through the normal API.
-- The real re-close leaves September revenue and RPO unchanged, while contract balances
-  reflect the invoice. All five report-figure cases pass (44.05s); strict test typing,
-  Ruff and formatting pass. Evidence: .run/report-lock-recheck.log and .run/report-lock-types.log.
-- AI audit coverage, other documented implementation gaps and full candidate verification
-  remain open. No production-readiness claim or deployment.
 
 ## Outstanding release verification
 

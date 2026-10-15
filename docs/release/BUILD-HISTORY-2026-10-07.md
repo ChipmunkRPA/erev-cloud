@@ -4144,3 +4144,27 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   PostgreSQL comparison verifies all current catalogue fields; four catalogue checks pass
   (6.77s), Ruff/formatting pass. No historical migration changes.
 - Evidence and remaining gaps: docs/release/CI-2026-10-14.md. No deployment or readiness claim.
+
+## Reopening report verification — October 14, 2026
+
+- Updated the lock/relock regression for required independently reviewed reopening evidence:
+  preserve the hold/release versions, verify the billing version at the latest event date,
+  and independently approve the specific late-event waiver through the normal API.
+- The real re-close leaves September revenue and RPO unchanged, while contract balances
+  reflect the invoice. All five report-figure cases pass (44.05s); strict test typing,
+  Ruff and formatting pass. Evidence: .run/report-lock-recheck.log and .run/report-lock-types.log.
+- AI audit coverage, other documented implementation gaps and full candidate verification
+  remain open. No production-readiness claim or deployment.
+
+## AI provider foundation — October 14, 2026
+
+- Implemented the DG §6.7 request/response protocol and deterministic FakeProvider.
+  Exact input-hash fixtures precede version-local defaults; malformed exact fixtures fail
+  without fallback. Digests cover exact UTF-8 response text; token/latency fields and path
+  selectors are validated. No sockets, sleeps, accounting writes or external calls.
+- Provider/configuration/architecture checks: 92 passed (20.88s); strict typing: three
+  sources; Ruff/formatting pass. Evidence: .run/ai-provider-final.log and
+  .run/ai-provider-types.log.
+- AIX remains incomplete: provider selection/live adapter, retained fixtures, schema,
+  gateway/jobs, human acceptance and audit lifecycle still required. No AI enablement,
+  audit-category exemption, deployment or readiness claim.

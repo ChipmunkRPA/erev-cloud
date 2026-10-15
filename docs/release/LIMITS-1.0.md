@@ -19,6 +19,12 @@ alongside an AUD-FACT event under the requesting user. Commit/rollback and metad
 refusals are verified. It is not yet connected to an operational gateway; proposal
 creation, decisions and their lifecycle audit coverage remain unfinished.
 
+The numeric narrative validator now checks figures against supplied evidence at the
+currency minor unit, with explicit locale normalization and bounded parsing. This only
+establishes numeric membership: authorized retrieval, semantic/citation checks, narrative
+proposal generation and deterministic fallback integration remain outstanding. Unsupported
+numeric formats refuse rather than being guessed; percentages require displayed units.
+
 Migration 0148 adds immutable proposal content/citations, tenant-bound evidence references
 and SM-11 state guards. The schema and full migration round trip are verified; proposal
 creation/acceptance APIs, approval integration and lifecycle audit events remain absent.
