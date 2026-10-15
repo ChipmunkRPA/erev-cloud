@@ -5218,6 +5218,7 @@ Rules (rev 1.2; SCREENS_B OQ-B-08, OQ-B-09):
 | `report_version` | integer | N | | |
 | `status` | erev.run_status | N | `'QUEUED'` | |
 | `parameters` | jsonb | N | | Every parameter including defaults. |
+| `ai_export_access` | jsonb | Y | | Migration 0157: immutable server-captured `{version: 1, tenant_id, actor_id, actor_kind: USER or API_CLIENT, scope: OWN or TENANT}`. Exact keys, tenant and creator identity checked by the database; required for `ai_call_log_export`. Report and job reads additionally require the same requester and current source/export grants; TENANT requires workspace-wide settings.manage and report.export. Never a client parameter. Downgrade refuses retained bindings. Queue capture/worker integration remains tracked in LIMITS-1.0.md. |
 | `entity_ids` | uuid[] | N | | Resolved scope. |
 | `book_code` | erev.book_code | Y | | |
 | `as_of_date` | date | Y | | |

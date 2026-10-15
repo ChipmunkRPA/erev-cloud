@@ -69,6 +69,8 @@ report_run: Final = Table(
     # frps3b (04 T-RPT-02 rev 1.55; S15-R-24): the sources a live run's build consumed, written
     # once at SUCCEEDED; NULL for an as-locked run and for a run created before the binding.
     Column("source_binding", JSONB(none_as_null=True), nullable=True),
+    # Immutable requester binding captured at creation for AI call-export artifacts.
+    Column("ai_export_access", JSONB(none_as_null=True), nullable=True),
     Column("child_report_run_ids", ARRAY(Uuid()), nullable=False, server_default=sql_text("'{}'")),
     Column(
         "disclosure_snapshot_ids", ARRAY(Uuid()), nullable=False, server_default=sql_text("'{}'")

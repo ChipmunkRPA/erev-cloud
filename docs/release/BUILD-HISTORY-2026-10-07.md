@@ -5725,3 +5725,16 @@ cleanup in the shared database session kernel was also repaired and regression-t
   packaging defect; Linux base-image pull session remains active, without a completed image.
   Container hardening, Linux PDF limits and full browser upload/acceptance remain unverified.
   Frozen CI on 3cf8f5b continues independently. No deployment or live provider calls.
+
+## Container build and Linux extraction verification — October 15, 2026
+
+- Clean b4b8210 passed make docker-build: API/worker/web image hardening and embedded-manifest
+  checks passed. The manifest is non-strict. Image identities are in CI-2026-10-15.md.
+- The actual worker image, Linux Python 3.12.15 / UID 10001, passed a no-network, read-only
+  probe for isolated four-page PDF extraction, nine bundled fields with upload-bound citations,
+  memory and CPU limits, credential stripping and timeout child reaping. Logs:
+  .run/docker-build-oct15-fixtures.log; .run/ai-image-linux-probe-stdin.log.
+- Docker now runs locally. A credential-helper stall was avoided with a task-local anonymous
+  config; a stalled host mount was replaced with stdin. No saved credentials changed or images
+  pushed. Local Compose verification on b4b8210 and frozen CI on 3cf8f5b remain active.
+  Full browser acceptance and independent accounting sign-off remain open; no deployment.

@@ -114,6 +114,7 @@ from erev_api.db.tables import (
     subledger_line,
 )
 from erev_api.db.transitions import apply
+from erev_api.domain.ai import export_visibility
 from erev_api.domain.platform import approval_queries
 from erev_api.domain.platform.jobs import job_outs
 from erev_api.domain.reports import catalogue, locked, tie_outs
@@ -2251,7 +2252,11 @@ def _scoped(statement: Select[Any], principal: Principal, permission: str) -> Se
     permission (``_under_run_permission``) and of every permission its report declares
     (``_within_declared``) and, for ``report.export``, also within the caller's scope of that
     permission."""
-    statement = statement.where(_under_run_permission(principal), *_within_declared(principal))
+    statement = statement.where(
+        or_(~export_visibility.protected(), export_visibility.readable(principal)),
+        _under_run_permission(principal),
+        *_within_declared(principal),
+    )
     if permission == RUN_PERMISSION:
         return statement
     scope = principal.permission_scopes.get(permission)

@@ -36,8 +36,9 @@ from sqlalchemy.orm import Session
 from erev_api.approvals.engine import CONTRACT_SUBJECT
 from erev_api.auth import entity_scope
 from erev_api.db.session import tenant_session
-from erev_api.db.tables import job
+from erev_api.db.tables import job, report_run
 from erev_api.db.transitions import apply
+from erev_api.domain.ai import export_visibility
 from erev_api.domain.platform import approval_queries, file_access
 from erev_api.enums import ApprovalSubjectType, JobKind, JobState
 from erev_api.jobs.registry import CANCEL_ACTION, HANDLERS, JOB_SUBJECT, handler_params
@@ -116,6 +117,14 @@ def newest_of_subject() -> ColumnElement[bool]:
 
 
 def _visible(statement: Select[Any], principal: Principal) -> Select[Any]:
+    export_runs = select(report_run.c.id).where(
+        report_run.c.tenant_id == job.c.tenant_id,
+        report_run.c.job_id == job.c.id,
+        export_visibility.protected(),
+    )
+    statement = statement.where(
+        ~export_runs.where(export_visibility.readable(principal).is_not(True)).exists()
+    )
     if entity_scope.holds_all(principal, AUDIT_READ):
         return statement
     if principal.id is None:

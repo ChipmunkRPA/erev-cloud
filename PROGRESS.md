@@ -2,6 +2,17 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Retained export ownership across report and job reads — October 15, 2026
+
+- Migration 0157 adds an immutable, validated requester binding to report_run. It refuses
+  malformed/cross-owner bindings and downgrade while bindings survive. A partial tenant/job
+  index supports job visibility checks.
+- Shared report and job read predicates now require the original actor and current source/
+  export grants for bound exports, including for audit readers. Existing unbound reports keep
+  their rules. Submission, worker capture/build and UI integration remain unfinished.
+- Verification evidence and the migration round trip are recorded in docs/release/CI-2026-10-15.md.
+  No deployment, provider calls or accounting sign-off; production readiness remains unproven.
+
 ## Current requester grants for export workers — October 15, 2026
 
 - Extracted persisted-job requester reconstruction for AI_TASK and REPORT_RUN: active human,
@@ -233,19 +244,6 @@
   and cleaned up. That checkout was removed; diagnostics retained. Container hardening/Linux
   PDF checks remain passed on b4b8210, but Compose readiness is unverified. Frozen CI on
   3cf8f5b remains active. No deployment or independent accounting sign-off.
-
-## Container build and Linux extraction verification — October 15, 2026
-
-- Clean b4b8210 passed make docker-build: API/worker/web image hardening and embedded-manifest
-  checks passed. The manifest is non-strict. Image identities are in CI-2026-10-15.md.
-- The actual worker image, Linux Python 3.12.15 / UID 10001, passed a no-network, read-only
-  probe for isolated four-page PDF extraction, nine bundled fields with upload-bound citations,
-  memory and CPU limits, credential stripping and timeout child reaping. Logs:
-  .run/docker-build-oct15-fixtures.log; .run/ai-image-linux-probe-stdin.log.
-- Docker now runs locally. A credential-helper stall was avoided with a task-local anonymous
-  config; a stalled host mount was replaced with stdin. No saved credentials changed or images
-  pushed. Local Compose verification on b4b8210 and frozen CI on 3cf8f5b remain active.
-  Full browser acceptance and independent accounting sign-off remain open; no deployment.
 
 ## Outstanding release verification
 

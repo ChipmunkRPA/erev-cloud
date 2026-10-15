@@ -67,6 +67,11 @@ Export guards now also require report.export (workspace-wide for TENANT). Persis
 requester reconstruction verifies a live attempt and active human and refreshes current grants;
 its REPORT_RUN path is tested but not yet connected to this export. Existing AI jobs still
 narrow entity access to ai.use. API-client queued execution is not implemented.
+Migration 0157 now retains an immutable ai_export_access binding on report_run, checks its
+shape/tenant/creator and refuses lossy downgrade. Shared report list/addressed-read and job
+list/detail predicates enforce bound ownership and current source/export grants, including
+against audit readers; ordinary unbound reports keep their existing rules. The job lookup has
+a partial tenant/job index. This is storage/read integration; submission does not populate it yet.
 This does not yet expose export:
 queued execution, retained-file ownership/revocation checks and the UI download remain unfinished.
 CSV/XLSX export, linked-proposal navigation, hash-copy controls, standard demo/J-19 and full
