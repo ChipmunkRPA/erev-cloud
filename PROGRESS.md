@@ -2,6 +2,20 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Source citation offsets after redaction — October 14, 2026
+
+- PRV-08 now exposes immutable substitution coordinates alongside its existing redacted
+  text/counts. Email and international/local phone precedence stays shared with ordinary
+  redaction. The mapping stores no removed contact values and stays outside provider input.
+- Extraction validation can validate outgoing redacted pages and restore citations to source
+  Unicode coordinates. Boundaries inside replacement placeholders refuse the entire proposal;
+  complete placeholders map to complete source spans, subject to human viewing authorization.
+- Privacy/extraction/architecture checks: 167 passed; strict API/test typing: 751 sources.
+  Logs: .run/ai-offsets-checks.log and .run/ai-offsets-types.log. Ruff/formatting pass.
+- The future gateway must retain the exact page mappings used for its prompt. Durable
+  document extraction, authorized gateway jobs, value schemas, narrative-number checks,
+  budgets, lifecycle auditing and human acceptance remain unfinished. No live calls/deployment.
+
 ## AI extraction output validation — October 14, 2026
 
 - Added an atomic extraction validator: response digest/completion, strict JSON and unique

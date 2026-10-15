@@ -9,8 +9,13 @@ from typing import Any
 from uuid import UUID
 
 import pytest
-from erev_api.domain.ai.extraction_validation import OutputRefused, validate_extraction
+from erev_api.domain.ai.extraction_validation import (
+    OutputRefused,
+    validate_extraction,
+    validate_redacted_extraction,
+)
 from erev_api.domain.ai.ports import AIResponse
+from erev_api.privacy.patterns import redact_with_offsets
 
 DOC = UUID("00000000-0000-0000-0000-000000000001")
 PAGES = {1: "Café costs 120.00."}
@@ -169,3 +174,30 @@ def test_decimal_values_use_exact_canonical_strings() -> None:
     raw = json.dumps([field(value="NUMBER")]).replace('"NUMBER"', "120.001")
     (item,) = validate_extraction(response(raw), document_id=DOC, pages=PAGES, allowed_paths=PATHS)
     assert item.as_content()["value"] == "120.001"
+
+
+def test_redacted_citations_are_returned_in_original_document_coordinates() -> None:
+    original = "Contact alice@example.com. Café costs 120.00."
+    mapped = redact_with_offsets(original)
+    item = field()
+    start = mapped.redaction.text.index("120.00")
+    item["citation"].update(char_start=start, char_end=start + 6)
+    (validated,) = validate_redacted_extraction(
+        response(json.dumps([item])), document_id=DOC, pages={1: mapped}, allowed_paths=PATHS
+    )
+    citation = validated.citation
+    assert original[citation.char_start : citation.char_end] == "120.00"
+    assert citation.char_start == original.index("120.00")
+
+
+def test_one_ambiguous_redacted_citation_refuses_the_whole_proposal() -> None:
+    mapped = redact_with_offsets("Café alice@example.com")
+    ambiguous = field(path="amount")
+    ambiguous["citation"].update(char_start=6, char_end=10)
+    with pytest.raises(OutputRefused, match="AI_AMBIGUOUS_CITATION_SPAN"):
+        validate_redacted_extraction(
+            response(json.dumps([field(), ambiguous])),
+            document_id=DOC,
+            pages={1: mapped},
+            allowed_paths=PATHS,
+        )

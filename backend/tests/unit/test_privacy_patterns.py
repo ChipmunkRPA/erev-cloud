@@ -143,7 +143,9 @@ def test_prv_08_module_is_a_standalone_kernel_module() -> None:
         "PHONE_NORTH_AMERICAN",
         "PHONE_PLACEHOLDER",
         "Redaction",
+        "MappedRedaction",
         "redact",
         "redact_text",
+        "redact_with_offsets",
         "redact_value",
     }

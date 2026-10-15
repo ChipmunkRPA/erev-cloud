@@ -2,14 +2,14 @@
 
 Citations address the retained document text supplied by the authorised gateway.
 Bounds establish a valid reference, not semantic support for the proposed value.
-The gateway must reconcile any redaction offsets before supplying that text.
+Use validate_redacted_extraction when citations address redacted page text.
 """
 
 from __future__ import annotations
 
 import json
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from decimal import Decimal, InvalidOperation
 from hashlib import sha256
 from typing import Any
@@ -18,6 +18,7 @@ from uuid import UUID
 from erev_engine.canonical import canonical_bytes
 
 from erev_api.domain.ai.ports import AIResponse
+from erev_api.privacy.patterns import MappedRedaction
 
 MAX_RESPONSE_BYTES = 2 * 1024 * 1024
 LOW_CONFIDENCE = Decimal("0.75")
@@ -181,4 +182,34 @@ def validate_extraction(
                 citation=DocumentCitation(document_id, page, start, end),
             )
         )
+    return tuple(result)
+
+
+def validate_redacted_extraction(
+    response: AIResponse,
+    *,
+    document_id: UUID,
+    pages: Mapping[int, MappedRedaction],
+    allowed_paths: frozenset[str],
+) -> tuple[ExtractionField, ...]:
+    """Validate against outgoing pages and restore citations to source coordinates.
+
+    The gateway must retain these exact mappings when preparing the document and
+    must use their redacted text for the provider's page inputs. Mappings never
+    belong in a provider payload. A single ambiguous span refuses the proposal.
+    """
+    fields = validate_extraction(
+        response,
+        document_id=document_id,
+        pages={page: mapped.redaction.text for page, mapped in pages.items()},
+        allowed_paths=allowed_paths,
+    )
+    result: list[ExtractionField] = []
+    for field in fields:
+        citation = field.citation
+        try:
+            start, end = pages[citation.page].original_span(citation.char_start, citation.char_end)
+        except ValueError:
+            raise OutputRefused("AI_AMBIGUOUS_CITATION_SPAN") from None
+        result.append(replace(field, citation=replace(citation, char_start=start, char_end=end)))
     return tuple(result)

@@ -29,7 +29,7 @@ Replacement is idempotent: the placeholders contain no digits or ``@``.
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, Final
 
@@ -40,8 +40,10 @@ __all__ = [
     "PHONE_NORTH_AMERICAN",
     "PHONE_PLACEHOLDER",
     "Redaction",
+    "MappedRedaction",
     "redact",
     "redact_text",
+    "redact_with_offsets",
     "redact_value",
 ]
 
@@ -87,17 +89,89 @@ def _international_replacement(match: re.Match[str]) -> str:
     return PHONE_PLACEHOLDER if _MIN_DIGITS <= digits <= _MAX_DIGITS else match.group(0)
 
 
+@dataclass(frozen=True, slots=True)
+class _Edit:
+    start: int
+    end: int
+    replacement_length: int
+
+
+@dataclass(frozen=True, slots=True)
+class MappedRedaction:
+    """Redacted text with local-only offsets; no original contact values are stored.
+
+    Each phase records coordinates before that substitution pass. Translating in
+    reverse preserves the established email/international/local-phone precedence.
+    Never include the mapping in a provider prompt.
+    """
+
+    redaction: Redaction
+    _phases: tuple[tuple[_Edit, ...], ...]
+
+    def original_span(self, start: int, end: int) -> tuple[int, int]:
+        """Map a Unicode half-open span back to the original text.
+
+        A boundary inside a replacement placeholder is ambiguous and refused.
+        Spans containing whole placeholders may map back to the full source span;
+        authorization to view that original text remains the caller's duty.
+        """
+        if (
+            type(start) is not int
+            or type(end) is not int
+            or not 0 <= start < end <= len(self.redaction.text)
+        ):
+            raise ValueError("INVALID_REDACTED_SPAN")
+        for edits in reversed(self._phases):
+            start = _original_boundary(start, edits)
+            end = _original_boundary(end, edits)
+        return start, end
+
+
+def _original_boundary(position: int, edits: tuple[_Edit, ...]) -> int:
+    shift = 0
+    for edit in edits:
+        output_start = edit.start + shift
+        output_end = output_start + edit.replacement_length
+        if position <= output_start:
+            return position - shift
+        if position < output_end:
+            raise ValueError("AMBIGUOUS_REDACTED_SPAN")
+        shift += edit.replacement_length - (edit.end - edit.start)
+    return position - shift
+
+
+def _replace_with_offsets(
+    text: str, pattern: re.Pattern[str], replacement: Callable[[re.Match[str]], str]
+) -> tuple[str, tuple[_Edit, ...]]:
+    edits: list[_Edit] = []
+
+    def substitute(match: re.Match[str]) -> str:
+        value = replacement(match)
+        if value != match.group(0):
+            edits.append(_Edit(match.start(), match.end(), len(value)))
+        return value
+
+    return pattern.sub(substitute, text), tuple(edits)
+
+
+def redact_with_offsets(text: str) -> MappedRedaction:
+    """Apply PRV-08 and retain a compact, immutable source-coordinate mapping."""
+    redacted, emails = _replace_with_offsets(text, EMAIL, lambda _: EMAIL_PLACEHOLDER)
+    redacted, international = _replace_with_offsets(
+        redacted, PHONE_INTERNATIONAL, _international_replacement
+    )
+    redacted, local = _replace_with_offsets(
+        redacted, PHONE_NORTH_AMERICAN, lambda _: PHONE_PLACEHOLDER
+    )
+    return MappedRedaction(
+        redaction=Redaction(redacted, len(emails), len(international) + len(local)),
+        _phases=(emails, international, local),
+    )
+
+
 def redact(text: str) -> Redaction:
     """Replace every e-mail address and phone number in ``text`` (05 PRV-08)."""
-    redacted, emails = EMAIL.subn(EMAIL_PLACEHOLDER, text)
-    # International first: ``+1 415 555 0100`` is one number, not a ``+1`` and a North American one.
-    international = sum(
-        _international_replacement(match) == PHONE_PLACEHOLDER
-        for match in PHONE_INTERNATIONAL.finditer(redacted)
-    )
-    redacted = PHONE_INTERNATIONAL.sub(_international_replacement, redacted)
-    redacted, north_american = PHONE_NORTH_AMERICAN.subn(PHONE_PLACEHOLDER, redacted)
-    return Redaction(text=redacted, emails=emails, phones=international + north_american)
+    return redact_with_offsets(text).redaction
 
 
 def redact_text(text: str) -> str:

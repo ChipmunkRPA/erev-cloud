@@ -32,8 +32,11 @@ validate outputs, and persist audited results. No provider-facing route is enabl
 Extraction output validation now checks response integrity/completion, unique allowed paths,
 confidence and authorised document citation spans, with bounded parsing and decimal expansion.
 It refuses an entire invalid proposal and marks confidence below 0.75 for review. This is an
-unconnected domain helper: command-specific value schemas, mapping redacted-text offsets back
-to retained source text, semantic citation review and narrative-number verification remain open.
+unconnected domain helper: command-specific value schemas, semantic citation review and
+narrative-number verification remain open. PRV-08 now retains immutable redaction coordinates,
+and extraction validation can restore citations to original Unicode spans, refusing boundaries
+inside placeholders. The future gateway must retain the exact mapping for each outgoing page;
+durable document extraction and gateway integration remain absent.
 Neither span validation nor a high confidence score establishes accounting correctness.
 
 October 14 audit continuation: native option entry/expiry and CLOSE evidence-pack creation
