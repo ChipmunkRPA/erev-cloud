@@ -1056,3 +1056,36 @@ def test_no_realization_marker_cannot_hide_a_value_or_dated_series(
     with pytest.raises(to_date.Unreadable) as caught:
         read(JANUARY, trace(*nodes))
     assert caught.value.errors[0].field.endswith(".realised_allocation")
+
+
+@pytest.mark.parametrize("evidence", ["complete", "missing_formula", "missing_guard", "nonzero"])
+def test_future_draft_requires_explicit_no_period_and_zero_guard(evidence: str) -> None:
+    draft = row(revenue_cum=Decimal(0), billed_cum=Decimal(0), progress_ratio=Decimal(0))
+    nodes = [
+        to_date.Node(
+            "netting_reclass_amount:C-1/O1:-",
+            "netting_reclass_amount",
+            "0.000",
+            {},
+            "" if evidence == "missing_formula" else to_date.NO_PERIOD_FORMULA,
+        ),
+        to_date.Node(
+            "revenue_cum:C-1/O1:-",
+            "revenue_cum",
+            "1" if evidence == "nonzero" else "0",
+            {} if evidence == "missing_guard" else {"guard": "V4:DRAFT"},
+        ),
+        *series("revenue_cum", "C-1/O1", {"P04": "0.00"}),
+    ]
+    if evidence != "complete":
+        assert refusal(date(2026, 2, 28), nodes, rows=[draft])[0] == "balances[C-1@]"
+        return
+    for kept in (nodes, to_date.nodes_at(nodes, [date(2026, 2, 28)])):
+        result = read(date(2026, 2, 28), kept, rows=[draft])
+        (at,) = result.obligations.values()
+        assert (at.revenue, at.billed, at.progress_ratio, at.measured) == (
+            Decimal(0),
+            Decimal(0),
+            Decimal(0),
+            None,
+        )

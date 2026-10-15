@@ -44,6 +44,11 @@ answer-key runner applies its own overlay to its checkpoints on the same nodes (
 L5-3-Q-1): it takes Δ from the scheduled amount alone. It is the oracle's side, and no leaf of
 the corpus tells the two apart (``tests/answer_keys/test_answer_key_reads.py``).
 
+A draft booked beyond the open-period horizon has no member balance by C-05. Its explicit
+no-measured-period attribution formula, together with its V4 zero-revenue guard and zero
+stored revenue/billing/progress, lets it remain readable with no measured period. Missing
+member nodes without that evidence still fail closed.
+
 A measure the trace cannot answer is refused by name (``Unreadable``, rule id ``API-C-10``; the
 balances keep the refusal of S15-R-07a) and is never replaced by the version's stored figure.
 ``load_nodes`` reads; ``nodes_of``, ``nodes_at``, ``version_at``, ``remainder_at``, ``balance_at``
@@ -122,7 +127,10 @@ KEYED: Final = (RELEASE,)
 # the version-state node the reader takes the obligation's pattern from (``PATTERN``).
 SCHEDULED: Final = "scheduled_amount"
 AWAITING: Final = "awaiting_trigger_amount"
+NO_PERIOD: Final = "netting_reclass_amount"
+NO_PERIOD_FORMULA: Final = "pos.reclass_attribution.no_measured_period.v1"
 MEASURES: Final = (
+    NO_PERIOD,
     *DATED,
     *KEYED,
     RPO,
@@ -134,7 +142,16 @@ MEASURES: Final = (
 # What a read without balances needs of them: the periods a member subject carries, which one
 # balance the engine publishes for every member and period end gives (zeros included).
 HORIZON: Final = "contract_liability"
-WITHOUT_BALANCES: Final = (*DATED, *KEYED, RPO, TARGET, SCHEDULED, FIXED_SCHEDULE, HORIZON)
+WITHOUT_BALANCES: Final = (
+    NO_PERIOD,
+    *DATED,
+    *KEYED,
+    RPO,
+    TARGET,
+    SCHEDULED,
+    FIXED_SCHEDULE,
+    HORIZON,
+)
 # ENGINE_SPEC_B S09-R-46; the statuses whose obligations carry RPO (04 T-CON-08 ``rpo_amount``).
 CANCELLED: Final = "CANCELLED"
 SATISFIED: Final = "SATISFIED"
@@ -214,6 +231,7 @@ PARAMS: Final = (
     *PATTERN,
     "source_node",
     "realisation_mode",
+    "guard",
 )
 NODES: Final = text(
     "SELECT ct.contract_version_id, node ->> 'id' AS node_id, node ->> 'measure' AS measure, "
@@ -223,7 +241,8 @@ NODES: Final = text(
     "node -> 'params' ->> 'expected' AS expected, node -> 'params' ->> 'excluded' AS excluded, "
     "node -> 'params' ->> 'pattern' AS pattern, node -> 'params' ->> 'held' AS held, "
     "node -> 'params' ->> 'source_node' AS source_node, "
-    "node -> 'params' ->> 'realisation_mode' AS realisation_mode "
+    "node -> 'params' ->> 'realisation_mode' AS realisation_mode, "
+    "node -> 'params' ->> 'guard' AS guard, node ->> 'formula_id' AS formula_id "
     "FROM erev.calc_trace ct CROSS JOIN LATERAL jsonb_array_elements(ct.trace -> 'nodes') AS node "
     "WHERE ct.contract_version_id = ANY(:version_ids) "
     "AND node ->> 'measure' = ANY(:measures)"
@@ -257,6 +276,8 @@ class TraceNode(Protocol):
     def value(self) -> str: ...
     @property
     def params(self) -> Mapping[str, Any]: ...
+    @property
+    def formula_id(self) -> str: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -267,6 +288,7 @@ class Node:
     measure: str
     value: str
     params: Mapping[str, Any]
+    formula_id: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -304,6 +326,8 @@ class Nodes:
     ``fixed_schedule`` binds each projected fixed amount to its original schedule source node.
     ``realised_modes`` distinguishes explicitly absent fee components from a dated series;
     missing historical evidence is neither an explicit zero nor a component projection.
+    ``unmeasured_drafts`` names obligations whose trace states both no measured period
+    (C-05) and zero revenue under the draft guard (V4).
     """
 
     periods: Mapping[str, tuple[Point, ...]]
@@ -317,6 +341,7 @@ class Nodes:
     patterns: Mapping[str, tuple[str, str]]
     fixed_schedule: Mapping[str, Mapping[str, Decimal]] | None = None
     realised_modes: Mapping[str, str] | None = None
+    unmeasured_drafts: frozenset[str] = frozenset()
 
     def at_key(self, measure: str, subject: str, period_key: str) -> Decimal | None:
         """A ``KEYED`` measure at the end of ``period_key``: its latest node not after that period
@@ -374,11 +399,19 @@ def nodes_of(trace_nodes: Iterable[TraceNode], starts: Starts | None = None) -> 
     patterns: dict[str, tuple[str, str]] = {}
     fixed_schedule: dict[str, dict[str, Decimal]] = {}
     realised_modes: dict[str, str] = {}
+    no_period: set[str] = set()
+    draft_zero: set[str] = set()
     for node in trace_nodes:
         if node.measure not in MEASURES:
             continue
         head, _, slot = node.id.rpartition(":")
         params = node.params
+        if node.measure in (NO_PERIOD, REVENUE) and slot == STATE and Decimal(node.value) == 0:
+            subject = head.partition(":")[2]
+            if node.measure == NO_PERIOD and node.formula_id == NO_PERIOD_FORMULA:
+                no_period.add(subject)
+            if node.measure == REVENUE and params.get("guard") == "V4:DRAFT":
+                draft_zero.add(subject)
         if node.measure == FIXED_SCHEDULE:
             source = params.get("source_node")
             if isinstance(source, str):
@@ -440,6 +473,7 @@ def nodes_of(trace_nodes: Iterable[TraceNode], starts: Starts | None = None) -> 
         patterns=patterns,
         fixed_schedule=fixed_schedule,
         realised_modes=realised_modes,
+        unmeasured_drafts=frozenset(no_period & draft_zero),
     )
 
 
@@ -586,8 +620,9 @@ def nodes_at(trace_nodes: Iterable[TraceNode], days: Collection[date]) -> list[T
 
 def _node(row: Sequence[Any]) -> Node:
     """One row of ``NODES`` as a node; the parameters the trace does not carry are left out."""
-    named = zip(PARAMS, row[4:], strict=True)
+    named = zip(PARAMS, row[4:-1], strict=True)
     return Node(
+        formula_id=str(row[-1] or ""),
         id=str(row[1]),
         measure=str(row[2]),
         value=str(row[3]),
@@ -759,6 +794,10 @@ def _unmeasured(nodes: Nodes, subject: str | None, row: Mapping[str, Any]) -> bo
     never billed). It stays as the version holds it and needs no horizon."""
     if any(Decimal(row[name]) != 0 for name in (REVENUE, BILLED, PROGRESS)):
         return False
+    # C-05 / S10-R-22: the engine explicitly reports no measured period for this
+    # draft. Its V4 guard proves zero revenue; absence of balance nodes alone does not.
+    if subject in nodes.unmeasured_drafts:
+        return True
     return subject is None or not any(
         _measures(nodes, name, subject) for name in (REVENUE, BILLED, PROGRESS)
     )

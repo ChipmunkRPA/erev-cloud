@@ -403,6 +403,18 @@ def test_worker_proposal_acceptance_preserves_evidence_and_shares_source(
     )
     assert accepted.status_code == 201, accepted.text
     contract_id = UUID(accepted.json()["contract_id"])
+    # Future inception follows the world's last open period (September). The new
+    # draft must still open, without inventing a measured accounting period.
+    opened = call(
+        world.app,
+        "GET",
+        f"/api/v1/contracts/{contract_id}",
+        headers=cookie_headers(actor.token, actor.csrf_token),
+    )
+    assert opened.status_code == 200, opened.text
+    assert opened.json()["status"] == "DRAFT"
+    assert opened.json()["context"]["measured_period"] is None
+    assert opened.json()["kpis"] is not None
     shared = call(world.app, "GET", path, headers=review_headers)
     assert shared.status_code == 200, shared.text
     assert shared.json()["status"] == "accepted"

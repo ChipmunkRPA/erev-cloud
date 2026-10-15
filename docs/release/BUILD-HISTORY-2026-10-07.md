@@ -5529,3 +5529,22 @@ cleanup in the shared database session kernel was also repaired and regression-t
   .run/ai-worker-acceptance-{verified,final-types,lint}.log. Earlier pg/pg-fixed logs retain test
   setup failures (missing retry callback and reused command idempotency key); verified is the
   corrected run. Broader release/accounting and structured-term gaps remain open. No deployment.
+
+## Retained acceptance reads and frontend API boundary — October 15, 2026
+
+- Extraction detail/list now return accepted command/target, accepting human/time and recorded
+  field decisions alongside unchanged original evidence. The fields remain protected by current
+  source access. The worker-to-acceptance PostgreSQL witness compares detail and list results,
+  reviewed values, actor and target; all seven acceptance/extraction/explanation API tests pass.
+- Added a typed frontend API module for proposal pages/detail, document text, extraction
+  submission, rejection and draft acceptance. It preserves server ETags, unmodified decimal
+  strings/review bodies, shared command keys across lost responses, opaque cursors and API
+  refusals. Retained reads require no AI-settings fetch; no automatic retries or draft inference.
+  This is the API layer for SF-20, not a live screen. The route, field-decision controls and
+  draft-form integration remain unbuilt.
+- Six frontend API tests pass. Full backend typing passed 938 sources and focused typing passed
+  789. Frontend typing initially caught omitted explicit default fields in the test draft; the
+  fixture now supplies them. Full lint passed. Logs: .run/ai-review-client-tests.log and
+  .run/ai-review-read-{pg,typecheck,focused-types,frontend-types,lint,openapi}.log.
+  Broader release/accounting, structured-term conversion and browser gates remain open.
+  No deployment or live provider calls.

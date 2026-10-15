@@ -2,6 +2,27 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Future-starting draft reader and browser acceptance — October 15, 2026
+
+- Real browser acceptance exposed GET contract returning 422 after a successful creation:
+  October inception followed the fixture's September open-period horizon. The engine correctly
+  emitted no member balance (C-05), but the reader treated this as missing trace evidence.
+- The reader now recognizes the explicit no-measured-period formula plus V4 draft zero-revenue
+  guard, with stored revenue/billing/progress all zero. It shows no measured period and does
+  not waive missing-trace refusals. No engine, posting or accounting-policy change.
+- 74 reader/acceptance checks pass; the existing damaged-trace API refusal also passes.
+  Full lint and backend/API typing pass (791 files). Explicit typing of the older unit module found
+  pre-existing Decimal/int comparison and optional-string errors; that module is not claimed clean.
+- Chromium with real API/PostgreSQL and the b4b8210 worker image's isolated Linux PDF parser
+  passed upload, extraction, nine decisions, confirmation and opening the accepted obligation.
+  Source attachment and zero new ledger postings verified. Synthetic provider; seeded session;
+  queued handler pumped in-process; Vite frontend. This does not prove standalone worker,
+  production web image, login, live-model quality or standard seeded E2E acceptance.
+- Evidence: .run/future-draft-reader-{tests,types-final,lint}.log;
+  .run/future-draft-browser-{tests,final}.log and .run/ai-live-browser-created.png.
+  Full frozen CI remains active on 3cf8f5b; Compose and independent accounting sign-off remain open.
+  No deployment. Temporary browser harness retained privately under .run.
+
 ## Bound stalled Compose startup and retain failure evidence — October 15, 2026
 
 - Compose verification now bounds up -d (600s default, configurable separately from health
@@ -206,24 +227,6 @@
   unfinished. Broader release and independent accounting gates stay open. No deployment or live
   provider calls. The preview server was stopped after inspection.
 
-## Retained acceptance reads and frontend API boundary — October 15, 2026
-
-- Extraction detail/list now return accepted command/target, accepting human/time and recorded
-  field decisions alongside unchanged original evidence. The fields remain protected by current
-  source access. The worker-to-acceptance PostgreSQL witness compares detail and list results,
-  reviewed values, actor and target; all seven acceptance/extraction/explanation API tests pass.
-- Added a typed frontend API module for proposal pages/detail, document text, extraction
-  submission, rejection and draft acceptance. It preserves server ETags, unmodified decimal
-  strings/review bodies, shared command keys across lost responses, opaque cursors and API
-  refusals. Retained reads require no AI-settings fetch; no automatic retries or draft inference.
-  This is the API layer for SF-20, not a live screen. The route, field-decision controls and
-  draft-form integration remain unbuilt.
-- Six frontend API tests pass. Full backend typing passed 938 sources and focused typing passed
-  789. Frontend typing initially caught omitted explicit default fields in the test draft; the
-  fixture now supplies them. Full lint passed. Logs: .run/ai-review-client-tests.log and
-  .run/ai-review-read-{pg,typecheck,focused-types,frontend-types,lint,openapi}.log.
-  Broader release/accounting, structured-term conversion and browser gates remain open.
-  No deployment or live provider calls.
 
 ## Outstanding release verification
 
