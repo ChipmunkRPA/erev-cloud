@@ -3986,7 +3986,9 @@ stale preconditions return 412. Permission, evidence and closed-period checks us
 event pipeline. The generic event route continues to reject this event type.
 
 Expiry appends MATERIAL_RIGHT_EXPIRED and computes atomically. A synchronous computation
-refusal rolls back the append. Successful response is 201 EventsAppendedOut with the new stream
+refusal rolls back the append. An engine crash returns a sanitized 500 and abandons the
+idempotency attempt, allowing the same request/key to retry; a quarantined business refusal
+remains 422. Successful response is 201 EventsAppendedOut with the new stream
 ETag; a deferred computation returns 202 JobOut with its Location under the existing event
 budget policy. Audit records bind the event ids, comment, evidence and computation/job to the
 contract. This event needs no separate approval under E-03; manual exercise still requires its

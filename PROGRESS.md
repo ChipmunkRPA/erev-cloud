@@ -2,6 +2,24 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Expiry isolation, rollback and concurrent requests — October 14, 2026
+
+- Added native refusal checks for DRAFT, premature declared expiry, read-only access,
+  another entity and another tenant. Injected an engine crash and verified no change
+  to head, expiry events, computations, subledger lines, exception rows or OPEN status.
+- Reproduced a retry defect: a crashed expiry computation became cached 422. FAILED
+  now returns sanitized 500 and abandons that idempotency attempt; the same request/key
+  succeeds after recovery. Business quarantine remains validation failure.
+- Two competing requests were observed as distinct PostgreSQL waiters on the group
+  lock. The holder then took the contract lock without inversion. After release:
+  one 201, one 412, one expiry event/head increment and USD 12,000 revenue.
+- Both boundary tests passed (44.53s), full typecheck (880 source files plus frontend),
+  strict test Mypy and Ruff pass. Logs: .run/material-right-expire-boundaries.log
+  (retry baseline), .run/material-right-expire-boundaries-fixed.log and
+  .run/material-right-expire-boundary-production-types.log.
+- Other-command races, closed-period/deferred failures, exercise/reversal and release
+  acceptance remain open. Full CI 165d63c remains live at 32%. No deployment.
+
 ## Dedicated material-right expiry — October 14, 2026
 
 - Added expire-material-right with event.record permission, stream preconditions,
@@ -242,21 +260,6 @@
 - Logs: .run/e2e-artifact-{all-tests,script-final,typecheck-final,real-browser}.log.
   The earlier closed-world gate remains bound to 3e60e6a and its lost screenshots cannot be
   recovered. Full backend CI on 165d63c is still live; broader readiness remains open.
-
-## Fresh closed-world browser gate — October 14, 2026
-
-- Immutable make e2e CLOSE=1 PROJECT=closed on 3e60e6a passed all 10 tests in
-  58.7 seconds after a fresh local schema reset, migration, closed-world seed and build.
-  Zero failed, flaky or skipped tests. Coverage includes locked schedules/reports,
-  permanent-lock workflows and first-close generation with verified retained downloads.
-- Source tree and context hashes match before/after; dependency bindings are consistent.
-  The test servers stopped normally. Logs: .run/e2e-3e60e6a-full.log and
-  .run/reports/e2e/{report,playwright-1-closed}.json. Exact binding and limits:
-  docs/release/BROWSER-2026-10-14.md. This is the closed project, not every browser project.
-- The gate retains JSON results but its temporary context cleanup removed newly generated
-  screenshots. Existing worktree screenshots predate this run and cannot prove its visuals.
-  Artifact retention needs repair. Backend CI on 165d63c remains live with known failures;
-  later backend repairs and independent accounting acceptance are not covered by this gate.
 
 ## Outstanding release verification
 

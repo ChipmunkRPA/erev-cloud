@@ -3500,3 +3500,18 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   isolated-idor-{clock-fixed,worlds-fixed,final}, pending-repairs-{architecture,full-lint,full-types}
   and idor-repair-types-final (all .log). Temporary repair server stopped. CI on 165d63c and
   browser gate on 3e60e6a remain live; no full-gate, deployment or accounting-approval claim.
+
+## Fresh closed-world browser gate — October 14, 2026
+
+- Immutable make e2e CLOSE=1 PROJECT=closed on 3e60e6a passed all 10 tests in
+  58.7 seconds after a fresh local schema reset, migration, closed-world seed and build.
+  Zero failed, flaky or skipped tests. Coverage includes locked schedules/reports,
+  permanent-lock workflows and first-close generation with verified retained downloads.
+- Source tree and context hashes match before/after; dependency bindings are consistent.
+  The test servers stopped normally. Logs: .run/e2e-3e60e6a-full.log and
+  .run/reports/e2e/{report,playwright-1-closed}.json. Exact binding and limits:
+  docs/release/BROWSER-2026-10-14.md. This is the closed project, not every browser project.
+- The gate retains JSON results but its temporary context cleanup removed newly generated
+  screenshots. Existing worktree screenshots predate this run and cannot prove its visuals.
+  Artifact retention needs repair. Backend CI on 165d63c remains live with known failures;
+  later backend repairs and independent accounting acceptance are not covered by this gate.

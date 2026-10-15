@@ -273,6 +273,10 @@ def expire(
     if captured.job is not None:
         return captured.job
     assert captured.appended is not None
+    if captured.appended.computation.status is ComputationStatus.FAILED:
+        # A crashed computation is not a client validation error: roll back and let the
+        # command kernel abandon this idempotency attempt so the same request can retry.
+        raise RuntimeError("Option expiry computation failed")
     if captured.appended.computation.status is not ComputationStatus.SUCCEEDED:
         raise _invalid("effective_date", "Expiry could not be computed; no expiry was recorded.")
     return captured.appended

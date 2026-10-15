@@ -2201,3 +2201,172 @@ def test_native_discount_option_uses_approved_likelihood(
     dedicated = get(seats.app, path, maya)
     assert dedicated.status_code == 200, dedicated.text
     assert dedicated.json() == final.json()["material_right"]
+
+
+def _active_expiry_option(seats: SeatWorld) -> tuple[UUID, UUID]:
+    maya = seats.place.author
+    body = _seat_contract(seats, "OPTION-EXPIRY-GUARDS", seats="50", price="12000.00")
+    line = body["lines"][0]
+    template = published_template(
+        seats.app,
+        maya,
+        seats.marcus,
+        code="TPL-OPTION-EXPIRY-GUARDS",
+        outputs={
+            "obligation_kind": "MATERIAL_RIGHT",
+            "distinctness": "distinct",
+            "satisfaction_pattern": "POINT_IN_TIME",
+            "over_time_criterion": "NOT_APPLICABLE",
+            "recognition_method": "UNITS_DELIVERED",
+        },
+        case_line={**line, "total_price": "12000.00"},
+    )
+    product_id = seats.place.scalar(
+        select(product.c.id).where(product.c.code == line["product_code"])
+    )
+    set_default_template(seats.app, maya, str(product_id), template["template_id"])
+    contract_id = _created(seats.app, maya, body)
+    option_id = seats.place.scalar(
+        select(obligation.c.id).where(obligation.c.contract_id == contract_id)
+    )
+    terms_path = f"/api/v1/obligations/{option_id}/material-right"
+    terms = post(
+        seats.app,
+        terms_path,
+        maya,
+        {
+            "option_type": "DISCOUNT_VOUCHER",
+            "ssp_method": "ENTERED_AMOUNT",
+            "expiry_date": "2026-09-12",
+        },
+        if_match='"s1"',
+    )
+    assert terms.status_code == 201, terms.text
+    path = f"/api/v1/obligations/{option_id}/expire-material-right"
+    expiry = {"effective_date": "2026-09-12", "comment": "Unused option expired."}
+    draft = post(seats.app, path, maya, expiry, if_match='"s1"')
+    assert draft.status_code == 409, draft.text
+    head = _step1(seats.app, maya, seats.marcus, contract_id, 1)
+    sent = _submit(seats.app, maya, contract_id, head)
+    assert sent.status_code == 200, sent.text
+    accepted = approve(seats.app, sent.headers[APPROVAL_HEADER], seats.marcus)
+    assert accepted.status_code == 200, accepted.text
+    return contract_id, option_id
+
+
+def test_option_expiry_scope_dates_and_failed_compute_leave_no_writes(
+    seats: SeatWorld, clock: FrozenClock, keyring: KeyRing, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from erev_api.db.tables import legal_entity
+    from erev_api.domain.contracts import computation
+    from erev_engine.bundle import InputBundle, OutputBundle
+    from support.principals import member
+    from support.reference import entity
+
+    maya = seats.place.author
+    contract_id, option_id = _active_expiry_option(seats)
+    terms_path = f"/api/v1/obligations/{option_id}/material-right"
+    path = f"/api/v1/obligations/{option_id}/expire-material-right"
+    expiry = {"effective_date": "2026-09-12", "comment": "Unused option expired."}
+    head = _header(seats, contract_id)[1]
+    early = post(
+        seats.app, path, maya, {**expiry, "effective_date": "2026-09-11"}, if_match=f'"s{head}"'
+    )
+    assert early.status_code == 422, early.text
+    assert "stated expiry date" in early.text
+
+    reader = colleague(seats.place.tenant_id, "option-reader")
+    assign(reader, "auditor")
+    reader_actor = enrolled(seats.app, clock, reader)
+    denied = post(seats.app, path, reader_actor, expiry, if_match=f'"s{head}"')
+    assert denied.status_code == 403, denied.text
+    calendar_id = seats.place.scalar(
+        select(legal_entity.c.calendar_id).where(legal_entity.c.code == "AVM-US")
+    )
+    other = entity(seats.app, maya, code="OPTION-OTHER", calendar_id=str(calendar_id))
+    scoped = colleague(seats.place.tenant_id, "option-scoped")
+    assign(scoped, "revenue_accountant", entity_ids=[UUID(other["id"])])
+    scoped_actor = enrolled(seats.app, clock, scoped)
+    hidden = post(seats.app, path, scoped_actor, expiry, if_match=f'"s{head}"')
+    assert hidden.status_code == 404, hidden.text
+    foreign = member(keyring, clock, name="option-foreign")
+    assign(foreign, "revenue_accountant")
+    foreign_actor = enrolled(seats.app, clock, foreign)
+    foreign_refused = post(seats.app, path, foreign_actor, expiry, if_match=f'"s{head}"')
+    assert foreign_refused.status_code == 404, foreign_refused.text
+    assert _header(seats, contract_id) == ("ACTIVE", head)
+    assert "MATERIAL_RIGHT_EXPIRED" not in _event_types(seats, contract_id)
+    before_computations = seats.place.scalar(select(func.count()).select_from(contract_computation))
+    before_lines = seats.place.scalar(select(func.count()).select_from(subledger_line))
+    before_exceptions = seats.place.scalar(select(func.count()).select_from(exception_item))
+
+    def broken_engine(_bundle: InputBundle) -> OutputBundle:
+        raise ValueError("Injected expiry computation failure")
+
+    headers = cookie_headers(maya.token, maya.csrf_token, key=True)
+    headers["If-Match"] = f'"s{head}"'
+    with monkeypatch.context() as patch:
+        patch.setattr(computation, "default_engine", lambda: broken_engine)
+        failed = call(seats.app, "POST", path, json=expiry, headers=headers)
+    assert failed.status_code == 500, failed.text
+    assert "Injected expiry" not in failed.text
+    assert _header(seats, contract_id) == ("ACTIVE", head)
+    assert "MATERIAL_RIGHT_EXPIRED" not in _event_types(seats, contract_id)
+    assert (
+        seats.place.scalar(select(func.count()).select_from(contract_computation))
+        == before_computations
+    )
+    assert seats.place.scalar(select(func.count()).select_from(subledger_line)) == before_lines
+    assert seats.place.scalar(select(func.count()).select_from(exception_item)) == before_exceptions
+    assert get(seats.app, terms_path, maya).json()["status"] == "OPEN"
+    retried = call(seats.app, "POST", path, json=expiry, headers=headers)
+    assert retried.status_code == 201, retried.text
+    assert retried.json()["computation"]["status"] == "SUCCEEDED"
+    assert _event_types(seats, contract_id).count("MATERIAL_RIGHT_EXPIRED") == 1
+
+
+def test_competing_option_expiries_wait_on_group_and_append_once(seats: SeatWorld) -> None:
+    from concurrent.futures import ThreadPoolExecutor
+
+    from erev_api.domain.contracts import repo
+    from support.interleave import await_lock_waits, backend_pid, observing_checkouts
+
+    contract_id, option_id = _active_expiry_option(seats)
+    head = _header(seats, contract_id)[1]
+    path = f"/api/v1/obligations/{option_id}/expire-material-right"
+    expiry = {"effective_date": "2026-09-12", "comment": "Competing expiry request."}
+    context = DbContext(tenant_id=seats.place.tenant_id, user_id=None, entity_scope="*")
+    with ThreadPoolExecutor(max_workers=2) as workers:
+        with observing_checkouts() as backends:
+            with tenant_session(context) as holder:
+                holder_id = backend_pid(holder)
+                group_id = UUID(str(repo.get_contract(holder, contract_id)["combination_group_id"]))
+                repo.lock_group(holder, group_id)
+                pending = [
+                    workers.submit(
+                        post, seats.app, path, seats.place.author, expiry, if_match=f'"s{head}"'
+                    )
+                    for _ in range(2)
+                ]
+                waiting = await_lock_waits(
+                    holder,
+                    holder_pid=holder_id,
+                    backends=backends,
+                    count=2,
+                    timeout=20.0,
+                    expect="combination_group",
+                )
+                assert len(waiting) == 2
+                # The holder can take the contract next: neither waiter inverted the lock order.
+                repo.get_contract(holder, contract_id, for_update=True)
+                holder.rollback()
+            responses = [future.result(timeout=30) for future in pending]
+    assert sorted(response.status_code for response in responses) == [201, 412], [
+        response.text for response in responses
+    ]
+    assert _header(seats, contract_id) == ("ACTIVE", head + 1)
+    assert _event_types(seats, contract_id).count("MATERIAL_RIGHT_EXPIRED") == 1
+    shown = get(seats.app, f"/api/v1/obligations/{option_id}", seats.place.author)
+    assert shown.status_code == 200, shown.text
+    assert shown.json()["material_right"]["status"] == "EXPIRED"
+    assert Decimal(shown.json()["to_date"]["revenue"]["amount"]) == Decimal("12000")

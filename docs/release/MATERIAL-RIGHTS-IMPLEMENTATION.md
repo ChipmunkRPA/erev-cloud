@@ -238,3 +238,32 @@ API-C-10/to_date.py instead define the containing fiscal period's end; the final
 that explicit measured period, daily OPEN status before expiry, and zero in the prior period.
 The failed assertion is retained in `.run/material-right-expire-final.log`. The duplicate-closure
 baseline is retained in `.run/material-right-expire-native.log`.
+
+## Expiry authorization, rollback and competing requests, October 14
+
+Added a native fixture covering DRAFT refusal, a date before the declared expiry, an auditor
+without event.record, a recorder scoped to another real entity, and a recorder in another tenant.
+It then injects an engine crash and compares stream head, expiry events, computations,
+subledger lines, exception records and OPEN status before/after the failed command.
+
+The baseline showed a retry defect: expiry converted a crashed computation into a cacheable
+422 validation response. Writes rolled back, but the same key replayed that error after engine
+recovery. FAILED now raises a server error through the command kernel, which sanitizes it and
+abandons the idempotency attempt. The same request and key can then succeed; QUARANTINED
+business refusals remain validation responses. No engine details are returned to the caller.
+
+A second fixture holds the group lock, starts two expiry requests with distinct keys and the
+same stream head, and observes two participant-bound PostgreSQL waiters on combination_group.
+The holder can then take the contract lock, proving the waiters did not invert that order.
+After release, exactly one request must succeed (201), the other must report stale head (412),
+and the stream must contain one expiry and one head increment with USD 12,000 revenue.
+These cases do not cover expiry versus other command types, closed-period failures or deferred
+job failure/recovery; those remain acceptance work alongside exercise and reversal.
+
+Boundary verification: both tests passed in 44.53s. Full typecheck (880 source files plus
+frontend), strict test Mypy, Ruff and diff checks pass. Retry baseline:
+`.run/material-right-expire-boundaries.log`; fixed outcome:
+`.run/material-right-expire-boundaries-fixed.log`; types:
+`.run/material-right-expire-boundary-production-types.log` and
+`.run/material-right-expire-boundary-types.log`. The first fixture attempt passed a UUID
+where the entity HTTP helper required a JSON string; corrected before measuring these cases.
