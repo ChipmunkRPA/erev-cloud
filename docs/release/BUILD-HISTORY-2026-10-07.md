@@ -3974,3 +3974,20 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   approved promotion are verified. MIGRATION_PROMOTION remains unimplemented. This change
   verifies term persistence, not complete import acceptance. No deployment/readiness claim.
 - Older immutable CI 165d63c remains live at 44%; it is not current-main release evidence.
+
+## Converted option platform capture witness — October 14, 2026
+
+- Added a PostgreSQL witness through the real platform booking, activation-event, engine,
+  persistence and capture-reader path. Published parity templates and an approved legacy
+  SSP catalogue support a paid product plus converted option, without mocking computation.
+- The option retains total SSP/allocation 25, remaining quantity 0.4, revenue 15 and remaining
+  allocation 10. Contract billed total 100, revenue 15 and remaining allocation 85 agree.
+  Verified retained input hash/batch/cutover, contract-keyed audit facts, and rollback leaving
+  no contracts or option terms. One integration test passed (9.21s); strict test Mypy/Ruff pass.
+  Logs: .run/converted-option-capture.log and .run/converted-option-capture-types.log.
+- Earlier setup attempts exposed an incomplete stage-only fixture (free option with no paid
+  line funding allocation) and missing period-state setup. The final fixture represents the
+  complete two-line contract. No engine checks or approval guards were weakened.
+- The public capture refusal stays: reconciliation still compares raw legacy dollar-unit
+  quantity 10 against option quantity 0.4, and MIGRATION_PROMOTION is unimplemented. Full
+  import/reconcile/promotion acceptance remains open. Older CI 165d63c is live at 45%.

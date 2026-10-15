@@ -24,6 +24,11 @@ including disablement, safe error classification, timeout and no-SDK-retry setti
 No live provider call has been made. The gateway and audited human workflows remain absent;
 these adapter checks do not establish end-to-end AI readiness.
 
+Request preparation now applies the shared contact-redaction patterns, requires opt-in
+for its explicit document-text argument, and hashes immutable outgoing content and configuration.
+The gateway must still select authorised/minimised facts, enforce job execution and budgets,
+validate outputs, and persist audited results. No provider-facing route is enabled by this helper.
+
 October 14 audit continuation: native option entry/expiry and CLOSE evidence-pack creation
 now have catalogue entries and real request scenarios in the audit walk. Material-right
 AUD-FACT summaries require a contract key and retain the created ids in detail. Evidence-pack

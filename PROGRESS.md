@@ -2,6 +2,23 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## AI request preparation boundary — October 14, 2026
+
+- Moved provider contracts to domain ports, preserving adapter exports, so the forthcoming
+  gateway can depend on the protocol without importing a network adapter.
+- Added exact UTF-8 template digest checks and canonical request preparation. The explicit
+  document-text argument requires opt-in; existing PRV-08 patterns redact values and system
+  text. Contact-bearing field names are refused, not silently leaked or collapsed.
+- Outgoing messages and configuration are immutable; the input digest binds template/version,
+  actual message bytes, model, system text and generation/redaction settings. Floats are
+  refused by canonical encoding. Callers still owe authorised, minimised input selection.
+- Provider/preparation/configuration/privacy/architecture checks: 165 passed (23.21s).
+  Strict API/test typing: 749 sources; Ruff/formatting pass. Evidence:
+  .run/ai-preparation-checks.log and .run/ai-preparation-types.log.
+- This is not an enabled gateway: job-only authorization, budget reservation, output
+  validation, durable attempt/audit writes and human acceptance remain open. No live calls,
+  deployment or readiness claim.
+
 ## AI SDK adapter and provider selection — October 14, 2026
 
 - Added the official Anthropic SDK (locked 1.14.0), explicit vendor endpoint, 60-second
@@ -227,23 +244,6 @@
   .run/option-reconciliation-types.log and .run/option-reconciliation-test-types.log.
 - Full import/approved promotion remains incomplete, and the public option refusal stays.
   Older immutable CI 165d63c remains live at 46%; no deployment or readiness claim.
-
-## Converted option platform capture witness — October 14, 2026
-
-- Added a PostgreSQL witness through the real platform booking, activation-event, engine,
-  persistence and capture-reader path. Published parity templates and an approved legacy
-  SSP catalogue support a paid product plus converted option, without mocking computation.
-- The option retains total SSP/allocation 25, remaining quantity 0.4, revenue 15 and remaining
-  allocation 10. Contract billed total 100, revenue 15 and remaining allocation 85 agree.
-  Verified retained input hash/batch/cutover, contract-keyed audit facts, and rollback leaving
-  no contracts or option terms. One integration test passed (9.21s); strict test Mypy/Ruff pass.
-  Logs: .run/converted-option-capture.log and .run/converted-option-capture-types.log.
-- Earlier setup attempts exposed an incomplete stage-only fixture (free option with no paid
-  line funding allocation) and missing period-state setup. The final fixture represents the
-  complete two-line contract. No engine checks or approval guards were weakened.
-- The public capture refusal stays: reconciliation still compares raw legacy dollar-unit
-  quantity 10 against option quantity 0.4, and MIGRATION_PROMOTION is unimplemented. Full
-  import/reconcile/promotion acceptance remains open. Older CI 165d63c is live at 45%.
 
 ## Outstanding release verification
 

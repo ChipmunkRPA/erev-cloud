@@ -1,48 +1,32 @@
 """AI provider boundary and deterministic fixtures (DG-AI-02; 05 AIA-01, AIA-03).
 
-This adapter performs no database writes. Gateway/job integration and the live
-provider are separate work; a fixture result is never an accepted accounting input.
+This adapter performs no database writes. Gateway/job integration remains separate
+work; a fixture result is never an accepted accounting input.
 """
 
 from __future__ import annotations
 
 import json
 import re
-from collections.abc import Mapping
-from dataclasses import dataclass
 from hashlib import sha256
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Protocol
+from typing import TYPE_CHECKING
+
+from erev_api.domain.ai.ports import (
+    AIProvider as AIProvider,
+)
+from erev_api.domain.ai.ports import (
+    AIRequest as AIRequest,
+)
+from erev_api.domain.ai.ports import (
+    AIResponse as AIResponse,
+)
+from erev_api.domain.ai.ports import (
+    ProviderError as ProviderError,
+)
 
 if TYPE_CHECKING:
     from erev_api.config import Settings
-
-
-@dataclass(frozen=True, slots=True)
-class AIRequest:
-    template_id: str
-    template_version: int
-    model: str
-    parameters: Mapping[str, Any]
-    system: str
-    messages: tuple[Mapping[str, str], ...]
-    input_sha256: str
-    max_tokens: int
-
-
-@dataclass(frozen=True, slots=True)
-class AIResponse:
-    text: str
-    response_sha256: str
-    input_tokens: int
-    output_tokens: int
-    latency_ms: int
-    model: str
-    stop_reason: str
-
-
-class AIProvider(Protocol):
-    def complete(self, request: AIRequest) -> AIResponse: ...
 
 
 class FakeProvider:
@@ -93,15 +77,6 @@ class FakeProvider:
             model=request.model,
             stop_reason=value["stop_reason"],
         )
-
-
-class ProviderError(RuntimeError):
-    """A safe error code for gateway evidence; never retain the SDK response body."""
-
-    def __init__(self, code: str, *, retryable: bool) -> None:
-        super().__init__(code)
-        self.code = code
-        self.retryable = retryable
 
 
 def get_provider(settings: Settings, *, tenant_ai_enabled: bool) -> AIProvider | None:
