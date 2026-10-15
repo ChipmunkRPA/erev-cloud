@@ -2,6 +2,23 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Reopen-basis isolation coverage — October 14, 2026
+
+- Reproduced the catalogue-completeness failure: period_reopen_basis had no shared
+  row builder. Added its period/entity/state dependencies and registered the builder.
+  The existing sweep now proves own-row visibility, foreign-tenant read/write denial
+  and no-context denial. Entity-scope checks include the reopen basis and now verify
+  forbidden updates/deletes as well as reads/inserts for all five reference cases.
+- Fixed two typing issues in touched helpers: explicit obligation-version UUID inputs
+  and a real user identity for the loss-provision fixture instead of None.
+- Final focused PostgreSQL run: 10 passed (6.93s); strict Mypy on both touched files,
+  Ruff and diff checks pass. Evidence: .run/reopen-rls-baseline.log (failure),
+  .run/reopen-rls-verified.log and .run/reopen-rls-types-final.log. Earlier Mypy invocations
+  used incomplete module-path configuration; final check uses MYPYPATH and explicit
+  package bases. No production runtime or schema change.
+- Full CI 165d63c remains live around 32%; this focused repair does not establish a
+  passing release gate. Original exclusions/noncommercial license retained; no deployment.
+
 ## Material-right replacement and activation routing — October 14, 2026
 
 - Verified native term creation followed by an integration's price-only draft replacement:
@@ -233,22 +250,6 @@
   3 failed, 22 passed). Ruff lint/format pass. Logs .run/pending-repairs-units{,-fixed}.log.
   Run used the working tree, including pending scope/identity repairs; only this fixture fix
   is published here. Full architecture, backend CI and fresh closed-browser runs are ongoing.
-
-## Runtime dependency and infrastructure validation — October 14, 2026
-
-- make audit-deps passes on HEAD 4542527 with pending backend edits: all 77 pinned Python
-  runtime distributions audited, zero vulnerabilities; npm production audit reports zero
-  advisories at every severity. Five environment markers removed so the audit includes the
-  whole pinned runtime set. Installed dependency bindings are consistent with both lockfiles.
-- make tf-validate passes using Terraform 1.16.4: backend-disabled init, format check and
-  validation of ten files/four providers. Input hashes agree before/after; provider versions
-  google/google-beta 6.50.0, archive 2.8.1 and random 3.9.1. No cloud state or credentials used.
-- Both runs are explicitly worktree-dirty development evidence, not immutable release gates.
-  Reports remain in .run/reports/{audit-deps,tf-validate}/report.json; logs are
-  .run/{audit-deps,tf-validate}-oct14-current.log. Docker client exists but its local daemon
-  is unavailable (.run/docker-availability.log), so no container validation is claimed.
-- Full backend CI on 165d63c remains live. Pending source/test repairs await database access;
-  independent accounting approval and broader release checks remain open. No deployment.
 
 ## Outstanding release verification
 

@@ -79,7 +79,9 @@ Mypy and Ruff passed. Logs: `.run/material-right-schema-currency-fk.log`,
 
 Earlier runs exposed missing snapshot pending/reference registrations and stale inventory
 counts; corrected before publication. A broader row-builder completeness check also found
-an existing missing `period_reopen_basis` builder. That separate failure is not resolved here.
+an existing missing `period_reopen_basis` builder. It was subsequently repaired: the
+shared builder and tenant/entity-scope tests pass (10 focused PostgreSQL checks, 6.93s;
+`.run/reopen-rls-verified.log`). Strict Mypy on the touched helper and isolation test passes.
 Populated material-right snapshot/restore and API lifecycle acceptance are still required.
 
 

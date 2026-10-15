@@ -3452,3 +3452,19 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
 - Browser test servers stopped. Full CI on 165d63c remains live with known failures;
   pending backend identity/IDOR repairs are not part of this frontend change. No deployment
   or complete release-gate claim. Broader release and accounting review gaps remain open.
+
+## Runtime dependency and infrastructure validation — October 14, 2026
+
+- make audit-deps passes on HEAD 4542527 with pending backend edits: all 77 pinned Python
+  runtime distributions audited, zero vulnerabilities; npm production audit reports zero
+  advisories at every severity. Five environment markers removed so the audit includes the
+  whole pinned runtime set. Installed dependency bindings are consistent with both lockfiles.
+- make tf-validate passes using Terraform 1.16.4: backend-disabled init, format check and
+  validation of ten files/four providers. Input hashes agree before/after; provider versions
+  google/google-beta 6.50.0, archive 2.8.1 and random 3.9.1. No cloud state or credentials used.
+- Both runs are explicitly worktree-dirty development evidence, not immutable release gates.
+  Reports remain in .run/reports/{audit-deps,tf-validate}/report.json; logs are
+  .run/{audit-deps,tf-validate}-oct14-current.log. Docker client exists but its local daemon
+  is unavailable (.run/docker-availability.log), so no container validation is claimed.
+- Full backend CI on 165d63c remains live. Pending source/test repairs await database access;
+  independent accounting approval and broader release checks remain open. No deployment.

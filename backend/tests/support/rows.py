@@ -1677,6 +1677,28 @@ def period_state_row(ctx: RowContext, session: Session) -> dict[str, Any]:
     return period_state_values(ctx.tenant_id, entity_id=entity_id, period_id=period_id)
 
 
+def period_reopen_basis_values(
+    tenant_id: UUID, *, period_state_id: UUID, entity_id: UUID
+) -> dict[str, Any]:
+    """T-CLS-09: current reopen basis, before an optional judgement is cited."""
+    return {
+        "tenant_id": tenant_id,
+        "id": new_id(),
+        "period_state_id": period_state_id,
+        "entity_id": entity_id,
+        "judgement_record_id": None,
+        **_SYSTEM,
+    }
+
+
+def period_reopen_basis_row(ctx: RowContext, session: Session) -> dict[str, Any]:
+    state = period_state_row(ctx, session)
+    state_id = _insert_visible(session, period_state, state)
+    return period_reopen_basis_values(
+        ctx.tenant_id, period_state_id=state_id, entity_id=state["entity_id"]
+    )
+
+
 def period_state_transition_row(ctx: RowContext, session: Session) -> dict[str, Any]:
     """T-REF-07: the creation transition of a state the builder inserts where the context allows."""
     period_id, entity_id = _entity_chain(ctx, session)
@@ -3197,7 +3219,9 @@ def obligation_version_row(ctx: RowContext, session: Session) -> dict[str, Any]:
         contract_id=rows.chain.contract_id,
         combination_group_id=rows.chain.group_id,
         entity_id=rows.chain.entity_id,
-        **parts,
+        obligation_id=parts["obligation_id"],
+        product_id=parts["product_id"],
+        pob_template_version_id=parts["pob_template_version_id"],
     )
 
 
@@ -4931,6 +4955,7 @@ ROW_BUILDERS: Final[Mapping[str, RowBuilder]] = MappingProxyType(
         "outbox_message": outbox_message_row,
         "period": period_row,
         "period_lock": period_lock_row,
+        "period_reopen_basis": period_reopen_basis_row,
         "period_state": period_state_row,
         "period_state_transition": period_state_transition_row,
         "pob_template": lambda ctx, _: pob_template_values(ctx.tenant_id),

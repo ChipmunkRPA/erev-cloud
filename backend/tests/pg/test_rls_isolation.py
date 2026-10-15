@@ -88,6 +88,7 @@ from support.rows import (
     manual_adjustment_values,
     membership_row,
     period_lock_values,
+    period_reopen_basis_values,
     period_state_transition_values,
     period_state_values,
     period_values,
@@ -219,7 +220,13 @@ def test_rls_te_approval_request_entity_scope(committed_db: TestDatabase, keyrin
         assert session.execute(inserted).scalar_one() == 1
 
 
-RLS_TE_TABLES = ("legal_entity", "entity_book", "period_state", "period_state_transition")
+RLS_TE_TABLES = (
+    "legal_entity",
+    "entity_book",
+    "period_state",
+    "period_state_transition",
+    "period_reopen_basis",
+)
 
 
 @pytest.mark.parametrize("table_name", RLS_TE_TABLES)
@@ -245,6 +252,10 @@ def test_rls_te_entity_scope(table_name: str, committed_db: TestDatabase, keyrin
                 )
             case "period_state":
                 return period_state_values(tenant_id, entity_id=entity_id, period_id=january["id"])
+            case "period_reopen_basis":
+                return period_reopen_basis_values(
+                    tenant_id, period_state_id=states[entity_id], entity_id=entity_id
+                )
             case _:
                 return period_state_transition_values(
                     tenant_id,
@@ -262,7 +273,7 @@ def test_rls_te_entity_scope(table_name: str, committed_db: TestDatabase, keyrin
         for entity_id in kept:
             entity = legal_entity_values(tenant_id, calendar_id=calendar["id"], entity_id=entity_id)
             session.execute(insert(legal_entity).values(**entity))
-        if table_name == "period_state_transition":
+        if table_name in {"period_state_transition", "period_reopen_basis"}:
             for entity_id in kept:
                 state = period_state_values(tenant_id, entity_id=entity_id, period_id=january["id"])
                 session.execute(insert(period_state).values(**state))
@@ -281,6 +292,13 @@ def test_rls_te_entity_scope(table_name: str, committed_db: TestDatabase, keyrin
             session.scalars(select(table.c.id).where(table.c.id.in_(list(rows.values()))))
         )
         assert visible == {rows[e1]}
+        assert _outcome(
+            session, update(table).where(table.c.id == rows[e2]).values(id=table.c.id)
+        ) in (0, INSUFFICIENT_PRIVILEGE)
+        assert _outcome(session, delete(table).where(table.c.id == rows[e2])) in (
+            0,
+            INSUFFICIENT_PRIVILEGE,
+        )
         outside = new_id() if table_name == "legal_entity" else e2
         assert _outcome(session, insert(table).values(**values(outside))) == INSUFFICIENT_PRIVILEGE
         own = values(e3)
@@ -782,8 +800,10 @@ def test_loss_provision_entity_scope(
 ) -> None:
     tenant_id = tenant_id_of(tenant_factory(keyring=keyring))
     table = metadata.tables[f"erev.{table_name}"]
+    with identity_session(request_id="tests-loss-provision-scope") as session:
+        user_id = insert_app_user(session)
     with tenant_session(_all_entities(tenant_id)) as session:
-        rows = [ROW_BUILDERS[table_name](RowContext(tenant_id, None), session) for _ in range(2)]
+        rows = [ROW_BUILDERS[table_name](RowContext(tenant_id, user_id), session) for _ in range(2)]
         for row in rows:
             session.execute(insert(table).values(**row))
     own, other = rows
