@@ -5212,3 +5212,25 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - The gateway still owns admission and retry exhaustion. Extraction dispatch, provider recovery,
   submission, review/acceptance and the broader release/accounting gates remain unfinished.
   No deployment or live provider call; no production-readiness claim.
+
+## Durable extraction call document links — October 15, 2026
+
+- Migration 0155 adds paired source/text file references to immutable AI call intents, with
+  tenant-bound foreign keys and a downgrade guard against losing populated links. A worker can
+  locate exact retained text through the committed call before any proposal exists. Intent
+  writers validate paired purposes and unshredded files; retries preserve both links. Extraction
+  success/failure persistence verifies its file IDs against the call intent.
+- Both references now hold evidence independently of proposal creation or outcome. They grant
+  no extra read access. Direct shred is refused; existing independently reviewed EVIDENCE_SHRED
+  can lift the holds and destroy the text key, preserving immutable references and digests.
+- Verification: 29 PostgreSQL migration/AI regressions passed, including full migration round
+  trip, tenant FK/null-pair checks, immutable intent and lossy downgrade guards. Three final
+  cases passed for extraction retry-link rejection and proposal/call-only reviewed erasure.
+  The latter prove direct refusal, independent approval, key destruction and failed decrypted
+  reads after erasure. Thirty-two architecture/unit checks passed. Full lint/typecheck passed
+  (930 Python sources plus frontend); focused typing passed 782 and erasure typing 781 sources.
+  Logs: .run/ai-intent-documents-{pg,erasure-pg,unit,access,lint,typecheck,types-final,
+  erasure-types}.log. No deployment or live provider calls.
+- This closes a prerequisite discovered at gateway integration: call evidence previously could
+  not locate or protect retained text before proposal persistence. Extraction execution/recovery,
+  submission and human review remain unfinished, alongside the broader release/accounting gates.

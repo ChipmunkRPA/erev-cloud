@@ -8083,8 +8083,14 @@ and `object_label`, following the existing computation-fact audit convention.
   from retained extraction paths to draft obligation keys. Targets are unique existing keys;
   retained lines must all be mapped, rejected lines cannot be mapped, and product/amount/currency
   must agree. The entity codes must match and submit_for_activation must be false. This intake
-  is not yet exposed by the acceptance route; header/structured-term conversion and the pending
+  is not yet exposed by the acceptance route; structured-term conversion and the pending
   AI_PROPOSAL_ACCEPTANCE approval subject still require implementation.
+  Combined draft validation now supports explicit header_bindings for customer_name to customer,
+  effective_date to inception_date or signature_date, and payment_terms to payment_terms. Values
+  must match exactly. An existing customer requires a matching resolved ID/name supplied by the
+  eventual tenant-authorized command; no reference lookup is performed by this pure validator.
+  Retained structured terms without implemented mappings refuse validation; no header is silently
+  omitted. The acceptance route remains unimplemented.
 
 - `POST /ai/explanations` accepts either `{object_type, id, measure, period}` (an API-R-49 object type; proposal kind `NUMBER_EXPLANATION`) or `{subject_type: "exception_item", subject_id}` (proposal kind `ANOMALY_FLAG`, an anomaly summary). It returns 202 API-S-Job (`AI_TASK`); flags and explanations never change data.
   The number-explanation form validates the caller's overlapping `ai.use` and `contract.read`

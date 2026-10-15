@@ -2,6 +2,28 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Explicit extraction header bindings — October 15, 2026
+
+- Added combined draft review for retained customer name, effective date and payment terms,
+  alongside the existing line checks. The reviewer explicitly maps an effective date to draft
+  inception or signature; payment terms and the selected date must match exactly. Customer
+  names match either the explicit inline reference or a resolved ID/name whose ID equals the
+  draft's selected customer. No name search, date inference or accounting classification occurs.
+- Every retained header must have an implemented mapping; rejected headers cannot be mapped.
+  Term months, termination, variable-consideration terms and material-right text currently refuse
+  combined review rather than disappearing silently. Existing customer resolution must still be
+  wired to fresh tenant-authorized reads in the eventual acceptance command. Approval, structured
+  term mappings and atomic persistence remain unfinished; acceptance is not enabled.
+- Verification: 91 unit/layer cases passed, including 15 new header tests. A final 39-case draft
+  suite passed after a typing-only iteration correction. Cases include explicit date meaning,
+  missing/mismatched dates and payment terms, exact inline/resolved customer identity, rejected
+  or unbound headers, unsupported structured terms and JSON round-trip with omitted replacement
+  values preserved. Focused typing passed 788 sources. Logs:
+  .run/ai-draft-headers-{unit,final,types-final,typecheck,lint}.log. Full lint and typecheck
+  passed (936 Python sources plus frontend), as did final formatting/lint/diff checks.
+- Broader release/accounting and list-performance gates remain open. No deployment or live
+  provider calls.
+
 ## Explicit extraction draft inputs and line bindings — October 15, 2026
 
 - Added draft-intake preparation using the existing ContractCreateIn schema, explicit entity,
@@ -208,28 +230,6 @@
 - Gateway admission, retry execution, worker dispatch, submission and human acceptance remain
   unfinished. This reader supplies recovery evidence; it does not authorize another provider call.
   Broader release verification and independent accounting sign-off remain outstanding.
-
-## Durable extraction call document links — October 15, 2026
-
-- Migration 0155 adds paired source/text file references to immutable AI call intents, with
-  tenant-bound foreign keys and a downgrade guard against losing populated links. A worker can
-  locate exact retained text through the committed call before any proposal exists. Intent
-  writers validate paired purposes and unshredded files; retries preserve both links. Extraction
-  success/failure persistence verifies its file IDs against the call intent.
-- Both references now hold evidence independently of proposal creation or outcome. They grant
-  no extra read access. Direct shred is refused; existing independently reviewed EVIDENCE_SHRED
-  can lift the holds and destroy the text key, preserving immutable references and digests.
-- Verification: 29 PostgreSQL migration/AI regressions passed, including full migration round
-  trip, tenant FK/null-pair checks, immutable intent and lossy downgrade guards. Three final
-  cases passed for extraction retry-link rejection and proposal/call-only reviewed erasure.
-  The latter prove direct refusal, independent approval, key destruction and failed decrypted
-  reads after erasure. Thirty-two architecture/unit checks passed. Full lint/typecheck passed
-  (930 Python sources plus frontend); focused typing passed 782 and erasure typing 781 sources.
-  Logs: .run/ai-intent-documents-{pg,erasure-pg,unit,access,lint,typecheck,types-final,
-  erasure-types}.log. No deployment or live provider calls.
-- This closes a prerequisite discovered at gateway integration: call evidence previously could
-  not locate or protect retained text before proposal persistence. Extraction execution/recovery,
-  submission and human review remain unfinished, alongside the broader release/accounting gates.
 
 ## Outstanding release verification
 

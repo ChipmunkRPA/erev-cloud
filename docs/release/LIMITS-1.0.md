@@ -148,7 +148,15 @@ forbids activation and accepts one-to-one mappings from retained line paths to d
 keys. Mapped product, exact amount and explicit draft currency must agree; rejected lines cannot
 be mapped, and missing quantities/identity/currency are not inferred. Additional human-authored
 lines remain possible. This is also a domain component, not a published acceptance route.
-Header/customer/structured-term bindings, the pending AI_PROPOSAL_ACCEPTANCE approval subject,
+Combined draft review now requires explicit header mappings for customer name, effective date
+and payment terms. Names must match the explicitly supplied inline customer or a matching
+resolved customer ID/name; no name search or fuzzy resolution occurs. The human chooses inception
+or signature for an effective date, and the selected draft date must match exactly. Payment
+terms also match exactly. Every retained header must be mapped: term months, termination,
+variable-consideration terms and material-right review text currently refuse combined review
+rather than being silently ignored or converted to accounting classifications. Rejected headers
+cannot be mapped. The eventual command must freshly resolve existing customers in the caller's
+tenant. Structured-term mappings, the pending AI_PROPOSAL_ACCEPTANCE approval subject,
 permission/source/expiry/SoD checks and atomic draft-plus-acceptance persistence remain to be wired.
 
 The Anthropic adapter is mock-tested, uses the official SDK, disables SDK retries and telemetry,

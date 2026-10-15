@@ -125,6 +125,10 @@ class AIExtractionDraftIn(BaseModel):
     field_decisions: tuple[AIFieldDecisionIn, ...] = Field(min_length=1, max_length=507)
     draft: ContractCreateIn
     line_bindings: dict[str, str] = Field(default_factory=dict, max_length=500)
+    header_bindings: dict[
+        Literal["customer_name", "effective_date", "payment_terms"],
+        Literal["customer", "inception_date", "signature_date", "payment_terms"],
+    ] = Field(default_factory=dict, max_length=3)
 
     @model_validator(mode="after")
     def explicit_draft(self) -> Self:
