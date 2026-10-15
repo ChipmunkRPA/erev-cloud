@@ -5488,3 +5488,26 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - New-draft acceptance still requires atomic command integration, source/expiry validation and
   structured-term handling. Broader release/accounting and list-performance gates remain open.
   No deployment or live provider calls.
+
+
+## Atomic reviewed extraction draft acceptance — October 15, 2026
+
+- Enabled POST /ai/proposals/{id}/accept for new drafts, requiring explicit complete draft
+  inputs, field decisions and supported header/line mappings. Fresh tenant customer resolution,
+  human ai.use plus contract.create for the selected entity, source access, If-Match and exact
+  expiry checks precede writes. At least one retained field is required. Cached replay also
+  rechecks current permissions/source access.
+- Normal contract creation, source-PDF attachment, combination suggestions, rule holds, accepted
+  proposal provenance and audit commit in one transaction. Acceptance creates only a DRAFT;
+  it does not submit activation or post revenue. Existing AI_ASSISTED activation controls apply.
+  Retained review works with AI off. OpenAPI and frontend API types regenerated.
+- PostgreSQL regression: 8 tests passed across acceptance, extraction/explanation submission,
+  authorized lists and emergency disable. Acceptance covers competing reviewers (201/412),
+  idempotent replay, no create permission, missing If-Match, exact expiry, mismatched amount,
+  empty acceptance, injected rollback including attachment, one successful audit/provenance
+  record, zero revenue postings and unavailable-source replay. The acceptance test seeds retained
+  proposal evidence; it does not prove a full worker-to-activation or browser workflow.
+- 98 unit/architecture checks and full lint passed; focused typing passed 789 sources. Logs: .run/ai-acceptance-{regression,final-types,
+  final-unit,final-lint}.log. Structured-term mappings, existing-record acceptance approval,
+  complete browser review, broad release verification and independent accounting sign-off remain
+  open. No deployment or live provider calls.

@@ -222,11 +222,14 @@ The bundled deterministic extraction fixture now accepts a real upload identity 
 worker's full allowed-field catalogue only after reconstructing and matching the entire
 known redacted-document request. It reuses retained sample values/confidences and rebinds
 source citations; unrelated documents/prompts/digests are refused. This is a prerequisite
-for live browser fixtures, not evidence that demo seeding, Linux parsing or complete browser
-acceptance already works. AI unit checks pass locally; two Linux resource checks remain skipped. API and worker
-image inputs now include the synthetic AI fixture bundle; a copied-tree provider regression
-checks its availability without a checkout fallback. Actual image and Linux execution evidence
-is still required.
+for live browser fixtures, not evidence that demo seeding or complete browser acceptance
+already works. The macOS AI unit run skipped two Linux-only resource tests. Subsequent actual
+worker-image verification on clean b4b8210 passed Linux PDF extraction, memory/CPU enforcement,
+credential stripping and timeout reaping, and validated all nine bundled fields against a new
+upload identity. All three runtime images built and passed hardening checks. API and worker
+images include the synthetic AI fixture bundle. See CI-2026-10-15.md for image identities and
+scope: the non-strict build and isolated probe do not establish live browser acceptance or
+complete release readiness.
 Broad architecture verification identified missing contract-key arguments in AI proposal
 writers, unlisted expiry SYSTEM/platform callers and a stale pending AI_TASK entry. These
 identified defects are now repaired: narrative rejection/expiry audit events name their source

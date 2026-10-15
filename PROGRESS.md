@@ -2,6 +2,19 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Container build and Linux extraction verification — October 15, 2026
+
+- Clean b4b8210 passed make docker-build: API/worker/web image hardening and embedded-manifest
+  checks passed. The manifest is non-strict. Image identities are in CI-2026-10-15.md.
+- The actual worker image, Linux Python 3.12.15 / UID 10001, passed a no-network, read-only
+  probe for isolated four-page PDF extraction, nine bundled fields with upload-bound citations,
+  memory and CPU limits, credential stripping and timeout child reaping. Logs:
+  .run/docker-build-oct15-fixtures.log; .run/ai-image-linux-probe-stdin.log.
+- Docker now runs locally. A credential-helper stall was avoided with a task-local anonymous
+  config; a stalled host mount was replaced with stdin. No saved credentials changed or images
+  pushed. Local Compose verification on b4b8210 and frozen CI on 3cf8f5b remain active.
+  Full browser acceptance and independent accounting sign-off remain open; no deployment.
+
 ## Package synthetic AI evidence in runtime images — October 15, 2026
 
 - API and worker builds now copy only the synthetic AI fixture bundle needed by FakeProvider.
@@ -215,28 +228,6 @@
   setup failures (missing retry callback and reused command idempotency key); verified is the
   corrected run. Broader release/accounting and structured-term gaps remain open. No deployment.
 
-## Atomic reviewed extraction draft acceptance — October 15, 2026
-
-- Enabled POST /ai/proposals/{id}/accept for new drafts, requiring explicit complete draft
-  inputs, field decisions and supported header/line mappings. Fresh tenant customer resolution,
-  human ai.use plus contract.create for the selected entity, source access, If-Match and exact
-  expiry checks precede writes. At least one retained field is required. Cached replay also
-  rechecks current permissions/source access.
-- Normal contract creation, source-PDF attachment, combination suggestions, rule holds, accepted
-  proposal provenance and audit commit in one transaction. Acceptance creates only a DRAFT;
-  it does not submit activation or post revenue. Existing AI_ASSISTED activation controls apply.
-  Retained review works with AI off. OpenAPI and frontend API types regenerated.
-- PostgreSQL regression: 8 tests passed across acceptance, extraction/explanation submission,
-  authorized lists and emergency disable. Acceptance covers competing reviewers (201/412),
-  idempotent replay, no create permission, missing If-Match, exact expiry, mismatched amount,
-  empty acceptance, injected rollback including attachment, one successful audit/provenance
-  record, zero revenue postings and unavailable-source replay. The acceptance test seeds retained
-  proposal evidence; it does not prove a full worker-to-activation or browser workflow.
-- 98 unit/architecture checks and full lint passed; focused typing passed 789 sources. Logs: .run/ai-acceptance-{regression,final-types,
-  final-unit,final-lint}.log. Structured-term mappings, existing-record acceptance approval,
-  complete browser review, broad release verification and independent accounting sign-off remain
-  open. No deployment or live provider calls.
-
 ## Outstanding release verification
 
 These checks need current release-candidate evidence. Historical October 3 results
@@ -244,7 +235,7 @@ remain in the dated build history; they do not verify current main. This list do
 not authorize deployment, provisioning or changes to a live database.
 
 - SUPERVISOR VERIFICATION NEEDED: make audit-deps (October 14 development audit passed; rerun on a clean final candidate).
-- SUPERVISOR VERIFICATION NEEDED: make docker-build
+- make docker-build passed on clean b4b8210 (October 15); rerun on the final candidate.
 - SUPERVISOR VERIFICATION NEEDED: make compose-verify
 - SUPERVISOR VERIFICATION NEEDED: make zap-baseline
 - SUPERVISOR VERIFICATION NEEDED: make tf-validate (October 14 backend-disabled development validation passed; rerun on a clean final candidate).
