@@ -678,6 +678,78 @@
         "title": "AIProposalRejectIn",
         "type": "object"
       },
+      "AISettingsStatusOut": {
+        "additionalProperties": false,
+        "description": "Runtime availability and published settings, excluding credentials and provider clients.",
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "monthly_token_budget": {
+            "title": "Monthly Token Budget",
+            "type": "integer"
+          },
+          "platform_disabled": {
+            "title": "Platform Disabled",
+            "type": "boolean"
+          },
+          "provider": {
+            "enum": [
+              "fake",
+              "anthropic"
+            ],
+            "title": "Provider",
+            "type": "string"
+          },
+          "redact_contact_details": {
+            "title": "Redact Contact Details",
+            "type": "boolean"
+          },
+          "registry_enabled": {
+            "title": "Registry Enabled",
+            "type": "boolean"
+          },
+          "send_contract_text": {
+            "title": "Send Contract Text",
+            "type": "boolean"
+          },
+          "tenant_disabled_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tenant Disabled At"
+          },
+          "workspace_active": {
+            "title": "Workspace Active",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "provider",
+          "enabled",
+          "registry_enabled",
+          "tenant_disabled_at",
+          "platform_disabled",
+          "workspace_active",
+          "model",
+          "monthly_token_budget",
+          "send_contract_text",
+          "redact_contact_details"
+        ],
+        "title": "AISettingsStatusOut",
+        "type": "object"
+      },
       "AISettingsVersionIn": {
         "additionalProperties": false,
         "properties": {
@@ -44882,6 +44954,104 @@
           "API-R-47 AI"
         ],
         "x-erev-permission": "ai.use"
+      }
+    },
+    "/api/v1/ai/settings": {
+      "get": {
+        "description": "Read availability even while disabled; never instantiate or call a provider.",
+        "operationId": "ai_settings_status",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AISettingsStatusOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: unauthenticated, session-expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: forbidden, mfa-required"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: not-found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: invalid-transition, idempotency-in-progress, ai-disabled"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: validation-failed, idempotency-key-reused"
+          }
+        },
+        "summary": "Status",
+        "tags": [
+          "API-R-47 AI settings"
+        ],
+        "x-erev-permission": "settings.manage"
       }
     },
     "/api/v1/ai/settings/versions": {

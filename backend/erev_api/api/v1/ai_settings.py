@@ -34,11 +34,17 @@ from erev_api.auth.principal import RequestContext
 from erev_api.db.session import tenant_session
 from erev_api.db.tables import registry_version
 from erev_api.domain.ai import configuration
+from erev_api.domain.ai.settings import AISettingsRefused, load_settings
 from erev_api.domain.platform.jobs import job_out_of
 from erev_api.domain.policies import registry_versions
 from erev_api.enums import ConfigStatus, RegistryCategory, RegistryScope
+from erev_api.problems import Problem
 from erev_api.registry.versions import BASIS_PREDECESSOR
-from erev_api.schemas.ai_settings import AISettingsVersionIn, AISettingsVersionUpdateIn
+from erev_api.schemas.ai_settings import (
+    AISettingsStatusOut,
+    AISettingsVersionIn,
+    AISettingsVersionUpdateIn,
+)
 from erev_api.schemas.common import JobOut, ListOut
 from erev_api.schemas.policies import PolicyCommentIn, PolicyOut, PolicyTestIn
 from erev_api.uow import UnitOfWork
@@ -57,6 +63,41 @@ PROBLEMS: Final = (
     "idempotency-in-progress",
 )
 router = APIRouter(prefix=API_PREFIX, tags=["API-R-47 AI settings"], route_class=GuardedRoute)
+
+
+@router.get(
+    "/ai/settings",
+    operation_id="ai_settings_status",
+    response_model=AISettingsStatusOut,
+    responses=problem_responses(*PROBLEMS, "ai-disabled"),
+)
+def status(
+    ctx: Annotated[RequestContext, Depends(require_all_entities(PERMISSION))],
+    deps: Annotated[KernelDeps, Depends(kernel_deps)],
+) -> AISettingsStatusOut:
+    """Read availability even while disabled; never instantiate or call a provider."""
+    with tenant_session(ctx.principal.db_context, read_only=True) as session:
+        try:
+            effective = load_settings(
+                session,
+                tenant_id=ctx.principal.tenant_id,
+                now=ctx.now,
+                platform_kill_switch=deps.settings.ai_kill_switch,
+            )
+        except AISettingsRefused:
+            raise Problem("ai-disabled") from None
+    return AISettingsStatusOut(
+        provider=deps.settings.ai_provider,
+        enabled=effective.enabled,
+        registry_enabled=effective.registry_enabled,
+        tenant_disabled_at=effective.tenant_disabled_at,
+        platform_disabled=effective.platform_disabled,
+        workspace_active=effective.workspace_active,
+        model=effective.model,
+        monthly_token_budget=effective.monthly_token_budget,
+        send_contract_text=effective.send_contract_text,
+        redact_contact_details=effective.redact_contact_details,
+    )
 
 
 VERSION_LIST: Final = ListSpec(

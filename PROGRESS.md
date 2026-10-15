@@ -3,6 +3,20 @@
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
 
+
+## Effective AI status for administrator settings — October 15, 2026
+
+- Added read-only GET /ai/settings under workspace-wide settings.manage. It uses the AI job
+  settings reader, distinguishing published enablement from effective availability, workspace
+  emergency disable and platform disable. Provider identity and model/budget/text/redaction
+  values are returned without credentials, provider construction or provider calls.
+- API/PostgreSQL checks pass (31), covering draft exclusion, publication, both switches,
+  defaults, tenant isolation and administrator denial. Backend typing passes 795 files.
+  OpenAPI/TypeScript regenerated; frontend readers cover status and retained version pagination.
+  Detailed verification is in docs/release/CI-2026-10-15.md.
+- The settings editor and full J-19/demo journey remain unfinished. No deployment. Frozen CI
+  on 3cf8f5b remains running; independent accounting sign-off and release gates remain open.
+
 ## Administrator AI version discovery — October 15, 2026
 
 - Added GET /ai/settings/versions with workspace-wide settings.manage, fixed tenant AI scope,
@@ -224,22 +238,6 @@
   the inventory repair; its eventual results must remain attributed to that snapshot.
 - No full CI pass is claimed. Real retained-proposal browser fixtures, complete acceptance,
   broader release gates and accounting sign-off remain open. No deployment/provider calls.
-
-## Review round-trip preserves draft work — October 15, 2026
-
-- Added Back to field review with an in-memory draft snapshot. Continuing preserves unrelated
-  human inputs and applies changed decisions to corresponding headers and source rows. Rejected
-  source rows are removed; human-added rows remain. Renamed obligation keys are rebound explicitly
-  when returning to the draft. No field decision is inferred from a changed draft value.
-- Fixed row identity collisions when restoring deleted retained rows and when adding rows after
-  reopening a draft with gaps in its local row identities. Tests exercise both failures plus
-  field-review/form round trips and changed customer/amount decisions.
-- 50 focused tests, frontend typing and full lint passed. Evidence:
-  .run/ai-review-recovery-{tests,types,lint}.log. Recovery is local component state,
-  not persistence across reloads or live browser/API acceptance evidence. Existing server version
-  preconditions remain authoritative; returning to review captures the current displayed ETag
-  only on explicit continuation. Broader release verification and accounting sign-off remain open.
-  No deployment or live provider calls.
 
 
 ## Outstanding release verification

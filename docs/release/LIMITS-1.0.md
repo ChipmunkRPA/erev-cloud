@@ -102,7 +102,11 @@ TypeScript definitions include the new endpoints; the settings UI is not yet wir
 The version list supports status filtering, version/date sorting, counts and cursor pagination.
 It fixes category/scope to tenant AI before pagination and shares the individual-read scope
 predicate. Administrators can rediscover drafts, submitted requests and published history without
-accounting read permission. Effective-value display and the settings editor remain unfinished.
+accounting read permission. Runtime status is now available at GET /ai/settings under the same administrator guard. It reuses
+the AI job settings reader and distinguishes published enablement from workspace/platform
+disablement, with provider, model, token budget, text-sending and redaction values. The typed
+frontend reader preserves these distinctions and propagates errors. The settings editor and
+effective-status presentation remain unfinished.
 
 New AI submissions now use AI_SETTINGS_VERSION and workspace-wide settings.manage for review,
 so a different Tenant Admin can read and approve without accounting configuration privileges.

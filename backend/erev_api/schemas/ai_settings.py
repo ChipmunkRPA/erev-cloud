@@ -1,6 +1,7 @@
 """Administrator-authored AI policy statements; category and scope are fixed by the route."""
 
-from typing import Any
+from datetime import datetime
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -21,3 +22,20 @@ class AISettingsVersionUpdateIn(BaseModel):
     values: dict[str, Any] | None = Field(default=None, max_length=MAX_VALUES)
     unset: list[str] | None = Field(default=None, max_length=MAX_VALUES)
     basis: PolicyBasis | None = None
+
+
+class AISettingsStatusOut(BaseModel):
+    """Runtime availability and published settings, excluding credentials and provider clients."""
+
+    model_config = ConfigDict(extra="forbid", from_attributes=True)
+
+    provider: Literal["fake", "anthropic"]
+    enabled: bool
+    registry_enabled: bool
+    tenant_disabled_at: datetime | None
+    platform_disabled: bool
+    workspace_active: bool
+    model: str
+    monthly_token_budget: int
+    send_contract_text: bool
+    redact_contact_details: bool

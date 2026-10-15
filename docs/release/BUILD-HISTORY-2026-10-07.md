@@ -5603,3 +5603,19 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Back-navigation to field choices, unsupported terms, DOCX, responsive tabs, full browser
   acceptance, broader release gates and independent accounting sign-off remain open.
   No deployment or provider calls.
+
+## Review round-trip preserves draft work — October 15, 2026
+
+- Added Back to field review with an in-memory draft snapshot. Continuing preserves unrelated
+  human inputs and applies changed decisions to corresponding headers and source rows. Rejected
+  source rows are removed; human-added rows remain. Renamed obligation keys are rebound explicitly
+  when returning to the draft. No field decision is inferred from a changed draft value.
+- Fixed row identity collisions when restoring deleted retained rows and when adding rows after
+  reopening a draft with gaps in its local row identities. Tests exercise both failures plus
+  field-review/form round trips and changed customer/amount decisions.
+- 50 focused tests, frontend typing and full lint passed. Evidence:
+  .run/ai-review-recovery-{tests,types,lint}.log. Recovery is local component state,
+  not persistence across reloads or live browser/API acceptance evidence. Existing server version
+  preconditions remain authoritative; returning to review captures the current displayed ETag
+  only on explicit continuation. Broader release verification and accounting sign-off remain open.
+  No deployment or live provider calls.

@@ -491,6 +491,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/ai/settings": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Status
+     * @description Read availability even while disabled; never instantiate or call a provider.
+     */
+    get: operations["ai_settings_status"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/ai/settings/versions": {
     parameters: {
       query?: never;
@@ -8177,6 +8197,35 @@ export interface components {
     AIProposalRejectIn: {
       /** Reason */
       reason: string;
+    };
+    /**
+     * AISettingsStatusOut
+     * @description Runtime availability and published settings, excluding credentials and provider clients.
+     */
+    AISettingsStatusOut: {
+      /** Enabled */
+      enabled: boolean;
+      /** Model */
+      model: string;
+      /** Monthly Token Budget */
+      monthly_token_budget: number;
+      /** Platform Disabled */
+      platform_disabled: boolean;
+      /**
+       * Provider
+       * @enum {string}
+       */
+      provider: "fake" | "anthropic";
+      /** Redact Contact Details */
+      redact_contact_details: boolean;
+      /** Registry Enabled */
+      registry_enabled: boolean;
+      /** Send Contract Text */
+      send_contract_text: boolean;
+      /** Tenant Disabled At */
+      tenant_disabled_at: string | null;
+      /** Workspace Active */
+      workspace_active: boolean;
     };
     /** AISettingsVersionIn */
     AISettingsVersionIn: {
@@ -25451,6 +25500,76 @@ export interface operations {
       };
       /** @description Problem: precondition-required */
       428: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+    };
+  };
+  ai_settings_status: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AISettingsStatusOut"];
+        };
+      };
+      /** @description Problem: unauthenticated, session-expired */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: forbidden, mfa-required */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: not-found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: invalid-transition, idempotency-in-progress, ai-disabled */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: validation-failed, idempotency-key-reused */
+      422: {
         headers: {
           [name: string]: unknown;
         };

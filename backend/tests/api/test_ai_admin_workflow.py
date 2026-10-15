@@ -369,3 +369,131 @@ def test_ai_version_list_requires_administrator(
         headers=cookie_headers(ordinary.token, ordinary.csrf_token),
     )
     assert response.status_code == 403, response.text
+
+
+def test_admin_ai_status_distinguishes_published_setting_from_emergency_disable(
+    app: FastAPI,
+    administrator: Actor,
+    clock: FrozenClock,
+) -> None:
+    headers = cookie_headers(administrator.token, administrator.csrf_token)
+    path = "/api/v1/ai/settings"
+    before = call(app, "GET", path, headers=headers)
+    assert before.status_code == 200, before.text
+    assert not before.json()["enabled"] and not before.json()["registry_enabled"]
+    created = call(
+        app,
+        "POST",
+        path + "/versions",
+        json={"values": {"ai.enabled": True}},
+        headers=headers,
+    )
+    assert created.status_code == 201, created.text
+    assert call(app, "GET", path, headers=headers).json() == before.json()
+    # Publish a separate retained version as the fixture's reviewed baseline.
+    own = administrator.member
+    with tenant_session(DbContext(own.tenant_id, own.user_id, "*")) as session:
+        publish_registry_version(
+            session,
+            tenant_id=own.tenant_id,
+            category=RegistryCategory.AI,
+            at=clock.now(),
+            values={
+                "ai.enabled": True,
+                "ai.model": "reviewed-model",
+                "ai.monthly_token_budget": 42,
+            },
+        )
+    active = call(app, "GET", path, headers=headers)
+    assert active.status_code == 200, active.text
+    assert active.json() == {
+        "provider": "fake",
+        "enabled": True,
+        "registry_enabled": True,
+        "tenant_disabled_at": None,
+        "platform_disabled": False,
+        "workspace_active": True,
+        "model": "reviewed-model",
+        "monthly_token_budget": 42,
+        "send_contract_text": False,
+        "redact_contact_details": True,
+    }
+    disabled = call(
+        app,
+        "POST",
+        "/api/v1/tenant/ai/disable",
+        json={"comment": "Pause AI for review"},
+        headers=cookie_headers(administrator.token, administrator.csrf_token),
+    )
+    assert disabled.status_code == 200, disabled.text
+    after = call(app, "GET", path, headers=headers)
+    assert after.status_code == 200, after.text
+    assert after.json()["registry_enabled"] and not after.json()["enabled"]
+    assert after.json()["tenant_disabled_at"] == disabled.json()["ai_disabled_at"]
+    assert after.json()["model"] == "reviewed-model"
+
+
+def test_admin_ai_status_reports_platform_switch_without_changing_policy(
+    app: FastAPI,
+    administrator: Actor,
+    clock: FrozenClock,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    own = administrator.member
+    with tenant_session(DbContext(own.tenant_id, own.user_id, "*")) as session:
+        publish_registry_version(
+            session,
+            tenant_id=own.tenant_id,
+            category=RegistryCategory.AI,
+            at=clock.now(),
+            values={"ai.enabled": True},
+        )
+    monkeypatch.setattr(
+        app.state,
+        "settings",
+        app.state.settings.model_copy(update={"ai_kill_switch": True}),
+    )
+    response = call(
+        app,
+        "GET",
+        "/api/v1/ai/settings",
+        headers=cookie_headers(administrator.token, administrator.csrf_token),
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["registry_enabled"] and response.json()["platform_disabled"]
+    assert not response.json()["enabled"]
+    assert response.json()["tenant_disabled_at"] is None
+
+
+def test_ai_status_requires_administrator_and_is_tenant_scoped(
+    app: FastAPI,
+    administrator: Actor,
+    keyring: KeyRing,
+    clock: FrozenClock,
+) -> None:
+    other = member(keyring, clock)
+    with tenant_session(DbContext(other.tenant_id, other.user_id, "*")) as session:
+        publish_registry_version(
+            session,
+            tenant_id=other.tenant_id,
+            category=RegistryCategory.AI,
+            at=clock.now(),
+            values={"ai.enabled": True, "ai.model": "other-tenant-model"},
+        )
+    response = call(
+        app,
+        "GET",
+        "/api/v1/ai/settings",
+        headers=cookie_headers(administrator.token, administrator.csrf_token),
+    )
+    assert response.status_code == 200, response.text
+    assert not response.json()["enabled"]
+    assert response.json()["model"] != "other-tenant-model"
+    ordinary = enrolled(app, clock, other)
+    refused = call(
+        app,
+        "GET",
+        "/api/v1/ai/settings",
+        headers=cookie_headers(ordinary.token, ordinary.csrf_token),
+    )
+    assert refused.status_code == 403, refused.text
