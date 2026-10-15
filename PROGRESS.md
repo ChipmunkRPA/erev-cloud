@@ -2,6 +2,17 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Preserve unknown token usage in call evidence — October 15, 2026
+
+- Added usage_known to call-log list/detail, using the exact SQL evidence predicate used by
+  budget admission. The screen shows Unknown and a drawer explanation for missing usage;
+  reported zero remains zero. Compatibility counters and retained records are not rewritten.
+- Twenty-four API/PostgreSQL budget checks and six screen checks pass. Backend typing (796
+  files), frontend typing and full lint pass. The prior full frontend result is not relabelled as covering
+  this correction. Evidence is recorded in docs/release/CI-2026-10-15.md.
+- Usage reconciliation, remaining call-log features and broader release/accounting gates are
+  still open. No deployment or provider calls; publish directly to main after verification.
+
 ## AI call-log screen and bookmarked evidence — October 15, 2026
 
 - Added /settings/ai/call-log with the shared grid, newest-first 50-row API pages, outcomes,

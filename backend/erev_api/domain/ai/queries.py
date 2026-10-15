@@ -15,6 +15,7 @@ from erev_api.auth.principal import Principal, RequestContext
 from erev_api.db.session import tenant_session
 from erev_api.db.tables import ai_model_log, ai_proposal, calc_trace, file_object
 from erev_api.domain.ai.access import AIAccessRefused, narrative_reader, visible_narrative_trace
+from erev_api.domain.ai.budget import known_usage
 from erev_api.domain.platform import actors, file_access
 from erev_api.domain.platform.approval_queries import Page
 from erev_api.enums import PrincipalKind
@@ -271,6 +272,7 @@ def model_log_statement(ctx: RequestContext) -> Select[Any]:
         raise Problem("forbidden")
     statement = select(
         ai_model_log,
+        known_usage().label("usage_known"),
         actors.named(ai_model_log.c.created_by, tenant_id=ai_model_log.c.tenant_id).label(
             "creator"
         ),

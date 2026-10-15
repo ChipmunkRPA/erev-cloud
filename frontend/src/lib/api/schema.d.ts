@@ -8223,6 +8223,8 @@ export interface components {
       provider: "fake" | "anthropic";
       /** Response Sha256 */
       response_sha256: string | null;
+      /** Usage Known */
+      usage_known: boolean;
     };
     /** AIProposalAcceptedOut */
     AIProposalAcceptedOut: {

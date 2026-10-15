@@ -164,6 +164,7 @@ class AIModelLogOut(BaseModel):
     parameters: dict[str, Any]
     input_sha256: str
     response_sha256: str | None
+    usage_known: bool
     input_tokens: int
     output_tokens: int
     latency_ms: int

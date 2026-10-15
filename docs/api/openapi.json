@@ -586,6 +586,10 @@
               }
             ],
             "title": "Response Sha256"
+          },
+          "usage_known": {
+            "title": "Usage Known",
+            "type": "boolean"
           }
         },
         "required": [
@@ -597,6 +601,7 @@
           "parameters",
           "input_sha256",
           "response_sha256",
+          "usage_known",
           "input_tokens",
           "output_tokens",
           "latency_ms",

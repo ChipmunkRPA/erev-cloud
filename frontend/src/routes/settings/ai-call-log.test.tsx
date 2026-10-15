@@ -23,6 +23,7 @@ const record: AIModelLog = {
   parameters: { max_tokens: 4096, usage_evidence: "REPORTED" },
   input_sha256: "a".repeat(64),
   response_sha256: "b".repeat(64),
+  usage_known: true,
   input_tokens: 1204,
   output_tokens: 388,
   latency_ms: 850,
@@ -85,4 +86,32 @@ it("renders the documented empty state", async () => {
   serve([]);
   renderLog();
   expect(await screen.findByText("No AI calls yet")).toBeTruthy();
+});
+
+it("does not display unknown usage as zero in the grid or detail", async () => {
+  const uncertain = {
+    ...record,
+    usage_known: false,
+    input_tokens: 0,
+    output_tokens: 0,
+    outcome: "TIMEOUT" as const,
+    response_sha256: null,
+    parameters: { usage_evidence: "UNKNOWN" },
+  };
+  serve([uncertain]);
+  server.use(http.get(apiUrl("/api/v1/ai/model-logs/:id"), () => HttpResponse.json(uncertain)));
+  renderLog();
+  const grid = await screen.findByRole("grid", { name: "AI calls" });
+  expect(await within(grid).findAllByText("Unknown", {}, { timeout: 5000 })).toHaveLength(2);
+  expect(within(grid).queryByText("0")).toBeNull();
+  fireEvent.click(within(grid).getByRole("link"));
+  expect(await screen.findByText("Token usage is unknown")).toBeTruthy();
+  expect(within(screen.getByTestId("SF-15-drawer-ai-call")).queryByText("0")).toBeNull();
+});
+it("keeps confirmed zero usage visible", async () => {
+  serve([{ ...record, input_tokens: 0, output_tokens: 0 }]);
+  renderLog();
+  const grid = await screen.findByRole("grid", { name: "AI calls" });
+  expect(await within(grid).findAllByText("0", {}, { timeout: 5000 })).toHaveLength(2);
+  expect(within(grid).queryByText("Unknown")).toBeNull();
 });

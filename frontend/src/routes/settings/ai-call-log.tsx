@@ -23,7 +23,7 @@ import {
   type AIModelLog,
 } from "../../lib/api/queries/ai-model-logs";
 import { useMe } from "../../lib/api/queries/me";
-import { formatTimestamp, formatDuration } from "../../lib/format";
+import { formatTimestamp, formatDuration, formatNumber } from "../../lib/format";
 import { t } from "../../lib/i18n/t";
 import { SettingsPageHeader } from "./index";
 
@@ -80,13 +80,15 @@ const columns: readonly GridColumn<AIModelLog>[] = [
     id: "input_tokens",
     header: label("input"),
     kind: "number",
-    value: (row) => String(row.input_tokens),
+    value: (row) => (row.usage_known ? String(row.input_tokens) : null),
+    render: (row) => (row.usage_known ? formatNumber(row.input_tokens) : label("unknown")),
   },
   {
     id: "output_tokens",
     header: label("output"),
     kind: "number",
-    value: (row) => String(row.output_tokens),
+    value: (row) => (row.usage_known ? String(row.output_tokens) : null),
+    render: (row) => (row.usage_known ? formatNumber(row.output_tokens) : label("unknown")),
   },
   {
     id: "latency_ms",
@@ -190,6 +192,11 @@ function CallDetails({ id, onClose }: { readonly id: string; readonly onClose: (
           <Skeleton region={label("call")} shape="rows" count={8} />
         ) : (
           <>
+            {!row.usage_known && (
+              <Banner tone="warning" title={label("usageUnknown")}>
+                {label("usageExplanation")}
+              </Banner>
+            )}
             <dl className="grid grid-cols-1 gap-3">
               {fields.map(([name, value]) => (
                 <div key={name}>

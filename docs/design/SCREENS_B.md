@@ -5064,7 +5064,9 @@ Test hooks: `SF-04-drawer-flag` (SF-04), `SF-08-dashboard-flags` (SF-08:dashboar
 
 Implementation note (October 15): the call drawer uses `drawer=call&call=<id>` and
 `GET /ai/model-logs/{id}` to reauthorize bookmarked evidence independently of the loaded page.
-The route has the same tenant/owner visibility as the list. The grid and evidence drawer are
+The route has the same tenant/owner visibility as the list. The API's `usage_known`
+flag uses the budget-admission evidence rule; false displays token counts as Unknown, with an
+explanation in the drawer, while confirmed zero remains zero. The grid and evidence drawer are
 implemented; CSV/XLSX export, saved views, proposal navigation and hash-copy controls remain
 tracked in LIMITS-1.0 and are not claimed complete by this screen increment.
 

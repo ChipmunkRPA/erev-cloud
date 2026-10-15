@@ -46,6 +46,10 @@ The read-only `/ai/model-logs` API now exposes retained call configuration, hash
 token counters and actor metadata. Workspace-wide settings.manage can read tenant calls;
 ai.use alone sees only calls with its own actor identity and kind. Visibility is applied before
 counts and cursor pagination; an entity-scoped settings grant cannot read the workspace log.
+List and detail responses now expose usage_known from the same evidence predicate as budget
+admission. The screen labels unknown counters as Unknown and explains them in the drawer;
+confirmed zero usage remains zero. Stored compatibility counters are not rewritten. This is
+presentation of existing evidence, not resolution of unknown usage or admission failures.
 This endpoint neither calls a provider nor depends on AI being enabled. The SF-15 call-log screen now renders calls, outcomes and a docked evidence drawer. Bookmarked
 drawers reread GET /ai/model-logs/{id} under the same current visibility as the list, including
 404 for another user or tenant. Its configuration-only content is escaped text. CSV/XLSX export,

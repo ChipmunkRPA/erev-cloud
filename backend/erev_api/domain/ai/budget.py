@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from uuid import UUID
 
-from sqlalchemy import BigInteger, Select, cast, func, or_, select, text
+from sqlalchemy import BigInteger, ColumnElement, Select, cast, func, or_, select, text
 from sqlalchemy.engine import Connection
 
 from erev_api.db.session import DbContext, lock_connection, tenant_session
@@ -116,19 +116,7 @@ class BudgetGuard:
                 pending = pending.where(ai_call_intent.c.id != self._intent_id)
             if session.execute(pending.limit(1)).first() is not None:
                 raise AIBudgetRefused("AI_BUDGET_USAGE_UNCERTAIN")
-            marker = func.coalesce(ai_model_log.c.parameters["usage_evidence"].astext, "LEGACY")
-            unsent = (
-                ai_model_log.c.outcome.in_(["BUDGET_EXCEEDED", "DISABLED"])
-                & ai_model_log.c.intent_id.is_(None)
-                & (ai_model_log.c.input_tokens == 0)
-                & (ai_model_log.c.output_tokens == 0)
-                & ai_model_log.c.response_sha256.is_(None)
-            )
-            known = or_(
-                marker == "REPORTED",
-                (marker == "NOT_SENT") & unsent,
-                (marker == "LEGACY") & (ai_model_log.c.response_sha256.is_not(None) | unsent),
-            )
+            known = known_usage()
             # A recorded error resolves the outcome, not necessarily its usage.
             # Do not drop uncertainty at a month boundary or exempt the current intent.
             uncertain = select(ai_model_log.c.id).where(
@@ -191,3 +179,20 @@ def budget_guard(context: DbContext) -> Iterator[BudgetGuard | None]:
             except BaseException:
                 connection.invalidate()
                 raise
+
+
+def known_usage() -> ColumnElement[bool]:
+    """Shared evidence rule for admission and audit reads; zero counters alone prove nothing."""
+    marker = func.coalesce(ai_model_log.c.parameters["usage_evidence"].astext, "LEGACY")
+    unsent = (
+        ai_model_log.c.outcome.in_(["BUDGET_EXCEEDED", "DISABLED"])
+        & ai_model_log.c.intent_id.is_(None)
+        & (ai_model_log.c.input_tokens == 0)
+        & (ai_model_log.c.output_tokens == 0)
+        & ai_model_log.c.response_sha256.is_(None)
+    )
+    return or_(
+        marker == "REPORTED",
+        (marker == "NOT_SENT") & unsent,
+        (marker == "LEGACY") & (ai_model_log.c.response_sha256.is_not(None) | unsent),
+    )

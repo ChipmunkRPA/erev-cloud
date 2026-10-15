@@ -75,6 +75,7 @@ def test_call_log_visibility_counts_and_cursor(
         "parameters",
         "input_sha256",
         "response_sha256",
+        "usage_known",
         "input_tokens",
         "output_tokens",
         "latency_ms",
@@ -166,3 +167,54 @@ def test_scoped_administrator_cannot_read_workspace_calls(
     assert own.status_code == 200, own.text
     assert own.headers["X-Erev-Total-Count"] == "1"
     assert own.json()["items"][0]["created_by"]["id"] == str(person.user_id)
+
+
+def test_call_log_distinguishes_unknown_usage_from_confirmed_zero(
+    app: FastAPI, keyring: KeyRing, clock: FrozenClock
+) -> None:
+    person = member(keyring, clock)
+    cases = [
+        ("UNKNOWN", "ERROR", False, False),
+        (None, "ERROR", False, False),
+        ("invalid", "SUCCESS", True, False),
+        ("NOT_SENT", "ERROR", False, False),
+        ("REPORTED", "ERROR", False, True),
+        ("REPORTED", "SUCCESS", True, True),
+        ("NOT_SENT", "DISABLED", False, True),
+        (None, "BUDGET_EXCEEDED", False, True),
+        (None, "SUCCESS", True, True),
+    ]
+    expected = {}
+    with tenant_session(DbContext(person.tenant_id, person.user_id, "*")) as session:
+        insert_custom_role(
+            session, tenant_id=person.tenant_id, code="usage_reader", permissions=["ai.use"]
+        )
+        insert_role_assignment(
+            session,
+            tenant_id=person.tenant_id,
+            membership_id=person.membership_id,
+            role_code="usage_reader",
+        )
+        for marker, outcome, response, known in cases:
+            row = ai_model_log_row(RowContext(person.tenant_id, person.user_id), session)
+            row.update(
+                created_by=person.user_id,
+                created_by_kind="USER",
+                input_tokens=0,
+                output_tokens=0,
+                outcome=outcome,
+                response_sha256="b" * 64 if response else None,
+                parameters={} if marker is None else {"usage_evidence": marker},
+            )
+            session.execute(insert(ai_model_log).values(**row))
+            expected[str(row["id"])] = known
+    actor = enrolled(app, clock, person)
+    headers = cookie_headers(actor.token, actor.csrf_token)
+    result = call(app, "GET", PATH, headers=headers)
+    assert result.status_code == 200, result.text
+    assert {row["id"]: row["usage_known"] for row in result.json()["items"]} == expected
+    for log_id, known in expected.items():
+        detail = call(app, "GET", PATH + "/" + log_id, headers=headers)
+        assert detail.status_code == 200, detail.text
+        assert detail.json()["usage_known"] is known
+        assert detail.json()["input_tokens"] == detail.json()["output_tokens"] == 0
