@@ -156,8 +156,16 @@ terms also match exactly. Every retained header must be mapped: term months, ter
 variable-consideration terms and material-right review text currently refuse combined review
 rather than being silently ignored or converted to accounting classifications. Rejected headers
 cannot be mapped. The eventual command must freshly resolve existing customers in the caller's
-tenant. Structured-term mappings, the pending AI_PROPOSAL_ACCEPTANCE approval subject,
-permission/source/expiry/SoD checks and atomic draft-plus-acceptance persistence remain to be wired.
+tenant. Structured-term mappings, permission/source/expiry checks and atomic draft-plus-acceptance
+persistence remain to be wired. Correction to the earlier implementation notes: SM-11/BR-AI-05
+requires AI_PROPOSAL_ACCEPTANCE for changes to existing records, not creation of a new draft.
+New drafts are accepted as the human and require AI_ASSISTED activation review. Activation now
+derives that flag from immutable accepted extraction-to-contract links, preventing auto-approval
+regardless of amount. It includes proposal/model-log IDs, accepting human/time and a decision
+hash in the activation approval basis, preserving historical hashes for contracts with no AI
+provenance. The accepting human is excluded from deciding activation, including by delegation.
+The draft acceptance endpoint remains unfinished; existing-record acceptance still needs its
+separate approval subject.
 
 The Anthropic adapter is mock-tested, uses the official SDK, disables SDK retries and telemetry,
 and resolves secrets lazily. Contract-review and explain-narrative prompts have retained bytes,

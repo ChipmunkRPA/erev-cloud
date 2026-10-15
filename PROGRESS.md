@@ -2,6 +2,30 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## AI-assisted draft activation control — October 15, 2026
+
+- Corrected the earlier acceptance prerequisite: PRD SM-11/BR-AI-05 permits a normal human command
+  to create a new draft; AI_PROPOSAL_ACCEPTANCE applies to changes to existing records. New
+  drafts instead require AI_ASSISTED activation review. The separate existing-record subject
+  remains open, but is not a prerequisite for the new-draft acceptance route.
+- Activation now derives AI_ASSISTED from immutable accepted extraction-to-contract links, so
+  published auto-approval cannot bypass human review at any amount. Approval content includes
+  provenance IDs, accepting human/time and a hash of field decisions, without quoted review text.
+  Contracts without provenance retain their historical hash shape. Accepting humans are excluded
+  from deciding activation, including via delegation, using the existing authorship mechanism.
+- Verification: the PostgreSQL witness proves the AI-assisted contract waits under a published
+  auto-approval rule, the ordinary control auto-approves, self-approval is refused and an
+  independent reviewer can activate. The existing multi-flag activation regression also passed.
+  A test assertion was updated for the expected MANUAL_ENTRY flag induced by human authorship.
+  113 unit/layer/routing checks passed. Full typecheck passed (937 Python sources plus frontend),
+  focused typing passed 788 sources, and final lint/diff checks passed. Logs:
+  .run/ai-activation-provenance-{unit,verified,pg-final,typecheck,types-final,lint}.log. Full lint
+  also passed. The pg-final
+  log retains the earlier flag assertion failure; verified records its successful correction.
+- New-draft acceptance still requires atomic command integration, source/expiry validation and
+  structured-term handling. Broader release/accounting and list-performance gates remain open.
+  No deployment or live provider calls.
+
 ## Explicit extraction header bindings — October 15, 2026
 
 - Added combined draft review for retained customer name, effective date and payment terms,
@@ -209,27 +233,6 @@
 - Public extraction submission, approved field catalogue, document-text/proposal review APIs,
   human acceptance and broader release/accounting gates remain unfinished. Linux parser resource
   enforcement and live-provider operation are not proved by these local worker tests.
-
-## Extraction recovery from retained input — October 15, 2026
-
-- Added a worker-only recovery reader that freshly authorizes the initiating human, selects
-  call/proposal binding metadata, and rebuilds exact request bytes/citation maps from encrypted
-  intent-linked text. It validates source access, digests, field paths and original model/prompt
-  settings. It does not reparse a PDF or invoke a provider. Existing proposals return their ID;
-  recorded failures return validated classification, usage, attempt number and outcome time for
-  gateway backoff. Missing outcomes and unclassified results refuse automatic recovery.
-- Evidence reads work while new AI calls are disabled, but current permission revocation refuses
-  recovery. Tests cover completed proposals, reported/unknown provider usage, changed selectors,
-  mismatched source fingerprints, no outcome, invalidated responses and unchanged call/log counts.
-  Shared retained-page validation also continues to serve proposal writes.
-- Verification: 21 AI PostgreSQL regressions passed; the final focused case passed after narrowing
-  proposal queries to binding metadata. Thirty preparation/layer tests passed. Full lint and
-  typecheck passed (931 Python sources plus frontend); final focused typing passed 782 sources.
-  Logs: .run/ai-extraction-recovery-{pg,regressions,pg-final,unit,lint,typecheck,
-  types-verified}.log. No deployment or live provider calls.
-- Gateway admission, retry execution, worker dispatch, submission and human acceptance remain
-  unfinished. This reader supplies recovery evidence; it does not authorize another provider call.
-  Broader release verification and independent accounting sign-off remain outstanding.
 
 ## Outstanding release verification
 

@@ -5234,3 +5234,24 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - This closes a prerequisite discovered at gateway integration: call evidence previously could
   not locate or protect retained text before proposal persistence. Extraction execution/recovery,
   submission and human review remain unfinished, alongside the broader release/accounting gates.
+
+## Extraction recovery from retained input — October 15, 2026
+
+- Added a worker-only recovery reader that freshly authorizes the initiating human, selects
+  call/proposal binding metadata, and rebuilds exact request bytes/citation maps from encrypted
+  intent-linked text. It validates source access, digests, field paths and original model/prompt
+  settings. It does not reparse a PDF or invoke a provider. Existing proposals return their ID;
+  recorded failures return validated classification, usage, attempt number and outcome time for
+  gateway backoff. Missing outcomes and unclassified results refuse automatic recovery.
+- Evidence reads work while new AI calls are disabled, but current permission revocation refuses
+  recovery. Tests cover completed proposals, reported/unknown provider usage, changed selectors,
+  mismatched source fingerprints, no outcome, invalidated responses and unchanged call/log counts.
+  Shared retained-page validation also continues to serve proposal writes.
+- Verification: 21 AI PostgreSQL regressions passed; the final focused case passed after narrowing
+  proposal queries to binding metadata. Thirty preparation/layer tests passed. Full lint and
+  typecheck passed (931 Python sources plus frontend); final focused typing passed 782 sources.
+  Logs: .run/ai-extraction-recovery-{pg,regressions,pg-final,unit,lint,typecheck,
+  types-verified}.log. No deployment or live provider calls.
+- Gateway admission, retry execution, worker dispatch, submission and human acceptance remain
+  unfinished. This reader supplies recovery evidence; it does not authorize another provider call.
+  Broader release verification and independent accounting sign-off remain outstanding.

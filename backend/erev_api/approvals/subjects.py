@@ -140,6 +140,7 @@ from sqlalchemy import RowMapping, Table, and_, delete, func, insert, or_, selec
 from sqlalchemy.orm import Session
 
 from erev_api.approvals import delegations, preview
+from erev_api.approvals.ai_provenance import accepted_draft_proposals
 from erev_api.approvals.authorship import AUTHOR_DETAIL, draft_authors
 from erev_api.auth import sod
 from erev_api.auth.permissions import role_content_sha256
@@ -2112,13 +2113,15 @@ POSTED_LINES: Final = "POSTED_LINES"
 
 
 def contract_option_authors(session: Session, subject_id: UUID) -> frozenset[UUID]:
-    """Option preparers cannot approve activation, including through a delegate.
+    """Option preparers and AI draft acceptors cannot approve activation, even by delegation.
 
     Use the shared authorship reader to include an uploader represented by SYSTEM,
     as well as the USER creator stamped on the immutable terms.
     """
     read = draft_authors(material_right)
-    people: set[UUID] = set()
+    people: set[UUID] = {
+        UUID(item["accepted_by"]) for item in accepted_draft_proposals(session, subject_id)
+    }
     for right_id in session.execute(
         select(material_right.c.id).where(material_right.c.contract_id == subject_id)
     ).scalars():
@@ -2165,6 +2168,9 @@ def contract_activation_content(session: Session, subject_id: UUID) -> Mapping[s
         "document_ref": row.document_ref,
         "combination_group_id": str(row.combination_group_id),
     }
+    ai_provenance = accepted_draft_proposals(session, subject_id)
+    if ai_provenance:
+        content["ai_assisted"] = ai_provenance
     criteria = step1.criteria_met(
         session,
         contract_id=subject_id,

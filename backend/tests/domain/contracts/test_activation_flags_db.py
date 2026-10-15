@@ -36,6 +36,7 @@ from erev_api.clock import FrozenClock
 from erev_api.config import Settings
 from erev_api.db.session import DbContext, tenant_session
 from erev_api.db.tables import (
+    ai_proposal,
     approval_decision,
     approval_request,
     contract,
@@ -73,7 +74,7 @@ from support.factories import (
 from support.http import call
 from support.principals import colleague, enrolled
 from support.reference import approve, assign, calendar, entity, get, post, put, reject
-from support.rows import estimate_values
+from support.rows import RowContext, ai_proposal_row, estimate_values
 from support.worlds import estimate_version_ready
 from tests.domain.contracts.test_activation import (
     APPROVAL_HEADER,
@@ -1197,3 +1198,53 @@ def test_a_member_of_a_combined_group_is_judged_by_the_groups_price(seats: SeatW
         # The first member is ACTIVE now and holds a line of the product: no NEW_SKU.
         "SF-ORD-11002": ("PENDING", ["ABOVE_THRESHOLD", "MANUAL_ENTRY"], Decimal("130000.00")),
     }
+
+
+def test_accepted_ai_draft_requires_human_activation_and_changes_review_basis(
+    seats: SeatWorld,
+) -> None:
+    sales = _sales(seats)
+    target = sales.booked("SF-AI-DRAFT-01", [_seat(price="100.00")], **STATED)
+    control = sales.booked("SF-AI-DRAFT-02", [_seat(price="100.00")], **STATED)
+    actor = seats.priya.member.user_id
+    with seats.place.uow() as uow:
+        before = subjects.contract_activation_content(uow.session, target)
+        assert "ai_assisted" not in before
+        ctx = RowContext(seats.place.tenant_id, actor)
+        proposal = ai_proposal_row(ctx, uow.session)
+        proposal.update(
+            created_at=uow.now,
+            expires_at=uow.now + timedelta(days=30),
+            kind="CONTRACT_EXTRACTION",
+            status="accepted",
+            content=[],
+            accepted_command="contract.create_draft",
+            accepted_object_type="contract",
+            accepted_object_id=target,
+            accepted_by=actor,
+            accepted_at=uow.now,
+            field_decisions=[
+                {"path": "customer_name", "decision": "ACCEPT", "value": "Reviewed customer"}
+            ],
+        )
+        uow.session.execute(insert(ai_proposal).values(**proposal))
+        after = subjects.contract_activation_content(uow.session, target)
+        assert len(after["ai_assisted"]) == 1
+        assert after["ai_assisted"][0]["proposal_id"] == str(proposal["id"])
+        assert "Reviewed customer" not in str(after)
+        assert "ai_assisted" not in subjects.contract_activation_content(uow.session, control)
+        assert "AI_ASSISTED" in activation.activation_flags(uow.session, target)
+        uow.commit()
+    assert sales.answer(target, sales.assessed(target)) == (
+        "PENDING",
+        ["AI_ASSISTED", "MANUAL_ENTRY"],
+        [],
+    )
+    assert sales.answer(control, sales.assessed(control)) == ("APPROVED", [], [AUTO])
+    (request,) = _requests(seats, target)
+    self_approval = approve(seats.app, str(request["id"]), seats.priya)
+    assert self_approval.status_code == 403, self_approval.text
+    assert self_approval.json()["type"].endswith("self-approval")
+    approved = approve(seats.app, str(request["id"]), seats.marcus)
+    assert approved.status_code == 200, approved.text
+    assert _header(seats, target)[0] == "ACTIVE"

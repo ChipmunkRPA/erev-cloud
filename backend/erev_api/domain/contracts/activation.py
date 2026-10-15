@@ -94,6 +94,7 @@ from sqlalchemy import and_, exists, or_, select
 from sqlalchemy.orm import Session
 
 from erev_api.approvals import engine as approvals
+from erev_api.approvals.ai_provenance import AI_ASSISTED, accepted_draft_proposals
 from erev_api.approvals.subjects import (
     ABOVE_CONTROLLER_THRESHOLD,
     ABOVE_THRESHOLD,
@@ -1381,6 +1382,8 @@ def routing_facts(
         known_at=known_at,
     )
     flags: set[str] = set(threshold_flags(amounts))
+    if accepted_draft_proposals(session, contract_id):
+        flags.add(AI_ASSISTED)
     if _text(row.source_system) == SourceSystem.MANUAL_UI.value or written_by_a_person(
         session, contract_id
     ):
