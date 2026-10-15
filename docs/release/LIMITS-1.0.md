@@ -34,7 +34,11 @@ Unknown outcome reconciliation, unknown token usage and durable admission failur
 open. An unobserved call now blocks new admissions for the entire tenant, across month boundaries,
 until outcome evidence exists. Only the currently admitted lease can bind its newly committed,
 human-owned intent for the post-call check; another job/lease cannot exempt that start. The
-monthly lease still accounts for known committed usage. It does not estimate missing usage,
+monthly lease still accounts for known committed usage. New attempt logs distinguish validated
+response counters (`REPORTED`), unsent admission refusals (`NOT_SENT`) and missing usage
+(`UNKNOWN`) in writer-derived immutable metadata. Actual zero responses remain distinguishable
+from zero compatibility counters on failures. Historical logs are not rewritten. The guard does
+not yet enforce this marker for returned errors; that budget gap remains open. It does not estimate missing usage,
 reserve unknown response tokens, reconcile returned provider errors without usage, or infer
 historical calls that never had retained intents. The worker still needs real dispatch/waiting, registered
 AI_TASK handlers, notifications and public submission/acceptance/rejection workflows. The AI

@@ -4595,3 +4595,20 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Rechecked publication boundaries: neither research-harness nor docs/research is tracked;
   PolyForm Noncommercial 1.0.0 remains in place. No deployment. Numeric checking remains
   a prerequisite, not evidence that the unfinished AI narrative workflow is complete.
+
+## Cited narrative selection and deterministic fallback — October 15, 2026
+
+- Added the retained explain-narrative v1 prompt and a preparation/selection boundary.
+  It snapshots already-authorized explanation nodes, sends minimized trace fields,
+  excludes other currencies and refuses privacy transformations that change evidence.
+- Responses need exact hashes, complete output, strict JSON and nonempty unique node
+  citations from the snapshot. Only cited nodes contribute allowed figures. Unsupported
+  output returns the original deterministic narrative with no model text or citations.
+- Fake-provider tests cover supported/untraced output; additional cases cover malformed
+  responses, refusal/truncation, forged citations, immutable evidence and currency precision.
+- Verification: 244 AI/architecture tests passed, two Linux-only parser tests skipped;
+  typing passed for 763 sources; Ruff/diff checks pass. Offline wheel build passed and
+  packaged prompt bytes match source. Logs: .run/ai-narrative-{checks,types,wheel}.log.
+- This does not register an AI_TASK handler or endpoint, persist proposals or establish
+  authorized retrieval. Those gateway responsibilities and the human acceptance workflow
+  remain open. No live provider calls, deployment or production-readiness claim.

@@ -5881,6 +5881,13 @@ work; a missing outcome is not recorded as a zero-token failure. Unresolved inte
 budget admissions across the tenant without monthly expiry. The live budget lease may bind
 only its own newly committed human-attributed intent after admission, so the current response
 can be recorded while a different job or replacement lease remains blocked.
+New attempt logs also retain a writer-derived `usage_evidence` parameter: `REPORTED` when
+validated response counters exist (including an actual zero), `NOT_SENT` for disabled/budget
+admission refusals, and `UNKNOWN` for outcomes without a response. Zero compatibility counters
+on an unknown outcome are not proof of zero usage. The marker is outcome metadata, excluded
+from the request hash and forbidden in caller-supplied request parameters. Historical logs are
+not rewritten; absence of the marker is not evidence of known zero usage. Admission handling
+of returned errors with unknown usage and reconciliation remain unfinished.
 
 
 ### T-MIG-01 `migration_batch`

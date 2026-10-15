@@ -415,3 +415,59 @@ def test_provider_failure_classification_refuses_untrusted_metadata(
             )
     with tenant_session(principal.db_context, read_only=True) as session:
         assert session.scalar(select(func.count()).select_from(ai_model_log)) == 0
+
+
+@pytest.mark.parametrize(
+    "outcome,failure,returned,expected",
+    [
+        ("SUCCESS", None, True, "REPORTED"),
+        ("ERROR", "invalid_output", True, "REPORTED"),
+        ("ERROR", "provider_error", False, "UNKNOWN"),
+        ("TIMEOUT", "timeout", False, "UNKNOWN"),
+        ("BUDGET_EXCEEDED", "budget_exhausted", False, "NOT_SENT"),
+        ("DISABLED", "disabled", False, "NOT_SENT"),
+    ],
+)
+def test_zero_counters_preserve_usage_evidence(
+    world: tuple[Principal, JobRuntime],
+    outcome: Any,
+    failure: Any,
+    returned: bool,
+    expected: str,
+) -> None:
+    principal, runtime = world
+    received = replace(response(), input_tokens=0, output_tokens=0) if returned else None
+    with system_unit_of_work(runtime, principal, request_id="usage-evidence") as uow:
+        log_id = record_attempt(
+            uow,
+            request=request(),
+            response=received,
+            provider="fake",
+            outcome=outcome,
+            failure=failure,
+        )
+        uow.commit()
+    with tenant_session(principal.db_context, read_only=True) as session:
+        row = (
+            session.execute(select(ai_model_log).where(ai_model_log.c.id == log_id))
+            .mappings()
+            .one()
+        )
+        assert row["input_tokens"] == row["output_tokens"] == 0
+        assert row["parameters"]["usage_evidence"] == expected
+        assert (row["response_sha256"] is not None) == returned
+
+
+def test_request_cannot_assert_its_own_usage_evidence(world: tuple[Principal, JobRuntime]) -> None:
+    principal, runtime = world
+    prepared = request()
+    forged = replace(
+        prepared, parameters=dict(prepared.parameters) | {"usage_evidence": "REPORTED"}
+    )
+    with system_unit_of_work(runtime, principal, request_id="forged-usage-evidence") as uow:
+        with pytest.raises(AttemptEvidenceRefused, match="AI_INVALID_ATTEMPT_CONFIGURATION"):
+            record_attempt(
+                uow, request=forged, provider="fake", outcome="ERROR", failure="provider_error"
+            )
+        assert uow.session.scalar(select(func.count()).select_from(ai_model_log)) == 0
+        assert uow.drain_audit_events() == []

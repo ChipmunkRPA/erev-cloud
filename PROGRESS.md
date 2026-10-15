@@ -2,6 +2,20 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Distinguish missing AI usage from reported zero — October 15, 2026
+
+- Attempt logs now derive immutable usage_evidence metadata: REPORTED for validated response
+  counters, NOT_SENT for disabled/budget admission refusals, UNKNOWN for response-less errors.
+  Caller request parameters cannot supply the marker; historical logs are not rewritten.
+- Failed-proposal recovery recognizes the marker while requiring UNKNOWN for a response-less
+  provider failure. Exact request hashes and strict metadata comparisons remain enforced.
+- Regression: 230 passed, two Linux-only parser skips (66.77s); typing passed for 768 sources;
+  Ruff and diff checks passed. Logs: .run/ai-usage-evidence-{final,types}.log. Six zero-counter
+  cases distinguish evidence categories; a forged request marker refuses without log/audit writes.
+- This is durable evidence groundwork. Budget admission still needs enforcement/reconciliation
+  for returned errors with unknown usage, including historical evidence and bounded retries.
+  Public AI workflows and all other release gates remain open. No deployment or readiness claim.
+
 ## Tenant budget quarantine for unobserved calls — October 15, 2026
 
 - Budget admission now refuses while any tenant call intent lacks an outcome, across month
@@ -216,23 +230,6 @@
 - Gateway/settings/budget integration, provider execution, persistence, public endpoints
   and human decisions remain open. This does not authorize deployment or establish
   end-to-end AI readiness. No live provider calls or external accounting sign-off.
-
-## Cited narrative selection and deterministic fallback — October 15, 2026
-
-- Added the retained explain-narrative v1 prompt and a preparation/selection boundary.
-  It snapshots already-authorized explanation nodes, sends minimized trace fields,
-  excludes other currencies and refuses privacy transformations that change evidence.
-- Responses need exact hashes, complete output, strict JSON and nonempty unique node
-  citations from the snapshot. Only cited nodes contribute allowed figures. Unsupported
-  output returns the original deterministic narrative with no model text or citations.
-- Fake-provider tests cover supported/untraced output; additional cases cover malformed
-  responses, refusal/truncation, forged citations, immutable evidence and currency precision.
-- Verification: 244 AI/architecture tests passed, two Linux-only parser tests skipped;
-  typing passed for 763 sources; Ruff/diff checks pass. Offline wheel build passed and
-  packaged prompt bytes match source. Logs: .run/ai-narrative-{checks,types,wheel}.log.
-- This does not register an AI_TASK handler or endpoint, persist proposals or establish
-  authorized retrieval. Those gateway responsibilities and the human acceptance workflow
-  remain open. No live provider calls, deployment or production-readiness claim.
 
 ## Outstanding release verification
 

@@ -259,6 +259,7 @@ def record_provider_failure(
         .mappings()
         .one_or_none()
     )
+    expected_parameters = dict(rebuilt.request.parameters)
     expected = {
         "created_by": uow.principal.id,
         "created_by_kind": "USER",
@@ -268,7 +269,7 @@ def record_provider_failure(
         "model_id": rebuilt.request.model,
         "prompt_template_id": rebuilt.request.template_id,
         "prompt_template_version": str(rebuilt.request.template_version),
-        "parameters": dict(rebuilt.request.parameters),
+        "parameters": expected_parameters,
         "input_tokens": 0,
         "output_tokens": 0,
         "outcome": "TIMEOUT" if code == "AI_TIMEOUT" else "ERROR",
@@ -277,11 +278,13 @@ def record_provider_failure(
     if log is not None and "provider_failure_code" in log["parameters"]:
         if type(log["parameters"].get("provider_retryable")) is not bool:
             raise ProposalEvidenceRefused("AI_ATTEMPT_EVIDENCE_MISMATCH")
-        expected["parameters"] = {
-            **rebuilt.request.parameters,
-            "provider_failure_code": code,
-            "provider_retryable": log["parameters"].get("provider_retryable"),
-        }
+        expected_parameters.update(
+            provider_failure_code=code,
+            provider_retryable=log["parameters"].get("provider_retryable"),
+        )
+    if log is not None and "usage_evidence" in log["parameters"]:
+        # A response-less provider failure cannot assert reported or unsent usage.
+        expected_parameters["usage_evidence"] = "UNKNOWN"
     if log is None or any(log[key] != value for key, value in expected.items()):
         raise ProposalEvidenceRefused("AI_ATTEMPT_EVIDENCE_MISMATCH")
     _intent_binding(uow, log["intent_id"], job_id, job_source_sha256, rebuilt.request.input_sha256)

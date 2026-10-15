@@ -203,6 +203,16 @@ def record_attempt(
             is not None
         ):
             raise AttemptEvidenceRefused("AI_INTENT_ALREADY_RECORDED")
+    # Zero-valued compatibility counters alone never prove zero provider usage.
+    # Derive this evidence here, after validating the response, rather than trust
+    # caller-supplied request parameters or infer it from a retryable error code.
+    parameters["usage_evidence"] = (
+        "REPORTED"
+        if response is not None
+        else "NOT_SENT"
+        if outcome in {"BUDGET_EXCEEDED", "DISABLED"}
+        else "UNKNOWN"
+    )
     log_id = new_id()
     uow.session.execute(
         insert(ai_model_log).values(
