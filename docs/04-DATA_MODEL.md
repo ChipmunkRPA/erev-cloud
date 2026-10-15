@@ -3968,6 +3968,9 @@ terms or computation refusal return 422 and roll back the terms and computation 
 Successful creation returns 201 with the dedicated-read Location and records AUD-FACT.
 The terms are immutable and do not append a contract event; activation content binds them,
 and their authors are excluded from approving activation, including via delegation.
+Activation routing also treats their person authors (including represented preparers in
+AUD-FACT) as MANUAL_ENTRY and persisted option records as MATERIAL_RIGHT, independently
+of current template and estimate classification.
 Historical reads retain the existing recorded/effective cut semantics. Governed correction,
 draft replacement acceptance, native UI, and migration conversion remain separate unfinished work.
 

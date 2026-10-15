@@ -103,6 +103,7 @@ from erev_api.approvals.subjects import (
     THRESHOLD_CURRENCY,
     SubjectLifecycle,
     contract_activation_total,
+    contract_option_authors,
     register_lifecycle,
 )
 from erev_api.auth.dependencies import require_for_entity
@@ -119,6 +120,7 @@ from erev_api.db.tables import (
     exception_item,
     import_upload,
     judgement_record,
+    material_right,
     obligation,
     obligation_version,
     pob_template_version,
@@ -950,7 +952,7 @@ def written_by_a_person(session: Session, contract_id: UUID) -> bool:
     person's content. The stream keeps every author (T-CON-05 ``created_by_kind``; a replaced
     booking stays in it), while ``contract.source_system`` names only the first booking's source.
 
-    A person's content reaches the stream in five ways, and each counts:
+    A person's content reaches the computation in these ways, and each counts:
 
     - an event a signed-in person (or an operator) wrote, or one marked ``is_manual`` (PRD
       ACT-10) — a manual event keeps the mark when the SYSTEM principal appends it on approval;
@@ -962,8 +964,12 @@ def written_by_a_person(session: Session, contract_id: UUID) -> bool:
       counts as a person's;
     - a ``COMBINATION_CHANGED`` event: a combination is always a person's proposal;
     - a policy override of the contract that was approved — it changes what the contract computes
-      and writes no event.
+      and writes no event;
+    - immutable option terms entered by a person, including a represented preparer in
+      their creation audit. These terms also change computation without writing an event.
     """
+    if contract_option_authors(session, contract_id):
+        return True
     own = contract_event.c.contract_id == contract_id
     by_person = session.execute(
         select(contract_event.c.id)
@@ -1351,8 +1357,8 @@ def routing_facts(
     - ``MATERIAL_RIGHT``: a line whose template is of the kind ``MATERIAL_RIGHT`` — the template
       ``measured`` states for it, which the engine chose (a ``POB_ASSIGNMENT`` rule, S03-R-18 of
       the parity preset, or the product's default), and the product's default template beside
-      it, read also where no computation is at hand —, or an ``EXERCISE_LIKELIHOOD`` element, the
-      built record of an option's terms (T-CON-14 is not built);
+      it, read also where no computation is at hand —, an ``EXERCISE_LIKELIHOOD`` element,
+      or persisted option terms (T-CON-14);
     - ``VARIABLE_CONSIDERATION``: an estimated element of one of ``CONSIDERATION_ESTIMATES``, or
       a line whose template, read in the same two ways, is of the kind ``VC_LINE``;
     - ``NEW_SKU``: a line's product that no other activated contract of the workspace holds.
@@ -1401,6 +1407,10 @@ def routing_facts(
     if (
         ObligationKind.MATERIAL_RIGHT.value in template_kinds
         or EstimateKind.EXERCISE_LIKELIHOOD.value in estimate_kinds
+        or session.execute(
+            select(material_right.c.id).where(material_right.c.contract_id == contract_id).limit(1)
+        ).first()
+        is not None
     ):
         flags.add(MATERIAL_RIGHT)
     if ObligationKind.VC_LINE.value in template_kinds or estimate_kinds.intersection(

@@ -3435,3 +3435,20 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
 - Full immutable CI on 165d63c is still running and has known failures; this entry does not
   claim a passing full release gate. Other pack kinds, re-lock variance, broader acceptance
   and independent accounting approval remain open. No deployment.
+
+## Evidence navigation retains pack context — October 14, 2026
+
+- Browser screenshot review found that successful generation dropped entity/book/period
+  from the detail URL: the header then showed the default entity and January while the pack
+  named AVM-US/August. Register links, grid row navigation and generation now carry the
+  pack's own selectors; the detail breadcrumb returns to that scoped register.
+- Component checks: 34 tests passed in three files (2.30s), TypeScript and targeted ESLint
+  passed. Production build passed. Focused real-browser workflow passed in 46.0s, including
+  the exact scoped URL, successful generation, downloads and light/dark accessibility.
+  Reviewed the resulting screenshot: header shows AVM-US/August locked, matching the pack.
+  Logs: .run/evidence-context-tests.log and .run/evidence-context-browser.log.
+- Full frontend on df95848: 195 files / 2,093 tests passed (108.82s);
+  log .run/frontend-df95848-full.log. Existing jsdom navigation warning remains.
+- Browser test servers stopped. Full CI on 165d63c remains live with known failures;
+  pending backend identity/IDOR repairs are not part of this frontend change. No deployment
+  or complete release-gate claim. Broader release and accounting review gaps remain open.

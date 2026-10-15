@@ -152,3 +152,25 @@ API tests passed again in 20.43s. Full typecheck (880 production files plus fron
 Ruff and diff checks pass. Logs: `.run/material-right-native-baseline.log` (reproduced
 self-approval), `.run/material-right-native-fixed.log`, `.run/material-right-native-regression.log`,
 `.run/material-right-native-final.log`, `.run/material-right-native-types.log`.
+
+## Replacement and routing, October 14
+
+A native API regression creates terms on an integration-booked draft, lets the integration
+replace its booking price while retaining the obligation key, and verifies identical term
+reads and exactly one immutable record. The integration then records Step 1 and submits.
+Before the routing repair its request correctly remained pending with MATERIAL_RIGHT, but
+omitted MANUAL_ENTRY despite a person's term entry. This was missing routing evidence,
+not a demonstrated auto-approval bypass. Activation now includes term authors and represented
+preparers in MANUAL_ENTRY and persisted T-CON-14 records in MATERIAL_RIGHT. A separate
+adapter fixture checks records without an option template/estimate and SYSTEM AUD-FACT
+creation on a person's behalf; it is not a native migration acceptance test.
+
+This proves price-only replacement with the same obligation key. Product/key removal,
+option correction, competing commands and complete historical replacement semantics still
+need their required implementation and acceptance evidence.
+
+Routing/replacement verification: 12 tests passed in 91.18s, including the untouched-integration
+auto-approval control. Represented-preparer/persisted-record fixture and import-cycle checks:
+31 passed in 18.19s. Full typecheck, Ruff and diff checks passed. Logs:
+`.run/material-right-replacement-baseline.log`, `.run/material-right-routing-regression.log`,
+`.run/material-right-routing-facts.log`, `.run/material-right-routing-types.log`.

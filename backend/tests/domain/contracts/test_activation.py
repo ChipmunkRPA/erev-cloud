@@ -1887,3 +1887,142 @@ def test_material_right_invalid_entry_rolls_back_facts_and_computation(seats: Se
         assert seats.place.scalar(select(func.count()).select_from(contract_computation)) == before
         assert _header(seats, contract_id) == ("DRAFT", 1)
     assert get(seats.app, path, maya).status_code == 404
+
+
+def test_person_entered_option_survives_integration_replacement_and_routes_manual(
+    seats: SeatWorld,
+) -> None:
+    maya = seats.place.author
+    body = _seat_contract(seats, "SF-OPTION-REPLACE", seats="12", price="30000.00")
+    line = body["lines"][0]
+    template = published_template(
+        seats.app,
+        maya,
+        seats.marcus,
+        code="TPL-OPTION-REPLACE",
+        outputs={
+            "obligation_kind": "MATERIAL_RIGHT",
+            "distinctness": "distinct",
+            "satisfaction_pattern": "POINT_IN_TIME",
+            "over_time_criterion": "NOT_APPLICABLE",
+            "recognition_method": "UNITS_DELIVERED",
+        },
+        case_line={**line, "total_price": "30000.00"},
+    )
+    product_id = seats.place.scalar(
+        select(product.c.id).where(product.c.code == line["product_code"])
+    )
+    set_default_template(seats.app, maya, str(product_id), template["template_id"])
+    _publish_auto_approval(seats)
+    client_id, token = _salesforce_token(seats)
+    contract_id = _booked_by_salesforce(seats, client_id, "SF-OPTION-REPLACE")
+    option_id = seats.place.scalar(
+        select(obligation.c.id).where(obligation.c.contract_id == contract_id)
+    )
+    path = f"/api/v1/obligations/{option_id}/material-right"
+    created = post(
+        seats.app,
+        path,
+        maya,
+        {"option_type": "RENEWAL_OPTION", "ssp_method": "ENTERED_AMOUNT"},
+        if_match='"s1"',
+    )
+    assert created.status_code == 201, created.text
+    replacement = {
+        **_seat_contract(seats, "SF-OPTION-REPLACE", seats="12", price="31000.00"),
+        **TERMS_STATED,
+    }
+    replaced = call(
+        seats.app,
+        "POST",
+        f"{CONTRACTS}/{contract_id}/replace-draft",
+        json=replacement,
+        headers=_bearer(token, 1),
+    )
+    assert replaced.status_code == 200, replaced.text
+    assert _header(seats, contract_id) == ("DRAFT", 3)
+    shown = get(seats.app, path, maya)
+    assert shown.status_code == 200, shown.text
+    assert shown.json() == created.json()
+    assert seats.place.scalar(select(func.count()).select_from(material_right)) == 1
+    head = _step1_by_integration(seats, token, contract_id, 3)
+    submitted = call(
+        seats.app,
+        "POST",
+        f"{CONTRACTS}/{contract_id}/submit-activation",
+        json={},
+        headers=_bearer(token, head),
+    )
+    assert submitted.status_code == 200, submitted.text
+    request_id = UUID(submitted.headers[APPROVAL_HEADER])
+    request = seats.place.rows(select(approval_request).where(approval_request.c.id == request_id))[
+        0
+    ]
+    assert request["status"] == "PENDING"
+    assert {"MANUAL_ENTRY", "MATERIAL_RIGHT"}.issubset(set(request["flags"]))
+    assert _header(seats, contract_id) == ("DRAFT", head)
+    assert (
+        seats.place.scalar(
+            select(func.count())
+            .select_from(approval_decision)
+            .where(
+                approval_decision.c.approval_request_id == request_id,
+                approval_decision.c.decision == "AUTO_APPROVE",
+            )
+        )
+        == 0
+    )
+
+
+def test_persisted_option_and_represented_preparer_are_activation_routing_facts(
+    seats: SeatWorld,
+) -> None:
+    """Adapter fixture: persisted terms count even without an option template or estimate."""
+    from erev_api.approvals.subjects import contract_option_authors
+    from erev_api.audit.writer import record_facts
+    from erev_api.auth.principal import system_principal
+    from erev_api.domain.contracts.activation import routing_facts
+
+    client_id, _ = _salesforce_token(seats)
+    contract_id = _booked_by_salesforce(seats, client_id, "SF-OPTION-FACT")
+    option_id = seats.place.scalar(
+        select(obligation.c.id).where(obligation.c.contract_id == contract_id)
+    )
+    right_id = new_id()
+    with seats.place.uow(system_principal(seats.place.tenant_id)) as unit:
+        unit.session.execute(
+            insert(material_right).values(
+                tenant_id=seats.place.tenant_id,
+                id=right_id,
+                contract_id=contract_id,
+                obligation_id=option_id,
+                option_type="RENEWAL_OPTION",
+                currency="USD",
+                ssp_method="ENTERED_AMOUNT",
+                created_at=unit.now,
+                created_by_kind="SYSTEM",
+            )
+        )
+        unit.commit()
+    with seats.place.uow() as unit:
+        assert routing_facts(unit.session, contract_id, None).flags == frozenset({"MATERIAL_RIGHT"})
+        assert not contract_option_authors(unit.session, contract_id)
+    represented = system_principal(
+        seats.place.tenant_id, on_behalf_of_id=seats.place.author.member.user_id
+    )
+    with seats.place.uow(represented) as unit:
+        record_facts(
+            unit,
+            action="material_right.create",
+            object_type="material_right",
+            ids=[right_id],
+            contract_id=contract_id,
+        )
+        unit.commit()
+    with seats.place.uow() as unit:
+        assert contract_option_authors(unit.session, contract_id) == frozenset(
+            {seats.place.author.member.user_id}
+        )
+        assert routing_facts(unit.session, contract_id, None).flags == frozenset(
+            {"MANUAL_ENTRY", "MATERIAL_RIGHT"}
+        )
