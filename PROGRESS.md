@@ -2,7 +2,23 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Administrator AI settings screen — October 15, 2026
 
+- Added /settings/ai and its workspace-wide settings.manage navigation guard. The page shows
+  effective availability and platform disable, edits the eight documented values, resumes saved
+  versions and submits through validation plus independent approval. Emergency disable uses a
+  confirmation dialog and remains available during validation. Pending requests show their
+  number, preparer and review link.
+- Retries retain the original statement, row-version precondition and command keys. A newer read
+  cannot silently replace the edit precondition; even a SUBMITTED read replays the caller's own
+  submission key. Failed validation stops submission; reset-to-default drafts use catalogue values.
+- Full frontend suite: 2,160 tests pass in 202 files; 43 focused checks and typing also pass.
+  Real Chromium + API + PostgreSQL verifies creation, validation job and submission while AI
+  remains off; desktop and pending screenshots
+  inspected. A narrow viewport retains the existing minimum-width gate. Evidence is in
+  docs/release/CI-2026-10-15.md. The private browser harness remains excluded in .run.
+- No deployment or provider calls. Standard demo/J-19 and accounting sign-off remain open.
+  Frozen CI on 3cf8f5b remains running; its snapshot predates these changes.
 
 ## Effective AI status for administrator settings — October 15, 2026
 
@@ -224,20 +240,6 @@
   Do not restart it or run other database tests there. Known-document fixture adaptation does
   not complete demo/browser seeding, Linux parser proof, browser acceptance or accounting sign-off.
   No deployment or live provider calls.
-
-## Broad frontend verification and frozen CI — October 15, 2026
-
-- Full frontend testing found two inventory failures: omitted SF-20 route IDs and no crawl
-  proposal lookup. Added both without a skip/exclusion; a live crawl still requires accessible
-  retained extraction evidence. The repaired full suite passes 2,143 tests in 200 files.
-  Frontend typing, focused ESLint and formatting pass. Evidence and limits:
-  docs/release/CI-2026-10-15.md; .run/frontend-full-oct15-repaired.{log,xml}.
-- Frozen make ci on 3cf8f5b has passed environment, full lint and typecheck (938 Python files)
-  and is running the broad test stage against isolated local PostgreSQL 55439. Live log:
-  .run/production-readiness-ci-oct15.log. Do not restart the live run. This snapshot predates
-  the inventory repair; its eventual results must remain attributed to that snapshot.
-- No full CI pass is claimed. Real retained-proposal browser fixtures, complete acceptance,
-  broader release gates and accounting sign-off remain open. No deployment/provider calls.
 
 
 ## Outstanding release verification

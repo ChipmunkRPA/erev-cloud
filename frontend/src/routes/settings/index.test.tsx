@@ -294,6 +294,7 @@ describe("SF-15 index", () => {
       ["SF-14:security", ["settings.manage"]],
       ["SF-14:support-access", ["support_grant.approve"]],
       ["SF-16:developer", ["webhook.manage"]],
+      ["SF-15:ai", ["settings.manage"]],
       ["SF-15:sandbox", ["tenant.snapshot"]],
     ]);
     for (const candidate of pages) {

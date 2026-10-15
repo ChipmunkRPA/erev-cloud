@@ -5619,3 +5619,17 @@ cleanup in the shared database session kernel was also repaired and regression-t
   preconditions remain authoritative; returning to review captures the current displayed ETag
   only on explicit continuation. Broader release verification and accounting sign-off remain open.
   No deployment or live provider calls.
+
+## Broad frontend verification and frozen CI — October 15, 2026
+
+- Full frontend testing found two inventory failures: omitted SF-20 route IDs and no crawl
+  proposal lookup. Added both without a skip/exclusion; a live crawl still requires accessible
+  retained extraction evidence. The repaired full suite passes 2,143 tests in 200 files.
+  Frontend typing, focused ESLint and formatting pass. Evidence and limits:
+  docs/release/CI-2026-10-15.md; .run/frontend-full-oct15-repaired.{log,xml}.
+- Frozen make ci on 3cf8f5b has passed environment, full lint and typecheck (938 Python files)
+  and is running the broad test stage against isolated local PostgreSQL 55439. Live log:
+  .run/production-readiness-ci-oct15.log. Do not restart the live run. This snapshot predates
+  the inventory repair; its eventual results must remain attributed to that snapshot.
+- No full CI pass is claimed. Real retained-proposal browser fixtures, complete acceptance,
+  broader release gates and accounting sign-off remain open. No deployment/provider calls.

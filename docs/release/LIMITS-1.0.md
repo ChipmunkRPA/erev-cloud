@@ -98,15 +98,20 @@ withdraw. These endpoints require workspace-wide settings.manage and its MFA gua
 category/scope to tenant AI, and refuse other-category or other-tenant version IDs. They reuse
 the registry version, audit, hashing and simulation lifecycle and expose no publish/enable
 shortcut. General accounting authoring still requires config.author. Generated OpenAPI and
-TypeScript definitions include the new endpoints; the settings UI is not yet wired to them.
+TypeScript definitions include the new endpoints. The /settings/ai editor now uses them.
 The version list supports status filtering, version/date sorting, counts and cursor pagination.
 It fixes category/scope to tenant AI before pagination and shares the individual-read scope
 predicate. Administrators can rediscover drafts, submitted requests and published history without
 accounting read permission. Runtime status is now available at GET /ai/settings under the same administrator guard. It reuses
 the AI job settings reader and distinguishes published enablement from workspace/platform
 disablement, with provider, model, token budget, text-sending and redaction values. The typed
-frontend reader preserves these distinctions and propagates errors. The settings editor and
-effective-status presentation remain unfinished.
+frontend reader preserves these distinctions and propagates errors. The administrator settings page
+now displays runtime availability and the platform warning, edits all eight documented settings,
+resumes DRAFT/TESTED versions (including reset-to-default values), validates before submission and
+links pending approval requests. Emergency disable requires confirmation and remains available while validation runs. Retries retain their
+original values, row-version precondition and command keys; failed validation never submits.
+A lost response after committed submission is recovered by replaying that submission's own key.
+The page keeps the application's existing minimum-width guard; it is not a mobile settings editor.
 
 New AI submissions now use AI_SETTINGS_VERSION and workspace-wide settings.manage for review,
 so a different Tenant Admin can read and approve without accounting configuration privileges.
@@ -115,8 +120,10 @@ semantics. Retained REGISTRY_VERSION requests keep their original routing. setti
 now classified as an approval permission: API clients cannot acquire it, and effective client
 grants filter it out. Migration 0156 updates permission metadata and report subject filters.
 The administrator-only approval regression now passes, including legacy routing coverage.
-The settings UI and standard demo fixture/J-19 journey remain outstanding; the successful local
-browser extraction probe does not prove them. General accounting privileges remain unchanged.
+The standard demo fixture and complete J-19 journey remain outstanding. A real local Chromium
+check now covers administrator settings submission through a queued validation job and confirms
+AI stays disabled pending approval; it does not prove the full demo or independent accounting
+sign-off. General accounting privileges remain unchanged.
 
 Number-explanation submission now serializes admission with the tenant switch. Model changes,
 including a reset to the catalogue default, and enabling contract-text sending now require an

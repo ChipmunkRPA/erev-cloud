@@ -155,7 +155,7 @@ export const SETTINGS_GROUPS: readonly SettingsGroup[] = [
   {
     id: "ai",
     pages: [
-      settingsPage("SF-15:ai", "/settings/ai", "ai", ["settings.manage"]),
+      workspacePage("SF-15:ai", "/settings/ai", "ai", ["settings.manage"]),
       settingsPage("SF-15:ai-call-log", "/settings/ai/call-log", "aiCallLog", [
         "ai.use",
         "settings.manage",
