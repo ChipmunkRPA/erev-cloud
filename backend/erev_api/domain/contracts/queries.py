@@ -91,7 +91,7 @@ from erev_api.db.tables import (
     subledger_line,
 )
 from erev_api.db.types import ExactType, MoneyType
-from erev_api.domain.contracts import material_rights, repo, to_date
+from erev_api.domain.contracts import exception_counts, material_rights, repo, to_date
 from erev_api.domain.journals import subledger
 from erev_api.domain.reports import tie_outs
 from erev_api.enums import (
@@ -1054,6 +1054,12 @@ def _build(
     cuts: dict[tuple[UUID, date], to_date.VersionAt] = {}
     in_review = _in_review(session, ids)
     held = _held(session, ids)
+    open_exceptions = {
+        _uuid(contract_id): int(total)
+        for contract_id, total in session.execute(
+            select(contract.c.id, exception_counts.count()).where(contract.c.id.in_(ids))
+        )
+    }
     # API-S-Contract ``holds`` (detail): the open holds of the whole contract, read where a hold
     # stands at all — a list row answers ``on_hold`` alone.
     listed = hold_outs(session, sorted(held)) if detail else {}
@@ -1195,7 +1201,7 @@ def _build(
             "renewal_of_contract_id": found["renewal_of_contract_id"],
             "source_system": found["source_system"],
             "on_hold": contract_id in held,
-            "open_exception_count": 0,
+            "open_exception_count": open_exceptions.get(contract_id, 0),
             "status_reason": None if version is None else version["status_reason_in_book"],
             "scope_605_35": found["scope_605_35"],
             **{name: terms[contract_id].get(name, []) for name in TERM_MEMBERS},
@@ -1388,9 +1394,9 @@ def list_statement(filters: ListFilters, *, now: datetime) -> Select[Any]:
     if filters.on_hold is not None:
         clause = _on_hold_clause()
         statement = statement.where(clause if filters.on_hold else not_(clause))
-    if filters.has_exceptions:
-        # [J] L3-1-Q-40: T-IMP-05 exception items arrive with CTR-5, so no contract has one yet.
-        statement = statement.where(false())
+    if filters.has_exceptions is not None:
+        clause = exists(exception_counts.open_items())
+        statement = statement.where(clause if filters.has_exceptions else not_(clause))
     if filters.modified_in_period is not None:
         # [J] L3-1-Q-40: T-CON-06 modifications are post-rc (R-RC-1, CTR-17).
         statement = statement.where(false())

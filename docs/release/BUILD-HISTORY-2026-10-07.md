@@ -5792,3 +5792,23 @@ cleanup in the shared database session kernel was also repaired and regression-t
   expected failure. Focused typing and full lint pass. Evidence: .run/ai-admin-workflow-{tests,types,lint}.log.
   Frozen CI on 3cf8f5b remains active.
   No deployment, provider call or independent accounting sign-off.
+
+
+## Administrator AI version authoring — October 15, 2026
+
+- Added AI-scoped create/read/edit/test/submit/withdraw endpoints under /ai/settings/versions.
+  Workspace-wide settings.manage and MFA are required; category and scope cannot be changed.
+  Existing registry validation, hashes, simulation jobs, audit and If-Match behavior are reused.
+  No publish endpoint or enable shortcut. General accounting authoring remains restricted.
+- Admin-only authoring now passes instead of xfail. Lifecycle coverage confirms submission keeps
+  AI disabled; isolation checks cover other categories/tenants and invalid accounting values.
+  The independent administrator approval-read regression remains strict xfail because generic
+  REGISTRY_VERSION routing still needs config.approve. AI-specific routing/visibility and UI are
+  next; the standard demo/J-19 workflow is not claimed complete.
+- Generated OpenAPI/TypeScript contracts add five paths (six operations); existing paths are
+  unchanged. Eight API checks pass and one approval-read check is strict xfail; 34 other
+  authority/governance/route checks passed in the expanded run. Typing (794 files) and full
+  lint pass. Evidence: .run/ai-settings-author-{api-final,verified-final,types-final,openapi,lint}.log.
+  Earlier expanded runs caught test-fixture enum/key-reuse mistakes, corrected in the API rerun.
+- No deployment or provider calls. Frozen CI on 3cf8f5b remains active; independent accounting
+  sign-off and broader release verification remain outstanding.

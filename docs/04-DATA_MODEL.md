@@ -6801,7 +6801,7 @@ Field tables use `Field | Type | Req | Notes`. Types: `uuid`, `string`, `boolean
 | `source_system` | `source_system` | — | |
 | `on_hold` | boolean | — | Any open hold. |
 | `holds` | array | — | Rev 1.299 (item HOLD-RELEASE-READ-1). The OPEN holds of the WHOLE contract — the T-CON-20 rows that name no obligation — oldest first, each in the shape of API-S-Obligation `holds` (§16.2) with `level` `contract`. The hold of one obligation is listed by that obligation and counts in `on_hold` all the same: a screen that wants every open hold of a contract reads this list and the lists of its obligations. Answered by `GET /contracts/{id}` and by every command that answers API-S-Contract — `apply-hold` and `release-hold` among them — and not on a row of `GET /contracts`. Before, no read named a hold of the contract: `release-hold` took an id that nothing answered. |
-| `open_exception_count` | integer | — | |
+| `open_exception_count` | integer | — | Current related OPEN/IN_PROGRESS exception items under the reader's tenant/entity scope; count items once, not occurrence_count. |
 | `status_reason` | string or null | — | `status_reason_in_book` of the primary book (T-CON-08; rev 1.2, ENGINE_SPEC OQ-A-24). |
 | `scope_605_35` | boolean | — | Rev 1.2. |
 | `payment_schedule`, `noncash_consideration`, `consideration_payable` | array | — | Current terms: the member of the latest `CONTRACT_BOOKED` or `CONTRACT_AMENDED` payload that carries it (rev 1.2). |

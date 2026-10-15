@@ -2,6 +2,17 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Contract exception counts and filtering — October 15, 2026
+
+- Replaced the hard-coded zero in contract headers/list rows with current related open-item
+  counts. Has exceptions now supports both true and false before pagination and totals.
+- Attribution includes explicit contracts, obligation owners, current group members and
+  combination-suggestion payloads. Explicit contract attribution does not spread to the group;
+  repeated occurrences count once. Tenant/entity RLS remains in force.
+- Integration, scope and contract API regression evidence is recorded in
+  docs/release/CI-2026-10-15.md. Modified-in-period and recent-view quick lists remain open.
+- No deployment or accounting-policy change; full release gates and independent sign-off remain.
+
 ## Call-log proposal links and hash copying — October 15, 2026
 
 - Proposal lists accept ai_model_log_id while preserving source authorization, counts and
@@ -227,25 +238,6 @@
   markers). The settings editor and standard J-19/demo journey remain unfinished.
 - No deployment or provider calls. Frozen CI on 3cf8f5b remains running and predates this work;
   broader release verification and independent accounting sign-off remain outstanding.
-
-## Administrator AI version authoring — October 15, 2026
-
-- Added AI-scoped create/read/edit/test/submit/withdraw endpoints under /ai/settings/versions.
-  Workspace-wide settings.manage and MFA are required; category and scope cannot be changed.
-  Existing registry validation, hashes, simulation jobs, audit and If-Match behavior are reused.
-  No publish endpoint or enable shortcut. General accounting authoring remains restricted.
-- Admin-only authoring now passes instead of xfail. Lifecycle coverage confirms submission keeps
-  AI disabled; isolation checks cover other categories/tenants and invalid accounting values.
-  The independent administrator approval-read regression remains strict xfail because generic
-  REGISTRY_VERSION routing still needs config.approve. AI-specific routing/visibility and UI are
-  next; the standard demo/J-19 workflow is not claimed complete.
-- Generated OpenAPI/TypeScript contracts add five paths (six operations); existing paths are
-  unchanged. Eight API checks pass and one approval-read check is strict xfail; 34 other
-  authority/governance/route checks passed in the expanded run. Typing (794 files) and full
-  lint pass. Evidence: .run/ai-settings-author-{api-final,verified-final,types-final,openapi,lint}.log.
-  Earlier expanded runs caught test-fixture enum/key-reuse mistakes, corrected in the API rerun.
-- No deployment or provider calls. Frozen CI on 3cf8f5b remains active; independent accounting
-  sign-off and broader release verification remain outstanding.
 
 ## Outstanding release verification
 
