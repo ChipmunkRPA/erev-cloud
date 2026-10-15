@@ -143,7 +143,13 @@ records in proposal order. Unknown paths, ambiguous replacement values, invalid 
 and incomplete/duplicate decisions fail closed. This is a tested domain component, not an enabled
 acceptance route. Draft conversion still needs explicit contract identity, currency, quantities,
 obligation keys and structured terms; those cannot be inferred from the extraction catalogue.
-Permission/source/expiry/SoD checks and atomic draft-plus-acceptance persistence remain to be wired.
+Explicit draft intake now reuses ContractCreateIn, requires matching review/draft entity codes,
+forbids activation and accepts one-to-one mappings from retained line paths to draft obligation
+keys. Mapped product, exact amount and explicit draft currency must agree; rejected lines cannot
+be mapped, and missing quantities/identity/currency are not inferred. Additional human-authored
+lines remain possible. This is also a domain component, not a published acceptance route.
+Header/customer/structured-term bindings, the pending AI_PROPOSAL_ACCEPTANCE approval subject,
+permission/source/expiry/SoD checks and atomic draft-plus-acceptance persistence remain to be wired.
 
 The Anthropic adapter is mock-tested, uses the official SDK, disables SDK retries and telemetry,
 and resolves secrets lazily. Contract-review and explain-narrative prompts have retained bytes,

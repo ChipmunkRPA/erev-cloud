@@ -5193,3 +5193,22 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Extraction dispatch, budget/provider recovery, submission, field schemas and human acceptance
   remain open. These components do not invoke a provider or apply accounting changes. Broader
   release verification and independent accounting sign-off remain outstanding. No deployment.
+
+## Extraction provider-failure evidence — October 15, 2026
+
+- Added terminal extraction failure persistence using the existing committed attempt log.
+  It rebuilds retained document evidence, validates request/provider/error metadata and the
+  initiating human/job intent, then writes a failed proposal with empty content/citations.
+  It neither duplicates the attempt nor changes its reported/unknown usage. Narrative failures
+  share the evidence validator; extraction additionally requires a call intent.
+- Verification: 21 AI PostgreSQL cases passed, including narrative retries and extraction
+  failure/rollback. The final focused extraction case also passed after adding missing-intent
+  refusal and explicitly binding test-loop captures. Tests cover timeout with unknown usage,
+  permission failure with reported usage, unchanged log bytes/metadata, wrong error codes,
+  unrelated response logs, no intent, rollback and audit attribution. Seventeen architecture
+  checks passed. Full lint/typecheck passed (929 Python sources plus frontend); final focused
+  typing passed 780 sources. Logs: .run/ai-extraction-failure-{pg,pg-final,layers,lint,
+  types-final,typecheck}.log.
+- The gateway still owns admission and retry exhaustion. Extraction dispatch, provider recovery,
+  submission, review/acceptance and the broader release/accounting gates remain unfinished.
+  No deployment or live provider call; no production-readiness claim.

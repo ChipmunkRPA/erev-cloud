@@ -2,6 +2,27 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Explicit extraction draft inputs and line bindings — October 15, 2026
+
+- Added draft-intake preparation using the existing ContractCreateIn schema, explicit entity,
+  field decisions and line_bindings from retained paths to obligation keys. Entity codes must
+  agree, activation is forbidden, mapping targets must exist and be unique, and every retained
+  line must map exactly once. Rejected lines cannot be mapped. Mapped product and exact amount
+  must agree with reviewed values, and line currency must match the explicit draft currency.
+- Required contract identity, currency, quantities and obligation keys come from human input;
+  no source value fills missing fields. Additional human-authored lines remain possible. This
+  is not an acceptance endpoint. Header/customer/structured-term binding, the pending approval
+  subject AI_PROPOSAL_ACCEPTANCE, command authorization/expiry/SoD and atomic persistence remain.
+- Verification: 76 unit/layer tests passed, including 24 new draft cases, 35 field-review cases
+  and 17 architecture checks. Tests cover required inputs, entity/activation/command refusals,
+  mapping coverage/uniqueness, product/sign/amount/currency mismatches, edit consistency and
+  rejected lines. Initial fixture/scalar comparisons were corrected to use API-S-Money objects
+  and decimal-string quantities; guards were retained. Full typecheck passed (936 Python sources
+  plus frontend), focused typing passed 788 sources and final formatting/lint/diff checks passed.
+  Full lint also passed. Logs: .run/ai-draft-review-{verified,typecheck,types-final,lint}.log.
+- Broader release/accounting verification and large-tenant list performance remain open. No
+  deployment or live provider calls; the acceptance route remains disabled.
+
 ## Explicit extraction field-review decisions — October 15, 2026
 
 - Added the ACCEPT/EDIT/REJECT request item schema and pure review resolver. Every retained path
@@ -209,25 +230,6 @@
 - This closes a prerequisite discovered at gateway integration: call evidence previously could
   not locate or protect retained text before proposal persistence. Extraction execution/recovery,
   submission and human review remain unfinished, alongside the broader release/accounting gates.
-
-## Extraction provider-failure evidence — October 15, 2026
-
-- Added terminal extraction failure persistence using the existing committed attempt log.
-  It rebuilds retained document evidence, validates request/provider/error metadata and the
-  initiating human/job intent, then writes a failed proposal with empty content/citations.
-  It neither duplicates the attempt nor changes its reported/unknown usage. Narrative failures
-  share the evidence validator; extraction additionally requires a call intent.
-- Verification: 21 AI PostgreSQL cases passed, including narrative retries and extraction
-  failure/rollback. The final focused extraction case also passed after adding missing-intent
-  refusal and explicitly binding test-loop captures. Tests cover timeout with unknown usage,
-  permission failure with reported usage, unchanged log bytes/metadata, wrong error codes,
-  unrelated response logs, no intent, rollback and audit attribution. Seventeen architecture
-  checks passed. Full lint/typecheck passed (929 Python sources plus frontend); final focused
-  typing passed 780 sources. Logs: .run/ai-extraction-failure-{pg,pg-final,layers,lint,
-  types-final,typecheck}.log.
-- The gateway still owns admission and retry exhaustion. Extraction dispatch, provider recovery,
-  submission, review/acceptance and the broader release/accounting gates remain unfinished.
-  No deployment or live provider call; no production-readiness claim.
 
 ## Outstanding release verification
 

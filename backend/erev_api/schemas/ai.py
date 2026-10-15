@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 from erev_api.enums import AiFieldDecision, AiProposalStatus
 from erev_api.schemas.common import ActorOut
+from erev_api.schemas.contracts import ContractCreateIn
 from erev_api.schemas.explain import ExplainObjectType
 
 
@@ -111,4 +112,28 @@ class AIFieldDecisionIn(BaseModel):
             raise ValueError("Only an edit may supply a replacement value.")
         if self.decision in (AiFieldDecision.EDIT, AiFieldDecision.REJECT) and self.reason is None:
             raise ValueError("Edits and rejections require a reason.")
+        return self
+
+
+class AIExtractionDraftIn(BaseModel):
+    """Explicit draft inputs for review; this model does not enable acceptance."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    command: Literal["contract.create_draft"]
+    entity_code: str = Field(min_length=1, max_length=255)
+    field_decisions: tuple[AIFieldDecisionIn, ...] = Field(min_length=1, max_length=507)
+    draft: ContractCreateIn
+    line_bindings: dict[str, str] = Field(default_factory=dict, max_length=500)
+
+    @model_validator(mode="after")
+    def explicit_draft(self) -> Self:
+        if self.draft.submit_for_activation:
+            raise ValueError("AI review may create only a draft.")
+        if self.entity_code != self.draft.contracting_entity_code:
+            raise ValueError("The review entity must match the draft entity.")
+        keys = {line.obligation_key for line in self.draft.lines}
+        targets = list(self.line_bindings.values())
+        if len(set(targets)) != len(targets) or not set(targets).issubset(keys):
+            raise ValueError("Each line binding must name a different draft obligation key.")
         return self
