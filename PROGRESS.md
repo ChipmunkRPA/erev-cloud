@@ -2,6 +2,26 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Atomic narrative proposal persistence — October 15, 2026
+
+- Added NUMBER_EXPLANATION persistence under a scoped human unit of work. Before writing,
+  it reloads the retained trace, rebuilds the request and validates the complete request
+  against the prepared evidence; caller-substituted value mappings cannot support figures.
+- Successful output writes a proposed trace-subject narrative and node citations; unsupported
+  output writes a failed proposal with a fixed problem code and empty content/citations.
+  Both retain usage and human attribution, default to 30-day expiry and leave acceptance empty.
+- Attempt log, proposal and AUD-CMD/AUD-FACT events share the caller's transaction. Proposal
+  audit events name the trace version's visible obligation contracts and retain content/citation
+  hashes rather than narrative text. Registered the proposal audit type and unlabelled identity.
+- Real K-01 integration verifies commit, failure, rollback, request tampering, scope refusal,
+  forged value mappings, audit attribution and unchanged accounting versions. Fixed explicit
+  SQL NULL handling for the successful proposal's JSONB problem column.
+- Verification: 241 targeted tests passed, two Linux-only parser tests skipped; strict typing
+  passed for 765 sources; Ruff/diff checks pass. Logs: .run/ai-proposal-write-{final,types}.log.
+- The caller still owes fresh authorization, settings/budget admission and commit before lease
+  release. Gateway/job dispatch, public APIs, other proposal kinds and human decisions remain
+  unfinished; the full AI audit-lifecycle gate stays open. No deployment or readiness claim.
+
 ## Authorized read-only AI explanation retrieval — October 15, 2026
 
 - Added a worker retrieval boundary that reauthorizes the persisted AI job's human,
@@ -227,23 +247,6 @@
 - This helper is not connected to a gateway. Command-specific value schemas, redaction-offset
   mapping, semantic citation review, narrative-number checks, authorised jobs, budgets,
   persistence/auditing and human acceptance remain open. No live calls or deployment.
-
-## AI request preparation boundary — October 14, 2026
-
-- Moved provider contracts to domain ports, preserving adapter exports, so the forthcoming
-  gateway can depend on the protocol without importing a network adapter.
-- Added exact UTF-8 template digest checks and canonical request preparation. The explicit
-  document-text argument requires opt-in; existing PRV-08 patterns redact values and system
-  text. Contact-bearing field names are refused, not silently leaked or collapsed.
-- Outgoing messages and configuration are immutable; the input digest binds template/version,
-  actual message bytes, model, system text and generation/redaction settings. Floats are
-  refused by canonical encoding. Callers still owe authorised, minimised input selection.
-- Provider/preparation/configuration/privacy/architecture checks: 165 passed (23.21s).
-  Strict API/test typing: 749 sources; Ruff/formatting pass. Evidence:
-  .run/ai-preparation-checks.log and .run/ai-preparation-types.log.
-- This is not an enabled gateway: job-only authorization, budget reservation, output
-  validation, durable attempt/audit writes and human acceptance remain open. No live calls,
-  deployment or readiness claim.
 
 ## Outstanding release verification
 

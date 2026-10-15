@@ -5804,6 +5804,13 @@ Keys: `PRIMARY KEY (tenant_id, id)`; `ix_deal_preview__created (tenant_id, creat
 
 Keys: `PRIMARY KEY (tenant_id, id)`; `ix_ai_proposal__status (tenant_id, kind, status, created_at)`.
 
+NUMBER_EXPLANATION persistence uses `subject_type = 'calc_trace'` with the retained
+trace ID. Each record citation also carries `node_id`, identifying the cited node
+within that trace. Failed narrative proposals retain a fixed problem code and empty
+content/citations. `ai_proposal.create` is an unlabelled AUD-CMD event: it names the
+proposal, related visible obligation contracts and hashes of content/citations, with
+no narrative text copied into the audit event. Acceptance remains a separate workflow.
+
 ### T-AI-02 `ai_model_log`
 
 - **Purpose.** Configuration evidence per AI call (REQ-AI-004). Hashes only; prompt and response text are not stored.

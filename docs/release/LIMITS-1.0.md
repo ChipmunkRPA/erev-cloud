@@ -38,6 +38,12 @@ It is not yet called by a registered AI_TASK handler or public API. Gateway admi
 provider execution, proposal persistence and approval/acceptance remain outstanding;
 contract-document and Q&A retrieval are separate unfinished paths.
 
+NUMBER_EXPLANATION now has a transaction-bound proposal writer: it revalidates the
+retained trace/request and commits attempt evidence, proposed/failed output and audit
+records together. Real-contract tests verify rollback, rejected-text exclusion and no
+accounting changes. This does not finish the gateway, retries/crash recovery, public API,
+other proposal kinds or human acceptance; the full AI lifecycle gate remains open.
+
 Migration 0148 adds immutable proposal content/citations, tenant-bound evidence references
 and SM-11 state guards. The schema and full migration round trip are verified; proposal
 creation/acceptance APIs, approval integration and lifecycle audit events remain absent.

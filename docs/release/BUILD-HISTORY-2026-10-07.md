@@ -4217,3 +4217,20 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
 - Gateway/jobs, retained prompt fixtures, human acceptance and lifecycle auditing remain
   unfinished. SUPERVISOR VERIFICATION NEEDED: live Anthropic provider smoke test (not run;
   no live calls authorized here). No deployment or production-readiness claim.
+
+## AI request preparation boundary — October 14, 2026
+
+- Moved provider contracts to domain ports, preserving adapter exports, so the forthcoming
+  gateway can depend on the protocol without importing a network adapter.
+- Added exact UTF-8 template digest checks and canonical request preparation. The explicit
+  document-text argument requires opt-in; existing PRV-08 patterns redact values and system
+  text. Contact-bearing field names are refused, not silently leaked or collapsed.
+- Outgoing messages and configuration are immutable; the input digest binds template/version,
+  actual message bytes, model, system text and generation/redaction settings. Floats are
+  refused by canonical encoding. Callers still owe authorised, minimised input selection.
+- Provider/preparation/configuration/privacy/architecture checks: 165 passed (23.21s).
+  Strict API/test typing: 749 sources; Ruff/formatting pass. Evidence:
+  .run/ai-preparation-checks.log and .run/ai-preparation-types.log.
+- This is not an enabled gateway: job-only authorization, budget reservation, output
+  validation, durable attempt/audit writes and human acceptance remain open. No live calls,
+  deployment or readiness claim.

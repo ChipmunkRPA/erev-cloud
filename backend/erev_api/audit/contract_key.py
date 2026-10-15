@@ -77,6 +77,7 @@ ALWAYS: Final = frozenset(
 )
 WHERE_NAMED: Final = frozenset(
     {
+        "ai_proposal",  # extraction may precede a contract; trace explanations name contracts.
         "evidence_pack",  # sample packs name contracts; period/access/change packs may not
         "estimate",  # an estimate of a portfolio names no contract (T-CON-12)
         "estimate_version",
