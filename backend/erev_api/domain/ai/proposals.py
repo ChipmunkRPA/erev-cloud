@@ -14,7 +14,7 @@ from sqlalchemy import insert, null, select
 
 from erev_api.audit.writer import record
 from erev_api.db import new_id
-from erev_api.db.tables import ai_model_log, ai_proposal, calc_trace, obligation_version
+from erev_api.db.tables import ai_model_log, ai_proposal, calc_trace, job, obligation_version
 from erev_api.domain.ai.attempts import record_attempt
 from erev_api.domain.ai.narratives import NarrativeSelection, PreparedNarrative, prepare_narrative
 from erev_api.domain.ai.ports import AIResponse
@@ -102,6 +102,8 @@ def record_narrative(
     prepared: PreparedNarrative,
     response: AIResponse,
     provider: Literal["fake", "anthropic"],
+    job_id: UUID | None = None,
+    job_source_sha256: str | None = None,
 ) -> UUID:
     """Revalidate the immutable trace, then buffer log/proposal/audit atomically.
 
@@ -121,7 +123,7 @@ def record_narrative(
         if selected.proposed
         else ("refusal" if selected.problem_code == "AI_REFUSAL" else "invalid_output"),
     )
-    return _insert_narrative(uow, rebuilt, log_id, selected, contracts)
+    return _insert_narrative(uow, rebuilt, log_id, selected, contracts, job_id, job_source_sha256)
 
 
 def _insert_narrative(
@@ -130,8 +132,25 @@ def _insert_narrative(
     log_id: UUID,
     selected: NarrativeSelection,
     contracts: tuple[UUID, ...],
+    job_id: UUID | None,
+    job_source_sha256: str | None,
 ) -> UUID:
     principal = uow.principal
+    if (job_id is None) != (job_source_sha256 is None):
+        raise ProposalEvidenceRefused("AI_INVALID_JOB_BINDING")
+    if job_id is not None:
+        owned = uow.session.scalar(
+            select(job.c.id).where(
+                job.c.tenant_id == principal.tenant_id,
+                job.c.id == job_id,
+                job.c.kind == "AI_TASK",
+                job.c.created_by == principal.id,
+                job.c.created_by_kind == "USER",
+                job.c.state == "RUNNING",
+            )
+        )
+        if owned is None:
+            raise ProposalEvidenceRefused("AI_INVALID_JOB_BINDING")
     proposal_id = new_id()
     status = "proposed" if selected.proposed else "failed"
     content = {"narrative": list(selected.narrative)} if selected.proposed else {}
@@ -144,6 +163,8 @@ def _insert_narrative(
             tenant_id=principal.tenant_id,
             id=proposal_id,
             kind="NUMBER_EXPLANATION",
+            job_id=job_id,
+            job_source_sha256=job_source_sha256,
             status=status,
             subject_type="calc_trace",
             subject_id=prepared.trace_id,
@@ -200,6 +221,8 @@ def record_provider_failure(
     log_id: UUID,
     provider: Literal["fake", "anthropic"],
     code: str,
+    job_id: UUID | None = None,
+    job_source_sha256: str | None = None,
 ) -> UUID:
     """Finalize a provider failure using its already committed attempt, without relogging it."""
     if code not in PROVIDER_FAILURE_CODES:
@@ -233,5 +256,11 @@ def record_provider_failure(
     if log is None or any(log[key] != value for key, value in expected.items()):
         raise ProposalEvidenceRefused("AI_ATTEMPT_EVIDENCE_MISMATCH")
     return _insert_narrative(
-        uow, rebuilt, log_id, NarrativeSelection(False, (), (), code), contracts
+        uow,
+        rebuilt,
+        log_id,
+        NarrativeSelection(False, (), (), code),
+        contracts,
+        job_id,
+        job_source_sha256,
     )

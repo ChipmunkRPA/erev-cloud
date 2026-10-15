@@ -12,6 +12,11 @@ from datetime import date, datetime, timedelta
 from typing import Literal
 from uuid import UUID
 
+from erev_engine.canonical import sha256_hex
+from sqlalchemy import select
+
+from erev_api.db.session import tenant_session
+from erev_api.db.tables import ai_model_log, ai_proposal, calc_trace
 from erev_api.domain.ai.access import AIAccessRefused, authorize_job
 from erev_api.domain.ai.attempts import record_attempt
 from erev_api.domain.ai.budget import AIBudgetRefused, budget_guard
@@ -38,6 +43,21 @@ class NarrativeSource:
     book_code: str | None = None
     as_of: date | None = None
     known_at: datetime | None = None
+
+
+def source_sha256(source: NarrativeSource, max_tokens: int) -> str:
+    return sha256_hex(
+        {
+            "object_type": source.object_type,
+            "object_id": str(source.object_id),
+            "measure": source.measure,
+            "period": source.period,
+            "book_code": source.book_code,
+            "as_of": source.as_of.isoformat() if source.as_of is not None else None,
+            "known_at": source.known_at.isoformat() if source.known_at is not None else None,
+            "max_tokens": max_tokens,
+        }
+    )
 
 
 _RETRYABLE_PROVIDER_CODES = frozenset(
@@ -138,6 +158,60 @@ class AiGateway:
             uow.commit()
             return log_id
 
+    def _completed(
+        self, context: JobContext, source: NarrativeSource, max_tokens: int
+    ) -> UUID | None:
+        with context.read_session() as session:
+            row = (
+                session.execute(
+                    select(ai_proposal, ai_model_log.c.model_id, ai_model_log.c.parameters)
+                    .join(
+                        ai_model_log,
+                        (ai_model_log.c.tenant_id == ai_proposal.c.tenant_id)
+                        & (ai_model_log.c.id == ai_proposal.c.ai_model_log_id),
+                    )
+                    .where(
+                        ai_proposal.c.tenant_id == context.tenant_id,
+                        ai_proposal.c.job_id == context.job_id,
+                    )
+                )
+                .mappings()
+                .one_or_none()
+            )
+        if row is None:
+            return None
+        if (
+            row["job_source_sha256"] != source_sha256(source, max_tokens)
+            or row["created_by"] != context.principal.on_behalf_of_id
+            or row["kind"] != "NUMBER_EXPLANATION"
+            or row["subject_type"] != "calc_trace"
+        ):
+            raise PreparationRefused("AI_JOB_INPUT_CHANGED")
+        # A completed result bypasses new-call admission, never current read permissions.
+        fresh = retrieve_narrative(
+            context,
+            object_type=source.object_type,
+            object_id=source.object_id,
+            measure=source.measure,
+            period=source.period,
+            book_code=source.book_code,
+            as_of=source.as_of,
+            known_at=source.known_at,
+            model=row["model_id"],
+            max_tokens=max_tokens,
+            redact_contact_details=row["parameters"]["redact_contact_details"],
+        )
+        with tenant_session(fresh.principal.db_context, read_only=True) as session:
+            visible = session.scalar(
+                select(calc_trace.c.id).where(
+                    calc_trace.c.tenant_id == context.tenant_id,
+                    calc_trace.c.id == row["subject_id"],
+                )
+            )
+        if visible is None:
+            raise AIAccessRefused("AI_TRACE_UNAVAILABLE")
+        return UUID(str(row["id"]))
+
     def run_narrative_attempt(
         self, context: JobContext, source: NarrativeSource, *, max_tokens: int
     ) -> UUID:
@@ -149,10 +223,13 @@ class AiGateway:
         """
         with context.read_session() as session:
             principal = authorize_job(context, session)
-        settings = self._settings(context)
         with budget_guard(principal.db_context) as guard:
             if guard is None:
                 raise AIBudgetRefused("AI_BUDGET_BUSY")
+            completed = self._completed(context, source, max_tokens)
+            if completed is not None:
+                return completed
+            settings = self._settings(context)
             guard.require_available(
                 now=context.clock.now(), monthly_budget=settings.monthly_token_budget
             )
@@ -200,7 +277,12 @@ class AiGateway:
                 clock=context.clock,
             ) as uow:
                 proposal = record_narrative(
-                    uow, prepared=fresh.prepared, response=response, provider=self.provider
+                    uow,
+                    prepared=fresh.prepared,
+                    response=response,
+                    provider=self.provider,
+                    job_id=context.job_id,
+                    job_source_sha256=source_sha256(source, max_tokens),
                 )
                 uow.commit()
             return proposal
@@ -257,6 +339,8 @@ class AiGateway:
                         log_id=failure.log_id,
                         provider=self.provider,
                         code=failure.code,
+                        job_id=context.job_id,
+                        job_source_sha256=source_sha256(source, max_tokens),
                     )
                     uow.commit()
                 return proposal

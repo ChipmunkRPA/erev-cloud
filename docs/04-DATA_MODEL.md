@@ -5782,6 +5782,8 @@ Keys: `PRIMARY KEY (tenant_id, id)`; `ix_deal_preview__created (tenant_id, creat
 | SC-T | | | | |
 | `kind` | erev.ai_proposal_kind | N | | |
 | `status` | erev.ai_proposal_status | N | `'proposed'` | |
+| `job_id` | uuid | Y | | Tenant-bound job FK; unique when present. Historical proposals may be unbound. |
+| `job_source_sha256` | char(64) | Y | | Immutable source-input fingerprint; present exactly when job_id is present. |
 | `subject_type` | text | Y | | |
 | `subject_id` | uuid | Y | | |
 | `file_object_id` | uuid | Y | | Contract document for extraction. |
@@ -5803,6 +5805,8 @@ Keys: `PRIMARY KEY (tenant_id, id)`; `ix_deal_preview__created (tenant_id, creat
 | SC-C, SC-M | | | | |
 
 Keys: `PRIMARY KEY (tenant_id, id)`; `ix_ai_proposal__status (tenant_id, kind, status, created_at)`.
+Migration 0149 adds `ux_ai_proposal__job (tenant_id, job_id)` where job_id is not null.
+Job/source bindings are immutable; downgrade refuses to discard populated bindings.
 
 NUMBER_EXPLANATION persistence uses `subject_type = 'calc_trace'` with the retained
 trace ID. Each record citation also carries `node_id`, identifying the cited node

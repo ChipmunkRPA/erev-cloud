@@ -348,7 +348,7 @@ def test_single_head() -> None:
     # 0142: immutable evidence-pack source bindings.
     # 0143: out-of-period report metadata matches its existing late-event reader.
     # 0144 royalty template; 0145/0146 option terms; 0147 call logs; 0148 AI proposals.
-    assert lines[0].split()[0] == "0148"
+    assert lines[0].split()[0] == "0149"  # completed AI job bindings
 
 
 def test_upgrade_downgrade_upgrade(test_database: TestDatabase) -> None:

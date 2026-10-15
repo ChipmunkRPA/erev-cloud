@@ -2,6 +2,25 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Completed AI job redelivery protection — October 15, 2026
+
+- Migration 0149 adds optional immutable proposal job/source-hash bindings with a tenant
+  foreign key, paired digest check and one-proposal-per-job unique index. Existing rows stay
+  unbound. Downgrade refuses populated completion evidence; metadata/privacy declarations match.
+- The narrative gateway checks completed jobs under its budget lease before new-call admission.
+  A redelivery rechecks human/source access and the stored trace's visibility, then returns the
+  original proposal even after budget exhaustion or disablement, without a provider call.
+  Changed source inputs or token limits refuse instead of reusing an unrelated result.
+- Both successful and terminal-failure writers bind the job. Tests verify normal/failed
+  redelivery, unchanged call counts, budget/kill-switch behavior, tenant FK, uniqueness,
+  application and owner immutability, downgrade refusal and a full migration round trip.
+- Verification: 20 gateway/privacy/head checks passed; 265 migration/AI/architecture checks
+  passed with two Linux parser-limit skips; typing passed for 769 sources; Ruff/diff pass.
+  Logs: .run/ai-job-completion-{checks,types}.log and .run/ai-job-binding-final.log.
+- This protects completed results. Recovery between a provider call and its committed result,
+  retry-count recovery for unfinished jobs, admission failures, job/API registration and the
+  remaining AI workflows are still open. No deployment or production-readiness claim.
+
 ## Bounded narrative retries and terminal provider failure — October 15, 2026
 
 - Added a three-attempt gateway wrapper with injected 5/10-second waits. Only classified
@@ -208,41 +227,6 @@
   environment. These are not established by the local transport tests. No deployment.
 - AI_TASK integration remains absent; the new subprocess entry point is not yet called by
   an enabled job. File authorization/storage, gateway budgets/auditing and acceptance remain open.
-
-## PDF extraction and retained WLD-F-29 evidence — October 15, 2026
-
-- Added pypdf 6.20.1 (BSD-3-Clause), worker-side PDF parsing and context-local stream/tree
-  limits. Disabled text sharing refuses before parsing; files over 25 MiB, encrypted/invalid
-  PDFs, more than 600 pages, over 2 MiB extracted UTF-8 text and textless documents refuse.
-  Empty pages retain their numbering. Parser diagnostics are not returned as error details.
-- Generated the four-page synthetic Kinsley Marrow order form and visually checked every
-  page. A retained exact-input fake response now exercises all nine documented fields,
-  confidences and three review flags through PDF parsing, preparation and citation validation.
-  These checks create no proposal and apply no accounting fields or commands.
-- AI/architecture/licence-unit checks: 154 passed (17.71s); strict API/test typing: 755 sources;
-  Ruff and lock checks pass. Licence inventory: 142 packages, zero findings. Development
-  dependency audit: all 86 pinned Python distributions and npm report zero vulnerabilities.
-  Logs: .run/ai-pdf-{checks,types,licences,audit}.log; rendered pages: .run/ai-pdf-preview/.
-- Worker process memory/time enforcement remains unverified: parser caps are not a process
-  sandbox. Authorized reads, durable AI_DOCUMENT_TEXT files, job integration, budgets, audit
-  writes and human acceptance remain open. No live provider call, deployment or readiness claim.
-
-## Document preparation and citation binding — October 15, 2026
-
-- Added extraction preparation over ordered worker-provided page text. Text sharing disabled
-  refuses before page inspection; documents must have 1–600 pages and at most 2 MiB UTF-8
-  text before and after redaction. Blank pages retain their original page numbers.
-- The retained contract-review template, document UUID and allowed paths feed immutable
-  request preparation. Exact outgoing page text is checked against retained redaction maps;
-  any serialization/redaction mismatch refuses. Provider payloads exclude source mappings.
-- A fake-provider integration check follows preparation through response validation and
-  confirms that the cited amount addresses original source characters with low-confidence
-  review still required. Tests also cover mutation, Unicode limits and redaction expansion.
-- AI/privacy/architecture checks: 195 passed (16.54s); strict API/test typing: 753 sources;
-  Ruff passes. Logs: .run/ai-document-preparation-{checks,types}.log.
-- PDF extraction/worker limits, authorized file reads, durable text storage, operational
-  gateway jobs/budgets/auditing and human acceptance remain open. This helper enables no
-  route and makes no live call; no deployment or readiness claim.
 
 ## Outstanding release verification
 

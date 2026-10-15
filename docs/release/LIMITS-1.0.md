@@ -59,6 +59,12 @@ The worker still needs to supply real waiting/dispatch, enforce job delivery ide
 handle admission failures, notifications and crash recovery. This is not registered job/API
 coverage or a completed AI lifecycle gate.
 
+Migration 0149 binds completed narrative proposals to a unique tenant/job and immutable
+source fingerprint. Redelivery returns the existing result after current read authorization,
+without another model call, including after budget exhaustion or disablement. Migration and
+real-contract tests verify these cases. This does not recover unfinished provider calls or
+retry counts after a crash, and does not complete job registration or public API delivery.
+
 Migration 0148 adds immutable proposal content/citations, tenant-bound evidence references
 and SM-11 state guards. The schema and full migration round trip are verified; proposal
 creation/acceptance APIs, approval integration and lifecycle audit events remain absent.

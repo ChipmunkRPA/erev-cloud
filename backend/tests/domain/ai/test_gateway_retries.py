@@ -113,6 +113,8 @@ def test_retry_evidence_and_terminal_outcome(
         proposal = None
     else:
         proposal = gateway.run_narrative(context, source, max_tokens=1000, wait=wait)
+    if proposal is not None:
+        assert gateway.run_narrative(context, source, max_tokens=1000, wait=wait) == proposal
     assert len(observed) == calls
     assert waits == (
         []

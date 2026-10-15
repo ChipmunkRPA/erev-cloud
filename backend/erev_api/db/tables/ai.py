@@ -36,6 +36,8 @@ ai_proposal: Final = Table(
     Column("tenant_id", Uuid(), primary_key=True),
     Column("id", Uuid(), primary_key=True),
     Column("kind", _enum(AiProposalKind, "ai_proposal_kind"), nullable=False),
+    Column("job_id", Uuid(), nullable=True),
+    Column("job_source_sha256", CHAR(64), nullable=True),
     Column(
         "status",
         _enum(AiProposalStatus, "ai_proposal_status"),

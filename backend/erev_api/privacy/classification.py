@@ -3283,7 +3283,8 @@ TABLES: Final[tuple[TableClassification, ...]] = (
         {
             R01: _cols(
                 "tenant_id id kind status subject_type subject_id file_object_id "
-                "document_text_file_id ai_model_log_id accepted_object_id accepted_by "
+                "document_text_file_id ai_model_log_id job_id job_source_sha256 "
+                "accepted_object_id accepted_by "
                 "accepted_at rejected_by rejected_at expires_at created_at created_by "
                 "created_by_kind updated_at updated_by updated_by_kind row_version"
             ),

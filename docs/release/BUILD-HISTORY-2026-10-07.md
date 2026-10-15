@@ -4276,3 +4276,38 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
 - This does not implement the gateway or complete AIX-3. Other prompt kinds, retained response
   fixtures, job authorization/budgets, audited attempt persistence and human acceptance remain
   open. No provider call or deployment; no production-readiness claim.
+
+## Document preparation and citation binding — October 15, 2026
+
+- Added extraction preparation over ordered worker-provided page text. Text sharing disabled
+  refuses before page inspection; documents must have 1–600 pages and at most 2 MiB UTF-8
+  text before and after redaction. Blank pages retain their original page numbers.
+- The retained contract-review template, document UUID and allowed paths feed immutable
+  request preparation. Exact outgoing page text is checked against retained redaction maps;
+  any serialization/redaction mismatch refuses. Provider payloads exclude source mappings.
+- A fake-provider integration check follows preparation through response validation and
+  confirms that the cited amount addresses original source characters with low-confidence
+  review still required. Tests also cover mutation, Unicode limits and redaction expansion.
+- AI/privacy/architecture checks: 195 passed (16.54s); strict API/test typing: 753 sources;
+  Ruff passes. Logs: .run/ai-document-preparation-{checks,types}.log.
+- PDF extraction/worker limits, authorized file reads, durable text storage, operational
+  gateway jobs/budgets/auditing and human acceptance remain open. This helper enables no
+  route and makes no live call; no deployment or readiness claim.
+
+## PDF extraction and retained WLD-F-29 evidence — October 15, 2026
+
+- Added pypdf 6.20.1 (BSD-3-Clause), worker-side PDF parsing and context-local stream/tree
+  limits. Disabled text sharing refuses before parsing; files over 25 MiB, encrypted/invalid
+  PDFs, more than 600 pages, over 2 MiB extracted UTF-8 text and textless documents refuse.
+  Empty pages retain their numbering. Parser diagnostics are not returned as error details.
+- Generated the four-page synthetic Kinsley Marrow order form and visually checked every
+  page. A retained exact-input fake response now exercises all nine documented fields,
+  confidences and three review flags through PDF parsing, preparation and citation validation.
+  These checks create no proposal and apply no accounting fields or commands.
+- AI/architecture/licence-unit checks: 154 passed (17.71s); strict API/test typing: 755 sources;
+  Ruff and lock checks pass. Licence inventory: 142 packages, zero findings. Development
+  dependency audit: all 86 pinned Python distributions and npm report zero vulnerabilities.
+  Logs: .run/ai-pdf-{checks,types,licences,audit}.log; rendered pages: .run/ai-pdf-preview/.
+- Worker process memory/time enforcement remains unverified: parser caps are not a process
+  sandbox. Authorized reads, durable AI_DOCUMENT_TEXT files, job integration, budgets, audit
+  writes and human acceptance remain open. No live provider call, deployment or readiness claim.

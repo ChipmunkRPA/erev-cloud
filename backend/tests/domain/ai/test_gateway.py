@@ -16,6 +16,7 @@ from erev_api.domain.ai.access import AIAccessRefused
 from erev_api.domain.ai.budget import AIBudgetRefused, budget_guard
 from erev_api.domain.ai.gateway import AiGateway, NarrativeSource
 from erev_api.domain.ai.ports import AIRequest, AIResponse, ProviderError
+from erev_api.domain.ai.preparation import PreparationRefused
 from erev_api.domain.ai.retrieval import retrieve_narrative
 from erev_api.domain.ai.settings import AISettingsRefused
 from erev_api.enums import RegistryCategory
@@ -36,16 +37,20 @@ def test_admitted_call_failure_kill_switch_and_exhaustion(
     k01_computed(world)
     line = september_line(world)
     assign(world.maya.member, "viewer")
-    original = context_for(world.maya.member, clock)
-    context = JobContext(
-        job_id=original.job_id,
-        tenant_id=original.tenant_id,
-        kind=original.kind,
-        principal=original.principal,
-        runtime=replace(
-            original.runtime, keyring=keyring, files=LocalFileStore(tmp_path / "files")
-        ),
-    )
+
+    def next_context() -> JobContext:
+        original = context_for(world.maya.member, clock)
+        return JobContext(
+            job_id=original.job_id,
+            tenant_id=original.tenant_id,
+            kind=original.kind,
+            principal=original.principal,
+            runtime=replace(
+                original.runtime, keyring=keyring, files=LocalFileStore(tmp_path / "files")
+            ),
+        )
+
+    context = next_context()
     switch = {"disabled": False}
     state: dict[str, str | int] = {"mode": "success", "calls": 0, "factories": 0}
 
@@ -140,15 +145,21 @@ def test_admitted_call_failure_kill_switch_and_exhaustion(
             gateway.run_narrative_attempt(context, source, max_tokens=1000)
     assert counts() == (0, 0)
     proposal = gateway.run_narrative_attempt(context, source, max_tokens=1000)
+    completed_context = context
+    assert gateway.run_narrative_attempt(context, source, max_tokens=1000) == proposal
+    assert counts() == (1, 1)
+    context = next_context()
     state["mode"] = "timeout"
     with pytest.raises(ProviderError) as error:
         gateway.run_narrative_attempt(context, source, max_tokens=1000)
     assert error.value.retryable and error.value.code == "AI_TIMEOUT"
+    context = next_context()
     state["mode"] = "disable"
     with pytest.raises(AISettingsRefused, match="AI_DISABLED"):
         gateway.run_narrative_attempt(context, source, max_tokens=1000)
     assert counts() == (3, 3)
     switch["disabled"] = False
+    context = next_context()
     state["mode"] = "revoke"
     with pytest.raises(AIAccessRefused, match="AI_PERMISSION_DENIED"):
         gateway.run_narrative_attempt(context, source, max_tokens=1000)
@@ -157,10 +168,16 @@ def test_admitted_call_failure_kill_switch_and_exhaustion(
     with pytest.raises(AIBudgetRefused, match="AI_BUDGET_EXHAUSTED"):
         gateway.run_narrative_attempt(context, source, max_tokens=1000)
     assert counts() == (4, 4)
+    switch["disabled"] = True
+    assert gateway.run_narrative_attempt(completed_context, source, max_tokens=1000) == proposal
+    assert counts() == (4, 4)
+    with pytest.raises(PreparationRefused, match="AI_JOB_INPUT_CHANGED"):
+        gateway.run_narrative_attempt(completed_context, source, max_tokens=1001)
     with tenant_session(context.principal.db_context, read_only=True) as session:
         proposals = list(session.execute(select(ai_proposal)).mappings())
         assert len(proposals) == 1 and proposals[0]["id"] == proposal
         assert proposals[0]["status"] == "proposed"
+        assert proposals[0]["job_id"] == completed_context.job_id
         logs = list(session.execute(select(ai_model_log)).mappings())
         assert len(logs) == 4
         assert {row["outcome"] for row in logs} == {"SUCCESS", "TIMEOUT", "ERROR"}
