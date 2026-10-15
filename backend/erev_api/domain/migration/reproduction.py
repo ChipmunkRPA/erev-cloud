@@ -12,7 +12,7 @@ from erev_engine.errors import EngineError, PrincipalAgentInputError
 from erev_engine.upgrade import decode_input
 
 from erev_api.domain.contracts import computation
-from erev_api.domain.migration import capture, opening_balances, repository
+from erev_api.domain.migration import activation_review, capture, opening_balances, repository
 from erev_api.problems import Problem, ProblemError
 from erev_api.uow import UnitOfWork
 
@@ -42,7 +42,7 @@ def verify(
     batch: Mapping[str, Any],
     staging: opening_balances.Staging,
     captures: Sequence[Mapping[str, Any]],
-) -> dict[str, str]:
+) -> dict[str, dict[str, Any]]:
     """Replay retained input, then rebook against live configuration inside a savepoint.
 
     This is preflight, not activation admission or approval. A future promotion command must
@@ -69,13 +69,15 @@ def verify(
     keys = [item.external_id for item in staging.contracts]
     if len(keys) != len(expected) or set(keys) != set(expected):
         raise _refuse("The reproduction plan and retained output population differ.")
+    reviewed: dict[str, dict[str, Any]] = {}
     child = capture.migration_unit(uow)
     savepoint = child.session.begin_nested()
     try:
         for contract in staging.contracts:
             applied = capture.platform_applier.apply(child, batch=batch, contract=contract)
             try:
-                fresh = run(decode_input(applied.input_evidence))
+                fresh_input = decode_input(applied.input_evidence)
+                fresh = run(fresh_input)
             except PrincipalAgentInputError as error:
                 raise _refuse(
                     f"Fresh agent assessment inputs are incomplete for {contract.external_id}."
@@ -89,7 +91,11 @@ def verify(
                     "Current configuration does not reproduce all outputs of "
                     f"{contract.external_id}."
                 )
+            reviewed[contract.external_id] = {
+                "output_sha256": expected[contract.external_id],
+                "activation": activation_review.preview(fresh_input, contract.external_id),
+            }
     finally:
         savepoint.rollback()
         child.drain_audit_events()
-    return expected
+    return reviewed

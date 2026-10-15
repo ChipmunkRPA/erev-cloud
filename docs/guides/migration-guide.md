@@ -11,7 +11,10 @@ review. A retained capture without this plan must be re-imported before promotio
 not substitute current defaults for choices that were not retained. Review also replays the
 retained engine output hash and rebuilds temporary contracts using current configuration.
 Every book, trace, schedule, posting intent and diagnostic must reproduce; temporary facts
-and audit buffers are discarded. This preflight does not enable the promotion command.
+and audit buffers are discarded. Review also records all seven pre-activation checks and
+refuses failed prerequisites. Distinctness and collectibility reviews required by the migration
+approver remain explicitly pending and failed; they are not treated as satisfied by reproduction.
+This preflight does not enable the promotion command.
 
 Converted-option import remains unavailable while promotion is unfinished. In the implemented
 reconciliation path, `POL-212:CONVERT_TO_OPTION_RECORD` identifies an evidenced change from

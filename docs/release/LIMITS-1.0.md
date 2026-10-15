@@ -16,8 +16,11 @@ reconciliation now passes through retained evidence, with drift and equal-raw-nu
 A read-only promotion review now rechecks/fingerprints durable evidence and reconstructs
 confirmed opening choices against captured input. It replays the retained output hash and
 rebuilds contracts against current configuration inside a rollback-only savepoint, comparing
-all output fields except the input identity hash. Policy publication, activation admission,
-report validation, atomic live creation and the approval route remain unfinished.
+all output fields except the input identity hash. Review binds the complete pre-activation
+checklist, rejects failed non-review prerequisites and exposes distinctness/collectibility
+reviews as pending, never passed. Creating/reviewing those judgements under approval and final
+activation admission remain unfinished, as do policy publication, report validation, atomic
+live creation and the approval route.
 See MATERIAL-RIGHTS-IMPLEMENTATION.md for evidence and remaining boundaries.
 
 October 7 sandbox correction: monetary verification now reads and compares the stored

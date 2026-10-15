@@ -2,6 +2,21 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Migration activation prerequisites — October 14, 2026
+
+- Review basis v3 binds each reproduced contract's complete pre-activation checklist. Missing,
+  duplicate, foreign, incomplete and malformed evidence refuses. Failed mandatory/source,
+  product/template/SSP, combination or existing-judgement prerequisites refuse by rule code.
+- An inactive product can reproduce accounting output but now fails activation preflight.
+  Distinctness/collectibility judgements required by BS3-D-23/26 stay explicitly pending and
+  failed, with ready_for_activation false. No approval or waiver is fabricated.
+- Three PostgreSQL cases passed (17.78s); 101 domain/capture/architecture checks passed
+  (17.04s); strict production plus changed tests (890 sources) and Ruff pass. Evidence:
+  .run/migration-activation-review-{pg,unit,types}.log.
+- Creating/reviewing judgements under approval, final activation admission, policy/report
+  checks and atomic live creation remain unfinished. Current full CI is still running on
+  an older snapshot at 64%. No deployment/readiness claim; publish directly to main.
+
 ## Named principal-agent migration refusal — October 14, 2026
 
 - Stage 03 now distinguishes incomplete reviewed agent terms with PrincipalAgentInputError,

@@ -633,3 +633,25 @@ specialist test file reports 28 unchanged helper typing diagnostics; the same er
 from the prior committed file. Evidence: `.run/agent-input-refusal-*.log` and
 `.run/agent-specialist-baseline-types.log`. This does not implement principal-agent review entry,
 promotion approval, activation admission, or accounting sign-off.
+
+## Activation prerequisites and pending reviews, October 14
+
+The review basis is now version 3: each reproduced contract carries its result hash and the
+complete checklist from the fresh pre-activation event. Missing, duplicate, foreign-contract,
+incomplete or malformed checklist evidence is refused. Failed mandatory fields, source reference,
+product/template/SSP, combination suggestions or existing judgement records refuse with the
+normal activation-checklist problem and rule codes. An inactive current product can reproduce
+the accounting figures but now fails this prerequisite check; the database witness verifies it.
+
+BS3-D-23/26 require the future promotion approver to review the distinctness and collectibility
+records. Their failed checks remain false and are listed in pending_review_checks, with
+ready_for_activation false. This is review preparation, not an activation waiver or a claim
+that those judgement records already exist. The future writer must create/review the records
+under the fresh approved basis and enforce every checklist item before persisting activation.
+
+The three PostgreSQL cases passed (17.78s); 101 related domain/capture/architecture checks passed
+(17.04s), including each non-review blocker and ambiguous/missing checklist evidence. Strict
+production plus both changed test files passes (890 sources); Ruff passes. Logs:
+`.run/migration-activation-review-{pg,unit,types}.log`. The public promotion route and converted
+option import remain unavailable; independent approval, policy/report checks, atomic live
+creation, current release verification and accounting sign-off are still outstanding.

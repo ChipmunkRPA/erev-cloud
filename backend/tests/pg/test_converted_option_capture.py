@@ -348,6 +348,25 @@ def test_platform_applier_captures_converted_option_and_rolls_back(
 
         before = tuple(uow.audit_events)
         basis = promotion_review.review_basis(uow, batch["id"])
+        preview = basis["reproduced_contracts"][opening.external_id]["activation"]
+        assert not preview["ready_for_activation"]
+        assert "STEP1_RECORD" in preview["pending_review_checks"]
+        assert all(
+            not item["passed"]
+            for item in preview["checks"]
+            if item["code"] in preview["pending_review_checks"]
+        )
+        nested = session.begin_nested()
+        try:
+            session.execute(update(product).values(is_active=False))
+            with pytest.raises(Problem, match="failed activation prerequisites") as inactive:
+                promotion_review.review_basis(uow, batch["id"])
+            assert [item.rule_id for item in inactive.value.errors] == ["PRODUCT_TEMPLATE_SSP"]
+        finally:
+            nested.rollback()
+        assert session.execute(select(contract.c.id)).first() is None
+        assert session.execute(select(material_right.c.id)).first() is None
+        assert tuple(uow.audit_events) == before
         assert basis["control_totals"]["unexplained"] == 0
         assert basis["source_sha256"] == batch["source_sha256"]
         assert basis["capture_operation_id"] == batch["capture_operation_id"]
