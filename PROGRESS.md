@@ -2,6 +2,17 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Reopening report verification — October 14, 2026
+
+- Updated the lock/relock regression for required independently reviewed reopening evidence:
+  preserve the hold/release versions, verify the billing version at the latest event date,
+  and independently approve the specific late-event waiver through the normal API.
+- The real re-close leaves September revenue and RPO unchanged, while contract balances
+  reflect the invoice. All five report-figure cases pass (44.05s); strict test typing,
+  Ruff and formatting pass. Evidence: .run/report-lock-recheck.log and .run/report-lock-types.log.
+- AI audit coverage, other documented implementation gaps and full candidate verification
+  remain open. No production-readiness claim or deployment.
+
 ## Migrated report catalogue verification — October 14, 2026
 
 - Revalidated the remaining 12 integration failures on c8bc3fc: 10 passed, 2 failed
@@ -225,27 +236,6 @@
 - Capture still refuses option records: its writer and MIGRATION_PROMOTION approval
   subject remain missing. No deployment or readiness claim. Older immutable CI remains
   live at 39%, with a new audit-coverage failure to investigate when its evidence is ready.
-
-## Persisted entered option SSP and native workflow — October 14, 2026
-
-- Revision 0146 adds immutable optional total SSP with method/nonnegative constraints.
-  Native entry enforces contract currency; reads, bundle assembly, activation approval
-  content and workbench entry/display preserve the amount. Absence retains catalogue
-  selection and old approval content. Updated OpenAPI/types and user/data-model docs.
-- Native entry proves USD 123.45 persists as selected SSP for quantity 50, with idempotent
-  retry, separate activation reviewer and bound approval content. Final native/migration
-  checks: 5 passed (46.85s). Four snapshot cases (explicit/discount, open/expired) and
-  approval binding passed in preceding runs. Invalid method/currency/negative entry and
-  API/bundle reads also passed. Initial downgrade fixtures had shared data and owner RLS
-  issues; corrected with transaction-scoped fixture data and verified refusal/round-trip.
-- Schema/ORM/migration/snapshot checks: 80 passed; removed a stale pending option_type
-  enum entry now implemented by 0145. UI: 16 passed; full typecheck: 881 sources/frontend;
-  strict test types, Ruff, ESLint and production build pass (existing chunk advisory).
-  Logs: .run/entered-option-persisted-final.log, .run/entered-option-native-final.log,
-  .run/entered-option-native.log, .run/entered-option-schema-final.log,
-  .run/entered-option-ui-final.log and .run/entered-option-native-types.log.
-- Migration capture/promotion remains unfinished and refuses option records. No deployment
-  or readiness claim. Older immutable CI 165d63c remains live at 37%.
 
 ## Outstanding release verification
 

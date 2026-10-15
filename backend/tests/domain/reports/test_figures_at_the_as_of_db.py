@@ -39,7 +39,7 @@ from erev_api.auth.keyring import KeyRing
 from erev_api.clock import FrozenClock
 from erev_api.config import Settings
 from erev_api.db.session import DbContext, tenant_session
-from erev_api.db.tables import obligation_version, period_lock
+from erev_api.db.tables import exception_item, obligation_version, period_lock
 from erev_api.domain.reports import locked
 from erev_api.files.store import LocalFileStore, open_file
 from erev_api.main import create_app
@@ -444,8 +444,9 @@ def test_a_lock_freezes_the_figures_of_its_period_end_and_a_relock_shows_no_move
     awaiting-trigger amount, 20,164.38 until that revision, is 0.00 and the row's own sum follows
     it. The remainder of the lock's date did not move: it is the RPO row.
 
-    Then the period is reopened, an invoice dated 15 September is recorded — a new version, dated
-    15 September, whose stored scheduled amount is the remainder of that day — and the period is
+    Then the period is reopened with a reviewed error-correction judgement. Its hold and release
+    establish a later version date. An invoice dated 15 September is recorded — a new version
+    at that later date, with its scheduled remainder — and the period is
     locked again, on a new close run. Nothing of the obligation's revenue or remainder at 30
     September has changed, and the re-lock's difference report says so: the WATERFALL and the RPO
     dataset are the same files. Before item RPT-ASOF-FIGURES-1 both showed a movement that was
@@ -471,6 +472,22 @@ def test_a_lock_freezes_the_figures_of_its_period_end_and_a_relock_shows_no_move
     (row,) = _frozen(world, first["id"], "rpo")
     assert (row["total"], row["within_12_months"]) == (f"{remainder:.2f}", f"{remainder:.2f}")
 
+    def versions() -> list[tuple[date, Decimal, Decimal]]:
+        return [
+            (row["effective_date"], row["scheduled_amount"], row["awaiting_trigger_amount"])
+            for row in world.place.rows(
+                select(
+                    obligation_version.c.effective_date,
+                    obligation_version.c.scheduled_amount,
+                    obligation_version.c.awaiting_trigger_amount,
+                )
+                .where(obligation_version.c.contract_id == contract_id)
+                .order_by(obligation_version.c.version_no)
+            )
+        ]
+
+    original = versions()
+    assert original == [(date(2026, 1, 1), Decimal("79780.82"), ZERO)]
     world = worlds.period_reopened(
         world,
         clock,
@@ -478,6 +495,12 @@ def test_a_lock_freezes_the_figures_of_its_period_end_and_a_relock_shows_no_move
         period_key=SEPTEMBER,
         comment="INV-US-1203 of 15 September was not recorded.",
     )
+    # The required error-correction judgement places a hold and its independent
+    # review releases it, recomputing the contract. Preserve that audit history
+    # separately from the additional version caused by the backdated invoice.
+    reopened = versions()
+    assert reopened[: len(original)] == original
+    assert len(reopened) == len(original) + 2
     invoiced = worlds._appended_through_api(
         world.place,
         contract_id,
@@ -494,24 +517,36 @@ def test_a_lock_freezes_the_figures_of_its_period_end_and_a_relock_shows_no_move
         },
     )
     assert invoiced["computation"]["status"] == "SUCCEEDED", invoiced["computation"]
-    # the version moved: its date, and with it the stored scheduled amount — the remainder of
-    # each date, as before; nothing of either version awaits a trigger
-    stored = world.place.rows(
-        select(
-            obligation_version.c.effective_date,
-            obligation_version.c.scheduled_amount,
-            obligation_version.c.awaiting_trigger_amount,
-        )
-        .where(obligation_version.c.contract_id == contract_id)
-        .order_by(obligation_version.c.version_no)
-    )
-    assert [
-        (row["effective_date"], row["scheduled_amount"], row["awaiting_trigger_amount"])
-        for row in stored
-    ] == [
-        (date(2026, 1, 1), Decimal("79780.82"), ZERO),
-        (date(2026, 9, 15), Decimal("80000.00") - k08_at(date(2026, 9, 15))[0], ZERO),
+    # Billing appends exactly one version and leaves all reopening versions intact.
+    # The latest effective event is the judgement hold release, not the backdated
+    # invoice (S13 version date). Its remainder still follows the independent daily oracle.
+    version_date = clock.now().date()
+    assert versions() == [
+        *reopened,
+        (version_date, k08_at(version_date)[1], ZERO),
     ]
+    # Reopened periods still require review of the late-event finding. Exercise
+    # its own independent waiver; never bypass the exception gate or waive others.
+    (late,) = world.place.rows(
+        select(exception_item).where(
+            exception_item.c.contract_id == contract_id,
+            exception_item.c.code == "LATE_EVENT",
+            exception_item.c.status == "OPEN",
+        )
+    )
+    requested = post(
+        world.app,
+        f"/api/v1/exceptions/{late['id']}/request-waiver",
+        world.maya,
+        {
+            "comment": "INV-US-1203 is the omitted September invoice covered by the reviewed "
+            "error-correction reopen; the September close will recompute its balances."
+        },
+    )
+    assert requested.status_code == 200, requested.text
+    world = worlds.verified(world, clock, "marcus")
+    decided = approve(world.app, str(requested.json()["approval_request_id"]), world.marcus)
+    assert (decided.status_code, decided.json()["status"]) == (200, "APPROVED"), decided.text
     world = _locked_again(world, clock, monkeypatch)
     first, second = _locks(world)
     assert second["diff_report_file_id"] is not None

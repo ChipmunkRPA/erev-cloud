@@ -3899,3 +3899,24 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
 - Persistence, command/read/UI, adapter, snapshot/export and migration promotion remain
   unfinished. Capture's option refusal remains. No readiness claim or deployment.
   Older CI 165d63c is still running at 36%; it is not current-main release evidence.
+
+## Persisted entered option SSP and native workflow — October 14, 2026
+
+- Revision 0146 adds immutable optional total SSP with method/nonnegative constraints.
+  Native entry enforces contract currency; reads, bundle assembly, activation approval
+  content and workbench entry/display preserve the amount. Absence retains catalogue
+  selection and old approval content. Updated OpenAPI/types and user/data-model docs.
+- Native entry proves USD 123.45 persists as selected SSP for quantity 50, with idempotent
+  retry, separate activation reviewer and bound approval content. Final native/migration
+  checks: 5 passed (46.85s). Four snapshot cases (explicit/discount, open/expired) and
+  approval binding passed in preceding runs. Invalid method/currency/negative entry and
+  API/bundle reads also passed. Initial downgrade fixtures had shared data and owner RLS
+  issues; corrected with transaction-scoped fixture data and verified refusal/round-trip.
+- Schema/ORM/migration/snapshot checks: 80 passed; removed a stale pending option_type
+  enum entry now implemented by 0145. UI: 16 passed; full typecheck: 881 sources/frontend;
+  strict test types, Ruff, ESLint and production build pass (existing chunk advisory).
+  Logs: .run/entered-option-persisted-final.log, .run/entered-option-native-final.log,
+  .run/entered-option-native.log, .run/entered-option-schema-final.log,
+  .run/entered-option-ui-final.log and .run/entered-option-native-types.log.
+- Migration capture/promotion remains unfinished and refuses option records. No deployment
+  or readiness claim. Older immutable CI 165d63c remains live at 37%.
