@@ -341,3 +341,27 @@ migration conversion and the other lifecycle/release/accounting requirements rem
 
 Production frontend build passed (4.25s); the existing large-chunk advisory remains.
 Evidence: `.run/material-right-ui-build.log`. Local preview files/server were removed.
+
+## Converted migration option dependency audit, October 14
+
+The native persistence/read/UI work does not make POL-212 conversion ready to enable.
+`field_mapping.map_row` changes a converted line's quantity to one and stages
+`OptionRecord.option_ssp = source_quantity * source_list_price`.
+`opening_balances.option_records` retains that amount with the source SSP book/version.
+`capture.dry_run` still refuses every staging set containing these records before applying it.
+
+The missing path includes the amount itself: persisted T-CON-14 and MaterialRightInput do
+not carry an entered SSP amount; stage 03 ENTERED_AMOUNT obtains its point from the selected
+SSP book at the booked quantity. Merely inserting T-CON-14 and removing the refusal would
+therefore risk repricing a converted quantity-one option against the original catalogue
+point. Several contracts can share a product/book/version while requiring different converted
+option SSP amounts, so changing that shared catalogue point is not a safe general conversion.
+The current source does not yet choose a per-option representation for this amount.
+
+Before enabling capture, implement and document that per-option amount path, carry it through
+bundle hashing, trace evidence, snapshot/export and promotion, and persist the immutable terms
+with the same contract/obligation guards as native entry. Acceptance must include two converted
+options sharing one catalogue key but having different source quantities, plus ordinary lines
+using the unchanged catalogue. Assert preserved relative allocation and opening measures,
+dry-run rollback, approved promotion and replay/restore. Keep the existing conversion refusal
+until those witnesses pass; this audit does not close migration acceptance or accounting review.

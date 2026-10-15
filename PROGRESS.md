@@ -2,6 +2,25 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Entity-scope reconciliation verification — October 14, 2026
+
+- Reproduced two CI failures in entity-scoped CSV contract quarantine. Both correctly
+  committed the admitted contract; exact legacy total assertions rejected the newer
+  amount_sums and monetary_checks fields. Assertions now require only EVE-UK-0002/0003
+  in the respective stored evidence, matching source/stored lines of USD 96,000 and
+  24,000, USD 120,000 total, and exact loaded/quarantined counts. Refused contracts and
+  partial contract writes remain prohibited by the existing persisted-row checks.
+- Initial full file: 40 passed, 2 stale assertions failed (246.11s). Both corrected cases
+  plus out-of-scope submit/cancel denial: 3 passed (24.61s). Strict test Mypy and Ruff pass;
+  an empty command-body tuple received an explicit type. Logs: .run/import-scope-baseline.log,
+  .run/import-scope-fixed.log and .run/import-scope-types.log.
+- Audited migration conversion: staged option SSP equals original quantity times price,
+  but T-CON-14/bundle inputs do not preserve that per-option entered amount. Quantity-one
+  conversion cannot safely reuse a shared catalogue point. Recorded the dependency and
+  two-options/same-catalogue acceptance case in MATERIAL-RIGHTS-IMPLEMENTATION.md.
+  Conversion refusal remains until the complete amount/promotion/replay path is implemented.
+- Older full CI 165d63c remains live at 35%. No readiness claim or deployment; publish to main.
+
 ## Native option workbench controls — October 14, 2026
 
 - Obligation Overview now displays persisted option terms/status and links its likelihood
@@ -230,36 +249,6 @@
   production guards and expected results were retained. Tests insert terms explicitly:
   native entry, governed corrections, migration conversion and populated snapshot
   acceptance remain unfinished. Full CI 165d63c remains live. No deployment.
-
-## Material-right persistence foundation — October 14, 2026
-
-- Migration 0145 creates immutable T-CON-14 option terms and E-92 option_type, tenant
-  RLS, foreign keys, unique obligation and contract lookup index. Database checks
-  enforce required discount terms, amount/ratio bounds, same-contract obligation and
-  exercise-likelihood estimate, and currency agreement. A composite FK prevents a
-  later parent-currency change. Application and owner mutation attempts are refused.
-- Added ORM export, shared row builder, snapshot classification, cutoff, dependency
-  order and likelihood-reference remapping. Removed obsolete pending-table entries
-  and updated inventory assertions and the data-model specification.
-- 77 focused schema/RLS/snapshot/architecture checks passed (9.99s); final parent guard
-  and migration downgrade/upgrade: 2 passed (7.59s). Full typecheck (878 source files
-  plus frontend), focused Mypy, Ruff and formatting pass. Evidence and remaining
-  lifecycle work are in MATERIAL-RIGHTS-IMPLEMENTATION.md.
-- A broader check found the existing missing period_reopen_basis test-row builder;
-  retain that failure for repair. Native term entry, engine bundle reads, API status,
-  migration conversion and populated snapshot acceptance are not yet implemented.
-  Full CI 165d63c remains live around 30%. No deployment; direct main publication.
-
-## Native material-right gap confirmed — October 14, 2026
-
-- Source tracing shows B3-24 needs implementation, not only another API test: bundles
-  always send empty material_rights, T-CON-14 is absent, the dedicated read always
-  returns 404 and the embedded read always returns null. Migration capture refuses
-  converted option records. Existing engine regressions bypass these missing paths.
-- Corrected the limitation and added MATERIAL-RIGHTS-IMPLEMENTATION.md with required
-  persistence, governed entry, historical reads, migration, UI and acceptance coverage.
-  Preserve the migration refusal until the complete terms path exists. No runtime
-  change or claim of product support; full backend CI remains running.
 
 ## Outstanding release verification
 

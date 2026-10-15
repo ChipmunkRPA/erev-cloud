@@ -165,6 +165,29 @@ def contracts_csv(
     )
 
 
+def assert_loaded_contract(done: dict[str, Any], external_id: str) -> None:
+    """Only the admitted contract contributes stored monetary evidence and file totals."""
+    loaded = done["control_totals"]["loaded"]
+    (check,) = loaded["monetary_checks"]
+    assert check["source"] == check["stored"]
+    (booking,) = check["stored"]["bookings"]
+    assert booking["external_id"] == external_id
+    assert booking["transaction_currency"] == "USD"
+    assert [(line["obligation_key"], line["total_price"]) for line in booking["lines"]] == [
+        ("O1", {"amount": "96000", "currency": "USD"}),
+        ("O2", {"amount": "24000", "currency": "USD"}),
+    ]
+    assert loaded == {
+        "rows": 2,
+        "quarantined": 2,
+        "amount_sums": {
+            "lines.out_of_scope_amount.amount": "0",
+            "lines.total_price.amount": "120000.00",
+        },
+        "monetary_checks": [check],
+    }
+
+
 def cost_events_csv(contract_key: str) -> bytes:
     return csv_bytes(
         COST_HEADERS,
@@ -544,7 +567,7 @@ def test_sc2_quarantine_mode_commits_only_the_rows_inside_the_uploaders_scope(
     run_import_job(cast.eve, job_ids(cast.maya, import_id, "IMPORT_COMMIT")[-1])
     done = get(cast.app, f"{IMPORTS_PATH}/{import_id}", cast.eve.actor).json()
     assert done["status"] == "COMMITTED", (done, findings_of(cast.maya, import_id))
-    assert done["control_totals"]["loaded"] == {"rows": 2, "quarantined": 2}
+    assert_loaded_contract(done, "EVE-UK-0002")
     stored = cast.maya.rows(
         select(contract.c.external_id, contract.c.contracting_entity_id).where(
             contract.c.external_id.like("EVE-U%-0002")
@@ -930,7 +953,10 @@ def test_r98_submit_and_cancel_answer_404_outside_the_callers_read_scope(cast: C
         "contracts",
     )
     assert get(app, f"{IMPORTS_PATH}/{hidden_id}", eve).status_code == 404
-    commands = (("submit", {"comment": "mine now"}), ("cancel", {}))
+    commands: tuple[tuple[str, dict[str, str]], ...] = (
+        ("submit", {"comment": "mine now"}),
+        ("cancel", {}),
+    )
     for command, body in commands:
         unknown = post(app, f"{IMPORTS_PATH}/{uuid4()}/{command}", eve, body)
         assert (unknown.status_code, slug(unknown)) == (404, "not-found"), unknown.text
@@ -1133,7 +1159,7 @@ def test_r98_quarantine_mode_loads_a_contract_whole_or_not_at_all(cast: Cast) ->
     run_import_job(cast.eve, job_ids(cast.maya, import_id, "IMPORT_COMMIT")[-1])
     done = get(cast.app, f"{IMPORTS_PATH}/{import_id}", cast.eve.actor).json()
     assert done["status"] == "COMMITTED", (done, findings_of(cast.maya, import_id))
-    assert done["control_totals"]["loaded"] == {"rows": 2, "quarantined": 2}
+    assert_loaded_contract(done, "EVE-UK-0003")
     stored = cast.maya.rows(
         select(contract.c.external_id).where(contract.c.external_id.like("EVE-UK-000%"))
     )

@@ -3604,3 +3604,33 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   still-missing API-entry, answer-key and independent accounting acceptance.
 - Full backend CI 165d63c remains running around 29%; existing known failures have
   later repairs. Repo only, direct main publication, no deployment.
+
+## Native material-right gap confirmed — October 14, 2026
+
+- Source tracing shows B3-24 needs implementation, not only another API test: bundles
+  always send empty material_rights, T-CON-14 is absent, the dedicated read always
+  returns 404 and the embedded read always returns null. Migration capture refuses
+  converted option records. Existing engine regressions bypass these missing paths.
+- Corrected the limitation and added MATERIAL-RIGHTS-IMPLEMENTATION.md with required
+  persistence, governed entry, historical reads, migration, UI and acceptance coverage.
+  Preserve the migration refusal until the complete terms path exists. No runtime
+  change or claim of product support; full backend CI remains running.
+
+## Material-right persistence foundation — October 14, 2026
+
+- Migration 0145 creates immutable T-CON-14 option terms and E-92 option_type, tenant
+  RLS, foreign keys, unique obligation and contract lookup index. Database checks
+  enforce required discount terms, amount/ratio bounds, same-contract obligation and
+  exercise-likelihood estimate, and currency agreement. A composite FK prevents a
+  later parent-currency change. Application and owner mutation attempts are refused.
+- Added ORM export, shared row builder, snapshot classification, cutoff, dependency
+  order and likelihood-reference remapping. Removed obsolete pending-table entries
+  and updated inventory assertions and the data-model specification.
+- 77 focused schema/RLS/snapshot/architecture checks passed (9.99s); final parent guard
+  and migration downgrade/upgrade: 2 passed (7.59s). Full typecheck (878 source files
+  plus frontend), focused Mypy, Ruff and formatting pass. Evidence and remaining
+  lifecycle work are in MATERIAL-RIGHTS-IMPLEMENTATION.md.
+- A broader check found the existing missing period_reopen_basis test-row builder;
+  retain that failure for repair. Native term entry, engine bundle reads, API status,
+  migration conversion and populated snapshot acceptance are not yet implemented.
+  Full CI 165d63c remains live around 30%. No deployment; direct main publication.
