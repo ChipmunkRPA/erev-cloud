@@ -1545,6 +1545,7 @@ def obligation_outs(
     *,
     context: ContextOut,
     at: Mapping[UUID, to_date.ObligationAt] | None = None,
+    latest_material_rights: bool = False,
 ) -> list[ObligationOut]:
     """API-S-Obligation of each obligation version (holds and material rights: L3-1-Q-38).
 
@@ -1600,7 +1601,7 @@ def obligation_outs(
     rights = material_rights.outputs(
         session,
         sorted({row["contract_id"] for row in rows}),
-        known_at=context.known_at,
+        known_at=None if latest_material_rights else context.known_at,
         as_of=context.as_of,
     )
     outs: list[ObligationOut] = []

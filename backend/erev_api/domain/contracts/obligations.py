@@ -117,7 +117,14 @@ def obligation_out(
     contract_row, version, row = _at_version(session, obligation_id, params)
     context = _context(session, contract_row, version, params=params, now=now)
     at = queries.obligations_at(session, contract_row, version, [row], as_of=context.as_of)
-    (out,) = queries.obligation_outs(session, version, [row], context=context, at=at)
+    (out,) = queries.obligation_outs(
+        session,
+        version,
+        [row],
+        context=context,
+        at=at,
+        latest_material_rights=params.known_at is None,
+    )
     return out
 
 
@@ -193,7 +200,14 @@ def contract_obligations(
     rows = [dict(row) for row in session.execute(statement).mappings()]
     context = _context(session, contract_row, version, params=params, now=now)
     at = queries.obligations_at(session, contract_row, version, rows, as_of=context.as_of)
-    return queries.obligation_outs(session, version, rows, context=context, at=at)
+    return queries.obligation_outs(
+        session,
+        version,
+        rows,
+        context=context,
+        at=at,
+        latest_material_rights=params.known_at is None,
+    )
 
 
 def versions_statement(session: Session, obligation_id: UUID, *, book: str | None) -> Select[Any]:
@@ -302,7 +316,7 @@ def material_right_out(
     rights = material_rights.outputs(
         session,
         [found["contract_id"]],
-        known_at=params.known_at or now,
+        known_at=params.known_at,
         as_of=params.as_of or to_entity_date(now, str(zone)),
     )
     if obligation_id not in rights:

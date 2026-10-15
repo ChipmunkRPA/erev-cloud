@@ -3478,3 +3478,25 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   3 failed, 22 passed). Ruff lint/format pass. Logs .run/pending-repairs-units{,-fixed}.log.
   Run used the working tree, including pending scope/identity repairs; only this fixture fix
   is published here. Full architecture, backend CI and fresh closed-browser runs are ongoing.
+
+## Evidence identity and authorization repairs — October 14, 2026
+
+- Automatic pack availability resolves the validated locking actor through the shared
+  record-actor reader; the identity architecture rule needs no exception.
+- IDOR coverage includes all 49 GET-by-ID routes. A shared operational fixture builds actual
+  retained packs. Tests cover foreign-tenant denial, authorized controls, manifest/ZIP reads,
+  matching/excluded entity scopes and register visibility. Generic rows use a separate fresh
+  tenant pair; no source validator or permission guard is bypassed.
+- Integration create/update checks owner eligibility after proposed entity scope is valid.
+  Invalid scope previously also produced a dependent owner error. Valid scope expansion still
+  requires an eligible owner; scope refusal and denial auditing remain enforced.
+- Focused tests used a separate local PostgreSQL instance and file/runtime paths, leaving
+  CI/browser databases untouched. Initial run: 38 passed, 1 failed (279.75s); only the new IDOR
+  setup failed. Fixed clock rollback/MFA reuse, generic version collisions with operational
+  data, and uppercase persona email. Final IDOR: 4 passed (55.73s). Operational pack acceptance
+  also passed after the shared-clock correction. Assertions were not weakened.
+- Architecture: 267 passed (215.81s). Full lint/typecheck pass; final fixture/test edits pass
+  Ruff/Mypy. Actor/integration unit checks: 25 passed. Logs under .run: isolated-repairs-first,
+  isolated-idor-{clock-fixed,worlds-fixed,final}, pending-repairs-{architecture,full-lint,full-types}
+  and idor-repair-types-final (all .log). Temporary repair server stopped. CI on 165d63c and
+  browser gate on 3e60e6a remain live; no full-gate, deployment or accounting-approval claim.

@@ -2114,3 +2114,90 @@ def test_native_discount_option_uses_approved_likelihood(
     assert Decimal(active.json()["original"]["ssp_selected"]) == Decimal(expected_ssp)
     assert Decimal(active.json()["current"]["allocated_amount"]["amount"]) == Decimal("12000")
     assert Decimal(active.json()["to_date"]["revenue"]["amount"]) == Decimal("0")
+    expiry_path = f"/api/v1/obligations/{option_id}/expire-material-right"
+    expiry_body = {"effective_date": "2026-09-12", "comment": "The unused customer option expired."}
+    current_head = _header(seats, contract_id)[1]
+    future = post(
+        seats.app,
+        expiry_path,
+        maya,
+        {**expiry_body, "effective_date": "2026-09-13"},
+        if_match=f'"s{current_head}"',
+    )
+    assert future.status_code == 422, future.text
+    missing = post(seats.app, expiry_path, maya, expiry_body)
+    assert missing.status_code == 428, missing.text
+    stale = post(seats.app, expiry_path, maya, expiry_body, if_match='"s0"')
+    assert stale.status_code == 412, stale.text
+    generic = post(
+        seats.app,
+        EVENTS.format(contract_id=contract_id),
+        maya,
+        {
+            "events": [
+                {
+                    "event_type": "MATERIAL_RIGHT_EXPIRED",
+                    "effective_date": "2026-09-12",
+                    "payload": {"obligation_key": "O1"},
+                }
+            ]
+        },
+        if_match=f'"s{current_head}"',
+    )
+    assert generic.status_code == 422, generic.text
+    headers = cookie_headers(maya.token, maya.csrf_token, key=True)
+    headers["If-Match"] = f'"s{current_head}"'
+    expired = call(seats.app, "POST", expiry_path, json=expiry_body, headers=headers)
+    assert expired.status_code == 201, expired.text
+    assert expired.json()["computation"]["status"] == "SUCCEEDED"
+    assert expired.headers["etag"] == f'"s{current_head + 1}"'
+    replay = call(seats.app, "POST", expiry_path, json=expiry_body, headers=headers)
+    assert replay.status_code == 201, replay.text
+    assert replay.json() == expired.json()
+    duplicate = post(seats.app, expiry_path, maya, expiry_body, if_match=expired.headers["etag"])
+    assert duplicate.status_code == 409, duplicate.text
+    assert slug(duplicate) == "option-already-exercised"
+    assert _event_types(seats, contract_id).count("MATERIAL_RIGHT_EXPIRED") == 1
+    final = get(seats.app, f"/api/v1/obligations/{option_id}", maya)
+    assert final.status_code == 200, final.text
+    assert final.json()["material_right"]["status"] == "EXPIRED"
+    assert final.json()["material_right"]["status_date"] == "2026-09-12"
+    assert Decimal(final.json()["to_date"]["revenue"]["amount"]) == Decimal("12000")
+    assert Decimal(final.json()["remaining"]["allocation"]["amount"]) == Decimal("0")
+    assert (
+        seats.place.scalar(
+            select(func.count())
+            .select_from(subledger_line)
+            .where(
+                subledger_line.c.contract_id == contract_id,
+            )
+        )
+        > 0
+    )
+    ledger = seats.place.rows(
+        select(
+            subledger_line.c.account_role,
+            func.sum(subledger_line.c.amount_functional).label("amount"),
+        )
+        .where(subledger_line.c.contract_id == contract_id)
+        .group_by(subledger_line.c.account_role)
+    )
+    amounts = {str(row["account_role"]): Decimal(row["amount"]) for row in ledger}
+    assert sum(amounts.values(), Decimal("0")) == Decimal("0")
+    assert amounts["REVENUE"] == Decimal("-12000")
+    before_expiry = get(
+        seats.app, f"/api/v1/obligations/{option_id}", maya, params={"as_of": "2026-09-11"}
+    )
+    assert before_expiry.status_code == 200, before_expiry.text
+    assert before_expiry.json()["material_right"]["status"] == "OPEN"
+    # API-C-10 revenue is the containing fiscal period's total, while option status is daily.
+    assert before_expiry.json()["context"]["measured_period"]["end_date"] == "2026-09-30"
+    assert Decimal(before_expiry.json()["to_date"]["revenue"]["amount"]) == Decimal("12000")
+    prior_period = get(
+        seats.app, f"/api/v1/obligations/{option_id}", maya, params={"as_of": "2026-08-31"}
+    )
+    assert prior_period.status_code == 200, prior_period.text
+    assert Decimal(prior_period.json()["to_date"]["revenue"]["amount"]) == Decimal("0")
+    dedicated = get(seats.app, path, maya)
+    assert dedicated.status_code == 200, dedicated.text
+    assert dedicated.json() == final.json()["material_right"]

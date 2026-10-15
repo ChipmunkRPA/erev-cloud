@@ -3975,6 +3975,26 @@ Historical reads retain the existing recorded/effective cut semantics. Governed 
 draft replacement acceptance, native UI, and migration conversion remain separate unfinished work.
 
 
+`POST /api/v1/obligations/{obligation_id}/expire-material-right` takes `effective_date`,
+a required `comment` and optional `evidence_file_ids`. It requires `event.record`,
+`Idempotency-Key` and the parent contract `If-Match: "sN"`. Under group/contract locks,
+the contract must be ACTIVE and the obligation must remain MATERIAL_RIGHT in every current
+stored book version. Terms must exist and no exercise/expiry may already have been recorded.
+The date must be between inception and the contracting entity's current date, and no earlier
+than the stated expiry date when present. Repeated closure returns 409 option-already-exercised;
+stale preconditions return 412. Permission, evidence and closed-period checks use the ordinary
+event pipeline. The generic event route continues to reject this event type.
+
+Expiry appends MATERIAL_RIGHT_EXPIRED and computes atomically. A synchronous computation
+refusal rolls back the append. Successful response is 201 EventsAppendedOut with the new stream
+ETag; a deferred computation returns 202 JobOut with its Location under the existing event
+budget policy. Audit records bind the event ids, comment, evidence and computation/job to the
+contract. This event needs no separate approval under E-03; manual exercise still requires its
+own approval workflow and is not implemented by this command. Expiry reversal is not supported.
+Current option reads and locked closure guards use latest committed records when no known_at
+was requested; explicit historical reads retain their record cutoff and effective-date status.
+
+
 ### T-CON-15 `contract_cost_asset`
 
 - **Purpose.** Identity and terms of a capitalised cost to obtain or fulfil a contract (REQ-CST-001 to -003).

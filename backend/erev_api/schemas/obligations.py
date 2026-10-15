@@ -28,6 +28,7 @@ KEY_LENGTH: Final = 200
 
 __all__ = [
     "MaterialRightCreateIn",
+    "MaterialRightExpireIn",
     "MaterialRightOut",
     "PolicyOverrideCommentIn",
     "PolicyOverrideIn",
@@ -64,6 +65,16 @@ class MaterialRightCreateIn(BaseModel):
     expected_purchase_amount: NonNegativeMoney | None = None
     expiry_date: date | None = None
     likelihood_estimate_id: uuid.UUID | None = None
+
+
+class MaterialRightExpireIn(BaseModel):
+    """Record an option's actual expiry, using the parent contract stream precondition."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    effective_date: date
+    comment: str = Field(min_length=1, max_length=MEMO_LENGTH)
+    evidence_file_ids: list[uuid.UUID] = Field(default_factory=list, max_length=100)
 
 
 class MaterialRightOut(BaseModel):

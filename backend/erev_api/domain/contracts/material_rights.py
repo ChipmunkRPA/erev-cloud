@@ -10,7 +10,7 @@ from uuid import UUID
 
 from erev_engine.bundle import MaterialRightInput
 from erev_engine.stages.s01_canonicalize import obligation_subject_key
-from sqlalchemy import and_, select
+from sqlalchemy import and_, select, true
 from sqlalchemy.orm import Session
 
 from erev_api.db.tables import contract, contract_event, estimate, material_right, obligation
@@ -18,7 +18,7 @@ from erev_api.schemas.obligations import MaterialRightOut
 
 
 def _rows(
-    session: Session, contract_ids: Sequence[UUID], *, known_at: datetime
+    session: Session, contract_ids: Sequence[UUID], *, known_at: datetime | None
 ) -> list[Mapping[str, Any]]:
     if not contract_ids:
         return []
@@ -48,7 +48,8 @@ def _rows(
             )
         )
         .where(
-            material_right.c.contract_id.in_(contract_ids), material_right.c.created_at <= known_at
+            material_right.c.contract_id.in_(contract_ids),
+            true() if known_at is None else material_right.c.created_at <= known_at,
         )
         .order_by(material_right.c.contract_id, obligation.c.obligation_key)
     )
@@ -90,7 +91,7 @@ def _decimal(value: Decimal | None) -> str | None:
 
 
 def outputs(
-    session: Session, contract_ids: Sequence[UUID], *, known_at: datetime, as_of: date
+    session: Session, contract_ids: Sequence[UUID], *, known_at: datetime | None, as_of: date
 ) -> dict[UUID, MaterialRightOut]:
     rows = _rows(session, contract_ids, known_at=known_at)
     if not rows:
@@ -100,7 +101,7 @@ def outputs(
             select(contract_event)
             .where(
                 contract_event.c.contract_id.in_(sorted({row["contract_id"] for row in rows})),
-                contract_event.c.recorded_at <= known_at,
+                true() if known_at is None else contract_event.c.recorded_at <= known_at,
                 contract_event.c.event_type.in_(
                     [
                         "MATERIAL_RIGHT_EXERCISED",

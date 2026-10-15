@@ -205,3 +205,36 @@ Final native calculation verification: two cases passed in 31.40s; strict test-f
 Ruff and diff checks pass. `.run/material-right-discount-final.log` and
 `.run/material-right-discount-types.log`. The earlier expiry attempt remains a failed
 experiment documenting the missing command, not a passing lifecycle check.
+
+## Dedicated native expiry, October 14
+
+Implemented the dedicated expiry endpoint described in T-CON-14, with entity permission,
+parent-stream preconditions, idempotency, group/contract locks, active/open/current-kind checks,
+actual-expiry date bounds, optional evidence, shared posting-period validation and append/compute
+audit. Synchronous computation refusals roll back; deferred work retains the established event
+job behavior. Generic event append remains restricted. Exercise and reversal are still absent.
+
+The first native run reproduced duplicate closure: a status read bounded by request time missed
+a committed event stamped later by the database. Commands now check the latest committed records
+under the locks; current dedicated/embedded reads use latest records when known_at is omitted.
+Explicit historical cuts remain bounded. This also handles a request waiting while another
+transaction commits. The historical-cut PostgreSQL regression remains in the validation scope.
+
+Native cases cover the two approved-likelihood prices, independent activation, zero revenue before
+closure, actual expiry/status date, all USD 12,000 recognized, zero remaining allocation, missing
+and stale If-Match, future-date refusal, idempotent replay, duplicate refusal and one expiry event.
+They also assert balanced persisted functional-currency lines and a USD 12,000 revenue credit.
+Concurrency interleavings, foreign-scope expiry, declared-expiry/closed-period negative cases,
+forced computation/deferred-job failures and the broader exercise/correction matrix still need
+specific acceptance evidence. Do not infer complete material-right support from these cases.
+
+Expiry verification: 56 event/obligation/read/route/import checks passed in 112.14s;
+final lifecycle cases with historical reads passed in 32.49s. Full typecheck (880 production
+files plus frontend), strict test Mypy and Ruff pass. Logs:
+`.run/material-right-expire-regression.log`, `.run/material-right-expire-period-cuts.log`,
+`.run/material-right-expire-types.log`, `.run/material-right-expire-test-types.log`.
+The first historical-read assertion incorrectly treated revenue as a daily measure.
+API-C-10/to_date.py instead define the containing fiscal period's end; the final test checks
+that explicit measured period, daily OPEN status before expiry, and zero in the prior period.
+The failed assertion is retained in `.run/material-right-expire-final.log`. The duplicate-closure
+baseline is retained in `.run/material-right-expire-native.log`.

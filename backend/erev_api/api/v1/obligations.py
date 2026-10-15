@@ -22,6 +22,7 @@ from erev_api.api.deps import (
     GuardedRoute,
     KernelDeps,
     command,
+    contract_etag,
     kernel_deps,
     problem_responses,
     run_command,
@@ -42,11 +43,12 @@ from erev_api.db.tables import contract_event, obligation_version, schedule_line
 from erev_api.domain.contracts import material_right_commands, obligations, queries
 from erev_api.domain.policies import overrides
 from erev_api.enums import BookCode
-from erev_api.schemas.common import ListOut
+from erev_api.schemas.common import JobOut, ListOut
 from erev_api.schemas.contracts import ObligationOut, ScheduleLineOut
-from erev_api.schemas.events import EventOut
+from erev_api.schemas.events import EventOut, EventsAppendedOut
 from erev_api.schemas.obligations import (
     MaterialRightCreateIn,
+    MaterialRightExpireIn,
     MaterialRightOut,
     SspOverrideIn,
     SspOverrideOut,
@@ -308,6 +310,52 @@ def obligation_material_right_create(
         ),
         status_code=201,
         location=lambda _: f"{API_PREFIX}/obligations/{obligation_id}/material-right",
+    )
+
+
+@router.post(
+    "/obligations/{obligation_id}/expire-material-right",
+    operation_id="obligation_material_right_expire",
+    status_code=201,
+    response_model=EventsAppendedOut,
+    responses={
+        **problem_responses(
+            *_COMMAND_PROBLEMS,
+            "not-found",
+            "invalid-transition",
+            "option-already-exercised",
+            "precondition-required",
+            "precondition-failed",
+            "period-closed",
+        ),
+        202: {"model": JobOut, "description": "Expiry recorded; computation runs as a job"},
+    },
+)
+def obligation_material_right_expire(
+    obligation_id: uuid.UUID,
+    body: MaterialRightExpireIn,
+    cmd: Annotated[CommandContext, Depends(command("event.record", precondition="contract"))],
+    deps: Annotated[KernelDeps, Depends(kernel_deps)],
+) -> Response:
+    """Record an active, open option's actual expiry using its parent contract stream ETag."""
+
+    def headers(result: EventsAppendedOut | JobOut) -> dict[str, str]:
+        if isinstance(result, JobOut):
+            return {"Location": f"{API_PREFIX}/jobs/{result.id}"}
+        return {
+            "Location": f"{API_PREFIX}/contracts/{result.contract.id}/events",
+            "ETag": contract_etag(result.contract.head_stream_version),
+        }
+
+    return run_command(
+        cmd,
+        deps,
+        lambda uow: material_right_commands.expire(
+            uow, obligation_id, body, expected_stream_version=cmd.expected_version
+        ),
+        status_code=201,
+        status_of=lambda result: 202 if isinstance(result, JobOut) else 201,
+        extra_headers=headers,
     )
 
 

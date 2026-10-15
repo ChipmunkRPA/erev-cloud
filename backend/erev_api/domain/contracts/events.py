@@ -252,6 +252,7 @@ __all__ = [
     "get_submission",
     "preparer_entities",
     "record_events",
+    "record_option_expiry",
     "request_preview",
     "request_void",
     "run_preview",
@@ -524,9 +525,9 @@ OWN_COMMAND_VOIDS: Final[Mapping[ContractEventType, str]] = {
         "An attribute change is not voided as an event. Record a further attribute change, or "
         "request an SSP override."
     ),
-    # No command of 1.0 records a termination or an option event, and an opening balance is
-    # established by its import or its migration batch and stands with its contract: nothing
-    # undoes these, and the sentences say so.
+    # A termination or option exercise has no native command yet. Dedicated expiry now
+    # records an option event, but no command reverses that closure. An opening balance
+    # stands with its import/migration contract: these types still cannot be voided here.
     ContractEventType.CONTRACT_TERMINATED: (
         "A termination is not voided as an event. No command undoes it."
     ),
@@ -1699,12 +1700,14 @@ def _validated(
     *,
     engine: computation.Engine | None = None,
     confirm: bool = True,
+    allowed: frozenset[ContractEventType] = RECORDED_TYPES,
 ) -> tuple[list[EventIn], Step1Gate | None]:
     session = uow.session
     events = to_events(
         body.events,
         time_zone=_time_zone(session, UUID(str(current["contracting_entity_id"]))),
         is_manual=uow.principal.kind is PrincipalKind.USER,
+        allowed=allowed,
     )
     # DG-CMD-03 DB-07 mirror (BUILD_SPEC CLO-3; ERR-15).
     refuse_closed_postings(
@@ -2045,6 +2048,42 @@ def record_events(
     body: EventAppendIn,
     engine: computation.Engine | None = None,
 ) -> Recorded:
+    return _record_events(
+        uow,
+        contract_id=contract_id,
+        expected_stream_version=expected_stream_version,
+        body=body,
+        engine=engine,
+        allowed=RECORDED_TYPES,
+    )
+
+
+def record_option_expiry(
+    uow: UnitOfWork,
+    *,
+    contract_id: UUID,
+    expected_stream_version: int | None,
+    body: EventAppendIn,
+) -> Recorded:
+    """Dedicated option command's append path; the generic route still refuses this type."""
+    return _record_events(
+        uow,
+        contract_id=contract_id,
+        expected_stream_version=expected_stream_version,
+        body=body,
+        allowed=frozenset({ContractEventType.MATERIAL_RIGHT_EXPIRED}),
+    )
+
+
+def _record_events(
+    uow: UnitOfWork,
+    *,
+    contract_id: UUID,
+    expected_stream_version: int | None,
+    body: EventAppendIn,
+    engine: computation.Engine | None = None,
+    allowed: frozenset[ContractEventType],
+) -> Recorded:
     """``POST /contracts/{id}/events`` (API-R-30; DG-CMD-09)."""
     session = uow.session
     current = _locked_contract(uow, contract_id, expected_stream_version)
@@ -2129,7 +2168,7 @@ def record_events(
     if subject is not None:
         submission = _submit(uow, current, body, subject_type=subject, impact_preview=step1_preview)
         return Recorded(appended=None, job=None, submission=submission)
-    events, gate = _validated(uow, current, body, engine=engine)
+    events, gate = _validated(uow, current, body, engine=engine, allowed=allowed)
     rows = append_events(
         uow,
         contract_id=contract_id,

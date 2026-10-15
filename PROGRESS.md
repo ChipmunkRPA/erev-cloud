@@ -2,6 +2,29 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Dedicated material-right expiry — October 14, 2026
+
+- Added expire-material-right with event.record permission, stream preconditions,
+  idempotency, group/contract locks, ACTIVE/open/current-kind guards and actual-date
+  bounds. Reused posting-period/evidence validation, audit, append/compute and deferred
+  jobs. Synchronous computation refusal rolls back; generic event append stays restricted.
+- Reproduced and repaired duplicate expiry caused by filtering committed events at the
+  request timestamp. Locked guards and current option reads now use latest records;
+  explicit known_at reads preserve their cutoff. The two native pricing/activation cases
+  now expire, recognize USD 12,000, leave zero allocation and verify balanced subledger
+  lines with a 12,000 revenue credit. Replay creates no second event; repeat closure,
+  missing/stale preconditions and future dates are refused.
+- Broad event/obligation/route/import/read regressions: 56 passed (112.14s). Final lifecycle
+  and historical-period assertions: 2 passed (32.49s). Revenue reads are period-end totals,
+  while status is daily; a first test incorrectly expected daily revenue and was corrected
+  against API-C-10, with a separate prior-period-zero assertion. Full typecheck (880 files
+  plus frontend), strict test Mypy and Ruff pass. Logs: .run/material-right-expire-regression.log,
+  .run/material-right-expire-period-cuts.log, .run/material-right-expire-types.log.
+- OpenAPI, TypeScript, specification and limitations updated. Exercise/reversal, specific
+  race/security/closed-period/failure cases and complete release/accounting acceptance remain
+  open. Full CI 165d63c is live around 32%, with another demo-reference failure awaiting
+  diagnostics. No deployment; publish directly to main.
+
 ## Native discount-option calculation — October 14, 2026
 
 - Added ASC606 API cases for discount-times-likelihood: USD 100 expected purchases,
@@ -234,28 +257,6 @@
   screenshots. Existing worktree screenshots predate this run and cannot prove its visuals.
   Artifact retention needs repair. Backend CI on 165d63c remains live with known failures;
   later backend repairs and independent accounting acceptance are not covered by this gate.
-
-## Evidence identity and authorization repairs — October 14, 2026
-
-- Automatic pack availability resolves the validated locking actor through the shared
-  record-actor reader; the identity architecture rule needs no exception.
-- IDOR coverage includes all 49 GET-by-ID routes. A shared operational fixture builds actual
-  retained packs. Tests cover foreign-tenant denial, authorized controls, manifest/ZIP reads,
-  matching/excluded entity scopes and register visibility. Generic rows use a separate fresh
-  tenant pair; no source validator or permission guard is bypassed.
-- Integration create/update checks owner eligibility after proposed entity scope is valid.
-  Invalid scope previously also produced a dependent owner error. Valid scope expansion still
-  requires an eligible owner; scope refusal and denial auditing remain enforced.
-- Focused tests used a separate local PostgreSQL instance and file/runtime paths, leaving
-  CI/browser databases untouched. Initial run: 38 passed, 1 failed (279.75s); only the new IDOR
-  setup failed. Fixed clock rollback/MFA reuse, generic version collisions with operational
-  data, and uppercase persona email. Final IDOR: 4 passed (55.73s). Operational pack acceptance
-  also passed after the shared-clock correction. Assertions were not weakened.
-- Architecture: 267 passed (215.81s). Full lint/typecheck pass; final fixture/test edits pass
-  Ruff/Mypy. Actor/integration unit checks: 25 passed. Logs under .run: isolated-repairs-first,
-  isolated-idor-{clock-fixed,worlds-fixed,final}, pending-repairs-{architecture,full-lint,full-types}
-  and idor-repair-types-final (all .log). Temporary repair server stopped. CI on 165d63c and
-  browser gate on 3e60e6a remain live; no full-gate, deployment or accounting-approval claim.
 
 ## Outstanding release verification
 

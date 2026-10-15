@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import date
 from decimal import Decimal
 from uuid import UUID
 
@@ -11,12 +12,35 @@ from sqlalchemy import insert, or_, select
 
 from erev_api.audit.writer import record_facts
 from erev_api.auth.dependencies import require_for_entity
+from erev_api.clock import to_entity_date
 from erev_api.db import new_id
-from erev_api.db.tables import approval_request, estimate, material_right, obligation
-from erev_api.domain.contracts import computation, compute_job, obligations, queries, repo
-from erev_api.enums import ComputationStatus
+from erev_api.db.tables import (
+    approval_request,
+    contract_version,
+    estimate,
+    legal_entity,
+    material_right,
+    obligation,
+    obligation_version,
+)
+from erev_api.domain.contracts import (
+    computation,
+    compute_job,
+    events,
+    material_rights,
+    obligations,
+    queries,
+    repo,
+)
+from erev_api.enums import ComputationStatus, ContractEventType
 from erev_api.problems import Problem, ProblemError
-from erev_api.schemas.obligations import MaterialRightCreateIn, MaterialRightOut
+from erev_api.schemas.common import JobOut
+from erev_api.schemas.events import EventAppendIn, EventAppendItemIn, EventsAppendedOut
+from erev_api.schemas.obligations import (
+    MaterialRightCreateIn,
+    MaterialRightExpireIn,
+    MaterialRightOut,
+)
 from erev_api.uow import UnitOfWork
 
 
@@ -165,3 +189,90 @@ def create(
     return obligations.material_right_out(
         session, obligation_id, params=queries.ReadParams(), now=uow.now
     )
+
+
+def expire(
+    uow: UnitOfWork,
+    obligation_id: UUID,
+    body: MaterialRightExpireIn,
+    *,
+    expected_stream_version: int | None,
+) -> EventsAppendedOut | JobOut:
+    """Close one open option under the same group/contract locks as activation and events."""
+    session = uow.session
+    found = obligations.obligation_row(session, obligation_id)
+    contract_id = UUID(str(found["contract_id"]))
+    _, current = repo.lock_group_then_contract(session, contract_id)
+    require_for_entity(uow.ctx, "event.record", current["contracting_entity_id"])
+    if expected_stream_version != int(current["head_stream_version"]):
+        raise Problem(
+            "precondition-failed", "The contract changed. Reload before recording expiry."
+        )
+    if str(current["status"]) != "ACTIVE":
+        raise Problem("invalid-transition", "Only an active contract's option can expire.")
+    # Include already-recorded future closures when refusing a second closure.
+    rights = material_rights.outputs(session, [contract_id], known_at=None, as_of=date.max)
+    right = rights.get(obligation_id)
+    if right is None:
+        raise Problem("not-found", "This obligation has no material-right terms.")
+    if right.status != "OPEN":
+        raise Problem(
+            "option-already-exercised", "This option has already been exercised or expired."
+        )
+    latest_versions = list(
+        session.execute(
+            select(contract_version.c.id)
+            .where(contract_version.c.combination_group_id == current["combination_group_id"])
+            .distinct(contract_version.c.book_code)
+            .order_by(contract_version.c.book_code, contract_version.c.version_no.desc())
+        ).scalars()
+    )
+    kinds = list(
+        session.execute(
+            select(obligation_version.c.obligation_kind).where(
+                obligation_version.c.contract_version_id.in_(latest_versions),
+                obligation_version.c.obligation_id == obligation_id,
+            )
+        ).scalars()
+    )
+    if (
+        not latest_versions
+        or len(kinds) != len(latest_versions)
+        or any(str(kind) != "MATERIAL_RIGHT" for kind in kinds)
+    ):
+        raise Problem(
+            "invalid-transition", "Expiry requires a current material right in every book."
+        )
+    zone = session.execute(
+        select(legal_entity.c.time_zone).where(
+            legal_entity.c.id == current["contracting_entity_id"]
+        )
+    ).scalar_one()
+    today = to_entity_date(uow.now, str(zone))
+    if body.effective_date > today or body.effective_date < current["inception_date"]:
+        raise _invalid("effective_date", "Use a date from contract inception through today.")
+    if right.expiry_date is not None and body.effective_date < right.expiry_date:
+        raise _invalid("effective_date", "The option has not reached its stated expiry date.")
+    captured = events.record_option_expiry(
+        uow,
+        contract_id=contract_id,
+        expected_stream_version=expected_stream_version,
+        body=EventAppendIn(
+            events=[
+                EventAppendItemIn(
+                    event_type=ContractEventType.MATERIAL_RIGHT_EXPIRED,
+                    effective_date=body.effective_date,
+                    obligation_key=str(found["obligation_key"]),
+                    payload={"obligation_key": str(found["obligation_key"])},
+                )
+            ],
+            comment=body.comment,
+            evidence_file_ids=body.evidence_file_ids,
+        ),
+    )
+    if captured.job is not None:
+        return captured.job
+    assert captured.appended is not None
+    if captured.appended.computation.status is not ComputationStatus.SUCCEEDED:
+        raise _invalid("effective_date", "Expiry could not be computed; no expiry was recorded.")
+    return captured.appended
