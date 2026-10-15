@@ -251,6 +251,21 @@ def list_model_logs[P: Page](
 ) -> tuple[P, list[AIModelLogOut]]:
     """Configuration evidence has no source payload and never joins proposal content."""
     principal = ctx.principal
+    statement = model_log_statement(ctx)
+    with tenant_session(principal.db_context, read_only=True) as session:
+        result = page(session, statement)
+        items = []
+        for row in result.items:
+            data = dict(row)
+            data["created_by"] = actors.actor(
+                row["created_by"], row["created_by_kind"], row["creator"]
+            )
+            items.append(AIModelLogOut.model_validate(data))
+        return result, items
+
+
+def model_log_statement(ctx: RequestContext) -> Select[Any]:
+    principal = ctx.principal
     administrator = holds_all(principal, "settings.manage")
     if not administrator and ("ai.use" not in principal.permissions or principal.id is None):
         raise Problem("forbidden")
@@ -265,13 +280,15 @@ def list_model_logs[P: Page](
             ai_model_log.c.created_by == principal.id,
             ai_model_log.c.created_by_kind == principal.kind.value,
         )
-    with tenant_session(principal.db_context, read_only=True) as session:
-        result = page(session, statement)
-        items = []
-        for row in result.items:
-            data = dict(row)
-            data["created_by"] = actors.actor(
-                row["created_by"], row["created_by_kind"], row["creator"]
-            )
-            items.append(AIModelLogOut.model_validate(data))
-        return result, items
+    return statement
+
+
+def model_log_detail(ctx: RequestContext, log_id: UUID) -> AIModelLogOut:
+    statement = model_log_statement(ctx).where(ai_model_log.c.id == log_id)
+    with tenant_session(ctx.principal.db_context, read_only=True) as session:
+        row = session.execute(statement).mappings().one_or_none()
+        if row is None:
+            raise Problem("not-found", "AI call not found.")
+        data = dict(row)
+        data["created_by"] = actors.actor(row["created_by"], row["created_by_kind"], row["creator"])
+        return AIModelLogOut.model_validate(data)

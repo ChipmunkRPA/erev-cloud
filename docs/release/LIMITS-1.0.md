@@ -46,8 +46,11 @@ The read-only `/ai/model-logs` API now exposes retained call configuration, hash
 token counters and actor metadata. Workspace-wide settings.manage can read tenant calls;
 ai.use alone sees only calls with its own actor identity and kind. Visibility is applied before
 counts and cursor pagination; an entity-scoped settings grant cannot read the workspace log.
-This endpoint neither calls a provider nor depends on AI being enabled. The SF-15 call-log
-screen, drawer/export, standard demo/J-19 and full audit-lifecycle verification remain open.
+This endpoint neither calls a provider nor depends on AI being enabled. The SF-15 call-log screen now renders calls, outcomes and a docked evidence drawer. Bookmarked
+drawers reread GET /ai/model-logs/{id} under the same current visibility as the list, including
+404 for another user or tenant. Its configuration-only content is escaped text. CSV/XLSX export,
+saved views, linked-proposal navigation, hash-copy controls, standard demo/J-19 and full
+audit-lifecycle verification remain open.
 
 Migrations 0147–0150 retain append-only call logs, immutable proposal content with guarded
 human-decision fields, completed-job/source bindings and immutable call intents with one

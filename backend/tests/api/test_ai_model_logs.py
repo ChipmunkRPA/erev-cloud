@@ -59,6 +59,12 @@ def test_call_log_visibility_counts_and_cursor(
     assert first.headers["X-Erev-Total-Count"] == "2"
     assert [row["id"] for row in first.json()["items"]] == [ids[2]]
     evidence = first.json()["items"][0]
+    detail = call(app, "GET", PATH + "/" + ids[2], headers=headers)
+    assert detail.status_code == 200, detail.text
+    assert detail.json() == evidence
+    for hidden in (ids[1], ids[3]):
+        assert call(app, "GET", PATH + "/" + hidden, headers=headers).status_code == 404
+
     assert evidence["created_by"]["id"] == str(owner.user_id)
     assert set(evidence) == {
         "id",

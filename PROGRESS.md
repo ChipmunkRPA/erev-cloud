@@ -2,6 +2,19 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## AI call-log screen and bookmarked evidence — October 15, 2026
+
+- Added /settings/ai/call-log with the shared grid, newest-first 50-row API pages, outcomes,
+  token counters, latency and actor/configuration evidence. Named-entity settings grants do not
+  open workspace evidence; ai.use opens only the actor's own list through the server's rules.
+- A docked drawer reads GET /ai/model-logs/{id}; bookmarks/reloads reauthorize the call instead
+  of trusting a retained row. Backend tests prove owner and tenant detail refusal as 404.
+- Full frontend suite: 2,164 tests pass in 203 files. Ten API/route checks, 35 focused frontend
+  checks, backend typing (795 files), frontend typing and full lint pass. Real Chromium with API/PostgreSQL passes grid, drawer and bookmark reload;
+  screenshots inspected and the drawer layout corrected. Details: docs/release/CI-2026-10-15.md.
+- CSV/XLSX export, saved views, linked proposals and hash-copy controls remain open, as do J-19,
+  broader release gates and independent accounting sign-off. No deployment or provider calls.
+
 ## Authorized AI call evidence API — October 15, 2026
 
 - Added GET /ai/model-logs with newest-first cursor pagination, optional counts and typed
@@ -214,23 +227,6 @@
   screenshots inspected. Logs: .run/ai-review-panes-{tests,types,lint,browser}.log.
 - This browser witness uses retained synthetic data, not a live upload-to-acceptance workflow.
   Full frozen CI on 3cf8f5b remains active; repository readiness and accounting sign-off remain open.
-
-## Bundled extraction fixture through upload and draft acceptance — October 15, 2026
-
-- Strengthened the worker/acceptance witness: source now enters through POST /files and the
-  configured fake provider serves the complete nine-field bundled document fixture, replacing
-  the test-only one-field provider. The uploaded ID is checked in every citation. Explicit human
-  customer/product edits, accepted date/payment terms and rejected terms/second line are recorded
-  separately from unchanged original evidence. Persisted booking values, attachment-based access,
-  AI_ASSISTED review provenance, one provider call and zero revenue postings are asserted.
-- Both acceptance regressions pass on isolated PostgreSQL 55441, with focused strict typing
-  (791 sources), Ruff and full lint. Logs: .run/ai-bundled-acceptance-{final,types,lint}.log.
-  Earlier attempts retain two corrected fixture assumptions: the test tenant uses a different
-  product code, and stored ACCEPT decisions also snapshot their accepted values.
-- This is API/worker/database evidence using an in-process PDF parser, not browser interaction,
-  Linux isolation, live-model accuracy or independent activation/accounting sign-off. Demo/browser
-  fixture setup remains unfinished. Frozen CI on 3cf8f5b remains live on separate PostgreSQL 55439.
-  No deployment or live provider calls.
 
 ## Outstanding release verification
 

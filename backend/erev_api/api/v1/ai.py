@@ -347,3 +347,19 @@ def model_logs_list(
     if result.total_count is not None:
         response.headers[TOTAL_COUNT_HEADER] = result.total_count
     return ListOut[AIModelLogOut](items=items, next_cursor=result.next_cursor)
+
+
+@router.get(
+    "/ai/model-logs/{id}",
+    operation_id="ai_model_logs_get",
+    response_model=AIModelLogOut,
+    responses=problem_responses(
+        "unauthenticated", "session-expired", "forbidden", "mfa-required", "not-found"
+    ),
+)
+def model_logs_get(
+    id: UUID,
+    ctx: Annotated[RequestContext, Depends(_model_log_reader)],
+) -> AIModelLogOut:
+    """Read a bookmarked call with exactly the list's current owner/tenant visibility."""
+    return queries.model_log_detail(ctx, id)

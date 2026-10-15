@@ -411,6 +411,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/ai/model-logs/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Model Logs Get
+     * @description Read a bookmarked call with exactly the list's current owner/tenant visibility.
+     */
+    get: operations["ai_model_logs_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/ai/proposals": {
     parameters: {
       query?: never;
@@ -25290,6 +25310,67 @@ export interface operations {
         content: {
           "application/json": components["schemas"]["ProblemOut"];
           "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+    };
+  };
+  ai_model_logs_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AIModelLogOut"];
+        };
+      };
+      /** @description Problem: unauthenticated, session-expired */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: forbidden, mfa-required */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: not-found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
         };
       };
     };

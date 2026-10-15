@@ -5670,3 +5670,20 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - The full frozen CI on 3cf8f5b remains live on 55439 and predates these repairs. No restart,
   deployment or live model call. Browser fixtures/acceptance, remaining implementation and release
   gates, and independent accounting sign-off remain open.
+
+## Bundled extraction fixture through upload and draft acceptance — October 15, 2026
+
+- Strengthened the worker/acceptance witness: source now enters through POST /files and the
+  configured fake provider serves the complete nine-field bundled document fixture, replacing
+  the test-only one-field provider. The uploaded ID is checked in every citation. Explicit human
+  customer/product edits, accepted date/payment terms and rejected terms/second line are recorded
+  separately from unchanged original evidence. Persisted booking values, attachment-based access,
+  AI_ASSISTED review provenance, one provider call and zero revenue postings are asserted.
+- Both acceptance regressions pass on isolated PostgreSQL 55441, with focused strict typing
+  (791 sources), Ruff and full lint. Logs: .run/ai-bundled-acceptance-{final,types,lint}.log.
+  Earlier attempts retain two corrected fixture assumptions: the test tenant uses a different
+  product code, and stored ACCEPT decisions also snapshot their accepted values.
+- This is API/worker/database evidence using an in-process PDF parser, not browser interaction,
+  Linux isolation, live-model accuracy or independent activation/accounting sign-off. Demo/browser
+  fixture setup remains unfinished. Frozen CI on 3cf8f5b remains live on separate PostgreSQL 55439.
+  No deployment or live provider calls.

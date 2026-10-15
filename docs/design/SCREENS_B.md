@@ -5062,6 +5062,12 @@ Test hooks: `SF-04-drawer-flag` (SF-04), `SF-08-dashboard-flags` (SF-08:dashboar
 
 **Data bindings.** `GET /ai/model-logs?count=true&limit=50&cursor` (04 API-R-47; default order newest first, API-C-09). Saved-view code `SF-15:ai-call-log`. The FilterBar fields User, Template, Outcome and Called are deferred to later, because 04 API-R-47 defines no `created_by`, `prompt_template_id`, `outcome`, `from` or `to` filter for model logs; 1.0 renders the list without them.
 
+Implementation note (October 15): the call drawer uses `drawer=call&call=<id>` and
+`GET /ai/model-logs/{id}` to reauthorize bookmarked evidence independently of the loaded page.
+The route has the same tenant/owner visibility as the list. The grid and evidence drawer are
+implemented; CSV/XLSX export, saved views, proposal navigation and hash-copy controls remain
+tracked in LIMITS-1.0 and are not claimed complete by this screen increment.
+
 **Grid columns.**
 
 | Header | Field | Format | Drill |

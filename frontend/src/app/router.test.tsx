@@ -145,6 +145,7 @@ describe("SCR-IA-06 route objects", () => {
       "SF-15:product",
       "SF-24:results",
       "X:trace",
+      "SF-15:ai-call-log",
       "SF-15:ai",
       "SF-15:workspace",
       "SF-15:sandbox",

@@ -944,6 +944,12 @@ export const SCREEN_ROUTES: readonly RouteObject[] = [
     lazy: async () => ({ Component: (await import("../routes/trace/trace")).CalculationTrace }),
   },
   {
+    id: "SF-15:ai-call-log",
+    path: "/settings/ai/call-log",
+    handle: { sf: "SF-15", screen: "SF-15:ai-call-log", titleKey: "settings.aiCallLog.title" },
+    lazy: async () => ({ Component: (await import("../routes/settings/ai-call-log")).AICallLog }),
+  },
+  {
     id: "SF-15:ai",
     path: "/settings/ai",
     handle: { sf: "SF-15", screen: "SF-15:ai", titleKey: "settings.aiSettings.title" },
