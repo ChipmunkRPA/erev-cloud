@@ -82,10 +82,14 @@ gateway tests do not satisfy the full lifecycle.
 
 The immediate tenant disable command now requires workspace-wide settings.manage and fresh
 MFA, atomically records the switch and cancels queued AI jobs, and returns the original stamp
-on repeat requests. The emergency switch overrides an enabled published policy. Clearing it
-when a newly approved AI policy is published remains unimplemented; no direct enable command
-or automatic bypass has been added. Public submission must also serialize its admission with
-the tenant switch when that workflow is implemented.
+on repeat requests. The emergency switch overrides an enabled published policy. A new AI
+publication whose whole values enable AI now clears the switch under independent human
+approval with workspace-wide settings.manage, in addition to configuration approval. First
+enablement and emergency-switch clearing withhold automatic approval; an unrelated budget edit
+while AI remains enabled keeps normal routing. Publication replay cannot undo a later disable,
+and publishing ai.enabled=false leaves the switch intact. There is no direct enable command.
+Public submission must serialize admission with the tenant switch when implemented. The broader
+approval requirements for AI model/provider and contract-text changes still need verification.
 
 The Anthropic adapter is mock-tested, uses the official SDK, disables SDK retries and telemetry,
 and resolves secrets lazily. Contract-review and explain-narrative prompts have retained bytes,

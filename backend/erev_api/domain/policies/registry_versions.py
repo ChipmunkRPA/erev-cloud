@@ -128,6 +128,7 @@ from erev_api.auth import entity_scope
 from erev_api.clock import to_entity_date
 from erev_api.db.session import tenant_session
 from erev_api.db.tables import (
+    approval_decision,
     approval_request,
     book,
     contract,
@@ -136,6 +137,7 @@ from erev_api.db.tables import (
     period,
     period_state,
     registry_version,
+    tenant,
 )
 from erev_api.domain.integrations import grouping
 from erev_api.domain.platform import actors
@@ -147,6 +149,7 @@ from erev_api.enums import (
     ConfigStatus,
     JobKind,
     PeriodState,
+    PrincipalKind,
     RegistryCategory,
     RegistryScope,
 )
@@ -1682,6 +1685,82 @@ def _entity_bound(version: Mapping[str, Any]) -> bool:
     return RegistryCategory(version["category"]) in ENTITY_BOUND_CATEGORIES
 
 
+def _enables_ai(version: Mapping[str, Any]) -> bool:
+    return (
+        version["category"] == RegistryCategory.AI.value
+        and version["values"].get("ai.enabled") is True
+    )
+
+
+def _ai_enable_review(uow: UnitOfWork, version: Mapping[str, Any]) -> bool:
+    """Review an actual enable or clearing of the switch, not an unrelated budget edit."""
+    if not _enables_ai(version):
+        return False
+    disabled_at = uow.session.scalar(
+        select(tenant.c.ai_disabled_at)
+        .where(tenant.c.id == uow.principal.tenant_id)
+        .with_for_update(key_share=True)
+    )
+    previous = uow.session.scalar(
+        select(registry_version.c["values"]).where(
+            registry_version.c.tenant_id == uow.principal.tenant_id,
+            registry_version.c.id == version["supersedes_version_id"],
+        )
+    )
+    return disabled_at is not None or previous is None or previous.get("ai.enabled") is not True
+
+
+def _ai_published(uow: UnitOfWork, version: Mapping[str, Any]) -> None:
+    """BR-AI-02/03: only a newly published, independently reviewed policy clears the switch."""
+    if not _ai_enable_review(uow, version):
+        return
+    principal = uow.principal
+    # Configuration approval alone is insufficient for enabling workspace AI.
+    if (
+        principal.kind is not PrincipalKind.USER
+        or principal.id is None
+        or "settings.manage" not in principal.permissions
+        or principal.permission_scopes.get("settings.manage") != "*"
+    ):
+        raise Problem("forbidden", "Enabling AI requires a workspace administrator's approval.")
+    reviewer = uow.session.scalar(
+        select(approval_decision.c.id).where(
+            approval_decision.c.tenant_id == principal.tenant_id,
+            approval_decision.c.approval_request_id == version["approval_request_id"],
+            approval_decision.c.approver_id == principal.id,
+            approval_decision.c.decision == "APPROVE",
+        )
+    )
+    if reviewer is None or principal.id == version["created_by"]:
+        raise Problem("self-approval", "Another workspace administrator must approve enabling AI.")
+    disabled_at = uow.session.scalar(
+        select(tenant.c.ai_disabled_at)
+        .where(tenant.c.id == principal.tenant_id)
+        .with_for_update(key_share=True)
+    )
+    if disabled_at is None:
+        return
+    uow.session.execute(
+        update(tenant)
+        .where(tenant.c.id == principal.tenant_id)
+        .values(
+            ai_disabled_at=None,
+            ai_disabled_by=None,
+            ai_disabled_by_kind=None,
+            updated_by=principal.id,
+            updated_by_kind=principal.kind.value,
+        )
+    )
+    uow.audit(
+        action="ai.enabled",
+        object_type="tenant",
+        object_id=principal.tenant_id,
+        before={"ai_disabled_at": disabled_at},
+        after={"ai_disabled_at": None, "registry_version_id": version["id"]},
+        approval_request_id=version["approval_request_id"],
+    )
+
+
 REGISTRY_VERSION_KIND: Final = lifecycle.ConfigVersionKind(
     table=registry_version,
     subject_type=ApprovalSubjectType.REGISTRY_VERSION,
@@ -1696,6 +1775,8 @@ REGISTRY_VERSION_KIND: Final = lifecycle.ConfigVersionKind(
     serialise=_serialise,
     restate=_restate,
     reopenable=_reopenable,
+    requires_human_review=_ai_enable_review,
+    on_published=_ai_published,
 )
 KIND: Final = REGISTRY_VERSION_KIND
 

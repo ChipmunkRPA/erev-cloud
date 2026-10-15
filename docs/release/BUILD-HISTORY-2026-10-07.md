@@ -4792,3 +4792,22 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - This is a required writer foundation, not operational crash protection: gateway integration,
   durable retry classification/recovery and unknown-usage handling remain open, as do the
   other implementation/release gates and independent accounting sign-off. No deployment.
+
+## Gateway call intents and restart recovery — October 15, 2026
+
+- The narrative gateway now commits an intent before calling the provider, then links each
+  outcome to that intent. Completed proposals keep their existing idempotent delivery path.
+  Unobserved outcomes refuse AI_OUTCOME_UNKNOWN; returned but invalidated results require
+  reconciliation. Neither path silently calls again or invents a zero-usage outcome.
+- Logs retain allow-listed provider failure codes and retry decisions. Restarted gateways
+  honor remaining backoff and the durable three-attempt limit; permanent/exhausted failures
+  finalize their failed proposal without another call. Proposal writers verify intent/job/
+  source bindings, preventing evidence reuse under another job.
+- Tests verify committed starts visible inside provider execution, crash during the call,
+  lost result before commit, restarted transient/permanent/exhausted failures, bounded calls,
+  waits without budget leases, complete intent/outcome linkage and metadata refusals.
+- Full AI/architecture regression: 493 passed, two Linux-only parser-limit skips (262.18s);
+  strict typing passed for 770 sources; Ruff/diff passed. Logs: .run/ai-recovery-{final,types}.log.
+- Unknown usage/reconciliation, durable admission failures, registered jobs, public AI/human
+  workflows and the other release gates remain open. This is not full release CI or accounting
+  sign-off. No deployment; verified work is published directly to main.

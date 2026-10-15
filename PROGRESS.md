@@ -2,6 +2,23 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Approved AI re-enable publication — October 15, 2026
+
+- A new AI policy publication with ai.enabled=true clears the emergency switch in the same
+  transaction, with ai.enabled audit evidence linked to its approval and registry version.
+  Replaying an already-published version cannot undo a later disable; false publications leave
+  the switch intact. No direct enable command was added.
+- First enablement and clearing a switch require independent human configuration approval plus
+  workspace-wide settings.manage. This also covers inherited ai.enabled=true values. A refused
+  reviewer rolls back the decision/publication. Budget-only edits while enabled retain normal
+  routing; tenant locking serializes switch changes with the publication decision.
+- Final verification: 21 database lifecycle/approval/scope/disable cases passed; 53 unit/layer
+  checks passed. Full make lint and make typecheck passed (922 Python sources plus frontend).
+  Logs: .run/ai-reenable-{regressions-final,unit-final,lint-final,typecheck-final}.log.
+  The initial test used an older non-MFA author session; it was corrected to the enrolled session.
+- Public submission/review, broader AI sensitive-setting approval coverage, unknown usage/outcome
+  reconciliation and the other release gaps remain open. No live provider calls or deployment.
+
 ## Immediate tenant AI disable — October 15, 2026
 
 - Added POST /tenant/ai/disable with workspace-wide settings.manage, fresh MFA, a required
@@ -216,25 +233,6 @@
 - This blocks unobserved calls; it does not invent usage or add a reconciliation override.
   Returned provider errors without token counts, unknown-usage reconciliation, public workflows
   and other release gates remain open. No deployment or production-readiness claim.
-
-## Gateway call intents and restart recovery — October 15, 2026
-
-- The narrative gateway now commits an intent before calling the provider, then links each
-  outcome to that intent. Completed proposals keep their existing idempotent delivery path.
-  Unobserved outcomes refuse AI_OUTCOME_UNKNOWN; returned but invalidated results require
-  reconciliation. Neither path silently calls again or invents a zero-usage outcome.
-- Logs retain allow-listed provider failure codes and retry decisions. Restarted gateways
-  honor remaining backoff and the durable three-attempt limit; permanent/exhausted failures
-  finalize their failed proposal without another call. Proposal writers verify intent/job/
-  source bindings, preventing evidence reuse under another job.
-- Tests verify committed starts visible inside provider execution, crash during the call,
-  lost result before commit, restarted transient/permanent/exhausted failures, bounded calls,
-  waits without budget leases, complete intent/outcome linkage and metadata refusals.
-- Full AI/architecture regression: 493 passed, two Linux-only parser-limit skips (262.18s);
-  strict typing passed for 770 sources; Ruff/diff passed. Logs: .run/ai-recovery-{final,types}.log.
-- Unknown usage/reconciliation, durable admission failures, registered jobs, public AI/human
-  workflows and the other release gates remain open. This is not full release CI or accounting
-  sign-off. No deployment; verified work is published directly to main.
 
 ## Outstanding release verification
 

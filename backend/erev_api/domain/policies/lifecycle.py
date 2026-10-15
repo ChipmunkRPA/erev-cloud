@@ -150,6 +150,10 @@ class ConfigVersionKind:
     ``reopenable`` raises the kind's own refusal of a reopening, under the ``serialise`` lock: a
     registry version whose predecessor is no longer the PUBLISHED version of its key (PRD ERR-92).
     ``reopen`` asks it before the look for an open version and again after it.
+    ``requires_human_review`` inspects the submitted whole version, including attached values,
+    to withhold automatic approval. ``on_published`` runs inside the publication transaction
+    only after a new transition; replay of a PUBLISHED version never invokes it. A refusal
+    rolls back the publication and any decision made in that transaction.
     """
 
     table: Table
@@ -165,6 +169,8 @@ class ConfigVersionKind:
     serialise: Callable[[UnitOfWork, Mapping[str, Any]], None] | None = None
     restate: Callable[[UnitOfWork, Mapping[str, Any]], Mapping[str, Any]] | None = None
     reopenable: Callable[[UnitOfWork, Mapping[str, Any]], None] | None = None
+    requires_human_review: Callable[[UnitOfWork, Mapping[str, Any]], bool] | None = None
+    on_published: Callable[[UnitOfWork, Mapping[str, Any]], None] | None = None
 
     @property
     def object_type(self) -> str:
@@ -478,7 +484,11 @@ def submit(
         subject_id=version["id"],
         summary=kind.summary(session, version),
         comment=comment,
-        auto_approval=not human_approval_required(detail.get("changes")),
+        auto_approval=not human_approval_required(detail.get("changes"))
+        and not (
+            kind.requires_human_review is not None
+            and kind.requires_human_review(uow, {**version, **values})
+        ),
     )
     table = kind.table
     status = session.execute(select(table.c.status).where(table.c.id == version["id"])).scalar_one()
@@ -587,7 +597,7 @@ def publish(
             approval_request_id=approval_request_id,
         )
     published = {"published_at": uow.now, "published_by": published_by}
-    return transition(
+    result = transition(
         uow,
         kind,
         version,
@@ -601,6 +611,10 @@ def publish(
         },
         approval_request_id=approval_request_id,
     )
+
+    if kind.on_published is not None:
+        kind.on_published(uow, result)
+    return result
 
 
 def close(

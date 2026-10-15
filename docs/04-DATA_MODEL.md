@@ -8005,6 +8005,14 @@ and `object_label`, following the existing computation-fact audit convention.
 - `POST /ai/proposals/{id}/accept` takes `{field_decisions: array<{path (R), decision (E-121, R), value (R for EDIT), reason (R for EDIT and REJECT)}>, command (R; `contract.create_draft` in 1.0), entity_code (R)}`. Every `content[].path` of the proposal appears exactly once, otherwise 422 `validation-failed`. `ACCEPT` takes the proposed value, `EDIT` takes `value`, `REJECT` leaves the field unset. The command runs `POST /contracts` as the caller (permission `contract.create`) and returns 201 `{contract_id}`; the proposal becomes `accepted` with `field_decisions` stored. A proposal that is not `proposed`, or has expired, returns 409 `invalid-transition`.
 - `POST /ai/explanations` accepts either `{object_type, id, measure, period}` (an API-R-49 object type; proposal kind `NUMBER_EXPLANATION`) or `{subject_type: "exception_item", subject_id}` (proposal kind `ANOMALY_FLAG`, an anomaly summary). It returns 202 API-S-Job (`AI_TASK`); flags and explanations never change data.
 - `POST /tenant/ai/disable` takes `{comment (R)}` and returns 200 `{ai_disabled_at}`. It needs an MFA step-up (403 `mfa-step-up-required` otherwise), sets the T-PLT-01 columns, cancels the tenant's `QUEUED` `AI_TASK` jobs and writes audit event `ai.disabled`; when AI is already disabled it returns 200 with the existing timestamp.
+  Clearing the emergency switch occurs only on a new AI version publication whose whole values
+  set `ai.enabled = true`; replaying a PUBLISHED version cannot clear a later disable. First
+  enablement and clearing an emergency switch require a human configuration decision by another
+  workspace administrator (`settings.manage` for all entities in addition to `config.approve`).
+  The publication and tenant change share a transaction, with `ai.enabled` audit evidence linked
+  to the approval and registry version. Budget-only edits while AI remains enabled retain normal
+  approval routing; `ai.enabled = false` publications leave the emergency switch unchanged.
+
 
 **Deal preview save** (`POST /deal-previews/{id}/save`; SCREENS_B OQ-B-13). Request `{contract_external_id (R)}`; response 201 `{saved_contract_id}`: a `DRAFT` contract booked in the scenario tenant from the preview `input`; T-FC-04 governs where saving is allowed.
 

@@ -217,3 +217,20 @@ evidence. No deployment occurred.
 - One initial typing issue on a database timestamp was corrected with an explicit type check.
   No deployment or live provider calls. Policy-publication clearing of the emergency switch,
   public AI submission, proposal review and other outstanding readiness work remain open.
+
+## Approved AI re-enable publication — October 15, 2026
+
+- A new AI policy publication with ai.enabled=true clears the emergency switch in the same
+  transaction, with ai.enabled audit evidence linked to its approval and registry version.
+  Replaying an already-published version cannot undo a later disable; false publications leave
+  the switch intact. No direct enable command was added.
+- First enablement and clearing a switch require independent human configuration approval plus
+  workspace-wide settings.manage. This also covers inherited ai.enabled=true values. A refused
+  reviewer rolls back the decision/publication. Budget-only edits while enabled retain normal
+  routing; tenant locking serializes switch changes with the publication decision.
+- Final verification: 21 database lifecycle/approval/scope/disable cases passed; 53 unit/layer
+  checks passed. Full make lint and make typecheck passed (922 Python sources plus frontend).
+  Logs: .run/ai-reenable-{regressions-final,unit-final,lint-final,typecheck-final}.log.
+  The initial test used an older non-MFA author session; it was corrected to the enrolled session.
+- Public submission/review, broader AI sensitive-setting approval coverage, unknown usage/outcome
+  reconciliation and the other release gaps remain open. No live provider calls or deployment.
