@@ -2,6 +2,14 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Current report availability — October 15, 2026
+
+- Reconciled LIMITS B4-6/C-11 against the runtime registry: 40 builders among 57 definitions,
+  with 17 generic builders still absent. First-close evidence packs use their separate API.
+- Labelled the old fifteen-test failure list as historical; registration is not accounting
+  acceptance. Four catalogue checks pass; details are in docs/release/CI-2026-10-15.md.
+- The isolated all-workspace recovery drill is running on frozen d7e8715; no pass is claimed.
+
 ## Worker container health probe — October 15, 2026
 
 - A live baseline run exposed five-second probe timeouts despite a fresh heartbeat. The image
