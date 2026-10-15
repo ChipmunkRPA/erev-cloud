@@ -4118,3 +4118,20 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
 - Approved record creation, assessment events and their resulting output proof, final
   activation, policy/report checks and atomic promotion remain unfinished. Older immutable
   full CI is live at 94%. Publish directly to main; no deployment/readiness claim.
+
+## Full CI results and catalogue/isolation repairs — October 14, 2026
+
+- Immutable 165d63c backend run finished in 5h 11m 13s: 10,843 passed, 33 failed,
+  1 skipped, 3 xfailed, 640 deselected; CI failed at backend tests. This is an older snapshot.
+  Full failure/revalidation inventory: docs/release/CI-2026-10-14.md.
+- Reconciled privacy classifications with the current schema/native option terms; updated
+  reviewed scope/lock/preview inventories and integration response fixtures, clarified guide
+  API paths, and regenerated the frontend as-locked fixture from its API source.
+- Downgrade tests start from fresh head. Reset disposes idle app/owner pools to prevent stale
+  enum type OIDs after schema recreation; the checked-out database lock remains held.
+- Final affected CI-unit recheck: 20 passed (13.61s); privacy/migration isolation suite:
+  22 passed (35.33s); frontend as-locked checks: 90 passed (8.13s). Strict production/DB
+  support typing (890 sources, explicit package bases) and Ruff pass.
+- Remaining: historical report-seed equality, current-main revalidation of 12 other snapshot
+  failures, AI audit coverage, lock/relock figure expectations, three expected-failure gaps,
+  migration promotion and other release work. No deployment or readiness claim.

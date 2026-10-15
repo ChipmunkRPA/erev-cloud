@@ -81,6 +81,14 @@ enablement also checks workspace status, immediate tenant turn-off and the platf
 PostgreSQL tests verify these boundaries. The configured monthly budget is read only; token
 accounting/serialization, settings command lifecycle and gateway execution remain unfinished.
 
+October 15 AI budget continuation: a tenant-specific advisory lease now serializes admission
+against committed UTC-month usage. The caller must hold it through provider execution and
+committed attempt logging; busy jobs must requeue. PostgreSQL witnesses cover stale-total
+prevention, tenant/month isolation, zero/exhausted budgets and lock loss. This does not reserve
+unknown response tokens or recover usage from a call lost before logging. The gateway is still
+absent, so these primitives do not establish operational budget enforcement. Lost-connection
+cleanup in the shared database session kernel was also repaired and regression-tested.
+
 October 14 audit continuation: native option entry/expiry and CLOSE evidence-pack creation
 now have catalogue entries and real request scenarios in the audit walk. Material-right
 AUD-FACT summaries require a contract key and retain the created ids in detail. Evidence-pack

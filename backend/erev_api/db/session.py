@@ -225,7 +225,10 @@ def _refuse_context_free(conn: Connection, *_: Any) -> None:
 
 def _clear_context(conn: Connection) -> None:
     # The context lives exactly as long as the transaction that set it (DG-KRN-DB-04).
-    conn.info.pop(CONTEXT_INFO_KEY, None)
+    # Accessing .info on an invalidated connection can attempt a reconnect during
+    # rollback and mask the original failure. Its discarded DBAPI handle is gone.
+    if not conn.closed and not conn.invalidated:
+        conn.info.pop(CONTEXT_INFO_KEY, None)
 
 
 def build_engine(
@@ -412,11 +415,14 @@ def lock_connection(ctx: DbContext) -> Iterator[Connection]:
     """
     with app_engine().connect() as connection:
         connection.execution_options(isolation_level="AUTOCOMMIT")
-        connection.info[CONTEXT_INFO_KEY] = ctx
+        info = connection.info
+        info[CONTEXT_INFO_KEY] = ctx
         try:
             yield connection
         finally:
-            connection.info.pop(CONTEXT_INFO_KEY, None)
+            # Keep the original info mapping: the caller may invalidate this
+            # connection after losing its session lock. Cleanup must not reconnect.
+            info.pop(CONTEXT_INFO_KEY, None)
 
 
 @contextmanager

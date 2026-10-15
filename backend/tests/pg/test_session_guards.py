@@ -18,6 +18,7 @@ from erev_api.db.session import (
     OWNER_ROLE,
     DbContext,
     DestructiveResetRefused,
+    Role,
     RoleGuardError,
     TenantContextMissing,
     build_engine,
@@ -32,6 +33,7 @@ from erev_api.jobs.pool import worker_pool
 from erev_api.problems import unhandled_error_response
 from sqlalchemy import exc, text
 from sqlalchemy.orm import Session
+from sqlalchemy.pool import QueuePool
 from starlette.requests import Request
 from support.db import TEST_DB_LOCK_KEY, TestDatabase, reset_schema
 
@@ -68,7 +70,7 @@ def test_dg_env_12_app_role_guard(test_database: TestDatabase) -> None:
         assert tuple(session.execute(ROLE_QUERY).one()) == (APP_ROLE, False, False)
 
     settings = get_settings()
-    misbuilt = [
+    misbuilt: list[tuple[str, Role, str]] = [
         (
             settings.owner_database_url(),
             APP_ROLE,
@@ -423,6 +425,7 @@ def test_dg_tst_10_a_schema_rebuilt_after_dispose_engines_leaves_the_product_no_
     # execution on), over a type of the schema
     assert [stated() for _ in range(8)] == ["DRAFT"] * 8
     used = session_module.app_engine().pool
+    assert isinstance(used, QueuePool)
     assert used.checkedin() >= 1
     support_db.fresh_head()  # every type of the schema has a new oid
     test_database.app_engine.dispose()
@@ -459,3 +462,24 @@ def test_dg_env_13_destructive_reset_refused_outside_test_databases(
     with pytest.raises(DestructiveResetRefused, match="'erev'"):
         reset_schema(url)
     assert built == []
+
+
+def test_invalidated_lock_connection_cleanup_does_not_reconnect(
+    test_database: TestDatabase,
+) -> None:
+    with session_module.lock_connection(ALL_ENTITIES) as connection:
+        original_info = connection.info
+        connection.execute(text("SELECT 1"))
+        connection.invalidate()
+    assert session_module.CONTEXT_INFO_KEY not in original_info
+    with session_module.app_engine().connect() as unscoped:
+        with pytest.raises(TenantContextMissing):
+            unscoped.execute(text("SELECT 1"))
+
+
+def test_invalidated_transaction_preserves_original_failure(test_database: TestDatabase) -> None:
+    with pytest.raises(Boom):
+        with tenant_session(ALL_ENTITIES) as session:
+            session.execute(text("SELECT 1"))
+            session.connection().invalidate()
+            raise Boom("original failure")

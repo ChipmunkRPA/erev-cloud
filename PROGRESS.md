@@ -2,6 +2,26 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Serialized AI budget admission and lost-connection cleanup — October 15, 2026
+
+- Added one autocommit session lock per tenant, `erev-ai-budget:<tenant>`, held across
+  admission, provider work and committed usage logging by the future gateway. Busy callers
+  get no lease. Usage sums all outcomes' input/output tokens in the UTC calendar month;
+  equality with the budget and a zero budget refuse before provider work can be admitted.
+- PostgreSQL cases prove competing admissions cannot use a stale total, tenant isolation,
+  month boundaries/error usage, zero budget, exception release and lost-lease refusal.
+  The final focused check also observes the lock connection idle with no open transaction.
+- Lost-connection testing found and repaired shared cleanup that accessed connection.info
+  while invalidated, masking the original error with a reconnect/rollback failure. Cleanup
+  now preserves the original error and discards context without reconnecting; context-free
+  SQL remains refused. Two existing session-test annotations were corrected for strict typing.
+- Combined checks: 215 passed, two Linux parser-limit tests skipped; strict API/test typing:
+  761 sources; Ruff passes. Final budget cases: 6 passed. Logs: .run/ai-budget-{final,types,final-pg}.log.
+- This is committed-usage admission, not a reservation for unknown future tokens. Crash
+  recovery for a provider call whose usage was never logged remains open, as do the gateway,
+  durable per-attempt/proposal auditing and human acceptance. No live calls or deployment.
+  Isolated local test database stopped after verification.
+
 ## Effective AI gateway settings — October 15, 2026
 
 - Added an immutable settings snapshot from explicitly tenant-bound registry rows. All five
@@ -229,23 +249,6 @@
   PostgreSQL comparison verifies all current catalogue fields; four catalogue checks pass
   (6.77s), Ruff/formatting pass. No historical migration changes.
 - Evidence and remaining gaps: docs/release/CI-2026-10-14.md. No deployment or readiness claim.
-
-## Full CI results and catalogue/isolation repairs — October 14, 2026
-
-- Immutable 165d63c backend run finished in 5h 11m 13s: 10,843 passed, 33 failed,
-  1 skipped, 3 xfailed, 640 deselected; CI failed at backend tests. This is an older snapshot.
-  Full failure/revalidation inventory: docs/release/CI-2026-10-14.md.
-- Reconciled privacy classifications with the current schema/native option terms; updated
-  reviewed scope/lock/preview inventories and integration response fixtures, clarified guide
-  API paths, and regenerated the frontend as-locked fixture from its API source.
-- Downgrade tests start from fresh head. Reset disposes idle app/owner pools to prevent stale
-  enum type OIDs after schema recreation; the checked-out database lock remains held.
-- Final affected CI-unit recheck: 20 passed (13.61s); privacy/migration isolation suite:
-  22 passed (35.33s); frontend as-locked checks: 90 passed (8.13s). Strict production/DB
-  support typing (890 sources, explicit package bases) and Ruff pass.
-- Remaining: historical report-seed equality, current-main revalidation of 12 other snapshot
-  failures, AI audit coverage, lock/relock figure expectations, three expected-failure gaps,
-  migration promotion and other release work. No deployment or readiness claim.
 
 ## Outstanding release verification
 
