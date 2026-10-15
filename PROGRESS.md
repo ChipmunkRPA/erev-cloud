@@ -2,6 +2,26 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Scheduled AI proposal expiry — October 15, 2026
+
+- Wired SCH-11 into the worker at 03:20 UTC daily. Each tenant is processed in batches of
+  at most 100 locked rows; concurrent review locks are skipped for a later sweep. Only due
+  proposed rows become expired, with a row-version increment and SYSTEM audit in one transaction.
+  Content, citations, call logs, files and terminal proposal states remain intact; AI switches
+  do not govern maintenance. Existing rejection checks enforce expiry between daily sweeps.
+- Migration 0154 adds the tenant/expiry/id index. The application-role EXPLAIN test proves
+  expires_at bounds the expiry query under RLS; migration upgrade/downgrade/upgrade checks pass.
+- Verification: eight PostgreSQL migration/index cases, the real proposal lifecycle case on
+  the new head, and 22 worker/layer checks passed. The lifecycle checks the boundary, newer and
+  terminal rows, two tenants, review locks, interrupted-batch rollback, multi-batch expiry,
+  repeat runs, audit cardinality and retained reads. Full lint and typecheck passed (926 Python
+  sources plus frontend); focused typing passed 780 sources. Logs:
+  .run/ai-expiry-{head-pg,migrations,unit,typecheck,types-verified,lint-final}.log.
+  Initial fixtures were corrected to provision a real second tenant and import the transition
+  helper directly for strict typing. No production code was loosened for those fixes.
+- Listing, acceptance, extraction and other AI operations remain open, along with the broader
+  accounting/verification backlog and independent sign-off. No deployment or live AI calls.
+
 ## Number-explanation rejection — October 15, 2026
 
 - Added POST /ai/proposals/{id}/reject for supported number explanations. A human with current
@@ -212,35 +232,6 @@
 - No broad backend process remains running. Complete CI and other implementation/release gates,
   unknown AI usage reconciliation and independent accounting sign-off remain outstanding.
   Details: docs/release/VERIFICATION-2026-10-15.md. No deployment or readiness claim.
-
-## Immutable dependency audit — October 15, 2026
-
-- make audit-deps passed on clean 621d412 in an immutable context: 86 of 86 pinned Python
-  packages audited, zero Python vulnerabilities; zero npm advisories at all severities.
-  Eight platform markers were removed for complete pinned-package coverage. Source and
-  installed dependency hashes remained unchanged. Report and digest are recorded in
-  docs/release/VERIFICATION-2026-10-15.md; log .run/readiness-audit-deps-oct15.log.
-- Backend unit/architecture verification has since completed; its failures and focused repairs
-  are recorded in the latest note and docs/release/VERIFICATION-2026-10-15.md.
-  Historical-report cutoff repair also requires ledger-seal compatibility: LINE_MEMBERS
-  dynamically includes every stored line column, so adding a timestamp alone changes hashes.
-- Full implementation/release verification and independent accounting sign-off remain open.
-  No deployment. Verified dependency audit is not a production-readiness claim.
-
-## Broader readiness verification — October 15, 2026
-
-- Full repository typing passed (917 Python sources plus frontend TypeScript); production build
-  and backend imports passed. All 2,109 frontend tests in 196 files passed (174.31s).
-- Full lint found a mocked SDK synthetic-key literal requiring an exact-line scanner exception,
-  and a test module-name collision between AI prompt and policy-template tests. Added only the
-  scoped fixture exception and renamed the AI test module without changing its assertions;
-  both modules now collect together (28 tests). Full lint passed, including collection of
-  12,015 tests and validation of 502 control-tagged tests.
-- Complete backend unit/architecture verification subsequently finished; see the latest note
-  and .run/readiness-unit-architecture-oct15.log. Other logs use .run/readiness-*-oct15.log.
-- Details: docs/release/VERIFICATION-2026-10-15.md. Public visibility, main default, research
-  exclusions and noncommercial licence verified. These development checks are not full CI,
-  independent accounting sign-off or production readiness. No deployment.
 
 ## Outstanding release verification
 

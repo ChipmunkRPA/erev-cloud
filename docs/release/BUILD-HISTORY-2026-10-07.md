@@ -4875,3 +4875,32 @@ cleanup in the shared database session kernel was also repaired and regression-t
   Logs: .run/ai-adapter-usage-{final,types,boundary}.log.
 - No live provider calls or deployment. Unknown-usage reconciliation and the remaining product,
   accounting and release-verification gates are still open; this is not production readiness.
+
+## Broader readiness verification — October 15, 2026
+
+- Full repository typing passed (917 Python sources plus frontend TypeScript); production build
+  and backend imports passed. All 2,109 frontend tests in 196 files passed (174.31s).
+- Full lint found a mocked SDK synthetic-key literal requiring an exact-line scanner exception,
+  and a test module-name collision between AI prompt and policy-template tests. Added only the
+  scoped fixture exception and renamed the AI test module without changing its assertions;
+  both modules now collect together (28 tests). Full lint passed, including collection of
+  12,015 tests and validation of 502 control-tagged tests.
+- Complete backend unit/architecture verification subsequently finished; see the latest note
+  and .run/readiness-unit-architecture-oct15.log. Other logs use .run/readiness-*-oct15.log.
+- Details: docs/release/VERIFICATION-2026-10-15.md. Public visibility, main default, research
+  exclusions and noncommercial licence verified. These development checks are not full CI,
+  independent accounting sign-off or production readiness. No deployment.
+
+## Immutable dependency audit — October 15, 2026
+
+- make audit-deps passed on clean 621d412 in an immutable context: 86 of 86 pinned Python
+  packages audited, zero Python vulnerabilities; zero npm advisories at all severities.
+  Eight platform markers were removed for complete pinned-package coverage. Source and
+  installed dependency hashes remained unchanged. Report and digest are recorded in
+  docs/release/VERIFICATION-2026-10-15.md; log .run/readiness-audit-deps-oct15.log.
+- Backend unit/architecture verification has since completed; its failures and focused repairs
+  are recorded in the latest note and docs/release/VERIFICATION-2026-10-15.md.
+  Historical-report cutoff repair also requires ledger-seal compatibility: LINE_MEMBERS
+  dynamically includes every stored line column, so adding a timestamp alone changes hashes.
+- Full implementation/release verification and independent accounting sign-off remain open.
+  No deployment. Verified dependency audit is not a production-readiness claim.

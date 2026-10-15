@@ -107,6 +107,7 @@ def test_krn_job_02_worker_tasks() -> None:
         worker.SESSION_PURGE_TASK,
         worker.AUDIT_CHAIN_VERIFY_ALL_TASK,
         worker.SECURITY_CHAIN_VERIFY_TASK,
+        worker.AI_PROPOSAL_EXPIRY_TASK,
         worker.SUPPORT_GRANT_EXPIRY_TASK,
         worker.PARTITION_WINDOW_CHECK_TASK,
         worker.FILE_ORPHAN_SWEEP_TASK,
@@ -129,6 +130,7 @@ def test_krn_job_02_worker_tasks() -> None:
         ("erev.session_purge", "10 3 * * *"),
         ("erev.audit_chain_verify_all", "0 2 * * *"),
         ("erev.security_chain_verify", "30 2 * * *"),
+        ("erev.ai_proposal_expiry", "20 3 * * *"),
         ("erev.support_grant_expiry", "*/10 * * * *"),
         # SCH-13 and SCH-14 (record §4.22; D-98 138): the daily partition-window check and the
         # file-store orphan sweep, global tasks on maintenance.

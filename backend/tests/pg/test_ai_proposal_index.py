@@ -36,3 +36,26 @@ def test_proposal_date_bounds_index_before_enum_filters(
     node = scan(plan(tenant, statement), "ai_proposal")
     bound_by(node, "ix_ai_proposal__status", "created_at")
     assert "kind" in node["Filter"] and "status" in node["Filter"]
+
+
+def test_proposal_expiry_bounds_index_under_rls(
+    committed_db: TestDatabase, keyring: KeyRing
+) -> None:
+    tenant = tenant_id_of(tenant_factory(keyring=keyring))
+    with tenant_session(DbContext(tenant, None, "*")) as session:
+        row = ai_proposal_row(RowContext(tenant, new_id()), session)
+        session.execute(insert(ai_proposal).values(**row))
+        statement = (
+            select(ai_proposal.c.id, ai_proposal.c.row_version)
+            .where(
+                ai_proposal.c.tenant_id == tenant,
+                ai_proposal.c.expires_at <= row["expires_at"],
+                ai_proposal.c.status == "proposed",
+            )
+            .order_by(ai_proposal.c.expires_at, ai_proposal.c.id)
+            .limit(100)
+            .with_for_update(skip_locked=True)
+        )
+        assert session.scalars(statement).all() == [row["id"]]
+    node = scan(plan(tenant, statement), "ai_proposal")
+    bound_by(node, "ix_ai_proposal__expiry", "expires_at")

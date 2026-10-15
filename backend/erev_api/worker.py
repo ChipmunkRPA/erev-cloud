@@ -8,6 +8,7 @@ verification tasks ``erev.audit_chain_verify_all`` (SCH-01) and ``erev.security_
 (SCH-02), the support grant expiry ``erev.support_grant_expiry`` every 10 minutes (SCH-15), the
 completion of decided shreds ``erev.file_shred_completion`` every 10 minutes (SCH-16) and the
 six-hourly reconciliation sweeps ``erev.integration_sweeps`` (SCH-09).
+Proposal expiry ``erev.ai_proposal_expiry`` runs daily at 03:20 UTC (SCH-11).
 ``main`` is the composition root of ``erev worker``: it builds the job runtime from the settings,
 writes the heartbeat file every 15 seconds (DG-KRN-JOB-08) and consumes all eight queues unless a
 subset is named (DG-KRN-JOB-11).
@@ -46,6 +47,7 @@ from erev_api.controls.operator_alert_sinks import build_alert_sinks
 from erev_api.controls.release import EngineRelease, log_release, stamp_release
 from erev_api.controls.startup import refuse_unsafe_production
 from erev_api.db.session import dispose_engines, set_component
+from erev_api.domain.ai import expiry as ai_expiry
 from erev_api.domain.ai import jobs as ai_jobs
 from erev_api.domain.ai.gateway import AiGateway
 from erev_api.domain.ai.ports import AIProvider
@@ -78,6 +80,7 @@ IDEMPOTENCY_PURGE_TASK: Final = "erev.idempotency_purge"
 SESSION_PURGE_TASK: Final = "erev.session_purge"
 AUDIT_CHAIN_VERIFY_ALL_TASK: Final = "erev.audit_chain_verify_all"
 SECURITY_CHAIN_VERIFY_TASK: Final = "erev.security_chain_verify"
+AI_PROPOSAL_EXPIRY_TASK: Final = "erev.ai_proposal_expiry"
 SUPPORT_GRANT_EXPIRY_TASK: Final = "erev.support_grant_expiry"
 PARTITION_WINDOW_CHECK_TASK: Final = "erev.partition_window_check"
 FILE_ORPHAN_SWEEP_TASK: Final = "erev.file_orphan_sweep"
@@ -242,6 +245,18 @@ def audit_chain_verify_all(timestamp: int) -> None:
 def security_chain_verify(timestamp: int) -> None:
     """SCH-02 daily at 02:30 UTC: the global security event chain."""
     audit_jobs.security_chain_verify(_require_runtime())
+
+
+@app.periodic(cron="20 3 * * *", periodic_id="ai_proposal_expiry")
+@app.task(
+    name=AI_PROPOSAL_EXPIRY_TASK,
+    queue="maintenance",
+    queueing_lock=AI_PROPOSAL_EXPIRY_TASK,
+    pass_context=False,
+)
+def ai_proposal_expiry(timestamp: int) -> None:
+    """SCH-11 daily at 03:20 UTC: expire due proposals and retain their evidence."""
+    ai_expiry.expire_due(_require_runtime())
 
 
 @app.periodic(cron="*/10 * * * *", periodic_id="support_grant_expiry")

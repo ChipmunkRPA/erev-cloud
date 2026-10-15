@@ -113,7 +113,10 @@ POST /ai/proposals/{id}/reject now supports these number-explanation proposals f
 with current source access, a nonempty reason and the current If-Match ETag. Rejection locks
 the proposal, advances its row version and records the reviewer and audit event in one
 transaction; expired or terminal items cannot be rejected. It remains available with AI off.
-Acceptance, extraction review, expiry transitions and other proposal kinds remain unfinished.
+SCH-11 now expires overdue proposed rows daily at 03:20 UTC, in bounded tenant transactions
+with row locks and SYSTEM audit events. Locked review rows wait for a later sweep; terminal
+states and retained evidence are untouched. Rejection already enforces the exact expiry
+boundary between sweeps. Acceptance, extraction review and other proposal kinds remain unfinished.
 
 The Anthropic adapter is mock-tested, uses the official SDK, disables SDK retries and telemetry,
 and resolves secrets lazily. Contract-review and explain-narrative prompts have retained bytes,
