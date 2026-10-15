@@ -80,6 +80,13 @@ admission-failure evidence, notifications and public submission/acceptance/rejec
 remain unfinished. The AI audit-lifecycle gate remains open; worker dispatch and internal
 gateway tests do not satisfy the full lifecycle.
 
+The immediate tenant disable command now requires workspace-wide settings.manage and fresh
+MFA, atomically records the switch and cancels queued AI jobs, and returns the original stamp
+on repeat requests. The emergency switch overrides an enabled published policy. Clearing it
+when a newly approved AI policy is published remains unimplemented; no direct enable command
+or automatic bypass has been added. Public submission must also serialize its admission with
+the tenant switch when that workflow is implemented.
+
 The Anthropic adapter is mock-tested, uses the official SDK, disables SDK retries and telemetry,
 and resolves secrets lazily. Contract-review and explain-narrative prompts have retained bytes,
 digests and deterministic fixtures. Request preparation minimizes and redacts inputs with

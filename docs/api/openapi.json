@@ -38267,6 +38267,36 @@
         "title": "TemplateVersionRefOut",
         "type": "object"
       },
+      "TenantAIDisableIn": {
+        "additionalProperties": false,
+        "properties": {
+          "comment": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Comment",
+            "type": "string"
+          }
+        },
+        "required": [
+          "comment"
+        ],
+        "title": "TenantAIDisableIn",
+        "type": "object"
+      },
+      "TenantAIDisabledOut": {
+        "properties": {
+          "ai_disabled_at": {
+            "format": "date-time",
+            "title": "Ai Disabled At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ai_disabled_at"
+        ],
+        "title": "TenantAIDisabledOut",
+        "type": "object"
+      },
       "TenantCurrenciesIn": {
         "additionalProperties": false,
         "description": "``PUT /tenant-currencies``: the currencies enabled from now on; every other tenant currency\nis disabled, and the reporting currency stays enabled (T-REF-09).",
@@ -94483,6 +94513,104 @@
         "summary": "Tenant Currencies Put",
         "tags": [
           "API-R-19 Currencies and FX"
+        ],
+        "x-erev-permission": "settings.manage"
+      }
+    },
+    "/api/v1/tenant/ai/disable": {
+      "post": {
+        "description": "Turn off AI immediately and cancel queued AI jobs (API-R-04, BR-AI-03).",
+        "operationId": "tenant_ai_disable",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantAIDisableIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantAIDisabledOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: unauthenticated, session-expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: forbidden, mfa-required, mfa-step-up-required"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: idempotency-in-progress"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: validation-failed, idempotency-key-reused"
+          }
+        },
+        "summary": "Tenant Ai Disable",
+        "tags": [
+          "API-R-04 Tenant"
         ],
         "x-erev-permission": "settings.manage"
       }

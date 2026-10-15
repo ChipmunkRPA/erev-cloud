@@ -7276,6 +7276,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/tenant/ai/disable": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Tenant Ai Disable
+     * @description Turn off AI immediately and cancel queued AI jobs (API-R-04, BR-AI-03).
+     */
+    post: operations["tenant_ai_disable"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/tenant/reset": {
     parameters: {
       query?: never;
@@ -21950,6 +21970,19 @@ export interface components {
       template_code: string;
       /** Version No */
       version_no: number;
+    };
+    /** TenantAIDisableIn */
+    TenantAIDisableIn: {
+      /** Comment */
+      comment: string;
+    };
+    /** TenantAIDisabledOut */
+    TenantAIDisabledOut: {
+      /**
+       * Ai Disabled At
+       * Format: date-time
+       */
+      ai_disabled_at: string;
     };
     /**
      * TenantCurrenciesIn
@@ -52300,6 +52333,73 @@ export interface operations {
         };
       };
       /** @description Problem: forbidden, mfa-required */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: idempotency-in-progress */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: validation-failed, idempotency-key-reused */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+    };
+  };
+  tenant_ai_disable: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description API-C-04: one key per user intent (8-255 characters); a repeat with the same key and body replays the stored response, another body is 422 idempotency-key-reused. */
+        "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TenantAIDisableIn"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TenantAIDisabledOut"];
+        };
+      };
+      /** @description Problem: unauthenticated, session-expired */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: forbidden, mfa-required, mfa-step-up-required */
       403: {
         headers: {
           [name: string]: unknown;

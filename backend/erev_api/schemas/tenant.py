@@ -148,3 +148,12 @@ class TenantResetRequestedOut(JobOut):
     plus the pre-allocated successor sandbox, also in the ``X-Erev-Sandbox-Tenant-Id`` header."""
 
     sandbox_tenant_id: uuid.UUID
+
+
+class TenantAIDisableIn(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    comment: str = Field(min_length=1, max_length=4000)
+
+
+class TenantAIDisabledOut(BaseModel):
+    ai_disabled_at: datetime

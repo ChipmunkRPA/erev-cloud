@@ -57,6 +57,7 @@ SNAPSHOT: Final = f"{API}/tenant/snapshots/{{tenant_snapshot_id}}"
 MANIFEST: Final = f"{API}/tenant/snapshots/{{tenant_snapshot_id}}/manifest"
 SANDBOXES: Final = f"{API}/tenant/sandboxes"
 RESET: Final = f"{API}/tenant/reset"
+AI_DISABLE: Final = f"{API}/tenant/ai/disable"
 ENDPOINTS: Final = f"{API}/webhook-endpoints"
 ENDPOINT: Final = f"{API}/webhook-endpoints/{{endpoint_id}}"
 DELIVERIES: Final = f"{API}/webhook-deliveries"
@@ -66,6 +67,7 @@ TENANT_WIDE: Final[Mapping[str, Sequence[tuple[str, str]]]] = {
     "settings.manage": (
         ("GET", TENANT),
         ("PATCH", TENANT),
+        ("POST", AI_DISABLE),
         ("PUT", CURRENCIES),
         ("POST", TEMPLATES),
         ("PATCH", TEMPLATE),
@@ -278,9 +280,14 @@ def test_the_tenant_level_administration_is_for_holders_of_all_entities(
     ).status_code
     answered["GET", DELIVERIES] = get(app, DELIVERIES, ines).status_code
 
+    answered["POST", AI_DISABLE] = post(
+        app, AI_DISABLE, grace, {"comment": "Pause AI for review"}
+    ).status_code
+
     assert answered == {
         ("GET", TENANT): 200,
         ("PATCH", TENANT): 200,
+        ("POST", AI_DISABLE): 200,
         ("PUT", CURRENCIES): 200,
         ("POST", TEMPLATES): 201,
         ("PATCH", TEMPLATE): 200,

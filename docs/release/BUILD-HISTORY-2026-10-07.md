@@ -4775,3 +4775,20 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Dedicated proposal/document-text response APIs, extraction job integration and write-ahead
   call recovery remain unfinished, along with other implementation and release gates.
   No deployment or production-readiness claim; independent accounting sign-off is still open.
+
+## Audited AI call-intent writer — October 15, 2026
+
+- Added a transaction-bound writer that locks the human-owned RUNNING AI_TASK job,
+  validates exact request/source hashes, assigns consecutive starts up to three and writes
+  immutable intent plus AUD-FACT evidence atomically. Unresolved prior starts refuse without
+  creating a usage log. The caller must commit before executing a provider call.
+- Attempt outcomes can now link to an intent only when provider, request hash and human
+  match; duplicate outcomes and budget/disabled admission records cannot close an intent.
+  Shared request validation keeps arbitrary parameters and model text out of retained evidence.
+- Tests cover rollback/audit atomicity, unknown outcomes, changed input, wrong human/provider,
+  duplicate outcomes, attempt exhaustion and invalid/nonrunning job ownership. Broad AI and
+  audit-key regression: 224 passed, two Linux parser-limit tests skipped; strict typing:
+  768 sources; Ruff/diff passed. Logs: .run/ai-intent-writer-{final,types}.log.
+- This is a required writer foundation, not operational crash protection: gateway integration,
+  durable retry classification/recovery and unknown-usage handling remain open, as do the
+  other implementation/release gates and independent accounting sign-off. No deployment.

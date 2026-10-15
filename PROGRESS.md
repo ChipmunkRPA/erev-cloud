@@ -2,6 +2,22 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Immediate tenant AI disable — October 15, 2026
+
+- Added POST /tenant/ai/disable with workspace-wide settings.manage, fresh MFA, a required
+  comment and normal command idempotency. It records the human/time, cancels only this tenant's
+  queued AI tasks and appends ai.disabled plus per-job cancellation evidence in one transaction.
+  Repeats return the original timestamp without duplicating switch/cancellation events.
+- Running calls retain evidence under the gateway's existing setting rechecks. The switch
+  overrides a published ai.enabled=true policy; other tenants and queued non-AI jobs are intact.
+- Verification: five tenant/API/scope regressions passed, then two API cases passed with a
+  published-enabled policy; 25 route/layer checks passed. Full typecheck passed 922 Python
+  sources and frontend checks. Full lint and OpenAPI generation passed. Logs:
+  .run/ai-disable-{api,regressions,enabled-policy,architecture,typecheck,lint,openapi}.log.
+- One initial typing issue on a database timestamp was corrected with an explicit type check.
+  No deployment or live provider calls. Policy-publication clearing of the emergency switch,
+  public AI submission, proposal review and other outstanding readiness work remain open.
+
 ## AI cancellation boundaries — October 15, 2026
 
 - Narrative tasks now stop cooperatively before another provider call and during retry waits.
@@ -219,23 +235,6 @@
 - Unknown usage/reconciliation, durable admission failures, registered jobs, public AI/human
   workflows and the other release gates remain open. This is not full release CI or accounting
   sign-off. No deployment; verified work is published directly to main.
-
-## Audited AI call-intent writer — October 15, 2026
-
-- Added a transaction-bound writer that locks the human-owned RUNNING AI_TASK job,
-  validates exact request/source hashes, assigns consecutive starts up to three and writes
-  immutable intent plus AUD-FACT evidence atomically. Unresolved prior starts refuse without
-  creating a usage log. The caller must commit before executing a provider call.
-- Attempt outcomes can now link to an intent only when provider, request hash and human
-  match; duplicate outcomes and budget/disabled admission records cannot close an intent.
-  Shared request validation keeps arbitrary parameters and model text out of retained evidence.
-- Tests cover rollback/audit atomicity, unknown outcomes, changed input, wrong human/provider,
-  duplicate outcomes, attempt exhaustion and invalid/nonrunning job ownership. Broad AI and
-  audit-key regression: 224 passed, two Linux parser-limit tests skipped; strict typing:
-  768 sources; Ruff/diff passed. Logs: .run/ai-intent-writer-{final,types}.log.
-- This is a required writer foundation, not operational crash protection: gateway integration,
-  durable retry classification/recovery and unknown-usage handling remain open, as do the
-  other implementation/release gates and independent accounting sign-off. No deployment.
 
 ## Outstanding release verification
 

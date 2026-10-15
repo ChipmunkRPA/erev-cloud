@@ -42,12 +42,15 @@ from erev_api.api.lists import (
 from erev_api.auth.dependencies import require_all_entities
 from erev_api.auth.principal import RequestContext
 from erev_api.db.tables import tenant_snapshot
+from erev_api.domain.ai import commands as ai_commands
 from erev_api.domain.platform import sandbox_reset, sandboxes, snapshots, tenant_settings
 from erev_api.domain.platform.snapshot_dataset import PURPOSES
 from erev_api.enums import RunStatus
 from erev_api.schemas.common import ListOut
 from erev_api.schemas.tenant import (
     SnapshotPurpose,
+    TenantAIDisabledOut,
+    TenantAIDisableIn,
     TenantOut,
     TenantResetIn,
     TenantResetRequestedOut,
@@ -378,4 +381,25 @@ def tenant_snapshots_manifest(
         content=content,
         media_type=MANIFEST_MEDIA_TYPE,
         headers={"ETag": f'"{row["manifest_sha256"]}"'},
+    )
+
+
+@router.post(
+    "/tenant/ai/disable",
+    operation_id="tenant_ai_disable",
+    response_model=TenantAIDisabledOut,
+    responses=problem_responses(*_COMMAND_PROBLEMS, "mfa-step-up-required"),
+)
+def tenant_ai_disable(
+    body: TenantAIDisableIn,
+    cmd: Annotated[CommandContext, Depends(command(PERMISSION, all_entities=True))],
+    deps: Annotated[KernelDeps, Depends(kernel_deps)],
+) -> Response:
+    """Turn off AI immediately and cancel queued AI jobs (API-R-04, BR-AI-03)."""
+    return run_command(
+        cmd,
+        deps,
+        lambda uow: TenantAIDisabledOut(
+            ai_disabled_at=ai_commands.disable(uow, comment=body.comment)
+        ),
     )
