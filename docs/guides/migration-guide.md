@@ -6,6 +6,10 @@ What release 1.0 does not do for a migration — replay mode and promotion, a le
 
 A migration is a record (`MIG-000001`, …) with a mode, a source file and a status: `UPLOADED`, `PROFILING`, `PROFILED`, `IMPORTING`, `IMPORTED`, `RECONCILED`, `SUBMITTED`, `PROMOTED`, or `FAILED` and `CANCELLED`. Running a migration needs `migration.run` for all entities — a migration is an act on the workspace: the database holds the contracts of any entity and the import creates entities, so every route under `/api/v1/migrations` answers a member whose role names entities 403; approving its promotion needs `migration.approve` by a user other than the runner. The detail screen is `/data/migrations/:migrationId` with the steps profile, mapping, import, reconciliation and promotion; the migrations list and the new-migration screens are not routed at this revision, so a migration is created through the API and then opened by its id.
 
+Opening-balance imports retain their confirmed mapping and parameter choices for later promotion
+review. A retained capture without this plan must be re-imported before promotion; review does
+not substitute current defaults for choices that were not retained.
+
 Converted-option import remains unavailable while promotion is unfinished. In the implemented
 reconciliation path, `POL-212:CONVERT_TO_OPTION_RECORD` identifies an evidenced change from
 legacy dollar-units to quantity-one option units. The report preserves both quantities and the

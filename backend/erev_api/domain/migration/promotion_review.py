@@ -19,7 +19,7 @@ from erev_api.db.tables import (
     migration_population_obligation,
     migration_population_version,
 )
-from erev_api.domain.migration import reconciliation, repository
+from erev_api.domain.migration import opening_plan, reconciliation, repository
 from erev_api.domain.migration.legacy_db import LegacyRow
 from erev_api.enums import MigrationMode
 from erev_api.problems import Problem, ProblemError
@@ -105,6 +105,15 @@ def review_basis(uow: UnitOfWork, batch_id: UUID) -> dict[str, Any]:
         source = LegacyRow(int(row["source_rowid"]), dict(row["legacy_row"]))
         if source.sha256 != str(row["legacy_row_sha256"]):
             raise _refuse("A retained legacy row does not match its recorded source hash.")
+    plan = opening_plan.restore(
+        [LegacyRow(int(row["source_rowid"]), dict(row["legacy_row"])) for row in source_rows],
+        batch["cutover_date"],
+        dict(batch.get("profile") or {}).get("opening_plan"),
+    )
+    population = repository.comparison_population(uow, batch)
+    if population is None:
+        raise _refuse("The migration has no captured population for promotion review.")
+    opening_plan.verify_inputs(plan, batch, repository.verify_capture_evidence(uow, population))
     captures = (
         uow.session.execute(
             select(migration_population_version)

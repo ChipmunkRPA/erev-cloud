@@ -557,3 +557,33 @@ not yet validate current configuration or report execution, publish the legacy p
 reproduce and compare approved contracts, enforce activation admission, or atomically create
 live contracts. The subject, route, independent approver/MFA journey and public option import
 remain unavailable until those pieces are implemented and verified together.
+
+## Confirmed opening plan and input reconstruction, October 14
+
+Successful opening-balance imports now retain a versioned `profile.opening_plan`: the complete
+normalized batch parameters, confirmed entity mapping, staging digest and plan digest. The plan
+covers staged booking lines, exact opening balances and option records. Restoring it uses the
+retained source rows and cutover; absent/unsupported plans, incomplete parameters, malformed
+representations, invalid hashes or changed staged facts refuse by name. Older captures without
+this plan need re-import before promotion; no choice is inferred from current defaults.
+
+Promotion review restores this plan and compares its booking and opening payloads against the
+verified producing input, requires the complete captured contract population and migration
+customer identity, and compares every immutable option term. Numeric option values compare
+exactly: database 25.0000 and source 25 are equal without rounding or discarding other fields.
+This comparison is separate from the plan hash; a self-consistent newly hashed plan that changes
+KEEP/CONVERT or entity mapping still fails against the original capture.
+
+The registered import worker with a non-identity entity mapping stores a reconstructable plan
+for all four fixture contracts (1 check, 12.72s). The converted-option database witness includes
+missing-plan and freshly hashed changed-choice refusals: 3 cases passed (12.10s). Event dates
+and MIGRATION origin are also bound. Strict production typing (886 sources), two test files,
+the final plan helper and Ruff pass. Domain/import/reconciliation and
+architecture checks: 70 passed (9.96s). Logs: `.run/migration-opening-plan-import.log`,
+`.run/migration-opening-plan-pg.log` and `.run/migration-opening-plan-unit.log`.
+
+This provides confirmed-input reconstruction for the future promotion writer. It does not yet
+recompute and compare outputs under current configuration, publish the legacy preset, enforce
+activation admission or create live contracts under independent approval. Public converted-option
+import and the promotion route remain unavailable; no production readiness or accounting sign-off
+is claimed.

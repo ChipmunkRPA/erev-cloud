@@ -29,6 +29,7 @@ from erev_api.domain.migration import (
     capture,
     jobs,
     opening_balances,
+    opening_plan,
     option_reconciliation,
     promotion_review,
     repository,
@@ -134,6 +135,9 @@ def test_platform_applier_captures_converted_option_and_rolls_back(
     stamp_test_release()
     _publish_parity_templates(tenant_id)
     opening = _opening()
+    parameters = BatchParameters(material_right_convention="CONVERT_TO_OPTION_RECORD")
+    staging = opening_balances.stage([row.source for row in opening.rows], CUTOVER, parameters)
+    manifest = opening_plan.record(staging, parameters, {})
     with unit_of_work(
         _ctx(tenant_id, clock), clock=clock, keyring=keyring, files=LocalFileStore(tmp_path)
     ) as uow:
@@ -222,7 +226,12 @@ def test_platform_applier_captures_converted_option_and_rolls_back(
             .values(status="APPROVED", approval_request_id=request_id)
         )
         batch = migration_batch_row(RowContext(tenant_id, new_id()), session)
-        batch.update(status="IMPORTED", capture_operation_id=new_id(), cutover_date=CUTOVER)
+        batch.update(
+            status="IMPORTED",
+            capture_operation_id=new_id(),
+            cutover_date=CUTOVER,
+            profile={"opening_plan": manifest},
+        )
         session.execute(insert(migration_batch).values(**batch))
         child = capture.migration_unit(uow)
         savepoint = session.begin_nested()
@@ -338,6 +347,31 @@ def test_platform_applier_captures_converted_option_and_rolls_back(
         assert basis["capture_operation_id"] == batch["capture_operation_id"]
         assert promotion_review.review_basis(uow, batch["id"]) == basis
         assert tuple(uow.audit_events) == before
+        source_rows = [item.source for item in opening.rows]
+        keep_parameters = BatchParameters(material_right_convention="KEEP_QUANTITY_CONVENTION")
+        keep = opening_balances.stage(source_rows, CUTOVER, keep_parameters)
+        remapped = opening_balances.stage(
+            source_rows, CUTOVER, parameters, entity_codes={opening.entity_code: "OTHER-ENTITY"}
+        )
+        changed_plans = [
+            None,
+            opening_plan.record(keep, keep_parameters, {}),
+            opening_plan.record(remapped, parameters, {opening.entity_code: "OTHER-ENTITY"}),
+        ]
+        for changed_plan in changed_plans:
+            nested = session.begin_nested()
+            try:
+                session.execute(
+                    update(migration_batch)
+                    .where(migration_batch.c.id == batch["id"])
+                    .values(profile={"opening_plan": changed_plan})
+                )
+                with pytest.raises(Problem) as refused_plan:
+                    promotion_review.review_basis(uow, batch["id"])
+                assert refused_plan.value.errors[0].rule_id == "MIGRATION_OPENING_PLAN"
+            finally:
+                nested.rollback()
+        assert promotion_review.review_basis(uow, batch["id"]) == basis
         stored_lines = repository.reconciliation_rows(uow, batch["id"])
         broken_sets = [
             stored_lines[:-1],
@@ -361,7 +395,10 @@ def test_platform_applier_captures_converted_option_and_rolls_back(
             update(migration_batch)
             .where(migration_batch.c.id == batch["id"])
             .values(
-                profile={"replayed_ssp_versions": [{"ssp_book_version_id": str(version["id"])}]}
+                profile={
+                    "opening_plan": manifest,
+                    "replayed_ssp_versions": [{"ssp_book_version_id": str(version["id"])}],
+                }
             )
         )
         assert sha256_hex(promotion_review.review_basis(uow, batch["id"])) != sha256_hex(basis)

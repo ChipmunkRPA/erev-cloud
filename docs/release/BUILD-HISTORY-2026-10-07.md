@@ -3790,3 +3790,21 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
 - GitHub has no open PRs and only remote main. Continue verified direct-main publication,
   without deployment. Full CI on the older 165d63c snapshot remains in progress;
   its results will not establish acceptance of current main. Release gaps remain open.
+
+## Populated option snapshot recovery — October 14, 2026
+
+- Added stored-export/load acceptance for native entered-amount and approved
+  discount-times-likelihood options, each OPEN and EXPIRED. Actual commands prepare
+  and independently approve activation; stored backup is restored into a new sandbox.
+- Four cases passed (42.27s): one exported terms row, unchanged manifest, export reused,
+  one group recomputed, no reported derived mismatch, identical terms except tenant id,
+  preserved status and revenue credits of zero/open or USD 12,000/expired in both tenants.
+- Shared expiry security/rollback/concurrency cases also passed in the preceding run.
+  Strict test Mypy, Ruff and diff checks pass. Logs: .run/material-right-snapshot-final.log,
+  .run/material-right-snapshot-fixed.log and .run/material-right-snapshot-types.log.
+  Initial fixture failures used the wrong ledger column and reused a sandbox name;
+  corrected the fixture, without changing restore or accounting behavior.
+- Renewal methods, IFRS15 native lifecycle, correction/exercise, migration conversion,
+  UI, full release gates and independent accounting acceptance remain open. Full CI on
+  165d63c is still live and has a new CSV contract-header conflict failure to investigate.
+  Publish verified work directly to main; no deployment.

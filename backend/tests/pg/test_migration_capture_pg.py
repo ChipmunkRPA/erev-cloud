@@ -87,7 +87,7 @@ from erev_api.db.tables import (
     tenant,
 )
 from erev_api.domain.imports.legacy_v1.sku_ssp import product_parity_values
-from erev_api.domain.migration import capture, jobs, legacy_db, repository
+from erev_api.domain.migration import capture, jobs, legacy_db, opening_plan, repository
 from erev_api.domain.migration import commands as migration_commands
 from erev_api.domain.reference.commands import create_product
 from erev_api.enums import (
@@ -739,6 +739,14 @@ def test_import_job_creates_the_confirmed_prerequisites_over_wld_f_15(
         ).one()
         assert status == "IMPORTED"
         assert profile["created_entities"] == list(expected)
+        assert profile["opening_plan"]["entity_mapping"] == dict(
+            zip(ENTITIES, (target, "Mock Entity 2"), strict=True)
+        )
+        restored_plan = opening_plan.restore(
+            legacy_db.rows(FIXTURE), date(2023, 1, 31), profile["opening_plan"]
+        )
+        assert len(restored_plan.contracts) == 4
+
         # + the SKU present only in SKU_SSP (LM-SSP-02; 04 rev 1.72)
         assert profile["created_products"] == sorted([*SKU_TEMPLATES, "Material Right - Software"])
         entities = session.execute(

@@ -55,6 +55,7 @@ from erev_api.domain.migration import (
     field_mapping,
     legacy_db,
     opening_balances,
+    opening_plan,
     option_reconciliation,
     prerequisites,
     reconciliation,
@@ -426,6 +427,7 @@ def import_batch(
     versions, obligations = repository.insert_population(uow, batch_id, captured)
     profile = {
         **dict(batch.get("profile") or {}),
+        "opening_plan": opening_plan.record(staging, parameters, entity_codes),
         "contracts": len(staging.contracts),
         "legacy_pob_rows": staging.legacy_pob_rows,
         "obligations": staging.obligation_count,

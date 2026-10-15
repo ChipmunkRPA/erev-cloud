@@ -217,6 +217,9 @@ def test_import_batch_stages_stores_captures_and_moves_profiled_to_imported(
     assert capture_insert[1][0]["members"] == [
         {"contract_id": str(UUID(int=400)), "contract_external_id": "Contract 1"}
     ]
+    assert profile["opening_plan"]["version"] == 1
+    assert profile["opening_plan"]["batch_parameters"] == jobs.batch_parameters({}).as_mapping()
+    assert profile["opening_plan"]["entity_mapping"] == {}
     assert profile["contracts"] == 4 and profile["legacy_pob_rows"] == 16
     assert profile["migrated_rows"] == 24 and profile["captured_versions"] == 4
     assert profile["captured_obligation_versions"] == 0 and profile["findings"] == 0

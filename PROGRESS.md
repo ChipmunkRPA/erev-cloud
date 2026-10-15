@@ -2,6 +2,23 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Retained opening choices and input reconstruction — October 14, 2026
+
+- Successful imports retain complete confirmed parameters/entity mapping and staging/plan
+  hashes. Promotion review restores from retained source/cutover and compares bookings,
+  opening balances, customer identity and immutable option terms with captured input.
+  Missing plans require re-import; no current defaults are substituted.
+- A newly hashed plan with changed conversion or entity mapping refuses against the original
+  capture. Decimal option terms compare exactly (25 equals stored 25.0000); no rounding.
+- The registered import worker with non-identity mapping retains a reconstructable four-
+  contract plan: 1 check passed (12.72s). Domain/import/reconciliation/architecture checks:
+  70 passed (9.96s). Three converted-option database checks passed (12.10s), covering
+  missing/changed plans and review invariants. Strict production Mypy (886 files), two test
+  files, the final plan helper and Ruff pass. Evidence: .run/migration-opening-plan-*.log.
+- Output reproduction under current configuration, policy publication, activation admission
+  and independent approval/live creation remain unfinished. Public option import/promotion
+  stay unavailable. Older immutable CI is live at 52%; no deployment/readiness claim.
+
 ## Durable migration promotion review basis — October 14, 2026
 
 - Extracted the shared read-only reconciliation assessment and added promotion review of
@@ -219,24 +236,6 @@
   retained, and neither research-harness nor docs/research tracked. Full CI on older
   165d63c remains live; release acceptance and accounting sign-off remain outstanding.
   No deployment. Publish reviewed changes directly to main.
-
-## Populated option snapshot recovery — October 14, 2026
-
-- Added stored-export/load acceptance for native entered-amount and approved
-  discount-times-likelihood options, each OPEN and EXPIRED. Actual commands prepare
-  and independently approve activation; stored backup is restored into a new sandbox.
-- Four cases passed (42.27s): one exported terms row, unchanged manifest, export reused,
-  one group recomputed, no reported derived mismatch, identical terms except tenant id,
-  preserved status and revenue credits of zero/open or USD 12,000/expired in both tenants.
-- Shared expiry security/rollback/concurrency cases also passed in the preceding run.
-  Strict test Mypy, Ruff and diff checks pass. Logs: .run/material-right-snapshot-final.log,
-  .run/material-right-snapshot-fixed.log and .run/material-right-snapshot-types.log.
-  Initial fixture failures used the wrong ledger column and reused a sandbox name;
-  corrected the fixture, without changing restore or accounting behavior.
-- Renewal methods, IFRS15 native lifecycle, correction/exercise, migration conversion,
-  UI, full release gates and independent accounting acceptance remain open. Full CI on
-  165d63c is still live and has a new CSV contract-header conflict failure to investigate.
-  Publish verified work directly to main; no deployment.
 
 ## Outstanding release verification
 
