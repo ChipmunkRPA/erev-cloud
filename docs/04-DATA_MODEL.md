@@ -5898,8 +5898,14 @@ and an output-token limit; it rejects caller prompts, model selection and docume
 worker supplies the isolated parser and lazy provider factory. Its gateway commits text and
 intent before execution, keeps the budget lease through recorded usage, reuses retained text
 on retries, and enforces three calls with durable 5/10-second backoff. Uncertain calls remain
-held even after job cancellation. Public submission and the approved field catalogue remain
-unfinished; worker completion means proposal persistence, not accounting acceptance.
+held even after job cancellation. The fixed catalogue contains seven header/review paths and lines.0 through lines.499; queue and
+gateway selectors reject other paths. Output values are checked before canonical JSON conversion:
+customer names are nonblank text up to 400 characters; effective dates are exact ISO calendar
+dates; term_months is a positive 32-bit JSON integer; review text is nonblank up to 4000 characters;
+line objects have only product_code (nonblank up to 255 characters) and amount (the existing
+API-C-06 exact decimal-string format, including signed amounts). No coercion, currency inference,
+ID resolution or accounting classification occurs. Public submission and human conversion to
+structured commands remain unfinished; worker completion means proposal persistence, not accounting acceptance.
 New attempt logs also retain a writer-derived `usage_evidence` parameter: `REPORTED` when
 validated response or provider-error counters exist (including an actual zero), `NOT_SENT` for disabled/budget
 admission refusals, and `UNKNOWN` for outcomes without reported usage. Zero compatibility counters

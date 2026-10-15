@@ -22,6 +22,7 @@ from erev_api.domain.ai.document_preparation import (
     prepare_extraction,
 )
 from erev_api.domain.ai.document_retrieval import RetrievedExtraction
+from erev_api.domain.ai.extraction_fields import validate_contract_value
 from erev_api.domain.ai.extraction_validation import OutputRefused
 from erev_api.domain.ai.ports import AIResponse
 from erev_api.domain.ai.proposals import (
@@ -289,7 +290,7 @@ def record_extraction(
     content: list[dict[str, Any]] = []
     citations: list[dict[str, Any]] = []
     try:
-        fields = rebuilt.validate(response)
+        fields = rebuilt.validate(response, validate_value=validate_contract_value)
         content = [field.as_content() for field in fields]
         citations = [field.citation.as_json() for field in fields]
     except OutputRefused as error:

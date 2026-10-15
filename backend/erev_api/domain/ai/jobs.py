@@ -19,8 +19,10 @@ from pydantic import (
     StrictInt,
     TypeAdapter,
     ValidationError,
+    field_validator,
 )
 
+from erev_api.domain.ai.extraction_fields import MAX_EXTRACTION_FIELDS, require_contract_paths
 from erev_api.domain.ai.extraction_gateway import ExtractionGateway, ExtractionSource
 from erev_api.domain.ai.gateway import (
     AICancelled,
@@ -70,9 +72,14 @@ class ExtractionTask(BaseModel):
     file_id: UUID
     file_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     allowed_paths: frozenset[Annotated[str, Field(min_length=1, max_length=128)]] = Field(
-        min_length=1, max_length=128
+        min_length=1, max_length=MAX_EXTRACTION_FIELDS
     )
     max_tokens: StrictInt = Field(gt=0)
+
+    @field_validator("allowed_paths")
+    @classmethod
+    def _catalogue_paths(cls, value: frozenset[str]) -> frozenset[str]:
+        return require_contract_paths(value)
 
     def source(self) -> ExtractionSource:
         return ExtractionSource(self.file_id, self.file_sha256, self.allowed_paths)

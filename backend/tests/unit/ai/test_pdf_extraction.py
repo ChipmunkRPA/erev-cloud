@@ -11,6 +11,7 @@ import pytest
 from erev_api.adapters.ai.provider import FakeProvider
 from erev_api.adapters.documents.pdf import PDFExtractionRefused, extract_pdf_pages
 from erev_api.domain.ai.document_preparation import prepare_extraction
+from erev_api.domain.ai.extraction_fields import validate_contract_value
 from pypdf import PdfWriter, get_configuration
 from pypdf.generic import DecodedStreamObject, DictionaryObject, NameObject
 
@@ -65,7 +66,9 @@ def test_kinsley_marrow_fields_have_source_citations_and_expected_confidence() -
         max_tokens=16000,
         send_contract_text=True,
     )
-    fields = prepared.validate(FakeProvider().complete(prepared.request))
+    fields = prepared.validate(
+        FakeProvider().complete(prepared.request), validate_value=validate_contract_value
+    )
     content = {item.path: item.as_content() for item in fields}
     assert content["customer_name"]["value"] == "Kinsley Marrow Foods Inc."
     assert content["effective_date"]["value"] == "2026-10-01"

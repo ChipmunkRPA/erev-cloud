@@ -129,8 +129,13 @@ and resolves secrets lazily. Contract-review and explain-narrative prompts have 
 digests and deterministic fixtures. Request preparation minimizes and redacts inputs with
 immutable coordinate mappings; extraction validation verifies allowed paths, confidence and
 source citation spans, rejecting an entire malformed proposal. Confidence below 0.75 is marked
-for review. Command-specific field schemas, human semantic review, extraction submission and
-acceptance, anomaly and Q&A workflows remain unfinished.
+for review. The fixed extraction catalogue now admits customer name, effective date, whole-month
+term, payment/termination/variable-consideration/material-right review text, and up to 500 indexed
+line suggestions containing only product code and exact decimal amount. Values are checked in
+original parsed JSON before canonicalization: money numbers, impossible/non-ISO dates, coerced
+terms, unknown paths and extra line keys refuse the entire proposal. These are review facts;
+customer/product resolution, currency, structured contract conversion, semantic review, public
+submission and human acceptance remain unfinished, alongside anomaly and Q&A workflows.
 
 The worker-only document retrieval helper now checks the current initiating human, AI switches,
 text consent, readable ATTACHMENT/PDF source, file size and digest before invoking an injected
@@ -166,7 +171,8 @@ reuse the retained request, unknown outcomes/usage block new calls, and mid-call
 records usage without a proposal. No model fallback or SDK-level retry is introduced.
 AI_TASK dispatch accepts bounded extraction selectors, source hash and field paths; the worker
 composition root supplies the isolated PDF parser and lazy provider factory. The public API
-still needs an approved field catalogue, extraction submission and human review/acceptance.
+still needs extraction submission and human review/acceptance. Queue selectors and gateway paths
+now use the fixed catalogue; arbitrary accounting fields cannot be requested.
 
 The PDF adapter has file/page/text and parser limits, an isolated subprocess, timeout cleanup
 and a sanitized environment. A four-page fixture covers the nine documented extraction fields.

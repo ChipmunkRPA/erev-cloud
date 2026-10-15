@@ -2,15 +2,16 @@
 
 The worker document retrieval path authorizes and parses inputs through an injected isolated
 extractor; extraction_proposals retains text and audited attempt/proposal evidence.
-Extraction dispatch and budget enforcement remain separate integration work.
+The extraction gateway owns dispatch, budget admission and bounded provider retries.
 """
 
 from __future__ import annotations
 
 import json
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from types import MappingProxyType
+from typing import Any
 from uuid import UUID
 
 from erev_engine.canonical import canonical_bytes
@@ -33,12 +34,18 @@ class PreparedExtraction:
     pages: Mapping[int, MappedRedaction]
     allowed_paths: frozenset[str]
 
-    def validate(self, response: AIResponse) -> tuple[ExtractionField, ...]:
+    def validate(
+        self,
+        response: AIResponse,
+        *,
+        validate_value: Callable[[str, Any], None] | None = None,
+    ) -> tuple[ExtractionField, ...]:
         return validate_redacted_extraction(
             response,
             document_id=self.document_id,
             pages=self.pages,
             allowed_paths=self.allowed_paths,
+            validate_value=validate_value,
         )
 
 

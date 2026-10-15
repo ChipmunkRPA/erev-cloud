@@ -129,7 +129,7 @@ def extraction_payload() -> dict[str, Any]:
         "operation": "extraction",
         "file_id": str(uuid4()),
         "file_sha256": "a" * 64,
-        "allowed_paths": ["amount"],
+        "allowed_paths": ["lines.0"],
         "max_tokens": 1024,
     }
 
@@ -156,6 +156,8 @@ def test_extraction_dispatch_preserves_source_and_context(monkeypatch: pytest.Mo
         {"file_sha256": "private text"},
         {"allowed_paths": []},
         {"allowed_paths": [""]},
+        {"allowed_paths": ["submit_for_activation"]},
+        {"allowed_paths": ["lines.500"]},
         {"max_tokens": True},
         {"model": "unapproved"},
         {"text": "private text"},

@@ -54,7 +54,7 @@ def test_retained_extraction_evidence_success_failure_and_rollback(
     pdf = (
         Path(__file__).parents[2] / "fixtures/ai/documents/Kinsley-Marrow-Order-Form-2026-10.pdf"
     ).read_bytes()
-    original = "Contact buyer@example.com; amount USD 120.00 due."
+    original = "Contact buyer@example.com; product DEMO amount USD 120.00 due."
     with world.place.uow() as uow:
         source = store_file(
             uow,
@@ -82,7 +82,7 @@ def test_retained_extraction_evidence_success_failure_and_rollback(
     def recover(
         context: JobContext,
         *,
-        paths: frozenset[str] = frozenset({"amount"}),
+        paths: frozenset[str] = frozenset({"lines.0"}),
         fingerprint: str = digest,
         file_digest: str = str(source["sha256"]),
     ) -> RecoveredExtraction | None:
@@ -110,7 +110,7 @@ def test_retained_extraction_evidence_success_failure_and_rollback(
             context,
             file_id=source["id"],
             max_tokens=1024,
-            allowed_paths=frozenset({"amount"}),
+            allowed_paths=frozenset({"lines.0"}),
             extract_pages=parser,
             platform_kill_switch=lambda: False,
         )
@@ -167,8 +167,8 @@ def test_retained_extraction_evidence_success_failure_and_rollback(
     raw = json.dumps(
         [
             {
-                "path": "amount",
-                "value": "120.00",
+                "path": "lines.0",
+                "value": {"product_code": "DEMO", "amount": "120.00"},
                 "confidence": 0.72,
                 "citation": {
                     "ref_type": "document",
@@ -435,7 +435,7 @@ def test_retained_extraction_evidence_success_failure_and_rollback(
         )
         (field,) = success["content"]
         assert field["check"] is True and field["confidence"] == "0.72"
-        assert field["value"] == "120.00"
+        assert field["value"] == {"product_code": "DEMO", "amount": "120.00"}
         assert field["citation"]["char_start"] == original.index("120.00")
         assert success["citations"] == [field["citation"]]
         assert (success["expires_at"] - success["created_at"]).days == 30

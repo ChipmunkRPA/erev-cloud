@@ -8,7 +8,7 @@ Use validate_redacted_extraction when citations address redacted page text.
 from __future__ import annotations
 
 import json
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, replace
 from decimal import Decimal, InvalidOperation
 from hashlib import sha256
@@ -86,12 +86,14 @@ def validate_extraction(
     document_id: UUID,
     pages: Mapping[int, str],
     allowed_paths: frozenset[str],
+    validate_value: Callable[[str, Any], None] | None = None,
 ) -> tuple[ExtractionField, ...]:
     """Refuse the entire proposal if any field or citation fails validation.
 
     ``allowed_paths`` is supplied by the trusted template/command schema, never
     inferred from the model. Page numbers are one-based; offsets are zero-based,
-    half-open Python Unicode character spans, matching retained page text.
+    half-open Python Unicode character spans, matching retained page text. Value validators
+    see the original parsed types, before canonical encoding stringifies Decimal values.
     """
     if response.stop_reason == "refusal":
         raise OutputRefused("AI_REFUSAL")
@@ -170,6 +172,8 @@ def validate_extraction(
             or not 0 <= start < end <= len(pages[page])
         ):
             raise OutputRefused("AI_INVALID_CITATION_SPAN")
+        if validate_value is not None:
+            validate_value(path, field["value"])
         try:
             value_bytes = canonical_bytes(field["value"])
         except (TypeError, ValueError, RecursionError, UnicodeEncodeError):
@@ -191,6 +195,7 @@ def validate_redacted_extraction(
     document_id: UUID,
     pages: Mapping[int, MappedRedaction],
     allowed_paths: frozenset[str],
+    validate_value: Callable[[str, Any], None] | None = None,
 ) -> tuple[ExtractionField, ...]:
     """Validate against outgoing pages and restore citations to source coordinates.
 
@@ -203,6 +208,7 @@ def validate_redacted_extraction(
         document_id=document_id,
         pages={page: mapped.redaction.text for page, mapped in pages.items()},
         allowed_paths=allowed_paths,
+        validate_value=validate_value,
     )
     result: list[ExtractionField] = []
     for field in fields:

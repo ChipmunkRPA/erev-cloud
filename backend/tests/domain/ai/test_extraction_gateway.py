@@ -64,6 +64,8 @@ from tests.domain.ai.test_narrative_retrieval import context_for
         ("budget", 0, None),
         ("text_off", 0, None),
         ("invalid_output", 1, "failed"),
+        ("invalid_value", 1, "failed"),
+        ("unknown_path", 0, None),
     ],
 )
 def test_extraction_admission_retries_and_recovery(
@@ -103,7 +105,7 @@ def test_extraction_admission_retries_and_recovery(
         "operation": "extraction",
         "file_id": str(stored["id"]),
         "file_sha256": str(stored["sha256"]),
-        "allowed_paths": ["amount"],
+        "allowed_paths": ["lines.0"],
         "max_tokens": 1024,
     }
     base = context_for(world.maya.member, clock, queued_params=params if mode == "worker" else None)
@@ -114,7 +116,9 @@ def test_extraction_admission_retries_and_recovery(
         principal=base.principal,
         runtime=replace(base.runtime, files=world.app.state.file_store, keyring=keyring),
     )
-    source = ExtractionSource(stored["id"], str(stored["sha256"]), frozenset({"amount"}))
+    source = ExtractionSource(stored["id"], str(stored["sha256"]), frozenset({"lines.0"}))
+    if mode == "unknown_path":
+        source = replace(source, allowed_paths=frozenset({"submit_for_activation"}))
     parsed: list[bytes] = []
     observed: list[AIRequest] = []
     constructed: list[bool] = []
@@ -132,7 +136,7 @@ def test_extraction_admission_retries_and_recovery(
     def parser(data: bytes, *, send_contract_text: bool) -> tuple[str, ...]:
         assert send_contract_text and data == pdf
         parsed.append(data)
-        return ("Contact buyer@example.com; amount 120.00.",)
+        return ("Contact buyer@example.com; product DEMO amount 120.00.",)
 
     class Provider:
         def __init__(self) -> None:
@@ -203,8 +207,11 @@ def test_extraction_admission_retries_and_recovery(
             raw = json.dumps(
                 [
                     {
-                        "path": "amount",
-                        "value": "120.00",
+                        "path": "lines.0",
+                        "value": {
+                            "product_code": "DEMO",
+                            "amount": 120.0 if mode == "invalid_value" else "120.00",
+                        },
                         "confidence": 0.9,
                         "citation": {
                             "ref_type": "document",
@@ -270,6 +277,7 @@ def test_extraction_admission_retries_and_recovery(
         "cancel_wait": AICancelled,
         "budget": AIBudgetRefused,
         "text_off": PreparationRefused,
+        "unknown_path": PreparationRefused,
     }
     proposal_id = None
     if mode in errors:
@@ -327,6 +335,9 @@ def test_extraction_admission_retries_and_recovery(
             assert len(rows) == 1 and rows[0]["id"] == proposal_id and rows[0]["status"] == status
             assert rows[0]["file_object_id"] == source.file_id
             assert rows[0]["created_by"] == world.maya.member.user_id
+            if mode == "invalid_value":
+                assert rows[0]["content"] == []
+                assert rows[0]["problem"] == {"code": "AI_INVALID_FIELD_VALUE"}
         if mode in {"disable_response", "revoke_response"}:
             log = session.execute(select(ai_model_log)).mappings().one()
             assert (log["input_tokens"], log["output_tokens"]) == (30, 20)

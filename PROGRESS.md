@@ -2,6 +2,28 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Typed extraction field catalogue — October 15, 2026
+
+- Defined the documented contract-review fields: seven header/review paths plus lines.0 through
+  lines.499, matching contract line capacity. Queue and gateway selectors refuse other paths.
+  Values require bounded nonblank text, exact ISO dates, positive whole JSON month counts and
+  line objects containing only product_code and an exact signed decimal-string amount. Review
+  terms remain text; no customer/product resolution, currency inference or accounting decision
+  is made. The worker selector capacity now covers the full 507-path catalogue.
+- Typed checks run on original parsed JSON before canonicalization: Decimal values would
+  otherwise become strings and let a numeric money value masquerade as valid API-C-06 text.
+  One invalid value refuses the whole proposal; rejected content is not retained. The documented
+  four-page PDF fixture passes these field checks without changing its retained prompt bytes.
+- Verification: 143 unit/architecture cases passed, including path/value boundaries, numeric
+  money/coercion attacks, invalid dates, extra accounting fields and all catalogue selectors.
+  Forty AI PostgreSQL cases passed, including the real worker, recovery and narrative regressions;
+  unsupported selectors make no provider call and numeric amounts persist only an empty failed
+  proposal. Full lint/typecheck passed (933 Python sources plus frontend), focused typing passed
+  787 sources, and final formatting/diff checks passed. Logs:
+  .run/ai-extraction-fields-{unit,pg,lint,typecheck,types}.log.
+- Public submission, extraction review APIs, human conversion/acceptance and broader release and
+  independent accounting verification remain unfinished. No deployment or live provider calls.
+
 ## Extraction gateway and worker dispatch — October 15, 2026
 
 - Connected extraction execution to fresh human/source/settings admission, the tenant budget
@@ -202,24 +224,6 @@
   to the actual actor-kind column before the passing database run.
 - Listing, other proposal kinds, review commands and broader release gates remain open.
   No deployment or live provider calls; this is development evidence, not production sign-off.
-
-## Number-explanation submission — October 15, 2026
-
-- Added POST /ai/explanations for the number-explanation form: 202 API-S-Job with Location,
-  normal idempotency and the initiating human. HTTP validates source access through overlapping
-  ai.use/contract.read scope and the shared narrative read path, but makes no provider call.
-- Queue insertion and AI switch admission share the tenant lock. A concurrent disable completes
-  before a waiting submission can proceed, causing ai-disabled with no new job. New jobs retain
-  selectors, a validated trace ID and a 2048 output-token limit; prompts/model settings are not
-  queued. The worker rejects a changed trace before calling; old unbound fingerprints are intact.
-- Verification: 21 AI/API database cases passed, followed by both final API cases (including
-  real lock contention, idempotency, scope refusal, HTTP-to-worker persistence and changed-trace
-  refusal). 40 unit/route/layer checks passed. Full lint, OpenAPI generation and full typecheck
-  passed (924 Python sources plus frontend); focused strict typing passed 775 sources. Logs:
-  .run/ai-submission-{regressions,api-final,unit,lint,openapi,typecheck,types-final}.log.
-- The initial permission fixture was corrected to use an auditor without ai.use; test import
-  typing was corrected before the final checks. Anomaly/extraction/Q&A submission, proposal
-  read/review and durable AI admission-failure evidence remain open. No deployment/live calls.
 
 ## Outstanding release verification
 

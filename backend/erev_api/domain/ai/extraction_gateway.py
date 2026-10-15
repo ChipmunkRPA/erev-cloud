@@ -18,6 +18,7 @@ from erev_api.domain.ai.attempts import (
 )
 from erev_api.domain.ai.budget import AIBudgetRefused, budget_guard
 from erev_api.domain.ai.document_retrieval import RetrievedExtraction, retrieve_document
+from erev_api.domain.ai.extraction_fields import require_contract_paths
 from erev_api.domain.ai.extraction_proposals import (
     record_extraction,
     record_extraction_failure,
@@ -267,6 +268,7 @@ class ExtractionGateway(AiGateway):
         wait: Callable[[timedelta], None],
     ) -> UUID:
         """At most three calls, with persisted 5/10-second backoff and no lease across waits."""
+        require_contract_paths(source.allowed_paths)
         for _ in range(4):  # three calls, then terminal persistence if all failed
             try:
                 previous = self._recover_extraction(context, source, max_tokens)
