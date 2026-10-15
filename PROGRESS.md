@@ -2,6 +2,24 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Effective AI gateway settings — October 15, 2026
+
+- Added an immutable settings snapshot from explicitly tenant-bound registry rows. All five
+  values resolve from one version read at the aware job clock; only published/effective
+  versions count. The snapshot retains source version IDs for later call evidence.
+- Effective enablement requires an active workspace, published enablement, no immediate
+  tenant turn-off and no platform kill switch. Model, sharing/redaction flags and monthly
+  token budget are strict typed values; invalid values refuse without leaking their contents.
+- Thirteen PostgreSQL cases cover defaults, draft/future versions, provenance, kill switch,
+  immediate turn-off, suspended workspace, tenant isolation and malformed values. Combined
+  AI/access/architecture checks: 185 passed, two Linux parser-limit tests skipped; strict
+  API/test typing: 759 sources; Ruff passes. Final focused settings checks: 13 passed.
+  Logs: .run/ai-settings-{checks,types,final-pg}.log.
+- This reads the configured budget; it does not reserve tokens or enforce concurrency.
+  Operational gateway execution, budget serialization, per-source permissions, attempt and
+  proposal/audit persistence, settings command lifecycle and human acceptance remain open.
+  No provider call or deployment; isolated test database stopped after verification.
+
 ## AI job initiator authorization — October 15, 2026
 
 - Added current-grant authorization for a persisted AI_TASK attempt. It verifies the live
@@ -228,21 +246,6 @@
 - Remaining: historical report-seed equality, current-main revalidation of 12 other snapshot
   failures, AI audit coverage, lock/relock figure expectations, three expected-failure gaps,
   migration promotion and other release work. No deployment or readiness claim.
-
-## Proposed migration judgement content — October 14, 2026
-
-- Basis v4 includes exact proposed conclusions/rationales/questionnaires and stable targets.
-  Distinctness follows published templates, binding version ids/hashes; collectibility has
-  one proposed probable assessment per enabled book at inception (BS3-D-23/26). These remain
-  proposals, with no fabricated reviewer or reviewed records. Fresh target resolution refuses
-  a missing obligation instead of falling back to the contract.
-- Real PostgreSQL witness: two obligation proposals and ASC606 collectibility, IFRS15 adds
-  its own proposal, no judgement rows persist, and rollback restores the original plan.
-  Final domain/PG/architecture suite: 84 passed (26.30s); strict production plus changed
-  tests (891 sources) and Ruff pass. Logs: .run/migration-judgement-plan-*.log.
-- Approved record creation, assessment events and their resulting output proof, final
-  activation, policy/report checks and atomic promotion remain unfinished. Older immutable
-  full CI is live at 94%. Publish directly to main; no deployment/readiness claim.
 
 ## Outstanding release verification
 

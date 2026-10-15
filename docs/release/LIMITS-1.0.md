@@ -75,6 +75,12 @@ ai.use entity scope, not the surrounding SYSTEM principal or unrelated role scop
 PostgreSQL checks cover revocation and disabled/stale identities. Per-source permission
 checks, settings/kill switches, budgets and operational gateway integration remain open.
 
+October 15 AI settings continuation: a typed settings snapshot now resolves the five AI
+registry settings from tenant-bound published versions and retains their source IDs. Effective
+enablement also checks workspace status, immediate tenant turn-off and the platform kill switch.
+PostgreSQL tests verify these boundaries. The configured monthly budget is read only; token
+accounting/serialization, settings command lifecycle and gateway execution remain unfinished.
+
 October 14 audit continuation: native option entry/expiry and CLOSE evidence-pack creation
 now have catalogue entries and real request scenarios in the audit walk. Material-right
 AUD-FACT summaries require a contract key and retain the created ids in detail. Evidence-pack

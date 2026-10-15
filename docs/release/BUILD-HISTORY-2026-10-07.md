@@ -4103,3 +4103,18 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   .run/approval-consumption-status-{tests,final,types}.log.
 - Judgement creation under independent approval, policy/report checks, final activation and
   atomic promotion remain outstanding. Publish directly to main; no deployment/readiness claim.
+
+## Proposed migration judgement content — October 14, 2026
+
+- Basis v4 includes exact proposed conclusions/rationales/questionnaires and stable targets.
+  Distinctness follows published templates, binding version ids/hashes; collectibility has
+  one proposed probable assessment per enabled book at inception (BS3-D-23/26). These remain
+  proposals, with no fabricated reviewer or reviewed records. Fresh target resolution refuses
+  a missing obligation instead of falling back to the contract.
+- Real PostgreSQL witness: two obligation proposals and ASC606 collectibility, IFRS15 adds
+  its own proposal, no judgement rows persist, and rollback restores the original plan.
+  Final domain/PG/architecture suite: 84 passed (26.30s); strict production plus changed
+  tests (891 sources) and Ruff pass. Logs: .run/migration-judgement-plan-*.log.
+- Approved record creation, assessment events and their resulting output proof, final
+  activation, policy/report checks and atomic promotion remain unfinished. Older immutable
+  full CI is live at 94%. Publish directly to main; no deployment/readiness claim.
