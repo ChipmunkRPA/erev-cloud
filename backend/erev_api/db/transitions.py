@@ -150,6 +150,43 @@ _MIGRATION_STATUS_PAIRS: Final = frozenset(
 
 TRANSITIONS: Final[Mapping[str, TableTransitions]] = MappingProxyType(
     {
+        "ai_proposal": TableTransitions(
+            table="ai_proposal",
+            status_column="status",
+            updatable_columns=frozenset(
+                {
+                    "accepted_command",
+                    "field_decisions",
+                    "accepted_object_type",
+                    "accepted_object_id",
+                    "accepted_by",
+                    "accepted_at",
+                    "rejected_by",
+                    "rejected_at",
+                    "rejection_reason",
+                    "problem",
+                }
+            )
+            | _SC_M,
+            pairs=frozenset(
+                {("proposed", "accepted"), ("proposed", "rejected"), ("proposed", "expired")}
+            ),
+            set_once=frozenset(
+                {
+                    "accepted_command",
+                    "field_decisions",
+                    "accepted_object_type",
+                    "accepted_object_id",
+                    "accepted_by",
+                    "accepted_at",
+                    "rejected_by",
+                    "rejected_at",
+                    "rejection_reason",
+                    "problem",
+                }
+            ),
+            frozen_while=frozenset({"accepted", "rejected", "expired", "failed"}),
+        ),
         # 04 T-PLT-40 and E-107: DRAFT → IN_REVIEW → COMPLETED; DRAFT or IN_REVIEW → CANCELLED
         # (SPEC-Q-193). The start and completion columns are set once.
         "access_review_campaign": TableTransitions(

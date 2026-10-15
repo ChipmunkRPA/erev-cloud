@@ -2,11 +2,12 @@
 
 from typing import Final
 
-from sqlalchemy import CHAR, Column, Integer, Table, Text, Uuid, text
+from sqlalchemy import CHAR, Column, DateTime, Integer, Table, Text, Uuid, text
 from sqlalchemy.dialects.postgresql import JSONB
 
 from erev_api.db.tables import metadata
-from erev_api.db.tables.platform import _sc_c
+from erev_api.db.tables.platform import _enum, _sc_c, _sc_c_sc_m, _timestamp
+from erev_api.enums import AiProposalKind, AiProposalStatus
 
 ai_model_log: Final = Table(
     "ai_model_log",
@@ -26,4 +27,42 @@ ai_model_log: Final = Table(
     Column("outcome", Text(), nullable=False),
     Column("error_detail", Text(), nullable=True),
     *_sc_c(),
+)
+
+
+ai_proposal: Final = Table(
+    "ai_proposal",
+    metadata,
+    Column("tenant_id", Uuid(), primary_key=True),
+    Column("id", Uuid(), primary_key=True),
+    Column("kind", _enum(AiProposalKind, "ai_proposal_kind"), nullable=False),
+    Column(
+        "status",
+        _enum(AiProposalStatus, "ai_proposal_status"),
+        nullable=False,
+        server_default=text("'proposed'"),
+    ),
+    Column("subject_type", Text(), nullable=True),
+    Column("subject_id", Uuid(), nullable=True),
+    Column("file_object_id", Uuid(), nullable=True),
+    Column("document_text_file_id", Uuid(), nullable=True),
+    Column("content", JSONB(), nullable=False),
+    Column("citations", JSONB(), nullable=False, server_default=text("'[]'::jsonb")),
+    Column("ai_model_log_id", Uuid(), nullable=False),
+    Column("accepted_command", Text(), nullable=True),
+    Column("field_decisions", JSONB(), nullable=True),
+    Column("accepted_object_type", Text(), nullable=True),
+    Column("accepted_object_id", Uuid(), nullable=True),
+    Column("accepted_by", Uuid(), nullable=True),
+    _timestamp("accepted_at", nullable=True),
+    Column("rejected_by", Uuid(), nullable=True),
+    _timestamp("rejected_at", nullable=True),
+    Column("rejection_reason", Text(), nullable=True),
+    Column(
+        "expires_at",
+        DateTime(timezone=True),
+        nullable=False,
+    ),
+    Column("problem", JSONB(), nullable=True),
+    *_sc_c_sc_m(),
 )

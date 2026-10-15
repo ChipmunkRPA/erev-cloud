@@ -7,12 +7,17 @@ Current-main repairs and remaining failure/expected-failure evidence are tracked
 
 October 14 AI foundation: the request/response protocol and deterministic fixture provider
 are implemented, with 32 provider/configuration checks passing. This does not enable AI:
-provider selection/live adapter, proposal tables, gateway jobs, human acceptance and
+provider selection/live adapter, gateway jobs, human acceptance and
 lifecycle audit evidence remain unfinished. The AI audit-category failure remains visible.
 
 Migration 0147 now provides append-only, tenant-isolated AI call-log storage and its ORM,
 privacy and sandbox classifications. No gateway writes these records yet, so schema
 verification does not establish AI audit-lifecycle coverage or operational AI readiness.
+
+Migration 0148 adds immutable proposal content/citations, tenant-bound evidence references
+and SM-11 state guards. The schema and full migration round trip are verified; proposal
+creation/acceptance APIs, approval integration and lifecycle audit events remain absent.
+Database state guards do not substitute for human command permissions or field validation.
 
 October 14 audit continuation: native option entry/expiry and CLOSE evidence-pack creation
 now have catalogue entries and real request scenarios in the audit walk. Material-right

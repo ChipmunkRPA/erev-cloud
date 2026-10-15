@@ -152,7 +152,6 @@ ALLOWLIST: tuple[Divergence, ...] = ()
 # name so that building one moves it into the compared set in the same commit.
 UNBUILT_04_TABLES: frozenset[str] = frozenset(
     {
-        "ai_proposal",
         "contract_cost_asset",
         "cost_asset_version",
         "deal_preview",

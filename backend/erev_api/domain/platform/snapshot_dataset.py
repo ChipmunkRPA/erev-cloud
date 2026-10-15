@@ -293,6 +293,7 @@ def _shared(reason: str) -> TableRule:
 # Every table of the 04 model on main, classified once (SBX-03 read through the ruled classes).
 RULES: Final[Mapping[str, TableRule]] = MappingProxyType(
     {
+        "ai_proposal": _regenerated(_K.OPERATIONAL, "AI proposals belong to their source tenant"),
         "ai_model_log": _regenerated(_K.AUDIT, "AI call evidence belongs to its source tenant"),
         # --- copied configuration (SBX-03: reference data and all configuration versions) -----
         "fiscal_calendar": _copied(_K.CONFIGURATION, "reference data: calendars (SBX-03)"),
@@ -559,13 +560,6 @@ PENDING: Final[Mapping[str, PendingTable]] = MappingProxyType(
             ),
             _pending("forecast_run", _C.REGENERATED, _K.DERIVED, "FCS", "scenario tenant only"),
             _pending("deal_preview", _C.REGENERATED, _K.DERIVED, "FCS", "scenario tenant only"),
-            _pending(
-                "ai_proposal",
-                _C.REGENERATED,
-                _K.OPERATIONAL,
-                "AIX",
-                "accepted proposals live on as judgement records, which are copied",
-            ),
         )
     )
 )

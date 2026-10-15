@@ -60,12 +60,6 @@ class ReconciledEnumType:
 
 _CTR_14 = ("CTR-14", "NNNN_ctr_14_costs_material_rights_loss_fx.py")
 PENDING_ENUM_TYPES: Final[Mapping[str, ReconciledEnumType]] = {
-    "ai_proposal_kind": ReconciledEnumType(
-        "E-73", "T-AI-01 ai_proposal.kind", "AIX-1", "NNNN_ai_tables.py"
-    ),
-    "ai_proposal_status": ReconciledEnumType(
-        "E-74", "T-AI-01 ai_proposal.status", "AIX-1", "NNNN_ai_tables.py"
-    ),
     "cost_kind": ReconciledEnumType("E-83", "T-CON-15 contract_cost_asset.cost_kind", *_CTR_14),
     "amortization_pattern": ReconciledEnumType(
         "E-84", "T-CON-15 contract_cost_asset.amortization_pattern", *_CTR_14

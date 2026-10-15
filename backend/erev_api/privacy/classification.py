@@ -3292,7 +3292,6 @@ TABLES: Final[tuple[TableClassification, ...]] = (
                 "rejection_reason problem"
             ),
         },
-        status=Status.PENDING,
         notes={
             "content": ColumnNote(
                 recipients=frozenset({Recipient.AI_PROVIDER}),

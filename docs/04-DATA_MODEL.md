@@ -986,8 +986,8 @@ Event payloads are versioned Pydantic models `erev_api.events.payloads.<PascalCa
 | E-70 | `outbox_topic` | `JOURNAL_EXPORT`, `WEBHOOK`, `EMAIL`, `SYNC_REQUEST` | Research 06 §14.5. |
 | E-71 | `outbox_status` | `PENDING`, `DISPATCHING`, `DISPATCHED`, `FAILED`, `DEAD` | |
 | E-72 | `sync_run_status` | `QUEUED`, `RUNNING`, `SUCCEEDED`, `CONTROL_TOTAL_MISMATCH`, `FAILED` | Research 07 IN-02. PostgreSQL type created by `0072_din_12_integrations` (DIN-12; the D-98 66 pending note dropped, rev 1.77). |
-| E-73 | `ai_proposal_kind` | `CONTRACT_EXTRACTION`, `NUMBER_EXPLANATION`, `ANOMALY_FLAG`, `QA_ANSWER` | GOAL §2.12. PostgreSQL type pending (owed by AIX-1, `NNNN_ai_tables.py`; D-98 66, rev 1.29). |
-| E-74 | `ai_proposal_status` | `proposed`, `accepted`, `rejected`, `expired`, `failed` | REQ-AI-003 (verbatim). PostgreSQL type pending (owed by AIX-1, `NNNN_ai_tables.py`; D-98 66, rev 1.29). |
+| E-73 | `ai_proposal_kind` | `CONTRACT_EXTRACTION`, `NUMBER_EXPLANATION`, `ANOMALY_FLAG`, `QA_ANSWER` | GOAL §2.12. PostgreSQL type created by `0148_ai_proposals.py` (AIX-1). |
+| E-74 | `ai_proposal_status` | `proposed`, `accepted`, `rejected`, `expired`, `failed` | REQ-AI-003 (verbatim). PostgreSQL type created by `0148_ai_proposals.py` (AIX-1). |
 | E-75 | `migration_mode` | `OPENING_BALANCES`, `REPLAY` | D-31. PostgreSQL type pending (owed by LMG-1, `NNNN_lmg_1_migration_batches.py`; D-98 66, rev 1.29). |
 | E-76 | `migration_status` | `UPLOADED`, `PROFILING`, `PROFILED`, `IMPORTING`, `IMPORTED`, `RECONCILED`, `SUBMITTED`, `PROMOTED`, `FAILED`, `CANCELLED` | D-31. PostgreSQL type pending (owed by LMG-1, `NNNN_lmg_1_migration_batches.py`; D-98 66, rev 1.29). |
 | E-77 | `scope_flag` | `IN_SCOPE_606`, `LEASE_842`, `INSURANCE_944`, `FINANCIAL_INSTRUMENT`, `GUARANTEE_460`, `CONTRIBUTION_958_605`, `NONFINANCIAL_ASSET_610_20`, `ALTERNATIVE_REVENUE_980_605`, `COLLABORATION_808` | REQ-CON-016 (line-level); GOAL §4. |

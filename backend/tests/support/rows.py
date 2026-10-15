@@ -38,6 +38,7 @@ from erev_api.db.session import (
 from erev_api.db.tables import (
     access_review_campaign,
     account_mapping_version,
+    ai_model_log,
     api_client,
     app_user,
     approval_delegation,
@@ -4895,9 +4896,27 @@ def ai_model_log_row(ctx: RowContext, session: Session) -> dict[str, Any]:
     }
 
 
+def ai_proposal_row(ctx: RowContext, session: Session) -> dict[str, Any]:
+    """T-AI-01: a proposed synthetic answer, linked to same-tenant call evidence."""
+    log = ai_model_log_row(ctx, session)
+    log_id = _insert_visible(session, ai_model_log, log)
+    return {
+        "tenant_id": ctx.tenant_id,
+        "id": new_id(),
+        "kind": "QA_ANSWER",
+        "content": {"answer": "Synthetic cited answer"},
+        "citations": [],
+        "ai_model_log_id": log_id,
+        "created_at": INVITED_AT,
+        "expires_at": INVITED_AT + timedelta(days=30),
+        **_SYSTEM,
+    }
+
+
 ROW_BUILDERS: Final[Mapping[str, RowBuilder]] = MappingProxyType(
     {
         "ai_model_log": ai_model_log_row,
+        "ai_proposal": ai_proposal_row,
         "access_review_campaign": access_review_campaign_row,
         "access_review_item": access_review_item_row,
         "account_mapping_rule": account_mapping_rule_row,

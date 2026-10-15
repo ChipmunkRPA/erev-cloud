@@ -56,6 +56,7 @@ def test_dg_sm_02_apply_checks_python_first() -> None:
 def test_role_assignment_trigger_body() -> None:
     body = transition_trigger_sql("role_assignment")
     assert set(TRANSITIONS) == {
+        "ai_proposal",
         "access_review_campaign",
         "access_review_item",
         "approval_delegation",

@@ -2,6 +2,21 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## AI proposal evidence and state guards — October 14, 2026
+
+- Migration 0148 adds T-AI-01, E-73/E-74 and the generated SM-11 transition guard.
+  Content/citations and evidence links cannot change. Acceptance/rejection fields are
+  set once, complete only in their matching state, and terminal records are frozen.
+  Decisions must be a nonempty array; acceptance permissions and decision semantics
+  still belong to the forthcoming human command. Expiry is explicitly supplied by its writer.
+- Tenant-bound foreign keys reject another tenant's call log or document. Registered
+  ORM, privacy, sandbox-regeneration, enum and isolation inventories; updated pinned head.
+- Full migration round trip, DB lint, state/immutability/RLS, schema/privacy/snapshot
+  and import-cycle checks: 140 passed; single-head check: 1 passed. Strict API/test typing
+  passes (745 sources). Evidence: .run/ai-proposal-final.log, .run/ai-proposal-head.log,
+  .run/ai-proposal-types.log. Provider/gateway, human acceptance and audit lifecycle
+  remain incomplete; AI stays unavailable. No deployment or readiness claim.
+
 ## Immutable AI call evidence storage — October 14, 2026
 
 - Migration 0147 adds T-AI-02 ai_model_log with tenant RLS, append-only grants and
@@ -227,26 +242,6 @@
   approved promotion are verified. MIGRATION_PROMOTION remains unimplemented. This change
   verifies term persistence, not complete import acceptance. No deployment/readiness claim.
 - Older immutable CI 165d63c remains live at 44%; it is not current-main release evidence.
-
-## Native command audit coverage — October 14, 2026
-
-- Current catalogue checks exposed missing option-entry, option-expiry and evidence-pack
-  create commands. Added successful request scenarios to the full audit walk and catalogue:
-  238 command operations, 232 required after the existing six exemptions. Scenarios bind
-  audit evidence to the response request id, expected action, actor kind and contract key.
-- Material-right facts now require their contract key in the audit writer. Verified the
-  stored AUD-FACT summary names the created fact id and contract; it intentionally has no
-  single object id/label. Added display labels for evidence packs and control executions.
-  CLOSE packs explicitly exercise the existing period-level, no-contract audit shape.
-- 26 focused database/catalogue/architecture/read-model checks passed (51.54s); strict
-  production Mypy (881 sources), three test files and Ruff pass. Logs:
-  .run/audit-catalogue-current.log, .run/audit-new-routes-release.log,
-  .run/audit-new-routes-types.log and .run/audit-contract-production-types.log.
-  Initial scenarios exposed fixture permissions/combination setup and a mistaken single-
-  object label expectation for AUD-FACT; corrected without weakening product checks.
-- The category sweep still requires the unimplemented AI proposal lifecycle. No exemption
-  or success claim was added. Full current-main route walk/release gates remain open.
-  Older immutable CI 165d63c remains live at 42%; no deployment or readiness claim.
 
 ## Outstanding release verification
 

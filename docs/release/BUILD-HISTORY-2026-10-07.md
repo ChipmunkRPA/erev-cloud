@@ -3937,3 +3937,23 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
 - Capture still refuses option records: its writer and MIGRATION_PROMOTION approval
   subject remain missing. No deployment or readiness claim. Older immutable CI remains
   live at 39%, with a new audit-coverage failure to investigate when its evidence is ready.
+
+## Native command audit coverage — October 14, 2026
+
+- Current catalogue checks exposed missing option-entry, option-expiry and evidence-pack
+  create commands. Added successful request scenarios to the full audit walk and catalogue:
+  238 command operations, 232 required after the existing six exemptions. Scenarios bind
+  audit evidence to the response request id, expected action, actor kind and contract key.
+- Material-right facts now require their contract key in the audit writer. Verified the
+  stored AUD-FACT summary names the created fact id and contract; it intentionally has no
+  single object id/label. Added display labels for evidence packs and control executions.
+  CLOSE packs explicitly exercise the existing period-level, no-contract audit shape.
+- 26 focused database/catalogue/architecture/read-model checks passed (51.54s); strict
+  production Mypy (881 sources), three test files and Ruff pass. Logs:
+  .run/audit-catalogue-current.log, .run/audit-new-routes-release.log,
+  .run/audit-new-routes-types.log and .run/audit-contract-production-types.log.
+  Initial scenarios exposed fixture permissions/combination setup and a mistaken single-
+  object label expectation for AUD-FACT; corrected without weakening product checks.
+- The category sweep still requires the unimplemented AI proposal lifecycle. No exemption
+  or success claim was added. Full current-main route walk/release gates remain open.
+  Older immutable CI 165d63c remains live at 42%; no deployment or readiness claim.

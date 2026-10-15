@@ -347,7 +347,8 @@ def test_single_head() -> None:
     # 0137: persist tenant-bound reviewed judgement citations for error-correction reopens.
     # 0142: immutable evidence-pack source bindings.
     # 0143: out-of-period report metadata matches its existing late-event reader.
-    assert lines[0].split()[0] == "0143"
+    # 0144 royalty template; 0145/0146 option terms; 0147 call logs; 0148 AI proposals.
+    assert lines[0].split()[0] == "0148"
 
 
 def test_upgrade_downgrade_upgrade(test_database: TestDatabase) -> None:
@@ -414,7 +415,7 @@ def test_upgrade_downgrade_upgrade(test_database: TestDatabase) -> None:
     # 0064 (lane ENG-C6, T-SL-12 subledger_line_event) adds none: IM-A and RLS-T attach the existing
     # 0001 tg_forbid_mutation and the RLS policies; no DB-03 transition, no new function.
     assert (
-        len(first["functions"]) == 89  # 0145 adds tg_material_right__ownership; 0147 adds none.
+        len(first["functions"]) == 90  # 0145 ownership + 0148 AI proposal transition.
         # 0065 REPLACES tg_report_run__transition (frps3b): +0
     )  # 76 + tg_tenant_snapshot__transition + __target (0062); 0064 +0; 0067 +0 (IM-A / RLS-T
     # attach the existing tg_forbid_mutation and policies; no DB-03 transition, no new function);
