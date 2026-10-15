@@ -151,6 +151,12 @@ export const SCREEN_ROUTES: readonly RouteObject[] = [
     }),
   },
   {
+    id: "SF-20",
+    path: "/contracts/review/:proposalId",
+    handle: { sf: "SF-20", screen: "SF-20", titleKey: "ai.review.title" },
+    lazy: async () => ({ Component: (await import("../routes/contracts/review")).ContractReview }),
+  },
+  {
     // SCREENS RT-10: `/contracts/:contractId` redirects to the Obligations tab and keeps the search.
     id: "X:contract-redirect",
     path: "/contracts/:contractId",

@@ -14,6 +14,7 @@ import { t } from "./i18n/t";
  */
 export const PHRASED_PERMISSIONS = [
   "access.approve",
+  "ai.use",
   "api_client.manage",
   "audit.read",
   "migration.run",

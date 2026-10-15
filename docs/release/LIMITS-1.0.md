@@ -178,8 +178,14 @@ full extraction-to-independent-activation readiness. Extraction detail/list read
 accepted draft target, human/time and recorded decisions separately from original evidence.
 A typed frontend API module now covers proposal lists/detail, retained text, submission,
 rejection and acceptance, preserving server ETags and the existing command idempotency rules.
-The live SF-20 review route and draft-form integration remain unbuilt; this API layer is not
-browser workflow completion.
+SF-20 now has a live /contracts/review/:proposalId route for retained evidence and whole-proposal
+rejection. It shows original text, original versus recorded edited values, acceptance metadata
+and the draft link. Source citations highlight validated Unicode code-point spans, focus the
+highlight and return focus on Escape. Reads are permission-gated; expired/missing-ETag items
+cannot be rejected, and rejected commands retain their reason and problem. Component/API tests
+and a local browser preview cover this evidence view, not the full workflow. The preview uses
+cached synthetic responses, not a live API. Upload/job navigation, field-decision controls,
+responsive panel tabs, draft-form integration and full browser acceptance remain unfinished.
 
 The Anthropic adapter is mock-tested, uses the official SDK, disables SDK retries and telemetry,
 and resolves secrets lazily. Contract-review and explain-narrative prompts have retained bytes,

@@ -1,0 +1,365 @@
+// SF-20 retained extraction evidence. Commands use the read ETag; original text is never HTML.
+import { useQuery } from "@tanstack/react-query";
+import { useEffect, useRef, useState } from "react";
+import { Link, useParams } from "react-router";
+
+import { ProposalBlock } from "../../components/ai/ProposalBlock";
+import { AccessLimited } from "../../components/feedback/AccessLimited";
+import { Banner } from "../../components/feedback/Banner";
+import { EmptyState } from "../../components/feedback/EmptyState";
+import { RefusalBanner } from "../../components/feedback/RefusalBanner";
+import { Skeleton } from "../../components/feedback/Skeleton";
+import { ReasonField, reasonError } from "../../components/form/ReasonField";
+import { Button } from "../../components/ui/Button";
+import { Modal } from "../../components/ui/Modal";
+import { useAccess } from "../../lib/access";
+import { useCommand } from "../../lib/api/commands";
+import { ApiProblem } from "../../lib/api/problems";
+import {
+  AI_USE_PERMISSION,
+  documentTextKey,
+  type DocumentText,
+  type ExtractionProposal,
+  fetchDocumentText,
+  fetchProposal,
+  proposalKey,
+  proposalPath,
+} from "../../lib/api/queries/ai";
+import { queryKey } from "../../lib/api/query-keys";
+import { formatTimestamp, instantMs } from "../../lib/format";
+import { hasMessage, t } from "../../lib/i18n/t";
+
+interface Citation {
+  readonly page: number;
+  readonly start: number;
+  readonly end: number;
+}
+
+function citationOf(value: unknown, source: string): Citation | null {
+  if (typeof value !== "object" || value === null) return null;
+  const item = value as Record<string, unknown>;
+  if (
+    item.ref_type !== "document" ||
+    item.ref_id !== source ||
+    !Number.isSafeInteger(item.page) ||
+    !Number.isSafeInteger(item.char_start) ||
+    !Number.isSafeInteger(item.char_end)
+  )
+    return null;
+  const page = item.page as number;
+  const start = item.char_start as number;
+  const end = item.char_end as number;
+  return page > 0 && start >= 0 && end > start ? { page, start, end } : null;
+}
+
+/** Python source offsets are Unicode code points, not JavaScript UTF-16 code units. */
+export function citedParts(text: string, start: number, end: number): readonly string[] | null {
+  const points = Array.from(text);
+  if (
+    !Number.isSafeInteger(start) ||
+    !Number.isSafeInteger(end) ||
+    start < 0 ||
+    end <= start ||
+    end > points.length
+  )
+    return null;
+  return [
+    points.slice(0, start).join(""),
+    points.slice(start, end).join(""),
+    points.slice(end).join(""),
+  ];
+}
+
+function labelOf(path: unknown): string {
+  if (typeof path !== "string") return t("ai.review.field");
+  const key = `ai.review.field.${path}`;
+  return hasMessage(key) ? t(key) : path;
+}
+
+function valueText(value: unknown): string {
+  return typeof value === "string" ? value : (JSON.stringify(value) ?? "");
+}
+
+function ReviewEvidence({
+  proposal,
+  etag,
+  text,
+}: {
+  readonly proposal: ExtractionProposal;
+  readonly etag: string | null;
+  readonly text: DocumentText | undefined;
+}) {
+  const [selected, setSelected] = useState<{ citation: Citation; label: string } | null>(null);
+  const trigger = useRef<HTMLButtonElement | null>(null);
+  const highlight = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (selected !== null) {
+      highlight.current?.focus();
+      highlight.current?.scrollIntoView?.({ block: "nearest" });
+    }
+    const returnToCitation = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && document.activeElement === highlight.current) {
+        event.preventDefault();
+        trigger.current?.focus();
+      }
+    };
+    document.addEventListener("keydown", returnToCitation);
+    return () => document.removeEventListener("keydown", returnToCitation);
+  }, [selected]);
+  const [rejecting, setRejecting] = useState(false);
+  const [reason, setReason] = useState("");
+  const [attempted, setAttempted] = useState(false);
+  const [unreached, setUnreached] = useState(false);
+  const command = useCommand<ExtractionProposal>({
+    method: "POST",
+    path: `${proposalPath(proposal.id)}/reject`,
+    invalidates: [queryKey("ai-proposals", "tenant")],
+  });
+  const expired =
+    proposal.status === "expired" ||
+    (proposal.status === "proposed" && instantMs(proposal.expires_at) <= Date.now());
+  const canReject = proposal.status === "proposed" && !expired && etag !== null;
+  const reject = async () => {
+    setAttempted(true);
+    if (!canReject || reasonError(reason) !== null) return;
+    setUnreached(false);
+    const result = await command.submit({ reason: reason.trim() }, { ifMatch: etag });
+    if (result.kind === "succeeded") setRejecting(false);
+    else setUnreached(result.kind === "network-error");
+  };
+  return (
+    <>
+      <RefusalBanner problem={command.problem} conflict={command.banner} />
+      {expired ? (
+        <Banner
+          tone="warning"
+          title={t("ai.review.expired", { at: formatTimestamp(proposal.expires_at) })}
+        />
+      ) : null}
+      {canReject ? (
+        <div>
+          <Button onClick={() => setRejecting(true)}>{t("ai.review.reject")}</Button>
+        </div>
+      ) : null}
+      {proposal.status === "accepted" &&
+      proposal.accepted_object_type === "contract" &&
+      proposal.accepted_object_id !== null ? (
+        <Link
+          className="text-accent-fg hover:underline"
+          to={`/contracts/${proposal.accepted_object_id}/obligations`}
+        >
+          {t("ai.review.openDraft")}
+        </Link>
+      ) : null}
+      <div className="grid gap-4 xl:grid-cols-2">
+        <section
+          aria-label={t("ai.review.document")}
+          data-testid="SF-20-pane-document"
+          className="min-w-0 rounded-lg border border-hairline p-[var(--panel-pad)]"
+        >
+          <h2 className="text-title-sm text-fg-1">{t("ai.review.document")}</h2>
+          {text?.pages.map((page) => {
+            const active = selected?.citation.page === page.page_no ? selected : null;
+            const parts =
+              active === null
+                ? null
+                : citedParts(page.text, active.citation.start, active.citation.end);
+            return (
+              <section
+                key={page.page_no}
+                aria-label={t("ai.review.page", { page: page.page_no })}
+                className="mt-4"
+              >
+                <h3 className="text-caption text-fg-3">
+                  {t("ai.review.page", { page: page.page_no })}
+                </h3>
+                <div className="whitespace-pre-wrap break-words text-body text-fg-1">
+                  {parts === null ? (
+                    page.text
+                  ) : (
+                    <>
+                      {parts[0]}
+                      <mark
+                        tabIndex={-1}
+                        aria-label={t("ai.review.cited", { field: active?.label ?? "" })}
+                        className="bg-accent-subtle text-fg-1"
+                        ref={highlight}
+                      >
+                        {parts[1]}
+                      </mark>
+                      {parts[2]}
+                    </>
+                  )}
+                </div>
+              </section>
+            );
+          })}
+        </section>
+        <ProposalBlock
+          state={
+            proposal.status === "accepted"
+              ? "accepted"
+              : proposal.status === "failed"
+                ? "failed"
+                : "ready"
+          }
+          source={formatTimestamp(proposal.created_at)}
+          acceptedBy={proposal.accepted_by?.display_name}
+        >
+          {proposal.status === "rejected" ? (
+            <p>
+              {t("ai.review.rejected", {
+                by: proposal.rejected_by?.display_name ?? "",
+                reason: proposal.rejection_reason ?? "",
+              })}
+            </p>
+          ) : null}
+          {proposal.status === "accepted" && proposal.accepted_at !== null ? (
+            <p>{t("ai.review.acceptedAt", { at: formatTimestamp(proposal.accepted_at) })}</p>
+          ) : null}
+          <dl className="flex flex-col gap-4">
+            {proposal.content.map((field, index) => {
+              const label = labelOf(field.path);
+              const citation = citationOf(field.citation, proposal.file_object_id);
+              const page = text?.pages.find((item) => item.page_no === citation?.page);
+              const valid =
+                citation !== null &&
+                page !== undefined &&
+                citedParts(page.text, citation.start, citation.end) !== null;
+              const recorded = proposal.field_decisions?.find(
+                (decision) => decision.path === field.path,
+              );
+              return (
+                <div key={`${String(field.path)}-${String(index)}`}>
+                  <dt className="text-body-sm font-medium text-fg-1">{label}</dt>
+                  <dd className="whitespace-pre-wrap break-words">{valueText(field.value)}</dd>
+                  {typeof field.confidence === "string" ? (
+                    <dd className="text-caption text-fg-3">
+                      {t("ai.review.confidence", { value: field.confidence })}
+                      {field.check === true ? ` · ${t("ai.review.check")}` : ""}
+                    </dd>
+                  ) : null}
+                  {valid && citation !== null ? (
+                    <dd>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(event) => {
+                          trigger.current = event.currentTarget;
+                          setSelected({ citation, label });
+                        }}
+                      >
+                        {t("ai.review.citation", {
+                          page: citation.page,
+                          start: citation.start,
+                          end: citation.end,
+                        })}
+                      </Button>
+                    </dd>
+                  ) : null}
+                  {recorded === undefined ? null : (
+                    <dd className="text-body-sm text-fg-2">
+                      <p>{t("ai.review.decision", { decision: String(recorded.decision) })}</p>
+                      {recorded.decision === "EDIT" ? <p>{valueText(recorded.value)}</p> : null}
+                      {typeof recorded.reason === "string" ? <p>{recorded.reason}</p> : null}
+                    </dd>
+                  )}
+                </div>
+              );
+            })}
+          </dl>
+        </ProposalBlock>
+      </div>
+      <Modal
+        open={rejecting}
+        variant="confirmation"
+        title={t("ai.review.reject")}
+        description={t("ai.review.rejectConsequence")}
+        submitting={command.pending}
+        primaryAction={{
+          label: t("ai.review.reject"),
+          destructive: true,
+          onAction: () => {
+            void reject();
+          },
+        }}
+        onClose={() => {
+          if (!command.pending) setRejecting(false);
+        }}
+      >
+        <RefusalBanner problem={command.problem} conflict={command.banner} />
+        {unreached ? <Banner tone="warning" title={t("ai.review.unreached")} /> : null}
+        <ReasonField
+          label={t("ai.review.reason")}
+          value={reason}
+          onChange={setReason}
+          showError={attempted}
+        />
+      </Modal>
+    </>
+  );
+}
+
+export function ContractReview() {
+  const { proposalId = "" } = useParams();
+  const access = useAccess();
+  const allowed = access.holdsAnywhere(AI_USE_PERMISSION);
+  const read = useQuery({
+    queryKey: proposalKey(proposalId),
+    queryFn: () => fetchProposal(proposalId),
+    enabled: allowed,
+  });
+  const proposal = read.data?.proposal;
+  const document = useQuery({
+    queryKey: documentTextKey(proposalId),
+    queryFn: () => fetchDocumentText(proposalId),
+    enabled: allowed && !read.isError && proposal?.kind === "CONTRACT_EXTRACTION",
+  });
+  if (!allowed)
+    return <AccessLimited area={t("ai.review.title")} permissions={[AI_USE_PERMISSION]} />;
+  if (read.isPending) return <Skeleton region={t("ai.review.title")} />;
+  if (read.isError || proposal?.kind !== "CONTRACT_EXTRACTION")
+    return (
+      <EmptyState
+        title={t("ai.review.notFound")}
+        description={t("ai.review.readFailed")}
+        action={{
+          label: t("ai.review.reload"),
+          onAction: () => {
+            void read.refetch();
+          },
+        }}
+      />
+    );
+  return (
+    <div className="flex flex-col gap-4" data-testid="SF-20-page">
+      <h1 className="text-title-lg text-fg-1">{t("ai.review.title")}</h1>
+      {document.isPending ? <Skeleton region={t("ai.review.document")} /> : null}
+      {document.isError ? (
+        <Banner
+          tone="negative"
+          title={t("ai.review.documentFailed")}
+          actions={
+            <Button
+              onClick={() => {
+                void document.refetch();
+              }}
+            >
+              {t("ai.review.reload")}
+            </Button>
+          }
+        >
+          {document.error instanceof ApiProblem
+            ? document.error.message
+            : t("ai.review.readFailed")}
+        </Banner>
+      ) : null}
+      <ReviewEvidence
+        key={proposal.id}
+        proposal={proposal}
+        etag={read.data.etag}
+        text={document.isError ? undefined : document.data}
+      />
+    </div>
+  );
+}

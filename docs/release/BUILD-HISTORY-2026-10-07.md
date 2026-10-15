@@ -5323,3 +5323,21 @@ cleanup in the shared database session kernel was also repaired and regression-t
   failure; api-final-pass verifies its correction. No live provider calls or deployment.
 - Extraction proposal/document-text reads, human review/acceptance and broader release and
   independent accounting verification remain outstanding.
+
+## Authorized extraction proposal detail — October 15, 2026
+
+- GET /ai/proposals/{id} now returns CONTRACT_EXTRACTION evidence as a distinct response shape
+  alongside number explanations. Common actor/status/citation/ETag metadata is shared; extraction
+  responses include source/text file IDs and the retained suggested-field array.
+- The query selects binding metadata first, requires a current human ai.use grant and current
+  original ATTACHMENT/PDF ownership access, and only then loads content/citations. Unreadable or
+  shredded sources return 404. Reads work with AI disabled and neither decrypt text nor call a
+  provider. Existing narrative source checks and narrative-only rejection/list paths are retained.
+- Verification: five PostgreSQL API tests passed, including worker-produced evidence, AI-off
+  reads, forbidden readers, another AI-enabled user without source access, missing/shredded
+  sources and existing narrative list/rejection regressions. Twenty-four layer/file-access
+  checks passed. Full lint and typecheck passed (933 Python sources plus frontend), focused
+  typing passed 784 sources, OpenAPI/frontend regeneration and formatting/diff checks passed.
+  Logs: .run/ai-extraction-read-{api,architecture,lint,typecheck,types-final,openapi}.log.
+- Extraction list integration, original document-text responses, human review/acceptance and
+  broader release/accounting verification remain open. No deployment or live provider calls.

@@ -2,6 +2,24 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Contract review evidence screen — October 15, 2026
+
+- Added SF-20 /contracts/review/:proposalId with permission-gated retained proposal/document
+  reads, original text and field values, confidence/check indicators, accepted reviewer/time,
+  recorded edited values/reasons and an accepted-draft link. Whole-proposal rejection requires
+  a reason and the read ETag, preserves failure information, and refreshes retained evidence.
+  Expired or missing-ETag proposals withhold rejection. Document failures offer reload.
+- Citation spans must refer to the original file and fit the page. Highlighting uses Unicode code
+  points to match Python offsets, never HTML, then focuses the highlight; Escape returns to the
+  citation. Corrected focus handling so unrelated renders cannot steal focus back from a form.
+- 19 route/API/permission checks, frontend typing and full lint passed. Local Chromium preview had no
+  page errors and confirmed highlight/focus; light/dark 1440 and dark 1280 captures retained in
+  .run/ai-review-screen-*.png. This preview mounts the component with cached synthetic responses,
+  not the full shell or live backend. Logs: .run/ai-review-screen-{tests,types,browser,lint}.log.
+- Upload/job navigation, field decisions, responsive panel tabs and draft-form integration remain
+  unfinished. Broader release and independent accounting gates stay open. No deployment or live
+  provider calls. The preview server was stopped after inspection.
+
 ## Retained acceptance reads and frontend API boundary — October 15, 2026
 
 - Extraction detail/list now return accepted command/target, accepting human/time and recorded
@@ -205,24 +223,6 @@
   .run/ai-document-text-{pg-final,unit,lint,typecheck,types-final,openapi}.log.
 - Extraction list integration, human review/acceptance, broader release checks and independent
   accounting sign-off remain outstanding. No deployment or live provider calls.
-
-## Authorized extraction proposal detail — October 15, 2026
-
-- GET /ai/proposals/{id} now returns CONTRACT_EXTRACTION evidence as a distinct response shape
-  alongside number explanations. Common actor/status/citation/ETag metadata is shared; extraction
-  responses include source/text file IDs and the retained suggested-field array.
-- The query selects binding metadata first, requires a current human ai.use grant and current
-  original ATTACHMENT/PDF ownership access, and only then loads content/citations. Unreadable or
-  shredded sources return 404. Reads work with AI disabled and neither decrypt text nor call a
-  provider. Existing narrative source checks and narrative-only rejection/list paths are retained.
-- Verification: five PostgreSQL API tests passed, including worker-produced evidence, AI-off
-  reads, forbidden readers, another AI-enabled user without source access, missing/shredded
-  sources and existing narrative list/rejection regressions. Twenty-four layer/file-access
-  checks passed. Full lint and typecheck passed (933 Python sources plus frontend), focused
-  typing passed 784 sources, OpenAPI/frontend regeneration and formatting/diff checks passed.
-  Logs: .run/ai-extraction-read-{api,architecture,lint,typecheck,types-final,openapi}.log.
-- Extraction list integration, original document-text responses, human review/acceptance and
-  broader release/accounting verification remain open. No deployment or live provider calls.
 
 ## Outstanding release verification
 
