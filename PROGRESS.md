@@ -2,6 +2,22 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Material-right bundle and reads — October 14, 2026
+
+- Connected immutable option terms to real engine bundles at known_at, with stable
+  obligation/estimate keys. Dedicated and embedded obligation reads now return terms
+  and status from non-voided exercise/expiry events at the effective and record cuts.
+  Contract visibility still governs access; expiry dates alone do not change status.
+- Added dedicated-read as_of/known_at parameters, offset validation and regenerated
+  OpenAPI/TypeScript schemas. Four database/API tests pass (22.83s): real computation
+  receives stored terms; both reads agree; historical absence, event voids and tenant
+  isolation hold. Route/import checks: 38 passed (18.71s). Full typecheck (879 source
+  files plus frontend) and Ruff pass. Evidence: MATERIAL-RIGHTS-IMPLEMENTATION.md.
+- Corrected fixture transaction/head/query-parameter mistakes found by initial runs;
+  production guards and expected results were retained. Tests insert terms explicitly:
+  native entry, governed corrections, migration conversion and populated snapshot
+  acceptance remain unfinished. Full CI 165d63c remains live. No deployment.
+
 ## Material-right persistence foundation — October 14, 2026
 
 - Migration 0145 creates immutable T-CON-14 option terms and E-92 option_type, tenant

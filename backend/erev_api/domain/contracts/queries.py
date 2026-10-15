@@ -91,7 +91,7 @@ from erev_api.db.tables import (
     subledger_line,
 )
 from erev_api.db.types import ExactType, MoneyType
-from erev_api.domain.contracts import repo, to_date
+from erev_api.domain.contracts import material_rights, repo, to_date
 from erev_api.domain.journals import subledger
 from erev_api.domain.reports import tie_outs
 from erev_api.enums import (
@@ -1597,6 +1597,12 @@ def obligation_outs(
     # API-S-Obligation ``holds`` (04 §16.2 rev 1.299): the obligation's open holds, in the reads
     # that serve the obligation at a cut; a version read lists none.
     listed = {} if at is None else hold_outs(session, {row["contract_id"] for row in rows})
+    rights = material_rights.outputs(
+        session,
+        sorted({row["contract_id"] for row in rows}),
+        known_at=context.known_at,
+        as_of=context.as_of,
+    )
     outs: list[ObligationOut] = []
     for row in rows:
         currency = str(row["txn_currency"]).strip()
@@ -1737,7 +1743,9 @@ def obligation_outs(
                 satisfaction_status=status,
                 satisfied_date=row["satisfied_date"],
                 holds=listed.get((_uuid(row["contract_id"]), _uuid(obligation_id)), []),
-                material_right=None,
+                material_right=None
+                if obligation_id not in rights
+                else rights[obligation_id].model_dump(mode="json"),
                 context=own,
                 links=ObligationLinksOut(
                     self=f"{API}/obligations/{obligation_id}",

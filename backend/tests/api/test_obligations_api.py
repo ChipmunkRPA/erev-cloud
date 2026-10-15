@@ -9,6 +9,7 @@ K-02: ``SF-ORD-10002``, AVM-SEAT-MO for 240,000.00 USD from 1 Jan 2026 to 31 Dec
 
 from __future__ import annotations
 
+from datetime import timedelta
 from decimal import Decimal
 from uuid import UUID, uuid4
 
@@ -16,13 +17,17 @@ import pytest
 from erev_api.auth.keyring import KeyRing
 from erev_api.clock import FrozenClock
 from erev_api.config import Settings
-from erev_api.db.tables import contract_version, obligation
+from erev_api.db import new_id
+from erev_api.db.tables import contract_version, material_right, obligation, product
+from erev_api.domain.contracts import bundles
 from erev_api.files.store import LocalFileStore
 from erev_api.main import create_app
 from fastapi import FastAPI
-from sqlalchemy import select
+from sqlalchemy import insert, select
 from support.db import TestDatabase
 from support.factories import (
+    SEAT_MONTH,
+    SEAT_MONTH_CASE,
     K02World,
     K11World,
     activated_contract,
@@ -32,6 +37,8 @@ from support.factories import (
     k02_seat_month_body,
     k02_world,
     k11_world,
+    published_template,
+    set_default_template,
 )
 from support.reference import get
 
@@ -161,3 +168,69 @@ def test_obligation_schedule_and_versions(
         )
         for item in versions.json()["items"]
     ] == [("O1", str(row["id"]), row["version_no"]) for row in stored]
+
+
+def test_persisted_option_reaches_bundle_and_both_reads(
+    app: FastAPI, keyring: KeyRing, clock: FrozenClock, files: LocalFileStore
+) -> None:
+    """Persistence adapter acceptance; native term-entry commands are a separate missing path."""
+    world = k02_world(app, keyring, clock, files)
+    author = world.place.author
+    template = published_template(
+        app,
+        author,
+        world.marcus,
+        code="TPL-OPTION-READ",
+        outputs={
+            "obligation_kind": "MATERIAL_RIGHT",
+            "distinctness": "distinct",
+            "satisfaction_pattern": "POINT_IN_TIME",
+            "over_time_criterion": "NOT_APPLICABLE",
+            "recognition_method": "UNITS_DELIVERED",
+        },
+        case_line=SEAT_MONTH_CASE,
+    )
+    product_id = world.place.scalar(select(product.c.id).where(product.c.code == SEAT_MONTH))
+    set_default_template(app, author, str(product_id), template["template_id"])
+    booked = booked_contract(world.place, k02_seat_month_body(world.customer_id), activate=True)
+    contract_id = booked.contract["id"]
+    o1 = _obligation_id(world, contract_id, "O1")
+    created = clock.now() - timedelta(seconds=1)
+    with world.place.uow() as unit:
+        unit.session.execute(
+            insert(material_right).values(
+                tenant_id=world.place.tenant_id,
+                id=new_id(),
+                contract_id=contract_id,
+                obligation_id=o1,
+                option_type="RENEWAL_OPTION",
+                currency="USD",
+                ssp_method="ENTERED_AMOUNT",
+                created_at=created,
+                created_by_kind="SYSTEM",
+            )
+        )
+        value = bundles.build(unit.session, booked.combination_group["id"], clock.now())
+        (right,) = value.contracts[0].material_rights
+        assert right.obligation_key == "O1" and right.ssp_method == "ENTERED_AMOUNT"
+        assert right.option_type == "RENEWAL_OPTION"
+        unit.commit()
+    computed(world.place, booked.combination_group["id"])
+    dedicated = get(app, f"{OBLIGATIONS}/{o1}/material-right", author)
+    assert dedicated.status_code == 200, dedicated.text
+    assert dedicated.json()["status"] == "OPEN"
+    shown = get(app, f"{OBLIGATIONS}/{o1}", author)
+    assert shown.status_code == 200, shown.text
+    assert shown.json()["obligation_kind"] == "MATERIAL_RIGHT"
+    assert shown.json()["material_right"] == dedicated.json()
+    earlier = (created - timedelta(microseconds=1)).isoformat().replace("+00:00", "Z")
+    assert (
+        get(app, f"{OBLIGATIONS}/{o1}/material-right", author, {"known_at": earlier}).status_code
+        == 404
+    )
+    assert (
+        get(
+            app, f"{OBLIGATIONS}/{o1}/material-right", author, {"known_at": "2026-01-01T00:00:00"}
+        ).status_code
+        == 422
+    )

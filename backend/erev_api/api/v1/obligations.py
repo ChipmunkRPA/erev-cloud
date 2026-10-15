@@ -252,11 +252,23 @@ def obligation_events_list(
     "/obligations/{obligation_id}/material-right",
     operation_id="obligation_material_right_get",
     response_model=MaterialRightOut,
-    responses=problem_responses(*_READ_PROBLEMS, "not-found"),
+    responses=problem_responses(*_READ_PROBLEMS, "validation-failed", "not-found"),
 )
-def obligation_material_right_get(obligation_id: uuid.UUID, ctx: ReadContext) -> MaterialRightOut:
-    """The obligation's material right (T-CON-14); 404 while none exists (L4-2-Q-7)."""
-    return queries.read(ctx, lambda session: obligations.material_right_out(session, obligation_id))
+def obligation_material_right_get(
+    obligation_id: uuid.UUID,
+    ctx: ReadContext,
+    clock: AppClock,
+    as_of: AsOf = None,
+    known_at: KnownAt = None,
+) -> MaterialRightOut:
+    """The obligation's option terms and status; 404 while none existed at the record cut."""
+    params = _read_params(None, as_of, known_at)
+    return queries.read(
+        ctx,
+        lambda session: obligations.material_right_out(
+            session, obligation_id, params=params, now=clock.now()
+        ),
+    )
 
 
 @router.post(

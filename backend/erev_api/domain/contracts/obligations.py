@@ -19,8 +19,8 @@ this module built a model of its own, which had fallen behind — measured on th
 panel reads: an applied manual event named neither its preparer nor its approver (PRD J-08-AC-3;
 control CTL-009), and an imported event never its source row.
 
-[J] L4-2-Q-7: ``material_right_out`` answers 404, because T-CON-14 ``material_right`` moved
-post-rc with CTR-14 (R-RC-1).
+Material-right reads use immutable T-CON-14 terms at known_at and non-voided exercise/expiry
+events at as_of. The dedicated read answers 404 when no terms existed at the record cut.
 """
 
 from __future__ import annotations
@@ -42,7 +42,7 @@ from erev_api.db.tables import (
     schedule_line,
 )
 from erev_api.domain.contracts import events as contract_events
-from erev_api.domain.contracts import queries, repo, to_date
+from erev_api.domain.contracts import material_rights, queries, repo, to_date
 from erev_api.enums import BookCode
 from erev_api.problems import Problem
 from erev_api.schemas.common import ContextOut
@@ -289,7 +289,22 @@ def event_items(session: Session, rows: Sequence[Mapping[str, Any]]) -> list[Eve
     ]
 
 
-def material_right_out(session: Session, obligation_id: UUID) -> MaterialRightOut:
-    """The obligation's material right; 404 while T-CON-14 does not exist (L4-2-Q-7)."""
-    obligation_row(session, obligation_id)
-    raise Problem("not-found", NO_MATERIAL_RIGHT)
+def material_right_out(
+    session: Session, obligation_id: UUID, *, params: queries.ReadParams, now: datetime
+) -> MaterialRightOut:
+    """Visible option terms and event-derived status at the requested record/effective cuts."""
+    found = obligation_row(session, obligation_id)
+    zone = session.execute(
+        select(legal_entity.c.time_zone).where(
+            legal_entity.c.id == found["contract"]["contracting_entity_id"]
+        )
+    ).scalar_one()
+    rights = material_rights.outputs(
+        session,
+        [found["contract_id"]],
+        known_at=params.known_at or now,
+        as_of=params.as_of or to_entity_date(now, str(zone)),
+    )
+    if obligation_id not in rights:
+        raise Problem("not-found", NO_MATERIAL_RIGHT)
+    return rights[obligation_id]

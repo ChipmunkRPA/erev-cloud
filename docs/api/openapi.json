@@ -74111,7 +74111,7 @@
     },
     "/api/v1/obligations/{obligation_id}/material-right": {
       "get": {
-        "description": "The obligation's material right (T-CON-14); 404 while none exists (L4-2-Q-7).",
+        "description": "The obligation's option terms and status; 404 while none existed at the record cut.",
         "operationId": "obligation_material_right_get",
         "parameters": [
           {
@@ -74122,6 +74122,44 @@
               "format": "uuid",
               "title": "Obligation Id",
               "type": "string"
+            }
+          },
+          {
+            "description": "Effective cut-off (API-C-10)",
+            "in": "query",
+            "name": "as_of",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Effective cut-off (API-C-10)",
+              "title": "As Of"
+            }
+          },
+          {
+            "description": "Record cut-off, RFC 3339 with an offset (API-C-10)",
+            "in": "query",
+            "name": "known_at",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Record cut-off, RFC 3339 with an offset (API-C-10)",
+              "title": "Known At"
             }
           }
         ],
@@ -74185,11 +74223,16 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Problem: validation-failed"
           }
         },
         "summary": "Obligation Material Right Get",

@@ -4549,7 +4549,7 @@ export interface paths {
     };
     /**
      * Obligation Material Right Get
-     * @description The obligation's material right (T-CON-14); 404 while none exists (L4-2-Q-7).
+     * @description The obligation's option terms and status; 404 while none existed at the record cut.
      */
     get: operations["obligation_material_right_get"];
     put?: never;
@@ -41046,7 +41046,12 @@ export interface operations {
   };
   obligation_material_right_get: {
     parameters: {
-      query?: never;
+      query?: {
+        /** @description Effective cut-off (API-C-10) */
+        as_of?: string | null;
+        /** @description Record cut-off, RFC 3339 with an offset (API-C-10) */
+        known_at?: string | null;
+      };
       header?: never;
       path: {
         obligation_id: string;
@@ -41094,13 +41099,14 @@ export interface operations {
           "application/problem+json": components["schemas"]["ProblemOut"];
         };
       };
-      /** @description Validation Error */
+      /** @description Problem: validation-failed */
       422: {
         headers: {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
         };
       };
     };

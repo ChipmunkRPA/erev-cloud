@@ -85,6 +85,7 @@ from erev_engine.bundle import (
     InputBundle,
     JudgementInput,
     MappingRuleInput,
+    MaterialRightInput,
     ModificationInput,
     NoncashInput,
     OutputBundle,
@@ -142,7 +143,7 @@ from erev_api.db.tables import (
     subledger_line,
     subledger_posting,
 )
-from erev_api.domain.contracts import policy_inputs, repo
+from erev_api.domain.contracts import material_rights, policy_inputs, repo
 from erev_api.domain.journals.subledger import POSTING_CLASSES
 from erev_api.domain.policies import templates
 from erev_api.domain.policies.templates import CONVENTION_POLICY, engine_policy_value
@@ -1347,6 +1348,7 @@ def _header(
     booking: Mapping[str, Any],
     judgements: tuple[JudgementInput, ...] = (),
     modifications: tuple[ModificationInput, ...] = (),
+    option_terms: tuple[MaterialRightInput, ...] = (),
 ) -> ContractInput:
     customer_id = UUID(str(row["customer_id"]))
     renewal = row["renewal_of_contract_id"]
@@ -1371,7 +1373,7 @@ def _header(
         contract_type=row["contract_type"],
         renewal_of_contract_key=None if renewal is None else renewal_keys.get(UUID(str(renewal))),
         judgements=judgements,
-        material_rights=(),
+        material_rights=option_terms,
         modifications=modifications,
         noncash_consideration=tuple(
             NoncashInput(
@@ -3097,6 +3099,7 @@ def _assemble(
         else {}
     )
     reviewed = _judgements(session, external_ids, obligation_keys, known_at)
+    options = material_rights.inputs(session, external_ids, known_at=known_at)
     amended = _modifications(
         events,
         ssp_version_keys=ssp_version_keys,
@@ -3113,6 +3116,7 @@ def _assemble(
             renewal_keys=renewal_keys,
             booking=_term_payload(events, external_ids[contract_id]),
             judgements=reviewed.get(contract_id, ()),
+            option_terms=options.get(contract_id, ()),
             modifications=_merged_modifications(
                 amended.get(external_ids[contract_id], ()),
                 native.get(external_ids[contract_id], ()),

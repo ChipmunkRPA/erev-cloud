@@ -5,14 +5,14 @@ not evidence of completed product support or accounting acceptance.
 
 ## Current evidence
 
-- `backend/erev_api/domain/contracts/bundles.py::_header` unconditionally sets
-  `ContractInput.material_rights=()`. Native computations therefore never receive option
-  terms, including the renewal option needed to reach POL-029.
+- The bundle adapter now loads persisted option terms at known_at with deterministic
+  obligation keys and contract/estimate keys. Native entry is still missing.
 - Revision 0145 now implements T-CON-14, its enum, immutable-row guards, ownership/currency
   constraints and tenant RLS. Snapshot inventory includes it and remaps its three references.
   There is still no native command that writes it.
-- `domain/contracts/obligations.py::material_right_out` checks obligation visibility and
-  then always raises not-found. `queries.py` also emits `material_right=None`.
+- Dedicated and embedded obligation reads now return stored terms and event-derived
+  status, respecting record/effective cuts and contract visibility. Missing terms are
+  still 404 on the dedicated read and null on the embedded read.
 - `events/payloads.py::ContractLineV1` has no option-terms member. There is no native
   command to persist the missing record.
 - `domain/migration/opening_balances.py` produces converted option records, but
@@ -81,3 +81,28 @@ Earlier runs exposed missing snapshot pending/reference registrations and stale 
 counts; corrected before publication. A broader row-builder completeness check also found
 an existing missing `period_reopen_basis` builder. That separate failure is not resolved here.
 Populated material-right snapshot/restore and API lifecycle acceptance are still required.
+
+
+## Bundle and read verification, October 14
+
+The adapter now passes persisted terms to real computation, including stable likelihood
+estimate keys. Dedicated option reads accept `as_of` and offset-qualified `known_at`;
+embedded reads use their existing context. A known event void removes its target even
+from earlier effective cuts, matching engine replay. An expiry date alone does not set
+EXPIRED: status derives from persisted exercise/expiry events.
+
+Four PostgreSQL/API tests passed (22.83s), including actual material-right template
+publication, stored terms entering a bundle and computation, consistent dedicated and
+embedded outputs, historical absence, required timestamp offsets and foreign-tenant
+isolation. The test explicitly inserts terms because the native command is unfinished;
+it does not prove preparer/approver lifecycle acceptance. Route/import checks: 38 passed
+(18.71s); full typecheck: 879 source files plus frontend. OpenAPI and TypeScript schemas
+were regenerated. Logs: `.run/material-right-read-tests-pass.log`,
+`.run/material-right-read-architecture.log`, `.run/material-right-read-types-generated.log`.
+
+Earlier attempts exposed fixture errors: events above the stored stream head, using a
+single transaction for distinct record timestamps, an uncommitted unit of work, and
+query strings overwritten by the HTTP test helper's empty parameter mapping. Fixtures
+were corrected without changing expected results or weakening production guards.
+Native term entry, governed corrections, migration conversion and populated snapshot
+acceptance remain outstanding.
