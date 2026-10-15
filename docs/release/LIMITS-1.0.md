@@ -14,6 +14,11 @@ Migration 0147 now provides append-only, tenant-isolated AI call-log storage and
 privacy and sandbox classifications. No gateway writes these records yet, so schema
 verification does not establish AI audit-lifecycle coverage or operational AI readiness.
 
+An atomic attempt writer now records validated hashes, usage and fixed failure codes
+alongside an AUD-FACT event under the requesting user. Commit/rollback and metadata
+refusals are verified. It is not yet connected to an operational gateway; proposal
+creation, decisions and their lifecycle audit coverage remain unfinished.
+
 Migration 0148 adds immutable proposal content/citations, tenant-bound evidence references
 and SM-11 state guards. The schema and full migration round trip are verified; proposal
 creation/acceptance APIs, approval integration and lifecycle audit events remain absent.

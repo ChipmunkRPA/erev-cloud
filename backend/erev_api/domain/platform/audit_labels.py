@@ -270,6 +270,7 @@ NO_LABEL: Final = frozenset(
         "account_mapping_rule",
         "approval_delegation",
         "audit_chain_verification",
+        "ai_model_log",  # AUD-FACT: retained ids in detail, no object label.
         "calc_trace",
         "close_checklist_item",
         "combination_group_member",

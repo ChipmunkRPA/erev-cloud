@@ -7916,6 +7916,10 @@ The state of a step is the first that applies: `BLOCKED` when an open `BLOCKING`
 | `tenant_membership`, `app_user` | The person's `display_name` as it stands when the event is read (for an anonymised person the value 05 PRV-07 (a) wrote). For a membership it is the name the workspace is shown of the person — the email while the identity is withheld (T-PLT-02 "What a workspace is shown of a person", rev 1.315). |
 | `api_client`, `access_review_campaign` | `name` |
 
+AI call-log facts (`ai_model_log.record`) are unlabelled AUD-FACT events: the retained
+log ID is in `detail.ids`, with null `object_id` and `object_label`. They identify
+the requesting user and token usage without storing prompt or response text.
+
 Computation summaries for `fx_layer_movement`, `loss_provision_version` and
 `loss_provision_eac` are explicitly unlabelled AUD-FACT events. They retain the
 created row IDs (or the bounded count/hash summary) in `detail`, with null `object_id`

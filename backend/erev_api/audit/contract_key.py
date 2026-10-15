@@ -95,6 +95,7 @@ WHERE_NAMED: Final = frozenset(
 )
 OTHER: Final = frozenset(
     {
+        "ai_model_log",  # tenant-level call evidence; proposals carry their subjects.
         # identity, access and the workspace
         "tenant",
         "tenant_membership",

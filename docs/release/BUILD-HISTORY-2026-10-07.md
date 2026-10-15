@@ -4135,3 +4135,12 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
 - Remaining: historical report-seed equality, current-main revalidation of 12 other snapshot
   failures, AI audit coverage, lock/relock figure expectations, three expected-failure gaps,
   migration promotion and other release work. No deployment or readiness claim.
+
+## Migrated report catalogue verification — October 14, 2026
+
+- Revalidated the remaining 12 integration failures on c8bc3fc: 10 passed, 2 failed
+  (142.69s). AI audit lifecycle coverage and lock/relock version expectations remain open.
+- Corrected the historical seed test to preserve migration 0048. The full migration-chain
+  PostgreSQL comparison verifies all current catalogue fields; four catalogue checks pass
+  (6.77s), Ruff/formatting pass. No historical migration changes.
+- Evidence and remaining gaps: docs/release/CI-2026-10-14.md. No deployment or readiness claim.

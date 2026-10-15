@@ -2,6 +2,19 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Atomic AI attempt evidence — October 15, 2026
+
+- Added a transaction-bound writer for model-log metadata and its AUD-FACT event.
+  It requires a user with ai.use, verifies request/response hashes, validates counters
+  and fixed outcome/failure codes, and retains no prompt or response text. Requested
+  and resolved model identifiers remain distinguishable. The caller owns commit.
+- PostgreSQL tests cover commit/rollback, rejected metadata, human attribution and
+  usage retained for invalid output. Audit inventories now recognize the log facts.
+- Focused verification: 202 passed, two Linux-only resource-limit tests skipped;
+  strict typing passed for 761 sources. Ruff and diff checks pass.
+- The operational gateway, proposal creation/acceptance and full AI audit lifecycle
+  remain unfinished. No live provider calls or deployment; no readiness claim.
+
 ## Serialized AI budget admission and lost-connection cleanup — October 15, 2026
 
 - Added one autocommit session lock per tenant, `erev-ai-budget:<tenant>`, held across
@@ -240,15 +253,6 @@
   Ruff and formatting pass. Evidence: .run/report-lock-recheck.log and .run/report-lock-types.log.
 - AI audit coverage, other documented implementation gaps and full candidate verification
   remain open. No production-readiness claim or deployment.
-
-## Migrated report catalogue verification — October 14, 2026
-
-- Revalidated the remaining 12 integration failures on c8bc3fc: 10 passed, 2 failed
-  (142.69s). AI audit lifecycle coverage and lock/relock version expectations remain open.
-- Corrected the historical seed test to preserve migration 0048. The full migration-chain
-  PostgreSQL comparison verifies all current catalogue fields; four catalogue checks pass
-  (6.77s), Ruff/formatting pass. No historical migration changes.
-- Evidence and remaining gaps: docs/release/CI-2026-10-14.md. No deployment or readiness claim.
 
 ## Outstanding release verification
 
