@@ -53,6 +53,7 @@ ALWAYS: Final = frozenset(
     {
         "contract",
         "obligation",
+        "material_right",
         "modification",
         "event_submission",
         # the stream appends (AUD-FACT): one event per contract and append

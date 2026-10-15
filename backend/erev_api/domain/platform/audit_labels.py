@@ -34,11 +34,13 @@ from erev_api.db.tables import (
     close_run,
     combination_group,
     contract,
+    control_execution,
     customer,
     dimension_definition,
     dimension_value,
     estimate,
     estimate_version,
+    evidence_pack,
     exception_item,
     fiscal_calendar,
     fx_rate_set,
@@ -200,6 +202,8 @@ LABELS: Final[Mapping[str, Labeller]] = MappingProxyType(
     {
         # contracts
         "contract": _own(contract, "external_id"),
+        "evidence_pack": _own(evidence_pack, "pack_no"),
+        "control_execution": _own(control_execution, "control_id"),
         "obligation": _obligation,
         "modification": _own(modification, "modification_no"),
         "estimate": _own(estimate, "element_code"),
@@ -261,6 +265,7 @@ LABELS: Final[Mapping[str, Labeller]] = MappingProxyType(
 # ``missing_object``).
 NO_LABEL: Final = frozenset(
     {
+        "material_right",  # AUD-FACT summary: fact ids live in detail; object_id is null.
         "access_review_item",
         "account_mapping_rule",
         "approval_delegation",

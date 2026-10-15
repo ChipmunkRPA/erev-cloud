@@ -3684,3 +3684,36 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
 - Corrections, draft replacement/race acceptance, full method matrix, UI, migration,
   populated snapshot and independent accounting acceptance remain open. Original full
   CI 165d63c remains live and is not current-candidate evidence. No deployment.
+
+## Material-right replacement and activation routing — October 14, 2026
+
+- Verified native term creation followed by an integration's price-only draft replacement:
+  the same obligation retains identical immutable terms and exactly one record.
+- Baseline activation omitted MANUAL_ENTRY for the human term preparer. MATERIAL_RIGHT
+  still kept that request pending; no auto-approval bypass was demonstrated. Routing now
+  reads option authors (including represented preparers) and persisted option records.
+- Activation-routing regressions: 12 passed (91.18s), including untouched-integration
+  auto-approval. A SYSTEM/AUD-FACT represented-preparer fixture plus import checks:
+  31 passed (18.19s). Full typecheck, Ruff and diff checks pass. Logs:
+  .run/material-right-replacement-baseline.log, .run/material-right-routing-regression.log,
+  .run/material-right-routing-facts.log, .run/material-right-routing-types.log.
+- Key/product removal, corrections, races, complete historical replacement, UI and
+  migration acceptance remain open. Original CI 165d63c is live in demo/performance
+  seeding. Noncommercial licensing and publication exclusions retained. No deployment.
+
+## Reopen-basis isolation coverage — October 14, 2026
+
+- Reproduced the catalogue-completeness failure: period_reopen_basis had no shared
+  row builder. Added its period/entity/state dependencies and registered the builder.
+  The existing sweep now proves own-row visibility, foreign-tenant read/write denial
+  and no-context denial. Entity-scope checks include the reopen basis and now verify
+  forbidden updates/deletes as well as reads/inserts for all five reference cases.
+- Fixed two typing issues in touched helpers: explicit obligation-version UUID inputs
+  and a real user identity for the loss-provision fixture instead of None.
+- Final focused PostgreSQL run: 10 passed (6.93s); strict Mypy on both touched files,
+  Ruff and diff checks pass. Evidence: .run/reopen-rls-baseline.log (failure),
+  .run/reopen-rls-verified.log and .run/reopen-rls-types-final.log. Earlier Mypy invocations
+  used incomplete module-path configuration; final check uses MYPYPATH and explicit
+  package bases. No production runtime or schema change.
+- Full CI 165d63c remains live around 32%; this focused repair does not establish a
+  passing release gate. Original exclusions/noncommercial license retained; no deployment.

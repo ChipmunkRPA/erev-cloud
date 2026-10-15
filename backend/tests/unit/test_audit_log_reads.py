@@ -10,20 +10,23 @@ import re
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
+import pytest
 from erev_api.audit import contract_key
 from erev_api.audit.redact import PERSONAL, REDACT
 from erev_api.db.tables import audit_event, audit_event_contract, metadata
 from erev_api.domain.platform import audit_labels, audit_log
 from sqlalchemy import Label
-from sqlalchemy.dialects import postgresql
+from sqlalchemy.dialects.postgresql.base import PGDialect
+from sqlalchemy.sql import ClauseElement
 from support.architecture import ROOT
 
 NOW = datetime(2026, 9, 30, 12, 0, tzinfo=UTC)
 CONTRACT = UUID("00000000-0000-7000-8000-00000000000a")
 
 
-def _sql(statement: object) -> str:
-    return str(statement.compile(dialect=postgresql.dialect()))  # type: ignore[attr-defined]
+def _sql(statement: ClauseElement) -> str:
+    dialect = PGDialect()  # type: ignore[no-untyped-call]  # SQLAlchemy constructor is untyped.
+    return str(statement.compile(dialect=dialect))
 
 
 def test_a_read_starts_at_from_else_thirty_days_before_its_end() -> None:
@@ -71,6 +74,9 @@ def test_the_trail_of_a_contract_is_the_link_and_a_lateral_lookup_of_each_event(
     looked up LATERAL with a limit, so that the link always drives the read."""
     source = audit_log.trail_source(CONTRACT)
     sql = _sql(source.statement)
+    limit = re.search(r"LIMIT %\((param_\d+)\)s\) AS trail", sql)
+    assert limit is not None
+    limit_key = limit.group(1)
     assert sql.endswith(
         "FROM erev.audit_event_contract JOIN LATERAL (SELECT event.tenant_id AS tenant_id, "
         "event.occurred_at AS occurred_at, event.id AS id, event.chain_seq AS chain_seq, "
@@ -89,10 +95,10 @@ def test_the_trail_of_a_contract_is_the_link_and_a_lateral_lookup_of_each_event(
         "WHERE event.tenant_id = erev.audit_event_contract.tenant_id AND "
         "event.occurred_at = erev.audit_event_contract.occurred_at AND "
         "event.id = erev.audit_event_contract.audit_event_id \n"
-        " LIMIT %(param_52)s) AS trail ON true \n"
+        f" LIMIT %({limit_key})s) AS trail ON true \n"
         "WHERE erev.audit_event_contract.contract_id = %(contract_id_1)s::UUID"
     ), sql[-1800:]
-    assert source.statement.compile().params["param_52"] == 1
+    assert source.statement.compile().params[limit_key] == 1
     assert "detail ->" not in sql and "@>" not in sql
     # The sequence, the instant and the id are the link's — what the list kernel sorts and
     # continues a page by (DG-LST-08); every other key is the looked-up event's.
@@ -182,3 +188,12 @@ def test_an_actors_membership_is_read_for_a_person_alone() -> None:
     assert "erev.tenant_membership.user_id = erev.audit_event.actor_id" in membership
     assert "erev.tenant_membership.status != " in membership
     assert membership.rstrip().endswith("ELSE NULL END")
+
+
+def test_material_right_audit_requires_its_contract_key() -> None:
+    with pytest.raises(ValueError, match="material_right names its contract"):
+        contract_key.keyed("material_right", None)
+    assert contract_key.named(contract_key.keyed("material_right", None, contract_id=CONTRACT)) == [
+        CONTRACT
+    ]
+    assert contract_key.keyed("material_right", None, required=False) == {}

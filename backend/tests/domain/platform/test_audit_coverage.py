@@ -1248,6 +1248,7 @@ def _system_uow(w: World, request_id: str) -> Iterator[UnitOfWork]:
         now=w.clock.now(),
         format_locale="en-US",
     )
+    assert w.runtime.files is not None
     with unit_of_work(ctx, clock=w.clock, keyring=w.keyring, files=w.runtime.files) as uow:
         yield uow
 
@@ -1477,9 +1478,8 @@ def s_config_test_cases_update(w: World) -> HttpResponse:
 
 def s_config_test_cases_delete(w: World) -> HttpResponse:
     # precondition="row": the delete carries If-Match (the support delete() helper sends none).
-    headers = cookie_headers(
-        w.maya.token, w.maya.csrf_token, **{"If-Match": w.ids["test_case.etag"]}
-    )
+    headers = cookie_headers(w.maya.token, w.maya.csrf_token)
+    headers["If-Match"] = w.ids["test_case.etag"]
     return call(w.app, "DELETE", f"{API}/config-test-cases/{w.ids['test_case']}", headers=headers)
 
 
@@ -2123,6 +2123,110 @@ def s_contracts_distinct_review(w: World) -> HttpResponse:
         e.place.author,
         {"distinctness": "distinct", "rationale": "Separately identifiable (SOP-7 walk)."},
     )
+
+
+def s_obligation_material_right_create(w: World) -> HttpResponse:
+    from support.factories import published_template
+    from tests.domain.contracts.test_activation import _created, _seat_contract
+
+    seats = _seats(w)
+    maya = seats.place.author
+    body = _seat_contract(seats, f"SOP7-OPTION-{random_suffix()}", seats="50", price="12000.00")
+    line = body["lines"][0]
+    template = published_template(
+        seats.app,
+        maya,
+        seats.marcus,
+        code=f"SOP7-OPTION-{random_suffix()}",
+        outputs={
+            "obligation_kind": "MATERIAL_RIGHT",
+            "distinctness": "distinct",
+            "satisfaction_pattern": "POINT_IN_TIME",
+            "over_time_criterion": "NOT_APPLICABLE",
+            "recognition_method": "UNITS_DELIVERED",
+        },
+        case_line={**line, "total_price": "12000.00"},
+    )
+    product_id = seats.place.scalar(
+        select(tables.product.c.id).where(tables.product.c.code == line["product_code"])
+    )
+    set_default_template(seats.app, maya, str(product_id), template["template_id"])
+    contract_id = _created(seats.app, maya, body)
+    option_id = seats.place.scalar(
+        select(obligation.c.id).where(obligation.c.contract_id == contract_id)
+    )
+    response = post(
+        seats.app,
+        f"{API}/obligations/{option_id}/material-right",
+        maya,
+        {
+            "option_type": "RENEWAL_OPTION",
+            "ssp_method": "ENTERED_AMOUNT",
+            "entered_ssp_amount": {"amount": "123.45", "currency": "USD"},
+        },
+        if_match='"s1"',
+    )
+    assert response.status_code == 201, response.text
+    from erev_api.domain.platform import audit_labels
+
+    (shown,) = seats.place.rows(
+        select(
+            audit_labels.label(
+                audit_event.c.object_type, audit_event.c.object_id, audit_event.c.tenant_id
+            ).label("object_label"),
+            audit_event.c.object_id,
+            audit_event.c.detail,
+        ).where(
+            audit_event.c.request_id == response.headers[REQUEST_ID],
+            audit_event.c.object_type == "material_right",
+        )
+    )
+    # AUD-FACT summarizes the created ids, so it has no single object_id or object label.
+    assert shown["object_label"] is None and shown["object_id"] is None
+    assert shown["detail"]["contract_id"] == str(contract_id)
+    right_id = seats.place.scalar(
+        select(tables.material_right.c.id).where(tables.material_right.c.obligation_id == option_id)
+    )
+    assert shown["detail"]["ids"] == [str(right_id)]
+    return response
+
+
+def s_obligation_material_right_expire(w: World) -> HttpResponse:
+    from tests.domain.contracts.test_activation import _active_expiry_option, _header
+
+    assert isinstance(w.runtime.files, LocalFileStore)
+    seats = seat_world(w.app, w.keyring, w.clock, w.runtime.files)
+    w.evidence_tenant_id = seats.place.tenant_id
+    contract_id, option_id = _active_expiry_option(seats, entered="123.45")
+    head = _header(seats, contract_id)[1]
+    return post(
+        seats.app,
+        f"{API}/obligations/{option_id}/expire-material-right",
+        seats.place.author,
+        {"effective_date": "2026-09-12", "comment": "Audit walk expiry"},
+        if_match=f'"s{head}"',
+    )
+
+
+def s_evidence_packs_create(w: World) -> HttpResponse:
+    from erev_api.domain.reports import evidence_sources
+    from support.close_world import actor_with_role
+    from support.evidence_packs import retained_close_pack
+
+    assert isinstance(w.runtime.files, LocalFileStore)
+    with pytest.MonkeyPatch.context() as patch:
+        retained = retained_close_pack(w.app, w.keyring, w.clock, w.runtime.files, patch)
+        w.evidence_tenant_id = retained.world.place.tenant_id
+        sources = evidence_sources.checked_row(retained.pack)
+        auditor = actor_with_role(
+            w.app, w.clock, retained.world.tenant_id, "auditor", name="hannah"
+        )
+        return post(
+            w.app,
+            f"{API}/evidence-packs",
+            auditor,
+            sources.request.model_dump(mode="json"),
+        )
 
 
 def s_obligations_request_ssp_override(w: World) -> HttpResponse:
@@ -3884,6 +3988,9 @@ WALK: Final[tuple[tuple[str, Scenario], ...]] = (
     ("session_select_tenant", s_session_select_tenant),
     ("session_lookup_invitation", s_session_lookup_invitation),
     ("session_accept_invitation", s_session_accept_invitation),
+    ("obligation_material_right_create", s_obligation_material_right_create),
+    ("obligation_material_right_expire", s_obligation_material_right_expire),
+    ("evidence_packs_create", s_evidence_packs_create),
 )
 
 
@@ -3959,6 +4066,8 @@ def _contract_ids(tenant_id: UUID) -> frozenset[str]:
 # with why that object is about no contract; an entry no event of the walk used fails by name, so
 # the list cannot outlive its reason.
 NO_CONTRACT: Final[Mapping[tuple[str, str], str]] = {
+    # This scenario requests a CLOSE pack bound to an entity/book/period lock, not a contract.
+    ("evidence_packs_create", "evidence_pack"): "CLOSE pack of a period lock",
     # ``_no_data_import``: an IMPORT_NO_DATA_ROWS item of an upload that booked nothing — T-IMP-05
     # ``contract_id`` and ``combination_group_id`` are null.
     ("exceptions_assign", "exception_item"): "the item of an upload without data rows",
@@ -4167,7 +4276,7 @@ def _exercise(
         )
         walk.actions.update(str(row["action"]) for row in rows)
     elif route.evidence == "security_event":
-        kinds = _security_kinds(request_id)
+        kinds = set(_security_kinds(request_id))
         if not kinds:
             walk.failures.append(f"{operation_id}: no security_event for request {request_id}")
             return
@@ -4188,7 +4297,9 @@ def _exercise(
             walk.failures.append(f"{operation_id}: the scenario recorded no approval correlation")
             return
         table = route.actions[0].rsplit(".", 1)[0]
-        events = _audit_events(tenant_id, facts["confirm.approve_request"])
+        approval_request_id = facts["confirm.approve_request"]
+        assert approval_request_id is not None
+        events = _audit_events(tenant_id, approval_request_id)
         published = [
             row
             for row in events
@@ -4535,3 +4646,25 @@ def test_supported_policy_override_creation_is_audited(
     assert walk.failures == []
     assert "policy_overrides_create" in walk.covered
     assert "policy_override.create" in walk.actions
+
+
+def test_native_options_and_close_pack_requests_write_bound_audit(
+    app: FastAPI, keyring: KeyRing, clock: FrozenClock, runtime: JobRuntime
+) -> None:
+    world = _world(app, keyring, clock, runtime)
+    walk = Walk()
+    for operation, scenario in (
+        ("obligation_material_right_create", s_obligation_material_right_create),
+        ("obligation_material_right_expire", s_obligation_material_right_expire),
+        ("evidence_packs_create", s_evidence_packs_create),
+    ):
+        _exercise(world, walk, operation, scenario)
+    assert not walk.failures, "\n".join(walk.failures)
+    assert {"material_right.create", "contract_event.append", "evidence.create"} <= walk.actions
+
+
+def test_material_right_audit_summary_names_fact_and_contract(
+    app: FastAPI, keyring: KeyRing, clock: FrozenClock, runtime: JobRuntime
+) -> None:
+    response = s_obligation_material_right_create(_world(app, keyring, clock, runtime))
+    assert response.status_code == 201

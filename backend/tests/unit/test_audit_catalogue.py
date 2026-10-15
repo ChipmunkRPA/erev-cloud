@@ -67,7 +67,8 @@ def test_catalogue_equals_the_committed_command_operations() -> None:
     # ruling of 2026-10-01 on question J1 (a); 04 API-R-33 rev 1.242) = 234.
     # + combination_groups_discard (item COMBINATION-PROPOSAL-DISCARD-1, lane F-RPS-REG, the
     # supervisor's rulings of 2026-10-02; 04 API-R-28 rev 1.289) = 235.
-    assert len(operations) == 235
+    # Native option creation/expiry and close evidence-pack creation add three commands.
+    assert len(operations) == 238
 
 
 def test_every_catalogued_route_is_declared_by_one_router_module() -> None:
@@ -256,7 +257,8 @@ def test_sop_7_required_operations_exclude_class_a() -> None:
     # API-R-33 rev 1.242 — REQUIRED, not exempt): 234 − 6 = 228.
     # + combination_groups_discard (item COMBINATION-PROPOSAL-DISCARD-1; 04 API-R-28 rev
     # 1.289 — REQUIRED, not exempt): 235 − 6 = 229.
-    assert len(ROUTES) - len(SOP_7_EXEMPT) == len(required) == 235 - 6 == 229
+    # + native option create/expire and CLOSE evidence-pack creation: 238 - 6 = 232.
+    assert len(ROUTES) - len(SOP_7_EXEMPT) == len(required) == 238 - 6 == 232
     assert {"users_anonymise", "files_shred"} <= required, "the P8 privacy commands are required"
     assert "session_login" not in required and "session_login" in SOP_7_EXEMPT
     assert QUERY_EXEMPT <= required

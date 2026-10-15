@@ -1,5 +1,12 @@
 # eRev Cloud 1.0: stated limits of the release
 
+October 14 audit continuation: native option entry/expiry and CLOSE evidence-pack creation
+now have catalogue entries and real request scenarios in the audit walk. Material-right
+AUD-FACT summaries require a contract key and retain the created ids in detail. Evidence-pack
+and control-execution labels are registered. 26 focused checks passed; see PROGRESS.md for
+scope. The AI proposal lifecycle category and full current-main release verification remain
+open; the category failure was not exempted or converted to a pass.
+
 October 14 entered-option SSP continuation: immutable storage, native entry/read/UI,
 activation content and bundle assembly now preserve an optional total SSP. Populated
 snapshot recovery covers the explicit amount for open and expired options. Migration

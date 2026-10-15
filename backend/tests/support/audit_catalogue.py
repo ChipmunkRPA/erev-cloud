@@ -330,6 +330,9 @@ _ROUTE_LIST: Final[tuple[Route, ...]] = (
     _audit("modifications_discard", "modification.discard"),
     _audit("contracts_regroup", "contract.regroup"),
     _audit("obligations_request_ssp_override", "obligation.ssp_override"),
+    _audit("obligation_material_right_create", "material_right.create"),
+    _audit("obligation_material_right_expire", "contract_event.append"),
+    _audit("evidence_packs_create", "evidence.create"),
     # customers, products, dimensions, related parties
     _audit("customers_create", "customer.create"),
     _audit("customers_update", "customer.update"),

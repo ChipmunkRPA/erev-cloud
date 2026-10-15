@@ -7883,6 +7883,8 @@ The state of a step is the first that applies: `BLOCKED` when an open `BLOCKING`
 | Object type | Label |
 |---|---|
 | `contract` | `external_id` |
+| `evidence_pack` | `pack_no` |
+| `control_execution` | `control_id` |
 | `obligation` | `<obligation_key> · <external_id of its contract>` |
 | `modification` | `modification_no` |
 | `estimate` | `element_code` |

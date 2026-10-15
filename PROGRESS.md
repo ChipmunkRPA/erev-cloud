@@ -2,6 +2,26 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Native command audit coverage — October 14, 2026
+
+- Current catalogue checks exposed missing option-entry, option-expiry and evidence-pack
+  create commands. Added successful request scenarios to the full audit walk and catalogue:
+  238 command operations, 232 required after the existing six exemptions. Scenarios bind
+  audit evidence to the response request id, expected action, actor kind and contract key.
+- Material-right facts now require their contract key in the audit writer. Verified the
+  stored AUD-FACT summary names the created fact id and contract; it intentionally has no
+  single object id/label. Added display labels for evidence packs and control executions.
+  CLOSE packs explicitly exercise the existing period-level, no-contract audit shape.
+- 26 focused database/catalogue/architecture/read-model checks passed (51.54s); strict
+  production Mypy (881 sources), three test files and Ruff pass. Logs:
+  .run/audit-catalogue-current.log, .run/audit-new-routes-release.log,
+  .run/audit-new-routes-types.log and .run/audit-contract-production-types.log.
+  Initial scenarios exposed fixture permissions/combination setup and a mistaken single-
+  object label expectation for AUD-FACT; corrected without weakening product checks.
+- The category sweep still requires the unimplemented AI proposal lifecycle. No exemption
+  or success claim was added. Full current-main route walk/release gates remain open.
+  Older immutable CI 165d63c remains live at 42%; no deployment or readiness claim.
+
 ## Converted option opening units — October 14, 2026
 
 - Found that POL-212 books quantity one but opening payloads retained dollar-unit quantities.
@@ -221,39 +241,6 @@
   documented the required governed expiry/exercise commands and ledger acceptance.
   These missing commands remain implementation work; no expiry support is claimed.
 - Full CI 165d63c is live around 32%. No deployment; direct-main publication.
-
-## Reopen-basis isolation coverage — October 14, 2026
-
-- Reproduced the catalogue-completeness failure: period_reopen_basis had no shared
-  row builder. Added its period/entity/state dependencies and registered the builder.
-  The existing sweep now proves own-row visibility, foreign-tenant read/write denial
-  and no-context denial. Entity-scope checks include the reopen basis and now verify
-  forbidden updates/deletes as well as reads/inserts for all five reference cases.
-- Fixed two typing issues in touched helpers: explicit obligation-version UUID inputs
-  and a real user identity for the loss-provision fixture instead of None.
-- Final focused PostgreSQL run: 10 passed (6.93s); strict Mypy on both touched files,
-  Ruff and diff checks pass. Evidence: .run/reopen-rls-baseline.log (failure),
-  .run/reopen-rls-verified.log and .run/reopen-rls-types-final.log. Earlier Mypy invocations
-  used incomplete module-path configuration; final check uses MYPYPATH and explicit
-  package bases. No production runtime or schema change.
-- Full CI 165d63c remains live around 32%; this focused repair does not establish a
-  passing release gate. Original exclusions/noncommercial license retained; no deployment.
-
-## Material-right replacement and activation routing — October 14, 2026
-
-- Verified native term creation followed by an integration's price-only draft replacement:
-  the same obligation retains identical immutable terms and exactly one record.
-- Baseline activation omitted MANUAL_ENTRY for the human term preparer. MATERIAL_RIGHT
-  still kept that request pending; no auto-approval bypass was demonstrated. Routing now
-  reads option authors (including represented preparers) and persisted option records.
-- Activation-routing regressions: 12 passed (91.18s), including untouched-integration
-  auto-approval. A SYSTEM/AUD-FACT represented-preparer fixture plus import checks:
-  31 passed (18.19s). Full typecheck, Ruff and diff checks pass. Logs:
-  .run/material-right-replacement-baseline.log, .run/material-right-routing-regression.log,
-  .run/material-right-routing-facts.log, .run/material-right-routing-types.log.
-- Key/product removal, corrections, races, complete historical replacement, UI and
-  migration acceptance remain open. Original CI 165d63c is live in demo/performance
-  seeding. Noncommercial licensing and publication exclusions retained. No deployment.
 
 ## Outstanding release verification
 
