@@ -7,7 +7,8 @@
 - A live baseline run exposed five-second probe timeouts despite a fresh heartbeat. The image
   now calls a small module using the existing freshness function, without importing worker
   handlers or the CLI. The 60-second freshness rule and Docker timeout remain unchanged.
-- Unit/process and Linux-container checks pass; committed-stack verification follows.
+- Unit/process and Linux-container checks pass. The committed 4c4b583 baseline passes too;
+  the real Docker health command completed in about 0.92 seconds.
   Evidence is in docs/release/CI-2026-10-15.md. No deployment.
 
 ## Security scan report validation — October 15, 2026
@@ -15,7 +16,7 @@
 - Fixed a demonstrated false pass for empty ZAP reports. The gate now requires the target site,
   explicit alert arrays and known risk codes. Valid zero-alert reports remain accepted.
 - Script regressions, typing and lint pass; evidence is in docs/release/CI-2026-10-15.md.
-  Live verification of the committed gate is next. No deployment or alert suppression.
+  Live verification passed on 4c4b583. No deployment or alert suppression.
 
 ## Runtime audit and local container verification — October 15, 2026
 
@@ -260,7 +261,7 @@ not authorize deployment, provisioning or changes to a live database.
 - make audit-deps passed on clean 74bd148 (October 15): all 86 pinned Python runtime packages and npm runtime dependencies report zero advisories. Rerun on the final candidate.
 - make docker-build passed on clean b4b8210 (October 15); rerun on the final candidate.
 - make compose-verify passed on clean 74bd148 (October 15), including cleanup. Rerun on the final candidate.
-- SUPERVISOR VERIFICATION NEEDED: make zap-baseline
+- make zap-baseline passed on clean 4c4b583 (October 15), including cleanup; one documented low COEP warning and three informational alerts remain. Unauthenticated surface only; rerun on the final candidate.
 - SUPERVISOR VERIFICATION NEEDED: make tf-validate (October 14 backend-disabled development validation passed; rerun on a clean final candidate).
 - SUPERVISOR VERIFICATION NEEDED: make backup, make restore-verify (isolated local drill only)
 
