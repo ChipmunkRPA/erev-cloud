@@ -8,7 +8,8 @@ from sqlalchemy import select
 
 from erev_api.approvals.subjects import PERIOD_LINK
 from erev_api.db.session import of_session_tenant
-from erev_api.db.tables import app_user, job, period_lock
+from erev_api.db.tables import job, period_lock
+from erev_api.domain.platform import actors
 from erev_api.domain.reports import evidence_preparation
 from erev_api.enums import NotificationKind
 from erev_api.events.notifications import notify, role_holders
@@ -39,12 +40,18 @@ def completed(uow: UnitOfWork, *, pack_id: UUID, preparation_id: UUID | None) ->
         raise Problem(
             "validation-failed", "The automatic pack differs from its preparation result."
         )
+    # The validated lock names a principal who acted here; resolve it through the
+    # shared record-actor reader, rather than reading the global user directory here.
     actor = uow.session.execute(
-        select(app_user.c.display_name, period_lock.c.created_by_kind)
-        .select_from(period_lock.outerjoin(app_user, app_user.c.id == period_lock.c.created_by))
-        .where(of_session_tenant(period_lock), period_lock.c.id == scope.lock_id)
+        select(
+            period_lock.c.created_by,
+            period_lock.c.created_by_kind,
+            actors.named(period_lock.c.created_by, tenant_id=period_lock.c.tenant_id).label(
+                "named_actor"
+            ),
+        ).where(of_session_tenant(period_lock), period_lock.c.id == scope.lock_id)
     ).one()
-    name = actor.display_name or ("System" if actor.created_by_kind == "SYSTEM" else "A user")
+    name = actors.actor(actor.created_by, actor.created_by_kind, actor.named_actor)["display_name"]
     notify(
         uow,
         recipient_membership_ids=role_holders(

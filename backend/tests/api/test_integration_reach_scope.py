@@ -305,7 +305,23 @@ def test_a_connection_serves_no_entity_outside_its_administrators_scope(
     every = (422, "validation-failed", [("entity_ids", "T-INT-01", BEYOND_OWN_SCOPE)])
 
     # creation
-    assert finding(post(app, INTEGRATIONS, ivo, connection_body("ivo-uk", [uk]))) == beyond
+    # An explicit owner is not evaluated against a selection already refused for scope.
+    # Later PATCH probes also exercise an existing eligible owner becoming ineligible
+    # under an invalid proposed scope; only the entity finding is returned.
+    assert (
+        finding(
+            post(
+                app,
+                INTEGRATIONS,
+                ivo,
+                {
+                    **connection_body("ivo-uk", [uk]),
+                    "owner_membership_id": str(ivo.member.membership_id),
+                },
+            )
+        )
+        == beyond
+    )
     assert finding(post(app, INTEGRATIONS, ivo, connection_body("ivo-both", [us, uk]))) == beyond
     assert finding(post(app, INTEGRATIONS, ivo, connection_body("ivo-every", []))) == every
     created = post(app, INTEGRATIONS, ivo, connection_body("ivo-us", [us]))

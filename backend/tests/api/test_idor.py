@@ -30,13 +30,16 @@ from erev_api.db import new_id
 from erev_api.db.session import DbContext, identity_session, tenant_session
 from erev_api.db.tables import metadata
 from erev_api.enums import RegistryCategory, RegistryScope
+from erev_api.files.store import LocalFileStore
 from erev_api.main import create_app
 from fastapi import FastAPI
 from sqlalchemy import insert, select, update
 from sqlalchemy.orm import Session
 from support.db import TestDatabase
+from support.evidence_packs import retained_close_pack
 from support.http import HttpResponse, call
 from support.principals import Actor, colleague, cookie_headers, enrolled, member
+from support.reference import assign
 from support.rows import (
     PROVISIONED_TABLES,
     ROW_BUILDERS,
@@ -85,8 +88,9 @@ def test_sar_42_get_by_id_routes_inventory() -> None:
     # 42 + GET /modifications/{id} (CTR-17) + GET /integrations/{id} and GET /sync-runs/{id}
     # (DIN-12; 04 §15.3 API-R-45) + GET /reconciliations/{id} (CLO-16; 04 §15.3 API-R-40)
     # + GET /close-runs/{id} (CLO-19; 04 §15.3 API-R-39)
-    # + GET /manual-adjustments/{id} (CLO-12; 04 §15.3 API-R-37).
-    assert len(routes) == 48, [path for path, _ in routes]
+    # + GET /manual-adjustments/{id} (CLO-12; 04 §15.3 API-R-37)
+    # + GET /evidence-packs/{id} (RPS-16; API-R-42), with retained close sources.
+    assert len(routes) == 49, [path for path, _ in routes]
     for path, _ in routes:
         responses = document["paths"][path]["get"]["responses"]
         assert "404" in responses, f"{path} declares no 404"
@@ -111,6 +115,7 @@ ROUTE_TABLES: Final[Mapping[str, str | None]] = {
     "estimate-versions": "estimate_version",
     "event-submissions": "event_submission",
     "events": "contract_event",
+    "evidence-packs": "evidence_pack",
     "exceptions": "exception_item",
     "files": "file_object",
     "fx-rate-set-versions": "fx_rate_set_version",
@@ -275,9 +280,6 @@ def seed_computed(session: Session, tenant_id: UUID, *, entity_id: UUID | None =
     )
 
 
-COMPUTED_RESOURCES: Final = ("contracts", "obligations")
-
-
 def route_request(session: Session, tenant_id: UUID, request_id: UUID) -> None:
     """The ACTIVE first step of an approval request. A request is readable by its preparer, its
     deciders and the holders of the permission of one of its steps for its entity (04 §15.3
@@ -308,7 +310,9 @@ def seed_rows(tenant_id: UUID) -> dict[str, UUID]:
     """One REAL row per mapped table, inserted as ``erev_app`` under the tenant's own context
     through the catalogue-complete ``ROW_BUILDERS`` (the rows the RLS suite proves invisible across
     tenants) — except the contract and the obligation, which come from a computed chain so that the
-    version-reading routes answer 200 for the own row; returns resource → the id the route reads."""
+    version-reading routes answer 200 for the own row. Evidence uses separate operational
+    tenant worlds: these generic builders assume no existing versioned configuration.
+    Returns resource → the id the route reads."""
     with identity_session(request_id="tests-idor-user") as session:
         user_id = insert_app_user(session)
     ids: dict[str, UUID] = {}
@@ -316,7 +320,7 @@ def seed_rows(tenant_id: UUID) -> dict[str, UUID]:
         computed = seed_computed(session, tenant_id)
         ids["contracts"], ids["obligations"] = computed.contract_id, computed.obligation_id
         for resource, table_name in ROUTE_TABLES.items():
-            if table_name is None or resource in COMPUTED_RESOURCES:
+            if table_name is None or resource in ids or resource == "evidence-packs":
                 continue
             table = metadata.tables[f"erev.{table_name}"]
             ctx = RowContext(tenant_id, user_id)
@@ -352,31 +356,92 @@ def assert_not_found(response: HttpResponse, path: str, *leaked: object) -> None
         assert str(value) not in body, (path, value)
 
 
-def test_sar_42_other_tenant_and_entity_ids_not_found(app: FastAPI, tenants: Tenants) -> None:
+@pytest.mark.slow
+def test_sar_42_other_tenant_and_entity_ids_not_found(
+    app: FastAPI,
+    keyring: KeyRing,
+    clock: FrozenClock,
+    app_settings: Settings,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """For every ``GET /{resource}/{id}`` route of the OpenAPI document, the id of a REAL row of
     tenant beta (inserted as beta, visible to beta) returns 404 ``not-found`` to the sweeping
     caller of tenant alpha — never 403, never a body of beta's — while the same route answers 200
     for alpha's own row of the same table (the authorized control), so a 404 can only be the
-    tenancy. The global report catalogue is probed with an unknown code and a real one."""
-    alpha, beta = tenants.alpha, tenants.beta
+    tenancy. Operational evidence packs use their own tenant pair to keep generic row-builder
+    defaults separate from existing close configuration. The global catalogue uses an unknown
+    code and a real one."""
+    # The pack reader verifies its retained snapshots and supporting sources. Build real
+    # closed worlds instead of inserting unbound rows or bypassing source validation.
+    files = LocalFileStore(app_settings.file_root)
+    first = retained_close_pack(app, keyring, clock, files, monkeypatch)
+    second = retained_close_pack(app, keyring, clock, files, monkeypatch)
+    callers = []
+    for retained, name in ((first, "tomas"), (second, "bea")):
+        someone = colleague(retained.world.tenant_id, name)
+        for role in SWEEP_ROLES:
+            assign(someone, role)
+        callers.append(enrolled(app, clock, someone))
+    pack_alpha, pack_beta = callers
+    suffix = secrets.token_hex(4)
+    alpha = _admin(app, keyring, clock, f"alpha-idor-{suffix}", "generic-alpha")
+    beta = _admin(app, keyring, clock, f"beta-idor-{suffix}", "generic-beta")
     foreign = seed_rows(beta.member.tenant_id)
     own = seed_rows(alpha.member.tenant_id)
+    foreign["evidence-packs"] = UUID(str(second.pack["id"]))
+    own["evidence-packs"] = UUID(str(first.pack["id"]))
     foreign["users"], own["users"] = beta.member.membership_id, alpha.member.membership_id
     for resource, table_name in ROUTE_TABLES.items():
         if table_name is not None:
-            assert visible_count(beta.member.tenant_id, table_name, foreign[resource]) == 1, (
-                f"{resource}: the foreign row really exists in beta"
-            )
+            foreign_actor = pack_beta if resource == "evidence-packs" else beta
+            assert (
+                visible_count(foreign_actor.member.tenant_id, table_name, foreign[resource]) == 1
+            ), f"{resource}: the foreign row really exists in beta"
     for path, param in get_by_id_routes():
         resource = resource_of(path)
         if ROUTE_TABLES[resource] is None:
             probe, control = REPORT_CODE_FOREIGN, REPORT_CODE_CONTROL
         else:
             probe, control = str(foreign[resource]), str(own[resource])
-        response = get(app, alpha, path.replace("{" + param + "}", probe))
-        assert_not_found(response, path, beta.member.tenant_id, probe)
-        allowed = get(app, alpha, path.replace("{" + param + "}", control))
+        caller = pack_alpha if resource == "evidence-packs" else alpha
+        foreign_actor = pack_beta if resource == "evidence-packs" else beta
+        response = get(app, caller, path.replace("{" + param + "}", probe))
+        assert_not_found(response, path, foreign_actor.member.tenant_id, probe)
+        allowed = get(app, caller, path.replace("{" + param + "}", control))
         assert allowed.status_code == 200, (path, allowed.status_code, allowed.text[:200])
+    # Both retained packs are independently readable by their own tenant. Also probe the
+    # same real pack with matching versus excluded entity scopes in its own tenant.
+    pack_path = f"/api/v1/evidence-packs/{foreign['evidence-packs']}"
+    for suffix in ("", "/manifest", "/download"):
+        allowed = get(app, pack_beta, pack_path + suffix)
+        assert allowed.status_code == 200, (suffix, allowed.status_code)
+        hidden = get(app, pack_alpha, pack_path + suffix)
+        assert_not_found(
+            hidden, pack_path + suffix, pack_beta.member.tenant_id, foreign["evidence-packs"]
+        )
+    with tenant_session(_context(pack_alpha.member.tenant_id)) as session:
+        outside = seed_computed(session, pack_alpha.member.tenant_id, entity_id=new_id()).entity_id
+    pack_path = f"/api/v1/evidence-packs/{own['evidence-packs']}"
+    for entity_id, visible in ((first.world.entity_id, True), (outside, False)):
+        someone = colleague(
+            pack_alpha.member.tenant_id, "evidence-in-scope" if visible else "evidence-out-of-scope"
+        )
+        for role in SWEEP_ROLES:
+            assign(someone, role, entity_ids=(entity_id,))
+        scoped = enrolled(app, clock, someone)
+        for suffix in ("", "/manifest", "/download"):
+            response = get(app, scoped, pack_path + suffix)
+            if visible:
+                assert response.status_code == 200, (suffix, response.status_code)
+            else:
+                assert_not_found(
+                    response, pack_path + suffix, own["evidence-packs"], first.world.entity_id
+                )
+        listed = get(app, scoped, "/api/v1/evidence-packs")
+        assert listed.status_code == 200, listed.text[:200]
+        listed_ids = {item["id"] for item in listed.json()["items"]}
+        assert (str(own["evidence-packs"]) in listed_ids) is visible
+        assert str(foreign["evidence-packs"]) not in listed_ids
     # A nonexistent id is 404 too, and indistinguishable from a foreign one (no oracle).
     ghost = get(app, alpha, f"/api/v1/users/{uuid4()}")
     assert_not_found(ghost, "/api/v1/users/{membership_id}")

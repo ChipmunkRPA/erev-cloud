@@ -3238,3 +3238,26 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   Logs .run/automatic-close-preparation.log and .run/automatic-close-regression.log; all terminal.
   Five source files pass Mypy; six changed Python files pass Ruff lint/format; whitespace clean.
   Public schemas unchanged. Direct main, no deployment or production-readiness claim.
+
+## Automatic close-pack availability notification — October 14, 2026
+
+- From clean 43c55a4, approval-driven locks now defer NTF-06 until successful automatic pack
+  retention. The worker checks its preparation/lock association, stores the archive and notifies
+  active Controller, Revenue Reviewer and Auditor role holders in the entity's scope in one
+  transaction. Copy identifies the locking actor and confirms availability; link is the period
+  cockpit. A period_lock subject prevents separate closes merging within the notification window.
+- Already-SUCCEEDED retries verify the archive without notifying again; manual packs never
+  send this notice. Cancellation/failure before retention makes no availability claim. Sandbox
+  replay's existing separate snapshots-only notice remains; replay pack availability is unclaimed.
+- Focused actual-worker and rollback regression: **4 passed in 59.95 seconds**. The witness
+  injects failure after notification insertion (archive metadata and notifications both roll back),
+  then a crash after commit (retry retains one notice per recipient). Each of the three roles is
+  present in-scope and in another entity; only the in-scope members receive completion notices.
+  The lock rollback test now checks that preparation was queued before its late failure.
+- Broader lock/notification regression: **54 passed in 196.55 seconds**, including manual pack
+  suppression, the existing role-scope scenario, reopen/approval notification flows, and generic
+  notification preferences/delivery checks. Logs .run/close-notification.log and
+  .run/close-notification-regression.log; all processes terminal. Three source files pass Mypy;
+  five changed Python files pass Ruff lint/format. Whitespace clean. Direct main; no deployment.
+  Re-lock variance, other kinds, operational CTL-041, current release checks and independent
+  accounting sign-off remain outstanding. No production-readiness claim.

@@ -2,6 +2,28 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Evidence identity and authorization repairs — October 14, 2026
+
+- Automatic pack availability resolves the validated locking actor through the shared
+  record-actor reader; the identity architecture rule needs no exception.
+- IDOR coverage includes all 49 GET-by-ID routes. A shared operational fixture builds actual
+  retained packs. Tests cover foreign-tenant denial, authorized controls, manifest/ZIP reads,
+  matching/excluded entity scopes and register visibility. Generic rows use a separate fresh
+  tenant pair; no source validator or permission guard is bypassed.
+- Integration create/update checks owner eligibility after proposed entity scope is valid.
+  Invalid scope previously also produced a dependent owner error. Valid scope expansion still
+  requires an eligible owner; scope refusal and denial auditing remain enforced.
+- Focused tests used a separate local PostgreSQL instance and file/runtime paths, leaving
+  CI/browser databases untouched. Initial run: 38 passed, 1 failed (279.75s); only the new IDOR
+  setup failed. Fixed clock rollback/MFA reuse, generic version collisions with operational
+  data, and uppercase persona email. Final IDOR: 4 passed (55.73s). Operational pack acceptance
+  also passed after the shared-clock correction. Assertions were not weakened.
+- Architecture: 267 passed (215.81s). Full lint/typecheck pass; final fixture/test edits pass
+  Ruff/Mypy. Actor/integration unit checks: 25 passed. Logs under .run: isolated-repairs-first,
+  isolated-idor-{clock-fixed,worlds-fixed,final}, pending-repairs-{architecture,full-lint,full-types}
+  and idor-repair-types-final (all .log). Temporary repair server stopped. CI on 165d63c and
+  browser gate on 3e60e6a remain live; no full-gate, deployment or accounting-approval claim.
+
 ## Integration command unit fixture — October 14, 2026
 
 - Three CPU-only integration command tests failed because their fake human principal lacked
@@ -217,29 +239,6 @@
   accounting approval remain. Control-tag validation passes (497 tagged tests collected, not
   executed by that check); log .run/evidence-control-tags.log. Ruff lint/format and whitespace
   checks pass. All processes terminal. Direct main; no deployment or readiness claim.
-
-## Automatic close-pack availability notification — October 14, 2026
-
-- From clean 43c55a4, approval-driven locks now defer NTF-06 until successful automatic pack
-  retention. The worker checks its preparation/lock association, stores the archive and notifies
-  active Controller, Revenue Reviewer and Auditor role holders in the entity's scope in one
-  transaction. Copy identifies the locking actor and confirms availability; link is the period
-  cockpit. A period_lock subject prevents separate closes merging within the notification window.
-- Already-SUCCEEDED retries verify the archive without notifying again; manual packs never
-  send this notice. Cancellation/failure before retention makes no availability claim. Sandbox
-  replay's existing separate snapshots-only notice remains; replay pack availability is unclaimed.
-- Focused actual-worker and rollback regression: **4 passed in 59.95 seconds**. The witness
-  injects failure after notification insertion (archive metadata and notifications both roll back),
-  then a crash after commit (retry retains one notice per recipient). Each of the three roles is
-  present in-scope and in another entity; only the in-scope members receive completion notices.
-  The lock rollback test now checks that preparation was queued before its late failure.
-- Broader lock/notification regression: **54 passed in 196.55 seconds**, including manual pack
-  suppression, the existing role-scope scenario, reopen/approval notification flows, and generic
-  notification preferences/delivery checks. Logs .run/close-notification.log and
-  .run/close-notification-regression.log; all processes terminal. Three source files pass Mypy;
-  five changed Python files pass Ruff lint/format. Whitespace clean. Direct main; no deployment.
-  Re-lock variance, other kinds, operational CTL-041, current release checks and independent
-  accounting sign-off remain outstanding. No production-readiness claim.
 
 ## Outstanding release verification
 

@@ -510,7 +510,7 @@ def create_connection(
         )
     entity_errors, beyond = _entity_findings(uow, body.entity_ids)
     owner_id = body.owner_membership_id
-    if "owner_membership_id" not in body.model_fields_set:
+    if not entity_errors and "owner_membership_id" not in body.model_fields_set:
         candidate = uow.principal.membership_id
         if owners.eligible(uow, candidate, body.entity_ids):
             owner_id = candidate
@@ -519,7 +519,8 @@ def create_connection(
         + entity_errors
         + _base_url_errors(body.base_url, local_destinations=local_destinations)
         + _secret_ref_errors(uow, body.secret_ref)
-        + owners.errors(uow, owner_id, body.entity_ids)
+        # An invalid or inaccessible entity selection has no eligible-owner population.
+        + ([] if entity_errors else owners.errors(uow, owner_id, body.entity_ids))
     )
     if errors:
         raise _refuse(uow, errors, beyond=beyond, action=CREATE_ACTION, connection_id=None)
@@ -591,6 +592,7 @@ def update_connection(
     beyond: bool | None = None
     if "name" in changes and changes["name"] is None:
         errors.append(ProblemError(field="name", rule_id=RULE_CONNECTION, message=NAME_REQUIRED))
+    entity_errors: list[ProblemError] = []
     if "entity_ids" in changes:
         # a null list is the empty list: the connection would serve every entity
         entity_errors, beyond = _entity_findings(uow, changes["entity_ids"] or ())
@@ -599,7 +601,9 @@ def update_connection(
         errors += _base_url_errors(changes["base_url"], local_destinations=local_destinations)
     if "secret_ref" in changes:
         errors += _secret_ref_errors(uow, changes["secret_ref"])
-    if "owner_membership_id" in changes or "entity_ids" in changes:
+    # Do not cascade an owner error from a scope the caller cannot select. Valid scope
+    # expansion still rechecks the existing owner and can require a replacement.
+    if not entity_errors and ("owner_membership_id" in changes or "entity_ids" in changes):
         errors += owners.errors(
             uow,
             changes.get("owner_membership_id", current["owner_membership_id"]),
