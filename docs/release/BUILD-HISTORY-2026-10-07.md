@@ -4074,3 +4074,32 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   reproduce unchanged from prior main. Logs: .run/agent-input-refusal-*.log.
 - Promotion approval, policy/report/activation checks and independent accounting sign-off
   remain outstanding. No deployment; verified changes published directly to main.
+
+## Migration activation prerequisites — October 14, 2026
+
+- Review basis v3 binds each reproduced contract's complete pre-activation checklist. Missing,
+  duplicate, foreign, incomplete and malformed evidence refuses. Failed mandatory/source,
+  product/template/SSP, combination or existing-judgement prerequisites refuse by rule code.
+- An inactive product can reproduce accounting output but now fails activation preflight.
+  Distinctness/collectibility judgements required by BS3-D-23/26 stay explicitly pending and
+  failed, with ready_for_activation false. No approval or waiver is fabricated.
+- Three PostgreSQL cases passed (17.78s); 101 domain/capture/architecture checks passed
+  (17.04s); strict production plus changed tests (890 sources) and Ruff pass. Evidence:
+  .run/migration-activation-review-{pg,unit,types}.log.
+- Creating/reviewing judgements under approval, final activation admission, policy/report
+  checks and atomic live creation remain unfinished. Current full CI is still running on
+  an older snapshot at 64%. No deployment/readiness claim; publish directly to main.
+
+## Approved status for composed activation — October 14, 2026
+
+- consume_fresh_basis now shares the direct approval-hook guard: the request must name the
+  subject, be APPROVED and still hash to its reviewed content before it can confer authority
+  on a child action. Non-approved requests refuse before content evaluation. Existing import
+  activation benefits; the migration promotion subject remains unregistered.
+- PostgreSQL tests cover all five request states. Final unit/PG suite: 106 passed (9.01s).
+  All 18 import commit cases also passed; 124 unique cases verified across the two runs.
+  Four new test-only recorder assertions were corrected before the final successful run.
+  Strict production plus PG-test typing (889 sources) and Ruff pass. Evidence:
+  .run/approval-consumption-status-{tests,final,types}.log.
+- Judgement creation under independent approval, policy/report checks, final activation and
+  atomic promotion remain outstanding. Publish directly to main; no deployment/readiness claim.

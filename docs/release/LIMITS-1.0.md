@@ -68,6 +68,13 @@ host refusal. Actual Linux success and memory/CPU exhaustion remain unverified: 
 skipped on this Mac, and the local Docker daemon is unavailable. No enabled AI job uses this
 entry point yet. This is process resource containment, not a filesystem/network sandbox.
 
+October 15 AI authorization continuation: a job authorization helper now validates a live
+AI_TASK attempt and its stored human initiator, checks current user/workspace/membership
+status and reloads ai.use grants. Retrieval must use the returned USER principal with its
+ai.use entity scope, not the surrounding SYSTEM principal or unrelated role scopes. Real
+PostgreSQL checks cover revocation and disabled/stale identities. Per-source permission
+checks, settings/kill switches, budgets and operational gateway integration remain open.
+
 October 14 audit continuation: native option entry/expiry and CLOSE evidence-pack creation
 now have catalogue entries and real request scenarios in the audit walk. Material-right
 AUD-FACT summaries require a contract key and retain the created ids in detail. Evidence-pack

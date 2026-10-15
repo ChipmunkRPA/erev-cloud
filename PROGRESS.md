@@ -2,6 +2,23 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## AI job initiator authorization — October 15, 2026
+
+- Added current-grant authorization for a persisted AI_TASK attempt. It verifies the live
+  job/task identity, requires the stored human creator to match the SYSTEM on-behalf-of id,
+  and requires active user, workspace and membership before resolving permissions.
+- The returned USER principal uses ai.use entity scope rather than SYSTEM's all-entity scope
+  or the union from unrelated roles. It carries no recreated login or MFA evidence. Callers
+  still owe per-file/report permissions and must use this narrowed context for retrieval.
+- Eight PostgreSQL cases cover scoped access, revoked grants, suspended membership/workspace,
+  disabled user, completed jobs, substituted initiators and inline/wrong-attempt refusal.
+  Combined AI/architecture checks: 172 passed, two Linux parser-limit tests skipped;
+  strict API/test typing: 758 sources; Ruff passes. Logs: .run/ai-access-{checks,types}.log.
+- This is not an enabled AI_TASK handler. Gateway settings/kill-switch checks, budget
+  serialization, authorized retrieval, durable attempt/proposal/audit writes and acceptance
+  remain unfinished. The isolated local test database was stopped after verification.
+  No deployment or production-readiness claim.
+
 ## PDF subprocess resource boundary — October 15, 2026
 
 - Added the operational parser entry point as an isolated-interpreter subprocess with a
@@ -226,35 +243,6 @@
 - Approved record creation, assessment events and their resulting output proof, final
   activation, policy/report checks and atomic promotion remain unfinished. Older immutable
   full CI is live at 94%. Publish directly to main; no deployment/readiness claim.
-
-## Approved status for composed activation — October 14, 2026
-
-- consume_fresh_basis now shares the direct approval-hook guard: the request must name the
-  subject, be APPROVED and still hash to its reviewed content before it can confer authority
-  on a child action. Non-approved requests refuse before content evaluation. Existing import
-  activation benefits; the migration promotion subject remains unregistered.
-- PostgreSQL tests cover all five request states. Final unit/PG suite: 106 passed (9.01s).
-  All 18 import commit cases also passed; 124 unique cases verified across the two runs.
-  Four new test-only recorder assertions were corrected before the final successful run.
-  Strict production plus PG-test typing (889 sources) and Ruff pass. Evidence:
-  .run/approval-consumption-status-{tests,final,types}.log.
-- Judgement creation under independent approval, policy/report checks, final activation and
-  atomic promotion remain outstanding. Publish directly to main; no deployment/readiness claim.
-
-## Migration activation prerequisites — October 14, 2026
-
-- Review basis v3 binds each reproduced contract's complete pre-activation checklist. Missing,
-  duplicate, foreign, incomplete and malformed evidence refuses. Failed mandatory/source,
-  product/template/SSP, combination or existing-judgement prerequisites refuse by rule code.
-- An inactive product can reproduce accounting output but now fails activation preflight.
-  Distinctness/collectibility judgements required by BS3-D-23/26 stay explicitly pending and
-  failed, with ready_for_activation false. No approval or waiver is fabricated.
-- Three PostgreSQL cases passed (17.78s); 101 domain/capture/architecture checks passed
-  (17.04s); strict production plus changed tests (890 sources) and Ruff pass. Evidence:
-  .run/migration-activation-review-{pg,unit,types}.log.
-- Creating/reviewing judgements under approval, final activation admission, policy/report
-  checks and atomic live creation remain unfinished. Current full CI is still running on
-  an older snapshot at 64%. No deployment/readiness claim; publish directly to main.
 
 ## Outstanding release verification
 
