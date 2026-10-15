@@ -227,6 +227,7 @@ def contracts_list(
         customer=tuple(customer_ref or ()),
         on_hold=on_hold,
         modified_in_period=modified_in_period,
+        as_of=as_of,
         value_min=None if value_min is None else Decimal(value_min),
         value_max=None if value_max is None else Decimal(value_max),
         has_exceptions=has_exceptions,

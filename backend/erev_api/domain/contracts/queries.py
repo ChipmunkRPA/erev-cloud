@@ -80,6 +80,7 @@ from erev_api.db.tables import (
     customer,
     gl_account,
     legal_entity,
+    modification,
     obligation,
     obligation_version,
     period,
@@ -279,6 +280,7 @@ class ListFilters:
     customer: tuple[str, ...] = ()
     on_hold: bool | None = None
     modified_in_period: str | None = None
+    as_of: date | None = None
     value_min: Decimal | None = None
     value_max: Decimal | None = None
     has_exceptions: bool | None = None
@@ -1360,6 +1362,41 @@ def _created_this_period(now: datetime) -> Any:
     )
 
 
+def _modified_in_period(*, key: str | None, as_of: date | None, now: datetime) -> Any:
+    """Applied modifications effective in the contracting calendar's selected period."""
+    context_date = (
+        literal(as_of, Date)
+        if as_of is not None
+        else sql_cast(func.timezone(legal_entity.c.time_zone, literal(now)), Date)
+    )
+    selected_period = (
+        period.c.period_key == key
+        if key is not None
+        else and_(period.c.start_date <= context_date, period.c.end_date >= context_date)
+    )
+    return exists(
+        select(modification.c.id)
+        .select_from(
+            modification.join(
+                period,
+                and_(
+                    period.c.tenant_id == modification.c.tenant_id,
+                    period.c.start_date <= modification.c.effective_date,
+                    period.c.end_date >= modification.c.effective_date,
+                ),
+            )
+        )
+        .where(
+            modification.c.tenant_id == contract.c.tenant_id,
+            modification.c.contract_id == contract.c.id,
+            modification.c.status == "APPLIED",
+            period.c.calendar_id == legal_entity.c.calendar_id,
+            selected_period,
+        )
+        .correlate(contract, legal_entity)
+    )
+
+
 def list_statement(filters: ListFilters, *, now: datetime) -> Select[Any]:
     """The visible contracts under ``filters`` with the ``transaction_price`` sort column."""
     tenant = contract.c.tenant_id
@@ -1398,8 +1435,9 @@ def list_statement(filters: ListFilters, *, now: datetime) -> Select[Any]:
         clause = exists(exception_counts.open_items())
         statement = statement.where(clause if filters.has_exceptions else not_(clause))
     if filters.modified_in_period is not None:
-        # [J] L3-1-Q-40: T-CON-06 modifications are post-rc (R-RC-1, CTR-17).
-        statement = statement.where(false())
+        statement = statement.where(
+            _modified_in_period(key=filters.modified_in_period, as_of=filters.as_of, now=now)
+        )
     match filters.quick_list:
         case ContractQuickList.ON_HOLD:
             statement = statement.where(_on_hold_clause())
@@ -1409,8 +1447,10 @@ def list_statement(filters: ListFilters, *, now: datetime) -> Select[Any]:
             statement = statement.where(
                 contract.c.source_system.in_(INTEGRATION_SOURCES), _created_this_period(now)
             )
-        case ContractQuickList.RECENTLY_VIEWED | ContractQuickList.MODIFIED_THIS_PERIOD:
-            # [J] L3-1-Q-40: no store of opened contracts and no modifications exist yet.
+        case ContractQuickList.MODIFIED_THIS_PERIOD:
+            statement = statement.where(_modified_in_period(key=None, as_of=filters.as_of, now=now))
+        case ContractQuickList.RECENTLY_VIEWED:
+            # No durable store of opened contracts exists yet.
             statement = statement.where(false())
         case ContractQuickList.LARGEST_VALUE | None:
             pass

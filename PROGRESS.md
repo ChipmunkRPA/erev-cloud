@@ -2,6 +2,15 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Applied-modification contract filters — October 15, 2026
+
+- Modified-in-period and Modified this period now read APPLIED modification effective dates
+  within the contracting entity's fiscal calendar. The quick list follows as_of, falling back
+  to entity-local today. EXISTS avoids duplicate contracts and filters before page/count logic.
+- Verification is recorded in docs/release/CI-2026-10-15.md. Recently viewed remains open;
+  this does not reconstruct historical modification status or change accounting calculations.
+- No deployment; broader release verification and independent accounting sign-off remain open.
+
 ## Contract exception counts and filtering — October 15, 2026
 
 - Replaced the hard-coded zero in contract headers/list rows with current related open-item
