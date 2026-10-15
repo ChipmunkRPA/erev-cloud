@@ -2,6 +2,21 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Fresh closed-world browser gate — October 14, 2026
+
+- Immutable make e2e CLOSE=1 PROJECT=closed on 3e60e6a passed all 10 tests in
+  58.7 seconds after a fresh local schema reset, migration, closed-world seed and build.
+  Zero failed, flaky or skipped tests. Coverage includes locked schedules/reports,
+  permanent-lock workflows and first-close generation with verified retained downloads.
+- Source tree and context hashes match before/after; dependency bindings are consistent.
+  The test servers stopped normally. Logs: .run/e2e-3e60e6a-full.log and
+  .run/reports/e2e/{report,playwright-1-closed}.json. Exact binding and limits:
+  docs/release/BROWSER-2026-10-14.md. This is the closed project, not every browser project.
+- The gate retains JSON results but its temporary context cleanup removed newly generated
+  screenshots. Existing worktree screenshots predate this run and cannot prove its visuals.
+  Artifact retention needs repair. Backend CI on 165d63c remains live with known failures;
+  later backend repairs and independent accounting acceptance are not covered by this gate.
+
 ## Evidence identity and authorization repairs — October 14, 2026
 
 - Automatic pack availability resolves the validated locking actor through the shared
@@ -214,31 +229,6 @@
 - Source/dependency bindings match before/after execution. This result attests c214c47,
   not the subsequent screen increment. See docs/release/CONTROLS-2026-10-14.md and local
   .run/reports/controls-report/report.json. Independent accounting approval is still missing.
-
-## Operational first-close manifest control — October 14, 2026 (CTL-041)
-
-- From clean 0dfb9ec, added the exact RPS-16 CTL-041 test path/marker. AVM-US September uses
-  real close execution, journal calculation/approval/export/acknowledgement, billing and GL
-  reconciliation generation and distinct preparer/reviewer sign-offs, lock approval, automatic
-  preparation/audit/report/build workers, and an Auditor's API download. No current-period
-  journal/close result or reconciliation review is seeded, and no close gate is waived.
-- The archive names the real close journal and both reviewed statements. The required path
-  prefixes are present; every payload hash and the separately stored manifest hash match.
-  Changed payload and manifest bytes each fail verification. Targeted marked control run:
-  **1 passed in 18.51 seconds** (.run/operational-close-pack-control.log).
-- Setup corrections followed the actual interfaces: enroll the preparer in MFA; retain her
-  session on ReportWorld.place.author; attach an initial GL reference before reading comparison
-  totals; generate a new reconciliation to attach the final source (replacement is forbidden).
-  The corruption helper copies ZipInfo metadata because writestr mutates offsets. Earlier
-  failure logs .run/operational-close-pack{,-mfa,-persona,-reference,-regenerated}.log are terminal;
-  no production code, accounting oracle, permission rule or transition was changed to pass.
-- Prior periods are fixture-closed. ERP acknowledgement uses the test adapter; the GL upload is
-  a synthetic matching reference derived from the comparison, not an independent amount oracle.
-  This supplies the missing first-close control witness, not accounting sign-off or a full
-  controls/release pass. Re-lock variance, other pack kinds, browser/release gates and independent
-  accounting approval remain. Control-tag validation passes (497 tagged tests collected, not
-  executed by that check); log .run/evidence-control-tags.log. Ruff lint/format and whitespace
-  checks pass. All processes terminal. Direct main; no deployment or readiness claim.
 
 ## Outstanding release verification
 

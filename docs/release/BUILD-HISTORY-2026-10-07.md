@@ -3261,3 +3261,28 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   five changed Python files pass Ruff lint/format. Whitespace clean. Direct main; no deployment.
   Re-lock variance, other kinds, operational CTL-041, current release checks and independent
   accounting sign-off remain outstanding. No production-readiness claim.
+
+## Operational first-close manifest control — October 14, 2026 (CTL-041)
+
+- From clean 0dfb9ec, added the exact RPS-16 CTL-041 test path/marker. AVM-US September uses
+  real close execution, journal calculation/approval/export/acknowledgement, billing and GL
+  reconciliation generation and distinct preparer/reviewer sign-offs, lock approval, automatic
+  preparation/audit/report/build workers, and an Auditor's API download. No current-period
+  journal/close result or reconciliation review is seeded, and no close gate is waived.
+- The archive names the real close journal and both reviewed statements. The required path
+  prefixes are present; every payload hash and the separately stored manifest hash match.
+  Changed payload and manifest bytes each fail verification. Targeted marked control run:
+  **1 passed in 18.51 seconds** (.run/operational-close-pack-control.log).
+- Setup corrections followed the actual interfaces: enroll the preparer in MFA; retain her
+  session on ReportWorld.place.author; attach an initial GL reference before reading comparison
+  totals; generate a new reconciliation to attach the final source (replacement is forbidden).
+  The corruption helper copies ZipInfo metadata because writestr mutates offsets. Earlier
+  failure logs .run/operational-close-pack{,-mfa,-persona,-reference,-regenerated}.log are terminal;
+  no production code, accounting oracle, permission rule or transition was changed to pass.
+- Prior periods are fixture-closed. ERP acknowledgement uses the test adapter; the GL upload is
+  a synthetic matching reference derived from the comparison, not an independent amount oracle.
+  This supplies the missing first-close control witness, not accounting sign-off or a full
+  controls/release pass. Re-lock variance, other pack kinds, browser/release gates and independent
+  accounting approval remain. Control-tag validation passes (497 tagged tests collected, not
+  executed by that check); log .run/evidence-control-tags.log. Ruff lint/format and whitespace
+  checks pass. All processes terminal. Direct main; no deployment or readiness claim.

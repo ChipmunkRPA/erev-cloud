@@ -859,3 +859,13 @@ on the register link target size; the link was enlarged and the focused retry pa
 This uses the retained local demo world and does not establish a passing fresh full-browser
 or release gate. Other pack kinds, re-lock variance, remaining RPS-20 acceptance and
 independent accounting approval remain open. See PROGRESS.md for exact evidence.
+
+## October 14, 2026 — fresh closed-world browser gate
+
+The fresh immutable closed browser project passed all 10 tests on 3e60e6a, including
+first-close generation, retained downloads and light/dark accessibility. This supersedes
+the earlier absence of a passing fresh closed-world gate. Other browser projects,
+subsequent backend changes, re-lock variance, other pack kinds and independent accounting
+approval remain open. The gate discarded screenshots with its temporary context; JSON
+results are retained, but screenshot retention needs repair. See
+[BROWSER-2026-10-14.md](BROWSER-2026-10-14.md) for exact scope and source binding.
