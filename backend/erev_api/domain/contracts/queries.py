@@ -2112,7 +2112,7 @@ def _line_state(known_at: datetime | None) -> Any:
         == schedule_line.c.period_id,
     )
     if known_at is not None:
-        posted = posted.where(subledger_line.c.recorded_at <= known_at)
+        posted = posted.where(subledger.recorded_by(known_at, historical=True))
     recognized = and_(
         schedule.c.schedule_kind == ScheduleKind.REVENUE.value,
         schedule_line.c.subject_type == "obligation",

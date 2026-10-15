@@ -63,6 +63,41 @@ changed test modules and Ruff/diff checks passed. Logs:
 `.run/readiness-isolation-repairs-oct15.log`, `.run/readiness-isolation-types-oct15.log`.
 The full 5,613-test selection has not been repeated after these repairs.
 
+## Historical subledger insertion cutoff
+
+Development validation on the working tree based on `99cef00`; these are not immutable release
+candidate gates. Migration 0151 adds a database-owned insertion stamp to the sealed line document.
+Historical report and explicit API cutoffs use it; record/current/close reads keep the application
+clock. Upgrade and downgrade refuse populated ledgers without rewriting rows or seals.
+
+- Focused migration/cutoff checks: **9 passed** (72.72s), including the 0124 historical fixture,
+  both 0151 populated-ledger refusals, and insertion after a cutoff within a transaction begun
+  before it. `.run/server-time-migration-guards.log`.
+- Broad report, ledger, subledger API, privacy, snapshot and migration selection: **379 passed,
+  1 failed** (1,701.70s). The failed API assertion expected visibility at the frozen application
+  time. It now checks actual database instants before/after posting and excludes the earlier
+  business-clock timestamp. `.run/server-time-report-ledger-regressions.log`.
+- Follow-up selection: **26 passed, 1 expected failure** (123.56s). Includes the revised API test,
+  actual historical versus record-basis disaggregation totals, both migration guards, server
+  timestamp immutability against application/owner mutation, seal-chain verification, ledger
+  invariants, tenant isolation, and contract/schedule APIs. `.run/server-time-followup.log`.
+- The expected failure is the separate overlapping-commit case: insertion occurs before the
+  cutoff, while commit occurs afterward. Preconditions run before applying the strict expected
+  failure marker. The missing exclusion remains a release gap, not passing evidence.
+- Report/journal unit selection: **1,141 passed** (7.04s). `.run/server-time-unit-reports.log`.
+- Architecture: **269 passed, 1 failed** (231.36s). The data-model documentation listed the appended
+  column in the wrong order. After correction the exact failed check passed (1.22s).
+  `.run/server-time-architecture.log`, `.run/server-time-drift-recheck.log`.
+- Strict typing: **771 source files passed**. Changed Python formatting, Ruff and diff checks
+  passed. Full `make lint` passed, including license/secret scans, registry and fixture checks,
+  and 502 control-tagged tests collected. `.run/server-time-types-final.log`,
+  `.run/server-time-lint.log`.
+
+The full broad and architecture selections were not repeated after their test/documentation
+repairs. Insertion time is not PostgreSQL commit time and may split a posting when a cutoff falls
+between line inserts. Neither historical transaction visibility nor production readiness is claimed.
+No deployment or live provider call occurred.
+
 ## Remaining scope
 
 - The backend unit/architecture selection above does not include all backend API/domain/engine/PG

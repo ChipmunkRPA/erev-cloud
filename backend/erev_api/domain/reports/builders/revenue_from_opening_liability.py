@@ -118,7 +118,7 @@ def _activity(
         subledger_line.c.book_code == book_code,
         subledger_line.c.entity_id.in_(list(entity_ids)),
         subledger_line.c.period_id.in_(period_ids),
-        subledger_line.c.recorded_at <= known_at,
+        tie_outs.line_recorded_by(params, known_at),
         subledger_line.c.contract_id.is_not(None),
         subledger_line.c.account_role.in_((tie_outs.REVENUE, rollforward.LIABILITY_ROLE)),
         *tie_outs.bound_member_where(params, "subledger_line", subledger_line.c.id),

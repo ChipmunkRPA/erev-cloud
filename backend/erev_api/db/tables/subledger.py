@@ -11,7 +11,19 @@ from __future__ import annotations
 
 from typing import Final
 
-from sqlalchemy import CHAR, BigInteger, Boolean, Column, Computed, Date, Integer, Table, Text, Uuid
+from sqlalchemy import (
+    CHAR,
+    BigInteger,
+    Boolean,
+    Column,
+    Computed,
+    Date,
+    DateTime,
+    Integer,
+    Table,
+    Text,
+    Uuid,
+)
 from sqlalchemy import text as sql_text
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 
@@ -156,6 +168,13 @@ subledger_line: Final = Table(
     # NULL only on a line no product command wrote — ``subledger.post`` requires it of every
     # product caller — and such a line reads back in the spelling of decision L3-1-Q-32.
     Column("subject_key", Text(), nullable=True),
+    # Database trigger overrides caller values; included in the sealed document.
+    Column(
+        "recorded_server_at",
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=sql_text("clock_timestamp()"),
+    ),
 )
 
 # T-SL-12: the first-included events a cumulative posting line attributes to, in ENG-06 order

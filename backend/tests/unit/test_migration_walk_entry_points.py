@@ -123,6 +123,7 @@ def test_every_downgrade_under_tests_pg_starts_from_a_fresh_head() -> None:
         "test_0128_a_trigger_is_carried_by_a_mark_only_and_the_descent_keeps_the_mark",
         "test_migration_0129.py::"
         "test_0129_adds_the_cutoff_over_stored_computations_and_its_descent_keeps_them",
+        "test_migration_0151_server_time.py::test_server_time_migration_preserves_populated_ledger",
         "test_migrations.py::test_upgrade_downgrade_upgrade",
         "test_migrations.py::test_step1_report_filter_migration_round_trip",
         "test_registry_parameter.py::_downgrade_to_base_or_skip",

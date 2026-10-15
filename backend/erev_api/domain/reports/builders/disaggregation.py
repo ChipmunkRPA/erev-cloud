@@ -108,7 +108,7 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                 subledger_line.c.account_role == tie_outs.REVENUE,
                 subledger_line.c.entity_id.in_(list(params.entity_ids)),
                 subledger_line.c.period_id.in_(sorted(key_of, key=str)),
-                subledger_line.c.recorded_at <= params.known_at,
+                tie_outs.line_recorded_by(params),
                 *tie_outs.bound_member_where(params, "subledger_line", subledger_line.c.id),
             )
         )

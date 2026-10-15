@@ -3500,6 +3500,21 @@ def ledger_seal_values(
         previous_sha = None if head is None else str(head)
     else:
         previous_sha = None if previous is None else str(previous)
+    # Seal the database-owned insertion stamp, not an absent/caller-supplied fixture value.
+    stored_stamps = dict(
+        session.execute(
+            select(subledger_line.c.id, subledger_line.c.recorded_server_at).where(
+                subledger_line.c.tenant_id == tenant_id,
+                subledger_line.c.subledger_posting_id == posting["id"],
+            )
+        ).all()
+    )
+    # Cross-tenant denial probes deliberately build candidates whose preceding inserts were
+    # refused by RLS. With no visible stored lines, retain those candidate values so the seal
+    # INSERT itself reaches the database's permission/constraint checks. Real stored fixtures
+    # must have every line's database-owned stamp; partial visibility still fails by identity.
+    if stored_stamps:
+        lines = [dict(line) | {"recorded_server_at": stored_stamps[line["id"]]} for line in lines]
     totals = control_totals(lines)
     return {
         "tenant_id": tenant_id,

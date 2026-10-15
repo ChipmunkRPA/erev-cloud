@@ -390,7 +390,7 @@ def _revenue(
             subledger_line.c.entity_id == entity.id,
             subledger_line.c.account_role == REVENUE,
             subledger_line.c.period_id.in_([item.id for item in items]),
-            subledger_line.c.recorded_at <= params.known_at,
+            tie_outs.line_recorded_by(params),
         )
         .group_by(
             subledger_line.c.contract_id,
@@ -489,7 +489,7 @@ def _impairment_reversed(
             subledger_line.c.account_role.in_(list(COST_ASSET_ROLES)),
             subledger_line.c.amount_txn > 0,
             subledger_line.c.period_end_date <= last.end,
-            subledger_line.c.recorded_at <= params.known_at,
+            tie_outs.line_recorded_by(params),
         )
         .distinct()
     )

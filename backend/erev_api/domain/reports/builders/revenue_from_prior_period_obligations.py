@@ -687,6 +687,7 @@ def _references(
     book_code: str,
     periods: Mapping[UUID, tuple[PeriodRef, ...]],
     known_at: datetime,
+    params: ReportParams,
 ) -> dict[tuple[UUID, UUID], set[UUID]]:
     """(entity, period) → the contract versions the range's REVENUE lines reference."""
     wanted = {(entity_id, item.id) for entity_id, items in periods.items() for item in items}
@@ -702,7 +703,7 @@ def _references(
             subledger_line.c.book_code == book_code,
             subledger_line.c.entity_id.in_(sorted({item[0] for item in wanted}, key=str)),
             subledger_line.c.period_id.in_(sorted({item[1] for item in wanted}, key=str)),
-            subledger_line.c.recorded_at <= known_at,
+            tie_outs.line_recorded_by(params, known_at),
             subledger_line.c.account_role == REVENUE_ROLE,
             subledger_line.c.contract_version_id.is_not(None),
         )
@@ -944,7 +945,7 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     calendars = tie_outs.calendars(session, found, params=params)
     cutoff = tie_outs.cutoff_for(session, params)  # S15-R-24: the bound cutoff under a binding
     referenced = _references(
-        session, book_code=book_code, periods=periods, known_at=params.known_at
+        session, book_code=book_code, periods=periods, known_at=params.known_at, params=params
     )
     selected = _selected_versions(session, referenced, cutoff, params=params, book_code=book_code)
     version_ids = sorted(selected, key=str)

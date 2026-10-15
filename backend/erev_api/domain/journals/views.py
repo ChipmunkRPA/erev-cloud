@@ -23,7 +23,7 @@ date lies in the inclusive window ``[from_date, to_date]`` at the legacy summary
   ``total_debit``, ``total_credit`` and ``net``.
 
 With ``known_at`` (report ``legacy_je_summary``, RPS-5) only the lines recorded at or before it are
-summarised, so a rerun of a run reproduces its output.
+summarised. Historical basis uses server insertion time; record basis uses application time.
 
 Amounts are in the transaction currency (RPT-13 has no currency view). [J] L6-3-Q-36: the parity
 views hold one currency; a window with several currencies keeps them apart in every section and
@@ -234,6 +234,7 @@ def _consolidated(
     from_date: date,
     to_date: date,
     known_at: datetime | None = None,
+    historical: bool = False,
 ) -> list[dict[str, Any]]:
     """Σ ``amount_txn`` per (book, entity, legacy key, account, currency) over the window."""
     tenant_id = subledger_line.c.tenant_id
@@ -298,7 +299,8 @@ def _consolidated(
         )
     )
     if known_at is not None:
-        statement = statement.where(subledger_line.c.recorded_at <= known_at)
+        stamp = subledger_line.c.recorded_server_at if historical else subledger_line.c.recorded_at
+        statement = statement.where(stamp <= known_at)
     return [dict(row) for row in session.execute(statement).mappings()]
 
 
@@ -311,6 +313,7 @@ def legacy_view(
     mode: str,
     *,
     known_at: datetime | None = None,
+    historical: bool = False,
 ) -> LegacyView:
     """The legacy gross (``GROSS``) or adjustment (``DELTA``) journal view (module docstring).
 
@@ -338,6 +341,7 @@ def legacy_view(
         from_date=from_date,
         to_date=to_date,
         known_at=known_at,
+        historical=historical,
     ):
         currency = str(row["txn_currency"]).strip()
         item = (str(row["entity_code"]), str(row["legacy_key"]), str(row["account"]), currency)

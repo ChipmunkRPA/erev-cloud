@@ -408,7 +408,7 @@ def _lines(
         subledger_line.c.account_role == LIABILITY_ROLE,
         subledger_line.c.entity_id.in_(list(entity_ids)),
         subledger_line.c.period_id.in_(period_ids),
-        subledger_line.c.recorded_at <= known_at,
+        tie_outs.line_recorded_by(params, known_at),
         subledger_line.c.entry_kind.not_in(sorted(NETTING_KINDS)),
         *tie_outs.bound_member_where(params, "subledger_line", subledger_line.c.id),
     )

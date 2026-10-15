@@ -23,7 +23,7 @@ from erev_api.domain.contracts.commands import BookedContract
 from erev_api.files.store import LocalFileStore
 from erev_api.main import create_app
 from fastapi import FastAPI
-from sqlalchemy import select
+from sqlalchemy import func, select
 from support.db import TestDatabase
 from support.factories import K11World, computed, delivered_k11, k11_world
 from support.reference import fields, get, slug
@@ -118,7 +118,9 @@ def test_subledger_lines_filters(world: K11World) -> None:
 
 
 def test_subledger_line_filters_pages_refusals_and_posting(world: K11World) -> None:
+    before_posting = world.place.scalar(select(func.clock_timestamp()))
     booked, stored = _computed_k11(world)
+    after_posting = world.place.scalar(select(func.clock_timestamp()))
     maya = world.place.author
     contract = str(booked.contract["id"])
 
@@ -143,8 +145,11 @@ def test_subledger_line_filters_pages_refusals_and_posting(world: K11World) -> N
     assert amounts({"origin_period": "FY2026-P09"}) == []
     assert amounts({"book": "IFRS15"}) == []
     assert amounts({"contract": str(uuid4())}) == []
-    assert amounts({"known_at": "2026-09-12T12:00:00Z"}) == everything
+    # An explicit historical cutoff uses database insertion time, not the frozen business clock.
+    assert amounts({"known_at": "2026-09-12T12:00:00Z"}) == []
     assert amounts({"known_at": "2026-09-12T11:59:59Z"}) == []
+    assert amounts({"known_at": before_posting.isoformat()}) == []
+    assert amounts({"known_at": after_posting.isoformat()}) == everything
 
     counted = get(world.app, LINES, maya, {"contract": contract, "count": "true"})
     assert counted.headers["X-Erev-Total-Count"] == str(len(everything))

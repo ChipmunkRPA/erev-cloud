@@ -1,5 +1,19 @@
 # eRev Cloud 1.0: stated limits of the release
 
+Historical subledger cutoff work (October 15): migration 0151 adds a database-owned
+insertion timestamp to new sealed lines. Explicit historical reads use that timestamp;
+record/current/close reads retain the application timestamp. The focused regression now excludes
+a later insertion even when its transaction began before the cutoff and its application clock
+is earlier. This is not proof of historical commit visibility: a transaction that inserts before
+a cutoff but commits afterward remains a separate gap. A cutoff falling between line insertions
+can also split a posting; an insertion-time predicate alone does not establish a transactionally
+complete historical ledger. Validation: 379 broad checks passed with one outdated API expectation;
+the revised API test and follow-up checks passed (26 passed, one strict expected failure for
+overlapping commit visibility). See VERIFICATION-2026-10-15.md for the full scope and limits.
+Both upgrade and downgrade refuse populated ledgers because the stamp changes the seal document;
+there is no supported in-place upgrade of an existing sealed ledger through 0151.
+
+
 
 October 14 full backend CI completed on the older `165d63c` snapshot with 33 failures.
 Current-main repairs and remaining failure/expected-failure evidence are tracked in

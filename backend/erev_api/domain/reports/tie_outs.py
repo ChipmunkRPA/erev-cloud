@@ -15,7 +15,8 @@ The platform part of stage 15 reads persisted engine outputs (ENGINE_SPEC_B §15
   record cutoff, the later of the application clock and the server transaction timestamp
   (``bundles.record_cutoff``, L3-1-Q-25), so a report reads versions by the same rule at its
   ``known_at``. Subledger and journal rows carry the application clock and are read by
-  ``known_at`` itself.
+  ``known_at`` itself on the record basis. Historical subledger reads instead use the sealed
+  database insertion stamp, ``recorded_server_at``; this is not a commit timestamp.
 - ``balances_at``: the labelled balances of each member contract and contracting entity at a period
   end (ENGINE_SPEC_B S15-R-07a, ``presented_at``), from the version's trace nodes
   ``<measure>:<contract>@<entity>:<period key>`` (T-ENG-03), looked up under the ENGINE'S subject
@@ -80,6 +81,7 @@ from erev_api.db.tables import (
     legal_entity,
     period,
 )
+from erev_api.domain.journals import subledger
 from erev_api.domain.policies.registry_versions import primary_book
 from erev_api.domain.reports.builders import ReportParams
 from erev_api.explain import store
@@ -156,6 +158,11 @@ BILLED_UNCONDITIONAL: Final = "billed_unconditional_cum"
 
 
 # --- money and results --------------------------------------------------------------------------
+
+
+def line_recorded_by(params: ReportParams, known_at: datetime | None = None) -> ColumnElement[bool]:
+    """Historical reports use the database stamp; record/locked compatibility keeps its basis."""
+    return subledger.recorded_by(known_at or params.known_at, historical=params.historical)
 
 
 def minor_unit(currency: str) -> int:

@@ -629,7 +629,7 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                 subledger_line.c.period_id.in_(posting_ids),
                 subledger_line.c.origin_period_id.is_not(None),
                 subledger_line.c.origin_period_id != subledger_line.c.period_id,
-                subledger_line.c.recorded_at <= params.known_at,
+                tie_outs.line_recorded_by(params),
             )
         )
         if origin_ids:

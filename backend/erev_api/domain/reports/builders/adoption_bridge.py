@@ -331,7 +331,7 @@ def _legacy_revenue(
             subledger_line.c.book_code == LEGACY,
             subledger_line.c.entity_id == entity.id,
             subledger_line.c.account_role == PRE_STANDARD_ROLE,
-            subledger_line.c.recorded_at <= params.known_at,
+            tie_outs.line_recorded_by(params),
             func.coalesce(origin.c.end_date, subledger_line.c.period_end_date) <= through,
         )
         .group_by(

@@ -2,6 +2,28 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Historical line insertion cutoff — October 15, 2026
+
+- Migration 0151 adds a database-owned insertion stamp included in new line seals.
+  Historical report/API predicates use it; record/current/close predicates retain recorded_at.
+- Nine focused tests passed (72.72s): upgrade/downgrade refuse populated ledgers without
+  changing rows or seals; 0124 historical fixture remains valid; a transaction begun before
+  the cutoff cannot expose its later insert. Log: .run/server-time-migration-guards.log.
+- Mypy passed 771 sources; 1,141 report/journal unit tests passed (7.04s), recorded in
+  .run/server-time-unit-reports.log. Changed Python formatting and Ruff checks passed.
+- Broad report/ledger/API/privacy/snapshot/migration run finished: 379 passed, one failed
+  (1,701.70s). The API test still expected historical visibility at the frozen application clock;
+  it now checks database instants before/after posting and excludes the earlier business stamp.
+  Follow-up: 26 passed, one strict expected failure for overlapping commit visibility (123.56s).
+  Log: .run/server-time-followup.log; full evidence in VERIFICATION-2026-10-15.md.
+- Architecture: 269 passed, one column-order mismatch (231.36s); documentation corrected and
+  the exact failed check passed (1.22s). Logs: .run/server-time-architecture.log and
+  .run/server-time-drift-recheck.log. Full architecture selection not repeated.
+- make lint passed (.run/server-time-lint.log): 142 dependency licenses, zero secret findings,
+  registry/fixture checks and 502 control-tagged tests collected successfully.
+- Insertion time is not commit time. Overlapping commits and cutoffs splitting a posting
+  remain unresolved; see LIMITS-1.0.md. No readiness claim or deployment.
+
 ## Backend broad-run isolation repairs — October 15, 2026
 
 - The complete unit/architecture selection finished: 5,609 passed, two failed, two Linux-only
@@ -213,25 +235,6 @@
 - Runtime write-ahead admission, durable retry counting and uncertain-call recovery are
   still required. This storage foundation does not yet prevent duplicate provider calls.
   No deployment or production-readiness claim; independent accounting sign-off remains open.
-
-## Completed AI job redelivery protection — October 15, 2026
-
-- Migration 0149 adds optional immutable proposal job/source-hash bindings with a tenant
-  foreign key, paired digest check and one-proposal-per-job unique index. Existing rows stay
-  unbound. Downgrade refuses populated completion evidence; metadata/privacy declarations match.
-- The narrative gateway checks completed jobs under its budget lease before new-call admission.
-  A redelivery rechecks human/source access and the stored trace's visibility, then returns the
-  original proposal even after budget exhaustion or disablement, without a provider call.
-  Changed source inputs or token limits refuse instead of reusing an unrelated result.
-- Both successful and terminal-failure writers bind the job. Tests verify normal/failed
-  redelivery, unchanged call counts, budget/kill-switch behavior, tenant FK, uniqueness,
-  application and owner immutability, downgrade refusal and a full migration round trip.
-- Verification: 20 gateway/privacy/head checks passed; 265 migration/AI/architecture checks
-  passed with two Linux parser-limit skips; typing passed for 769 sources; Ruff/diff pass.
-  Logs: .run/ai-job-completion-{checks,types}.log and .run/ai-job-binding-final.log.
-- This protects completed results. Recovery between a provider call and its committed result,
-  retry-count recovery for unfinished jobs, admission failures, job/API registration and the
-  remaining AI workflows are still open. No deployment or production-readiness claim.
 
 ## Outstanding release verification
 

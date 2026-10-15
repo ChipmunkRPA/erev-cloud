@@ -94,3 +94,4 @@ def test_intent_constraints_and_retained_unknown_outcome(
             connection.exec_driver_sql("SELECT version_num FROM erev.alembic_version").scalar_one()
             == "0150"
         )
+    command.upgrade(alembic_config(), "head")

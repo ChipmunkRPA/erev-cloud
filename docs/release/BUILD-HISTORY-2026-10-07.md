@@ -4688,3 +4688,22 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - The worker must still supply waiting/dispatch and delivery idempotency. Durable admission
   failures, notifications, crash/unlogged-call recovery and other proposal workflows remain
   open; no AI_TASK handler/public API is registered. No deployment or readiness claim.
+
+## Completed AI job redelivery protection — October 15, 2026
+
+- Migration 0149 adds optional immutable proposal job/source-hash bindings with a tenant
+  foreign key, paired digest check and one-proposal-per-job unique index. Existing rows stay
+  unbound. Downgrade refuses populated completion evidence; metadata/privacy declarations match.
+- The narrative gateway checks completed jobs under its budget lease before new-call admission.
+  A redelivery rechecks human/source access and the stored trace's visibility, then returns the
+  original proposal even after budget exhaustion or disablement, without a provider call.
+  Changed source inputs or token limits refuse instead of reusing an unrelated result.
+- Both successful and terminal-failure writers bind the job. Tests verify normal/failed
+  redelivery, unchanged call counts, budget/kill-switch behavior, tenant FK, uniqueness,
+  application and owner immutability, downgrade refusal and a full migration round trip.
+- Verification: 20 gateway/privacy/head checks passed; 265 migration/AI/architecture checks
+  passed with two Linux parser-limit skips; typing passed for 769 sources; Ruff/diff pass.
+  Logs: .run/ai-job-completion-{checks,types}.log and .run/ai-job-binding-final.log.
+- This protects completed results. Recovery between a provider call and its committed result,
+  retry-count recovery for unfinished jobs, admission failures, job/API registration and the
+  remaining AI workflows are still open. No deployment or production-readiness claim.

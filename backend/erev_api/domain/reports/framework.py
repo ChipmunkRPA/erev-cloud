@@ -695,7 +695,7 @@ SOURCE_CONTRACTS: Final[Mapping[str, SourceContract]] = MappingProxyType(
                 _CONFIGURATION,
             ),
             (
-                "subledger-line REFERENCE population (read live by recorded_at <= known_at; the "
+                "subledger-line REFERENCE population (read live by the selected time basis; the "
                 "bound version ids fix the selection; frps3c)",
             ),
         ),

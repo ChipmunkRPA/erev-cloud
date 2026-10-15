@@ -41,7 +41,7 @@ from typing import TYPE_CHECKING, Any, Final
 
 from erev_engine.canonical import canonical_bytes, sha256_hex
 from erev_engine.currencies import ISO_4217
-from sqlalchemy import Select, and_, insert, or_, select
+from sqlalchemy import ColumnElement, Select, and_, insert, or_, select
 from sqlalchemy.orm import Session
 
 from erev_api.audit.writer import record_facts
@@ -354,7 +354,7 @@ def _stored_posting(session: Session, *, book_code: str, idempotency_key: str) -
 
 
 def _store_lines(session: Session, line_rows: Sequence[dict[str, Any]]) -> None:
-    """Insert ``line_rows`` and put into each the ``is_post_reopen`` the insert stored.
+    """Insert lines and retain the database-owned reopen flag and server insertion stamp.
 
     The DB-07 guard decides that member from the period's state row, read ``FOR SHARE`` — after a
     wait, the state the holder committed (04 §14.1 DB-07 rev 1.113). The seal is computed over
@@ -362,9 +362,13 @@ def _store_lines(session: Session, line_rows: Sequence[dict[str, Any]]) -> None:
     (start-close on a ``reopened`` period, a reopen approval) cannot part the seal from the
     stored posting (04 §14.1, the DB-06 note, rev 1.140; supervisor ruling R-97 (1))."""
     stored = {
-        str(row.id): bool(row.is_post_reopen)
+        str(row.id): (bool(row.is_post_reopen), row.recorded_server_at)
         for row in session.execute(
-            insert(subledger_line).returning(subledger_line.c.id, subledger_line.c.is_post_reopen),
+            insert(subledger_line).returning(
+                subledger_line.c.id,
+                subledger_line.c.is_post_reopen,
+                subledger_line.c.recorded_server_at,
+            ),
             line_rows,
         )
     }
@@ -373,7 +377,7 @@ def _store_lines(session: Session, line_rows: Sequence[dict[str, Any]]) -> None:
             f"the insert of {len(line_rows)} subledger lines returned {len(stored)} rows"
         )
     for row in line_rows:
-        row["is_post_reopen"] = stored[str(row["id"])]
+        row["is_post_reopen"], row["recorded_server_at"] = stored[str(row["id"])]
 
 
 def post(
@@ -703,6 +707,12 @@ def _primary_book(session: Session) -> str:
     return BookCode.ASC606.value if found is None else str(found)
 
 
+def recorded_by(known_at: datetime, *, historical: bool) -> ColumnElement[bool]:
+    """Select the declared time basis without changing compatibility/close reads."""
+    stamp = subledger_line.c.recorded_server_at if historical else subledger_line.c.recorded_at
+    return stamp <= known_at
+
+
 def line_statement(session: Session, filters: LineFilters) -> Select[Any]:
     """The lines visible in ``session`` under ``filters``; the book defaults to the primary book
     (API-C-11) and ``known_at`` keeps lines recorded by then (API-C-10)."""
@@ -765,7 +775,7 @@ def line_statement(session: Session, filters: LineFilters) -> Select[Any]:
     if filters.contract is not None:
         statement = statement.where(subledger_line.c.contract_id == filters.contract)
     if filters.known_at is not None:
-        statement = statement.where(subledger_line.c.recorded_at <= filters.known_at)
+        statement = statement.where(recorded_by(filters.known_at, historical=True))
     return statement
 
 

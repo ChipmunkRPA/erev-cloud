@@ -446,7 +446,7 @@ def _recognized(
         subledger_line.c.obligation_id.in_(list(by_id)),
         subledger_line.c.entity_id.in_(sorted({ob.entity_id for ob in by_id.values()}, key=str)),
         subledger_line.c.period_id.in_(list(period_ids)),
-        subledger_line.c.recorded_at <= params.known_at,
+        tie_outs.line_recorded_by(params),
         # S15-R-24 (Codex 2154): under a bound run exactly the lines the original consumed.
         *tie_outs.bound_member_where(params, "subledger_line", subledger_line.c.id),
     )

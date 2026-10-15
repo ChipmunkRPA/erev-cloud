@@ -294,7 +294,7 @@ def sources(
         .where(
             subledger_line.c.book_code == book_code,
             subledger_line.c.account_role.in_(list(ROLES)),
-            subledger_line.c.recorded_at <= params.known_at,
+            tie_outs.line_recorded_by(params),
             or_(*scopes) if scopes else false(),
         )
         .order_by(subledger_line.c.period_end_date, subledger_line.c.entry_no, subledger_line.c.id)

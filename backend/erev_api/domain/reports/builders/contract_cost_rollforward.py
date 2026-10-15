@@ -337,7 +337,7 @@ def _movements(
             subledger_line.c.book_code == book_code,
             subledger_line.c.entity_id.in_(list(entity_ids)),
             subledger_line.c.account_role.in_(list(ROLE_KIND)),
-            subledger_line.c.recorded_at <= known_at,
+            tie_outs.line_recorded_by(params, known_at),
             subledger_line.c.period_end_date <= max(range_end.values()),
             *tie_outs.bound_member_where(params, "subledger_line", subledger_line.c.id),
         )

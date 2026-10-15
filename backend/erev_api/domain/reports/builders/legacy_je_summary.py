@@ -70,7 +70,14 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     from_date, to_date = history.date_range(session, params, year=False)
     codes = [entity.code for entity in tie_outs.entities(session, params.entity_ids)]
     view = views.legacy_view(
-        uow, codes, book_code, from_date, to_date, mode, known_at=params.known_at
+        uow,
+        codes,
+        book_code,
+        from_date,
+        to_date,
+        mode,
+        known_at=params.known_at,
+        historical=params.historical,
     )
     several = len(view.totals) > 1
     rows: list[dict[str, Any]] = []

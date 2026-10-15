@@ -13,8 +13,8 @@ physical row whatever row-level security hides from the owner connection (DG-MIG
 Both branches, in one walk that starts from a data-free head (``fresh_head``; FLMG-WALK-RESET-1):
 
 1. an empty ledger: the revision applies — the column is there, nullable, of type text;
-2. a ledger with lines: K-11 with its delivery of 120 units is computed through the product, which
-   stores a subject on every line; the revision is taken back (its downgrade drops the column and
+2. a ledger with lines: a correctly sealed schema-0150 fixture stores a subject on every line;
+   the revision is taken back (its downgrade drops the column and
    leaves the lines — what a ledger written under the earlier schema holds) and applied again: it
    is REFUSED BY NAME and the whole revision rolls back — the version table still names the parent,
    the column is absent, the lines are as they were;
@@ -32,12 +32,12 @@ from alembic.script import ScriptDirectory
 from erev_api.auth.keyring import KeyRing
 from erev_api.clock import FrozenClock
 from erev_api.config import Settings
+from erev_api.db.session import DbContext, tenant_session
 from erev_api.db.tables import subledger_line
-from erev_api.files.store import LocalFileStore
-from erev_api.main import create_app
 from sqlalchemy import exc, func, select, text
 from support.db import TestDatabase, alembic_config, fresh_head
-from support.factories import computed, delivered_k11, k11_world
+from support.factories import tenant_factory, tenant_id_of
+from support.legacy_ledger_0150 import insert_legacy_ledger
 
 pytestmark = pytest.mark.pg
 
@@ -90,15 +90,17 @@ def test_0124_applies_to_an_empty_ledger_and_refuses_one_that_holds_a_line(
         assert connection.execute(COLUMN).one() == ("text", "YES")
         assert connection.execute(PROBE).scalar_one() == 0
     try:
-        # 2. a ledger with lines, written through the product: every line stores its subject
-        app = create_app(app_settings, clock=clock)
-        world = k11_world(app, keyring, clock, LocalFileStore(app_settings.file_root))
-        booked = delivered_k11(world)
-        computed(world.place, booked.combination_group["id"])
-        count = select(func.count()).select_from(subledger_line)
-        held = int(world.place.scalar(count))
-        assert held >= 2
-        assert world.place.scalar(count.where(subledger_line.c.subject_key.is_(None))) == 0
+        # 2. a historical ledger fixture: every line stores its subject
+        command.downgrade(alembic_config(), "0150")
+        _new_pools(test_database)
+        tenant_id = tenant_id_of(tenant_factory(keyring=keyring))
+        context = DbContext(tenant_id, None, "*")
+        with tenant_session(context) as session:
+            insert_legacy_ledger(session, tenant_id)
+            count = select(func.count()).select_from(subledger_line)
+            held = int(session.scalar(count) or 0)
+            assert held == 2
+            assert session.scalar(count.where(subledger_line.c.subject_key.is_(None))) == 0
         # the revision taken back: the column goes, the lines stay — a ledger of the earlier schema
         test_database.app_engine.dispose()
         command.downgrade(alembic_config(), PARENT)
@@ -115,7 +117,8 @@ def test_0124_applies_to_an_empty_ledger_and_refuses_one_that_holds_a_line(
             assert connection.execute(COLUMN).one_or_none() is None
             assert connection.execute(PROBE).scalar_one() == 0
         test_database.app_engine.dispose()
-        assert int(world.place.scalar(count)) == held  # nothing deleted, nothing rewritten
+        with tenant_session(context, read_only=True) as session:
+            assert session.scalar(count) == held  # nothing deleted, nothing rewritten
     finally:
         # 3. what the sentence tells the person to do: the database is reset, and is at head
         fresh_head()

@@ -2622,7 +2622,8 @@ TABLES: Final[tuple[TableClassification, ...]] = (
         {
             R01: _cols(
                 "tenant_id id subledger_posting_id entity_id period_id origin_period_id "
-                "recorded_at entry_no entry_kind gl_account_id dimension_set_sha256 "
+                "recorded_at recorded_server_at entry_no entry_kind "
+                "gl_account_id dimension_set_sha256 "
                 "fx_rate_set_version_id fx_rate_id contract_id obligation_id "
                 "contract_version_id contract_event_id schedule_line_id contract_cost_asset_id "
                 "counterparty_entity_id reverses_line_id calc_trace_id trace_node_id created_at "
