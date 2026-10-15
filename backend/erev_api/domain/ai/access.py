@@ -32,16 +32,29 @@ class AIAccessRefused(ValueError):
 def authorize_job(
     context: JobContext, session: Session, *, entity_ids: Sequence[UUID] = ()
 ) -> Principal:
-    """Reload current grants; never use the enclosing SYSTEM principal for AI reads.
+    """Reload current human grants and narrow them to the AI permission before source reads."""
+    principal = job_requester(context, session, kind=JobKind.AI_TASK)
+    scope = principal.permission_scopes.get("ai.use", frozenset())
+    if (
+        "ai.use" not in principal.permissions
+        or not scope
+        or (scope != "*" and any(entity_id not in scope for entity_id in entity_ids))
+    ):
+        raise AIAccessRefused("AI_PERMISSION_DENIED")
+    return replace(principal, entity_scope="*" if scope == "*" else tuple(sorted(scope)))
 
-    The caller uses a job read session and must use the returned user's narrowed
-    database context for subsequent retrieval. Individual file/report permissions
-    must still be checked by those query services. No request or run_inline path is
-    admitted. Recheck on every attempt, before selecting facts or calling a model.
+
+def job_requester(
+    context: JobContext, session: Session, *, kind: Literal[JobKind.AI_TASK, JobKind.REPORT_RUN]
+) -> Principal:
+    """Refresh a persisted attempt's active human initiator; callers must check source grants.
+
+    This returns no logged-in/MFA session and grants no SYSTEM access. A report export must
+    apply its retained ExportAccess and report.export checks before reading or rendering rows.
     """
     attempt = context.runtime.attempt
     if (
-        context.kind is not JobKind.AI_TASK
+        context.kind is not kind
         or attempt is None
         or attempt.job_id != context.job_id
         or attempt.tenant_id != context.tenant_id
@@ -61,7 +74,7 @@ def authorize_job(
     )
     user_id = creator["created_by"]
     if (
-        creator["kind"] != JobKind.AI_TASK.value
+        creator["kind"] != kind.value
         or creator["created_by_kind"] != PrincipalKind.USER.value
         or user_id is None
         or user_id != context.principal.on_behalf_of_id
@@ -89,13 +102,6 @@ def authorize_job(
     if member is None:
         raise AIAccessRefused("AI_INITIATOR_INACTIVE")
     grants = effective_grants(session, member["id"], at=context.clock.now())
-    scope = grants.permission_scopes.get("ai.use", frozenset())
-    if (
-        "ai.use" not in grants.permissions
-        or not scope
-        or (scope != "*" and any(entity_id not in scope for entity_id in entity_ids))
-    ):
-        raise AIAccessRefused("AI_PERMISSION_DENIED")
     return Principal(
         kind=PrincipalKind.USER,
         id=user_id,
@@ -105,7 +111,7 @@ def authorize_job(
         roles=grants.roles,
         permissions=grants.permissions,
         permission_scopes=grants.permission_scopes,
-        entity_scope="*" if scope == "*" else tuple(sorted(scope)),
+        entity_scope=grants.entity_scope,
         # This is delegated worker execution, not a recreated login/MFA session.
         auth_method="system",
         mfa_verified_at=None,

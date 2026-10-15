@@ -78,6 +78,7 @@ def capture_access(ctx: RequestContext) -> ExportAccess:
     principal = ctx.principal
     if not _administrator(ctx) and not _own_reader(ctx):
         raise Problem("forbidden")
+    _require_export_permission(ctx, workspace_wide=_administrator(ctx))
     assert principal.id is not None
     return ExportAccess(
         tenant_id=principal.tenant_id,
@@ -85,6 +86,16 @@ def capture_access(ctx: RequestContext) -> ExportAccess:
         actor_kind="USER" if principal.kind is PrincipalKind.USER else "API_CLIENT",
         scope="TENANT" if _administrator(ctx) else "OWN",
     )
+
+
+def _require_export_permission(ctx: RequestContext, *, workspace_wide: bool) -> None:
+    principal = ctx.principal
+    if (
+        "report.export" not in principal.permissions
+        or not principal.permission_scopes.get("report.export")
+        or (workspace_wide and not holds_all(principal, "report.export"))
+    ):
+        raise Problem("forbidden", "Call export permission is required for the requested scope.")
 
 
 def require_access(ctx: RequestContext, access: ExportAccess) -> None:
@@ -99,6 +110,7 @@ def require_access(ctx: RequestContext, access: ExportAccess) -> None:
         raise Problem("not-found")
     if not _administrator(ctx) and (access.scope == "TENANT" or not _own_reader(ctx)):
         raise Problem("forbidden")
+    _require_export_permission(ctx, workspace_wide=access.scope == "TENANT")
 
 
 def dataset(ctx: RequestContext, access: ExportAccess) -> ReportData:

@@ -2,6 +2,17 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Current requester grants for export workers — October 15, 2026
+
+- Extracted persisted-job requester reconstruction for AI_TASK and REPORT_RUN: active human,
+  current grants and live matching attempt required; no reconstructed login/MFA session.
+  AI jobs still narrow entity access to ai.use before reading sources.
+- Export capture/build guards now require report.export; TENANT requires its workspace-wide
+  scope. Source visibility remains required. Thirteen focused tests, backend typing (797 files)
+  and full lint pass; evidence: docs/release/CI-2026-10-15.md.
+- These are prerequisites, not a completed queued export. Persisted bindings, worker integration,
+  every output/replay read and the download menu remain open. No deployment/provider calls.
+
 ## Bound AI export authorization — October 15, 2026
 
 - Added a frozen/versioned server-captured export binding: original tenant, actor id/kind and

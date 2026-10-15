@@ -8,7 +8,7 @@ from uuid import UUID
 
 import pytest
 from erev_api.auth.keyring import KeyRing
-from erev_api.auth.principal import system_principal
+from erev_api.auth.principal import RequestContext, system_principal
 from erev_api.clock import FrozenClock
 from erev_api.db import new_id
 from erev_api.db.session import DbContext, tenant_session
@@ -21,9 +21,11 @@ from erev_api.db.tables import (
     tenant,
     tenant_membership,
 )
-from erev_api.domain.ai.access import AIAccessRefused, authorize_job
-from erev_api.enums import JobKind, PrincipalKind
+from erev_api.domain.ai.access import AIAccessRefused, authorize_job, job_requester
+from erev_api.domain.ai.log_export import capture_access, require_access
+from erev_api.enums import JobKind, PrincipalKind, TenantKind
 from erev_api.jobs.context import JobAttempt, JobContext, JobLost, JobRuntime
+from erev_api.problems import Problem
 from sqlalchemy import insert, update
 from sqlalchemy.orm import Session
 from support.db import TestDatabase
@@ -40,8 +42,9 @@ pytestmark = pytest.mark.pg
 
 @pytest.fixture
 def world(
-    committed_db: TestDatabase, keyring: KeyRing, clock: FrozenClock
+    committed_db: TestDatabase, keyring: KeyRing, clock: FrozenClock, request: pytest.FixtureRequest
 ) -> Iterator[tuple[Session, JobContext, UUID, UUID, UUID]]:
+    kind = getattr(request, "param", JobKind.AI_TASK)
     actor = member(keyring, clock)
     with tenant_session(DbContext(actor.tenant_id, actor.user_id, "*")) as session:
         calendar = fiscal_calendar_values(actor.tenant_id)
@@ -73,7 +76,7 @@ def world(
             insert(job).values(
                 tenant_id=actor.tenant_id,
                 id=job_id,
-                kind="AI_TASK",
+                kind=kind.value,
                 queue="ai",
                 state="RUNNING",
                 params={},
@@ -89,7 +92,7 @@ def world(
         context = JobContext(
             job_id=job_id,
             tenant_id=actor.tenant_id,
-            kind=JobKind.AI_TASK,
+            kind=kind,
             principal=system_principal(actor.tenant_id, on_behalf_of_id=actor.user_id),
             runtime=runtime,
         )
@@ -207,3 +210,47 @@ def test_inline_context_and_wrong_attempt_refuse(
     )
     with pytest.raises(JobLost):
         authorize_job(wrong, session)
+
+
+@pytest.mark.parametrize("world", [JobKind.REPORT_RUN], indirect=True)
+def test_report_export_refreshes_requester_and_refuses_revoked_permissions(
+    world: tuple[Session, JobContext, UUID, UUID, UUID],
+) -> None:
+    session, context, first, second, assignment = world
+    principal = job_requester(context, session, kind=JobKind.REPORT_RUN)
+    assert principal.kind is PrincipalKind.USER
+    assert principal.id == context.principal.on_behalf_of_id
+    assert principal.mfa_verified_at is None and principal.session_id is None
+    ctx = RequestContext(
+        principal=principal,
+        tenant_kind=TenantKind.PRODUCTION,
+        request_id="export-worker",
+        source_ip=None,
+        user_agent=None,
+        idempotency_key=None,
+        if_match=None,
+        now=context.clock.now(),
+        format_locale="en-US",
+    )
+    access = capture_access(ctx)
+    assert access.scope == "OWN"
+    require_access(ctx, access)
+    with pytest.raises(AIAccessRefused, match="AI_JOB_CONTEXT_REQUIRED"):
+        authorize_job(context, session)
+    session.execute(
+        update(role_assignment)
+        .where(role_assignment.c.id == assignment)
+        .values(revoked_at=context.clock.now(), revoked_by_kind="SYSTEM")
+    )
+    refreshed = job_requester(context, session, kind=JobKind.REPORT_RUN)
+    assert "ai.use" not in refreshed.permissions
+    assert "report.export" not in refreshed.permissions
+    with pytest.raises(Problem):
+        require_access(replace(ctx, principal=refreshed), access)
+    session.execute(
+        update(job)
+        .where(job.c.id == context.job_id)
+        .values(state="SUCCEEDED", updated_by_kind="SYSTEM")
+    )
+    with pytest.raises(JobLost):
+        job_requester(context, session, kind=JobKind.REPORT_RUN)

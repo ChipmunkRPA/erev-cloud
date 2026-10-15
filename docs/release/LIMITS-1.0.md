@@ -63,6 +63,10 @@ must reconstruct the current caller before invoking it. A frozen, versioned Expo
 now binds the original tenant, actor id/kind and OWN/TENANT maximum scope. Builds require that
 binding; later promotion cannot widen OWN, and TENANT still requires current workspace-wide
 settings.manage. A reusable read guard rejects owner/tenant/kind mismatches and permission loss.
+Export guards now also require report.export (workspace-wide for TENANT). Persisted-job
+requester reconstruction verifies a live attempt and active human and refreshes current grants;
+its REPORT_RUN path is tested but not yet connected to this export. Existing AI jobs still
+narrow entity access to ai.use. API-client queued execution is not implemented.
 This does not yet expose export:
 queued execution, retained-file ownership/revocation checks and the UI download remain unfinished.
 CSV/XLSX export, linked-proposal navigation, hash-copy controls, standard demo/J-19 and full

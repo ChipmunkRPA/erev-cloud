@@ -59,8 +59,8 @@ def test_export_dataset_scope_uncertainty_and_spreadsheet_safety(
         system_principal(owner.tenant_id),
         kind=PrincipalKind.USER,
         id=owner.user_id,
-        permissions=frozenset({"ai.use"}),
-        permission_scopes={"ai.use": "*"},
+        permissions=frozenset({"ai.use", "report.export"}),
+        permission_scopes={"ai.use": "*", "report.export": "*"},
     )
     ctx = RequestContext(
         principal=principal,
@@ -110,8 +110,8 @@ def test_export_dataset_scope_uncertainty_and_spreadsheet_safety(
     assert all(cell.data_type != "f" for cell in cells)
     administrator = replace(
         principal,
-        permissions=frozenset({"settings.manage"}),
-        permission_scopes={"settings.manage": "*"},
+        permissions=frozenset({"settings.manage", "report.export"}),
+        permission_scopes={"settings.manage": "*", "report.export": "*"},
     )
     assert dataset(replace(ctx, principal=administrator)).row_count == 3
     scoped = replace(
@@ -151,3 +151,22 @@ def test_export_dataset_scope_uncertainty_and_spreadsheet_safety(
         )
     with pytest.raises(Problem):
         require_access(replace(ctx, principal=replace(principal, permission_scopes={})), retained)
+
+    limited_export = replace(
+        principal, permission_scopes={"ai.use": "*", "report.export": frozenset({owner.tenant_id})}
+    )
+    assert bound_dataset(replace(ctx, principal=limited_export), retained).row_count == 2
+    limited_admin_export = replace(
+        administrator,
+        permission_scopes={"settings.manage": "*", "report.export": frozenset({owner.tenant_id})},
+    )
+    with pytest.raises(Problem):
+        require_access(replace(ctx, principal=limited_admin_export), wide_access)
+    with pytest.raises(Problem):
+        capture_access(
+            replace(ctx, principal=replace(principal, permissions=frozenset({"ai.use"})))
+        )
+    with pytest.raises(Problem):
+        require_access(
+            replace(ctx, principal=replace(principal, permissions=frozenset({"ai.use"}))), retained
+        )
