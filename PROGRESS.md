@@ -2,6 +2,18 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Bound AI export authorization — October 15, 2026
+
+- Added a frozen/versioned server-captured export binding: original tenant, actor id/kind and
+  maximum OWN/TENANT scope. Dataset builds require it; subsequent promotion cannot widen an
+  own-call request, and a workspace export still requires current workspace-wide settings.manage.
+- PostgreSQL/CSV/XLSX verification covers serialized bindings, promotion/demotion, cross-owner,
+  cross-tenant, actor-kind and permission/scope loss. Three API checks and backend typing (796
+  files) and full lint also pass. Evidence: docs/release/CI-2026-10-15.md.
+- Queued export is still unfinished. Next persist the binding, reconstruct current grants in
+  the worker, guard replay/download before returning any bytes, and wire the menu. Other release
+  gates remain open. No deployment/provider calls; publish directly to main after verification.
+
 ## Authorized AI export dataset foundation — October 15, 2026
 
 - Added the internal call-export dataset using current owner/tenant visibility and standard
@@ -223,19 +235,6 @@
   config; a stalled host mount was replaced with stdin. No saved credentials changed or images
   pushed. Local Compose verification on b4b8210 and frozen CI on 3cf8f5b remain active.
   Full browser acceptance and independent accounting sign-off remain open; no deployment.
-
-## Package synthetic AI evidence in runtime images — October 15, 2026
-
-- API and worker builds now copy only the synthetic AI fixture bundle needed by FakeProvider.
-  Previously local extraction tests passed but image inputs omitted the PDF and response files.
-  A behavioral packaging regression reconstructs each Dockerfile's directory COPY inputs and
-  invokes the provider from that isolated copy, checking a new upload ID and cited customer value.
-- Seventeen packaging/PDF checks, focused typing, Ruff and full lint pass. Logs:
-  .run/ai-image-fixtures-{tests,types,lint}.log. This is host-side copied-tree verification.
-- Docker Desktop is now running. The first image build was deliberately interrupted to fix this
-  packaging defect; Linux base-image pull session remains active, without a completed image.
-  Container hardening, Linux PDF limits and full browser upload/acceptance remain unverified.
-  Frozen CI on 3cf8f5b continues independently. No deployment or live provider calls.
 
 ## Outstanding release verification
 

@@ -5712,3 +5712,16 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Updated release limitations for the responsive panes and page navigation. Full release evidence,
   live browser acceptance and independent accounting sign-off remain outstanding. Frozen CI on
   3cf8f5b is still live; Docker daemon remains unavailable. No deployment or live provider calls.
+
+## Package synthetic AI evidence in runtime images — October 15, 2026
+
+- API and worker builds now copy only the synthetic AI fixture bundle needed by FakeProvider.
+  Previously local extraction tests passed but image inputs omitted the PDF and response files.
+  A behavioral packaging regression reconstructs each Dockerfile's directory COPY inputs and
+  invokes the provider from that isolated copy, checking a new upload ID and cited customer value.
+- Seventeen packaging/PDF checks, focused typing, Ruff and full lint pass. Logs:
+  .run/ai-image-fixtures-{tests,types,lint}.log. This is host-side copied-tree verification.
+- Docker Desktop is now running. The first image build was deliberately interrupted to fix this
+  packaging defect; Linux base-image pull session remains active, without a completed image.
+  Container hardening, Linux PDF limits and full browser upload/acceptance remain unverified.
+  Frozen CI on 3cf8f5b continues independently. No deployment or live provider calls.

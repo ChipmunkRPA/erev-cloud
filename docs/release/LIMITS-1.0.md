@@ -59,7 +59,11 @@ or changes call visibility. Opening/closing evidence preserves the view and sort
 An internal export dataset builder now reuses the log's current owner/tenant predicate and
 standard CSV/XLSX writers. Unknown counters remain empty/Unknown with explicit usage_known and
 known-only control totals. The builder refuses system/operator and missing-ID contexts; jobs
-must reconstruct the current caller before invoking it. This does not yet expose export:
+must reconstruct the current caller before invoking it. A frozen, versioned ExportAccess record
+now binds the original tenant, actor id/kind and OWN/TENANT maximum scope. Builds require that
+binding; later promotion cannot widen OWN, and TENANT still requires current workspace-wide
+settings.manage. A reusable read guard rejects owner/tenant/kind mismatches and permission loss.
+This does not yet expose export:
 queued execution, retained-file ownership/revocation checks and the UI download remain unfinished.
 CSV/XLSX export, linked-proposal navigation, hash-copy controls, standard demo/J-19 and full
 audit-lifecycle verification remain open.

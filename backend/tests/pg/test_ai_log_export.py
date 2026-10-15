@@ -12,8 +12,9 @@ from erev_api.auth.principal import RequestContext, system_principal
 from erev_api.clock import FrozenClock
 from erev_api.db.session import DbContext, tenant_session
 from erev_api.db.tables import ai_model_log
-from erev_api.domain.ai.log_export import dataset
-from erev_api.domain.reports.outputs import RunStamp
+from erev_api.domain.ai.log_export import ExportAccess, capture_access, require_access
+from erev_api.domain.ai.log_export import dataset as bound_dataset
+from erev_api.domain.reports.outputs import ReportData, RunStamp
 from erev_api.domain.reports.outputs.csv import render_csv
 from erev_api.domain.reports.outputs.xlsx import render_xlsx
 from erev_api.enums import PrincipalKind, TenantKind
@@ -24,6 +25,10 @@ from support.principals import colleague, member
 from support.rows import RowContext, ai_model_log_row
 
 pytestmark = pytest.mark.pg
+
+
+def dataset(ctx: RequestContext) -> ReportData:
+    return bound_dataset(ctx, capture_access(ctx))
 
 
 def test_export_dataset_scope_uncertainty_and_spreadsheet_safety(
@@ -121,3 +126,28 @@ def test_export_dataset_scope_uncertainty_and_spreadsheet_safety(
         dataset(replace(ctx, principal=replace(administrator, id=None)))
     with pytest.raises(Problem):
         dataset(replace(ctx, principal=replace(administrator, kind=PrincipalKind.OPERATOR)))
+
+    own_access = capture_access(ctx)
+    # The queued record survives serialization; current rights cannot expand its maximum scope.
+    retained = ExportAccess.model_validate_json(own_access.model_dump_json())
+    promoted_ctx = replace(ctx, principal=administrator)
+    assert bound_dataset(promoted_ctx, retained).row_count == 2
+    wide_access = capture_access(promoted_ctx)
+    assert wide_access.scope == "TENANT"
+    with pytest.raises(Problem) as demoted:
+        require_access(ctx, wide_access)
+    assert demoted.value.slug == "forbidden"
+    for changed in (
+        replace(principal, id=peer.user_id),
+        replace(principal, tenant_id=other.tenant_id),
+        replace(principal, kind=PrincipalKind.API_CLIENT),
+    ):
+        with pytest.raises(Problem) as hidden:
+            require_access(replace(ctx, principal=changed), retained)
+        assert hidden.value.slug == "not-found"
+    with pytest.raises(Problem):
+        require_access(
+            replace(ctx, principal=replace(principal, permissions=frozenset())), retained
+        )
+    with pytest.raises(Problem):
+        require_access(replace(ctx, principal=replace(principal, permission_scopes={})), retained)

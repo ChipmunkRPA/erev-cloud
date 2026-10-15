@@ -4,10 +4,13 @@ Read using the caller's current context, never a worker's unrestricted system pr
 No public export route or retained-file authorization is implied by this builder.
 """
 
-from typing import Any, Final
+from typing import Any, Final, Literal
+from uuid import UUID
 
 from erev_engine.canonical import canonical_bytes
+from pydantic import BaseModel, ConfigDict
 
+from erev_api.auth.entity_scope import holds_all
 from erev_api.auth.principal import RequestContext
 from erev_api.db.session import tenant_session
 from erev_api.db.tables import ai_model_log
@@ -38,21 +41,83 @@ COLUMNS: Final = (
 )
 
 
-def dataset(ctx: RequestContext) -> ReportData:
+class ExportAccess(BaseModel):
+    """Server-captured identity and maximum disclosure scope, retained with the queued export."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    version: Literal[1] = 1
+    tenant_id: UUID
+    actor_id: UUID
+    actor_kind: Literal["USER", "API_CLIENT"]
+    scope: Literal["OWN", "TENANT"]
+
+
+def _identity(ctx: RequestContext) -> None:
+    if (
+        ctx.principal.kind not in {PrincipalKind.USER, PrincipalKind.API_CLIENT}
+        or ctx.principal.id is None
+    ):
+        raise Problem("forbidden", "Call export requires the current caller's identity.")
+
+
+def _administrator(ctx: RequestContext) -> bool:
+    return "settings.manage" in ctx.principal.permissions and holds_all(
+        ctx.principal, "settings.manage"
+    )
+
+
+def _own_reader(ctx: RequestContext) -> bool:
+    return "ai.use" in ctx.principal.permissions and bool(
+        ctx.principal.permission_scopes.get("ai.use")
+    )
+
+
+def capture_access(ctx: RequestContext) -> ExportAccess:
+    """Capture on submission, never from client-selected actor/scope fields."""
+    _identity(ctx)
+    principal = ctx.principal
+    if not _administrator(ctx) and not _own_reader(ctx):
+        raise Problem("forbidden")
+    assert principal.id is not None
+    return ExportAccess(
+        tenant_id=principal.tenant_id,
+        actor_id=principal.id,
+        actor_kind="USER" if principal.kind is PrincipalKind.USER else "API_CLIENT",
+        scope="TENANT" if _administrator(ctx) else "OWN",
+    )
+
+
+def require_access(ctx: RequestContext, access: ExportAccess) -> None:
+    """Recheck on build, replay and every stored-output read, before selecting any content."""
+    _identity(ctx)
+    principal = ctx.principal
+    if (
+        principal.tenant_id != access.tenant_id
+        or principal.id != access.actor_id
+        or principal.kind.value != access.actor_kind
+    ):
+        raise Problem("not-found")
+    if not _administrator(ctx) and (access.scope == "TENANT" or not _own_reader(ctx)):
+        raise Problem("forbidden")
+
+
+def dataset(ctx: RequestContext, access: ExportAccess) -> ReportData:
     """One statement snapshot, newest first, with the same owner/tenant visibility as the API.
 
     Unknown counters are empty values, with an explicit usage-known column. Control totals
     distinguish known counters from unknown call count; they never assert complete usage.
     The standard writers supply spreadsheet-formula escaping and output run stamps.
     """
-    if (
-        ctx.principal.kind not in {PrincipalKind.USER, PrincipalKind.API_CLIENT}
-        or ctx.principal.id is None
-    ):
-        raise Problem("forbidden", "Call export requires the current caller's identity.")
+    require_access(ctx, access)
     statement = model_log_statement(ctx).order_by(
         ai_model_log.c.created_at.desc(), ai_model_log.c.id.desc()
     )
+    if access.scope == "OWN":
+        # A later administrator grant must not widen the original export request.
+        statement = statement.where(
+            ai_model_log.c.created_by == access.actor_id,
+            ai_model_log.c.created_by_kind == access.actor_kind,
+        )
     rows: list[dict[str, Any]] = []
     unknown = input_tokens = output_tokens = 0
     with tenant_session(ctx.principal.db_context, read_only=True) as session:
