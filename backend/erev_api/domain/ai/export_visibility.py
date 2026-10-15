@@ -12,6 +12,15 @@ from erev_api.enums import PrincipalKind
 CODE: Final = "ai_call_log_export"
 
 
+def source_permission(principal: Principal) -> str | None:
+    """The current source grant, independent of accounting-report run permissions."""
+    if "settings.manage" in principal.permissions and holds_all(principal, "settings.manage"):
+        return "settings.manage"
+    if "ai.use" in principal.permissions and principal.permission_scopes.get("ai.use"):
+        return "ai.use"
+    return None
+
+
 def protected() -> ColumnElement[bool]:
     """Missing bindings on the reserved report code must never use ordinary report access."""
     return or_(report_run.c.report_code == CODE, report_run.c.ai_export_access.is_not(None))

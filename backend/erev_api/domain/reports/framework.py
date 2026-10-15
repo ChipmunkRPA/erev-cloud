@@ -34,6 +34,10 @@ access registers) and, for an output, also in the caller's scope of ``report.exp
 ``GET /report-runs/{id}/output`` streams the file and appends one ``report.export`` audit event
 with the run id (REQ-PLT-019).
 
+Call-log exports additionally use their source grant (ai.use or workspace-wide settings.manage)
+and report.export, original requester identity and retained maximum scope. They do not require
+accounting report.run. The API enforces source MFA and reauthorizes cached command replies.
+
 Permissions by report (04 API-R-41 rev 1.128; supervisor rulings R-13, R-28, R-63 (a)): a report
 run must not reveal data whose own API route the caller's permissions refuse, and a register that
 holds no accounting data is not tied to ``report.run``. ``RUN_PERMISSIONS`` names the reports run
@@ -990,6 +994,8 @@ def definition_listed(principal: Principal, code: str) -> bool:
     without it reads the definitions of the reports it holds the run permission for (ruling
     R-63 (a): the three access registers for a Tenant Admin)."""
     held = principal.permissions
+    if code == export_visibility.CODE:
+        return export_visibility.source_permission(principal) is not None
     return RUN_PERMISSION in held or run_permission(code) in held
 
 
@@ -1202,6 +1208,8 @@ def _in_scope_entities(session: Session, principal: Principal, report_code: str)
     SCOPE-WORKSPACE-LISTS-1) — a run reveals nothing whose own route the caller's permissions
     refuse, entity by entity. Before, the run permission alone decided: a Viewer of two entities
     who audits one of them ran the approvals register over both."""
+    if report_code == export_visibility.CODE:
+        return {}  # Call evidence is actor/tenant scoped, never entity-filtered.
     rows = session.execute(select(legal_entity.c.id, legal_entity.c.code)).tuples()
     scopes = [
         scope
@@ -1368,7 +1376,9 @@ def run_permission(report_code: str) -> str:
 
 def admitted(principal: Principal) -> bool:
     """Whether ``principal`` may run any report: the test of the API-R-41 routes themselves."""
-    return any(code in principal.permissions for code in ADMITTING_PERMISSIONS)
+    return any(code in principal.permissions for code in ADMITTING_PERMISSIONS) or (
+        export_visibility.source_permission(principal) is not None
+    )
 
 
 def require_admitted(
@@ -1397,6 +1407,14 @@ def missing_permission(principal: Principal, report_code: str) -> RequiredPermis
     """The first permission ``report_code`` needs that ``principal`` does not hold (at the
     declared scope) — its run permission, then what ``REQUIRED_PERMISSIONS`` declares; None when
     it holds them all."""
+    if report_code == export_visibility.CODE:
+        if export_visibility.source_permission(principal) is None:
+            return RequiredPermission("ai.use")
+        if EXPORT_PERMISSION not in principal.permissions or not principal.permission_scopes.get(
+            EXPORT_PERMISSION
+        ):
+            return RequiredPermission(EXPORT_PERMISSION)
+        return None
     needed = (
         RequiredPermission(run_permission(report_code)),
         *REQUIRED_PERMISSIONS.get(report_code, ()),
@@ -2277,7 +2295,7 @@ def _under_run_permission(principal: Principal) -> ColumnElement[bool]:
     (``run_permission``; ruling R-63 (a)): ``report.run`` for every report ``RUN_PERMISSIONS``
     does not name, the named permission for the others. A permission the caller does not hold
     shows none of its reports' runs."""
-    named = sorted(RUN_PERMISSIONS)
+    named = sorted((*RUN_PERMISSIONS, export_visibility.CODE))
     families: list[tuple[str, ColumnElement[bool]]] = [
         (RUN_PERMISSION, report_run.c.report_code.not_in(named))
     ]
@@ -2285,6 +2303,13 @@ def _under_run_permission(principal: Principal) -> ColumnElement[bool]:
         codes = sorted(code for code, held in RUN_PERMISSIONS.items() if held == permission)
         families.append((permission, report_run.c.report_code.in_(codes)))
     clauses: list[ColumnElement[bool]] = []
+    if export_visibility.source_permission(principal) is not None:
+        clauses.append(
+            and_(
+                report_run.c.report_code == export_visibility.CODE,
+                export_visibility.readable(principal),
+            )
+        )
     for permission, of_reports in families:
         scope = principal.permission_scopes.get(permission)
         if scope is None:

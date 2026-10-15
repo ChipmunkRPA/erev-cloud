@@ -482,6 +482,24 @@ def get_request_context(
     return _session_context(request, auth, auth.active_tenant)
 
 
+def refresh_request_context(request: Request, clock: Clock) -> RequestContext:
+    """Reauthenticate after a potentially waiting replay lookup, preserving rate-limit admission.
+
+    Session, MFA and grant answers cached before the wait cannot authorize the stored reply.
+    This does not reset the request's rate-limit counters or change the presented credential.
+    """
+    for name in (
+        _SESSION_ATTRIBUTE,
+        _OPERATOR_ATTRIBUTE,
+        _BEARER_ATTRIBUTE,
+        _GRANTS_ATTRIBUTE,
+        _STEP_ATTRIBUTE,
+    ):
+        if hasattr(request.state, name):
+            delattr(request.state, name)
+    return get_request_context(request, clock)
+
+
 def get_optional_request_context(
     request: Request, clock: Annotated[Clock, Depends(get_clock)]
 ) -> RequestContext | AuthenticatedSession:

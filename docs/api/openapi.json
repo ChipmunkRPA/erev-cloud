@@ -86602,7 +86602,7 @@
                 }
               }
             },
-            "description": "Problem: forbidden"
+            "description": "Problem: forbidden, mfa-required"
           }
         },
         "summary": "Report Definitions List",
@@ -86665,7 +86665,7 @@
                 }
               }
             },
-            "description": "Problem: forbidden"
+            "description": "Problem: forbidden, mfa-required"
           },
           "404": {
             "content": {
@@ -86814,7 +86814,7 @@
                 }
               }
             },
-            "description": "Problem: forbidden"
+            "description": "Problem: forbidden, mfa-required"
           },
           "422": {
             "content": {
@@ -86894,7 +86894,7 @@
                 }
               }
             },
-            "description": "Problem: forbidden"
+            "description": "Problem: forbidden, mfa-required"
           },
           "409": {
             "content": {
@@ -87003,7 +87003,7 @@
                 }
               }
             },
-            "description": "Problem: forbidden"
+            "description": "Problem: forbidden, mfa-required"
           },
           "404": {
             "content": {
@@ -87162,7 +87162,7 @@
                 }
               }
             },
-            "description": "Problem: forbidden"
+            "description": "Problem: forbidden, mfa-required"
           },
           "404": {
             "content": {
@@ -87281,7 +87281,7 @@
                 }
               }
             },
-            "description": "Problem: forbidden"
+            "description": "Problem: forbidden, mfa-required"
           },
           "404": {
             "content": {
@@ -87389,7 +87389,7 @@
                 }
               }
             },
-            "description": "Problem: forbidden"
+            "description": "Problem: forbidden, mfa-required"
           },
           "404": {
             "content": {

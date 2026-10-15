@@ -77,8 +77,11 @@ builds under that identity, and checks again before storing bytes. Both formats 
 build tests; OWN stays OWN after promotion and permission loss prevents stored outputs. Call
 exports omit accounting ledger-head metadata. Source capture is explicitly OPEN/live.
 This does not yet expose export: the public catalogue definition is deliberately not seeded.
-Remaining integration is source-permission admission and MFA on the report API, authorization
-before cached create/rerun responses, public definition registration and the UI download menu.
+Report API admission now uses ai.use or workspace-wide settings.manage plus report.export for
+this code, including source MFA, without granting accounting-report access. An optional command
+replay guard authorizes the actual retained reply after lookup; protected exports refresh session
+and grants after that potentially waiting lookup. OWN replay remains OWN after promotion, while
+TENANT replay refuses demotion. Public definition registration and the UI download menu remain.
 CSV/XLSX export, linked-proposal navigation, hash-copy controls, standard demo/J-19 and full
 audit-lifecycle verification remain open.
 

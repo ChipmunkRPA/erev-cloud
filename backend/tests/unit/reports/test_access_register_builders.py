@@ -1067,7 +1067,12 @@ def _role(code: str) -> Any:
     from erev_api.auth.permissions import DEFAULT_ROLES
 
     held = DEFAULT_ROLES[code]
-    return SimpleNamespace(permissions=held, permission_scopes=dict.fromkeys(held, "*"))
+    return SimpleNamespace(
+        kind=PrincipalKind.USER,
+        id=None,
+        permissions=held,
+        permission_scopes=dict.fromkeys(held, "*"),
+    )
 
 
 THREE = (access.CODE, conflicts.CODE, inventory.CODE)  # RPT-24, RPT-25, RPT-27

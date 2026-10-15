@@ -48380,7 +48380,7 @@ export interface operations {
           "application/problem+json": components["schemas"]["ProblemOut"];
         };
       };
-      /** @description Problem: forbidden */
+      /** @description Problem: forbidden, mfa-required */
       403: {
         headers: {
           [name: string]: unknown;
@@ -48422,7 +48422,7 @@ export interface operations {
           "application/problem+json": components["schemas"]["ProblemOut"];
         };
       };
-      /** @description Problem: forbidden */
+      /** @description Problem: forbidden, mfa-required */
       403: {
         headers: {
           [name: string]: unknown;
@@ -48487,7 +48487,7 @@ export interface operations {
           "application/problem+json": components["schemas"]["ProblemOut"];
         };
       };
-      /** @description Problem: forbidden */
+      /** @description Problem: forbidden, mfa-required */
       403: {
         headers: {
           [name: string]: unknown;
@@ -48544,7 +48544,7 @@ export interface operations {
           "application/problem+json": components["schemas"]["ProblemOut"];
         };
       };
-      /** @description Problem: forbidden */
+      /** @description Problem: forbidden, mfa-required */
       403: {
         headers: {
           [name: string]: unknown;
@@ -48616,7 +48616,7 @@ export interface operations {
           "application/problem+json": components["schemas"]["ProblemOut"];
         };
       };
-      /** @description Problem: forbidden */
+      /** @description Problem: forbidden, mfa-required */
       403: {
         headers: {
           [name: string]: unknown;
@@ -48683,7 +48683,7 @@ export interface operations {
           "application/problem+json": components["schemas"]["ProblemOut"];
         };
       };
-      /** @description Problem: forbidden */
+      /** @description Problem: forbidden, mfa-required */
       403: {
         headers: {
           [name: string]: unknown;
@@ -48757,7 +48757,7 @@ export interface operations {
           "application/problem+json": components["schemas"]["ProblemOut"];
         };
       };
-      /** @description Problem: forbidden */
+      /** @description Problem: forbidden, mfa-required */
       403: {
         headers: {
           [name: string]: unknown;
@@ -48831,7 +48831,7 @@ export interface operations {
           "application/problem+json": components["schemas"]["ProblemOut"];
         };
       };
-      /** @description Problem: forbidden */
+      /** @description Problem: forbidden, mfa-required */
       403: {
         headers: {
           [name: string]: unknown;

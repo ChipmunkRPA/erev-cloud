@@ -2,6 +2,16 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Call-export API authorization and cached replies — October 15, 2026
+
+- Source-only AI users/settings administrators can use this export with report.export; these
+  grants do not admit accounting reports. Source MFA and requester binding guard reads.
+- Per-subject commands can guard the actual cached reply after lookup. Export replay checks its
+  retained scope and refreshes session/grants after that potentially waiting lookup. OWN stays
+  OWN after promotion; a retained TENANT reply refuses demotion. No duplicate route guards.
+- Public catalogue registration and the download UI remain pending. Verification details are in
+  docs/release/CI-2026-10-15.md. No deployment/provider calls/sign-off; broader gates remain open.
+
 ## Queued call-export execution and revocation — October 15, 2026
 
 - Internal run creation captures the requester binding; reruns preserve its maximum scope.
@@ -220,27 +230,6 @@
   expected failure. Focused typing and full lint pass. Evidence: .run/ai-admin-workflow-{tests,types,lint}.log.
   Frozen CI on 3cf8f5b remains active.
   No deployment, provider call or independent accounting sign-off.
-
-## Future-starting draft reader and browser acceptance — October 15, 2026
-
-- Real browser acceptance exposed GET contract returning 422 after a successful creation:
-  October inception followed the fixture's September open-period horizon. The engine correctly
-  emitted no member balance (C-05), but the reader treated this as missing trace evidence.
-- The reader now recognizes the explicit no-measured-period formula plus V4 draft zero-revenue
-  guard, with stored revenue/billing/progress all zero. It shows no measured period and does
-  not waive missing-trace refusals. No engine, posting or accounting-policy change.
-- 74 reader/acceptance checks pass; the existing damaged-trace API refusal also passes.
-  Full lint and backend/API typing pass (791 files). Explicit typing of the older unit module found
-  pre-existing Decimal/int comparison and optional-string errors; that module is not claimed clean.
-- Chromium with real API/PostgreSQL and the b4b8210 worker image's isolated Linux PDF parser
-  passed upload, extraction, nine decisions, confirmation and opening the accepted obligation.
-  Source attachment and zero new ledger postings verified. Synthetic provider; seeded session;
-  queued handler pumped in-process; Vite frontend. This does not prove standalone worker,
-  production web image, login, live-model quality or standard seeded E2E acceptance.
-- Evidence: .run/future-draft-reader-{tests,types-final,lint}.log;
-  .run/future-draft-browser-{tests,final}.log and .run/ai-live-browser-created.png.
-  Full frozen CI remains active on 3cf8f5b; Compose and independent accounting sign-off remain open.
-  No deployment. Temporary browser harness retained privately under .run.
 
 ## Outstanding release verification
 

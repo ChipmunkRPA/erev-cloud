@@ -5752,3 +5752,24 @@ cleanup in the shared database session kernel was also repaired and regression-t
   and cleaned up. That checkout was removed; diagnostics retained. Container hardening/Linux
   PDF checks remain passed on b4b8210, but Compose readiness is unverified. Frozen CI on
   3cf8f5b remains active. No deployment or independent accounting sign-off.
+
+## Future-starting draft reader and browser acceptance — October 15, 2026
+
+- Real browser acceptance exposed GET contract returning 422 after a successful creation:
+  October inception followed the fixture's September open-period horizon. The engine correctly
+  emitted no member balance (C-05), but the reader treated this as missing trace evidence.
+- The reader now recognizes the explicit no-measured-period formula plus V4 draft zero-revenue
+  guard, with stored revenue/billing/progress all zero. It shows no measured period and does
+  not waive missing-trace refusals. No engine, posting or accounting-policy change.
+- 74 reader/acceptance checks pass; the existing damaged-trace API refusal also passes.
+  Full lint and backend/API typing pass (791 files). Explicit typing of the older unit module found
+  pre-existing Decimal/int comparison and optional-string errors; that module is not claimed clean.
+- Chromium with real API/PostgreSQL and the b4b8210 worker image's isolated Linux PDF parser
+  passed upload, extraction, nine decisions, confirmation and opening the accepted obligation.
+  Source attachment and zero new ledger postings verified. Synthetic provider; seeded session;
+  queued handler pumped in-process; Vite frontend. This does not prove standalone worker,
+  production web image, login, live-model quality or standard seeded E2E acceptance.
+- Evidence: .run/future-draft-reader-{tests,types-final,lint}.log;
+  .run/future-draft-browser-{tests,final}.log and .run/ai-live-browser-created.png.
+  Full frozen CI remains active on 3cf8f5b; Compose and independent accounting sign-off remain open.
+  No deployment. Temporary browser harness retained privately under .run.

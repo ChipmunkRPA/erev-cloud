@@ -5210,6 +5210,12 @@ Rules (rev 1.2; SCREENS_B OQ-B-08, OQ-B-09):
 - **Class.** IM-S (UPDATE `status`, output columns, `row_count`, `control_totals`, `tie_out_results`, `ledger_heads`, `source_binding` (rev 1.55), `child_report_run_ids`, `disclosure_snapshot_ids`, `started_at`, `finished_at`, `problem`, SC-M while QUEUED or RUNNING; immutable afterwards, DB-03); RLS-T; PT-N; AUD-CMD.
 - **REQ areas.** RPT, CTL, FC, MIG.
 
+Call-export API integration (public catalogue activation pending): `ai_call_log_export` uses
+`ai.use` for OWN or workspace-wide `settings.manage` for TENANT, together with `report.export`;
+source MFA applies. These grants do not admit accounting-report runs. Create/rerun cached replies
+are authorized against their retained binding after the replay lookup; protected replies refresh
+session and grant data before return. A promoted caller's OWN reply is not recaptured as TENANT.
+
 | Column | Type | Null | Default | Constraints and notes |
 |---|---|---|---|---|
 | SC-T | | | | |

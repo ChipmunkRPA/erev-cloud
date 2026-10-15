@@ -28,6 +28,7 @@ from typing import Annotated, Final, Literal
 
 from fastapi import APIRouter, Depends, Query, Request, Response
 from fastapi.responses import StreamingResponse
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from erev_api.api.deps import (
@@ -52,12 +53,16 @@ from erev_api.api.lists import (
     list_params,
     paginate,
 )
-from erev_api.auth.dependencies import require, require_authenticated
+from erev_api.auth.dependencies import refresh_request_context, require, require_authenticated
 from erev_api.auth.principal import RequestContext
+from erev_api.clock import get_clock
 from erev_api.db.tables import report_run
+from erev_api.domain.ai import export_visibility
 from erev_api.domain.contracts import queries
 from erev_api.domain.reports import framework
 from erev_api.enums import RunStatus
+from erev_api.idempotency.store import Replay
+from erev_api.problems import Problem
 from erev_api.schemas.common import JobOut, ListOut
 from erev_api.schemas.reports import (
     ReportColumnOut,
@@ -75,7 +80,7 @@ JOB_PATH: Final = "/api/v1/jobs/{job_id}"
 RUN_ID_HEADER: Final = "X-Erev-Report-Run-Id"
 DOWNLOAD_CSP: Final = "sandbox"
 DATA_SORT: Final = "row"
-_READ_PROBLEMS: Final = ("unauthenticated", "session-expired", "forbidden")
+_READ_PROBLEMS: Final = ("unauthenticated", "session-expired", "forbidden", "mfa-required")
 _COMMAND_PROBLEMS: Final = (
     *_READ_PROBLEMS,
     "validation-failed",
@@ -114,12 +119,33 @@ def _admitted(
     framework.require_admitted(
         ctx, method=request.method, path=_route_path(request), keyring=request.app.state.keyring
     )
+    source = export_visibility.source_permission(ctx.principal)
+    if source is not None:
+        # Preserve the original context for ordinary reports; this checks source MFA only.
+        require(source)(request, ctx)
     return ctx
+
+
+def _call_export_replay_access(request: Request, ctx: RequestContext, replay: Replay) -> None:
+    """Authorize the actual stored response after lookup, before returning any cached bytes."""
+    saved_id = next(
+        (value for name, value in replay.headers.items() if name.lower() == RUN_ID_HEADER.lower()),
+        None,
+    )
+    if saved_id is not None and _call_export_run_access(request, uuid.UUID(saved_id), ctx):
+        current = refresh_request_context(request, get_clock(request))
+        before, after = ctx.principal, current.principal
+        if (before.tenant_id, before.id, before.kind) != (after.tenant_id, after.id, after.kind):
+            raise Problem("not-found")
+        _call_export_run_access(request, uuid.UUID(saved_id), current)
 
 
 type RunContext = Annotated[RequestContext, Depends(_admitted)]
 # A command's guard is ``command(per_subject=True)``; its handler admits the principal first.
-type RunCommand = Annotated[CommandContext, Depends(command(per_subject=True))]
+type RunCommand = Annotated[
+    CommandContext,
+    Depends(command(per_subject=True, replay_guard=_call_export_replay_access)),
+]
 type Params = Annotated[ListParams, Depends(list_params)]
 type Deps = Annotated[KernelDeps, Depends(kernel_deps)]
 
@@ -214,6 +240,36 @@ def report_runs_list(response: Response, ctx: RunContext, params: Params) -> Lis
     return ListOut[ReportRunOut](items=items, next_cursor=result.next_cursor)
 
 
+def _require_call_export(request: Request, ctx: RequestContext) -> None:
+    source = export_visibility.source_permission(ctx.principal) or "ai.use"
+    require(source)(request, ctx)
+    require(EXPORT)(request, ctx)
+
+
+def _call_export_run_access(
+    request: Request,
+    run_id: uuid.UUID,
+    ctx: RequestContext,
+) -> bool:
+    """Source MFA and retained ownership precede both direct reads and cached rerun replies."""
+    protected = queries.read(
+        ctx,
+        lambda session: session.scalar(
+            select(report_run.c.id).where(report_run.c.id == run_id, export_visibility.protected())
+        ),
+    )
+    if protected is not None:
+        queries.read(
+            ctx,
+            lambda session: framework.run_row(
+                session, ctx.principal, run_id, framework.RUN_PERMISSION
+            ),
+        )
+        _require_call_export(request, ctx)
+        return True
+    return False
+
+
 @router.post(
     "/report-runs",
     operation_id="report_runs_create",
@@ -230,7 +286,13 @@ def report_runs_create(
     """Start a report run: the caller holds the report's run permission and what it declares; the
     parameters are validated against the definition's ``parameters_schema`` and stored with their
     defaults; a file format needs ``report.export``."""
-    return _deferred(request, cmd, deps, lambda uow: framework.create_run(uow, body))
+
+    def start(uow: UnitOfWork) -> tuple[uuid.UUID, JobOut]:
+        if body.report_code == export_visibility.CODE:
+            _require_call_export(request, uow.ctx)
+        return framework.create_run(uow, body)
+
+    return _deferred(request, cmd, deps, start)
 
 
 @router.get(
@@ -289,6 +351,15 @@ def report_runs_data(
     )
 
 
+def _output_access(
+    request: Request,
+    run_id: uuid.UUID,
+    ctx: Annotated[RequestContext, Depends(require(EXPORT))],
+) -> RequestContext:
+    _call_export_run_access(request, run_id, ctx)
+    return ctx
+
+
 @router.get(
     "/report-runs/{run_id}/output",
     operation_id="report_runs_output",
@@ -300,7 +371,7 @@ def report_runs_data(
 )
 def report_runs_output(
     run_id: uuid.UUID,
-    ctx: Annotated[RequestContext, Depends(require(EXPORT))],
+    ctx: Annotated[RequestContext, Depends(_output_access)],
     deps: Deps,
     part: Annotated[Literal["output", "manifest"], Query()] = "output",
 ) -> StreamingResponse:
@@ -332,4 +403,9 @@ def report_runs_rerun(
 ) -> Response:
     """Rerun from the same source: identical parameters; the job result adds
     ``output_sha256_equal`` and ``control_totals_equal`` (REQ-RPT-002; CTL-029)."""
-    return _deferred(request, cmd, deps, lambda uow: framework.rerun(uow, run_id))
+
+    def start(uow: UnitOfWork) -> tuple[uuid.UUID, JobOut]:
+        _call_export_run_access(request, run_id, uow.ctx)
+        return framework.rerun(uow, run_id)
+
+    return _deferred(request, cmd, deps, start)

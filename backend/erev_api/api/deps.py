@@ -257,7 +257,11 @@ def command(
 
 
 @overload
-def command(*, per_subject: Literal[True]) -> Callable[..., Awaitable[CommandContext]]: ...
+def command(
+    *,
+    per_subject: Literal[True],
+    replay_guard: Callable[[Request, RequestContext, Replay], None] | None = None,
+) -> Callable[..., Awaitable[CommandContext]]: ...
 
 
 def command(
@@ -266,6 +270,7 @@ def command(
     precondition: Precondition = "none",
     per_subject: bool = False,
     all_entities: bool = False,
+    replay_guard: Callable[[Request, RequestContext, Replay], None] | None = None,
 ) -> Callable[..., Any]:
     """The dependency of every command route (DG-KRN-IDEM-01 to DG-KRN-IDEM-05).
 
@@ -277,8 +282,14 @@ def command(
     ``per_subject=True`` guards with ``require_authenticated()`` and leaves authorisation to the
     handler, for routes whose permission depends on the request body (API-R-12; SPEC-Q-157).
     ``all_entities=True`` guards with ``require_all_entities(permission)``: a tenant-wide act,
-    which a holder of named entities is refused (supervisor ruling R-28).
+    which a holder of named entities is refused (supervisor ruling R-28). A per-subject command
+    may supply ``replay_guard`` to reauthorize the actual stored reply after lookup and before
+    it is returned; its handler is not invoked on replay.
     """
+    # The optional resource check runs after the actual replay lookup, not only before it.
+    # This closes the window where an IN_PROGRESS request finishes between those two reads.
+    if replay_guard is not None and not per_subject:
+        raise ValueError("a replay guard requires a per-subject command")
     guard: Callable[..., RequestContext]
     if all_entities and (per_subject or permission is None):
         raise ValueError("a command for all entities names its permission")
@@ -330,6 +341,8 @@ def command(
             files=request.app.state.file_store,
         )
         if isinstance(outcome, Replay):
+            if replay_guard is not None:
+                await run_in_threadpool(replay_guard, request, ctx, outcome)
             raise IdempotentReplay(outcome)
         return CommandContext(ctx=ctx, started=outcome, expected_version=version)
 

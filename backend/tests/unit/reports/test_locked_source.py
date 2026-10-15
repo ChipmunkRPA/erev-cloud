@@ -590,6 +590,7 @@ def test_visibility_requires_the_locks_entity_to_be_the_runs_scope() -> None:
     from sqlalchemy.dialects import postgresql
 
     class _Principal:
+        permissions = frozenset({framework.RUN_PERMISSION})
         kind = PrincipalKind.USER
         id = None
         permission_scopes = {framework.RUN_PERMISSION: frozenset({ENTITY_B})}
@@ -618,6 +619,7 @@ def test_an_inconsistent_as_locked_run_is_refused_by_name_when_addressed() -> No
             return _Result(None if self.calls == 1 else hidden)
 
     class _Principal:
+        permissions = frozenset({framework.RUN_PERMISSION})
         kind = PrincipalKind.USER
         id = None
         permission_scopes = {framework.RUN_PERMISSION: "*"}
@@ -638,6 +640,7 @@ def test_a_run_absent_from_scope_stays_a_plain_not_found() -> None:
             return _Result(None)
 
     class _Principal:
+        permissions = frozenset({framework.RUN_PERMISSION})
         kind = PrincipalKind.USER
         id = None
         permission_scopes = {framework.RUN_PERMISSION: "*"}
@@ -660,6 +663,7 @@ def test_visibility_reconciles_book_period_and_parameters_with_the_lock() -> Non
     from sqlalchemy.dialects import postgresql
 
     class _Principal:
+        permissions = frozenset({framework.RUN_PERMISSION})
         kind = PrincipalKind.USER
         id = None
         permission_scopes = {framework.RUN_PERMISSION: "*"}
@@ -692,6 +696,7 @@ def test_visibility_admits_exactly_the_admitted_parameter_keys() -> None:
     from sqlalchemy.dialects import postgresql
 
     class _Principal:
+        permissions = frozenset({framework.RUN_PERMISSION})
         kind = PrincipalKind.USER
         id = None
         permission_scopes = {framework.RUN_PERMISSION: "*"}
@@ -718,6 +723,7 @@ class _ScopeRow:
 
 
 class _AllScopes:
+    permissions = frozenset({framework.RUN_PERMISSION})
     kind = PrincipalKind.USER
     id = None
     permission_scopes = {framework.RUN_PERMISSION: "*"}
