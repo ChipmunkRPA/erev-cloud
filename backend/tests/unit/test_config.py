@@ -63,7 +63,9 @@ def test_krn_cfg_02_keys_must_be_64_lowercase_hex(build: Build) -> None:
         assert "64 lowercase hexadecimal characters" in message
         leaked = [i for i in range(len(value) - 7) if value[i : i + 8] in message]
         assert not leaked, "the validation message contains part of the key value"
-    assert build().encryption_key.get_secret_value() == ENCRYPTION_KEY
+    key = build().encryption_key
+    assert key is not None
+    assert key.get_secret_value() == ENCRYPTION_KEY
 
 
 def test_krn_cfg_02_anthropic_provider_rules(build: Build) -> None:
@@ -369,3 +371,29 @@ def test_p2_production_requires_the_app_url_only(build: Build) -> None:
     # The local environments still need the whole pair (DG-ENV-10 unchanged for dev, test, e2e).
     _rejects(build, "EREV_DB_OWNER_URL", EREV_DB_OWNER_URL="")
     _rejects(build, "EREV_TEST_DB_OWNER_URL", EREV_ENV="test", EREV_TEST_DB_OWNER_URL="")
+
+
+def test_ai_provider_selection_defers_client_construction(
+    build: Build, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from unittest.mock import MagicMock
+
+    from erev_api.adapters.ai import anthropic as adapter
+    from erev_api.adapters.ai.provider import FakeProvider, get_provider
+
+    factory = MagicMock()
+    monkeypatch.setattr(adapter, "build_client", factory)
+    fake = build(EREV_ENV="test", EREV_AI_KILL_SWITCH="false")
+    assert get_provider(fake, tenant_ai_enabled=False) is None
+    assert isinstance(get_provider(fake, tenant_ai_enabled=True), FakeProvider)
+    configured = build(
+        EREV_ENV="dev",
+        EREV_AI_PROVIDER="anthropic",
+        ANTHROPIC_API_KEY="synthetic-key",
+        EREV_AI_KILL_SWITCH="false",
+    )
+    assert get_provider(configured, tenant_ai_enabled=False) is None
+    assert isinstance(get_provider(configured, tenant_ai_enabled=True), adapter.AnthropicProvider)
+    killed = configured.model_copy(update={"ai_kill_switch": True})
+    assert get_provider(killed, tenant_ai_enabled=True) is None
+    factory.assert_not_called()

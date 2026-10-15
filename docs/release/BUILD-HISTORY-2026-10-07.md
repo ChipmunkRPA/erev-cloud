@@ -3957,3 +3957,20 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
 - The category sweep still requires the unimplemented AI proposal lifecycle. No exemption
   or success claim was added. Full current-main route walk/release gates remain open.
   Older immutable CI 165d63c remains live at 42%; no deployment or readiness claim.
+
+## Shared option term persistence — October 14, 2026
+
+- Native entry and the migration applier share validated immutable term insertion. Converted
+  records carry their explicit total SSP, quantity-one convention and unclassified OTHER
+  subtype; no renewal, expiry or likelihood is invented. Native guards and compute/audit
+  ordering remain intact. The migration applier audits only after successful computation.
+- 25 focused migration/database checks passed (8.09s), including stored adapter values,
+  savepoint parent/term rollback, cross-contract refusal and exact money precision. Six
+  native entry/approval/likelihood/rollback cases passed (65.49s). Logs:
+  .run/shared-option-writer.log and .run/shared-option-writer-final.log.
+- 19 architecture/lock-order checks passed; strict production Mypy (883 files), test
+  Mypy and Ruff passed. See .run/shared-option-writer-architecture.log and *-types.log.
+- Converted-option capture still refuses until full platform capture, reconciliation and
+  approved promotion are verified. MIGRATION_PROMOTION remains unimplemented. This change
+  verifies term persistence, not complete import acceptance. No deployment/readiness claim.
+- Older immutable CI 165d63c remains live at 44%; it is not current-main release evidence.

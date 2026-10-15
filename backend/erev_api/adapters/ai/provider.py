@@ -12,7 +12,10 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from hashlib import sha256
 from pathlib import Path
-from typing import Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
+
+if TYPE_CHECKING:
+    from erev_api.config import Settings
 
 
 @dataclass(frozen=True, slots=True)
@@ -90,3 +93,26 @@ class FakeProvider:
             model=request.model,
             stop_reason=value["stop_reason"],
         )
+
+
+class ProviderError(RuntimeError):
+    """A safe error code for gateway evidence; never retain the SDK response body."""
+
+    def __init__(self, code: str, *, retryable: bool) -> None:
+        super().__init__(code)
+        self.code = code
+        self.retryable = retryable
+
+
+def get_provider(settings: Settings, *, tenant_ai_enabled: bool) -> AIProvider | None:
+    """Disabled means no provider construction or secret resolution (DG-AI-01)."""
+    if settings.ai_kill_switch or not tenant_ai_enabled:
+        return None
+    if settings.ai_provider == "fake":
+        return FakeProvider()
+    from erev_api.adapters.ai.anthropic import AnthropicProvider, ConfiguredAIKey, build_client
+
+    if settings.anthropic_api_key is None:
+        raise ValueError("ANTHROPIC_API_KEY is required for the configured AI provider")
+    store = ConfiguredAIKey(settings.anthropic_api_key)
+    return AnthropicProvider(lambda: build_client(store))

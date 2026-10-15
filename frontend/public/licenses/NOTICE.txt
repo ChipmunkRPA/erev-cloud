@@ -23,3 +23,7 @@ JetBrains Mono (https://www.jetbrains.com/lp/mono/)
 
 Phosphor Icons (https://github.com/phosphor-icons/react)
   Licence: MIT License. Copyright (c) 2020 Phosphor Icons.
+
+anthropic Python SDK (https://github.com/anthropics/anthropic-sdk-python)
+  Licence: MIT License. Copyright 2023 Anthropic, PBC.
+  Used as an unmodified library for the optional AI provider adapter.

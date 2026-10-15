@@ -14,7 +14,15 @@ from support.architecture import Finding, Import, imports, iter_files, read, rep
 
 RULE: Final = "DG-ARC-12"
 PY: Final = frozenset({".py"})
-NETWORK_MODULES: Final = ("httpx", "anthropic", "smtplib", "socket", "urllib.request")
+NETWORK_MODULES: Final = (
+    "httpx",
+    "httpx2",
+    "httpcore2",
+    "anthropic",
+    "smtplib",
+    "socket",
+    "urllib.request",
+)
 SCOPE: Final = ("backend/erev_api", "backend/erev_engine", "backend/tests")
 ALLOWED_PREFIXES: Final = ("backend/erev_api/adapters/", "backend/tests/support/")
 ALLOWLIST: Final = {
@@ -59,6 +67,8 @@ def test_dg_arc_12_network_import_outside_adapters() -> None:
         ("backend/erev_api/api/v1/x.py", "from anthropic import Anthropic\n", 1),
         ("backend/erev_api/domain/x.py", "import smtplib\n", 1),
         ("backend/erev_api/domain/x.py", "import socket\n", 1),
+        ("backend/erev_api/domain/x.py", "import httpx2\n", 1),
+        ("backend/erev_api/domain/x.py", "import httpcore2\n", 1),
         ("backend/erev_api/domain/x.py", "import urllib.request\n", 1),
         ("backend/erev_api/domain/x.py", "from urllib import request\n", 1),
         ("backend/erev_api/domain/x.py", "from urllib.request import urlopen\n", 1),
@@ -73,3 +83,15 @@ def test_dg_arc_12_network_import_outside_adapters() -> None:
 def test_network_import_rules(path: str, source: str, expected: int) -> None:
     findings = check_network_imports(path, source)
     assert len(findings) == expected, report(findings)
+
+
+def test_anthropic_import_only_in_adapter() -> None:
+    permitted = "backend/erev_api/adapters/ai/anthropic.py"
+    violations = [
+        path
+        for path in iter_files("backend/erev_api", suffixes=PY)
+        if path != permitted
+        for item in imports(path, ast.parse(read(path), filename=path))
+        if _network_module(item) == "anthropic"
+    ]
+    assert violations == []

@@ -51,3 +51,10 @@ name = "pyasn1-modules"
 licence = "BSD-2-Clause"
 source = "https://github.com/pyasn1/pyasn1-modules/blob/main/LICENSE.txt"
 reason = "google-auth dependency (gcp extra); metadata licence field reads 'BSD' without a clause count"
+
+[[package]]
+ecosystem = "python"
+name = "httpx2-jsfetch"
+licence = "BSD-3-Clause"
+source = "https://pypi.org/project/httpx2-jsfetch/1.0/"
+reason = "httpx2 conditional Pyodide dependency; not installed on the local platform. PyPI 1.0 metadata declares BSD-3-Clause."

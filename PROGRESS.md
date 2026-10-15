@@ -2,6 +2,25 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## AI SDK adapter and provider selection — October 14, 2026
+
+- Added the official Anthropic SDK (locked 1.14.0), explicit vendor endpoint, 60-second
+  timeout, no SDK retries and no SDK telemetry. Secrets resolve lazily through the scoped
+  store. Text blocks, usage, model, stop reason, digest and monotonic latency are mapped;
+  typed failures produce safe codes and retryability without provider response bodies.
+- Tenant disablement/kill switch returns no provider; fake remains the test default.
+  Selection constructs no client. All adapter tests use mocked clients; no live AI calls.
+- Adapter/configuration/architecture checks: 110 passed; final adapter/configuration,
+  licence and notices checks: 55 passed. Strict API/test typing: 747 sources; Ruff passes.
+  Logs: .run/ai-sdk-checks.log, .run/ai-sdk-final.log, .run/ai-sdk-types.log.
+  Final SDK network-boundary checks: 16 passed, .run/ai-sdk-network-final.log.
+- Licence check: 141 packages, zero findings. Development dependency audit: zero Python
+  vulnerabilities across all 85 pinned runtime distributions and zero npm advisories;
+  .run/ai-sdk-licences.log and .run/ai-sdk-audit.log. Final clean-candidate audit still owed.
+- Gateway/jobs, retained prompt fixtures, human acceptance and lifecycle auditing remain
+  unfinished. SUPERVISOR VERIFICATION NEEDED: live Anthropic provider smoke test (not run;
+  no live calls authorized here). No deployment or production-readiness claim.
+
 ## AI proposal evidence and state guards — October 14, 2026
 
 - Migration 0148 adds T-AI-01, E-73/E-74 and the generated SM-11 transition guard.
@@ -225,23 +244,6 @@
 - The public capture refusal stays: reconciliation still compares raw legacy dollar-unit
   quantity 10 against option quantity 0.4, and MIGRATION_PROMOTION is unimplemented. Full
   import/reconcile/promotion acceptance remains open. Older CI 165d63c is live at 45%.
-
-## Shared option term persistence — October 14, 2026
-
-- Native entry and the migration applier share validated immutable term insertion. Converted
-  records carry their explicit total SSP, quantity-one convention and unclassified OTHER
-  subtype; no renewal, expiry or likelihood is invented. Native guards and compute/audit
-  ordering remain intact. The migration applier audits only after successful computation.
-- 25 focused migration/database checks passed (8.09s), including stored adapter values,
-  savepoint parent/term rollback, cross-contract refusal and exact money precision. Six
-  native entry/approval/likelihood/rollback cases passed (65.49s). Logs:
-  .run/shared-option-writer.log and .run/shared-option-writer-final.log.
-- 19 architecture/lock-order checks passed; strict production Mypy (883 files), test
-  Mypy and Ruff passed. See .run/shared-option-writer-architecture.log and *-types.log.
-- Converted-option capture still refuses until full platform capture, reconciliation and
-  approved promotion are verified. MIGRATION_PROMOTION remains unimplemented. This change
-  verifies term persistence, not complete import acceptance. No deployment/readiness claim.
-- Older immutable CI 165d63c remains live at 44%; it is not current-main release evidence.
 
 ## Outstanding release verification
 
