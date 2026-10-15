@@ -2270,6 +2270,19 @@ def insert_contract_rows(
     )
 
 
+def contract_recent_view_row(ctx: RowContext, session: Session) -> dict[str, Any]:
+    chain = insert_contract_rows(session, ctx.tenant_id)
+    return {
+        "tenant_id": ctx.tenant_id,
+        "id": new_id(),
+        "actor_id": ctx.user_id,
+        "actor_kind": "USER",
+        "contract_id": chain.contract_id,
+        "viewed_at": datetime.now(UTC),
+        **_SYSTEM,
+    }
+
+
 def modification_values(
     tenant_id: UUID, *, contract_id: UUID, contracting_entity_id: UUID, **extra: Any
 ) -> dict[str, Any]:
@@ -4974,6 +4987,7 @@ ROW_BUILDERS: Final[Mapping[str, RowBuilder]] = MappingProxyType(
         "combination_group": lambda ctx, _: combination_group_values(ctx.tenant_id),
         "combination_group_member": combination_group_member_row,
         "contract": contract_row,
+        "contract_recent_view": contract_recent_view_row,
         "contract_computation": contract_computation_row,
         "contract_event": contract_event_row,
         "contract_hold": contract_hold_row,

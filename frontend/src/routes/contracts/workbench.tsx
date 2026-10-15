@@ -13,9 +13,11 @@
 // A contract on hold shows "Release hold" (§4.1.6 and §4.9.4 rev 1.75; 04 rev 1.299).
 // Not rendered (XR-14; R-RC-1): "Pin to Home", "Void contract" (CTR-11), "Regroup lines" (CTR-17),
 // the currency view switch (L5-4-Q-24) and the tab warnings (L5-4-Q-25).
-import { useQueries, useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type ReactNode, useCallback, useState } from "react";
 import { Link, useLocation, useMatch, useNavigate, useParams } from "react-router";
+
+import { queryKey } from "../../lib/api/query-keys";
 
 import { testIdKey } from "../../components/data-grid/DataGrid";
 import {
@@ -1704,6 +1706,7 @@ export function ContractWorkbench() {
 }
 
 function WorkbenchPage({ me }: { readonly me: Me }) {
+  const queryClient = useQueryClient();
   const params = useParams();
   const contractId = params.contractId ?? "";
   const obligationId = useMatch(OBLIGATION_ROUTE)?.params.obligationId ?? null;
@@ -1754,7 +1757,13 @@ function WorkbenchPage({ me }: { readonly me: Me }) {
 
   const contract = useQuery({
     queryKey: contractKey(contractId, context),
-    queryFn: () => fetchContract(contractId, context),
+    queryFn: async () => {
+      const opened = await fetchContract(contractId, context, true);
+      void queryClient.invalidateQueries({ queryKey: queryKey("contracts", "tenant") });
+      return opened;
+    },
+    staleTime: 0,
+    refetchOnMount: "always",
     enabled: contextReady,
     // An answered refusal (not found, or a measure the trace cannot answer) is not asked again.
     retry: (count, error) =>

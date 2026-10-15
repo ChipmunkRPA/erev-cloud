@@ -29960,6 +29960,8 @@ export interface operations {
         as_of?: string | null;
         /** @description Record cut-off, RFC 3339 with an offset (API-C-10) */
         known_at?: string | null;
+        /** @description Record this successful open in private recent history */
+        record_view?: boolean;
       };
       header?: never;
       path: {

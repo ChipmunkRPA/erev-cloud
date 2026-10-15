@@ -2,6 +2,15 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Private recently viewed contracts — October 15, 2026
+
+- Revision 0159 stores the last 50 successful contract opens per caller, with tenant and owner
+  RLS and serialized updates/pruning. Failed reads and lists never record visits.
+- Recently viewed uses that history, rechecks current contract scope and supports ordinary
+  filters, counts and pagination. Reopening a contract moves it to the front.
+- Verification is recorded in docs/release/CI-2026-10-15.md. No accounting events or contract
+  versions are changed. No deployment; full release gates and independent sign-off remain open.
+
 ## Applied-modification contract filters — October 15, 2026
 
 - Modified-in-period and Modified this period now read APPLIED modification effective dates
@@ -229,24 +238,6 @@
   backend typing passes 795 files, frontend typing and full lint pass (503 control markers).
   API verification and evidence are recorded in docs/release/CI-2026-10-15.md.
 - No deployment or provider calls; frozen CI on 3cf8f5b remains active on its own database.
-
-## Independent administrator AI approvals — October 15, 2026
-
-- New AI submissions use AI_SETTINGS_VERSION with workspace-wide settings.manage review.
-  A different Tenant Admin can approve without accounting privileges; self-approval remains
-  refused. Retained REGISTRY_VERSION requests keep their original routing and publication hooks.
-  Emergency disable, model/text review and immutable content checks remain in the lifecycle.
-- settings.manage is an approval permission, so API clients cannot request or retain it in
-  effective grants. Migration 0156 updates permission metadata and report filters; upgrade,
-  downgrade, enum order and immutable catalogue triggers pass 12 focused checks.
-- The broader regression selection passes 95 checks, including API clients, legacy routing,
-  emergency disable and earlier report-filter migration compatibility. Evidence:
-  .run/ai-admin-approval-{release,migration,release-types,frontend,lint}.log.
-- Approval UI subject labels, OpenAPI/TypeScript and the data model are aligned. Frontend typing
-  and 55 focused tests pass; backend typing passes 797 files. Full lint passes (503 control
-  markers). The settings editor and standard J-19/demo journey remain unfinished.
-- No deployment or provider calls. Frozen CI on 3cf8f5b remains running and predates this work;
-  broader release verification and independent accounting sign-off remain outstanding.
 
 ## Outstanding release verification
 

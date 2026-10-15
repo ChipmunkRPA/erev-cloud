@@ -4474,6 +4474,30 @@ Keys: `PRIMARY KEY (tenant_id, id)`; `ux_computation_verification__token (tenant
 
 ## 8. Subledger tables
 
+### T-CON-27 `contract_recent_view`
+
+Private operational navigation history (revision 0159), IM-M with DELETE, AUD-OPS. Tenant RLS
+and a restrictive actor-id policy apply. USER and API_CLIENT callers have separate history;
+SYSTEM and support operators do not record opens. A successful contract detail read with record_view=true upserts the
+caller/contract pair and retains the latest 50 pairs under an actor-specific transaction lock.
+Failed or unauthorized detail reads do not record a visit. Unmarked detail reads and lists never record visits.
+The workbench marks only the opened contract, not background reads of related contracts.
+Recently viewed rechecks current contract permission/entity scope, orders by viewed_at descending
+then contract id descending, and applies ordinary filters/counts/pagination to that population.
+This history does not change contract timestamps, versions, events or accounting calculations.
+
+| Column | Type | Null | Default | Notes |
+|---|---|---|---|---|
+| SC-T | | | | Tenant and id |
+| `actor_id` | uuid | N | | Caller id; equals current_user_id under RLS |
+| `actor_kind` | erev.principal_kind | N | | USER or API_CLIENT |
+| `contract_id` | uuid | N | | Tenant FK to contract |
+| `viewed_at` | timestamptz | N | | Database clock at successful open |
+| SC-C, SC-M | | | | Operational stamps |
+
+Keys: `PRIMARY KEY (tenant_id, id)`. Unique: (tenant_id, actor_id, actor_kind, contract_id). Index: (tenant_id, actor_id, actor_kind,
+viewed_at, contract_id). History is disposable on downgrade.
+
 ### 8.0 Layers
 
 | Layer | Tables | Grain | Balance enforcement |

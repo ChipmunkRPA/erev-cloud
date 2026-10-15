@@ -3863,3 +3863,34 @@ describe("SF-03 Release hold", () => {
     expect(within(pane).queryByRole("table", { name: "Holds" })).toBeNull();
   });
 });
+
+it("marks only the opened workbench contract as a recent view", async () => {
+  serve(newRecorded());
+  const otherId = "018f1d20-1234-7123-8123-123456789abc";
+  const relatedMarks: (string | null)[] = [];
+  const current = contract({
+    combination_group: {
+      id: "3c4d5e6f-7081-4a92-8ba3-b4c5d6e7f809",
+      code: "CG-000001",
+      is_singleton: false,
+      member_contract_ids: [CONTRACT_ID, otherId],
+    },
+  });
+  const marked: (string | null)[] = [];
+  server.use(
+    http.get(apiUrl(`/api/v1/contracts/${CONTRACT_ID}`), ({ request }) => {
+      marked.push(new URL(request.url).searchParams.get("record_view"));
+      return HttpResponse.json(current);
+    }),
+    http.get(apiUrl(`/api/v1/contracts/${otherId}`), ({ request }) => {
+      relatedMarks.push(new URL(request.url).searchParams.get("record_view"));
+      return HttpResponse.json(contract({ id: otherId }));
+    }),
+  );
+  renderApp(`/contracts/${CONTRACT_ID}/obligations?${CONTEXT}`, {
+    me: MAYA,
+    screenRoutes: SCREEN_ROUTES,
+  });
+  await waitFor(() => expect(marked).toContain("true"));
+  await waitFor(() => expect(relatedMarks).toContain(null));
+});

@@ -53231,6 +53231,18 @@
               "description": "Record cut-off, RFC 3339 with an offset (API-C-10)",
               "title": "Known At"
             }
+          },
+          {
+            "description": "Record this successful open in private recent history",
+            "in": "query",
+            "name": "record_view",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Record this successful open in private recent history",
+              "title": "Record View",
+              "type": "boolean"
+            }
           }
         ],
         "responses": {

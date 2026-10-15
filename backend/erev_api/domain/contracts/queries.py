@@ -92,7 +92,7 @@ from erev_api.db.tables import (
     subledger_line,
 )
 from erev_api.db.types import ExactType, MoneyType
-from erev_api.domain.contracts import exception_counts, material_rights, repo, to_date
+from erev_api.domain.contracts import exception_counts, material_rights, recent_views, repo, to_date
 from erev_api.domain.journals import subledger
 from erev_api.domain.reports import tie_outs
 from erev_api.enums import (
@@ -1246,13 +1246,19 @@ def contract_out(
 
 
 def get_contract(
-    ctx: RequestContext, contract_id: UUID, *, params: ReadParams, now: datetime
+    ctx: RequestContext,
+    contract_id: UUID,
+    *,
+    params: ReadParams,
+    now: datetime,
+    record_view: bool = False,
 ) -> ContractOut:
     """``GET /contracts/{id}``: a to-date measure the trace cannot answer is refused by name."""
-    return read(
-        ctx,
-        lambda session: contract_out(session, contract_id, params=params, now=now, refuse=True),
-    )
+    with tenant_session(ctx.principal.db_context, read_only=not record_view) as session:
+        out = contract_out(session, contract_id, params=params, now=now, refuse=True)
+        if record_view:
+            recent_views.record(session, ctx.principal, contract_id)
+        return out
 
 
 def contract_list_items(
@@ -1397,7 +1403,7 @@ def _modified_in_period(*, key: str | None, as_of: date | None, now: datetime) -
     )
 
 
-def list_statement(filters: ListFilters, *, now: datetime) -> Select[Any]:
+def list_statement(filters: ListFilters, *, now: datetime, recent: Any = None) -> Select[Any]:
     """The visible contracts under ``filters`` with the ``transaction_price`` sort column."""
     tenant = contract.c.tenant_id
     statement = select(contract, LIST_PRICE).select_from(
@@ -1450,8 +1456,11 @@ def list_statement(filters: ListFilters, *, now: datetime) -> Select[Any]:
         case ContractQuickList.MODIFIED_THIS_PERIOD:
             statement = statement.where(_modified_in_period(key=None, as_of=filters.as_of, now=now))
         case ContractQuickList.RECENTLY_VIEWED:
-            # No durable store of opened contracts exists yet.
-            statement = statement.where(false())
+            if recent is None:
+                statement = statement.where(false())
+            else:
+                statement = statement.join(recent, recent.c.contract_id == contract.c.id)
+                statement = statement.add_columns(recent.c.viewed_at)
         case ContractQuickList.LARGEST_VALUE | None:
             pass
     return statement
@@ -1465,7 +1474,8 @@ def list_contracts[T](
     page: Callable[[Session, Select[Any]], T],
 ) -> T:
     """One page of contracts; ``page`` applies the list parameters and builds the items."""
-    return read(ctx, lambda session: page(session, list_statement(filters, now=now)))
+    recent = recent_views.statement(ctx.principal).subquery("recent_contracts")
+    return read(ctx, lambda session: page(session, list_statement(filters, now=now, recent=recent)))
 
 
 # --- versions ------------------------------------------------------------------------------------

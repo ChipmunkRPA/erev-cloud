@@ -481,6 +481,9 @@ RULES: Final[Mapping[str, TableRule]] = MappingProxyType(
         "notification": _regenerated(_K.OPERATIONAL, "produced by sandbox activity"),
         "notification_preference": _regenerated(_K.OPERATIONAL, "user preferences (Q-7)"),
         "saved_view": _regenerated(_K.OPERATIONAL, "user workspace state (Q-7)"),
+        "contract_recent_view": _regenerated(
+            _K.OPERATIONAL, "private navigation history is not copied"
+        ),
         "idempotency_record": _regenerated(_K.OPERATIONAL, "per-command records (IM-E)"),
         "approval_delegation": _regenerated(_K.OPERATIONAL, "time-bound delegations (Q-7)"),
         "access_review_campaign": _regenerated(_K.OPERATIONAL, "the source's reviews (Q-7)"),

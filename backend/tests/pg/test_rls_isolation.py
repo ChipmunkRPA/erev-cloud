@@ -152,9 +152,14 @@ def test_ctl_036_cross_tenant_isolation(table_name: str, two_tenants: Tenants) -
     table = metadata.tables[f"erev.{table_name}"]
     build = ROW_BUILDERS[table_name]
     a, b, user_id = two_tenants.a, two_tenants.b, two_tenants.user_id
+
+    def context(tenant_id: UUID) -> DbContext:
+        # Navigation history is private even to the tenant's SYSTEM context.
+        return DbContext(tenant_id, user_id if table_name == "contract_recent_view" else None, "*")
+
     inserted: dict[UUID, dict[str, Any]] = {}
     for tenant_id in (a, b):
-        with tenant_session(_all_entities(tenant_id)) as session:
+        with tenant_session(context(tenant_id)) as session:
             row = build(RowContext(tenant_id, user_id), session)
             if table_name not in PROVISIONED_TABLES:
                 session.execute(insert(table).values(**row))
@@ -166,7 +171,7 @@ def test_ctl_036_cross_tenant_isolation(table_name: str, two_tenants: Tenants) -
     def count(*tenants: UUID) -> Executable:
         return select(func.count()).select_from(table).where(table.c.tenant_id.in_(tenants))
 
-    with tenant_session(_all_entities(a)) as session:
+    with tenant_session(context(a)) as session:
         # Provisioned tenants hold other rows too (the admin membership, the first audit event),
         # so match the row by its primary key.
         key = [column == inserted[a][column.name] for column in table.primary_key.columns]

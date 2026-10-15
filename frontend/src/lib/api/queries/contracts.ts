@@ -352,8 +352,15 @@ export function contractKey(contractId: string, context: RecordContext): QueryKe
 }
 
 /** API-S-Contract at the version in context, with its currency registered (DS-FMT-03). */
-export async function fetchContract(contractId: string, context: RecordContext): Promise<Contract> {
-  const { data } = await readJson<Contract>(contractPathOf(contractId), recordParams(context));
+export async function fetchContract(
+  contractId: string,
+  context: RecordContext,
+  recordView = false,
+): Promise<Contract> {
+  const { data } = await readJson<Contract>(contractPathOf(contractId), {
+    ...recordParams(context),
+    ...(recordView ? { record_view: true } : {}),
+  });
   await registerCodes([data.transaction_currency]);
   return data;
 }

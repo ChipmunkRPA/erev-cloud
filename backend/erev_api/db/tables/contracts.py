@@ -34,6 +34,7 @@ from erev_api.db.tables.platform import (
     _sc_c_sc_m,
     _timestamp,
     config_status,
+    principal_kind,
     registry_scope,
 )
 from erev_api.db.tables.reference import book_code_type, source_system
@@ -431,4 +432,17 @@ material_right: Final = Table(
         "is_legacy_quantity_ssp_dollars", Boolean(), nullable=False, server_default=text("false")
     ),
     *_sc_c(),
+)
+
+
+contract_recent_view: Final = Table(
+    "contract_recent_view",
+    metadata,
+    Column("tenant_id", Uuid(), primary_key=True),
+    Column("id", Uuid(), primary_key=True),
+    Column("actor_id", Uuid(), nullable=False),
+    Column("actor_kind", principal_kind, nullable=False),
+    Column("contract_id", Uuid(), nullable=False),
+    _timestamp("viewed_at", nullable=False),
+    *_sc_c_sc_m(),
 )

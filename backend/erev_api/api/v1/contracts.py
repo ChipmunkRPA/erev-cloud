@@ -240,7 +240,14 @@ def contracts_list(
     def page(
         session: Session, statement: Select[Any]
     ) -> tuple[ListResult, list[ContractListItemOut]]:
-        result = paginate(session, statement, CONTRACT_LIST, listing)
+        spec = CONTRACT_LIST
+        if quick_list is ContractQuickList.RECENTLY_VIEWED:
+            spec = dataclasses.replace(
+                spec,
+                sort_keys={**spec.sort_keys, "viewed_at": statement.selected_columns.viewed_at},
+                default_sort="-viewed_at",
+            )
+        result = paginate(session, statement, spec, listing)
         items = queries.contract_list_items(session, result.items, params=read_params, now=now)
         return result, items
 
@@ -295,10 +302,17 @@ def contracts_get(
     book: Book = None,
     as_of: AsOf = None,
     known_at: KnownAt = None,
+    record_view: Annotated[
+        bool, Query(description="Record this successful open in private recent history")
+    ] = False,
 ) -> ContractOut:
     """API-S-Contract at the version in context (API-C-10); ETag ``"s<head_stream_version>"``."""
     out = queries.get_contract(
-        ctx, contract_id, params=_read_params(book, as_of, known_at), now=clock.now()
+        ctx,
+        contract_id,
+        params=_read_params(book, as_of, known_at),
+        now=clock.now(),
+        record_view=record_view,
     )
     response.headers["ETag"] = _etag(out)
     return out

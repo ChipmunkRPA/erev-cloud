@@ -189,3 +189,6 @@ def test_retained_exports_are_private_and_recheck_current_grants(
         assert session.scalar(
             select(report_run.c.ai_export_access).where(report_run.c.id == exported["id"])
         ) == own.model_dump(mode="json")
+
+    # A refused older downgrade can already have removed newer disposable-history revisions.
+    command.upgrade(alembic_config(), "head")

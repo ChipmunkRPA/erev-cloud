@@ -5812,3 +5812,21 @@ cleanup in the shared database session kernel was also repaired and regression-t
   Earlier expanded runs caught test-fixture enum/key-reuse mistakes, corrected in the API rerun.
 - No deployment or provider calls. Frozen CI on 3cf8f5b remains active; independent accounting
   sign-off and broader release verification remain outstanding.
+
+## Independent administrator AI approvals — October 15, 2026
+
+- New AI submissions use AI_SETTINGS_VERSION with workspace-wide settings.manage review.
+  A different Tenant Admin can approve without accounting privileges; self-approval remains
+  refused. Retained REGISTRY_VERSION requests keep their original routing and publication hooks.
+  Emergency disable, model/text review and immutable content checks remain in the lifecycle.
+- settings.manage is an approval permission, so API clients cannot request or retain it in
+  effective grants. Migration 0156 updates permission metadata and report filters; upgrade,
+  downgrade, enum order and immutable catalogue triggers pass 12 focused checks.
+- The broader regression selection passes 95 checks, including API clients, legacy routing,
+  emergency disable and earlier report-filter migration compatibility. Evidence:
+  .run/ai-admin-approval-{release,migration,release-types,frontend,lint}.log.
+- Approval UI subject labels, OpenAPI/TypeScript and the data model are aligned. Frontend typing
+  and 55 focused tests pass; backend typing passes 797 files. Full lint passes (503 control
+  markers). The settings editor and standard J-19/demo journey remain unfinished.
+- No deployment or provider calls. Frozen CI on 3cf8f5b remains running and predates this work;
+  broader release verification and independent accounting sign-off remain outstanding.
