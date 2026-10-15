@@ -830,3 +830,13 @@ uncertain request is retried. It offers only first-close locks with retained sna
 Historical inactive entities/books remain selectable; the server remains authoritative for
 source validity. Re-lock variance, contract sample/change/access generation and real browser
 acceptance are still unfinished. No new backend accounting behavior or deployment is included.
+
+
+## October 14, 2026 — first-close contents presentation
+
+The detail screen now lists required first-close sections and missing filenames using the
+retained manifest, exposes the retained lock ID, sorts payload paths, and offers named,
+keyboard-accessible hash-copy controls. Presence is distinct from archive verification;
+the download boundary continues to verify original bytes and retained sources. The manifest
+is separately hashed, not listed inside itself. Re-lock variance, other pack kinds, remaining
+presentation and actual browser acceptance remain outstanding; this does not complete RPS-20.

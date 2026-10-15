@@ -1,3 +1,6 @@
+import { CopySimple } from "../../components/icons/registry";
+import { announce } from "../../lib/a11y/announce";
+import { ClosePackContents } from "./contents";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link, useParams } from "react-router";
@@ -27,6 +30,26 @@ import { EvidenceAccessLimited } from "./evidence";
 export function EvidencePackStatus({ status }: { readonly status: string }) {
   const chip = chipFor("E-67", status);
   return chip === null ? null : <StatusChip status={chip.status} caption={chip.caption} />;
+}
+
+function FileHash({ sha, path }: { readonly sha: string; readonly path: string }) {
+  return (
+    <span className="inline-flex items-center gap-2">
+      <span className="break-all font-mono text-mono-sm">{sha}</span>
+      <Button
+        variant="ghost"
+        size="sm"
+        icon={CopySimple}
+        aria-label={t("evidence.packs.copyFileSha", { path })}
+        onClick={() => {
+          void navigator.clipboard
+            .writeText(sha)
+            .then(() => announce(t("reports.stamp.copied"), "polite"))
+            .catch(() => announce(t("evidence.packs.copyHashFailed"), "polite"));
+        }}
+      />
+    </span>
+  );
 }
 
 function PackRecord({ id }: { readonly id: string }) {
@@ -86,6 +109,7 @@ function PackRecord({ id }: { readonly id: string }) {
           { label: t("evidence.packs.entity"), value: data.entity_code },
           { label: t("evidence.packs.book"), value: bookLabel(data.book) },
           { label: t("evidence.packs.period"), value: data.period_key },
+          { label: t("evidence.packs.lock"), value: data.period_lock_id },
           { label: t("evidence.packs.created"), value: formatTimestamp(data.created_at) },
         ]}
         actions={
@@ -114,10 +138,18 @@ function PackRecord({ id }: { readonly id: string }) {
       ) : null}
       {succeeded && data.manifest !== null ? (
         <section className="space-y-4 p-[var(--panel-pad)]">
+          <Banner tone="info" title={t("evidence.packs.verify")} />
+          <ClosePackContents pack={data} />
           <h2 className="text-title-md">{t("evidence.packs.files")}</h2>
           <dl>
             <dt>{t("evidence.packs.manifest")}</dt>
-            <dd className="break-all font-mono text-mono-sm">{data.manifest_sha256}</dd>
+            <dd>
+              {data.manifest_sha256 === null ? (
+                "—"
+              ) : (
+                <FileHash sha={data.manifest_sha256} path="manifest.json" />
+              )}
+            </dd>
           </dl>
           <div className="overflow-auto">
             <table className="w-full text-left text-body-sm">
@@ -132,24 +164,28 @@ function PackRecord({ id }: { readonly id: string }) {
                 </tr>
               </thead>
               <tbody>
-                {data.manifest.files.map((file) => (
-                  <tr key={file.path} className="border-t border-hairline">
-                    <th scope="row" className="break-all p-2 font-normal">
-                      {file.path}
-                    </th>
-                    <td className="p-2">
-                      {file.report_run_id === null ? (
-                        "—"
-                      ) : (
-                        <Link className="underline" to={reportRunRoute(file.report_run_id)}>
-                          {file.report_run_id}
-                        </Link>
-                      )}
-                    </td>
-                    <td className="p-2 num">{formatNumber(file.bytes, { kind: "count" })}</td>
-                    <td className="break-all p-2 font-mono text-mono-sm">{file.sha256}</td>
-                  </tr>
-                ))}
+                {[...data.manifest.files]
+                  .sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0))
+                  .map((file) => (
+                    <tr key={file.path} className="border-t border-hairline">
+                      <th scope="row" className="break-all p-2 font-normal">
+                        {file.path}
+                      </th>
+                      <td className="p-2">
+                        {file.report_run_id === null ? (
+                          "—"
+                        ) : (
+                          <Link className="underline" to={reportRunRoute(file.report_run_id)}>
+                            {file.report_run_id}
+                          </Link>
+                        )}
+                      </td>
+                      <td className="p-2 num">{formatNumber(file.bytes, { kind: "count" })}</td>
+                      <td className="p-2">
+                        <FileHash sha={file.sha256} path={file.path} />
+                      </td>
+                    </tr>
+                  ))}
               </tbody>
             </table>
           </div>

@@ -10298,6 +10298,10 @@ Author BS-3. Uses CTR (PHASES §1 row 12). Indicative size 16 items; this phase 
   - **Gates:** GK-01 `make ci`; GK-07 `make e2e SPEC=frontend/e2e/projects/screens.spec.ts`
 
 - [ ] **RPS-20 Evidence pack screens.**
+  - October 14 contents increment: first-close detail now lists required sections with
+    exact missing filenames, identifies the retained lock, and offers keyboard-accessible
+    per-file/manifest hash copy. Presence is not archive verification. Re-lock contents,
+    other kinds, remaining presentation and browser acceptance are still outstanding.
   - October 14 generation increment: the CLOSE form selects authorized entity, book,
     period and an explicit retained first-close lock; follows paginated sources, retains
     idempotency on uncertain retries, and opens the created pack. Other pack generators,

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
-import { afterEach, beforeAll, beforeEach, expect, it } from "vitest";
+import { afterEach, beforeAll, beforeEach, expect, it, vi } from "vitest";
 import { SCREEN_ROUTES } from "../../../app/router";
 import { type EvidencePack, mayDownloadEvidence } from "../../../lib/api/queries/evidence-packs";
 import { accessOf } from "../../../lib/access";
@@ -196,4 +196,113 @@ it("hides download when the member can read but cannot export", async () => {
   expect(screen.getByText("certification/lock.json")).not.toBeNull();
   expect(screen.queryByRole("button", { name: "Download pack" })).toBeNull();
   expect(screen.queryByRole("button", { name: "Download manifest" })).toBeNull();
+});
+
+it("shows the retained lock, missing sections and separately retained manifest", async () => {
+  serve();
+  open();
+  await screen.findByRole("heading", { name: pack.pack_no });
+  expect(screen.getByText(pack.period_lock_id)).not.toBeNull();
+  const contents = screen.getByRole("table", { name: "Contents" });
+  const certification = within(contents).getByRole("row", { name: /Close certification/ });
+  expect(within(certification).getByText("Missing")).not.toBeNull();
+  expect(within(certification).getByText("certification.json")).not.toBeNull();
+  const manifest = within(contents).getByRole("row", { name: /^Manifest Present/ });
+  expect(within(manifest).getByText("Present")).not.toBeNull();
+  expect(within(contents).queryByText(/Re-lock/)).toBeNull();
+});
+
+it("copies the exact per-file and manifest hashes with named keyboard controls", async () => {
+  const writeText = vi.fn().mockResolvedValue(undefined);
+  const previous = Object.getOwnPropertyDescriptor(navigator, "clipboard");
+  Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+  try {
+    serve();
+    open();
+    const copy = await screen.findByRole("button", {
+      name: "Copy SHA-256 of certification/lock.json",
+    });
+    expect(copy.tabIndex).toBe(0);
+    fireEvent.click(copy);
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith("a".repeat(64)));
+    fireEvent.click(screen.getByRole("button", { name: "Copy SHA-256 of manifest.json" }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith("b".repeat(64)));
+  } finally {
+    if (previous) Object.defineProperty(navigator, "clipboard", previous);
+    else Reflect.deleteProperty(navigator, "clipboard");
+  }
+});
+
+const firstClosePaths = [
+  "certification.json",
+  "lock/snapshots.json",
+  "lock/approvals.json",
+  "lock/source_binding.json",
+  "journals/batch_register.json",
+  "journals/je_population.csv",
+  "reconciliations/index.json",
+  "reconciliations/population.json",
+  "audit/chain_digest.json",
+  "audit/sources.json",
+  "reports/revenue_waterfall.csv",
+  "reports/contract_balances.csv",
+  "reports/contract_balance_rollforward.csv",
+  "reports/rpo.csv",
+  "reports/rpo_rollforward.csv",
+  "reports/disaggregation.csv",
+  "reports/revenue_from_prior_period_obligations.csv",
+  "reports/contract_cost_rollforward.csv",
+  "registers/out_of_period.csv",
+  "registers/modification_register.csv",
+  "registers/manual_adjustment_register.csv",
+  ...[
+    "registers/ssp_change_log",
+    "registers/config_change_register",
+    "registers/late_entries",
+    "access/user_access_listing",
+    "access/sod_conflict_report",
+  ].flatMap((prefix) =>
+    ["csv", "manifest.json", "source.json"].map((suffix) => `${prefix}.${suffix}`),
+  ),
+];
+it("requires every member of combined sections, including supporting source evidence", async () => {
+  const missing = "access/sod_conflict_report.source.json";
+  serve({
+    ...pack,
+    manifest: {
+      files: firstClosePaths
+        .filter((path) => path !== missing)
+        .map((path) => ({
+          path,
+          bytes: 123,
+          sha256: "a".repeat(64),
+          report_run_id: null,
+        })),
+    },
+  });
+  open();
+  await screen.findByRole("heading", { name: pack.pack_no });
+  const contents = screen.getByRole("table", { name: "Contents" });
+  expect(within(contents).getAllByText("Missing")).toHaveLength(1);
+  const access = within(contents).getByRole("row", { name: /User listing and SoD/ });
+  expect(within(access).getByText(missing)).not.toBeNull();
+  expect(within(contents).getAllByText("Present")).toHaveLength(11);
+});
+it("shows a complete first-close contents list without expecting a self-hashed manifest", async () => {
+  serve({
+    ...pack,
+    manifest: {
+      files: firstClosePaths.map((path) => ({
+        path,
+        bytes: 123,
+        sha256: "a".repeat(64),
+        report_run_id: null,
+      })),
+    },
+  });
+  open();
+  await screen.findByRole("heading", { name: pack.pack_no });
+  const contents = screen.getByRole("table", { name: "Contents" });
+  expect(within(contents).queryByText("Missing")).toBeNull();
+  expect(within(contents).getAllByText("Present")).toHaveLength(12);
 });

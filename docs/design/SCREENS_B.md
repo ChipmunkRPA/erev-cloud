@@ -4090,6 +4090,12 @@ Download starts `GET /evidence-packs/{id}/download` (ZIP) and toasts "Downloaded
 
 **Grid columns: files.** "File" (`path`, mono); "Report run" (`report_run_id` → run no, mono link SF-08:run); "Bytes" (integer); "SHA-256" (prefix with copy and full value in tooltip). Sort by `path`.
 
+October 14 implementation: the first-close detail includes the contents table using the
+assembler's exact required payload filenames, including supporting report manifests/source
+records. Missing members are named; presence does not certify bytes. The separately hashed
+manifest is not expected inside its own payload list. The retained lock ID and keyboard-accessible
+hash-copy controls are shown. Re-lock contents and other pack kinds remain unfinished.
+
 **Contents** (the period pack must list every REQ-RPT-014 item; missing items render chip Difference "Missing"):
 
 | Content (copy) | Expected path prefix (04 T-RPT-04 manifest layout; OQ-B-11 resolved by D-76) | Source |

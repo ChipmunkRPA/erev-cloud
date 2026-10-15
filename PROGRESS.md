@@ -2,6 +2,21 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## First-close contents checklist — October 14, 2026 (RPS-20 continued)
+
+- Detail now lists required sections and exact missing payload filenames, identifies the
+  retained lock, sorts file paths and provides named keyboard-accessible file/manifest hash
+  copy. Manifest presence does not claim byte verification; download verification is unchanged.
+  The separately hashed manifest is correctly outside its own payload list.
+- Direct comparison with the backend assembler confirmed all 36 required payload paths match.
+  Tests cover complete/missing sections, a missing supporting source, manifest treatment,
+  retained lock and exact clipboard bytes. Focused: 16 passed (1.68s). Full frontend:
+  195 files / 2,093 tests passed (70.48s); TypeScript, full ESLint and production build passed.
+  Existing build chunk-size and jsdom navigation warnings remain. All checks are terminal.
+- No backend accounting behavior changed, no database tests rerun, no deployment. RPS-20
+  remains open for other kinds, re-lock variance, remaining presentation and real browser
+  acceptance. Independent accounting approval and broader release gates remain outstanding.
+
 ## First-close generation form — October 14, 2026 (RPS-20 continued)
 
 - Added a modal for entity, book, period and explicit retained first-close lock selection,
