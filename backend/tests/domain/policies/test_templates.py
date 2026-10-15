@@ -1026,3 +1026,21 @@ def test_err_103_a_template_version_states_no_level_p_value_that_no_computation_
     )
     assert kept.status_code == 200, kept.text
     assert kept.json()["policy_values"] == {TIER_METHOD: "DERIVED"}
+
+
+def test_point_in_time_royalty_requires_a_licence(policies: Policies) -> None:
+    template_id = new_template(policies, "TPL-ROYALTY-PIT", "Functional royalty licence")
+    terms = {"satisfaction_pattern": "POINT_IN_TIME", "recognition_method": "ROYALTY"}
+    refused = policies.post(f"{TEMPLATES}/{template_id}/versions", terms)
+    assert refused.status_code == 422, refused.text
+    assert fields(refused) == [("recognition_method", "T-REF-23")]
+    created = new_version(
+        policies, template_id, **terms, obligation_kind="LICENCE", licence_nature="FUNCTIONAL"
+    )
+    assert created["recognition_method"] == "ROYALTY"
+    assert created["satisfaction_pattern"] == "POINT_IN_TIME"
+    refused = policies.patch(
+        f"{VERSIONS}/{created['id']}", {"obligation_kind": "STANDARD"}, etag='"r1"'
+    )
+    assert refused.status_code == 422, refused.text
+    assert fields(refused) == [("recognition_method", "T-REF-23")]

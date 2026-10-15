@@ -180,7 +180,8 @@ SERIES_UNIT_NOT_ALLOWED: Final = "A series increment applies only to a series ob
 CRITERION_REQUIRED: Final = "Choose the over-time criterion of an over-time obligation."
 CRITERION_NOT_ALLOWED: Final = "An over-time criterion applies only to an over-time obligation."
 POINT_IN_TIME_METHOD: Final = (
-    "A point-in-time obligation uses Point in time, Units delivered or Manual."
+    "A point-in-time obligation uses Point in time, Units delivered or Manual; "
+    "a licence may also use Royalty."
 )
 CONVENTION_REQUIRED: Final = "Choose the ratable convention for time elapsed."
 CONVENTION_NOT_ALLOWED: Final = "A ratable convention applies only to time elapsed."
@@ -261,7 +262,13 @@ def _measure_errors(values: Mapping[str, Any]) -> list[ProblemError]:
         errors.append(_error("over_time_criterion", CRITERION_REQUIRED))
     elif pattern == "POINT_IN_TIME" and criterion != "NOT_APPLICABLE":
         errors.append(_error("over_time_criterion", CRITERION_NOT_ALLOWED))
-    if pattern == "POINT_IN_TIME" and method is not None and method not in POINT_IN_TIME_METHODS:
+    royalty_licence = method == "ROYALTY" and values.get("obligation_kind") == "LICENCE"
+    if (
+        pattern == "POINT_IN_TIME"
+        and method is not None
+        and method not in POINT_IN_TIME_METHODS
+        and not royalty_licence
+    ):
         errors.append(_error("recognition_method", POINT_IN_TIME_METHOD))
     if method == "TIME_ELAPSED" and convention is None:
         errors.append(_error("ratable_convention", CONVENTION_REQUIRED))

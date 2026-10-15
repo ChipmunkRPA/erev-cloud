@@ -2,6 +2,25 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Point-in-time royalty licences — October 14, 2026
+
+- Repaired the API/DB mismatch that rejected the engine's supported point-in-time
+  royalty licence template. Migration 0144 permits only the LICENCE/ROYALTY exception;
+  non-licence obligations remain restricted. Updated T-REF-23's documented constraint.
+- API-driven RPO tests verify a 15,000 statement against a 12,000 guarantee adds 3,000,
+  recognition waits for delivery, April delivery releases 15,000, and a May downward
+  correction reverses 1,000. Both initial delivery states reconcile with zero unexplained.
+- Initial tests exposed template rejection; the next attempt exposed a missing trigger
+  in the new delivery fixture. Corrected fixture and expanded checks: 4 passed (21.56s).
+  Final full template/RPO files and DB invariant: 22 passed (70.78s), recorded in
+  .run/rpo-royalty-regression.log. Full production typecheck, focused report-test Mypy,
+  Ruff and formatting pass. Standalone Mypy of all selected test files encountered
+  existing fixture-import/row-typing issues; it is not claimed as passing.
+- Fresh closed browser gate bce381c passed 10/10 and retained 22 PNGs after cleanup;
+  see BROWSER-2026-10-14.md. Full backend CI 165d63c remains in progress.
+- B4-2's combined cases and other release limitations remain open. No deployment or
+  accounting sign-off; publish directly to main without a PR.
+
 ## Sandbox reset source isolation — October 14, 2026
 
 - B7-5's source-provenance observation is permitted by SBX-02, which requires creation
@@ -223,26 +242,6 @@
   ListPage types. All processes terminal. No deployment or new PR; direct main.
 - RPS-20 stays incomplete: re-lock variance, other pack kinds/forms, remaining presentation
   and real browser/accessibility acceptance. Independent accounting sign-off remains absent.
-
-## Auditor request navigation — October 14, 2026 (RPS-20 continued)
-
-- Added the 20 specified auditor requests, their available report sources, accessible
-  action menus and context-preserving destinations. Reconciliation opens the selected
-  entity/book/period; walkthrough opens audit events filtered to the signed-in user.
-  Only reports returned by the API get actions. Pack generation is hidden without
-  evidence.export and explicitly unavailable where the backend kind is unfinished.
-  No placeholder generation commands or claim of complete read auditing is introduced.
-- Fixed catalogue pack links from the obsolete /evidence path to /reports/evidence,
-  preserving entity/period/book and requiring all evidence read permissions. Added
-  catalogue permission/context checks and aligned table/row hooks with SCREENS_B.
-- Full frontend: **2,078 passed across 194 files in 60.51 seconds**
-  (.run/auditor-requests-full.log); TypeScript, full ESLint and Vite build pass. Existing
-  jsdom navigation and Vite large-chunk warnings remain. Final focused checks cover
-  table rows, both unavailable pack menus, context encoding, own-actor filtering,
-  missing export access and failed definition reads (.run/auditor-requests-final.log).
-- RPS-20 remains incomplete: generation forms and missing backend kinds, read-only
-  presentation, remaining register details and real browser/accessibility acceptance.
-  Repository only; direct main, no new PR or deployment.
 
 ## Outstanding release verification
 

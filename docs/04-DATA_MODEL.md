@@ -2877,7 +2877,7 @@ Keys: `PRIMARY KEY (tenant_id, id)`; `ux_pob_template__code (tenant_id, code)`.
 | `series_increment_unit` | text | Y | | `CHECK (series_increment_unit IN ('day','month','transaction','unit'))`; `CHECK ((distinctness = 'series') = (series_increment_unit IS NOT NULL))` (REQ-POB-005). |
 | `satisfaction_pattern` | erev.satisfaction_pattern | N | | |
 | `over_time_criterion` | erev.over_time_criterion | N | `'NOT_APPLICABLE'` | `CHECK ((satisfaction_pattern = 'OVER_TIME') = (over_time_criterion <> 'NOT_APPLICABLE'))` |
-| `recognition_method` | erev.recognition_method | N | | `CHECK (satisfaction_pattern <> 'POINT_IN_TIME' OR recognition_method IN ('POINT_IN_TIME','UNITS_DELIVERED','MANUAL'))` |
+| `recognition_method` | erev.recognition_method | N | | `CHECK (satisfaction_pattern <> 'POINT_IN_TIME' OR recognition_method IN ('POINT_IN_TIME','UNITS_DELIVERED','MANUAL') OR (obligation_kind = 'LICENCE' AND recognition_method = 'ROYALTY'))` (migration 0144; S09-R-33 licence exception) |
 | `ratable_convention` | erev.ratable_convention | Y | | `CHECK ((recognition_method = 'TIME_ELAPSED') = (ratable_convention IS NOT NULL))` |
 | `start_date_rule` | text | N | `'LINE_START'` | `CHECK (start_date_rule IN ('LINE_START','BOOKING_DATE','CONTROL_TRANSFER','FIRST_USAGE','LICENCE_START_OR_AVAILABLE'))` |
 | `end_date_rule` | text | N | `'LINE_END'` | `CHECK (end_date_rule IN ('LINE_END','START_PLUS_TERM','NONE'))` |

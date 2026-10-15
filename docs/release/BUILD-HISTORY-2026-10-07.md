@@ -3323,3 +3323,23 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   remaining register details and real browser/accessibility/volume acceptance are outstanding.
   This is a tested repository increment, not a production-readiness claim. Direct main;
   no deployment, new PR, accounting oracle change or permission relaxation.
+
+## Auditor request navigation — October 14, 2026 (RPS-20 continued)
+
+- Added the 20 specified auditor requests, their available report sources, accessible
+  action menus and context-preserving destinations. Reconciliation opens the selected
+  entity/book/period; walkthrough opens audit events filtered to the signed-in user.
+  Only reports returned by the API get actions. Pack generation is hidden without
+  evidence.export and explicitly unavailable where the backend kind is unfinished.
+  No placeholder generation commands or claim of complete read auditing is introduced.
+- Fixed catalogue pack links from the obsolete /evidence path to /reports/evidence,
+  preserving entity/period/book and requiring all evidence read permissions. Added
+  catalogue permission/context checks and aligned table/row hooks with SCREENS_B.
+- Full frontend: **2,078 passed across 194 files in 60.51 seconds**
+  (.run/auditor-requests-full.log); TypeScript, full ESLint and Vite build pass. Existing
+  jsdom navigation and Vite large-chunk warnings remain. Final focused checks cover
+  table rows, both unavailable pack menus, context encoding, own-actor filtering,
+  missing export access and failed definition reads (.run/auditor-requests-final.log).
+- RPS-20 remains incomplete: generation forms and missing backend kinds, read-only
+  presentation, remaining register details and real browser/accessibility acceptance.
+  Repository only; direct main, no new PR or deployment.

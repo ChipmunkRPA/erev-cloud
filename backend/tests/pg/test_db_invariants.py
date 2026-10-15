@@ -1998,6 +1998,19 @@ def test_t_ref_23_pob_template_version_checks(committed_db: TestDatabase, keyrin
         def fails(**row: Any) -> tuple[str | None, str]:
             return _fails(session, insert(pob_template_version).values(**row))
 
+        session.execute(
+            insert(pob_template_version).values(
+                **values(
+                    20,
+                    obligation_kind="LICENCE",
+                    recognition_method="ROYALTY",
+                    licence_nature="FUNCTIONAL",
+                )
+            )
+        )
+        state, message = fails(**values(21, recognition_method="ROYALTY"))
+        assert state == "23514" and "ck_pob_template_version__point_in_time_method" in message
+
         failures = {
             "series": fails(**values(2, distinctness="series")),
             "increment_unit": fails(

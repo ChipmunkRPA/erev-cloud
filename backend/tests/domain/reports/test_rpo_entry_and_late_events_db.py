@@ -29,6 +29,7 @@ date, and the origin period of each line — and the contract's allocation.
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from dataclasses import replace
 from datetime import date, timedelta
 from decimal import Decimal
 from typing import Any, Final
@@ -38,13 +39,20 @@ import pytest
 from erev_api.auth.keyring import KeyRing
 from erev_api.clock import FrozenClock
 from erev_api.config import Settings
-from erev_api.db.tables import period, subledger_line
+from erev_api.db.tables import period, product, subledger_line
 from erev_api.files.store import LocalFileStore
 from erev_api.main import create_app
 from fastapi import FastAPI
 from sqlalchemy import func, select
 from support import worlds
 from support.db import TestDatabase
+from support.factories import (
+    booked_contract,
+    computed,
+    customer_id,
+    published_template,
+    set_default_template,
+)
 from support.reference import assign, get
 from support.worlds import AVM_UK, AVM_US, K01, K04, ReportWorld, report_run
 from tests.domain.contracts.test_to_date_reads import posted_revenue
@@ -392,3 +400,124 @@ def test_first_calculation_keeps_later_usage_out_of_earlier_rpo(
     assert march["VC_ESTIMATE_CHANGES"] == Decimal("150.00")
     assert march["UNEXPLAINED"] == 0
     assert ties(run) == BALANCED
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("delivered", [False, True])
+def test_royalty_rpo_nets_guarantee_and_waits_for_licence_satisfaction(
+    app: FastAPI, keyring: KeyRing, clock: FrozenClock, files: LocalFileStore, delivered: bool
+) -> None:
+    """A 15,000 statement adds 3,000 above a 12,000 guarantee; recognition needs delivery."""
+    world = worlds.report_world(app, keyring, clock, files, contracts=())
+    assign(world.priya.member, "revenue_reviewer")
+    author = world.place.author
+    template = published_template(
+        app,
+        author,
+        world.marcus,
+        code="TPL-ROYALTY-RPO",
+        outputs={
+            "obligation_kind": "LICENCE",
+            "distinctness": "distinct",
+            "satisfaction_pattern": "POINT_IN_TIME",
+            "over_time_criterion": "NOT_APPLICABLE",
+            "recognition_method": "ROYALTY",
+            "licence_nature": "FUNCTIONAL",
+        },
+        case_line={
+            "obligation_key": "O1",
+            "product_code": worlds.PLATFORM,
+            "quantity": "1",
+            "total_price": "12000.00",
+            "start_date": "2026-01-01",
+            "end_date": "2026-12-31",
+        },
+    )
+    product_id = world.place.scalar(select(product.c.id).where(product.c.code == worlds.PLATFORM))
+    set_default_template(app, author, str(product_id), template["template_id"])
+    customer = customer_id(app, author, code="ROY-RPO", name="Royalty report test")
+    body = worlds.k01_body(customer)
+    body["external_id"] = "ROY-RPO"
+    body["lines"] = [{**body["lines"][0], "total_price": {"amount": "12000.00", "currency": "USD"}}]
+    booked = booked_contract(world.place, body, activate=True)
+    contract_id = UUID(str(booked.contract["id"]))
+    computed(world.place, UUID(str(booked.combination_group["id"])))
+    world = replace(world, contracts={"ROY-RPO": booked})
+    if delivered:
+        worlds.approved_manual_events(
+            world.place,
+            world.priya,
+            contract_id,
+            {
+                "event_type": "DELIVERY_RECORDED",
+                "effective_date": "2026-01-01",
+                "payload": {"obligation_key": "O1", "quantity": "1", "trigger": "CONTROL_TRANSFER"},
+            },
+        )
+    before, _ = rollforward(world, AVM_US, "FY2026-P03")
+    worlds.approved_manual_events(
+        world.place,
+        world.priya,
+        contract_id,
+        {
+            "event_type": "USAGE_REPORTED",
+            "effective_date": "2026-03-31",
+            "payload": {
+                "obligation_key": "O1",
+                "usage_period_start": "2026-01-01",
+                "usage_period_end": "2026-03-31",
+                "metric": "LICENSEE_SALES",
+                "quantity": "150000",
+                "rated_amount": {"amount": "15000.00", "currency": "USD"},
+                "is_royalty_statement": True,
+            },
+        },
+    )
+    after, run = rollforward(world, AVM_US, "FY2026-P03")
+    assert after["OPENING"] == before["OPENING"] == (ZERO if delivered else Decimal("12000.00"))
+    assert after["NEW_CONTRACTS"] == ZERO
+    assert after["VC_ESTIMATE_CHANGES"] == Decimal("3000.00")
+    assert after["REVENUE"] == (Decimal("-3000.00") if delivered else ZERO)
+    assert after["CLOSING"] == (ZERO if delivered else Decimal("15000.00"))
+    assert after["UNEXPLAINED"] == ZERO
+    assert ties(run) == BALANCED
+
+    if not delivered:
+        worlds.approved_manual_events(
+            world.place,
+            world.priya,
+            contract_id,
+            {
+                "event_type": "DELIVERY_RECORDED",
+                "effective_date": "2026-04-01",
+                "payload": {"obligation_key": "O1", "quantity": "1", "trigger": "CONTROL_TRANSFER"},
+            },
+        )
+        april, april_run = rollforward(world, AVM_US, "FY2026-P04")
+        assert april["OPENING"] == Decimal("15000.00")
+        assert april["REVENUE"] == Decimal("-15000.00")
+        assert april["VC_ESTIMATE_CHANGES"] == april["CLOSING"] == april["UNEXPLAINED"] == ZERO
+        assert ties(april_run) == BALANCED
+    worlds.approved_manual_events(
+        world.place,
+        world.priya,
+        contract_id,
+        {
+            "event_type": "USAGE_REPORTED",
+            "effective_date": "2026-05-31",
+            "payload": {
+                "obligation_key": "O1",
+                "usage_period_start": "2026-01-01",
+                "usage_period_end": "2026-03-31",
+                "metric": "LICENSEE_SALES",
+                "quantity": "140000",
+                "rated_amount": {"amount": "14000.00", "currency": "USD"},
+                "is_royalty_statement": True,
+            },
+        },
+    )
+    corrected, corrected_run = rollforward(world, AVM_US, "FY2026-P05")
+    assert corrected["VC_ESTIMATE_CHANGES"] == Decimal("-1000.00")
+    assert corrected["REVENUE"] == Decimal("1000.00")
+    assert corrected["OPENING"] == corrected["CLOSING"] == corrected["UNEXPLAINED"] == ZERO
+    assert ties(corrected_run) == BALANCED
