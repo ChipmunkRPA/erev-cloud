@@ -29,6 +29,7 @@ TENANT = UUID(int=0xA1)
 # A secret of the tenant's own namespace of the secret store (05 KEY-09 rev 1.47; R-48 (f)).
 SECRET_REF = f"tenant-{TENANT}-sf-client-secret"
 USER = UUID(int=0x51)
+MEMBERSHIP = UUID(int=0x61)
 CONNECTION = UUID(int=0xC1)
 JOB = UUID(int=0x0B)
 
@@ -84,6 +85,7 @@ class _Uow:
         # entities, only within the caller's own scope (04 API-C-03 rev 1.243).
         self.principal = SimpleNamespace(
             id=USER,
+            membership_id=MEMBERSHIP,
             kind=PrincipalKind.USER,
             tenant_id=TENANT,
             permission_scopes={"integration.manage": "*"},
@@ -115,6 +117,7 @@ def _connection_row(**over: Any) -> dict[str, Any]:
         "adapter": "SALESFORCE",
         "direction": "INBOUND",
         "entity_ids": [],
+        "owner_membership_id": None,
         "base_url": "/api/v1/__mocks__/salesforce",
         "config": {},
         "secret_ref": SECRET_REF,

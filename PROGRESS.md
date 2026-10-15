@@ -2,6 +2,16 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Integration command unit fixture — October 14, 2026
+
+- Three CPU-only integration command tests failed because their fake human principal lacked
+  membership_id after connection ownership was introduced. Added the distinct membership ID
+  and explicit unassigned owner to the fake connection row; no permission assertion changed.
+- Actor and integration command unit regression: 25 passed in 1.03s after repair (previously
+  3 failed, 22 passed). Ruff lint/format pass. Logs .run/pending-repairs-units{,-fixed}.log.
+  Run used the working tree, including pending scope/identity repairs; only this fixture fix
+  is published here. Full architecture, backend CI and fresh closed-browser runs are ongoing.
+
 ## Runtime dependency and infrastructure validation — October 14, 2026
 
 - make audit-deps passes on HEAD 4542527 with pending backend edits: all 77 pinned Python
