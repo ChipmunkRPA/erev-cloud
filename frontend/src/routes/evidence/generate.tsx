@@ -144,7 +144,7 @@ export function GenerateClosePack() {
     if (outcome.kind === "accepted" || outcome.kind === "succeeded") {
       setAccepted(true);
       const packId = outcome.response.headers.get("X-Erev-Evidence-Pack-Id");
-      if (packId !== null && packId !== "") void navigate(evidencePackRoute(packId));
+      if (packId !== null && packId !== "") void navigate(evidencePackRoute(packId, body));
     } else if (outcome.kind === "network-error") setNetworkError(true);
   }
   if (!mayChooseEvidenceSources(access)) return null;

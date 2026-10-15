@@ -96,7 +96,10 @@ function PackRegister() {
         kind: "text",
         value: (p) => p.pack_no,
         render: (p) => (
-          <Link className="inline-flex min-h-6 items-center underline" to={evidencePackRoute(p.id)}>
+          <Link
+            className="inline-flex min-h-6 items-center underline"
+            to={evidencePackRoute(p.id, p)}
+          >
             {p.pack_no}
           </Link>
         ),
@@ -175,7 +178,7 @@ function PackRegister() {
         countLabel={(count, formatted) => t("evidence.packs.count", { count, formatted })}
         rowKey={(p) => p.id}
         rowLabel={(p) => p.pack_no}
-        rowHref={(p) => evidencePackRoute(p.id)}
+        rowHref={(p) => evidencePackRoute(p.id, p)}
         testIdPrefix="SF-09"
         rowTestKey={(p) => p.pack_no}
         emptyState={

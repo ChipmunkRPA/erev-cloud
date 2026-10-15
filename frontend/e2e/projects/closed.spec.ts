@@ -867,7 +867,9 @@ test("SF-09 first-close evidence generation and retained downloads hannah", asyn
   });
   const packId = response.headers()["x-erev-evidence-pack-id"] ?? "";
   expect(packId).toMatch(new RegExp(`^${UUID}$`));
-  await expect(page).toHaveURL(new RegExp(`/reports/evidence/${packId}$`));
+  await expect(page).toHaveURL(
+    new RegExp(`/reports/evidence/${packId}\\?entity=AVM-US&book=ASC606&period=FY2026-P08$`),
+  );
   await expect(page.getByRole("button", { name: "Download pack", exact: true })).toBeVisible({
     timeout: 180_000,
   });

@@ -16,6 +16,7 @@ import {
   downloadEvidencePack,
   EVIDENCE_PACKS_ROUTE,
   evidencePackKey,
+  evidencePackContext,
   fetchEvidencePack,
   mayDownloadEvidence,
   mayReadEvidence,
@@ -102,7 +103,12 @@ function PackRecord({ id }: { readonly id: string }) {
     <>
       <RecordHeader
         title={data.pack_no}
-        breadcrumb={[{ label: t("evidence.packs.title"), to: EVIDENCE_PACKS_ROUTE }]}
+        breadcrumb={[
+          {
+            label: t("evidence.packs.title"),
+            to: `${EVIDENCE_PACKS_ROUTE}${evidencePackContext(data)}`,
+          },
+        ]}
         chips={<EvidencePackStatus status={data.status} />}
         meta={[
           { label: t("evidence.packs.kind"), value: t("evidence.packs.close") },

@@ -180,6 +180,7 @@ it("submits exact retained selectors with an idempotency key and opens the new p
   await waitFor(() =>
     expect(app.router.state.location.pathname).toBe(`/reports/evidence/${packId}`),
   );
+  expect(app.router.state.location.search).toBe("?entity=AVM-US&book=ASC606&period=FY2026-P09");
   expect(bodies).toEqual([
     {
       kind: "CLOSE",

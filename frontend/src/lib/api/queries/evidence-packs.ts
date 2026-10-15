@@ -22,8 +22,18 @@ export function mayDownloadEvidence(access: Access, pack: EvidencePackSummary): 
   return EXPORT.every((permission) => access.holds(permission, { id: pack.entity_id }));
 }
 
-export function evidencePackRoute(id: string): string {
-  return `${EVIDENCE_PACKS_ROUTE}/${encodeURIComponent(id)}`;
+type PackScope = Pick<EvidencePackSummary, "entity_code" | "book" | "period_key">;
+
+export function evidencePackContext(pack: PackScope): string {
+  return `?${new URLSearchParams({
+    entity: pack.entity_code,
+    book: pack.book,
+    period: pack.period_key,
+  }).toString()}`;
+}
+
+export function evidencePackRoute(id: string, pack: PackScope): string {
+  return `${EVIDENCE_PACKS_ROUTE}/${encodeURIComponent(id)}${evidencePackContext(pack)}`;
 }
 
 export interface EvidencePackQuery {

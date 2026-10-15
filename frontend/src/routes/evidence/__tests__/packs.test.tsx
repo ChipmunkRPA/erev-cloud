@@ -148,7 +148,7 @@ it("lists pack identities and opens the retained record", async () => {
   );
   open(false);
   expect((await screen.findByRole("link", { name: pack.pack_no })).getAttribute("href")).toBe(
-    `/reports/evidence/${pack.id}`,
+    `/reports/evidence/${pack.id}?entity=AVM-US&book=ASC606&period=FY2026-P09`,
   );
   expect(screen.getByRole("columnheader", { name: /Manifest SHA-256/ })).not.toBeNull();
   expect(screen.getByRole("columnheader", { name: /^Files/ })).not.toBeNull();
