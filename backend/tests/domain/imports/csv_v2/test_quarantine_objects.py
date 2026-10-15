@@ -246,7 +246,19 @@ def test_a_bundle_keeps_its_components_when_a_row_of_its_file_is_refused(
     assert INCOMPLETE not in [code for code, _ in found[3]]
     done = taken(imports, j03.priya, import_id)
     assert done["status"] == "COMMITTED", done
-    assert done["control_totals"]["loaded"] == {"rows": 1, "quarantined": 2}
+    loaded = done["control_totals"]["loaded"]
+    (check,) = loaded["monetary_checks"]
+    assert check["source"] == check["stored"]
+    assert check["stored"]["complete"] is True
+    (component_row,) = check["stored"]["components"]
+    assert component_row["component_product_id"] == ids["AVM-KIT-10"]
+    assert component_row["quantity_per_bundle"] == "1"
+    assert loaded == {
+        "rows": 1,
+        "quarantined": 2,
+        "amount_sums": {},
+        "monetary_checks": [check],
+    }
     assert components("AVM-BUNDLE-01") == [ids["AVM-KIT-10"], ids["AVM-KIT-11"]]
     assert components("AVM-BUNDLE-02") == [ids["AVM-KIT-10"]]
 

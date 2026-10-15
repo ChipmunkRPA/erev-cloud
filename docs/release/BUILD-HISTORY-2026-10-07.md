@@ -3550,3 +3550,19 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   snapshot files were gone, so its 500 response is not an application acceptance result.
   Screenshots and failure trace were retained. A fresh closed gate on bce381c is now running
   with a matching local database/file store; full backend CI on 165d63c also remains live.
+
+## Sandbox reset source isolation — October 14, 2026
+
+- B7-5's source-provenance observation is permitted by SBX-02, which requires creation
+  events in both tenants. The refused-type audit defect was repaired in 1ab522c.
+- Strengthened SNAPSHOT and EMPTY reset acceptance to compare every tenant-scoped source
+  row's full contents outside audit head/events, notifications, outbox and snapshot metadata.
+  Existing assertions still check the expected provenance events, snapshot successor target,
+  source row-count restrictions, old-sandbox archival and successor results. The populated
+  K-03 case explicitly requires nonempty contract and subledger rows before comparison.
+- First accounting-table comparison: 2 passed (29.63s). Broadened source comparison:
+  2 passed (29.44s). Ruff and strict test Mypy pass. Logs .run/sandbox-reset-source-
+  {contents,all-rows,types-final}.log. Separate local repair server stopped.
+- Updated browser gate documentation to locate screenshots/traces via the report's artifacts
+  field. Fresh closed browser gate bce381c and backend CI 165d63c remain live. These checks
+  do not establish full CTL-043, release acceptance or accounting sign-off.

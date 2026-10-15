@@ -2,6 +2,23 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## CSV quarantine reconciliation assertions — October 14, 2026
+
+- Reproduced two failures observed in the ongoing backend CI. Contract-header conflict
+  and bundle quarantine imports correctly committed only valid objects, but their tests
+  rejected the newer amount_sums and monetary_checks fields in control totals.
+- Updated assertions retain exact loaded/quarantined counts and now require matching
+  source/stored reconciliation evidence. Only SF-ORD-31004 contributes its USD 96,000
+  and 24,000 lines (USD 120,000 total); only the accepted bundle component is reported.
+  Existing checks still require no refused contract and no partial bundle replacement.
+- Both complete files pass: 14 tests in 64.80s. Strict test Mypy, Ruff and diff checks pass.
+  Logs: .run/csv-quarantine-baseline.log (2 failed, 12 passed),
+  .run/csv-quarantine-fixed.log and .run/csv-quarantine-types.log.
+- Rechecked publication: repository PUBLIC, default branch main, PolyForm Noncommercial
+  retained, and neither research-harness nor docs/research tracked. Full CI on older
+  165d63c remains live; release acceptance and accounting sign-off remain outstanding.
+  No deployment. Publish reviewed changes directly to main.
+
 ## Populated option snapshot recovery — October 14, 2026
 
 - Added stored-export/load acceptance for native entered-amount and approved
@@ -243,22 +260,6 @@
   see BROWSER-2026-10-14.md. Full backend CI 165d63c remains in progress.
 - B4-2's combined cases and other release limitations remain open. No deployment or
   accounting sign-off; publish directly to main without a PR.
-
-## Sandbox reset source isolation — October 14, 2026
-
-- B7-5's source-provenance observation is permitted by SBX-02, which requires creation
-  events in both tenants. The refused-type audit defect was repaired in 1ab522c.
-- Strengthened SNAPSHOT and EMPTY reset acceptance to compare every tenant-scoped source
-  row's full contents outside audit head/events, notifications, outbox and snapshot metadata.
-  Existing assertions still check the expected provenance events, snapshot successor target,
-  source row-count restrictions, old-sandbox archival and successor results. The populated
-  K-03 case explicitly requires nonempty contract and subledger rows before comparison.
-- First accounting-table comparison: 2 passed (29.63s). Broadened source comparison:
-  2 passed (29.44s). Ruff and strict test Mypy pass. Logs .run/sandbox-reset-source-
-  {contents,all-rows,types-final}.log. Separate local repair server stopped.
-- Updated browser gate documentation to locate screenshots/traces via the report's artifacts
-  field. Fresh closed browser gate bce381c and backend CI 165d63c remain live. These checks
-  do not establish full CTL-043, release acceptance or accounting sign-off.
 
 ## Outstanding release verification
 

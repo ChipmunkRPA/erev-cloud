@@ -418,7 +418,24 @@ def test_a_contract_is_not_booked_against_a_later_row_of_its_file(j03: J03World)
     assert codes_of(imports, import_id) == {2: [INCOMPLETE], 3: [CODE]}
     done = taken(imports, j03.priya, import_id)
     assert done["status"] == "COMMITTED", done
-    assert done["control_totals"]["loaded"] == {"rows": 2, "quarantined": 2}
+    loaded = done["control_totals"]["loaded"]
+    (check,) = loaded["monetary_checks"]
+    assert check["source"] == check["stored"]
+    (booking,) = check["stored"]["bookings"]
+    assert booking["external_id"] == "SF-ORD-31004"
+    assert [(line["obligation_key"], line["total_price"]) for line in booking["lines"]] == [
+        ("O1", {"amount": "96000", "currency": "USD"}),
+        ("O2", {"amount": "24000", "currency": "USD"}),
+    ]
+    assert loaded == {
+        "rows": 2,
+        "quarantined": 2,
+        "amount_sums": {
+            "lines.out_of_scope_amount.amount": "0",
+            "lines.total_price.amount": "120000.00",
+        },
+        "monetary_checks": [check],
+    }
     assert _booked(imports, "SF-ORD-3100%") == [("SF-ORD-31004", "2026-09-01")]
 
 
