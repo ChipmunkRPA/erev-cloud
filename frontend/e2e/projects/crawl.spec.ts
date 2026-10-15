@@ -169,6 +169,20 @@ interface Versioned {
 /** The seeded records the parameter routes open, each found by its business key. */
 const SEEDS: readonly Seed[] = [
   {
+    params: ["proposalId"],
+    under: "/contracts/review/",
+    find: async (api) => {
+      const proposals = await list<{ readonly id: string; readonly kind: string }>(
+        api,
+        "/api/v1/ai/proposals",
+        { kind: "CONTRACT_EXTRACTION" },
+      );
+      const proposal = proposals.find((item) => item.kind === "CONTRACT_EXTRACTION");
+      // No exclusion: the browser gate must fail when its world has no accessible evidence.
+      return proposal === undefined ? null : { proposalId: proposal.id };
+    },
+  },
+  {
     params: ["contractId"],
     find: async (api) => {
       const contracts = await list<{ readonly id: string; readonly external_id: string }>(

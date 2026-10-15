@@ -24,6 +24,9 @@ through these pre-release revisions is supported.
 October 14 full backend CI completed on the older `165d63c` snapshot with 33 failures.
 Current-main repairs and remaining failure/expected-failure evidence are tracked in
 [the CI record](CI-2026-10-14.md). Targeted passes do not establish a current full release pass.
+October 15 full frontend revalidation and the still-running frozen CI attempt are recorded
+in [the current CI record](CI-2026-10-15.md). The repaired frontend suite passes 2,143 tests;
+live review-route crawl fixtures and complete browser acceptance remain outstanding.
 
 AI implementation status as of October 15: the internal narrative gateway composes live-job
 human authorization, current settings/kill switches, serialized UTC-month budget admission,

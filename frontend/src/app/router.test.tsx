@@ -62,6 +62,8 @@ describe("SCR-IA-06 route objects", () => {
       "SF-01",
       "SF-02",
       "SF-03:new",
+      "SF-20:new",
+      "SF-20",
       "X:contract-redirect",
       "SF-03",
       "SF-03:obligation",
