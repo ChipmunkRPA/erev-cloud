@@ -87,7 +87,8 @@ The immediate tenant disable command now requires workspace-wide settings.manage
 MFA, atomically records the switch and cancels queued AI jobs, and returns the original stamp
 on repeat requests. The emergency switch overrides an enabled published policy. A new AI
 publication whose whole values enable AI now clears the switch under independent human
-approval with workspace-wide settings.manage, in addition to configuration approval. First
+approval with workspace-wide settings.manage. Retained legacy requests also require their
+original configuration approval permission. First
 enablement and emergency-switch clearing withhold automatic approval; an unrelated budget edit
 while AI remains enabled keeps normal routing. Publication replay cannot undo a later disable,
 and publishing ai.enabled=false leaves the switch intact. There is no direct enable command.
@@ -99,16 +100,15 @@ the registry version, audit, hashing and simulation lifecycle and expose no publ
 shortcut. General accounting authoring still requires config.author. Generated OpenAPI and
 TypeScript definitions include the new endpoints; the settings UI is not yet wired to them.
 
-J-19.9 remains incomplete at approval: REGISTRY_VERSION requests still route to config.approve,
-so the independent Tomas/Grace administrator-only personas cannot complete that step. Existing
-re-enable tests give accounting-role users tenant_admin; they prove the independent-admin
-publication safeguard but not this workflow. The strict expected failure in
-`backend/tests/api/test_ai_admin_workflow.py` now records the independent administrator's inability
-to read the submitted request for review. Authoring is a normal passing regression. The remaining
-implementation needs AI-specific independent-admin routing, decision visibility and UI, preserving
-self-approval refusal, MFA, content hashes and emergency-switch semantics. General accounting
-privileges must not be added to the Tenant Admin role. The standard demo fixture/J-19 journey
-remains outstanding; the successful local browser extraction probe does not prove it.
+New AI submissions now use AI_SETTINGS_VERSION and workspace-wide settings.manage for review,
+so a different Tenant Admin can read and approve without accounting configuration privileges.
+The normal lifecycle retains self-approval refusal, MFA, content hashes and emergency-switch
+semantics. Retained REGISTRY_VERSION requests keep their original routing. settings.manage is
+now classified as an approval permission: API clients cannot acquire it, and effective client
+grants filter it out. Migration 0156 updates permission metadata and report subject filters.
+The administrator-only approval regression now passes, including legacy routing coverage.
+The settings UI and standard demo fixture/J-19 journey remain outstanding; the successful local
+browser extraction probe does not prove them. General accounting privileges remain unchanged.
 
 Number-explanation submission now serializes admission with the tenant switch. Model changes,
 including a reset to the catalogue default, and enabling contract-text sending now require an

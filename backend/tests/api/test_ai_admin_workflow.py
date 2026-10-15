@@ -7,12 +7,14 @@ from erev_api.auth.keyring import KeyRing
 from erev_api.clock import FrozenClock
 from erev_api.db.session import DbContext, tenant_session
 from erev_api.domain.ai.settings import load_settings
+from erev_api.domain.policies import registry_versions
 from erev_api.enums import RegistryCategory
 from erev_api.jobs.context import JobRuntime
 from erev_api.jobs.registry import run_job
 from fastapi import FastAPI
 from support.http import call
 from support.principals import Actor, colleague, cookie_headers, enrolled, member
+from support.reference import approve
 from support.rows import insert_registry_version, insert_role_assignment
 from tests.api.test_tenant_api import app as app  # noqa: F401
 
@@ -186,17 +188,14 @@ def test_ai_authoring_requires_workspace_admin_permission(
     assert response.status_code == 403, response.text
 
 
-class AdminAIApprovalMissing(AssertionError):
-    """The general registry approval still requires accounting configuration rights."""
-
-
-@pytest.mark.xfail(
-    strict=True,
-    raises=AdminAIApprovalMissing,
-    reason="J-19.9: independent administrator AI approval routing remains unfinished",
-)
-def test_independent_admin_can_read_ai_request_for_approval(
-    app: FastAPI, administrator: Actor, keyring: KeyRing, clock: FrozenClock
+@pytest.mark.parametrize("legacy", [False, True])
+def test_independent_admin_approves_ai_without_accounting_role(
+    app: FastAPI,
+    administrator: Actor,
+    keyring: KeyRing,
+    clock: FrozenClock,
+    monkeypatch: pytest.MonkeyPatch,
+    legacy: bool,
 ) -> None:
     headers = cookie_headers(administrator.token, administrator.csrf_token)
     created = call(
@@ -222,6 +221,8 @@ def test_independent_admin_can_read_ai_request_for_approval(
         attempt=1,
         runtime=JobRuntime(clock=clock, keyring=keyring, files=app.state.file_store),
     )
+    if legacy:
+        monkeypatch.setattr(registry_versions, "AI_KIND", registry_versions.KIND)
     submitted = call(
         app,
         "POST",
@@ -238,6 +239,13 @@ def test_independent_admin_can_read_ai_request_for_approval(
             membership_id=reviewer.membership_id,
             role_code="tenant_admin",
         )
+        if legacy:
+            insert_role_assignment(
+                session,
+                tenant_id=reviewer.tenant_id,
+                membership_id=reviewer.membership_id,
+                role_code="controller",
+            )
     actor = enrolled(app, clock, reviewer)
     request_id = submitted.json()["approval_request_id"]
     response = call(
@@ -246,6 +254,26 @@ def test_independent_admin_can_read_ai_request_for_approval(
         f"/api/v1/approvals/{request_id}",
         headers=cookie_headers(actor.token, actor.csrf_token),
     )
-    if response.status_code in (403, 404):
-        raise AdminAIApprovalMissing(response.text)
     assert response.status_code == 200, response.text
+    assert response.json()["subject"]["type"] == (
+        "REGISTRY_VERSION" if legacy else "AI_SETTINGS_VERSION"
+    )
+    self_decision = approve(app, request_id, administrator)
+    assert self_decision.status_code == 403 and self_decision.json()["type"].endswith(
+        "/forbidden" if legacy else "/self-approval"
+    ), self_decision.text
+    decision = approve(app, request_id, actor)
+    assert decision.status_code == 200, decision.text
+    published = call(app, "GET", path, headers=cookie_headers(actor.token, actor.csrf_token))
+    assert published.status_code == 200 and published.json()["status"] == "PUBLISHED", (
+        published.text
+    )
+    with tenant_session(
+        DbContext(administrator.member.tenant_id, None, "*"), read_only=True
+    ) as session:
+        assert load_settings(
+            session,
+            tenant_id=administrator.member.tenant_id,
+            now=clock.now(),
+            platform_kill_switch=False,
+        ).enabled

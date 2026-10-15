@@ -201,6 +201,7 @@ _EXTRACT_MODE: Final = {"mode": _one_of("FULL", "INCREMENTAL")}
 # SCREENS_B RPT-23 ``subject_types``: the configuration subjects of E-08.
 CONFIGURATION_SUBJECTS: Final = (
     ApprovalSubjectType.REGISTRY_VERSION,
+    ApprovalSubjectType.AI_SETTINGS_VERSION,
     ApprovalSubjectType.RULE_SET_VERSION,
     ApprovalSubjectType.POB_TEMPLATE_VERSION,
     ApprovalSubjectType.ACCOUNT_MAPPING_VERSION,

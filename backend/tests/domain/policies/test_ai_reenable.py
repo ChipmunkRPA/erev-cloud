@@ -59,8 +59,8 @@ def test_independent_admin_publication_clears_switch_but_replay_does_not(
     pass_tests(world, first["id"])
     request_id = str(submitted(world, first["id"])["approval_request_id"])
     assert auto_flags == [False]
-    refused = policies.approve(request_id)
-    assert refused.status_code == 403, refused.text
+    refused = policies.get(f"/api/v1/approvals/{request_id}", policies.marcus)
+    assert refused.status_code == 404, refused.text
     assert shown(world, first["id"])["status"] == "SUBMITTED"
     assert switch() is not None
     with tenant_session(context(world.tenant_id), read_only=True) as session:
@@ -186,12 +186,11 @@ def test_ai_setting_review_preserves_emergency_disable(
     pass_tests(world, version["id"])
     request_id = str(submitted(world, version["id"])["approval_request_id"])
     assert auto_flags == [not review]
+    hidden = policies.get(f"/api/v1/approvals/{request_id}", policies.marcus)
+    assert hidden.status_code == 404, hidden.text
+    assert shown(world, version["id"])["status"] == "SUBMITTED"
+    assign(policies.marcus.member, "tenant_admin")
     approved = policies.approve(request_id)
-    if review:
-        assert approved.status_code == 403, approved.text
-        assert shown(world, version["id"])["status"] == "SUBMITTED"
-        assign(policies.marcus.member, "tenant_admin")
-        approved = policies.approve(request_id)
     assert approved.status_code == 200, approved.text
     assert shown(world, version["id"])["status"] == "PUBLISHED"
     with tenant_session(context(world.tenant_id), read_only=True) as session:

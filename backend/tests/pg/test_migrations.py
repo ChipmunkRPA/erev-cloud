@@ -508,7 +508,9 @@ def test_step1_report_filter_migration_round_trip(test_database: TestDatabase) -
     owner.dispose()
     with owner.connect() as connection:
         previous = connection.execute(query).scalar_one()
-    assert previous == [subject for subject in subjects if subject != "STEP1_EVENT"]
+    assert previous == [
+        subject for subject in subjects if subject not in ("STEP1_EVENT", "AI_SETTINGS_VERSION")
+    ]
 
     command.upgrade(alembic_config(), "head")
     test_database.app_engine.dispose()
@@ -619,3 +621,52 @@ def test_dg_mig_06_remove_enum_value_carries_typed_checks_and_indexes(
             connection.exec_driver_sql("INSERT INTO erev.probe_enum (id, k) VALUES (1, 'GAMMA')")
         finally:
             connection.rollback()
+
+
+def test_ai_settings_approval_migration_round_trip(test_database: TestDatabase) -> None:
+    """0156 keeps the database's client guard and report filters aligned in both directions."""
+    fresh_head()
+    owner = test_database.owner_engine
+
+    def snapshot() -> tuple[bool, list[str], list[str]]:
+        with owner.connect() as connection:
+            approval = connection.execute(
+                text("SELECT is_approval FROM erev.permission WHERE code = 'settings.manage'")
+            ).scalar_one()
+            filters = connection.execute(
+                text(
+                    "SELECT code, parameters_schema #> '{properties,subject_types,items,enum}' "
+                    "FROM erev.report_definition WHERE code IN "
+                    "('approvals_register', 'config_change_register') AND version = 1 ORDER BY code"
+                )
+            ).all()
+            assert len(filters) == 2
+            return bool(approval), list(filters[0][1]), list(filters[1][1])
+
+    current = snapshot()
+    assert current[0]
+    assert current[1] == [subject.value for subject in ApprovalSubjectType]
+    assert current[2].count("AI_SETTINGS_VERSION") == 1
+    command.downgrade(alembic_config(), "0155")
+    test_database.app_engine.dispose()
+    owner.dispose()
+    previous = snapshot()
+    assert not previous[0]
+    assert all("AI_SETTINGS_VERSION" not in filters for filters in previous[1:])
+    command.upgrade(alembic_config(), "head")
+    test_database.app_engine.dispose()
+    owner.dispose()
+    assert snapshot() == current
+    with owner.connect() as connection:
+        enabled = (
+            connection.execute(
+                text(
+                    "SELECT tgenabled FROM pg_trigger WHERE tgname IN "
+                    "('tg_permission__immutable', 'tg_report_definition__immutable') "
+                    "ORDER BY tgname"
+                )
+            )
+            .scalars()
+            .all()
+        )
+        assert enabled == ["O", "O"]

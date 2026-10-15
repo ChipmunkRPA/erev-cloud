@@ -83,6 +83,7 @@ READERS: Final[Mapping[str, Readers]] = MappingProxyType(
         ApprovalSubjectType.RULE_SET_VERSION.value: _CONFIG_READ,
         ApprovalSubjectType.POB_TEMPLATE_VERSION.value: _CONFIG_READ,
         ApprovalSubjectType.REGISTRY_VERSION.value: _CONFIG_READ,
+        ApprovalSubjectType.AI_SETTINGS_VERSION.value: frozenset({"settings.manage"}),
         ApprovalSubjectType.POLICY_OVERRIDE.value: _CONFIG_READ,
         ApprovalSubjectType.PERIOD_LOCK.value: _CONFIG_READ,
         ApprovalSubjectType.PERIOD_REOPEN.value: _CONFIG_READ,

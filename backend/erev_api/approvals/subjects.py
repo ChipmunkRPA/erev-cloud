@@ -2726,6 +2726,22 @@ def registry_version_content(session: Session, version_id: UUID) -> dict[str, An
     return content
 
 
+def ai_settings_version_content(session: Session, version_id: UUID) -> Mapping[str, Any]:
+    """An AI approval can bind only a tenant AI version; its content hash stays the registry's."""
+    found = session.scalar(
+        select(registry_version.c.id).where(
+            registry_version.c.id == version_id,
+            registry_version.c.category == "AI",
+            registry_version.c.scope == "TENANT",
+            registry_version.c.entity_id.is_(None),
+            registry_version.c.book_code.is_(None),
+        )
+    )
+    if found is None:
+        raise SubjectNotVisible(f"AI settings version {version_id} is not visible")
+    return registry_version_content(session, version_id)
+
+
 def registry_version_entities(session: Session, version_id: UUID) -> SubjectEntities:
     """The entities a ``REGISTRY_VERSION`` request is bound to (04 §16.10 rev 1.309; PRD
     BR-UX-06 rev 1.203; R-25; item POLICY-TENANT-SCOPE-ALL-ENTITIES-1): the entity of an
@@ -4432,6 +4448,21 @@ SUBJECTS: Final[dict[ApprovalSubjectType, SubjectSpec]] = {
         on_voided=_registered(ApprovalSubjectType.SSP_BOOK_VERSION, "on_voided"),
         second_step_flags=SSP_SECOND_APPROVER_FLAGS,
     ),
+    ApprovalSubjectType.AI_SETTINGS_VERSION: SubjectSpec(
+        subject_type=ApprovalSubjectType.AI_SETTINGS_VERSION,
+        table="registry_version",
+        required_permission="settings.manage",
+        revenue_affecting=False,
+        min_approvers=1,
+        content=ai_settings_version_content,
+        entity_id=_resolved_by_entities,
+        entities=registry_version_entities,
+        amount_functional=lambda _session, _subject_id: None,
+        flags=lambda _session, _subject_id: frozenset(),
+        on_approved=_registered(ApprovalSubjectType.AI_SETTINGS_VERSION, "on_approved"),
+        on_rejected=_registered(ApprovalSubjectType.AI_SETTINGS_VERSION, "on_rejected"),
+        on_voided=_registered(ApprovalSubjectType.AI_SETTINGS_VERSION, "on_voided"),
+    ),
     ApprovalSubjectType.REGISTRY_VERSION: SubjectSpec(
         subject_type=ApprovalSubjectType.REGISTRY_VERSION,
         table="registry_version",
@@ -4960,6 +4991,7 @@ SUBJECT_LABELS: Final[Mapping[ApprovalSubjectType, str]] = MappingProxyType(
         ApprovalSubjectType.ESTIMATE_VERSION: "Estimate version",
         ApprovalSubjectType.MANUAL_ADJUSTMENT: "Manual adjustment",
         ApprovalSubjectType.REGISTRY_VERSION: "Policy version",
+        ApprovalSubjectType.AI_SETTINGS_VERSION: "AI settings version",
         ApprovalSubjectType.RULE_SET_VERSION: "Rule set version",
         ApprovalSubjectType.POB_TEMPLATE_VERSION: "Obligation template version",
         ApprovalSubjectType.ACCOUNT_MAPPING_VERSION: "Account mapping version",

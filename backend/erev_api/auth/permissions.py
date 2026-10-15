@@ -152,7 +152,14 @@ CATALOGUE: Final[tuple[PermissionSpec, ...]] = (
         access_admin=True,
         mfa=True,
     ),
-    _permission("settings.manage", "PLT", "Manage tenant settings", access_admin=True, mfa=True),
+    _permission(
+        "settings.manage",
+        "PLT",
+        "Manage tenant settings and approve AI settings",
+        approval=True,
+        access_admin=True,
+        mfa=True,
+    ),
     _permission("integration.manage", "INT", "Manage integration connections", mfa=True),
     _permission(
         "api_client.manage",

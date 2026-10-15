@@ -63,7 +63,8 @@ that the content is what the request saw, validates, runs the simulation provide
 DRAFT → TESTED with ``test_evidence`` and ``impact_simulation_file_id``. ``submit_policy`` needs
 ``effective_from`` outside ``INSTANT_CATEGORIES``, checks the order of effective instants,
 validates, stores the whole set, attaches a simulation report when the version holds none and
-requests approval of subject ``REGISTRY_VERSION`` (``config.approve``). Approval publishes the
+requests approval of subject ``REGISTRY_VERSION`` (``config.approve``), or
+``AI_SETTINGS_VERSION`` (``settings.manage``) for new AI requests. Approval publishes the
 version and supersedes the PUBLISHED version of its scope key (``lifecycle``). ``withdraw_policy``
 withdraws the pending request and returns the version to DRAFT; a version reopened after a
 withdrawal or a rejection holds the whole set of its last submit as its statement — every value
@@ -113,6 +114,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable, Iterable, Mapping, Sequence
+from dataclasses import replace
 from datetime import UTC, datetime
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Final, Protocol
@@ -1130,7 +1132,8 @@ def run_test(uow: UnitOfWork, version_id: UUID, params: Mapping[str, Any]) -> di
 
 def submit_policy(uow: UnitOfWork, version_id: UUID, *, comment: str | None) -> None:
     """``POST /policies/{id}/submit``: TESTED → SUBMITTED with the simulation report and an approval
-    request of subject ``REGISTRY_VERSION`` (PRD BR-POL-01, BR-PLT-04).
+    request of subject ``REGISTRY_VERSION`` or ``AI_SETTINGS_VERSION`` for AI settings
+    (PRD BR-POL-01, BR-PLT-04).
 
     409 ``invalid-transition`` unless TESTED, and with rule REQ-POL-003 when the content changed
     after the test — the predecessor too; 422 without ``effective_from`` outside
@@ -1188,7 +1191,13 @@ def submit_policy(uow: UnitOfWork, version_id: UUID, *, comment: str | None) -> 
             },
         )
 
-    lifecycle.submit(uow, KIND, version, comment=comment, attach=attach)
+    lifecycle.submit(
+        uow,
+        AI_KIND if version["category"] == "AI" else KIND,
+        version,
+        comment=comment,
+        attach=attach,
+    )
 
 
 def withdraw_policy(uow: UnitOfWork, version_id: UUID, *, comment: str | None) -> None:
@@ -1206,7 +1215,12 @@ def withdraw_policy(uow: UnitOfWork, version_id: UUID, *, comment: str | None) -
     _require_authority_over(uow, version, action=WITHDRAW_ACTION)
     pending = session.execute(
         select(approval_request.c.id).where(
-            approval_request.c.subject_type == ApprovalSubjectType.REGISTRY_VERSION.value,
+            approval_request.c.subject_type.in_(
+                (
+                    ApprovalSubjectType.REGISTRY_VERSION.value,
+                    ApprovalSubjectType.AI_SETTINGS_VERSION.value,
+                )
+            ),
             approval_request.c.subject_id == version_id,
             approval_request.c.status == ApprovalRequestStatus.PENDING.value,
         )
@@ -1375,7 +1389,12 @@ def policy_outs(
         UUID(str(subject_id)): UUID(str(request_id))
         for subject_id, request_id in session.execute(
             select(approval_request.c.subject_id, approval_request.c.id).where(
-                approval_request.c.subject_type == ApprovalSubjectType.REGISTRY_VERSION.value,
+                approval_request.c.subject_type.in_(
+                    (
+                        ApprovalSubjectType.REGISTRY_VERSION.value,
+                        ApprovalSubjectType.AI_SETTINGS_VERSION.value,
+                    )
+                ),
                 approval_request.c.status == ApprovalRequestStatus.PENDING.value,
                 approval_request.c.subject_id.in_(ids),
             )
@@ -1816,6 +1835,11 @@ REGISTRY_VERSION_KIND: Final = lifecycle.ConfigVersionKind(
     on_published=_ai_published,
 )
 KIND: Final = REGISTRY_VERSION_KIND
+AI_KIND: Final = replace(
+    KIND,
+    subject_type=ApprovalSubjectType.AI_SETTINGS_VERSION,
+    content=subjects.ai_settings_version_content,
+)
 
 
 def _on_approved(uow: UnitOfWork, subject_id: UUID, approval_request_id: UUID) -> None:
@@ -1848,4 +1872,35 @@ subjects.register_lifecycle(
         on_approved=_on_approved, on_rejected=_on_rejected, on_voided=_on_voided
     ),
 )
+
+
+def _ai_on_approved(uow: UnitOfWork, subject_id: UUID, approval_request_id: UUID) -> None:
+    version = lifecycle.lock(uow.session, AI_KIND, subject_id)
+    predecessor_of(uow.session, version, for_update=True)
+    approvals.assert_own_fresh_basis(
+        uow,
+        approval_request_id,
+        subject_type=ApprovalSubjectType.AI_SETTINGS_VERSION,
+        subject_id=subject_id,
+    )
+    lifecycle.approve(uow, AI_KIND, subject_id, approval_request_id)
+
+
+def _ai_on_rejected(uow: UnitOfWork, subject_id: UUID, approval_request_id: UUID) -> None:
+    lifecycle.close(uow, AI_KIND, subject_id, approval_request_id, to_status=ConfigStatus.REJECTED)
+
+
+def _ai_on_voided(uow: UnitOfWork, subject_id: UUID, approval_request_id: UUID) -> None:
+    lifecycle.close(uow, AI_KIND, subject_id, approval_request_id, to_status=ConfigStatus.WITHDRAWN)
+
+
+subjects.register_lifecycle(
+    ApprovalSubjectType.AI_SETTINGS_VERSION,
+    subjects.SubjectLifecycle(
+        on_approved=_ai_on_approved,
+        on_rejected=_ai_on_rejected,
+        on_voided=_ai_on_voided,
+    ),
+)
+
 simulation.register_test_runner(SUBJECT_TYPE, run_test)

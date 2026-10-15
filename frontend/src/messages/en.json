@@ -618,6 +618,7 @@
   "approvals.subjectType.POLICY_OVERRIDE": "Policy override",
   "approvals.subjectType.PRINCIPAL_AGENT_CHANGE": "Principal or agent change",
   "approvals.subjectType.REGISTRY_VERSION": "Policy version",
+  "approvals.subjectType.AI_SETTINGS_VERSION": "AI settings version",
   "approvals.subjectType.ROLE_ASSIGNMENT": "Role assignment",
   "approvals.subjectType.ROLE_CHANGE": "Role change",
   "approvals.subjectType.RULE_SET_VERSION": "Rule set version",

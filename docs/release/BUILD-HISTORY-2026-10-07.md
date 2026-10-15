@@ -5587,3 +5587,19 @@ cleanup in the shared database session kernel was also repaired and regression-t
   .run/ai-review-upload-{pg-verified,tests,types,python-types,lint,browser}.log.
 - DOCX, field decisions, responsive panel tabs, draft-form integration, broad release verification
   and independent accounting sign-off remain open. No deployment or live provider calls.
+
+## Per-field review and confirmed draft handoff — October 15, 2026
+
+- Added Accept/Edit/Reject controls, explicit low-confidence choices, edit/rejection reasons,
+  citation checks and an explicit effective-date target. Decimal amounts remain strings;
+  customer identity/code, entity, currency and quantities require normal draft inputs.
+  Unsupported retained accounting terms stop continuation rather than being interpreted.
+- Reused ordinary draft validation and inputs, then a separate confirmation sends atomic
+  proposal acceptance with captured ETag, decisions and bindings. No activation action is
+  offered. A failed request keeps the form; successful acceptance opens the draft workbench.
+- 58 focused frontend review/upload/API/form tests, frontend typing and full lint passed. Logs:
+  .run/ai-review-decisions-{tests,types,lint}.log. These are component/API-boundary checks,
+  not a live browser/provider workflow or current full-release verification.
+- Back-navigation to field choices, unsupported terms, DOCX, responsive tabs, full browser
+  acceptance, broader release gates and independent accounting sign-off remain open.
+  No deployment or provider calls.

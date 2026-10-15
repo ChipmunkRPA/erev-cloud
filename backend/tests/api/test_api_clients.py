@@ -161,12 +161,13 @@ def bearer(access: str, *, key: bool = False, **extra: str) -> dict[str, str]:
 
 
 @pytest.mark.control("CTL-037")
-def test_ctl_037_approval_scope_rejected(app: FastAPI, tomas: Actor) -> None:
+@pytest.mark.parametrize("scope", ["contract.approve", "settings.manage"])
+def test_ctl_037_approval_scope_rejected(app: FastAPI, tomas: Actor, scope: str) -> None:
     refused = post(
         app,
         CLIENTS,
         tomas,
-        {"name": "svc-salesforce", "scopes": ["contract.read", "contract.approve"]},
+        {"name": "svc-salesforce", "scopes": ["contract.read", scope]},
     )
     assert (refused.status_code, slug(refused)) == (422, "scope-not-allowed"), refused.text
     assert refused.json()["detail"] == "API clients cannot hold approval permissions."
@@ -179,15 +180,13 @@ def test_ctl_037_approval_scope_rejected(app: FastAPI, tomas: Actor) -> None:
         savepoint = session.begin_nested()
         with pytest.raises(exc.DBAPIError) as excinfo:
             session.execute(
-                insert(api_client).values(
-                    **api_client_values(tenant_id, scopes=["contract.approve"])
-                )
+                insert(api_client).values(**api_client_values(tenant_id, scopes=[scope]))
             )
         savepoint.rollback()
     orig = excinfo.value.orig
     assert getattr(orig, "sqlstate", None) == "P0001"
     message = str(getattr(getattr(orig, "diag", None), "message_primary", ""))
-    assert message.startswith("EREV-REF-002: scopes contract.approve of erev.api_client")
+    assert message.startswith(f"EREV-REF-002: scopes {scope} of erev.api_client")
 
 
 def test_create_client_secret_shown_once(app: FastAPI, clock: FrozenClock, tomas: Actor) -> None:

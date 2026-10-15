@@ -352,6 +352,7 @@ def _products(session: Session, ids: Sequence[UUID]) -> dict[UUID, Subject]:
 
 READERS: Final[Mapping[str, Reader]] = {
     ApprovalSubjectType.REGISTRY_VERSION.value: _registry_versions,
+    ApprovalSubjectType.AI_SETTINGS_VERSION.value: _registry_versions,
     ApprovalSubjectType.RULE_SET_VERSION.value: _child_reader(
         rule_set_version, rule_set, "rule_set_id", simulated=True
     ),

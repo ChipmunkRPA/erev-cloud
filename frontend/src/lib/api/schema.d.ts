@@ -9309,6 +9309,7 @@ export interface components {
       | "ESTIMATE_VERSION"
       | "MANUAL_ADJUSTMENT"
       | "REGISTRY_VERSION"
+      | "AI_SETTINGS_VERSION"
       | "RULE_SET_VERSION"
       | "POB_TEMPLATE_VERSION"
       | "ACCOUNT_MAPPING_VERSION"

@@ -2,6 +2,24 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Independent administrator AI approvals — October 15, 2026
+
+- New AI submissions use AI_SETTINGS_VERSION with workspace-wide settings.manage review.
+  A different Tenant Admin can approve without accounting privileges; self-approval remains
+  refused. Retained REGISTRY_VERSION requests keep their original routing and publication hooks.
+  Emergency disable, model/text review and immutable content checks remain in the lifecycle.
+- settings.manage is an approval permission, so API clients cannot request or retain it in
+  effective grants. Migration 0156 updates permission metadata and report filters; upgrade,
+  downgrade, enum order and immutable catalogue triggers pass 12 focused checks.
+- The broader regression selection passes 95 checks, including API clients, legacy routing,
+  emergency disable and earlier report-filter migration compatibility. Evidence:
+  .run/ai-admin-approval-{release,migration,release-types,frontend,lint}.log.
+- Approval UI subject labels, OpenAPI/TypeScript and the data model are aligned. Frontend typing
+  and 55 focused tests pass; backend typing passes 797 files. Full lint passes (503 control
+  markers). The settings editor and standard J-19/demo journey remain unfinished.
+- No deployment or provider calls. Frozen CI on 3cf8f5b remains running and predates this work;
+  broader release verification and independent accounting sign-off remain outstanding.
+
 ## Administrator AI version authoring — October 15, 2026
 
 - Added AI-scoped create/read/edit/test/submit/withdraw endpoints under /ai/settings/versions.
@@ -208,22 +226,6 @@
   preconditions remain authoritative; returning to review captures the current displayed ETag
   only on explicit continuation. Broader release verification and accounting sign-off remain open.
   No deployment or live provider calls.
-
-## Per-field review and confirmed draft handoff — October 15, 2026
-
-- Added Accept/Edit/Reject controls, explicit low-confidence choices, edit/rejection reasons,
-  citation checks and an explicit effective-date target. Decimal amounts remain strings;
-  customer identity/code, entity, currency and quantities require normal draft inputs.
-  Unsupported retained accounting terms stop continuation rather than being interpreted.
-- Reused ordinary draft validation and inputs, then a separate confirmation sends atomic
-  proposal acceptance with captured ETag, decisions and bindings. No activation action is
-  offered. A failed request keeps the form; successful acceptance opens the draft workbench.
-- 58 focused frontend review/upload/API/form tests, frontend typing and full lint passed. Logs:
-  .run/ai-review-decisions-{tests,types,lint}.log. These are component/API-boundary checks,
-  not a live browser/provider workflow or current full-release verification.
-- Back-navigation to field choices, unsupported terms, DOCX, responsive tabs, full browser
-  acceptance, broader release gates and independent accounting sign-off remain open.
-  No deployment or provider calls.
 
 
 ## Outstanding release verification
