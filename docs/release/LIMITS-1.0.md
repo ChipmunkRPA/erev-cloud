@@ -5,166 +5,62 @@ October 14 full backend CI completed on the older `165d63c` snapshot with 33 fai
 Current-main repairs and remaining failure/expected-failure evidence are tracked in
 [the CI record](CI-2026-10-14.md). Targeted passes do not establish a current full release pass.
 
-October 14 AI foundation: the request/response protocol and deterministic fixture provider
-are implemented, with 32 provider/configuration checks passing. This does not enable AI:
-gateway jobs, human acceptance and
-lifecycle audit evidence remain unfinished. The AI audit-category failure remains visible.
+AI implementation status as of October 15: the internal narrative gateway composes live-job
+human authorization, current settings/kill switches, serialized UTC-month budget admission,
+read-only source retrieval, provider execution and audited proposal persistence. Source reads
+intersect ai.use with contract.read; current grants and source evidence are rechecked around
+the call. Completed-job redelivery reauthorizes access and returns the original result without
+another call. The fake-provider/real-contract path is tested; no live provider call has been made.
 
-Migration 0147 now provides append-only, tenant-isolated AI call-log storage and its ORM,
-privacy and sandbox classifications. No gateway writes these records yet, so schema
-verification does not establish AI audit-lifecycle coverage or operational AI readiness.
+Narrative validation checks bounded response hashes/schema, authorized node citations and
+numeric membership at the currency minor unit. Invalid output keeps the deterministic
+explanation; rejected text is excluded from stored proposals. These checks do not establish
+semantic correctness or independent accounting acceptance. The gateway retries classified
+transient failures up to three times with injected 5/10-second waits; permanent/exhausted
+provider errors produce failed proposals linked to existing attempt evidence.
 
-An atomic attempt writer now records validated hashes, usage and fixed failure codes
-alongside an AUD-FACT event under the requesting user. Commit/rollback and metadata
-refusals are verified. It is not yet connected to an operational gateway; proposal
-creation, decisions and their lifecycle audit coverage remain unfinished.
+Migrations 0147–0150 retain append-only call logs, immutable proposal content with guarded
+human-decision fields, completed-job/source bindings and immutable call intents with one
+optional outcome link. Populated completion/intent evidence prevents destructive downgrade.
+Call intents are not yet written by the gateway: write-ahead admission, durable retry counting,
+unknown usage and recovery after a provider call but before committed evidence remain open.
+A monthly lease serializes known usage; it does not reserve an unknown response or reconstruct
+lost usage. The worker still needs dispatch/waiting, registered AI_TASK handlers, durable
+admission failures, notifications and public submission/acceptance/rejection workflows. The
+AI audit-lifecycle gate remains open; storage and internal gateway tests do not satisfy it.
 
-The numeric narrative validator now checks figures against supplied evidence at the
-currency minor unit, with explicit locale normalization and bounded parsing. This only
-establishes numeric membership: authorized retrieval, semantic/citation checks, narrative
-proposal generation and deterministic fallback integration remain outstanding. Unsupported
-numeric formats refuse rather than being guessed; percentages require displayed units.
+The Anthropic adapter is mock-tested, uses the official SDK, disables SDK retries and telemetry,
+and resolves secrets lazily. Contract-review and explain-narrative prompts have retained bytes,
+digests and deterministic fixtures. Request preparation minimizes and redacts inputs with
+immutable coordinate mappings; extraction validation verifies allowed paths, confidence and
+source citation spans, rejecting an entire malformed proposal. Confidence below 0.75 is marked
+for review. Command-specific field schemas, human semantic review, extraction persistence and
+acceptance, anomaly and Q&A workflows remain unfinished.
 
-Narrative preparation and response selection now use a retained explain-narrative prompt,
-strict response hashes/schema, snapshot-bound node citations and cited-only numeric evidence.
-Invalid responses select the original deterministic explanation without model text. This is
-verified through the fake provider, but remains unconnected to authorized retrieval, AI_TASK,
-proposal persistence and the public Explain/API workflow. It is not completed AIX-7 coverage.
+The PDF adapter has file/page/text and parser limits, an isolated subprocess, timeout cleanup
+and a sanitized environment. A four-page fixture covers the nine documented extraction fields.
+Linux address-space/CPU enforcement is implemented but actual Linux success/exhaustion checks
+remain unverified: two tests skip on this Mac, and Docker's daemon is unavailable. This is
+process resource containment, not a filesystem/network sandbox. No registered AI job yet
+connects authorized source reads, parsing, document-text storage and proposal production.
 
-AI explanation retrieval now reauthorizes the job's human and intersects ai.use with
-contract.read scopes in a PostgreSQL read-only session. It reuses Explain's stored-trace
-resolver and historical-period logic; real contract tests verify identity and scope denial.
-It is not yet called by a registered AI_TASK handler or public API. Gateway admission,
-provider execution, proposal persistence and approval/acceptance remain outstanding;
-contract-document and Q&A retrieval are separate unfinished paths.
+Proposal source and extracted-text references hold files against direct erasure, including
+after expiry. The Controller-reviewed EVIDENCE_SHRED flow can lift the holds; without durable
+entity bindings, review covers every tenant entity. AI_DOCUMENT_TEXT uses per-file encryption;
+tests prove decryption before erasure, key destruction and refused reads afterwards. Any
+experimental plaintext AI_DOCUMENT_TEXT object from an older build requires explicit migration
+or regeneration; there is no plaintext fallback or automatic conversion.
 
-NUMBER_EXPLANATION now has a transaction-bound proposal writer: it revalidates the
-retained trace/request and commits attempt evidence, proposed/failed output and audit
-records together. Real-contract tests verify rollback, rejected-text exclusion and no
-accounting changes. This does not finish the gateway, retries/crash recovery, public API,
-other proposal kinds or human acceptance; the full AI lifecycle gate remains open.
+File-read ownership is registered. Derived text requires ai.use and current access to a live
+source attachment of a same-tenant CONTRACT_EXTRACTION proposal. Source references add no
+read grant; attachment entity scope and voiding remain effective. Derived-to-derived links
+refuse without recursion, and disabling calls does not disable retained evidence reads.
+The dedicated proposal/document-text response API and extraction workflow remain open.
 
-A narrative gateway attempt now composes authorization, effective settings, budget admission,
-read-only retrieval, lazy provider execution and committed proposal evidence. Typed provider
-errors are logged; a mid-call switch or grant change retains usage without model narrative.
-The fake-provider/real-contract path is verified, but no AI_TASK handler or public submission
-is registered. Retry scheduling, terminal failure proposals for admission/provider errors,
-notifications, idempotent completion and crash/unlogged-call recovery remain unfinished.
-
-The narrative gateway now allows at most three provider attempts with injected 5/10-second
-waits. Only classified transient errors retry; each attempt re-enters admission and commits
-its log before waiting. Permanent/exhausted provider errors create a failed proposal linked
-to the final existing log after reauthorization and evidence checks, without duplicate usage.
-The worker still needs to supply real waiting/dispatch, enforce job delivery idempotency and
-handle admission failures, notifications and crash recovery. This is not registered job/API
-coverage or a completed AI lifecycle gate.
-
-Migration 0149 binds completed narrative proposals to a unique tenant/job and immutable
-source fingerprint. Redelivery returns the existing result after current read authorization,
-without another model call, including after budget exhaustion or disablement. Migration and
-real-contract tests verify these cases. This does not recover unfinished provider calls or
-retry counts after a crash, and does not complete job registration or public API delivery.
-
-Migration 0150 adds immutable, tenant-bound provider-call intents, numbered 1–3 per job,
-with one optional linked model-log outcome. Populated intent evidence prevents downgrade;
-an unlinked intent survives as an uncertain outcome. Gateway write-ahead admission, durable
-retry counting and uncertain-call recovery are not connected yet: schema storage alone does
-not prevent duplicate calls or account for unknown usage.
-
-The October 15 full architecture run additionally exposed unresolved checks for contract-event
-scope/appender registries, AI proposal file ownership/evidence rules, material-right expiry file
-bindings, provider clock/test temporary-path rules and AI membership identity reads. The run
-recorded 337 passes and 10 failures (.run/ai-intent-checks.log); privacy/snapshot counts and
-AI proposal column order were subsequently corrected. A subsequent repair passed 54 targeted checks: the provider now uses the central monotonic
-clock; the active AI initiator and shared event-appending helper are correctly registered;
-the option-expiry evidence binding is documented; the template test retains an absolute-path
-refusal without using a reserved temporary directory. Two of those architecture checks remain
-open: AI proposal file ownership and file-evidence retention. The complete architecture suite
-and full release gates still require a fresh pass.
-
-AI proposal source and extracted-text references now hold their files against direct erasure,
-including after proposal expiry. The existing Controller-reviewed EVIDENCE_SHRED flow can
-lift those holds; without durable entity bindings it requires coverage of every tenant entity.
-AI_DOCUMENT_TEXT is now encrypted with a per-file key and can be cryptographically erased.
-The file-evidence registry check is now resolved; file-read ownership remains open. This does
-not complete proposal file-read authorization or the extraction job/storage workflow.
-Any experimental plaintext AI_DOCUMENT_TEXT object from an older build needs explicit migration
-or regeneration before use; there is no plaintext fallback or automatic conversion.
-
-Migration 0148 adds immutable proposal content/citations, tenant-bound evidence references
-and SM-11 state guards. The schema and full migration round trip are verified; proposal
-creation/acceptance APIs, approval integration and lifecycle audit events remain absent.
-Database state guards do not substitute for human command permissions or field validation.
-
-The provider selector and Anthropic SDK adapter are now implemented and mock-tested,
-including disablement, safe error classification, timeout and no-SDK-retry settings.
-No live provider call has been made. The gateway and audited human workflows remain absent;
-these adapter checks do not establish end-to-end AI readiness.
-
-Request preparation now applies the shared contact-redaction patterns, requires opt-in
-for its explicit document-text argument, and hashes immutable outgoing content and configuration.
-The gateway must still select authorised/minimised facts, enforce job execution and budgets,
-validate outputs, and persist audited results. No provider-facing route is enabled by this helper.
-
-Extraction output validation now checks response integrity/completion, unique allowed paths,
-confidence and authorised document citation spans, with bounded parsing and decimal expansion.
-It refuses an entire invalid proposal and marks confidence below 0.75 for review. This is an
-unconnected domain helper: command-specific value schemas, semantic citation review and
-narrative-number verification remain open. PRV-08 now retains immutable redaction coordinates,
-and extraction validation can restore citations to original Unicode spans, refusing boundaries
-inside placeholders. The future gateway must retain the exact mapping for each outgoing page;
-durable document extraction and gateway integration remain absent.
-Neither span validation nor a high confidence score establishes accounting correctness.
-
-Contract-review v1 now has a retained prompt file, reviewed digest manifest and bounded
-loader. Exact file bytes, including metadata, become the system message and template digest;
-unknown versions and changed files refuse. The built wheel retains identical prompt bytes.
-Other prompt kinds, retained fake-response fixtures and the operational gateway remain open.
-
-October 15 document preparation now binds ordered pages, document identity, allowed paths,
-retained template and local redaction mappings into the prepared extraction request. It refuses
-text-disabled input, more than 600 pages, and source/redacted UTF-8 text exceeding 2 MiB.
-The fake-provider path verifies source citation restoration. This accepts already-extracted
-page text; PDF worker extraction, authorized file access, durable document-text storage and
-operational gateway execution remain unimplemented.
-
-October 15 PDF continuation: a pypdf adapter now extracts page text with file/page/text
-and parser stream/tree limits. A visually checked four-page WLD-F-29 fixture and retained
-exact-input fake response cover the nine documented fields and confidence flags through
-preparation and citation validation. This supersedes the earlier absence of a PDF parser;
-it does not establish a worker service or proposal workflow. Process memory/time enforcement,
-authorized source reads, durable AI_DOCUMENT_TEXT storage, jobs and audited acceptance remain
-unfinished. Dependency licence and development vulnerability checks passed; final candidate
-audit and full release verification are still owed.
-
-October 15 PDF isolation continuation: the operational entry point now launches a private
-Python subprocess without inherited secrets, with wall timeout and strict output validation.
-The Linux child sets address-space/CPU limits before parser import; unsupported hosts fail
-closed. Local tests verify child transport, timeout cleanup, classified exits and unsupported
-host refusal. Actual Linux success and memory/CPU exhaustion remain unverified: two tests are
-skipped on this Mac, and the local Docker daemon is unavailable. No enabled AI job uses this
-entry point yet. This is process resource containment, not a filesystem/network sandbox.
-
-October 15 AI authorization continuation: a job authorization helper now validates a live
-AI_TASK attempt and its stored human initiator, checks current user/workspace/membership
-status and reloads ai.use grants. Retrieval must use the returned USER principal with its
-ai.use entity scope, not the surrounding SYSTEM principal or unrelated role scopes. Real
-PostgreSQL checks cover revocation and disabled/stale identities. Per-source permission
-checks, settings/kill switches, budgets and operational gateway integration remain open.
-
-October 15 AI settings continuation: a typed settings snapshot now resolves the five AI
-registry settings from tenant-bound published versions and retains their source IDs. Effective
-enablement also checks workspace status, immediate tenant turn-off and the platform kill switch.
-PostgreSQL tests verify these boundaries. The configured monthly budget is read only; token
-accounting/serialization, settings command lifecycle and gateway execution remain unfinished.
-
-October 15 AI budget continuation: a tenant-specific advisory lease now serializes admission
-against committed UTC-month usage. The caller must hold it through provider execution and
-committed attempt logging; busy jobs must requeue. PostgreSQL witnesses cover stale-total
-prevention, tenant/month isolation, zero/exhausted budgets and lock loss. This does not reserve
-unknown response tokens or recover usage from a call lost before logging. The gateway is still
-absent, so these primitives do not establish operational budget enforcement. Lost-connection
-cleanup in the shared database session kernel was also repaired and regression-tested.
+Earlier architecture failures and subsequent fixes are preserved in the build history.
+The October 15 full architecture plus file API run passed 292 checks in 226.83 seconds
+(.run/ai-file-access-regression.log); 14 focused file-read checks passed separately. These
+passes do not establish a full release pass. Current results are recorded in PROGRESS.md. Independent accounting sign-off and the other release gates remain open.
 
 October 14 audit continuation: native option entry/expiry and CLOSE evidence-pack creation
 now have catalogue entries and real request scenarios in the audit walk. Material-right

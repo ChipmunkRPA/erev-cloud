@@ -1864,6 +1864,7 @@ An upload over its purpose limit, or of a media type outside its list, returns 4
 | `IMPORT_SOURCE` | `reconciliation.source_file_id` | `contract.read`, `recon.prepare`, `recon.signoff` | `reconciliation.entity_id` |
 | `ATTACHMENT` | uploader | the principal that uploaded the file | - |
 | `ATTACHMENT` | `file_attachment.file_object_id` | rule: the subject of a live attachment (T-PLT-30) | - |
+| `ATTACHMENT` | `ai_proposal.file_object_id` | route: internal | - |
 | `SSP_STUDY` | uploader | the principal that uploaded the file | - |
 | `SSP_STUDY` | `file_attachment.file_object_id` | rule: the subject of a live attachment (T-PLT-30) | - |
 | `LEGACY_DATABASE` | uploader | the principal that uploaded the file | - |
@@ -1890,9 +1891,15 @@ An upload over its purpose limit, or of a media type outside its list, returns 4
 | `AUDIT_DIGEST` | `audit_chain_verification.digest_file_id` | `audit.read` | tenant |
 | `POSTING_RESPONSE` | `posting_ack.response_file_id` | route: internal | - |
 | `AI_PROMPT_LOG` | none | nobody | - |
-| `AI_DOCUMENT_TEXT` | none | nobody | - |
+| `AI_DOCUMENT_TEXT` | `ai_proposal.document_text_file_id` | rule: ai.use and current source attachment access | - |
 
 Evidence-pack files are reserved for API-R-42 so every download can reauthorize the complete retained population and record `evidence.export` with the pack id (PRD J-17-AC-4). Generic file metadata/content routes return 404 even to an all-entity Auditor. The initial endpoint serves retained first-close packs; other pack kinds remain pending. The owner retains its entity binding for file-destruction scope checks.
+
+AI proposal source references add no file-read grant: existing uploader and attachment-subject
+rules still decide source access. Extracted text requires `ai.use` plus current access to an
+unshredded source attachment of a `CONTRACT_EXTRACTION` proposal in the same tenant. Other
+source purposes cannot form recursive read chains. Disabling model calls does not disable
+retained evidence reads. The dedicated document-text response API remains separate work.
 
 **Binding (authoritative; rev 1.189; REQ-PLT-012; ruling R-111 (1)).** A command that takes a file id from its caller — to parse the file, to make it the source or the evidence of a record, to attach it — binds it through one function, `erev_api.domain.platform.file_access.bound`, which answers the file's row only when the id names a file the caller may read (Read access above). A file that does not exist and a file the caller may not read are one answer, the answer of the table, and it is given before anything of the file is looked at — purpose, media type, shred state, name or content — so that no answer of the command tells an unreadable file from a missing one. The job that later works on a bound file reads it as SYSTEM. The request members that name a file:
 

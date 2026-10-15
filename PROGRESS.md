@@ -2,6 +2,23 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## AI document file-read authorization — October 15, 2026
+
+- Registered proposal source references without granting source access. Derived text now
+  requires ai.use and current access to an unshredded source attachment of a same-tenant
+  CONTRACT_EXTRACTION proposal. Non-extraction, missing-source and recursive text links refuse.
+- PostgreSQL tests cover uploader access, another contract reader's entity permissions,
+  attachment voiding, lost AI permission, source shredding, operator/foreign-tenant denial,
+  reads while AI is disabled and conservative all-entity erasure scope.
+- Focused checks: 14 passed; strict typing: 768 sources; Ruff/diff passed. Logs:
+  .run/ai-file-read-{final,types}.log. Full architecture plus existing file API checks:
+  292 passed in 226.83s (.run/ai-file-access-regression.log); this is not full release CI.
+- Consolidated contradictory historical AI paragraphs in LIMITS-1.0.md into current status;
+  preserved the superseded notes in BUILD-HISTORY-2026-10-07.md.
+- Dedicated proposal/document-text response APIs, extraction job integration and write-ahead
+  call recovery remain unfinished, along with other implementation and release gates.
+  No deployment or production-readiness claim; independent accounting sign-off is still open.
+
 ## AI proposal evidence retention and encrypted text — October 15, 2026
 
 - Source and extracted-text references now hold their files against direct shredding even
@@ -226,24 +243,6 @@
   recovery for a provider call whose usage was never logged remains open, as do the gateway,
   durable per-attempt/proposal auditing and human acceptance. No live calls or deployment.
   Isolated local test database stopped after verification.
-
-## Effective AI gateway settings — October 15, 2026
-
-- Added an immutable settings snapshot from explicitly tenant-bound registry rows. All five
-  values resolve from one version read at the aware job clock; only published/effective
-  versions count. The snapshot retains source version IDs for later call evidence.
-- Effective enablement requires an active workspace, published enablement, no immediate
-  tenant turn-off and no platform kill switch. Model, sharing/redaction flags and monthly
-  token budget are strict typed values; invalid values refuse without leaking their contents.
-- Thirteen PostgreSQL cases cover defaults, draft/future versions, provenance, kill switch,
-  immediate turn-off, suspended workspace, tenant isolation and malformed values. Combined
-  AI/access/architecture checks: 185 passed, two Linux parser-limit tests skipped; strict
-  API/test typing: 759 sources; Ruff passes. Final focused settings checks: 13 passed.
-  Logs: .run/ai-settings-{checks,types,final-pg}.log.
-- This reads the configured budget; it does not reserve tokens or enforce concurrency.
-  Operational gateway execution, budget serialization, per-source permissions, attempt and
-  proposal/audit persistence, settings command lifecycle and human acceptance remain open.
-  No provider call or deployment; isolated test database stopped after verification.
 
 ## Outstanding release verification
 

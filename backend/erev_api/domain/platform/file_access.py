@@ -60,6 +60,7 @@ from erev_api.db.session import DbContext, tenant_session
 from erev_api.db.tables import (
     access_review_campaign,
     account_mapping_version,
+    ai_proposal,
     approval_request,
     audit_chain_verification,
     contract,
@@ -643,6 +644,43 @@ def attachment_subject_rows() -> list[tuple[str, str, str, str]]:
     return rows
 
 
+def _ai_document_text(session: Session, ctx: RequestContext, file_id: UUID) -> bool:
+    """A derived document never grants broader access than its live source attachment.
+
+    Restrict source purpose before following the read rule: derived files cannot form a
+    recursive authorization chain, even if a malformed proposal points to another text file.
+    Settings/kill switches govern new calls, not reads of retained evidence.
+    """
+    if not holds(ctx.principal, {"ai.use"}, TENANT_LEVEL):
+        return False
+    sources = session.execute(
+        select(file_object)
+        .join(
+            ai_proposal,
+            (ai_proposal.c.tenant_id == file_object.c.tenant_id)
+            & (ai_proposal.c.file_object_id == file_object.c.id),
+        )
+        .where(
+            ai_proposal.c.tenant_id == ctx.principal.tenant_id,
+            ai_proposal.c.document_text_file_id == file_id,
+            ai_proposal.c.kind == "CONTRACT_EXTRACTION",
+            file_object.c.purpose == FilePurpose.ATTACHMENT.value,
+            file_object.c.shredded_at.is_(None),
+        )
+    ).mappings()
+    return any(readable(session, ctx, source) for source in sources)
+
+
+def _ai_text_references(session: Session, file_id: UUID) -> list[Entities | Literal["*"] | None]:
+    # No immutable entity binding yet: erasure review must cover every tenant entity.
+    return [
+        None
+        for _ in session.scalars(
+            select(ai_proposal.c.id).where(ai_proposal.c.document_text_file_id == file_id)
+        )
+    ]
+
+
 # --- owners with a rule of their own --------------------------------------------------------------
 
 
@@ -927,7 +965,10 @@ FILE_READ_ACCESS: Final[Mapping[FilePurpose, PurposeAccess]] = MappingProxyType(
                 ),
             ),
         ),
-        FilePurpose.ATTACHMENT: PurposeAccess(uploader=True, owners=(_ATTACHED,)),
+        FilePurpose.ATTACHMENT: PurposeAccess(
+            uploader=True,
+            owners=(_ATTACHED, FileOwner(ai_proposal, "file_object_id", route=INTERNAL)),
+        ),
         FilePurpose.SSP_STUDY: PurposeAccess(uploader=True, owners=(_ATTACHED,)),
         FilePurpose.LEGACY_DATABASE: PurposeAccess(
             uploader=True,
@@ -1051,10 +1092,19 @@ FILE_READ_ACCESS: Final[Mapping[FilePurpose, PurposeAccess]] = MappingProxyType(
         FilePurpose.POSTING_RESPONSE: PurposeAccess(
             owners=(FileOwner(posting_ack, "response_file_id", route=INTERNAL),),
         ),
-        # Written by features that are not built (AI assistance): no record owns such a file yet,
-        # so nobody reads one. The feature that writes the first names its owner here.
+        # Raw prompt logs have no reader; model logs retain hashes, not prompt text.
         FilePurpose.AI_PROMPT_LOG: PurposeAccess(),
-        FilePurpose.AI_DOCUMENT_TEXT: PurposeAccess(),
+        FilePurpose.AI_DOCUMENT_TEXT: PurposeAccess(
+            owners=(
+                FileOwner(
+                    ai_proposal,
+                    "document_text_file_id",
+                    grant=_ai_document_text,
+                    rule="ai.use and current source attachment access",
+                    referenced=_ai_text_references,
+                ),
+            ),
+        ),
     }
 )
 
