@@ -2,6 +2,23 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Converted option platform capture witness — October 14, 2026
+
+- Added a PostgreSQL witness through the real platform booking, activation-event, engine,
+  persistence and capture-reader path. Published parity templates and an approved legacy
+  SSP catalogue support a paid product plus converted option, without mocking computation.
+- The option retains total SSP/allocation 25, remaining quantity 0.4, revenue 15 and remaining
+  allocation 10. Contract billed total 100, revenue 15 and remaining allocation 85 agree.
+  Verified retained input hash/batch/cutover, contract-keyed audit facts, and rollback leaving
+  no contracts or option terms. One integration test passed (9.21s); strict test Mypy/Ruff pass.
+  Logs: .run/converted-option-capture.log and .run/converted-option-capture-types.log.
+- Earlier setup attempts exposed an incomplete stage-only fixture (free option with no paid
+  line funding allocation) and missing period-state setup. The final fixture represents the
+  complete two-line contract. No engine checks or approval guards were weakened.
+- The public capture refusal stays: reconciliation still compares raw legacy dollar-unit
+  quantity 10 against option quantity 0.4, and MIGRATION_PROMOTION is unimplemented. Full
+  import/reconcile/promotion acceptance remains open. Older CI 165d63c is live at 45%.
+
 ## Shared option term persistence — October 14, 2026
 
 - Native entry and the migration applier share validated immutable term insertion. Converted
@@ -219,29 +236,6 @@
   .run/material-right-expire-boundary-production-types.log.
 - Other-command races, closed-period/deferred failures, exercise/reversal and release
   acceptance remain open. Full CI 165d63c remains live at 32%. No deployment.
-
-## Dedicated material-right expiry — October 14, 2026
-
-- Added expire-material-right with event.record permission, stream preconditions,
-  idempotency, group/contract locks, ACTIVE/open/current-kind guards and actual-date
-  bounds. Reused posting-period/evidence validation, audit, append/compute and deferred
-  jobs. Synchronous computation refusal rolls back; generic event append stays restricted.
-- Reproduced and repaired duplicate expiry caused by filtering committed events at the
-  request timestamp. Locked guards and current option reads now use latest records;
-  explicit known_at reads preserve their cutoff. The two native pricing/activation cases
-  now expire, recognize USD 12,000, leave zero allocation and verify balanced subledger
-  lines with a 12,000 revenue credit. Replay creates no second event; repeat closure,
-  missing/stale preconditions and future dates are refused.
-- Broad event/obligation/route/import/read regressions: 56 passed (112.14s). Final lifecycle
-  and historical-period assertions: 2 passed (32.49s). Revenue reads are period-end totals,
-  while status is daily; a first test incorrectly expected daily revenue and was corrected
-  against API-C-10, with a separate prior-period-zero assertion. Full typecheck (880 files
-  plus frontend), strict test Mypy and Ruff pass. Logs: .run/material-right-expire-regression.log,
-  .run/material-right-expire-period-cuts.log, .run/material-right-expire-types.log.
-- OpenAPI, TypeScript, specification and limitations updated. Exercise/reversal, specific
-  race/security/closed-period/failure cases and complete release/accounting acceptance remain
-  open. Full CI 165d63c is live around 32%, with another demo-reference failure awaiting
-  diagnostics. No deployment; publish directly to main.
 
 ## Outstanding release verification
 

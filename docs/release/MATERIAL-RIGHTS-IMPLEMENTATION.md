@@ -477,3 +477,26 @@ This is persistence-level evidence, not a complete converted-option import. Capt
 its option refusal. End-to-end platform capture with real prerequisites, reconciliation and
 approved MIGRATION_PROMOTION remain outstanding; the promotion subject is still missing.
 The native four-decimal money boundary is also enforced for imported option terms.
+
+## Converted option through the real platform applier, October 14
+
+`test_converted_option_capture.py` now provisions published parity templates, an approved
+LEGACY-SKU-SSP version and the entity calendar/book/state, then runs the actual platform
+applier and capture reader within a savepoint. The paid product plus free option contract
+has price 100 and SSPs 75/25. The converted option carries source quantity 25, remaining
+quantity 10 and historical revenue 15; the native input carries one option, remaining 0.4,
+explicit SSP/allocation 25 and remaining allocation 10. Contract totals remain billed 100,
+recognized 15 and allocated remaining 85. Assertions also bind input hash, batch, cutover,
+expected captured output, audit contract key and deletion of contract/term rows on rollback.
+
+The integration check passed in 9.21s; strict test typing and Ruff passed. Evidence is in
+`.run/converted-option-capture.log` and `.run/converted-option-capture-types.log`. Initial
+fixture failures were corrected by supplying the paid line and period state; computation and
+approval invariants were retained. This extends the earlier persistence-only witness through
+the real engine, but does not verify the full import job or approved promotion.
+
+Capture remains refused at its public entry. Reconciliation currently reads raw source
+REMAINING_QTY in legacy dollar-units and compares it directly with the native option-unit
+measure. That comparison must account explicitly for the selected POL-212 conversion without
+changing retained source values or hiding genuine differences. MIGRATION_PROMOTION is still
+missing. Both are prerequisites to removing the public option refusal.

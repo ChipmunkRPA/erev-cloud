@@ -3733,3 +3733,26 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   documented the required governed expiry/exercise commands and ledger acceptance.
   These missing commands remain implementation work; no expiry support is claimed.
 - Full CI 165d63c is live around 32%. No deployment; direct-main publication.
+
+## Dedicated material-right expiry — October 14, 2026
+
+- Added expire-material-right with event.record permission, stream preconditions,
+  idempotency, group/contract locks, ACTIVE/open/current-kind guards and actual-date
+  bounds. Reused posting-period/evidence validation, audit, append/compute and deferred
+  jobs. Synchronous computation refusal rolls back; generic event append stays restricted.
+- Reproduced and repaired duplicate expiry caused by filtering committed events at the
+  request timestamp. Locked guards and current option reads now use latest records;
+  explicit known_at reads preserve their cutoff. The two native pricing/activation cases
+  now expire, recognize USD 12,000, leave zero allocation and verify balanced subledger
+  lines with a 12,000 revenue credit. Replay creates no second event; repeat closure,
+  missing/stale preconditions and future dates are refused.
+- Broad event/obligation/route/import/read regressions: 56 passed (112.14s). Final lifecycle
+  and historical-period assertions: 2 passed (32.49s). Revenue reads are period-end totals,
+  while status is daily; a first test incorrectly expected daily revenue and was corrected
+  against API-C-10, with a separate prior-period-zero assertion. Full typecheck (880 files
+  plus frontend), strict test Mypy and Ruff pass. Logs: .run/material-right-expire-regression.log,
+  .run/material-right-expire-period-cuts.log, .run/material-right-expire-types.log.
+- OpenAPI, TypeScript, specification and limitations updated. Exercise/reversal, specific
+  race/security/closed-period/failure cases and complete release/accounting acceptance remain
+  open. Full CI 165d63c is live around 32%, with another demo-reference failure awaiting
+  diagnostics. No deployment; publish directly to main.
