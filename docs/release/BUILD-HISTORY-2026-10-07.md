@@ -4043,3 +4043,19 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
 - Output reproduction under current configuration, policy publication, activation admission
   and independent approval/live creation remain unfinished. Public option import/promotion
   stay unavailable. Older immutable CI is live at 52%; no deployment/readiness claim.
+
+## Complete opening output reproduction — October 14, 2026
+
+- Promotion preflight replays verified retained inputs and requires the captured full output
+  hash. It rebooks the confirmed plan against current configuration inside a child savepoint
+  and compares every output field except the input hash (fresh identities/time). No book,
+  trace, posting, schedule or diagnostic is excluded. Review basis v2 binds result hashes.
+- PostgreSQL witness: 3 cases passed (12.78s), including later observation time, bad output
+  hash, missing template, IFRS15 enabled after capture, changed diagnostics and rollback.
+  126 domain/job/repository/architecture checks passed (17.23s); strict production Mypy
+  (887 sources), changed-file Mypy and Ruff pass. Logs: .run/migration-reproduction-*.log.
+- Policy/report/activation checks, configuration locking, atomic live creation and independent
+  approval/MFA remain unfinished. Public option import/promotion remain guarded. Negative
+  testing also found stage 03's raw ValueError for AGENT without reviewed PRINCIPAL_AGENT;
+  typed admission handling remains outstanding. Older immutable CI remains live at 53%.
+- Published directly to main; no deployment, readiness or accounting sign-off claim.

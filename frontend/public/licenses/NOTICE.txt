@@ -27,3 +27,8 @@ Phosphor Icons (https://github.com/phosphor-icons/react)
 anthropic Python SDK (https://github.com/anthropics/anthropic-sdk-python)
   Licence: MIT License. Copyright 2023 Anthropic, PBC.
   Used as an unmodified library for the optional AI provider adapter.
+
+pypdf (https://github.com/py-pdf/pypdf)
+  Licence: BSD-3-Clause. Copyright (c) 2006-2008, Mathieu Fenniak.
+  Contributions copyright (c) 2007, Ashish Kulkarni; (c) 2014, Steve Witham.
+  Used by worker-side PDF text extraction.

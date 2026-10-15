@@ -51,6 +51,15 @@ The fake-provider path verifies source citation restoration. This accepts alread
 page text; PDF worker extraction, authorized file access, durable document-text storage and
 operational gateway execution remain unimplemented.
 
+October 15 PDF continuation: a pypdf adapter now extracts page text with file/page/text
+and parser stream/tree limits. A visually checked four-page WLD-F-29 fixture and retained
+exact-input fake response cover the nine documented fields and confidence flags through
+preparation and citation validation. This supersedes the earlier absence of a PDF parser;
+it does not establish a worker service or proposal workflow. Process memory/time enforcement,
+authorized source reads, durable AI_DOCUMENT_TEXT storage, jobs and audited acceptance remain
+unfinished. Dependency licence and development vulnerability checks passed; final candidate
+audit and full release verification are still owed.
+
 October 14 audit continuation: native option entry/expiry and CLOSE evidence-pack creation
 now have catalogue entries and real request scenarios in the audit walk. Material-right
 AUD-FACT summaries require a contract key and retain the created ids in detail. Evidence-pack

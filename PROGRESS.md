@@ -2,6 +2,24 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## PDF extraction and retained WLD-F-29 evidence — October 15, 2026
+
+- Added pypdf 6.20.1 (BSD-3-Clause), worker-side PDF parsing and context-local stream/tree
+  limits. Disabled text sharing refuses before parsing; files over 25 MiB, encrypted/invalid
+  PDFs, more than 600 pages, over 2 MiB extracted UTF-8 text and textless documents refuse.
+  Empty pages retain their numbering. Parser diagnostics are not returned as error details.
+- Generated the four-page synthetic Kinsley Marrow order form and visually checked every
+  page. A retained exact-input fake response now exercises all nine documented fields,
+  confidences and three review flags through PDF parsing, preparation and citation validation.
+  These checks create no proposal and apply no accounting fields or commands.
+- AI/architecture/licence-unit checks: 154 passed (17.71s); strict API/test typing: 755 sources;
+  Ruff and lock checks pass. Licence inventory: 142 packages, zero findings. Development
+  dependency audit: all 86 pinned Python distributions and npm report zero vulnerabilities.
+  Logs: .run/ai-pdf-{checks,types,licences,audit}.log; rendered pages: .run/ai-pdf-preview/.
+- Worker process memory/time enforcement remains unverified: parser caps are not a process
+  sandbox. Authorized reads, durable AI_DOCUMENT_TEXT files, job integration, budgets, audit
+  writes and human acceptance remain open. No live provider call, deployment or readiness claim.
+
 ## Document preparation and citation binding — October 15, 2026
 
 - Added extraction preparation over ordered worker-provided page text. Text sharing disabled
@@ -235,22 +253,6 @@
   reproduce unchanged from prior main. Logs: .run/agent-input-refusal-*.log.
 - Promotion approval, policy/report/activation checks and independent accounting sign-off
   remain outstanding. No deployment; verified changes published directly to main.
-
-## Complete opening output reproduction — October 14, 2026
-
-- Promotion preflight replays verified retained inputs and requires the captured full output
-  hash. It rebooks the confirmed plan against current configuration inside a child savepoint
-  and compares every output field except the input hash (fresh identities/time). No book,
-  trace, posting, schedule or diagnostic is excluded. Review basis v2 binds result hashes.
-- PostgreSQL witness: 3 cases passed (12.78s), including later observation time, bad output
-  hash, missing template, IFRS15 enabled after capture, changed diagnostics and rollback.
-  126 domain/job/repository/architecture checks passed (17.23s); strict production Mypy
-  (887 sources), changed-file Mypy and Ruff pass. Logs: .run/migration-reproduction-*.log.
-- Policy/report/activation checks, configuration locking, atomic live creation and independent
-  approval/MFA remain unfinished. Public option import/promotion remain guarded. Negative
-  testing also found stage 03's raw ValueError for AGENT without reviewed PRINCIPAL_AGENT;
-  typed admission handling remains outstanding. Older immutable CI remains live at 53%.
-- Published directly to main; no deployment, readiness or accounting sign-off claim.
 
 ## Outstanding release verification
 
