@@ -2,6 +2,22 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Complete opening output reproduction — October 14, 2026
+
+- Promotion preflight replays verified retained inputs and requires the captured full output
+  hash. It rebooks the confirmed plan against current configuration inside a child savepoint
+  and compares every output field except the input hash (fresh identities/time). No book,
+  trace, posting, schedule or diagnostic is excluded. Review basis v2 binds result hashes.
+- PostgreSQL witness: 3 cases passed (12.78s), including later observation time, bad output
+  hash, missing template, IFRS15 enabled after capture, changed diagnostics and rollback.
+  126 domain/job/repository/architecture checks passed (17.23s); strict production Mypy
+  (887 sources), changed-file Mypy and Ruff pass. Logs: .run/migration-reproduction-*.log.
+- Policy/report/activation checks, configuration locking, atomic live creation and independent
+  approval/MFA remain unfinished. Public option import/promotion remain guarded. Negative
+  testing also found stage 03's raw ValueError for AGENT without reviewed PRINCIPAL_AGENT;
+  typed admission handling remains outstanding. Older immutable CI remains live at 53%.
+- Published directly to main; no deployment, readiness or accounting sign-off claim.
+
 ## Retained opening choices and input reconstruction — October 14, 2026
 
 - Successful imports retain complete confirmed parameters/entity mapping and staging/plan
@@ -219,23 +235,6 @@
 - Full CI on older 165d63c remains live at 34%. Exercise, correction, migration/UI,
   broader release acceptance and independent accounting review remain open. No deployment;
   publish reviewed changes directly to main.
-
-## CSV quarantine reconciliation assertions — October 14, 2026
-
-- Reproduced two failures observed in the ongoing backend CI. Contract-header conflict
-  and bundle quarantine imports correctly committed only valid objects, but their tests
-  rejected the newer amount_sums and monetary_checks fields in control totals.
-- Updated assertions retain exact loaded/quarantined counts and now require matching
-  source/stored reconciliation evidence. Only SF-ORD-31004 contributes its USD 96,000
-  and 24,000 lines (USD 120,000 total); only the accepted bundle component is reported.
-  Existing checks still require no refused contract and no partial bundle replacement.
-- Both complete files pass: 14 tests in 64.80s. Strict test Mypy, Ruff and diff checks pass.
-  Logs: .run/csv-quarantine-baseline.log (2 failed, 12 passed),
-  .run/csv-quarantine-fixed.log and .run/csv-quarantine-types.log.
-- Rechecked publication: repository PUBLIC, default branch main, PolyForm Noncommercial
-  retained, and neither research-harness nor docs/research tracked. Full CI on older
-  165d63c remains live; release acceptance and accounting sign-off remain outstanding.
-  No deployment. Publish reviewed changes directly to main.
 
 ## Outstanding release verification
 

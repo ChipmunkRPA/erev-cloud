@@ -1,6 +1,7 @@
 """Real platform booking/computation of converted options with rollback of staging facts."""
 
 from dataclasses import replace
+from datetime import timedelta
 from decimal import Decimal
 from pathlib import Path
 
@@ -8,6 +9,7 @@ import pytest
 from erev_api.auth.keyring import KeyRing
 from erev_api.clock import FrozenClock
 from erev_api.db import new_id
+from erev_api.db.tables import book as book_table
 from erev_api.db.tables import (
     contract,
     entity_book,
@@ -15,6 +17,7 @@ from erev_api.db.tables import (
     legal_entity,
     material_right,
     migration_batch,
+    migration_population_version,
     migration_reconciliation_line,
     period,
     period_state,
@@ -25,6 +28,7 @@ from erev_api.db.tables import (
     ssp_entry,
     ssp_range,
 )
+from erev_api.domain.contracts import computation
 from erev_api.domain.migration import (
     capture,
     jobs,
@@ -33,12 +37,14 @@ from erev_api.domain.migration import (
     option_reconciliation,
     promotion_review,
     repository,
+    reproduction,
 )
 from erev_api.domain.migration.field_mapping import BatchParameters
-from erev_api.enums import ApprovalRequestStatus, MigrationStatus
+from erev_api.enums import ApprovalRequestStatus, BookCode, MigrationStatus
 from erev_api.files.store import LocalFileStore
 from erev_api.problems import Problem
 from erev_api.uow import unit_of_work
+from erev_engine.bundle import Diagnostic, InputBundle, OutputBundle
 from erev_engine.canonical import sha256_hex
 from erev_engine.upgrade import decode_input
 from sqlalchemy import insert, select, update
@@ -347,6 +353,102 @@ def test_platform_applier_captures_converted_option_and_rolls_back(
         assert basis["capture_operation_id"] == batch["capture_operation_id"]
         assert promotion_review.review_basis(uow, batch["id"]) == basis
         assert tuple(uow.audit_events) == before
+        # Fresh identities and observation time must not change accounting outputs.
+        original_now = uow.now
+        uow.now += timedelta(seconds=1)
+        try:
+            assert promotion_review.review_basis(uow, batch["id"]) == basis
+        finally:
+            uow.now = original_now
+        retained_rows = (
+            session.execute(
+                select(migration_population_version).where(
+                    migration_population_version.c.migration_batch_id == batch["id"]
+                )
+            )
+            .mappings()
+            .all()
+        )
+        with pytest.raises(Problem, match="retained output") as bad_output:
+            reproduction.verify(
+                uow,
+                batch,
+                staging,
+                [dict(row) | {"output_sha256": "0" * 64} for row in retained_rows],
+            )
+        assert bad_output.value.errors[0].rule_id == "MIGRATION_REPRODUCTION"
+
+        # A real current configuration change must be detected even though the retained
+        # source, capture and nine reconciliation measures are untouched.
+        nested = session.begin_nested()
+        try:
+            session.execute(update(product).values(default_pob_template_id=None))
+            with pytest.raises(Problem):
+                promotion_review.review_basis(uow, batch["id"])
+        finally:
+            nested.rollback()
+        assert session.execute(select(contract.c.id)).first() is None
+        assert session.execute(select(material_right.c.id)).first() is None
+        assert tuple(uow.audit_events) == before
+
+        # Enabling another book changes the full result even if ASC606 reconciliation
+        # still ties. It must require a new capture, not silently extend approved outputs.
+        nested = session.begin_nested()
+        try:
+            session.execute(
+                update(book_table).where(book_table.c.code == "IFRS15").values(is_enabled=True)
+            )
+            session.execute(
+                insert(entity_book).values(
+                    **entity_book_values(
+                        tenant_id,
+                        entity_id=entity["id"],
+                        first_period_id=january["id"],
+                        book_code=BookCode.IFRS15,
+                    )
+                )
+            )
+            session.execute(
+                insert(period_state).values(
+                    **period_state_values(
+                        tenant_id,
+                        entity_id=entity["id"],
+                        period_id=january["id"],
+                        book_code=BookCode.IFRS15,
+                    )
+                )
+            )
+            with pytest.raises(Problem, match="all outputs"):
+                promotion_review.review_basis(uow, batch["id"])
+        finally:
+            nested.rollback()
+        assert session.execute(select(contract.c.id)).first() is None
+        assert session.execute(select(material_right.c.id)).first() is None
+        assert tuple(uow.audit_events) == before
+
+        # Fault injection outside the reconciliation figures: the fresh engine result
+        # gains a diagnostic. The complete-output comparator must refuse it and roll back.
+        engine = computation.default_engine()
+        retained_hash = bundle.sha256()
+
+        def changed_diagnostic(value: InputBundle) -> OutputBundle:
+            result = engine(value)
+            if value.sha256() != retained_hash:
+                result = replace(
+                    result,
+                    diagnostics=result.diagnostics
+                    + (Diagnostic("REPRODUCTION_FAULT", "INFO", None, None, None, {}),),
+                )
+            return result
+
+        with monkeypatch.context() as patch:
+            patch.setattr(computation, "default_engine", lambda: changed_diagnostic)
+            with pytest.raises(Problem, match="all outputs"):
+                promotion_review.review_basis(uow, batch["id"])
+        assert session.execute(select(contract.c.id)).first() is None
+        assert session.execute(select(material_right.c.id)).first() is None
+        assert tuple(uow.audit_events) == before
+        assert promotion_review.review_basis(uow, batch["id"]) == basis
         source_rows = [item.source for item in opening.rows]
         keep_parameters = BatchParameters(material_right_convention="KEEP_QUANTITY_CONVENTION")
         keep = opening_balances.stage(source_rows, CUTOVER, keep_parameters)

@@ -587,3 +587,28 @@ recompute and compare outputs under current configuration, publish the legacy pr
 activation admission or create live contracts under independent approval. Public converted-option
 import and the promotion route remain unavailable; no production readiness or accounting sign-off
 is claimed.
+
+## Complete opening output reproduction, October 14
+
+Promotion review now replays each verified retained input with the current engine and requires
+its complete output hash to equal the captured hash. It restores the confirmed plan, rebooks
+through the real platform applier under current configuration inside a child savepoint, and
+compares the entire OutputBundle except its input hash. Fresh identities/observation time
+change that input hash; engine version, every book and trace, schedules, posting intents,
+proposals, triggers and diagnostics remain in the comparison. No reconciliation-only projection
+or tolerance replaces this exact comparison. The review basis is version 2 and includes the
+per-contract result hashes. All temporary rows and child audit buffers are discarded on either
+success or failure.
+
+The converted-option PostgreSQL witness checks a later observation time, bad retained output
+hash, missing current product template, changed diagnostics outside the reconciliation figures,
+enabling IFRS15 after capture, and rollback: 3 cases passed (12.78s). Related domain, job,
+repository and architecture checks: 126 passed (17.23s).
+Strict production typing passed for 887 sources. Logs: `.run/migration-reproduction-*.log`.
+
+This is preflight only. Policy publication, report validation, activation admission, configuration
+locking through approval/live creation, independent reviewer/MFA and the public promotion route
+still need implementation. Converted-option import remains guarded. During negative testing,
+changing a product to AGENT without a reviewed PRINCIPAL_AGENT record exposed a raw ValueError
+from stage 03; typed admission/error handling for that case remains outstanding. No deployment
+or production/accounting sign-off is claimed.

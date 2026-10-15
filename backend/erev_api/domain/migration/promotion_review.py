@@ -1,7 +1,7 @@
 """Read-only durable evidence basis for the pending migration promotion implementation.
 
-This does not submit or approve anything. Live configuration, activation, policy publication,
-reproduction and atomic promotion still need their own checks before a route can be enabled.
+This does not submit or approve anything. Output reproduction uses current configuration;
+activation, policy publication and atomic promotion still need checks before a route is enabled.
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ from erev_api.db.tables import (
     migration_population_obligation,
     migration_population_version,
 )
-from erev_api.domain.migration import opening_plan, reconciliation, repository
+from erev_api.domain.migration import opening_plan, reconciliation, repository, reproduction
 from erev_api.domain.migration.legacy_db import LegacyRow
 from erev_api.enums import MigrationMode
 from erev_api.problems import Problem, ProblemError
@@ -123,6 +123,7 @@ def review_basis(uow: UnitOfWork, batch_id: UUID) -> dict[str, Any]:
         .mappings()
         .all()
     )
+    reproduced = reproduction.verify(uow, batch, plan, [dict(row) for row in captures])
     obligations = (
         uow.session.execute(
             select(migration_population_obligation)
@@ -133,7 +134,8 @@ def review_basis(uow: UnitOfWork, batch_id: UUID) -> dict[str, Any]:
         .all()
     )
     return {
-        "basis_schema": 1,
+        "basis_schema": 2,
+        "reproduced_outputs": reproduced,
         "migration_id": str(batch_id),
         "mode": str(batch["mode"]),
         "source_file_id": str(batch["source_file_id"]),

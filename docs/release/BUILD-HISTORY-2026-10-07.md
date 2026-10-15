@@ -3808,3 +3808,20 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   UI, full release gates and independent accounting acceptance remain open. Full CI on
   165d63c is still live and has a new CSV contract-header conflict failure to investigate.
   Publish verified work directly to main; no deployment.
+
+## CSV quarantine reconciliation assertions — October 14, 2026
+
+- Reproduced two failures observed in the ongoing backend CI. Contract-header conflict
+  and bundle quarantine imports correctly committed only valid objects, but their tests
+  rejected the newer amount_sums and monetary_checks fields in control totals.
+- Updated assertions retain exact loaded/quarantined counts and now require matching
+  source/stored reconciliation evidence. Only SF-ORD-31004 contributes its USD 96,000
+  and 24,000 lines (USD 120,000 total); only the accepted bundle component is reported.
+  Existing checks still require no refused contract and no partial bundle replacement.
+- Both complete files pass: 14 tests in 64.80s. Strict test Mypy, Ruff and diff checks pass.
+  Logs: .run/csv-quarantine-baseline.log (2 failed, 12 passed),
+  .run/csv-quarantine-fixed.log and .run/csv-quarantine-types.log.
+- Rechecked publication: repository PUBLIC, default branch main, PolyForm Noncommercial
+  retained, and neither research-harness nor docs/research tracked. Full CI on older
+  165d63c remains live; release acceptance and accounting sign-off remain outstanding.
+  No deployment. Publish reviewed changes directly to main.

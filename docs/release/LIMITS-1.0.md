@@ -14,8 +14,10 @@ capture/promotion still refuses option records. The shared term writer is implem
 persistence/rollback checks and a real platform-applier witness. Exact quantity-unit
 reconciliation now passes through retained evidence, with drift and equal-raw-number refusals.
 A read-only promotion review now rechecks/fingerprints durable evidence and reconstructs
-confirmed opening choices against captured input. Current-configuration output reproduction,
-policy publication, activation admission and the approval route remain unfinished.
+confirmed opening choices against captured input. It replays the retained output hash and
+rebuilds contracts against current configuration inside a rollback-only savepoint, comparing
+all output fields except the input identity hash. Policy publication, activation admission,
+report validation, atomic live creation and the approval route remain unfinished.
 See MATERIAL-RIGHTS-IMPLEMENTATION.md for evidence and remaining boundaries.
 
 October 7 sandbox correction: monetary verification now reads and compares the stored
