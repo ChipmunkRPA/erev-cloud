@@ -99,7 +99,7 @@ job with a Location header. It checks overlapping ai.use/contract.read source ac
 switch before enqueueing, without calling a provider in HTTP. New jobs bind the validated trace
 and use a server-selected 2048 output-token limit; the worker refuses a changed trace before a
 call. Existing jobs without a trace binding retain their source fingerprint format. Anomaly
-submission, proposal acceptance, extraction and Q&A remain unfinished; a persisted
+submission, proposal acceptance, extraction review and Q&A remain unfinished; a persisted
 worker proposal is not a completed human workflow. Budget admission is still checked by the
 worker, and durable AI-specific admission-failure evidence remains outstanding.
 
@@ -134,23 +134,27 @@ term, payment/termination/variable-consideration/material-right review text, and
 line suggestions containing only product code and exact decimal amount. Values are checked in
 original parsed JSON before canonicalization: money numbers, impossible/non-ISO dates, coerced
 terms, unknown paths and extra line keys refuse the entire proposal. These are review facts;
-customer/product resolution, currency, structured contract conversion, semantic review, public
-submission and human acceptance remain unfinished, alongside anomaly and Q&A workflows.
+customer/product resolution, currency, structured contract conversion, semantic review and
+human acceptance remain unfinished, alongside anomaly and Q&A workflows.
 
 The worker-only document retrieval helper now checks the current initiating human, AI switches,
 text consent, readable ATTACHMENT/PDF source, file size and digest before invoking an injected
 isolated extractor. It audits decrypted reads as that human, heartbeats around parsing and
 rechecks cancellation, grants, settings and source access afterward before preparing redacted
 input with retained citation mappings. It holds no SQL transaction while parsing. This is a
-preparation component; no extraction submission endpoint is enabled.
+preparation component. POST /ai/contract-extractions now accepts only {file_id}, checks current
+human ai.use and readable, unshredded ATTACHMENT/PDF metadata, requires AI/text consent, and queues
+an idempotent AI_TASK with a Location header. The server pins the source digest, fixed field
+catalogue and 16000 output-token limit. Submission serializes with the emergency tenant switch;
+replay rechecks source access before returning saved job data. HTTP never parses or sends text.
 
 A separate persistence component retains original pages as encrypted AI_DOCUMENT_TEXT files
 bound to the source digest and initiating job. It rebuilds requests and citation mappings from
 those bytes, verifies the call intent, and atomically records model usage, validated extraction
 fields and audit evidence. Invalid/uncited output and refusals produce failed proposals without
 retaining rejected response text. Database tests cover encryption, cross-job text/intent
-refusal, changed request fields, missing permission and rollback. Public extraction submission
-and review integration remain unfinished.
+refusal, changed request fields, missing permission and rollback. Extraction review and
+acceptance integration remain unfinished.
 Terminal provider-failure persistence now also rebuilds retained document evidence and verifies
 the existing failure log against its request, initiating human and job intent. It links that log
 without recording another attempt, preserving reported or unknown usage. Tests cover changed
@@ -171,7 +175,7 @@ reuse the retained request, unknown outcomes/usage block new calls, and mid-call
 records usage without a proposal. No model fallback or SDK-level retry is introduced.
 AI_TASK dispatch accepts bounded extraction selectors, source hash and field paths; the worker
 composition root supplies the isolated PDF parser and lazy provider factory. The public API
-still needs extraction submission and human review/acceptance. Queue selectors and gateway paths
+still needs extraction proposal/document-text reads and human review/acceptance. Queue selectors and gateway paths
 now use the fixed catalogue; arbitrary accounting fields cannot be requested.
 
 The PDF adapter has file/page/text and parser limits, an isolated subprocess, timeout cleanup

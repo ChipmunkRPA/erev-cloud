@@ -1,4 +1,4 @@
-"""API-R-47: number-explanation submission and authorized retained proposal reads."""
+"""API-R-47: AI submission and authorized retained proposal reads."""
 
 from __future__ import annotations
 
@@ -29,11 +29,17 @@ from erev_api.api.lists import (
 )
 from erev_api.auth.dependencies import require
 from erev_api.auth.principal import RequestContext
+from erev_api.db.session import tenant_session
 from erev_api.db.tables import ai_proposal
 from erev_api.domain.ai import commands, queries
 from erev_api.domain.platform.jobs import job_out_of
 from erev_api.enums import AiProposalKind, AiProposalStatus
-from erev_api.schemas.ai import AIExplanationIn, AIProposalOut, AIProposalRejectIn
+from erev_api.schemas.ai import (
+    AIContractExtractionIn,
+    AIExplanationIn,
+    AIProposalOut,
+    AIProposalRejectIn,
+)
 from erev_api.schemas.common import JobOut, ListOut
 from erev_api.uow import UnitOfWork
 
@@ -188,3 +194,47 @@ def proposals_reject(
         )
 
     return run_command(cmd, deps, handle, etag=lambda result: row_etag(result.row_version))
+
+
+def _extraction_access(
+    body: AIContractExtractionIn,
+    ctx: Annotated[RequestContext, Depends(require("ai.use"))],
+) -> None:
+    """Current file access is required even before a saved command response is replayed."""
+    with tenant_session(ctx.principal.db_context, read_only=True) as session:
+        commands.extraction_file(session, ctx, body.file_id)
+
+
+@router.post(
+    "/ai/contract-extractions",
+    operation_id="ai_contract_extractions_create",
+    status_code=202,
+    response_model=JobOut,
+    dependencies=[Depends(_extraction_access)],
+    responses=problem_responses(
+        "unauthenticated",
+        "session-expired",
+        "forbidden",
+        "not-found",
+        "validation-failed",
+        "idempotency-key-reused",
+        "idempotency-in-progress",
+        "ai-disabled",
+    ),
+)
+def contract_extractions_create(
+    body: AIContractExtractionIn,
+    cmd: Annotated[CommandContext, Depends(command("ai.use"))],
+    deps: Annotated[KernelDeps, Depends(kernel_deps)],
+) -> Response:
+    """Queue extraction of a readable PDF using server-selected fields and token limit."""
+
+    def handle(uow: UnitOfWork) -> JobOut:
+        job_id = commands.request_extraction(
+            uow, file_id=body.file_id, platform_kill_switch=deps.settings.ai_kill_switch
+        )
+        return job_out_of(uow.session, job_id)
+
+    return run_command(
+        cmd, deps, handle, status_code=202, location=lambda result: f"{API_PREFIX}/jobs/{result.id}"
+    )

@@ -1316,6 +1316,11 @@ class FileBinding:
 REPLAY_NOT_BUILT: Final = "refused before any use: mode REPLAY is not built"
 FILE_BINDINGS: Final[Mapping[str, FileBinding]] = MappingProxyType(
     {
+        "AIContractExtractionIn.file_id": FileBinding(
+            "POST /ai/contract-extractions",
+            "erev_api.domain.ai.commands:extraction_file",
+            "404 not-found",
+        ),
         "AttachmentCreateIn.file_object_id": FileBinding(
             "POST /attachments",
             "erev_api.domain.platform.attachments:attach",

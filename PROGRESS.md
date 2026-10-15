@@ -2,6 +2,28 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Authorized extraction submission API — October 15, 2026
+
+- Added POST /ai/contract-extractions with file_id as its only input. It requires a human
+  with ai.use, current access to an unshredded PDF attachment, enabled AI and text consent.
+  The server pins the digest, fixed 507-field catalogue and 16000 output-token limit, returning
+  an idempotent queued job with Location. HTTP performs no parsing or provider calls.
+- Current file access is checked before replaying saved command responses. Admission shares
+  the tenant lock with emergency disable; the worker independently rechecks access/settings.
+  Added the request file binding and regenerated OpenAPI and frontend types.
+- Verification: both extraction PostgreSQL API tests passed, including the actual queued worker
+  with injected parser/provider, proposal persistence, replay after source unavailability,
+  forbidden/hidden/missing/non-PDF inputs, text consent, rejected extra selectors and a proven
+  database lock wait against disable. The three existing explanation API regressions passed.
+  Twenty-two architecture checks, full lint, full typecheck (933 Python sources and frontend)
+  and final focused typing (784 sources) passed. Test setup was corrected for registry timing,
+  valid attachment types and the job registry's reserved engine release metadata.
+  Logs: .run/ai-extraction-submit-{api-final-pass,api-verified,architecture,lint,typecheck,
+  types-verified}.log. The combined api-verified log retains an earlier extraction assertion
+  failure; api-final-pass verifies its correction. No live provider calls or deployment.
+- Extraction proposal/document-text reads, human review/acceptance and broader release and
+  independent accounting verification remain outstanding.
+
 ## Typed extraction field catalogue — October 15, 2026
 
 - Defined the documented contract-review fields: seven header/review paths plus lines.0 through
@@ -207,23 +229,6 @@
   Expiry and revocation fixtures were corrected to use the UOW clock and revocation metadata.
 - Acceptance, extraction review, other proposal kinds, listing, expiry processing and broader
   release gates remain open. No deployment or live provider calls; no production sign-off.
-
-## Retained number-explanation reads — October 15, 2026
-
-- Added GET /ai/proposals/{id} for NUMBER_EXPLANATION evidence with content/citations,
-  status, actors and ETag. Current ai.use/contract.read grants are intersected; reads require
-  a visible current or past member contract of the retained trace's group. Unsupported kinds
-  fail closed. AI switches do not prevent authorized evidence reads or trigger provider calls.
-- Calculation traces have tenant-only RLS, so a trace join alone does not authorize entity
-  access. Added explicit member visibility to proposal reads and completed-job recovery.
-- Verification: 21 AI/API database regressions and 54 unit/route/layer checks passed. API cases
-  cover content, cross-tenant and entity refusal, revoked grants, peer reads and both AI switches.
-  Full lint, OpenAPI generation and typecheck passed (925 Python sources plus frontend).
-  Focused strict typing passed 776 sources. Logs: .run/ai-proposal-read-{regressions,unit,lint,
-  openapi,typecheck,types}.log. An initial test used a nonexistent disable-reason field; corrected
-  to the actual actor-kind column before the passing database run.
-- Listing, other proposal kinds, review commands and broader release gates remain open.
-  No deployment or live provider calls; this is development evidence, not production sign-off.
 
 ## Outstanding release verification
 

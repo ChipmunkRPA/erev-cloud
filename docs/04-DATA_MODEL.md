@@ -1907,6 +1907,7 @@ retained evidence reads. The dedicated document-text response API remains separa
 
 | Request member | Route | A file that is missing or that the caller may not read |
 |---|---|---|
+| `AIContractExtractionIn.file_id` | `POST /ai/contract-extractions` | 404 `not-found` |
 | `AttachmentCreateIn.file_object_id` | `POST /attachments` | 422 `validation-failed` on `file_object_id` |
 | `EventAppendIn.evidence_file_ids` | `POST /contracts/{id}/events` | 422 `validation-failed` on `evidence_file_ids[i]`, rule T-PLT-29 |
 | `ImportCreateIn.file_id` | `POST /imports` | 422 `validation-failed` on `file_id`, rule API-R-43 |
@@ -5904,8 +5905,8 @@ customer names are nonblank text up to 400 characters; effective dates are exact
 dates; term_months is a positive 32-bit JSON integer; review text is nonblank up to 4000 characters;
 line objects have only product_code (nonblank up to 255 characters) and amount (the existing
 API-C-06 exact decimal-string format, including signed amounts). No coercion, currency inference,
-ID resolution or accounting classification occurs. Public submission and human conversion to
-structured commands remain unfinished; worker completion means proposal persistence, not accounting acceptance.
+ID resolution or accounting classification occurs. Human conversion to structured commands
+remains unfinished; worker completion means proposal persistence, not accounting acceptance.
 New attempt logs also retain a writer-derived `usage_evidence` parameter: `REPORTED` when
 validated response or provider-error counters exist (including an actual zero), `NOT_SENT` for disabled/budget
 admission refusals, and `UNKNOWN` for outcomes without reported usage. Zero compatibility counters
@@ -8041,6 +8042,14 @@ and `object_label`, following the existing computation-fact audit convention.
 **API-S-EvidencePackCreate** (`POST /evidence-packs`; SCREENS_B OQ-B-10). Fields `kind` (E-66, R), `entity_code`, `book`, `period_key`, `period_lock_id`, `contract_external_ids` (array<string>), `from_date`, `to_date`, `as_of` (date). Required per kind: `CLOSE` needs `entity_code`, `book`, `period_key` and `period_lock_id`; `CONTRACT_SAMPLE` needs `contract_external_ids` (1 to 50) and `as_of`; `CHANGE` needs `from_date` and `to_date`; `ACCESS` needs `as_of`. A field not used by the kind returns 422 `validation-failed`. Response 202 API-S-Job (kind `EVIDENCE_PACK`) with header `X-Erev-Evidence-Pack-Id`; the pack follows the T-RPT-04 checks and manifest layout.
 
 **AI proposals and settings** (API-R-47, API-R-04; SCREENS_B OQ-B-14, OQ-B-18, OQ-B-26).
+- `POST /ai/contract-extractions` accepts `{file_id}` only and returns 202 API-S-Job with
+  `Location: /api/v1/jobs/{id}`. Permission `ai.use`, human initiator, current readable unshredded
+  ATTACHMENT/PDF and enabled AI/text consent are required. Missing and unreadable sources both
+  return 404 before inspecting metadata; non-PDF inputs return 422. The server selects all
+  catalogue paths, pins the file digest and sets max_tokens=16000. Normal idempotency applies;
+  replay checks current file access before returning a saved response. Admission locks the tenant
+  against emergency disable, and the worker independently rechecks source/settings/budget.
+  Submission reads no document bytes and does not call a provider or create a contract.
 - `GET /ai/proposals/{id}/document-text` returns `{proposal_id, file_object_id, pages: array<{page_no, text}>}` from `ai_proposal.document_text_file_id`. It calls no model and works while AI is disabled; other proposal kinds return 404 `not-found`. Permission `ai.use`.
 - `POST /ai/proposals/{id}/accept` takes `{field_decisions: array<{path (R), decision (E-121, R), value (R for EDIT), reason (R for EDIT and REJECT)}>, command (R; `contract.create_draft` in 1.0), entity_code (R)}`. Every `content[].path` of the proposal appears exactly once, otherwise 422 `validation-failed`. `ACCEPT` takes the proposed value, `EDIT` takes `value`, `REJECT` leaves the field unset. The command runs `POST /contracts` as the caller (permission `contract.create`) and returns 201 `{contract_id}`; the proposal becomes `accepted` with `field_decisions` stored. A proposal that is not `proposed`, or has expired, returns 409 `invalid-transition`.
 - `POST /ai/explanations` accepts either `{object_type, id, measure, period}` (an API-R-49 object type; proposal kind `NUMBER_EXPLANATION`) or `{subject_type: "exception_item", subject_id}` (proposal kind `ANOMALY_FLAG`, an anomaly summary). It returns 202 API-S-Job (`AI_TASK`); flags and explanations never change data.

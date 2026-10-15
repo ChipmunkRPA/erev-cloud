@@ -1,4 +1,4 @@
-"""API-R-47 number-explanation submission and retained evidence."""
+"""API-R-47 AI submission and retained evidence."""
 
 from __future__ import annotations
 
@@ -20,6 +20,12 @@ class AIExplanationIn(BaseModel):
     id: UUID
     measure: str = Field(min_length=1, max_length=128)
     period: str | None = Field(default=None, min_length=1, max_length=100)
+
+
+class AIContractExtractionIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    file_id: UUID
 
 
 class AIProposalOut(BaseModel):

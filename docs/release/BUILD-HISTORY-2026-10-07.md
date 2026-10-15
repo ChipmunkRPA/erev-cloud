@@ -5078,3 +5078,20 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - The initial permission fixture was corrected to use an auditor without ai.use; test import
   typing was corrected before the final checks. Anomaly/extraction/Q&A submission, proposal
   read/review and durable AI admission-failure evidence remain open. No deployment/live calls.
+
+## Retained number-explanation reads — October 15, 2026
+
+- Added GET /ai/proposals/{id} for NUMBER_EXPLANATION evidence with content/citations,
+  status, actors and ETag. Current ai.use/contract.read grants are intersected; reads require
+  a visible current or past member contract of the retained trace's group. Unsupported kinds
+  fail closed. AI switches do not prevent authorized evidence reads or trigger provider calls.
+- Calculation traces have tenant-only RLS, so a trace join alone does not authorize entity
+  access. Added explicit member visibility to proposal reads and completed-job recovery.
+- Verification: 21 AI/API database regressions and 54 unit/route/layer checks passed. API cases
+  cover content, cross-tenant and entity refusal, revoked grants, peer reads and both AI switches.
+  Full lint, OpenAPI generation and typecheck passed (925 Python sources plus frontend).
+  Focused strict typing passed 776 sources. Logs: .run/ai-proposal-read-{regressions,unit,lint,
+  openapi,typecheck,types}.log. An initial test used a nonexistent disable-reason field; corrected
+  to the actual actor-kind column before the passing database run.
+- Listing, other proposal kinds, review commands and broader release gates remain open.
+  No deployment or live provider calls; this is development evidence, not production sign-off.

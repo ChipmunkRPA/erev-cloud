@@ -1,30 +1,36 @@
-"""Human AI controls; disabling is immediate and never calls a provider."""
+"""Human AI controls and submission; HTTP commands never call a provider."""
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from datetime import datetime
-from typing import Final
+from typing import Any, Final
 from uuid import UUID
 
 from sqlalchemy import select, update
+from sqlalchemy.orm import Session
 
 from erev_api.audit.writer import record
 from erev_api.auth import mfa
+from erev_api.auth.principal import RequestContext
 from erev_api.db.tables import job, tenant
 from erev_api.db.transitions import apply
 from erev_api.domain.ai.access import AIAccessRefused
+from erev_api.domain.ai.document_preparation import MAX_PDF_BYTES
+from erev_api.domain.ai.extraction_fields import CONTRACT_EXTRACTION_PATHS
 from erev_api.domain.ai.preparation import PreparationRefused
 from erev_api.domain.ai.queries import proposal_in
 from erev_api.domain.ai.retrieval import retrieve_for_user
 from erev_api.domain.ai.settings import AISettingsRefused, load_settings
+from erev_api.domain.platform import file_access
 from erev_api.enums import JobKind, JobState, PrincipalKind
-from erev_api.problems import Problem
+from erev_api.problems import Problem, ProblemError
 from erev_api.schemas.ai import AIProposalOut
 from erev_api.schemas.explain import ExplainObjectType
 from erev_api.uow import UnitOfWork
 
 EXPLANATION_MAX_TOKENS: Final = 2048
+EXTRACTION_MAX_TOKENS: Final = 16000
 
 
 def disable(uow: UnitOfWork, *, comment: str) -> datetime:
@@ -215,3 +221,88 @@ def reject_proposal(
         detail={"reason": reason},
     )
     return proposal_in(uow.session, principal, proposal_id)
+
+
+def extraction_file(session: Session, ctx: RequestContext, file_id: UUID) -> Mapping[str, Any]:
+    """Bind current human source access before inspecting metadata; read no document bytes."""
+    principal = ctx.principal
+    held = principal.permission_scopes.get("ai.use", frozenset())
+    if (
+        principal.kind is not PrincipalKind.USER
+        or principal.id is None
+        or "ai.use" not in principal.permissions
+        or not held
+        or (
+            held != "*"
+            and (principal.entity_scope == "*" or not set(principal.entity_scope).issubset(held))
+        )
+    ):
+        raise Problem("forbidden")
+    source = file_access.bound(session, ctx, file_id)
+    if source is None or source["shredded_at"] is not None:
+        raise Problem("not-found")
+    if source["purpose"] != "ATTACHMENT" or source["media_type"] != "application/pdf":
+        raise Problem(
+            "validation-failed",
+            errors=[
+                ProblemError(
+                    field="file_id", rule_id="AI_INVALID_PDF", message="Select a PDF attachment."
+                )
+            ],
+        )
+    if source["size_bytes"] > MAX_PDF_BYTES:
+        raise Problem(
+            "validation-failed",
+            errors=[
+                ProblemError(
+                    field="file_id",
+                    rule_id="AI_DOCUMENT_FILE_LIMIT",
+                    message="The PDF exceeds the extraction size limit.",
+                )
+            ],
+        )
+    return source
+
+
+def request_extraction(uow: UnitOfWork, *, file_id: UUID, platform_kill_switch: bool) -> UUID:
+    """Serialize admission with emergency disable, then defer a bounded source-only task."""
+    uow.session.execute(
+        select(tenant.c.id)
+        .where(tenant.c.id == uow.principal.tenant_id)
+        .with_for_update(key_share=True)
+    ).scalar_one()
+    source = extraction_file(uow.session, uow.ctx, file_id)
+    try:
+        settings = load_settings(
+            uow.session,
+            tenant_id=uow.principal.tenant_id,
+            now=uow.now,
+            platform_kill_switch=platform_kill_switch,
+        )
+        settings.require_available()
+    except AISettingsRefused as error:
+        if str(error) == "AI_DISABLED":
+            raise Problem("ai-disabled") from None
+        raise Problem("validation-failed", "AI configuration is unavailable.") from None
+    if not settings.send_contract_text:
+        raise Problem(
+            "validation-failed",
+            errors=[
+                ProblemError(
+                    field="file_id",
+                    rule_id="AI_TEXT_DISABLED",
+                    message="Contract text sending is disabled.",
+                )
+            ],
+        )
+    requested = uow.defer(
+        JobKind.AI_TASK,
+        {
+            "operation": "extraction",
+            "file_id": str(file_id),
+            "file_sha256": str(source["sha256"]).strip(),
+            "allowed_paths": sorted(CONTRACT_EXTRACTION_PATHS),
+            "max_tokens": EXTRACTION_MAX_TOKENS,
+        },
+    )
+    return UUID(str(requested["id"]))
