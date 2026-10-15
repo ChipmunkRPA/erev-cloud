@@ -4486,7 +4486,7 @@ Recently viewed rechecks current contract permission/entity scope, orders by vie
 then contract id descending, and applies ordinary filters/counts/pagination to that population.
 This history does not change contract timestamps, versions, events or accounting calculations.
 
-| Column | Type | Null | Default | Notes |
+| Column | Type | Null | Default | Constraints and notes |
 |---|---|---|---|---|
 | SC-T | | | | Tenant and id |
 | `actor_id` | uuid | N | | Caller id; equals current_user_id under RLS |

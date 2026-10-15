@@ -104,7 +104,7 @@ step = $(1) || { echo "FAIL $@: $(2)"; exit 1; }
 # DG-MK-00b: every target except setup needs the installed environments.
 REQUIRE_SETUP = { test -x $(PY) && test -d frontend/node_modules; } || { echo "FAIL $@: run make setup first"; exit 1; }
 
-.PHONY: setup dev-up dev-down status backend frontend worker doctor migrate db-reset revision fixtures tokens registry-seed openapi fmt lint design-check vocab-check licence-check controls-report secrets-check typecheck test build ci test-pg properties answer-keys parity seed e2e release-manifest docker-build ci-gate test-pg-gate properties-gate parity-gate answer-keys-gate controls-report-gate e2e-gate tf-validate tf-validate-gate backup restore-verify backup-gate restore-verify-gate restore-drill restore-drill-gate audit-deps audit-deps-gate compose-verify compose-verify-gate zap-baseline zap-baseline-gate perf-seed perf perf-gate
+.PHONY: setup dev-up dev-down status backend frontend worker doctor migrate db-reset revision fixtures tokens registry-seed openapi fmt lint privacy-check design-check vocab-check licence-check controls-report secrets-check typecheck test build ci test-pg properties answer-keys parity seed e2e release-manifest docker-build ci-gate test-pg-gate properties-gate parity-gate answer-keys-gate controls-report-gate e2e-gate tf-validate tf-validate-gate backup restore-verify backup-gate restore-verify-gate restore-drill restore-drill-gate audit-deps audit-deps-gate compose-verify compose-verify-gate zap-baseline zap-baseline-gate perf-seed perf perf-gate
 
 setup:
 	@LOCK="$(LOCK)" scripts/setup.sh
@@ -290,12 +290,19 @@ lint:
 	@$(call step,$(MAKE) --no-print-directory vocab-check,vocab-check)
 	@$(call step,$(MAKE) --no-print-directory licence-check,licence-check)
 	@$(call step,$(MAKE) --no-print-directory secrets-check,secrets-check)
+	@$(call step,$(MAKE) --no-print-directory privacy-check,privacy-check)
 	@$(call step,scripts/openapi_check.sh,openapi document is stale; run make openapi)
 	@$(call step,$(MAKE) --no-print-directory registry-seed CHECK=1,registry-seed check)
 	@$(call step,$(MAKE) --no-print-directory fixtures CHECK=1,legacy fixtures check)
 	@$(call step,$(EREV) controls-report --tags-only,control markers invalid; run erev controls-report --tags-only)
 	@$(call step,test "$$($(ALEMBIC) -c $(ALEMBIC_INI) heads | grep -c .)" = 1,alembic heads must print exactly one head)
 	@echo "OK lint"
+
+# Source-only catalogue and privacy rule checks; no database or provider calls.
+privacy-check:
+	@$(REQUIRE_SETUP)
+	@$(call step,EREV_ENV=test $(PYTEST) backend/tests/unit/test_privacy_classification.py backend/tests/unit/test_privacy_shred_rules.py backend/tests/unit/test_privacy_anonymise_names.py backend/tests/unit/test_privacy_patterns.py backend/tests/unit/test_privacy_offsets.py -q,privacy catalogue or rule checks)
+	@echo "OK privacy-check"
 
 # G7 (DG-MK-controls-report): exits 1 until every 1.0 control has a passing tagged test (BS-D-18).
 # GATE-BIND-1 (DG-MK-00i): the gate runs in an immutable execution context; its report gains

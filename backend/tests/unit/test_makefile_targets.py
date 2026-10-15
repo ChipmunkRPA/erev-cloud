@@ -52,7 +52,7 @@ PHASE_TARGETS: dict[str, frozenset[str]] = {
     "EKC": frozenset({"answer-keys", "properties"}),
     "GPA": frozenset({"parity"}),
     "PRF": frozenset({"perf", "perf-seed"}),
-    "SOP": frozenset({"release-manifest"}),
+    "SOP": frozenset({"release-manifest", "privacy-check"}),
     # dev-guide §4.5 supervisor targets: scripts only, never run by the loop. `restore-verify` is
     # the DEP-6 restore drill of 05 OPR-11 (3) and OPR-12 (lane P6; DG-MK-restore-verify);
     # `restore-drill` rehearses backup, destruction and restore on a throwaway server (lane OPS,
@@ -82,6 +82,7 @@ BUILT_TARGETS = frozenset(
         "e2e",
         "parity",
         "release-manifest",
+        "privacy-check",
         "docker-build",
         "tf-validate",
         "backup",

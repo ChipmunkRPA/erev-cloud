@@ -1305,6 +1305,7 @@ Serial journeys are built in E2E-04 order. J-01, J-20, J-21 and J-23 create thei
 | DG-MK-perf | `make perf` | loop | PRF |
 | DG-MK-perf-seed | `make perf-seed` | loop | PRF |
 | DG-MK-release-manifest | `make release-manifest` | loop | SOP |
+| DG-MK-privacy-check | `make privacy-check` | loop | SOP |
 | DG-MK-controls-report | `make controls-report` | loop | FND |
 | DG-MK-audit-deps | `make audit-deps` | supervisor (§4.5; script only, never run by the loop) | DEP |
 | DG-MK-zap-baseline | `make zap-baseline` | supervisor (§4.5; script only, never run by the loop) | DEP |

@@ -135,6 +135,8 @@ def test_a_hold_an_approval_lifts_names_the_request_and_yields_to_one_without_ov
         "the supporting attachment of manual adjustment X-1, which has been submitted",
         "the evidence of approval request X-1, whose events wait for approval or are recorded",
         "the evidence of an event recorded on contract X-1",
+        "the source document of an AI call",
+        "the retained text of an AI call",
         "the source document of an AI proposal",
         "the cited text of an AI proposal",
     ]

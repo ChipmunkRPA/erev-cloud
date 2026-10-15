@@ -2,6 +2,16 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Privacy catalogue coverage gate — October 15, 2026
+
+- Classified the new private navigation history and the retained AI file references/export
+  authorization binding using existing catalogue rules. Corrected its documentation header and
+  kept the file-hold test's complete list of retained AI sources.
+- Added make privacy-check to lint: 90 source-only checks cover catalogue/doc agreement,
+  shredding rules, anonymisation names, patterns and offsets. This executes assertions rather
+  than relying on collection. Verification is in docs/release/CI-2026-10-15.md.
+- No deployment or accounting-policy change. Broader release checks and sign-off remain open.
+
 ## Private recently viewed contracts — October 15, 2026
 
 - Revision 0159 stores the last 50 successful contract opens per caller, with tenant and owner

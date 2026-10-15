@@ -471,7 +471,8 @@ def test_prv_01_catalogue_matches_04_tables() -> None:
     # column tables; + T-PLT-48 audit_event_contract (04 rev 1.154, lane API-GAPS) = 157;
     # + T-PLT-49 file_upload (04 rev 1.189, lane SECFIX-PLT) = 158
     # + T-CLS-09 period_reopen_basis = 160 literal tables.
-    assert formats == {"literal": 161, "hybrid": 2, "prose": 5}, formats
+    # + T-CON-27 private contract navigation history (0159) = 162.
+    assert formats == {"literal": 162, "hybrid": 2, "prose": 5}, formats
     assert [t.name for t in TABLES] == list(sections), "catalogue follows 04 document order"
 
 

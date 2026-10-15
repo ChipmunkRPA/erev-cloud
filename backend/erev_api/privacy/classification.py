@@ -2569,6 +2569,25 @@ TABLES: Final[tuple[TableClassification, ...]] = (
         },
         status=Status.PENDING,
     ),
+    _table(
+        "contract_recent_view",
+        "T-CON-27",
+        "Private navigation history of at most 50 successfully opened contracts per caller; "
+        "older entries are pruned and history is not copied to sandbox snapshots.",
+        Retention.TENANT_LIFETIME,
+        {
+            R01: _cols(
+                "tenant_id id actor_id actor_kind contract_id viewed_at created_at created_by "
+                "created_by_kind updated_at updated_by updated_by_kind row_version"
+            ),
+        },
+        notes={
+            "viewed_at": ColumnNote(
+                note="Operational timestamp; retained only while this entry is among the caller's "
+                "latest 50 opens. Operational navigation state, with no external recipients.",
+            ),
+        },
+    ),
     # ---- SL tables (04 T-SL-nn)
     _table(
         "subledger_posting",
@@ -2968,6 +2987,7 @@ TABLES: Final[tuple[TableClassification, ...]] = (
                 "finished_at created_at created_by created_by_kind updated_at updated_by "
                 "updated_by_kind row_version"
             ),
+            R03: _cols("ai_export_access"),
             R02: _cols(
                 "report_code parameters book_code as_of_date output_format control_totals "
                 "tie_out_results ledger_heads source_binding problem"
@@ -3330,6 +3350,7 @@ TABLES: Final[tuple[TableClassification, ...]] = (
         {
             R01: _cols(
                 "tenant_id id job_id attempt_no provider input_sha256 source_sha256 "
+                "file_object_id document_text_file_id "
                 "created_at created_by created_by_kind"
             )
         },
