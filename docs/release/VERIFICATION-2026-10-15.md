@@ -234,3 +234,20 @@ evidence. No deployment occurred.
   The initial test used an older non-MFA author session; it was corrected to the enrolled session.
 - Public submission/review, broader AI sensitive-setting approval coverage, unknown usage/outcome
   reconciliation and the other release gaps remain open. No live provider calls or deployment.
+
+## Sensitive AI configuration approval — October 15, 2026
+
+- Model changes, including returning a custom model to the catalogue default, and enabling
+  contract-text sending now require independent workspace-administrator review in addition to
+  configuration approval. The submitted whole values are compared with their predecessor and
+  defaults, so inherited values and unrelated edits do not create extra approval requirements.
+- The rule applies while AI is disabled too. Approved model/text changes alone never clear the
+  emergency switch. Turning text sending off retains normal routing. Existing first-enable,
+  re-enable, publication replay and budget-edit behavior remains covered.
+- Verification: 25 database regression cases passed, followed by five API cases checking actual
+  resolved settings after publication. 53 unit/layer checks, strict typing (773 sources) and
+  full make lint passed. A test's nullable timestamp assertion was made explicit for typing.
+  Logs: .run/ai-sensitive-{regressions,effective-settings,unit,types-final,lint}.log.
+- Provider selection remains process configuration; tenant approval gating of provider changes
+  is still open, along with public submission/review and other release requirements. No live
+  provider calls or deployment; this is development evidence, not a full release pass.

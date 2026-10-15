@@ -1692,9 +1692,9 @@ def _enables_ai(version: Mapping[str, Any]) -> bool:
     )
 
 
-def _ai_enable_review(uow: UnitOfWork, version: Mapping[str, Any]) -> bool:
-    """Review an actual enable or clearing of the switch, not an unrelated budget edit."""
-    if not _enables_ai(version):
+def _ai_admin_review(uow: UnitOfWork, version: Mapping[str, Any]) -> bool:
+    """BR-AI-02: compare effective settings, including returns to catalogue defaults."""
+    if version["category"] != RegistryCategory.AI.value:
         return False
     disabled_at = uow.session.scalar(
         select(tenant.c.ai_disabled_at)
@@ -1707,22 +1707,40 @@ def _ai_enable_review(uow: UnitOfWork, version: Mapping[str, Any]) -> bool:
             registry_version.c.id == version["supersedes_version_id"],
         )
     )
-    return disabled_at is not None or previous is None or previous.get("ai.enabled") is not True
+    previous = previous or {}
+    current = version["values"]
+
+    def value(values: Mapping[str, Any], code: str) -> Any:
+        return values.get(code, PLATFORM_PARAMETERS[code].default_asc606)
+
+    return (
+        value(current, "ai.model") != value(previous, "ai.model")
+        or (
+            value(current, "ai.send_contract_text") is True
+            and value(previous, "ai.send_contract_text") is not True
+        )
+        or (
+            value(current, "ai.enabled") is True
+            and (disabled_at is not None or value(previous, "ai.enabled") is not True)
+        )
+    )
 
 
 def _ai_published(uow: UnitOfWork, version: Mapping[str, Any]) -> None:
     """BR-AI-02/03: only a newly published, independently reviewed policy clears the switch."""
-    if not _ai_enable_review(uow, version):
+    if not _ai_admin_review(uow, version):
         return
     principal = uow.principal
-    # Configuration approval alone is insufficient for enabling workspace AI.
+    # Sensitive AI changes require an independent workspace administrator as well.
     if (
         principal.kind is not PrincipalKind.USER
         or principal.id is None
         or "settings.manage" not in principal.permissions
         or principal.permission_scopes.get("settings.manage") != "*"
     ):
-        raise Problem("forbidden", "Enabling AI requires a workspace administrator's approval.")
+        raise Problem(
+            "forbidden", "This AI setting change requires a workspace administrator's approval."
+        )
     reviewer = uow.session.scalar(
         select(approval_decision.c.id).where(
             approval_decision.c.tenant_id == principal.tenant_id,
@@ -1732,7 +1750,11 @@ def _ai_published(uow: UnitOfWork, version: Mapping[str, Any]) -> None:
         )
     )
     if reviewer is None or principal.id == version["created_by"]:
-        raise Problem("self-approval", "Another workspace administrator must approve enabling AI.")
+        raise Problem(
+            "self-approval", "Another workspace administrator must approve this AI setting change."
+        )
+    if not _enables_ai(version):
+        return
     disabled_at = uow.session.scalar(
         select(tenant.c.ai_disabled_at)
         .where(tenant.c.id == principal.tenant_id)
@@ -1775,7 +1797,7 @@ REGISTRY_VERSION_KIND: Final = lifecycle.ConfigVersionKind(
     serialise=_serialise,
     restate=_restate,
     reopenable=_reopenable,
-    requires_human_review=_ai_enable_review,
+    requires_human_review=_ai_admin_review,
     on_published=_ai_published,
 )
 KIND: Final = REGISTRY_VERSION_KIND

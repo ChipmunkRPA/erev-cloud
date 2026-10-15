@@ -2,6 +2,23 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Sensitive AI configuration approval — October 15, 2026
+
+- Model changes, including returning a custom model to the catalogue default, and enabling
+  contract-text sending now require independent workspace-administrator review in addition to
+  configuration approval. The submitted whole values are compared with their predecessor and
+  defaults, so inherited values and unrelated edits do not create extra approval requirements.
+- The rule applies while AI is disabled too. Approved model/text changes alone never clear the
+  emergency switch. Turning text sending off retains normal routing. Existing first-enable,
+  re-enable, publication replay and budget-edit behavior remains covered.
+- Verification: 25 database regression cases passed, followed by five API cases checking actual
+  resolved settings after publication. 53 unit/layer checks, strict typing (773 sources) and
+  full make lint passed. A test's nullable timestamp assertion was made explicit for typing.
+  Logs: .run/ai-sensitive-{regressions,effective-settings,unit,types-final,lint}.log.
+- Provider selection remains process configuration; tenant approval gating of provider changes
+  is still open, along with public submission/review and other release requirements. No live
+  provider calls or deployment; this is development evidence, not a full release pass.
+
 ## Approved AI re-enable publication — October 15, 2026
 
 - A new AI policy publication with ai.enabled=true clears the emergency switch in the same
@@ -217,22 +234,6 @@
 - This is durable evidence groundwork. Budget admission still needs enforcement/reconciliation
   for returned errors with unknown usage, including historical evidence and bounded retries.
   Public AI workflows and all other release gates remain open. No deployment or readiness claim.
-
-## Tenant budget quarantine for unobserved calls — October 15, 2026
-
-- Budget admission now refuses while any tenant call intent lacks an outcome, across month
-  boundaries. Another job cannot consume an understated total after a worker crash.
-- After successful admission, the live lease binds one newly committed intent of its human
-  caller. Only that intent is excluded from the post-response check; another unresolved start,
-  replacement lease, different human or anonymous context cannot use the exemption.
-- Tests cover old unresolved calls, tenant isolation, current-call completion, fresh-lease
-  refusal, known-outcome release/usage accounting, other-human binding refusal and a separate
-  gateway job after simulated crash/lost result. AI/session regression: 233 passed, two Linux
-  parser-limit skips; two additional ownership tests passed; typing: 769 sources; Ruff/diff pass.
-  Logs: .run/ai-uncertain-budget-{final,types}.log and .run/ai-budget-intent-owner.log.
-- This blocks unobserved calls; it does not invent usage or add a reconciliation override.
-  Returned provider errors without token counts, unknown-usage reconciliation, public workflows
-  and other release gates remain open. No deployment or production-readiness claim.
 
 ## Outstanding release verification
 

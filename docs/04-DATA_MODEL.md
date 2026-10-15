@@ -8012,6 +8012,11 @@ and `object_label`, following the existing computation-fact audit convention.
   The publication and tenant change share a transaction, with `ai.enabled` audit evidence linked
   to the approval and registry version. Budget-only edits while AI remains enabled retain normal
   approval routing; `ai.enabled = false` publications leave the emergency switch unchanged.
+  Model changes (including a return to the catalogue default) and enabling contract-text sending
+  also require independent administrator approval, even while AI is disabled. Comparing the
+  submitted whole values with the predecessor and defaults distinguishes these changes from
+  carried settings. Turning contract-text sending off retains normal configuration routing;
+  neither a model change nor text-sending change by itself clears the emergency switch.
 
 
 **Deal preview save** (`POST /deal-previews/{id}/save`; SCREENS_B OQ-B-13). Request `{contract_external_id (R)}`; response 201 `{saved_contract_id}`: a `DRAFT` contract booked in the scenario tenant from the preview `input`; T-FC-04 governs where saving is allowed.

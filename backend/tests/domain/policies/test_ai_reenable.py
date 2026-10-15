@@ -130,3 +130,92 @@ def test_independent_admin_publication_clears_switch_but_replay_does_not(
     approved = policies.approve(third_request)
     assert approved.status_code == 200, approved.text
     assert switch() == stopped_at
+
+
+@pytest.mark.parametrize(
+    "baseline,changes,unset,review",
+    [
+        ({"ai.enabled": False}, {"ai.model": "fixture-new-model"}, [], True),
+        ({"ai.enabled": False, "ai.model": "fixture-old-model"}, {}, ["ai.model"], True),
+        ({"ai.enabled": False}, {"ai.send_contract_text": True}, [], True),
+        (
+            {"ai.enabled": False, "ai.send_contract_text": True},
+            {"ai.send_contract_text": False},
+            [],
+            False,
+        ),
+    ],
+)
+def test_ai_setting_review_preserves_emergency_disable(
+    world: World,
+    monkeypatch: pytest.MonkeyPatch,
+    baseline: dict[str, Any],
+    changes: dict[str, Any],
+    unset: list[str],
+    review: bool,
+) -> None:
+    from erev_api.domain.ai.settings import load_settings
+    from erev_api.enums import RegistryCategory
+    from erev_api.registry.platform import PLATFORM_PARAMETERS
+    from support.rows import publish_registry_version
+
+    policies = world.policies
+    assign(policies.maya.member, "tenant_admin")
+    author = enrolled(policies.app, policies.clock, policies.maya.member)
+    policies = replace(policies, maya=author)
+    world = replace(world, policies=policies)
+    with tenant_session(context(world.tenant_id)) as session:
+        publish_registry_version(
+            session,
+            tenant_id=world.tenant_id,
+            category=RegistryCategory.AI,
+            values=baseline,
+            at=policies.clock.now() - timedelta(seconds=1),
+        )
+    disabled = policies.post("/api/v1/tenant/ai/disable", {"comment": "Keep AI paused"})
+    assert disabled.status_code == 200, disabled.text
+    auto_flags: list[bool] = []
+    real_submit = approvals.submit
+
+    def observed_submit(*args: Any, **kwargs: Any) -> Any:
+        auto_flags.append(kwargs["auto_approval"])
+        return real_submit(*args, **kwargs)
+
+    monkeypatch.setattr(approvals, "submit", observed_submit)
+    version = created(world, category="AI", scope="TENANT", values=changes, unset=unset)
+    pass_tests(world, version["id"])
+    request_id = str(submitted(world, version["id"])["approval_request_id"])
+    assert auto_flags == [not review]
+    approved = policies.approve(request_id)
+    if review:
+        assert approved.status_code == 403, approved.text
+        assert shown(world, version["id"])["status"] == "SUBMITTED"
+        assign(policies.marcus.member, "tenant_admin")
+        approved = policies.approve(request_id)
+    assert approved.status_code == 200, approved.text
+    assert shown(world, version["id"])["status"] == "PUBLISHED"
+    with tenant_session(context(world.tenant_id), read_only=True) as session:
+        stamp = session.scalar(
+            select(tenant.c.ai_disabled_at).where(tenant.c.id == world.tenant_id)
+        )
+        assert stamp is not None
+        assert stamp.isoformat().replace("+00:00", "Z") == disabled.json()["ai_disabled_at"]
+        effective = load_settings(
+            session, tenant_id=world.tenant_id, now=policies.clock.now(), platform_kill_switch=False
+        )
+        expected = {**baseline, **changes}
+        for code in unset:
+            expected.pop(code, None)
+        assert effective.model == expected.get(
+            "ai.model", PLATFORM_PARAMETERS["ai.model"].default_asc606
+        )
+        assert effective.send_contract_text is expected.get("ai.send_contract_text", False)
+        assert effective.enabled is False
+        assert (
+            session.scalar(
+                select(func.count())
+                .select_from(audit_event)
+                .where(audit_event.c.action == "ai.enabled")
+            )
+            == 0
+        )

@@ -4811,3 +4811,19 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Unknown usage/reconciliation, durable admission failures, registered jobs, public AI/human
   workflows and the other release gates remain open. This is not full release CI or accounting
   sign-off. No deployment; verified work is published directly to main.
+
+## Tenant budget quarantine for unobserved calls — October 15, 2026
+
+- Budget admission now refuses while any tenant call intent lacks an outcome, across month
+  boundaries. Another job cannot consume an understated total after a worker crash.
+- After successful admission, the live lease binds one newly committed intent of its human
+  caller. Only that intent is excluded from the post-response check; another unresolved start,
+  replacement lease, different human or anonymous context cannot use the exemption.
+- Tests cover old unresolved calls, tenant isolation, current-call completion, fresh-lease
+  refusal, known-outcome release/usage accounting, other-human binding refusal and a separate
+  gateway job after simulated crash/lost result. AI/session regression: 233 passed, two Linux
+  parser-limit skips; two additional ownership tests passed; typing: 769 sources; Ruff/diff pass.
+  Logs: .run/ai-uncertain-budget-{final,types}.log and .run/ai-budget-intent-owner.log.
+- This blocks unobserved calls; it does not invent usage or add a reconciliation override.
+  Returned provider errors without token counts, unknown-usage reconciliation, public workflows
+  and other release gates remain open. No deployment or production-readiness claim.

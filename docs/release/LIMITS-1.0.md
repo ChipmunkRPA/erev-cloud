@@ -88,8 +88,11 @@ approval with workspace-wide settings.manage, in addition to configuration appro
 enablement and emergency-switch clearing withhold automatic approval; an unrelated budget edit
 while AI remains enabled keeps normal routing. Publication replay cannot undo a later disable,
 and publishing ai.enabled=false leaves the switch intact. There is no direct enable command.
-Public submission must serialize admission with the tenant switch when implemented. The broader
-approval requirements for AI model/provider and contract-text changes still need verification.
+Public submission must serialize admission with the tenant switch when implemented. Model changes,
+including a reset to the catalogue default, and enabling contract-text sending now require an
+independent administrator decision even while AI is off. Turning text sending off retains normal
+routing. These changes alone do not clear an emergency switch. Provider selection remains process
+configuration (EREV_AI_PROVIDER); tenant approval gating for provider changes is not implemented.
 
 The Anthropic adapter is mock-tested, uses the official SDK, disables SDK retries and telemetry,
 and resolves secrets lazily. Contract-review and explain-narrative prompts have retained bytes,
