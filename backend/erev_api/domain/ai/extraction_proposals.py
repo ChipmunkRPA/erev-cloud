@@ -124,16 +124,16 @@ def store_document_text(
     return UUID(str(stored.row["id"]))
 
 
-def _retained(
+def _retained_pages(
     uow: UnitOfWork,
-    prepared: PreparedExtraction,
+    document_id: UUID,
     text_id: UUID,
     *,
     job_id: UUID,
     job_source_sha256: str,
     source_sha256: str,
-) -> PreparedExtraction:
-    _source(uow, prepared.document_id, source_sha256)
+) -> tuple[str, ...]:
+    _source(uow, document_id, source_sha256)
     row = (
         uow.session.execute(
             select(file_object).where(
@@ -161,7 +161,7 @@ def _retained(
             "version": 1,
             "job_id": str(job_id),
             "job_source_sha256": job_source_sha256,
-            "source_file_id": str(prepared.document_id),
+            "source_file_id": str(document_id),
             "source_sha256": source_sha256,
             "pages": document["pages"],
         }
@@ -175,7 +175,79 @@ def _retained(
             raise ValueError("invalid retained text")
     except (ValueError, KeyError, TypeError, RecursionError):
         raise ProposalEvidenceRefused("AI_DOCUMENT_EVIDENCE_MISMATCH") from None
-    return _rebuild(prepared, tuple(document["pages"]))
+    return tuple(document["pages"])
+
+
+def _retained(
+    uow: UnitOfWork,
+    prepared: PreparedExtraction,
+    text_id: UUID,
+    *,
+    job_id: UUID,
+    job_source_sha256: str,
+    source_sha256: str,
+) -> PreparedExtraction:
+    return _rebuild(
+        prepared,
+        _retained_pages(
+            uow,
+            prepared.document_id,
+            text_id,
+            job_id=job_id,
+            job_source_sha256=job_source_sha256,
+            source_sha256=source_sha256,
+        ),
+    )
+
+
+def restore_extraction(
+    uow: UnitOfWork,
+    *,
+    document_id: UUID,
+    text_id: UUID,
+    source_sha256: str,
+    job_id: UUID,
+    job_source_sha256: str,
+    intent_id: UUID,
+    input_sha256: str,
+    allowed_paths: frozenset[str],
+    model: str,
+    max_tokens: int,
+    redact_contact_details: bool,
+    template_version: int,
+) -> PreparedExtraction:
+    """Rebuild the exact prior request from retained original pages, without parsing a PDF."""
+    require_job_binding(uow, job_id, job_source_sha256)
+    pages = _retained_pages(
+        uow,
+        document_id,
+        text_id,
+        job_id=job_id,
+        job_source_sha256=job_source_sha256,
+        source_sha256=source_sha256,
+    )
+    prepared = prepare_extraction(
+        document_id=document_id,
+        pages=pages,
+        allowed_paths=allowed_paths,
+        model=model,
+        max_tokens=max_tokens,
+        send_contract_text=True,
+        redact_contact_details=redact_contact_details,
+        template_version=template_version,
+    )
+    if prepared.request.input_sha256 != input_sha256:
+        raise ProposalEvidenceRefused("AI_DOCUMENT_EVIDENCE_MISMATCH")
+    require_intent_binding(
+        uow,
+        intent_id,
+        job_id,
+        job_source_sha256,
+        input_sha256,
+        file_object_id=document_id,
+        document_text_file_id=text_id,
+    )
+    return prepared
 
 
 def record_extraction(

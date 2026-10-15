@@ -154,7 +154,12 @@ Migration 0155 adds paired source/text links to immutable call intents, so recov
 the retained input before a proposal exists. Both files have evidence holds from call start;
 reviewed erasure remains required and the links grant no extra read access. Intent retries and
 proposal persistence must preserve these links. Populated bindings block lossy downgrade.
-These persistence components do not implement a complete extraction workflow.
+A worker-only recovery reader now reauthorizes the human and reconstructs exact prior requests
+from intent-linked retained text without reparsing the PDF. It returns an existing proposal or
+validated failure/usage/backoff metadata; an unresolved start or unclassified outcome refuses
+automatic recovery. Completed evidence remains readable with AI disabled but not after access
+revocation. New-call admission and retry execution remain separate integration work.
+These persistence/recovery components do not implement a complete extraction workflow.
 
 The PDF adapter has file/page/text and parser limits, an isolated subprocess, timeout cleanup
 and a sanitized environment. A four-page fixture covers the nine documented extraction fields.

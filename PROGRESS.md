@@ -2,6 +2,27 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Extraction recovery from retained input — October 15, 2026
+
+- Added a worker-only recovery reader that freshly authorizes the initiating human, selects
+  call/proposal binding metadata, and rebuilds exact request bytes/citation maps from encrypted
+  intent-linked text. It validates source access, digests, field paths and original model/prompt
+  settings. It does not reparse a PDF or invoke a provider. Existing proposals return their ID;
+  recorded failures return validated classification, usage, attempt number and outcome time for
+  gateway backoff. Missing outcomes and unclassified results refuse automatic recovery.
+- Evidence reads work while new AI calls are disabled, but current permission revocation refuses
+  recovery. Tests cover completed proposals, reported/unknown provider usage, changed selectors,
+  mismatched source fingerprints, no outcome, invalidated responses and unchanged call/log counts.
+  Shared retained-page validation also continues to serve proposal writes.
+- Verification: 21 AI PostgreSQL regressions passed; the final focused case passed after narrowing
+  proposal queries to binding metadata. Thirty preparation/layer tests passed. Full lint and
+  typecheck passed (931 Python sources plus frontend); final focused typing passed 782 sources.
+  Logs: .run/ai-extraction-recovery-{pg,regressions,pg-final,unit,lint,typecheck,
+  types-verified}.log. No deployment or live provider calls.
+- Gateway admission, retry execution, worker dispatch, submission and human acceptance remain
+  unfinished. This reader supplies recovery evidence; it does not authorize another provider call.
+  Broader release verification and independent accounting sign-off remain outstanding.
+
 ## Durable extraction call document links — October 15, 2026
 
 - Migration 0155 adds paired source/text file references to immutable AI call intents, with
@@ -209,22 +230,6 @@
   The initial test used an older non-MFA author session; it was corrected to the enrolled session.
 - Public submission/review, broader AI sensitive-setting approval coverage, unknown usage/outcome
   reconciliation and the other release gaps remain open. No live provider calls or deployment.
-
-## Immediate tenant AI disable — October 15, 2026
-
-- Added POST /tenant/ai/disable with workspace-wide settings.manage, fresh MFA, a required
-  comment and normal command idempotency. It records the human/time, cancels only this tenant's
-  queued AI tasks and appends ai.disabled plus per-job cancellation evidence in one transaction.
-  Repeats return the original timestamp without duplicating switch/cancellation events.
-- Running calls retain evidence under the gateway's existing setting rechecks. The switch
-  overrides a published ai.enabled=true policy; other tenants and queued non-AI jobs are intact.
-- Verification: five tenant/API/scope regressions passed, then two API cases passed with a
-  published-enabled policy; 25 route/layer checks passed. Full typecheck passed 922 Python
-  sources and frontend checks. Full lint and OpenAPI generation passed. Logs:
-  .run/ai-disable-{api,regressions,enabled-policy,architecture,typecheck,lint,openapi}.log.
-- One initial typing issue on a database timestamp was corrected with an explicit type check.
-  No deployment or live provider calls. Policy-publication clearing of the emergency switch,
-  public AI submission, proposal review and other outstanding readiness work remain open.
 
 ## Outstanding release verification
 

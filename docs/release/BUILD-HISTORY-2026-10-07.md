@@ -5010,3 +5010,19 @@ cleanup in the shared database session kernel was also repaired and regression-t
   full make lint passed (.run/ai-cancellation-lint-final.log).
 - Public AI workflows and independent accounting acceptance remain unfinished. No live provider
   calls or deployment; this change is not a full readiness or immutable-CI result.
+
+## Immediate tenant AI disable — October 15, 2026
+
+- Added POST /tenant/ai/disable with workspace-wide settings.manage, fresh MFA, a required
+  comment and normal command idempotency. It records the human/time, cancels only this tenant's
+  queued AI tasks and appends ai.disabled plus per-job cancellation evidence in one transaction.
+  Repeats return the original timestamp without duplicating switch/cancellation events.
+- Running calls retain evidence under the gateway's existing setting rechecks. The switch
+  overrides a published ai.enabled=true policy; other tenants and queued non-AI jobs are intact.
+- Verification: five tenant/API/scope regressions passed, then two API cases passed with a
+  published-enabled policy; 25 route/layer checks passed. Full typecheck passed 922 Python
+  sources and frontend checks. Full lint and OpenAPI generation passed. Logs:
+  .run/ai-disable-{api,regressions,enabled-policy,architecture,typecheck,lint,openapi}.log.
+- One initial typing issue on a database timestamp was corrected with an explicit type check.
+  No deployment or live provider calls. Policy-publication clearing of the emergency switch,
+  public AI submission, proposal review and other outstanding readiness work remain open.

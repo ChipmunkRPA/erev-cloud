@@ -20,7 +20,10 @@ from erev_api.db.tables import (
     audit_event,
     contract_version,
     file_object,
+    role_assignment,
+    tenant,
 )
+from erev_api.domain.ai.access import AIAccessRefused
 from erev_api.domain.ai.attempts import AttemptEvidenceRefused, record_attempt, record_intent
 from erev_api.domain.ai.document_retrieval import RetrievedExtraction, retrieve_document
 from erev_api.domain.ai.extraction_proposals import (
@@ -28,14 +31,16 @@ from erev_api.domain.ai.extraction_proposals import (
     record_extraction_failure,
     store_document_text,
 )
+from erev_api.domain.ai.extraction_recovery import RecoveredExtraction, recover_extraction
 from erev_api.domain.ai.ports import AIResponse, AIUsage
+from erev_api.domain.ai.preparation import PreparationRefused
 from erev_api.domain.ai.proposals import ProposalEvidenceRefused
 from erev_api.domain.platform import file_evidence
 from erev_api.enums import FilePurpose, RegistryCategory
 from erev_api.files.store import open_file, store_file
 from erev_api.jobs.context import JobContext, system_unit_of_work
 from erev_engine.canonical import sha256_hex
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from support.rows import publish_registry_version
 from tests.api.test_explain_api import World
 from tests.api.test_explain_api import app as app  # noqa: F401
@@ -74,6 +79,23 @@ def test_retained_extraction_evidence_success_failure_and_rollback(
         assert data == pdf and send_contract_text
         return (original,)
 
+    def recover(
+        context: JobContext,
+        *,
+        paths: frozenset[str] = frozenset({"amount"}),
+        fingerprint: str = digest,
+        file_digest: str = str(source["sha256"]),
+    ) -> RecoveredExtraction | None:
+        return recover_extraction(
+            context,
+            document_id=source["id"],
+            source_sha256=file_digest,
+            job_source_sha256=fingerprint,
+            allowed_paths=paths,
+            max_tokens=1024,
+            provider="fake",
+        )
+
     def start() -> tuple[JobContext, RetrievedExtraction, UUID, UUID]:
         base = context_for(world.maya.member, clock)
         context = JobContext(
@@ -83,6 +105,7 @@ def test_retained_extraction_evidence_success_failure_and_rollback(
             principal=base.principal,
             runtime=replace(base.runtime, keyring=keyring, files=world.app.state.file_store),
         )
+        assert recover(context) is None
         retrieved = retrieve_document(
             context,
             file_id=source["id"],
@@ -134,6 +157,8 @@ def test_retained_extraction_evidence_success_failure_and_rollback(
                 and hold.entity_ids is None
                 for hold in file_evidence.holds(world.place.tenant_id, evidence_id)
             )
+        with pytest.raises(AttemptEvidenceRefused, match="AI_OUTCOME_UNKNOWN"):
+            recover(context)
         return context, retrieved, text_id, intent_id
 
     context, retrieved, text_id, intent_id = start()
@@ -183,6 +208,16 @@ def test_retained_extraction_evidence_success_failure_and_rollback(
             intent_id=intent_id,
         )
         uow.commit()
+    restored = recover(context)
+    assert restored is not None and restored.proposal_id == proposed and restored.failure is None
+    assert restored.prepared == retrieved.prepared and restored.text_id == text_id
+    assert restored.principal.id == world.maya.member.user_id
+    with pytest.raises(ProposalEvidenceRefused, match="AI_DOCUMENT_EVIDENCE_MISMATCH"):
+        recover(context, paths=frozenset({"other"}))
+    with pytest.raises(PreparationRefused, match="AI_JOB_INPUT_CHANGED"):
+        recover(context, fingerprint="0" * 64)
+    with pytest.raises(ProposalEvidenceRefused, match="AI_DOCUMENT_UNAVAILABLE"):
+        recover(context, file_digest="0" * 64)
     failed_ids = []
     for body, stop, code in (
         ('[{"path":"amount"}]', "end_turn", "AI_INVALID_EXTRACTION_FIELD"),
@@ -223,6 +258,13 @@ def test_retained_extraction_evidence_success_failure_and_rollback(
             )
             uow.commit()
 
+        recovered = recover(failed_ctx)
+        assert recovered is not None and recovered.proposal_id is None
+        assert recovered.prepared == failed_item.prepared
+        assert recovered.intent_id == failed_intent and recovered.log_id == failure_log
+        assert recovered.attempt_no == 1 and recovered.failure is not None
+        assert recovered.failure.code == failure_code and recovered.failure.usage == usage
+        assert recovered.failure.retryable is (failure_code == "AI_TIMEOUT")
         with pytest.raises(AttemptEvidenceRefused, match="AI_JOB_INPUT_CHANGED"):
             with system_unit_of_work(
                 failed_ctx.runtime, failed_item.principal, request_id="retry-drops-documents"
@@ -370,6 +412,19 @@ def test_retained_extraction_evidence_success_failure_and_rollback(
             )
     with pytest.raises(RuntimeError, match="rollback extraction"):
         write()
+    with system_unit_of_work(ctx.runtime, item.principal, request_id="invalidated-response") as uow:
+        record_attempt(
+            uow,
+            request=item.prepared.request,
+            provider="fake",
+            outcome="ERROR",
+            failure="invalid_output",
+            response=response(raw),
+            intent_id=intent,
+        )
+        uow.commit()
+    with pytest.raises(AttemptEvidenceRefused, match="AI_RECOVERY_REQUIRED"):
+        recover(ctx)
     with tenant_session(world.place.principal.db_context, read_only=True) as session:
         rows = {row["id"]: row for row in session.execute(select(ai_proposal)).mappings()}
         success = rows[proposed]
@@ -396,7 +451,7 @@ def test_retained_extraction_evidence_success_failure_and_rollback(
         assert kept["pages"] == [original] and kept["source_sha256"] == source["sha256"]
         with world.app.state.file_store.open(text_row["storage_key"]) as encrypted:
             assert original.encode() not in encrypted.read()
-        assert session.scalar(select(func.count()).select_from(ai_model_log)) == 7
+        assert session.scalar(select(func.count()).select_from(ai_model_log)) == 8
         assert session.scalar(select(func.count()).select_from(ai_call_intent)) == 6
         assert session.scalar(select(func.count()).select_from(contract_version)) == 0
         events = list(
@@ -420,3 +475,29 @@ def test_retained_extraction_evidence_success_failure_and_rollback(
             )
             == 6
         )
+
+    # Evidence reads remain available after disabling new AI calls, without new attempts/logs.
+    with tenant_session(world.place.principal.db_context) as session:
+        session.execute(
+            update(tenant)
+            .where(tenant.c.id == world.place.tenant_id)
+            .values(
+                ai_disabled_at=clock.now(),
+                ai_disabled_by=world.maya.member.user_id,
+                ai_disabled_by_kind="USER",
+            )
+        )
+    disabled_result = recover(context)
+    assert disabled_result is not None and disabled_result.proposal_id == proposed
+    with tenant_session(world.place.principal.db_context) as session:
+        assert session.scalar(select(func.count()).select_from(ai_call_intent)) == 6
+        assert session.scalar(select(func.count()).select_from(ai_model_log)) == 8
+        session.execute(
+            update(role_assignment)
+            .where(role_assignment.c.membership_id == world.maya.member.membership_id)
+            .values(
+                revoked_at=clock.now(), revoked_by=world.maya.member.user_id, revoked_by_kind="USER"
+            )
+        )
+    with pytest.raises(AIAccessRefused, match="AI_PERMISSION_DENIED"):
+        recover(context)
