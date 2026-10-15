@@ -31,6 +31,13 @@ Invalid responses select the original deterministic explanation without model te
 verified through the fake provider, but remains unconnected to authorized retrieval, AI_TASK,
 proposal persistence and the public Explain/API workflow. It is not completed AIX-7 coverage.
 
+AI explanation retrieval now reauthorizes the job's human and intersects ai.use with
+contract.read scopes in a PostgreSQL read-only session. It reuses Explain's stored-trace
+resolver and historical-period logic; real contract tests verify identity and scope denial.
+It is not yet called by a registered AI_TASK handler or public API. Gateway admission,
+provider execution, proposal persistence and approval/acceptance remain outstanding;
+contract-document and Q&A retrieval are separate unfinished paths.
+
 Migration 0148 adds immutable proposal content/citations, tenant-bound evidence references
 and SM-11 state guards. The schema and full migration round trip are verified; proposal
 creation/acceptance APIs, approval integration and lifecycle audit events remain absent.

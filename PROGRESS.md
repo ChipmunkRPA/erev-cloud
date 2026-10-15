@@ -2,6 +2,24 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Authorized read-only AI explanation retrieval — October 15, 2026
+
+- Added a worker retrieval boundary that reauthorizes the persisted AI job's human,
+  intersects ai.use and contract.read entity scopes, and reads under that user's
+  PostgreSQL read-only context. The job attempt is rechecked in the read transaction.
+- Explain now exposes its existing resolver/trace-integrity path as one trace-id and
+  explanation snapshot. AI retrieval matches the public route's to-date period selection
+  and derives numeric precision from the resolved currency table before preparation.
+- PostgreSQL tests verify actor/scope settings, write refusal, revoked read permission
+  and disjoint grants. A real computed K-01 contract verifies stored trace/amount identity,
+  August historical-period selection and not-found for an out-of-scope entity reader.
+- Verification: 232 targeted checks passed, two Linux-only parser tests skipped;
+  strict typing passed for 765 sources; Ruff/diff checks pass. Logs:
+  .run/ai-retrieval-{final,types}.log. Isolated local test cluster stopped afterward.
+- Gateway/settings/budget integration, provider execution, persistence, public endpoints
+  and human decisions remain open. This does not authorize deployment or establish
+  end-to-end AI readiness. No live provider calls or external accounting sign-off.
+
 ## Cited narrative selection and deterministic fallback — October 15, 2026
 
 - Added the retained explain-narrative v1 prompt and a preparation/selection boundary.
@@ -226,25 +244,6 @@
 - This is not an enabled gateway: job-only authorization, budget reservation, output
   validation, durable attempt/audit writes and human acceptance remain open. No live calls,
   deployment or readiness claim.
-
-## AI SDK adapter and provider selection — October 14, 2026
-
-- Added the official Anthropic SDK (locked 1.14.0), explicit vendor endpoint, 60-second
-  timeout, no SDK retries and no SDK telemetry. Secrets resolve lazily through the scoped
-  store. Text blocks, usage, model, stop reason, digest and monotonic latency are mapped;
-  typed failures produce safe codes and retryability without provider response bodies.
-- Tenant disablement/kill switch returns no provider; fake remains the test default.
-  Selection constructs no client. All adapter tests use mocked clients; no live AI calls.
-- Adapter/configuration/architecture checks: 110 passed; final adapter/configuration,
-  licence and notices checks: 55 passed. Strict API/test typing: 747 sources; Ruff passes.
-  Logs: .run/ai-sdk-checks.log, .run/ai-sdk-final.log, .run/ai-sdk-types.log.
-  Final SDK network-boundary checks: 16 passed, .run/ai-sdk-network-final.log.
-- Licence check: 141 packages, zero findings. Development dependency audit: zero Python
-  vulnerabilities across all 85 pinned runtime distributions and zero npm advisories;
-  .run/ai-sdk-licences.log and .run/ai-sdk-audit.log. Final clean-candidate audit still owed.
-- Gateway/jobs, retained prompt fixtures, human acceptance and lifecycle auditing remain
-  unfinished. SUPERVISOR VERIFICATION NEEDED: live Anthropic provider smoke test (not run;
-  no live calls authorized here). No deployment or production-readiness claim.
 
 ## Outstanding release verification
 

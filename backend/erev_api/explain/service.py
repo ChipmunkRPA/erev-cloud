@@ -113,6 +113,7 @@ __all__ = [
     "build_explain",
     "calc_trace_out",
     "explain_measure",
+    "explanation_snapshot",
     "verify_measure",
 ]
 
@@ -984,6 +985,36 @@ def _as_of(session: Session, figure: _Figure, known_at: datetime) -> date:
     statement = select(legal_entity.c.time_zone).where(legal_entity.c.id == figure.entity_id)
     time_zone = session.execute(statement).scalar()
     return known_at.date() if time_zone is None else to_entity_date(known_at, str(time_zone))
+
+
+def explanation_snapshot(
+    session: Session,
+    *,
+    object_type: ExplainObjectType,
+    object_id: UUID,
+    measure: str,
+    book_code: str | None = None,
+    known_at: datetime | None = None,
+    period_key: str | None = None,
+    depth: int = DEFAULT_DEPTH,
+) -> tuple[UUID, Explanation]:
+    """Resolve a figure with the same RLS and trace integrity checks as Explain.
+
+    The caller owns read permission, a scoped read-only session and any to-date
+    period resolution. Return the stored trace identity with its rendered snapshot,
+    so consumers cannot accidentally pair independently fetched trace ids/values.
+    """
+    _check_depth(depth)
+    figure = _resolve(
+        session,
+        object_type=object_type,
+        object_id=object_id,
+        measure=measure,
+        book_code=book_code,
+        known_at=known_at,
+        period_key=period_key,
+    )
+    return figure.trace_id, build_explain(figure.trace, figure.node.id, depth)
 
 
 def explain_measure(

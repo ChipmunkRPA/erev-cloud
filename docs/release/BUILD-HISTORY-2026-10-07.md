@@ -4198,3 +4198,22 @@ Archived verbatim on October 7, 2026 during performing-entity verification.
   passes (745 sources). Evidence: .run/ai-proposal-final.log, .run/ai-proposal-head.log,
   .run/ai-proposal-types.log. Provider/gateway, human acceptance and audit lifecycle
   remain incomplete; AI stays unavailable. No deployment or readiness claim.
+
+## AI SDK adapter and provider selection — October 14, 2026
+
+- Added the official Anthropic SDK (locked 1.14.0), explicit vendor endpoint, 60-second
+  timeout, no SDK retries and no SDK telemetry. Secrets resolve lazily through the scoped
+  store. Text blocks, usage, model, stop reason, digest and monotonic latency are mapped;
+  typed failures produce safe codes and retryability without provider response bodies.
+- Tenant disablement/kill switch returns no provider; fake remains the test default.
+  Selection constructs no client. All adapter tests use mocked clients; no live AI calls.
+- Adapter/configuration/architecture checks: 110 passed; final adapter/configuration,
+  licence and notices checks: 55 passed. Strict API/test typing: 747 sources; Ruff passes.
+  Logs: .run/ai-sdk-checks.log, .run/ai-sdk-final.log, .run/ai-sdk-types.log.
+  Final SDK network-boundary checks: 16 passed, .run/ai-sdk-network-final.log.
+- Licence check: 141 packages, zero findings. Development dependency audit: zero Python
+  vulnerabilities across all 85 pinned runtime distributions and zero npm advisories;
+  .run/ai-sdk-licences.log and .run/ai-sdk-audit.log. Final clean-candidate audit still owed.
+- Gateway/jobs, retained prompt fixtures, human acceptance and lifecycle auditing remain
+  unfinished. SUPERVISOR VERIFICATION NEEDED: live Anthropic provider smoke test (not run;
+  no live calls authorized here). No deployment or production-readiness claim.
