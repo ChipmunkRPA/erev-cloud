@@ -2,6 +2,15 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Persisted validation assessment — October 15, 2026
+
+- Added assessment of frozen selections, accepted evidence and actual child-job completion
+  under validation/attempt locks. Changed populations or incomplete selections are refused.
+- Accepted evidence while its job still runs remains pending; cancellation and exhausted
+  retries make the assessment INCOMPLETE. The assessment makes no enablement transition.
+- Database lifecycle verification and typing/lint evidence are in the dated CI record.
+  Dataset/report publication, final acceptance, approvals and admission remain outstanding.
+
 ## Validation aggregate refusal checks — October 15, 2026
 
 - Reproduced and fixed ERROR evidence counting toward a pass in the pure aggregator. It now
@@ -266,13 +275,6 @@
 - Source-book access and approved-book scope protections remain in force. Cross-entity pricing
   policy and additional-review requirements remain open; this change makes the facts visible.
 - Verification is recorded in docs/release/CI-2026-10-15.md. No deployment.
-
-## CSV acceptance and side-letter evidence — October 15, 2026
-
-- CSV v2 already supports these terms. New PostgreSQL regressions verify approved booking and
-  replacement preserve true/false/null in events and projections, and reject contradictory rows.
-- Three tests and backend typing pass; evidence is in docs/release/CI-2026-10-15.md.
-  Omitted terms remain unknown. No production behavior, activation policy or deployment change.
 
 ## Outstanding release verification
 

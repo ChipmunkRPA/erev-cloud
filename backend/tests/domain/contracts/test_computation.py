@@ -2778,10 +2778,14 @@ def test_replay_job_failure_cleanup_rolls_back_while_worker_is_active(world: Wor
         )
 
 
-def test_validation_fanout_runs_frozen_match_and_no_source(world: World) -> None:
+def test_validation_fanout_runs_frozen_match_and_no_source(
+    world: World, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from erev_api.controls.release import current_release
     from erev_api.db.tables import computation_verification, job, release_validation_group
     from erev_api.domain.contracts import replay_job
+    from erev_api.domain.contracts.replay_execution import execute_running
+    from erev_api.domain.contracts.validation_aggregation import assess
     from erev_api.domain.contracts.validation_attempts import freeze
     from erev_api.domain.contracts.validation_fanout import enqueue
     from erev_api.enums import JobKind
@@ -2803,6 +2807,14 @@ def test_validation_fanout_runs_frozen_match_and_no_source(world: World) -> None
             clock=uow.clock, keyring=uow.keyring, files=uow.files, engine_release=current_release()
         )
         uow.commit()
+
+    def accepted_before_job_finishes(context: JobContext, **kwargs: Any) -> Any:
+        result = execute_running(context, **kwargs)
+        with world.place.uow() as uow:
+            assert assess(uow, validation_id=validation_id, attempt_id=frozen.id).status is None
+        return result
+
+    monkeypatch.setattr(replay_job, "execute_running", accepted_before_job_finishes)
     for job_id in first.job_ids:
         with world.place.uow() as uow:
             child = uow.session.execute(select(job).where(job.c.id == job_id)).mappings().one()
@@ -2823,6 +2835,9 @@ def test_validation_fanout_runs_frozen_match_and_no_source(world: World) -> None
     with world.place.uow() as uow:
         again = enqueue(uow, validation_id=validation_id, attempt_id=frozen.id)
         assert again.job_ids == first.job_ids and again.created == again.recovery_requested == 0
+        decision = assess(uow, validation_id=validation_id, attempt_id=frozen.id)
+        assert decision.status == "PASSED"
+        assert decision.counts == {"COMPLETE": 2, "MATCH": 1, "NO_SOURCE": 1}
         assert not uow.audit_events
         assert set(uow.session.scalars(select(computation_verification.c.outcome))) == {
             "MATCH",
@@ -3018,3 +3033,94 @@ def test_validation_fanout_serializes_concurrent_deliveries(world: World) -> Non
             )
             == 1
         )
+
+
+@pytest.mark.parametrize("scenario", ["queued", "cancelled", "drift", "superseded"])
+def test_validation_aggregation_stored_lifecycle(world: World, scenario: str) -> None:
+    from erev_api.domain.contracts import replay_job
+    from erev_api.domain.contracts.validation_aggregation import assess
+    from erev_api.domain.contracts.validation_attempts import freeze, supersede
+    from erev_api.domain.contracts.validation_fanout import enqueue
+    from erev_api.domain.platform.jobs import cancel_job
+
+    assert replay_job.replay is not None
+    booked = k01(world)
+    validation_id = pending_validation(world)
+    with world.place.uow() as uow:
+        frozen = freeze(uow, validation_id=validation_id, attempt_no=1)
+        fanout = enqueue(uow, validation_id=validation_id, attempt_id=frozen.id)
+        uow.commit()
+    if scenario == "drift":
+        flag_change(world, booked.contract["id"], 2)
+    with world.place.uow() as uow:
+        if scenario == "cancelled":
+            cancel_job(uow, fanout.job_ids[0])
+        if scenario == "superseded":
+            supersede(uow, validation_id=validation_id, attempt_id=frozen.id)
+        if scenario in {"drift", "superseded"}:
+            with pytest.raises(Problem):
+                assess(uow, validation_id=validation_id, attempt_id=frozen.id)
+        else:
+            result = assess(uow, validation_id=validation_id, attempt_id=frozen.id)
+            assert result.status == ("INCOMPLETE" if scenario == "cancelled" else None)
+            assert result.reasons == (("CANCELLED",) if scenario == "cancelled" else ())
+
+
+def test_validation_aggregation_waits_for_retries_then_reports_exhaustion(
+    world: World, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from erev_api.controls.release import current_release
+    from erev_api.db.tables import job
+    from erev_api.domain.contracts import replay_job
+    from erev_api.domain.contracts.replay_execution import execute_running
+    from erev_api.domain.contracts.validation_aggregation import assess
+    from erev_api.domain.contracts.validation_attempts import freeze
+    from erev_api.domain.contracts.validation_fanout import enqueue
+    from erev_api.jobs.context import JobRuntime
+    from erev_api.jobs.registry import run_job
+    from sqlalchemy import text
+
+    booked = k01(world)
+    computed(world.place, booked.combination_group["id"])
+    validation_id = pending_validation(world)
+    with world.place.uow() as uow:
+        frozen = freeze(uow, validation_id=validation_id, attempt_no=1)
+        child_id = enqueue(uow, validation_id=validation_id, attempt_id=frozen.id).job_ids[0]
+        runtime = JobRuntime(
+            clock=uow.clock, keyring=uow.keyring, files=uow.files, engine_release=current_release()
+        )
+        uow.commit()
+
+    def fail(bundle: Any) -> Any:
+        raise EngineError("ENGINE_INVARIANT_VIOLATED", "aggregate retry probe")
+
+    def execute(context: JobContext, **kwargs: Any) -> Any:
+        return execute_running(context, **kwargs, engine=fail)
+
+    monkeypatch.setattr(replay_job, "execute_running", execute)
+    for attempt in (1, 2, 3):
+        with world.place.uow() as uow:
+            task_id = uow.session.scalar(
+                select(job.c.procrastinate_job_id).where(job.c.id == child_id)
+            )
+            uow.session.execute(
+                text("UPDATE procrastinate_jobs SET status = 'doing' WHERE id = :id"),
+                {"id": task_id},
+            )
+            uow.commit()
+        run_job(
+            child_id,
+            world.place.tenant_id,
+            attempt=attempt,
+            runtime=runtime,
+            delivered_task_id=task_id,
+        )
+        with world.place.uow() as uow:
+            result = assess(uow, validation_id=validation_id, attempt_id=frozen.id)
+            assert result.status == ("INCOMPLETE" if attempt == 3 else None)
+            assert result.reasons == (("FAILED_EXHAUSTED",) if attempt == 3 else ())
+            uow.session.execute(
+                text("UPDATE procrastinate_jobs SET status = 'succeeded' WHERE id = :id"),
+                {"id": task_id},
+            )
+            uow.commit()

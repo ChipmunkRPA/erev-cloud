@@ -6085,3 +6085,10 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - This fixes draft edits silently dropping existing terms. Activation controls remain unchanged;
   omitted import terms remain unknown; see LIMITS-1.0.md. Verification is in CI-2026-10-15.md.
 - No deployment or accounting-policy change; broader release gates and sign-off remain open.
+
+## CSV acceptance and side-letter evidence — October 15, 2026
+
+- CSV v2 already supports these terms. New PostgreSQL regressions verify approved booking and
+  replacement preserve true/false/null in events and projections, and reject contradictory rows.
+- Three tests and backend typing pass; evidence is in docs/release/CI-2026-10-15.md.
+  Omitted terms remain unknown. No production behavior, activation policy or deployment change.
