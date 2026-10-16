@@ -41,7 +41,7 @@ from collections import deque
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from enum import Enum
 from fractions import Fraction
 from types import MappingProxyType
@@ -160,7 +160,13 @@ def _untagged(obj: object) -> object:
                 if not isinstance(value, str):
                     raise ValueError(f"tag {key} carries a non-string value")
                 if key == _TAG_DECIMAL:
-                    return Decimal(value)
+                    try:
+                        number = Decimal(value)
+                    except InvalidOperation as error:
+                        raise ValueError("invalid Decimal evidence value") from error
+                    if not number.is_finite():
+                        raise ValueError("non-finite Decimal evidence value")
+                    return number
                 if key == _TAG_DATE:
                     return date.fromisoformat(value)
                 return datetime.strptime(value, "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=UTC)
@@ -284,7 +290,7 @@ def input_mapping(evidence: bytes) -> dict[str, object]:
     parsed = json.loads(evidence.decode("utf-8"))
     if not isinstance(parsed, dict) or parsed.get("evidence_format") != EVIDENCE_FORMAT:
         raise ValueError("unknown input evidence format")
-    body = _untagged(parsed["bundle"])
+    body = _untagged(parsed.get("bundle"))
     if not isinstance(body, dict):
         raise ValueError("the evidence bundle is not an object")
     return body

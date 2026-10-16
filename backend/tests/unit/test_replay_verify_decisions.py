@@ -282,13 +282,14 @@ def test_candidate_stamp_only_release_matches_on_l1_with_r_count_3() -> None:
     assert row.normalised_input_match is True
     assert row.outcome is V.MATCH and row.reason is None  # L1 equal
     assert row.actual_output_sha256 != old_hash  # L0 unequal across versions by construction
+    assert row.difference_summary is not None
     assert row.difference_summary == {
         "M": 0,
         "P": 0,
         "T": 0,
         "R": 3,
         "changed_r_paths": row.difference_summary["changed_r_paths"],
-    }  # type: ignore[index]
+    }
     # The integrity path for the same source under the new process: unavailable runtime.
     assert _verify("REPLAY_VERIFY", old_source, old_evidence, process, _Spy()).reason == (
         "SOURCE_RUNTIME_UNAVAILABLE"
@@ -317,7 +318,9 @@ def test_candidate_with_a_money_difference_is_differences_never_mismatch() -> No
 
     row = _verify("UPGRADE_VALIDATE", source, evidence, process, changed)
     assert row.outcome is V.DIFFERENCES and row.reason == "L1_DIFFERENCES"
-    assert row.difference_summary is not None and row.difference_summary["M"] >= 1  # type: ignore[index, operator]
+    assert row.difference_summary is not None
+    monetary_changes = row.difference_summary["M"]
+    assert isinstance(monetary_changes, int) and monetary_changes >= 1
     assert not row.integrity_incident
 
 
@@ -345,3 +348,38 @@ def test_engine_error_is_error_with_executed_identity_and_null_output() -> None:
     assert row.outcome is V.ERROR and row.reason == "ENGINE_ERROR"
     assert row.engine_executed and row.executed_engine_version == ENGINE_VERSION
     assert row.actual_output_sha256 is None and spy.calls == 1
+
+
+@pytest.mark.parametrize("trigger", ["REPLAY_VERIFY", "UPGRADE_VALIDATE"])
+@pytest.mark.parametrize(
+    ("side", "raw"),
+    [
+        ("input", b'{"evidence_format":1}'),
+        ("input", b'{"evidence_format":1,"bundle":{"$decimal":"invalid"}}'),
+        ("output", b"{"),
+        ("output", b"[]"),
+        ("output", b"\xff"),
+    ],
+    ids=["missing-bundle", "invalid-decimal", "invalid-json", "non-object", "invalid-utf8"],
+)
+def test_malformed_retained_evidence_is_an_incident_before_execution(
+    trigger: str, side: str, raw: bytes
+) -> None:
+    _, _, source, evidence, process = _stored()
+    digest = upgrade.raw_digest(raw)
+    if side == "input":
+        evidence = dataclasses.replace(evidence, input_bytes=raw, input_file_sha256=digest)
+    else:
+        # Consistent digests cannot make an invalid output bundle valid evidence.
+        evidence = dataclasses.replace(
+            evidence, output_bytes=raw, output_file_sha256=digest, output_sha256=digest
+        )
+        source = dataclasses.replace(source, output_sha256_by_book={"ASC606": digest})
+    spy = _Spy()
+    row = _verify(trigger, source, evidence, process, spy)
+    assert row.outcome is V.MISMATCH
+    assert row.reason == f"{side.upper()}_EVIDENCE_HASH_MISMATCH"
+    assert row.integrity_incident
+    assert not row.engine_executed and spy.calls == 0
+    assert row.executed_engine_release_id is None
+    assert row.actual_output_sha256 is None

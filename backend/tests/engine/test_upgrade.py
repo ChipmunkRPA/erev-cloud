@@ -333,3 +333,15 @@ def test_l2_classifies_money_posting_and_trace_changes() -> None:
     actual_l["books"][0]["contract_version"]["trace_nodes"]["__probe__"] = "node"
     assert representation_diff(expected, actual_l).count("T") == 1
     assert representation_diff(expected, expected).rows == ()
+
+
+@pytest.mark.parametrize("value", ["invalid", "NaN", "sNaN", "Infinity", "-Infinity"])
+def test_decoder_refuses_invalid_decimal_evidence(value: str) -> None:
+    evidence = json.dumps({"evidence_format": 1, "bundle": {"$decimal": value}}).encode()
+    with pytest.raises(ValueError, match="Decimal evidence value"):
+        decode_input(evidence)
+
+
+def test_decoder_refuses_missing_bundle_as_a_codec_error() -> None:
+    with pytest.raises(ValueError, match="bundle is not an object"):
+        decode_input(b'{"evidence_format":1}')

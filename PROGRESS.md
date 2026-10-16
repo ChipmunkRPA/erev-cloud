@@ -2,6 +2,15 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Malformed replay evidence — October 15, 2026
+
+- Malformed input/output evidence now produces an integrity mismatch before engine execution,
+  including missing input bodies, invalid decimal tags, invalid JSON/UTF-8 and non-object outputs.
+  The shared codec also rejects non-finite decimals. No current-state fallback is introduced.
+- Ten failure-first regressions reproduced uncaught parsing exceptions. Replay/codec checks and
+  final typing/lint evidence are recorded in docs/release/CI-2026-10-15.md.
+- Persisted replay verification, release orchestration and RPT-38 remain outstanding.
+
 ## Verified computation sources for report replay — October 15, 2026
 
 - The internal reader checks report.run over the complete stored group and performing entities
@@ -246,17 +255,6 @@
   checks, frontend typing and full lint pass; evidence is in docs/release/CI-2026-10-15.md.
 - Export, linked proposals, hash-copy controls, J-19 and broader release/accounting gates stay
   open. No deployment or provider calls. Publish directly to main after verification.
-
-## Preserve unknown token usage in call evidence — October 15, 2026
-
-- Added usage_known to call-log list/detail, using the exact SQL evidence predicate used by
-  budget admission. The screen shows Unknown and a drawer explanation for missing usage;
-  reported zero remains zero. Compatibility counters and retained records are not rewritten.
-- Twenty-four API/PostgreSQL budget checks and six screen checks pass. Backend typing (796
-  files), frontend typing and full lint pass. The prior full frontend result is not relabelled as covering
-  this correction. Evidence is recorded in docs/release/CI-2026-10-15.md.
-- Usage reconciliation, remaining call-log features and broader release/accounting gates are
-  still open. No deployment or provider calls; publish directly to main after verification.
 
 ## Outstanding release verification
 

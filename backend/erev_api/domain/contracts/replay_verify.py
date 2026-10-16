@@ -263,7 +263,10 @@ def verify(
         sorted(source.output_sha256_by_book)
     ):
         return not_executed(mismatch, "EXPECTED_HASH_DISAGREEMENT")
-    expected_mapping = upgrade.output_mapping(evidence.output_bytes)
+    try:
+        expected_mapping = upgrade.output_mapping(evidence.output_bytes)
+    except (ValueError, TypeError):
+        return not_executed(mismatch, "OUTPUT_EVIDENCE_HASH_MISMATCH")
     # 6. candidate input.
     transform_id: str | None = None
     candidate_sha: str | None = None
