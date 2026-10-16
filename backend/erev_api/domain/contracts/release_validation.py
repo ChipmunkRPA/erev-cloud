@@ -574,7 +574,8 @@ def verification_write(
     delivery of the same token finds its row and writes nothing; a job that lost its task
     ownership (D-80) writes nothing; a group whose result another job already accepted writes
     nothing new; otherwise the row is inserted, the pointer set for a non-``ERROR`` outcome and
-    the orchestration state moved to ``COMPLETE``."""
+    the orchestration state moved to ``COMPLETE`` only for that accepted result. An ``ERROR``
+    retains the nonterminal state; job settlement owns retry or exhaustion."""
     with lock.acquire(execution_lock_key(attempt_id, group_id)):
         existing = store.row_by_token(attempt_id, group_id, token)
         if existing is not None:
@@ -588,5 +589,7 @@ def verification_write(
         pointer = accept_pointer(None, row_id=row_id, outcome=outcome)
         if pointer is not None:
             store.set_accepted(attempt_id, group_id, pointer)
-        store.set_orchestration(attempt_id, group_id, ValidationGroupOrchestrationState.COMPLETE)
+            store.set_orchestration(
+                attempt_id, group_id, ValidationGroupOrchestrationState.COMPLETE
+            )
         return VerificationWrite("inserted", row_id, pointer)

@@ -2,6 +2,15 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Verification write transaction safeguards — October 15, 2026
+
+- Recording an ERROR preserves the group's nonterminal state so aggregation waits for retry
+  or exhaustion. Only an accepted non-error result marks the group COMPLETE.
+- A PostgreSQL adapter now implements the execution-lock port in the writer's existing
+  transaction. The lock lasts through commit/rollback, beyond the Python acquire block.
+- Verification results are recorded in docs/release/CI-2026-10-15.md. The database store and
+  replay handler remain outstanding; the adapter is not yet wired to a production write path.
+
 ## Durable scheduler execution locks — October 15, 2026
 
 - Job creation accepts an execution lock retained in immutable, reserved metadata. Every
@@ -251,19 +260,6 @@
 - Queued export is still unfinished. Next persist the binding, reconstruct current grants in
   the worker, guard replay/download before returning any bytes, and wire the menu. Other release
   gates remain open. No deployment/provider calls; publish directly to main after verification.
-
-## Authorized AI export dataset foundation — October 15, 2026
-
-- Added the internal call-export dataset using current owner/tenant visibility and standard
-  CSV/XLSX writers. Unknown usage stays distinct from zero; totals name only known usage.
-- Real PostgreSQL plus parsed CSV/XLSX witnesses prove scope, spreadsheet-formula escaping and
-  unknown/zero cells. An initial test caught unrestricted system identity access; the builder
-  now requires a user/API-client identity and refuses system/operator/missing-ID contexts.
-- Six API/export/formula checks, the final identity check, backend typing (796 files) and full
-  lint pass. Evidence: docs/release/CI-2026-10-15.md.
-- Export is NOT yet public: next wire queued execution/current-grant reconstruction, retained
-  output ownership/revocation checks and the download menu. No deployment/provider calls.
-  Other call-log and broader release/accounting gates remain open.
 
 ## Outstanding release verification
 

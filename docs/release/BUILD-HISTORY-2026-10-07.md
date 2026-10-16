@@ -5936,3 +5936,16 @@ cleanup in the shared database session kernel was also repaired and regression-t
   checks, frontend typing and full lint pass; evidence is in docs/release/CI-2026-10-15.md.
 - Export, linked proposals, hash-copy controls, J-19 and broader release/accounting gates stay
   open. No deployment or provider calls. Publish directly to main after verification.
+
+## Authorized AI export dataset foundation — October 15, 2026
+
+- Added the internal call-export dataset using current owner/tenant visibility and standard
+  CSV/XLSX writers. Unknown usage stays distinct from zero; totals name only known usage.
+- Real PostgreSQL plus parsed CSV/XLSX witnesses prove scope, spreadsheet-formula escaping and
+  unknown/zero cells. An initial test caught unrestricted system identity access; the builder
+  now requires a user/API-client identity and refuses system/operator/missing-ID contexts.
+- Six API/export/formula checks, the final identity check, backend typing (796 files) and full
+  lint pass. Evidence: docs/release/CI-2026-10-15.md.
+- Export is NOT yet public: next wire queued execution/current-grant reconstruction, retained
+  output ownership/revocation checks and the download menu. No deployment/provider calls.
+  Other call-log and broader release/accounting gates remain open.

@@ -21,6 +21,7 @@ from erev_api.domain.contracts.release_validation import (
     ExecutionToken,
     GroupFacts,
     GroupResult,
+    Level,
     TenantHistory,
     accept_pointer,
     aggregate,
@@ -63,7 +64,7 @@ def test_semver_level_and_per_tenant_effective_level() -> None:
         semver_level("0.3", "0.4.0")
     # A globally PATCH build (0.3.1, declared PATCH) is MAJOR for a tenant that skipped 0.3.0,
     # which the author declared MAJOR (the D-93 (5) 0.x changed-result case).
-    declared = {"0.3.0": "MAJOR", "0.3.1": "PATCH"}
+    declared: dict[str, Level] = {"0.3.0": "MAJOR", "0.3.1": "PATCH"}
     assert effective_level("0.2.0", "0.3.1", declared) == "MAJOR"
     assert effective_level("0.3.0", "0.3.1", declared) == "PATCH"
     assert effective_level("0.2.9", "0.3.0", {"0.3.0": "MINOR"}) == "MINOR"
@@ -191,7 +192,9 @@ def test_sampling_is_deterministic_stratified_and_frozen_by_rank() -> None:
     covered = {stratum for item in first.selected for stratum in item.strata}
     assert ("IFRS15", "ROYALTY") in covered
     assert {("ASC606", m) for m in ("TIME_ELAPSED", "USAGE", "MILESTONE")} <= covered
-    assert first.summary["sampled"] >= first.summary["nominal"]  # coverage may exceed nominal
+    sampled, nominal = first.summary["sampled"], first.summary["nominal"]
+    assert isinstance(sampled, int) and isinstance(nominal, int)
+    assert sampled >= nominal  # coverage may exceed nominal
     other_seed = select_population([*groups, rare], seed=SEED + 1, tenant_id=TENANT)
     assert [i.group_id for i in other_seed.selected] != [i.group_id for i in first.selected]
     ranks = [item.rank_sha256 for item in first.selected]
@@ -259,7 +262,6 @@ def test_integrity_mismatch_and_unverifiable_block_and_are_never_approvable() ->
         rows = [GroupResult(OS.COMPLETE, V.DIFFERENCES), GroupResult(OS.COMPLETE, blocking)]
         result = aggregate("MAJOR", rows)
         assert result.status is S.INCOMPLETE and blocking.value in result.reasons
-        assert result.status is not S.PENDING_APPROVAL
 
 
 # --- enablement (D-96 (6)) ------------------------------------------------------------------------
@@ -394,6 +396,7 @@ def test_error_then_retry_keeps_both_rows_and_accepts_the_second() -> None:
     store, lock = _Store(), _Lock()
     attempt, group, job = uuid4(), uuid4(), uuid4()
     error_row, match_row = uuid4(), uuid4()
+    store.states[(attempt, group)] = OS.RUNNING
     first = verification_write(
         store,
         lock,
@@ -405,6 +408,12 @@ def test_error_then_retry_keeps_both_rows_and_accepts_the_second() -> None:
         still_owner=lambda: True,
     )
     assert first.result == "inserted" and first.accepted_id is None  # ERROR is never accepted
+    assert store.states[(attempt, group)] is OS.RUNNING
+    assert aggregate("MINOR", [GroupResult(store.states[(attempt, group)], None)]).status is None
+    # The job lifecycle owns the retry/exhaustion transition, not the evidence insert.
+    store.set_orchestration(attempt, group, orchestration_after_job("FAILED", retries_left=True))
+    assert aggregate("MINOR", [GroupResult(store.states[(attempt, group)], None)]).status is None
+    store.set_orchestration(attempt, group, OS.RUNNING)
     retry = verification_write(
         store,
         lock,
@@ -416,6 +425,8 @@ def test_error_then_retry_keeps_both_rows_and_accepts_the_second() -> None:
         still_owner=lambda: True,
     )
     assert retry.result == "inserted" and retry.accepted_id == match_row
+    assert store.states[(attempt, group)] is OS.COMPLETE
+    assert aggregate("MINOR", [GroupResult(OS.COMPLETE, V.MATCH)]).status is S.PASSED
     assert store.inserts == 2  # the prior failure evidence is immutable and retained
 
 
