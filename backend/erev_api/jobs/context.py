@@ -101,6 +101,7 @@ class JobAttempt:
     job_id: UUID
     tenant_id: UUID
     task_id: int | None
+    attempt_number: int | None = None
 
     def _mine(self) -> list[ColumnElement[bool]]:
         """The job while it is this attempt's: RUNNING, under this attempt's task."""
@@ -256,6 +257,16 @@ class JobContext:
             raise RuntimeError("a job context with a job row runs as an attempt (registry.run_job)")
         self._attempt = runtime.attempt if persisted else None
         self._last_progress: datetime | None = None
+
+    @property
+    def task_id(self) -> int | None:
+        """The scheduler task for this execution; no task is invented for inline work."""
+        return None if self._attempt is None else self._attempt.task_id
+
+    @property
+    def attempt(self) -> int | None:
+        """The registry's attempt number, never inferred from prior result rows."""
+        return None if self._attempt is None else self._attempt.attempt_number
 
     @property
     def runtime(self) -> JobRuntime:

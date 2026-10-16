@@ -1433,7 +1433,10 @@ def _execute(
         kind=kind,
         principal=principal,
         runtime=replace(
-            runtime, attempt=JobAttempt(job_id=job_id, tenant_id=tenant_id, task_id=task_id)
+            runtime,
+            attempt=JobAttempt(
+                job_id=job_id, tenant_id=tenant_id, task_id=task_id, attempt_number=attempt
+            ),
         ),
     )
     try:

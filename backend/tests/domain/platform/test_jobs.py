@@ -107,12 +107,12 @@ def _defer(
     return UUID(str(row["id"]))
 
 
-def _job(tenant_id: UUID, job_id: UUID) -> Mapping[str, Any]:
+def _job(tenant_id: UUID, job_id: UUID) -> Mapping[Any, Any]:
     with tenant_session(_db(tenant_id)) as session:
         return session.execute(select(job).where(job.c.id == job_id)).mappings().one()
 
 
-def _task(tenant_id: UUID, procrastinate_job_id: int) -> Mapping[str, Any]:
+def _task(tenant_id: UUID, procrastinate_job_id: int) -> Mapping[Any, Any]:
     with tenant_session(_db(tenant_id)) as session:
         return session.execute(_TASK, {"id": procrastinate_job_id}).mappings().one()
 
@@ -270,7 +270,7 @@ def test_krn_job_01_unregistered_kind_fails_closed(
     assert (failed["state"], failed["problem"]["title"]) == ("FAILED", "Job failed")
 
 
-def _jobs_of(tenant_id: UUID, kind: JobKind) -> list[Mapping[str, Any]]:
+def _jobs_of(tenant_id: UUID, kind: JobKind) -> list[Mapping[Any, Any]]:
     with tenant_session(_db(tenant_id)) as session:
         return list(session.execute(select(job).where(job.c.kind == kind.value)).mappings())
 
@@ -600,6 +600,7 @@ def _isolated_failure(log_stream: io.StringIO, event: str, tenant_id: UUID) -> d
     assert failure["level"] == "error" and failure["error_class"]
     module, _, line = str(failure["error_at"]).rpartition(":")
     assert module.split(".")[0] == "erev_api" and line.isdigit(), failure["error_at"]
+    assert isinstance(failure, dict)
     return failure
 
 
@@ -734,7 +735,8 @@ def test_broken_readiness_keeps_queued_job_for_existing_stranded_recovery(
     def ready(session: Session, job_id: UUID, params: Mapping[str, Any]) -> bool:
         if broken == "exception":
             raise RuntimeError("dependency reader unavailable")
-        return None  # type: ignore[return-value] - exercise an invalid hook at runtime
+        # Exercise an invalid hook at runtime.
+        return None  # type: ignore[return-value]
 
     monkeypatch.setitem(
         registry.HANDLERS,
@@ -752,3 +754,37 @@ def test_broken_readiness_keeps_queued_job_for_existing_stranded_recovery(
         None,
     )
     assert ran == []
+
+
+def test_handler_receives_exact_execution_identity_across_retry(
+    tenant_id: UUID, runtime: JobRuntime, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    seen: list[tuple[UUID, int | None, int | None]] = []
+
+    def handler(context: JobContext, params: Mapping[str, Any]) -> JobOutcome:
+        seen.append((context.job_id, context.task_id, context.attempt))
+        for name in ("task_id", "attempt"):
+            with pytest.raises(AttributeError):
+                setattr(context, name, 999)
+        if context.attempt == 1:
+            raise RuntimeError("retry probe")
+        return JobOutcome(state="SUCCEEDED", result={})
+
+    monkeypatch.setitem(
+        registry.HANDLERS, JobKind.REPORT_RUN, HandlerSpec(handler, RetryPolicy(max_attempts=2))
+    )
+    job_id = _defer(tenant_id, runtime, JobKind.REPORT_RUN)
+    first = _fetch(tenant_id, job_id)
+    run_job(job_id, tenant_id, attempt=1, runtime=runtime, delivered_task_id=first)
+    assert seen == [(job_id, first, 1)]
+    assert _job(tenant_id, job_id)["state"] == "QUEUED"
+    second = _fetch(tenant_id, job_id)
+    assert first != second
+    # A replaced task cannot invoke the handler again or impersonate the new attempt.
+    run_job(job_id, tenant_id, attempt=1, runtime=runtime, delivered_task_id=first)
+    assert seen == [(job_id, first, 1)]
+    run_job(job_id, tenant_id, attempt=2, runtime=runtime, delivered_task_id=second)
+    assert seen == [(job_id, first, 1), (job_id, second, 2)]
+    assert _job(tenant_id, job_id)["state"] == "SUCCEEDED"
+    run_job(job_id, tenant_id, attempt=2, runtime=runtime, delivered_task_id=second)
+    assert len(seen) == 2

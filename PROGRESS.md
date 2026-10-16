@@ -2,6 +2,15 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Replay job execution identity — October 15, 2026
+
+- Handlers can read the registry's exact task_id and attempt number through read-only context
+  properties. Inline work has neither, including when it inherits a guarded parent runtime.
+- Database coverage checks retry identity, stale-task fencing and duplicate delivery. The
+  transaction inventory now names the existing SCH-11 tenant-directory read; writes stay guarded.
+- Persistence tables, verification handler and same-group scheduler locking remain outstanding.
+  Verification evidence is recorded in docs/release/CI-2026-10-15.md.
+
 ## Malformed replay evidence — October 15, 2026
 
 - Malformed input/output evidence now produces an integrity mismatch before engine execution,

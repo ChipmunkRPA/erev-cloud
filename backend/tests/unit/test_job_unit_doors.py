@@ -61,6 +61,10 @@ THROUGH_THE_DOOR: Final[dict[Opened, int]] = {
 }
 # The transactions that do not, each with what it rests on instead.
 WITHOUT_THE_DOOR: Final[dict[Opened, str]] = {
+    ("domain/ai/expiry.py", "expire_due"): (
+        "SCH-11 periodic task reads the tenant directory; no job or attempt; proposal changes "
+        "use system_unit_of_work and retain any runtime attempt guard"
+    ),
     ("domain/journals/export.py", "dispatch_batch"): (
         "the relay's topic handler reads the batch under its row lock and writes nothing there; "
         "a posting is recorded by a unit of work (05 ADP-31)"

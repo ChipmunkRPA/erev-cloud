@@ -10,9 +10,9 @@ import pytest
 from erev_api.auth.principal import system_principal
 from erev_api.clock import FrozenClock
 from erev_api.config import WORKER_QUEUE_NAMES
-from erev_api.enums import JobKind, PrincipalKind
+from erev_api.enums import JobKind, JobState, PrincipalKind
 from erev_api.jobs import registry
-from erev_api.jobs.context import JobContext
+from erev_api.jobs.context import JobAttempt, JobContext, JobRuntime
 from erev_api.jobs.registry import (
     JOB_QUEUE,
     QUEUES,
@@ -127,7 +127,7 @@ def test_r_50_a_job_event_payloads_name_no_params() -> None:
     assert registry.problem_slug(None) is None
     assert registry.problem_slug(unexpected) == "about:blank"
     assert registry.problem_slug(known) == "release-mismatch"
-    assert registry.finish_facts(JobKind.REPORT_RUN, registry.JobState.FAILED, known) == {
+    assert registry.finish_facts(JobKind.REPORT_RUN, JobState.FAILED, known) == {
         "kind": "REPORT_RUN",
         "state": "FAILED",
         "problem": "release-mismatch",
@@ -173,6 +173,7 @@ def test_krn_job_09_run_inline(monkeypatch: pytest.MonkeyPatch, clock: FrozenClo
     seen: list[tuple[Any, ...]] = []
 
     def handler(context: JobContext, params: Mapping[str, Any]) -> JobOutcome:
+        assert context.task_id is None and context.attempt is None
         # Without a job row, progress, heartbeat and cancellation touch nothing.
         context.progress(1, 2)
         context.heartbeat()
@@ -212,3 +213,24 @@ def test_krn_job_09_run_inline(monkeypatch: pytest.MonkeyPatch, clock: FrozenClo
             principal=system_principal(tenant_id),
             clock=clock,
         )
+
+
+def test_inline_context_does_not_claim_parent_execution_token(clock: FrozenClock) -> None:
+    tenant_id = uuid.uuid4()
+    runtime = JobRuntime(
+        clock=clock,
+        keyring=None,
+        files=None,
+        attempt=JobAttempt(uuid.uuid4(), tenant_id, 123, attempt_number=7),
+    )
+    context = JobContext(
+        job_id=uuid.uuid4(),
+        tenant_id=tenant_id,
+        kind=JobKind.REPORT_RUN,
+        principal=system_principal(tenant_id),
+        runtime=runtime,
+        persisted=False,
+    )
+    assert context.task_id is None and context.attempt is None
+    # The enclosing transaction guard remains available through the runtime.
+    assert context.runtime.attempt == runtime.attempt
