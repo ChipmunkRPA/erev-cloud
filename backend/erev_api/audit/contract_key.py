@@ -62,6 +62,7 @@ ALWAYS: Final = frozenset(
         "policy_override",
         "manual_adjustment",
         "contract_source_link",
+        "contract_recent_view",  # private navigation state always identifies one contract
         "combination_group_member",
         # the outputs of a computation, which is keyed by group: the members at the time of it
         "contract_version",
@@ -88,6 +89,7 @@ WHERE_NAMED: Final = frozenset(
         # without a member names none
         "combination_group",
         "contract_computation",
+        "release_validation_group",  # source members; NO_SOURCE may name no contracts
         # a posting names the contracts of its lines; a posting without a line names none
         "subledger_posting",
         "subledger_line",

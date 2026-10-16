@@ -56,6 +56,7 @@ from erev_api.db.tables import (
 )
 from erev_api.domain.contracts import bundles, computation
 from erev_api.domain.contracts import computation_evidence as evidence_writer
+from erev_api.domain.contracts.replay_verify import VerificationRow
 from erev_api.domain.platform import file_evidence
 from erev_api.domain.reports import computation_sources
 from erev_api.enums import ContractEventType
@@ -63,6 +64,7 @@ from erev_api.events.payloads import SignificantChangeFlaggedV1
 from erev_api.events.stream import EventIn, append_events
 from erev_api.explain import store
 from erev_api.files.store import LocalFileStore, open_file, store_file
+from erev_api.jobs.context import JobContext
 from erev_api.main import create_app
 from erev_api.problems import Problem
 from erev_api.registry.policies import POLICY_PARAMETERS
@@ -1337,3 +1339,343 @@ def test_verification_schema_guards_execution_identity_and_acceptance(world: Wor
     # A populated evidence schema must not silently disappear on downgrade.
     with pytest.raises(exc.DBAPIError):
         command.downgrade(alembic_config(), "0160")
+
+
+@dataclass(frozen=True)
+class VerificationCase:
+    context: JobContext
+    decision: VerificationRow
+    selection_id: UUID
+    group_id: UUID
+    contract_id: UUID
+
+
+def verification_case(world: World) -> VerificationCase:
+    from uuid import uuid4
+
+    from erev_api.controls.release import current_release
+    from erev_api.db.tables import (
+        release_validation,
+        release_validation_attempt,
+        release_validation_group,
+    )
+    from erev_api.db.transitions import apply
+    from erev_api.domain.contracts.release_validation import ExecutionToken
+    from erev_api.domain.contracts.replay_verify import (
+        EvidenceFacts,
+        ProcessFacts,
+        SourceFacts,
+        verify,
+    )
+    from erev_api.enums import JobKind
+    from erev_api.jobs.context import JobAttempt, JobContext, JobRuntime
+    from erev_api.jobs.registry import dispatch, insert_job
+
+    booked = k01(world)
+    group_id = booked.combination_group["id"]
+    bundle, output, source = computed(world.place, group_id)
+    release = current_release()
+    assert release is not None and release.id == source["engine_release_id"]
+    with world.place.uow() as uow:
+        stamps = {
+            "tenant_id": uow.principal.tenant_id,
+            "created_at": uow.now,
+            "created_by": uow.principal.id,
+            "created_by_kind": uow.principal.kind.value,
+            "updated_at": uow.now,
+            "updated_by": uow.principal.id,
+            "updated_by_kind": uow.principal.kind.value,
+        }
+        validation_id, attempt_id, selection_id = uuid4(), uuid4(), uuid4()
+        uow.session.execute(
+            insert(release_validation).values(
+                **stamps,
+                id=validation_id,
+                engine_release_id=release.id,
+                effective_level="MINOR",
+                status="RUNNING",
+            )
+        )
+        uow.session.execute(
+            insert(release_validation_attempt).values(
+                **stamps,
+                id=attempt_id,
+                release_validation_id=validation_id,
+                attempt_no=1,
+                seed=20260912,
+                population={},
+                required_entity_ids=[world.entity_id],
+                status="RUNNING",
+            )
+        )
+        queued = insert_job(
+            uow.session,
+            JobKind.REPLAY_VERIFY,
+            {},
+            tenant_id=uow.principal.tenant_id,
+            now=uow.now,
+            created_by=uow.principal.id,
+            created_by_kind=uow.principal.kind,
+            lock=f"verify:{group_id}",
+        )
+        task = dispatch(
+            uow.session,
+            job_id=queued["id"],
+            tenant_id=uow.principal.tenant_id,
+            queue="compute",
+            now=uow.now,
+        )
+        apply(
+            uow.session,
+            "job",
+            queued["id"],
+            to_status="RUNNING",
+            expected_status="QUEUED",
+            expected_row_version=1,
+            set_values={"started_at": uow.now},
+        )
+        uow.session.execute(
+            insert(release_validation_group).values(
+                **stamps,
+                id=selection_id,
+                release_validation_attempt_id=attempt_id,
+                combination_group_id=group_id,
+                source_computation_id=source["id"],
+                selection="OPEN_ACTIVITY",
+                strata=[],
+                rank_sha256="a" * 64,
+                orchestration_state="RUNNING",
+                child_job_id=queued["id"],
+            )
+        )
+        runtime = JobRuntime(
+            clock=uow.clock,
+            keyring=uow.keyring,
+            files=uow.files,
+            engine_release=release,
+            attempt=JobAttempt(queued["id"], uow.principal.tenant_id, task, 1),
+        )
+        context = JobContext(
+            job_id=queued["id"],
+            tenant_id=uow.principal.tenant_id,
+            kind=JobKind.REPLAY_VERIFY,
+            principal=uow.principal,
+            runtime=runtime,
+        )
+        uow.commit()
+    input_bytes, output_bytes = upgrade.encode_input(bundle), upgrade.encode_output(output)
+    decision = verify(
+        trigger="REPLAY_VERIFY",
+        source=SourceFacts(
+            source["id"],
+            group_id,
+            release.id,
+            release.engine_version,
+            source["input_sha256"],
+            {"ASC606": output.sha256()},
+        ),
+        evidence=EvidenceFacts(
+            input_bytes,
+            upgrade.raw_digest(input_bytes),
+            output_bytes,
+            upgrade.raw_digest(output_bytes),
+            output.sha256(),
+            ("ASC606",),
+            {"format_version": bundle.format_version, "engine_version": bundle.engine_version},
+        ),
+        process=ProcessFacts(release.id, release.engine_version),
+        engine=engine(),
+        token=ExecutionToken(queued["id"], task, 1),
+        attempt_id=attempt_id,
+    )
+    return VerificationCase(context, decision, selection_id, group_id, booked.contract["id"])
+
+
+def test_verification_store_atomic_result_pointer_and_duplicate(
+    world: World, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from erev_api.db.tables import (
+        computation_verification,
+        release_validation_group,
+        subledger_posting,
+    )
+    from erev_api.domain.contracts import verification_store
+
+    case = verification_case(world)
+    with world.place.uow() as uow:
+        before = [
+            uow.session.scalar(select(func.count()).select_from(table))
+            for table in (contract_computation, contract_version, subledger_posting)
+        ]
+    original = verification_store._Store.set_orchestration
+
+    def fail_pointer(*args: Any, **kwargs: Any) -> None:
+        raise RuntimeError("pointer write interrupted")
+
+    monkeypatch.setattr(verification_store._Store, "set_orchestration", fail_pointer)
+    with pytest.raises(RuntimeError, match="interrupted"), world.place.uow() as uow:
+        verification_store.persist(uow, case.decision, context=case.context, duration_ms=10)
+        uow.commit()
+    monkeypatch.setattr(verification_store._Store, "set_orchestration", original)
+    with world.place.uow() as uow:
+        assert uow.session.scalar(select(func.count()).select_from(computation_verification)) == 0
+        first = verification_store.persist(uow, case.decision, context=case.context, duration_ms=10)
+        assert first.result == "inserted" and first.row_id == first.accepted_id
+        (event,) = uow.audit_events
+        assert event["action"] == "release_validation_group.verify"
+        assert event["object_id"] == case.selection_id
+        assert event["detail"]["contract_id"] == str(case.contract_id)
+        uow.commit()
+    with world.place.uow() as uow:
+        again = verification_store.persist(uow, case.decision, context=case.context, duration_ms=20)
+        assert again.result == "duplicate" and again.row_id == first.row_id
+        assert not uow.audit_events
+        selected = (
+            uow.session.execute(
+                select(release_validation_group).where(
+                    release_validation_group.c.id == case.selection_id
+                )
+            )
+            .mappings()
+            .one()
+        )
+        assert selected["orchestration_state"] == "COMPLETE"
+        assert selected["accepted_verification_id"] == first.row_id
+        row = uow.session.execute(select(computation_verification)).mappings().one()
+        assert row["actual_output_sha256"] == case.decision.actual_output_sha256
+        assert row["duration_ms"] == 10
+        assert before == [
+            uow.session.scalar(select(func.count()).select_from(table))
+            for table in (contract_computation, contract_version, subledger_posting)
+        ]
+        uow.commit()
+
+
+@pytest.mark.parametrize("failure", ["stale task", "changed head", "wrong token", "wrong release"])
+def test_verification_store_refuses_changed_execution_or_selection(
+    world: World, failure: str
+) -> None:
+    from erev_api.db.tables import computation_verification, job
+    from erev_api.domain.contracts import verification_store
+    from erev_api.jobs.context import JobLost
+
+    case = verification_case(world)
+    decision = case.decision
+    if failure == "stale task":
+        with world.place.uow() as uow:
+            uow.session.execute(
+                update(job).where(job.c.id == case.context.job_id).values(procrastinate_job_id=None)
+            )
+            uow.commit()
+    elif failure == "changed head":
+        flag_change(world, case.contract_id, 2)
+        computed(world.place, case.group_id)
+    elif failure == "wrong token":
+        decision = replace(decision, token=replace(decision.token, attempt=2))
+    else:
+        decision = replace(decision, process_engine_version="9.9.9")
+    with pytest.raises((Problem, JobLost)), world.place.uow() as uow:
+        verification_store.persist(uow, decision, context=case.context, duration_ms=10)
+        uow.commit()
+    with world.place.uow() as uow:
+        assert uow.session.scalar(select(func.count()).select_from(computation_verification)) == 0
+
+
+def test_verification_store_keeps_error_then_accepts_retry(world: World) -> None:
+    from erev_api.db.tables import computation_verification, release_validation_group
+    from erev_api.db.transitions import apply
+    from erev_api.domain.contracts import verification_store
+    from erev_api.enums import VerificationOutcome
+    from erev_api.jobs.registry import dispatch
+    from sqlalchemy import text
+
+    case = verification_case(world)
+    error = replace(
+        case.decision,
+        outcome=VerificationOutcome.ERROR,
+        reason="ENGINE_ERROR",
+        actual_output_sha256=None,
+    )
+    with world.place.uow() as uow:
+        first = verification_store.persist(uow, error, context=case.context, duration_ms=10)
+        assert first.accepted_id is None
+        selected = (
+            uow.session.execute(
+                select(release_validation_group).where(
+                    release_validation_group.c.id == case.selection_id
+                )
+            )
+            .mappings()
+            .one()
+        )
+        assert selected["orchestration_state"] == "RUNNING"
+        assert selected["accepted_verification_id"] is None
+        uow.commit()
+    with world.place.uow() as uow:
+        uow.session.execute(
+            text("UPDATE procrastinate_jobs SET status='failed' WHERE id=:id"),
+            {"id": case.context.task_id},
+        )
+        apply(
+            uow.session,
+            "job",
+            case.context.job_id,
+            to_status="QUEUED",
+            expected_status="RUNNING",
+            expected_row_version=1,
+            set_values={},
+        )
+        task = dispatch(
+            uow.session,
+            job_id=case.context.job_id,
+            tenant_id=uow.principal.tenant_id,
+            queue="compute",
+            now=uow.now,
+            attempt=2,
+        )
+        apply(
+            uow.session,
+            "job",
+            case.context.job_id,
+            to_status="RUNNING",
+            expected_status="QUEUED",
+            expected_row_version=1,
+            set_values={},
+        )
+        for old, new, version in (("RUNNING", "RETRYABLE", 1), ("RETRYABLE", "RUNNING", 2)):
+            apply(
+                uow.session,
+                "release_validation_group",
+                case.selection_id,
+                to_status=new,
+                expected_status=old,
+                expected_row_version=version,
+                set_values={"row_version": version + 1},
+            )
+        uow.commit()
+    previous = case.context.runtime.attempt
+    assert previous is not None
+    context = JobContext(
+        job_id=case.context.job_id,
+        tenant_id=case.context.tenant_id,
+        kind=case.context.kind,
+        principal=case.context.principal,
+        runtime=replace(
+            case.context.runtime, attempt=replace(previous, task_id=task, attempt_number=2)
+        ),
+    )
+    retry = replace(case.decision, token=replace(case.decision.token, task_id=task, attempt=2))
+    with world.place.uow() as uow:
+        second = verification_store.persist(uow, retry, context=context, duration_ms=20)
+        assert second.accepted_id == second.row_id and second.row_id != first.row_id
+        rows = (
+            uow.session.execute(
+                select(computation_verification.c.outcome).order_by(
+                    computation_verification.c.attempt
+                )
+            )
+            .scalars()
+            .all()
+        )
+        assert rows == ["ERROR", "MATCH"]
+        uow.commit()

@@ -1329,3 +1329,12 @@ typed replay, retained-file holds and generic download denial. This is source re
 completion of replay or release validation: historical computations are not backfilled, the
 T-CON-26 verification workflow remains absent, and RPT-38 still needs replay orchestration
 and driver attribution. Current-candidate recovery and full-suite evidence remain required.
+
+
+October 15 verification persistence: revision 0161 supplies the validation/attempt/group
+and immutable result tables. The internal writer now persists task-fenced decisions and
+accepted pointers atomically with a contract-keyed audit event. ERROR evidence remains
+unaccepted for retries; moved source heads and stale task/release identities are refused.
+This does not supply the public verification workflow: selection creation, fan-out/handler,
+dataset publication, historical backfill and release admission remain outstanding.
+The earlier full CI on frozen 3cf8f5b ended with 22 failures and requires current-main triage.
