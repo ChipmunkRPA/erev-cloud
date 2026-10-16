@@ -614,7 +614,9 @@ def test_the_two_shared_commands_are_told_apart_by_the_steps_marker() -> None:
             step_permissions.check(marked, analyst, [])
     assert step_permissions.EVIDENCE_ATTACH == frozenset({"estimate.create"})
     assert "estimate.create" in step_permissions.EVIDENCE_UPLOAD
-    assert not step_permissions.EVIDENCE_UPLOAD & DEFAULT_ROLES["controller"]
+    # Controllers may upload for AI, but cannot attach evidence to an estimate they cannot edit.
+    assert step_permissions.EVIDENCE_UPLOAD & DEFAULT_ROLES["controller"] == {"ai.use"}
+    assert not step_permissions.EVIDENCE_ATTACH & DEFAULT_ROLES["controller"]
     # the ledger: the evidence upload among the study uploads
     study_id, evidence_id = (uuid5(TENANT, name) for name in ("study", "evidence"))
     ledger = [

@@ -40,6 +40,7 @@ clock reads 2026-09-12T12:00Z):
 from __future__ import annotations
 
 import threading
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
@@ -63,7 +64,8 @@ from erev_api.uow import unit_of_work
 from sqlalchemy import select, update
 from support.clock import FROZEN_AT
 from support.interleave import await_lock_wait, backend_pid, observing_checkouts
-from support.reference import fields, slug
+from support.principals import enrolled
+from support.reference import assign, fields, slug
 from support.rows import publish_registry_version
 from test_lifecycle import LARGE_CASE, ROUTE_CON_100K, RULE_SETS
 from test_registry_versions import (  # noqa: F401  (``world`` is the fixture of that module)
@@ -1037,10 +1039,15 @@ def test_the_workspace_screen_bodies_publish_a_platform_value(world: World) -> N
 
 
 def test_every_settings_category_takes_the_instant_form(world: World) -> None:  # noqa: F811
-    """The screen sends CLOSE and INTEGRATION values as it sends PLATFORM ones; SECURITY and AI
-    have no screen yet and take the same form (the supervisor's ruling of 2026-10-01, point C:
-    none of the four holds a parameter a computation reads through its period rows). Two presses
-    of one category follow each other — the first leaves no open version behind."""
+    """Settings take the instant form; AI changes require an independent administrator.
+
+    Two presses of one category follow each other without leaving an open version behind.
+    The AI authorization suite separately proves a controller alone cannot approve.
+    """
+    assign(world.policies.maya.member, "tenant_admin")
+    assign(world.policies.marcus.member, "tenant_admin")
+    admin = enrolled(world.policies.app, world.policies.clock, world.policies.maya.member)
+    world = replace(world, policies=replace(world.policies, maya=admin))
     clock = world.policies.clock
     clock.advance(timedelta(minutes=1))
     pressed = {

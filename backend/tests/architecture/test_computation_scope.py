@@ -129,6 +129,10 @@ DOOR: Final = {
     },
     SYSTEM_SCOPE: {
         (
+            "backend/erev_api/domain/reports/computation_sources.py",
+            "read_for_report",
+        ): "read all source identities, then require every entity in the original report.run scope",
+        (
             "backend/erev_api/domain/contracts/events.py",
             "_record_events",
         ): "Step 1 preview after contract authorization includes every performing entity",

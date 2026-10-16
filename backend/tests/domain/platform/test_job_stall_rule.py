@@ -65,14 +65,18 @@ STOPPED = (
 )
 # The tables whose rows refer to a job by foreign key, as the catalogue names them.
 REFERRING = (
+    "ai_call_intent",
+    "ai_proposal",
     "audit_chain_verification",
     "close_run",
+    "computation_verification",
     "contract_computation",
     "evidence_pack",
     "import_upload",
     "job",
     "journal_run",
     "migration_batch",
+    "release_validation_group",
     "report_run",
     "ssp_calculator_run",
     "tenant_snapshot",

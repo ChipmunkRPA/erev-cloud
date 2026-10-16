@@ -218,8 +218,8 @@ def test_the_evidence_of_an_estimate_version_answers_to_the_products_own_permiss
     """API-R-10 for the second subject of the two commands (04 §16.14 rev 1.241): a step the
     plan marks as an estimate's prerequisite answers to the domain's own constants — the upload
     of an attachment, the write permission of an estimate version — on the routes the study
-    uses, which record no permission of their own. The preparer holds one of each, the
-    approver none; and the plans mark every step of these commands that is not a study's."""
+    uses, which record no permission of their own. The preparer holds one of each; a controller
+    may upload for AI but cannot attach to an estimate. The plans mark every non-study step."""
     assert set(EVIDENCE_PERMISSIONS) == {H["estimate_evidence"], H["estimate_evidence_attach"]}
     upload = EVIDENCE_PERMISSIONS[H["estimate_evidence"]]
     attach = EVIDENCE_PERMISSIONS[H["estimate_evidence_attach"]]
@@ -237,7 +237,8 @@ def test_the_evidence_of_an_estimate_version_answers_to_the_products_own_permiss
         route = routes[(declared.method, declared.path)]
         assert (route.openapi_extra or {}).get(PERMISSION_EXTENSION) is None, handler
         assert declared.required & DEFAULT_ROLES["revenue_accountant"]
-        assert not declared.required & DEFAULT_ROLES["controller"]
+        expected_controller = {"ai.use"} if handler == H["estimate_evidence"] else set()
+        assert declared.required & DEFAULT_ROLES["controller"] == expected_controller
         for code in declared.required:
             spec(code)
     marked = 0

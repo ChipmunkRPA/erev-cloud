@@ -2,6 +2,17 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Frozen-CI failure triage — October 15, 2026
+
+- Rechecked the old failure nodes against current main: report-source scope inventory and
+  estimate-upload permission assertions needed updates. Upload-for-AI does not grant estimate
+  attachment rights. The settings fixture now uses independent administrator author/approver.
+- Job heartbeat verification now includes AI and release-verification foreign keys. Expanded
+  job/settings database checks pass; exact evidence is in docs/release/CI-2026-10-15.md.
+- Ten AI command routes still lack audit catalogue/walk integration; the AI lifecycle category
+  remains pending. Explicit typing of the touched legacy test modules also found nine errors
+  outside the changed assertions. These are outstanding, not waived release gates.
+
 ## Verification result persistence — October 15, 2026
 
 - The runtime store binds each decision to the actual scheduler task, process release and
@@ -257,17 +268,6 @@
   their rules. Submission, worker capture/build and UI integration remain unfinished.
 - Verification evidence and the migration round trip are recorded in docs/release/CI-2026-10-15.md.
   No deployment, provider calls or accounting sign-off; production readiness remains unproven.
-
-## Current requester grants for export workers — October 15, 2026
-
-- Extracted persisted-job requester reconstruction for AI_TASK and REPORT_RUN: active human,
-  current grants and live matching attempt required; no reconstructed login/MFA session.
-  AI jobs still narrow entity access to ai.use before reading sources.
-- Export capture/build guards now require report.export; TENANT requires its workspace-wide
-  scope. Source visibility remains required. Thirteen focused tests, backend typing (797 files)
-  and full lint pass; evidence: docs/release/CI-2026-10-15.md.
-- These are prerequisites, not a completed queued export. Persisted bindings, worker integration,
-  every output/replay read and the download menu remain open. No deployment/provider calls.
 
 ## Outstanding release verification
 
