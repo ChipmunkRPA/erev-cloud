@@ -6100,3 +6100,18 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Source-book access and approved-book scope protections remain in force. Cross-entity pricing
   policy and additional-review requirements remain open; this change makes the facts visible.
 - Verification is recorded in docs/release/CI-2026-10-15.md. No deployment.
+
+## Runtime audit and local container verification — October 15, 2026
+
+- make audit-deps passed on clean 74bd148: all 86 pinned Python runtime packages audited,
+  with zero Python vulnerabilities and zero npm runtime advisories. Source binding is verified.
+- Local Compose verification also passed on 74bd148: migrations, readiness, CSP and worker
+  health, followed by verified cleanup. The earlier host-mount stall did not recur.
+- Evidence is in docs/release/CI-2026-10-15.md. Final-candidate checks remain required.
+
+## Security scan report validation — October 15, 2026
+
+- Fixed a demonstrated false pass for empty ZAP reports. The gate now requires the target site,
+  explicit alert arrays and known risk codes. Valid zero-alert reports remain accepted.
+- Script regressions, typing and lint pass; evidence is in docs/release/CI-2026-10-15.md.
+  Live verification passed on 4c4b583. No deployment or alert suppression.

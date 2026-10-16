@@ -325,6 +325,10 @@ def test_candidate_with_a_money_difference_is_differences_never_mismatch() -> No
     monetary_changes = row.difference_summary["M"]
     assert isinstance(monetary_changes, int) and monetary_changes >= 1
     assert not row.integrity_incident
+    assert upgrade.DifferenceSummary(row.differences).as_json() == row.difference_summary
+    assert any(item.category == "M" and item.before != item.after for item in row.differences)
+    with pytest.raises(ValueError, match="details"):
+        dataclasses.replace(row, differences=())
 
 
 def test_no_input_transform_is_unverifiable_and_not_executed() -> None:

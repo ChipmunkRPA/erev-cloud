@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
-from dataclasses import fields
+import hashlib
+import io
+from dataclasses import asdict, fields
 from typing import Any
 from uuid import UUID
 
+from erev_engine.canonical import canonical_bytes
 from sqlalchemy import insert, select
 
 from erev_api.db import new_id
@@ -19,7 +22,13 @@ from erev_api.db.tables import (
     release_validation_group,
 )
 from erev_api.db.transitions import apply
-from erev_api.enums import JobKind, ValidationGroupOrchestrationState, VerificationOutcome
+from erev_api.enums import (
+    FilePurpose,
+    JobKind,
+    ValidationGroupOrchestrationState,
+    VerificationOutcome,
+)
+from erev_api.files.store import store_file
 from erev_api.jobs.context import JobContext
 from erev_api.problems import Problem
 from erev_api.uow import UnitOfWork
@@ -177,7 +186,7 @@ class _Store:
         values = {
             field.name: getattr(result, field.name)
             for field in fields(result)
-            if field.name != "token"
+            if field.name not in {"token", "differences"}
         }
         for name in ("source_codec", "difference_summary"):
             if values[name] is not None:
@@ -195,6 +204,34 @@ class _Store:
             created_by=self.uow.principal.id,
             created_by_kind=self.uow.principal.kind.value,
         )
+        if result.difference_summary is not None:
+            content = canonical_bytes(
+                {
+                    "difference_format": 1,
+                    "verification_id": row_id,
+                    "release_validation_attempt_id": attempt_id,
+                    "combination_group_id": group_id,
+                    "source_computation_id": result.source_computation_id,
+                    "process_engine_release_id": result.process_engine_release_id,
+                    "job_id": token.job_id,
+                    "task_id": token.task_id,
+                    "attempt": token.attempt,
+                    "summary": dict(result.difference_summary),
+                    "differences": [asdict(row) for row in result.differences],
+                }
+            )
+            artifact = store_file(
+                self.uow,
+                purpose=FilePurpose.VALIDATION_DATASET,
+                stream=io.BytesIO(content),
+                original_filename=f"{row_id}-differences.json",
+                media_type="application/json",
+            )
+            if artifact["sha256"] != hashlib.sha256(content).hexdigest() or artifact[
+                "size_bytes"
+            ] != len(content):
+                raise _invalid("Stored difference evidence differs from the comparison.")
+            values["difference_file_id"] = artifact["id"]
         self.uow.session.execute(insert(computation_verification).values(**values))
 
     def set_accepted(self, attempt_id: UUID, group_id: UUID, row_id: UUID) -> None:

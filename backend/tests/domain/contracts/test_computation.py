@@ -3169,3 +3169,94 @@ def test_validation_dataset_is_encrypted_held_and_not_generically_downloadable(
     for suffix in ("", "/content"):
         response = get(world.app, f"/api/v1/files/{stored['id']}{suffix}", world.place.author)
         assert response.status_code == 404, response.text
+
+
+@pytest.mark.parametrize("changed", [False, True])
+def test_replay_difference_artifact_is_atomic_and_reused(
+    world: World, monkeypatch: pytest.MonkeyPatch, changed: bool
+) -> None:
+    import json
+
+    from erev_api.db.tables import computation_verification
+    from erev_api.domain.contracts import verification_store
+    from erev_api.domain.contracts.replay_execution import execute_running
+    from erev_engine.bundle import Diagnostic
+
+    case = verification_case(world)
+    attempt_id = case.decision.release_validation_attempt_id
+    assert attempt_id is not None
+
+    def candidate(bundle: Any) -> Any:
+        result = engine()(bundle)
+        if changed:
+            return replace(
+                result,
+                diagnostics=(
+                    *result.diagnostics,
+                    Diagnostic("DIFF_PROBE", "INFO", None, None, None, {}),
+                ),
+            )
+        return result
+
+    with world.place.uow() as uow:
+        files_before = uow.session.scalar(select(func.count()).select_from(file_object))
+        assert files_before is not None
+    original = verification_store._Store.set_orchestration
+
+    def interrupt(*args: Any, **kwargs: Any) -> None:
+        raise RuntimeError("interrupt artifact acceptance")
+
+    monkeypatch.setattr(verification_store._Store, "set_orchestration", interrupt)
+    with pytest.raises(RuntimeError, match="interrupt artifact"):
+        execute_running(
+            case.context,
+            attempt_id=attempt_id,
+            group_id=case.group_id,
+            trigger="UPGRADE_VALIDATE",
+            engine=candidate,
+        )
+    with world.place.uow() as uow:
+        assert uow.session.scalar(select(func.count()).select_from(file_object)) == files_before
+        assert uow.session.scalar(select(func.count()).select_from(computation_verification)) == 0
+    monkeypatch.setattr(verification_store._Store, "set_orchestration", original)
+    result = execute_running(
+        case.context,
+        attempt_id=attempt_id,
+        group_id=case.group_id,
+        trigger="UPGRADE_VALIDATE",
+        engine=candidate,
+    )
+    assert result.outcome.value == ("DIFFERENCES" if changed else "MATCH")
+    with world.place.uow() as uow:
+        row = uow.session.execute(select(computation_verification)).mappings().one()
+        file_id = row["difference_file_id"]
+        assert file_id is not None
+        meta, stream = open_file(uow.session, file_id, files=uow.files, keyring=uow.keyring)
+        with stream:
+            content = stream.read()
+        payload = json.loads(content)
+        assert meta["purpose"] == "VALIDATION_DATASET"
+        assert meta["sha256"] == hashlib.sha256(content).hexdigest()
+        assert uow.files.exists(str(meta["storage_key"]) + ".dek")
+        assert payload["verification_id"] == str(result.row_id)
+        assert payload["release_validation_attempt_id"] == str(attempt_id)
+        assert payload["job_id"] == str(case.context.job_id)
+        assert payload["task_id"] == case.context.task_id
+        assert payload["summary"] == row["difference_summary"]
+        assert bool(payload["differences"]) is changed
+        assert (
+            file_evidence.first_refusing(file_evidence.holds_in(uow.session, file_id)) is not None
+        )
+    again = execute_running(
+        case.context,
+        attempt_id=attempt_id,
+        group_id=case.group_id,
+        trigger="UPGRADE_VALIDATE",
+        engine=candidate,
+    )
+    assert again == result
+    with world.place.uow() as uow:
+        assert uow.session.scalar(select(func.count()).select_from(file_object)) == files_before + 1
+    for suffix in ("", "/content"):
+        response = get(world.app, f"/api/v1/files/{file_id}{suffix}", world.place.author)
+        assert response.status_code == 404, response.text

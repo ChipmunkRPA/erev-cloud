@@ -158,8 +158,19 @@ class VerificationRow:
     difference_summary: Mapping[str, object] | None
     release_validation_attempt_id: UUID | None
     token: ExecutionToken
+    differences: tuple[upgrade.DifferenceRow, ...] = ()
 
     def __post_init__(self) -> None:
+        if self.difference_summary is not None:
+            if (
+                self.trigger != "UPGRADE_VALIDATE"
+                or not self.engine_executed
+                or dict(self.difference_summary)
+                != upgrade.DifferenceSummary(self.differences).as_json()
+            ):
+                raise ValueError("Difference details must match the candidate comparison summary")
+        elif self.differences:
+            raise ValueError("Difference details require a comparison summary")
         if self.trigger not in ("REPLAY_VERIFY", "UPGRADE_VALIDATE"):
             raise ValueError("trigger is REPLAY_VERIFY or UPGRADE_VALIDATE")
         # ck_cv__executed_identity: both executed columns present iff executed, else both NULL.
@@ -412,6 +423,7 @@ def verify(
         outcome=VerificationOutcome.MATCH if l1_match else VerificationOutcome.DIFFERENCES,
         reason=None if l1_match else "L1_DIFFERENCES",
         difference_summary=summary.as_json(),
+        differences=summary.rows,
     )
 
 
