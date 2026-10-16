@@ -6133,3 +6133,11 @@ cleanup in the shared database session kernel was also repaired and regression-t
   acceptance. Four catalogue checks pass; details are in docs/release/CI-2026-10-15.md.
 - The isolated all-workspace recovery drill passed on frozen d7e8715: eight tenants, 306 files,
   702 tables, no missing or reduced table counts, and verified cleanup. No deployment.
+
+## Re-lock snapshot integrity — October 15, 2026
+
+- Re-lock comparisons now verify the stored hash and row count of both the previous and newly
+  frozen datasets before comparing them. A mismatch refuses the comparison; no live fallback.
+- Focused corruption and comparison tests and backend typing pass. The database re-lock workflow and lint
+  pass; evidence is recorded in docs/release/CI-2026-10-15.md.
+- RPT-38 driver attribution and the pre-approval diff remain outstanding.

@@ -10,6 +10,7 @@ from uuid import UUID
 from erev_engine.canonical import canonical_bytes
 from sqlalchemy import select
 
+from erev_api.auth.principal import Principal
 from erev_api.db.tables import release_validation, release_validation_attempt
 from erev_api.files.store import open_file
 from erev_api.problems import Problem
@@ -39,6 +40,7 @@ def read_for_report(
     known_at: datetime,
     expected_file_id: UUID | None = None,
     expected_sha256: str | None = None,
+    requester: Principal | None = None,
 ) -> ValidationDataset:
     """Read the whole frozen population after checking the current report.run grant.
 
@@ -46,7 +48,9 @@ def read_for_report(
     filter a group dataset to a partial entity selection. Reruns may bind the original file/hash.
     Only immutable source metadata is read from tables; all report figures come from the file.
     """
-    principal = uow.principal
+    principal = uow.principal if requester is None else requester
+    if principal.tenant_id != uow.principal.tenant_id:
+        raise Problem("forbidden")
     scope = principal.permission_scopes.get("report.run")
     if "report.run" not in principal.permissions or scope is None or scope == frozenset():
         raise Problem("forbidden")

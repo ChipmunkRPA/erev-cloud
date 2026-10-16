@@ -2912,6 +2912,10 @@ def test_validation_fanout_runs_frozen_match_and_no_source(
 
     from erev_api.domain.contracts.upgrade_report import upgrade_validation_report
     from erev_api.domain.reports import validation_sources
+    from erev_api.domain.reports.builders import RETAINED, ReportParams, SourceCollector
+    from erev_api.domain.reports.builders import upgrade_validation as builder
+    from erev_api.domain.reports.outputs import json_rows
+    from erev_api.domain.reports.outputs.csv import render_csv
 
     entities = tuple(UUID(value) for value in payload["attempt"]["required_entity_ids"])
     with world.place.uow() as uow:
@@ -2924,6 +2928,28 @@ def test_validation_fanout_runs_frozen_match_and_no_source(
             expected_sha256=dataset.sha256,
         )
         report = upgrade_validation_report(source.content)
+        collector = SourceCollector()
+        params = ReportParams(
+            builder.CODE,
+            1,
+            {"release_validation_attempt_id": str(frozen.id)},
+            entities,
+            uow.now,
+            sources=collector,
+            output_format="JSON",
+        )
+        built = builder.build(uow, params)
+        assert built.control_totals["dataset_sha256"] == dataset.sha256
+        assert built.row_count == len(report.rows)
+        original_json = json_rows(built)
+        original_csv = render_csv(built)
+        binding = collector.binding(
+            row_keys=[str(row["row_key"]) for row in built.rows],
+            strategy=RETAINED,
+            report_version=1,
+        )
+        requester = uow.ctx
+        bound_params = replace(params, binding=binding, sources=None)
         assert report.control_totals["groups"] == 2
         assert report.control_totals["outcomes"] == {
             "DIFFERENCES" if different else "MATCH": 1,
@@ -2945,6 +2971,32 @@ def test_validation_fanout_runs_frozen_match_and_no_source(
         )
         assert repeated == source
         assert upgrade_validation_report(repeated.content) == report
+        rebuilt = builder.build(uow, bound_params)
+        assert json_rows(rebuilt) == original_json
+        assert render_csv(rebuilt) == original_csv
+        assert rebuilt.control_totals == built.control_totals
+        broken = replace(binding, evidence={})
+        with pytest.raises(Problem):
+            builder.build(uow, replace(bound_params, binding=broken))
+        with pytest.raises(Problem):
+            builder.build(uow, replace(bound_params, filters={"outcome": "MATCH"}))
+    with world.place.uow(system_principal(world.place.tenant_id)) as uow:
+        with pytest.raises(Problem):
+            builder.build(uow, bound_params)
+        assert builder.build(uow, replace(bound_params, requester=requester)) == built
+        revoked = replace(
+            requester,
+            principal=replace(
+                requester.principal, permissions=requester.principal.permissions - {"report.run"}
+            ),
+        )
+        with pytest.raises(Problem):
+            builder.build(uow, replace(bound_params, requester=revoked))
+        wrong_tenant = replace(
+            requester, principal=replace(requester.principal, tenant_id=UUID(int=999))
+        )
+        with pytest.raises(Problem):
+            builder.build(uow, replace(bound_params, requester=wrong_tenant))
 
     principal = world.place.principal
     denied = [

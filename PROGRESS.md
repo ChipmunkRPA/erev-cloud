@@ -2,6 +2,16 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Bound upgrade-validation report builder — October 15, 2026
+
+- Added the report builder over the verified dataset, typed change-count columns and canonical
+  text for structured before/after values. Its source binding records the exact file, hash,
+  attempt and frozen entity set; reruns rebuild rows rather than reuse cached output.
+- JSON/CSV reproducibility and requester-grant checks passed database tests. Unsupported modes
+  and incomplete/incompatible bindings fail before evidence reads. Dated CI evidence records
+  the checks. Catalogue/job registration and requester reload wiring remain unfinished.
+- Final acceptance, approvals and admission remain open; no deployment.
+
 ## Authorized validation report source — October 15, 2026
 
 - Added a retained-dataset reader that checks current report.run permission across the full
@@ -263,14 +273,6 @@
 - Correcting the synthetic history to the real backend chain reproduced two link failures.
   All 16 history tests, frontend typing and repository lint pass.
 - The missing RPT-38 builder and driver attribution remain open. This repairs its entry path.
-
-## Re-lock snapshot integrity — October 15, 2026
-
-- Re-lock comparisons now verify the stored hash and row count of both the previous and newly
-  frozen datasets before comparing them. A mismatch refuses the comparison; no live fallback.
-- Focused corruption and comparison tests and backend typing pass. The database re-lock workflow and lint
-  pass; evidence is recorded in docs/release/CI-2026-10-15.md.
-- RPT-38 driver attribution and the pre-approval diff remain outstanding.
 
 ## Outstanding release verification
 
