@@ -4587,10 +4587,21 @@ The internal running-selection execution service loads evidence in one unit of w
 the engine outside any database unit, and persists through the result writer in a second unit.
 It returns an existing accepted result, or the same scheduler token's ERROR result, before
 reopening evidence or running the engine. Cached results must match the requested trigger,
-selection, process and execution ownership. ERROR remains unaccepted and nonterminal; scheduler
-retry/exhaustion integration is still pending. A frozen NULL source records NO_SOURCE with
+selection, process and execution ownership. ERROR remains unaccepted and nonterminal; the registered REPLAY_VERIFY worker marks the group
+RETRYABLE and permits three scheduler attempts before required failure cleanup marks it
+FAILED_EXHAUSTED. A frozen NULL source records NO_SOURCE with
 reason NO_SOURCE, NULL evidence/executed identities and hashes, and no engine call. No path
-writes computation heads, versions or postings. The scheduler adapter and fan-out remain pending.
+writes computation heads, versions or postings. Fan-out remains pending.
+
+The REPLAY_VERIFY job subject is its combination_group; its immutable parameters carry
+release_validation_attempt_id, combination_group_id and trigger, and the selected row binds the
+child job. The worker locks validation, attempt and group in that order before lifecycle changes.
+Queued cancellation marks the group CANCELLED atomically with the job; a running cancellation
+fences result acceptance and the worker closes the group before the scheduler ends the job.
+Cancellation after acceptance is refused. Cancellation/failure hooks use a nonblocking exclusive
+job-unit lock before taking validation locks while the job row is held, avoiding inversion with
+worker commits. A busy cancellation is refused with lock-conflict, and required failure cleanup
+rolls back settlement for recovery if a worker unit is still active.
 
 The internal replay evidence reader first binds the persisted REPLAY_VERIFY execution to a
 RUNNING validation, attempt and selected group, checking the tenant, scheduler task and process

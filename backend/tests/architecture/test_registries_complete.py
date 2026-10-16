@@ -34,7 +34,6 @@ _OUTBOX_COLUMN: Final = 3
 PENDING_JOB_HANDLERS: tuple[tuple[str, str], ...] = (
     ("DEAL_PREVIEW", "FCS"),
     ("FORECAST_RUN", "FCS"),
-    ("REPLAY_VERIFY", "SOP"),
 )
 
 
@@ -174,7 +173,8 @@ def test_dg_arc_08_subjects() -> None:
     phases = registry_phases(PHASES.read_text(encoding="utf-8"), _SUBJECT_COLUMN)
     literals = {subject.value for subject in ApprovalSubjectType}
     # 04 rev 1.72: MIGRATION_SSP_REPLAY; rev 1.142: EVIDENCE_SHRED (PHASES rev 1.4, SOP row)
-    assert len(literals) == 33
+    # AI_SETTINGS_VERSION adds the 34th subject; compare the exact documented set below.
+    assert len(literals) == 34
     assert set(phases) == literals
     registered = {subject.value for subject in SUBJECTS}
 
@@ -389,7 +389,7 @@ def test_payloads_cover_every_event_type() -> None:
     assert payload_findings(payloads.PAYLOADS, lowered) == [
         "PAYLOADS holds versions without LATEST_SCHEMA_VERSION: REGROUPED V1"
     ]
-    swapped = {
+    swapped: dict[tuple[ContractEventType, int], type[BaseModel]] = {
         **payloads.PAYLOADS,
         (ContractEventType.DELIVERY_RECORDED, 1): payloads.ReturnRecordedV1,
     }

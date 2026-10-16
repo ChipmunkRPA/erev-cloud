@@ -2,6 +2,15 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Replay worker lifecycle — October 15, 2026
+
+- Registered REPLAY_VERIFY with frozen group binding, audited RUNNING/RETRYABLE transitions,
+  three-attempt retry policy, required exhaustion cleanup and cancellation hooks.
+- Cancellation fences acceptance; its guard uses a nonblocking job-unit lock to avoid waiting
+  on a worker commit, and refuses cancellation after acceptance. Registry checks also corrected
+  the stale AI_SETTINGS_VERSION phase inventory. CI evidence is in the dated release record.
+- Fan-out, aggregation/artifact publication, approval resolution and admission remain open.
+
 ## Frozen replay execution service — October 15, 2026
 
 - Connected source loading, pure replay and atomic result persistence. The engine runs outside
@@ -265,15 +274,6 @@
   shredding rules, anonymisation names, patterns and offsets. This executes assertions rather
   than relying on collection. Verification is in docs/release/CI-2026-10-15.md.
 - No deployment or accounting-policy change. Broader release checks and sign-off remain open.
-
-## Private recently viewed contracts — October 15, 2026
-
-- Revision 0159 stores the last 50 successful contract opens per caller, with tenant and owner
-  RLS and serialized updates/pruning. Failed reads and lists never record visits.
-- Recently viewed uses that history, rechecks current contract scope and supports ordinary
-  filters, counts and pagination. Reopening a contract moves it to the front.
-- Verification is recorded in docs/release/CI-2026-10-15.md. No accounting events or contract
-  versions are changed. No deployment; full release gates and independent sign-off remain open.
 
 ## Outstanding release verification
 

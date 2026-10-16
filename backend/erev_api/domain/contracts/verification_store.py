@@ -118,6 +118,7 @@ class _Store:
                 job.c.procrastinate_job_id == token.task_id,
                 job.c.state == "RUNNING",
                 job.c.kind == "REPLAY_VERIFY",
+                job.c.cancel_requested_at.is_(None),
             )
             .with_for_update(key_share=True)
         )

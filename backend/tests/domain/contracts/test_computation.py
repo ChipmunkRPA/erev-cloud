@@ -1350,7 +1350,9 @@ class VerificationCase:
     contract_id: UUID
 
 
-def verification_case(world: World, *, with_source: bool = True) -> VerificationCase:
+def verification_case(
+    world: World, *, with_source: bool = True, queued_only: bool = False
+) -> VerificationCase:
     from uuid import uuid4
 
     from erev_api.controls.release import current_release
@@ -1412,7 +1414,13 @@ def verification_case(world: World, *, with_source: bool = True) -> Verification
         queued = insert_job(
             uow.session,
             JobKind.REPLAY_VERIFY,
-            {},
+            {
+                "release_validation_attempt_id": str(attempt_id),
+                "combination_group_id": str(group_id),
+                "trigger": "REPLAY_VERIFY",
+            },
+            subject_type="combination_group",
+            subject_id=group_id,
             tenant_id=uow.principal.tenant_id,
             now=uow.now,
             created_by=uow.principal.id,
@@ -1426,15 +1434,16 @@ def verification_case(world: World, *, with_source: bool = True) -> Verification
             queue="compute",
             now=uow.now,
         )
-        apply(
-            uow.session,
-            "job",
-            queued["id"],
-            to_status="RUNNING",
-            expected_status="QUEUED",
-            expected_row_version=1,
-            set_values={"started_at": uow.now},
-        )
+        if not queued_only:
+            apply(
+                uow.session,
+                "job",
+                queued["id"],
+                to_status="RUNNING",
+                expected_status="QUEUED",
+                expected_row_version=1,
+                set_values={"started_at": uow.now},
+            )
         uow.session.execute(
             insert(release_validation_group).values(
                 **stamps,
@@ -1445,7 +1454,7 @@ def verification_case(world: World, *, with_source: bool = True) -> Verification
                 selection="OPEN_ACTIVITY",
                 strata=[],
                 rank_sha256="a" * 64,
-                orchestration_state="RUNNING",
+                orchestration_state="PENDING" if queued_only else "RUNNING",
                 child_job_id=queued["id"],
             )
         )
@@ -2554,3 +2563,216 @@ def test_replay_execution_refuses_head_changed_during_engine(world: World) -> No
         )
     with world.place.uow() as uow:
         assert uow.session.scalar(select(func.count()).select_from(computation_verification)) == 0
+
+
+def test_replay_job_scheduler_completes_selected_group(world: World) -> None:
+    from erev_api.db.tables import computation_verification, job, release_validation_group
+    from erev_api.domain.contracts import replay_job  # registers the worker handler
+    from erev_api.enums import JobKind
+    from erev_api.jobs.registry import HANDLERS, run_job
+
+    assert HANDLERS[JobKind.REPLAY_VERIFY].handler is replay_job.replay
+    case = verification_case(world, queued_only=True)
+    run_job(
+        case.context.job_id,
+        world.place.tenant_id,
+        attempt=1,
+        runtime=replace(case.context.runtime, attempt=None),
+        delivered_task_id=case.context.task_id,
+    )
+    with world.place.uow() as uow:
+        assert (
+            uow.session.scalar(select(job.c.state).where(job.c.id == case.context.job_id))
+            == "SUCCEEDED"
+        )
+        assert (
+            uow.session.scalar(select(release_validation_group.c.orchestration_state)) == "COMPLETE"
+        )
+        assert uow.session.scalar(select(computation_verification.c.outcome)) == "MATCH"
+
+
+def test_replay_job_scheduler_retries_error_then_exhausts(
+    world: World, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from erev_api.db.tables import computation_verification, job, release_validation_group
+    from erev_api.domain.contracts import replay_job
+    from erev_api.domain.contracts.replay_execution import execute_running
+    from erev_api.jobs.registry import run_job
+    from sqlalchemy import text
+
+    case = verification_case(world, queued_only=True)
+
+    def fail_engine(bundle: Any) -> Any:
+        raise EngineError("ENGINE_INVARIANT_VIOLATED", "retry probe")
+
+    def execute(context: JobContext, **kwargs: Any) -> Any:
+        return execute_running(context, **kwargs, engine=fail_engine)
+
+    monkeypatch.setattr(replay_job, "execute_running", execute)
+    for attempt in (1, 2, 3):
+        with world.place.uow() as uow:
+            task_id = uow.session.scalar(
+                select(job.c.procrastinate_job_id).where(job.c.id == case.context.job_id)
+            )
+            uow.session.execute(
+                text("UPDATE procrastinate_jobs SET status = 'doing' WHERE id = :id"),
+                {"id": task_id},
+            )
+            uow.commit()
+        run_job(
+            case.context.job_id,
+            world.place.tenant_id,
+            attempt=attempt,
+            runtime=replace(case.context.runtime, attempt=None),
+            delivered_task_id=task_id,
+        )
+        with world.place.uow() as uow:
+            uow.session.execute(
+                text("UPDATE procrastinate_jobs SET status = 'succeeded' WHERE id = :id"),
+                {"id": task_id},
+            )
+            assert uow.session.scalar(
+                select(job.c.state).where(job.c.id == case.context.job_id)
+            ) == ("FAILED" if attempt == 3 else "QUEUED")
+            assert uow.session.scalar(select(release_validation_group.c.orchestration_state)) == (
+                "FAILED_EXHAUSTED" if attempt == 3 else "RETRYABLE"
+            )
+            assert (
+                uow.session.scalar(select(release_validation_group.c.accepted_verification_id))
+                is None
+            )
+            assert (
+                uow.session.scalar(select(func.count()).select_from(computation_verification))
+                == attempt
+            )
+            uow.commit()
+
+
+@pytest.mark.parametrize("during_engine", [False, True])
+def test_replay_job_cancellation_preserves_no_accepted_result(
+    world: World, monkeypatch: pytest.MonkeyPatch, during_engine: bool
+) -> None:
+    from erev_api.db.tables import computation_verification, job, release_validation_group
+    from erev_api.domain.contracts import replay_job
+    from erev_api.domain.contracts.replay_execution import execute_running
+    from erev_api.domain.platform.jobs import cancel_job
+    from erev_api.jobs.registry import run_job
+
+    case = verification_case(world, queued_only=True)
+
+    def cancel() -> None:
+        with world.place.uow() as uow:
+            cancel_job(uow, case.context.job_id)
+            uow.commit()
+
+    def cancel_while_computing(bundle: Any) -> Any:
+        cancel()
+        return engine()(bundle)
+
+    def execute(context: JobContext, **kwargs: Any) -> Any:
+        return execute_running(context, **kwargs, engine=cancel_while_computing)
+
+    if during_engine:
+        monkeypatch.setattr(replay_job, "execute_running", execute)
+        run_job(
+            case.context.job_id,
+            world.place.tenant_id,
+            attempt=1,
+            runtime=replace(case.context.runtime, attempt=None),
+            delivered_task_id=case.context.task_id,
+        )
+    else:
+        cancel()
+    with world.place.uow() as uow:
+        assert (
+            uow.session.scalar(select(job.c.state).where(job.c.id == case.context.job_id))
+            == "CANCELLED"
+        )
+        assert (
+            uow.session.scalar(select(release_validation_group.c.orchestration_state))
+            == "CANCELLED"
+        )
+        assert (
+            uow.session.scalar(select(release_validation_group.c.accepted_verification_id)) is None
+        )
+        assert uow.session.scalar(select(func.count()).select_from(computation_verification)) == 0
+
+
+def test_replay_job_cancel_does_not_wait_on_worker_commit(world: World) -> None:
+    from erev_api.db.tables import job
+    from erev_api.domain.contracts import replay_job
+    from erev_api.domain.platform.jobs import cancel_job
+
+    assert replay_job.guard_cancel is not None
+    case = verification_case(world)
+    with case.context.unit_of_work() as worker:
+        with world.place.uow() as caller, pytest.raises(Problem) as refused:
+            cancel_job(caller, case.context.job_id)
+        assert refused.value.slug == "lock-conflict"
+        worker.commit()
+    with world.place.uow() as uow:
+        assert (
+            uow.session.scalar(
+                select(job.c.cancel_requested_at).where(job.c.id == case.context.job_id)
+            )
+            is None
+        )
+
+
+def test_replay_job_refuses_cancel_after_acceptance(world: World) -> None:
+    from erev_api.db.tables import job, release_validation_group
+    from erev_api.domain.contracts import replay_job
+    from erev_api.domain.platform.jobs import cancel_job
+
+    case = verification_case(world)
+    result = replay_job.replay(
+        case.context,
+        {
+            "release_validation_attempt_id": str(case.decision.release_validation_attempt_id),
+            "combination_group_id": str(case.group_id),
+            "trigger": "REPLAY_VERIFY",
+        },
+    )
+    assert result.result["outcome"] == "MATCH"
+    with world.place.uow() as uow, pytest.raises(Problem) as refused:
+        cancel_job(uow, case.context.job_id)
+    assert refused.value.slug == "invalid-transition"
+    with world.place.uow() as uow:
+        assert (
+            uow.session.scalar(
+                select(job.c.cancel_requested_at).where(job.c.id == case.context.job_id)
+            )
+            is None
+        )
+        assert (
+            uow.session.scalar(select(release_validation_group.c.orchestration_state)) == "COMPLETE"
+        )
+
+
+def test_replay_job_failure_cleanup_rolls_back_while_worker_is_active(world: World) -> None:
+    from erev_api.db.tables import job, release_validation_group
+    from erev_api.domain.contracts import replay_job
+    from erev_api.jobs.registry import fail_attempt
+
+    assert replay_job.failed is not None
+    case = verification_case(world)
+    with case.context.unit_of_work() as worker:
+        with pytest.raises(Problem) as refused:
+            fail_attempt(
+                case.context.job_id,
+                world.place.tenant_id,
+                attempt=3,
+                error=RuntimeError("failure probe"),
+                runtime=replace(case.context.runtime, attempt=None),
+                task_id=case.context.task_id,
+            )
+        assert refused.value.slug == "lock-conflict"
+        worker.commit()
+    with world.place.uow() as uow:
+        assert (
+            uow.session.scalar(select(job.c.state).where(job.c.id == case.context.job_id))
+            == "RUNNING"
+        )
+        assert (
+            uow.session.scalar(select(release_validation_group.c.orchestration_state)) == "RUNNING"
+        )

@@ -6058,3 +6058,12 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Verification is recorded in docs/release/CI-2026-10-15.md. Recently viewed remains open;
   this does not reconstruct historical modification status or change accounting calculations.
 - No deployment; broader release verification and independent accounting sign-off remain open.
+
+## Private recently viewed contracts — October 15, 2026
+
+- Revision 0159 stores the last 50 successful contract opens per caller, with tenant and owner
+  RLS and serialized updates/pruning. Failed reads and lists never record visits.
+- Recently viewed uses that history, rechecks current contract scope and supports ordinary
+  filters, counts and pagination. Reopening a contract moves it to the front.
+- Verification is recorded in docs/release/CI-2026-10-15.md. No accounting events or contract
+  versions are changed. No deployment; full release gates and independent sign-off remain open.
