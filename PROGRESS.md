@@ -2,6 +2,14 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Unapproved validation attempt supersession — October 15, 2026
+
+- Added audited, idempotent supersession under the same parent/attempt locks as result writers.
+  Replacement selection can share its transaction; historical selections and evidence remain.
+- Linked approvals and non-retryable parent states fail closed. The release approval subject,
+  stale-approval invalidation, fan-out, replay handler and final admission remain outstanding.
+- Verification evidence is recorded in docs/release/CI-2026-10-15.md.
+
 ## Validation start and full-population fence — October 15, 2026
 
 - Frozen attempts now retain a versioned full-population fingerprint, including unsampled
@@ -261,18 +269,6 @@
 - Integration, scope and contract API regression evidence is recorded in
   docs/release/CI-2026-10-15.md. Modified-in-period and recent-view quick lists remain open.
 - No deployment or accounting-policy change; full release gates and independent sign-off remain.
-
-## Call-log proposal links and hash copying — October 15, 2026
-
-- Proposal lists accept ai_model_log_id while preserving source authorization, counts and
-  cursor binding. The call drawer shows authorized links, without rendering proposal content.
-- Extraction links open contract review; number explanations open their bound trace with a
-  freshly authorized retained narrative and same-trace citation links. Cached content stays
-  hidden during reauthorization and on refusal or a source mismatch.
-- Hash buttons copy complete retained hashes, hide absent response hashes and report clipboard
-  refusal. Verification is recorded in docs/release/CI-2026-10-15.md.
-- No deployment or live provider calls. Explain submission, other planned AI operations,
-  standard demo/J-19, broader release gates and independent accounting sign-off remain open.
 
 ## Outstanding release verification
 

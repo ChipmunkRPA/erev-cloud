@@ -2086,3 +2086,138 @@ def test_validation_attempt_start_refuses_legacy_unfingerprinted_attempt(world: 
         with pytest.raises(Problem, match="population changed"):
             start(uow, validation_id=parent_id, attempt_id=attempt_id)
         assert not uow.audit_events
+
+
+@pytest.mark.parametrize("state", ["SELECTED", "RUNNING", "COMPLETE", "INCOMPLETE"])
+def test_validation_attempt_supersede_and_replace_atomically(world: World, state: str) -> None:
+    from erev_api.db.tables import release_validation_attempt, release_validation_group
+    from erev_api.db.transitions import apply
+    from erev_api.domain.contracts.validation_attempts import freeze, start, supersede
+
+    booked = k01(world)
+    validation_id = pending_validation(world)
+    with world.place.uow() as uow:
+        first = freeze(uow, validation_id=validation_id, attempt_no=1)
+        if state != "SELECTED":
+            start(uow, validation_id=validation_id, attempt_id=first.id)
+        if state in {"COMPLETE", "INCOMPLETE"}:
+            apply(
+                uow.session,
+                "release_validation_attempt",
+                first.id,
+                to_status=state,
+                expected_status="RUNNING",
+                set_values={},
+            )
+        frozen = dict(uow.session.execute(select(release_validation_attempt)).mappings().one())
+        groups = [
+            dict(row) for row in uow.session.execute(select(release_validation_group)).mappings()
+        ]
+        uow.commit()
+    flag_change(world, booked.contract["id"], 2)
+    with pytest.raises(RuntimeError, match="replacement interrupted"), world.place.uow() as uow:
+        assert supersede(uow, validation_id=validation_id, attempt_id=first.id)
+        freeze(uow, validation_id=validation_id, attempt_no=2)
+        raise RuntimeError("replacement interrupted")
+    with world.place.uow() as uow:
+        assert uow.session.scalar(select(release_validation_attempt.c.status)) == state
+        assert supersede(uow, validation_id=validation_id, attempt_id=first.id)
+        second = freeze(uow, validation_id=validation_id, attempt_no=2)
+        assert start(uow, validation_id=validation_id, attempt_id=second.id)
+        assert not supersede(uow, validation_id=validation_id, attempt_id=first.id)
+        assert [event["action"] for event in uow.audit_events].count(
+            "release_validation_attempt.supersede"
+        ) == 1
+        old = (
+            uow.session.execute(
+                select(release_validation_attempt).where(
+                    release_validation_attempt.c.id == first.id
+                )
+            )
+            .mappings()
+            .one()
+        )
+        assert old["status"] == "SUPERSEDED"
+        for key in (
+            "population",
+            "seed",
+            "required_entity_ids",
+            "dataset_file_id",
+            "report_run_id",
+        ):
+            assert old[key] == frozen[key]
+        assert old["row_version"] == frozen["row_version"] + 1
+        assert groups == [
+            dict(row)
+            for row in uow.session.execute(
+                select(release_validation_group).where(
+                    release_validation_group.c.release_validation_attempt_id == first.id
+                )
+            ).mappings()
+        ]
+        uow.commit()
+
+
+def test_validation_attempt_supersede_rejects_late_result(world: World) -> None:
+    from erev_api.db.tables import computation_verification, release_validation_attempt
+    from erev_api.domain.contracts.validation_attempts import supersede
+    from erev_api.domain.contracts.verification_store import persist
+
+    case = verification_case(world)
+    attempt_id = case.decision.release_validation_attempt_id
+    assert attempt_id is not None
+    with world.place.uow() as uow:
+        validation_id = uow.session.scalar(
+            select(release_validation_attempt.c.release_validation_id)
+        )
+        assert validation_id is not None
+        assert supersede(uow, validation_id=validation_id, attempt_id=attempt_id)
+        uow.commit()
+    with world.place.uow() as uow, pytest.raises(Problem, match="running frozen validation"):
+        persist(uow, case.decision, context=case.context, duration_ms=10)
+    with world.place.uow() as uow:
+        assert uow.session.scalar(select(func.count()).select_from(computation_verification)) == 0
+
+
+@pytest.mark.parametrize(
+    "case", ["partial scope", "other tenant", "wrong parent", "pending approval", "linked approval"]
+)
+def test_validation_attempt_supersede_refuses_unsafe_context(world: World, case: str) -> None:
+    from erev_api.db.tables import approval_request, release_validation_attempt
+    from erev_api.db.transitions import apply
+    from erev_api.domain.contracts.validation_attempts import freeze, start, supersede
+    from support.rows import approval_request_values
+
+    validation_id = pending_validation(world)
+    with world.place.uow() as uow:
+        attempt = freeze(uow, validation_id=validation_id, attempt_no=1)
+        if case == "pending approval":
+            start(uow, validation_id=validation_id, attempt_id=attempt.id)
+            apply(
+                uow.session,
+                "release_validation",
+                validation_id,
+                to_status="PENDING_APPROVAL",
+                expected_status="RUNNING",
+                set_values={},
+            )
+        elif case == "linked approval":
+            request = approval_request_values(world.place.tenant_id)
+            uow.session.execute(insert(approval_request).values(**request))
+            uow.session.execute(
+                update(release_validation_attempt)
+                .where(release_validation_attempt.c.id == attempt.id)
+                .values(approval_request_id=request["id"])
+            )
+        uow.commit()
+    principal = world.place.principal
+    if case == "partial scope":
+        principal = replace(principal, entity_scope=(world.entity_id,))
+    elif case == "other tenant":
+        principal = replace(principal, tenant_id=UUID(int=999))
+    elif case == "wrong parent":
+        validation_id = UUID(int=999)
+    with world.place.uow(principal) as uow, pytest.raises(Problem):
+        supersede(uow, validation_id=validation_id, attempt_id=attempt.id)
+    with world.place.uow() as uow:
+        assert uow.session.scalar(select(release_validation_attempt.c.status)) != "SUPERSEDED"

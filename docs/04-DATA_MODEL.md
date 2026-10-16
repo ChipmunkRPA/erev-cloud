@@ -2375,6 +2375,13 @@ stream versions across the whole tenant, including unsampled groups. Start compa
 with a fresh population read and refuses a changed or unfingerprinted attempt. Final acceptance
 must revalidate it again; starting does not prohibit later business activity or enable a release.
 
+Implemented unapproved supersession: the service locks the validation and attempt in that
+order, marks the attempt SUPERSEDED, and audits once. The caller may freeze its replacement
+in the same transaction. Existing selection, dataset, report and result evidence is retained;
+result writers using those locks refuse new results for a superseded attempt. An already
+superseded retry is read-only. Approval-linked attempts and parent states outside
+PENDING/RUNNING/INCOMPLETE are refused until release approval resolution is implemented.
+
 Transitions (DB-03): a re-run after `INCOMPLETE`, or any head/population change, creates attempt n+1 and marks n `SUPERSEDED` (rows kept; a pending approval on n is voided `STALE_SUBJECT`). Immutable selection columns are written once before any child job.
 
 ### T-PLT-45 `release_validation_group`

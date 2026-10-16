@@ -230,3 +230,77 @@ def start(uow: UnitOfWork, *, validation_id: UUID, attempt_id: UUID) -> bool:
         after={"status": "RUNNING", "validation_status": "RUNNING"},
     )
     return True
+
+
+def supersede(uow: UnitOfWork, *, validation_id: UUID, attempt_id: UUID) -> bool:
+    """Retire an unapproved attempt before freezing its replacement in the same transaction.
+
+    Keep all frozen selections and results as evidence. Result writers take these same
+    parent/attempt locks and refuse new evidence after supersession. Approval-linked attempts
+    require the release approval workflow, which is not yet implemented, and fail closed here.
+    """
+    if uow.principal.db_context.entity_scope != "*":
+        raise Problem("forbidden", "Release validation requires the complete tenant population.")
+    parent = (
+        uow.session.execute(
+            select(release_validation)
+            .where(
+                release_validation.c.tenant_id == uow.principal.tenant_id,
+                release_validation.c.id == validation_id,
+            )
+            .with_for_update(key_share=True)
+        )
+        .mappings()
+        .one_or_none()
+    )
+    attempt = (
+        uow.session.execute(
+            select(release_validation_attempt)
+            .where(
+                release_validation_attempt.c.tenant_id == uow.principal.tenant_id,
+                release_validation_attempt.c.release_validation_id == validation_id,
+                release_validation_attempt.c.id == attempt_id,
+            )
+            .with_for_update(key_share=True)
+        )
+        .mappings()
+        .one_or_none()
+    )
+    if parent is None or attempt is None:
+        raise Problem("not-found")
+    # A retry may arrive after its replacement completed; it cannot change historical evidence.
+    if attempt["status"] == "SUPERSEDED":
+        return False
+    if (
+        parent["effective_level"] not in {"MINOR", "MAJOR"}
+        or parent["status"] not in {"PENDING", "RUNNING", "INCOMPLETE"}
+        or parent["enabled_at"] is not None
+        or parent["accepted_attempt_id"] is not None
+        or attempt["approval_request_id"] is not None
+        or attempt["status"] not in {"SELECTED", "RUNNING", "COMPLETE", "INCOMPLETE"}
+    ):
+        raise Problem(
+            "invalid-transition", "This attempt cannot be superseded without approval resolution."
+        )
+    apply(
+        uow.session,
+        "release_validation_attempt",
+        attempt_id,
+        to_status="SUPERSEDED",
+        expected_status=attempt["status"],
+        expected_row_version=attempt["row_version"],
+        set_values={
+            "row_version": attempt["row_version"] + 1,
+            "updated_at": uow.now,
+            "updated_by": uow.principal.id,
+            "updated_by_kind": uow.principal.kind.value,
+        },
+    )
+    uow.audit(
+        action="release_validation_attempt.supersede",
+        object_type="release_validation_attempt",
+        object_id=attempt_id,
+        before={"status": attempt["status"]},
+        after={"status": "SUPERSEDED"},
+    )
+    return True

@@ -6026,3 +6026,15 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Frontend and real local Chromium/API/worker verification is recorded in
   docs/release/CI-2026-10-15.md. No deployment or live provider calls; overall release gates,
   remaining call-log navigation/copy controls and independent accounting sign-off remain open.
+
+## Call-log proposal links and hash copying — October 15, 2026
+
+- Proposal lists accept ai_model_log_id while preserving source authorization, counts and
+  cursor binding. The call drawer shows authorized links, without rendering proposal content.
+- Extraction links open contract review; number explanations open their bound trace with a
+  freshly authorized retained narrative and same-trace citation links. Cached content stays
+  hidden during reauthorization and on refusal or a source mismatch.
+- Hash buttons copy complete retained hashes, hide absent response hashes and report clipboard
+  refusal. Verification is recorded in docs/release/CI-2026-10-15.md.
+- No deployment or live provider calls. Explain submission, other planned AI operations,
+  standard demo/J-19, broader release gates and independent accounting sign-off remain open.
