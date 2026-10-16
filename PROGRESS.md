@@ -2,6 +2,17 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## AI command audit coverage — October 15, 2026
+
+- Registered all ten AI command routes and added real API scenarios to the shared audit walk:
+  settings author/test/submit/withdraw, extraction/explanation requests, proposal accept/reject,
+  and the workspace kill switch. Retained synthetic proposal evidence needs no provider call.
+- Draft acceptance exposed a missing computation-evidence audit classification; it now names
+  the source computation's contract members. Pending-category negative controls remain active
+  through a synthetic pending catalogue, with a separate missing-live-AI-evidence assertion.
+- Verification evidence is recorded in docs/release/CI-2026-10-15.md. Full candidate acceptance,
+  replay orchestration/release admission and independent accounting sign-off remain open.
+
 ## Verification helper typing — October 15, 2026
 
 - Resolved all nine errors found by the explicit scan of five regression-test modules:
@@ -253,17 +264,6 @@
   retained scope and refreshes session/grants after that potentially waiting lookup. OWN stays
   OWN after promotion; a retained TENANT reply refuses demotion. No duplicate route guards.
 - Public catalogue registration and the download UI remain pending. Verification details are in
-  docs/release/CI-2026-10-15.md. No deployment/provider calls/sign-off; broader gates remain open.
-
-## Queued call-export execution and revocation — October 15, 2026
-
-- Internal run creation captures the requester binding; reruns preserve its maximum scope.
-  REPORT_RUN reloads the human's current grants before start, completed replay, build and output
-  storage. Dataset reads use that human context, not SYSTEM. API-client execution refuses.
-- Call exports omit ledger-head metadata and declare live/open source capture. Real queued
-  CSV/XLSX tests cover promotion, retained OWN scope, replay and permission loss before execution
-  and during rendering. Public catalogue/API activation and the download UI remain unfinished.
-- Report unit verification passes 941 checks; detailed worker, typing and lint evidence is in
   docs/release/CI-2026-10-15.md. No deployment/provider calls/sign-off; broader gates remain open.
 
 ## Outstanding release verification

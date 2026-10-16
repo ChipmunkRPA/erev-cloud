@@ -1338,3 +1338,10 @@ unaccepted for retries; moved source heads and stale task/release identities are
 This does not supply the public verification workflow: selection creation, fan-out/handler,
 dataset publication, historical backfill and release admission remain outstanding.
 The earlier full CI on frozen 3cf8f5b ended with 22 failures and requires current-main triage.
+
+
+October 15 AI audit coverage update: all ten implemented AI command routes now participate
+in the shared catalogue and command walk. The full CTL-038 walk, all fourteen audit categories,
+and focused AI walk pass (CI-2026-10-15.md). This supersedes the historical pending AI-category
+failure recorded above. Proposal evidence in these scenarios is synthetic; model accuracy,
+remaining AI workflows and full release-candidate verification are not established by it.

@@ -33,6 +33,7 @@ Three database tests over the catalogue of ``tests/support/audit_catalogue.py``:
 
 from __future__ import annotations
 
+import io
 import json
 import re
 from collections.abc import Callable, Collection, Iterator, Mapping, Sequence
@@ -3749,7 +3750,210 @@ def s_me_regenerate_recovery_codes(w: World) -> HttpResponse:
 
 
 # Order matters: creations precede the updates, submissions and revocations that reuse their ids.
+def s_ai_settings_create(w: World) -> HttpResponse:
+    return _created(
+        w,
+        "ai.settings",
+        post(
+            w.app,
+            f"{API}/ai/settings/versions",
+            w.tomas,
+            {"values": {"ai.monthly_token_budget": 10000}},
+        ),
+    )
+
+
+def s_ai_settings_update(w: World) -> HttpResponse:
+    return patch(
+        w.app,
+        f"{API}/ai/settings/versions/{w.ids['ai.settings']}",
+        w.tomas,
+        {"values": {"ai.monthly_token_budget": 20000}},
+        if_match=w.ids["ai.settings.etag"],
+    )
+
+
+def s_ai_settings_test(w: World) -> HttpResponse:
+    response = post(
+        w.app,
+        f"{API}/ai/settings/versions/{w.ids['ai.settings']}/test",
+        w.tomas,
+        {"run_simulation": False},
+    )
+    assert response.status_code == 202, response.text
+    _run_job(w, UUID(response.json()["id"]))
+    return response
+
+
+def s_ai_settings_submit(w: World) -> HttpResponse:
+    return post(
+        w.app,
+        f"{API}/ai/settings/versions/{w.ids['ai.settings']}/submit",
+        w.tomas,
+        {"comment": COMMENT},
+    )
+
+
+def s_ai_settings_withdraw(w: World) -> HttpResponse:
+    return post(
+        w.app,
+        f"{API}/ai/settings/versions/{w.ids['ai.settings']}/withdraw",
+        w.tomas,
+        {"comment": COMMENT},
+    )
+
+
+def _ai_source(w: World) -> K02World:
+    from erev_api.enums import RegistryCategory
+    from erev_api.files.store import store_file
+    from support.rows import publish_registry_version
+
+    e = _engine(w)
+    if "ai.file" not in w.ids:
+        w.clock.advance(CLOCK_STEP)
+        with e.place.uow() as uow:
+            publish_registry_version(
+                uow.session,
+                tenant_id=e.place.tenant_id,
+                category=RegistryCategory.AI,
+                values={
+                    "ai.enabled": True,
+                    "ai.send_contract_text": True,
+                    "ai.monthly_token_budget": 10000,
+                },
+                at=w.clock.now(),
+            )
+            source = store_file(
+                uow,
+                purpose=FilePurpose.ATTACHMENT,
+                stream=io.BytesIO(PDF),
+                original_filename="audit-fixture.pdf",
+                media_type="application/pdf",
+            )
+            w.ids["ai.file"] = str(source["id"])
+            uow.commit()
+    return e
+
+
+def s_ai_explanation(w: World) -> HttpResponse:
+    e = _ai_source(w)
+    with e.place.uow() as uow:
+        line_id = uow.session.scalar(select(tables.schedule_line.c.id).limit(1))
+    assert line_id is not None
+    return post(
+        w.app,
+        f"{API}/ai/explanations",
+        e.place.author,
+        {"object_type": "schedule_line", "id": str(line_id), "measure": "amount"},
+    )
+
+
+def s_ai_extraction(w: World) -> HttpResponse:
+    e = _ai_source(w)
+    return post(
+        w.app, f"{API}/ai/contract-extractions", e.place.author, {"file_id": w.ids["ai.file"]}
+    )
+
+
+def _ai_proposal(w: World) -> tuple[K02World, UUID, dict[str, Any]]:
+    """Retained synthetic extraction evidence; commands run without provider execution."""
+    from erev_api.files.store import store_file
+    from support.rows import RowContext, ai_proposal_row
+
+    e = _ai_source(w)
+    draft = k02_seat_month_body(e.customer_id)
+    draft["external_id"] = f"AUDIT-AI-{random_suffix()}"
+    with e.place.uow() as uow:
+        name = uow.session.scalar(
+            select(tables.customer.c.name).where(tables.customer.c.id == e.customer_id)
+        )
+        text_file = store_file(
+            uow,
+            purpose=FilePurpose.AI_DOCUMENT_TEXT,
+            stream=io.BytesIO(json.dumps({"pages": ["Synthetic audit extraction"]}).encode()),
+            original_filename=None,
+            media_type="application/json",
+        )
+        row = ai_proposal_row(
+            RowContext(e.place.tenant_id, e.place.author.member.user_id), uow.session
+        )
+        row.update(
+            kind="CONTRACT_EXTRACTION",
+            file_object_id=UUID(w.ids["ai.file"]),
+            document_text_file_id=text_file["id"],
+            content=[
+                {"path": "customer_name", "value": name},
+                {
+                    "path": "lines.0",
+                    "value": {
+                        "product_code": draft["lines"][0]["product_code"],
+                        "amount": "240000.00",
+                    },
+                },
+            ],
+            created_at=w.clock.now(),
+            expires_at=w.clock.now() + timedelta(days=30),
+        )
+        uow.session.execute(insert(tables.ai_proposal).values(**row))
+        uow.commit()
+    body = {
+        "command": "contract.create_draft",
+        "entity_code": "AVM-US",
+        "field_decisions": [
+            {"path": "customer_name", "decision": "ACCEPT"},
+            {"path": "lines.0", "decision": "ACCEPT"},
+        ],
+        "header_bindings": {"customer_name": "customer"},
+        "line_bindings": {"lines.0": "O1"},
+        "draft": draft,
+    }
+    return e, row["id"], body
+
+
+def s_ai_reject(w: World) -> HttpResponse:
+    e, proposal_id, _ = _ai_proposal(w)
+    path = f"{API}/ai/proposals/{proposal_id}"
+    return post(
+        w.app,
+        path + "/reject",
+        e.place.author,
+        {"reason": COMMENT},
+        if_match=_etag_of(w.app, path, e.place.author),
+    )
+
+
+def s_ai_accept(w: World) -> HttpResponse:
+    e, proposal_id, body = _ai_proposal(w)
+    path = f"{API}/ai/proposals/{proposal_id}"
+    return post(
+        w.app,
+        path + "/accept",
+        e.place.author,
+        body,
+        if_match=_etag_of(w.app, path, e.place.author),
+    )
+
+
+def s_ai_disable(w: World) -> HttpResponse:
+    return post(w.app, f"{API}/tenant/ai/disable", w.tomas, {"comment": COMMENT})
+
+
+AI_WALK: Final[tuple[tuple[str, Scenario], ...]] = (
+    ("ai_settings_versions_create", s_ai_settings_create),
+    ("ai_settings_versions_update", s_ai_settings_update),
+    ("ai_settings_versions_test", s_ai_settings_test),
+    ("ai_settings_versions_submit", s_ai_settings_submit),
+    ("ai_settings_versions_withdraw", s_ai_settings_withdraw),
+    ("ai_explanations_create", s_ai_explanation),
+    ("ai_contract_extractions_create", s_ai_extraction),
+    ("ai_proposals_reject", s_ai_reject),
+    ("ai_proposals_accept", s_ai_accept),
+    ("tenant_ai_disable", s_ai_disable),
+)
+
+
 WALK: Final[tuple[tuple[str, Scenario], ...]] = (
+    *AI_WALK,
     ("calendars_create", s_calendars_create),
     ("calendars_generate_year", s_calendars_generate_year),
     ("entities_create", s_entities_create),
@@ -4066,6 +4270,7 @@ def _contract_ids(tenant_id: UUID) -> frozenset[str]:
 # with why that object is about no contract; an entry no event of the walk used fails by name, so
 # the list cannot outlive its reason.
 NO_CONTRACT: Final[Mapping[tuple[str, str], str]] = {
+    ("ai_proposals_reject", "ai_proposal"): "unaccepted extraction has no contract yet",
     # This scenario requests a CLOSE pack bound to an entity/book/period lock, not a contract.
     ("evidence_packs_create", "evidence_pack"): "CLOSE pack of a period lock",
     # ``_no_data_import``: an IMPORT_NO_DATA_ROWS item of an upload that booked nothing — T-IMP-05
@@ -4668,3 +4873,15 @@ def test_material_right_audit_summary_names_fact_and_contract(
 ) -> None:
     response = s_obligation_material_right_create(_world(app, keyring, clock, runtime))
     assert response.status_code == 201
+
+
+def test_ai_commands_write_request_bound_audit(
+    app: FastAPI, keyring: KeyRing, clock: FrozenClock, runtime: JobRuntime
+) -> None:
+    world = _world(app, keyring, clock, runtime)
+    walk = Walk()
+    for operation_id, scenario in AI_WALK:
+        _exercise(world, walk, operation_id, scenario)
+    assert not walk.failures, "\n".join(walk.failures)
+    assert set(walk.covered) == {operation_id for operation_id, _ in AI_WALK}
+    assert {"ai_proposal.reject", "ai_proposal.accept"} <= walk.actions

@@ -67,8 +67,9 @@ def test_catalogue_equals_the_committed_command_operations() -> None:
     # ruling of 2026-10-01 on question J1 (a); 04 API-R-33 rev 1.242) = 234.
     # + combination_groups_discard (item COMBINATION-PROPOSAL-DISCARD-1, lane F-RPS-REG, the
     # supervisor's rulings of 2026-10-02; 04 API-R-28 rev 1.289) = 235.
-    # Native option creation/expiry and close evidence-pack creation add three commands.
-    assert len(operations) == 238
+    # Native option creation/expiry and close evidence-pack creation add three commands;
+    # AI submission/settings/decisions and disable add ten more.
+    assert len(operations) == 248
 
 
 def test_every_catalogued_route_is_declared_by_one_router_module() -> None:
@@ -105,7 +106,7 @@ def test_req_plt_019_categories_are_all_mapped() -> None:
         assert evidenced or category.pending, f"{category.name}: no evidence and no owning lane"
         assert not (evidenced and category.pending), category.name
     pending = {category.name: category.pending for category in CATEGORIES if category.pending}
-    assert pending == {"AI proposal lifecycle": "F-AIX"}
+    assert pending == {}
 
 
 def test_sop_7_exemptions_are_security_or_provisioning_routes() -> None:
@@ -201,24 +202,25 @@ def test_policy_override_creation_has_success_and_refusal_evidence() -> None:
 
 
 def test_req_plt_019_pending_category_still_fails_by_name() -> None:
-    """Codex P4-SOP7 R1: an otherwise-complete observation — one action or kind of EVERY evidenced
-    category — still fails, naming the AI proposal lifecycle with its owner; nothing pending passes
-    silently."""
+    """A synthetic pending category fails by owner; missing live AI evidence fails by name."""
     actions = {category.actions[0] for category in CATEGORIES if category.actions}
     kinds = {category.security_events[0] for category in CATEGORIES if category.security_events}
-    assert uncovered_categories(actions, kinds) == ["AI proposal lifecycle (pending on lane F-AIX)"]
-    # Nothing observed: every category is named, the pending one with its owner.
-    everything = uncovered_categories((), ())
-    assert len(everything) == len(CATEGORIES) == 14
-    assert "AI proposal lifecycle (pending on lane F-AIX)" in everything
-    # Once the lane's action exists and is observed, the category is covered like any other.
-    landed = [
-        Category("AI proposal lifecycle", ("ai_proposal.accept",))
+    assert uncovered_categories(actions, kinds) == []
+    pending = [
+        Category("AI proposal lifecycle", pending="F-AIX")
         if category.name == "AI proposal lifecycle"
         else category
         for category in CATEGORIES
     ]
-    assert uncovered_categories(actions | {"ai_proposal.accept"}, kinds, landed) == []
+    assert uncovered_categories(actions, kinds, pending) == [
+        "AI proposal lifecycle (pending on lane F-AIX)"
+    ]
+    everything = uncovered_categories((), (), pending)
+    assert len(everything) == len(CATEGORIES) == 14
+    assert "AI proposal lifecycle (pending on lane F-AIX)" in everything
+    assert uncovered_categories(actions - {"ai_proposal.accept", "ai_proposal.reject"}, kinds) == [
+        "AI proposal lifecycle"
+    ]
 
 
 def test_sop_7_required_operations_exclude_class_a() -> None:
@@ -258,7 +260,7 @@ def test_sop_7_required_operations_exclude_class_a() -> None:
     # + combination_groups_discard (item COMBINATION-PROPOSAL-DISCARD-1; 04 API-R-28 rev
     # 1.289 — REQUIRED, not exempt): 235 − 6 = 229.
     # + native option create/expire and CLOSE evidence-pack creation: 238 - 6 = 232.
-    assert len(ROUTES) - len(SOP_7_EXEMPT) == len(required) == 238 - 6 == 232
+    assert len(ROUTES) - len(SOP_7_EXEMPT) == len(required) == 248 - 6 == 242
     assert {"users_anonymise", "files_shred"} <= required, "the P8 privacy commands are required"
     assert "session_login" not in required and "session_login" in SOP_7_EXEMPT
     assert QUERY_EXEMPT <= required

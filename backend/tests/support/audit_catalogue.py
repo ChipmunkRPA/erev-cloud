@@ -151,7 +151,7 @@ CATEGORIES: Final[tuple[Category, ...]] = (
     Category(
         "support grants", ("support_grant.request", "support_grant.approve", "support_grant.revoke")
     ),
-    Category("AI proposal lifecycle", pending="F-AIX"),
+    Category("AI proposal lifecycle", ("ai_proposal.accept", "ai_proposal.reject")),
 )
 
 
@@ -463,6 +463,16 @@ _ROUTE_LIST: Final[tuple[Route, ...]] = (
         note="idempotent confirm: the approval published and audited (SOP7-PUBLISH-CONFIRM-1)",
     ),
     _audit("pob_template_versions_test", "pob_template_version.test"),
+    _audit("ai_settings_versions_create", "registry_version.update"),
+    _audit("ai_settings_versions_update", "registry_version.update"),
+    _audit("ai_settings_versions_test", "registry_version.test_requested"),
+    _audit("ai_settings_versions_submit", "registry_version.submitted"),
+    _audit("ai_settings_versions_withdraw", "registry_version.withdrawn"),
+    _audit("ai_explanations_create", "job.start"),
+    _audit("ai_contract_extractions_create", "job.start"),
+    _audit("ai_proposals_reject", "ai_proposal.reject"),
+    _audit("ai_proposals_accept", "ai_proposal.accept"),
+    _audit("tenant_ai_disable", "ai.disabled"),
     # policies (registry versions) and overrides
     _audit("policies_create", "registry_version.update"),
     _audit("policies_update", "registry_version.update"),

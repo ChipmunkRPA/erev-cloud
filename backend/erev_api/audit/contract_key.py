@@ -89,6 +89,7 @@ WHERE_NAMED: Final = frozenset(
         # without a member names none
         "combination_group",
         "contract_computation",
+        "computation_evidence",  # retained inputs/outputs name the computation's members
         "release_validation_group",  # source members; NO_SOURCE may name no contracts
         # a posting names the contracts of its lines; a posting without a line names none
         "subledger_posting",

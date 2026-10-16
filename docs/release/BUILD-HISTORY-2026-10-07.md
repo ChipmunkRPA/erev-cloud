@@ -5983,3 +5983,14 @@ cleanup in the shared database session kernel was also repaired and regression-t
   their rules. Submission, worker capture/build and UI integration remain unfinished.
 - Verification evidence and the migration round trip are recorded in docs/release/CI-2026-10-15.md.
   No deployment, provider calls or accounting sign-off; production readiness remains unproven.
+
+## Queued call-export execution and revocation — October 15, 2026
+
+- Internal run creation captures the requester binding; reruns preserve its maximum scope.
+  REPORT_RUN reloads the human's current grants before start, completed replay, build and output
+  storage. Dataset reads use that human context, not SYSTEM. API-client execution refuses.
+- Call exports omit ledger-head metadata and declare live/open source capture. Real queued
+  CSV/XLSX tests cover promotion, retained OWN scope, replay and permission loss before execution
+  and during rendering. Public catalogue/API activation and the download UI remain unfinished.
+- Report unit verification passes 941 checks; detailed worker, typing and lint evidence is in
+  docs/release/CI-2026-10-15.md. No deployment/provider calls/sign-off; broader gates remain open.
