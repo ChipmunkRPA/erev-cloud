@@ -1473,6 +1473,7 @@ def verification_case(world: World) -> VerificationCase:
             release.engine_version,
             source["input_sha256"],
             {"ASC606": output.sha256()},
+            source["cutoff_at"],
         ),
         evidence=EvidenceFacts(
             input_bytes,
@@ -2221,3 +2222,203 @@ def test_validation_attempt_supersede_refuses_unsafe_context(world: World, case:
         supersede(uow, validation_id=validation_id, attempt_id=attempt.id)
     with world.place.uow() as uow:
         assert uow.session.scalar(select(release_validation_attempt.c.status)) != "SUPERSEDED"
+
+
+def test_replay_sources_loads_frozen_evidence_after_head_changes(world: World) -> None:
+    from erev_api.domain.contracts.replay_sources import load
+    from erev_api.domain.contracts.replay_verify import verify
+
+    case = verification_case(world)
+    attempt_id = case.decision.release_validation_attempt_id
+    assert attempt_id is not None
+    flag_change(world, case.contract_id, 2)
+    _, _, newer = computed(world.place, case.group_id)
+    assert newer["id"] != case.decision.source_computation_id
+    with world.place.uow() as uow:
+        loaded = load(
+            uow,
+            context=case.context,
+            attempt_id=attempt_id,
+            group_id=case.group_id,
+            trigger="REPLAY_VERIFY",
+        )
+        assert loaded.source is not None and loaded.evidence is not None
+        assert loaded.source.computation_id == case.decision.source_computation_id
+        assert loaded.token == case.decision.token
+        row = verify(
+            trigger="REPLAY_VERIFY",
+            source=loaded.source,
+            evidence=loaded.evidence,
+            process=loaded.process,
+            engine=engine(),
+            token=loaded.token,
+            attempt_id=attempt_id,
+        )
+        assert row == case.decision
+        uow.commit()
+
+
+@pytest.mark.parametrize(
+    "case_name",
+    [
+        "partial scope",
+        "superseded",
+        "runtime mismatch",
+        "missing file",
+        "missing output",
+        "corrupt input and missing output",
+        "storage failure",
+        "input metadata",
+        "output metadata",
+    ],
+)
+def test_replay_sources_refusals_before_execution(
+    world: World, monkeypatch: pytest.MonkeyPatch, case_name: str
+) -> None:
+    from erev_api.db.tables import release_validation_attempt
+    from erev_api.domain.contracts import replay_sources
+    from erev_api.domain.contracts.replay_verify import verify
+    from erev_api.domain.contracts.validation_attempts import supersede
+
+    case = verification_case(world)
+    attempt_id = case.decision.release_validation_attempt_id
+    assert attempt_id is not None
+    principal = world.place.principal
+    if case_name == "partial scope":
+        principal = replace(principal, entity_scope=(world.entity_id,))
+    if case_name == "superseded":
+        with world.place.uow() as uow:
+            validation_id = uow.session.scalar(
+                select(release_validation_attempt.c.release_validation_id)
+            )
+            assert validation_id is not None
+            supersede(uow, validation_id=validation_id, attempt_id=attempt_id)
+            uow.commit()
+    if case_name == "runtime mismatch":
+        release = case.context.runtime.engine_release
+        assert release is not None
+        context = case.context
+        case = replace(
+            case,
+            context=JobContext(
+                job_id=context.job_id,
+                tenant_id=context.tenant_id,
+                kind=context.kind,
+                principal=context.principal,
+                runtime=replace(
+                    context.runtime, engine_release=replace(release, engine_version="9.9.9")
+                ),
+            ),
+        )
+    opened: list[UUID] = []
+    original = open_file
+
+    def observe(*args: Any, **kwargs: Any) -> Any:
+        opened.append(args[1])
+        if case_name in {"partial scope", "superseded", "runtime mismatch"}:
+            pytest.fail("a refused replay must not open a file")
+        if case_name == "missing file" or (
+            case_name in {"missing output", "corrupt input and missing output"} and len(opened) == 2
+        ):
+            raise FileNotFoundError("missing retained file")
+        if case_name == "storage failure":
+            raise PermissionError("storage unavailable")
+        meta, stream = original(*args, **kwargs)
+        if case_name == "corrupt input and missing output":
+            with stream:
+                content = stream.read()
+            stream = io.BytesIO(content + b" ")
+        if (case_name == "input metadata" and len(opened) == 1) or (
+            case_name == "output metadata" and len(opened) == 2
+        ):
+            meta = {**meta, "media_type": "text/plain"}
+        return meta, stream
+
+    monkeypatch.setattr(replay_sources, "open_file", observe)
+    with world.place.uow(principal) as uow:
+        if case_name in {"partial scope", "superseded", "storage failure"}:
+            with pytest.raises(PermissionError if case_name == "storage failure" else Problem):
+                replay_sources.load(
+                    uow,
+                    context=case.context,
+                    attempt_id=attempt_id,
+                    group_id=case.group_id,
+                    trigger="REPLAY_VERIFY",
+                )
+            return
+        loaded = replay_sources.load(
+            uow,
+            context=case.context,
+            attempt_id=attempt_id,
+            group_id=case.group_id,
+            trigger="REPLAY_VERIFY",
+        )
+        assert loaded.source is not None
+
+        def never_execute(bundle: Any) -> Any:
+            pytest.fail("invalid or missing evidence must not execute the engine")
+
+        row = verify(
+            trigger="REPLAY_VERIFY",
+            source=loaded.source,
+            evidence=loaded.evidence,
+            process=loaded.process,
+            engine=never_execute,
+            token=loaded.token,
+            attempt_id=attempt_id,
+        )
+        expected = {
+            "runtime mismatch": "SOURCE_RUNTIME_UNAVAILABLE",
+            "missing file": "INPUT_EVIDENCE_MISSING",
+            "missing output": "OUTPUT_EVIDENCE_MISSING",
+            "corrupt input and missing output": "INPUT_EVIDENCE_HASH_MISMATCH",
+            "input metadata": "INPUT_EVIDENCE_HASH_MISMATCH",
+            "output metadata": "OUTPUT_EVIDENCE_HASH_MISMATCH",
+        }
+        assert row.reason == expected[case_name] and not row.engine_executed
+        if case_name == "runtime mismatch":
+            assert not opened
+        uow.commit()
+
+
+@pytest.mark.parametrize("wrong", ["task", "tenant", "release"])
+def test_replay_sources_rejects_foreign_execution_before_file_access(
+    world: World, monkeypatch: pytest.MonkeyPatch, wrong: str
+) -> None:
+    from erev_api.domain.contracts import replay_sources
+    from erev_api.jobs.context import JobLost
+
+    case = verification_case(world)
+    attempt_id = case.decision.release_validation_attempt_id
+    assert attempt_id is not None
+    context = case.context
+    runtime = context.runtime
+    assert runtime.attempt is not None and runtime.engine_release is not None
+    if wrong == "task":
+        assert runtime.attempt.task_id is not None
+        runtime = replace(
+            runtime, attempt=replace(runtime.attempt, task_id=runtime.attempt.task_id + 10000)
+        )
+    elif wrong == "release":
+        assert runtime.engine_release is not None
+        runtime = replace(runtime, engine_release=replace(runtime.engine_release, id=UUID(int=999)))
+    changed = JobContext(
+        job_id=context.job_id,
+        tenant_id=UUID(int=999) if wrong == "tenant" else context.tenant_id,
+        kind=context.kind,
+        principal=context.principal,
+        runtime=runtime,
+    )
+
+    def forbidden_file(*args: Any, **kwargs: Any) -> Any:
+        pytest.fail("foreign execution opened retained evidence")
+
+    monkeypatch.setattr(replay_sources, "open_file", forbidden_file)
+    with world.place.uow() as uow, pytest.raises(JobLost if wrong == "task" else Problem):
+        replay_sources.load(
+            uow,
+            context=changed,
+            attempt_id=attempt_id,
+            group_id=case.group_id,
+            trigger="REPLAY_VERIFY",
+        )

@@ -35,6 +35,7 @@ from __future__ import annotations
 import dataclasses
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Final, Literal
 from uuid import UUID
 
@@ -60,6 +61,7 @@ Engine = Callable[[InputBundle], OutputBundle]
 REASONS: Final = (
     "SOURCE_RUNTIME_UNAVAILABLE",
     "INPUT_EVIDENCE_MISSING",
+    "OUTPUT_EVIDENCE_MISSING",
     "INPUT_EVIDENCE_HASH_MISMATCH",
     "LOGICAL_HASH_MISMATCH",
     "OUTPUT_EVIDENCE_HASH_MISMATCH",
@@ -94,6 +96,7 @@ class SourceFacts:
     engine_version: str
     input_sha256: str
     output_sha256_by_book: Mapping[str, str]  # T-CON-08 rows of the computation
+    cutoff_at: datetime
 
 
 @dataclass(frozen=True, slots=True)
@@ -107,6 +110,9 @@ class EvidenceFacts:
     output_sha256: str  # the T-CON-25 copy of the logical output hash
     book_codes: tuple[str, ...]
     codec: Mapping[str, object]
+    input_metadata_valid: bool = True
+    output_metadata_valid: bool = True
+    output_present: bool = True  # False preserves input checks when the output file is missing.
 
 
 @dataclass(frozen=True, slots=True)
@@ -248,7 +254,7 @@ def verify(
         return not_executed(unverifiable, "INPUT_EVIDENCE_MISSING")
     # 3. raw input digest.
     observed = upgrade.raw_digest(evidence.input_bytes)
-    if observed != evidence.input_file_sha256:
+    if not evidence.input_metadata_valid or observed != evidence.input_file_sha256:
         return not_executed(mismatch, "INPUT_EVIDENCE_HASH_MISMATCH")
     # 4. logical CV-25 hash of the decoded bundle against T-CON-07.
     try:
@@ -259,6 +265,7 @@ def verify(
         return not_executed(mismatch, "LOGICAL_HASH_MISMATCH")
     if (
         bundle.engine_version != source.engine_version
+        or bundle.known_at != source.cutoff_at
         or type(evidence.codec.get("format_version")) is not int
         or evidence.codec
         != {
@@ -268,11 +275,14 @@ def verify(
     ):
         return not_executed(mismatch, "SOURCE_IDENTITY_MISMATCH")
     # 5. output evidence and the stored copies.
+    if not evidence.output_present:
+        return not_executed(unverifiable, "OUTPUT_EVIDENCE_MISSING")
     expected = _expected_output(source)
     if expected is None:
         return not_executed(mismatch, "EXPECTED_HASH_DISAGREEMENT")
     if (
-        upgrade.raw_digest(evidence.output_bytes) != evidence.output_file_sha256
+        not evidence.output_metadata_valid
+        or upgrade.raw_digest(evidence.output_bytes) != evidence.output_file_sha256
         or evidence.output_file_sha256 != evidence.output_sha256
     ):
         return not_executed(mismatch, "OUTPUT_EVIDENCE_HASH_MISMATCH")

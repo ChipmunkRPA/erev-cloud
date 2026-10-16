@@ -2,6 +2,15 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Frozen replay evidence reader — October 15, 2026
+
+- Added a worker evidence reader bound to the persisted execution, running attempt and frozen
+  source. It checks tenant/task/release/scope before file access and never rebuilds missing input.
+- File metadata disagreement reaches the verifier as an integrity mismatch. Storage failures
+  propagate; acceptance still rechecks the head and attempt under locks.
+- Handler/fan-out, approval resolution and admission remain unfinished. Verification evidence
+  is recorded in docs/release/CI-2026-10-15.md.
+
 ## Replay identity checks before comparison — October 15, 2026
 
 - Reproduced six wrong source/executed identities that candidate normalisation previously

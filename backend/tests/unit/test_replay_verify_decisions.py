@@ -61,6 +61,7 @@ def _stored() -> tuple[InputBundle, OutputBundle, SourceFacts, EvidenceFacts, Pr
         engine_version=ENGINE_VERSION,
         input_sha256=bundle.sha256(),
         output_sha256_by_book={"ASC606": output.sha256()},
+        cutoff_at=bundle.known_at,
     )
     evidence = EvidenceFacts(
         input_bytes=input_bytes,
@@ -475,4 +476,18 @@ def test_input_evidence_must_identify_its_source(field: str) -> None:
     spy = _Spy()
     row = _verify("UPGRADE_VALIDATE", source, evidence, process, spy)
     assert row.outcome is V.MISMATCH and row.reason == "SOURCE_IDENTITY_MISMATCH"
+    assert spy.calls == 0
+
+
+def test_refreshed_input_digest_cannot_move_source_cutoff() -> None:
+    bundle, _, source, evidence, process = _stored()
+    moved = dataclasses.replace(bundle, known_at=bundle.known_at.replace(minute=59))
+    raw = upgrade.encode_input(moved)
+    assert moved.sha256() == source.input_sha256
+    changed = dataclasses.replace(
+        evidence, input_bytes=raw, input_file_sha256=upgrade.raw_digest(raw)
+    )
+    spy = _Spy()
+    result = _verify("UPGRADE_VALIDATE", source, changed, process, spy)
+    assert result.outcome is V.MISMATCH and result.reason == "SOURCE_IDENTITY_MISMATCH"
     assert spy.calls == 0

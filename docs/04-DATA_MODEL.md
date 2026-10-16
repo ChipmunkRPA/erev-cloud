@@ -4583,8 +4583,18 @@ Verification rules retained from the draft:
 - `normalised_expected_sha256`, `normalised_actual_sha256` erev.sha256 Y; `normalised_input_match` boolean Y — 05 RCP-28a L1
 - `outcome` erev.verification_outcome N (E-125: `MATCH`, `MISMATCH`, `DIFFERENCES`, `UNVERIFIABLE`, `NO_SOURCE`, `ERROR`); `reason` text Y — `REPLAY_VERIFY`: `MATCH`/`MISMATCH` on L0. `UPGRADE_VALIDATE`: `MATCH`/`DIFFERENCES` on L1/L2 **only after the source evidence verified**; a raw-digest, logical-hash or stored-hash disagreement (`INPUT_EVIDENCE_HASH_MISMATCH`, `LOGICAL_HASH_MISMATCH`, `OUTPUT_EVIDENCE_HASH_MISMATCH`, `EXPECTED_HASH_DISAGREEMENT`, `SOURCE_IDENTITY_MISMATCH`, `EXECUTION_IDENTITY_MISMATCH`) is outcome `MISMATCH` under either trigger — an **integrity incident** (SEV-1) that makes the attempt `INCOMPLETE` and is never a MAJOR-approvable business difference (B). `reason` required unless `MATCH`
 
+The internal replay evidence reader first binds the persisted REPLAY_VERIFY execution to a
+RUNNING validation, attempt and selected group, checking the tenant, scheduler task and process
+release. It requires all-entity scope and reads the frozen source computation, never the group's
+newest head. It reads encrypted evidence and carries file-purpose, media-type, length and stored
+digest agreement into verification; invalid metadata is an input/output evidence mismatch.
+Missing files remain missing, runtime mismatch opens no files, and storage/decryption failures
+propagate. Missing output is `UNVERIFIABLE` / `OUTPUT_EVIDENCE_MISSING` only after the retained
+input passes its checks; it cannot hide an input integrity incident. Result acceptance must still recheck the source head and attempt under locks.
+
 Replay identity checks precede L1 normalisation: the decoded input version and retained codec
-must identify the source, and the retained output's version, input hash and every trace version
+must identify the source, the input known-at timestamp must equal the stored computation cutoff
+(the logical input hash excludes it), and the retained output's version, input hash and every trace version
 must identify that same source (`SOURCE_IDENTITY_MISMATCH`, no execution). The executed output
 must identify the process version and the exact input passed to the engine, including every
 trace version (`EXECUTION_IDENTITY_MISMATCH`, executed identity and actual hash retained).
