@@ -24,7 +24,7 @@ from erev_api.domain.contracts.replay_verify import (
 )
 from erev_api.enums import VerificationOutcome
 from erev_engine import ENGINE_VERSION, compute, upgrade
-from erev_engine.bundle import InputBundle, OutputBundle
+from erev_engine.bundle import Diagnostic, InputBundle, OutputBundle
 from erev_engine.errors import EngineError
 from support.billing_lines import checkpoint_bundle
 
@@ -136,7 +136,9 @@ def test_l0_mismatch_when_the_engine_output_differs() -> None:
 
     def different(bundle: InputBundle) -> OutputBundle:
         real = compute(bundle)
-        return dataclasses.replace(real, input_sha256="e" * 64)  # a tampered output
+        return dataclasses.replace(
+            real, diagnostics=(*real.diagnostics, Diagnostic("TEST", "INFO", None, None, None, {}))
+        )
 
     row = _verify("REPLAY_VERIFY", source, evidence, process, different)
     assert row.outcome is V.MISMATCH and row.reason == "L0_MISMATCH" and row.engine_executed
@@ -330,10 +332,27 @@ def test_no_input_transform_is_unverifiable_and_not_executed() -> None:
     bundle = upgrade.decode_input(evidence.input_bytes)
     older = dataclasses.replace(bundle, engine_version="0.0.1")
     older_bytes = upgrade.encode_input(older)
+    from erev_engine.canonical import canonical_bytes
+
+    old_output = upgrade.output_mapping(evidence.output_bytes)
+    old_output["engine_version"] = "0.0.1"
+    old_output["input_sha256"] = older.sha256()
+    for book in old_output["books"]:
+        book["trace"]["engine_version"] = "0.0.1"
+    output_bytes = canonical_bytes(old_output)
+    output_digest = upgrade.raw_digest(output_bytes)
     ev = dataclasses.replace(
-        evidence, input_bytes=older_bytes, input_file_sha256=upgrade.raw_digest(older_bytes)
+        evidence,
+        input_bytes=older_bytes,
+        input_file_sha256=upgrade.raw_digest(older_bytes),
+        output_bytes=output_bytes,
+        output_file_sha256=output_digest,
+        output_sha256=output_digest,
+        codec={"format_version": older.format_version, "engine_version": "0.0.1"},
     )
-    unreachable = dataclasses.replace(unreachable, input_sha256=older.sha256())
+    unreachable = dataclasses.replace(
+        unreachable, input_sha256=older.sha256(), output_sha256_by_book={"ASC606": output_digest}
+    )
     process = ProcessFacts(engine_release_id=uuid4(), engine_version=ENGINE_VERSION)
     spy = _Spy()
     row = _verify("UPGRADE_VALIDATE", unreachable, ev, process, spy)
@@ -383,3 +402,77 @@ def test_malformed_retained_evidence_is_an_incident_before_execution(
     assert not row.engine_executed and spy.calls == 0
     assert row.executed_engine_release_id is None
     assert row.actual_output_sha256 is None
+
+
+@pytest.mark.parametrize("trigger", ["REPLAY_VERIFY", "UPGRADE_VALIDATE"])
+@pytest.mark.parametrize("field", ["engine_version", "input_sha256", "trace_version"])
+def test_candidate_normalisation_cannot_hide_wrong_source_identity(
+    field: str, trigger: str
+) -> None:
+    from erev_engine.canonical import canonical_bytes
+
+    _, output, source, evidence, process = _stored()
+    mapping = upgrade.output_mapping(output)
+    if field == "trace_version":
+        mapping["books"][0]["trace"]["engine_version"] = "9.9.9"
+    else:
+        mapping[field] = "9.9.9" if field == "engine_version" else "f" * 64
+    raw = canonical_bytes(mapping)
+    digest = upgrade.raw_digest(raw)
+    source = dataclasses.replace(source, output_sha256_by_book={"ASC606": digest})
+    evidence = dataclasses.replace(
+        evidence, output_bytes=raw, output_file_sha256=digest, output_sha256=digest
+    )
+    spy = _Spy()
+    row = _verify(trigger, source, evidence, process, spy)
+    assert row.outcome is V.MISMATCH and row.reason == "SOURCE_IDENTITY_MISMATCH"
+    assert row.integrity_incident and spy.calls == 0
+    assert not row.engine_executed and row.actual_output_sha256 is None
+
+
+@pytest.mark.parametrize("trigger", ["REPLAY_VERIFY", "UPGRADE_VALIDATE"])
+@pytest.mark.parametrize("field", ["engine_version", "input_sha256", "trace_version"])
+def test_candidate_normalisation_cannot_hide_wrong_executed_identity(
+    field: str, trigger: str
+) -> None:
+    _, _, source, evidence, process = _stored()
+
+    def changed(bundle: InputBundle) -> OutputBundle:
+        output = compute(bundle)
+        if field == "trace_version":
+            book = output.books[0]
+            return dataclasses.replace(
+                output,
+                books=(
+                    dataclasses.replace(
+                        book, trace=dataclasses.replace(book.trace, engine_version="9.9.9")
+                    ),
+                    *output.books[1:],
+                ),
+            )
+        if field == "engine_version":
+            return dataclasses.replace(output, engine_version="9.9.9")
+        return dataclasses.replace(output, input_sha256="f" * 64)
+
+    row = _verify(trigger, source, evidence, process, changed)
+    assert row.outcome is V.MISMATCH and row.reason == "EXECUTION_IDENTITY_MISMATCH"
+    assert row.integrity_incident and row.engine_executed
+    assert row.actual_output_sha256 is not None
+    assert row.normalised_actual_sha256 is None
+
+
+@pytest.mark.parametrize("field", ["codec version", "codec format", "source version"])
+def test_input_evidence_must_identify_its_source(field: str) -> None:
+    _, _, source, evidence, process = _stored()
+    if field == "source version":
+        source = dataclasses.replace(source, engine_version="9.9.9")
+    else:
+        codec = dict(evidence.codec)
+        codec["engine_version" if field == "codec version" else "format_version"] = (
+            "9.9.9" if field == "codec version" else True
+        )
+        evidence = dataclasses.replace(evidence, codec=codec)
+    spy = _Spy()
+    row = _verify("UPGRADE_VALIDATE", source, evidence, process, spy)
+    assert row.outcome is V.MISMATCH and row.reason == "SOURCE_IDENTITY_MISMATCH"
+    assert spy.calls == 0

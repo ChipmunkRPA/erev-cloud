@@ -2,6 +2,14 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Replay identity checks before comparison — October 15, 2026
+
+- Reproduced six wrong source/executed identities that candidate normalisation previously
+  reported MATCH. Both replay paths now bind versions, trace versions and input hashes before
+  comparison; input codec/source disagreement also fails as an integrity incident.
+- Legitimate cross-version comparison remains supported. Test evidence is in
+  docs/release/CI-2026-10-15.md. Replay handler/fan-out and release admission remain unfinished.
+
 ## Unapproved validation attempt supersession — October 15, 2026
 
 - Added audited, idempotent supersession under the same parent/attempt locks as result writers.
@@ -258,17 +266,6 @@
 - Verification is recorded in docs/release/CI-2026-10-15.md. Recently viewed remains open;
   this does not reconstruct historical modification status or change accounting calculations.
 - No deployment; broader release verification and independent accounting sign-off remain open.
-
-## Contract exception counts and filtering — October 15, 2026
-
-- Replaced the hard-coded zero in contract headers/list rows with current related open-item
-  counts. Has exceptions now supports both true and false before pagination and totals.
-- Attribution includes explicit contracts, obligation owners, current group members and
-  combination-suggestion payloads. Explicit contract attribution does not spread to the group;
-  repeated occurrences count once. Tenant/entity RLS remains in force.
-- Integration, scope and contract API regression evidence is recorded in
-  docs/release/CI-2026-10-15.md. Modified-in-period and recent-view quick lists remain open.
-- No deployment or accounting-policy change; full release gates and independent sign-off remain.
 
 ## Outstanding release verification
 

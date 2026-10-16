@@ -6038,3 +6038,14 @@ cleanup in the shared database session kernel was also repaired and regression-t
   refusal. Verification is recorded in docs/release/CI-2026-10-15.md.
 - No deployment or live provider calls. Explain submission, other planned AI operations,
   standard demo/J-19, broader release gates and independent accounting sign-off remain open.
+
+## Contract exception counts and filtering — October 15, 2026
+
+- Replaced the hard-coded zero in contract headers/list rows with current related open-item
+  counts. Has exceptions now supports both true and false before pagination and totals.
+- Attribution includes explicit contracts, obligation owners, current group members and
+  combination-suggestion payloads. Explicit contract attribution does not spread to the group;
+  repeated occurrences count once. Tenant/entity RLS remains in force.
+- Integration, scope and contract API regression evidence is recorded in
+  docs/release/CI-2026-10-15.md. Modified-in-period and recent-view quick lists remain open.
+- No deployment or accounting-policy change; full release gates and independent sign-off remain.

@@ -15,14 +15,17 @@ Order of checks (RCP-28a "Evidence verification order"):
 2. evidence present — else ``UNVERIFIABLE`` / ``INPUT_EVIDENCE_MISSING`` (never a rebuild);
 3. raw input digest — ``MISMATCH`` / ``INPUT_EVIDENCE_HASH_MISMATCH``;
 4. logical CV-25 hash of the decoded bundle against T-CON-07 — ``LOGICAL_HASH_MISMATCH``;
+   decoded version and codec must identify that source — ``SOURCE_IDENTITY_MISMATCH``;
 5. output evidence: raw digest, CV-26 logical hash and the book set against the T-CON-08 rows —
    ``OUTPUT_EVIDENCE_HASH_MISMATCH``; disagreeing stored copies (T-CON-08 rows among themselves,
    or T-CON-08 against T-CON-25) — ``EXPECTED_HASH_DISAGREEMENT``;
+   output and trace versions plus input identity must identify the source before normalisation;
 6. candidate path only — the registered transform chain, else ``UNVERIFIABLE`` /
    ``NO_INPUT_TRANSFORM``;
 7. execution — ``EngineError`` → ``ERROR`` with the executed identity and NULL actual output;
    integrity → L0 ``MATCH``/``MISMATCH``; candidate → L1 ``MATCH`` else ``DIFFERENCES`` with the
-   L2 summary.
+   L2 summary. Executed output/trace versions and input identity are checked before comparison
+   (``EXECUTION_IDENTITY_MISMATCH`` retains execution identity and actual output hash).
 
 Every ``MISMATCH`` is an integrity incident: it blocks the attempt and is never approvable (B).
 """
@@ -63,6 +66,8 @@ REASONS: Final = (
     "EXPECTED_HASH_DISAGREEMENT",
     "NO_INPUT_TRANSFORM",
     "ENGINE_ERROR",
+    "SOURCE_IDENTITY_MISMATCH",
+    "EXECUTION_IDENTITY_MISMATCH",
     "L0_MISMATCH",
     "L1_DIFFERENCES",
 )
@@ -72,6 +77,8 @@ _INTEGRITY_REASONS: Final = frozenset(
         "LOGICAL_HASH_MISMATCH",
         "OUTPUT_EVIDENCE_HASH_MISMATCH",
         "EXPECTED_HASH_DISAGREEMENT",
+        "SOURCE_IDENTITY_MISMATCH",
+        "EXECUTION_IDENTITY_MISMATCH",
         "L0_MISMATCH",
     }
 )
@@ -250,6 +257,16 @@ def verify(
         return not_executed(mismatch, "INPUT_EVIDENCE_HASH_MISMATCH")
     if bundle.sha256() != source.input_sha256:
         return not_executed(mismatch, "LOGICAL_HASH_MISMATCH")
+    if (
+        bundle.engine_version != source.engine_version
+        or type(evidence.codec.get("format_version")) is not int
+        or evidence.codec
+        != {
+            "format_version": bundle.format_version,
+            "engine_version": bundle.engine_version,
+        }
+    ):
+        return not_executed(mismatch, "SOURCE_IDENTITY_MISMATCH")
     # 5. output evidence and the stored copies.
     expected = _expected_output(source)
     if expected is None:
@@ -267,6 +284,10 @@ def verify(
         expected_mapping = upgrade.output_mapping(evidence.output_bytes)
     except (ValueError, TypeError):
         return not_executed(mismatch, "OUTPUT_EVIDENCE_HASH_MISMATCH")
+    if not _output_identity_matches(
+        expected_mapping, engine_version=source.engine_version, input_sha256=source.input_sha256
+    ):
+        return not_executed(mismatch, "SOURCE_IDENTITY_MISMATCH")
     # 6. candidate input.
     transform_id: str | None = None
     candidate_sha: str | None = None
@@ -293,6 +314,21 @@ def verify(
             reason="ENGINE_ERROR",
         )
     actual = output.sha256()
+    actual_mapping = upgrade.output_mapping(output)
+    if not _output_identity_matches(
+        actual_mapping, engine_version=process.engine_version, input_sha256=to_run.sha256()
+    ):
+        return dataclasses.replace(
+            template,
+            engine_executed=True,
+            executed_engine_release_id=process.engine_release_id,
+            executed_engine_version=process.engine_version,
+            input_transform_id=transform_id,
+            candidate_input_sha256=candidate_sha,
+            actual_output_sha256=actual,
+            outcome=mismatch,
+            reason="EXECUTION_IDENTITY_MISMATCH",
+        )
     if trigger == "REPLAY_VERIFY":
         matched = actual == expected
         return dataclasses.replace(
@@ -304,7 +340,6 @@ def verify(
             outcome=VerificationOutcome.MATCH if matched else mismatch,
             reason=None if matched else "L0_MISMATCH",
         )
-    actual_mapping = upgrade.output_mapping(output)
     l1_expected = upgrade.l1_sha256(expected_mapping)
     l1_actual = upgrade.l1_sha256(actual_mapping)
     input_match = upgrade.normalised_input_sha256(bundle) == upgrade.normalised_input_sha256(to_run)
@@ -324,6 +359,25 @@ def verify(
         outcome=VerificationOutcome.MATCH if l1_match else VerificationOutcome.DIFFERENCES,
         reason=None if l1_match else "L1_DIFFERENCES",
         difference_summary=summary.as_json(),
+    )
+
+
+def _output_identity_matches(
+    output: Mapping[str, object], *, engine_version: str, input_sha256: str
+) -> bool:
+    """Check identities before L1 removes them; malformed trace containers fail closed."""
+    books = output.get("books")
+    return (
+        output.get("engine_version") == engine_version
+        and output.get("input_sha256") == input_sha256
+        and isinstance(books, list)
+        and bool(books)
+        and all(
+            isinstance(book, Mapping)
+            and isinstance(book.get("trace"), Mapping)
+            and book["trace"].get("engine_version") == engine_version
+            for book in books
+        )
     )
 
 
