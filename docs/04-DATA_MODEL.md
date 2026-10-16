@@ -2035,6 +2035,7 @@ Registry catalogue content:
 | `platform.session_idle_minutes` | SECURITY | integer 5-240 | `30` | `30` | REQ-PLT-004 |
 | `platform.role_assignment_requires_approval` | SECURITY | boolean | `true` | `true` | Research 07 AC-02 |
 | `platform.job_concurrency` | PLATFORM | integer 1-16 | `4` | `4` | REQ-PLT-029 |
+| `platform.replay_seed` | PLATFORM | signed 64-bit integer | `20260912` | `20260912` | REQ-OPS-011; RCP-29 |
 | `platform.audit_retention_years` | PLATFORM | integer 7-30 | `7` | `7` | Research 07 AU-02 |
 | `ai.enabled` | AI | boolean | `false` | `false` | D-46; REQ-AI-002 |
 | `ai.send_contract_text` | AI | boolean | `false` | `false` | D-46; REQ-AI-002 |
@@ -2334,6 +2335,8 @@ Rules (rev 1.2):
 | `enabled_at` | timestamptz | Y | | |
 | SC-C, SC-M | | | | Standard stamps |
 
+Keys: `PRIMARY KEY (tenant_id, id)`.
+
 Specification detail: Columns (draft §4b verbatim): SC-T; `engine_release_id` N; `source_engine_release_id` Y; `effective_level` N (`CHECK (effective_level IN ('PATCH','MINOR','MAJOR','BASELINE','BOOTSTRAP'))`, C); `status` E-126 (`PENDING`, `RUNNING`, `INCOMPLETE`, `PASSED`, `FAILED`, `PENDING_APPROVAL`, `APPROVED`, `REJECTED`); `accepted_attempt_id` Y; `enabled_at` Y; SC-C, SC-M.
 
 Keys and transitions (DB-03): `ux_release_validation__release (tenant_id, engine_release_id)`; created with `ON CONFLICT DO NOTHING` by whichever process stamps first (S05); transitions under `SELECT … FOR UPDATE`; `enabled_at` set only in the same statement as →`PASSED` or →`APPROVED`. `release_enabled(tenant, release) := EXISTS T-PLT-43 WHERE enabled_at IS NOT NULL` is enforced at one choke point, `computation.persist()` (`release-validation-pending`, 503); PATCH rows are `PASSED` at creation; `BOOTSTRAP` only for a tenant proven to have no `SUCCEEDED` `contract_computation` and no `ENGINE_COMPUTE` `subledger_posting` (recorded `population.bootstrap = {computations: 0, postings: 0}`); a non-empty tenant without a predecessor needs the `BASELINE` row written by the preparation artifact. Rev 1.14 (D-96 v4, C/E): the preparation artifact is stamped as its own `engine_release` row (same `engine_version`, new `build_sha`) and the `BASELINE` row names that row as `engine_release_id` (with `source_engine_release_id` = the historical build's row), because the gate is per process release — enabling only the historical build id would block the artifact's own recomputations; T-PLT-46 seeding and T-SL-11 attribution happen only for `effective_level IN ('MINOR','MAJOR')` rows with `accepted_attempt_id` set — `PATCH`, `BASELINE` and `BOOTSTRAP` rows seed nothing and produce no attribution.
@@ -2361,6 +2364,8 @@ Keys and transitions (DB-03): `ux_release_validation__release (tenant_id, engine
 | `approval_request_id` | uuid | Y | | |
 | SC-C, SC-M | | | | Standard stamps |
 
+Keys: `PRIMARY KEY (tenant_id, id)`.
+
 Specification detail: Columns (draft §4b verbatim): SC-T; `release_validation_id` N; `attempt_no` N; `seed` N (`platform.replay_seed`, T-PLT-31, default 20260912); `population` jsonb N (`{groups, open_activity, remaining, nominal, sampled, strata:[{book, method, present, sampled}], no_source, no_head}`); `required_entity_ids` uuid[] N (every entity with ≥ 1 group member at selection, R5); `status` E-127 (`SELECTED`, `RUNNING`, `COMPLETE`, `INCOMPLETE`, `SUPERSEDED`); `dataset_file_id` Y, `dataset_sha256` Y (purpose `VALIDATION_DATASET`, written once at →`COMPLETE`/`INCOMPLETE`); `report_run_id` Y; `approval_request_id` Y; SC-C, SC-M.
 
 Transitions (DB-03): a re-run after `INCOMPLETE`, or any head/population change, creates attempt n+1 and marks n `SUPERSEDED` (rows kept; a pending approval on n is voided `STALE_SUBJECT`). Immutable selection columns are written once before any child job.
@@ -2386,6 +2391,8 @@ Transitions (DB-03): a re-run after `INCOMPLETE`, or any head/population change,
 | `accepted_verification_id` | uuid | Y | | |
 | `child_job_id` | uuid | Y | | |
 | SC-C, SC-M | | | | Standard stamps |
+
+Keys: `PRIMARY KEY (tenant_id, id)`.
 
 Specification detail: Columns (draft §4b verbatim): SC-T; `release_validation_attempt_id` N; `combination_group_id` N; `source_computation_id` Y (frozen head; NULL → `NO_SOURCE`); `selection` N (`OPEN_ACTIVITY`, `SAMPLED`); `strata` jsonb N (all `{book, method}` pairs of the group over every enabled book); `rank_sha256` erev.sha256 N (SHA-256 of `seed‖tenant_id‖group_id`, ordered lexicographically, tie-break `combination_group_id`); `orchestration_state` E-129 (`PENDING`, `RUNNING`, `RETRYABLE`, `COMPLETE`, `FAILED_EXHAUSTED`, `CANCELLED`) — the group **job's** lifecycle, independent of any comparison (B); `accepted_verification_id` uuid Y (mutable pointer; only to a terminal non-`ERROR` T-CON-26 row; an `ERROR` never becomes accepted; set in the same transaction as the row insert); `child_job_id` uuid Y; SC-C, SC-M.
 

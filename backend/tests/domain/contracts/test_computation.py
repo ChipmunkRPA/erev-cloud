@@ -1943,3 +1943,60 @@ def test_validation_attempt_freeze_serializes_duplicate_creators(world: World) -
     assert results == [FrozenAttempt(first.id, False)]
     with world.place.uow() as uow:
         assert uow.session.scalar(select(func.count()).select_from(release_validation_attempt)) == 1
+
+
+def test_validation_attempt_resolves_seed_once_and_keeps_it_on_retry(world: World) -> None:
+    from erev_api.db.tables import release_validation_attempt, release_validation_group
+    from erev_api.db.transitions import apply
+    from erev_api.domain.contracts.validation_attempts import freeze
+    from erev_api.enums import RegistryCategory
+    from support.rows import publish_registry_version
+
+    k01(world)
+    validation_id = pending_validation(world)
+    with world.place.uow() as uow:
+        first = freeze(uow, validation_id=validation_id, attempt_no=1)
+        row = uow.session.execute(select(release_validation_attempt)).mappings().one()
+        assert row["seed"] == 20260912
+        original_rank = uow.session.scalar(select(release_validation_group.c.rank_sha256))
+        uow.commit()
+    with world.place.uow() as uow:
+        publish_registry_version(
+            uow.session,
+            tenant_id=world.place.tenant_id,
+            category=RegistryCategory.PLATFORM,
+            values={"platform.replay_seed": 123},
+            at=uow.now,
+        )
+        uow.commit()
+    with world.place.uow() as uow:
+        assert freeze(uow, validation_id=validation_id, attempt_no=1).id == first.id
+        assert not uow.audit_events
+        apply(
+            uow.session,
+            "release_validation_attempt",
+            first.id,
+            to_status="SUPERSEDED",
+            expected_status="SELECTED",
+            expected_row_version=1,
+            set_values={"row_version": 2},
+        )
+        uow.commit()
+    with world.place.uow() as uow:
+        second = freeze(uow, validation_id=validation_id, attempt_no=2)
+        assert second.created and second.id != first.id
+        rows = (
+            uow.session.execute(
+                select(release_validation_attempt).order_by(release_validation_attempt.c.attempt_no)
+            )
+            .mappings()
+            .all()
+        )
+        assert [row["seed"] for row in rows] == [20260912, 123]
+        rank = uow.session.scalar(
+            select(release_validation_group.c.rank_sha256).where(
+                release_validation_group.c.release_validation_attempt_id == second.id
+            )
+        )
+        assert rank != original_rank
+        uow.commit()

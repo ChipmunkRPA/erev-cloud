@@ -2,6 +2,16 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Configured replay seed — October 15, 2026
+
+- Added platform.replay_seed to the tenant configuration registry with default 20260912 and
+  signed-bigint validation. Revision 0162 seeds existing databases without deleting historical
+  catalogue metadata on downgrade. New attempts resolve configuration; retries keep their seed.
+- Corrected the missing composite primary-key declarations for the three validation tables in
+  the data model. Exact migration, attempt and schema evidence is in docs/release/CI-2026-10-15.md.
+- Supersession/start orchestration, replay fan-out/handler, dataset publication and admission
+  remain outstanding. This setting does not enable a release or deploy anything.
+
 ## Frozen validation-attempt persistence — October 15, 2026
 
 - A parent-locked writer saves attempt metadata and selected group/head rows atomically before
@@ -254,17 +264,6 @@
   refusal. Verification is recorded in docs/release/CI-2026-10-15.md.
 - No deployment or live provider calls. Explain submission, other planned AI operations,
   standard demo/J-19, broader release gates and independent accounting sign-off remain open.
-
-## Call-log CSV/XLSX download controls — October 15, 2026
-
-- The call-log toolbar creates requester-bound exports, polls their jobs, reads completed runs
-  and saves authorized output bytes. It explains that hidden grid columns are included.
-- Export requires the matching source/export scopes; source-only users stay on the call-log
-  screen. Duplicate submissions are disabled, failures are shown, and leaving the screen
-  suppresses late downloads. The command helper exposes job polling errors to this flow.
-- Frontend and real local Chromium/API/worker verification is recorded in
-  docs/release/CI-2026-10-15.md. No deployment or live provider calls; overall release gates,
-  remaining call-log navigation/copy controls and independent accounting sign-off remain open.
 
 ## Outstanding release verification
 

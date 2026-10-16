@@ -6015,3 +6015,14 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Definition removal must refuse while retained runs reference it. Migration/worker verification
   is recorded in docs/release/CI-2026-10-15.md. The call-log download menu remains pending.
 - No deployment or live provider calls. Overall release gates and accounting sign-off remain open.
+
+## Call-log CSV/XLSX download controls — October 15, 2026
+
+- The call-log toolbar creates requester-bound exports, polls their jobs, reads completed runs
+  and saves authorized output bytes. It explains that hidden grid columns are included.
+- Export requires the matching source/export scopes; source-only users stay on the call-log
+  screen. Duplicate submissions are disabled, failures are shown, and leaving the screen
+  suppresses late downloads. The command helper exposes job polling errors to this flow.
+- Frontend and real local Chromium/API/worker verification is recorded in
+  docs/release/CI-2026-10-15.md. No deployment or live provider calls; overall release gates,
+  remaining call-log navigation/copy controls and independent accounting sign-off remain open.

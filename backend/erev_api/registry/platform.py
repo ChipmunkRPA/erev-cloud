@@ -165,6 +165,15 @@ _SPECS: Final[tuple[RegistryParameterSpec, ...]] = (
         "REQ-PLT-029",
     ),
     _platform(
+        "platform.replay_seed",
+        RegistryCategory.PLATFORM,
+        _integer(-(2**63), 2**63 - 1),
+        20260912,
+        20260912,
+        "Deterministic seed for release-validation sampling; frozen per attempt.",
+        "REQ-OPS-011; RCP-29",
+    ),
+    _platform(
         "platform.audit_retention_years",
         RegistryCategory.PLATFORM,
         _integer(7, 30),

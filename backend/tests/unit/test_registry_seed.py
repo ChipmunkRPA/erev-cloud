@@ -113,7 +113,7 @@ def test_import_batch_levels_empty() -> None:
 
 
 def test_platform_parameters_t_plt_31() -> None:
-    assert len(PLATFORM_PARAMETERS) == 24  # F-SNP I-5: platform.snapshot_retention_families
+    assert len(PLATFORM_PARAMETERS) == 25  # includes the frozen release-validation replay seed
     for spec in PLATFORM_PARAMETERS.values():
         assert spec.allowed_levels == frozenset({RegistryScope.TENANT})
         assert spec.pin == "P"

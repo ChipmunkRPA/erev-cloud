@@ -12,6 +12,7 @@ from erev_api.db.tables import (
     release_validation_group,
 )
 from erev_api.problems import Problem
+from erev_api.registry.resolve import setting
 from erev_api.uow import UnitOfWork
 
 from .release_validation import select_population
@@ -24,20 +25,26 @@ class FrozenAttempt:
     created: bool
 
 
-def freeze(uow: UnitOfWork, *, validation_id: UUID, attempt_no: int, seed: int) -> FrozenAttempt:
+def freeze(
+    uow: UnitOfWork, *, validation_id: UUID, attempt_no: int, seed: int | None = None
+) -> FrozenAttempt:
     """Save selection atomically in the caller's transaction; retries never redraw it.
 
-    The orchestrator supplies the resolved replay seed and explicit attempt number. A later
+    The replay seed is resolved for a new attempt unless supplied explicitly. A later
     attempt requires its predecessor to have been superseded explicitly. This function neither
     starts jobs nor changes validation/attempt status or enables a release.
     """
     if uow.principal.db_context.entity_scope != "*":
         raise Problem("forbidden", "Release validation requires the complete tenant population.")
-    if type(attempt_no) is not int or attempt_no < 1 or type(seed) is not int:
+    if (
+        type(attempt_no) is not int
+        or attempt_no < 1
+        or (seed is not None and type(seed) is not int)
+    ):
         raise Problem(
             "validation-failed", "An attempt number and integer replay seed are required."
         )
-    if not -(2**63) <= seed < 2**63:
+    if seed is not None and not -(2**63) <= seed < 2**63:
         raise Problem("validation-failed", "The replay seed must fit a signed 64-bit integer.")
     tenant_id = uow.principal.tenant_id
     validation = (
@@ -69,7 +76,7 @@ def freeze(uow: UnitOfWork, *, validation_id: UUID, attempt_no: int, seed: int) 
     )
     existing = next((row for row in attempts if row["attempt_no"] == attempt_no), None)
     if existing is not None:
-        if existing["seed"] != seed:
+        if seed is not None and existing["seed"] != seed:
             raise Problem("validation-failed", "The frozen attempt has a different replay seed.")
         return FrozenAttempt(existing["id"], False)
     if (
@@ -83,6 +90,11 @@ def freeze(uow: UnitOfWork, *, validation_id: UUID, attempt_no: int, seed: int) 
         raise Problem(
             "invalid-transition", "Supersede the prior attempt before freezing a new one."
         )
+    if seed is None:
+        resolved = setting(uow.session, "platform.replay_seed", known_at=uow.now)
+        if type(resolved) is not int or not -(2**63) <= resolved < 2**63:
+            raise Problem("validation-failed", "The configured replay seed is invalid.")
+        seed = resolved
     facts = read(uow)
     population = select_population(facts.groups, seed=seed, tenant_id=tenant_id)
     stamps = {
