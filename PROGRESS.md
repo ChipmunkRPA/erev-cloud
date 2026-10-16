@@ -2,6 +2,14 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Frozen replay execution service — October 15, 2026
+
+- Connected source loading, pure replay and atomic result persistence. The engine runs outside
+  database units; committed results are reused before evidence access or re-execution.
+- NO_SOURCE records absence without execution. ERROR evidence stays unaccepted for scheduler
+  retry handling; changed heads are refused at persistence. Verification is in the CI record.
+- Scheduler adapter/state transitions, fan-out, approval resolution and admission remain open.
+
 ## Frozen replay evidence reader — October 15, 2026
 
 - Added a worker evidence reader bound to the persisted execution, running attempt and frozen
@@ -266,15 +274,6 @@
   filters, counts and pagination. Reopening a contract moves it to the front.
 - Verification is recorded in docs/release/CI-2026-10-15.md. No accounting events or contract
   versions are changed. No deployment; full release gates and independent sign-off remain open.
-
-## Applied-modification contract filters — October 15, 2026
-
-- Modified-in-period and Modified this period now read APPLIED modification effective dates
-  within the contracting entity's fiscal calendar. The quick list follows as_of, falling back
-  to entity-local today. EXISTS avoids duplicate contracts and filters before page/count logic.
-- Verification is recorded in docs/release/CI-2026-10-15.md. Recently viewed remains open;
-  this does not reconstruct historical modification status or change accounting calculations.
-- No deployment; broader release verification and independent accounting sign-off remain open.
 
 ## Outstanding release verification
 

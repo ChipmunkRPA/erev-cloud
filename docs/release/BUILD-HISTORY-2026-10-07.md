@@ -6049,3 +6049,12 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Integration, scope and contract API regression evidence is recorded in
   docs/release/CI-2026-10-15.md. Modified-in-period and recent-view quick lists remain open.
 - No deployment or accounting-policy change; full release gates and independent sign-off remain.
+
+## Applied-modification contract filters — October 15, 2026
+
+- Modified-in-period and Modified this period now read APPLIED modification effective dates
+  within the contracting entity's fiscal calendar. The quick list follows as_of, falling back
+  to entity-local today. EXISTS avoids duplicate contracts and filters before page/count logic.
+- Verification is recorded in docs/release/CI-2026-10-15.md. Recently viewed remains open;
+  this does not reconstruct historical modification status or change accounting calculations.
+- No deployment; broader release verification and independent accounting sign-off remain open.

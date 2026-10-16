@@ -4583,6 +4583,15 @@ Verification rules retained from the draft:
 - `normalised_expected_sha256`, `normalised_actual_sha256` erev.sha256 Y; `normalised_input_match` boolean Y — 05 RCP-28a L1
 - `outcome` erev.verification_outcome N (E-125: `MATCH`, `MISMATCH`, `DIFFERENCES`, `UNVERIFIABLE`, `NO_SOURCE`, `ERROR`); `reason` text Y — `REPLAY_VERIFY`: `MATCH`/`MISMATCH` on L0. `UPGRADE_VALIDATE`: `MATCH`/`DIFFERENCES` on L1/L2 **only after the source evidence verified**; a raw-digest, logical-hash or stored-hash disagreement (`INPUT_EVIDENCE_HASH_MISMATCH`, `LOGICAL_HASH_MISMATCH`, `OUTPUT_EVIDENCE_HASH_MISMATCH`, `EXPECTED_HASH_DISAGREEMENT`, `SOURCE_IDENTITY_MISMATCH`, `EXECUTION_IDENTITY_MISMATCH`) is outcome `MISMATCH` under either trigger — an **integrity incident** (SEV-1) that makes the attempt `INCOMPLETE` and is never a MAJOR-approvable business difference (B). `reason` required unless `MATCH`
 
+The internal running-selection execution service loads evidence in one unit of work, runs
+the engine outside any database unit, and persists through the result writer in a second unit.
+It returns an existing accepted result, or the same scheduler token's ERROR result, before
+reopening evidence or running the engine. Cached results must match the requested trigger,
+selection, process and execution ownership. ERROR remains unaccepted and nonterminal; scheduler
+retry/exhaustion integration is still pending. A frozen NULL source records NO_SOURCE with
+reason NO_SOURCE, NULL evidence/executed identities and hashes, and no engine call. No path
+writes computation heads, versions or postings. The scheduler adapter and fan-out remain pending.
+
 The internal replay evidence reader first binds the persisted REPLAY_VERIFY execution to a
 RUNNING validation, attempt and selected group, checking the tenant, scheduler task and process
 release. It requires all-entity scope and reads the frozen source computation, never the group's

@@ -56,7 +56,7 @@ from erev_api.db.tables import (
 )
 from erev_api.domain.contracts import bundles, computation
 from erev_api.domain.contracts import computation_evidence as evidence_writer
-from erev_api.domain.contracts.replay_verify import VerificationRow
+from erev_api.domain.contracts.replay_verify import Trigger, VerificationRow
 from erev_api.domain.platform import file_evidence
 from erev_api.domain.reports import computation_sources
 from erev_api.enums import ContractEventType
@@ -1143,7 +1143,7 @@ def test_verification_schema_guards_execution_identity_and_acceptance(world: Wor
                 id=selected_id,
                 release_validation_attempt_id=attempt_id,
                 combination_group_id=group_id,
-                source_computation_id=source["id"],
+                source_computation_id=None if source is None else source["id"],
                 selection="OPEN_ACTIVITY",
                 strata=[],
                 rank_sha256="a" * 64,
@@ -1350,7 +1350,7 @@ class VerificationCase:
     contract_id: UUID
 
 
-def verification_case(world: World) -> VerificationCase:
+def verification_case(world: World, *, with_source: bool = True) -> VerificationCase:
     from uuid import uuid4
 
     from erev_api.controls.release import current_release
@@ -1373,9 +1373,10 @@ def verification_case(world: World) -> VerificationCase:
 
     booked = k01(world)
     group_id = booked.combination_group["id"]
-    bundle, output, source = computed(world.place, group_id)
+    bundle, output, source = computed(world.place, group_id) if with_source else (None, None, None)
     release = current_release()
-    assert release is not None and release.id == source["engine_release_id"]
+    assert release is not None
+    assert source is None or release.id == source["engine_release_id"]
     with world.place.uow() as uow:
         stamps = {
             "tenant_id": uow.principal.tenant_id,
@@ -1440,7 +1441,7 @@ def verification_case(world: World) -> VerificationCase:
                 id=selection_id,
                 release_validation_attempt_id=attempt_id,
                 combination_group_id=group_id,
-                source_computation_id=source["id"],
+                source_computation_id=None if source is None else source["id"],
                 selection="OPEN_ACTIVITY",
                 strata=[],
                 rank_sha256="a" * 64,
@@ -1463,6 +1464,18 @@ def verification_case(world: World) -> VerificationCase:
             runtime=runtime,
         )
         uow.commit()
+    if source is None:
+        from erev_api.domain.contracts.replay_verify import no_source
+
+        decision = no_source(
+            trigger="REPLAY_VERIFY",
+            group_id=group_id,
+            process=ProcessFacts(release.id, release.engine_version),
+            token=ExecutionToken(queued["id"], task, 1),
+            attempt_id=attempt_id,
+        )
+        return VerificationCase(context, decision, selection_id, group_id, booked.contract["id"])
+    assert bundle is not None and output is not None
     input_bytes, output_bytes = upgrade.encode_input(bundle), upgrade.encode_output(output)
     decision = verify(
         trigger="REPLAY_VERIFY",
@@ -2422,3 +2435,122 @@ def test_replay_sources_rejects_foreign_execution_before_file_access(
             group_id=case.group_id,
             trigger="REPLAY_VERIFY",
         )
+
+
+@pytest.mark.parametrize("trigger", ["REPLAY_VERIFY", "UPGRADE_VALIDATE"])
+@pytest.mark.parametrize("outcome", ["MATCH", "ERROR", "NO_SOURCE"])
+def test_replay_execution_commits_only_evidence_and_reuses_result(
+    world: World, monkeypatch: pytest.MonkeyPatch, outcome: str, trigger: Trigger
+) -> None:
+    from collections.abc import Iterator
+    from contextlib import contextmanager
+
+    from erev_api.db.tables import computation_verification, release_validation_group
+    from erev_api.domain.contracts import replay_sources
+    from erev_api.domain.contracts.replay_execution import execute_running
+    from erev_api.uow import UnitOfWork
+
+    case = verification_case(world, with_source=outcome != "NO_SOURCE")
+    attempt_id = case.decision.release_validation_attempt_id
+    assert attempt_id is not None
+    original = case.context.unit_of_work
+    active = 0
+    calls = 0
+
+    @contextmanager
+    def tracked_unit() -> Iterator[UnitOfWork]:
+        nonlocal active
+        with original() as uow:
+            active += 1
+            try:
+                yield uow
+            finally:
+                active -= 1
+
+    monkeypatch.setattr(case.context, "unit_of_work", tracked_unit)
+
+    def compute_once(bundle: Any) -> Any:
+        nonlocal calls
+        assert active == 0, "engine ran inside a database unit of work"
+        calls += 1
+        assert calls == 1 and outcome != "NO_SOURCE"
+        if outcome == "ERROR":
+            raise EngineError("ENGINE_INVARIANT_VIOLATED", "retry probe")
+        return engine()(bundle)
+
+    with world.place.uow() as uow:
+        before = [
+            uow.session.scalar(select(func.count()).select_from(table))
+            for table in (contract_computation, contract_version, subledger_posting)
+        ]
+    result = execute_running(
+        case.context,
+        attempt_id=attempt_id,
+        group_id=case.group_id,
+        trigger=trigger,
+        engine=compute_once,
+    )
+    assert result.outcome.value == outcome and result.accepted == (outcome != "ERROR")
+
+    def no_file(*args: Any, **kwargs: Any) -> Any:
+        pytest.fail("committed result retry reopened evidence")
+
+    monkeypatch.setattr(replay_sources, "open_file", no_file)
+    repeated = execute_running(
+        case.context,
+        attempt_id=attempt_id,
+        group_id=case.group_id,
+        trigger=trigger,
+        engine=compute_once,
+    )
+    assert repeated == result
+    with pytest.raises(Problem, match="stored replay result"):
+        execute_running(
+            case.context,
+            attempt_id=attempt_id,
+            group_id=case.group_id,
+            trigger="UPGRADE_VALIDATE" if trigger == "REPLAY_VERIFY" else "REPLAY_VERIFY",
+            engine=compute_once,
+        )
+    assert calls == (0 if outcome == "NO_SOURCE" else 1)
+    with world.place.uow() as uow:
+        assert uow.session.scalar(select(func.count()).select_from(computation_verification)) == 1
+        row = uow.session.execute(select(computation_verification)).mappings().one()
+        assert row["engine_executed"] == (outcome != "NO_SOURCE")
+        assert (
+            row["actual_output_sha256"] is None
+            if outcome != "MATCH"
+            else row["actual_output_sha256"] is not None
+        )
+        assert uow.session.scalar(select(release_validation_group.c.orchestration_state)) == (
+            "RUNNING" if outcome == "ERROR" else "COMPLETE"
+        )
+        assert before == [
+            uow.session.scalar(select(func.count()).select_from(table))
+            for table in (contract_computation, contract_version, subledger_posting)
+        ]
+
+
+def test_replay_execution_refuses_head_changed_during_engine(world: World) -> None:
+    from erev_api.db.tables import computation_verification
+    from erev_api.domain.contracts.replay_execution import execute_running
+
+    case = verification_case(world)
+    attempt_id = case.decision.release_validation_attempt_id
+    assert attempt_id is not None
+
+    def change_head(bundle: Any) -> Any:
+        flag_change(world, case.contract_id, 2)
+        computed(world.place, case.group_id)
+        return engine()(bundle)
+
+    with pytest.raises(Problem, match="head changed"):
+        execute_running(
+            case.context,
+            attempt_id=attempt_id,
+            group_id=case.group_id,
+            trigger="REPLAY_VERIFY",
+            engine=change_head,
+        )
+    with world.place.uow() as uow:
+        assert uow.session.scalar(select(func.count()).select_from(computation_verification)) == 0

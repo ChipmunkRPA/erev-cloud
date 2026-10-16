@@ -53,12 +53,14 @@ __all__ = [
     "SourceFacts",
     "VerificationRow",
     "verify",
+    "no_source",
 ]
 
 Trigger = Literal["REPLAY_VERIFY", "UPGRADE_VALIDATE"]
 Engine = Callable[[InputBundle], OutputBundle]
 
 REASONS: Final = (
+    "NO_SOURCE",
     "SOURCE_RUNTIME_UNAVAILABLE",
     "INPUT_EVIDENCE_MISSING",
     "OUTPUT_EVIDENCE_MISSING",
@@ -193,6 +195,47 @@ class VerificationRow:
     def integrity_incident(self) -> bool:
         """RB-09: a MISMATCH under either trigger (SEV-1); never an approvable difference."""
         return self.outcome is VerificationOutcome.MISMATCH
+
+
+def no_source(
+    *,
+    trigger: Trigger,
+    group_id: UUID,
+    process: ProcessFacts,
+    token: ExecutionToken,
+    attempt_id: UUID,
+) -> VerificationRow:
+    """A frozen group without a source records absence without inventing evidence or execution."""
+    return VerificationRow(
+        source_computation_id=None,
+        combination_group_id=group_id,
+        trigger=trigger,
+        source_engine_release_id=None,
+        source_engine_version=None,
+        source_codec=None,
+        process_engine_release_id=process.engine_release_id,
+        process_engine_version=process.engine_version,
+        engine_executed=False,
+        executed_engine_release_id=None,
+        executed_engine_version=None,
+        input_transform_id=None,
+        candidate_input_sha256=None,
+        input_sha256=None,
+        input_file_sha256_expected=None,
+        input_file_sha256_observed=None,
+        expected_output_sha256=None,
+        evidence_output_sha256=None,
+        expected_book_codes=None,
+        actual_output_sha256=None,
+        normalised_expected_sha256=None,
+        normalised_actual_sha256=None,
+        normalised_input_match=None,
+        outcome=VerificationOutcome.NO_SOURCE,
+        reason="NO_SOURCE",
+        difference_summary=None,
+        release_validation_attempt_id=attempt_id,
+        token=token,
+    )
 
 
 def verify(

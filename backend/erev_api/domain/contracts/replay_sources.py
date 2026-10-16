@@ -55,6 +55,39 @@ def _file(uow: UnitOfWork, row: Mapping[Any, Any], side: str) -> tuple[bytes, bo
     )
 
 
+def execution_identity(uow: UnitOfWork, context: JobContext) -> tuple[ExecutionToken, ProcessFacts]:
+    """Bind every replay read, including completed-result retries, to its live execution."""
+    runtime = context.runtime.attempt
+    process = context.runtime.engine_release
+    if uow.principal.db_context.entity_scope != "*":
+        raise Problem("forbidden")
+    if (
+        context.kind is not JobKind.REPLAY_VERIFY
+        or context.tenant_id != uow.principal.tenant_id
+        or runtime is None
+        or runtime.job_id != context.job_id
+        or runtime.tenant_id != context.tenant_id
+        or context.task_id is None
+        or context.attempt is None
+        or process is None
+    ):
+        raise Problem("validation-failed", "Replay requires a persisted execution identity.")
+    runtime.enter(uow, context.clock)
+    if (
+        uow.session.scalar(
+            select(job.c.kind).where(
+                job.c.tenant_id == context.tenant_id, job.c.id == context.job_id
+            )
+        )
+        != "REPLAY_VERIFY"
+    ):
+        raise Problem("not-found")
+    return (
+        ExecutionToken(context.job_id, context.task_id, context.attempt),
+        ProcessFacts(process.id, process.engine_version),
+    )
+
+
 def load(
     uow: UnitOfWork,
     *,
@@ -69,23 +102,9 @@ def load(
     opening files so verify() preserves runtime-first refusal. Infrastructure/decryption errors
     propagate; they must never be converted into an empty or rebuilt successful computation.
     """
-    runtime = context.runtime.attempt
-    process = context.runtime.engine_release
-    if uow.principal.db_context.entity_scope != "*":
-        raise Problem("forbidden")
-    if (
-        context.kind is not JobKind.REPLAY_VERIFY
-        or context.tenant_id != uow.principal.tenant_id
-        or runtime is None
-        or runtime.job_id != context.job_id
-        or runtime.tenant_id != context.tenant_id
-        or context.task_id is None
-        or context.attempt is None
-        or process is None
-        or trigger not in {"REPLAY_VERIFY", "UPGRADE_VALIDATE"}
-    ):
-        raise Problem("validation-failed", "Replay requires a persisted execution identity.")
-    runtime.enter(uow, context.clock)
+    token, process_facts = execution_identity(uow, context)
+    if trigger not in {"REPLAY_VERIFY", "UPGRADE_VALIDATE"}:
+        raise Problem("validation-failed", "Unknown replay trigger.")
     tenant_id = uow.principal.tenant_id
     selected = uow.session.execute(
         select(release_validation_group.c.source_computation_id)
@@ -116,7 +135,7 @@ def load(
             release_validation_group.c.orchestration_state == "RUNNING",
             release_validation_attempt.c.status == "RUNNING",
             release_validation.c.status == "RUNNING",
-            release_validation.c.engine_release_id == process.id,
+            release_validation.c.engine_release_id == process_facts.engine_release_id,
             job.c.id == context.job_id,
             job.c.kind == "REPLAY_VERIFY",
             job.c.state == "RUNNING",
@@ -125,8 +144,6 @@ def load(
     ).one_or_none()
     if selected is None:
         raise Problem("not-found")
-    token = ExecutionToken(context.job_id, context.task_id, context.attempt)
-    process_facts = ProcessFacts(process.id, process.engine_version)
     if selected.source_computation_id is None:
         return FrozenReplay(attempt_id, group_id, token, process_facts, None, None)
     source_row = (
@@ -165,7 +182,7 @@ def load(
         source_row["cutoff_at"],
     )
     result = FrozenReplay(attempt_id, group_id, token, process_facts, source, None)
-    if trigger == "REPLAY_VERIFY" and source.engine_version != process.engine_version:
+    if trigger == "REPLAY_VERIFY" and source.engine_version != process_facts.engine_version:
         return result
     evidence = (
         uow.session.execute(
