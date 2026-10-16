@@ -403,6 +403,10 @@ RULES: Final[Mapping[str, TableRule]] = MappingProxyType(
         ),
         # --- regenerated: derived by recompute (SBX-03 never copies derived data) ---------------
         "computation_evidence": _regenerated(_K.DERIVED, "recomputed typed evidence"),
+        "release_validation": _regenerated(_K.DERIVED, "workspace release verification"),
+        "release_validation_attempt": _regenerated(_K.DERIVED, "workspace release verification"),
+        "release_validation_group": _regenerated(_K.DERIVED, "workspace release verification"),
+        "computation_verification": _regenerated(_K.DERIVED, "workspace release verification"),
         "contract_computation": _regenerated(_K.DERIVED, "recomputed on load (SBX-04 RCP-19)"),
         "contract_version": _regenerated(_K.DERIVED, "recomputed on load (SBX-04)"),
         "contract_version_balance": _regenerated(_K.DERIVED, "recomputed on load (SBX-04)"),
@@ -542,13 +546,7 @@ PENDING: Final[Mapping[str, PendingTable]] = MappingProxyType(
             _pending("cost_asset_version", _C.REGENERATED, _K.DERIVED, "CST", "engine state"),
             _pending("portfolio", _C.COPIED, _K.CONFIGURATION, "CTR", "portfolios (T-CON-21)"),
             _pending("portfolio_member", _C.COPIED, _K.CONFIGURATION, "CTR", "T-CON-22"),
-            _pending(
-                "computation_verification", _C.REGENERATED, _K.DERIVED, "SOP", "replay attempts"
-            ),
             _pending("posting_attribution", _C.REGENERATED, _K.DERIVED, "REL", "T-SL-11"),
-            _pending("release_validation", _C.REGENERATED, _K.DERIVED, "REL", "T-PLT-43"),
-            _pending("release_validation_attempt", _C.REGENERATED, _K.DERIVED, "REL", "T-PLT-44"),
-            _pending("release_validation_group", _C.REGENERATED, _K.DERIVED, "REL", "T-PLT-45"),
             _pending("release_group_processing", _C.REGENERATED, _K.DERIVED, "REL", "T-PLT-46"),
             _pending(
                 "scenario",

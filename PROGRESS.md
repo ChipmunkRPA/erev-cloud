@@ -2,6 +2,16 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Release verification schema — October 15, 2026
+
+- Revision 0161 adds per-release validation, frozen attempts/group selections and immutable
+  verification results. Tenant RLS, execution identity, task deduplication, set-once acceptance,
+  same-selection guards and retained file holds are enforced by the schema.
+- Existing privacy/snapshot inventories now classify these four tables; synthetic parser controls
+  preserve coverage of their former prose/hybrid declarations. Populated downgrade is refused.
+- Verification evidence is in docs/release/CI-2026-10-15.md. Runtime store, fan-out/handler,
+  validation dataset publication and release admission remain unfinished; schema is not enablement.
+
 ## Verification write transaction safeguards — October 15, 2026
 
 - Recording an ERROR preserves the group's nonterminal state so aggregation waits for retry
@@ -248,18 +258,6 @@
   and full lint pass; evidence: docs/release/CI-2026-10-15.md.
 - These are prerequisites, not a completed queued export. Persisted bindings, worker integration,
   every output/replay read and the download menu remain open. No deployment/provider calls.
-
-## Bound AI export authorization — October 15, 2026
-
-- Added a frozen/versioned server-captured export binding: original tenant, actor id/kind and
-  maximum OWN/TENANT scope. Dataset builds require it; subsequent promotion cannot widen an
-  own-call request, and a workspace export still requires current workspace-wide settings.manage.
-- PostgreSQL/CSV/XLSX verification covers serialized bindings, promotion/demotion, cross-owner,
-  cross-tenant, actor-kind and permission/scope loss. Three API checks and backend typing (796
-  files) and full lint also pass. Evidence: docs/release/CI-2026-10-15.md.
-- Queued export is still unfinished. Next persist the binding, reconstruct current grants in
-  the worker, guard replay/download before returning any bytes, and wire the menu. Other release
-  gates remain open. No deployment/provider calls; publish directly to main after verification.
 
 ## Outstanding release verification
 

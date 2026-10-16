@@ -150,6 +150,67 @@ _MIGRATION_STATUS_PAIRS: Final = frozenset(
 
 TRANSITIONS: Final[Mapping[str, TableTransitions]] = MappingProxyType(
     {
+        "release_validation": TableTransitions(
+            table="release_validation",
+            status_column="status",
+            updatable_columns=frozenset(["accepted_attempt_id", "enabled_at"]) | _SC_M,
+            pairs=frozenset(
+                [
+                    ("PENDING", "RUNNING"),
+                    ("RUNNING", "INCOMPLETE"),
+                    ("RUNNING", "PASSED"),
+                    ("RUNNING", "FAILED"),
+                    ("RUNNING", "PENDING_APPROVAL"),
+                    ("INCOMPLETE", "RUNNING"),
+                    ("PENDING_APPROVAL", "APPROVED"),
+                    ("PENDING_APPROVAL", "REJECTED"),
+                ]
+            ),
+            set_once=frozenset(["accepted_attempt_id", "enabled_at"]),
+        ),
+        "release_validation_attempt": TableTransitions(
+            table="release_validation_attempt",
+            status_column="status",
+            updatable_columns=frozenset(
+                ["dataset_file_id", "dataset_sha256", "report_run_id", "approval_request_id"]
+            )
+            | _SC_M,
+            pairs=frozenset(
+                [
+                    ("SELECTED", "RUNNING"),
+                    ("SELECTED", "SUPERSEDED"),
+                    ("RUNNING", "COMPLETE"),
+                    ("RUNNING", "INCOMPLETE"),
+                    ("RUNNING", "SUPERSEDED"),
+                    ("COMPLETE", "SUPERSEDED"),
+                    ("INCOMPLETE", "SUPERSEDED"),
+                ]
+            ),
+            set_once=frozenset(
+                ["dataset_file_id", "dataset_sha256", "report_run_id", "approval_request_id"]
+            ),
+        ),
+        "release_validation_group": TableTransitions(
+            table="release_validation_group",
+            status_column="orchestration_state",
+            updatable_columns=frozenset(["accepted_verification_id", "child_job_id"]) | _SC_M,
+            pairs=frozenset(
+                [
+                    ("PENDING", "RUNNING"),
+                    ("PENDING", "CANCELLED"),
+                    ("PENDING", "FAILED_EXHAUSTED"),
+                    ("RUNNING", "RETRYABLE"),
+                    ("RUNNING", "COMPLETE"),
+                    ("RUNNING", "FAILED_EXHAUSTED"),
+                    ("RUNNING", "CANCELLED"),
+                    ("RETRYABLE", "PENDING"),
+                    ("RETRYABLE", "RUNNING"),
+                    ("RETRYABLE", "FAILED_EXHAUSTED"),
+                    ("RETRYABLE", "CANCELLED"),
+                ]
+            ),
+            set_once=frozenset(["accepted_verification_id"]),
+        ),
         "ai_proposal": TableTransitions(
             table="ai_proposal",
             status_column="status",

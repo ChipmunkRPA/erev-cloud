@@ -1210,7 +1210,6 @@ TABLES: Final[tuple[TableClassification, ...]] = (
                 "updated_at updated_by updated_by_kind row_version"
             ),
         },
-        status=Status.PENDING,
     ),
     _table(
         "release_validation_attempt",
@@ -1228,7 +1227,6 @@ TABLES: Final[tuple[TableClassification, ...]] = (
             ),
             R03: _cols("population"),
         },
-        status=Status.PENDING,
     ),
     _table(
         "release_validation_group",
@@ -1247,7 +1245,6 @@ TABLES: Final[tuple[TableClassification, ...]] = (
             ),
             R03: _cols("strata"),
         },
-        status=Status.PENDING,
     ),
     _table(
         "release_group_processing",
@@ -2566,7 +2563,6 @@ TABLES: Final[tuple[TableClassification, ...]] = (
             ),
             SPEC_C2_LEDGER: _cols("expected_book_codes reason difference_summary problem"),
         },
-        status=Status.PENDING,
     ),
     _table(
         "contract_recent_view",

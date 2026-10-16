@@ -1082,3 +1082,258 @@ def test_report_missing_evidence_never_rebuilds_current_inputs(
     with world.place.uow() as uow, pytest.raises(Problem) as caught:
         computation_sources.read_for_report(uow, produced["id"])
     assert caught.value.errors[0].rule_id == "INPUT_EVIDENCE_MISSING"
+
+
+def test_verification_schema_guards_execution_identity_and_acceptance(world: World) -> None:
+    from uuid import uuid4
+
+    from erev_api.db.tables import (
+        computation_verification,
+        release_validation,
+        release_validation_attempt,
+        release_validation_group,
+    )
+    from erev_api.db.transitions import apply
+    from erev_api.enums import JobKind
+    from erev_api.jobs.registry import insert_job
+
+    booked = k01(world)
+    group_id = booked.combination_group["id"]
+    _, output, source = computed(world.place, group_id)
+    with world.place.uow() as uow:
+        stamps = {
+            "tenant_id": uow.principal.tenant_id,
+            "created_at": uow.now,
+            "created_by": uow.principal.id,
+            "created_by_kind": uow.principal.kind.value,
+        }
+        mutable = {
+            **stamps,
+            "updated_at": uow.now,
+            "updated_by": uow.principal.id,
+            "updated_by_kind": uow.principal.kind.value,
+        }
+        release_id, attempt_id, selected_id = uuid4(), uuid4(), uuid4()
+        uow.session.execute(
+            insert(release_validation).values(
+                **mutable,
+                id=release_id,
+                engine_release_id=source["engine_release_id"],
+                effective_level="MINOR",
+                status="RUNNING",
+            )
+        )
+        uow.session.execute(
+            insert(release_validation_attempt).values(
+                **mutable,
+                id=attempt_id,
+                release_validation_id=release_id,
+                attempt_no=1,
+                seed=20260912,
+                population={},
+                required_entity_ids=[world.entity_id],
+                status="RUNNING",
+            )
+        )
+        uow.session.execute(
+            insert(release_validation_group).values(
+                **mutable,
+                id=selected_id,
+                release_validation_attempt_id=attempt_id,
+                combination_group_id=group_id,
+                source_computation_id=source["id"],
+                selection="OPEN_ACTIVITY",
+                strata=[],
+                rank_sha256="a" * 64,
+                orchestration_state="RUNNING",
+            )
+        )
+        job_row = insert_job(
+            uow.session,
+            JobKind.REPLAY_VERIFY,
+            {},
+            tenant_id=uow.principal.tenant_id,
+            now=uow.now,
+            created_by=uow.principal.id,
+            created_by_kind=uow.principal.kind,
+            lock=f"verify:{group_id}",
+        )
+        row = {
+            **stamps,
+            "source_computation_id": source["id"],
+            "combination_group_id": group_id,
+            "trigger": "REPLAY_VERIFY",
+            "source_engine_release_id": source["engine_release_id"],
+            "source_engine_version": ENGINE_VERSION,
+            "process_engine_release_id": source["engine_release_id"],
+            "process_engine_version": ENGINE_VERSION,
+            "engine_executed": True,
+            "executed_engine_release_id": source["engine_release_id"],
+            "executed_engine_version": ENGINE_VERSION,
+            "actual_output_sha256": output.sha256(),
+            "outcome": "MATCH",
+            "release_validation_attempt_id": attempt_id,
+            "job_id": job_row["id"],
+            "task_id": 11,
+            "attempt": 1,
+            "duration_ms": 10,
+        }
+        bad_cases: list[dict[str, Any]] = [
+            {"executed_engine_release_id": None},
+            {"executed_engine_version": None},
+            {"engine_executed": False},
+            {
+                "engine_executed": False,
+                "executed_engine_release_id": None,
+                "executed_engine_version": None,
+            },
+            {"source_engine_version": None},
+            {"executed_engine_version": "9.9.9"},
+            {"source_computation_id": None},
+            {"trigger": "EVENT"},
+            {"outcome": "ERROR"},
+            {"attempt": 0},
+            {"duration_ms": -1},
+        ]
+        for change in bad_cases:
+            with pytest.raises(exc.DBAPIError), uow.session.begin_nested():
+                uow.session.execute(
+                    insert(computation_verification).values(**{**row, **change, "id": uuid4()})
+                )
+        error_id = uuid4()
+        uow.session.execute(
+            insert(computation_verification).values(
+                **{
+                    **row,
+                    "id": error_id,
+                    "actual_output_sha256": None,
+                    "outcome": "ERROR",
+                    "reason": "ENGINE_ERROR",
+                }
+            )
+        )
+        with pytest.raises(exc.DBAPIError), uow.session.begin_nested():
+            apply(
+                uow.session,
+                "release_validation_group",
+                selected_id,
+                to_status="COMPLETE",
+                expected_status="RUNNING",
+                expected_row_version=1,
+                set_values={"accepted_verification_id": error_id},
+            )
+        match_id = uuid4()
+        good = {**row, "id": match_id, "task_id": 12, "attempt": 2}
+        uow.session.execute(insert(computation_verification).values(**good))
+        other_attempt, other_result = uuid4(), uuid4()
+        uow.session.execute(
+            insert(release_validation_attempt).values(
+                **mutable,
+                id=other_attempt,
+                release_validation_id=release_id,
+                attempt_no=2,
+                seed=20260912,
+                population={},
+                required_entity_ids=[world.entity_id],
+                status="RUNNING",
+            )
+        )
+        uow.session.execute(
+            insert(computation_verification).values(
+                **{**good, "id": other_result, "release_validation_attempt_id": other_attempt}
+            )
+        )
+        with pytest.raises(exc.DBAPIError), uow.session.begin_nested():
+            apply(
+                uow.session,
+                "release_validation_group",
+                selected_id,
+                to_status="COMPLETE",
+                expected_status="RUNNING",
+                expected_row_version=1,
+                set_values={"accepted_verification_id": other_result},
+            )
+        with pytest.raises(exc.DBAPIError), uow.session.begin_nested():
+            uow.session.execute(insert(computation_verification).values(**{**good, "id": uuid4()}))
+        with pytest.raises(exc.DBAPIError), uow.session.begin_nested():
+            uow.session.execute(
+                update(computation_verification)
+                .where(computation_verification.c.id == match_id)
+                .values(duration_ms=20)
+            )
+        apply(
+            uow.session,
+            "release_validation_group",
+            selected_id,
+            to_status="COMPLETE",
+            expected_status="RUNNING",
+            expected_row_version=1,
+            set_values={"accepted_verification_id": match_id},
+        )
+        with pytest.raises(exc.DBAPIError), uow.session.begin_nested():
+            uow.session.execute(
+                update(release_validation_attempt)
+                .where(release_validation_attempt.c.id == attempt_id)
+                .values(population={"changed": True})
+            )
+        with pytest.raises(exc.DBAPIError), uow.session.begin_nested():
+            apply(
+                uow.session,
+                "release_validation",
+                release_id,
+                to_status="PASSED",
+                expected_status="RUNNING",
+                expected_row_version=1,
+                set_values={"enabled_at": uow.now, "accepted_attempt_id": attempt_id},
+            )
+        apply(
+            uow.session,
+            "release_validation_attempt",
+            attempt_id,
+            to_status="COMPLETE",
+            expected_status="RUNNING",
+            expected_row_version=1,
+            set_values={},
+        )
+        apply(
+            uow.session,
+            "release_validation",
+            release_id,
+            to_status="PASSED",
+            expected_status="RUNNING",
+            expected_row_version=1,
+            set_values={"enabled_at": uow.now, "accepted_attempt_id": attempt_id},
+        )
+
+        apply(
+            uow.session,
+            "release_validation_attempt",
+            other_attempt,
+            to_status="COMPLETE",
+            expected_status="RUNNING",
+            expected_row_version=1,
+            set_values={},
+        )
+        with pytest.raises(exc.DBAPIError), uow.session.begin_nested():
+            uow.session.execute(
+                update(release_validation)
+                .where(release_validation.c.id == release_id)
+                .values(accepted_attempt_id=other_attempt)
+            )
+        uow.commit()
+    from alembic import command
+    from erev_api.db.session import DbContext, tenant_session
+    from support.db import alembic_config
+
+    # Published evidence remains visible to its tenant and hidden from an unrelated tenant.
+    for tenant_id, expected in ((world.place.principal.tenant_id, 3), (uuid4(), 0)):
+        with tenant_session(
+            DbContext(tenant_id=tenant_id, user_id=None, entity_scope="*")
+        ) as session:
+            assert (
+                session.scalar(select(func.count()).select_from(computation_verification))
+                == expected
+            )
+    # A populated evidence schema must not silently disappear on downgrade.
+    with pytest.raises(exc.DBAPIError):
+        command.downgrade(alembic_config(), "0160")

@@ -5949,3 +5949,15 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Export is NOT yet public: next wire queued execution/current-grant reconstruction, retained
   output ownership/revocation checks and the download menu. No deployment/provider calls.
   Other call-log and broader release/accounting gates remain open.
+
+## Bound AI export authorization — October 15, 2026
+
+- Added a frozen/versioned server-captured export binding: original tenant, actor id/kind and
+  maximum OWN/TENANT scope. Dataset builds require it; subsequent promotion cannot widen an
+  own-call request, and a workspace export still requires current workspace-wide settings.manage.
+- PostgreSQL/CSV/XLSX verification covers serialized bindings, promotion/demotion, cross-owner,
+  cross-tenant, actor-kind and permission/scope loss. Three API checks and backend typing (796
+  files) and full lint also pass. Evidence: docs/release/CI-2026-10-15.md.
+- Queued export is still unfinished. Next persist the binding, reconstruct current grants in
+  the worker, guard replay/download before returning any bytes, and wire the menu. Other release
+  gates remain open. No deployment/provider calls; publish directly to main after verification.

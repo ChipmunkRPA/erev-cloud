@@ -475,7 +475,7 @@ def test_prv_01_catalogue_matches_04_tables() -> None:
     # + T-CLS-09 period_reopen_basis = 160 literal tables.
     # + T-CON-27 private contract navigation history (0159) = 162.
     # + computation_evidence promoted from hybrid (0160) = 163.
-    assert formats == {"literal": 163, "hybrid": 1, "prose": 5}, formats
+    assert formats == {"literal": 167, "prose": 2}, formats
     assert [t.name for t in TABLES] == list(sections), "catalogue follows 04 document order"
 
 
@@ -527,14 +527,120 @@ def test_prv_01_entries_consistent() -> None:
 # detected by the declaration comparison above.
 
 
+# Historical declaration forms remain negative parser controls after schema promotion.
+_VERIFICATION_DRAFTS = {
+    "release_validation": (
+        "T-PLT-43",
+        "Columns (draft §4b verbatim): SC-T; `engine_release_id` N; `sourc"
+        "e_engine_release_id` Y; `effective_level` N (`CHECK (effective_le"
+        "vel IN ('PATCH','MINOR','MAJOR','BASELINE','BOOTSTRAP'))`, C); `s"
+        "tatus` E-126 (`PENDING`, `RUNNING`, `INCOMPLETE`, `PASSED`, `FAIL"
+        "ED`, `PENDING_APPROVAL`, `APPROVED`, `REJECTED`); `accepted_attem"
+        "pt_id` Y; `enabled_at` Y; SC-C, SC-M.\n",
+    ),
+    "release_validation_attempt": (
+        "T-PLT-44",
+        "Columns (draft §4b verbatim): SC-T; `release_validation_id` N; `a"
+        "ttempt_no` N; `seed` N (`platform.replay_seed`, T-PLT-31, default"
+        " 20260912); `population` jsonb N (`{groups, open_activity, remain"
+        "ing, nominal, sampled, strata:[{book, method, present, sampled}],"
+        " no_source, no_head}`); `required_entity_ids` uuid[] N (every ent"
+        "ity with ≥ 1 group member at selection, R5); `status` E-127 (`SEL"
+        "ECTED`, `RUNNING`, `COMPLETE`, `INCOMPLETE`, `SUPERSEDED`); `data"
+        "set_file_id` Y, `dataset_sha256` Y (purpose `VALIDATION_DATASET`,"
+        " written once at →`COMPLETE`/`INCOMPLETE`); `report_run_id` Y; `a"
+        "pproval_request_id` Y; SC-C, SC-M.\n",
+    ),
+    "computation_verification": (
+        "T-CON-26",
+        "| Column | Notes |\n|---|---|\n| SC-T; `source_computation_id` uuid"
+        " Y (FK → T-CON-07; NULL only for outcome `NO_SOURCE`); `combinati"
+        "on_group_id` uuid N | |\n| `trigger` erev.computation_trigger N | "
+        "`CHECK (trigger IN ('REPLAY_VERIFY','UPGRADE_VALIDATE'))` |\n| `so"
+        "urce_engine_release_id` uuid Y, `source_engine_version` text Y, `"
+        "source_codec` jsonb Y (`{format_version, engine_version}`) | copi"
+        "es from the source |\n| `process_engine_release_id` uuid N, `proce"
+        "ss_engine_version` text N | the **orchestrating** process release"
+        " (CTL-032 stamp), recorded whether or not the engine ran (A) |\n| "
+        "`engine_executed` boolean N; `executed_engine_release_id` uuid Y;"
+        " `executed_engine_version` text Y | A (NULL-safe in both directio"
+        "ns, so PostgreSQL's UNKNOWN cannot open a partial-null loophole):"
+        " `ck_cv__executed_identity CHECK ((engine_executed AND executed_e"
+        "ngine_release_id IS NOT NULL AND executed_engine_version IS NOT N"
+        "ULL) OR (NOT engine_executed AND executed_engine_release_id IS NU"
+        "LL AND executed_engine_version IS NULL))`; `ck_cv__no_output_with"
+        "out_execution CHECK (engine_executed OR actual_output_sha256 IS N"
+        "ULL)` (a started-but-failed execution keeps `engine_executed = tr"
+        "ue` and NULL `actual_output_sha256`); `ck_cv__integrity_source CH"
+        "ECK (NOT (engine_executed AND trigger = 'REPLAY_VERIFY') OR (sour"
+        "ce_computation_id IS NOT NULL AND source_engine_version IS NOT NU"
+        "LL AND executed_engine_version = source_engine_version))` (an exe"
+        "cuted integrity replay names its source and runs its version); `c"
+        "k_cv__candidate_release CHECK (NOT (engine_executed AND trigger ="
+        " 'UPGRADE_VALIDATE') OR executed_engine_release_id = process_engi"
+        "ne_release_id)` |\n| `input_transform_id` text Y; `candidate_input"
+        "_sha256` erev.sha256 Y | `UPGRADE_VALIDATE` only |\n| `input_sha25"
+        "6` erev.sha256 Y (source logical CV-25 hash, copied); `input_file"
+        "_sha256_expected`, `input_file_sha256_observed` erev.sha256 Y | R"
+        "1: raw digests kept apart from the logical hash |\n| `expected_out"
+        "put_sha256` erev.sha256 Y = T-CON-08 `output_sha256` of the sourc"
+        "e (the specified oracle); `evidence_output_sha256` erev.sha256 Y "
+        "= T-CON-25 copy; `expected_book_codes` text[] Y | disagreement be"
+        "tween T-CON-08 rows, or between T-CON-08 and T-CON-25, → outcome "
+        "`MISMATCH` reason `EXPECTED_HASH_DISAGREEMENT` (SEV-1 like any mi"
+        "smatch). The S02 altered-T-CON-08 test is therefore preserved: ac"
+        "tual ≠ expected → `MISMATCH`, and the report shows which stored c"
+        "opy moved |\n| `actual_output_sha256` erev.sha256 Y | NULL when th"
+        "e engine did not run or did not complete (`engine_executed` says "
+        "which) |\n| `normalised_expected_sha256`, `normalised_actual_sha25"
+        "6` erev.sha256 Y; `normalised_input_match` boolean Y | 05 RCP-28a"
+        " L1 |\n| `outcome` erev.verification_outcome N (E-125: `MATCH`, `M"
+        "ISMATCH`, `DIFFERENCES`, `UNVERIFIABLE`, `NO_SOURCE`, `ERROR`); `"
+        "reason` text Y | `REPLAY_VERIFY`: `MATCH`/`MISMATCH` on L0. `UPGR"
+        "ADE_VALIDATE`: `MATCH`/`DIFFERENCES` on L1/L2 **only after the so"
+        "urce evidence verified**; a raw-digest, logical-hash or stored-ha"
+        "sh disagreement (`INPUT_EVIDENCE_HASH_MISMATCH`, `LOGICAL_HASH_MI"
+        "SMATCH`, `OUTPUT_EVIDENCE_HASH_MISMATCH`, `EXPECTED_HASH_DISAGREE"
+        "MENT`) is outcome `MISMATCH` under either trigger — an **integrit"
+        "y incident** (SEV-1) that makes the attempt `INCOMPLETE` and is n"
+        "ever a MAJOR-approvable business difference (B). `reason` require"
+        "d unless `MATCH` |\n| `difference_summary` jsonb Y (`{M, P, T, R}`"
+        " counts + changed R paths); `difference_file_id` uuid Y | 05 RCP-"
+        "28a L2. **Classification rule (rev 1.19; team-lead ruling on lane"
+        " P5's returned question (3), 2026-09-19; `erev_engine.upgrade.rep"
+        "resentation_diff`):** a changed leaf path is `R` only when it is "
+        "one of the three stamp paths `engine_version`, `input_sha256`, `b"
+        "ooks[*].trace.engine_version`; `P` when it lies under `books[*].p"
+        "osting_intents`; `M` when it lies under one of the monetary secti"
+        "ons `contract_version`, `obligation_versions`, `balances`, `sched"
+        "ules`, `cost_asset_versions`, `loss_provision_versions`, `fx_laye"
+        "r_movements` of a book **by section** — every leaf of those secti"
+        "ons counts as `M`, including non-amount members such as `status_i"
+        "n_book`, except the lineage key `trace_nodes`, which is `T`; ever"
+        "y other path is `T`. Documented so the reviewer checks the rule, "
+        "not an implicit choice; refining it is a supervisor amendment. |\n"
+        "| `release_validation_attempt_id` uuid Y; `job_id` uuid N; `task_"
+        "id` bigint N; `attempt` integer N; `duration_ms` integer N; `prob"
+        "lem` jsonb Y | **Stable execution token (B)**: `(job_id, task_id,"
+        " attempt)` where `task_id` is the Procrastinate task the `job` ro"
+        "w names and `attempt` its attempt number — the registry already c"
+        "arries both (`jobs/registry.py:264,281,506-508,594-622`); `JobCon"
+        "text` gains read-only `task_id` and `attempt` so the handler can "
+        "bind them (`jobs/context.py:79-103` today passes neither). No `1 "
+        "+ prior rows` counting |\n| SC-C | |\n",
+    ),
+}
+
+
 def test_p8_f1_control_deleted_pending_entry_is_detected() -> None:
     """Mutation 1: delete the pending entry ``release_validation_attempt.population`` from the
     catalogue; 04 line "Columns (draft §4b verbatim): … `population` jsonb N (…)" still declares
     it, so the comparison reports a declared-but-not-catalogued column."""
-    declared = section_declarations("release_validation_attempt")
+    ref, body = _VERIFICATION_DRAFTS["release_validation_attempt"]
+    declared = extract_declarations(body, "release_validation_attempt (draft)", own_ref=ref)
     assert declared.format == "prose"
     assert "population" in declared.columns
-    mutated = catalogue_columns("release_validation_attempt", pending_only=True) - {"population"}
+    mutated = catalogue_columns("release_validation_attempt") - {"population"}
     doc_only, cat_only = declaration_mismatch(frozenset(declared.columns), mutated)
     assert doc_only == {"population"} and cat_only == frozenset()
     # JSON members of the declaration's note are not declarations.
@@ -544,16 +650,16 @@ def test_p8_f1_control_deleted_pending_entry_is_detected() -> None:
 def test_p8_f1_control_added_declared_column_is_detected() -> None:
     """Mutation 2: declare ``new_personal_email`` text Y in a prose line and in a hybrid table
     without a catalogue entry; the comparison reports a declared-but-not-catalogued column."""
-    ref, prose_body = doc_sections()["release_validation"]
+    ref, prose_body = _VERIFICATION_DRAFTS["release_validation"]
     assert prose_body.count("SC-C, SC-M.") == 1
     mutated_prose = prose_body.replace("SC-C, SC-M.", "`new_personal_email` text Y; SC-C, SC-M.")
     declared = extract_declarations(mutated_prose, "release_validation (mutated)", own_ref=ref)
     doc_only, cat_only = declaration_mismatch(
-        frozenset(declared.columns), catalogue_columns("release_validation", pending_only=True)
+        frozenset(declared.columns), catalogue_columns("release_validation")
     )
     assert doc_only == {"new_personal_email"} and cat_only == frozenset()
 
-    ref, hybrid_body = doc_sections()["computation_verification"]
+    ref, hybrid_body = _VERIFICATION_DRAFTS["computation_verification"]
     assert hybrid_body.count("\n| SC-C | |\n") == 1
     mutated_hybrid = hybrid_body.replace(
         "\n| SC-C | |\n", "\n| `new_personal_email` text Y | a note |\n| SC-C | |\n"
@@ -563,7 +669,7 @@ def test_p8_f1_control_added_declared_column_is_detected() -> None:
     )
     doc_only, cat_only = declaration_mismatch(
         frozenset(declared.columns),
-        catalogue_columns("computation_verification", pending_only=True),
+        catalogue_columns("computation_verification"),
     )
     assert doc_only == {"new_personal_email"} and cat_only == frozenset()
 

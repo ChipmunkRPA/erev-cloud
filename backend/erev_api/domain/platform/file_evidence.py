@@ -530,6 +530,12 @@ EVIDENCE: Final[tuple[EvidenceReference, ...]] = (
         "the retained output of a computation",
         identity_column="contract_computation_id",
     ),
+    EvidenceReference(
+        "release_validation_attempt", "dataset_file_id", "the frozen release-validation dataset"
+    ),
+    EvidenceReference(
+        "computation_verification", "difference_file_id", "the retained replay comparison"
+    ),
     # Committed calls retain source/text even if no proposal or outcome is ever written.
     EvidenceReference(
         "ai_call_intent", "file_object_id", "the source document of an AI call", approval=True

@@ -1892,6 +1892,7 @@ An upload over its purpose limit, or of a media type outside its list, returns 4
 | `AUDIT_DIGEST` | `audit_chain_verification.digest_file_id` | `audit.read` | tenant |
 | `POSTING_RESPONSE` | `posting_ack.response_file_id` | route: internal | - |
 | `COMPUTATION_INPUT` | `computation_evidence.input_file_id` | route: internal | - |
+| `release_validation_attempt.dataset_file_id`, `computation_verification.difference_file_id` (revision 0161) | always | `FILE_EVIDENCE_HELD`; no override |
 | `COMPUTATION_OUTPUT` | `computation_evidence.output_file_id` | route: internal | - |
 | `AI_PROMPT_LOG` | none | nobody | - |
 | `AI_DOCUMENT_TEXT` | `ai_call_intent.document_text_file_id` | route: internal | - |
@@ -2319,9 +2320,21 @@ Rules (rev 1.2):
 - **Purpose.** Per-tenant validation of a candidate engine release before its processes may persist (05 REL-06, RCP-28a; D-96 (4)).
 - **Class.** IM-S; RLS-T; AUD-CMD.
 - **REQ areas.** OPS, CTL, PLT (REQ-OPS-011, REQ-CTL-003, REQ-PLT-013).
-- **Rev 1.13 (D-96); rev pending lane P5.** No code table exists yet; first appearance per §18 rule 8.
+- **Implemented schema.** Revision 0161; runtime orchestration remains pending.
 
-Columns (draft §4b verbatim): SC-T; `engine_release_id` N; `source_engine_release_id` Y; `effective_level` N (`CHECK (effective_level IN ('PATCH','MINOR','MAJOR','BASELINE','BOOTSTRAP'))`, C); `status` E-126 (`PENDING`, `RUNNING`, `INCOMPLETE`, `PASSED`, `FAILED`, `PENDING_APPROVAL`, `APPROVED`, `REJECTED`); `accepted_attempt_id` Y; `enabled_at` Y; SC-C, SC-M.
+
+| Column | Type | Null | Default | Constraints and notes |
+|---|---|---|---|---|
+| SC-T | | | | Tenant and row identity |
+| `engine_release_id` | uuid | N | | |
+| `source_engine_release_id` | uuid | Y | | |
+| `effective_level` | text | N | | |
+| `status` | erev.release_validation_status | N | | |
+| `accepted_attempt_id` | uuid | Y | | |
+| `enabled_at` | timestamptz | Y | | |
+| SC-C, SC-M | | | | Standard stamps |
+
+Specification detail: Columns (draft §4b verbatim): SC-T; `engine_release_id` N; `source_engine_release_id` Y; `effective_level` N (`CHECK (effective_level IN ('PATCH','MINOR','MAJOR','BASELINE','BOOTSTRAP'))`, C); `status` E-126 (`PENDING`, `RUNNING`, `INCOMPLETE`, `PASSED`, `FAILED`, `PENDING_APPROVAL`, `APPROVED`, `REJECTED`); `accepted_attempt_id` Y; `enabled_at` Y; SC-C, SC-M.
 
 Keys and transitions (DB-03): `ux_release_validation__release (tenant_id, engine_release_id)`; created with `ON CONFLICT DO NOTHING` by whichever process stamps first (S05); transitions under `SELECT … FOR UPDATE`; `enabled_at` set only in the same statement as →`PASSED` or →`APPROVED`. `release_enabled(tenant, release) := EXISTS T-PLT-43 WHERE enabled_at IS NOT NULL` is enforced at one choke point, `computation.persist()` (`release-validation-pending`, 503); PATCH rows are `PASSED` at creation; `BOOTSTRAP` only for a tenant proven to have no `SUCCEEDED` `contract_computation` and no `ENGINE_COMPUTE` `subledger_posting` (recorded `population.bootstrap = {computations: 0, postings: 0}`); a non-empty tenant without a predecessor needs the `BASELINE` row written by the preparation artifact. Rev 1.14 (D-96 v4, C/E): the preparation artifact is stamped as its own `engine_release` row (same `engine_version`, new `build_sha`) and the `BASELINE` row names that row as `engine_release_id` (with `source_engine_release_id` = the historical build's row), because the gate is per process release — enabling only the historical build id would block the artifact's own recomputations; T-PLT-46 seeding and T-SL-11 attribution happen only for `effective_level IN ('MINOR','MAJOR')` rows with `accepted_attempt_id` set — `PATCH`, `BASELINE` and `BOOTSTRAP` rows seed nothing and produce no attribution.
 
@@ -2330,9 +2343,25 @@ Keys and transitions (DB-03): `ux_release_validation__release (tenant_id, engine
 - **Purpose.** The frozen snapshot of one validation attempt: population, required entity set, dataset and approval (D-96 (4); R4/R7).
 - **Class.** IM-S; RLS-T; AUD-CMD.
 - **REQ areas.** OPS, CTL, PLT.
-- **Rev 1.13 (D-96); rev pending lane P5.** No code table exists yet; first appearance per §18 rule 8. Subject table of the pending E-08 value `ENGINE_RELEASE_VALIDATION`.
+- **Implemented schema.** Revision 0161; runtime orchestration remains pending.
 
-Columns (draft §4b verbatim): SC-T; `release_validation_id` N; `attempt_no` N; `seed` N (`platform.replay_seed`, T-PLT-31, default 20260912); `population` jsonb N (`{groups, open_activity, remaining, nominal, sampled, strata:[{book, method, present, sampled}], no_source, no_head}`); `required_entity_ids` uuid[] N (every entity with ≥ 1 group member at selection, R5); `status` E-127 (`SELECTED`, `RUNNING`, `COMPLETE`, `INCOMPLETE`, `SUPERSEDED`); `dataset_file_id` Y, `dataset_sha256` Y (purpose `VALIDATION_DATASET`, written once at →`COMPLETE`/`INCOMPLETE`); `report_run_id` Y; `approval_request_id` Y; SC-C, SC-M.
+
+| Column | Type | Null | Default | Constraints and notes |
+|---|---|---|---|---|
+| SC-T | | | | Tenant and row identity |
+| `release_validation_id` | uuid | N | | |
+| `attempt_no` | integer | N | | |
+| `seed` | bigint | N | | |
+| `population` | jsonb | N | | |
+| `required_entity_ids` | uuid[] | N | | |
+| `status` | erev.validation_attempt_status | N | | |
+| `dataset_file_id` | uuid | Y | | |
+| `dataset_sha256` | erev.sha256 | Y | | |
+| `report_run_id` | uuid | Y | | |
+| `approval_request_id` | uuid | Y | | |
+| SC-C, SC-M | | | | Standard stamps |
+
+Specification detail: Columns (draft §4b verbatim): SC-T; `release_validation_id` N; `attempt_no` N; `seed` N (`platform.replay_seed`, T-PLT-31, default 20260912); `population` jsonb N (`{groups, open_activity, remaining, nominal, sampled, strata:[{book, method, present, sampled}], no_source, no_head}`); `required_entity_ids` uuid[] N (every entity with ≥ 1 group member at selection, R5); `status` E-127 (`SELECTED`, `RUNNING`, `COMPLETE`, `INCOMPLETE`, `SUPERSEDED`); `dataset_file_id` Y, `dataset_sha256` Y (purpose `VALIDATION_DATASET`, written once at →`COMPLETE`/`INCOMPLETE`); `report_run_id` Y; `approval_request_id` Y; SC-C, SC-M.
 
 Transitions (DB-03): a re-run after `INCOMPLETE`, or any head/population change, creates attempt n+1 and marks n `SUPERSEDED` (rows kept; a pending approval on n is voided `STALE_SUBJECT`). Immutable selection columns are written once before any child job.
 
@@ -2341,9 +2370,24 @@ Transitions (DB-03): a re-run after `INCOMPLETE`, or any head/population change,
 - **Purpose.** One row per (attempt, combination group): frozen selection, the group job's orchestration state and the pointer to the accepted verification (D-96 (4); B).
 - **Class.** IM-S; RLS-T; AUD-CMD.
 - **REQ areas.** OPS, CTL.
-- **Rev 1.13 (D-96); rev pending lane P5.** No code table exists yet; first appearance per §18 rule 8.
+- **Implemented schema.** Revision 0161; runtime orchestration remains pending.
 
-Columns (draft §4b verbatim): SC-T; `release_validation_attempt_id` N; `combination_group_id` N; `source_computation_id` Y (frozen head; NULL → `NO_SOURCE`); `selection` N (`OPEN_ACTIVITY`, `SAMPLED`); `strata` jsonb N (all `{book, method}` pairs of the group over every enabled book); `rank_sha256` erev.sha256 N (SHA-256 of `seed‖tenant_id‖group_id`, ordered lexicographically, tie-break `combination_group_id`); `orchestration_state` E-129 (`PENDING`, `RUNNING`, `RETRYABLE`, `COMPLETE`, `FAILED_EXHAUSTED`, `CANCELLED`) — the group **job's** lifecycle, independent of any comparison (B); `accepted_verification_id` uuid Y (mutable pointer; only to a terminal non-`ERROR` T-CON-26 row; an `ERROR` never becomes accepted; set in the same transaction as the row insert); `child_job_id` uuid Y; SC-C, SC-M.
+
+| Column | Type | Null | Default | Constraints and notes |
+|---|---|---|---|---|
+| SC-T | | | | Tenant and row identity |
+| `release_validation_attempt_id` | uuid | N | | |
+| `combination_group_id` | uuid | N | | |
+| `source_computation_id` | uuid | Y | | |
+| `selection` | text | N | | |
+| `strata` | jsonb | N | | |
+| `rank_sha256` | erev.sha256 | N | | |
+| `orchestration_state` | erev.validation_group_orchestration_state | N | | |
+| `accepted_verification_id` | uuid | Y | | |
+| `child_job_id` | uuid | Y | | |
+| SC-C, SC-M | | | | Standard stamps |
+
+Specification detail: Columns (draft §4b verbatim): SC-T; `release_validation_attempt_id` N; `combination_group_id` N; `source_computation_id` Y (frozen head; NULL → `NO_SOURCE`); `selection` N (`OPEN_ACTIVITY`, `SAMPLED`); `strata` jsonb N (all `{book, method}` pairs of the group over every enabled book); `rank_sha256` erev.sha256 N (SHA-256 of `seed‖tenant_id‖group_id`, ordered lexicographically, tie-break `combination_group_id`); `orchestration_state` E-129 (`PENDING`, `RUNNING`, `RETRYABLE`, `COMPLETE`, `FAILED_EXHAUSTED`, `CANCELLED`) — the group **job's** lifecycle, independent of any comparison (B); `accepted_verification_id` uuid Y (mutable pointer; only to a terminal non-`ERROR` T-CON-26 row; an `ERROR` never becomes accepted; set in the same transaction as the row insert); `child_job_id` uuid Y; SC-C, SC-M.
 
 Keys and transitions (DB-03): `ux (tenant_id, release_validation_attempt_id, combination_group_id)`. Immutable selection columns are written once before any child job; retries and restarts read them and never redraw. The parent fan-out and the DG-KRN-JOB-06 sweeper re-defer children whose state is `PENDING`/`RETRYABLE` and mark `FAILED_EXHAUSTED` when the child job is `FAILED` and `CANCELLED` when it is `CANCELLED`; aggregation of the attempt runs once every group is terminal. Upgrade processing after enablement lives in T-PLT-46, not here (E).
 
@@ -4433,7 +4477,7 @@ Keys: `PRIMARY KEY (tenant_id, id)`; `ux_calc_trace__version (tenant_id, contrac
 - **Purpose.** The full canonical input and output bytes of a computation, their raw-file digests, the logical hashes, the per-book ledger cutoff and the predecessor, captured in the persisting transaction so that a replay can prove what was computed (05 RCP-15, RCP-28; D-96 (2)).
 - **Class.** IM-A; RLS-T; PT-N; AUD-FACT.
 - **REQ areas.** OPS, CTL (REQ-OPS-011, REQ-CTL-003).
-- **Revision 0160.** New computations retain typed evidence before their own postings. Historical backfill and verification rows remain unimplemented; this revision admits only AT_COMPUTATION with a null backfill_verification_id. `PRIMARY KEY (tenant_id, contract_computation_id)`.
+- **Revision 0160.** New computations retain typed evidence before their own postings. Historical backfill and verification jobs remain unimplemented; this revision admits only AT_COMPUTATION with a null backfill_verification_id. `PRIMARY KEY (tenant_id, contract_computation_id)`.
 
 | Column | Type | Null | Default | Constraints and notes |
 |---|---|---|---|---|
@@ -4462,24 +4506,65 @@ Rows without evidence make a replay `UNVERIFIABLE` (reason `INPUT_EVIDENCE_MISSI
 - **Purpose.** One immutable row per verification execution attempt of a stored computation, for the integrity replay (`REPLAY_VERIFY`) and the candidate validation (`UPGRADE_VALIDATE`) (05 RCP-28, RCP-28a; D-96 (1)).
 - **Class.** IM-A; RLS-T; PT-N; AUD-FACT.
 - **REQ areas.** OPS, CTL (REQ-OPS-011, REQ-CTL-003).
-- **Rev 1.13 (D-96); rev pending lane P5.** No code table exists yet; first appearance per §18 rule 8.
+- **Implemented schema.** Revision 0161; runtime orchestration remains pending.
 
-| Column | Notes |
-|---|---|
-| SC-T; `source_computation_id` uuid Y (FK → T-CON-07; NULL only for outcome `NO_SOURCE`); `combination_group_id` uuid N | |
-| `trigger` erev.computation_trigger N | `CHECK (trigger IN ('REPLAY_VERIFY','UPGRADE_VALIDATE'))` |
-| `source_engine_release_id` uuid Y, `source_engine_version` text Y, `source_codec` jsonb Y (`{format_version, engine_version}`) | copies from the source |
-| `process_engine_release_id` uuid N, `process_engine_version` text N | the **orchestrating** process release (CTL-032 stamp), recorded whether or not the engine ran (A) |
-| `engine_executed` boolean N; `executed_engine_release_id` uuid Y; `executed_engine_version` text Y | A (NULL-safe in both directions, so PostgreSQL's UNKNOWN cannot open a partial-null loophole): `ck_cv__executed_identity CHECK ((engine_executed AND executed_engine_release_id IS NOT NULL AND executed_engine_version IS NOT NULL) OR (NOT engine_executed AND executed_engine_release_id IS NULL AND executed_engine_version IS NULL))`; `ck_cv__no_output_without_execution CHECK (engine_executed OR actual_output_sha256 IS NULL)` (a started-but-failed execution keeps `engine_executed = true` and NULL `actual_output_sha256`); `ck_cv__integrity_source CHECK (NOT (engine_executed AND trigger = 'REPLAY_VERIFY') OR (source_computation_id IS NOT NULL AND source_engine_version IS NOT NULL AND executed_engine_version = source_engine_version))` (an executed integrity replay names its source and runs its version); `ck_cv__candidate_release CHECK (NOT (engine_executed AND trigger = 'UPGRADE_VALIDATE') OR executed_engine_release_id = process_engine_release_id)` |
-| `input_transform_id` text Y; `candidate_input_sha256` erev.sha256 Y | `UPGRADE_VALIDATE` only |
-| `input_sha256` erev.sha256 Y (source logical CV-25 hash, copied); `input_file_sha256_expected`, `input_file_sha256_observed` erev.sha256 Y | R1: raw digests kept apart from the logical hash |
-| `expected_output_sha256` erev.sha256 Y = T-CON-08 `output_sha256` of the source (the specified oracle); `evidence_output_sha256` erev.sha256 Y = T-CON-25 copy; `expected_book_codes` text[] Y | disagreement between T-CON-08 rows, or between T-CON-08 and T-CON-25, → outcome `MISMATCH` reason `EXPECTED_HASH_DISAGREEMENT` (SEV-1 like any mismatch). The S02 altered-T-CON-08 test is therefore preserved: actual ≠ expected → `MISMATCH`, and the report shows which stored copy moved |
-| `actual_output_sha256` erev.sha256 Y | NULL when the engine did not run or did not complete (`engine_executed` says which) |
-| `normalised_expected_sha256`, `normalised_actual_sha256` erev.sha256 Y; `normalised_input_match` boolean Y | 05 RCP-28a L1 |
-| `outcome` erev.verification_outcome N (E-125: `MATCH`, `MISMATCH`, `DIFFERENCES`, `UNVERIFIABLE`, `NO_SOURCE`, `ERROR`); `reason` text Y | `REPLAY_VERIFY`: `MATCH`/`MISMATCH` on L0. `UPGRADE_VALIDATE`: `MATCH`/`DIFFERENCES` on L1/L2 **only after the source evidence verified**; a raw-digest, logical-hash or stored-hash disagreement (`INPUT_EVIDENCE_HASH_MISMATCH`, `LOGICAL_HASH_MISMATCH`, `OUTPUT_EVIDENCE_HASH_MISMATCH`, `EXPECTED_HASH_DISAGREEMENT`) is outcome `MISMATCH` under either trigger — an **integrity incident** (SEV-1) that makes the attempt `INCOMPLETE` and is never a MAJOR-approvable business difference (B). `reason` required unless `MATCH` |
-| `difference_summary` jsonb Y (`{M, P, T, R}` counts + changed R paths); `difference_file_id` uuid Y | 05 RCP-28a L2. **Classification rule (rev 1.19; team-lead ruling on lane P5's returned question (3), 2026-09-19; `erev_engine.upgrade.representation_diff`):** a changed leaf path is `R` only when it is one of the three stamp paths `engine_version`, `input_sha256`, `books[*].trace.engine_version`; `P` when it lies under `books[*].posting_intents`; `M` when it lies under one of the monetary sections `contract_version`, `obligation_versions`, `balances`, `schedules`, `cost_asset_versions`, `loss_provision_versions`, `fx_layer_movements` of a book **by section** — every leaf of those sections counts as `M`, including non-amount members such as `status_in_book`, except the lineage key `trace_nodes`, which is `T`; every other path is `T`. Documented so the reviewer checks the rule, not an implicit choice; refining it is a supervisor amendment. |
-| `release_validation_attempt_id` uuid Y; `job_id` uuid N; `task_id` bigint N; `attempt` integer N; `duration_ms` integer N; `problem` jsonb Y | **Stable execution token (B)**: `(job_id, task_id, attempt)` where `task_id` is the Procrastinate task the `job` row names and `attempt` its attempt number — the registry already carries both (`jobs/registry.py:264,281,506-508,594-622`); `JobContext` gains read-only `task_id` and `attempt` so the handler can bind them (`jobs/context.py:79-103` today passes neither). No `1 + prior rows` counting |
-| SC-C | |
+
+| Column | Type | Null | Default | Constraints and notes |
+|---|---|---|---|---|
+| SC-T | | | | Tenant and row identity |
+| `source_computation_id` | uuid | Y | | |
+| `combination_group_id` | uuid | N | | |
+| `trigger` | erev.computation_trigger | N | | |
+| `source_engine_release_id` | uuid | Y | | |
+| `source_engine_version` | text | Y | | |
+| `source_codec` | jsonb | Y | | |
+| `process_engine_release_id` | uuid | N | | |
+| `process_engine_version` | text | N | | |
+| `engine_executed` | boolean | N | | |
+| `executed_engine_release_id` | uuid | Y | | |
+| `executed_engine_version` | text | Y | | |
+| `input_transform_id` | text | Y | | |
+| `candidate_input_sha256` | erev.sha256 | Y | | |
+| `input_sha256` | erev.sha256 | Y | | |
+| `input_file_sha256_expected` | erev.sha256 | Y | | |
+| `input_file_sha256_observed` | erev.sha256 | Y | | |
+| `expected_output_sha256` | erev.sha256 | Y | | |
+| `evidence_output_sha256` | erev.sha256 | Y | | |
+| `expected_book_codes` | text[] | Y | | |
+| `actual_output_sha256` | erev.sha256 | Y | | |
+| `normalised_expected_sha256` | erev.sha256 | Y | | |
+| `normalised_actual_sha256` | erev.sha256 | Y | | |
+| `normalised_input_match` | boolean | Y | | |
+| `outcome` | erev.verification_outcome | N | | |
+| `reason` | text | Y | | |
+| `difference_summary` | jsonb | Y | | |
+| `difference_file_id` | uuid | Y | | |
+| `release_validation_attempt_id` | uuid | Y | | |
+| `job_id` | uuid | N | | |
+| `task_id` | bigint | N | | |
+| `attempt` | integer | N | | |
+| `duration_ms` | integer | N | | |
+| `problem` | jsonb | Y | | |
+| SC-C | | | | Standard stamps |
+
+
+Verification rules retained from the draft:
+
+- SC-T; `source_computation_id` uuid Y (FK → T-CON-07; NULL only for outcome `NO_SOURCE`); `combination_group_id` uuid N
+- `trigger` erev.computation_trigger N — `CHECK (trigger IN ('REPLAY_VERIFY','UPGRADE_VALIDATE'))`
+- `source_engine_release_id` uuid Y, `source_engine_version` text Y, `source_codec` jsonb Y (`{format_version, engine_version}`) — copies from the source
+- `process_engine_release_id` uuid N, `process_engine_version` text N — the **orchestrating** process release (CTL-032 stamp), recorded whether or not the engine ran (A)
+- `engine_executed` boolean N; `executed_engine_release_id` uuid Y; `executed_engine_version` text Y — A (NULL-safe in both directions, so PostgreSQL's UNKNOWN cannot open a partial-null loophole): `ck_cv__executed_identity CHECK ((engine_executed AND executed_engine_release_id IS NOT NULL AND executed_engine_version IS NOT NULL) OR (NOT engine_executed AND executed_engine_release_id IS NULL AND executed_engine_version IS NULL))`; `ck_cv__no_output_without_execution CHECK (engine_executed OR actual_output_sha256 IS NULL)` (a started-but-failed execution keeps `engine_executed = true` and NULL `actual_output_sha256`); `ck_cv__integrity_source CHECK (NOT (engine_executed AND trigger = 'REPLAY_VERIFY') OR (source_computation_id IS NOT NULL AND source_engine_version IS NOT NULL AND executed_engine_version = source_engine_version))` (an executed integrity replay names its source and runs its version); `ck_cv__candidate_release CHECK (NOT (engine_executed AND trigger = 'UPGRADE_VALIDATE') OR executed_engine_release_id = process_engine_release_id)`
+- `input_transform_id` text Y; `candidate_input_sha256` erev.sha256 Y — `UPGRADE_VALIDATE` only
+- `input_sha256` erev.sha256 Y (source logical CV-25 hash, copied); `input_file_sha256_expected`, `input_file_sha256_observed` erev.sha256 Y — R1: raw digests kept apart from the logical hash
+- `expected_output_sha256` erev.sha256 Y = T-CON-08 `output_sha256` of the source (the specified oracle); `evidence_output_sha256` erev.sha256 Y = T-CON-25 copy; `expected_book_codes` text[] Y — disagreement between T-CON-08 rows, or between T-CON-08 and T-CON-25, → outcome `MISMATCH` reason `EXPECTED_HASH_DISAGREEMENT` (SEV-1 like any mismatch). The S02 altered-T-CON-08 test is therefore preserved: actual ≠ expected → `MISMATCH`, and the report shows which stored copy moved
+- `actual_output_sha256` erev.sha256 Y — NULL when the engine did not run or did not complete (`engine_executed` says which)
+- `normalised_expected_sha256`, `normalised_actual_sha256` erev.sha256 Y; `normalised_input_match` boolean Y — 05 RCP-28a L1
+- `outcome` erev.verification_outcome N (E-125: `MATCH`, `MISMATCH`, `DIFFERENCES`, `UNVERIFIABLE`, `NO_SOURCE`, `ERROR`); `reason` text Y — `REPLAY_VERIFY`: `MATCH`/`MISMATCH` on L0. `UPGRADE_VALIDATE`: `MATCH`/`DIFFERENCES` on L1/L2 **only after the source evidence verified**; a raw-digest, logical-hash or stored-hash disagreement (`INPUT_EVIDENCE_HASH_MISMATCH`, `LOGICAL_HASH_MISMATCH`, `OUTPUT_EVIDENCE_HASH_MISMATCH`, `EXPECTED_HASH_DISAGREEMENT`) is outcome `MISMATCH` under either trigger — an **integrity incident** (SEV-1) that makes the attempt `INCOMPLETE` and is never a MAJOR-approvable business difference (B). `reason` required unless `MATCH`
+- `difference_summary` jsonb Y (`{M, P, T, R}` counts + changed R paths); `difference_file_id` uuid Y — 05 RCP-28a L2. **Classification rule (rev 1.19; team-lead ruling on lane P5's returned question (3), 2026-09-19; `erev_engine.upgrade.representation_diff`):** a changed leaf path is `R` only when it is one of the three stamp paths `engine_version`, `input_sha256`, `books[*].trace.engine_version`; `P` when it lies under `books[*].posting_intents`; `M` when it lies under one of the monetary sections `contract_version`, `obligation_versions`, `balances`, `schedules`, `cost_asset_versions`, `loss_provision_versions`, `fx_layer_movements` of a book **by section** — every leaf of those sections counts as `M`, including non-amount members such as `status_in_book`, except the lineage key `trace_nodes`, which is `T`; every other path is `T`. Documented so the reviewer checks the rule, not an implicit choice; refining it is a supervisor amendment.
+- `release_validation_attempt_id` uuid Y; `job_id` uuid N; `task_id` bigint N; `attempt` integer N; `duration_ms` integer N; `problem` jsonb Y — **Stable execution token (B)**: `(job_id, task_id, attempt)` where `task_id` is the Procrastinate task the `job` row names and `attempt` its attempt number — the registry already carries both (`jobs/registry.py:264,281,506-508,594-622`); `JobContext` gains read-only `task_id` and `attempt` so the handler can bind them (`jobs/context.py:79-103` today passes neither). No `1 + prior rows` counting
+- SC-C
+
 
 Keys: `PRIMARY KEY (tenant_id, id)`; `ux_computation_verification__token (tenant_id, release_validation_attempt_id, combination_group_id, job_id, task_id) WHERE release_validation_attempt_id IS NOT NULL` — duplicate redelivery of the same task locates the same row (insert is `ON CONFLICT DO NOTHING` then read); a legitimate retry has a new task id and a new row; `ix_computation_verification__source (tenant_id, source_computation_id, created_at)`. Rows are never updated; result insertion and the T-PLT-45 pointer/state update happen in **one transaction**, fenced like `_move(…, task_id)` (D-80): the write applies only while the `job` row still names this task, so a replaced stale worker records nothing. **Execution serialisation (B, v4)**: a `queueing_lock` only deduplicates WAITING jobs and does not stop two distinct same-group jobs from running at once (installed Procrastinate 3.9.0 `tasks.py:207-211`), so two primitives are used together: (i) `dispatch()` gains a `lock` parameter and `REPLAY_VERIFY` children are deferred with Procrastinate `lock = 'verify:<group id>'` (no simultaneous running jobs) beside the existing per-job `queueing_lock`; (ii) inside the writing transaction the handler takes `pg_advisory_xact_lock(hashtextextended('erev.verify:' || release_validation_attempt_id || ':' || combination_group_id, 0))` (the TXN-05 pattern, `repo.lock_group`), so the shared-state transition (row insert, pointer, `orchestration_state`) is serialised even if the scheduler lock is ever bypassed. The task-token fence stays. All three are to be implemented, not assumed.
 
@@ -5259,7 +5344,6 @@ session and grant data before return. A promoted caller's OWN reply is not recap
 | `report_version` | integer | N | | |
 | `status` | erev.run_status | N | `'QUEUED'` | |
 | `parameters` | jsonb | N | | Every parameter including defaults. |
-| `ai_export_access` | jsonb | Y | | Migration 0157: immutable server-captured `{version: 1, tenant_id, actor_id, actor_kind: USER or API_CLIENT, scope: OWN or TENANT}`. Exact keys, tenant and creator identity checked by the database; required for `ai_call_log_export`. Report and job reads additionally require the same requester and current source/export grants; TENANT requires workspace-wide settings.manage and report.export. Never a client parameter. Downgrade refuses retained bindings. Internal queue capture/worker integration is implemented; public catalogue/API activation remains tracked in LIMITS-1.0.md. |
 | `entity_ids` | uuid[] | N | | Resolved scope. |
 | `book_code` | erev.book_code | Y | | |
 | `as_of_date` | date | Y | | |
@@ -5275,6 +5359,7 @@ session and grant data before return. A promoted caller's OWN reply is not recap
 | `tie_out_results` | jsonb | Y | | `[{code, result, expected, actual}]`; `code` from table 10-T, `result` an E-98 literal (rev 1.2). |
 | `ledger_heads` | jsonb | Y | | Book → `{chain_seq, seal_sha256}` at run time. |
 | `source_binding` | jsonb | Y | | Rev 1.55 (frps3b; S15-R-24; Codex 2154 / 2202 / 2216 / 2225). The sources a LIVE run's build actually consumed, written once at SUCCEEDED: `{binding_version: 1, strategy: adapter | retained_inputs | open, report_version, cutoff, versions: {book → [contract_version_id]}, labels: {kind → {id → value}}, members: {kind → [ids]}, evidence: {kind → JSON}, open: [string], dataset: {output_sha256, format}, row_keys: [string]}`. Rev 1.57 (frps3c-1; design PRODUCTION-F-RPS-FRPS3C-INPUT-FAMILIES-DESIGN.md §2.1 / §10.1 / §10.4): evidence kinds `configuration` (`{entities: {id → {code, calendar_id, functional_currency, time_zone}}, periods: {calendar_id → [{id, key, name, fiscal_year, period_no, quarter_no, start, end}]}, book_code}` — the consumed entity rows, the period definitions of each consumed calendar and the default book, recorded by the live build's `tie_outs.entities` / `calendars` / `book_of` and read back by a bound run) and `customer_association` (`{contract_id → customer_id | null}` — the contract → customer association AS CONSUMED by the balance family; a retained `null` is "no customer", an absent contract key refuses by name); label kinds `entity_code` (per entity id) and `customer_name` (per customer id; a retained `null` is "no name", an absent customer key refuses by name). A bound read that needs an entity, calendar, book, association or name the binding does not hold refuses 409 `invalid-transition` by NAME with the exact identities (`BOUND_INPUT_MISSING`) before any figure — never today's rows, never a count comparison. `cutoff` is the EXACT tz-aware instant the build applied (microsecond precision, RFC 3339; never truncated to the second — a version stamped inside the cutoff second stays selected on the bound read). `strategy` is the builder's (ENGINE_SPEC_B S15-R-24 table): `adapter` — a rerun or cell explanation re-executes the builder against these sources; `retained_inputs` — no contract version binds the builder: the live build records the input facts it consumed as `evidence` and a same-source rerun REBUILDS through the same builder logic from that evidence (never a replay of the saved output — a calculation change still shows as a CTL-029 mismatch; missing or unreadable evidence refuses by name); `open` — no source adapter yet: only the cutoff is recorded, nothing else is bound, and a rerun is a NEW live evaluation labelled `open` (never a reproduction claim). A binding that does not hold a label or evidence the bound read needs is refused by name (`invalid-transition`), never completed from today's rows. `labels` are the material consumed values the rows used — `customer_segment` and `customer_name` per customer id, `product_family`, `product_name` and `product_revenue_category` per product id — as each builder declares them (not exhaustive by construction); `members` the non-version rows consumed (`subledger_line` — the recognized lines the waterfall sums and, rev 1.62 (frps3c-2), the liability / cost / revenue lines the balance family (`contract_balances`, `contract_balance_rollforward`, `contract_cost_rollforward`, `revenue_from_opening_liability`) and `disaggregation` consumed: a bound run re-reads exactly those ids WITHIN today's tenant / book / entity / period scope and refuses a bound id the read does not return by name (`BOUND_INPUT_MISSING`, `members.subledger_line`); an ABSENT membership kind refuses by name (`INCOMPLETE_BINDING`, `members.subledger_line` — a pre-3c-2 binding is never completed from today's rows; an explicit empty `[]` is a captured empty population that reads nothing; Codex production-20260921-1004 R1); the opening-liability sums take ids and amounts from ONE statement — the recorded population is the summed population, re-computed from those rows, never a retained aggregate (Codex production-20260921-1004 R2); `journal_run` — the runs whose revenue lines lie in the summed population, captured under the sum's own book / entity / period predicates, not the broader eligible set; `api_client`); `open` the source dimensions the builder's contract leaves unbound (declared, never silently narrowed; rev 1.57: the consumed-configuration qualification is WITHDRAWN from every adapter — configuration is retained as evidence — and the balance family binds its customer association and names; rev 1.62: the subledger-line membership qualification is WITHDRAWN from the balance family and `disaggregation`, and `disaggregation`'s product grouping labels (`product_family`, `product_revenue_category` per product id) are retained as labels — the only adapter dimension still open is `revenue_from_prior_period_obligations`' subledger-line reference population (3c-3)). NULL for an as-locked run (its frozen dataset is the source, S15-R-19), for a QUEUED / RUNNING run (pending) and for a FAILED run (failed before capture: a rerun is a NEW evaluation, never a reproduction); a SUCCEEDED live run without it was created before this revision (legacy: for an `adapter` / `retained_inputs` builder rerun and cell explanation refuse by name, never reconstructed from today's rows; an `open` builder's legacy run reruns as a new live evaluation). A rerun copies the original's binding into the new run (an `open` builder's rerun carries none and captures its own); a binding this release cannot read refuses by name. |
+| `ai_export_access` | jsonb | Y | | Migration 0157: immutable server-captured `{version: 1, tenant_id, actor_id, actor_kind: USER or API_CLIENT, scope: OWN or TENANT}`. Exact keys, tenant and creator identity checked by the database; required for `ai_call_log_export`. Report and job reads additionally require the same requester and current source/export grants; TENANT requires workspace-wide settings.manage and report.export. Never a client parameter. Downgrade refuses retained bindings. Internal queue capture/worker integration is implemented; public catalogue/API activation remains tracked in LIMITS-1.0.md. |
 | `child_report_run_ids` | uuid[] | N | `'{}'` | `disclosure_pack` runs: the section runs (T-RPT-01 rule 2; rev 1.2). |
 | `disclosure_snapshot_ids` | uuid[] | N | `'{}'` | `disclosure_pack` runs on a locked period: the `disclosure_snapshot` rows read (rev 1.2). |
 | `job_id` | uuid | Y | | |
@@ -8303,6 +8388,13 @@ Migration (D-31 mode a) reads the same 71 columns from the latest version per `R
 | LM-TPL-SSP-01 to 09 | SKU SSP | §17.3 |
 
 ## 18. Migration build order
+
+Revision 0161 adds T-PLT-43/44/45 and T-CON-26 with tenant RLS, immutable selections,
+append-only verification results, execution-identity checks, retained file references and
+same-selection acceptance guards. Accepted release attempts and group results are set once.
+Downgrade refuses any retained rows. Empty-schema downgrade/upgrade is supported. Replay
+jobs, validation dataset publication and the release-enablement service remain outstanding.
+
 
 Rules (rev 1.1; B1-033; DG-OQ-01, DG-OQ-02; DG-MIG-01 to DG-MIG-06):
 
