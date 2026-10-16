@@ -6067,3 +6067,13 @@ cleanup in the shared database session kernel was also repaired and regression-t
   filters, counts and pagination. Reopening a contract moves it to the front.
 - Verification is recorded in docs/release/CI-2026-10-15.md. No accounting events or contract
   versions are changed. No deployment; full release gates and independent sign-off remain open.
+
+## Privacy catalogue coverage gate — October 15, 2026
+
+- Classified the new private navigation history and the retained AI file references/export
+  authorization binding using existing catalogue rules. Corrected its documentation header and
+  kept the file-hold test's complete list of retained AI sources.
+- Added make privacy-check to lint: 90 source-only checks cover catalogue/doc agreement,
+  shredding rules, anonymisation names, patterns and offsets. This executes assertions rather
+  than relying on collection. Verification is in docs/release/CI-2026-10-15.md.
+- No deployment or accounting-policy change. Broader release checks and sign-off remain open.

@@ -2412,6 +2412,13 @@ Specification detail: Columns (draft §4b verbatim): SC-T; `release_validation_a
 
 Keys and transitions (DB-03): `ux (tenant_id, release_validation_attempt_id, combination_group_id)`. Immutable selection columns are written once before any child job; retries and restarts read them and never redraw. The parent fan-out and the DG-KRN-JOB-06 sweeper re-defer children whose state is `PENDING`/`RETRYABLE` and mark `FAILED_EXHAUSTED` when the child job is `FAILED` and `CANCELLED` when it is `CANCELLED`; aggregation of the attempt runs once every group is terminal. Upgrade processing after enablement lives in T-PLT-46, not here (E).
 
+Implementation status (October 15, 2026): `validation_fanout.enqueue` binds one durable
+REPLAY_VERIFY job per frozen selection transactionally after the population and target-release
+checks. Retries validate and reuse the existing binding; a missing task pointer requests
+idempotent after-commit dispatch. The registered replay handler owns retry/exhaustion and
+cancellation transitions. Attempt aggregation, artifact publication and approval/admission
+integration remain outstanding.
+
 ### T-PLT-46 `release_group_processing`
 
 - **Purpose.** Append-only event log of each group's upgrade processing after a MINOR or MAJOR release is enabled, kept per portion (group × entity × enabled book): pending until an explicit outcome per portion, the group terminal only when every portion is settled (D-96 (4); E; v4).

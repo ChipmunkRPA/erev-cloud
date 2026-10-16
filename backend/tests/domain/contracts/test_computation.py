@@ -2776,3 +2776,245 @@ def test_replay_job_failure_cleanup_rolls_back_while_worker_is_active(world: Wor
         assert (
             uow.session.scalar(select(release_validation_group.c.orchestration_state)) == "RUNNING"
         )
+
+
+def test_validation_fanout_runs_frozen_match_and_no_source(world: World) -> None:
+    from erev_api.controls.release import current_release
+    from erev_api.db.tables import computation_verification, job, release_validation_group
+    from erev_api.domain.contracts import replay_job
+    from erev_api.domain.contracts.validation_attempts import freeze
+    from erev_api.domain.contracts.validation_fanout import enqueue
+    from erev_api.enums import JobKind
+    from erev_api.jobs.context import JobRuntime
+    from erev_api.jobs.registry import HANDLERS, run_job
+    from sqlalchemy import text
+    from support.rows import insert_contract_rows
+
+    assert HANDLERS[JobKind.REPLAY_VERIFY].handler is replay_job.replay
+    booked = k01(world)
+    computed(world.place, booked.combination_group["id"])
+    validation_id = pending_validation(world)
+    with world.place.uow() as uow:
+        insert_contract_rows(uow.session, world.place.tenant_id)
+        frozen = freeze(uow, validation_id=validation_id, attempt_no=1)
+        first = enqueue(uow, validation_id=validation_id, attempt_id=frozen.id)
+        assert first.created == 2
+        runtime = JobRuntime(
+            clock=uow.clock, keyring=uow.keyring, files=uow.files, engine_release=current_release()
+        )
+        uow.commit()
+    for job_id in first.job_ids:
+        with world.place.uow() as uow:
+            child = uow.session.execute(select(job).where(job.c.id == job_id)).mappings().one()
+            task_id = child["procrastinate_job_id"]
+            assert task_id is not None
+            lock = uow.session.scalar(
+                text("SELECT lock FROM procrastinate_jobs WHERE id = :id"), {"id": task_id}
+            )
+            assert lock == f"verify:{world.place.tenant_id}:{child['subject_id']}"
+            uow.session.execute(
+                text("UPDATE procrastinate_jobs SET status = 'doing' WHERE id = :id"),
+                {"id": task_id},
+            )
+            uow.commit()
+        run_job(
+            job_id, world.place.tenant_id, attempt=1, runtime=runtime, delivered_task_id=task_id
+        )
+    with world.place.uow() as uow:
+        again = enqueue(uow, validation_id=validation_id, attempt_id=frozen.id)
+        assert again.job_ids == first.job_ids and again.created == again.recovery_requested == 0
+        assert not uow.audit_events
+        assert set(uow.session.scalars(select(computation_verification.c.outcome))) == {
+            "MATCH",
+            "NO_SOURCE",
+        }
+        assert set(uow.session.scalars(select(release_validation_group.c.orchestration_state))) == {
+            "COMPLETE"
+        }
+        uow.commit()
+
+
+def test_validation_fanout_rolls_back_partial_binding(
+    world: World, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from erev_api.db.tables import (
+        job,
+        release_validation,
+        release_validation_attempt,
+        release_validation_group,
+    )
+    from erev_api.domain.contracts import validation_fanout
+    from erev_api.domain.contracts.validation_attempts import freeze
+    from erev_api.jobs.registry import defer
+    from support.rows import insert_contract_rows
+
+    k01(world)
+    validation_id = pending_validation(world)
+    with world.place.uow() as uow:
+        insert_contract_rows(uow.session, world.place.tenant_id)
+        frozen = freeze(uow, validation_id=validation_id, attempt_no=1)
+        uow.commit()
+    calls = 0
+
+    def fail_second(*args: Any, **kwargs: Any) -> Any:
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            raise RuntimeError("fanout interrupted")
+        return defer(*args, **kwargs)
+
+    monkeypatch.setattr(validation_fanout, "defer", fail_second)
+    with world.place.uow() as uow, pytest.raises(RuntimeError, match="fanout interrupted"):
+        validation_fanout.enqueue(uow, validation_id=validation_id, attempt_id=frozen.id)
+    with world.place.uow() as uow:
+        assert (
+            uow.session.scalar(
+                select(func.count()).select_from(job).where(job.c.kind == "REPLAY_VERIFY")
+            )
+            == 0
+        )
+        assert set(uow.session.scalars(select(release_validation_group.c.child_job_id))) == {None}
+        assert uow.session.scalar(select(release_validation.c.status)) == "PENDING"
+        assert uow.session.scalar(select(release_validation_attempt.c.status)) == "SELECTED"
+
+
+def test_validation_fanout_recovers_lost_dispatch_once(
+    world: World, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from erev_api.db.tables import job
+    from erev_api.domain.contracts.validation_attempts import freeze
+    from erev_api.domain.contracts.validation_fanout import enqueue
+    from erev_api.jobs import registry
+    from sqlalchemy import text
+
+    k01(world)
+    validation_id = pending_validation(world)
+    original = registry._dispatch_hook
+    monkeypatch.setattr(registry, "_dispatch_hook", lambda **kwargs: None)
+    with world.place.uow() as uow:
+        frozen = freeze(uow, validation_id=validation_id, attempt_no=1)
+        first = enqueue(uow, validation_id=validation_id, attempt_id=frozen.id)
+        uow.commit()
+    monkeypatch.setattr(registry, "_dispatch_hook", original)
+    with world.place.uow() as uow:
+        assert (
+            uow.session.scalar(
+                select(job.c.procrastinate_job_id).where(job.c.id == first.job_ids[0])
+            )
+            is None
+        )
+        for _ in range(2):
+            retry = enqueue(uow, validation_id=validation_id, attempt_id=frozen.id)
+            assert (
+                retry.job_ids == first.job_ids
+                and retry.created == 0
+                and retry.recovery_requested == 1
+            )
+        uow.commit()
+    with world.place.uow() as uow:
+        assert (
+            uow.session.scalar(
+                select(job.c.procrastinate_job_id).where(job.c.id == first.job_ids[0])
+            )
+            is not None
+        )
+        assert (
+            uow.session.scalar(
+                text("SELECT count(*) FROM procrastinate_jobs WHERE args->>'job_id' = :id"),
+                {"id": str(first.job_ids[0])},
+            )
+            == 1
+        )
+        retry = enqueue(uow, validation_id=validation_id, attempt_id=frozen.id)
+        assert retry.created == retry.recovery_requested == 0
+        uow.commit()
+
+
+@pytest.mark.parametrize("failure", ["drift", "mode", "release"])
+def test_validation_fanout_refuses_changed_basis(
+    world: World, monkeypatch: pytest.MonkeyPatch, failure: str
+) -> None:
+    from erev_api.db.tables import job
+    from erev_api.domain.contracts import validation_fanout
+    from erev_api.domain.contracts.validation_attempts import freeze
+
+    booked = k01(world)
+    validation_id = pending_validation(world)
+    with world.place.uow() as uow:
+        frozen = freeze(uow, validation_id=validation_id, attempt_no=1)
+        if failure == "mode":
+            validation_fanout.enqueue(uow, validation_id=validation_id, attempt_id=frozen.id)
+        uow.commit()
+    if failure == "drift":
+        flag_change(world, booked.contract["id"], 2)
+    if failure == "release":
+        monkeypatch.setattr(validation_fanout, "current_release", lambda: None)
+    with world.place.uow() as uow, pytest.raises(Problem):
+        validation_fanout.enqueue(
+            uow, validation_id=validation_id, attempt_id=frozen.id, trigger="REPLAY_VERIFY"
+        )
+    with world.place.uow() as uow:
+        assert uow.session.scalar(
+            select(func.count()).select_from(job).where(job.c.kind == "REPLAY_VERIFY")
+        ) == (1 if failure == "mode" else 0)
+
+
+def test_validation_fanout_serializes_concurrent_deliveries(world: World) -> None:
+    import threading
+
+    from erev_api.db.tables import job
+    from erev_api.domain.contracts.validation_attempts import freeze
+    from erev_api.domain.contracts.validation_fanout import Fanout, enqueue
+    from sqlalchemy import text
+    from support.interleave import await_lock_wait, backend_pid, observing_checkouts
+
+    k01(world)
+    validation_id = pending_validation(world)
+    with world.place.uow() as uow:
+        frozen = freeze(uow, validation_id=validation_id, attempt_no=1)
+        uow.commit()
+    results: list[Fanout] = []
+    errors: list[Exception] = []
+
+    def duplicate() -> None:
+        try:
+            with world.place.uow() as uow:
+                results.append(enqueue(uow, validation_id=validation_id, attempt_id=frozen.id))
+                uow.commit()
+        except Exception as error:
+            errors.append(error)
+
+    contender = threading.Thread(target=duplicate, name="replay-fanout-duplicate")
+    try:
+        with observing_checkouts() as backends, world.place.uow() as holder:
+            first = enqueue(holder, validation_id=validation_id, attempt_id=frozen.id)
+            holder_pid = backend_pid(holder.session)
+            contender.start()
+            _, _ = await_lock_wait(
+                holder.session,
+                holder_pid=holder_pid,
+                backends=backends,
+                timeout=15,
+                expect="release_validation",
+            )
+            assert contender.is_alive()
+            holder.commit()
+    finally:
+        if contender.ident is not None:
+            contender.join(timeout=30)
+    assert not contender.is_alive() and not errors
+    assert len(results) == 1 and results[0].job_ids == first.job_ids and results[0].created == 0
+    with world.place.uow() as uow:
+        assert (
+            uow.session.scalar(
+                select(func.count()).select_from(job).where(job.c.kind == "REPLAY_VERIFY")
+            )
+            == 1
+        )
+        assert (
+            uow.session.scalar(
+                text("SELECT count(*) FROM procrastinate_jobs WHERE args->>'job_id' = :id"),
+                {"id": str(first.job_ids[0])},
+            )
+            == 1
+        )

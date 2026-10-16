@@ -679,7 +679,42 @@ def dispatch(
 
 def _dispatch_hook(*, tenant_id: UUID, job_id: UUID, queue: str, clock: Clock) -> None:
     with tenant_session(_system_context(tenant_id)) as session:
-        dispatch(session, job_id=job_id, tenant_id=tenant_id, queue=queue, now=clock.now())
+        row = session.execute(
+            select(job.c.state, job.c.procrastinate_job_id, job.c.queue)
+            .where(job.c.tenant_id == tenant_id, job.c.id == job_id)
+            .with_for_update(key_share=True)
+        ).one_or_none()
+        # A sweeper or another committed callback may already have dispatched or settled it.
+        if row is None or row.state != "QUEUED" or row.procrastinate_job_id is not None:
+            return
+        dispatch(session, job_id=job_id, tenant_id=tenant_id, queue=row.queue, now=clock.now())
+
+
+def ensure_dispatched(uow: UnitOfWork, job_id: UUID) -> bool:
+    """Recover an existing, never-dispatched QUEUED job after this transaction commits.
+
+    Returns whether recovery was requested, not whether this callback wins the dispatch race.
+    A task pointer that exists but is stranded belongs to the sweeper's retry-budget handling.
+    """
+    row = uow.session.execute(
+        select(job.c.state, job.c.procrastinate_job_id, job.c.queue).where(
+            job.c.tenant_id == uow.principal.tenant_id, job.c.id == job_id
+        )
+    ).one_or_none()
+    if row is None:
+        raise Problem("not-found")
+    if row.state != "QUEUED" or row.procrastinate_job_id is not None:
+        return False
+    uow.after_commit(
+        partial(
+            _dispatch_hook,
+            tenant_id=uow.principal.tenant_id,
+            job_id=job_id,
+            queue=row.queue,
+            clock=uow.clock,
+        )
+    )
+    return True
 
 
 def insert_job(

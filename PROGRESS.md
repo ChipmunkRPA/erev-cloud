@@ -2,6 +2,15 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Frozen validation job fan-out — October 15, 2026
+
+- Added transactional job binding for each frozen selection, with population/release checks
+  and reuse of existing jobs on retry. Lost dispatch recovery and concurrent callbacks create
+  one queue entry; rollback leaves no partial bindings. No sample is redrawn.
+- Seven fan-out database cases and 17 scheduler regressions passed, alongside unit/architecture,
+  typing and lint checks. Evidence: docs/release/CI-2026-10-15.md.
+- Aggregation, artifacts, approval resolution and final admission remain open.
+
 ## Replay worker lifecycle — October 15, 2026
 
 - Registered REPLAY_VERIFY with frozen group binding, audited RUNNING/RETRYABLE transitions,
@@ -264,16 +273,6 @@
 - This fixes draft edits silently dropping existing terms. Activation controls remain unchanged;
   omitted import terms remain unknown; see LIMITS-1.0.md. Verification is in CI-2026-10-15.md.
 - No deployment or accounting-policy change; broader release gates and sign-off remain open.
-
-## Privacy catalogue coverage gate — October 15, 2026
-
-- Classified the new private navigation history and the retained AI file references/export
-  authorization binding using existing catalogue rules. Corrected its documentation header and
-  kept the file-hold test's complete list of retained AI sources.
-- Added make privacy-check to lint: 90 source-only checks cover catalogue/doc agreement,
-  shredding rules, anonymisation names, patterns and offsets. This executes assertions rather
-  than relying on collection. Verification is in docs/release/CI-2026-10-15.md.
-- No deployment or accounting-policy change. Broader release checks and sign-off remain open.
 
 ## Outstanding release verification
 
