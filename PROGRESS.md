@@ -2,6 +2,15 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Frozen attempt dataset publication — October 15, 2026
+
+- Added terminal-job dataset assembly from frozen selections and retained comparisons. It
+  verifies artifact identities, digests and detail counts; failed and no-source rows remain.
+- Dataset reference and COMPLETE/INCOMPLETE attempt status commit together. Retries read the
+  original file; rollback leaves neither the reference nor a completed attempt. Parent release
+  enablement is unchanged. Lifecycle/integrity verification is in the dated CI record.
+- Report publication, final population acceptance, approvals and admission remain unfinished.
+
 ## Retained replay difference details — October 15, 2026
 
 - Candidate comparisons now carry full difference rows and check them against their summary.
@@ -261,15 +270,6 @@
   acceptance. Four catalogue checks pass; details are in docs/release/CI-2026-10-15.md.
 - The isolated all-workspace recovery drill passed on frozen d7e8715: eight tenants, 306 files,
   702 tables, no missing or reduced table counts, and verified cleanup. No deployment.
-
-## Worker container health probe — October 15, 2026
-
-- A live baseline run exposed five-second probe timeouts despite a fresh heartbeat. The image
-  now calls a small module using the existing freshness function, without importing worker
-  handlers or the CLI. The 60-second freshness rule and Docker timeout remain unchanged.
-- Unit/process and Linux-container checks pass. The committed 4c4b583 baseline passes too;
-  the real Docker health command completed in about 0.92 seconds.
-  Evidence is in docs/release/CI-2026-10-15.md. No deployment.
 
 ## Outstanding release verification
 

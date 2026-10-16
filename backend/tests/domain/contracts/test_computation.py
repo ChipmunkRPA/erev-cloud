@@ -2778,19 +2778,30 @@ def test_replay_job_failure_cleanup_rolls_back_while_worker_is_active(world: Wor
         )
 
 
+@pytest.mark.parametrize("different", [False, True])
 def test_validation_fanout_runs_frozen_match_and_no_source(
-    world: World, monkeypatch: pytest.MonkeyPatch
+    world: World, monkeypatch: pytest.MonkeyPatch, different: bool
 ) -> None:
+    import json
+
     from erev_api.controls.release import current_release
-    from erev_api.db.tables import computation_verification, job, release_validation_group
+    from erev_api.db.tables import (
+        computation_verification,
+        job,
+        release_validation,
+        release_validation_attempt,
+        release_validation_group,
+    )
     from erev_api.domain.contracts import replay_job
     from erev_api.domain.contracts.replay_execution import execute_running
     from erev_api.domain.contracts.validation_aggregation import assess
+    from erev_api.domain.contracts.validation_artifacts import retain
     from erev_api.domain.contracts.validation_attempts import freeze
     from erev_api.domain.contracts.validation_fanout import enqueue
     from erev_api.enums import JobKind
     from erev_api.jobs.context import JobRuntime
     from erev_api.jobs.registry import HANDLERS, run_job
+    from erev_engine.bundle import Diagnostic
     from sqlalchemy import text
     from support.rows import insert_contract_rows
 
@@ -2808,8 +2819,20 @@ def test_validation_fanout_runs_frozen_match_and_no_source(
         )
         uow.commit()
 
+    def candidate(bundle: Any) -> Any:
+        output = engine()(bundle)
+        if different:
+            return replace(
+                output,
+                diagnostics=(
+                    *output.diagnostics,
+                    Diagnostic("DATASET_PROBE", "INFO", None, None, None, {}),
+                ),
+            )
+        return output
+
     def accepted_before_job_finishes(context: JobContext, **kwargs: Any) -> Any:
-        result = execute_running(context, **kwargs)
+        result = execute_running(context, **kwargs, engine=candidate)
         with world.place.uow() as uow:
             assert assess(uow, validation_id=validation_id, attempt_id=frozen.id).status is None
         return result
@@ -2832,21 +2855,58 @@ def test_validation_fanout_runs_frozen_match_and_no_source(
         run_job(
             job_id, world.place.tenant_id, attempt=1, runtime=runtime, delivered_task_id=task_id
         )
+    from erev_api.db.transitions import apply as original_apply
+    from erev_api.domain.contracts import validation_artifacts
+
+    def fail_dataset_pointer(*args: Any, **kwargs: Any) -> None:
+        raise RuntimeError("dataset pointer interrupted")
+
     with world.place.uow() as uow:
+        files_before = uow.session.scalar(select(func.count()).select_from(file_object))
+    monkeypatch.setattr(validation_artifacts, "apply", fail_dataset_pointer)
+    with pytest.raises(RuntimeError, match="dataset pointer"), world.place.uow() as uow:
+        retain(uow, validation_id=validation_id, attempt_id=frozen.id)
+        uow.commit()
+    monkeypatch.setattr(validation_artifacts, "apply", original_apply)
+    with world.place.uow() as uow:
+        assert uow.session.scalar(select(func.count()).select_from(file_object)) == files_before
+        assert uow.session.scalar(select(release_validation_attempt.c.dataset_file_id)) is None
+        assert uow.session.scalar(select(release_validation_attempt.c.status)) == "RUNNING"
         again = enqueue(uow, validation_id=validation_id, attempt_id=frozen.id)
         assert again.job_ids == first.job_ids and again.created == again.recovery_requested == 0
         decision = assess(uow, validation_id=validation_id, attempt_id=frozen.id)
-        assert decision.status == "PASSED"
-        assert decision.counts == {"COMPLETE": 2, "MATCH": 1, "NO_SOURCE": 1}
+        assert decision.status == ("FAILED" if different else "PASSED")
+        assert decision.counts == {
+            "COMPLETE": 2,
+            "DIFFERENCES" if different else "MATCH": 1,
+            "NO_SOURCE": 1,
+        }
         assert not uow.audit_events
         assert set(uow.session.scalars(select(computation_verification.c.outcome))) == {
-            "MATCH",
+            "DIFFERENCES" if different else "MATCH",
             "NO_SOURCE",
         }
         assert set(uow.session.scalars(select(release_validation_group.c.orchestration_state))) == {
             "COMPLETE"
         }
+        dataset = retain(uow, validation_id=validation_id, attempt_id=frozen.id)
+        meta, stream = open_file(uow.session, dataset.file_id, files=uow.files, keyring=uow.keyring)
+        with stream:
+            payload = json.loads(stream.read())
+        assert {row["outcome"] for row in payload["groups"]} == {
+            "DIFFERENCES" if different else "MATCH",
+            "NO_SOURCE",
+        }
+        assert any(row["differences"] for row in payload["groups"]) is different
+        assert meta["sha256"] == dataset.sha256
+        assert uow.session.scalar(select(release_validation_attempt.c.status)) == "COMPLETE"
+        assert uow.session.scalar(select(release_validation.c.enabled_at)) is None
         uow.commit()
+    with world.place.uow() as uow:
+        count = uow.session.scalar(select(func.count()).select_from(file_object))
+        assert retain(uow, validation_id=validation_id, attempt_id=frozen.id) == dataset
+        assert not uow.audit_events
+        assert uow.session.scalar(select(func.count()).select_from(file_object)) == count
 
 
 def test_validation_fanout_rolls_back_partial_binding(
@@ -3039,6 +3099,7 @@ def test_validation_fanout_serializes_concurrent_deliveries(world: World) -> Non
 def test_validation_aggregation_stored_lifecycle(world: World, scenario: str) -> None:
     from erev_api.domain.contracts import replay_job
     from erev_api.domain.contracts.validation_aggregation import assess
+    from erev_api.domain.contracts.validation_artifacts import retain
     from erev_api.domain.contracts.validation_attempts import freeze, supersede
     from erev_api.domain.contracts.validation_fanout import enqueue
     from erev_api.domain.platform.jobs import cancel_job
@@ -3060,20 +3121,30 @@ def test_validation_aggregation_stored_lifecycle(world: World, scenario: str) ->
         if scenario in {"drift", "superseded"}:
             with pytest.raises(Problem):
                 assess(uow, validation_id=validation_id, attempt_id=frozen.id)
+            with pytest.raises(Problem):
+                retain(uow, validation_id=validation_id, attempt_id=frozen.id)
         else:
             result = assess(uow, validation_id=validation_id, attempt_id=frozen.id)
             assert result.status == ("INCOMPLETE" if scenario == "cancelled" else None)
             assert result.reasons == (("CANCELLED",) if scenario == "cancelled" else ())
+            if scenario == "cancelled":
+                assert retain(uow, validation_id=validation_id, attempt_id=frozen.id).file_id
+            else:
+                with pytest.raises(Problem):
+                    retain(uow, validation_id=validation_id, attempt_id=frozen.id)
 
 
 def test_validation_aggregation_waits_for_retries_then_reports_exhaustion(
     world: World, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    import json
+
     from erev_api.controls.release import current_release
-    from erev_api.db.tables import job
+    from erev_api.db.tables import job, release_validation_attempt
     from erev_api.domain.contracts import replay_job
     from erev_api.domain.contracts.replay_execution import execute_running
     from erev_api.domain.contracts.validation_aggregation import assess
+    from erev_api.domain.contracts.validation_artifacts import retain
     from erev_api.domain.contracts.validation_attempts import freeze
     from erev_api.domain.contracts.validation_fanout import enqueue
     from erev_api.jobs.context import JobRuntime
@@ -3119,6 +3190,21 @@ def test_validation_aggregation_waits_for_retries_then_reports_exhaustion(
             result = assess(uow, validation_id=validation_id, attempt_id=frozen.id)
             assert result.status == ("INCOMPLETE" if attempt == 3 else None)
             assert result.reasons == (("FAILED_EXHAUSTED",) if attempt == 3 else ())
+            if attempt == 3:
+                dataset = retain(uow, validation_id=validation_id, attempt_id=frozen.id)
+                _, stream = open_file(
+                    uow.session, dataset.file_id, files=uow.files, keyring=uow.keyring
+                )
+                with stream:
+                    payload = json.loads(stream.read())
+                assert payload["groups"][0]["outcome"] == "ERROR"
+                assert payload["groups"][0]["orchestration_state"] == "FAILED_EXHAUSTED"
+                assert (
+                    uow.session.scalar(select(release_validation_attempt.c.status)) == "INCOMPLETE"
+                )
+            else:
+                with pytest.raises(Problem):
+                    retain(uow, validation_id=validation_id, attempt_id=frozen.id)
             uow.session.execute(
                 text("UPDATE procrastinate_jobs SET status = 'succeeded' WHERE id = :id"),
                 {"id": task_id},
@@ -3180,6 +3266,7 @@ def test_replay_difference_artifact_is_atomic_and_reused(
     from erev_api.db.tables import computation_verification
     from erev_api.domain.contracts import verification_store
     from erev_api.domain.contracts.replay_execution import execute_running
+    from erev_api.domain.contracts.validation_artifacts import differences
     from erev_engine.bundle import Diagnostic
 
     case = verification_case(world)
@@ -3244,6 +3331,11 @@ def test_replay_difference_artifact_is_atomic_and_reused(
         assert payload["task_id"] == case.context.task_id
         assert payload["summary"] == row["difference_summary"]
         assert bool(payload["differences"]) is changed
+        assert list(differences(uow, dict(row))) == payload["differences"]
+        with pytest.raises(Problem):
+            differences(uow, {**row, "task_id": row["task_id"] + 1})
+        with pytest.raises(Problem):
+            differences(uow, {**row, "difference_file_id": None})
         assert (
             file_evidence.first_refusing(file_evidence.holds_in(uow.session, file_id)) is not None
         )

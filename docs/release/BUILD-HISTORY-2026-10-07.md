@@ -6115,3 +6115,12 @@ cleanup in the shared database session kernel was also repaired and regression-t
   explicit alert arrays and known risk codes. Valid zero-alert reports remain accepted.
 - Script regressions, typing and lint pass; evidence is in docs/release/CI-2026-10-15.md.
   Live verification passed on 4c4b583. No deployment or alert suppression.
+
+## Worker container health probe — October 15, 2026
+
+- A live baseline run exposed five-second probe timeouts despite a fresh heartbeat. The image
+  now calls a small module using the existing freshness function, without importing worker
+  handlers or the CLI. The 60-second freshness rule and Docker timeout remain unchanged.
+- Unit/process and Linux-container checks pass. The committed 4c4b583 baseline passes too;
+  the real Docker health command completed in about 0.92 seconds.
+  Evidence is in docs/release/CI-2026-10-15.md. No deployment.
