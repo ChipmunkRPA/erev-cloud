@@ -2,6 +2,16 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Authorized validation report source — October 15, 2026
+
+- Added a retained-dataset reader that checks current report.run permission across the full
+  frozen entity set before file access. Partial entity selection, wrong tenant and mismatched
+  rerun file/hash bindings are refused; SYSTEM has no implicit reader grant.
+- Dataset metadata, digest, canonical JSON, source identity and record cutoff are checked.
+  Matching/differing report data reproduces after later contract activity; database and typing
+  evidence is in the dated CI record. Report catalogue/job integration remains unfinished.
+- Final acceptance, approvals and admission also remain open; no deployment.
+
 ## Frozen attempt dataset publication — October 15, 2026
 
 - Added terminal-job dataset assembly from frozen selections and retained comparisons. It
@@ -261,15 +271,6 @@
 - Focused corruption and comparison tests and backend typing pass. The database re-lock workflow and lint
   pass; evidence is recorded in docs/release/CI-2026-10-15.md.
 - RPT-38 driver attribution and the pre-approval diff remain outstanding.
-
-## Current report availability — October 15, 2026
-
-- Reconciled LIMITS B4-6/C-11 against the runtime registry: 40 builders among 57 definitions,
-  with 17 generic builders still absent. First-close evidence packs use their separate API.
-- Labelled the old fifteen-test failure list as historical; registration is not accounting
-  acceptance. Four catalogue checks pass; details are in docs/release/CI-2026-10-15.md.
-- The isolated all-workspace recovery drill passed on frozen d7e8715: eight tenants, 306 files,
-  702 tables, no missing or reduced table counts, and verified cleanup. No deployment.
 
 ## Outstanding release verification
 

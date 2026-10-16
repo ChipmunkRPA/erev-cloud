@@ -6124,3 +6124,12 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Unit/process and Linux-container checks pass. The committed 4c4b583 baseline passes too;
   the real Docker health command completed in about 0.92 seconds.
   Evidence is in docs/release/CI-2026-10-15.md. No deployment.
+
+## Current report availability — October 15, 2026
+
+- Reconciled LIMITS B4-6/C-11 against the runtime registry: 40 builders among 57 definitions,
+  with 17 generic builders still absent. First-close evidence packs use their separate API.
+- Labelled the old fifteen-test failure list as historical; registration is not accounting
+  acceptance. Four catalogue checks pass; details are in docs/release/CI-2026-10-15.md.
+- The isolated all-workspace recovery drill passed on frozen d7e8715: eight tenants, 306 files,
+  702 tables, no missing or reduced table counts, and verified cleanup. No deployment.

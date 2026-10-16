@@ -2908,6 +2908,92 @@ def test_validation_fanout_runs_frozen_match_and_no_source(
         assert not uow.audit_events
         assert uow.session.scalar(select(func.count()).select_from(file_object)) == count
 
+    from datetime import timedelta
+
+    from erev_api.domain.contracts.upgrade_report import upgrade_validation_report
+    from erev_api.domain.reports import validation_sources
+
+    entities = tuple(UUID(value) for value in payload["attempt"]["required_entity_ids"])
+    with world.place.uow() as uow:
+        source = validation_sources.read_for_report(
+            uow,
+            frozen.id,
+            entity_ids=entities,
+            known_at=uow.now,
+            expected_file_id=dataset.file_id,
+            expected_sha256=dataset.sha256,
+        )
+        report = upgrade_validation_report(source.content)
+        assert report.control_totals["groups"] == 2
+        assert report.control_totals["outcomes"] == {
+            "DIFFERENCES" if different else "MATCH": 1,
+            "NO_SOURCE": 1,
+        }
+        with pytest.raises(Problem):
+            validation_sources.read_for_report(
+                uow, frozen.id, entity_ids=entities, known_at=uow.now - timedelta(days=1)
+            )
+    flag_change(world, booked.contract["id"], 2)
+    with world.place.uow() as uow:
+        repeated = validation_sources.read_for_report(
+            uow,
+            frozen.id,
+            entity_ids=entities,
+            known_at=uow.now,
+            expected_file_id=dataset.file_id,
+            expected_sha256=dataset.sha256,
+        )
+        assert repeated == source
+        assert upgrade_validation_report(repeated.content) == report
+
+    principal = world.place.principal
+    denied = [
+        replace(principal, permissions=principal.permissions - {"report.run"}),
+        replace(
+            principal,
+            permission_scopes={
+                **principal.permission_scopes,
+                "report.run": frozenset({UUID(int=999)}),
+            },
+        ),
+        replace(principal, tenant_id=UUID(int=999)),
+        system_principal(principal.tenant_id),
+    ]
+    original_open = open_file
+
+    def unread(*args: Any, **kwargs: Any) -> Any:
+        pytest.fail("Unauthorized report opened its dataset")
+
+    monkeypatch.setattr(validation_sources, "open_file", unread)
+    for actor in denied:
+        with world.place.uow(actor) as uow, pytest.raises(Problem):
+            validation_sources.read_for_report(
+                uow, frozen.id, entity_ids=entities, known_at=uow.now
+            )
+    with world.place.uow() as uow:
+        with pytest.raises(Problem):
+            validation_sources.read_for_report(uow, frozen.id, entity_ids=(), known_at=uow.now)
+        with pytest.raises(Problem):
+            validation_sources.read_for_report(
+                uow,
+                frozen.id,
+                entity_ids=entities,
+                known_at=uow.now,
+                expected_file_id=UUID(int=999),
+                expected_sha256=dataset.sha256,
+            )
+    monkeypatch.setattr(validation_sources, "open_file", original_open)
+
+    def tampered(*args: Any, **kwargs: Any) -> Any:
+        meta, stream = original_open(*args, **kwargs)
+        with stream:
+            content = stream.read() + b" "
+        return meta, io.BytesIO(content)
+
+    monkeypatch.setattr(validation_sources, "open_file", tampered)
+    with world.place.uow() as uow, pytest.raises(Problem):
+        validation_sources.read_for_report(uow, frozen.id, entity_ids=entities, known_at=uow.now)
+
 
 def test_validation_fanout_rolls_back_partial_binding(
     world: World, monkeypatch: pytest.MonkeyPatch
