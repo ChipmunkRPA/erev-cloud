@@ -234,3 +234,33 @@ def test_inline_context_does_not_claim_parent_execution_token(clock: FrozenClock
     assert context.task_id is None and context.attempt is None
     # The enclosing transaction guard remains available through the runtime.
     assert context.runtime.attempt == runtime.attempt
+
+
+@pytest.mark.parametrize("lock", ["", "   "])
+def test_empty_scheduler_lock_is_rejected_before_insert(lock: str, clock: FrozenClock) -> None:
+    with pytest.raises(ValueError, match="nonempty string"):
+        registry.insert_job(
+            None,  # type: ignore[arg-type]
+            JobKind.REPLAY_VERIFY,
+            {},
+            tenant_id=uuid.uuid4(),
+            now=clock.now(),
+            created_by=None,
+            created_by_kind=PrincipalKind.SYSTEM,
+            lock=lock,
+        )
+
+
+def test_scheduler_lock_metadata_is_reserved_and_hidden(clock: FrozenClock) -> None:
+    params = {registry.SCHEDULER_LOCK_PARAM: "verify:group", "probe": True}
+    assert registry.handler_params(params) == {"probe": True}
+    with pytest.raises(ValueError, match="reserved for the scheduler"):
+        registry.insert_job(
+            None,  # type: ignore[arg-type]
+            JobKind.REPLAY_VERIFY,
+            params,
+            tenant_id=uuid.uuid4(),
+            now=clock.now(),
+            created_by=None,
+            created_by_kind=PrincipalKind.SYSTEM,
+        )

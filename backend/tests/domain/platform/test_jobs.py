@@ -43,7 +43,7 @@ from support.factories import tenant_factory, tenant_id_of
 from support.rows import insert_sandbox_tenant
 
 _TASK = text(
-    "SELECT task_name, queue_name, queueing_lock, args, status, scheduled_at, attempts "
+    "SELECT task_name, queue_name, lock, queueing_lock, args, status, scheduled_at, attempts "
     "FROM procrastinate_jobs WHERE id = :id"
 )
 _TASKS_WITH_LOCK = text("SELECT count(*) FROM procrastinate_jobs WHERE queueing_lock = :lock")
@@ -788,3 +788,107 @@ def test_handler_receives_exact_execution_identity_across_retry(
     assert _job(tenant_id, job_id)["state"] == "SUCCEEDED"
     run_job(job_id, tenant_id, attempt=2, runtime=runtime, delivered_task_id=second)
     assert len(seen) == 2
+
+
+def test_scheduler_execution_lock_survives_retry_and_recovery(
+    tenant_id: UUID, runtime: JobRuntime, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    lock = f"verify:{new_id()}"
+
+    def failing(context: JobContext, params: Mapping[str, Any]) -> JobOutcome:
+        assert dict(params) == {"probe": True}
+        raise RuntimeError("retry locked job")
+
+    monkeypatch.setitem(
+        registry.HANDLERS, JobKind.REPORT_RUN, HandlerSpec(failing, RetryPolicy(max_attempts=3))
+    )
+    job_id = _defer(tenant_id, runtime, JobKind.REPORT_RUN, lock=lock)
+    first = _fetch(tenant_id, job_id)
+    assert _task(tenant_id, first)["lock"] == lock
+    run_job(job_id, tenant_id, attempt=1, runtime=runtime, delivered_task_id=first)
+    second = _job(tenant_id, job_id)["procrastinate_job_id"]
+    assert second != first and _task(tenant_id, second)["lock"] == lock
+    _task_failed(tenant_id, first)  # the worker settles its previous scheduler task
+    _fetch(tenant_id, job_id)
+    registry.retry_stranded(
+        job_id,
+        tenant_id,
+        task_id=second,
+        attempt=2,
+        stalled=True,
+        error=RuntimeError("stalled probe"),
+        runtime=runtime,
+    )
+    assert _job(tenant_id, job_id)["procrastinate_job_id"] == second
+    assert _task(tenant_id, second)["lock"] == lock
+    _task_failed(tenant_id, second)
+    registry.retry_stranded(
+        job_id,
+        tenant_id,
+        task_id=second,
+        attempt=2,
+        stalled=False,
+        error=RuntimeError("stranded probe"),
+        runtime=runtime,
+    )
+    third = _job(tenant_id, job_id)["procrastinate_job_id"]
+    assert _task(tenant_id, third)["lock"] == lock
+    with tenant_session(_db(tenant_id)) as session:
+        with pytest.raises(ValueError, match="must match the persisted"):
+            registry.dispatch(
+                session,
+                job_id=job_id,
+                tenant_id=tenant_id,
+                queue="reports",
+                now=runtime.clock.now(),
+                lock="another-group",
+            )
+    assert _job(tenant_id, job_id)["procrastinate_job_id"] == third
+
+
+def test_scheduler_serializes_same_lock_but_allows_other_groups(
+    tenant_id: UUID, runtime: JobRuntime
+) -> None:
+    queue = f"lock-{new_id().hex[:16]}"
+    group_lock = f"verify:{new_id()}"
+    task_ids = []
+    with tenant_session(_db(tenant_id)) as session:
+        for lock in (group_lock, group_lock, f"verify:{new_id()}"):
+            row = registry.insert_job(
+                session,
+                JobKind.REPLAY_VERIFY,
+                {},
+                tenant_id=tenant_id,
+                now=runtime.clock.now(),
+                created_by=None,
+                created_by_kind=system_principal(tenant_id).kind,
+                lock=lock,
+            )
+            task_ids.append(
+                registry.dispatch(
+                    session,
+                    job_id=row["id"],
+                    tenant_id=tenant_id,
+                    queue=queue,
+                    now=runtime.clock.now(),
+                    lock=lock,
+                )
+            )
+        worker = session.execute(_REGISTER_WORKER).scalar_one()
+    fetch = text("SELECT id FROM procrastinate_fetch_job_v2(ARRAY[:queue]::varchar[], :worker)")
+    with tenant_session(_db(tenant_id)) as session:
+        args = {"queue": queue, "worker": worker}
+        assert session.execute(fetch, args).scalar_one() == task_ids[0]
+        assert session.execute(fetch, args).scalar_one() == task_ids[2]
+        assert session.execute(fetch, args).scalar_one() is None
+        session.execute(
+            text("UPDATE procrastinate_jobs SET status='succeeded' WHERE id=:id"),
+            {"id": task_ids[0]},
+        )
+        assert session.execute(fetch, args).scalar_one() == task_ids[1]
+        for task_id in task_ids[1:]:
+            session.execute(
+                text("UPDATE procrastinate_jobs SET status='succeeded' WHERE id=:id"),
+                {"id": task_id},
+            )
+        session.execute(_UNREGISTER_WORKER, {"worker": worker})

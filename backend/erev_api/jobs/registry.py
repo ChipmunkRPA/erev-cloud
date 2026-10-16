@@ -333,7 +333,8 @@ _RAN_TO_ITS_END: Final = frozenset({JobState.SUCCEEDED, JobState.SUCCEEDED_WITH_
 RELEASE_PARAM: Final = "engine_release_id"
 RELEASE_MISMATCH_DELAY: Final = timedelta(seconds=30)
 RELEASE_MISMATCH_MAX_DEFERRALS: Final = 10
-_RESERVED_PARAMS: Final = frozenset({RELEASE_PARAM})
+SCHEDULER_LOCK_PARAM: Final = "_scheduler_lock"
+_RESERVED_PARAMS: Final = frozenset({RELEASE_PARAM, SCHEDULER_LOCK_PARAM})
 
 register_logger_fields(
     _LOGGER,
@@ -633,6 +634,7 @@ def dispatch(
     attempt: int = 1,
     delay: timedelta | None = None,
     release_mismatch_deferrals: int = 0,
+    lock: str | None = None,
 ) -> int:
     """Defer ``erev.run_job`` in ``session``'s transaction and record its id (DG-KRN-JOB-02).
 
@@ -640,11 +642,22 @@ def dispatch(
     ``procrastinate_job_id`` commit together or not at all. ``release_mismatch_deferrals`` (REL-05)
     rides in the task's arguments, because ``job.params`` never changes after insert.
     """
+    # Immutable job parameters retain the lock across every dispatch path, including retries,
+    # release deferrals and recovery after the old scheduler task has disappeared.
+    params = session.execute(
+        select(job.c.params).where(job.c.tenant_id == tenant_id, job.c.id == job_id)
+    ).scalar_one()
+    stored_lock = params.get(SCHEDULER_LOCK_PARAM)
+    if stored_lock is not None and (not isinstance(stored_lock, str) or not stored_lock.strip()):
+        raise ValueError("invalid persisted scheduler lock")
+    if lock is not None and lock != stored_lock:
+        raise ValueError("dispatch lock must match the persisted job lock")
     deferrer = procrastinate_tasks.configure_task(
         name=RUN_JOB_TASK,
         job_manager=_job_manager(),
         queue=queue,
         queueing_lock=str(job_id),
+        lock=stored_lock,
         schedule_at=None if delay is None else now + delay,
         connection=session.connection().connection.driver_connection,
     )
@@ -682,6 +695,7 @@ def insert_job(
     parent_job_id: UUID | None = None,
     subject_type: str | None = None,
     subject_id: UUID | None = None,
+    lock: str | None = None,
 ) -> Mapping[str, Any]:
     """Insert one QUEUED job row in ``session``'s transaction; the caller dispatches it.
 
@@ -691,7 +705,13 @@ def insert_job(
     """
     if RELEASE_PARAM in params:
         raise ValueError(f"params.{RELEASE_PARAM} is reserved for the enqueuing release (REL-05)")
+    if SCHEDULER_LOCK_PARAM in params:
+        raise ValueError(f"params.{SCHEDULER_LOCK_PARAM} is reserved for the scheduler")
+    if lock is not None and (not isinstance(lock, str) or not lock.strip()):
+        raise ValueError("scheduler lock must be a nonempty string")
     stored = dict(params)
+    if lock is not None:
+        stored[SCHEDULER_LOCK_PARAM] = lock
     stamped = current_release()
     if stamped is not None:
         stored[RELEASE_PARAM] = str(stamped.id)
@@ -726,6 +746,7 @@ def defer(
     parent_job_id: UUID | None = None,
     subject_type: str | None = None,
     subject_id: UUID | None = None,
+    lock: str | None = None,
 ) -> Mapping[str, Any]:
     """Insert a QUEUED job in the business transaction; dispatch after commit (DG-KRN-JOB-02).
 
@@ -745,6 +766,7 @@ def defer(
         parent_job_id=parent_job_id,
         subject_type=subject_type,
         subject_id=subject_id,
+        lock=lock,
     )
     if start_is_audited(kind):
         uow.audit(

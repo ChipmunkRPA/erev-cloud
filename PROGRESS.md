@@ -2,6 +2,16 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Durable scheduler execution locks — October 15, 2026
+
+- Job creation accepts an execution lock retained in immutable, reserved metadata. Every
+  dispatch reloads it, including retries and stranded-task recovery; handlers do not receive it.
+  A dispatch cannot replace the stored lock. Per-job waiting deduplication remains separate.
+- Database verification exercises the actual scheduler fetch function for same-group exclusion
+  and independent-group progress. Final results are recorded in docs/release/CI-2026-10-15.md.
+- Replay fan-out must supply verify:<group id>; persisted verification and its transactional
+  advisory lock remain outstanding. No replay handler is newly registered by this change.
+
 ## Replay job execution identity — October 15, 2026
 
 - Handlers can read the registry's exact task_id and attempt number through read-only context
@@ -254,16 +264,6 @@
 - Export is NOT yet public: next wire queued execution/current-grant reconstruction, retained
   output ownership/revocation checks and the download menu. No deployment/provider calls.
   Other call-log and broader release/accounting gates remain open.
-
-## Saved call-log layouts — October 15, 2026
-
-- Connected SF-15:ai-call-log to the shared saved-view selector and controlled grid columns.
-  Private layouts persist under the current membership; shared layouts restore presentation
-  without changing call visibility. Call records and drawer ids are never saved in view config.
-- Opening a call now retains the active view and sort. Twenty-one screen/selector/settings
-  checks, frontend typing and full lint pass; evidence is in docs/release/CI-2026-10-15.md.
-- Export, linked proposals, hash-copy controls, J-19 and broader release/accounting gates stay
-  open. No deployment or provider calls. Publish directly to main after verification.
 
 ## Outstanding release verification
 
