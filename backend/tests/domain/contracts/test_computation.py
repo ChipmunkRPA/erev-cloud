@@ -1679,3 +1679,107 @@ def test_verification_store_keeps_error_then_accepts_retry(world: World) -> None
         )
         assert rows == ["ERROR", "MATCH"]
         uow.commit()
+
+
+def test_validation_population_reads_heads_activity_and_methods(world: World) -> None:
+    from erev_api.domain.contracts.validation_population import read
+
+    booked = k01(world)
+    group_id = booked.combination_group["id"]
+    with world.place.uow() as uow:
+        before = read(uow)
+        group = next(item for item in before.groups if item.group_id == group_id)
+        assert group.open_activity
+        assert before.required_entity_ids == (world.entity_id,)
+        assert group.head_computation_id is None and group.strata == frozenset()
+    _, _, source = computed(world.place, group_id)
+    with world.place.uow() as uow:
+        population = read(uow)
+        group = next(item for item in population.groups if item.group_id == group_id)
+        assert group.head_computation_id == source["id"]
+        assert group.open_activity
+        assert group.strata == frozenset({("ASC606", "TIME_ELAPSED"), ("ASC606", "OUTPUT_PERCENT")})
+        assert population.required_entity_ids == (world.entity_id,)
+
+
+def test_validation_population_refuses_partial_entity_scope(world: World) -> None:
+    from erev_api.domain.contracts.validation_population import read
+
+    principal = replace(world.place.principal, entity_scope=(world.entity_id,))
+    with world.place.uow(principal) as uow, pytest.raises(Problem, match="complete tenant"):
+        read(uow)
+
+
+def test_validation_population_empty_other_tenant(world: World) -> None:
+    from erev_api.domain.contracts.validation_population import read
+
+    k01(world)
+    principal = replace(world.place.principal, tenant_id=UUID(int=999))
+    with world.place.uow(principal) as uow:
+        population = read(uow)
+        assert population.groups == ()
+        assert population.required_entity_ids == ()
+
+
+def test_validation_population_future_activity_is_not_open(world: World) -> None:
+    from erev_api.domain.contracts.validation_population import read
+
+    booked = booked_contract(
+        world.place,
+        {
+            "external_id": "FUTURE-POPULATION",
+            "customer_id": str(world.customer_id),
+            "contracting_entity_code": "AVM-US",
+            "transaction_currency": "USD",
+            "inception_date": "2026-10-01",
+            "lines": [
+                {
+                    "obligation_key": "O1",
+                    "product_code": PLATFORM,
+                    "quantity": "1",
+                    "total_price": {"amount": "120.00", "currency": "USD"},
+                    "start_date": "2026-10-01",
+                    "end_date": "2026-12-31",
+                }
+            ],
+        },
+        activate=False,
+    )
+    with world.place.uow() as uow:
+        population = read(uow)
+        group = next(
+            item for item in population.groups if item.group_id == booked.combination_group["id"]
+        )
+        assert not group.open_activity
+        assert group.head_computation_id is None
+        assert group.strata == frozenset()
+        assert population.required_entity_ids == (world.entity_id,)
+
+
+def test_validation_population_requires_sealed_ledger_activity(world: World) -> None:
+    from erev_api.db.tables import subledger_line, subledger_posting, subledger_posting_seal
+    from erev_api.domain.contracts.validation_population import read
+    from support.rows import (
+        insert_ledger_parts,
+        ledger_seal_values,
+        subledger_line_values,
+        subledger_posting_values,
+    )
+
+    with world.place.uow() as uow:
+        tenant_id = world.place.tenant_id
+        parts = insert_ledger_parts(uow.session, tenant_id)
+        posting = subledger_posting_values(tenant_id, parts=parts)
+        uow.session.execute(insert(subledger_posting).values(**posting))
+        lines = [
+            subledger_line_values(tenant_id, posting=posting, parts=parts, amount=amount)
+            for amount in (Decimal("10.00"), Decimal("-10.00"))
+        ]
+        uow.session.execute(insert(subledger_line), lines)
+        before = next(group for group in read(uow).groups if group.group_id == parts.chain.group_id)
+        assert not before.open_activity  # this probe has no contract events or current members
+        seal = ledger_seal_values(uow.session, tenant_id, posting=posting, lines=lines)
+        uow.session.execute(insert(subledger_posting_seal).values(**seal))
+        after = next(group for group in read(uow).groups if group.group_id == parts.chain.group_id)
+        assert after.open_activity
+        uow.commit()

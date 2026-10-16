@@ -5994,3 +5994,13 @@ cleanup in the shared database session kernel was also repaired and regression-t
   and during rendering. Public catalogue/API activation and the download UI remain unfinished.
 - Report unit verification passes 941 checks; detailed worker, typing and lint evidence is in
   docs/release/CI-2026-10-15.md. No deployment/provider calls/sign-off; broader gates remain open.
+
+## Call-export API authorization and cached replies — October 15, 2026
+
+- Source-only AI users/settings administrators can use this export with report.export; these
+  grants do not admit accounting reports. Source MFA and requester binding guard reads.
+- Per-subject commands can guard the actual cached reply after lookup. Export replay checks its
+  retained scope and refreshes session/grants after that potentially waiting lookup. OWN stays
+  OWN after promotion; a retained TENANT reply refuses demotion. No duplicate route guards.
+- Public catalogue registration and the download UI remain pending. Verification details are in
+  docs/release/CI-2026-10-15.md. No deployment/provider calls/sign-off; broader gates remain open.

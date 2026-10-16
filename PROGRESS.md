@@ -2,6 +2,16 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Release-validation population reader — October 15, 2026
+
+- Added a tenant-wide, single-statement reader for current heads, open-period member events,
+  sealed ledger activity, enabled-book recognition-method strata and member entity ids.
+  Partial entity scopes are refused; the reader does not widen caller scope.
+- Current membership uses active database rows rather than application-clock comparisons.
+  Verification evidence is recorded in docs/release/CI-2026-10-15.md.
+- Frozen-attempt persistence, fan-out/handler, dataset publication and release admission remain
+  outstanding. This reader does not dispatch jobs or enable releases.
+
 ## AI command audit coverage — October 15, 2026
 
 - Registered all ten AI command routes and added real API scenarios to the shared audit walk:
@@ -255,16 +265,6 @@
 - Definition removal must refuse while retained runs reference it. Migration/worker verification
   is recorded in docs/release/CI-2026-10-15.md. The call-log download menu remains pending.
 - No deployment or live provider calls. Overall release gates and accounting sign-off remain open.
-
-## Call-export API authorization and cached replies — October 15, 2026
-
-- Source-only AI users/settings administrators can use this export with report.export; these
-  grants do not admit accounting reports. Source MFA and requester binding guard reads.
-- Per-subject commands can guard the actual cached reply after lookup. Export replay checks its
-  retained scope and refreshes session/grants after that potentially waiting lookup. OWN stays
-  OWN after promotion; a retained TENANT reply refuses demotion. No duplicate route guards.
-- Public catalogue registration and the download UI remain pending. Verification details are in
-  docs/release/CI-2026-10-15.md. No deployment/provider calls/sign-off; broader gates remain open.
 
 ## Outstanding release verification
 
