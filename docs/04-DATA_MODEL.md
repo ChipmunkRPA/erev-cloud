@@ -2368,6 +2368,13 @@ Keys: `PRIMARY KEY (tenant_id, id)`.
 
 Specification detail: Columns (draft §4b verbatim): SC-T; `release_validation_id` N; `attempt_no` N; `seed` N (`platform.replay_seed`, T-PLT-31, default 20260912); `population` jsonb N (`{groups, open_activity, remaining, nominal, sampled, strata:[{book, method, present, sampled}], no_source, no_head}`); `required_entity_ids` uuid[] N (every entity with ≥ 1 group member at selection, R5); `status` E-127 (`SELECTED`, `RUNNING`, `COMPLETE`, `INCOMPLETE`, `SUPERSEDED`); `dataset_file_id` Y, `dataset_sha256` Y (purpose `VALIDATION_DATASET`, written once at →`COMPLETE`/`INCOMPLETE`); `report_run_id` Y; `approval_request_id` Y; SC-C, SC-M.
 
+Population identity: newly frozen attempts also store fingerprint_version = 1 and fingerprint
+inside the population JSON. The SHA-256 covers canonical, sorted group identities and heads,
+open-activity flags, book/method strata, required entities, and current member identities and
+stream versions across the whole tenant, including unsampled groups. Start compares this identity
+with a fresh population read and refuses a changed or unfingerprinted attempt. Final acceptance
+must revalidate it again; starting does not prohibit later business activity or enable a release.
+
 Transitions (DB-03): a re-run after `INCOMPLETE`, or any head/population change, creates attempt n+1 and marks n `SUPERSEDED` (rows kept; a pending approval on n is voided `STALE_SUBJECT`). Immutable selection columns are written once before any child job.
 
 ### T-PLT-45 `release_validation_group`

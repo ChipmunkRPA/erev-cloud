@@ -2,6 +2,15 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Validation start and full-population fence — October 15, 2026
+
+- Frozen attempts now retain a versioned full-population fingerprint, including unsampled
+  heads and current member stream versions. Start refuses population drift or legacy attempts
+  lacking that fingerprint, and atomically marks parent/attempt RUNNING with an audit event.
+- A matching running retry is read-only; final acceptance still needs a fresh population check.
+  Verification is recorded in docs/release/CI-2026-10-15.md.
+- Supersession, replay fan-out/handler, datasets and release admission remain unfinished.
+
 ## Configured replay seed — October 15, 2026
 
 - Added platform.replay_seed to the tenant configuration registry with default 20260912 and

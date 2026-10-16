@@ -11,6 +11,7 @@ from erev_api.db.tables import (
     release_validation_attempt,
     release_validation_group,
 )
+from erev_api.db.transitions import apply
 from erev_api.problems import Problem
 from erev_api.registry.resolve import setting
 from erev_api.uow import UnitOfWork
@@ -114,7 +115,11 @@ def freeze(
             release_validation_id=validation_id,
             attempt_no=attempt_no,
             seed=seed,
-            population=dict(population.summary),
+            population={
+                **population.summary,
+                "fingerprint_version": 1,
+                "fingerprint": facts.fingerprint(),
+            },
             required_entity_ids=list(facts.required_entity_ids),
             status="SELECTED",
         )
@@ -142,3 +147,86 @@ def freeze(
         after={"attempt_no": attempt_no, "seed": seed, "selected_groups": len(selections)},
     )
     return FrozenAttempt(attempt_id, True)
+
+
+def start(uow: UnitOfWork, *, validation_id: UUID, attempt_id: UUID) -> bool:
+    """Start a still-current frozen attempt; return False on a matching running retry.
+
+    Population must also be revalidated at final acceptance: this start boundary does not
+    prohibit subsequent business activity and cannot itself authorize release enablement.
+    """
+    if uow.principal.db_context.entity_scope != "*":
+        raise Problem("forbidden", "Release validation requires the complete tenant population.")
+    tenant_id = uow.principal.tenant_id
+    parent = (
+        uow.session.execute(
+            select(release_validation)
+            .where(
+                release_validation.c.tenant_id == tenant_id,
+                release_validation.c.id == validation_id,
+            )
+            .with_for_update(key_share=True)
+        )
+        .mappings()
+        .one_or_none()
+    )
+    attempt = (
+        uow.session.execute(
+            select(release_validation_attempt)
+            .where(
+                release_validation_attempt.c.tenant_id == tenant_id,
+                release_validation_attempt.c.id == attempt_id,
+                release_validation_attempt.c.release_validation_id == validation_id,
+            )
+            .with_for_update(key_share=True)
+        )
+        .mappings()
+        .one_or_none()
+    )
+    if parent is None or attempt is None:
+        raise Problem("not-found")
+    if (
+        parent["effective_level"] not in {"MINOR", "MAJOR"}
+        or parent["status"] not in {"PENDING", "RUNNING", "INCOMPLETE"}
+        or parent["enabled_at"] is not None
+        or parent["accepted_attempt_id"] is not None
+        or attempt["status"] not in {"SELECTED", "RUNNING"}
+    ):
+        raise Problem("invalid-transition")
+    if (
+        attempt["population"].get("fingerprint_version") != 1
+        or attempt["population"].get("fingerprint") != read(uow).fingerprint()
+    ):
+        raise Problem(
+            "validation-failed",
+            "The population changed; supersede this attempt and freeze a new one.",
+        )
+    if attempt["status"] == "RUNNING":
+        if parent["status"] != "RUNNING":
+            raise Problem("invalid-transition")
+        return False
+    for table, row in ((release_validation, parent), (release_validation_attempt, attempt)):
+        if row["status"] == "RUNNING":
+            continue
+        apply(
+            uow.session,
+            table.name,
+            row["id"],
+            to_status="RUNNING",
+            expected_status=row["status"],
+            expected_row_version=row["row_version"],
+            set_values={
+                "row_version": row["row_version"] + 1,
+                "updated_at": uow.now,
+                "updated_by": uow.principal.id,
+                "updated_by_kind": uow.principal.kind.value,
+            },
+        )
+    uow.audit(
+        action="release_validation_attempt.start",
+        object_type="release_validation_attempt",
+        object_id=attempt_id,
+        before={"status": attempt["status"], "validation_status": parent["status"]},
+        after={"status": "RUNNING", "validation_status": "RUNNING"},
+    )
+    return True

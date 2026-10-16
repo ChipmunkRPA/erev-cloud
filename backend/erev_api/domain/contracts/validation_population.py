@@ -1,5 +1,7 @@
 """Tenant-wide release-validation population from one database statement (RCP-29)."""
 
+import hashlib
+import json
 from dataclasses import dataclass
 from uuid import UUID
 
@@ -29,6 +31,29 @@ from .release_validation import GroupFacts
 class PopulationFacts:
     groups: tuple[GroupFacts, ...]
     required_entity_ids: tuple[UUID, ...]
+    members: tuple[tuple[UUID, UUID, UUID, int], ...]
+
+    def fingerprint(self) -> str:
+        """Versioned identity of the full population, including unsampled groups and members."""
+        payload = {
+            "version": 1,
+            "groups": [
+                [
+                    str(group.group_id),
+                    str(group.head_computation_id) if group.head_computation_id else None,
+                    group.open_activity,
+                    sorted(group.strata),
+                ]
+                for group in sorted(self.groups, key=lambda item: str(item.group_id))
+            ],
+            "entities": sorted(str(value) for value in self.required_entity_ids),
+            "members": sorted(
+                [str(group), str(contract), str(entity), version]
+                for group, contract, entity, version in self.members
+            ),
+        }
+        encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+        return hashlib.sha256(encoded).hexdigest()
 
 
 def read(uow: UnitOfWork) -> PopulationFacts:
@@ -157,8 +182,14 @@ def read(uow: UnitOfWork) -> PopulationFacts:
         .correlate(combination_group)
         .scalar_subquery()
     )
-    entities = (
-        select(func.array_agg(distinct(contract.c.contracting_entity_id)))
+    members = (
+        select(
+            func.jsonb_agg(
+                func.jsonb_build_array(
+                    contract.c.id, contract.c.contracting_entity_id, contract.c.head_stream_version
+                )
+            )
+        )
         .select_from(
             combination_group_member.join(
                 contract,
@@ -176,7 +207,7 @@ def read(uow: UnitOfWork) -> PopulationFacts:
                 group.head_computation_id,
                 or_(event_activity, ledger_activity).label("open_activity"),
                 strata.label("strata"),
-                entities.label("entities"),
+                members.label("members"),
             )
             .where(group.tenant_id == tenant_id)
             .order_by(group.id)
@@ -194,7 +225,12 @@ def read(uow: UnitOfWork) -> PopulationFacts:
             )
             for row in rows
         ),
+        members=tuple(
+            (row["id"], UUID(member[0]), UUID(member[1]), int(member[2]))
+            for row in rows
+            for member in row["members"] or ()
+        ),
         required_entity_ids=tuple(
-            sorted({entity for row in rows for entity in row["entities"] or ()}, key=str)
+            sorted({UUID(member[1]) for row in rows for member in row["members"] or ()}, key=str)
         ),
     )

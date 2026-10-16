@@ -2000,3 +2000,89 @@ def test_validation_attempt_resolves_seed_once_and_keeps_it_on_retry(world: Worl
         )
         assert rank != original_rank
         uow.commit()
+
+
+def test_validation_attempt_start_is_atomic_and_idempotent(
+    world: World, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from erev_api.db.tables import release_validation, release_validation_attempt
+    from erev_api.domain.contracts import validation_attempts
+
+    k01(world)
+    validation_id = pending_validation(world)
+    with world.place.uow() as uow:
+        attempt = validation_attempts.freeze(uow, validation_id=validation_id, attempt_no=1)
+        uow.commit()
+    from erev_api.db.transitions import apply as apply_transition
+
+    def fail_attempt(session: Any, table: str, *args: Any, **kwargs: Any) -> Any:
+        if table == "release_validation_attempt":
+            raise RuntimeError("attempt transition interrupted")
+        return apply_transition(session, table, *args, **kwargs)
+
+    monkeypatch.setattr(validation_attempts, "apply", fail_attempt)
+    with pytest.raises(RuntimeError, match="interrupted"), world.place.uow() as uow:
+        validation_attempts.start(uow, validation_id=validation_id, attempt_id=attempt.id)
+        uow.commit()
+    monkeypatch.setattr(validation_attempts, "apply", apply_transition)
+    with world.place.uow() as uow:
+        assert uow.session.scalar(select(release_validation.c.status)) == "PENDING"
+        assert uow.session.scalar(select(release_validation_attempt.c.status)) == "SELECTED"
+        assert validation_attempts.start(uow, validation_id=validation_id, attempt_id=attempt.id)
+        assert [event["action"] for event in uow.audit_events] == [
+            "release_validation_attempt.start"
+        ]
+        uow.commit()
+    with world.place.uow() as uow:
+        assert not validation_attempts.start(
+            uow, validation_id=validation_id, attempt_id=attempt.id
+        )
+        assert not uow.audit_events
+        assert uow.session.scalar(select(release_validation.c.status)) == "RUNNING"
+        assert uow.session.scalar(select(release_validation_attempt.c.status)) == "RUNNING"
+        assert uow.session.scalar(select(release_validation.c.row_version)) == 2
+        assert uow.session.scalar(select(release_validation_attempt.c.row_version)) == 2
+        uow.commit()
+
+
+@pytest.mark.parametrize("change", ["head", "event", "group", "running event"])
+def test_validation_attempt_start_refuses_population_drift(world: World, change: str) -> None:
+    from erev_api.domain.contracts.validation_attempts import freeze, start
+    from support.rows import insert_contract_rows
+
+    booked = k01(world)
+    validation_id = pending_validation(world)
+    with world.place.uow() as uow:
+        attempt = freeze(uow, validation_id=validation_id, attempt_no=1)
+        if change == "running event":
+            assert start(uow, validation_id=validation_id, attempt_id=attempt.id)
+        uow.commit()
+    if change == "head":
+        computed(world.place, booked.combination_group["id"])
+    elif change in {"event", "running event"}:
+        flag_change(world, booked.contract["id"], 2)
+    else:
+        with world.place.uow() as uow:
+            insert_contract_rows(uow.session, world.place.tenant_id)
+            uow.commit()
+    with world.place.uow() as uow, pytest.raises(Problem, match="population changed"):
+        start(uow, validation_id=validation_id, attempt_id=attempt.id)
+
+
+def test_validation_attempt_start_refuses_legacy_unfingerprinted_attempt(world: World) -> None:
+    from erev_api.db.tables import release_validation_attempt
+    from erev_api.domain.contracts.validation_attempts import start
+
+    case = verification_case(world)
+    attempt_id = case.decision.release_validation_attempt_id
+    assert attempt_id is not None
+    with world.place.uow() as uow:
+        parent_id = uow.session.scalar(
+            select(release_validation_attempt.c.release_validation_id).where(
+                release_validation_attempt.c.id == attempt_id
+            )
+        )
+        assert parent_id is not None
+        with pytest.raises(Problem, match="population changed"):
+            start(uow, validation_id=parent_id, attempt_id=attempt_id)
+        assert not uow.audit_events
