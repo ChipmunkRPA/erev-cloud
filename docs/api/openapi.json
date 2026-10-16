@@ -14771,7 +14771,8 @@
           "POSTING_RESPONSE",
           "AI_DOCUMENT_TEXT",
           "COMPUTATION_INPUT",
-          "COMPUTATION_OUTPUT"
+          "COMPUTATION_OUTPUT",
+          "VALIDATION_DATASET"
         ],
         "title": "FilePurpose",
         "type": "string"

@@ -65,6 +65,7 @@ from erev_api.db.tables import (
     approval_request,
     audit_chain_verification,
     computation_evidence,
+    computation_verification,
     contract,
     contract_event,
     control_execution,
@@ -88,6 +89,7 @@ from erev_api.db.tables import (
     posting_ack,
     reconciliation,
     registry_version,
+    release_validation_attempt,
     report_run,
     rule_set_version,
     sod_exception,
@@ -1103,6 +1105,12 @@ FILE_READ_ACCESS: Final[Mapping[FilePurpose, PurposeAccess]] = MappingProxyType(
         ),
         FilePurpose.COMPUTATION_OUTPUT: PurposeAccess(
             owners=(FileOwner(computation_evidence, "output_file_id", route=INTERNAL),),
+        ),
+        FilePurpose.VALIDATION_DATASET: PurposeAccess(
+            owners=(
+                FileOwner(release_validation_attempt, "dataset_file_id", route=INTERNAL),
+                FileOwner(computation_verification, "difference_file_id", route=INTERNAL),
+            ),
         ),
         # Raw prompt logs have no reader; model logs retain hashes, not prompt text.
         FilePurpose.AI_PROMPT_LOG: PurposeAccess(),

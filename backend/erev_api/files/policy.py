@@ -45,6 +45,7 @@ ENCRYPTED_PURPOSES: Final = frozenset(
         FilePurpose.AI_DOCUMENT_TEXT,
         FilePurpose.COMPUTATION_INPUT,
         FilePurpose.COMPUTATION_OUTPUT,
+        FilePurpose.VALIDATION_DATASET,
     }
 )
 # PRD ERR-37.

@@ -6092,3 +6092,11 @@ cleanup in the shared database session kernel was also repaired and regression-t
   replacement preserve true/false/null in events and projections, and reject contradictory rows.
 - Three tests and backend typing pass; evidence is in docs/release/CI-2026-10-15.md.
   Omitted terms remain unknown. No production behavior, activation policy or deployment change.
+
+## SSP override entity context — October 15, 2026
+
+- New override previews retain the contract and source-book entities, all-entity scope and
+  mismatch indicator; the approval table names them explicitly. Older previews stay unchanged.
+- Source-book access and approved-book scope protections remain in force. Cross-entity pricing
+  policy and additional-review requirements remain open; this change makes the facts visible.
+- Verification is recorded in docs/release/CI-2026-10-15.md. No deployment.

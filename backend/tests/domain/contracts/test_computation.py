@@ -3124,3 +3124,48 @@ def test_validation_aggregation_waits_for_retries_then_reports_exhaustion(
                 {"id": task_id},
             )
             uow.commit()
+
+
+def test_validation_dataset_is_encrypted_held_and_not_generically_downloadable(
+    world: World,
+) -> None:
+    from erev_api.db.tables import release_validation_attempt
+    from erev_api.db.transitions import apply
+    from erev_api.domain.contracts.validation_attempts import freeze
+    from erev_api.enums import FilePurpose
+
+    validation_id = pending_validation(world)
+    content = b'{"dataset_format":1,"groups":[]}'
+    with world.place.uow() as uow:
+        frozen = freeze(uow, validation_id=validation_id, attempt_no=1)
+        stored = store_file(
+            uow,
+            purpose=FilePurpose.VALIDATION_DATASET,
+            stream=io.BytesIO(content),
+            original_filename="validation.json",
+            media_type="application/json",
+        )
+        apply(
+            uow.session,
+            "release_validation_attempt",
+            frozen.id,
+            to_status=None,
+            set_values={"dataset_file_id": stored["id"], "dataset_sha256": stored["sha256"]},
+        )
+        meta, stream = open_file(uow.session, stored["id"], files=uow.files, keyring=uow.keyring)
+        with stream:
+            assert stream.read() == content
+        assert meta["sha256"] == hashlib.sha256(content).hexdigest()
+        assert uow.files.exists(str(meta["storage_key"]) + ".dek")
+        with uow.files.open(str(meta["storage_key"])) as raw:
+            assert raw.read() != content
+        holds = file_evidence.holds_in(uow.session, stored["id"])
+        assert any(hold.reference.table == "release_validation_attempt" for hold in holds)
+        assert file_evidence.first_refusing(holds) is not None
+        assert (
+            uow.session.scalar(select(release_validation_attempt.c.dataset_file_id)) == stored["id"]
+        )
+        uow.commit()
+    for suffix in ("", "/content"):
+        response = get(world.app, f"/api/v1/files/{stored['id']}{suffix}", world.place.author)
+        assert response.status_code == 404, response.text
