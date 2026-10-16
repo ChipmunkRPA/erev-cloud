@@ -7,6 +7,8 @@ the registry references the API's constants and the tests read the routes from t
 
 from __future__ import annotations
 
+from collections.abc import Iterable
+
 import pytest
 from erev_api.approvals import subjects
 from erev_api.auth.dependencies import PERMISSION_EXTENSION
@@ -18,6 +20,7 @@ from erev_api.domain.reference import periods as reference_periods
 from erev_api.domain.reports import framework as report_framework
 from erev_api.enums import ApprovalSubjectType, FilePurpose, PrincipalKind
 from erev_api.main import create_app
+from fastapi import FastAPI
 from fastapi.routing import APIRoute
 from support.answer_keys.ledger_resolver import SUBJECTS
 from support.answer_keys.platform_plan import (
@@ -43,13 +46,14 @@ from support.answer_keys.workspace_adapter import Call, LedgerEntry
 API_HANDLERS = frozenset(handler for handler in H.values() if handler.startswith("erev_api."))
 
 
-def _routes(app) -> dict[tuple[str, str], APIRoute]:  # noqa: ANN001
+def _routes(app: FastAPI) -> dict[tuple[str, str], APIRoute]:
     """Every mounted route by (method, path), through the application's included routers."""
     found: dict[tuple[str, str], APIRoute] = {}
 
-    def walk(items) -> None:  # noqa: ANN001
+    def walk(items: Iterable[object]) -> None:
         for item in items:
             if isinstance(item, APIRoute):
+                assert item.methods is not None
                 for method in item.methods:
                     found[(method, item.path)] = item
                 continue
@@ -107,6 +111,7 @@ def test_declared_permissions_equal_the_apis(app_settings: Settings) -> None:
     for handler, declared in PERMISSIONS.items():
         if declared.method is None:
             continue
+        assert declared.path is not None
         route = routes[(declared.method, declared.path)]
         recorded = (route.openapi_extra or {}).get(PERMISSION_EXTENSION)
         if declared.kind == "route":

@@ -2,6 +2,15 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Verification helper typing — October 15, 2026
+
+- Resolved all nine errors found by the explicit scan of five regression-test modules:
+  separate AST owner/callee variables, concrete row mappings, typed route traversal, and
+  explicit optional-value assertions. The approval-race test imports the helper from its
+  defining module and still patches the production call site.
+- Evidence is recorded in docs/release/CI-2026-10-15.md. AI audit catalogue and lifecycle-walk
+  integration remain the next known CI gap; full candidate verification is still outstanding.
+
 ## Frozen-CI failure triage — October 15, 2026
 
 - Rechecked the old failure nodes against current main: report-source scope inventory and
@@ -10,8 +19,7 @@
 - Job heartbeat verification now includes AI and release-verification foreign keys. Expanded
   job/settings database checks pass; exact evidence is in docs/release/CI-2026-10-15.md.
 - Ten AI command routes still lack audit catalogue/walk integration; the AI lifecycle category
-  remains pending. Explicit typing of the touched legacy test modules also found nine errors
-  outside the changed assertions. These are outstanding, not waived release gates.
+  remains pending. The nine helper typing errors found during triage were resolved above.
 
 ## Verification result persistence — October 15, 2026
 
@@ -257,17 +265,6 @@
   and during rendering. Public catalogue/API activation and the download UI remain unfinished.
 - Report unit verification passes 941 checks; detailed worker, typing and lint evidence is in
   docs/release/CI-2026-10-15.md. No deployment/provider calls/sign-off; broader gates remain open.
-
-## Retained export ownership across report and job reads — October 15, 2026
-
-- Migration 0157 adds an immutable, validated requester binding to report_run. It refuses
-  malformed/cross-owner bindings and downgrade while bindings survive. A partial tenant/job
-  index supports job visibility checks.
-- Shared report and job read predicates now require the original actor and current source/
-  export grants for bound exports, including for audit readers. Existing unbound reports keep
-  their rules. Submission, worker capture/build and UI integration remain unfinished.
-- Verification evidence and the migration round trip are recorded in docs/release/CI-2026-10-15.md.
-  No deployment, provider calls or accounting sign-off; production readiness remains unproven.
 
 ## Outstanding release verification
 

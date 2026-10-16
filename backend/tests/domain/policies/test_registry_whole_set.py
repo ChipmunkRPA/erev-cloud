@@ -60,6 +60,7 @@ from erev_api.enums import RegistryCategory, RegistryScope, TenantKind
 from erev_api.files.store import LocalFileStore
 from erev_api.problems import Problem
 from erev_api.registry import presets
+from erev_api.registry.versions import predecessor_of
 from erev_api.uow import unit_of_work
 from sqlalchemy import select, update
 from support.clock import FROZEN_AT
@@ -112,13 +113,14 @@ PRESET = f"{POLICIES}/presets/legacy-parity"
 
 def _events(found: World, version_id: str) -> list[dict[str, Any]]:
     """The audit events of one version, oldest first."""
-    return found.policies.rows(
+    rows = found.policies.rows(
         select(
             audit_event.c.action, audit_event.c.before, audit_event.c.after, audit_event.c.detail
         )
         .where(audit_event.c.object_id == UUID(version_id))
         .order_by(audit_event.c.chain_seq)
     )
+    return [dict(row) for row in rows]
 
 
 def _request(found: World, request_id: str) -> dict[str, Any]:
@@ -870,11 +872,11 @@ def test_the_approval_hook_checks_the_basis_under_its_locks(
             )
         return row
 
-    predecessor_of = registry_versions.predecessor_of
     fresh = approvals.assert_own_fresh_basis
 
     def predecessor_recorded(session: Any, version: Any, *, for_update: bool = False) -> Any:
         found = predecessor_of(session, version, for_update=for_update)
+        assert found is not None
         order.append(f"the predecessor's row, for_update={for_update}: {found['id']}")
         return found
 

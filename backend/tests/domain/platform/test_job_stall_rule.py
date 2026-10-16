@@ -134,7 +134,7 @@ def _start(someone: Member, kind: JobKind = KIND, params: Mapping[str, Any] | No
 
 def _job(tenant_id: UUID, job_id: UUID) -> Mapping[str, Any]:
     with tenant_session(_db(tenant_id), read_only=True) as session:
-        return session.execute(select(job).where(job.c.id == job_id)).mappings().one()
+        return dict(session.execute(select(job).where(job.c.id == job_id)).mappings().one())
 
 
 def _fetch(tenant_id: UUID, job_id: UUID) -> int:

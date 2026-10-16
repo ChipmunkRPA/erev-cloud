@@ -5972,3 +5972,14 @@ cleanup in the shared database session kernel was also repaired and regression-t
   and full lint pass; evidence: docs/release/CI-2026-10-15.md.
 - These are prerequisites, not a completed queued export. Persisted bindings, worker integration,
   every output/replay read and the download menu remain open. No deployment/provider calls.
+
+## Retained export ownership across report and job reads — October 15, 2026
+
+- Migration 0157 adds an immutable, validated requester binding to report_run. It refuses
+  malformed/cross-owner bindings and downgrade while bindings survive. A partial tenant/job
+  index supports job visibility checks.
+- Shared report and job read predicates now require the original actor and current source/
+  export grants for bound exports, including for audit readers. Existing unbound reports keep
+  their rules. Submission, worker capture/build and UI integration remain unfinished.
+- Verification evidence and the migration round trip are recorded in docs/release/CI-2026-10-15.md.
+  No deployment, provider calls or accounting sign-off; production readiness remains unproven.

@@ -460,9 +460,9 @@ def check_door(path: str, source: str) -> list[Finding]:
     findings: list[Finding] = []
     tree = ast.parse(source, filename=path)
     inside: dict[int, str] = {}
-    for name, function in _enclosing(tree):
+    for owner_name, function in _enclosing(tree):
         for node in ast.walk(function):
-            inside[id(node)] = name
+            inside[id(node)] = owner_name
     for node in ast.walk(tree):
         if not isinstance(node, ast.Call):
             continue
