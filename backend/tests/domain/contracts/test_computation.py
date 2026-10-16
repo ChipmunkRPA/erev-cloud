@@ -18,6 +18,7 @@ this checkout, ``erev_engine.compute`` in the L3 merge gate (V-C). The frozen cl
 from __future__ import annotations
 
 import hashlib
+import io
 from collections.abc import Mapping
 from dataclasses import dataclass, replace
 from datetime import date
@@ -28,6 +29,7 @@ from uuid import UUID
 
 import pytest
 from erev_api.auth.keyring import KeyRing
+from erev_api.auth.principal import system_principal
 from erev_api.clock import FrozenClock
 from erev_api.config import Settings
 from erev_api.db.session import DbContext, tenant_session
@@ -55,19 +57,21 @@ from erev_api.db.tables import (
 from erev_api.domain.contracts import bundles, computation
 from erev_api.domain.contracts import computation_evidence as evidence_writer
 from erev_api.domain.platform import file_evidence
+from erev_api.domain.reports import computation_sources
 from erev_api.enums import ContractEventType
 from erev_api.events.payloads import SignificantChangeFlaggedV1
 from erev_api.events.stream import EventIn, append_events
 from erev_api.explain import store
 from erev_api.files.store import LocalFileStore, open_file, store_file
 from erev_api.main import create_app
+from erev_api.problems import Problem
 from erev_api.registry.policies import POLICY_PARAMETERS
 from erev_engine import ENGINE_VERSION, upgrade
 from erev_engine.bundle import OutputBundle
 from erev_engine.errors import EngineError
 from erev_engine.trace import reevaluate
 from fastapi import FastAPI
-from sqlalchemy import exc, func, select, update
+from sqlalchemy import exc, func, insert, select, update
 from support.db import TestDatabase
 from support.factories import (
     TPL_SUB_DAILY,
@@ -927,3 +931,154 @@ def test_computation_evidence_links_predecessor_and_has_no_generic_download(worl
                     world.app, f"/api/v1/files/{row[column]}{suffix}", world.place.author
                 )
                 assert response.status_code == 404, response.text
+
+
+def test_report_reads_original_computation_after_group_advances(world: World) -> None:
+    booked = k01(world)
+    group_id = booked.combination_group["id"]
+    bundle, output, first = computed(world.place, group_id)
+    flag_change(world, booked.contract["id"], 2)
+    _, second_output, second = computed(world.place, group_id)
+    report_only = replace(
+        world.place.principal,
+        permissions=world.place.principal.permissions - {"contract.read"},
+    )
+    with world.place.uow(report_only) as uow:
+        retained = computation_sources.read_for_report(uow, first["id"])
+        assert retained.bundle == bundle
+        assert retained.engine_release_id == first["engine_release_id"]
+        assert retained.output_sha256 == output.sha256()
+        assert engine()(retained.bundle).sha256() == output.sha256()
+        assert retained.previous_computation_id is None
+        assert retained.bundle.events[-1].stream_version == 2
+        assert retained.output == upgrade.output_mapping(output)
+
+        latest = computation_sources.read_for_report(uow, second["id"])
+        assert latest.previous_computation_id == first["id"]
+        assert latest.output_sha256 == second_output.sha256()
+
+
+@pytest.mark.parametrize("name", ["input", "output"])
+@pytest.mark.parametrize(
+    "fault", ["bytes", "purpose", "size", "digest", "forged metadata", "missing"]
+)
+def test_report_refuses_corrupt_computation_files(
+    world: World, monkeypatch: pytest.MonkeyPatch, fault: str, name: str
+) -> None:
+    booked = k01(world)
+    _, _, produced = computed(world.place, booked.combination_group["id"])
+    streams: list[io.BytesIO] = []
+
+    def altered(*args: Any, **kwargs: Any) -> Any:
+        meta, stream = open_file(*args, **kwargs)
+        with stream:
+            content = stream.read()
+        if str(meta["purpose"]) != f"COMPUTATION_{name.upper()}":
+            return meta, io.BytesIO(content)
+        if fault == "missing":
+            raise FileNotFoundError("retained file absent")
+        changed = dict(meta)
+        if fault == "forged metadata":
+            content += b" "
+            changed["size_bytes"] = len(content)
+            changed["sha256"] = hashlib.sha256(content).hexdigest()
+        if fault == "bytes":
+            content += b" "
+        if fault == "purpose":
+            changed["purpose"] = "REPORT_OUTPUT"
+        if fault == "size":
+            changed["size_bytes"] += 1
+        if fault == "digest":
+            changed["sha256"] = "0" * 64
+        result = io.BytesIO(content)
+        streams.append(result)
+        return changed, result
+
+    monkeypatch.setattr(computation_sources, "open_file", altered)
+    with world.place.uow() as uow, pytest.raises(Problem) as caught:
+        computation_sources.read_for_report(uow, produced["id"])
+    assert caught.value.slug == "validation-failed"
+    reason = "EVIDENCE_MISSING" if fault == "missing" else "EVIDENCE_HASH_MISMATCH"
+    assert caught.value.errors[0].rule_id == f"{name.upper()}_{reason}"
+    assert (streams or fault == "missing") and all(stream.closed for stream in streams)
+
+
+@pytest.mark.parametrize(
+    "scope",
+    [
+        "no report permission",
+        "hidden entity",
+        "hidden failed",
+        "different tenant",
+        "system",
+    ],
+)
+def test_report_authorizes_computation_before_reading_files(
+    world: World, monkeypatch: pytest.MonkeyPatch, scope: str
+) -> None:
+    booked = k01(world)
+    _, _, produced = computed(world.place, booked.combination_group["id"])
+    if scope == "hidden failed":
+        (source,) = world.place.rows(
+            select(contract_computation).where(contract_computation.c.id == produced["id"])
+        )
+        failed_id = UUID(int=7788)
+        with world.place.uow() as uow:
+            with uow.as_system():
+                uow.session.execute(
+                    insert(contract_computation).values(
+                        **{
+                            **source,
+                            "id": failed_id,
+                            "status": "FAILED",
+                            "problem": {"detail": "failure"},
+                        }
+                    )
+                )
+            uow.commit()
+        produced = {**produced, "id": failed_id}
+    principal = world.place.principal
+    if scope == "no report permission":
+        principal = replace(principal, permissions=principal.permissions - {"report.run"})
+    elif scope == "different tenant":
+        principal = replace(principal, tenant_id=UUID(int=999))
+    elif scope == "system":
+        principal = system_principal(principal.tenant_id)
+    else:
+        principal = replace(
+            principal,
+            permission_scopes={
+                **principal.permission_scopes,
+                "report.run": frozenset({UUID(int=999)}),
+            },
+        )
+
+    def unread(*args: Any, **kwargs: Any) -> Any:
+        raise AssertionError("Evidence files must not be read for an unauthorized caller")
+
+    monkeypatch.setattr(computation_sources, "open_file", unread)
+    with world.place.uow(principal) as uow, pytest.raises(Problem) as caught:
+        computation_sources.read_for_report(uow, produced["id"])
+    assert caught.value.slug == (
+        "not-found"
+        if scope in {"hidden entity", "hidden failed", "different tenant"}
+        else "forbidden"
+    )
+
+
+def test_report_missing_evidence_never_rebuilds_current_inputs(
+    world: World, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    booked = k01(world)
+    # Simulate a computation written before 0160: it has versions but no retained files.
+    monkeypatch.setattr(evidence_writer, "retain", lambda *args, **kwargs: None)
+    _, _, produced = computed(world.place, booked.combination_group["id"])
+
+    def forbidden_rebuild(*args: Any, **kwargs: Any) -> Any:
+        raise AssertionError("Missing historical evidence cannot use current inputs or files")
+
+    monkeypatch.setattr(bundles, "build", forbidden_rebuild)
+    monkeypatch.setattr(computation_sources, "open_file", forbidden_rebuild)
+    with world.place.uow() as uow, pytest.raises(Problem) as caught:
+        computation_sources.read_for_report(uow, produced["id"])
+    assert caught.value.errors[0].rule_id == "INPUT_EVIDENCE_MISSING"

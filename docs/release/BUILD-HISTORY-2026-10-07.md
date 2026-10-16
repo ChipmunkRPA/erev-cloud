@@ -5902,3 +5902,16 @@ cleanup in the shared database session kernel was also repaired and regression-t
   on 3cf8f5b and is not evidence for this change. See docs/release/CI-2026-10-15.md.
 - Call-log UI/drawer/export, standard J-19 and remaining release/accounting gates stay open.
   No deployment or provider call. Published directly to main after verification.
+
+## AI call-log screen and bookmarked evidence — October 15, 2026
+
+- Added /settings/ai/call-log with the shared grid, newest-first 50-row API pages, outcomes,
+  token counters, latency and actor/configuration evidence. Named-entity settings grants do not
+  open workspace evidence; ai.use opens only the actor's own list through the server's rules.
+- A docked drawer reads GET /ai/model-logs/{id}; bookmarks/reloads reauthorize the call instead
+  of trusting a retained row. Backend tests prove owner and tenant detail refusal as 404.
+- Full frontend suite: 2,164 tests pass in 203 files. Ten API/route checks, 35 focused frontend
+  checks, backend typing (795 files), frontend typing and full lint pass. Real Chromium with API/PostgreSQL passes grid, drawer and bookmark reload;
+  screenshots inspected and the drawer layout corrected. Details: docs/release/CI-2026-10-15.md.
+- CSV/XLSX export, saved views, linked proposals and hash-copy controls remain open, as do J-19,
+  broader release gates and independent accounting sign-off. No deployment or provider calls.

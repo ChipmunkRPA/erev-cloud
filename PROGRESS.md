@@ -2,6 +2,16 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Verified computation sources for report replay — October 15, 2026
+
+- The internal reader checks report.run over the complete stored group and performing entities
+  before opening files, then validates raw/logical hashes, codec/cutoff, group membership,
+  output book coverage, predecessor heads and ledger-cutoff shape. SYSTEM has no implicit grant.
+- Old inputs remain stable after the group advances. Missing evidence never rebuilds from current
+  state. Corruption and scope checks pass; final verification is in CI-2026-10-15.md.
+- This reader is not yet wired to RPT-38. Replay orchestration, ledger cross-checks and persisted
+  replay verification remain outstanding. Local recovery on frozen 659314a passed.
+
 ## Typed computation evidence — October 15, 2026
 
 - Revision 0160 retains encrypted typed inputs and canonical outputs for new computations,
@@ -247,19 +257,6 @@
   this correction. Evidence is recorded in docs/release/CI-2026-10-15.md.
 - Usage reconciliation, remaining call-log features and broader release/accounting gates are
   still open. No deployment or provider calls; publish directly to main after verification.
-
-## AI call-log screen and bookmarked evidence — October 15, 2026
-
-- Added /settings/ai/call-log with the shared grid, newest-first 50-row API pages, outcomes,
-  token counters, latency and actor/configuration evidence. Named-entity settings grants do not
-  open workspace evidence; ai.use opens only the actor's own list through the server's rules.
-- A docked drawer reads GET /ai/model-logs/{id}; bookmarks/reloads reauthorize the call instead
-  of trusting a retained row. Backend tests prove owner and tenant detail refusal as 404.
-- Full frontend suite: 2,164 tests pass in 203 files. Ten API/route checks, 35 focused frontend
-  checks, backend typing (795 files), frontend typing and full lint pass. Real Chromium with API/PostgreSQL passes grid, drawer and bookmark reload;
-  screenshots inspected and the drawer layout corrected. Details: docs/release/CI-2026-10-15.md.
-- CSV/XLSX export, saved views, linked proposals and hash-copy controls remain open, as do J-19,
-  broader release gates and independent accounting sign-off. No deployment or provider calls.
 
 ## Outstanding release verification
 
