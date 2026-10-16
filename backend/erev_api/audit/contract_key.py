@@ -191,6 +191,7 @@ OTHER: Final = frozenset(
         "webhook_delivery",
         "audit_chain_verification",
         "tenant_snapshot",
+        "release_validation_attempt",  # tenant-wide frozen validation population
         "missing_object",
     }
 )

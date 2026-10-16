@@ -1783,3 +1783,163 @@ def test_validation_population_requires_sealed_ledger_activity(world: World) -> 
         after = next(group for group in read(uow).groups if group.group_id == parts.chain.group_id)
         assert after.open_activity
         uow.commit()
+
+
+def pending_validation(world: World) -> UUID:
+    from erev_api.controls.release import current_release
+    from erev_api.db import new_id
+    from erev_api.db.tables import release_validation
+
+    release = current_release()
+    assert release is not None
+    validation_id = new_id()
+    with world.place.uow() as uow:
+        uow.session.execute(
+            insert(release_validation).values(
+                tenant_id=world.place.tenant_id,
+                id=validation_id,
+                engine_release_id=release.id,
+                effective_level="MINOR",
+                status="PENDING",
+                created_at=uow.now,
+                created_by=uow.principal.id,
+                created_by_kind=uow.principal.kind.value,
+                updated_at=uow.now,
+                updated_by=uow.principal.id,
+                updated_by_kind=uow.principal.kind.value,
+            )
+        )
+        uow.commit()
+    return validation_id
+
+
+def test_validation_attempt_freeze_preserves_selection_on_retry(world: World) -> None:
+    from erev_api.db.tables import job, release_validation_attempt, release_validation_group
+    from erev_api.domain.contracts.validation_attempts import freeze
+
+    booked = k01(world)
+    group_id = booked.combination_group["id"]
+    validation_id = pending_validation(world)
+    with world.place.uow() as uow:
+        jobs_before = uow.session.scalar(select(func.count()).select_from(job))
+        first = freeze(uow, validation_id=validation_id, attempt_no=1, seed=20260912)
+        assert first.created
+        assert len(uow.audit_events) == 1
+        uow.commit()
+    # The frozen NO_SOURCE remains NO_SOURCE even after a computation becomes available.
+    computed(world.place, group_id)
+    with world.place.uow() as uow:
+        again = freeze(uow, validation_id=validation_id, attempt_no=1, seed=20260912)
+        assert again.id == first.id and not again.created
+        assert not uow.audit_events
+        attempt = uow.session.execute(select(release_validation_attempt)).mappings().one()
+        assert attempt["status"] == "SELECTED"
+        assert attempt["required_entity_ids"] == [world.entity_id]
+        assert attempt["population"]["no_source"] == 1
+        selected = uow.session.execute(select(release_validation_group)).mappings().one()
+        assert selected["source_computation_id"] is None
+        assert selected["combination_group_id"] == group_id
+        assert selected["selection"] == "OPEN_ACTIVITY"
+        assert selected["child_job_id"] is None and selected["orchestration_state"] == "PENDING"
+        assert uow.session.scalar(select(func.count()).select_from(job)) == jobs_before
+        uow.commit()
+
+
+def test_validation_attempt_freeze_rolls_back_selection_failure(
+    world: World, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from erev_api.db.tables import release_validation_attempt, release_validation_group
+    from erev_api.domain.contracts.validation_attempts import freeze
+
+    k01(world)
+    validation_id = pending_validation(world)
+    with (
+        pytest.raises(RuntimeError, match="selection insert interrupted"),
+        world.place.uow() as uow,
+    ):
+        execute = uow.session.execute
+
+        def fail_selection(statement: Any, *args: Any, **kwargs: Any) -> Any:
+            if getattr(statement, "table", None) is release_validation_group:
+                raise RuntimeError("selection insert interrupted")
+            return execute(statement, *args, **kwargs)
+
+        monkeypatch.setattr(uow.session, "execute", fail_selection)
+        freeze(uow, validation_id=validation_id, attempt_no=1, seed=20260912)
+        uow.commit()
+    with world.place.uow() as uow:
+        assert uow.session.scalar(select(func.count()).select_from(release_validation_attempt)) == 0
+        assert uow.session.scalar(select(func.count()).select_from(release_validation_group)) == 0
+        assert freeze(uow, validation_id=validation_id, attempt_no=1, seed=20260912).created
+        uow.commit()
+
+
+@pytest.mark.parametrize(
+    "case",
+    ["different seed", "active predecessor", "skipped number", "partial scope", "other tenant"],
+)
+def test_validation_attempt_freeze_refuses_invalid_redraw(world: World, case: str) -> None:
+    from erev_api.domain.contracts.validation_attempts import freeze
+
+    validation_id = pending_validation(world)
+    with world.place.uow() as uow:
+        freeze(uow, validation_id=validation_id, attempt_no=1, seed=20260912)
+        uow.commit()
+    principal = world.place.principal
+    if case == "partial scope":
+        principal = replace(principal, entity_scope=(world.entity_id,))
+    elif case == "other tenant":
+        principal = replace(principal, tenant_id=UUID(int=999))
+    number = 2 if case == "active predecessor" else 3 if case == "skipped number" else 1
+    with world.place.uow(principal) as uow, pytest.raises(Problem):
+        freeze(
+            uow,
+            validation_id=validation_id,
+            attempt_no=number,
+            seed=99 if case == "different seed" else 20260912,
+        )
+
+
+def test_validation_attempt_freeze_serializes_duplicate_creators(world: World) -> None:
+    import threading
+
+    from erev_api.db.tables import release_validation_attempt
+    from erev_api.domain.contracts.validation_attempts import FrozenAttempt, freeze
+    from support.interleave import await_lock_wait, backend_pid, observing_checkouts
+
+    validation_id = pending_validation(world)
+    results: list[FrozenAttempt] = []
+    errors: list[Exception] = []
+
+    def duplicate() -> None:
+        try:
+            with world.place.uow() as uow:
+                results.append(
+                    freeze(uow, validation_id=validation_id, attempt_no=1, seed=20260912)
+                )
+                uow.commit()
+        except Exception as error:
+            errors.append(error)
+
+    request = threading.Thread(target=duplicate, name="freeze-duplicate")
+    try:
+        with observing_checkouts() as backends, world.place.uow() as holder:
+            first = freeze(holder, validation_id=validation_id, attempt_no=1, seed=20260912)
+            holder_pid = backend_pid(holder.session)
+            request.start()
+            blocked_pid, _ = await_lock_wait(
+                holder.session,
+                holder_pid=holder_pid,
+                backends=backends,
+                timeout=15,
+                expect="release_validation",
+            )
+            assert blocked_pid != holder_pid and request.is_alive()
+            holder.commit()
+    finally:
+        if request.ident is not None:
+            request.join(timeout=30)
+    assert not request.is_alive() and not errors
+    assert results == [FrozenAttempt(first.id, False)]
+    with world.place.uow() as uow:
+        assert uow.session.scalar(select(func.count()).select_from(release_validation_attempt)) == 1

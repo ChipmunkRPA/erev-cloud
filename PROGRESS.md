@@ -2,6 +2,17 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Frozen validation-attempt persistence — October 15, 2026
+
+- A parent-locked writer saves attempt metadata and selected group/head rows atomically before
+  any job dispatch. Retrying the same attempt preserves its seed and selection, including
+  NO_SOURCE. A new attempt requires the predecessor to be superseded explicitly.
+- The writer records a tenant-level freeze audit event and refuses partial entity scopes,
+  cross-tenant lookups, seed changes, skipped attempt numbers and active predecessors.
+- Exact verification is recorded in docs/release/CI-2026-10-15.md. The orchestrator still needs
+  replay-seed configuration resolution, supersession/start commands, fan-out/handler, dataset
+  publication and release admission. No release is enabled by freezing an attempt.
+
 ## Release-validation population reader — October 15, 2026
 
 - Added a tenant-wide, single-statement reader for current heads, open-period member events,
@@ -254,17 +265,6 @@
 - Frontend and real local Chromium/API/worker verification is recorded in
   docs/release/CI-2026-10-15.md. No deployment or live provider calls; overall release gates,
   remaining call-log navigation/copy controls and independent accounting sign-off remain open.
-
-## Public call-export catalogue — October 15, 2026
-
-- Migration 0158 registers ai_call_log_export for CSV/XLSX through the existing report API.
-  Its closed, empty parameter schema refuses misleading entity/history/owner filters; the
-  requester binding supplies scope, and reruns evaluate the current authorized population.
-- Worker tests now use the actual migration seed instead of temporary registration. Catalogue
-  metadata, specification inventories and default-role visibility expectations include the code.
-- Definition removal must refuse while retained runs reference it. Migration/worker verification
-  is recorded in docs/release/CI-2026-10-15.md. The call-log download menu remains pending.
-- No deployment or live provider calls. Overall release gates and accounting sign-off remain open.
 
 ## Outstanding release verification
 

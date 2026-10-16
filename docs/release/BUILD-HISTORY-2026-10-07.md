@@ -6004,3 +6004,14 @@ cleanup in the shared database session kernel was also repaired and regression-t
   OWN after promotion; a retained TENANT reply refuses demotion. No duplicate route guards.
 - Public catalogue registration and the download UI remain pending. Verification details are in
   docs/release/CI-2026-10-15.md. No deployment/provider calls/sign-off; broader gates remain open.
+
+## Public call-export catalogue — October 15, 2026
+
+- Migration 0158 registers ai_call_log_export for CSV/XLSX through the existing report API.
+  Its closed, empty parameter schema refuses misleading entity/history/owner filters; the
+  requester binding supplies scope, and reruns evaluate the current authorized population.
+- Worker tests now use the actual migration seed instead of temporary registration. Catalogue
+  metadata, specification inventories and default-role visibility expectations include the code.
+- Definition removal must refuse while retained runs reference it. Migration/worker verification
+  is recorded in docs/release/CI-2026-10-15.md. The call-log download menu remains pending.
+- No deployment or live provider calls. Overall release gates and accounting sign-off remain open.
