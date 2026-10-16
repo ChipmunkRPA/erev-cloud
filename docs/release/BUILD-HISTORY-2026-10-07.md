@@ -6077,3 +6077,11 @@ cleanup in the shared database session kernel was also repaired and regression-t
   shredding rules, anonymisation names, patterns and offsets. This executes assertions rather
   than relying on collection. Verification is in docs/release/CI-2026-10-15.md.
 - No deployment or accounting-policy change. Broader release checks and sign-off remain open.
+
+## Manual acceptance and side-letter terms — October 15, 2026
+
+- Manual create/edit forms now state acceptance clauses and side letters as Yes, No or Not
+  stated. New drafts leave both unknown; edits preserve saved answers and can clear them.
+- This fixes draft edits silently dropping existing terms. Activation controls remain unchanged;
+  omitted import terms remain unknown; see LIMITS-1.0.md. Verification is in CI-2026-10-15.md.
+- No deployment or accounting-policy change; broader release gates and sign-off remain open.

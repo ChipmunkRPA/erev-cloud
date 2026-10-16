@@ -2,6 +2,14 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Validation aggregate refusal checks — October 15, 2026
+
+- Reproduced and fixed ERROR evidence counting toward a pass in the pure aggregator. It now
+  makes an otherwise terminal attempt INCOMPLETE, including alongside MAJOR differences.
+- PATCH validations are refused before population evaluation. All 22 aggregation/state-machine
+  tests and typing passed; dated CI evidence records the checks. Persisted job aggregation,
+  artifact publication, approval resolution and admission remain unfinished.
+
 ## Frozen validation job fan-out — October 15, 2026
 
 - Added transactional job binding for each frozen selection, with population/release checks
@@ -265,14 +273,6 @@
   replacement preserve true/false/null in events and projections, and reject contradictory rows.
 - Three tests and backend typing pass; evidence is in docs/release/CI-2026-10-15.md.
   Omitted terms remain unknown. No production behavior, activation policy or deployment change.
-
-## Manual acceptance and side-letter terms — October 15, 2026
-
-- Manual create/edit forms now state acceptance clauses and side letters as Yes, No or Not
-  stated. New drafts leave both unknown; edits preserve saved answers and can clear them.
-- This fixes draft edits silently dropping existing terms. Activation controls remain unchanged;
-  omitted import terms remain unknown; see LIMITS-1.0.md. Verification is in CI-2026-10-15.md.
-- No deployment or accounting-policy change; broader release gates and sign-off remain open.
 
 ## Outstanding release verification
 

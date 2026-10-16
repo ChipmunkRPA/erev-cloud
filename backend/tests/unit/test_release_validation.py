@@ -264,6 +264,23 @@ def test_integrity_mismatch_and_unverifiable_block_and_are_never_approvable() ->
         assert result.status is S.INCOMPLETE and blocking.value in result.reasons
 
 
+@pytest.mark.parametrize("level", ["MINOR", "MAJOR"])
+def test_aggregate_error_evidence_cannot_pass_or_reach_approval(level: Level) -> None:
+    for peers in ([], [GroupResult(OS.COMPLETE, V.DIFFERENCES)]):
+        result = aggregate(level, [GroupResult(OS.COMPLETE, V.ERROR), *peers])
+        assert result.status is S.INCOMPLETE
+        assert result.reasons == ("ERROR",)
+        assert result.counts["ERROR"] == 1
+
+
+@pytest.mark.parametrize(
+    "groups", [[], [GroupResult(OS.COMPLETE, V.MATCH)], [GroupResult(OS.RUNNING, None)]]
+)
+def test_patch_validation_never_aggregates_a_population(groups: list[GroupResult]) -> None:
+    with pytest.raises(ValueError, match="PATCH"):
+        aggregate("PATCH", groups)
+
+
 # --- enablement (D-96 (6)) ------------------------------------------------------------------------
 
 

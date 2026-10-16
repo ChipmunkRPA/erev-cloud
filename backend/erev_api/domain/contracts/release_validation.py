@@ -420,11 +420,15 @@ class Aggregate:
     reasons: tuple[str, ...] = ()
 
 
-_BLOCKING: Final = frozenset({VerificationOutcome.UNVERIFIABLE, VerificationOutcome.MISMATCH})
+_BLOCKING: Final = frozenset(
+    {VerificationOutcome.UNVERIFIABLE, VerificationOutcome.MISMATCH, VerificationOutcome.ERROR}
+)
 
 
 def aggregate(level: Level, groups: Sequence[GroupResult]) -> Aggregate:
     """REL-06 / RCP-28a (B): evaluated only when every group's orchestration state is terminal."""
+    if level == "PATCH":
+        raise ValueError("a PATCH validation has no population to aggregate")
     counts: dict[str, int] = {}
     for group in groups:
         key = group.orchestration_state.value
