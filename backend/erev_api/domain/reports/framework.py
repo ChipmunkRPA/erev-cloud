@@ -138,6 +138,7 @@ from erev_api.domain.reports.builders import (
     SourceCollector,
     filter_problem,
 )
+from erev_api.domain.reports.builders import actual_vs_forecast as forecast_comparison_builder
 from erev_api.domain.reports.builders import adoption_bridge as adoption_bridge_builder
 from erev_api.domain.reports.builders import (
     allocations_by_ssp_version as allocations_by_ssp_version_builder,
@@ -380,6 +381,7 @@ BUILDERS: Final[Mapping[str, Builder]] = MappingProxyType(
         extract_obligations_builder.CODE: extract_obligations_builder.build,
         extract_events_builder.CODE: extract_events_builder.build,
         trueup_builder.CODE: trueup_builder.build,
+        forecast_comparison_builder.CODE: forecast_comparison_builder.build,
         parallel_builder.CODE: parallel_builder.build,
         upgrade_validation_builder.CODE: upgrade_validation_builder.build,
         variance_builder.CODE: variance_builder.build,
@@ -643,6 +645,11 @@ SOURCE_CONTRACTS: Final[Mapping[str, SourceContract]] = MappingProxyType(
                 "Both frozen locks and original retained computation evidence",
                 "consumed configuration retained in original input bundles",
             ),
+            (),
+        ),
+        forecast_comparison_builder.CODE: SourceContract(
+            RETAINED,
+            ("Saved forecast and snapshot-cutoff actual facts, scoped entities and currency",),
             (),
         ),
         parallel_builder.CODE: SourceContract(
@@ -2372,6 +2379,10 @@ def _export_requester(
             raise Problem("invalid-transition")
         ctx = report_requester.validation_requester(jc, uow, run)
         variance_builder.prepare(uow, replace(report_params(run), requester=ctx))
+        return ctx
+    if str(run["report_code"]) == forecast_comparison_builder.CODE:
+        ctx = report_requester.validation_requester(jc, uow, run)
+        forecast_comparison_builder.require_access(uow, replace(report_params(run), requester=ctx))
         return ctx
     if str(run["report_code"]) == parallel_builder.CODE:
         ctx = report_requester.validation_requester(jc, uow, run)

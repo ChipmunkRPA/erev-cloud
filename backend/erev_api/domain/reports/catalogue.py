@@ -1759,12 +1759,23 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
         "within a forecast horizon (REQ-FC-005).",
         ("forecast_run_id", "row_dimension", "from_period_key", "to_period_key", "currency_view"),
         overrides={"row_dimension": _one_of("CONTRACT", "REVENUE_CATEGORY")},
-        sources=("forecast_run", "scenario", "journal_line", "period"),
-        joins=("journal_line.period_id = period.id",),
+        sources=(
+            "forecast_run",
+            "report_run",
+            "scenario",
+            "tenant_snapshot",
+            "forecast_actuals_capture",
+            "file_object",
+        ),
+        joins=(
+            "scenario.tenant_snapshot_id binds the current production actuals capture",
+            "successful refresh lineage binds archived forecast reports to the logical scenario",
+        ),
         filters=(
-            "periods inside the horizon of forecast_run_id",
-            "actual revenue posted in the scenario tenant as of its latest refresh",
-            "entities in entity_codes",
+            "periods inside the saved forecast horizon",
+            "current scenario and report entity permissions; exact forecast currency basis",
+            "acknowledged production revenue at snapshot cutoff; "
+            "retained inputs only for same-source rebuild",
         ),
     ),
     _definition(

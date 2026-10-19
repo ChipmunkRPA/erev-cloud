@@ -2,6 +2,20 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Actual-vs-forecast standard report execution — October 19, 2026
+
+- Registered actual_vs_forecast in the standard report framework (56 registered definitions,
+  including disclosure; 55 ordinary builders). Workers reload current scenario/report access.
+  Live builds use the requesting user for authorized source reads and restore worker context.
+- Added retained-fact rebuilding with digest, tenant/run/entity/book/currency/selection and
+  cutoff checks. It recomputes variances from original facts without live-source reads or saved
+  output replay. Revision 0187 updates report IPE to the real retained snapshot/file sources.
+- The real scenario journey creates a standard REPORT_RUN, executes it to SUCCEEDED JSON and
+  rebuilds the same empty-actuals result with live reads forbidden. Migration and 17 focused
+  source-contract/rebuild checks pass; Ruff/Mypy pass.
+- Dedicated UI selection, all file-format verification and populated accounting acceptance
+  remain. FCS-4 is now registered/runnable, but its acceptance is not complete. No deployment.
+
 ## Actual dimensions and comparison assembly — October 19, 2026
 
 - Actuals capture now freezes immutable contract external IDs and category availability. A
@@ -218,24 +232,6 @@
   source capture, forecast-run execution, retained report exports and UI remain open. Journal
   reporting-currency valuation still needs its governed source adapter; no parity conversion is
   assumed. Forecast and actual-vs-forecast remain unfinished. No deployment/readiness claim.
-
-## Scenario refresh API, worker and atomic switch — October 19, 2026
-
-- Added POST /scenarios/{id}/refresh with source row precondition, published input selection,
-  idempotency and atomic snapshot-job/reservation creation. OpenAPI/client types regenerated.
-- Reserved snapshot jobs now reauthorize the requester, read the selected publication, export
-  current production, load a held copy and replay the ordered inputs. Completed held copies can
-  be reused; an already-completed refresh returns its retained result. Partial copy failures
-  settle the refresh and archive the incomplete target while keeping the old scenario usable.
-- Publication, target activation, old-copy archive, source pointer/base/last-refreshed update,
-  refresh result and three-workspace audit commit together. Retired old-copy worker writes are
-  refused even after their source pointer moves. Cancellation settles queued reservations and
-  cannot undo an already-completed switch.
-- Real API/worker checks cover failed completion with old-copy preservation, a subsequent
-  successful refresh, mixed mapped-file/event replay, idempotent HTTP retry, old-write refusal
-  and queued cancellation. Ordinary scenario creation also passes; Ruff/Mypy/OpenAPI pass.
-- Refresh UI, broader concurrency/crash recovery and specified accounting acceptance remain
-  open. Forecast output and actual-vs-forecast report builders remain unfinished. No deployment.
 
 ## Outstanding release verification
 

@@ -395,3 +395,54 @@ def exercise_refresh_state(world: Any, source_actor: Actor, scenario_id: UUID) -
         assert uow.session.scalar(text("SELECT current_setting('app.tenant_id')")) == str(
             actor.tenant_id
         )
+
+    # Exercise the registered report job and rebuild its data without reading live sources.
+    from erev_api.db.tables import report_run
+    from erev_api.domain.reports import framework
+    from erev_api.domain.reports.builders import actual_vs_forecast
+    from erev_api.schemas.reports import ReportRunCreateIn
+
+    with system_unit_of_work(runtime, actor, request_id="comparison-report") as uow:
+        entity_codes = list(
+            uow.session.scalars(
+                select(legal_entity.c.code).where(
+                    legal_entity.c.id.in_(
+                        [UUID(value) for value in saved.run["parameters"]["entity_ids"]]
+                    )
+                )
+            )
+        )
+        report_id, report_job = framework.create_run(
+            uow,
+            ReportRunCreateIn(
+                report_code="actual_vs_forecast",
+                output_format="JSON",
+                parameters={
+                    "forecast_run_id": str(saved_run_id),
+                    "entity_codes": entity_codes,
+                    "row_dimension": "REVENUE_CATEGORY",
+                    "currency_view": "transaction",
+                },
+            ),
+        )
+        queue_id = uow.session.scalar(
+            select(job.c.procrastinate_job_id).where(job.c.id == report_job.id)
+        )
+        uow.session.execute(
+            text("UPDATE procrastinate_jobs SET status = 'doing' WHERE id = :id"), {"id": queue_id}
+        )
+        uow.commit()
+    registry.run_job(report_job.id, actor.tenant_id, attempt=1, runtime=runtime)
+    with system_unit_of_work(runtime, actor, request_id="comparison-rebuild") as uow:
+        built = dict(
+            uow.session.execute(select(report_run).where(report_run.c.id == report_id))
+            .mappings()
+            .one()
+        )
+        assert built["status"] == "SUCCEEDED", built.get("problem")
+        with patch.object(
+            forecast_comparison_inputs, "read", side_effect=AssertionError("live source read")
+        ):
+            rebuilt = actual_vs_forecast.build(uow, framework.report_params(built))
+        assert rebuilt.rows == ()
+        assert rebuilt.control_totals == built["control_totals"]

@@ -823,3 +823,19 @@ the run fails and requires a fresh request. Production workspaces cannot run for
 or cancelled computations retain no partial reports. A completed publication cannot be cancelled.
 The forecast-run creation screen, revenue chart, general report-catalogue execution and accounting
 acceptance are still unfinished.
+
+
+### Actual versus forecast
+
+In an active scenario, `POST /api/v1/report-runs` now accepts report code
+`actual_vs_forecast` with a succeeded `forecast_run_id`, its `entity_codes`, optional
+`from_period_key`/`to_period_key`, and `row_dimension` (`CONTRACT` or `REVENUE_CATEGORY`).
+Use the forecast's original `currency_view` (`transaction` or `functional`). JSON execution
+is verified; the report uses the standard export pipeline for its listed file formats.
+
+The comparison reads the saved forecast and the current scenario snapshot's retained production
+actuals. Report access is required for all forecast entities, along with scenario access for all
+entities. Category comparisons refuse historical classifications that were not retained reliably.
+The same-source rerun recomputes from retained facts and does not substitute newly refreshed actuals.
+Legacy snapshots without retained actuals cannot be compared. A dedicated selection screen and
+populated accounting acceptance are still outstanding.

@@ -11594,8 +11594,11 @@ Author BS-3. Uses DIN, SNP and RPS (PHASES §1 row 18). Indicative size 12 items
     record predates the cutoff supply a category. Actual-side mapping uses stored debit/credit
     amounts in the forecast currency basis. An internal comparison assembler connects both
     authorized readers, checks for a refresh race and retains pre-aggregation facts/digests.
-    Report-framework registration, same-source rebuild and UI remain open;
-    this report is not yet runnable.
+    Registered the standard report builder and retained-fact source contract. The worker reloads
+    current scenario/report permissions; same-source rebuild checks hash, tenant/run/entity/book/
+    currency/selection scope and recomputes from facts. Revision 0187 corrects IPE metadata.
+    The real report worker produces JSON and rebuilds without live reads. UI selection, other
+    export formats and populated production-posting accounting acceptance remain open.
   - **Prerequisites:** FCS-3
   - **Scope:**
     - Paths: `backend/erev_api/domain/reports/builders/actual_vs_forecast.py` (RPT-40: forecast revenue of the run against revenue posted in the scenario tenant as of its latest refresh); `backend/tests/domain/forecast/test_actual_vs_forecast.py`
