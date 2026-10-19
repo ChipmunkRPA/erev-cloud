@@ -11583,7 +11583,10 @@ Author BS-3. Uses DIN, SNP and RPS (PHASES §1 row 18). Indicative size 12 items
     bases. Sandbox journals are refused as a source. Creation/refresh workers now retain both
     books in encrypted snapshot-data files, with an immutable per-snapshot reference (0186).
     Retries reuse the capture; completed legacy snapshots cannot acquire a new baseline.
-    Retained actuals reading, dimension mapping, report builder/registration and UI remain open;
+    The internal actuals reader now authorizes the current scenario and forecast, binds the
+    exact current snapshot/cutoff, verifies encrypted data integrity and returns only the saved
+    forecast's book/entity/horizon population. Missing legacy captures fail explicitly.
+    Dimension mapping, report builder/registration and UI remain open;
     this report is not yet runnable.
   - **Prerequisites:** FCS-3
   - **Scope:**

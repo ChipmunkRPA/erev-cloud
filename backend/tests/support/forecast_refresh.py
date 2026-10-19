@@ -310,6 +310,13 @@ def exercise_refresh_state(world: Any, source_actor: Actor, scenario_id: UUID) -
         assert revenue.forecast.forecast_tenant_id == old_target
         assert any(column["key"].startswith("period:") for column in revenue.revenue["columns"])
         assert "sections" not in revenue.revenue
+        from erev_api.domain.reports import forecast_actuals_saved
+
+        actuals = forecast_actuals_saved.read(uow, saved_run_id)
+        assert actuals.rows == ()
+        assert actuals.forecast.actuals_snapshot_id == snapshot_id
+        assert actuals.forecast.actuals_cutoff == saved.actuals_cutoff
+        assert actuals.dataset_sha256 == retained["dataset_sha256"]
         assert uow.session.scalar(text("SELECT current_setting('app.tenant_id')")) == str(
             actor.tenant_id
         )
@@ -326,6 +333,8 @@ def exercise_refresh_state(world: Any, source_actor: Actor, scenario_id: UUID) -
         )
         with pytest.raises(Problem):
             history.resolve(uow, saved_run_id)
+        with pytest.raises(Problem):
+            forecast_actuals_saved.read(uow, saved_run_id)
         assert uow.session.scalar(text("SELECT current_setting('app.tenant_id')")) == str(
             actor.tenant_id
         )

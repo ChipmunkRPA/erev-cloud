@@ -28,6 +28,7 @@ class SavedForecast:
     forecast_tenant_id: UUID
     actuals_cutoff: datetime
     last_refreshed_at: datetime | None
+    actuals_snapshot_id: UUID
     run: Mapping[str, Any]
 
 
@@ -142,6 +143,7 @@ def resolve(uow: UnitOfWork, run_id: UUID) -> SavedForecast:
                 workspace_id,
                 logical["base_known_at"],
                 logical["last_refreshed_at"],
+                logical["tenant_snapshot_id"],
                 dict(saved),
             )
         raise Problem("not-found")

@@ -7583,3 +7583,18 @@ cleanup in the shared database session kernel was also repaired and regression-t
   Targeted scenario verification, Ruff and source-module Mypy pass.
 - Durable refresh job state, fresh-copy lifecycle and atomic scenario replacement still need
   integration. Forecast report outputs and actual-vs-forecast remain unfinished; no deployment.
+
+## Held forecast copy and activation gate — October 19, 2026
+
+- Snapshot loading can now retain SUSPENDED after successful copy/verification when its internal
+  caller requests deferred activation for the scenario requester. The load summary records this
+  explicitly; ordinary loads still activate immediately.
+- Added an internal activation gate for the completion transaction: the expected held snapshot
+  must have completed, period replay must permit point-in-time use, the registered scenario's
+  expected input publication/hash must match, and the current requester must hold scenario.use.
+  The gate updates status and audit without committing or changing the source scenario itself.
+- The scenario journey verifies real deferred loading, refusal to open the suspended workspace,
+  draft/hash refusals and successful activation. Ordinary scenario creation also passes;
+  targeted checks and Ruff/Mypy pass.
+- Persisted refresh orchestration, failure recovery and source scenario replacement remain
+  unconnected; forecast reporting is still unfinished. No deployment/readiness claim.

@@ -2,6 +2,20 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Authorized retained-actuals reading — October 19, 2026
+
+- The scenario history result now identifies the exact current actuals snapshot. Added an
+  internal actuals reader that reauthorizes the current scenario and historical forecast,
+  verifies the snapshot target/status/cutoff and encrypted file digest, and checks retained
+  book/entity/cutoff metadata before returning only forecast-scope rows.
+- Other books, entities and periods never leave the reader. Duplicated, cancelled, late or
+  out-of-capture rows are refused. Missing legacy capture is explicit; no live-source fallback.
+  Production SQL context is restored on exit, including errors and revoked permissions.
+- Six focused scope/integrity checks pass. The real refreshed-scenario journey reads its
+  retained empty actuals and denies access after permission removal. Ruff/Mypy pass.
+- Remaining FCS-4 work: contract/category dimension mapping, comparison report builder and
+  registration, screen connection and populated accounting acceptance. No deployment.
+
 ## Durable actuals capture in creation and refresh — October 19, 2026
 
 - Revision 0186 adds immutable, tenant-scoped forecast_actuals_capture records, unique per
@@ -210,21 +224,6 @@
   failure and immutable fields. Schema/transition/RLS round-trip and Ruff/Mypy checks pass.
 - The request endpoint, worker integration, terminal cleanup and atomic source switch remain
   unfinished. Forecast outputs/actual-vs-forecast still remain open; no deployment/readiness claim.
-
-## Held forecast copy and activation gate — October 19, 2026
-
-- Snapshot loading can now retain SUSPENDED after successful copy/verification when its internal
-  caller requests deferred activation for the scenario requester. The load summary records this
-  explicitly; ordinary loads still activate immediately.
-- Added an internal activation gate for the completion transaction: the expected held snapshot
-  must have completed, period replay must permit point-in-time use, the registered scenario's
-  expected input publication/hash must match, and the current requester must hold scenario.use.
-  The gate updates status and audit without committing or changing the source scenario itself.
-- The scenario journey verifies real deferred loading, refusal to open the suspended workspace,
-  draft/hash refusals and successful activation. Ordinary scenario creation also passes;
-  targeted checks and Ruff/Mypy pass.
-- Persisted refresh orchestration, failure recovery and source scenario replacement remain
-  unconnected; forecast reporting is still unfinished. No deployment/readiness claim.
 
 ## Outstanding release verification
 
