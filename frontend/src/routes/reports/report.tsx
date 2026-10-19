@@ -53,6 +53,7 @@ import { CellContributors, type CellRequest } from "./viewer/CellContributors";
 import { ExportMenu } from "./viewer/ExportMenu";
 import { ParametersToolbar, toolbarKeys } from "./viewer/ParametersToolbar";
 import { ReportChart } from "./viewer/ReportChart";
+import { ForecastPack } from "./viewer/ForecastPack";
 import { DisclosurePack } from "./viewer/DisclosurePack";
 import { type DrillRequest, figureLabel, ReportGrid } from "./viewer/ReportGrid";
 import { RunDetailsDrawer, valueText } from "./viewer/RunDetailsDrawer";
@@ -536,6 +537,8 @@ function ReportBody({ definition, access }: ReportBodyProps) {
   } else if (succeeded && data !== undefined) {
     if (definition.code === "disclosure_pack") {
       body = <DisclosurePack key={data.id} runId={data.id} locked={data.period_lock_id !== null} />;
+    } else if (definition.code === "forecast_outputs") {
+      body = <ForecastPack key={data.id} runId={data.id} />;
     } else if (rows.isError) {
       body = (
         <Banner

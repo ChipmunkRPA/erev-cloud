@@ -3165,6 +3165,8 @@ _EXTENSIONS: Final[Mapping[str, str]] = MappingProxyType(
 
 
 def _extension_of(row: Mapping[str, Any]) -> str:
+    if row["report_code"] == "forecast_outputs" and row["output_format"] == "CSV":
+        return "zip"
     return _EXTENSIONS.get(str(row["output_format"]), "bin")
 
 

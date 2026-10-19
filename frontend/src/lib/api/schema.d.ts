@@ -14158,6 +14158,22 @@ export interface components {
        */
       severity: "ERROR" | "WARNING" | "INFO";
     };
+    /** ForecastHeaderOut */
+    ForecastHeaderOut: {
+      /** Event Set Name */
+      event_set_name: string;
+      /** Event Set Version */
+      event_set_version: number;
+      /** Horizon Periods */
+      horizon_periods: string[];
+      /**
+       * Known At
+       * Format: date-time
+       */
+      known_at: string;
+      /** Scenario Name */
+      scenario_name: string;
+    };
     /**
      * FxRateIn
      * @description One entered rate: 1 ``base_currency`` = ``rate`` ``quote_currency`` (T-REF-12). A spot rate
@@ -20577,6 +20593,7 @@ export interface components {
     ReportRunDataOut: {
       /** Columns */
       columns: components["schemas"]["ReportColumnOut"][];
+      forecast?: components["schemas"]["ForecastHeaderOut"] | null;
       /** Items */
       items: components["schemas"]["ReportRowOut"][];
       /** Next Cursor */

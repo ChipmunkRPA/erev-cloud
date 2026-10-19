@@ -203,6 +203,14 @@ class DisclosureSectionOut(BaseModel):
     tables: list[DisclosureTableOut]
 
 
+class ForecastHeaderOut(BaseModel):
+    scenario_name: str
+    event_set_name: str
+    event_set_version: int
+    horizon_periods: list[str]
+    known_at: datetime
+
+
 class ReportRunDataOut(BaseModel):
     """``GET /report-runs/{id}/data``: API-S-List of rows plus the additive member ``columns`` on
     every page, the definition's columns copied in order from the stored dataset document (builder
@@ -212,3 +220,4 @@ class ReportRunDataOut(BaseModel):
     next_cursor: str | None
     columns: list[ReportColumnOut]
     sections: list[DisclosureSectionOut] = Field(default_factory=list)
+    forecast: ForecastHeaderOut | None = None

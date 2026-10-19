@@ -10,7 +10,7 @@ import { DisclosureSnapshots } from "./DisclosureSnapshots";
 import { ReportGrid } from "./ReportGrid";
 import { isMoney, type ReportColumn } from "./specs";
 
-function Table({ runId, table, number }: { runId: string; table: DisclosureTable; number: number }) {
+export function SectionTable({ runId, table, number }: { runId: string; table: DisclosureTable; number: number }) {
   const [open, setOpen] = useState(false);
   const rows = useQuery({
     queryKey: queryKey("report-runs", "tenant", { runId, sectionTable: table.key }),
@@ -41,15 +41,15 @@ function Table({ runId, table, number }: { runId: string; table: DisclosureTable
   }
   return <details onToggle={event => setOpen(event.currentTarget.open)} className="rounded border border-stroke-1 p-3">
     <summary className="cursor-pointer text-body-sm font-semibold">
-      {table.title} — {t(table.basis === "PERIOD_AND_QUARTER" ? "reports.disclosure.comparison" : table.basis === "QUARTER_TO_DATE" ? "reports.disclosure.quarter" : "reports.disclosure.period")} ({table.row_count})
+      {table.title} — {t(table.basis === "FORECAST" ? "reports.forecast.basis" : table.basis === "PERIOD_AND_QUARTER" ? "reports.disclosure.comparison" : table.basis === "QUARTER_TO_DATE" ? "reports.disclosure.quarter" : "reports.disclosure.period")} ({table.row_count})
     </summary>
-    <p className="break-all text-body-sm text-fg-2">{t("reports.disclosure.source", { source: table.source_run_id ?? t(table.basis === "PERIOD_AND_QUARTER" ? "reports.disclosure.comparisonData" : "reports.disclosure.policy") })} · {table.source_sha256}</p>
+    <p className="break-all text-body-sm text-fg-2">{t("reports.disclosure.source", { source: table.source_run_id ?? t(table.basis === "FORECAST" ? "reports.forecast.source" : table.basis === "PERIOD_AND_QUARTER" ? "reports.disclosure.comparisonData" : "reports.disclosure.policy") })} · {table.source_sha256}</p>
     {table.notes.map(note => <p key={note} className="text-body-sm text-fg-2">{note}</p>)}
     {table.omitted ? <p>{t("reports.disclosure.omitted")}</p> : rows.isError ? <Banner tone="negative" title={t("reports.report.dataLoadError")} actions={<Button variant="link" onClick={() => void rows.refetch()}>{t("reports.report.retry")}</Button>} /> : rows.data === undefined ? <p role="status">{t("reports.disclosure.loading")}</p> : <ReportGrid
       runId={runId} name={table.key} title={table.title}
       section={{ number, heading: table.title, rows: values, totals: [] }}
       columns={columns} totals={[]} onDrill={() => undefined}
-      emptyState={<p className="p-4 text-body-sm">{t("reports.disclosure.empty")}</p>}
+      emptyState={<p className="p-4 text-body-sm">{t(table.basis === "FORECAST" ? "reports.forecast.empty" : "reports.disclosure.empty")}</p>}
     />}
   </details>;
 }
@@ -67,7 +67,7 @@ export function DisclosurePack({ runId, locked = false }: { runId: string; locke
     {sections.data.map(section => <section key={section.number} className="flex flex-col gap-2">
       <h2 className="text-heading-sm">{section.number}. {section.title}</h2>
       {section.interim_required && <p className="text-body-sm text-fg-2">{t("reports.disclosure.interim")}</p>}
-      {section.tables.map(table => <Table key={table.key} runId={runId} table={table} number={section.number} />)}
+      {section.tables.map(table => <SectionTable key={table.key} runId={runId} table={table} number={section.number} />)}
     </section>)}
   </div>;
 }

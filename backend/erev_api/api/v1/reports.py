@@ -66,6 +66,7 @@ from erev_api.problems import Problem
 from erev_api.schemas.common import JobOut, ListOut
 from erev_api.schemas.reports import (
     DisclosureSectionOut,
+    ForecastHeaderOut,
     ReportColumnOut,
     ReportDefinitionOut,
     ReportRowOut,
@@ -395,6 +396,9 @@ def report_runs_data(
         next_cursor=next_cursor,
         columns=[ReportColumnOut.model_validate(column) for column in columns],
         sections=[DisclosureSectionOut.model_validate(section) for section in sections],
+        forecast=None
+        if document.get("forecast") is None
+        else ForecastHeaderOut.model_validate(document["forecast"]),
     )
 
 

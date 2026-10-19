@@ -14,7 +14,7 @@ from uuid import UUID
 from erev_engine.canonical import canonical_bytes, sha256_hex
 
 from erev_api.domain.reports.forecast_capture import Captured
-from erev_api.domain.reports.outputs import RunStamp, manifest, utc_text, xlsx
+from erev_api.domain.reports.outputs import Column, ReportData, RunStamp, manifest, utc_text, xlsx
 from erev_api.domain.reports.outputs import csv as csv_output
 from erev_api.problems import Problem
 
@@ -86,17 +86,53 @@ def document(captured: Captured, identity: Identity, stamp: RunStamp) -> dict[st
         "source_evidence_sha256": {
             key: sha256_hex(source.to_stored()) for key, source in captured.sources.items()
         },
+        **manifest.dataset_document(
+            manifest.report_reference(stamp.report_code, stamp.report_name, 1),
+            stamp.parameters,
+            ReportData(
+                (Column("title", "Section", "text"), Column("rows", "Rows", "integer")),
+                tuple(
+                    {"row_key": section.key, "title": section.title, "rows": section.data.row_count}
+                    for section in captured.sections
+                ),
+                {},
+            ),
+        ),
+        "forecast": {
+            "scenario_name": identity.scenario_name,
+            "event_set_name": identity.event_set_name,
+            "event_set_version": identity.event_set_version,
+            "horizon_periods": list(keys),
+            "known_at": utc_text(captured.known_at),
+        },
         "sections": [
             {
-                "key": section.key,
+                "number": index,
                 "title": section.title,
-                **manifest.dataset_document(
-                    manifest.report_reference(stamp.report_code, section.title, 1),
-                    stamp.parameters,
-                    section.data,
-                ),
+                "interim_required": False,
+                "tables": [
+                    {
+                        "key": section.key,
+                        "basis": "FORECAST",
+                        "omitted": False,
+                        "notes": [],
+                        "source_run_id": None,
+                        "source_sha256": sha256_hex(
+                            manifest.dataset_document(
+                                manifest.report_reference(stamp.report_code, section.title, 1),
+                                stamp.parameters,
+                                section.data,
+                            )
+                        ),
+                        "dataset": manifest.dataset_document(
+                            manifest.report_reference(stamp.report_code, section.title, 1),
+                            stamp.parameters,
+                            section.data,
+                        ),
+                    }
+                ],
             }
-            for section in captured.sections
+            for index, section in enumerate(captured.sections, start=1)
         ],
         "tie_out_results": [],
     }

@@ -15382,6 +15382,43 @@
         "title": "FindingCountOut",
         "type": "object"
       },
+      "ForecastHeaderOut": {
+        "properties": {
+          "event_set_name": {
+            "title": "Event Set Name",
+            "type": "string"
+          },
+          "event_set_version": {
+            "title": "Event Set Version",
+            "type": "integer"
+          },
+          "horizon_periods": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Horizon Periods",
+            "type": "array"
+          },
+          "known_at": {
+            "format": "date-time",
+            "title": "Known At",
+            "type": "string"
+          },
+          "scenario_name": {
+            "title": "Scenario Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "scenario_name",
+          "event_set_name",
+          "event_set_version",
+          "horizon_periods",
+          "known_at"
+        ],
+        "title": "ForecastHeaderOut",
+        "type": "object"
+      },
       "FxRateIn": {
         "additionalProperties": false,
         "description": "One entered rate: 1 ``base_currency`` = ``rate`` ``quote_currency`` (T-REF-12). A spot rate\nnames its day; a closing or average rate names its period, whose end date is the effective\ndate.",
@@ -33482,6 +33519,16 @@
             },
             "title": "Columns",
             "type": "array"
+          },
+          "forecast": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ForecastHeaderOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "items": {
             "items": {

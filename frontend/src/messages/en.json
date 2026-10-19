@@ -7497,5 +7497,13 @@
   "reports.disclosure.snapshots.kinds.PRIOR_PERIOD_POB_REVENUE": "Prior-period performance obligation revenue",
   "reports.disclosure.snapshots.kinds.RPO": "Remaining performance obligations",
   "reports.disclosure.snapshots.kinds.COST_ROLLFORWARD": "Contract cost rollforward",
-  "reports.disclosure.snapshots.kinds.EXPEDIENTS_USED": "Practical expedients"
+  "reports.disclosure.snapshots.kinds.EXPEDIENTS_USED": "Practical expedients",
+  "reports.forecast.basis": "Forecast",
+  "reports.forecast.source": "Saved forecast",
+  "reports.forecast.scenario": "Scenario {name}",
+  "reports.forecast.eventSet": "Event set {name} v{version}",
+  "reports.forecast.horizon": "Horizon {first} – {last}",
+  "reports.forecast.knownAt": "Known at {time}",
+  "reports.forecast.empty": "No forecast figures",
+  "reports.forecast.missingHeader": "The saved forecast header is unavailable."
 }

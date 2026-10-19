@@ -122,3 +122,29 @@ def test_export_refuses_wrong_scope_incomplete_sections_and_visibility_change() 
         render(replace(captured, output_format="XLSX"), identity, stamp, format="JSON")
     with pytest.raises(Problem, match="supports"):
         render(captured, identity, stamp, format="PDF")
+
+
+def test_saved_forecast_dataset_pages_through_report_data_endpoint(monkeypatch) -> None:
+    from erev_api.api.lists import ListParams
+    from erev_api.api.v1 import reports
+    from fastapi import Response
+
+    captured, identity, stamp = fixture()
+    data = json.loads(render(captured, identity, stamp, format="JSON").content)
+    monkeypatch.setattr(reports.framework, "run_document", lambda *args, **kwargs: data)
+    from types import SimpleNamespace
+
+    deps = SimpleNamespace(files=None, keyring=None)
+    params = ListParams(limit=1, cursor=None, sort=None, q=None, count=True, filters={})
+    run_id = uuid4()
+    index = reports.report_runs_data(run_id, Response(), None, deps, params)
+    assert len(index.sections) == 5 and index.next_cursor
+    assert index.forecast.scenario_name == "Q4 outlook"
+    assert index.forecast.event_set_version == 2
+    rows = reports.report_runs_data(run_id, Response(), None, deps, params, "billing")
+    assert rows.items[0].row_key == "one"
+    assert [column.key for column in rows.columns] == ["contract", "amount"]
+    with pytest.raises(Problem):
+        reports.report_runs_data(
+            run_id, Response(), None, deps, replace(params, cursor=index.next_cursor), "billing"
+        )

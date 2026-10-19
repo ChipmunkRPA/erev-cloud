@@ -257,3 +257,8 @@ export async function fetchDisclosureSections(runId: string): Promise<readonly D
   const page = await read<ReportRunData>(`${REPORT_RUNS_PATH}/${runId}/data?limit=1`);
   return page.sections ?? [];
 }
+
+/** Header and table index of a saved forecast dataset, without loading all detail rows. */
+export async function fetchForecastSections(runId: string): Promise<ReportRunData> {
+  return read<ReportRunData>(`${REPORT_RUNS_PATH}/${runId}/data?limit=1`);
+}

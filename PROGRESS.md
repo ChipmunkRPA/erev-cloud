@@ -2,6 +2,23 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Forecast report data API and viewer — October 19, 2026
+
+- Aligned forecast JSON with the existing report-data chapter/table envelope, including a
+  five-row section index, typed table datasets and per-table hashes. Added typed forecast
+  header metadata to GET report-runs/{id}/data; existing chapter pagination can serve each
+  forecast table independently and rejects cursors reused across the index and a table.
+- Added the forecast viewer branch with saved scenario/publication, horizon and cutoff,
+  expandable tables, currency-aware columns and retry/empty states. Reused the disclosure
+  table renderer without its policy/snapshot controls. CSV download filenames now use .zip
+  for forecast outputs, matching the archive format.
+- Four targeted backend checks, forecast/disclosure component checks, Ruff/Mypy, ESLint,
+  TypeScript and OpenAPI generation pass. No deployment or full-suite run.
+- Run admission/computation, durable report publication and end-to-end creation remain open;
+  the report is still unregistered. The viewer requires a saved forecast report and does not
+  yet make one available through the UI. Revenue chart, actual-vs-forecast and both evidence
+  packs remain unfinished. Production readiness and independent accounting acceptance remain open.
+
 ## Forecast output download rendering — October 19, 2026
 
 - Added internal RPT-39 JSON, XLSX and CSV rendering from the captured five-section dataset.
@@ -213,21 +230,6 @@
 - Updated API/client types, snapshot handling, data model and user guide. Scenario refresh and
   ordered replay still need implementation, followed by forecast execution and both forecast
   reports. Evidence-pack reports also remain open. No deployment or production-readiness claim.
-
-## Forecast manual event capture — October 19, 2026
-
-- Added explicit `forecast_event_set_id` on the contract event append API. Registered scenario
-  drafts apply facts under BR-FC-02 and retain ordered method/path/body inputs atomically.
-  Requires tenant-wide scenario.use plus the ordinary contract event permission and validation.
-- Publication and command capture share the input-set lock; published versions reject new
-  events. A capture failure rolls back facts, computations and buffered audit work. Existing
-  ordinary event approval behavior remains the default when no input set is selected.
-- Real snapshot-to-scenario/API journey passes manual progress capture, same-key retry,
-  failed-capture rollback and published-set rejection. Two production approval/evidence checks
-  also pass. Ruff/Mypy and OpenAPI generation pass.
-- Updated API schema/client types and user guide. Import association, ordered refresh/replay,
-  forecast jobs, forecast outputs and actual-vs-forecast remain unimplemented; FCS-2 stays open.
-  Contract sample and period evidence packs also remain outstanding. No deployment.
 
 ## Outstanding release verification
 

@@ -7453,3 +7453,18 @@ cleanup in the shared database session kernel was also repaired and regression-t
   WinAnsi limitation, broad browser/release checks and independent accounting sign-off remain.
   Four unregistered report families and the other system backlog still need development.
   No deployment; publish directly to main.
+
+## Forecast manual event capture — October 19, 2026
+
+- Added explicit `forecast_event_set_id` on the contract event append API. Registered scenario
+  drafts apply facts under BR-FC-02 and retain ordered method/path/body inputs atomically.
+  Requires tenant-wide scenario.use plus the ordinary contract event permission and validation.
+- Publication and command capture share the input-set lock; published versions reject new
+  events. A capture failure rolls back facts, computations and buffered audit work. Existing
+  ordinary event approval behavior remains the default when no input set is selected.
+- Real snapshot-to-scenario/API journey passes manual progress capture, same-key retry,
+  failed-capture rollback and published-set rejection. Two production approval/evidence checks
+  also pass. Ruff/Mypy and OpenAPI generation pass.
+- Updated API schema/client types and user guide. Import association, ordered refresh/replay,
+  forecast jobs, forecast outputs and actual-vs-forecast remain unimplemented; FCS-2 stays open.
+  Contract sample and period evidence packs also remain outstanding. No deployment.
