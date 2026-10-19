@@ -7209,3 +7209,19 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Still open: final side-by-side period/quarter presentation, chapter workbook/PDF and viewer
   integration, frozen disclosures and durable parent worker/dependency/publication lifecycle.
   Five catalogue builders remain unregistered. This assembly model is not a finished disclosure pack.
+
+## Disclosure chapter workbook adapter — October 19, 2026
+
+- Added render_xlsx_chapters with multiple independently typed/stamped tables per worksheet.
+  Existing single-table exports reuse the same grid writer. Contents lists chapter/table status,
+  source run/hash and worksheet; only the first table sets each chapter's frozen grid header.
+- Added disclosure_workbook.render over the assembled seven chapters. Validates entity/book,
+  policy hash and original child stamps/parameter hashes; re-encodes child data against its output
+  hash and rejects changed displayed data. Omissions keep notes and no hidden source amounts.
+- Database journey executes 16 child jobs, assembles the pack, generates a workbook and reopens
+  it to verify Contents plus seven sheets and displayed source IDs/hashes. A mismatched displayed
+  source stamp refuses. Three focused workbook/single-XLSX checks pass; Ruff and Mypy pass.
+- Period and quarter-to-date are explicitly labelled separate tables at this stage. Required
+  side-by-side presentation, PDF/viewer, frozen disclosures and parent worker publication remain
+  open. The fixture has no booked accounting population; no full accounting acceptance claimed.
+  Five catalogue builders remain unregistered; no deployment.

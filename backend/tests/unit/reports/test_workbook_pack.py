@@ -117,7 +117,7 @@ def test_pdf_pack_has_source_stamps_index_and_safe_omissions() -> None:
     assert pages[0][:2] == ["Contents", "Run RPT-PACK"]
     assert "2" in pages[0]  # First chapter starts after the contents page.
     assert "Output SHA-256: " + "a" * 64 in pages[1]
-    assert pages[2][:2] == ["Category", "Revenue (USD)"]
+    assert "Row" in pages[2] and "Category" in pages[2] and "Revenue (USD)" in pages[2]
     assert "Omitted under elected relief." in pages[-1]
     assert "123.45" not in pages[-1]
     assert [page[-1] for page in pages] == [
@@ -134,3 +134,64 @@ def test_pdf_pack_has_source_stamps_index_and_safe_omissions() -> None:
             ),
             STAMP,
         )
+
+
+def test_pdf_wide_tables_keep_values_currency_and_row_context_without_clipping() -> None:
+    from erev_api.domain.reports.outputs import pdf
+    from erev_api.domain.reports.outputs.xlsx import WorkbookChapter
+
+    columns = (Column("contract", "Contract external identifier", "text"),) + tuple(
+        Column(f"{basis}:amount{n}", f"{basis.title()} - Recognized revenue measure {n}", "money")
+        for n in range(6)
+        for basis in ("period", "quarter")
+    )
+    rows = tuple(
+        {
+            "row_key": str(n),
+            "contract": "LONG-CUSTOMER-CONTRACT-IDENTIFIER-" + str(n),
+            **{
+                c.key: {"amount": "-123456789012345.67", "currency": "USD" if n % 2 else "EUR"}
+                for c in columns[1:]
+            },
+        }
+        for n in range(65)
+    )
+    data = ReportData(columns, rows, {})
+    pages = pdf._chapter_table_pages(data, STAMP, "Quarterly revenue comparison", ("Included",))
+    for page in pages:
+        assert len(page) <= int((pdf.PAGE_HEIGHT - 2 * pdf.MARGIN) // pdf.LINE_HEIGHT)
+        for line in page:
+            for i, (x, text) in enumerate(line.cells):
+                end = (
+                    line.cells[i + 1][0] if i + 1 < len(line.cells) else pdf.PAGE_WIDTH - pdf.MARGIN
+                )
+                assert x + pdf._measure(text) <= end
+                assert pdf.ELLIPSIS not in text
+    all_text = "\n".join(text for page in pages for line in page for _, text in line.cells)
+    assert "(123,456,789,012,345.67)" in all_text
+    assert "USD" in all_text and "EUR" in all_text
+    assert "Column group 2" in all_text
+    assert "65" in all_text
+    chapters = (
+        WorkbookChapter(
+            "1", "Revenue", (WorkbookSection("revenue", "Quarter comparison", data, STAMP),)
+        ),
+    )
+    assert pdf.render_pdf_chapters(chapters, STAMP) == pdf.render_pdf_chapters(chapters, STAMP)
+
+
+def test_pdf_oversize_header_and_narrative_continue_within_page_bounds() -> None:
+    from erev_api.domain.reports.outputs import pdf
+
+    data = ReportData(
+        (Column("note", "W" * 800, "text"),), ({"row_key": "one", "note": "M" * 2200},), {}
+    )
+    pages = pdf._chapter_table_pages(data, STAMP, "Long narrative", ())
+    assert len(pages) > 2
+    assert all(
+        len(page) <= int((pdf.PAGE_HEIGHT - 2 * pdf.MARGIN) // pdf.LINE_HEIGHT) for page in pages
+    )
+    values = [value for page in pages for line in page for _, value in line.cells]
+    assert any("definitions" in value for value in values)
+    assert sum(value.count("W") for value in values) == 800
+    assert sum(value.count("M") for value in values if set(value) == {"M"}) == 2200

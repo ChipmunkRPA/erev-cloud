@@ -10146,6 +10146,14 @@ Author BS-3. Uses CTR (PHASES §1 row 12). Indicative size 16 items; this phase 
   - **Gates:** GK-01 `make ci`; GK-07 `make e2e SPEC=frontend/e2e/projects/screens.spec.ts`
 
 - [ ] **RPS-15 Disclosure snapshots and the disclosure pack.**
+  - October 19 PDF-layout increment: chapter packs now wrap full source text and paginate wide
+    tables into column groups, with repeated row ordinals/context/headers, currency companions
+    and paired period/QTD measures where space permits. Oversize labels move to full-text legends;
+    oversize rows continue with their ordinal. Contents offsets follow final pagination. Six
+    focused checks include page/column bounds and unchanged single-table behavior; a five-page
+    synthetic multi-currency example was rendered and visually inspected. WinAnsi font coverage,
+    full populated accounting/browser/release acceptance remain open.
+
   - October 19 frozen-execution increment: new report creation/rerun accepts an E-65 lock and
     derives exact cutoff/scope. Reconstructs all inputs from seven authenticated snapshot documents,
     preserves synchronous provenance and original stamps, and selects period-only or period/QTD

@@ -394,8 +394,11 @@ The worker verifies snapshot digests, scope, source identities and original atta
 rebuilding. It uses the saved child datasets and policies, not current business data or child
 output files. Rerunning a completed locked pack reuses the same snapshots and source records.
 The snapshot register's `report_run_id` filter also finds snapshots attached to derived exports;
-returned records continue to name their original source report. Wide PDF table layout and full
-browser/accounting acceptance remain under development.
+returned records continue to name their original source report. PDF chapter tables use horizontal column groups when needed, retaining full values and
+wrapping headings/notes. Row numbers and identifying columns connect the groups; money values
+stay beside their currency, and period/quarter pairs stay together where they fit. Continuation
+pages repeat table context and headers. The contents page points to each source table's first
+page. The standard WinAnsi font limitation and full browser/accounting acceptance remain open.
 
 #### Contract version extract
 

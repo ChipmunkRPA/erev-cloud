@@ -2,6 +2,23 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Readable wide disclosure PDFs — October 19, 2026
+
+- Replaced chapter-table ellipsis clipping with wrapped cells and horizontal column groups.
+  Repeats row ordinals/identifying context and headers, keeps currencies beside amounts, and
+  groups adjacent period/QTD measures where they fit. Ordinary rows stay together; long rows
+  continue under the same ordinal. Very long labels get full-text legends, not clipped headers.
+- Wrapped chapter stamps/notes and corrected contents offsets against final pagination.
+  Added table header rules and compact currency headings. Omitted sections remain amount-free.
+  Existing single-table PDF layout and canonical JSON accounting dataset hashes are unchanged.
+- Six focused checks pass, including large negatives, mixed currency, long IDs, oversize
+  narratives/labels, page/column geometry and legacy footer behavior; Ruff/Mypy pass. Rendered
+  and inspected all five pages of a synthetic wide disclosure PDF with the PDF skill workflow.
+- This verifies the layout sample, not accounting acceptance. The current standard-font
+  WinAnsi limitation, broad browser/release checks and independent accounting sign-off remain.
+  Four unregistered report families and the other system backlog still need development.
+  No deployment; publish directly to main.
+
 ## Frozen disclosure execution and exports — October 19, 2026
 
 - Added a verified E-65 reader: complete seven-kind population, single synchronous origin,
@@ -211,22 +228,6 @@
   publication, frozen snapshots, viewer and side-by-side period/QTD layout remain outstanding.
   All five unregistered reports remain explicitly unfinished: disclosure_pack, actual_vs_forecast,
   forecast_outputs, contract_sample_pack and period_evidence_pack. No deployment.
-
-## Disclosure chapter workbook adapter — October 19, 2026
-
-- Added render_xlsx_chapters with multiple independently typed/stamped tables per worksheet.
-  Existing single-table exports reuse the same grid writer. Contents lists chapter/table status,
-  source run/hash and worksheet; only the first table sets each chapter's frozen grid header.
-- Added disclosure_workbook.render over the assembled seven chapters. Validates entity/book,
-  policy hash and original child stamps/parameter hashes; re-encodes child data against its output
-  hash and rejects changed displayed data. Omissions keep notes and no hidden source amounts.
-- Database journey executes 16 child jobs, assembles the pack, generates a workbook and reopens
-  it to verify Contents plus seven sheets and displayed source IDs/hashes. A mismatched displayed
-  source stamp refuses. Three focused workbook/single-XLSX checks pass; Ruff and Mypy pass.
-- Period and quarter-to-date are explicitly labelled separate tables at this stage. Required
-  side-by-side presentation, PDF/viewer, frozen disclosures and parent worker publication remain
-  open. The fixture has no booked accounting population; no full accounting acceptance claimed.
-  Five catalogue builders remain unregistered; no deployment.
 ## Outstanding release verification
 
 These checks need current release-candidate evidence. Historical October 3 results
