@@ -10146,6 +10146,11 @@ Author BS-3. Uses CTR (PHASES §1 row 12). Indicative size 16 items; this phase 
   - **Gates:** GK-01 `make ci`; GK-07 `make e2e SPEC=frontend/e2e/projects/screens.spec.ts`
 
 - [ ] **RPS-15 Disclosure snapshots and the disclosure pack.**
+  - October 19 parent-attachment increment: `disclosure_children.ensure` binds child IDs under
+    a parent row lock and reuses them across transactions. Current initiating-user permissions
+    and child scope/selector identities are rechecked. Targeted database acceptance passes;
+    parent worker dependency waiting/publication and locked-source integration remain open.
+
   - October 19 child-plan increment: `disclosure_plan` queues nine period inputs (the eight
     core reports plus the section-6 cost rollforward), and seven additional flow reports when
     quarter-to-date is requested. Fiscal-quarter selection and normalized scope/cutoff binding

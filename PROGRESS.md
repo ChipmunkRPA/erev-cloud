@@ -2,6 +2,22 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Durable disclosure parent-child attachment — October 19, 2026
+
+- Added disclosure_children.ensure: locks the parent run, checks the initiating actor's current
+  run/export permission, creates and attaches the complete child population in one transaction.
+  Existing attachments are reused without fresh calendar resolution or replacement child runs.
+- Reuse checks child identities/order, code/version, creator, entity/book/cutoff, output format,
+  historical currency basis and matching period/quarter intervals. Missing, duplicated or mismatched
+  children refuse. Locked parents explicitly require the separate frozen-disclosure source path.
+- Real database check passes for 16 children, repeated calls and reuse after commit in a fresh
+  transaction, plus permission denial and corrupted attachment refusal without new rows. Ruff and
+  new-module Mypy pass. Concurrent callers serialize on the parent row; no concurrent stress test
+  or completed pack publication is claimed.
+- This helper is not yet wired to a registered parent builder/worker. Parent dependency waiting,
+  child output verification and assembly, frozen snapshots, expedients, PDF and viewer remain open.
+  Five catalogue builders remain unregistered; this does not complete RPS-15.
+
 ## Disclosure child report planning — October 19, 2026
 
 - Added disclosure_plan.requests for the eight core reports plus contract_cost_rollforward
@@ -205,25 +221,6 @@
 - Six catalogue builders remain unregistered. Populated close-to-report/cell browser acceptance,
   headers/empty-state polish, broader reference/FX/population replay and accounting sign-off
   remain open. No deployment or production readiness claim.
-
-## Registered close variance worker — October 19, 2026
-
-- Registered variance_between_closes with an adapter source contract. Creation authorizes both
-  frozen locks and complete retained groups; stored run scope includes every required entity.
-  Locks unavailable at the requested cutoff refuse. No schema/API shape change is required.
-- REPORT_RUN now reads/authorizes, closes its UOW, computes with attempt-fenced heartbeats,
-  then reopens a UOW and reauthorizes before rendering/storage. The builder compares original
-  source identities again. Same-source reruns reread and recompute; no saved-output replay.
-- Source bindings retain lock manifests, contract/computation mappings, runtime/input/output
-  identities, complete entity requirements and contributor evidence. Direct in-transaction
-  calls without the phased calculation result refuse.
-- Seeded empty locks with real snapshot files: actual job/output/rerun passes; an injected
-  post-compute permission loss prevents output publication. The calculation hook proves all
-  read sessions are outside transactions. Both cases pass; existing report/rerun regression,
-  catalogue/source-contract checks, source Mypy and changed-file Ruff pass.
-- Six catalogue builders remain unregistered. RPT-38 still needs populated close-to-report
-  financial acceptance, cell explanation routing, UI/header polish, wider reference/FX and
-  new/regrouped contract replay. No production readiness or deployment claim.
 
 ## Outstanding release verification
 

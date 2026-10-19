@@ -6909,3 +6909,22 @@ cleanup in the shared database session kernel was also repaired and regression-t
   transaction. RPT-38 needs authorized read, transaction-free compute and reauthorized publish
   phases, source binding/rerun and cell routing before exposure. UI/header polish, wider replay
   phases and accounting acceptance remain open. Seven builders remain unregistered; no deployment.
+
+## Registered close variance worker — October 19, 2026
+
+- Registered variance_between_closes with an adapter source contract. Creation authorizes both
+  frozen locks and complete retained groups; stored run scope includes every required entity.
+  Locks unavailable at the requested cutoff refuse. No schema/API shape change is required.
+- REPORT_RUN now reads/authorizes, closes its UOW, computes with attempt-fenced heartbeats,
+  then reopens a UOW and reauthorizes before rendering/storage. The builder compares original
+  source identities again. Same-source reruns reread and recompute; no saved-output replay.
+- Source bindings retain lock manifests, contract/computation mappings, runtime/input/output
+  identities, complete entity requirements and contributor evidence. Direct in-transaction
+  calls without the phased calculation result refuse.
+- Seeded empty locks with real snapshot files: actual job/output/rerun passes; an injected
+  post-compute permission loss prevents output publication. The calculation hook proves all
+  read sessions are outside transactions. Both cases pass; existing report/rerun regression,
+  catalogue/source-contract checks, source Mypy and changed-file Ruff pass.
+- Six catalogue builders remain unregistered. RPT-38 still needs populated close-to-report
+  financial acceptance, cell explanation routing, UI/header polish, wider reference/FX and
+  new/regrouped contract replay. No production readiness or deployment claim.

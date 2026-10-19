@@ -4936,3 +4936,68 @@ def test_disclosure_child_plan_queues_bound_month_and_quarter_reports(world: Wor
             disclosure_plan.queue(uow, (plan[0], invalid))
         assert uow.session.scalar(select(func.count()).select_from(report_run)) == count_before
         # No commit: queued child jobs belong to the eventual parent's atomic transaction.
+
+
+def test_disclosure_children_attach_once_and_survive_retry(world: World) -> None:
+    from dataclasses import replace
+
+    from erev_api.db.tables import engine_release, report_run
+    from erev_api.domain.reports import disclosure_children, tie_outs
+    from support.rows import report_run_values
+
+    with world.place.uow() as uow:
+        entities = tie_outs.entities(uow.session, (world.entity_id,))
+        calendar = tie_outs.calendars(uow.session, entities)[world.entity_id]
+        period = calendar.periods[1]
+        release_id = uow.session.scalar(select(engine_release.c.id).limit(1))
+        parent = report_run_values(
+            uow.principal.tenant_id,
+            engine_release_id=release_id,
+            report_code="disclosure_pack",
+            book_code="ASC606",
+            known_at=uow.now,
+            entity_ids=[world.entity_id],
+            parameters={
+                "entity_codes": [entities[0].code],
+                "book": "ASC606",
+                "period_key": period.key,
+                "quarter": True,
+            },
+            created_by=uow.principal.id,
+            created_by_kind=uow.principal.kind.value,
+        )
+        uow.session.execute(insert(report_run).values(**parent))
+        first = disclosure_children.ensure(uow, parent["id"])
+        count = uow.session.scalar(select(func.count()).select_from(report_run))
+        assert len(first) == 16
+        assert disclosure_children.ensure(uow, parent["id"]) == first
+        assert uow.session.scalar(select(func.count()).select_from(report_run)) == count
+        stored = uow.session.scalar(
+            select(report_run.c.child_report_run_ids).where(report_run.c.id == parent["id"])
+        )
+        assert stored == [child.run_id for child in first]
+        uow.commit()
+    with world.place.uow() as uow:
+        assert disclosure_children.ensure(uow, parent["id"]) == first
+        assert uow.session.scalar(select(func.count()).select_from(report_run)) == count
+        # Fresh authorization still applies when all child tasks already exist.
+        previous = uow.ctx
+        uow.ctx = replace(
+            previous,
+            principal=replace(previous.principal, permissions=frozenset(), permission_scopes={}),
+        )
+        try:
+            with pytest.raises(Problem) as refused:
+                disclosure_children.ensure(uow, parent["id"])
+            assert refused.value.slug == "forbidden"
+        finally:
+            uow.ctx = previous
+        # Deliberately corrupt the attachment order: do not silently create replacement runs.
+        uow.session.execute(
+            update(report_run)
+            .where(report_run.c.id == parent["id"])
+            .values(child_report_run_ids=list(reversed(stored)))
+        )
+        with pytest.raises(Problem):
+            disclosure_children.ensure(uow, parent["id"])
+        assert uow.session.scalar(select(func.count()).select_from(report_run)) == count
