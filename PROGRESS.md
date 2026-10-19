@@ -2,6 +2,24 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Scenario refresh API, worker and atomic switch — October 19, 2026
+
+- Added POST /scenarios/{id}/refresh with source row precondition, published input selection,
+  idempotency and atomic snapshot-job/reservation creation. OpenAPI/client types regenerated.
+- Reserved snapshot jobs now reauthorize the requester, read the selected publication, export
+  current production, load a held copy and replay the ordered inputs. Completed held copies can
+  be reused; an already-completed refresh returns its retained result. Partial copy failures
+  settle the refresh and archive the incomplete target while keeping the old scenario usable.
+- Publication, target activation, old-copy archive, source pointer/base/last-refreshed update,
+  refresh result and three-workspace audit commit together. Retired old-copy worker writes are
+  refused even after their source pointer moves. Cancellation settles queued reservations and
+  cannot undo an already-completed switch.
+- Real API/worker checks cover failed completion with old-copy preservation, a subsequent
+  successful refresh, mixed mapped-file/event replay, idempotent HTTP retry, old-write refusal
+  and queued cancellation. Ordinary scenario creation also passes; Ruff/Mypy/OpenAPI pass.
+- Refresh UI, broader concurrency/crash recovery and specified accounting acceptance remain
+  open. Forecast output and actual-vs-forecast report builders remain unfinished. No deployment.
+
 ## Durable scenario refresh reservation — October 19, 2026
 
 - Revision 0184 adds production-scoped refresh records with immutable source/target tenants,
@@ -220,19 +238,6 @@
 - Next: admission/rebuild from saved lock snapshots, locked XLSX/PDF exports and rerun; no
   historical-lock backfill or current-data fallback. Other reporting/system backlog remains.
   No deployment, new PR or production-readiness claim.
-
-## Disclosure snapshot viewer — October 19, 2026
-
-- Disclosure report pages now expose a saved-snapshot panel: lazy paginated metadata,
-  seven named kinds, explicit draft/locked classification, entity/book/period and individual
-  verified detail reads. Expanded records show cutoff, reporting basis, snapshot ID and digest;
-  verification failures offer retry without claiming successful validation.
-- Retained suppressed source amounts are not rendered in this panel. Original disclosure
-  tables continue to apply their elections. No new export permission or raw-data download.
-- Three focused component checks cover lazy loading, failure/retry and retained-input hiding;
-  TypeScript and targeted ESLint checked. Full browser acceptance remains open.
-- This is a per-report viewer, not a cross-report snapshot register. Lock approval persistence
-  and as-locked execution still remain open; no deployment or readiness claim.
 
 ## Outstanding release verification
 

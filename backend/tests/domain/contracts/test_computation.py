@@ -5762,6 +5762,8 @@ def test_forecast_event_capture_is_atomic_and_immutable(
             handler=snapshot_job.tenant_snapshot_export,
             retry=snapshot_job.SNAPSHOT_RETRY,
             on_failure=snapshot_job.snapshot_failed,
+            on_cancel=snapshot_job.snapshot_cancelled,
+            cancel_guard=snapshot_job.snapshot_cancel_guard,
         ),
     )
     from erev_api.domain.platform import sandboxes

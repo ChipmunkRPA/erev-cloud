@@ -34,3 +34,12 @@ class ScenarioCreateIn(BaseModel):
 class ScenarioRequestedOut(JobOut):
     scenario_id: UUID
     tenant_snapshot_id: UUID
+
+
+class ScenarioRefreshIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    forecast_event_set_id: UUID
+
+
+class ScenarioRefreshRequestedOut(ScenarioRequestedOut):
+    refresh_id: UUID

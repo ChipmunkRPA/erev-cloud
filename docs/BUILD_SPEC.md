@@ -11493,8 +11493,14 @@ Author BS-3. Uses DIN, SNP and RPS (PHASES §1 row 18). Indicative size 12 items
     Revision 0184 adds production-scoped durable refresh reservation/lifecycle with immutable
     input/hash and source/target/job bindings, one active refresh per scenario and terminal
     evidence guards. Running reservations associate held targets with their logical scenario;
-    archiving refuses pending refreshes. Request endpoint, worker integration, terminal cleanup
-    and final scenario switch remain missing; FCS-2 remains open.
+    archiving refuses pending refreshes. The refresh API now enqueues/reserves atomically;
+    its snapshot worker reauthorizes, loads a held copy, replays and atomically publishes,
+    activates, retires the old copy and switches the source pointer with cross-workspace audit.
+    Failure/cancellation settles the reservation and archives unfinished targets; completed
+    switches reject cancellation. API/worker integration covers failed completion, successful
+    retry with a new copy, mixed input order and queued cancellation. Refresh UI, broader
+    crash/concurrency coverage and the specified accounting acceptance remain open; FCS-2
+    is not yet marked complete.
   - **Prerequisites:** FCS-1
   - **Scope:**
     - Paths: `backend/erev_api/domain/forecast/event_sets.py` (`create`, `update`, `publish`; appending committed uploads in order; recording API commands into `api_commands`); `backend/erev_api/domain/imports/commands.py` (`forecast_event_set_id` in API-S-ImportCreate: scenario tenants only; commit without approval routing and audited, BR-FC-02); `backend/erev_api/domain/forecast/scenarios.py` (`refresh_scenario`: 05 SBX-07 supersession from a new snapshot, `scenario_tenant_id` repointed, published event set re-applied in stored order as the requester, SBX-09); `backend/erev_api/api/v1/forecast_event_sets.py`; `backend/erev_api/api/v1/scenarios.py` (`refresh`); `backend/tests/support/worlds.py` (`k11_hollenbrand`: WLD-K-11 with the J-04 delivery and invoices); `backend/tests/domain/forecast/test_event_sets.py`; `docs/api/openapi.json`; `frontend/src/lib/api/schema.d.ts`

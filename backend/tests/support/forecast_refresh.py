@@ -79,3 +79,148 @@ def exercise_refresh_state(world: Any, source_actor: Actor, scenario_id: UUID) -
                 .values(problem={"detail": "changed"})
             )
         uow.commit()
+
+    from unittest.mock import patch
+
+    from erev_api.db.session import DbContext, tenant_session
+    from erev_api.db.tables import job, tenant
+    from erev_api.domain.forecast import completion
+    from erev_api.jobs import registry
+    from erev_api.jobs.context import JobRuntime
+    from sqlalchemy import text
+
+    runtime = JobRuntime(
+        clock=world.place.clock, keyring=world.place.keyring, files=world.place.files
+    )
+    old_target = world.place.principal.tenant_id
+    for fail_completion in (True, False):
+        from support.http import call
+        from support.principals import cookie_headers
+
+        with source.uow() as uow:
+            current = archive._row(uow.session, scenario_id)
+        headers = cookie_headers(source_actor.token, source_actor.csrf_token)
+        headers["If-Match"] = f'"r{current["row_version"]}"'
+        response = call(
+            world.app,
+            "POST",
+            f"/api/v1/scenarios/{scenario_id}/refresh",
+            headers=headers,
+            json={"forecast_event_set_id": str(input_id)},
+        )
+        assert response.status_code == 202, response.text
+        retried = call(
+            world.app,
+            "POST",
+            f"/api/v1/scenarios/{scenario_id}/refresh",
+            headers=headers,
+            json={"forecast_event_set_id": str(input_id)},
+        )
+        assert retried.status_code == 202 and retried.json() == response.json()
+        requested_id = UUID(response.json()["id"])
+        snapshot_id = UUID(response.json()["tenant_snapshot_id"])
+        with source.uow() as uow:
+            pending = refresh_state.row(uow, UUID(response.json()["refresh_id"]))
+            queued = (
+                uow.session.execute(select(job).where(job.c.id == requested_id)).mappings().one()
+            )
+            uow.session.execute(
+                text("UPDATE procrastinate_jobs SET status = 'doing' WHERE id = :id"),
+                {"id": queued["procrastinate_job_id"]},
+            )
+            uow.commit()
+        if fail_completion:
+            with patch.object(
+                completion,
+                "complete",
+                side_effect=Problem("precondition-failed", "Injected completion failure"),
+            ):
+                registry.run_job(
+                    requested_id, source.principal.tenant_id, attempt=1, runtime=runtime
+                )
+        else:
+            registry.run_job(requested_id, source.principal.tenant_id, attempt=1, runtime=runtime)
+        with source.uow() as uow:
+            refreshed = refresh_state.row(uow, pending["id"])
+            current = archive._row(uow.session, scenario_id)
+            job_row = (
+                uow.session.execute(select(job).where(job.c.id == requested_id)).mappings().one()
+            )
+            assert job_row["state"] == ("FAILED" if fail_completion else "SUCCEEDED"), job_row[
+                "problem"
+            ]
+            assert refreshed["status"] == ("FAILED" if fail_completion else "SUCCEEDED")
+            assert current["scenario_tenant_id"] == (
+                old_target if fail_completion else pending["target_tenant_id"]
+            )
+            if not fail_completion:
+                assert current["last_refreshed_at"] is not None
+                assert current["tenant_snapshot_id"] == snapshot_id
+        with tenant_session(
+            DbContext(tenant_id=pending["target_tenant_id"], user_id=None, entity_scope="*")
+        ) as session:
+            assert session.scalar(
+                select(tenant.c.status).where(tenant.c.id == pending["target_tenant_id"])
+            ) == ("ARCHIVED" if fail_completion else "ACTIVE")
+            if not fail_completion:
+                inputs = (
+                    session.execute(
+                        select(forecast_event_set).where(
+                            forecast_event_set.c.id == refreshed["target_input_set_id"]
+                        )
+                    )
+                    .mappings()
+                    .one()
+                )
+                assert inputs["status"] == "PUBLISHED"
+                assert inputs["production_scenario_id"] == scenario_id
+                assert [step["kind"] for step in inputs["input_sequence"]] == [
+                    "API_COMMAND",
+                    "IMPORT_UPLOAD",
+                    "API_COMMAND",
+                ]
+        with tenant_session(
+            DbContext(tenant_id=old_target, user_id=None, entity_scope="*")
+        ) as session:
+            assert session.scalar(select(tenant.c.status).where(tenant.c.id == old_target)) == (
+                "ACTIVE" if fail_completion else "ARCHIVED"
+            )
+
+    from erev_api.db.scenario_writes import require_writable
+    from erev_api.domain.platform.snapshot_job import snapshot_cancel_guard
+
+    with tenant_session(DbContext(tenant_id=old_target, user_id=None, entity_scope="*")) as session:
+        with pytest.raises(Problem, match="archived and read-only"):
+            require_writable(
+                session, DbContext(tenant_id=old_target, user_id=None, entity_scope="*")
+            )
+    with source.uow() as uow:
+        with pytest.raises(Problem, match="already completed"):
+            snapshot_cancel_guard(uow, {}, requested_id)
+
+    with source.uow() as uow:
+        current = archive._row(uow.session, scenario_id)
+    headers = cookie_headers(source_actor.token, source_actor.csrf_token)
+    headers["If-Match"] = f'"r{current["row_version"]}"'
+    queued_refresh = call(
+        world.app,
+        "POST",
+        f"/api/v1/scenarios/{scenario_id}/refresh",
+        headers=headers,
+        json={"forecast_event_set_id": str(refreshed["target_input_set_id"])},
+    )
+    assert queued_refresh.status_code == 202, queued_refresh.text
+    cancelled = call(
+        world.app,
+        "POST",
+        f"/api/v1/jobs/{queued_refresh.json()['id']}/cancel",
+        headers=cookie_headers(source_actor.token, source_actor.csrf_token),
+    )
+    assert cancelled.status_code == 200, cancelled.text
+    with source.uow() as uow:
+        cancelled_state = refresh_state.row(uow, UUID(queued_refresh.json()["refresh_id"]))
+        assert cancelled_state["status"] == "FAILED"
+        assert (
+            archive._row(uow.session, scenario_id)["scenario_tenant_id"]
+            == current["scenario_tenant_id"]
+        )

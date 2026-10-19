@@ -836,6 +836,22 @@ def snapshot_failed(uow: UnitOfWork, params: Mapping[str, Any], problem: Mapping
     """The ``TENANT_SNAPSHOT`` failure hook (jobs.registry ``on_failure``): the row ends FAILED,
     and the sandbox of a load that failed is archived once the job's end is committed (05 SBX-04
     rev 1.64)."""
+    from erev_api.db.tables import scenario_refresh
+    from erev_api.domain.forecast import refresh_state
+
+    try:
+        raw_snapshot = UUID(str(params["tenant_snapshot_id"]))
+    except (KeyError, ValueError, TypeError):
+        raw_snapshot = None
+    if raw_snapshot is not None:
+        pending = uow.session.scalar(
+            select(scenario_refresh.c.id).where(
+                scenario_refresh.c.tenant_snapshot_id == UUID(str(raw_snapshot)),
+                scenario_refresh.c.status.in_(("QUEUED", "RUNNING")),
+            )
+        )
+        if pending is not None:
+            refresh_state.fail(uow, pending, dict(problem))
     archive_failed_sandbox(uow, params, problem)
     raw = params.get("tenant_snapshot_id")
     if raw is None:
@@ -870,12 +886,41 @@ def archive_failed_sandbox(
     uow.after_commit(archive)
 
 
-@task(JobKind.TENANT_SNAPSHOT, retry=SNAPSHOT_RETRY, on_failure=snapshot_failed)
+def snapshot_cancel_guard(uow: UnitOfWork, params: Mapping[str, Any], job_id: UUID) -> None:
+    from erev_api.db.tables import scenario_refresh
+
+    finished = uow.session.scalar(
+        select(scenario_refresh.c.id).where(
+            scenario_refresh.c.job_id == job_id, scenario_refresh.c.status == "SUCCEEDED"
+        )
+    )
+    if finished is not None:
+        raise Problem("invalid-transition", "The scenario refresh has already completed.")
+
+
+def snapshot_cancelled(uow: UnitOfWork, params: Mapping[str, Any], job_id: UUID) -> None:
+    snapshot_failed(
+        uow, params, {"type": "job-cancelled", "detail": "The snapshot job was cancelled."}
+    )
+
+
+@task(
+    JobKind.TENANT_SNAPSHOT,
+    retry=SNAPSHOT_RETRY,
+    on_failure=snapshot_failed,
+    on_cancel=snapshot_cancelled,
+    cancel_guard=snapshot_cancel_guard,
+)
 def tenant_snapshot_export(jc: JobContext, params: Mapping[str, Any]) -> JobOutcome:
     """``TENANT_SNAPSHOT``: export the snapshot of ``params`` as of its explicit ``known_at``; with
     ``params.sandbox`` (a SANDBOX_COPY / SANDBOX_SEED) the same job then loads the sandbox, and
     with ``params.load`` (``POST /tenant/sandboxes``, mode ``restore``) it only loads — a
     ``SUCCEEDED`` row is never re-exported (SNP-2; 04 rev 1.67; D-98 candidate 137 (1))."""
+    from erev_api.domain.forecast import refresh_job
+
+    reserved = refresh_job.find(jc)
+    if reserved is not None:
+        return refresh_job.run(jc, params, reserved)
     parsed = parse_params(params)
     load = sandboxes.parse_load(params)
     from erev_api.domain.forecast.creation import ScenarioRequest, register

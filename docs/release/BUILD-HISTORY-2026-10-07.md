@@ -7382,3 +7382,16 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - The collector is not yet invoked by lock approval: atomic persistence of genuine source report
   identities/seven locked snapshots and as-locked parent rendering remain to integrate. Existing
   draft snapshots stay drafts. No lock support, deployment or production-readiness claim.
+
+## Disclosure snapshot viewer — October 19, 2026
+
+- Disclosure report pages now expose a saved-snapshot panel: lazy paginated metadata,
+  seven named kinds, explicit draft/locked classification, entity/book/period and individual
+  verified detail reads. Expanded records show cutoff, reporting basis, snapshot ID and digest;
+  verification failures offer retry without claiming successful validation.
+- Retained suppressed source amounts are not rendered in this panel. Original disclosure
+  tables continue to apply their elections. No new export permission or raw-data download.
+- Three focused component checks cover lazy loading, failure/retry and retained-input hiding;
+  TypeScript and targeted ESLint checked. Full browser acceptance remains open.
+- This is a per-report viewer, not a cross-report snapshot register. Lock approval persistence
+  and as-locked execution still remain open; no deployment or readiness claim.

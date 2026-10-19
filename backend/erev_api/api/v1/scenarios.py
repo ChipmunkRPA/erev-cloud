@@ -28,11 +28,17 @@ from erev_api.api.lists import (
 from erev_api.auth.dependencies import require_all_entities
 from erev_api.auth.principal import RequestContext
 from erev_api.db.tables import scenario
-from erev_api.domain.forecast import archive, creation, scenarios
+from erev_api.domain.forecast import archive, creation, refresh_request, scenarios
 from erev_api.enums import ScenarioStatus
 from erev_api.idempotency.store import Replay
 from erev_api.schemas.common import ListOut
-from erev_api.schemas.scenarios import ScenarioCreateIn, ScenarioOut, ScenarioRequestedOut
+from erev_api.schemas.scenarios import (
+    ScenarioCreateIn,
+    ScenarioOut,
+    ScenarioRefreshIn,
+    ScenarioRefreshRequestedOut,
+    ScenarioRequestedOut,
+)
 from erev_api.uow import UnitOfWork
 
 SCENARIO_LIST: Final = ListSpec(
@@ -145,3 +151,45 @@ def scenarios_archive(
         )
 
     return run_command(cmd, deps, handle, etag=lambda out: row_etag(out.row_version))
+
+
+@router.post(
+    "/scenarios/{scenario_id}/refresh",
+    operation_id="scenarios_refresh",
+    status_code=202,
+    response_model=ScenarioRefreshRequestedOut,
+    responses=problem_responses(
+        "unauthenticated",
+        "session-expired",
+        "forbidden",
+        "not-found",
+        "invalid-transition",
+        "precondition-required",
+        "precondition-failed",
+        "validation-failed",
+        "sandbox-restricted",
+        "idempotency-key-reused",
+        "idempotency-in-progress",
+    ),
+)
+def scenarios_refresh(
+    scenario_id: UUID,
+    body: ScenarioRefreshIn,
+    cmd: Annotated[CommandContext, Depends(command("scenario.use", all_entities=True))],
+    deps: Annotated[KernelDeps, Depends(kernel_deps)],
+) -> Response:
+    """Refresh from current production and replay one published set before replacing the copy."""
+
+    def handle(uow: UnitOfWork) -> ScenarioRefreshRequestedOut:
+        version = expected_version(cmd.ctx.if_match, "row")
+        assert version is not None
+        return refresh_request.request(
+            uow,
+            scenario_id=scenario_id,
+            input_set_id=body.forecast_event_set_id,
+            expected_version=version,
+        )
+
+    return run_command(
+        cmd, deps, handle, status_code=202, location=lambda out: f"{API_PREFIX}/jobs/{out.id}"
+    )

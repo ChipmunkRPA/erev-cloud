@@ -34,7 +34,10 @@ def require_writable(session: Session, context: DbContext, *, lock: bool = True)
         status = session.execute(statement).scalar_one_or_none()
     finally:
         set_tenant_context(session, context)
-    if status == "ARCHIVED":
+    # The old pointer disappears at refresh completion. Re-read tenant status after the
+    # source-row lock so an already-admitted query that waited for that switch cannot write.
+    retired = session.scalar(select(tenant.c.status).where(tenant.c.id == context.tenant_id))
+    if status == "ARCHIVED" or retired == "ARCHIVED":
         raise Problem(
             "invalid-transition",
             "This scenario is archived and read-only.",

@@ -625,7 +625,7 @@ A sandbox is a workspace of kind `SANDBOX`: it runs the same engine, it can neve
 - Keep a stored backup: the same command with purpose `STORED_BACKUP` stores the snapshot without creating a sandbox; `GET /api/v1/tenant/snapshots` lists them. Purpose `SANDBOX_SEED`, like `SANDBOX_COPY`, asks the sandbox `name` and loads that sandbox in the same job.
 - Restore: `POST /api/v1/tenant/sandboxes` with a `SUCCEEDED` `tenant_snapshot_id` and a `name` creates a new sandbox from the stored snapshot. A restore never targets production.
 - Reset a sandbox: `POST /api/v1/tenant/reset` (`sandbox.reset`, with a fresh authenticator code) replaces the sandbox by a successor, from its seed snapshot (`mode` `SNAPSHOT`) or empty (`EMPTY`); the old one is archived and nothing is deleted. It answers 202 with the `SANDBOX_RESET` job. A production workspace answers 409 `production-reset-forbidden`.
-- Scenario workspaces for forecasts and deal previews (`scenario.use`) are sandboxes created from a production snapshot; the scenario and forecast commands are not in the API at this revision.
+- Scenario workspaces (`scenario.use`) are sandboxes created from a production snapshot. Scenario creation, input publication and refresh are available through the API; forecast runs and deal previews remain unfinished.
 
 The Sandbox copies settings page is `/settings/sandbox`. In a production workspace it creates a sandbox copy and lists the sandboxes copied from the workspace and the stored snapshots, each with its restore into a new sandbox; in a sandbox it says what the workspace was copied from and offers the reset.
 
@@ -762,5 +762,19 @@ Historical populated sets created before revision 0182 have no recorded cross-in
 They remain readable, but cannot be extended or replayed from an inferred order; create a new
 input set with a new code. Historical empty sets can be versioned normally.
 
-Scenario refresh/replay, forecast execution, forecast output reports and actual-versus-forecast
-reports remain unfinished.
+To refresh, call `POST /api/v1/scenarios/{scenario_id}/refresh` in the production workspace
+with `{"forecast_event_set_id": "<published-input-set-id>"}`, an idempotency key and
+`If-Match: "r<row_version>"` from the scenario catalogue. The input set must belong to the
+scenario's current copy. The response is 202 with the job, refresh and snapshot identifiers.
+Only one refresh can be pending for a scenario.
+
+The worker takes a fresh production snapshot, keeps the new copy inaccessible while replaying,
+and applies retained events and files in their recorded order using the original mapping content.
+After publication succeeds, it activates the new copy, archives the old copy and updates the
+scenario pointer and `last_refreshed_at` in one transaction. A failure leaves the old scenario
+usable and archives the unfinished target. Cancel a queued/running refresh through its job;
+a completed switch cannot be cancelled. After a failed partial copy, submit a fresh refresh
+request. A retry after a completed copy can reuse that held copy; a completed switch is retained.
+
+The refresh screen, forecast execution, forecast output reports and actual-versus-forecast
+reports remain unfinished. Broader crash/recovery and accounting acceptance are still required.

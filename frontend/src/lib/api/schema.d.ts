@@ -6826,6 +6826,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/scenarios/{scenario_id}/refresh": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Scenarios Refresh
+     * @description Refresh from current production and replay one published set before replacing the copy.
+     */
+    post: operations["scenarios_refresh"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/schedule-lines": {
     parameters: {
       query?: never;
@@ -21258,6 +21278,54 @@ export interface components {
        * Format: date-time
        */
       updated_at: string;
+    };
+    /** ScenarioRefreshIn */
+    ScenarioRefreshIn: {
+      /**
+       * Forecast Event Set Id
+       * Format: uuid
+       */
+      forecast_event_set_id: string;
+    };
+    /** ScenarioRefreshRequestedOut */
+    ScenarioRefreshRequestedOut: {
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      created_by: components["schemas"]["ActorOut"];
+      /** Finished At */
+      finished_at: string | null;
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      kind: components["schemas"]["JobKind"];
+      /** Mode */
+      mode?: string | null;
+      problem: components["schemas"]["ProblemOut"] | null;
+      progress: components["schemas"]["JobProgressOut"];
+      /**
+       * Refresh Id
+       * Format: uuid
+       */
+      refresh_id: string;
+      result: components["schemas"]["JobResultOut"] | null;
+      /**
+       * Scenario Id
+       * Format: uuid
+       */
+      scenario_id: string;
+      /** Started At */
+      started_at: string | null;
+      state: components["schemas"]["JobState"];
+      /**
+       * Tenant Snapshot Id
+       * Format: uuid
+       */
+      tenant_snapshot_id: string;
     };
     /** ScenarioRequestedOut */
     ScenarioRequestedOut: {
@@ -52316,6 +52384,105 @@ export interface operations {
         };
       };
       /** @description Problem: forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: not-found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: invalid-transition, idempotency-in-progress */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: precondition-failed */
+      412: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: validation-failed, idempotency-key-reused */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: precondition-required */
+      428: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+    };
+  };
+  scenarios_refresh: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description API-C-04: one key per user intent (8-255 characters); a repeat with the same key and body replays the stored response, another body is 422 idempotency-key-reused. */
+        "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+      };
+      path: {
+        scenario_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ScenarioRefreshIn"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ScenarioRefreshRequestedOut"];
+        };
+      };
+      /** @description Problem: unauthenticated, session-expired */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: forbidden, sandbox-restricted */
       403: {
         headers: {
           [name: string]: unknown;
