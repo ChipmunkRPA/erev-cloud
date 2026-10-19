@@ -125,3 +125,16 @@ evidence_pack: Final = Table(
     Column("job_id", Uuid(), nullable=True),
     *_sc_c_sc_m(),
 )
+
+
+# Retained contract sample dependencies; NULL entity_ids means every tenant entity.
+evidence_sample_file: Final = Table(
+    "evidence_sample_file",
+    metadata,
+    Column("tenant_id", Uuid(), primary_key=True),
+    Column("id", Uuid(), primary_key=True),
+    Column("evidence_pack_id", Uuid(), nullable=False),
+    Column("file_id", Uuid(), nullable=False),
+    Column("entity_ids", ARRAY(Uuid()), nullable=True),
+    *_sc_c(),
+)

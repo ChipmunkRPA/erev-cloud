@@ -73,10 +73,12 @@ from erev_api.db.tables import (
     estimate_version,
     event_submission,
     evidence_pack,
+    evidence_sample_file,
     exception_item,
     file_attachment,
     file_object,
     file_upload,
+    forecast_actuals_capture,
     idempotency_record,
     import_upload,
     journal_batch,
@@ -973,11 +975,28 @@ FILE_READ_ACCESS: Final[Mapping[FilePurpose, PurposeAccess]] = MappingProxyType(
             uploader=True,
             owners=(
                 _ATTACHED,
+                FileOwner(
+                    evidence_sample_file,
+                    "file_id",
+                    entity=evidence_sample_file.c.entity_ids,
+                    route=INTERNAL,
+                ),
                 FileOwner(ai_proposal, "file_object_id", route=INTERNAL),
                 FileOwner(ai_call_intent, "file_object_id", route=INTERNAL),
             ),
         ),
-        FilePurpose.SSP_STUDY: PurposeAccess(uploader=True, owners=(_ATTACHED,)),
+        FilePurpose.SSP_STUDY: PurposeAccess(
+            uploader=True,
+            owners=(
+                _ATTACHED,
+                FileOwner(
+                    evidence_sample_file,
+                    "file_id",
+                    entity=evidence_sample_file.c.entity_ids,
+                    route=INTERNAL,
+                ),
+            ),
+        ),
         FilePurpose.LEGACY_DATABASE: PurposeAccess(
             uploader=True,
             owners=(
@@ -1056,6 +1075,13 @@ FILE_READ_ACCESS: Final[Mapping[FilePurpose, PurposeAccess]] = MappingProxyType(
                     period_lock.c.entity_id,
                     joins=(_LOCK_OF_SNAPSHOT,),
                 ),
+                FileOwner(
+                    evidence_sample_file,
+                    "file_id",
+                    entity=evidence_sample_file.c.entity_ids,
+                    route=INTERNAL,
+                ),
+                FileOwner(forecast_actuals_capture, "dataset_file_id", route=INTERNAL),
                 FileOwner(tenant_snapshot, "manifest_file_id", route=SNAPSHOT_MANIFEST_ROUTE),
             ),
         ),

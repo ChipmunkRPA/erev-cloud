@@ -6114,6 +6114,9 @@ def test_contract_sample_computation_evidence_keeps_trace_and_full_schedule(
         bound = evidence_sample_sources.prepare(uow, request)
         pack = evidence_pack_values(uow.principal.tenant_id, **bound.pack_values())
         uow.session.execute(insert(evidence_pack).values(**pack))
+        with pytest.raises(Problem, match="retention is incomplete"):
+            evidence_sample_sources.load(uow, pack["id"])
+        evidence_sample_sources.retain(uow, pack["id"], bound)
         uow.commit()
 
     def no_recollection(*args, **kwargs):
@@ -6131,6 +6134,17 @@ def test_contract_sample_computation_evidence_keeps_trace_and_full_schedule(
         with world.place.uow(principal) as uow:
             loaded = evidence_sample_sources.load(uow, pack["id"])
             assert loaded == bound
+            from erev_api.domain.platform import file_evidence
+
+            for file_id in {
+                bound.source_file_id,
+                *(g.file_id for g in bound.scope.document_grants),
+            }:
+                holds = file_evidence.holds_in(uow.session, file_id)
+                assert any(
+                    h.reference.table == "evidence_sample_file" and not h.reference.approval
+                    for h in holds
+                )
             retained = evidence_sample_sources.read(uow, loaded)
             assert retained.manifest_sha256 == bound.manifest_sha256
             assert any(

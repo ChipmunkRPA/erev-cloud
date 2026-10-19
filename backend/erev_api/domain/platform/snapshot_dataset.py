@@ -512,6 +512,9 @@ RULES: Final[Mapping[str, TableRule]] = MappingProxyType(
         "tenant": _shared("the sandbox tenant row is created by provisioning (SBX-02)"),
         # --- the snapshot's own bookkeeping (T-PLT-34, slice I-1) ------------------------------
         "scenario": _regenerated(_K.OPERATIONAL, "production-side scenario pointer"),
+        "evidence_sample_file": _regenerated(
+            _K.OPERATIONAL, "production contract sample dependencies"
+        ),
         "forecast_actuals_capture": _regenerated(
             _K.OPERATIONAL, "production actuals retained separately"
         ),

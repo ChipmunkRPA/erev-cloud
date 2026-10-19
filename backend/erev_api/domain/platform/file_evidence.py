@@ -439,6 +439,15 @@ EVIDENCE: Final[tuple[EvidenceReference, ...]] = (
         standing=_as_locked,
     ),
     EvidenceReference("evidence_pack", "file_id", "a period evidence pack"),
+    EvidenceReference(
+        "evidence_sample_file",
+        "file_id",
+        "retained contract sample evidence",
+        entities=lambda t: t.c.entity_ids,
+    ),
+    EvidenceReference(
+        "forecast_actuals_capture", "dataset_file_id", "retained forecast actuals evidence"
+    ),
     # --- approvals: what the approver reviewed (REQ-PLT-015; REQ-POL-006)
     EvidenceReference(
         "approval_request", "impact_preview_file_id", _PREVIEW.format(what="an approval request")

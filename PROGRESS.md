@@ -2,6 +2,19 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+
+## Contract sample dependency retention — October 19, 2026
+
+- Added immutable tenant FK links from sample packs to captured snapshots and original
+  documents (0188). Pack creation retains dependency files in the same transaction under
+  file locks; retained reads refuse missing/extra/scope-inconsistent links.
+- Integrated deletion holds and internal-only file ownership, preserving current document
+  authorization. Also registered the existing forecast actuals capture file as retained evidence.
+- The populated K01 sample journey passes with persisted dependency holds and missing-link
+  refusal; 11 file-registry checks plus Ruff/Mypy pass. No broad suite rerun or deployment.
+- Reporting remains feature work: public sample create/job/download and rendered PDF/XLSX/UI,
+  period pack/relock completion, and populated actual-versus-forecast acceptance remain open.
+
 ## Unified contract sample source snapshot — October 19, 2026
 
 - Combined event/computation/journal/decision/document collectors at one cutoff; merged all
@@ -224,24 +237,6 @@
   workspaces cannot create forecasts. Three focused UI checks cover submission and access.
 - Scenario creation/refresh and input editing UI remain open, along with forecast revenue
   chart, actual-vs-forecast, contract sample pack and period evidence pack. No deployment.
-
-## Forecast-run API and worker — October 19, 2026
-
-- Added POST/GET/list forecast-runs in scenario workspaces, with idempotent admission,
-  published-input hash verification, scoped report/export permissions and consecutive horizon
-  validation. Requested formats default to JSON; callers may select XLSX/CSV too.
-- Registered FORECAST_RUN: reloads the active requester, validates the queued input/state hash,
-  recomputes activated scenario groups and publishes all selected five-section reports with
-  the parent success transition in one transaction. It does not reapply already-applied inputs.
-  Cancellation checkpoints roll back partial work; the final job-row check serializes cancellation
-  with publication. Queued cancellation/failure settles the parent and completed publication
-  cannot be cancelled. Revision 0185 admits forecast_run as the durable job subject.
-- Real API/worker verification covers idempotency, three reports, production refusal, listing,
-  completed-cancel refusal, queued cancellation and computation failure without partial reports.
-  OpenAPI/client schemas and the user guide now describe the runnable API.
-- FCS-3 remains open: K-11 specified accounting acceptance, broader concurrency/crash coverage,
-  creation screens, revenue chart, general report-catalogue execution and same-source reruns
-  are still unfinished. Actual-vs-forecast and evidence packs remain priorities. No deployment.
 
 ## Outstanding release verification
 

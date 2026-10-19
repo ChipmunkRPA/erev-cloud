@@ -10284,6 +10284,7 @@ Author BS-3. Uses CTR (PHASES §1 row 12). Indicative size 16 items; this phase 
   - **Gates:** GK-01 `make ci`; GK-03 `make openapi`
 
 - [ ] **RPS-16 Period evidence packs and contract sample packs.**
+    - October 19: sample snapshots and original document dependencies now have immutable tenant FK retention links, deletion holds, and strict retained-load completeness checks (0188). Public create/job/download, rendered output and UI remain unfinished.
   - October 19 unified snapshot increment: all five source collectors now feed one encrypted
     SNAPSHOT_DATASET archive with an embedded canonical permission/source scope. Typed bindings
     persist through evidence_pack.source_binding and bind selectors, file size/hash and manifest.

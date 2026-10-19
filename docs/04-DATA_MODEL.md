@@ -1864,10 +1864,12 @@ An upload over its purpose limit, or of a media type outside its list, returns 4
 | `IMPORT_SOURCE` | `reconciliation.source_file_id` | `contract.read`, `recon.prepare`, `recon.signoff` | `reconciliation.entity_id` |
 | `ATTACHMENT` | uploader | the principal that uploaded the file | - |
 | `ATTACHMENT` | `file_attachment.file_object_id` | rule: the subject of a live attachment (T-PLT-30) | - |
+| `ATTACHMENT` | `evidence_sample_file.file_id` | route: internal | - |
 | `ATTACHMENT` | `ai_proposal.file_object_id` | route: internal | - |
 | `ATTACHMENT` | `ai_call_intent.file_object_id` | route: internal | - |
 | `SSP_STUDY` | uploader | the principal that uploaded the file | - |
 | `SSP_STUDY` | `file_attachment.file_object_id` | rule: the subject of a live attachment (T-PLT-30) | - |
+| `SSP_STUDY` | `evidence_sample_file.file_id` | route: internal | - |
 | `LEGACY_DATABASE` | uploader | the principal that uploaded the file | - |
 | `LEGACY_DATABASE` | `migration_batch.source_file_id` | `migration.approve`, `migration.run` | all entities |
 | `REPORT_OUTPUT` | `report_run.output_file_id` | route: GET /report-runs/{id}/output | - |
@@ -1884,6 +1886,8 @@ An upload over its purpose limit, or of a media type outside its list, returns 4
 | `JOURNAL_EXPORT` | `journal_batch.export_file_id` | route: GET /journal-batches/{id}/download | - |
 | `JOURNAL_EXPORT` | `journal_batch.detail_file_id` | route: internal | - |
 | `SNAPSHOT_DATASET` | `lock_snapshot.file_id` | `report.run` | `period_lock.entity_id` |
+| `SNAPSHOT_DATASET` | `evidence_sample_file.file_id` | route: internal | - |
+| `SNAPSHOT_DATASET` | `forecast_actuals_capture.dataset_file_id` | route: internal | - |
 | `SNAPSHOT_DATASET` | `tenant_snapshot.manifest_file_id` | route: GET /tenant/snapshots/{id}/manifest | - |
 | `IMPACT_PREVIEW` | `approval_request.impact_preview_file_id` | rule: the readers of the request's content (API-R-09) | - |
 | `IMPACT_PREVIEW` | `modification.impact_preview_file_id` | rule: contract.read for every entity the modification is bound to (§16.10) | - |
@@ -1951,6 +1955,8 @@ without override.
 | `journal_batch.export_file_id`, `journal_batch.detail_file_id`; `posting_ack.response_file_id` | always | CTL-021; R-30 |
 | `report_run.output_file_id`, `report_run.manifest_file_id` | the run is bound to a period lock (`period_lock_id IS NOT NULL`) | CTL-029; R-30 |
 | `evidence_pack.file_id` | always | CTL-041 |
+| `evidence_sample_file.file_id` | always; immutable sample source archive and original document dependencies; no shred override | CTL-041 |
+| `forecast_actuals_capture.dataset_file_id` | always; immutable captured production actuals | T-FC-06 |
 | `approval_request.impact_preview_file_id`; `modification.impact_preview_file_id`; `manual_adjustment.impact_preview_file_id` | always | REQ-PLT-015; R-30 |
 | `account_mapping_version.impact_simulation_file_id`; `registry_version.impact_simulation_file_id`; `rule_set_version.impact_simulation_file_id` | always | REQ-POL-006 |
 | `audit_chain_verification.digest_file_id` | always | CTL-039; R-49 (b) |
@@ -8687,3 +8693,14 @@ and `report.run` for every forecast entity are required. Limits and cursors pagi
 selection; cursors bind the current snapshot and workspace. There is no total-count header.
 A cursor from a superseded refresh is refused so the client reloads the list. The endpoint
 neither opens archived report downloads nor grants access to unrelated scenarios.
+
+### T-RPT-05 `evidence_sample_file`
+
+Revision 0188. Tenant-scoped append-only (IM-A, RLS-T) retained dependency links for a
+contract sample. Standard tenant/id and SC-C columns; `evidence_pack_id` and `file_id`
+are required tenant foreign keys. Unique `(tenant_id, evidence_pack_id, file_id)`.
+Nullable `entity_ids uuid[]` freezes the full authorized source entity population; NULL
+means all entities. Creation locks every referenced file against shredding and writes links
+in the same transaction as the pack binding. Retained load refuses missing, extra or
+scope-inconsistent links. Links grant no generic file access; current source permissions
+still apply. Production evidence dependencies are excluded from scenario snapshots.

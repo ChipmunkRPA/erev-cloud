@@ -7714,3 +7714,22 @@ cleanup in the shared database session kernel was also repaired and regression-t
   Targeted source/export checks and Ruff/Mypy pass. Public admission/computation orchestration
   is still missing; this is an internal transaction primitive, not a completed forecast workflow.
   Revenue chart, actual-vs-forecast, evidence packs and accounting acceptance remain open.
+
+
+## Forecast-run API and worker — October 19, 2026
+
+- Added POST/GET/list forecast-runs in scenario workspaces, with idempotent admission,
+  published-input hash verification, scoped report/export permissions and consecutive horizon
+  validation. Requested formats default to JSON; callers may select XLSX/CSV too.
+- Registered FORECAST_RUN: reloads the active requester, validates the queued input/state hash,
+  recomputes activated scenario groups and publishes all selected five-section reports with
+  the parent success transition in one transaction. It does not reapply already-applied inputs.
+  Cancellation checkpoints roll back partial work; the final job-row check serializes cancellation
+  with publication. Queued cancellation/failure settles the parent and completed publication
+  cannot be cancelled. Revision 0185 admits forecast_run as the durable job subject.
+- Real API/worker verification covers idempotency, three reports, production refusal, listing,
+  completed-cancel refusal, queued cancellation and computation failure without partial reports.
+  OpenAPI/client schemas and the user guide now describe the runnable API.
+- FCS-3 remains open: K-11 specified accounting acceptance, broader concurrency/crash coverage,
+  creation screens, revenue chart, general report-catalogue execution and same-source reruns
+  are still unfinished. Actual-vs-forecast and evidence packs remain priorities. No deployment.

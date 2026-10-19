@@ -175,6 +175,7 @@ from erev_api.db.tables.release_verification import (  # noqa: E402
 from erev_api.db.tables.reports import (  # noqa: E402
     disclosure_snapshot,
     evidence_pack,
+    evidence_sample_file,
     report_definition,
     report_run,
 )
@@ -266,6 +267,7 @@ __all__ = [
     "estimate_version",
     "event_submission",
     "evidence_pack",
+    "evidence_sample_file",
     "exception_item",
     "external_id_map",
     "file_attachment",

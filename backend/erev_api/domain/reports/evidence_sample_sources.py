@@ -1,6 +1,6 @@
 """Capture and retain one contract sample source snapshot for subsequent rendering.
 
-The caller must persist pack_values() with the pack in the same transaction. Retries
+The caller must persist pack_values() and call retain() in the same transaction. Retries
 load the immutable binding; they never recollect live facts. No public command, job
 completion or final PDF/XLSX publication is implemented by this module.
 """
@@ -13,14 +13,14 @@ import json
 import zipfile
 from dataclasses import replace
 from typing import Annotated, Any, Literal, Self
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from erev_engine.canonical import canonical_bytes
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
-from sqlalchemy import select
+from sqlalchemy import insert, select
 
 from erev_api.auth.dependencies import require_for_entity
-from erev_api.db.tables import contract, evidence_pack
+from erev_api.db.tables import contract, evidence_pack, evidence_sample_file
 from erev_api.domain.platform import file_access
 from erev_api.domain.reports import (
     evidence_archive,
@@ -263,6 +263,41 @@ def read(uow: UnitOfWork, bound: SampleSources) -> Archive:
     return Archive(content, manifest, bound.manifest_sha256)
 
 
+def retain(uow: UnitOfWork, pack_id: UUID, bound: SampleSources) -> None:
+    """Bind deletion holds in the pack creation transaction, without granting file access."""
+    authorize(uow, bound.scope)
+    row = uow.session.execute(
+        select(evidence_pack.c.source_binding).where(
+            evidence_pack.c.tenant_id == uow.principal.tenant_id,
+            evidence_pack.c.id == pack_id,
+            evidence_pack.c.kind == "CONTRACT_SAMPLE",
+        )
+    ).scalar_one_or_none()
+    if row != bound.model_dump(mode="json"):
+        raise Problem("validation-failed", "Sample dependency binding differs from its pack.")
+    files = frozenset({bound.source_file_id, *(g.file_id for g in bound.scope.document_grants)})
+    if lock_readable(uow.session, files) != files:
+        raise Problem("validation-failed", "Sample dependency files are no longer available.")
+    uow.session.execute(
+        insert(evidence_sample_file),
+        [
+            dict(
+                tenant_id=uow.principal.tenant_id,
+                id=uuid4(),
+                evidence_pack_id=pack_id,
+                file_id=file_id,
+                entity_ids=None
+                if bound.scope.all_entities
+                else list(bound.scope.source_entity_ids),
+                created_at=uow.now,
+                created_by=uow.principal.id,
+                created_by_kind=uow.principal.kind.value,
+            )
+            for file_id in sorted(files)
+        ],
+    )
+
+
 def load(uow: UnitOfWork, pack_id: UUID) -> SampleSources:
     row = (
         uow.session.execute(
@@ -290,4 +325,16 @@ def load(uow: UnitOfWork, pack_id: UUID) -> SampleSources:
             "validation-failed", "The contract sample has no valid retained sources."
         ) from error
     authorize(uow, bound.scope)
+    references = uow.session.execute(
+        select(evidence_sample_file.c.file_id, evidence_sample_file.c.entity_ids).where(
+            evidence_sample_file.c.tenant_id == uow.principal.tenant_id,
+            evidence_sample_file.c.evidence_pack_id == pack_id,
+        )
+    ).all()
+    expected = {bound.source_file_id, *(g.file_id for g in bound.scope.document_grants)}
+    entities = None if bound.scope.all_entities else list(bound.scope.source_entity_ids)
+    if {row.file_id for row in references} != expected or any(
+        row.entity_ids != entities for row in references
+    ):
+        raise Problem("validation-failed", "The sample dependency retention is incomplete.")
     return bound
