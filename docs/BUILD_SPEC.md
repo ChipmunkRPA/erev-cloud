@@ -10146,6 +10146,11 @@ Author BS-3. Uses CTR (PHASES §1 row 12). Indicative size 16 items; this phase 
   - **Gates:** GK-01 `make ci`; GK-07 `make e2e SPEC=frontend/e2e/projects/screens.spec.ts`
 
 - [ ] **RPS-15 Disclosure snapshots and the disclosure pack.**
+  - October 19 expedient-input increment: `disclosure_expedients` resolves the ten entity-level
+    practical-expedient policies with source IDs/levels and book-specific standard references.
+    POL-195 hides rendered rows while retaining facts. Cost/default and IFRS forced-value reads
+    pass a database check; exact parent-cutoff/frozen-snapshot binding and section assembly remain.
+
   - October 19 result-reader increment: `disclosure_results.collect` distinguishes pending/failed
     children and verifies the complete set of original JSON outputs before assembly. Checks bind
     output metadata/digests, normalized parameters and dataset totals. A database journey executes

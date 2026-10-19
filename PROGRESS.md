@@ -2,6 +2,24 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Practical expedient disclosure inputs — October 19, 2026
+
+- Added disclosure_expedients.capture for the ten PRACTICAL_EXPEDIENT registry parameters.
+  Requires current scoped report permission and an entity existing at the aware cutoff; resolves
+  published entity/book policy values and retains their source IDs/levels, labels and references.
+- ASC606 and IFRS15 references follow the local POLICIES table; forced IFRS exclusions are
+  preserved. No website links are emitted. A nonpublic-only franchisor election on a public entity
+  refuses rather than implying eligibility. These are entity policies, not contract-use assertions.
+- POL-195 suppression hides rendered rows while retaining the full facts and omission note.
+  Registry category/reference drift refuses rather than silently dropping a newly added expedient.
+- Real registry reads verify ten ASC606 rows, the applied cost expedient with 340-40-25-4 and
+  IFRS forced royalty exclusion; the existing 16-child database journey passes. Focused omission
+  check passes; Ruff and Mypy pass for the new module.
+- Still required: bind these facts to the parent's exact cutoff and frozen disclosure snapshots,
+  assemble all seven sections, parent worker scheduling/publication, PDF and viewer. Policy test
+  cutoff uses DB observation time separately from the child-run fixture; full pack acceptance
+  is not implied. Five catalogue builders remain unregistered.
+
 ## Verified disclosure child results — October 19, 2026
 
 - Added disclosure_results.collect: authorize/resolve attached children, return pending IDs
@@ -205,19 +223,6 @@
 - Six catalogue builders remain: actual_vs_forecast, forecast_outputs, parallel_run_comparison,
   contract_sample_pack, period_evidence_pack and disclosure_pack. Full upgrade lifecycle,
   deferred-period reopening, cross-entity browser acceptance and accounting sign-off stay open.
-
-## Close variance header, totals and empty state — October 19, 2026
-
-- Added earlier/later lock timestamps and copyable IDs to the report header, from hash-checked
-  retained evidence. Export source labels name both locks; the viewer says Frozen close comparison.
-- Both sections show separate totals by measure and currency; revenue and RPO cannot cancel each
-  other in a shared footer. Identical frozen figures retain zero rows and explicit no-change copy.
-- Fixed column ordering and added optional lock_comparison API metadata; regenerated client types.
-- Targeted real-engine presentation: 1 passed; worker/rerun and permission-loss: 2 passed after
-  correcting SQL result materialization. Frontend: 3 passed; Ruff, Mypy, tsc and ESLint pass.
-- Remaining report development: actual_vs_forecast, forecast_outputs, parallel_run_comparison,
-  contract_sample_pack, period_evidence_pack, disclosure_pack, and engine_trueup_register.
-  Wider variance replay and populated close/cell/browser accounting acceptance remain open.
 
 ## Outstanding release verification
 

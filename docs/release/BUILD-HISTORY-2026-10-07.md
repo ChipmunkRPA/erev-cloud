@@ -6947,3 +6947,16 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Six catalogue builders remain unregistered. Populated close-to-report/cell browser acceptance,
   headers/empty-state polish, broader reference/FX/population replay and accounting sign-off
   remain open. No deployment or production readiness claim.
+
+## Close variance header, totals and empty state — October 19, 2026
+
+- Added earlier/later lock timestamps and copyable IDs to the report header, from hash-checked
+  retained evidence. Export source labels name both locks; the viewer says Frozen close comparison.
+- Both sections show separate totals by measure and currency; revenue and RPO cannot cancel each
+  other in a shared footer. Identical frozen figures retain zero rows and explicit no-change copy.
+- Fixed column ordering and added optional lock_comparison API metadata; regenerated client types.
+- Targeted real-engine presentation: 1 passed; worker/rerun and permission-loss: 2 passed after
+  correcting SQL result materialization. Frontend: 3 passed; Ruff, Mypy, tsc and ESLint pass.
+- Remaining report development: actual_vs_forecast, forecast_outputs, parallel_run_comparison,
+  contract_sample_pack, period_evidence_pack, disclosure_pack, and engine_trueup_register.
+  Wider variance replay and populated close/cell/browser accounting acceptance remain open.

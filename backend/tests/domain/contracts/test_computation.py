@@ -5038,3 +5038,37 @@ def test_disclosure_children_attach_once_and_survive_retry(world: World) -> None
         assert len(completed.children) == 16
         assert [child.source for child in completed.children] == list(first)
         assert all(child.output_sha256 for child in completed.children)
+
+    from erev_api.domain.reports import disclosure_expedients
+
+    with world.place.uow() as uow:
+        policy_cutoff = max(uow.now, uow.session.scalar(select(func.clock_timestamp())))
+        policy_facts = disclosure_expedients.capture(
+            uow,
+            entity_id=world.entity_id,
+            book="ASC606",
+            known_at=policy_cutoff,
+        )
+        policy_data = disclosure_expedients.dataset(policy_facts)
+        assert len(policy_data.rows) == 10
+        cost = next(
+            row for row in policy_data.rows if row["registry_key"] == "costs.obtain_expedient"
+        )
+        assert cost["value"] == "Applied"
+        assert "340-40-25-4" in cost["disclosure"]
+        assert policy_facts["resolved"]["costs.obtain_expedient"]["level"] in {
+            "DEFAULT",
+            "T",
+            "E",
+            "B",
+        }
+        ifrs = disclosure_expedients.capture(
+            uow,
+            entity_id=world.entity_id,
+            book="IFRS15",
+            known_at=policy_cutoff,
+        )
+        assert ifrs["resolved"]["rpo.exemption_royalty_vc"]["value"] == "DO_NOT_APPLY"
+        assert all(
+            "ASC " not in row["disclosure"] for row in disclosure_expedients.dataset(ifrs).rows
+        )
