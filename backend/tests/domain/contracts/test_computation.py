@@ -2943,6 +2943,21 @@ def test_validation_fanout_runs_frozen_match_and_no_source(
         from erev_api.db.tables import book
         from erev_api.domain.contracts.processing_seed import seed
 
+        with world.place.uow() as concurrent:
+            assert (
+                concurrent.session.scalar(
+                    text("SELECT pg_try_advisory_xact_lock(hashtextextended(:key, 0))"),
+                    {
+                        "key": f"erev:upgrade-group:{world.place.tenant_id}:"
+                        f"{booked.combination_group['id']}"
+                    },
+                )
+                is True
+            )
+            with pytest.raises(DBAPIError) as processing_busy, uow.session.begin_nested():
+                seed(uow, validation_id=validation_id)
+            assert getattr(processing_busy.value.orig, "sqlstate", None) == "55P03"
+        assert uow.session.scalar(select(func.count()).select_from(release_group_processing)) == 0
         seed_probe = uow.session.begin_nested()
         enabled_books = set(uow.session.scalars(select(book.c.code).where(book.c.is_enabled)))
         assert seed(uow, validation_id=validation_id) == len(enabled_books)
@@ -2956,6 +2971,63 @@ def test_validation_fanout_runs_frozen_match_and_no_source(
                 release_validation.c.id == validation_id
             )
         )
+        from erev_api.db.tables import posting_attribution
+
+        source_id = uow.session.scalar(
+            select(combination_group.c.head_computation_id).where(
+                combination_group.c.id == booked.combination_group["id"]
+            )
+        )
+        posting_id = uow.session.scalar(
+            select(subledger_posting.c.id).where(
+                subledger_posting.c.contract_computation_id == source_id,
+                subledger_posting.c.book_code == "ASC606",
+            )
+        )
+        assert source_id is not None and posting_id is not None
+        attribution = {
+            "tenant_id": world.place.tenant_id,
+            "id": new_id(),
+            "subledger_posting_id": posting_id,
+            "release_validation_attempt_id": frozen.id,
+            "combination_group_id": booked.combination_group["id"],
+            "contract_computation_id": source_id,
+            "cause": "UPGRADE_CONTEXT",
+            "sampled": False,
+            "origin_periods": {},
+            "created_at": uow.now,
+            "created_by": uow.principal.id,
+            "created_by_kind": uow.principal.kind.value,
+        }
+        attribution_probe = uow.session.begin_nested()
+        uow.session.execute(insert(posting_attribution).values(**attribution))
+        with pytest.raises(DBAPIError), uow.session.begin_nested():
+            uow.session.execute(
+                insert(posting_attribution).values(**{**attribution, "id": new_id()})
+            )
+        with pytest.raises(DBAPIError), uow.session.begin_nested():
+            uow.session.execute(update(posting_attribution).values(sampled=True))
+        attribution_probe.rollback()
+        with pytest.raises(DBAPIError), uow.session.begin_nested():
+            uow.session.execute(
+                insert(posting_attribution).values(**{**attribution, "cause": "UPGRADE_ONLY"})
+            )
+        terminal_probe = uow.session.begin_nested()
+        uow.session.execute(
+            insert(release_group_processing).values(
+                **{
+                    **row,
+                    "id": new_id(),
+                    "seq": 2,
+                    "upgrade_state": "POSTED",
+                    "contract_computation_id": source_id,
+                    "subledger_posting_ids": [posting_id],
+                }
+            )
+        )
+        with pytest.raises(DBAPIError), uow.session.begin_nested():
+            uow.session.execute(insert(posting_attribution).values(**attribution))
+        terminal_probe.rollback()
         audit_count = len(uow.audit_events)
         with pytest.raises(DBAPIError), uow.session.begin_nested():
             uow.session.execute(

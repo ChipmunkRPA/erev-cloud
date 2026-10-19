@@ -2786,7 +2786,6 @@ TABLES: Final[tuple[TableClassification, ...]] = (
             ),
             SPEC_C2_LEDGER: _cols("origin_periods input_comparison"),
         },
-        status=Status.PENDING,
     ),
     _table(
         "subledger_line_event",

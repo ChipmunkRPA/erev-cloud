@@ -5033,11 +5033,20 @@ Keys: `PRIMARY KEY (tenant_id, id)`; `ix_posting_ack__batch (tenant_id, journal_
 - **Purpose.** Attribution metadata for every posting a group produces under an enabled release while its upgrade processing is pending: which validation, which computation, and a conservative cause label (D-96 (4); R6, F).
 - **Class.** IM-A; RLS-T; AUD-FACT.
 - **REQ areas.** OPS, CTL, RPT.
-- **Rev 1.13 (D-96); rev pending lane P5.** No code table exists yet; first appearance per §18 rule 8.
+- **Implemented schema.** Revision 0168; computation persistence and register integration remain pending.
 
 Columns (draft §4b verbatim; rev 1.14 attribution input view): SC-T; `subledger_posting_id` N (`PRIMARY KEY (tenant_id, subledger_posting_id)`); `release_validation_attempt_id` N; `combination_group_id` N; `contract_computation_id` N; `previous_computation_id` Y; `cause` E-128 (F, v4: `UPGRADE_CONTEXT` is the default label. `UPGRADE_ONLY` is written **only** when the **attribution input view** of the current bundle equals that of the previous head's T-CON-25 input evidence. The attribution view is distinct from CV-25: it is the canonical **full** `InputBundle` — `known_at` **retained**, since the engine reads it for the event cutoff and SSP/template version selection, plus every other engine-read state (events, pins, resolved policies, period states, posted totals, master data, calendars) — with only the explicit release/schema representation fields normalised: `engine_version := ""`, `format_version := 0`, and the registered `INPUT_TRANSFORMS` applied to the older side so a schema-only representation change (the D-93 (5) `direction` default) does not count as an input change. Its SHA-256 is `attribution_input_sha256`, recorded for both sides; the CV-25 financial hash contract is untouched. `UPGRADE_AND_OTHER_INPUTS` when the two views differ — any proven non-release input change, including a `known_at`-only or period-state-only change, is "other inputs"; `UPGRADE_CONTEXT` when the comparison cannot be made (no previous-head evidence, no transform chain)); `sampled` boolean N; `origin_periods` jsonb N (period keys with `origin_period_id`, and open-period deltas without one); `input_comparison` jsonb Y (`{previous_attribution_input_sha256, current_attribution_input_sha256, transform_id}`); SC-C.
 
 Rules (rev 1.14): written by `persist()` for **every posting** of a group produced under release R while **any** portion of the group's T-PLT-46 state is `PENDING` or `DEFERRED_NO_OPEN_PERIOD` (E) — first computation or a later one that finally posts a deferred portion into its first open period, sampled or not, closed or open origins; only for validations with `effective_level IN ('MINOR','MAJOR')` and an accepted attempt (`release_validation_attempt_id` is that attempt). Labels are attribution metadata only: amounts, RCP-04/06/08 posting behaviour and line `reason_code` are untouched — S14's `LATE_EVENT`/`VOID` stay, open-period deltas keep none, and `ENGINE_TRUE_UP` is only a register label, never a line reason. Repetition cannot double-post (RCP-06 zero delta; idempotency key `compute:<computation id>`). Read by the `engine_trueup_register` report as of `known_at` (T-RPT-01 rule 3).
+
+Implementation note (revision 0168): attribution has a tenant/posting primary key,
+forced RLS and append-only protection. Its guard requires a sealed processing seed and
+at least one unsettled portion in the accepted upgrade group, with posting and computation
+identities bound to that release. Comparison-based cause labels require a distinct previous
+computation from the same group and valid string SHA-256 values consistent with the label.
+Processing-event and attribution inserts share a nonblocking group transaction guard.
+The runtime writer must still derive the comparison from retained input evidence and
+origins from posting facts; schema checks alone do not prove those calculations.
 
 ### T-SL-12 `subledger_line_event`
 

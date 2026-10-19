@@ -10,6 +10,7 @@ from erev_api.db.tables.platform import _enum, _sc_c, _sc_m
 from erev_api.enums import (
     BookCode,
     ComputationTrigger,
+    PostingAttributionCause,
     ReleaseValidationStatus,
     UpgradeProcessingState,
     ValidationAttemptStatus,
@@ -150,5 +151,23 @@ release_group_processing: Final = sa.Table(
     sa.Column("subledger_posting_ids", ARRAY(sa.Uuid()), nullable=False),
     sa.Column("unresolved_origin_period_keys", ARRAY(sa.Text()), nullable=False),
     sa.Column("reason", sa.Text(), nullable=True),
+    *_sc_c(),
+)
+
+
+posting_attribution: Final = sa.Table(
+    "posting_attribution",
+    metadata,
+    sa.Column("tenant_id", sa.Uuid(), primary_key=True),
+    sa.Column("id", sa.Uuid(), nullable=False),
+    sa.Column("subledger_posting_id", sa.Uuid(), primary_key=True),
+    sa.Column("release_validation_attempt_id", sa.Uuid(), nullable=False),
+    sa.Column("combination_group_id", sa.Uuid(), nullable=False),
+    sa.Column("contract_computation_id", sa.Uuid(), nullable=False),
+    sa.Column("previous_computation_id", sa.Uuid(), nullable=True),
+    sa.Column("cause", _enum(PostingAttributionCause, "posting_attribution_cause"), nullable=False),
+    sa.Column("sampled", sa.Boolean(), nullable=False),
+    sa.Column("origin_periods", JSONB(none_as_null=True), nullable=False),
+    sa.Column("input_comparison", JSONB(none_as_null=True), nullable=True),
     *_sc_c(),
 )

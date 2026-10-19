@@ -6208,3 +6208,23 @@ cleanup in the shared database session kernel was also repaired and regression-t
   transaction. The lock lasts through commit/rollback, beyond the Python acquire block.
 - Verification results are recorded in docs/release/CI-2026-10-15.md. The database store and
   replay handler remain outstanding; the adapter is not yet wired to a production write path.
+
+## Release verification schema — October 15, 2026
+
+- Revision 0161 adds per-release validation, frozen attempts/group selections and immutable
+  verification results. Tenant RLS, execution identity, task deduplication, set-once acceptance,
+  same-selection guards and retained file holds are enforced by the schema.
+- Existing privacy/snapshot inventories now classify these four tables; synthetic parser controls
+  preserve coverage of their former prose/hybrid declarations. Populated downgrade is refused.
+- Verification evidence is in docs/release/CI-2026-10-15.md. Fan-out/handler,
+  validation dataset publication and release admission remain unfinished; schema is not enablement.
+
+## Verification result persistence — October 15, 2026
+
+- The runtime store binds each decision to the actual scheduler task, process release and
+  frozen group/source selection. Result, accepted pointer, state and contract audit event
+  commit together; duplicate delivery writes no duplicate evidence. ERROR remains retryable.
+- Targeted verification is recorded in docs/release/CI-2026-10-15.md. Handler/fan-out,
+  dataset publication, selection creation and release admission remain unfinished.
+- The older full CI on frozen 3cf8f5b ended with 11,567 passed and 22 failed. Its failures
+  require current-main triage; it is not current-candidate acceptance.

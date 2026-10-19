@@ -2,6 +2,17 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Immutable posting attribution schema — October 19, 2026
+
+- Migration 0168 adds tenant-isolated, append-only posting_attribution with one row per
+  posting. Inserts require the accepted, enabled release and an unsettled processing group,
+  matching posting/computation ownership and valid cause-comparison metadata.
+- Processing events and attribution share a nonblocking group transaction guard so their
+  checks cannot race settlement. Privacy and sandbox snapshot inventories are reconciled.
+- Database probes cover attribution, duplicate/mutation/unsupported-cause refusal, terminal
+  groups, contention and migration round-trip. Persistence/report integration remains open,
+  alongside final acceptance, approval routing and admission. No deployment.
+
 ## Atomic upgrade processing queue seed — October 19, 2026
 
 - Added seeding of every current group/entity/enabled-book portion after an accepted upgrade,
@@ -252,26 +263,6 @@
   job/settings database checks pass; exact evidence is in docs/release/CI-2026-10-15.md.
 - Ten AI command routes still lack audit catalogue/walk integration; the AI lifecycle category
   remains pending. The nine helper typing errors found during triage were resolved above.
-
-## Verification result persistence — October 15, 2026
-
-- The runtime store binds each decision to the actual scheduler task, process release and
-  frozen group/source selection. Result, accepted pointer, state and contract audit event
-  commit together; duplicate delivery writes no duplicate evidence. ERROR remains retryable.
-- Targeted verification is recorded in docs/release/CI-2026-10-15.md. Handler/fan-out,
-  dataset publication, selection creation and release admission remain unfinished.
-- The older full CI on frozen 3cf8f5b ended with 11,567 passed and 22 failed. Its failures
-  require current-main triage; it is not current-candidate acceptance.
-
-## Release verification schema — October 15, 2026
-
-- Revision 0161 adds per-release validation, frozen attempts/group selections and immutable
-  verification results. Tenant RLS, execution identity, task deduplication, set-once acceptance,
-  same-selection guards and retained file holds are enforced by the schema.
-- Existing privacy/snapshot inventories now classify these four tables; synthetic parser controls
-  preserve coverage of their former prose/hybrid declarations. Populated downgrade is refused.
-- Verification evidence is in docs/release/CI-2026-10-15.md. Fan-out/handler,
-  validation dataset publication and release admission remain unfinished; schema is not enablement.
 
 ## Outstanding release verification
 
