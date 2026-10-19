@@ -2,6 +2,18 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Tenant release creation and resumable API — October 19, 2026
+
+- Added authoritative tenant validation creation: empty tenants bootstrap; historical tenants
+  require preparation; skipped stronger releases retain their level; downgrades are refused.
+- Added POST /release-validations/current/advance with all-entity report permission and command
+  idempotency. It resumes frozen replay jobs, JSON reports, attachment and final acceptance;
+  MAJOR differences enter independent approval. Repeated calls reuse persisted work.
+- Seven focused database cases passed, including the actual API/replay/report/enable path.
+  Generated API and frontend types are updated. Detailed usage and evidence are in CI-2026-10-19.
+- This is caller-driven advancement. Automatic scheduling, explicit baseline preparation,
+  computation admission and the true-up register remain development priorities. No deployment.
+
 ## Release acceptance and independent approval — October 19, 2026
 
 - Added finalization from an attached frozen report: matching results enable and seed atomically;
@@ -249,16 +261,6 @@
 - Exact verification is recorded in docs/release/CI-2026-10-15.md. The orchestrator still needs
   replay-seed configuration resolution, supersession/start commands, fan-out/handler, dataset
   publication and release admission. No release is enabled by freezing an attempt.
-
-## Release-validation population reader — October 15, 2026
-
-- Added a tenant-wide, single-statement reader for current heads, open-period member events,
-  sealed ledger activity, enabled-book recognition-method strata and member entity ids.
-  Partial entity scopes are refused; the reader does not widen caller scope.
-- Current membership uses active database rows rather than application-clock comparisons.
-  Verification evidence is recorded in docs/release/CI-2026-10-15.md.
-- Frozen-attempt persistence, fan-out/handler, dataset publication and release admission remain
-  outstanding. This reader does not dispatch jobs or enable releases.
 
 ## Outstanding release verification
 

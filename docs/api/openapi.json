@@ -32361,6 +32361,104 @@
         "title": "ReleaseOut",
         "type": "object"
       },
+      "ReleaseValidationAdvanceIn": {
+        "additionalProperties": false,
+        "properties": {
+          "retry_report": {
+            "default": false,
+            "title": "Retry Report",
+            "type": "boolean"
+          }
+        },
+        "title": "ReleaseValidationAdvanceIn",
+        "type": "object"
+      },
+      "ReleaseValidationAdvanceOut": {
+        "properties": {
+          "attempt_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attempt Id"
+          },
+          "job_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Job Ids",
+            "type": "array"
+          },
+          "phase": {
+            "enum": [
+              "ENABLED",
+              "PREPARATION_REQUIRED",
+              "WAITING_REPLAY",
+              "WAITING_REPORT",
+              "REPORT_FAILED",
+              "READY_FOR_ACCEPTANCE",
+              "PENDING_APPROVAL",
+              "FAILED",
+              "REJECTED",
+              "INCOMPLETE",
+              "RESTART_REQUIRED"
+            ],
+            "title": "Phase",
+            "type": "string"
+          },
+          "report_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Report Id"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ReleaseValidationStatus"
+          },
+          "validation_id": {
+            "format": "uuid",
+            "title": "Validation Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "validation_id",
+          "status",
+          "phase",
+          "attempt_id",
+          "report_id",
+          "job_ids"
+        ],
+        "title": "ReleaseValidationAdvanceOut",
+        "type": "object"
+      },
+      "ReleaseValidationStatus": {
+        "description": "E-126 ``release_validation_status`` (04 §3.4; T-PLT-43; D-96).",
+        "enum": [
+          "PENDING",
+          "RUNNING",
+          "INCOMPLETE",
+          "PASSED",
+          "FAILED",
+          "PENDING_APPROVAL",
+          "APPROVED",
+          "REJECTED"
+        ],
+        "title": "ReleaseValidationStatus",
+        "type": "string"
+      },
       "ReopenJudgementEvidenceOut": {
         "description": "Immutable reviewed citation retained when an error-correction reopen was requested.",
         "properties": {
@@ -86450,6 +86548,119 @@
           "API-R-22 Customers"
         ],
         "x-erev-permission": "masterdata.maintain"
+      }
+    },
+    "/api/v1/release-validations/current/advance": {
+      "post": {
+        "description": "Advance one durable stage for the running release, with report.run across all entities.\n\nUse the same idempotency key for delivery retries and a new key for the next stage.\nPREPARATION_REQUIRED never enables a historical tenant or a same-version rebuild.\nMAJOR differences wait for the existing independent approval workflow.",
+        "operationId": "release_validations_advance",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReleaseValidationAdvanceIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReleaseValidationAdvanceOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: unauthenticated, session-expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: forbidden, mfa-required"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: invalid-transition, idempotency-in-progress, lock-conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: validation-failed, idempotency-key-reused"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: release-mismatch"
+          }
+        },
+        "summary": "Release Validations Advance",
+        "tags": [
+          "API-R-41 Reports"
+        ],
+        "x-erev-permission": "report.run"
       }
     },
     "/api/v1/releases": {

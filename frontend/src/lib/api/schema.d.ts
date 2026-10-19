@@ -6074,6 +6074,30 @@ export interface paths {
     patch: operations["related_party_groups_update"];
     trace?: never;
   };
+  "/api/v1/release-validations/current/advance": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Release Validations Advance
+     * @description Advance one durable stage for the running release, with report.run across all entities.
+     *
+     *     Use the same idempotency key for delivery retries and a new key for the next stage.
+     *     PREPARATION_REQUIRED never enables a historical tenant or a same-version rebuild.
+     *     MAJOR differences wait for the existing independent approval workflow.
+     */
+    post: operations["release_validations_advance"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/releases": {
     parameters: {
       query?: never;
@@ -19930,6 +19954,59 @@ export interface components {
       /** Schema Revision */
       schema_revision: string;
     };
+    /** ReleaseValidationAdvanceIn */
+    ReleaseValidationAdvanceIn: {
+      /**
+       * Retry Report
+       * @default false
+       */
+      retry_report: boolean;
+    };
+    /** ReleaseValidationAdvanceOut */
+    ReleaseValidationAdvanceOut: {
+      /** Attempt Id */
+      attempt_id: string | null;
+      /** Job Ids */
+      job_ids: string[];
+      /**
+       * Phase
+       * @enum {string}
+       */
+      phase:
+        | "ENABLED"
+        | "PREPARATION_REQUIRED"
+        | "WAITING_REPLAY"
+        | "WAITING_REPORT"
+        | "REPORT_FAILED"
+        | "READY_FOR_ACCEPTANCE"
+        | "PENDING_APPROVAL"
+        | "FAILED"
+        | "REJECTED"
+        | "INCOMPLETE"
+        | "RESTART_REQUIRED";
+      /** Report Id */
+      report_id: string | null;
+      status: components["schemas"]["ReleaseValidationStatus"];
+      /**
+       * Validation Id
+       * Format: uuid
+       */
+      validation_id: string;
+    };
+    /**
+     * ReleaseValidationStatus
+     * @description E-126 ``release_validation_status`` (04 §3.4; T-PLT-43; D-96).
+     * @enum {string}
+     */
+    ReleaseValidationStatus:
+      | "PENDING"
+      | "RUNNING"
+      | "INCOMPLETE"
+      | "PASSED"
+      | "FAILED"
+      | "PENDING_APPROVAL"
+      | "APPROVED"
+      | "REJECTED";
     /**
      * ReopenJudgementEvidenceOut
      * @description Immutable reviewed citation retained when an error-correction reopen was requested.
@@ -48293,6 +48370,83 @@ export interface operations {
       };
       /** @description Problem: precondition-required */
       428: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+    };
+  };
+  release_validations_advance: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description API-C-04: one key per user intent (8-255 characters); a repeat with the same key and body replays the stored response, another body is 422 idempotency-key-reused. */
+        "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ReleaseValidationAdvanceIn"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ReleaseValidationAdvanceOut"];
+        };
+      };
+      /** @description Problem: unauthenticated, session-expired */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: forbidden, mfa-required */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: invalid-transition, idempotency-in-progress, lock-conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: validation-failed, idempotency-key-reused */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: release-mismatch */
+      503: {
         headers: {
           [name: string]: unknown;
         };

@@ -6258,3 +6258,13 @@ cleanup in the shared database session kernel was also repaired and regression-t
   through a synthetic pending catalogue, with a separate missing-live-AI-evidence assertion.
 - Verification evidence is recorded in docs/release/CI-2026-10-15.md. Full candidate acceptance,
   replay orchestration/release admission and independent accounting sign-off remain open.
+
+## Release-validation population reader — October 15, 2026
+
+- Added a tenant-wide, single-statement reader for current heads, open-period member events,
+  sealed ledger activity, enabled-book recognition-method strata and member entity ids.
+  Partial entity scopes are refused; the reader does not widen caller scope.
+- Current membership uses active database rows rather than application-clock comparisons.
+  Verification evidence is recorded in docs/release/CI-2026-10-15.md.
+- Frozen-attempt persistence, fan-out/handler, dataset publication and release admission remain
+  outstanding. This reader does not dispatch jobs or enable releases.

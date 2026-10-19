@@ -4475,3 +4475,165 @@ def test_release_finalization_lifecycle(
                 .one()
             )
             assert request["status"] == "VOIDED" and request["void_reason"] == "STALE_SUBJECT"
+
+
+def previous_release(
+    world: World, version: str, *, level: str = "PATCH", enabled: bool = True
+) -> UUID:
+    from datetime import timedelta
+    from uuid import uuid4
+
+    from erev_api.controls.release import current_release
+    from erev_api.db.session import release_session
+    from erev_api.db.tables import engine_release, release_validation
+
+    current = current_release()
+    assert current is not None
+    release_id = uuid4()
+    with release_session(request_id="release-history-probe") as session:
+        session.execute(
+            insert(engine_release).values(
+                id=release_id,
+                engine_version=version,
+                build_sha=release_id.hex,
+                schema_revision=current.schema_revision,
+                validation_level=level,
+            )
+        )
+    if enabled:
+        with world.place.uow() as uow:
+            uow.session.execute(
+                insert(release_validation).values(
+                    tenant_id=world.place.tenant_id,
+                    id=uuid4(),
+                    engine_release_id=release_id,
+                    effective_level="BOOTSTRAP",
+                    status="PASSED",
+                    enabled_at=uow.now - timedelta(days=1),
+                    created_at=uow.now,
+                    created_by=uow.principal.id,
+                    created_by_kind=uow.principal.kind.value,
+                    updated_at=uow.now,
+                    updated_by=uow.principal.id,
+                    updated_by_kind=uow.principal.kind.value,
+                )
+            )
+            uow.commit()
+    return release_id
+
+
+@pytest.mark.parametrize(
+    "scenario", ["bootstrap", "historical", "minor", "skipped_major", "same_version", "downgrade"]
+)
+def test_tenant_validation_creation(world: World, scenario: str) -> None:
+    from erev_api.controls.release import current_release
+    from erev_api.db.tables import release_validation
+    from erev_api.domain.contracts.validation_creation import ensure
+
+    current = current_release()
+    assert current is not None
+    if scenario == "historical":
+        booked = k01(world)
+        computed(world.place, booked.combination_group["id"])
+    if scenario in {"minor", "skipped_major"}:
+        previous_release(world, "0.2.0")
+    if scenario == "skipped_major":
+        previous_release(world, "0.2.5", level="MAJOR", enabled=False)
+        previous_release(world, "0.2.5", level="PATCH", enabled=False)
+    if scenario == "same_version":
+        previous_release(world, current.engine_version)
+    if scenario == "downgrade":
+        previous_release(world, "9.0.0")
+        with world.place.uow() as uow, pytest.raises(Problem) as refused:
+            ensure(uow)
+        assert refused.value.slug == "release-mismatch"
+        return
+    with world.place.uow() as uow:
+        first = ensure(uow)
+        assert (
+            first["effective_level"]
+            == {
+                "bootstrap": "BOOTSTRAP",
+                "historical": "MAJOR",
+                "minor": "MINOR",
+                "skipped_major": "MAJOR",
+                "same_version": "PATCH",
+            }[scenario]
+        )
+        assert (first["enabled_at"] is not None) == (scenario == "bootstrap")
+    with world.place.uow() as uow:
+        assert (
+            uow.session.scalar(
+                select(release_validation.c.id).where(
+                    release_validation.c.engine_release_id == current.id
+                )
+            )
+            is None
+        )
+        saved = ensure(uow)
+        uow.commit()
+    with world.place.uow() as uow:
+        assert ensure(uow) == saved
+        assert not uow.audit_events
+
+
+def test_release_orchestration_api_resumes_to_enabled(world: World) -> None:
+    from erev_api.controls.release import current_release
+    from erev_api.db.tables import job, release_validation_attempt, report_run
+    from erev_api.domain.contracts import replay_job
+    from erev_api.jobs.context import JobRuntime
+    from erev_api.jobs.registry import run_job
+    from sqlalchemy import text
+    from support.reference import post
+
+    assert replay_job.replay is not None
+    # A tenant enabled on the preceding engine before its first computation has a NO_SOURCE
+    # group to validate. No historical engine output is fabricated for this upgrade.
+    previous_release(world, "0.2.0")
+    k01(world)
+    path = "/api/v1/release-validations/current/advance"
+
+    def advance() -> dict[str, Any]:
+        response = post(world.app, path, world.place.author, {})
+        assert response.status_code == 200, response.text
+        return dict(response.json())
+
+    first = advance()
+    assert first["phase"] == "WAITING_REPLAY" and len(first["job_ids"]) == 1
+    assert advance() == first
+    with world.place.uow() as uow:
+        runtime = JobRuntime(
+            clock=uow.clock, keyring=uow.keyring, files=uow.files, engine_release=current_release()
+        )
+
+    def run(job_id: str) -> None:
+        with world.place.uow() as uow:
+            task_id = uow.session.scalar(
+                select(job.c.procrastinate_job_id).where(job.c.id == UUID(job_id))
+            )
+            uow.session.execute(
+                text("UPDATE procrastinate_jobs SET status = 'doing' WHERE id = :id"),
+                {"id": task_id},
+            )
+            uow.commit()
+        run_job(
+            UUID(job_id),
+            world.place.tenant_id,
+            attempt=1,
+            runtime=runtime,
+            delivered_task_id=task_id,
+        )
+
+    run(first["job_ids"][0])
+    reporting = advance()
+    assert reporting["phase"] == "WAITING_REPORT" and len(reporting["job_ids"]) == 1
+    assert advance() == reporting
+    run(reporting["job_ids"][0])
+    attached = advance()
+    assert attached["phase"] == "READY_FOR_ACCEPTANCE"
+    finished = advance()
+    assert finished["phase"] == "ENABLED" and finished["status"] == "PASSED"
+    assert advance()["phase"] == "ENABLED"
+    with world.place.uow() as uow:
+        assert uow.session.scalar(select(func.count()).select_from(release_validation_attempt)) == 1
+        assert uow.session.scalar(select(func.count()).select_from(report_run)) == 1
