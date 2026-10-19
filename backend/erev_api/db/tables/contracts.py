@@ -446,3 +446,19 @@ contract_recent_view: Final = Table(
     _timestamp("viewed_at", nullable=False),
     *_sc_c_sc_m(),
 )
+
+
+# T-RPT-05: source-trigger-only mutable header/code history; revision 0174.
+report_source_revision: Final = Table(
+    "report_source_revision",
+    metadata,
+    Column("tenant_id", Uuid(), primary_key=True),
+    Column("id", Uuid(), primary_key=True),
+    Column("source_kind", Text(), nullable=False),
+    Column("source_id", Uuid(), nullable=False),
+    Column("entity_id", Uuid(), nullable=True),
+    Column("revision_no", BigInteger(), nullable=False),
+    _timestamp("recorded_at", nullable=False),
+    Column("is_baseline", Boolean(), nullable=False),
+    Column("document", JSONB(), nullable=False),
+)

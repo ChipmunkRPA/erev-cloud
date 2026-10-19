@@ -1832,12 +1832,19 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
         "Contract rows in scope as a CSV dataset with a JSON manifest (REQ-RPT-028).",
         ("mode", "entity_codes", "period_lock_id", "known_at", "known_since"),
         overrides=_EXTRACT_MODE,
-        sources=("contract", "customer", "legal_entity"),
+        sources=("report_source_revision",),
         joins=(
-            "contract.customer_id = customer.id",
-            "contract.contracting_entity_id = legal_entity.id",
+            "captured contract customer_id and contracting_entity_id to latest captured "
+            "code labels at known_at",
         ),
-        filters=(_SCOPE, _SOURCE_TIME, _INCREMENTAL),
+        filters=(
+            _SCOPE,
+            "latest database-captured revision at known_at; "
+            "uncovered migration-era history refuses",
+            "mode INCREMENTAL: contract created_at after known_since; "
+            "not an update or deletion feed",
+            "lock datasets unsupported",
+        ),
     ),
     _definition(
         "extract_obligations",

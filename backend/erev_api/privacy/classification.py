@@ -3020,6 +3020,18 @@ TABLES: Final[tuple[TableClassification, ...]] = (
             R02: _cols("book_code as_of_date from_date to_date manifest source_binding"),
         },
     ),
+    _table(
+        "report_source_revision",
+        "T-RPT-05",
+        "Append-only contract headers and code-only labels for historical BI source reads.",
+        Retention.AUDIT_RETENTION_YEARS,
+        {
+            R01: _cols(
+                "tenant_id id source_kind source_id entity_id revision_no recorded_at is_baseline"
+            ),
+            SPEC_C2_PAYLOAD: _cols("document"),
+        },
+    ),
     # ---- IMP tables (04 T-IMP-nn)
     _table(
         "import_template",

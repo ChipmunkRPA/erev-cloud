@@ -6366,3 +6366,12 @@ cleanup in the shared database session kernel was also repaired and regression-t
   retries make the assessment INCOMPLETE. The assessment makes no enablement transition.
 - Database lifecycle verification and typing/lint evidence are in the dated CI record.
   Dataset/report publication, final acceptance, approvals and admission remain outstanding.
+
+## Encrypted validation artifact storage — October 15, 2026
+
+- Added VALIDATION_DATASET purpose/migration, per-file encryption and internal-only owner
+  rules for attempt datasets and verification difference datasets. Generic file routes deny
+  reads; existing non-overridable evidence holds protect referenced artifacts.
+- Database encryption/read/hold and empty migration round-trip tests passed, with file-access,
+  policy and registry checks. CI evidence is in the dated release record.
+- Dataset production, report publication, final acceptance, approvals and admission remain open.

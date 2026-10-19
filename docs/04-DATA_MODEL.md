@@ -5679,6 +5679,34 @@ October 8, 2026 implementation clarification: `manifest.json` does not list or h
 
 ## 11. Import tables
 
+### T-RPT-05 `report_source_revision`
+
+Append-only observed contract headers and code-only customer/entity labels (revision 0174).
+IM-A; RLS-TE on nullable `entity_id` (code labels are tenant-wide). Database source triggers
+capture inserts and changed updates in the same transaction. Baselines attest only to the
+migration instant; they never backfill prior state. `recorded_at` is server observation time,
+not transaction commit time. No public mutation endpoint; direct app inserts are refused.
+Historical extract readers must verify coverage and entity scope before using a revision.
+
+| Column | Type | Null | Default | Constraints and notes |
+|---|---|---|---|---|
+| `tenant_id` | uuid | N | | Tenant key |
+| `id` | uuid | N | | Primary key with tenant_id |
+| `source_kind` | text | N | | contract, customer_code, entity_code |
+| `source_id` | uuid | N | | Identity in the named source |
+| `entity_id` | uuid | Y | | Contracting entity for headers; null for code labels |
+| `revision_no` | bigint | N | | Positive per-source sequence; unique with tenant/kind/id |
+| `recorded_at` | timestamptz | N | | Database capture time |
+| `is_baseline` | boolean | N | | Migration-time initial observation |
+| `document` | jsonb | N | | Full header without tenant_id, or id/code only for labels |
+
+Capture validates the document against the actual source row and derives its timestamp and
+sequence. Updates/deletes/truncation are forbidden. Populated history prevents downgrade.
+Sandbox restores regenerate history from restored rows; source-tenant historical coverage is
+not copied or asserted. Retention follows audit-retention policy; document has C2 payload
+classification because contract memo/custom fields may contain unstructured data.
+
+
 ### T-IMP-01 `import_template`
 
 - **Purpose.** Global template registry: the four legacy templates as v1 and the modern CSV templates (D-30; REQ-DAT-002, -004, -016).

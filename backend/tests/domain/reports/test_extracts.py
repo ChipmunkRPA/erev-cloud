@@ -453,3 +453,123 @@ def test_journal_extract_historical_cancellation(
         get(app, f"{REPORT_RUNS}/{rerun.headers['x-erev-report-run-id']}/output", world.maya).json()
         == data
     )
+
+
+def test_contract_source_revisions_are_atomic_and_source_owned(
+    app: FastAPI, app_settings: Settings, clock: FrozenClock, keyring: KeyRing
+) -> None:
+    from datetime import date
+    from uuid import uuid4
+
+    from erev_api.db.tables import contract, report_source_revision
+    from erev_api.enums import ContractEventType
+    from erev_api.events.payloads import BillingRecordedV1
+    from erev_api.events.stream import EventIn, append_events
+    from erev_api.money import MoneyIn
+    from sqlalchemy import exc, func, insert, update
+    from support.factories import appended
+    from support.worlds import K01
+
+    world = k01_pellworth(app, keyring, clock, LocalFileStore(app_settings.file_root))
+    cid = UUID(str(world.contracts[K01].contract["id"]))
+    query = (
+        select(report_source_revision)
+        .where(
+            report_source_revision.c.source_kind == "contract",
+            report_source_revision.c.source_id == cid,
+        )
+        .order_by(report_source_revision.c.revision_no)
+    )
+    before = world.place.rows(query)
+    assert len(before) > 1
+    assert [r["revision_no"] for r in before] == list(range(1, len(before) + 1))
+    assert not any(r["is_baseline"] for r in before)
+    current = world.place.scalar(
+        select(func.to_jsonb(contract.table_valued())).where(contract.c.id == cid)
+    )
+    current.pop("tenant_id")
+    assert before[-1]["document"] == current
+    from erev_api.domain.reports.builders.extract_contracts import COLUMNS as CONTRACT_COLUMNS
+
+    cutoff = world.place.scalar(select(func.clock_timestamp()))
+    clock.set(cutoff)
+    world = resigned(world)
+    params = {"entity_codes": [AVM_US], "known_at": cutoff.isoformat()}
+    original, rows = report_run(world, "extract_contracts", params)
+    assert rows and [col.key for col in CONTRACT_COLUMNS] == [
+        col.name for col in contract.c if col.name != "tenant_id"
+    ] + ["customer_code", "contracting_entity_code"]
+    row = next(row for row in rows if row["id"] == str(cid))
+    assert row["head_stream_version"] == current["head_stream_version"]
+    assert row["customer_code"] and row["contracting_entity_code"] == AVM_US
+    original_output = get(app, f"{REPORT_RUNS}/{original['id']}/output", world.maya).json()
+    csv_run, _ = report_run(world, "extract_contracts", params, output_format="CSV")
+    base = f"{REPORT_RUNS}/{csv_run['id']}/output"
+    content = get(app, base, world.maya).content
+    manifest = get(app, base, world.maya, {"part": "manifest"}).json()
+    assert manifest["sha256"] == hashlib.sha256(content).hexdigest()
+    assert manifest["dataset"] == "extract_contracts"
+    _, incremental = report_run(
+        world,
+        "extract_contracts",
+        {
+            **params,
+            "mode": "INCREMENTAL",
+            "known_since": max(r["recorded_at"] for r in before).isoformat(),
+        },
+    )
+    assert incremental == []
+    head = world.place.scalar(select(contract.c.head_stream_version).where(contract.c.id == cid))
+    event = EventIn(
+        event_type=ContractEventType.BILLING_RECORDED,
+        effective_date=date(2026, 9, 16),
+        payload=BillingRecordedV1(
+            invoice_number="REVISION-1",
+            line_external_id="REVISION-1-1",
+            obligation_key="O1",
+            amount=MoneyIn(amount="5000.00", currency="USD"),
+            issue_date=date(2026, 9, 16),
+        ),
+    )
+    with world.place.uow() as uow:
+        append_events(
+            uow, contract_id=cid, expected_stream_version=head, events=[event], origin="UI"
+        )
+        assert len(uow.session.execute(query).mappings().all()) > len(before)
+    assert world.place.rows(query) == before
+    appended(world.place, cid, head, [event])
+    after = world.place.rows(query)
+    assert after[: len(before)] == before
+    assert after[-1]["document"]["head_stream_version"] == head + 1
+    _, historical = report_run(world, "extract_contracts", params)
+    assert historical == rows
+    clock.set(world.place.scalar(select(func.clock_timestamp())))
+    world = resigned(world)
+    _, changed = report_run(
+        world,
+        "extract_contracts",
+        {
+            **params,
+            "known_at": clock.now().isoformat(),
+        },
+    )
+    assert next(r for r in changed if r["id"] == str(cid))["head_stream_version"] == head + 1
+    rerun = post(app, f"{REPORT_RUNS}/{original['id']}/rerun", world.maya, {})
+    assert rerun.status_code == 202, rerun.text
+    assert run_now(world, UUID(rerun.json()["id"]))["state"] == "SUCCEEDED"
+    assert (
+        get(app, f"{REPORT_RUNS}/{rerun.headers['x-erev-report-run-id']}/output", world.maya).json()
+        == original_output
+    )
+    with pytest.raises(exc.IntegrityError):
+        with world.place.uow() as uow:
+            uow.session.execute(
+                insert(report_source_revision).values(**{**dict(after[-1]), "id": uuid4()})
+            )
+    with pytest.raises(exc.DBAPIError):
+        with world.place.uow() as uow:
+            uow.session.execute(
+                update(report_source_revision)
+                .where(report_source_revision.c.id == before[0]["id"])
+                .values(document={})
+            )

@@ -1,5 +1,17 @@
 # eRev Cloud 1.0: stated limits of the release
 
+October 19 contract reporting continuation: `extract_contracts` now exports captured headers
+and historical customer/entity codes, with JSON/CSV, creation-time incremental selection and
+retained inputs for reruns. Migration 0174 adds atomic, append-only source revision capture and
+migration-time baselines. Coverage before initial capture is refused; capture timestamps do
+not establish historical transaction commit visibility. Sandbox restores begin new coverage.
+All nine data extract builders now exist. Eight catalogue builders remain: actual_vs_forecast,
+bookings_billings_revenue, contract_sample_pack, disclosure_pack, forecast_outputs,
+parallel_run_comparison, period_evidence_pack and variance_between_closes. The separate
+engine_trueup_register, locked extract datasets, automatic watermarks and browser acceptance
+remain unfinished. No deployment or production-readiness claim.
+
+
 October 19 journal reporting continuation: `extract_journal_lines` now exports source-time
 journal detail, resolving cancellation through stored times and audited lifecycle evidence.
 It retains source rows and state evidence for reruns, with CSV/JSON and per-functional-currency

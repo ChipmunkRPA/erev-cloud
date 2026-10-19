@@ -39,6 +39,7 @@ from erev_api.db.tables.contracts import (  # noqa: E402
     modification,
     obligation,
     policy_override,
+    report_source_revision,
 )
 from erev_api.db.tables.engine_output import (  # noqa: E402
     calc_trace,
@@ -231,6 +232,7 @@ __all__ = [
     "combination_group",
     "combination_group_member",
     "contract",
+    "report_source_revision",
     "contract_computation",
     "contract_event",
     "contract_hold",

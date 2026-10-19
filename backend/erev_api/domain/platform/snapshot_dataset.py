@@ -375,6 +375,9 @@ RULES: Final[Mapping[str, TableRule]] = MappingProxyType(
         "source_match": _copied(_K.FACT, "matches of source records (ruling Q-1)"),
         "contract_source_link": _copied(_K.FACT, "links between contracts and source records"),
         "combination_group": _copied(_K.FACT, "accounting units of contracts (SBX-03 contracts)"),
+        "report_source_revision": _regenerated(
+            _K.DERIVED, "source history begins from restored rows"
+        ),
         "contract": _copied(_K.FACT, "contracts (SBX-03)"),
         "modification": _copied(_K.FACT, "modifications (SBX-03; T-CON-06, CTR-17 / D-98 140)"),
         "combination_group_member": _copied(_K.FACT, "group membership of contracts"),

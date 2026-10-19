@@ -270,12 +270,17 @@ Dataset schemas, version 1 (the table ids are those of the data model, `docs/04-
 | `extract_events` | Contract events recorded at or before the source time (T-CON-05) | Every column except `tenant_id`; `payload` as canonical JSON | `row_count` |
 | `extract_legacy_contract_live` | Legacy history rows over all dates (04 §17.1 rule 1) | The 71 legacy `Contract_Live` columns of 04 §17.2, in legacy order, with the legacy export format rules | `row_count` |
 
-Status at this revision: `extract_events`, `extract_contract_versions`, `extract_obligations`, `extract_schedule_lines`
-`extract_balances`, `extract_subledger_lines`, `extract_legacy_contract_live` and
-`extract_journal_lines` produce JSON and CSV through the report page and API. The contract
-extract remains a catalogue contract without a builder. Parquet extracts and
-as-locked extract datasets remain unimplemented; supplying a lock is refused, never replaced
-with live data.
+Status at this revision: all nine dataset builders produce JSON and CSV through the report
+page and API. Parquet extracts and as-locked extract datasets remain unimplemented;
+supplying a lock is refused, never replaced with live data.
+
+**Extract: contracts** reads database-captured header revisions and historical customer/entity
+codes. Existing installations gain a baseline at migration 0174; earlier history is unavailable
+and is refused when an existing contract lacks coverage. Restored sandboxes begin new coverage.
+Source timestamps are capture times, not transaction commit timestamps. Retained report inputs
+make reruns reproducible. Incremental selection uses contract creation time: updates to an older
+contract are not an incremental change feed; use Full to refresh changed headers. JSON-valued
+columns use canonical JSON and configured contact fields are redacted.
 
 For **Extract: events**, choose Full as of source time or Changes known since in the report
 page. Enter an explicit UTC timestamp such as `2026-09-01T00:00:00Z` for an incremental start.

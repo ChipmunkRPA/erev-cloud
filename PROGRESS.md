@@ -2,6 +2,20 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Contract BI extract and source history — October 19, 2026
+
+- Added extract_contracts v1: fixed header columns, historical customer/entity codes,
+  JSON/CSV, creation-time incremental windows and retained inputs for identical reruns.
+- Migration 0174 captures contract/header and code changes atomically in append-only source
+  revisions; existing rows receive migration-time baselines. Missing earlier coverage refuses.
+  Capture time is not commit time; restored sandboxes start new history.
+- Actual API export, subsequent contract update, historical read, rerun, CSV hash and database
+  capture protections passed. Source disclosure matches the migrated catalogue. Targeted
+  inventory/privacy checks and typing passed; details in CI-2026-10-19.md.
+- All nine extract builders now exist; eight other catalogue builders remain. Locked datasets,
+  watermarks, true-up, broader acceptance and independent accounting sign-off remain open.
+  Continue unfinished reporting development; no deployment.
+
 ## Journal line BI extract — October 19, 2026
 
 - Added extract_journal_lines v1 with entity/book scope, source-time lifecycle reconstruction,
@@ -243,15 +257,6 @@
 - Rollback, retry reuse, encryption, evidence holds and generic download denial passed database
   checks. Unit/typing evidence is in the dated CI record. Historical results are not backfilled.
 - Attempt datasets, reports, final acceptance, approvals and admission remain unfinished.
-
-## Encrypted validation artifact storage — October 15, 2026
-
-- Added VALIDATION_DATASET purpose/migration, per-file encryption and internal-only owner
-  rules for attempt datasets and verification difference datasets. Generic file routes deny
-  reads; existing non-overridable evidence holds protect referenced artifacts.
-- Database encryption/read/hold and empty migration round-trip tests passed, with file-access,
-  policy and registry checks. CI evidence is in the dated release record.
-- Dataset production, report publication, final acceptance, approvals and admission remain open.
 
 ## Outstanding release verification
 

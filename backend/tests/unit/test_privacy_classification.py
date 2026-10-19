@@ -475,7 +475,8 @@ def test_prv_01_catalogue_matches_04_tables() -> None:
     # + T-CLS-09 period_reopen_basis = 160 literal tables.
     # + T-CON-27 private contract navigation history (0159) = 162.
     # + computation_evidence promoted from hybrid (0160) = 163.
-    assert formats == {"literal": 167, "prose": 2}, formats
+    # Release processing and attribution promoted from prose (0166/0168); + history (0174).
+    assert formats == {"literal": 170}, formats
     assert [t.name for t in TABLES] == list(sections), "catalogue follows 04 document order"
 
 

@@ -165,6 +165,7 @@ from erev_api.domain.reports.builders import (
 )
 from erev_api.domain.reports.builders import extract_balances as extract_balances_builder
 from erev_api.domain.reports.builders import extract_contract_versions as extract_versions_builder
+from erev_api.domain.reports.builders import extract_contracts as extract_contracts_builder
 from erev_api.domain.reports.builders import extract_events as extract_events_builder
 from erev_api.domain.reports.builders import extract_journal_lines as extract_journal_builder
 from erev_api.domain.reports.builders import extract_legacy_contract_live as extract_legacy_builder
@@ -363,6 +364,7 @@ BUILDERS: Final[Mapping[str, Builder]] = MappingProxyType(
         extract_journal_builder.CODE: extract_journal_builder.build,
         extract_legacy_builder.CODE: extract_legacy_builder.build,
         extract_subledger_builder.CODE: extract_subledger_builder.build,
+        extract_contracts_builder.CODE: extract_contracts_builder.build,
         extract_balances_builder.CODE: extract_balances_builder.build,
         extract_schedule_builder.CODE: extract_schedule_builder.build,
         extract_obligations_builder.CODE: extract_obligations_builder.build,
@@ -593,6 +595,10 @@ SOURCE_CONTRACTS: Final[Mapping[str, SourceContract]] = MappingProxyType(
                 _CUTOFF,
                 "sealed subledger source lines, seal timestamps and contract/period/account labels",
             ),
+        ),
+        extract_contracts_builder.CODE: SourceContract(
+            RETAINED,
+            (_CUTOFF, "captured contract headers and historical code labels"),
         ),
         extract_balances_builder.CODE: SourceContract(
             RETAINED,
@@ -869,6 +875,7 @@ PARAMETER_DEFAULTS: Final[Mapping[str, Mapping[str, Any]]] = MappingProxyType(
         extract_journal_builder.CODE: MappingProxyType({"mode": "FULL"}),
         extract_legacy_builder.CODE: MappingProxyType({"mode": "FULL"}),
         extract_subledger_builder.CODE: MappingProxyType({"mode": "FULL"}),
+        extract_contracts_builder.CODE: MappingProxyType({"mode": "FULL"}),
         extract_balances_builder.CODE: MappingProxyType({"mode": "FULL"}),
         extract_schedule_builder.CODE: MappingProxyType({"mode": "FULL"}),
         extract_obligations_builder.CODE: MappingProxyType({"mode": "FULL"}),
@@ -1379,6 +1386,7 @@ def _resolve(
             extract_versions_builder.CODE,
             extract_obligations_builder.CODE,
             extract_schedule_builder.CODE,
+            extract_contracts_builder.CODE,
             extract_balances_builder.CODE,
             extract_subledger_builder.CODE,
             extract_legacy_builder.CODE,

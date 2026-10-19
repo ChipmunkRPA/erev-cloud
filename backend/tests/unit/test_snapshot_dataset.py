@@ -65,7 +65,7 @@ def test_class_totals_and_reasons_are_pinned() -> None:
         # + modification (T-CON-06; CTR-17 / D-98 140, revision 0068)
         # + migration_population_version, migration_population_obligation (04 rev 1.60, F-LMG)
         sd.SnapshotClass.REPLAY_REFERENCE: 3,
-        sd.SnapshotClass.REGENERATED: 63,  # + posting attribution (0168)
+        sd.SnapshotClass.REGENERATED: 64,  # + report source revisions (0174)
         # + control_execution, migration_reconciliation_line,
         # subledger_line_event (T-SL-12, lane ENG-C6); + sync_run, external_id_map (DIN-12, 0072);
         # + audit_event_contract (T-PLT-48, revision 0101: the index of the sandbox's own events);
