@@ -11573,9 +11573,12 @@ Author BS-3. Uses DIN, SNP and RPS (PHASES §1 row 18). Indicative size 12 items
     Empty posted populations remain distinct from zero-net postings. Targeted checks pass.
     Added an internal historical-run resolver that walks only the current scenario's successful
     refresh chain, rechecks saved entity permissions, and returns the production snapshot cutoff
-    separately from refresh completion time. The refresh-bound production-actual capture,
-    archived output reading, retained-source builder/registration and screen connection are still
-    open; this report is not yet runnable.
+    separately from refresh completion time. Forecast publication now preserves encrypted
+    canonical data for every output format. An internal archived-revenue reader verifies the
+    dataset digest, scenario/input/parent identity, book/currency/entity/horizon scope and table
+    hash before returning only revenue. Legacy JSON is supported; legacy file-only runs without
+    retained canonical data are refused. Production-actual capture, retained-source report
+    builder/registration and screen connection remain open; this report is not yet runnable.
   - **Prerequisites:** FCS-3
   - **Scope:**
     - Paths: `backend/erev_api/domain/reports/builders/actual_vs_forecast.py` (RPT-40: forecast revenue of the run against revenue posted in the scenario tenant as of its latest refresh); `backend/tests/domain/forecast/test_actual_vs_forecast.py`

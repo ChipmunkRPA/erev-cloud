@@ -162,6 +162,35 @@ def exercise_capture(world: Any, source_actor: Any) -> None:
     assert len(document["sections"]) == 5
     assert document["parameters"]["forecast_run_id"] == str(parent_id)
     assert document["event_set"]["sha256"] == identity.event_set_sha256
+    import hashlib
+    import json
+    from uuid import UUID
+
+    from erev_api.db.tables import report_run
+    from erev_api.domain.forecast import history
+    from erev_api.domain.reports import forecast_saved
+    from erev_api.files.store import open_file
+
+    with world.place.uow() as uow:
+        uow.ctx = replace(uow.ctx, tenant_kind=TenantKind.SANDBOX)
+        saved = history.resolve(uow, parent_id)
+        for output_id in [saved_id, *downloads.values()]:
+            output_row = (
+                uow.session.execute(select(report_run).where(report_run.c.id == output_id))
+                .mappings()
+                .one()
+            )
+            evidence = output_row["source_binding"]["evidence"]
+            _, stream = open_file(
+                uow.session,
+                UUID(evidence["forecast_dataset_file_id"]),
+                files=uow.files,
+                keyring=uow.keyring,
+            )
+            with stream:
+                retained = stream.read()
+            assert hashlib.sha256(retained).hexdigest() == output_row["output_sha256"]
+            assert forecast_saved._revenue(json.loads(retained), saved, evidence)["rows"]
     from support.http import call
     from support.principals import cookie_headers
 

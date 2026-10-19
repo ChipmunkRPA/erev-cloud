@@ -202,6 +202,18 @@ def _publish(uow: UnitOfWork, parent_id: UUID, captured: Captured, identity: Ide
             media_type="application/json",
         )
     )
+    # Keep the canonical forecast data independently of the chosen download format. Future
+    # comparisons read these saved values, never recompute a historical forecast.
+    dataset_file_id = (
+        file_id
+        if format == "JSON"
+        else framework._store(
+            uow,
+            output.dataset,
+            name=framework._file_name(row, "json"),
+            media_type="application/json",
+        )
+    )
     binding = SourceBinding(
         cutoff=captured.known_at,
         versions={},
@@ -212,6 +224,7 @@ def _publish(uow: UnitOfWork, parent_id: UUID, captured: Captured, identity: Ide
         open=("Forecast computation reruns are not yet supported.",),
         evidence={
             "forecast_run_id": str(parent_id),
+            "forecast_dataset_file_id": str(dataset_file_id),
             "event_set_sha256": identity.event_set_sha256,
             "children": {key: source.to_stored() for key, source in captured.sources.items()},
         },

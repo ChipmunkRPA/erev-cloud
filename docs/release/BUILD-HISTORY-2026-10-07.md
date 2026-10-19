@@ -7529,3 +7529,15 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - This is an internal building block, not a finished refresh endpoint. Resource copying,
   command replay, durable refresh orchestration and atomic scenario replacement remain open.
   Forecast outputs, actual-vs-forecast and both evidence packs remain reporting priorities.
+
+## Transactional forecast command replay — October 19, 2026
+
+- Added the internal command executor alongside file replay. Commands authorize and lock the
+  current contract in the target copy, apply retained payload/evidence through the normal event
+  path and capture the input only after synchronous computation succeeds. Large groups do not
+  enqueue deferred work that could overtake subsequent inputs. Ordinary HTTP behavior is unchanged.
+- Computation failure rolls back the event, computation, input capture and audit buffers. The
+  real scenario journey exercises failure after computation, subsequent successful replay and
+  mixed file/command order without new jobs. Targeted checks and Ruff/Mypy pass.
+- Resource materialization, durable refresh orchestration, scenario replacement and the forecast
+  report builders remain unfinished. No deployment or production-readiness claim.

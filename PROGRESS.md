@@ -2,6 +2,19 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Retained forecast data and archived revenue reading — October 19, 2026
+
+- Forecast publication now retains encrypted canonical JSON for XLSX/CSV runs as well; JSON
+  reuses its existing output file. The dataset reference is saved with the source binding in
+  the same publication transaction, so later comparison does not recalculate the original forecast.
+- Added an internal reader through the authorized scenario history resolver. It checks the
+  saved output hash, scenario/input/parent identities, book/currency/entity/horizon scope and
+  revenue-table hash, returning only revenue. Legacy JSON remains readable; old file-only
+  outputs without retained data are explicitly refused. Tenant context is restored on exit.
+- The real scenario journey passes all three retained formats and archived revenue reading
+  after refresh. Ruff/Mypy pass. Production actuals, comparison builder/registration and UI
+  remain open; no generic archived-download access or production-readiness claim is added.
+
 ## Forecast lookup across scenario refreshes — October 19, 2026
 
 - Added an internal saved-forecast resolver from the active scenario through successful refresh
@@ -225,18 +238,6 @@
   file refusal; targeted verification and Ruff/Mypy pass.
 - Mapping-profile resolution, persisted refresh orchestration, final scenario switch and
   forecast report builders remain open. No deployment or production-readiness claim.
-
-## Transactional forecast command replay — October 19, 2026
-
-- Added the internal command executor alongside file replay. Commands authorize and lock the
-  current contract in the target copy, apply retained payload/evidence through the normal event
-  path and capture the input only after synchronous computation succeeds. Large groups do not
-  enqueue deferred work that could overtake subsequent inputs. Ordinary HTTP behavior is unchanged.
-- Computation failure rolls back the event, computation, input capture and audit buffers. The
-  real scenario journey exercises failure after computation, subsequent successful replay and
-  mixed file/command order without new jobs. Targeted checks and Ruff/Mypy pass.
-- Resource materialization, durable refresh orchestration, scenario replacement and the forecast
-  report builders remain unfinished. No deployment or production-readiness claim.
 
 ## Outstanding release verification
 

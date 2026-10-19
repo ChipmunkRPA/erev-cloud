@@ -244,6 +244,12 @@ def exercise_refresh_state(world: Any, source_actor: Actor, scenario_id: UUID) -
         assert saved.source_tenant_id == source.principal.tenant_id
         assert saved.actuals_cutoff == current["base_known_at"]
         assert saved.last_refreshed_at == current["last_refreshed_at"]
+        from erev_api.domain.reports import forecast_saved
+
+        revenue = forecast_saved.read(uow, saved_run_id)
+        assert revenue.forecast.forecast_tenant_id == old_target
+        assert any(column["key"].startswith("period:") for column in revenue.revenue["columns"])
+        assert "sections" not in revenue.revenue
         assert uow.session.scalar(text("SELECT current_setting('app.tenant_id')")) == str(
             actor.tenant_id
         )
