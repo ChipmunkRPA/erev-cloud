@@ -46,3 +46,22 @@ def sequence(values: Mapping[str, Any]) -> list[dict[str, Any]]:
     if len({str(identity) for identity in uploads}) != len(uploads):
         raise Problem("validation-failed", "A forecast input file is listed more than once.")
     return [dict(entry) for entry in entries]
+
+
+def content(values: Mapping[str, Any]) -> dict[str, Any]:
+    """The exact publication hash payload, shared with the refresh input reader."""
+    return {
+        key: values[key]
+        for key in (
+            "code",
+            "name",
+            "production_scenario_id",
+            "version_no",
+            "supersedes_version_id",
+            "effective_from",
+            "effective_to",
+            "import_upload_ids",
+            "api_commands",
+            "input_sequence",
+        )
+    }

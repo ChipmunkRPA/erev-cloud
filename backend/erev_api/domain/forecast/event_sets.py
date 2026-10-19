@@ -162,21 +162,7 @@ def change(
                     updated_by_kind=uow.principal.kind.value,
                 )
             )
-        content = {
-            key: changes.get(key, current[key])
-            for key in (
-                "code",
-                "name",
-                "production_scenario_id",
-                "version_no",
-                "supersedes_version_id",
-                "effective_from",
-                "effective_to",
-                "import_upload_ids",
-                "api_commands",
-                "input_sequence",
-            )
-        }
+        content = input_order.content({**current, **changes})
         changes.update(
             status="PUBLISHED",
             content_sha256=hashlib.sha256(canonical_bytes(content)).hexdigest(),

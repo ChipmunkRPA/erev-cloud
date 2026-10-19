@@ -245,3 +245,57 @@ def exercise_forecast_imports(world: object) -> None:
     )
     assert next_version.status_code == 201, next_version.text
     assert next_version.json()["input_sequence"] == expected_order
+
+    # Materialize the published version through the future refresh worker's source reader.
+    import io
+    from dataclasses import replace
+    from unittest.mock import patch
+
+    from erev_api.db.tables import file_object
+    from erev_api.domain.forecast import event_sets, replay_inputs
+    from erev_api.problems import Problem
+    from support.factories import workspace as command_workspace
+
+    place = command_workspace(
+        world.app, world.clock, world.runtime.keyring, world.runtime.files, world.actor
+    )
+    next_headers = headers()
+    next_headers["If-Match"] = next_version.headers["ETag"]
+    next_id = UUID(next_version.json()["id"])
+    next_published = call(
+        world.app, "POST", f"/api/v1/forecast-event-sets/{next_id}/publish", headers=next_headers
+    )
+    assert next_published.status_code == 200, next_published.text
+    with place.uow() as uow:
+        inputs = replay_inputs.load(uow, next_id)
+        assert [step["kind"] for step in inputs.steps] == [
+            "API_COMMAND",
+            "IMPORT_UPLOAD",
+            "API_COMMAND",
+        ]
+        assert (
+            inputs.steps[0]["body"]["events"][0]["payload"]["cumulative_progress_ratio"] == "0.50"
+        )
+        assert (
+            inputs.steps[2]["body"]["events"][0]["payload"]["cumulative_progress_ratio"] == "0.70"
+        )
+        assert inputs.steps[1]["source_upload_id"] == str(import_id)
+        assert len(inputs.files) == 1 and inputs.files[0].content == content
+        assert inputs.content_sha256 == next_published.json()["content_sha256"]
+        metadata = (
+            uow.session.execute(select(file_object).where(file_object.c.id == inputs.files[0].id))
+            .mappings()
+            .one()
+        )
+        with patch.object(
+            replay_inputs, "open_file", return_value=(dict(metadata), io.BytesIO(b"changed"))
+        ):
+            with pytest.raises(Problem, match="retained metadata"):
+                replay_inputs.load(uow, next_id)
+        row = event_sets._row(uow.session, next_id)
+        with patch.object(event_sets, "_row", return_value={**row, "content_sha256": "0" * 64}):
+            with pytest.raises(Problem, match="does not match its hash"):
+                replay_inputs.load(uow, next_id)
+    denied = replace(place.principal, permissions=place.principal.permissions - {"scenario.use"})
+    with place.uow(denied) as uow, pytest.raises(Problem):
+        replay_inputs.load(uow, next_id)

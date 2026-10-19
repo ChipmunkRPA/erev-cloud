@@ -7268,3 +7268,20 @@ cleanup in the shared database session kernel was also repaired and regression-t
   side-by-side quarter layout and populated accounting acceptance are still required. The journey
   has no booked accounting population and currently publishes JSON; worker XLSX/PDF journeys
   remain to verify. Five catalogue builders remain unregistered. No deployment.
+
+## Retained disclosure rerun reconstruction — October 19, 2026
+
+- Added version-2 disclosure input codec retaining original child stamps alongside typed JSON
+  inputs, identities, parameter/output hashes and policies. Rebuild validates scope, cutoff,
+  version, digests, stamp/dataset agreement and full population, then executes section/election
+  assembly again. It does not replay the saved parent output or resolve current child/policy data.
+- Internal rerun insertion attaches original child IDs without queuing new children. Readiness
+  validates retained inputs independently of current child job/file availability. Worker output
+  rendering consumes the reconstructed pack and preserves original input evidence.
+- The real parent/16-child journey now publishes a second parent with live capture forbidden;
+  hashes, totals, tie-outs, child IDs and evidence match. Scope/digest corruption refuses. The
+  newly retained stamp fields require evidence version 2; earlier internal version-1 captures
+  refuse rather than silently adding current stamps. Ruff/Mypy pass.
+- Public catalogue/API admission remains closed; frozen snapshots, viewer, quarter-column layout,
+  export worker journeys and populated accounting acceptance remain open. Five catalogue builders
+  are still unregistered. This internal rerun journey is not full disclosure completion.

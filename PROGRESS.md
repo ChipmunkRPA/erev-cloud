@@ -2,6 +2,21 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Published forecast replay inputs — October 19, 2026
+
+- Added the source reader for refresh: verified publication hash, complete input order and
+  published version ancestry; inherited file inputs must belong to that chain and be committed.
+  The reader checks the current requester's scenario and underlying event/import permissions.
+- Retains original file/evidence bytes with size/hash verification and a combined size limit;
+  keeps the committed template version, parameters, quarantine setting and verified mapping
+  definition. Only captured contract-event POST commands are admitted, never arbitrary URLs.
+  Publication and reading share the same canonical content definition.
+- The mixed-input scenario journey verifies inherited source-file materialization, ordered event
+  bodies, publication/file corruption rejection and permission refusal; Ruff/Mypy pass.
+  Refresh orchestration, applying
+  these inputs in a new copy and switching the scenario are still unfinished. Forecast outputs,
+  actual-vs-forecast and evidence packs also remain open. No deployment/readiness claim.
+
 ## Forecast input application order — October 19, 2026
 
 - Revision 0182 records one sequence across API commands and successful file commits. Both
@@ -215,23 +230,6 @@
 - User guide and release limitations describe the draft API and its boundaries. Frozen snapshots,
   chapter viewer, side-by-side quarter layout, export worker journeys and populated accounting
   acceptance remain open. This enables usable draft generation, not completed RPS-15/readiness.
-
-## Retained disclosure rerun reconstruction — October 19, 2026
-
-- Added version-2 disclosure input codec retaining original child stamps alongside typed JSON
-  inputs, identities, parameter/output hashes and policies. Rebuild validates scope, cutoff,
-  version, digests, stamp/dataset agreement and full population, then executes section/election
-  assembly again. It does not replay the saved parent output or resolve current child/policy data.
-- Internal rerun insertion attaches original child IDs without queuing new children. Readiness
-  validates retained inputs independently of current child job/file availability. Worker output
-  rendering consumes the reconstructed pack and preserves original input evidence.
-- The real parent/16-child journey now publishes a second parent with live capture forbidden;
-  hashes, totals, tie-outs, child IDs and evidence match. Scope/digest corruption refuses. The
-  newly retained stamp fields require evidence version 2; earlier internal version-1 captures
-  refuse rather than silently adding current stamps. Ruff/Mypy pass.
-- Public catalogue/API admission remains closed; frozen snapshots, viewer, quarter-column layout,
-  export worker journeys and populated accounting acceptance remain open. Five catalogue builders
-  are still unregistered. This internal rerun journey is not full disclosure completion.
 
 ## Outstanding release verification
 
