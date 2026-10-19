@@ -7648,3 +7648,21 @@ cleanup in the shared database session kernel was also repaired and regression-t
   source capture, forecast-run execution, retained report exports and UI remain open. Journal
   reporting-currency valuation still needs its governed source adapter; no parity conversion is
   assumed. Forecast and actual-vs-forecast remain unfinished. No deployment/readiness claim.
+
+
+## Forecast output source capture and five-section assembly — October 19, 2026
+
+- Connected the internal RPT-39 assembly to the existing revenue waterfall, net billing,
+  period-end balance, RPO and sealed-subledger readers. All reads share an exact cutoff,
+  book and authorized entity scope. Each child keeps independent source evidence; multiple
+  balance-period reads cannot overwrite one another. Same-source reruns remain open.
+- Billing uses each entity's own calendar boundaries; balance stocks are grouped by actual
+  end date. Horizons must be consecutive in every selected calendar. Functional billing uses
+  the governed spot-rate adapter; unsupported report-currency conversion is refused.
+- The five tables omit report tie-outs; projected RPO includes section 1 only and preserves
+  underlying election controls. Journal preview creates no posting or journal batch.
+- Real computed scenario capture passes within the existing replay/refresh journey; four
+  focused projection checks and Ruff/Mypy pass. No full-suite run or deployment.
+- Still unfinished: forecast-run API/worker, durable report publication and exports, chart/UI,
+  actual-vs-forecast, contract sample pack and period evidence pack. This internal assembly
+  is not yet a registered report and does not establish production readiness.

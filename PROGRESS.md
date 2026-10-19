@@ -2,6 +2,17 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Contract sample event evidence — October 19, 2026
+
+- Added the contract-sample event collector with exact contract/entity authorization, effective
+  date and knowledge cutoffs, deterministic ordering, original-payload integrity checks and
+  separate redacted-payload hashes. Superseded events remain in the evidence history.
+- Produces per-contract event files, selected identity/date stamps and referenced source-record
+  metadata. Shared raw import payloads are excluded; this is not document-byte collection.
+- Targeted database collection/archive verification and two integrity/redaction checks pass.
+  Computed versions/allocation/schedules, journals, decisions, audit slice, actual documents,
+  stamped PDF/XLSX and public job/read/download integration remain. No complete-pack claim.
+
 ## Comparison report presentation — October 19, 2026
 
 - Saved and rebuilt comparison controls now retain forecast ID, refresh time, book and currency
@@ -221,23 +232,6 @@
   CSV file hashes and refusals. Real scenario capture-to-JSON and Ruff/Mypy also pass.
   Durable report publication/download routes, forecast execution,
   charts/UI, actual-vs-forecast and both evidence packs remain unfinished. No deployment.
-
-## Forecast output source capture and five-section assembly — October 19, 2026
-
-- Connected the internal RPT-39 assembly to the existing revenue waterfall, net billing,
-  period-end balance, RPO and sealed-subledger readers. All reads share an exact cutoff,
-  book and authorized entity scope. Each child keeps independent source evidence; multiple
-  balance-period reads cannot overwrite one another. Same-source reruns remain open.
-- Billing uses each entity's own calendar boundaries; balance stocks are grouped by actual
-  end date. Horizons must be consecutive in every selected calendar. Functional billing uses
-  the governed spot-rate adapter; unsupported report-currency conversion is refused.
-- The five tables omit report tie-outs; projected RPO includes section 1 only and preserves
-  underlying election controls. Journal preview creates no posting or journal batch.
-- Real computed scenario capture passes within the existing replay/refresh journey; four
-  focused projection checks and Ruff/Mypy pass. No full-suite run or deployment.
-- Still unfinished: forecast-run API/worker, durable report publication and exports, chart/UI,
-  actual-vs-forecast, contract sample pack and period evidence pack. This internal assembly
-  is not yet a registered report and does not establish production readiness.
 
 ## Outstanding release verification
 

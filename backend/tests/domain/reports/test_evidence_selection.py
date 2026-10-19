@@ -10,7 +10,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass, replace
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from io import BytesIO
 from typing import Any
@@ -1294,3 +1294,53 @@ def test_variance_report_worker_and_bound_rerun(
     with sources.world.place.uow(sources.principal) as uow:
         second = framework.run_row(uow.session, uow.principal, second_id, "report.run")
         assert second["output_sha256"] == run["output_sha256"]
+
+
+def test_sample_event_collection_scopes_dates_and_current_export_permission(
+    sources: Sources,
+    clock: FrozenClock,
+) -> None:
+    from erev_api.domain.reports.evidence_commands import PERMISSIONS
+    from erev_api.domain.reports.evidence_sample_events import collect
+    from erev_api.schemas.evidence_packs import ContractSamplePackCreateIn
+
+    principal = replace(
+        sources.principal,
+        permissions=PERMISSIONS,
+        permission_scopes={permission: "*" for permission in PERMISSIONS},
+    )
+    with sources.world.place.uow(principal) as uow:
+        clock.set(
+            uow.session.execute(select(func.clock_timestamp())).scalar_one() + timedelta(seconds=1)
+        )
+    request = ContractSamplePackCreateIn(
+        kind="CONTRACT_SAMPLE",
+        contract_external_ids=["SAMPLE-US"],
+        as_of="2026-09-30",
+    )
+    with sources.world.place.uow(principal) as uow:
+        result = collect(uow, request)
+        archive = evidence_archive.build(result.files)
+        assert (
+            evidence_archive.verify(
+                archive.content,
+                expected_manifest_sha256=archive.manifest_sha256,
+            )
+            == archive.manifest_document()
+        )
+        event_file = next(file for file in result.files if file.path.endswith("/events.json"))
+        document = json.loads(event_file.content)
+        assert len(document["events"]) == 1
+        assert document["events"][0]["contract_id"] == str(sources.first_contract)
+        assert str(sources.second_contract).encode() not in b"".join(
+            file.content for file in result.files
+        )
+        earlier = collect(uow, request.model_copy(update={"as_of": date(2025, 1, 1)}))
+        assert not earlier.event_ids
+    revoked = replace(
+        principal, permission_scopes={**principal.permission_scopes, "evidence.export": frozenset()}
+    )
+    with sources.world.place.uow(revoked) as uow:
+        with pytest.raises(Problem) as error:
+            collect(uow, request)
+        assert error.value.slug == "not-found"

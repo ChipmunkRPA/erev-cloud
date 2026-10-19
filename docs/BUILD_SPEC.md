@@ -10284,6 +10284,13 @@ Author BS-3. Uses CTR (PHASES §1 row 12). Indicative size 16 items; this phase 
   - **Gates:** GK-01 `make ci`; GK-03 `make openapi`
 
 - [ ] **RPS-16 Period evidence packs and contract sample packs.**
+  - October 19 contract-sample increment: a read-only event collector now resolves the exact
+    sample under current source/export permissions, bounds events by effective date and known-at,
+    validates payload digests before redaction, and emits deterministic per-contract event files
+    plus identity/date and source-record metadata. Shared import payloads are not copied.
+    Two unit checks and a real database collection/archive check pass. This is the event-source
+    section only: document bytes, computed evidence, approvals/audit, stamped output and public
+    CONTRACT_SAMPLE generation/download remain unimplemented.
   - October 14 read-audit increment: successful register/detail HTTP reads commit
     evidence.read before returning metadata; no-store prevents cached responses from
     bypassing a fresh read. Failed reads do not record successful access. Downloads
