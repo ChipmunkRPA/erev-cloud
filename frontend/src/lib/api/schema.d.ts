@@ -20292,6 +20292,24 @@ export interface components {
       /** Version */
       version: number;
     };
+    /** ReportLockComparisonOut */
+    ReportLockComparisonOut: {
+      earlier: components["schemas"]["ReportLockRefOut"];
+      later: components["schemas"]["ReportLockRefOut"];
+    };
+    /** ReportLockRefOut */
+    ReportLockRefOut: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /**
+       * Recorded At
+       * Format: date-time
+       */
+      recorded_at: string;
+    };
     /** ReportOutputOut */
     ReportOutputOut: {
       /**
@@ -20389,6 +20407,7 @@ export interface components {
       ledger_heads: {
         [key: string]: unknown;
       };
+      lock_comparison?: components["schemas"]["ReportLockComparisonOut"] | null;
       output: components["schemas"]["ReportOutputOut"] | null;
       /** Parameters */
       parameters: {

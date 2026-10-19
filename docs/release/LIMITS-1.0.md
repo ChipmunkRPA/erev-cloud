@@ -1,5 +1,11 @@
 # eRev Cloud 1.0: stated limits of the release
 
+October 19 variance header/totals update: both lock IDs/timestamps, frozen-comparison source
+labels, separate metric/currency totals and identical-lock empty copy are implemented.
+Earlier header/empty-state limitations below are superseded. Six other catalogue builders and
+engine_trueup_register still need development; populated close/cell/browser financial acceptance
+and wider reference/FX/population replay remain open. No deployment or readiness claim.
+
 October 19 variance cell/viewer update: Change cells now expose retained contract effects,
 events and lock/source-row references through optional plain-text contributor details. The
 viewer separates the two numeric sections; exports retain readable labels. Bound computation

@@ -224,8 +224,29 @@ def dataset(pair: Pair, replay: variance_groups.GroupReplay) -> Presentation:
             for identity, run in sorted(replay.groups.items(), key=lambda item: str(item[0]))
         },
     }
+    # Totals remain separate by measure and currency. Do not invent visible rows
+    # for an identical pair: the viewer's empty state then remains truthful.
+    active = {(row["currency"], row["measure"]) for row in (*summary, *rows)}
+    total_rows = []
+    for section, label in ((1, "Change by driver"), (2, "Changes by contract")):
+        for currency, measure in sorted(active):
+            total_rows.append(
+                {
+                    "row_key": f"TOTAL:{currency}:{measure}:{section}",
+                    "section": section,
+                    "section_label": label,
+                    "measure_label": LABELS[measure],
+                    "measure": measure,
+                    "scope": scope.entity_code,
+                    "currency": currency,
+                    "earlier_value": None,
+                    "later_value": None,
+                    "change": _money(totals[(currency, measure)], currency),
+                    "driver_label": "",
+                }
+            )
     controls = {
         f"{currency}:{measure}": _money(amount, currency)["amount"]
         for (currency, measure), amount in sorted(totals.items())
     }
-    return Presentation(ReportData(COLUMNS, tuple(summary + rows), controls), evidence)
+    return Presentation(ReportData(COLUMNS, tuple(summary + rows + total_rows), controls), evidence)

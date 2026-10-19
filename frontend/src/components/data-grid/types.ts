@@ -103,6 +103,7 @@ export interface GridSelection {
 
 /** One totals row per currency; the API supplies the figures (DS-FMT-02). */
 export interface GridTotalsRow {
+  readonly label?: string;
   readonly key: string;
   readonly currency: string;
   readonly values: Readonly<Record<string, string>>;

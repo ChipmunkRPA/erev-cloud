@@ -6720,3 +6720,18 @@ cleanup in the shared database session kernel was also repaired and regression-t
   database lint passes; privacy/snapshot checks: 76 passed. Architecture replay: 68 passed,
   5 failed at the existing multiline CHECK parser in migration 0166, before 0176; not waived.
 - No deployment, forecast execution, financial acceptance or production-readiness claim.
+
+## Scenario catalogue API and refresh-compatible pointer — October 19, 2026
+
+- Added GET /scenarios with scenario.use authorization across the tenant, status filtering,
+  stable cursor pagination and named creator output. Tenant identity/internal actor fields are
+  omitted. OpenAPI and frontend API types regenerated.
+- Migration 0177 removes the unintended immutable scenario_tenant_id check from 0176: FCS-2
+  refresh must be able to replace the sandbox. Production/source-sandbox relationship checks
+  remain; this migration does not implement refresh or permit cross-production targets.
+- Actual HTTP check covers denial without permission, populated ACTIVE/ARCHIVED listing,
+  status filtering and exclusion of another tenant's scenario. Together with forecast migration
+  round trip: 2 passed (7.70s). Ruff, mypy (4 files) and make openapi passed.
+- Scenario creation, archive, refresh, creator grants, event-set replay and forecast jobs are
+  still absent. No browser workflow or refresh business acceptance claimed. Seven missing
+  report builders and engine_trueup_register remain outstanding; no deployment.

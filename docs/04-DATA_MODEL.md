@@ -7938,6 +7938,11 @@ An explanation, `attach-trial-balance`, `prepare` or `sign` on a reconciliation 
 
 **API-S-ReportRun.**
 
+Additive metadata: `lock_comparison` is null for ordinary/unbound runs; for a bound
+`variance_between_closes` run it contains `earlier` and `later`, each with `id` (UUID)
+and `recorded_at` (timestamp), derived from hash-checked retained comparison evidence
+and matched to the stored lock parameters. No new database column is required.
+
 | Field | Type | Req | Notes |
 |---|---|---|---|
 | `id` | uuid | — | |

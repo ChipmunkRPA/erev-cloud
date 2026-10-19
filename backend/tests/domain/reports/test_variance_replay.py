@@ -571,8 +571,14 @@ def test_group_replay_reconciles_two_contracts_to_frozen_datasets() -> None:
 
     presentation = variance_presentation.dataset(pair, result)
     data = presentation.data
-    contract_rows = [row for row in data.rows if row["section"] == 2]
+    contract_rows = [
+        row for row in data.rows if row["section"] == 2 and not row["row_key"].startswith("TOTAL:")
+    ]
     assert len(contract_rows) == 6
+    totals = [row for row in data.rows if row["row_key"].startswith("TOTAL:")]
+    assert len(totals) == 6
+    assert {row["change"]["amount"] for row in totals if row["measure"] == "REVENUE"} == {"117.68"}
+    assert {row["change"]["amount"] for row in totals if row["measure"] == "RPO"} == {"-117.68"}
     assert data.control_totals["USD:REVENUE"] == "117.68"
     assert data.control_totals["USD:RPO"] == "-117.68"
     assert len(presentation.evidence["groups"]) == 2
@@ -582,7 +588,9 @@ def test_group_replay_reconciles_two_contracts_to_frozen_datasets() -> None:
         assert evidence["earlier_source_rows"]
         assert evidence["later_source_rows"]
         assert evidence["effects"][-1]["event_keys"]
-    summary_rows = [row for row in data.rows if row["section"] == 1]
+    summary_rows = [
+        row for row in data.rows if row["section"] == 1 and not row["row_key"].startswith("TOTAL:")
+    ]
     for row in summary_rows:
         assert len(presentation.evidence["contributors"][row["row_key"]]["contracts"]) == 2
     csv_output = render_csv(data)

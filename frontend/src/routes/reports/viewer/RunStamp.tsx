@@ -68,12 +68,24 @@ export interface RunStampProps {
   readonly testIdPrefix?: string | undefined;
 }
 
+export function comparisonLocks(run: Pick<ReportRun, "report" | "parameters" | "lock_comparison">) {
+  if (run.report.code !== "variance_between_closes") return [];
+  return (["earlier", "later"] as const).flatMap(side => {
+    const key = side === "earlier" ? "from_period_lock_id" : "to_period_lock_id";
+    const id = run.parameters[key];
+    if (typeof id !== "string") return [];
+    const bound = run.lock_comparison?.[side];
+    return [{ side, id, recordedAt: bound?.id === id ? bound.recorded_at : null }];
+  });
+}
+
 export function RunStamp({ run, lockCreatedAt, testIdPrefix = "SF-08" }: RunStampProps) {
   const sha = run.output?.sha256 ?? null;
   const runAt = run.started_at ?? run.finished_at;
   const asOf = runAsOf(run);
-  const source =
-    run.period_lock_id === null
+  const source = run.report.code === "variance_between_closes"
+    ? t("reports.stamp.comparison")
+    : run.period_lock_id === null
       ? t("reports.stamp.current", { at: formatTimestamp(run.known_at) })
       : lockCreatedAt === null
         ? t("reports.stamp.asLockedUnknown")
@@ -110,6 +122,14 @@ export function RunStamp({ run, lockCreatedAt, testIdPrefix = "SF-08" }: RunStam
       value: asOf === null ? NO_VALUE : formatDate(asOf),
     },
     { id: "source", label: t("reports.stamp.source"), value: source },
+    ...comparisonLocks(run).map(lock => ({
+      id: `${lock.side}Lock`, label: t(`reports.stamp.${lock.side}Lock`),
+      value: <span className="inline-flex items-center gap-1">
+        <span className="font-mono text-mono-sm">{lock.id.slice(0, 8)}</span>
+        <span>({lock.recordedAt === null ? NO_VALUE : formatTimestamp(lock.recordedAt)})</span>
+        <CopyButton value={lock.id} label={t(`reports.stamp.copy${lock.side === "earlier" ? "Earlier" : "Later"}Lock`)} />
+      </span>,
+    })),
     {
       id: "engine",
       label: t("reports.stamp.engine"),

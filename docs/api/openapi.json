@@ -32990,6 +32990,42 @@
         "title": "ReportDefinitionOut",
         "type": "object"
       },
+      "ReportLockComparisonOut": {
+        "properties": {
+          "earlier": {
+            "$ref": "#/components/schemas/ReportLockRefOut"
+          },
+          "later": {
+            "$ref": "#/components/schemas/ReportLockRefOut"
+          }
+        },
+        "required": [
+          "earlier",
+          "later"
+        ],
+        "title": "ReportLockComparisonOut",
+        "type": "object"
+      },
+      "ReportLockRefOut": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "recorded_at": {
+            "format": "date-time",
+            "title": "Recorded At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "recorded_at"
+        ],
+        "title": "ReportLockRefOut",
+        "type": "object"
+      },
       "ReportOutputOut": {
         "properties": {
           "file_id": {
@@ -33228,6 +33264,16 @@
             "additionalProperties": true,
             "title": "Ledger Heads",
             "type": "object"
+          },
+          "lock_comparison": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReportLockComparisonOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "output": {
             "anyOf": [

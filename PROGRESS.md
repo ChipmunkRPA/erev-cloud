@@ -2,6 +2,19 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Close variance header, totals and empty state — October 19, 2026
+
+- Added earlier/later lock timestamps and copyable IDs to the report header, from hash-checked
+  retained evidence. Export source labels name both locks; the viewer says Frozen close comparison.
+- Both sections show separate totals by measure and currency; revenue and RPO cannot cancel each
+  other in a shared footer. Identical frozen figures retain zero rows and explicit no-change copy.
+- Fixed column ordering and added optional lock_comparison API metadata; regenerated client types.
+- Targeted real-engine presentation: 1 passed; worker/rerun and permission-loss: 2 passed after
+  correcting SQL result materialization. Frontend: 3 passed; Ruff, Mypy, tsc and ESLint pass.
+- Remaining report development: actual_vs_forecast, forecast_outputs, parallel_run_comparison,
+  contract_sample_pack, period_evidence_pack, disclosure_pack, and engine_trueup_register.
+  Wider variance replay and populated close/cell/browser accounting acceptance remain open.
+
 ## Close variance cell explanations and viewer sections — October 19, 2026
 
 - Connected Change cells in both variance sections to retained contributor evidence. Contract
@@ -210,21 +223,6 @@
   Closed-period replay for a requester with only scenario.use, nonempty determinism, worker
   interruption/failure boundaries, archive, refresh, event sets, forecasting and UI remain open.
   FCS-1 is not complete and no forecast report builder is newly delivered. No deployment.
-
-## Scenario catalogue API and refresh-compatible pointer — October 19, 2026
-
-- Added GET /scenarios with scenario.use authorization across the tenant, status filtering,
-  stable cursor pagination and named creator output. Tenant identity/internal actor fields are
-  omitted. OpenAPI and frontend API types regenerated.
-- Migration 0177 removes the unintended immutable scenario_tenant_id check from 0176: FCS-2
-  refresh must be able to replace the sandbox. Production/source-sandbox relationship checks
-  remain; this migration does not implement refresh or permit cross-production targets.
-- Actual HTTP check covers denial without permission, populated ACTIVE/ARCHIVED listing,
-  status filtering and exclusion of another tenant's scenario. Together with forecast migration
-  round trip: 2 passed (7.70s). Ruff, mypy (4 files) and make openapi passed.
-- Scenario creation, archive, refresh, creator grants, event-set replay and forecast jobs are
-  still absent. No browser workflow or refresh business acceptance claimed. Seven missing
-  report builders and engine_trueup_register remain outstanding; no deployment.
 
 ## Outstanding release verification
 

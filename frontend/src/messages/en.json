@@ -7437,5 +7437,13 @@
   "reports.column.variance.scope": "Scope",
   "reports.explain.object.contract": "Contract",
   "reports.section.variance.1": "Change by driver",
-  "reports.section.variance.2": "Changes by contract"
+  "reports.section.variance.2": "Changes by contract",
+  "reports.stamp.comparison": "Frozen close comparison",
+  "reports.stamp.earlierLock": "Earlier lock",
+  "reports.stamp.laterLock": "Later lock",
+  "reports.stamp.copyEarlierLock": "Copy earlier lock ID",
+  "reports.stamp.copyLaterLock": "Copy later lock ID",
+  "reports.variance.total": "Total · {measure} ({currency})",
+  "reports.empty.variance.title": "No changes between the two locks",
+  "reports.empty.variance.description": "The figures frozen at both locks are identical."
 }

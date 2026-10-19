@@ -776,6 +776,10 @@ function orderedKeys(
   bands: readonly RpoBand[],
   columns: readonly ReportRunColumn[] | undefined,
 ): string[] {
+  if (definition.code === "variance_between_closes") {
+    return ["measure_label", "scope", "currency", "earlier_value", "later_value", "change", "driver_label"]
+      .filter(key => keys.includes(key));
+  }
   if (definition.kind === "LEGACY_EXPORT") {
     // The keys in `columns[].key` order; `row_key` and `section` stay hidden (STRUCTURAL), and a row field
     // that names no column keeps its row order after them.
@@ -880,7 +884,11 @@ export function totalsRows(section: ReportSection): GridTotalsRow[] {
         currency = value.currency;
       }
     }
-    return { key: row.row_key, currency, values };
+    return { key: row.row_key, currency, values,
+      ...(typeof row.measure_label === "string" ? {
+        label: t("reports.variance.total", { measure: row.measure_label, currency }),
+      } : {}),
+    };
   });
 }
 
@@ -1022,6 +1030,9 @@ export function registerEmptyCopy(
   run: RunFacts,
   context: ReportContext,
 ): EmptyCopy | null {
+  if (code === "variance_between_closes") {
+    return { title: t("reports.empty.variance.title"), description: t("reports.empty.variance.description") };
+  }
   if (code === LATE_ENTRY_REPORT) {
     return {
       title: sectionEmptyCopy(code, 1, run, context) ?? "",

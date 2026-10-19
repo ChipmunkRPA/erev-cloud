@@ -21,6 +21,8 @@ __all__ = [
     "IpeLogicOut",
     "ReportColumnOut",
     "ReportDefinitionOut",
+    "ReportLockComparisonOut",
+    "ReportLockRefOut",
     "ReportOutputOut",
     "ReportRefOut",
     "ReportRowOut",
@@ -125,6 +127,16 @@ class ReportRunSourcesOut(BaseModel):
     open: list[str]
 
 
+class ReportLockRefOut(BaseModel):
+    id: uuid.UUID
+    recorded_at: datetime
+
+
+class ReportLockComparisonOut(BaseModel):
+    earlier: ReportLockRefOut
+    later: ReportLockRefOut
+
+
 class ReportRunOut(BaseModel):
     """API-S-ReportRun."""
 
@@ -145,6 +157,7 @@ class ReportRunOut(BaseModel):
     ledger_heads: dict[str, Any]
     # frps3b (04 §16.9 rev 1.55; S15-R-24): the run's bound sources, summarised.
     sources: ReportRunSourcesOut
+    lock_comparison: ReportLockComparisonOut | None = None
     output: ReportOutputOut | None
     problem: ProblemOut | None
     # The run's REPORT_RUN job (T-RPT-02 `job_id`), so a stored run names its own job on every

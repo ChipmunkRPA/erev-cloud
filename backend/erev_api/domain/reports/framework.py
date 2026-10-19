@@ -77,6 +77,7 @@ from typing import TYPE_CHECKING, Any, BinaryIO, Final
 from uuid import UUID
 
 from erev_engine import ENGINE_VERSION
+from erev_engine.canonical import sha256_hex
 from sqlalchemy import (
     ColumnElement,
     Select,
@@ -244,6 +245,8 @@ from erev_api.schemas.reports import (
     EngineReleaseRefOut,
     IpeLogicOut,
     ReportDefinitionOut,
+    ReportLockComparisonOut,
+    ReportLockRefOut,
     ReportOutputOut,
     ReportRefOut,
     ReportRunCreateIn,
@@ -1925,7 +1928,50 @@ def sources_out(run: Mapping[str, Any]) -> ReportRunSourcesOut:
     )
 
 
+def _lock_comparison(run: Mapping[str, Any]) -> ReportLockComparisonOut | None:
+    if run["report_code"] != variance_builder.CODE or run.get("source_binding") is None:
+        return None
+    try:
+        binding = SourceBinding.from_stored(run["source_binding"])
+        assert binding is not None
+        evidence = binding.evidence["close_variance_contributors"]
+        if sha256_hex(evidence) != binding.evidence["close_variance_evidence_sha256"]:
+            raise ValueError("comparison evidence hash")
+        refs = []
+        for index, side in enumerate(("earlier", "later")):
+            identity = evidence["sources"][index]["period_lock_id"]
+            parameter = "from_period_lock_id" if index == 0 else "to_period_lock_id"
+            if identity != run["parameters"][parameter]:
+                raise ValueError("comparison lock identity")
+            refs.append(
+                ReportLockRefOut(id=UUID(identity), recorded_at=evidence[f"{side}_recorded_at"])
+            )
+        return ReportLockComparisonOut(earlier=refs[0], later=refs[1])
+    except (KeyError, ValueError, TypeError, IndexError) as error:
+        raise Problem(
+            "invalid-transition", "The saved lock comparison metadata is invalid."
+        ) from error
+
+
 def _source(session: Session, run: Mapping[str, Any]) -> str:
+    if run["report_code"] == variance_builder.CODE:
+        ids = [
+            UUID(str(run["parameters"][key]))
+            for key in ("from_period_lock_id", "to_period_lock_id")
+        ]
+        times = dict(
+            session.execute(
+                select(period_lock.c.id, period_lock.c.created_at).where(period_lock.c.id.in_(ids))
+            )
+            .tuples()
+            .all()
+        )
+        if any(identity not in times for identity in ids):
+            raise Problem("not-found", "A comparison lock is unavailable.")
+        return "; ".join(
+            f"{label} lock {str(identity)[:8]} ({display_timestamp(times[identity])})"
+            for label, identity in zip(("Earlier", "Later"), ids, strict=True)
+        )
     lock_id = run["period_lock_id"]
     if lock_id is not None:
         locked_at = session.execute(
@@ -2739,6 +2785,7 @@ def run_outs(session: Session, rows: Sequence[Mapping[str, Any]]) -> list[Report
                 ],
                 ledger_heads=dict(row["ledger_heads"] or {}),
                 sources=sources_out(row),
+                lock_comparison=_lock_comparison(row),
                 output=output,
                 problem=None
                 if row["problem"] is None

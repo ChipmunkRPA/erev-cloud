@@ -1200,7 +1200,7 @@ export function DataGrid<Row>({
                   style={pinnedStyle(column, column.getSize())}
                 >
                   {columnIndex === 0 ? (
-                    totalLabel(totalRow.currency)
+                    totalRow.label ?? totalLabel(totalRow.currency)
                   ) : spec.currencyColumn === true ? (
                     <span className="truncate">{totalRow.currency}</span>
                   ) : value === undefined ? null : (

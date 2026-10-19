@@ -1280,6 +1280,14 @@ def test_variance_report_worker_and_bound_rerun(
         assert run["source_binding"]["evidence"]["close_variance_sources"]["sides"][0][
             "lock_id"
         ] == str(earlier_id)
+        metadata = framework.run_outs(uow.session, [run])[0].lock_comparison
+        assert metadata is not None
+        assert metadata.earlier.id == earlier_id
+        assert metadata.later.id == UUID(body["period_lock_id"])
+        assert metadata.earlier.recorded_at < metadata.later.recorded_at
+        stamp = framework._source(uow.session, run)
+        assert f"Earlier lock {str(earlier_id)[:8]}" in stamp
+        assert f"Later lock {str(body['period_lock_id'])[:8]}" in stamp
         second_id, second_job = framework.rerun(uow, run_id)
         uow.commit()
     assert run_journal_job(sources.world, second_job.id, attempts=1)["state"] == "SUCCEEDED"

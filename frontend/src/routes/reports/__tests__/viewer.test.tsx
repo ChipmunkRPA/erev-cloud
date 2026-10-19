@@ -4,9 +4,11 @@
 // locked default and banner, the export formats, the tie-out strip, an empty run, the currency view field
 // error, the `rpo` bands and sections, and the catalogue groups. API answers are contract fakes of 04
 // API-R-41 (V-C).
-import { cleanup, configure, fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, configure, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { afterEach, describe, expect, it } from "vitest";
+
+import { RunStamp } from "../viewer/RunStamp";
 
 import { SCREEN_ROUTES } from "../../../app/router";
 import type {
@@ -2315,4 +2317,24 @@ describe("FWR-R1 refusal ownership across overlapping creation attempts (SF-08:r
     expect(await screen.findByText(SETTLED_A)).toBeTruthy();
     expect(held.posts()).toBe(1);
   });
+});
+
+
+it("identifies both frozen locks in the variance run stamp", () => {
+  const later = "8b10c4d2-6e1f-4a3b-9c8d-7e6f5a4baa43";
+  const run = reportRun({
+    report: { code: "variance_between_closes", version: 1, name: "Variance between closes" },
+    parameters: { from_period_lock_id: LOCK_ID, to_period_lock_id: later },
+    lock_comparison: {
+      earlier: { id: LOCK_ID, recorded_at: "2026-09-01T12:00:00Z" },
+      later: { id: later, recorded_at: "2026-09-02T12:00:00Z" },
+    },
+  });
+  render(<RunStamp run={run} lockCreatedAt={null} />);
+  expect(screen.getByText("Frozen close comparison")).not.toBeNull();
+  expect(screen.getByText("Earlier lock")).not.toBeNull();
+  expect(screen.getByText("Later lock")).not.toBeNull();
+  expect(screen.getByRole("button", { name: "Copy earlier lock ID" })).not.toBeNull();
+  expect(screen.getByRole("button", { name: "Copy later lock ID" })).not.toBeNull();
+  expect(screen.queryByText(/Current, known at/)).toBeNull();
 });
