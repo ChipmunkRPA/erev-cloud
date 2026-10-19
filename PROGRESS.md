@@ -2,6 +2,22 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Disclosure chapter workbook adapter — October 19, 2026
+
+- Added render_xlsx_chapters with multiple independently typed/stamped tables per worksheet.
+  Existing single-table exports reuse the same grid writer. Contents lists chapter/table status,
+  source run/hash and worksheet; only the first table sets each chapter's frozen grid header.
+- Added disclosure_workbook.render over the assembled seven chapters. Validates entity/book,
+  policy hash and original child stamps/parameter hashes; re-encodes child data against its output
+  hash and rejects changed displayed data. Omissions keep notes and no hidden source amounts.
+- Database journey executes 16 child jobs, assembles the pack, generates a workbook and reopens
+  it to verify Contents plus seven sheets and displayed source IDs/hashes. A mismatched displayed
+  source stamp refuses. Three focused workbook/single-XLSX checks pass; Ruff and Mypy pass.
+- Period and quarter-to-date are explicitly labelled separate tables at this stage. Required
+  side-by-side presentation, PDF/viewer, frozen disclosures and parent worker publication remain
+  open. The fixture has no booked accounting population; no full accounting acceptance claimed.
+  Five catalogue builders remain unregistered; no deployment.
+
 ## Seven-section disclosure assembly — October 19, 2026
 
 - Added disclosure_assembly.prepare/assemble: verifies complete attached child population and
@@ -207,23 +223,6 @@
   binding and report worker/export integration. Migration replay import remains unfinished
   (jobs.py explicitly refuses it); sandbox access must retain tenant/grant boundaries. These
   source checks do not complete LMG-4/5 or independent accounting acceptance.
-
-## Parallel-run comparison calculation and viewer — October 19, 2026
-
-- Added parallel_comparison.compare for independently produced journal and contract-balance
-  snapshots. Both sources must declare complete entity/book/currency period coverage and retained
-  identities. Missing coverage is excluded rather than converted to zero; calendar disagreements,
-  duplicate rows, incomplete balance components and sub-minor-unit input amounts refuse.
-- Journal differences are eRev debit-minus-credit less legacy debit-minus-credit. Balance
-  differences are eRev liability less asset/unbilled less legacy billed-minus-recognized.
-  Fraction arithmetic preserves cents independently of Decimal context; no balancing plug.
-- Separate section/currency totals and source-row contributor references are retained. Viewer
-  sections, readable columns and the specified no-periods empty copy are implemented.
-- Nine focused arithmetic/coverage checks and a frontend section check pass; type/lint checks pass.
-  These use explicit source facts, not command-driven LMG-5 January/October acceptance evidence.
-- Still required: independent legacy monthly-output reader preserving legacy rounding, authorized
-  eRev journal/balance source selection, retained binding and worker registration/export journeys.
-  RPT-42 remains unregistered; six catalogue builders remain. No readiness claim or deployment.
 
 ## Outstanding release verification
 

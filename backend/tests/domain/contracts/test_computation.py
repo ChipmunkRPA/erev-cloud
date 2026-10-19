@@ -5087,3 +5087,51 @@ def test_disclosure_children_attach_once_and_survive_retry(world: World) -> None
         assert {s.number for s in pack.sections if s.interim_required} == {1, 2, 4, 5}
         assert len(pack.sections[-1].tables[0].data.rows) == 10
         assert len(pack.children) == 16
+
+        import io
+
+        import openpyxl
+        from erev_api.domain.reports import disclosure_workbook, framework
+
+        parent_row = dict(
+            uow.session.execute(select(report_run).where(report_run.c.id == parent["id"]))
+            .mappings()
+            .one()
+        )
+        definition = framework.definition_row(uow.session, "disclosure_pack")
+        assert definition is not None
+        pack_stamp = framework._run_stamp(
+            uow.session,
+            parent_row,
+            definition,
+            output_sha256="c" * 64,
+            style="PARENTHESES",
+        )
+        stamps = {}
+        for child in pack.children:
+            child_definition = framework.definition_row(uow.session, child.run["report_code"])
+            assert child_definition is not None
+            stamps[child.source.run_id] = framework._run_stamp(
+                uow.session,
+                child.run,
+                child_definition,
+                output_sha256=child.output_sha256,
+                style="PARENTHESES",
+            )
+        workbook_bytes = disclosure_workbook.render(pack, pack_stamp, stamps)
+        workbook = openpyxl.load_workbook(io.BytesIO(workbook_bytes))
+        assert len(workbook.worksheets) == 8
+        assert workbook.sheetnames[0] == "Contents"
+        for section, worksheet in zip(pack.sections, workbook.worksheets[1:], strict=True):
+            values = [cell.value for row in worksheet for cell in row]
+            assert section.title in values
+            for table in section.tables:
+                if table.source_run_id is not None:
+                    assert stamps[table.source_run_id].report_run_no in values
+                    assert table.source_sha256 in values
+        bad_stamps = dict(stamps)
+        first_id = pack.sections[0].tables[0].source_run_id
+        assert first_id is not None
+        bad_stamps[first_id] = replace(bad_stamps[first_id], output_sha256="d" * 64)
+        with pytest.raises(Problem):
+            disclosure_workbook.render(pack, pack_stamp, bad_stamps)

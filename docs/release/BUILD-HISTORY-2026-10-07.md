@@ -6976,3 +6976,20 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Six catalogue builders remain: actual_vs_forecast, forecast_outputs, parallel_run_comparison,
   contract_sample_pack, period_evidence_pack and disclosure_pack. Full upgrade lifecycle,
   deferred-period reopening, cross-entity browser acceptance and accounting sign-off stay open.
+
+## Parallel-run comparison calculation and viewer — October 19, 2026
+
+- Added parallel_comparison.compare for independently produced journal and contract-balance
+  snapshots. Both sources must declare complete entity/book/currency period coverage and retained
+  identities. Missing coverage is excluded rather than converted to zero; calendar disagreements,
+  duplicate rows, incomplete balance components and sub-minor-unit input amounts refuse.
+- Journal differences are eRev debit-minus-credit less legacy debit-minus-credit. Balance
+  differences are eRev liability less asset/unbilled less legacy billed-minus-recognized.
+  Fraction arithmetic preserves cents independently of Decimal context; no balancing plug.
+- Separate section/currency totals and source-row contributor references are retained. Viewer
+  sections, readable columns and the specified no-periods empty copy are implemented.
+- Nine focused arithmetic/coverage checks and a frontend section check pass; type/lint checks pass.
+  These use explicit source facts, not command-driven LMG-5 January/October acceptance evidence.
+- Still required: independent legacy monthly-output reader preserving legacy rounding, authorized
+  eRev journal/balance source selection, retained binding and worker registration/export journeys.
+  RPT-42 remains unregistered; six catalogue builders remain. No readiness claim or deployment.

@@ -2,7 +2,8 @@
 DS-FMT-26; 03 REQ-RPT-002, REQ-RPT-024, REQ-SEC-011; BUILD_SPEC RPS-2).
 
 Single reports use one worksheet; render_xlsx_pack adds a contents worksheet and one
-worksheet per section with its own source stamp, columns, totals and tie-outs. The header block lists, one label and value per row: "Report" ``<name> v<version>``,
+worksheet per section with its own source stamp, columns, totals and tie-outs.
+The header block lists, one label and value per row: "Report" ``<name> v<version>``,
 "Run", "Entity", "Book", "As of", "Source", "Engine" ``<engine version> (<build sha>)``, "Run by",
 "Run at" (UTC), "Rows", "Output SHA-256", then "Parameters" with every parameter, "Control totals"
 and, when the report has tie-outs, "Tie-outs". A blank row separates it from the grid header, which
@@ -154,8 +155,9 @@ def _total(sheet: Any, formats: _Formats, row: int, key: str, value: Any) -> int
     return row + 1
 
 
-def _header_block(sheet: Any, formats: _Formats, data: ReportData, stamp: RunStamp) -> int:
-    row = 0
+def _header_block(
+    sheet: Any, formats: _Formats, data: ReportData, stamp: RunStamp, row: int = 0
+) -> int:
     row = _labelled(sheet, row, LABEL_REPORT, f"{stamp.report_name} v{stamp.report_version}")
     row = _labelled(sheet, row, LABEL_RUN, stamp.report_run_no)
     row = _labelled(sheet, row, LABEL_ENTITY, ", ".join(stamp.entity_codes) or ALL_ENTITIES)
@@ -215,9 +217,16 @@ def render_xlsx(data: ReportData, stamp: RunStamp) -> bytes:
 
 
 def _grid(
-    sheet: Any, formats: _Formats, data: ReportData, stamp: RunStamp, notes: tuple[str, ...] = ()
-) -> None:
-    header_row = _header_block(sheet, formats, data, stamp) + 1
+    sheet: Any,
+    formats: _Formats,
+    data: ReportData,
+    stamp: RunStamp,
+    notes: tuple[str, ...] = (),
+    *,
+    start_row: int = 0,
+    freeze: bool = True,
+) -> int:
+    header_row = _header_block(sheet, formats, data, stamp, start_row) + 1
     for note in notes:
         sheet.write_string(header_row, 0, guard(note))
         header_row += 1
@@ -238,7 +247,9 @@ def _grid(
                 record.get(item.column.key),
             )
     sheet.set_column(0, max(len(columns), 2) - 1, 20)
-    sheet.freeze_panes(header_row + 1, 0)
+    if freeze:
+        sheet.freeze_panes(header_row + 1, 0)
+    return header_row + data.row_count + 3
 
 
 @dataclass(frozen=True, slots=True)
@@ -256,9 +267,30 @@ class WorkbookSection:
     omitted: bool = False
 
 
+@dataclass(frozen=True, slots=True)
+class WorkbookChapter:
+    key: str
+    title: str
+    tables: tuple[WorkbookSection, ...]
+
+
 def render_xlsx_pack(sections: tuple[WorkbookSection, ...], stamp: RunStamp) -> bytes:
-    """An indexed workbook preserving each section's schema, totals and source identity."""
-    if not sections or len({s.key for s in sections}) != len(sections):
+    """Compatibility entry point: one table per chapter worksheet."""
+    return render_xlsx_chapters(
+        tuple(WorkbookChapter(s.key, s.title, (s,)) for s in sections), stamp
+    )
+
+
+def render_xlsx_chapters(chapters: tuple[WorkbookChapter, ...], stamp: RunStamp) -> bytes:
+    """One sheet per chapter, with separately typed and stamped tables placed consecutively."""
+    if (
+        not chapters
+        or len({c.key for c in chapters}) != len(chapters)
+        or any(not c.key or not c.title or not c.tables for c in chapters)
+    ):
+        raise ValueError("a workbook requires uniquely keyed nonempty chapters")
+    sections = tuple(s for chapter in chapters for s in chapter.tables)
+    if len({s.key for s in sections}) != len(sections):
         raise ValueError("a workbook pack requires uniquely keyed sections")
     if any(
         not s.key
@@ -272,7 +304,8 @@ def render_xlsx_pack(sections: tuple[WorkbookSection, ...], stamp: RunStamp) -> 
         raise ValueError("omitted sections require a note and no rendered source rows")
     contents = ReportData(
         (
-            Column("title", "Section", "text"),
+            Column("chapter", "Chapter", "text"),
+            Column("title", "Table", "text"),
             Column("status", "Status", "text"),
             Column("source_run", "Source run", "code"),
             Column("source_sha256", "Source output SHA-256", "code"),
@@ -282,16 +315,22 @@ def render_xlsx_pack(sections: tuple[WorkbookSection, ...], stamp: RunStamp) -> 
         tuple(
             {
                 "row_key": section.key,
+                "chapter": chapter.title,
                 "title": section.title,
                 "status": "Omitted" if section.omitted else "Included",
                 "source_run": section.stamp.report_run_no,
                 "source_sha256": section.stamp.output_sha256,
                 "rows": section.data.row_count,
-                "worksheet": sheet_name(f"{index:02d} {section.title}"),
+                "worksheet": sheet_name(f"{index:02d} {chapter.title}"),
             }
-            for index, section in enumerate(sections, start=1)
+            for index, chapter in enumerate(chapters, start=1)
+            for section in chapter.tables
         ),
-        {"sections": len(sections), "omitted_sections": sum(s.omitted for s in sections)},
+        {
+            "chapters": len(chapters),
+            "tables": len(sections),
+            "omitted_tables": sum(s.omitted for s in sections),
+        },
     )
     buffer = io.BytesIO()
     with xlsxwriter.Workbook(
@@ -310,19 +349,19 @@ def render_xlsx_pack(sections: tuple[WorkbookSection, ...], stamp: RunStamp) -> 
                 "created": _naive_utc(stamp.run_at),
             }
         )
-        _grid(
-            workbook.add_worksheet("Contents"),
-            _Formats(workbook, stamp.negative_number_style),
-            contents,
-            stamp,
-        )
-        for section, row in zip(sections, contents.rows, strict=True):
-            sheet = workbook.add_worksheet(str(row["worksheet"]))
-            _grid(
-                sheet,
-                _Formats(workbook, stamp.negative_number_style),
-                section.data,
-                section.stamp,
-                (section.title, *section.notes),
-            )
+        formats = _Formats(workbook, stamp.negative_number_style)
+        _grid(workbook.add_worksheet("Contents"), formats, contents, stamp)
+        for index, chapter in enumerate(chapters, start=1):
+            sheet = workbook.add_worksheet(sheet_name(f"{index:02d} {chapter.title}"))
+            row = 0
+            for section in chapter.tables:
+                row = _grid(
+                    sheet,
+                    formats,
+                    section.data,
+                    section.stamp,
+                    (chapter.title, section.title, *section.notes),
+                    start_row=row,
+                    freeze=row == 0,
+                )
     return buffer.getvalue()
