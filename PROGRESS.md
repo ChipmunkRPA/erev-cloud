@@ -2,6 +2,21 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Frozen monetary changes for re-lock evidence — October 19, 2026
+
+- Added contract/currency comparison of frozen revenue, contract liability, contract asset plus
+  unbilled receivable and disclosed RPO. Exact arithmetic retains both lock/file identities and
+  contributing row keys; currencies remain separate and exempt RPO is excluded.
+- Re-lock evidence now includes `relock/frozen_measure_changes.json` beside the verified original
+  stored comparison. Rejects mismatched/unordered locks, missing sources, corrupt bytes and
+  invalid/duplicate monetary rows. No current-contract values or guessed driver attribution.
+- Focused monetary/source checks: 23 passed; real lock/reopen/re-lock path: 1 passed. Ruff passes;
+  the two implementation modules and new test pass Mypy. The two existing integration test files
+  have seven Mypy errors also reproduced from HEAD; they are not new and remain outstanding.
+- RPT-38 remains incomplete: ordered DRY_RUN driver replay, report registration/formats, cell
+  explanations, browser and K-03 financial acceptance still required. Seven missing report
+  builders remain unregistered. No deployment or accounting/production-readiness claim.
+
 ## Versioned forecast input set API — October 19, 2026
 
 - Added scenario-only GET/POST /forecast-event-sets, GET/PATCH by id, and publish. Drafts carry
@@ -222,17 +237,6 @@
   extract controls expose the report; the guide states field types and snapshot-delta semantics.
 - Reporting remains open: 12 missing builders, four of them extracts. Locked datasets,
   automatic watermarks, true-up and live browser acceptance remain unfinished. No deployment.
-
-## Schedule line BI extract — October 19, 2026
-
-- Added extract_schedule_lines v1 over latest per-contract versions, scoped by schedule entity,
-  with period and contract identifiers. Known/created cutoffs and incremental line creation
-  windows use the SQL chain reader. Row identity includes the source partition date.
-- Registered JSON/CSV metadata and retained-input rebuilding; exact decimal values and
-  per-currency amount totals use existing extract page controls. User guide documents types
-  and snapshot-delta semantics. Targeted evidence is in CI-2026-10-19.md.
-- Reporting remains unfinished: 13 missing builders, five of them extracts. Locked extracts,
-  automatic watermarks, true-up and live browser acceptance remain open. No deployment.
 
 ## Outstanding release verification
 

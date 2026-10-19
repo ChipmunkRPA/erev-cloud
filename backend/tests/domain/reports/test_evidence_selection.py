@@ -571,6 +571,7 @@ def _relock_for_pack(sources: Sources, *, fault: str | None = None) -> tuple[dic
         current = {
             **original,
             "id": current_id,
+            "created_at": original["created_at"] + timedelta(seconds=1),
             "previous_lock_id": reopened_id,
             "certification": certification,
             "diff_report_file_id": file_id,
@@ -601,6 +602,11 @@ def test_relock_collector_includes_original_diff_and_both_lock_identities(source
             {"gate_check_code": "JE_COMPLETE", "previous_status": None, "current_status": "PASSED"}
         ]
         assert len(diff["kinds"]) == 12
+        monetary = payloads["relock/frozen_measure_changes.json"]
+        assert monetary["from_period_lock_id"] == str(first_id)
+        assert monetary["to_period_lock_id"] == body["period_lock_id"]
+        assert monetary["rows"] == []  # the fixture changes certification only
+        assert monetary["driver_attribution"] == "not_computed"
         refs = payloads["relock/sources.json"]
         assert refs["previous_lock_id"] == str(first_id)
         assert refs["period_lock_id"] == body["period_lock_id"]

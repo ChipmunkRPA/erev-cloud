@@ -6,6 +6,8 @@ complete frozen sources, and compare the saved canonical diff with the existing
 CLO-7 comparator over those bytes. Deliver the original saved bytes, never silently
 replace a missing or incorrect diff with a newly generated report.
 
+Alongside those original bytes, deliver contract-level monetary changes from the
+same frozen sources. This separate payload explicitly has no driver attribution.
 This supplies stored close-comparison evidence. The separate
 ``variance_between_closes`` report and complete pack workflow remain required.
 """
@@ -20,7 +22,7 @@ from sqlalchemy import select
 
 from erev_api.db.tables import period_lock
 from erev_api.domain.close import relock_diff
-from erev_api.domain.reports import evidence_close, locked
+from erev_api.domain.reports import evidence_close, locked, variance_measures
 from erev_api.domain.reports.evidence_archive import PackFile
 from erev_api.domain.reports.evidence_selection import SourceSelection, resolve
 from erev_api.enums import FilePurpose, LockKind
@@ -132,6 +134,10 @@ def collect(uow: UnitOfWork, selection: SourceSelection) -> tuple[PackFile, ...]
         )
     return (
         PackFile("relock/stored_comparison.json", content),
+        PackFile(
+            "relock/frozen_measure_changes.json",
+            canonical_bytes(variance_measures.compare(previous, current)),
+        ),
         PackFile(
             "relock/sources.json",
             canonical_bytes(

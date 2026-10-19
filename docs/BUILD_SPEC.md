@@ -10083,6 +10083,7 @@ Author BS-3. Uses CTR (PHASES §1 row 12). Indicative size 16 items; this phase 
   - **Gates:** GK-01 `make ci`; GK-05 `make answer-keys ID=ONB-S11-MODRETRO-OWN,IFRS-SW01-COLLECTIBILITY-THRESHOLD-PER-BOOK,POS-CHK-010`
 
 - [ ] **RPS-13 Bookings, billings and revenue; variance between closes.**
+  - October 19, 2026 partial implementation: re-lock evidence now includes `relock/frozen_measure_changes.json`, with exact contract/currency monetary endpoints and changes from verified WATERFALL, CONTRACT_BALANCES and RPO snapshots. It retains both lock identities, file hashes and contributing row keys; exempt RPO is excluded and currencies are never netted. Driver attribution is explicitly not computed. RPT-38 registration, ordered DRY_RUN driver replay, contributor explanation, report formats/UI and K-03 command-driven acceptance remain open; this does not complete RPS-13.
   - **Prerequisites:** RPS-12 (stage 15 variance between closes, ENGINE_SPEC_B §15.2.8, from GATE-EDS)
   - **Scope:**
     - Paths: `backend/erev_api/domain/reports/builders/bookings_billings_revenue.py` (RPT-37), `variance_between_closes.py` (RPT-38, parameters `from_period_lock_id`, `to_period_lock_id`); `backend/erev_api/domain/reports/tie_outs.py` (`TO_BBR_EQ_JE_REVENUE`); `backend/tests/domain/reports/test_metrics_variance.py`; `frontend/src/routes/close/history.tsx` (diff link to `variance_between_closes`); `frontend/e2e/projects/screens.spec.ts`

@@ -1518,3 +1518,18 @@ in the shared catalogue and command walk. The full CTL-038 walk, all fourteen au
 and focused AI walk pass (CI-2026-10-15.md). This supersedes the historical pending AI-category
 failure recorded above. Proposal evidence in these scenarios is synthetic; model accuracy,
 remaining AI workflows and full release-candidate verification are not established by it.
+
+## October 19, 2026 — frozen monetary changes in re-lock evidence
+
+Re-lock evidence now includes a separate `relock/frozen_measure_changes.json` payload.
+It compares verified frozen revenue, liability, contract asset plus unbilled receivable,
+and disclosed RPO by contract and currency, with exact arithmetic and retained source
+identities. It refuses unordered/mismatched lock scopes, missing datasets, altered bytes,
+invalid monetary cells and duplicate identities. It never assigns the difference to a
+guessed driver. Original stored re-lock evidence is still verified and delivered unchanged.
+
+This is the monetary endpoint portion of RPT-38, not the completed report. Ordered
+event replay for driver attribution, report registration/exports, cell explanations,
+browser acceptance and the real K-03 financial acceptance remain outstanding. The
+seven previously listed missing report builders remain unregistered. No deployment or
+independent accounting sign-off is claimed.

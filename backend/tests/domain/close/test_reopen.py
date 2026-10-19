@@ -556,6 +556,8 @@ def test_relock_writes_diff_report(world: CloseWorld, clock: FrozenClock) -> Non
     assert approve(world.app, str(out.approval_request_id), marcus).status_code == 200
     (first,) = _locks(world)
     first_id = UUID(str(first["id"]))
+    # The second lock is recorded later, as required by the monetary comparison.
+    clock.set(first["created_at"] + timedelta(seconds=1))
     assert _reconciliation_rows(world) == [
         ("BILLING_TO_SUBLEDGER", "CERTIFIED", first_id),
         ("SUBLEDGER_TO_GL", "CERTIFIED", first_id),
@@ -672,6 +674,16 @@ def test_relock_writes_diff_report(world: CloseWorld, clock: FrozenClock) -> Non
             file.content for file in packed if file.path == "relock/stored_comparison.json"
         )
         assert json.loads(saved) == report
+        monetary = json.loads(
+            next(
+                file.content for file in packed if file.path == "relock/frozen_measure_changes.json"
+            )
+        )
+        assert monetary["to_period_lock_id"] == str(second_id)
+        assert monetary["from_period_lock_id"] == report["previous_lock_id"]
+        assert monetary["driver_attribution"] == "not_computed"
+        assert len(monetary["sources"]) == 2
+        assert all(len(side["datasets"]) == 3 for side in monetary["sources"])
         approvals = evidence_certification.collect(uow, selection)
         assert evidence_certification.collect(uow, selection) == approvals
         proof = json.loads(approvals[0].content)

@@ -6562,3 +6562,14 @@ cleanup in the shared database session kernel was also repaired and regression-t
   extract page controls expose the report. User guide states snapshot-delta semantics.
 - Reporting remains open: 14 catalogue builders missing, six of them extracts. Locked extracts,
   watermark defaults, true-up and live browser acceptance remain unfinished. No deployment.
+
+## Schedule line BI extract — October 19, 2026
+
+- Added extract_schedule_lines v1 over latest per-contract versions, scoped by schedule entity,
+  with period and contract identifiers. Known/created cutoffs and incremental line creation
+  windows use the SQL chain reader. Row identity includes the source partition date.
+- Registered JSON/CSV metadata and retained-input rebuilding; exact decimal values and
+  per-currency amount totals use existing extract page controls. User guide documents types
+  and snapshot-delta semantics. Targeted evidence is in CI-2026-10-19.md.
+- Reporting remains unfinished: 13 missing builders, five of them extracts. Locked extracts,
+  automatic watermarks, true-up and live browser acceptance remain open. No deployment.
