@@ -2,6 +2,17 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Contract sample computation evidence — October 19, 2026
+
+- Added immutable version history, allocation detail/trace and full schedule collection at
+  the sample's effective date and knowledge cutoff. Combined-group companions are labelled
+  and every contracting/performing entity is authorized; source scope is returned for retention.
+- Validates trace digests/references and schedule counts/currencies/amounts. A real K01 command
+  journey collects two obligations, future planned periods and an archive with event evidence;
+  earlier-effective selection and revoked export permission checks pass. Ruff/Mypy pass.
+- Public jobs, PDF/XLSX, documents, journal/approval/audit sections and combined-group acceptance
+  remain. This collector is not a completed sample pack. No deployment.
+
 ## Contract sample event evidence — October 19, 2026
 
 - Added the contract-sample event collector with exact contract/entity authorization, effective

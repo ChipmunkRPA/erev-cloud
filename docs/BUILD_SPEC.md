@@ -10284,6 +10284,13 @@ Author BS-3. Uses CTR (PHASES §1 row 12). Indicative size 16 items; this phase 
   - **Gates:** GK-01 `make ci`; GK-03 `make openapi`
 
 - [ ] **RPS-16 Period evidence packs and contract sample packs.**
+  - October 19 computation-evidence increment: immutable historical versions, allocation detail,
+    verified calculation DAGs and complete schedule populations can now be collected at a sample
+    cutoff. Companion contracts are labelled; their contracting/performing entity permissions
+    are checked and returned as retention scope. Schedule count/currency/amount and trace-node
+    integrity checks run before export. A real K01 command journey passes with two obligations,
+    future planned periods and combined event/computation ZIP integrity. Combined-group acceptance,
+    other evidence sections, rendering and public CONTRACT_SAMPLE lifecycle remain open.
   - October 19 contract-sample increment: a read-only event collector now resolves the exact
     sample under current source/export permissions, bounds events by effective date and known-at,
     validates payload digests before redaction, and emits deterministic per-contract event files

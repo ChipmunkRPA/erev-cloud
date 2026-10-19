@@ -5960,3 +5960,56 @@ def test_forecast_event_capture_is_atomic_and_immutable(
     from support.forecast_refresh import exercise_refresh_state
 
     exercise_refresh_state(world, source_actor, UUID(created.json()["scenario_id"]))
+
+
+def test_contract_sample_computation_evidence_keeps_trace_and_full_schedule(
+    world: World,
+    clock: FrozenClock,
+) -> None:
+    import json
+    from datetime import timedelta
+
+    from erev_api.domain.reports import (
+        evidence_archive,
+        evidence_sample_computations,
+        evidence_sample_events,
+    )
+    from erev_api.domain.reports.evidence_commands import PERMISSIONS
+    from erev_api.schemas.evidence_packs import ContractSamplePackCreateIn
+
+    booked = k01(world)
+    computed(world.place, booked.combination_group["id"])
+    principal = replace(
+        world.place.principal,
+        permissions=PERMISSIONS,
+        permission_scopes={permission: "*" for permission in PERMISSIONS},
+    )
+    with world.place.uow(principal) as uow:
+        clock.set(
+            uow.session.execute(select(func.clock_timestamp())).scalar_one() + timedelta(seconds=1)
+        )
+    request = ContractSamplePackCreateIn(
+        kind="CONTRACT_SAMPLE", contract_external_ids=["SF-ORD-10001"], as_of=date(2026, 9, 30)
+    )
+    with world.place.uow(principal) as uow:
+        events = evidence_sample_events.collect(uow, request)
+        result = evidence_sample_computations.collect(uow, events.selection, as_of=request.as_of)
+        files = {file.path: json.loads(file.content) for file in result.files}
+        assert result.version_ids
+        assert len(files["sample/computations.json"]["selected_versions"]) == 1
+        prefix = f"computations/{result.version_ids[0]}"
+        assert len(files[f"{prefix}/allocations.json"]) == 2
+        assert files[f"{prefix}/trace.json"]["trace"]["nodes"]
+        schedule_data = files[f"{prefix}/schedule.json"]
+        assert schedule_data["lines"]
+        assert any(line["period_end_date"] > "2026-09-30" for line in schedule_data["lines"])
+        archive = evidence_archive.build((*events.files, *result.files))
+        evidence_archive.verify(archive.content, expected_manifest_sha256=archive.manifest_sha256)
+        before = evidence_sample_computations.collect(uow, events.selection, as_of=date(2025, 1, 1))
+        assert not before.version_ids
+    denied = replace(
+        principal, permission_scopes={**principal.permission_scopes, "report.export": frozenset()}
+    )
+    with world.place.uow(denied) as uow:
+        with pytest.raises(Problem):
+            evidence_sample_computations.collect(uow, events.selection, as_of=request.as_of)
