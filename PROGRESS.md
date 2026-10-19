@@ -2,6 +2,21 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Forecast output download rendering — October 19, 2026
+
+- Added internal RPT-39 JSON, XLSX and CSV rendering from the captured five-section dataset.
+  XLSX uses the established workbook renderer with a contents page, five typed tables and
+  run metadata. CSV is a deterministic ZIP of five separate schemas plus a manifest with
+  each file's hash, byte count, controls and run stamp. JSON preserves section boundaries.
+- Exports carry scenario, input publication/version/hash, horizon and source cutoff. The
+  dataset hash accompanies XLSX/CSV output. Raw source evidence is not exposed. Scope,
+  missing sections, unsupported PDF and output-format visibility changes are refused;
+  format changes require a new capture so RPO election visibility is preserved.
+- Targeted renderer checks cover metadata, signed numeric money, safe literal contract text,
+  CSV file hashes and refusals. Real scenario capture-to-JSON and Ruff/Mypy also pass.
+  Durable report publication/download routes, forecast execution,
+  charts/UI, actual-vs-forecast and both evidence packs remain unfinished. No deployment.
+
 ## Forecast output source capture and five-section assembly — October 19, 2026
 
 - Connected the internal RPT-39 assembly to the existing revenue waterfall, net billing,
@@ -213,23 +228,6 @@
 - Updated API schema/client types and user guide. Import association, ordered refresh/replay,
   forecast jobs, forecast outputs and actual-vs-forecast remain unimplemented; FCS-2 stays open.
   Contract sample and period evidence packs also remain outstanding. No deployment.
-
-## Readable wide disclosure PDFs — October 19, 2026
-
-- Replaced chapter-table ellipsis clipping with wrapped cells and horizontal column groups.
-  Repeats row ordinals/identifying context and headers, keeps currencies beside amounts, and
-  groups adjacent period/QTD measures where they fit. Ordinary rows stay together; long rows
-  continue under the same ordinal. Very long labels get full-text legends, not clipped headers.
-- Wrapped chapter stamps/notes and corrected contents offsets against final pagination.
-  Added table header rules and compact currency headings. Omitted sections remain amount-free.
-  Existing single-table PDF layout and canonical JSON accounting dataset hashes are unchanged.
-- Six focused checks pass, including large negatives, mixed currency, long IDs, oversize
-  narratives/labels, page/column geometry and legacy footer behavior; Ruff/Mypy pass. Rendered
-  and inspected all five pages of a synthetic wide disclosure PDF with the PDF skill workflow.
-- This verifies the layout sample, not accounting acceptance. The current standard-font
-  WinAnsi limitation, broad browser/release checks and independent accounting sign-off remain.
-  Four unregistered report families and the other system backlog still need development.
-  No deployment; publish directly to main.
 
 ## Outstanding release verification
 

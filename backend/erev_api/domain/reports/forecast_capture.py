@@ -8,7 +8,7 @@ this module neither queues computations nor advertises a same-source rerun adapt
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
-from datetime import date
+from datetime import date, datetime
 from typing import Any
 from uuid import UUID
 
@@ -49,6 +49,10 @@ class Captured:
     sections: tuple[Section, ...]
     sources: Mapping[str, SourceBinding]
     entity_periods: Mapping[UUID, tuple[PeriodRef, ...]]
+    entity_codes: tuple[str, ...]
+    book: str
+    known_at: datetime
+    output_format: str | None
 
 
 def capture(uow: UnitOfWork, params: ReportParams, *, horizon: Sequence[str]) -> Captured:
@@ -69,9 +73,12 @@ def capture(uow: UnitOfWork, params: ReportParams, *, horizon: Sequence[str]) ->
     view = str(params.parameters.get("currency_view") or "transaction")
     if view not in {"transaction", "functional"}:
         raise Problem("validation-failed", "Forecast capture requires a supported currency basis.")
+    if params.output_format not in {None, "JSON", "XLSX", "CSV"}:
+        raise Problem("validation-failed", "Forecast outputs supports XLSX, CSV and JSON.")
     base = replace(
         params,
         historical=True,
+        output_format=params.output_format or "JSON",
         sources=SourceCollector(),
         as_of_date=None,
         parameters={"currency_view": view},
@@ -214,6 +221,7 @@ def capture(uow: UnitOfWork, params: ReportParams, *, horizon: Sequence[str]) ->
     )
     lines = build("journals", extract_subledger_lines.build, child("extract_subledger_lines"))
     journals = forecast_sections.journals(lines, periods=columns, currency_view=view)
+    assert base.book_code is not None
     return Captured(
         (
             Section("revenue", "Forecast revenue by period", revenue),
@@ -224,4 +232,8 @@ def capture(uow: UnitOfWork, params: ReportParams, *, horizon: Sequence[str]) ->
         ),
         sources,
         periods,
+        tuple(e.code for e in found),
+        base.book_code,
+        base.known_at,
+        base.output_format,
     )

@@ -7436,3 +7436,20 @@ cleanup in the shared database session kernel was also repaired and regression-t
   visual acceptance: wide tables, full browser/accounting validation and release checks remain.
 - RPS-15 remains open; other missing reports and system work remain. No deployment or readiness
   claim; changes published directly on main.
+
+## Readable wide disclosure PDFs — October 19, 2026
+
+- Replaced chapter-table ellipsis clipping with wrapped cells and horizontal column groups.
+  Repeats row ordinals/identifying context and headers, keeps currencies beside amounts, and
+  groups adjacent period/QTD measures where they fit. Ordinary rows stay together; long rows
+  continue under the same ordinal. Very long labels get full-text legends, not clipped headers.
+- Wrapped chapter stamps/notes and corrected contents offsets against final pagination.
+  Added table header rules and compact currency headings. Omitted sections remain amount-free.
+  Existing single-table PDF layout and canonical JSON accounting dataset hashes are unchanged.
+- Six focused checks pass, including large negatives, mixed currency, long IDs, oversize
+  narratives/labels, page/column geometry and legacy footer behavior; Ruff/Mypy pass. Rendered
+  and inspected all five pages of a synthetic wide disclosure PDF with the PDF skill workflow.
+- This verifies the layout sample, not accounting acceptance. The current standard-font
+  WinAnsi limitation, broad browser/release checks and independent accounting sign-off remain.
+  Four unregistered report families and the other system backlog still need development.
+  No deployment; publish directly to main.

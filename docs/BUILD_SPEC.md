@@ -11533,8 +11533,10 @@ Author BS-3. Uses DIN, SNP and RPS (PHASES §1 row 18). Indicative size 12 items
     currency still requires its governed valuation adapter. Internal five-section assembly now
     reads real computed scenario sources at one fixed cutoff, with independent child evidence,
     scoped permissions and per-entity calendars. The real scenario journey exercises capture.
-    Forecast-run execution, durable publication/exports, chart/UI and same-source reruns remain
-    unfinished; the report is not registered and FCS-3 remains open.
+    Internal JSON/XLSX/CSV renderers now preserve the five tables and run/publication metadata;
+    CSV uses separate files with a hash manifest. Output-format changes require recapture for
+    RPO visibility. Forecast-run execution, durable publication/downloads, chart/UI and
+    same-source reruns remain unfinished; the report is not registered and FCS-3 remains open.
   - **Prerequisites:** FCS-2
   - **Scope:**
     - Paths: `backend/erev_api/domain/forecast/runs.py` (`run_forecast(jc, params) -> JobOutcome`: computes the scenario groups over the horizon and creates the `forecast_outputs` report run); `backend/erev_api/domain/reports/builders/forecast_outputs.py` (RPT-39 sections 1 to 5); `backend/erev_api/jobs/` handler `FORECAST_RUN` (removed from `PENDING_JOB_HANDLERS`); `backend/erev_api/api/v1/forecast_runs.py`; `backend/tests/domain/forecast/test_forecast_runs.py`; `docs/api/openapi.json`; `frontend/src/lib/api/schema.d.ts`

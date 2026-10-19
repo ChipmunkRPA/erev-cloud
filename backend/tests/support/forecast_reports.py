@@ -3,9 +3,11 @@
 from dataclasses import replace
 from typing import Any
 
-from erev_api.db.tables import contract
+from erev_api.db.tables import contract, forecast_event_set
 from erev_api.domain.reports import forecast_capture
 from erev_api.domain.reports.builders import ReportParams
+from erev_api.domain.reports.forecast_exports import Identity, render
+from erev_api.domain.reports.outputs import RunStamp
 from erev_api.enums import TenantKind
 from sqlalchemy import func, select
 
@@ -44,3 +46,39 @@ def exercise_capture(world: Any) -> None:
         balance_keys = [key for key in result.sources if key.startswith("balances:")]
         assert len(balance_keys) == 2 * len(entities)
         assert all("section" not in row for row in result.sections[3].data.rows)
+        publication = (
+            uow.session.execute(
+                select(forecast_event_set).where(
+                    forecast_event_set.c.code == "REPLAY_TXN",
+                )
+            )
+            .mappings()
+            .one()
+        )
+        identity = Identity(
+            publication["production_scenario_id"],
+            "Scenario capture",
+            publication["id"],
+            publication["name"],
+            publication["version_no"],
+            publication["content_sha256"],
+        )
+        stamp = RunStamp(
+            "forecast_outputs",
+            "Forecast outputs",
+            1,
+            "RPT-CAPTURE",
+            {},
+            result.entity_codes,
+            result.book,
+            None,
+            "Scenario",
+            "test",
+            "test",
+            "Scenario requester",
+            cutoff,
+            "",
+        )
+        exported = render(result, identity, stamp, format="JSON")
+        assert exported.content == exported.dataset
+        assert b'"source_evidence_sha256"' in exported.content
