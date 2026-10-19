@@ -345,7 +345,10 @@ close disclosures are not implemented yet.
 The response supplies the job and `X-Erev-Report-Run-Id`. Poll the run until it succeeds,
 then download `/api/v1/report-runs/{id}/output` with report export permission. JSON contains
 seven `sections` plus a table directory; Excel has Contents plus seven chapter worksheets.
-Quarter-to-date currently appears as separate labelled tables, not side-by-side columns.
+With `quarter: true`, each flow chapter includes a comparison summary with adjacent period
+and quarter-to-date amounts. Original source tables remain below the summary. Rows are matched
+by stable codes and currency; a row missing from one source stays blank and has a presence flag.
+Disaggregation compares each range's total rather than adding monthly columns again.
 The report page displays all seven chapter headings. Expand a table to load its rows and
 see its source digest, period basis and omission notes. Omitted tables do not load amounts.
 The data endpoint shows the directory by default; `section_table=<table key>` selects one

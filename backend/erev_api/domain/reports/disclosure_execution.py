@@ -11,6 +11,7 @@ from erev_engine.canonical import canonical_bytes, sha256_hex
 
 from erev_api.domain.reports import (
     disclosure_assembly,
+    disclosure_comparison,
     disclosure_inputs,
     disclosure_workbook,
     framework,
@@ -87,12 +88,41 @@ def build(
                     ),
                 }
             )
+        comparison_tables = []
+        for comparison in disclosure_comparison.comparisons(chapter, stamp):
+            rows.append(
+                {
+                    "row_key": comparison.key,
+                    "chapter": section.number,
+                    "title": comparison.title,
+                    "basis": disclosure_comparison.BASIS,
+                    "omitted": comparison.omitted,
+                    "rows": comparison.data.row_count,
+                    "source_run_id": None,
+                    "source_sha256": comparison.stamp.output_sha256,
+                }
+            )
+            comparison_tables.append(
+                {
+                    "key": comparison.key,
+                    "basis": disclosure_comparison.BASIS,
+                    "omitted": comparison.omitted,
+                    "notes": list(comparison.notes),
+                    "source_run_id": None,
+                    "source_sha256": comparison.stamp.output_sha256,
+                    "dataset": manifest.dataset_document(
+                        manifest.report_reference("disclosure_pack", comparison.title, 1),
+                        run["parameters"],
+                        comparison.data,
+                    ),
+                }
+            )
         sections.append(
             {
                 "number": section.number,
                 "title": section.title,
                 "interim_required": section.interim_required,
-                "tables": tables,
+                "tables": [*comparison_tables, *tables],
             }
         )
     # Include supporting child tie-outs even when their table is omitted or not displayed.
@@ -143,7 +173,12 @@ def build(
         )
     elif run["output_format"] == "PDF":
         rendered = framework._Rendered(
-            pdf.render_pdf_chapters(disclosure_workbook.chapters(pack, stamp, child_stamps), stamp),
+            pdf.render_pdf_chapters(
+                disclosure_comparison.with_comparisons(
+                    disclosure_workbook.chapters(pack, stamp, child_stamps), stamp
+                ),
+                stamp,
+            ),
             digest,
             pdf.MEDIA_TYPE,
             pdf.EXTENSION,

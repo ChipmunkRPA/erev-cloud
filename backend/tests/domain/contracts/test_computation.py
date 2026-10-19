@@ -5192,6 +5192,9 @@ def test_disclosure_children_attach_once_and_survive_retry(
         workbook = openpyxl.load_workbook(io.BytesIO(workbook_bytes))
         assert len(workbook.worksheets) == 8
         assert workbook.sheetnames[0] == "Contents"
+        first_chapter = [cell.value for row in workbook.worksheets[1] for cell in row]
+        assert "Period — Total" in first_chapter
+        assert "Quarter to date — Total" in first_chapter
         for section, worksheet in zip(pack.sections, workbook.worksheets[1:], strict=True):
             values = [cell.value for row in worksheet for cell in row]
             assert section.title in values
@@ -5245,6 +5248,17 @@ def test_disclosure_children_attach_once_and_survive_retry(
 
         document = json.loads(output)
         assert len(document["sections"]) == 7
+        comparisons = [
+            table
+            for section in document["sections"]
+            for table in section["tables"]
+            if table["basis"] == "PERIOD_AND_QUARTER"
+        ]
+        assert len(comparisons) == 6
+        assert all(sha256_hex(table["dataset"]) == table["source_sha256"] for table in comparisons)
+        assert any(
+            column["key"] == "quarter:total" for column in comparisons[0]["dataset"]["columns"]
+        )
         assert document["row_count"] == published["row_count"]
         assert document["control_totals"]["children"] == 16
         assert (

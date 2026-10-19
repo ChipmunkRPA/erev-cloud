@@ -40,9 +40,9 @@ function Table({ runId, table, number }: { runId: string; table: DisclosureTable
   }
   return <details onToggle={event => setOpen(event.currentTarget.open)} className="rounded border border-stroke-1 p-3">
     <summary className="cursor-pointer text-body-sm font-semibold">
-      {table.title} — {t(table.basis === "QUARTER_TO_DATE" ? "reports.disclosure.quarter" : "reports.disclosure.period")} ({table.row_count})
+      {table.title} — {t(table.basis === "PERIOD_AND_QUARTER" ? "reports.disclosure.comparison" : table.basis === "QUARTER_TO_DATE" ? "reports.disclosure.quarter" : "reports.disclosure.period")} ({table.row_count})
     </summary>
-    <p className="break-all text-body-sm text-fg-2">{t("reports.disclosure.source", { source: table.source_run_id ?? t("reports.disclosure.policy") })} · {table.source_sha256}</p>
+    <p className="break-all text-body-sm text-fg-2">{t("reports.disclosure.source", { source: table.source_run_id ?? t(table.basis === "PERIOD_AND_QUARTER" ? "reports.disclosure.comparisonData" : "reports.disclosure.policy") })} · {table.source_sha256}</p>
     {table.notes.map(note => <p key={note} className="text-body-sm text-fg-2">{note}</p>)}
     {table.omitted ? <p>{t("reports.disclosure.omitted")}</p> : rows.isError ? <Banner tone="negative" title={t("reports.report.dataLoadError")} actions={<Button variant="link" onClick={() => void rows.refetch()}>{t("reports.report.retry")}</Button>} /> : rows.data === undefined ? <p role="status">{t("reports.disclosure.loading")}</p> : <ReportGrid
       runId={runId} name={table.key} title={table.title}

@@ -2,6 +2,23 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Quarterly disclosure comparison summaries — October 19, 2026
+
+- Added semantic period/QTD comparison for the six displayed flow reports. Row identities use
+  section/contract/obligation/dimension/line codes and currency instead of source row positions or
+  conditional currency suffixes. Different labels receive separate columns; missing population
+  stays blank with presence flags. Duplicate identities or schema/election mismatch refuse.
+- Disaggregation uses each source's existing range total, excluding its varying monthly buckets.
+  No money is summed or rounded. Comparison summaries precede original source tables in JSON,
+  workbook and PDF chapters; canonical parent hashes include comparison output. Summary digests
+  identify their dataset and notes retain both original source run/hash references.
+- The viewer labels combined-basis tables and their comparison digest separately from policies.
+  Two populated alignment checks pass. The real 16-child/API/parent/rerun journey verifies six
+  summaries, their hashes and workbook period/QTD headers; same-source rerun remains identical.
+  Ruff/Mypy and frontend type/lint/component checks pass.
+- Full populated accounting acceptance, PDF wide-table readability, browser acceptance, frozen
+  snapshots and remaining export worker journeys remain open. No deployment or readiness claim.
+
 ## Disclosure chapter viewer — October 19, 2026
 
 - Added seven-chapter disclosure view with expandable tables, period/QTD labels, interim flags,
@@ -208,23 +225,6 @@
 - This is the output component, not a registered disclosure_pack builder. Child-run orchestration,
   frozen disclosure snapshot binding, seven-section assembly, PDF and viewer remain unfinished.
   Five catalogue builders remain unregistered. No new PR or deployment.
-
-## Parallel comparison worker and export integration — October 19, 2026
-
-- Registered parallel_run_comparison and its retained-input source contract. Builder captures
-  authorized sources, records exact cutoff/parameter selection and rebuilds from hash-verified
-  retained facts. Changing entity, migration or period selection cannot reuse an unrelated binding.
-- Worker reloads the original initiator's current report/export grants before building and output
-  persistence. Source readers accept that verified principal with an explicit same-tenant check;
-  no impersonation or implicit SYSTEM report grant is introduced.
-- Real import -> CSV worker -> same-source rerun passes for identity and renamed entity mappings,
-  with identical output hashes/control totals. Revoking permissions after queueing prevents file
-  publication. These are empty comparisons because dry-run imports create no posted population.
-- Targeted catalogue/source/parallel suites: 35 passed; changed production modules pass Mypy and
-  Ruff. No schema change: the existing global definition already includes the output formats.
-- Five catalogue builders remain unregistered: actual_vs_forecast, forecast_outputs,
-  contract_sample_pack, period_evidence_pack and disclosure_pack. Populated RPT-42 worker/browser
-  acceptance, XLSX/PDF journeys and migration replay/sandbox lifecycle remain unfinished.
 
 ## Outstanding release verification
 

@@ -1,5 +1,12 @@
 # eRev Cloud 1.0: stated limits of the release
 
+Latest quarterly disclosure update (October 19): six displayed flow inputs now receive
+period/QTD comparison summaries in JSON/viewer and chapter Excel/PDF exports. Original tables
+remain available. Semantic identities include currency; missing rows remain blank with presence
+flags. Real parent/rebuild and workbook checks pass; PDF wide-table readability, full browser
+acceptance, populated accounting acceptance and frozen snapshots still require completion.
+
+
 Latest disclosure viewer update (October 19): the report page now displays chapter/table
 metadata and loads expanded tables from saved JSON through scoped, paginated report reads.
 Omitted tables show notes without requesting amounts; money columns identify currencies.

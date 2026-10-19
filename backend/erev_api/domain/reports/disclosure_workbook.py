@@ -7,7 +7,7 @@ from uuid import UUID
 
 from erev_engine.canonical import sha256_hex
 
-from erev_api.domain.reports import disclosure_expedients
+from erev_api.domain.reports import disclosure_comparison, disclosure_expedients
 from erev_api.domain.reports.disclosure_assembly import Pack
 from erev_api.domain.reports.outputs import RunStamp
 from erev_api.domain.reports.outputs.manifest import dataset_bytes, report_reference
@@ -108,4 +108,6 @@ def chapters(
 
 def render(pack: Pack, stamp: RunStamp, child_stamps: Mapping[UUID, RunStamp]) -> bytes:
     """Export the verified chapters to one workbook."""
-    return render_xlsx_chapters(chapters(pack, stamp, child_stamps), stamp)
+    return render_xlsx_chapters(
+        disclosure_comparison.with_comparisons(chapters(pack, stamp, child_stamps), stamp), stamp
+    )

@@ -7087,3 +7087,21 @@ cleanup in the shared database session kernel was also repaired and regression-t
   Real import capture/rebuild checks cover identity and renamed mappings; dry-run imports correctly
   have no compared actuals. Worker registration, publication grants and export integration remain
   next, along with complete replay/sandbox lifecycle. Six catalogue builders remain unregistered.
+
+
+## Parallel comparison worker and export integration — October 19, 2026
+
+- Registered parallel_run_comparison and its retained-input source contract. Builder captures
+  authorized sources, records exact cutoff/parameter selection and rebuilds from hash-verified
+  retained facts. Changing entity, migration or period selection cannot reuse an unrelated binding.
+- Worker reloads the original initiator's current report/export grants before building and output
+  persistence. Source readers accept that verified principal with an explicit same-tenant check;
+  no impersonation or implicit SYSTEM report grant is introduced.
+- Real import -> CSV worker -> same-source rerun passes for identity and renamed entity mappings,
+  with identical output hashes/control totals. Revoking permissions after queueing prevents file
+  publication. These are empty comparisons because dry-run imports create no posted population.
+- Targeted catalogue/source/parallel suites: 35 passed; changed production modules pass Mypy and
+  Ruff. No schema change: the existing global definition already includes the output formats.
+- Five catalogue builders remain unregistered: actual_vs_forecast, forecast_outputs,
+  contract_sample_pack, period_evidence_pack and disclosure_pack. Populated RPT-42 worker/browser
+  acceptance, XLSX/PDF journeys and migration replay/sandbox lifecycle remain unfinished.
