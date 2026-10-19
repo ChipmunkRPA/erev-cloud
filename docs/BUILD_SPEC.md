@@ -10770,6 +10770,7 @@ Author BS-3. Uses DIN, SNP and RPS (PHASES §1 row 18). Indicative size 12 items
   - **Gates:** GK-01 `make ci`; GK-02 `make test-pg`
 
 - [ ] **LMG-5 Parallel-run comparison report.**
+  - October 19, 2026 comparison phase: parallel_comparison.compare now reconciles independently produced journal and contract-balance snapshots using exact differences, complete-period intersection, separate currency totals and contributor references. Viewer sections/columns/empty copy are ready. Explicit-fact checks cover cents, missing versus zero populations and incompatible sources; independent legacy rounding/source readers, authorized eRev source binding, registration and command-driven January/October acceptance remain open. This does not complete LMG-5.
   - **Prerequisites:** LMG-4
   - **Scope:**
     - Paths: `backend/erev_api/db/migrations/versions/NNNN_lmg_5_parallel_run_definition.py` (seeds `report_definition` `parallel_run_comparison`, BS3-D-14); `backend/erev_api/domain/reports/definitions/parallel_run_comparison.py` (RPT-42; legacy journal amounts derived from the reference database history per legacy 06 §3, eRev amounts from report `legacy_je_summary`); `backend/tests/domain/migration/test_parallel_run.py`

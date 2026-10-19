@@ -1,5 +1,11 @@
 # eRev Cloud 1.0: stated limits of the release
 
+October 19 parallel-run comparison phase: exact comparison of supplied independent journal and
+balance snapshots and the two viewer sections are implemented. Legacy monthly-output reading
+with original rounding, authorized eRev source selection, retained binding and worker registration
+are still required. Explicit source-fact checks are not command-driven LMG-5 financial acceptance.
+Six catalogue builders remain unregistered, including parallel_run_comparison.
+
 October 19 engine true-up register update: revision 0180 now exposes exact-cutoff processing
 portions and actual attributed sealed ledger lines through JSON/CSV/XLSX reports. Same-source
 reruns rebuild from retained input facts; current worker grants apply. This supersedes earlier

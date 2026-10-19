@@ -2,6 +2,23 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Parallel-run comparison calculation and viewer — October 19, 2026
+
+- Added parallel_comparison.compare for independently produced journal and contract-balance
+  snapshots. Both sources must declare complete entity/book/currency period coverage and retained
+  identities. Missing coverage is excluded rather than converted to zero; calendar disagreements,
+  duplicate rows, incomplete balance components and sub-minor-unit input amounts refuse.
+- Journal differences are eRev debit-minus-credit less legacy debit-minus-credit. Balance
+  differences are eRev liability less asset/unbilled less legacy billed-minus-recognized.
+  Fraction arithmetic preserves cents independently of Decimal context; no balancing plug.
+- Separate section/currency totals and source-row contributor references are retained. Viewer
+  sections, readable columns and the specified no-periods empty copy are implemented.
+- Nine focused arithmetic/coverage checks and a frontend section check pass; type/lint checks pass.
+  These use explicit source facts, not command-driven LMG-5 January/October acceptance evidence.
+- Still required: independent legacy monthly-output reader preserving legacy rounding, authorized
+  eRev journal/balance source selection, retained binding and worker registration/export journeys.
+  RPT-42 remains unregistered; six catalogue builders remain. No readiness claim or deployment.
+
 ## Engine true-up register — October 19, 2026
 
 - Implemented and registered engine_trueup_register (migration 0180): latest processing portions
@@ -200,26 +217,6 @@
   business commands, ordered input replay or refresh yet. These APIs currently manage input-set
   versions; they do not execute or populate forecasts. Forecast runs/output and UI remain open.
   Seven missing report builders remain missing. No deployment or readiness claim.
-
-## Scenario archive and read-only command/worker gate — October 19, 2026
-
-- Added POST /scenarios/{id}/archive with row ETag, creator or tenant-wide Controller admission,
-  replay authorization, pending-job refusal and atomic audit records in source and sandbox.
-  The sandbox remains ACTIVE/selectable for reading; its source scenario becomes ARCHIVED.
-- HTTP commands check the exact source scenario before cached replay and acquire a shared lock
-  during business transactions. Worker attempt units of work use the same gate; operational
-  failure settlement remains possible. This source-row lock orders normal writes against archive.
-- Migration 0178 freezes archived scenario fields and forbids reactivation. The scope trigger
-  rechecks sandbox provenance only when its pointer/source changes: a Controller need not also
-  hold a membership in the sandbox merely to archive an existing relationship.
-- Actual API/worker + migration checks: creator/Controller archive, non-owner denial, queued-job
-  refusal, successful archive replay, rejected replay of a formerly successful sandbox write,
-  retained reads, delayed worker refusal with FAILED settlement/no business audit, mirrored
-  archive audit, migration round trip and ordinary saved-view regression: 5 passed (11.26s).
-  Ruff, mypy (7 files), OpenAPI/types generation passed.
-- Concurrent races across every custom write path and direct copy transaction are not yet
-  acceptance-tested. Nonempty/closed-period scenario copy, refresh, event sets, forecast runs,
-  report builders and UI remain open. No production-readiness or deployment claim.
 
 ## Outstanding release verification
 

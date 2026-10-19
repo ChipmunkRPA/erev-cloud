@@ -525,7 +525,13 @@ export interface ReportSection {
   readonly totals: readonly ReportRow[];
 }
 
+const PARALLEL_COLUMNS: Readonly<Record<number, readonly string[]>> = {
+  1: ["entity_code", "book_code", "period_key", "account", "currency", "legacy_debit", "legacy_credit", "erev_debit", "erev_credit", "difference"],
+  2: ["entity_code", "book_code", "contract_external_id", "period_end", "currency", "legacy_net_position", "contract_liability", "contract_asset_and_unbilled", "difference"],
+};
+
 const SECTION_HEADINGS: Readonly<Record<string, readonly string[]>> = {
+  parallel_run_comparison: ["reports.section.parallel.1", "reports.section.parallel.2"],
   variance_between_closes: ["reports.section.variance.1", "reports.section.variance.2"],
   rpo: ["reports.section.rpo.1", "reports.section.rpo.2"],
 };
@@ -713,6 +719,9 @@ export interface ColumnContext {
 }
 
 function headerOf(key: string, context: ColumnContext): string {
+  if (context.definition.code === "parallel_run_comparison") {
+    return t(`reports.column.parallel.${key}`);
+  }
   if (context.definition.code === "engine_trueup_register") {
     return context.columns?.find(column => column.key === key)?.header ?? key;
   }
@@ -836,6 +845,13 @@ export function reportColumns(context: ColumnContext): ReportColumn[] {
       }
     }
   }
+  if (definition.code === "parallel_run_comparison") {
+    const allowed = PARALLEL_COLUMNS[section.number] ?? [];
+    keys.splice(0, keys.length, ...allowed);
+    for (const key of allowed) {
+      kinds.set(key, ["entity_code", "book_code", "period_key", "period_end", "account", "currency", "contract_external_id"].includes(key) ? "text" : "money");
+    }
+  }
   if (keys.length === 0) {
     // A section without rows still shows its columns (RPT-06 section 2 "Exempt contracts (0)").
     const fallback = [
@@ -856,7 +872,8 @@ export function reportColumns(context: ColumnContext): ReportColumn[] {
   const currencies = currenciesOf(rows);
   const single = currencies.size === 1 ? [...currencies][0] : undefined;
   const drillable = DRILLABLE_REPORTS.has(definition.code) && section.number === 1;
-  return orderedKeys(definition, keys, context.bands, context.columns).map((key) => {
+  const ordered = definition.code === "parallel_run_comparison" ? keys : orderedKeys(definition, keys, context.bands, context.columns);
+  return ordered.map((key) => {
     const kind: ReportColumnKind =
       key === "contract_external_id" && definition.kind !== "LEGACY_EXPORT"
         ? "identifier"
@@ -1033,6 +1050,9 @@ export function registerEmptyCopy(
   run: RunFacts,
   context: ReportContext,
 ): EmptyCopy | null {
+  if (code === "parallel_run_comparison") {
+    return { title: t("reports.empty.parallel.title"), description: t("reports.empty.parallel.description") };
+  }
   if (code === "variance_between_closes") {
     return { title: t("reports.empty.variance.title"), description: t("reports.empty.variance.description") };
   }
