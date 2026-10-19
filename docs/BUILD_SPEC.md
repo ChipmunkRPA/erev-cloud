@@ -11490,8 +11490,11 @@ Author BS-3. Uses DIN, SNP and RPS (PHASES §1 row 18). Indicative size 12 items
     failure/cancellation and audits source/target hashes and upload bindings. Snapshot loading
     can retain a verified copy in SUSPENDED; an internal activation gate requires its held load,
     point-in-time period readiness and expected input publication/hash before activation.
-    Durable refresh request/job orchestration and final scenario switch remain missing;
-    FCS-2 remains open.
+    Revision 0184 adds production-scoped durable refresh reservation/lifecycle with immutable
+    input/hash and source/target/job bindings, one active refresh per scenario and terminal
+    evidence guards. Running reservations associate held targets with their logical scenario;
+    archiving refuses pending refreshes. Request endpoint, worker integration, terminal cleanup
+    and final scenario switch remain missing; FCS-2 remains open.
   - **Prerequisites:** FCS-1
   - **Scope:**
     - Paths: `backend/erev_api/domain/forecast/event_sets.py` (`create`, `update`, `publish`; appending committed uploads in order; recording API commands into `api_commands`); `backend/erev_api/domain/imports/commands.py` (`forecast_event_set_id` in API-S-ImportCreate: scenario tenants only; commit without approval routing and audited, BR-FC-02); `backend/erev_api/domain/forecast/scenarios.py` (`refresh_scenario`: 05 SBX-07 supersession from a new snapshot, `scenario_tenant_id` repointed, published event set re-applied in stored order as the requester, SBX-09); `backend/erev_api/api/v1/forecast_event_sets.py`; `backend/erev_api/api/v1/scenarios.py` (`refresh`); `backend/tests/support/worlds.py` (`k11_hollenbrand`: WLD-K-11 with the J-04 delivery and invoices); `backend/tests/domain/forecast/test_event_sets.py`; `docs/api/openapi.json`; `frontend/src/lib/api/schema.d.ts`

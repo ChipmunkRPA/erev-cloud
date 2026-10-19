@@ -11,13 +11,19 @@ pytestmark = pytest.mark.pg
 
 def test_forecast_schema_round_trip(test_database: TestDatabase) -> None:
     with test_database.owner_engine.connect() as connection:
-        for table in ("forecast_run", "deal_preview"):
+        for table in ("forecast_run", "deal_preview", "scenario_refresh"):
             body = connection.execute(
                 text("SELECT prosrc FROM pg_proc WHERE oid = to_regprocedure(:signature)"),
                 {"signature": f"erev.tg_{table}__transition()"},
             ).scalar_one()
             assert body.strip() == transition_trigger_sql(table).strip()
-        for table in ("scenario", "forecast_event_set", "forecast_run", "deal_preview"):
+        for table in (
+            "scenario",
+            "scenario_refresh",
+            "forecast_event_set",
+            "forecast_run",
+            "deal_preview",
+        ):
             assert connection.execute(
                 text(
                     "SELECT relrowsecurity AND relforcerowsecurity FROM pg_class "

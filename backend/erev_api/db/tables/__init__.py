@@ -59,6 +59,7 @@ from erev_api.db.tables.forecast import (  # noqa: E402
     forecast_event_set,
     forecast_run,
     scenario,
+    scenario_refresh,
 )
 from erev_api.db.tables.imports import (  # noqa: E402
     exception_item,
@@ -206,6 +207,7 @@ __all__ = [
     "forecast_event_set",
     "forecast_run",
     "scenario",
+    "scenario_refresh",
     "computation_verification",
     "release_validation_group",
     "release_group_processing",

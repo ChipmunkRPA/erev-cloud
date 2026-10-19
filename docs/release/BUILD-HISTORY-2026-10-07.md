@@ -7364,3 +7364,21 @@ cleanup in the shared database session kernel was also repaired and regression-t
   refuses detail. Ruff/Mypy pass; OpenAPI and generated frontend types updated.
 - Lock-time capture/as-locked execution, snapshot register UI and full accounting acceptance remain
   open. Existing draft evidence is not relabelled as locked. No deployment.
+
+## Read-only lock disclosure capture — October 19, 2026
+
+- Added disclosure_freeze.capture over the existing SnapshotScope and one read-only SYSTEM
+  reader. It executes the nine period/seven quarter source producers, normalizes parameters,
+  fixes historical cutoff, preserves typed canonical datasets and their input bindings, and
+  captures practical-expedient/nonpublic/interim policy facts at the same instant.
+- Enforces entity-calendar membership, accounting book, aware/equal freeze cutoff, schema,
+  unique row identities and bounded retained payload size. Does not enqueue jobs or invent
+  report/job IDs. Policies expose a separate lock-only entry requiring SYSTEM plus a read-only
+  transaction; ordinary SYSTEM calls still fail the existing report permission gate.
+- Real database journey captures sixteen inputs under freeze.system_unit and compares every
+  dataset against ordinary child jobs at the same cutoff; no report count change. Caller
+  context and ordinary SYSTEM policy access refuse. Ruff/Mypy pass. Fixture has no booked
+  accounting population, so independent accounting correctness is not implied.
+- The collector is not yet invoked by lock approval: atomic persistence of genuine source report
+  identities/seven locked snapshots and as-locked parent rendering remain to integrate. Existing
+  draft snapshots stay drafts. No lock support, deployment or production-readiness claim.

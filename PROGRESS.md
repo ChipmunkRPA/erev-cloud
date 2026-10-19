@@ -2,6 +2,22 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Durable scenario refresh reservation — October 19, 2026
+
+- Revision 0184 adds production-scoped refresh records with immutable source/target tenants,
+  selected input/hash, snapshot and job identities. Partial uniqueness admits one queued/running
+  refresh per scenario; transition guards freeze terminal evidence and set-once result fields.
+- Internal admission serializes on the source scenario, verifies the selected published inputs
+  and the requester's queued copy job, and records the reservation. Start/failure transitions
+  retain lifecycle audit. Archived or replaced source scenarios cannot start refresh execution.
+- A running reservation now associates a held target with its original logical scenario for
+  input replay; source pointer replacement is not needed to prepare the new inputs. Archiving
+  refuses pending refreshes. Refresh records are operational, excluded from snapshot copying.
+- The scenario journey verifies reservation, duplicate refusal, archive protection, repeat start,
+  failure and immutable fields. Schema/transition/RLS round-trip and Ruff/Mypy checks pass.
+- The request endpoint, worker integration, terminal cleanup and atomic source switch remain
+  unfinished. Forecast outputs/actual-vs-forecast still remain open; no deployment/readiness claim.
+
 ## Held forecast copy and activation gate — October 19, 2026
 
 - Snapshot loading can now retain SUSPENDED after successful copy/verification when its internal
@@ -217,24 +233,6 @@
   TypeScript and targeted ESLint checked. Full browser acceptance remains open.
 - This is a per-report viewer, not a cross-report snapshot register. Lock approval persistence
   and as-locked execution still remain open; no deployment or readiness claim.
-
-## Read-only lock disclosure capture — October 19, 2026
-
-- Added disclosure_freeze.capture over the existing SnapshotScope and one read-only SYSTEM
-  reader. It executes the nine period/seven quarter source producers, normalizes parameters,
-  fixes historical cutoff, preserves typed canonical datasets and their input bindings, and
-  captures practical-expedient/nonpublic/interim policy facts at the same instant.
-- Enforces entity-calendar membership, accounting book, aware/equal freeze cutoff, schema,
-  unique row identities and bounded retained payload size. Does not enqueue jobs or invent
-  report/job IDs. Policies expose a separate lock-only entry requiring SYSTEM plus a read-only
-  transaction; ordinary SYSTEM calls still fail the existing report permission gate.
-- Real database journey captures sixteen inputs under freeze.system_unit and compares every
-  dataset against ordinary child jobs at the same cutoff; no report count change. Caller
-  context and ordinary SYSTEM policy access refuse. Ruff/Mypy pass. Fixture has no booked
-  accounting population, so independent accounting correctness is not implied.
-- The collector is not yet invoked by lock approval: atomic persistence of genuine source report
-  identities/seven locked snapshots and as-locked parent rendering remain to integrate. Existing
-  draft snapshots stay drafts. No lock support, deployment or production-readiness claim.
 
 ## Outstanding release verification
 

@@ -13,18 +13,19 @@ from erev_api.auth.principal import RequestContext
 from erev_api.db import new_id
 from erev_api.db.session import DbContext, set_tenant_context, tenant_session
 from erev_api.db.tables import forecast_event_set as sets
-from erev_api.db.tables import import_upload, scenario, tenant
+from erev_api.db.tables import import_upload, scenario, scenario_refresh, tenant
 from erev_api.domain.forecast import input_order
 from erev_api.problems import Problem
 from erev_api.uow import UnitOfWork
 
 
 def _scenario(session: Session, context: DbContext) -> UUID:
-    source = session.execute(
-        select(tenant.c.source_tenant_id).where(
+    parent = session.execute(
+        select(tenant.c.source_tenant_id, tenant.c.status).where(
             tenant.c.id == context.tenant_id, tenant.c.kind == "sandbox"
         )
-    ).scalar_one_or_none()
+    ).one_or_none()
+    source = None if parent is None else parent.source_tenant_id
     if source is None:
         raise Problem("sandbox-restricted", "Forecast inputs belong to a scenario sandbox.")
     set_tenant_context(
@@ -34,6 +35,19 @@ def _scenario(session: Session, context: DbContext) -> UUID:
         found = session.execute(
             select(scenario.c.id).where(scenario.c.scenario_tenant_id == context.tenant_id)
         ).scalar_one_or_none()
+        if found is None and parent is not None and parent.status == "SUSPENDED":
+            # A held refresh target belongs to the original logical scenario before its
+            # public pointer switches. Only a running reservation may admit its inputs.
+            found = session.scalar(
+                select(scenario.c.id)
+                .join(scenario_refresh, scenario_refresh.c.scenario_id == scenario.c.id)
+                .where(
+                    scenario_refresh.c.target_tenant_id == context.tenant_id,
+                    scenario_refresh.c.status == "RUNNING",
+                    scenario.c.status == "ACTIVE",
+                    scenario.c.scenario_tenant_id == scenario_refresh.c.source_tenant_id,
+                )
+            )
     finally:
         set_tenant_context(session, context)
     if found is None:

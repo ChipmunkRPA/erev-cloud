@@ -5950,3 +5950,7 @@ def test_forecast_event_capture_is_atomic_and_immutable(
             runtime=JobRuntime(clock=clock, keyring=world.place.keyring, files=world.place.files),
         )
     )
+
+    from support.forecast_refresh import exercise_refresh_state
+
+    exercise_refresh_state(world, source_actor, UUID(created.json()["scenario_id"]))

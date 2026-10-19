@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from erev_api.audit import chain, writer
 from erev_api.auth.principal import Principal, RequestContext
 from erev_api.db.session import DbContext, set_tenant_context, tenant_session
-from erev_api.db.tables import job, scenario
+from erev_api.db.tables import job, scenario, scenario_refresh
 from erev_api.domain.platform import actors
 from erev_api.enums import PrincipalKind
 from erev_api.problems import Problem
@@ -52,6 +52,18 @@ def archive(uow: UnitOfWork, scenario_id: UUID, *, expected_version: int) -> Map
         raise Problem("precondition-failed", "The scenario changed; refresh it before archiving.")
     if row["status"] != "ACTIVE":
         raise Problem("invalid-transition", "The scenario is already archived.")
+    if (
+        uow.session.scalar(
+            select(scenario_refresh.c.id).where(
+                scenario_refresh.c.scenario_id == scenario_id,
+                scenario_refresh.c.status.in_(("QUEUED", "RUNNING")),
+            )
+        )
+        is not None
+    ):
+        raise Problem(
+            "invalid-transition", "Finish or cancel the scenario refresh before archiving."
+        )
     target_id = UUID(str(row["scenario_tenant_id"]))
     # This source-row lock waits for admitted sandbox command transactions, including enqueues.
     busy = uow.session.execute(

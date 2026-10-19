@@ -31,6 +31,26 @@ scenario: Final = Table(
     _timestamp("last_refreshed_at"),
     *_sc_c_sc_m(),
 )
+scenario_refresh: Final = Table(
+    "scenario_refresh",
+    metadata,
+    Column("tenant_id", Uuid(), primary_key=True),
+    Column("id", Uuid(), primary_key=True),
+    Column("scenario_id", Uuid(), nullable=False),
+    Column("source_tenant_id", Uuid(), nullable=False),
+    Column("source_input_set_id", Uuid(), nullable=False),
+    Column("source_content_sha256", CHAR(64), nullable=False),
+    Column("target_tenant_id", Uuid(), nullable=False),
+    Column("tenant_snapshot_id", Uuid(), nullable=False),
+    Column("job_id", Uuid(), nullable=False),
+    Column("status", run_status_platform, nullable=False, server_default=text("'QUEUED'")),
+    Column("target_input_set_id", Uuid()),
+    Column("target_content_sha256", CHAR(64)),
+    _timestamp("started_at"),
+    _timestamp("finished_at"),
+    Column("problem", JSONB(none_as_null=True)),
+    *_sc_c_sc_m(),
+)
 forecast_event_set: Final = Table(
     "forecast_event_set",
     metadata,

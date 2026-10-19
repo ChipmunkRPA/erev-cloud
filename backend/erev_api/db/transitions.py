@@ -970,6 +970,25 @@ TRANSITIONS: Final[Mapping[str, TableTransitions]] = MappingProxyType(
             pairs=frozenset({("ACTIVE", "ARCHIVED")}),
             frozen_while=frozenset({"ARCHIVED"}),
         ),
+        "scenario_refresh": TableTransitions(
+            table="scenario_refresh",
+            status_column="status",
+            updatable_columns=frozenset(
+                {
+                    "target_input_set_id",
+                    "target_content_sha256",
+                    "started_at",
+                    "finished_at",
+                    "problem",
+                }
+            )
+            | _SC_M,
+            pairs=_RUN_STATUS_PAIRS,
+            frozen_while=frozenset({"SUCCEEDED", "FAILED"}),
+            set_once=frozenset(
+                {"started_at", "finished_at", "target_input_set_id", "target_content_sha256"}
+            ),
+        ),
         "forecast_run": TableTransitions(
             table="forecast_run",
             status_column="status",
