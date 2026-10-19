@@ -1549,3 +1549,20 @@ the service refuses them rather than mixing their effects into event attribution
 The real-engine case covers two late billing events (liability 20 -> 170, change 150),
 not the complete K-03 financial acceptance. Nine focused tests, Ruff and Mypy pass.
 Seven report builders remain unregistered; production readiness is not established.
+
+## October 19, 2026 — fixed-period variance monetary projection
+
+The event replay now has a server-owned `replay_period_money` entry point. Its
+projection reads revenue from the signed posted basis plus engine posting intents
+in the requested posting period; a prior origin period does not move the posting.
+Contract liability and contract asset plus unbilled receivable come from the selected
+period's engine balance rows. Transaction and functional currency views use the
+retained currency scale and exact fractions. Scope, currency, duplicate balance
+identities and missing money values are checked; schedules are not used as revenue.
+
+The real-engine late-invoice case now runs through this adapter. Fifteen focused
+checks pass, including signed posted/intent arithmetic and refusal cases; Ruff and
+Mypy pass. This still is not the report/job pipeline. Dated RPO, authorized retained
+source selection, reference/FX/membership/posting-basis replay and report/UI remain
+open. No missing report builder is newly registered; no deployment or full financial
+acceptance is claimed.

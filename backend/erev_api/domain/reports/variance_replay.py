@@ -14,7 +14,7 @@ from dataclasses import dataclass, fields, replace
 from datetime import date
 from fractions import Fraction
 from itertools import groupby
-from typing import Final
+from typing import Final, Literal
 
 from erev_engine import ENGINE_VERSION, compute
 from erev_engine.bundle import EventInput, InputBundle, OutputBundle
@@ -23,6 +23,7 @@ from erev_engine.stages.s15_disclosures.variance import Decomposition, Evaluatio
 from erev_api.problems import Problem
 
 from .variance_measures import MeasureKey
+from .variance_projection import MEASURES, Projection
 
 type Metrics = Mapping[MeasureKey, Fraction]
 type Project = Callable[[OutputBundle], Metrics]
@@ -192,3 +193,36 @@ def replay_events(
             raise _refuse("driver effects do not reconcile to the frozen change.")
         measures[key] = result
     return Replay(ENGINE_VERSION, tuple(executions), measures)
+
+
+def replay_period_money(
+    before: InputBundle,
+    after: InputBundle,
+    *,
+    entity_code: str,
+    book_code: str,
+    period_key: str,
+    earlier_metrics: Metrics,
+    later_metrics: Metrics,
+    currency_view: Literal["transaction", "functional"] = "transaction",
+    engine: Engine = compute,
+) -> Replay:
+    """Revenue and balance replay with the real fixed-period projection.
+
+    RPO is not yet supported by this adapter; passing it refuses rather than
+    silently omitting a requested measure from the decomposition.
+    """
+    if any(key.measure not in MEASURES for key in earlier_metrics.keys() | later_metrics.keys()):
+        raise _refuse("this projection supports revenue and balances; dated RPO is still required.")
+    projection = Projection(before, entity_code, book_code, period_key, currency_view)
+    entity = next(item for item in before.entities if item.code == entity_code)
+    period_end = next(item.end_date for item in entity.periods if item.period_key == period_key)
+    return replay_events(
+        before,
+        after,
+        earlier_period_end=period_end,
+        earlier_metrics=earlier_metrics,
+        later_metrics=later_metrics,
+        project=projection,
+        engine=engine,
+    )

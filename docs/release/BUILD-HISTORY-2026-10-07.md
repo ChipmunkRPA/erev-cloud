@@ -6595,3 +6595,14 @@ cleanup in the shared database session kernel was also repaired and regression-t
   recorded-time incremental output from commit-time change capture.
 - Reporting remains open: 11 missing builders, three of them extracts. Locked datasets,
   watermark defaults, true-up and live browser acceptance remain unfinished. No deployment.
+
+## Legacy Contract_Live BI extract — October 19, 2026
+
+- Added extract_legacy_contract_live v1 over all effective dates of ASC606 history with
+  creation/source cutoffs and incremental row selection. Other books are refused explicitly.
+- Preserved the 71-column formatter and original exact trace texts. Retained current and
+  predecessor inputs supply reruns without querying today's history. CSV/JSON metadata and
+  source contracts are registered; migration 0172 reconciles disclosed query sources.
+- Actual API checks match the existing legacy history output and verify CSV hash and rerun;
+  evidence is in CI-2026-10-19.md. Ten builders remain missing, including contract and journal
+  extracts. Locked datasets, watermarks, true-up and browser acceptance remain open.

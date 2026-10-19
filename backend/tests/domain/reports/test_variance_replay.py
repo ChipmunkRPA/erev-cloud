@@ -8,10 +8,17 @@ from typing import cast
 
 import pytest
 from erev_api.domain.reports.variance_measures import MeasureKey
-from erev_api.domain.reports.variance_replay import replay_events
+from erev_api.domain.reports.variance_projection import Projection
+from erev_api.domain.reports.variance_replay import replay_events, replay_period_money
 from erev_api.problems import Problem
 from erev_engine import compute
-from erev_engine.bundle import InputBundle, OutputBundle
+from erev_engine.bundle import (
+    InputBundle,
+    IntentLine,
+    OutputBundle,
+    PostedAmountInput,
+    PostingIntent,
+)
 from erev_engine.canonical import sha256_hex
 from support import golden_streams
 
@@ -68,13 +75,14 @@ def test_real_engine_replays_one_maximal_run_and_retains_event_provenance() -> N
         calls.append(bundle)
         return compute(bundle)
 
-    result = replay_events(
+    result = replay_period_money(
         before,
         after,
-        earlier_period_end=date(2023, 4, 30),
+        entity_code="Mock Entity 2",
+        book_code="ASC606",
+        period_key="FY2023-P04",
         earlier_metrics={KEY: Fraction(20)},
         later_metrics={KEY: Fraction(170)},
-        project=_project,
         engine=engine,
     )
     assert len(calls) == 3  # baseline, time, one run of two late billing events
@@ -89,6 +97,104 @@ def test_real_engine_replays_one_maximal_run_and_retains_event_provenance() -> N
     assert decomposition.sums_exactly
     assert result.executions[-1].input_sha256 == calls[-1].sha256()
     assert len(result.executions[-1].output_sha256) == 64
+
+
+def test_projection_uses_posting_period_and_signed_revenue_without_double_counting() -> None:
+    basis, _ = _pair()
+    output = compute(basis)
+    book = output.books[0]
+    subject = book.obligation_versions[0].subject_key
+    posted = PostedAmountInput(
+        book_code="ASC606",
+        entity_code="Mock Entity 2",
+        subject_key=subject,
+        entry_kind="REVENUE",
+        account_role="REVENUE",
+        clearing_purpose=None,
+        counterparty_entity_code=None,
+        period_key="FY2023-P04",
+        origin_period_key=None,
+        posting_class="TIME",
+        txn_currency="USD",
+        functional_currency="USD",
+        amount_txn=-10000,
+        amount_functional=-10000,
+    )
+    basis = replace(basis, posted=(posted,))
+    revenue_line = IntentLine(
+        line_key="credit:revenue",
+        side="C",
+        account_role="REVENUE",
+        clearing_purpose=None,
+        counterparty_entity=None,
+        account_code="4000",
+        amount_txn=5000,
+        amount_functional=5000,
+        txn_currency="USD",
+        functional_currency="USD",
+        dimensions={},
+        source_event_key=None,
+        trace_node_id="projection-test:revenue",
+    )
+    credit = PostingIntent(
+        entry_key="credit",
+        book_code="ASC606",
+        entity="Mock Entity 2",
+        subject_key=subject,
+        entry_kind="REVENUE",
+        posting_class="TIME",
+        reason_code=None,
+        posting_period_key="FY2023-P04",
+        origin_period_key=None,
+        lines=(revenue_line,),
+    )
+    reversal = replace(
+        credit,
+        entry_key="reversal",
+        origin_period_key="FY2023-P03",
+        lines=(replace(credit.lines[0], side="D", amount_txn=2000, amount_functional=2000),),
+    )
+    later = replace(credit, entry_key="later", posting_period_key="FY2023-P05")
+    output = replace(output, books=(replace(book, posting_intents=(credit, reversal, later)),))
+    projection = Projection(basis, "Mock Entity 2", "ASC606", "FY2023-P04")
+    revenue = MeasureKey("Contract 2", "USD", "REVENUE")
+    assert projection(output)[revenue] == Fraction(130)  # 100 posted + 50 credit - 20 debit
+    assert replace(projection, currency_view="functional")(output)[revenue] == Fraction(130)
+
+
+@pytest.mark.parametrize("fault", ["duplicate", "missing_amount", "currency", "entity"])
+def test_projection_refuses_inconsistent_balance_rows(fault: str) -> None:
+    basis, _ = _pair()
+    output = compute(basis)
+    book = output.books[0]
+    row = next(row for row in book.balances if row.period_key == "FY2023-P04")
+    others = tuple(item for item in book.balances if item is not row)
+    columns = dict(row.columns)
+    if fault == "missing_amount":
+        del columns["contract_liability_txn"]
+    elif fault == "currency":
+        columns["txn_currency"] = "EUR"
+    elif fault == "entity":
+        columns["entity"] = "ANOTHER"
+    changed = replace(row, columns=columns)
+    balances = (*others, changed, changed) if fault == "duplicate" else (*others, changed)
+    output = replace(output, books=(replace(book, balances=balances),))
+    with pytest.raises(Problem):
+        Projection(basis, "Mock Entity 2", "ASC606", "FY2023-P04")(output)
+
+
+def test_period_money_adapter_refuses_unimplemented_rpo_projection() -> None:
+    before, after = _pair()
+    with pytest.raises(Problem, match="dated RPO"):
+        replay_period_money(
+            before,
+            after,
+            entity_code="Mock Entity 2",
+            book_code="ASC606",
+            period_key="FY2023-P04",
+            earlier_metrics={},
+            later_metrics={MeasureKey("Contract 2", "USD", "RPO"): Fraction(1)},
+        )
 
 
 @pytest.mark.parametrize("endpoint", ["earlier", "later"])

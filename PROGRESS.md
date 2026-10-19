@@ -2,6 +2,18 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Fixed-period variance revenue/balance projection — October 19, 2026
+
+- Connected event replay to a server-owned monetary projection for recognized revenue, contract
+  liability and contract asset plus unbilled receivable. Revenue is signed posted basis plus
+  posting intents in the selected posting period; schedules never substitute for revenue.
+- Transaction/functional views use exact minor-unit conversion. Missing monetary values,
+  inconsistent currencies, unknown subjects and duplicate balance identities refuse.
+- Real-engine late-invoice replay now uses this adapter. Fifteen focused checks, Ruff and
+  Mypy pass. Dated RPO is explicitly unsupported by this entry point, not silently omitted.
+- Retained source loading, RPO projection, other replay phases and report/job/UI integration
+  remain required. Seven missing report builders remain unregistered. No deployment/readiness claim.
+
 ## Event-only close variance replay — October 19, 2026
 
 - Added the DRY_RUN execution core: ENG-06 event order, maximal driver runs, separate time
@@ -216,17 +228,6 @@
 - Real API cancellation, historical reads, CSV hash, totals and rerun checks pass. Evidence is
   in CI-2026-10-19.md. Nine builders remain missing, including the contract extract; locked
   datasets, watermarks, true-up and browser acceptance remain unfinished. No deployment.
-
-## Legacy Contract_Live BI extract — October 19, 2026
-
-- Added extract_legacy_contract_live v1 over all effective dates of ASC606 history with
-  creation/source cutoffs and incremental row selection. Other books are refused explicitly.
-- Preserved the 71-column formatter and original exact trace texts. Retained current and
-  predecessor inputs supply reruns without querying today's history. CSV/JSON metadata and
-  source contracts are registered; migration 0172 reconciles disclosed query sources.
-- Actual API checks match the existing legacy history output and verify CSV hash and rerun;
-  evidence is in CI-2026-10-19.md. Ten builders remain missing, including contract and journal
-  extracts. Locked datasets, watermarks, true-up and browser acceptance remain open.
 
 ## Outstanding release verification
 
