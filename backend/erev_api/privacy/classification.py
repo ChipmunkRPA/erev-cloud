@@ -1263,7 +1263,6 @@ TABLES: Final[tuple[TableClassification, ...]] = (
             ),
             R03: _cols("book_code unresolved_origin_period_keys reason"),
         },
-        status=Status.PENDING,
     ),
     # ---- REF tables (04 T-REF-nn)
     _table(

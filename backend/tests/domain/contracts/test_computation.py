@@ -2909,6 +2909,119 @@ def test_validation_fanout_runs_frozen_match_and_no_source(
         assert not uow.audit_events
         assert uow.session.scalar(select(func.count()).select_from(file_object)) == count
 
+    from erev_api.db import new_id
+    from erev_api.db.tables import release_group_processing
+    from sqlalchemy.exc import DBAPIError
+
+    # Schema probe: processing requires acceptance; the surrounding savepoint rolls it back.
+    with world.place.uow() as uow:
+        row = {
+            "tenant_id": world.place.tenant_id,
+            "id": new_id(),
+            "release_validation_id": validation_id,
+            "release_validation_attempt_id": frozen.id,
+            "combination_group_id": booked.combination_group["id"],
+            "entity_id": world.entity_id,
+            "book_code": "ASC606",
+            "seq": 1,
+            "upgrade_state": "PENDING",
+            "created_at": uow.now,
+            "created_by": uow.principal.id,
+            "created_by_kind": uow.principal.kind.value,
+        }
+        with pytest.raises(DBAPIError), uow.session.begin_nested():
+            uow.session.execute(insert(release_group_processing).values(**row))
+        savepoint = uow.session.begin_nested()
+        original_apply(
+            uow.session,
+            "release_validation",
+            validation_id,
+            to_status="PASSED",
+            expected_status="RUNNING",
+            set_values={"accepted_attempt_id": frozen.id, "enabled_at": uow.now},
+        )
+        uow.session.execute(insert(release_group_processing).values(**row))
+        with pytest.raises(DBAPIError), uow.session.begin_nested():
+            uow.session.execute(insert(release_group_processing).values(**{**row, "id": new_id()}))
+        with pytest.raises(DBAPIError), uow.session.begin_nested():
+            uow.session.execute(
+                update(release_group_processing)
+                .where(release_group_processing.c.id == row["id"])
+                .values(reason="rewritten")
+            )
+        source_computation = uow.session.scalar(
+            select(combination_group.c.head_computation_id).where(
+                combination_group.c.id == booked.combination_group["id"]
+            )
+        )
+        assert source_computation is not None
+        deferred = {
+            **row,
+            "id": new_id(),
+            "seq": 2,
+            "upgrade_state": "DEFERRED_NO_OPEN_PERIOD",
+            "contract_computation_id": source_computation,
+            "unresolved_origin_period_keys": ["FY2026-P01"],
+        }
+        with pytest.raises(DBAPIError), uow.session.begin_nested():
+            uow.session.execute(insert(release_group_processing).values(**{**deferred, "seq": 3}))
+        with pytest.raises(DBAPIError), uow.session.begin_nested():
+            uow.session.execute(
+                insert(release_group_processing).values(
+                    **{**deferred, "subledger_posting_ids": [new_id()]}
+                )
+            )
+        posting_ids = list(
+            uow.session.scalars(
+                select(subledger_posting.c.id).where(
+                    subledger_posting.c.contract_computation_id == source_computation,
+                    subledger_posting.c.book_code == "ASC606",
+                )
+            )
+        )
+        assert posting_ids
+        posting_probe = uow.session.begin_nested()
+        uow.session.execute(
+            insert(release_group_processing).values(
+                **{**deferred, "subledger_posting_ids": posting_ids}
+            )
+        )
+        # Resolving origins must preserve postings recorded during an earlier deferral.
+        with pytest.raises(DBAPIError), uow.session.begin_nested():
+            uow.session.execute(
+                insert(release_group_processing).values(**{**deferred, "id": new_id(), "seq": 3})
+            )
+        uow.session.execute(
+            insert(release_group_processing).values(
+                **{
+                    **deferred,
+                    "id": new_id(),
+                    "seq": 3,
+                    "upgrade_state": "POSTED",
+                    "subledger_posting_ids": posting_ids,
+                    "unresolved_origin_period_keys": [],
+                }
+            )
+        )
+        posting_probe.rollback()
+        uow.session.execute(insert(release_group_processing).values(**deferred))
+        settled = {
+            **deferred,
+            "id": new_id(),
+            "seq": 3,
+            "upgrade_state": "SETTLED_NO_POSTING",
+            "unresolved_origin_period_keys": [],
+            "reason": "NO_POSTING_DELTA",
+        }
+        uow.session.execute(insert(release_group_processing).values(**settled))
+        with pytest.raises(DBAPIError), uow.session.begin_nested():
+            uow.session.execute(
+                insert(release_group_processing).values(**{**settled, "id": new_id(), "seq": 4})
+            )
+        assert uow.session.scalar(select(func.count()).select_from(release_group_processing)) == 3
+        savepoint.rollback()
+        assert uow.session.scalar(select(func.count()).select_from(release_group_processing)) == 0
+
     from datetime import timedelta
 
     from erev_api.domain.contracts.upgrade_report import upgrade_validation_report

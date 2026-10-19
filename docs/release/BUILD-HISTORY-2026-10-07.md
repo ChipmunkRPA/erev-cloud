@@ -6189,3 +6189,13 @@ cleanup in the shared database session kernel was also repaired and regression-t
   transaction inventory now names the existing SCH-11 tenant-directory read; writes stay guarded.
 - Persistence tables, verification handler and same-group scheduler locking remain outstanding.
   Verification evidence is recorded in docs/release/CI-2026-10-15.md.
+
+## Durable scheduler execution locks — October 15, 2026
+
+- Job creation accepts an execution lock retained in immutable, reserved metadata. Every
+  dispatch reloads it, including retries and stranded-task recovery; handlers do not receive it.
+  A dispatch cannot replace the stored lock. Per-job waiting deduplication remains separate.
+- Database verification exercises the actual scheduler fetch function for same-group exclusion
+  and independent-group progress. Final results are recorded in docs/release/CI-2026-10-15.md.
+- Replay fan-out must supply verify:<group id>; persisted verification and its transactional
+  advisory lock remain outstanding. No replay handler is newly registered by this change.

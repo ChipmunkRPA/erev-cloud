@@ -55,7 +55,7 @@ def test_every_model_table_is_classified_exactly_once() -> None:
 
 
 def test_class_totals_and_reasons_are_pinned() -> None:
-    """The ruled classes over the 131 tables (130 of main + tenant_snapshot) and 28 pending."""
+    """The reviewed class census, including implemented and pending tables."""
     totals: dict[sd.SnapshotClass, int] = {}
     for rule in sd.RULES.values():
         totals[rule.snapshot_class] = totals.get(rule.snapshot_class, 0) + 1
@@ -65,7 +65,7 @@ def test_class_totals_and_reasons_are_pinned() -> None:
         # + modification (T-CON-06; CTR-17 / D-98 140, revision 0068)
         # + migration_population_version, migration_population_obligation (04 rev 1.60, F-LMG)
         sd.SnapshotClass.REPLAY_REFERENCE: 3,
-        sd.SnapshotClass.REGENERATED: 61,  # + release verification (0161)
+        sd.SnapshotClass.REGENERATED: 62,  # + release processing (0166)
         # + control_execution, migration_reconciliation_line,
         # subledger_line_event (T-SL-12, lane ENG-C6); + sync_run, external_id_map (DIN-12, 0072);
         # + audit_event_contract (T-PLT-48, revision 0101: the index of the sandbox's own events);
@@ -79,7 +79,8 @@ def test_class_totals_and_reasons_are_pinned() -> None:
     # (DIN-12, revision 0072)
     # Private contract navigation history is regenerated, never copied (0159).
     # AI call evidence and intents are regenerated per tenant (0147, 0150); never copied.
-    assert len(sd.PENDING) == 10
+    assert len(sd.PENDING) == 9
+    assert sd.RULES["release_group_processing"].snapshot_class is sd.SnapshotClass.REGENERATED
     for item in sd.PENDING.values():
         assert item.reason and item.lane
         assert item.planned is not sd.SnapshotClass.PENDING
@@ -1195,7 +1196,7 @@ def test_shared_keys_cover_every_shared_reference_and_build_the_manifest_block()
             assert any(
                 k.table == reference.table and reference.column in k.columns for k in sd.SHARED_KEYS
             ), reference
-    rows = {
+    rows: dict[str, list[dict[str, Any]]] = {
         "tenant_membership": [{"user_id": UUID(int=7)}, {"user_id": UUID(int=8)}],
         "contract": [{"transaction_currency": "USD"}, {"transaction_currency": "JPY"}],
         "fx_rate": [{"base_currency": "EUR", "quote_currency": "USD"}],
@@ -1811,7 +1812,7 @@ def test_excluded_identity_is_the_primary_key_within_the_tenant_scope() -> None:
     assert sd.identity_columns("contract") == ("id",)
     assert sd.identity_columns("tenant_currency") == ("currency_code",)
     role_kept, role_cut = UUID(int=1), UUID(int=2)
-    source = {
+    source: dict[str, list[dict[str, Any]]] = {
         "role": [{"id": role_kept}, {"id": role_cut}],
         "role_permission": [
             {"role_id": role_kept, "permission_code": "contract.read"},
@@ -1981,7 +1982,7 @@ def test_undeclared_array_reference_is_refused(monkeypatch: pytest.MonkeyPatch) 
 
 def test_array_elements_follow_kept_cut_absent_per_element() -> None:
     up_kept, up_cut, up_absent, batch = (UUID(int=n) for n in (1, 2, 3, 9))
-    source = {
+    source: dict[str, list[dict[str, Any]]] = {
         "import_upload": [{"id": up_kept}, {"id": up_cut}],
         "migration_batch": [{"id": batch, "import_upload_ids": [up_cut, up_kept, up_cut]}],
     }
@@ -2008,7 +2009,7 @@ def test_scope_arrays_keep_partial_scopes_and_refuse_complete_cuts() -> None:
     e_kept, e_cut, same, partial, complete, every = (UUID(int=n) for n in range(1, 7))
     assert sd.SCOPE_ARRAYS[("gl_account", "entity_ids")].empty_means_all is True
     assert sd.SCOPE_ARRAYS[("role_assignment", "entity_ids")].paired_flag == "is_all_entities"
-    source = {
+    source: dict[str, list[dict[str, Any]]] = {
         "legal_entity": [{"id": e_kept}, {"id": e_cut}],
         "gl_account": [
             {"id": same, "entity_ids": [e_kept]},
@@ -2054,7 +2055,7 @@ def test_a_requirement_array_that_loses_an_element_is_exported_unresolved() -> N
     # the two arrays that GRANT per element keep the rule of D-98 candidate 106a
     assert not sd.SCOPE_ARRAYS[("gl_account", "entity_ids")].every_element_required
     assert not sd.SCOPE_ARRAYS[("role_assignment", "entity_ids")].every_element_required
-    source = {
+    source: dict[str, list[dict[str, Any]]] = {
         "legal_entity": [{"id": e_kept}, {"id": e_cut}, {"id": e_other}],
         "import_upload": [
             {"id": whole, "named_entity_ids": [e_kept, e_other]},

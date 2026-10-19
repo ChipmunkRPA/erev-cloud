@@ -2,6 +2,18 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Upgrade processing event schema — October 19, 2026
+
+- Migration 0166 adds the tenant-isolated, append-only release_group_processing event log
+  per group/entity/book portion, reusing the existing processing-state enum. Its privacy
+  catalogue entry is reconciled with the implemented schema.
+- Guards require the accepted attempt of an enabled upgrade, valid initial portions,
+  sequential events, preserved prior postings and bound computation/posting evidence.
+  Outcome checks distinguish deferrals, posted portions and verified no-posting settlement.
+- Migration, database schema and lifecycle probes passed; details are in the dated CI record.
+  Automatic seeding, computation persistence, posting attribution and final acceptance remain
+  unfinished. No deployment or independent accounting sign-off occurred.
+
 ## Tenant population transaction fence — October 19, 2026
 
 - Migration 0165 adds shared transaction guards to writes on all 12 population-reader
@@ -258,16 +270,6 @@
   transaction. The lock lasts through commit/rollback, beyond the Python acquire block.
 - Verification results are recorded in docs/release/CI-2026-10-15.md. The database store and
   replay handler remain outstanding; the adapter is not yet wired to a production write path.
-
-## Durable scheduler execution locks — October 15, 2026
-
-- Job creation accepts an execution lock retained in immutable, reserved metadata. Every
-  dispatch reloads it, including retries and stranded-task recovery; handlers do not receive it.
-  A dispatch cannot replace the stored lock. Per-job waiting deduplication remains separate.
-- Database verification exercises the actual scheduler fetch function for same-group exclusion
-  and independent-group progress. Final results are recorded in docs/release/CI-2026-10-15.md.
-- Replay fan-out must supply verify:<group id>; persisted verification and its transactional
-  advisory lock remain outstanding. No replay handler is newly registered by this change.
 
 ## Outstanding release verification
 

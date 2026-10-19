@@ -8,8 +8,10 @@ from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from erev_api.db.tables import metadata
 from erev_api.db.tables.platform import _enum, _sc_c, _sc_m
 from erev_api.enums import (
+    BookCode,
     ComputationTrigger,
     ReleaseValidationStatus,
+    UpgradeProcessingState,
     ValidationAttemptStatus,
     ValidationGroupOrchestrationState,
     VerificationOutcome,
@@ -125,5 +127,27 @@ computation_verification: Final = sa.Table(
     sa.Column("attempt", sa.Integer(), nullable=False),
     sa.Column("duration_ms", sa.Integer(), nullable=False),
     sa.Column("problem", JSONB(none_as_null=True), nullable=True),
+    *_sc_c(),
+)
+
+
+release_group_processing: Final = sa.Table(
+    "release_group_processing",
+    metadata,
+    sa.Column("tenant_id", sa.Uuid(), primary_key=True),
+    sa.Column("id", sa.Uuid(), primary_key=True),
+    sa.Column("release_validation_id", sa.Uuid(), nullable=False),
+    sa.Column("release_validation_attempt_id", sa.Uuid(), nullable=False),
+    sa.Column("combination_group_id", sa.Uuid(), nullable=False),
+    sa.Column("entity_id", sa.Uuid(), nullable=False),
+    sa.Column("book_code", _enum(BookCode, "book_code"), nullable=False),
+    sa.Column("seq", sa.Integer(), nullable=False),
+    sa.Column(
+        "upgrade_state", _enum(UpgradeProcessingState, "upgrade_processing_state"), nullable=False
+    ),
+    sa.Column("contract_computation_id", sa.Uuid(), nullable=True),
+    sa.Column("subledger_posting_ids", ARRAY(sa.Uuid()), nullable=False),
+    sa.Column("unresolved_origin_period_keys", ARRAY(sa.Text()), nullable=False),
+    sa.Column("reason", sa.Text(), nullable=True),
     *_sc_c(),
 )

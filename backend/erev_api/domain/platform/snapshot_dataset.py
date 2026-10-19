@@ -406,6 +406,7 @@ RULES: Final[Mapping[str, TableRule]] = MappingProxyType(
         "release_validation": _regenerated(_K.DERIVED, "workspace release verification"),
         "release_validation_attempt": _regenerated(_K.DERIVED, "workspace release verification"),
         "release_validation_group": _regenerated(_K.DERIVED, "workspace release verification"),
+        "release_group_processing": _regenerated(_K.DERIVED, "workspace upgrade processing"),
         "computation_verification": _regenerated(_K.DERIVED, "workspace release verification"),
         "contract_computation": _regenerated(_K.DERIVED, "recomputed on load (SBX-04 RCP-19)"),
         "contract_version": _regenerated(_K.DERIVED, "recomputed on load (SBX-04)"),
@@ -547,7 +548,6 @@ PENDING: Final[Mapping[str, PendingTable]] = MappingProxyType(
             _pending("portfolio", _C.COPIED, _K.CONFIGURATION, "CTR", "portfolios (T-CON-21)"),
             _pending("portfolio_member", _C.COPIED, _K.CONFIGURATION, "CTR", "T-CON-22"),
             _pending("posting_attribution", _C.REGENERATED, _K.DERIVED, "REL", "T-SL-11"),
-            _pending("release_group_processing", _C.REGENERATED, _K.DERIVED, "REL", "T-PLT-46"),
             _pending(
                 "scenario",
                 _C.REGENERATED,

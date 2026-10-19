@@ -157,6 +157,7 @@ from erev_api.db.tables.reference import (  # noqa: E402
 )
 from erev_api.db.tables.release_verification import (  # noqa: E402
     computation_verification,
+    release_group_processing,
     release_validation,
     release_validation_attempt,
     release_validation_group,
@@ -195,6 +196,7 @@ from erev_api.db.tables.subledger import (  # noqa: E402
 __all__ = [
     "computation_verification",
     "release_validation_group",
+    "release_group_processing",
     "release_validation_attempt",
     "release_validation",
     "ai_call_intent",
