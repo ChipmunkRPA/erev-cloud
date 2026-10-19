@@ -2,6 +2,17 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Contract sample approvals and audit slice — October 19, 2026
+
+- Added cutoff-bound approval requests/decisions and deduplicated contract audit trails. Shared
+  audit events authorize every linked contract; approval content requires its whole entity scope.
+  Original decision hashes/MFA/delegation details are retained, credentials/contacts redacted.
+- Computation evidence now supplies SSP/template and override approval references. The real K01
+  journey verifies populated decisions/audit rows and combines them with events, allocation and
+  schedule evidence into a hash-verified archive. Ruff/Mypy pass.
+- This is a linked audit slice, not complete-chain verification. Journal/documents, source retention,
+  public jobs/read/download, PDF/XLSX and broader historical/multi-entity acceptance remain open.
+
 ## Contract sample computation evidence — October 19, 2026
 
 - Added immutable version history, allocation detail/trace and full schedule collection at
@@ -228,21 +239,6 @@
   the report is still unregistered. The viewer requires a saved forecast report and does not
   yet make one available through the UI. Revenue chart, actual-vs-forecast and both evidence
   packs remain unfinished. Production readiness and independent accounting acceptance remain open.
-
-## Forecast output download rendering — October 19, 2026
-
-- Added internal RPT-39 JSON, XLSX and CSV rendering from the captured five-section dataset.
-  XLSX uses the established workbook renderer with a contents page, five typed tables and
-  run metadata. CSV is a deterministic ZIP of five separate schemas plus a manifest with
-  each file's hash, byte count, controls and run stamp. JSON preserves section boundaries.
-- Exports carry scenario, input publication/version/hash, horizon and source cutoff. The
-  dataset hash accompanies XLSX/CSV output. Raw source evidence is not exposed. Scope,
-  missing sections, unsupported PDF and output-format visibility changes are refused;
-  format changes require a new capture so RPO election visibility is preserved.
-- Targeted renderer checks cover metadata, signed numeric money, safe literal contract text,
-  CSV file hashes and refusals. Real scenario capture-to-JSON and Ruff/Mypy also pass.
-  Durable report publication/download routes, forecast execution,
-  charts/UI, actual-vs-forecast and both evidence packs remain unfinished. No deployment.
 
 ## Outstanding release verification
 

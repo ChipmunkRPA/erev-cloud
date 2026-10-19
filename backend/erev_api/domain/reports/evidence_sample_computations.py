@@ -19,6 +19,7 @@ from sqlalchemy import or_, select
 from erev_api.auth.dependencies import require_for_entity
 from erev_api.db.session import system_entity_scope
 from erev_api.db.tables import (
+    approval_request,
     calc_trace,
     contract,
     contract_computation,
@@ -46,6 +47,7 @@ class SampleComputations:
     # Includes companion contracts and performing entities needed for whole-group evidence.
     contract_ids: tuple[UUID, ...]
     entity_ids: tuple[UUID, ...]
+    approval_request_ids: tuple[UUID, ...]
 
 
 def _invalid() -> Problem:
@@ -107,6 +109,8 @@ def collect(uow: UnitOfWork, selected: SourceSelection, *, as_of: date) -> Sampl
     entities: set[UUID] = set(selected.entity_ids)
     latest: dict[tuple[UUID, str], tuple[Any, ...]] = {}
     index = []
+    approval_ids: set[UUID] = set()
+    reference_ids: set[UUID] = set()
     for candidate in candidates:
         version = dict(candidate)
         version_id = version["id"]
@@ -259,6 +263,11 @@ def collect(uow: UnitOfWork, selected: SourceSelection, *, as_of: date) -> Sampl
             ):
                 raise _invalid()
         for obligation in obligations:
+            for field in ("ssp_book_version_id", "pob_template_version_id"):
+                if obligation.get(field) is not None:
+                    reference_ids.add(obligation[field])
+            if obligation.get("ssp_override_approval_request_id") is not None:
+                approval_ids.add(obligation["ssp_override_approval_request_id"])
             if not set(obligation["trace_nodes"].values()) <= node_ids:
                 raise _invalid()
         prefix = f"computations/{version_id}"
@@ -320,6 +329,20 @@ def collect(uow: UnitOfWork, selected: SourceSelection, *, as_of: date) -> Sampl
             ),
         ),
     )
+    if reference_ids:
+        approval_ids.update(
+            uow.session.execute(
+                select(approval_request.c.id).where(
+                    approval_request.c.tenant_id == tenant,
+                    approval_request.c.subject_id.in_(reference_ids),
+                    approval_request.c.submitted_at <= cutoff,
+                )
+            ).scalars()
+        )
     return SampleComputations(
-        tuple(files), tuple(version_ids), tuple(sorted(contracts)), tuple(sorted(entities))
+        tuple(files),
+        tuple(version_ids),
+        tuple(sorted(contracts)),
+        tuple(sorted(entities)),
+        tuple(sorted(approval_ids)),
     )

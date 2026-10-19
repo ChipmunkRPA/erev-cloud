@@ -5972,6 +5972,7 @@ def test_contract_sample_computation_evidence_keeps_trace_and_full_schedule(
     from erev_api.domain.reports import (
         evidence_archive,
         evidence_sample_computations,
+        evidence_sample_decisions,
         evidence_sample_events,
     )
     from erev_api.domain.reports.evidence_commands import PERMISSIONS
@@ -6003,7 +6004,28 @@ def test_contract_sample_computation_evidence_keeps_trace_and_full_schedule(
         schedule_data = files[f"{prefix}/schedule.json"]
         assert schedule_data["lines"]
         assert any(line["period_end_date"] > "2026-09-30" for line in schedule_data["lines"])
-        archive = evidence_archive.build((*events.files, *result.files))
+        decisions = evidence_sample_decisions.collect(
+            uow,
+            replace(
+                events.selection, contract_ids=result.contract_ids, entity_ids=result.entity_ids
+            ),
+            approval_request_ids=tuple(
+                set(events.approval_request_ids) | set(result.approval_request_ids)
+            ),
+        )
+        decision_files = {file.path: json.loads(file.content) for file in decisions.files}
+        assert result.approval_request_ids
+        assert decision_files["sample/approvals.json"]["decisions"]
+        assert all(
+            row["subject_content_sha256"]
+            for row in decision_files["sample/approvals.json"]["decisions"]
+        )
+        audit = decision_files["sample/audit.json"]
+        assert audit["events"]
+        sequences = [row["chain_seq"] for row in audit["events"]]
+        assert sequences == sorted(set(sequences))
+        assert audit["control_totals"]["row_count"] == len(audit["events"])
+        archive = evidence_archive.build((*events.files, *result.files, *decisions.files))
         evidence_archive.verify(archive.content, expected_manifest_sha256=archive.manifest_sha256)
         before = evidence_sample_computations.collect(uow, events.selection, as_of=date(2025, 1, 1))
         assert not before.version_ids
@@ -6013,3 +6035,5 @@ def test_contract_sample_computation_evidence_keeps_trace_and_full_schedule(
     with world.place.uow(denied) as uow:
         with pytest.raises(Problem):
             evidence_sample_computations.collect(uow, events.selection, as_of=request.as_of)
+        with pytest.raises(Problem):
+            evidence_sample_decisions.collect(uow, events.selection)

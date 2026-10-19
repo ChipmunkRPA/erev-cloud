@@ -10284,6 +10284,13 @@ Author BS-3. Uses CTR (PHASES §1 row 12). Indicative size 16 items; this phase 
   - **Gates:** GK-01 `make ci`; GK-03 `make openapi`
 
 - [ ] **RPS-16 Period evidence packs and contract sample packs.**
+  - October 19 approval/audit increment: sample computation sources identify referenced SSP,
+    template and override approvals. The decision collector reads requests/decisions at known-at,
+    preserves content hashes and decision metadata, and collects deduplicated linked audit events.
+    Shared-event companion contracts and complete approval entity scopes require current access.
+    The K01 command journey verifies populated decision/audit files in the combined archive.
+    This is not full-chain verification; broader historical/multi-entity acceptance, journals,
+    documents, durable source bindings, public job lifecycle and stamped rendering remain open.
   - October 19 computation-evidence increment: immutable historical versions, allocation detail,
     verified calculation DAGs and complete schedule populations can now be collected at a sample
     cutoff. Companion contracts are labelled; their contracting/performing entity permissions

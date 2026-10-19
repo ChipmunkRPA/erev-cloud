@@ -7666,3 +7666,18 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Still unfinished: forecast-run API/worker, durable report publication and exports, chart/UI,
   actual-vs-forecast, contract sample pack and period evidence pack. This internal assembly
   is not yet a registered report and does not establish production readiness.
+
+## Forecast output download rendering — October 19, 2026
+
+- Added internal RPT-39 JSON, XLSX and CSV rendering from the captured five-section dataset.
+  XLSX uses the established workbook renderer with a contents page, five typed tables and
+  run metadata. CSV is a deterministic ZIP of five separate schemas plus a manifest with
+  each file's hash, byte count, controls and run stamp. JSON preserves section boundaries.
+- Exports carry scenario, input publication/version/hash, horizon and source cutoff. The
+  dataset hash accompanies XLSX/CSV output. Raw source evidence is not exposed. Scope,
+  missing sections, unsupported PDF and output-format visibility changes are refused;
+  format changes require a new capture so RPO election visibility is preserved.
+- Targeted renderer checks cover metadata, signed numeric money, safe literal contract text,
+  CSV file hashes and refusals. Real scenario capture-to-JSON and Ruff/Mypy also pass.
+  Durable report publication/download routes, forecast execution,
+  charts/UI, actual-vs-forecast and both evidence packs remain unfinished. No deployment.
