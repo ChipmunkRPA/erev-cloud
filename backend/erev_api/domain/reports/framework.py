@@ -163,6 +163,7 @@ from erev_api.domain.reports.builders import disaggregation as disaggregation_bu
 from erev_api.domain.reports.builders import (
     estimate_change_listing as estimate_change_listing_builder,
 )
+from erev_api.domain.reports.builders import extract_balances as extract_balances_builder
 from erev_api.domain.reports.builders import extract_contract_versions as extract_versions_builder
 from erev_api.domain.reports.builders import extract_events as extract_events_builder
 from erev_api.domain.reports.builders import extract_obligations as extract_obligations_builder
@@ -356,6 +357,7 @@ _DATE: Final = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}$")
 BUILDERS: Final[Mapping[str, Builder]] = MappingProxyType(
     {
         extract_versions_builder.CODE: extract_versions_builder.build,
+        extract_balances_builder.CODE: extract_balances_builder.build,
         extract_schedule_builder.CODE: extract_schedule_builder.build,
         extract_obligations_builder.CODE: extract_obligations_builder.build,
         extract_events_builder.CODE: extract_events_builder.build,
@@ -570,6 +572,10 @@ SOURCE_CONTRACTS: Final[Mapping[str, SourceContract]] = MappingProxyType(
         extract_versions_builder.CODE: SourceContract(
             RETAINED,
             (_CUTOFF, "version source records and original computation membership"),
+        ),
+        extract_balances_builder.CODE: SourceContract(
+            RETAINED,
+            (_CUTOFF, "latest per-contract balances with contract and entity identifiers"),
         ),
         extract_schedule_builder.CODE: SourceContract(
             RETAINED,
@@ -839,6 +845,7 @@ assert set(SOURCE_CONTRACTS) == set(BUILDERS), (
 PARAMETER_DEFAULTS: Final[Mapping[str, Mapping[str, Any]]] = MappingProxyType(
     {
         extract_versions_builder.CODE: MappingProxyType({"mode": "FULL"}),
+        extract_balances_builder.CODE: MappingProxyType({"mode": "FULL"}),
         extract_schedule_builder.CODE: MappingProxyType({"mode": "FULL"}),
         extract_obligations_builder.CODE: MappingProxyType({"mode": "FULL"}),
         extract_events_builder.CODE: MappingProxyType({"mode": "FULL"}),
@@ -1348,6 +1355,7 @@ def _resolve(
             extract_versions_builder.CODE,
             extract_obligations_builder.CODE,
             extract_schedule_builder.CODE,
+            extract_balances_builder.CODE,
         }
         and parameters.get("mode") == "INCREMENTAL"
     ):

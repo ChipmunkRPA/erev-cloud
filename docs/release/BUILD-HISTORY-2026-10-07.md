@@ -6314,3 +6314,12 @@ cleanup in the shared database session kernel was also repaired and regression-t
   comparison; input codec/source disagreement also fails as an integrity incident.
 - Legitimate cross-version comparison remains supported. Test evidence is in
   docs/release/CI-2026-10-15.md. Replay handler/fan-out and release admission remain unfinished.
+
+## Frozen replay evidence reader — October 15, 2026
+
+- Added a worker evidence reader bound to the persisted execution, running attempt and frozen
+  source. It checks tenant/task/release/scope before file access and never rebuilds missing input.
+- File metadata disagreement reaches the verifier as an integrity mismatch. Storage failures
+  propagate; acceptance still rechecks the head and attempt under locks.
+- Handler/fan-out, approval resolution and admission remain unfinished. Verification evidence
+  is recorded in docs/release/CI-2026-10-15.md.

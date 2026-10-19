@@ -2,6 +2,16 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Contract balance BI extract — October 19, 2026
+
+- Added extract_balances v1 over latest per-contract versions, scoped by balance entity.
+  Fixed columns preserve transaction/functional currency amounts, with contract/entity labels.
+- Registered full/incremental JSON/CSV delivery and retained-input reruns. Control totals group
+  contract liability, contract asset and unbilled receivable by functional currency. Existing
+  extract controls expose the report; the guide states field types and snapshot-delta semantics.
+- Reporting remains open: 12 missing builders, four of them extracts. Locked datasets,
+  automatic watermarks, true-up and live browser acceptance remain unfinished. No deployment.
+
 ## Schedule line BI extract — October 19, 2026
 
 - Added extract_schedule_lines v1 over latest per-contract versions, scoped by schedule entity,
@@ -251,15 +261,6 @@
 - NO_SOURCE records absence without execution. ERROR evidence stays unaccepted for scheduler
   retry handling; changed heads are refused at persistence. Verification is in the CI record.
 - Scheduler adapter/state transitions, fan-out, approval resolution and admission remain open.
-
-## Frozen replay evidence reader — October 15, 2026
-
-- Added a worker evidence reader bound to the persisted execution, running attempt and frozen
-  source. It checks tenant/task/release/scope before file access and never rebuilds missing input.
-- File metadata disagreement reaches the verifier as an integrity mismatch. Storage failures
-  propagate; acceptance still rechecks the head and attempt under locks.
-- Handler/fan-out, approval resolution and admission remain unfinished. Verification evidence
-  is recorded in docs/release/CI-2026-10-15.md.
 
 ## Outstanding release verification
 

@@ -153,15 +153,26 @@ def test_contract_version_extract_delivery(
     )
 
 
-@pytest.mark.parametrize("code", ["extract_obligations", "extract_schedule_lines"])
-def test_obligation_extract_latest_and_retained_sources(
+@pytest.mark.parametrize(
+    "code", ["extract_obligations", "extract_schedule_lines", "extract_balances"]
+)
+def test_latest_extracts_and_retained_sources(
     app: FastAPI, app_settings: Settings, clock: FrozenClock, keyring: KeyRing, code: str
 ) -> None:
     from datetime import date
     from decimal import Decimal
 
-    from erev_api.db.tables import contract, obligation_version, schedule_line
-    from erev_api.domain.reports.builders import extract_obligations, extract_schedule_lines
+    from erev_api.db.tables import (
+        contract,
+        contract_version_balance,
+        obligation_version,
+        schedule_line,
+    )
+    from erev_api.domain.reports.builders import (
+        extract_balances,
+        extract_obligations,
+        extract_schedule_lines,
+    )
     from erev_api.enums import ContractEventType
     from erev_api.events.payloads import BillingRecordedV1
     from erev_api.events.stream import EventIn
@@ -177,25 +188,35 @@ def test_obligation_extract_latest_and_retained_sources(
     params = {"entity_codes": [AVM_US], "book": "ASC606", "known_at": clock.now().isoformat()}
     original, rows = report_run(world, code, params)
     assert rows
-    table = obligation_version if code == "extract_obligations" else schedule_line
-    columns = (
-        extract_obligations.COLUMNS
-        if code == "extract_obligations"
-        else extract_schedule_lines.COLUMNS
-    )
+    table, columns, extra, totals = {
+        "extract_obligations": (
+            obligation_version,
+            extract_obligations.COLUMNS,
+            ["contract_external_id"],
+            ("allocated_amount", "revenue_cum"),
+        ),
+        "extract_schedule_lines": (
+            schedule_line,
+            extract_schedule_lines.COLUMNS,
+            ["contract_external_id", "period_key"],
+            ("amount",),
+        ),
+        "extract_balances": (
+            contract_version_balance,
+            extract_balances.COLUMNS,
+            ["contract_external_id", "entity_code"],
+            (
+                "contract_liability_functional",
+                "contract_asset_functional",
+                "unbilled_receivable_functional",
+            ),
+        ),
+    }[code]
     expected_columns = [c.name for c in table.c if c.name not in {"tenant_id", "trace_nodes"}]
-    extra = (
-        ["contract_external_id"]
-        if code == "extract_obligations"
-        else ["contract_external_id", "period_key"]
-    )
     assert [col.key for col in columns] == [*expected_columns, *extra]
     data = get(app, f"{REPORT_RUNS}/{original['id']}/output", world.maya).json()
     assert data["control_totals"]["by_currency"]["USD"] == {
-        key: str(sum((Decimal(row[key]) for row in rows), Decimal(0)))
-        for key in (
-            ("allocated_amount", "revenue_cum") if code == "extract_obligations" else ("amount",)
-        )
+        key: str(sum((Decimal(row[key]) for row in rows), Decimal(0))) for key in totals
     }
     booked = world.contracts[K01]
     cid = UUID(str(booked.contract["id"]))

@@ -1,5 +1,13 @@
 # eRev Cloud 1.0: stated limits of the release
 
+October 19 balance reporting continuation: `extract_balances` now exports latest per-contract
+balance rows with entity/contract labels, full/incremental source windows and retained-source
+reruns. Contract-liability, contract-asset and unbilled-receivable control totals are grouped
+by functional currency. There are now 12 catalogue definitions without builders (also remove
+extract_balances from earlier lists). Four extract builders, lock snapshots, automatic
+watermarks, true-up reporting and live browser acceptance remain unfinished.
+
+
 October 19 schedule reporting continuation: `extract_schedule_lines` now exports latest
 per-contract schedule rows with line-entity scope, period labels, precise values, per-currency
 amount totals and retained-source reruns. There are now 13 catalogue definitions without

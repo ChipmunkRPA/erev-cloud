@@ -270,9 +270,9 @@ Dataset schemas, version 1 (the table ids are those of the data model, `docs/04-
 | `extract_events` | Contract events recorded at or before the source time (T-CON-05) | Every column except `tenant_id`; `payload` as canonical JSON | `row_count` |
 | `extract_legacy_contract_live` | Legacy history rows over all dates (04 §17.1 rule 1) | The 71 legacy `Contract_Live` columns of 04 §17.2, in legacy order, with the legacy export format rules | `row_count` |
 
-Status at this revision: `extract_events`, `extract_contract_versions`, `extract_obligations` and `extract_schedule_lines`
-produce JSON and CSV through the report page and API. The other five definitions remain
-catalogue contracts without builders. Parquet extracts and
+Status at this revision: `extract_events`, `extract_contract_versions`, `extract_obligations`, `extract_schedule_lines`
+and `extract_balances` produce JSON and CSV through the report page and API. The other four
+definitions remain catalogue contracts without builders. Parquet extracts and
 as-locked extract datasets remain unimplemented; supplying a lock is refused, never replaced
 with live data.
 
@@ -362,6 +362,26 @@ by contract external ID, period end and line ID. Row identity includes period en
 because the source table is partitioned. Control totals contain `row_count` and `by_currency`,
 with an `amount` sum for each currency. CSV and JSON use dataset schema version 1. Lock
 snapshots and automatic previous-run watermarks remain unavailable.
+
+
+#### Contract balance extract
+
+`extract_balances` reads the latest per-contract version in the selected book and exports the
+balance rows for the selected entities. Every T-CON-09 column except `tenant_id` is included,
+in table order, followed by `contract_external_id` and `entity_code`. Transaction and functional
+currency codes remain separate. All balance amounts are exact decimal strings; `created_at`
+is a UTC ISO timestamp; the remaining identifiers, codes and actor kind are strings.
+
+Control totals include `row_count` and `by_currency`, grouped by **functional currency**.
+Each currency holds separate `contract_liability_functional`, `contract_asset_functional`
+and `unbilled_receivable_functional` sums. These are totals of the persisted balances, without
+new currency translation. Rows sort by contract external ID, entity code and balance-row ID.
+
+Full mode uses the source instant for version known/created time and balance creation time;
+incremental mode further requires balance creation after `known_since`. The result is a latest
+snapshot delta, not a deletion feed or a journal movement report. Re-runs preserve original
+balance values and labels through retained source records. CSV and JSON use schema version 1.
+Lock snapshots and automatic previous-run watermarks remain unavailable.
 
 
 ### Evidence packs
