@@ -7,7 +7,7 @@ import uuid
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from erev_api.enums import BookCode
 from erev_api.schemas.common import ContextOut, MoneyOut, RefOut
@@ -51,6 +51,7 @@ class ExplainCellContributorOut(BaseModel):
     measure: str
     value: MoneyOut
     href: str
+    details: list[str] = Field(default_factory=list)
 
 
 class ExplainCellContributorsOut(BaseModel):

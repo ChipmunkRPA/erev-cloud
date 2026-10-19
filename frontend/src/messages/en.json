@@ -7427,5 +7427,15 @@
   "ai.narrative.unavailable": "This proposed explanation is not available for this trace.",
   "ai.narrative.failed": "No proposed narrative was retained. The calculation trace remains authoritative.",
   "ai.narrative.source": "Trace node {node}",
-  "ai.narrative.status": "Proposal status: {status}"
+  "ai.narrative.status": "Proposal status: {status}",
+  "reports.column.variance.change": "Change",
+  "reports.column.variance.currency": "Currency",
+  "reports.column.variance.driver_label": "Driver",
+  "reports.column.variance.earlier_value": "Earlier lock",
+  "reports.column.variance.later_value": "Later lock",
+  "reports.column.variance.measure_label": "Measure",
+  "reports.column.variance.scope": "Scope",
+  "reports.explain.object.contract": "Contract",
+  "reports.section.variance.1": "Change by driver",
+  "reports.section.variance.2": "Changes by contract"
 }

@@ -1030,6 +1030,7 @@ CELL_EXPLAINERS: Final[Mapping[str, CellExplainer]] = MappingProxyType(
         rpo_builder.CODE: rpo_builder.cell,
         loss_provision_register_builder.CODE: loss_provision_register_builder.cell,
         bbr_builder.CODE: bbr_builder.cell,
+        variance_builder.CODE: variance_builder.cell,
     }
 )
 NO_CELL_EXPLAINER: Final = "The cells of this report name no contributors."
@@ -2351,7 +2352,11 @@ def run_report(jc: JobContext, params: Mapping[str, Any]) -> JobOutcome:
             # replay of saved output, so a calculation change still shows as a CTL-029 mismatch.
             build_params = report_params(run)
             contract = SOURCE_CONTRACTS[str(run["report_code"])]
-            collector = SourceCollector() if build_params.binding is None else None
+            collector = (
+                SourceCollector()
+                if build_params.binding is None or str(run["report_code"]) == variance_builder.CODE
+                else None
+            )
             data = builder(
                 uow,
                 replace(
@@ -2834,6 +2839,8 @@ def _reach_statement(kind: str, ids: Sequence[UUID]) -> Select[tuple[UUID, UUID]
     (``explain.service``): a schedule line and a subledger line by the line's entity, an
     obligation version by its contract's row, the contracting entity. A kind without a rule is
     refused, so that a new contributor kind is never named before its reach is stated."""
+    if kind == "contract":
+        return select(contract.c.id, contract.c.contracting_entity_id).where(contract.c.id.in_(ids))
     if kind == "contract_event":
         return select(contract_event.c.id, contract_event.c.contracting_entity_id).where(
             contract_event.c.id.in_(ids)

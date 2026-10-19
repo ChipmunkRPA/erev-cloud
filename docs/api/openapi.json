@@ -14136,6 +14136,13 @@
       "ExplainCellContributorOut": {
         "description": "One record behind a report cell (04 §16.11 ``GET /explain/report-runs/{id}/cell``).",
         "properties": {
+          "details": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Details",
+            "type": "array"
+          },
           "href": {
             "title": "Href",
             "type": "string"

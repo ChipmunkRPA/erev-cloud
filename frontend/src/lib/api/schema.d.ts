@@ -13518,6 +13518,8 @@ export interface components {
      * @description One record behind a report cell (04 §16.11 ``GET /explain/report-runs/{id}/cell``).
      */
     ExplainCellContributorOut: {
+      /** Details */
+      details?: string[];
       /** Href */
       href: string;
       /**

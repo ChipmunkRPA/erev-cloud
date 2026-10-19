@@ -571,7 +571,7 @@ def test_group_replay_reconciles_two_contracts_to_frozen_datasets() -> None:
 
     presentation = variance_presentation.dataset(pair, result)
     data = presentation.data
-    contract_rows = [row for row in data.rows if row["section"] == "Changes by contract"]
+    contract_rows = [row for row in data.rows if row["section"] == 2]
     assert len(contract_rows) == 6
     assert data.control_totals["USD:REVENUE"] == "117.68"
     assert data.control_totals["USD:RPO"] == "-117.68"
@@ -582,10 +582,11 @@ def test_group_replay_reconciles_two_contracts_to_frozen_datasets() -> None:
         assert evidence["earlier_source_rows"]
         assert evidence["later_source_rows"]
         assert evidence["effects"][-1]["event_keys"]
-    summary_rows = [row for row in data.rows if row["section"] == "Change by driver"]
+    summary_rows = [row for row in data.rows if row["section"] == 1]
     for row in summary_rows:
         assert len(presentation.evidence["contributors"][row["row_key"]]["contracts"]) == 2
     csv_output = render_csv(data)
+    assert b"Late events" in csv_output
     assert b"Change by driver" in csv_output
     assert b"-117.68" in csv_output
     stamp = RunStamp(
@@ -613,6 +614,88 @@ def test_group_replay_reconciles_two_contracts_to_frozen_datasets() -> None:
     assert str(pair.earlier.frozen.scope.lock_id).encode() in pdf
     assert str(pair.later.frozen.scope.lock_id).encode() in pdf
     assert canonical_bytes(presentation.evidence)
+    from types import SimpleNamespace
+    from typing import Any
+
+    from erev_api.domain.reports import variance_cells
+    from erev_api.domain.reports.builders import ADAPTER, ReportParams, SourceBinding
+    from sqlalchemy.orm import Session
+
+    sides: list[dict[str, Any]] = []
+    for source_side in (pair.earlier, pair.later):
+        sides.append(
+            {
+                "lock_id": str(source_side.frozen.scope.lock_id),
+                "contracts": {
+                    name: str(identity)
+                    for name, identity in source_side.contract_computations.items()
+                },
+                "computations": {
+                    str(identity): {
+                        "group_id": str(source.group_id),
+                        "input_sha256": source.bundle.sha256(),
+                        "output_sha256": source.output_sha256,
+                    }
+                    for identity, source in source_side.computations.items()
+                },
+            }
+        )
+    binding = SourceBinding(
+        cutoff=after.known_at,
+        versions={},
+        labels={},
+        row_keys=frozenset(row["row_key"] for row in data.rows),
+        strategy=ADAPTER,
+        report_version=1,
+        evidence={
+            "close_variance_sources": {
+                "version": 1,
+                "sides": sides,
+                "required_entity_ids": [str(entity_id)],
+            },
+            "close_variance_contributors": presentation.evidence,
+            "close_variance_evidence_sha256": sha256_hex(presentation.evidence),
+        },
+    )
+    params = ReportParams(
+        "variance_between_closes",
+        1,
+        {"from_period_lock_id": sides[0]["lock_id"], "to_period_lock_id": sides[1]["lock_id"]},
+        (entity_id,),
+        after.known_at,
+        book_code="ASC606",
+        binding=binding,
+    )
+    contract_ids = {name: uuid4() for name in pair.later.contract_computations}
+
+    class Lookup:
+        def execute(self, statement: Any) -> Any:
+            filters = statement.compile().params
+            name = filters["external_id_1"]
+            assert str(filters["contract_computation_id_1"]) == sides[1]["contracts"][name]
+            assert filters["book_code_1"] == "ASC606"
+            return SimpleNamespace(scalar_one_or_none=lambda: contract_ids[name])
+
+    for row in (*contract_rows, *summary_rows):
+        value, items = variance_cells.cell(
+            cast(Session, Lookup()), params, row["row_key"], "change"
+        )
+        assert value == row["change"]
+        assert sum((Fraction(item["value"]["amount"]) for item in items), Fraction(0)) == Fraction(
+            value["amount"]
+        )
+        assert all(item["object_type"] == "contract" for item in items)
+        assert all(any(detail.startswith("Event:") for detail in item["details"]) for item in items)
+    invalid = replace(
+        binding, evidence={**binding.evidence, "close_variance_evidence_sha256": "0" * 64}
+    )
+    with pytest.raises(Problem, match="contributors are unavailable"):
+        variance_cells.cell(
+            cast(Session, Lookup()),
+            replace(params, binding=invalid),
+            contract_rows[0]["row_key"],
+            "change",
+        )
     with pytest.raises(Problem, match="below the currency"):
         variance_presentation._money(Fraction(1, 1000), "USD")
     with pytest.raises(Problem, match="access scope"):

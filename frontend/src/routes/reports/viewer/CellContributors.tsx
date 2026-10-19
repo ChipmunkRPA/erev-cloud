@@ -32,7 +32,7 @@ export interface CellRequest {
 }
 
 function objectLabel(objectType: string): string {
-  return (EXPLAIN_OBJECT_TYPES.some((item) => item === objectType) || objectType === "contract_event" || objectType === "modification")
+  return (EXPLAIN_OBJECT_TYPES.some((item) => item === objectType) || objectType === "contract_event" || objectType === "modification" || objectType === "contract")
     ? t(`reports.explain.object.${objectType}`)
     : objectType;
 }
@@ -211,7 +211,12 @@ export function CellContributors({
                       </Button>
                     )}
                   </td>
-                  <td className="py-1 pe-2 text-fg-2">{measureLabel(contributor.measure)}</td>
+                  <td className="py-1 pe-2 text-fg-2">
+                    {measureLabel(contributor.measure)}
+                    {contributor.details?.map((detail) => (
+                      <div key={detail} className="mt-1 text-xs break-all">{detail}</div>
+                    ))}
+                  </td>
                   <td className="num py-1 text-end text-fg-1">
                     {formatMoney(contributor.value.amount, contributor.value.currency, {
                       variant: "cell",

@@ -6705,3 +6705,18 @@ cleanup in the shared database session kernel was also repaired and regression-t
   that foundation before a genuine output builder. No forecast implementation is claimed yet.
 - Seven report builders remain unregistered; count does not represent the size of the forecast
   subsystem work. Independent accounting sign-off and broad acceptance remain open. No deployment.
+
+## Forecast persistence foundation; reporting backlog retained — October 19, 2026
+
+- Migration 0176 adds scenario, versioned forecast_event_set, forecast_run and deal_preview,
+  with tenant-bound keys/RLS, sandbox guards, published-input freeze, terminal run freeze and
+  write-once preview save linkage. Privacy and snapshot inventories now include these tables.
+- This is schema groundwork only. Scenario creation/refresh APIs, input replay, forecast jobs,
+  output builders and UI remain unfinished; FCS-1 is not complete.
+- Reporting priorities remain: forecast_outputs, actual_vs_forecast, parallel_run_comparison,
+  variance_between_closes, contract_sample_pack, period_evidence_pack and disclosure_pack.
+  Separately, engine_trueup_register and existing-report acceptance gaps remain open.
+- Focused verification: PostgreSQL migration round trip and installed RLS/transition bodies pass;
+  database lint passes; privacy/snapshot checks: 76 passed. Architecture replay: 68 passed,
+  5 failed at the existing multiline CHECK parser in migration 0166, before 0176; not waived.
+- No deployment, forecast execution, financial acceptance or production-readiness claim.

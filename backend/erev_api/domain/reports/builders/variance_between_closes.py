@@ -14,6 +14,8 @@ from erev_api.problems import Problem
 from erev_api.uow import UnitOfWork
 
 if TYPE_CHECKING:
+    from sqlalchemy.orm import Session
+
     from erev_api.domain.reports import variance_presentation, variance_sources
     from erev_api.domain.reports.variance_replay import Engine
 
@@ -138,3 +140,11 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
             "close_variance_evidence_sha256", sha256_hex(result.presentation.evidence)
         )
     return result.presentation.data
+
+
+def cell(
+    session: Session, params: ReportParams, row_key: str, column_key: str
+) -> tuple[dict[str, str], list[dict[str, Any]]]:
+    from erev_api.domain.reports import variance_cells
+
+    return variance_cells.cell(session, params, row_key, column_key)

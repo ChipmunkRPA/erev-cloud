@@ -1,5 +1,14 @@
 # eRev Cloud 1.0: stated limits of the release
 
+October 19 variance cell/viewer update: Change cells now expose retained contract effects,
+events and lock/source-row references through optional plain-text contributor details. The
+viewer separates the two numeric sections; exports retain readable labels. Bound computation
+membership and source identity/hash/scope checks remain required. Same-source reruns refresh
+derived explanations. HTTP/DB cell and populated close/browser acceptance still need evidence;
+headers/empty states and broader reference/FX/population replay remain unfinished. Six catalogue
+builders remain unregistered. No deployment or production readiness claim.
+
+
 Current reporting update — October 19: variance_between_closes is now registered and runs
 through phased source loading, transaction-free computation and reauthorized output publication.
 Source-bound reruns recompute from original evidence. A seeded empty-lock workflow exercises

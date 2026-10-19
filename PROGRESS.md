@@ -2,6 +2,25 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Close variance cell explanations and viewer sections — October 19, 2026
+
+- Connected Change cells in both variance sections to retained contributor evidence. Contract
+  amounts reconcile exactly; identity/hash/scope checks bind them to original groups, and SQL
+  resolves contracts only through the retained computation/book. A run effect is not split into
+  invented per-event amounts. Current contributor visibility applies to contract records.
+- Added optional plain-text contributor details: contract name, drivers, event keys, both lock
+  IDs and source-row keys where available. The viewer links to internal contract history.
+  OpenAPI/client types are regenerated. Older evidence without cell facts refuses by name.
+- Fixed numeric section routing; exports retain readable section labels. Both sections expose
+  only Change as drillable and hide internal measure/driver fields. Reruns refresh derived
+  contributor evidence while still validating and recomputing the original source identities.
+- Real-engine replay/presentation suite: 25 passed, including cell arithmetic/hash refusal with
+  a lookup seam (not an HTTP/DB cell journey). Worker/rerun/permission-loss regression: 2 passed;
+  frontend variance/BBR checks: 3 passed. Mypy, tsc, Ruff, ESLint and make openapi pass.
+- Six catalogue builders remain unregistered. Populated close-to-report/cell browser acceptance,
+  headers/empty-state polish, broader reference/FX/population replay and accounting sign-off
+  remain open. No deployment or production readiness claim.
+
 ## Registered close variance worker — October 19, 2026
 
 - Registered variance_between_closes with an adapter source contract. Creation authorizes both
@@ -206,21 +225,6 @@
 - Scenario creation, archive, refresh, creator grants, event-set replay and forecast jobs are
   still absent. No browser workflow or refresh business acceptance claimed. Seven missing
   report builders and engine_trueup_register remain outstanding; no deployment.
-
-## Forecast persistence foundation; reporting backlog retained — October 19, 2026
-
-- Migration 0176 adds scenario, versioned forecast_event_set, forecast_run and deal_preview,
-  with tenant-bound keys/RLS, sandbox guards, published-input freeze, terminal run freeze and
-  write-once preview save linkage. Privacy and snapshot inventories now include these tables.
-- This is schema groundwork only. Scenario creation/refresh APIs, input replay, forecast jobs,
-  output builders and UI remain unfinished; FCS-1 is not complete.
-- Reporting priorities remain: forecast_outputs, actual_vs_forecast, parallel_run_comparison,
-  variance_between_closes, contract_sample_pack, period_evidence_pack and disclosure_pack.
-  Separately, engine_trueup_register and existing-report acceptance gaps remain open.
-- Focused verification: PostgreSQL migration round trip and installed RLS/transition bodies pass;
-  database lint passes; privacy/snapshot checks: 76 passed. Architecture replay: 68 passed,
-  5 failed at the existing multiline CHECK parser in migration 0166, before 0176; not waived.
-- No deployment, forecast execution, financial acceptance or production-readiness claim.
 
 ## Outstanding release verification
 

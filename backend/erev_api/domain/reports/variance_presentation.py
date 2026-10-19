@@ -37,7 +37,7 @@ DRIVER_LABELS: Final = {
     "OTHER": "Other",
 }
 COLUMNS: Final = (
-    Column("section", "Section", "text"),
+    Column("section_label", "Section", "text"),
     Column("measure_label", "Measure", "text"),
     Column("scope", "Scope", "code"),
     Column("currency", "Currency", "code"),
@@ -139,7 +139,8 @@ def dataset(pair: Pair, replay: variance_groups.GroupReplay) -> Presentation:
         rows.append(
             {
                 "row_key": row_key,
-                "section": "Changes by contract",
+                "section": 2,
+                "section_label": "Changes by contract",
                 "measure_label": LABELS[key.measure]
                 + (f", {scope.period_key}" if key.measure == "REVENUE" else ""),
                 "measure": key.measure,
@@ -153,6 +154,9 @@ def dataset(pair: Pair, replay: variance_groups.GroupReplay) -> Presentation:
             }
         )
         contributors[row_key] = {
+            "contract_external_id": key.contract_external_id,
+            "measure": key.measure,
+            "value": _money(change.total, key.currency),
             "group_id": group_id,
             "earlier_source_rows": list(before[key].source_rows) if key in before else [],
             "later_source_rows": list(after[key].source_rows) if key in after else [],
@@ -177,7 +181,8 @@ def dataset(pair: Pair, replay: variance_groups.GroupReplay) -> Presentation:
             summary.append(
                 {
                     "row_key": f"driver:{currency}:{measure}:{driver}",
-                    "section": "Change by driver",
+                    "section": 1,
+                    "section_label": "Change by driver",
                     "measure_label": LABELS[measure],
                     "measure": measure,
                     "scope": scope.entity_code,
@@ -192,7 +197,10 @@ def dataset(pair: Pair, replay: variance_groups.GroupReplay) -> Presentation:
     for row in summary:
         driver = row["driver"]
         contributors[row["row_key"]] = {
-            "contracts": driver_contributors[(row["currency"], row["measure"], driver)]
+            "measure": row["measure"],
+            "value": row["change"],
+            "driver": driver,
+            "contracts": driver_contributors[(row["currency"], row["measure"], driver)],
         }
     evidence: dict[str, Any] = {
         "format": "erev.close_variance_presentation.v1",

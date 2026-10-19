@@ -1,0 +1,153 @@
+"""Explain recorded variance contributions without recomputing under a read transaction."""
+
+from __future__ import annotations
+
+from fractions import Fraction
+from typing import Any
+from uuid import UUID
+
+from erev_engine.canonical import sha256_hex
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from erev_api.db.tables import contract, contract_version, obligation_version
+from erev_api.domain.reports.builders import ADAPTER, ReportParams
+from erev_api.problems import Problem
+
+from .variance_presentation import DRIVER_LABELS, LABELS, _money
+
+
+def _refuse() -> Problem:
+    return Problem(
+        "not-found", "Verified variance contributors are unavailable. Run the report again."
+    )
+
+
+def cell(
+    session: Session, params: ReportParams, row_key: str, column_key: str
+) -> tuple[dict[str, str], list[dict[str, Any]]]:
+    binding = params.binding
+    if (
+        column_key != "change"
+        or binding is None
+        or binding.strategy != ADAPTER
+        or params.report_code != "variance_between_closes"
+        or params.report_version != 1
+    ):
+        raise _refuse()
+    try:
+        evidence = binding.evidence["close_variance_contributors"]
+        identity = binding.evidence["close_variance_sources"]
+        if (
+            evidence["format"] != "erev.close_variance_presentation.v1"
+            or identity["version"] != 1
+            or binding.report_version != params.report_version
+            or sha256_hex(evidence) != binding.evidence["close_variance_evidence_sha256"]
+            or evidence["required_entity_ids"] != identity["required_entity_ids"]
+            or set(identity["required_entity_ids"]) != {str(item) for item in params.entity_ids}
+            or identity["sides"][0]["lock_id"] != params.parameters["from_period_lock_id"]
+            or identity["sides"][1]["lock_id"] != params.parameters["to_period_lock_id"]
+        ):
+            raise _refuse()
+        point = evidence["contributors"][row_key]
+        value = point["value"]
+        currency = value["currency"]
+        measure = point["measure"]
+        sources = point.get("contracts")
+        if sources is None:
+            sources = [
+                {
+                    "contract_external_id": point["contract_external_id"],
+                    "group_id": point["group_id"],
+                    "change": value,
+                    "event_keys": [
+                        key for effect in point["effects"] for key in effect["event_keys"]
+                    ],
+                }
+            ]
+            if sum(
+                (Fraction(effect["change"]["amount"]) for effect in point["effects"]), Fraction(0)
+            ) != Fraction(value["amount"]):
+                raise _refuse()
+        items = []
+        total = Fraction(0)
+        for source in sources:
+            name = source["contract_external_id"]
+            amount = Fraction(source["change"]["amount"])
+            if source["change"]["currency"] != currency:
+                raise _refuse()
+            group = evidence["groups"][source["group_id"]]
+            for index, side in enumerate(("earlier", "later")):
+                computation_id = identity["sides"][index]["contracts"][name]
+                original = identity["sides"][index]["computations"][computation_id]
+                if (
+                    group[side]["computation_id"] != computation_id
+                    or original["group_id"] != source["group_id"]
+                    or any(
+                        group[side][field] != original[field]
+                        for field in ("input_sha256", "output_sha256")
+                    )
+                ):
+                    raise _refuse()
+            found = session.execute(
+                select(contract.c.id)
+                .select_from(contract)
+                .join(
+                    obligation_version,
+                    (obligation_version.c.contract_id == contract.c.id)
+                    & (obligation_version.c.tenant_id == contract.c.tenant_id),
+                )
+                .join(
+                    contract_version,
+                    (contract_version.c.id == obligation_version.c.contract_version_id)
+                    & (contract_version.c.tenant_id == obligation_version.c.tenant_id),
+                )
+                .where(
+                    contract.c.external_id == name,
+                    contract_version.c.contract_computation_id
+                    == UUID(group["later"]["computation_id"]),
+                    contract_version.c.book_code == params.book_code,
+                )
+                .distinct()
+            ).scalar_one_or_none()
+            if found is None:
+                raise _refuse()
+            details = [
+                name,
+                f"Earlier lock: {identity['sides'][0]['lock_id']}",
+                f"Later lock: {identity['sides'][1]['lock_id']}",
+            ]
+            drivers = (
+                [point["driver"]]
+                if "driver" in point
+                else [
+                    effect["driver"]
+                    for effect in point["effects"]
+                    if Fraction(effect["change"]["amount"])
+                ]
+            )
+            details.append(
+                "Drivers: " + ", ".join(dict.fromkeys(DRIVER_LABELS[driver] for driver in drivers))
+            )
+            details.extend(f"Event: {key}" for key in source["event_keys"])
+            for side in ("earlier", "later"):
+                details.extend(
+                    f"{side.title()} source row: {key}"
+                    for key in point.get(f"{side}_source_rows", [])
+                )
+            items.append(
+                {
+                    "object_type": "contract",
+                    "id": found,
+                    "measure": LABELS[measure],
+                    "value": _money(amount, currency),
+                    "href": f"/contracts/{found}/history",
+                    "details": details,
+                }
+            )
+            total += amount
+        if total != Fraction(value["amount"]):
+            raise _refuse()
+        return _money(total, currency), items
+    except (KeyError, TypeError, ValueError, AttributeError, ZeroDivisionError) as error:
+        raise _refuse() from error

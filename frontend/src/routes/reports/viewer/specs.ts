@@ -526,6 +526,7 @@ export interface ReportSection {
 }
 
 const SECTION_HEADINGS: Readonly<Record<string, readonly string[]>> = {
+  variance_between_closes: ["reports.section.variance.1", "reports.section.variance.2"],
   rpo: ["reports.section.rpo.1", "reports.section.rpo.2"],
 };
 
@@ -712,6 +713,9 @@ export interface ColumnContext {
 }
 
 function headerOf(key: string, context: ColumnContext): string {
+  if (context.definition.code === "variance_between_closes") {
+    return t(`reports.column.variance.${key}`);
+  }
   if (key.startsWith(PERIOD_COLUMN_PREFIX)) {
     const [bucket = "", state] = key.slice(PERIOD_COLUMN_PREFIX.length).split(":");
     const label = bucketLabel(bucket, context.periods);
@@ -813,7 +817,8 @@ export function reportColumns(context: ColumnContext): ReportColumn[] {
   const kinds = new Map<string, ReportColumnKind>();
   for (const row of rows) {
     for (const [key, value] of Object.entries(row)) {
-      if (STRUCTURAL.has(key)) {
+      if (STRUCTURAL.has(key) || (definition.code === "variance_between_closes" &&
+        !["measure_label", "scope", "currency", "earlier_value", "later_value", "change", "driver_label"].includes(key))) {
         continue;
       }
       if (!keys.includes(key)) {
@@ -857,7 +862,8 @@ export function reportColumns(context: ColumnContext): ReportColumn[] {
       drillable:
         (drillable ||
           (definition.code === "loss_provision_register" && key === "provision_balance") ||
-          (definition.code === "bookings_billings_revenue" && ["booked_new", "booked_modifications", "billings", "revenue"].includes(key))) &&
+          (definition.code === "bookings_billings_revenue" && ["booked_new", "booked_modifications", "billings", "revenue"].includes(key)) ||
+          (definition.code === "variance_between_closes" && key === "change")) &&
         kind === "money",
     };
   });
