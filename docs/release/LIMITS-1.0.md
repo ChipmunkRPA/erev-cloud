@@ -2,8 +2,9 @@
 
 October 19 upgrade continuation: accepted upgrade computations now persist attribution and
 portion outcomes atomically with their postings, with retained-input integrity checks and
-idempotent replay. This does not complete upgrade admission: final acceptance, independent
-approval routing, the true-up register and runtime closed-period/rescheduling verification
+idempotent replay. Final acceptance and independent approval now have domain commands and existing approval
+API integration. Automatic release preparation/orchestration, baseline/bootstrap admission,
+the computation gate, true-up register and runtime closed-period/rescheduling verification
 remain open. Scoped evidence is in [the October 19 CI record](CI-2026-10-19.md).
 
 Historical subledger cutoff work (October 15): migration 0151 adds a database-owned

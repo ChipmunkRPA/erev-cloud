@@ -104,6 +104,7 @@ HANDLER_MODULES: Final[tuple[str, ...]] = (
     "erev_api.domain.policies.registry_versions",
     "erev_api.domain.contracts.compute_job",
     "erev_api.domain.contracts.replay_job",
+    "erev_api.domain.contracts.validation_acceptance",
     "erev_api.domain.imports.validate",
     "erev_api.domain.imports.diff",
     "erev_api.domain.imports.commit",

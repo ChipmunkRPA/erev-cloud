@@ -604,6 +604,7 @@
   "approvals.subjectType.CONTRACT_VOID": "Contract void",
   "approvals.subjectType.ESTIMATE_VERSION": "Estimate version",
   "approvals.subjectType.EVIDENCE_SHRED": "Evidence file shredding",
+  "approvals.subjectType.ENGINE_RELEASE_VALIDATION": "Engine release validation",
   "approvals.subjectType.EXCEPTION_WAIVER": "Exception waiver",
   "approvals.subjectType.FX_RATE_SET_VERSION": "FX rate set version",
   "approvals.subjectType.IMPORT_COMMIT": "Import commit",

@@ -76,6 +76,9 @@ READERS: Final[Mapping[str, Readers]] = MappingProxyType(
         # a document is read through the record that owns it (04 T-PLT-29), a legacy batch by the
         # migration's own permission for all entities
         ApprovalSubjectType.EVIDENCE_SHRED.value: ANY_PERMISSION,
+        ApprovalSubjectType.ENGINE_RELEASE_VALIDATION.value: frozenset(
+            {"report.run", "period.lock"}
+        ),
         ApprovalSubjectType.MIGRATION_SSP_REPLAY.value: ANY_PERMISSION,
         # configuration (04 §15.3: ``config.read``)
         ApprovalSubjectType.FX_RATE_SET_VERSION.value: _CONFIG_READ,

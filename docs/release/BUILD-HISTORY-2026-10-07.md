@@ -6238,3 +6238,23 @@ cleanup in the shared database session kernel was also repaired and regression-t
   job/settings database checks pass; exact evidence is in docs/release/CI-2026-10-15.md.
 - Ten AI command routes still lack audit catalogue/walk integration; the AI lifecycle category
   remains pending. The nine helper typing errors found during triage were resolved above.
+
+## Verification helper typing — October 15, 2026
+
+- Resolved all nine errors found by the explicit scan of five regression-test modules:
+  separate AST owner/callee variables, concrete row mappings, typed route traversal, and
+  explicit optional-value assertions. The approval-race test imports the helper from its
+  defining module and still patches the production call site.
+- Evidence is recorded in docs/release/CI-2026-10-15.md. AI audit catalogue and lifecycle-walk
+  integration remain the next known CI gap; full candidate verification is still outstanding.
+
+## AI command audit coverage — October 15, 2026
+
+- Registered all ten AI command routes and added real API scenarios to the shared audit walk:
+  settings author/test/submit/withdraw, extraction/explanation requests, proposal accept/reject,
+  and the workspace kill switch. Retained synthetic proposal evidence needs no provider call.
+- Draft acceptance exposed a missing computation-evidence audit classification; it now names
+  the source computation's contract members. Pending-category negative controls remain active
+  through a synthetic pending catalogue, with a separate missing-live-AI-evidence assertion.
+- Verification evidence is recorded in docs/release/CI-2026-10-15.md. Full candidate acceptance,
+  replay orchestration/release admission and independent accounting sign-off remain open.

@@ -9512,7 +9512,8 @@ export interface components {
       | "POLICY_OVERRIDE"
       | "MIGRATION_SSP_REPLAY"
       | "EVIDENCE_SHRED"
-      | "STEP1_EVENT";
+      | "STEP1_EVENT"
+      | "ENGINE_RELEASE_VALIDATION";
     /** ApprovalWithdrawIn */
     ApprovalWithdrawIn: {
       /** Comment */

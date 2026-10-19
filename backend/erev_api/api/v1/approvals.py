@@ -41,6 +41,9 @@ from erev_api.auth import mfa
 from erev_api.auth.dependencies import require_authenticated
 from erev_api.auth.principal import RequestContext
 from erev_api.db.tables import approval_delegation, approval_request
+from erev_api.domain.contracts import (
+    validation_acceptance,  # noqa: F401 — register approval callbacks
+)
 from erev_api.domain.platform import (
     approval_delegations,
     approval_queries,

@@ -164,6 +164,7 @@ TRANSITIONS: Final[Mapping[str, TableTransitions]] = MappingProxyType(
                     ("RUNNING", "PENDING_APPROVAL"),
                     ("INCOMPLETE", "RUNNING"),
                     ("PENDING_APPROVAL", "APPROVED"),
+                    ("PENDING_APPROVAL", "INCOMPLETE"),
                     ("PENDING_APPROVAL", "REJECTED"),
                 ]
             ),

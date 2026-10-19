@@ -242,8 +242,8 @@ In-process mock routes under `/api/v1/__mocks__/<adapter>` (D-72; DG-API-09): th
 | LMG | `MIGRATION_PROMOTION`, `MIGRATION_SSP_REPLAY` | `MIGRATION_IMPORT`, `MIGRATION_RECONCILE` | none | none |
 | FCS | none | `FORECAST_RUN`, `DEAL_PREVIEW` | none | none |
 | AIX | `AI_PROPOSAL_ACCEPTANCE`, `AI_SETTINGS_VERSION` | `AI_TASK` | none | none |
-| SOP | `EVIDENCE_SHRED` | `REPLAY_VERIFY` | none | none |
-| Totals | 32 of 32 E-08 values | 27 of 27 E-14 values | 4 of 4 E-70 values | 04 §14.3 complete after CLO |
+| SOP | `EVIDENCE_SHRED`, `ENGINE_RELEASE_VALIDATION` | `REPLAY_VERIFY` | none | none |
+| Totals | 35 of 35 E-08 values | 27 of 27 E-14 values | 4 of 4 E-70 values | 04 §14.3 complete after CLO |
 
 `PAYLOADS` covers every E-03 event type from the first CTR item that appends events. `JOB_QUEUE` equals the 05 §5.6 execution profile table from its creation in PLF.
 

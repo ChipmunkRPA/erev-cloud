@@ -236,11 +236,34 @@ def supersede(uow: UnitOfWork, *, validation_id: UUID, attempt_id: UUID) -> bool
     """Retire an unapproved attempt before freezing its replacement in the same transaction.
 
     Keep all frozen selections and results as evidence. Result writers take these same
-    parent/attempt locks and refuse new evidence after supersession. Approval-linked attempts
-    require the release approval workflow, which is not yet implemented, and fail closed here.
+    parent/attempt locks and refuse new evidence after supersession. Pending approval requests
+    are voided as STALE_SUBJECT in the same transaction.
     """
     if uow.principal.db_context.entity_scope != "*":
         raise Problem("forbidden", "Release validation requires the complete tenant population.")
+    # Match approval decisions' request -> parent -> attempt lock order.
+    from erev_api.approvals import engine as approvals
+    from erev_api.db.tables import approval_request
+    from erev_api.enums import ApprovalSubjectType
+
+    request_id = uow.session.scalar(
+        select(release_validation_attempt.c.approval_request_id).where(
+            release_validation_attempt.c.id == attempt_id,
+            release_validation_attempt.c.release_validation_id == validation_id,
+        )
+    )
+    if request_id is not None:
+        request = (
+            uow.session.execute(
+                select(approval_request)
+                .where(approval_request.c.id == request_id)
+                .with_for_update(nowait=True)
+            )
+            .mappings()
+            .one_or_none()
+        )
+        if request is None or request["status"] == "APPROVED":
+            raise Problem("invalid-transition")
     parent = (
         uow.session.execute(
             select(release_validation)
@@ -268,15 +291,16 @@ def supersede(uow: UnitOfWork, *, validation_id: UUID, attempt_id: UUID) -> bool
     )
     if parent is None or attempt is None:
         raise Problem("not-found")
+    if attempt["approval_request_id"] != request_id:
+        raise Problem("lock-conflict", "The approval changed before supersession; retry.")
     # A retry may arrive after its replacement completed; it cannot change historical evidence.
     if attempt["status"] == "SUPERSEDED":
         return False
     if (
         parent["effective_level"] not in {"MINOR", "MAJOR"}
-        or parent["status"] not in {"PENDING", "RUNNING", "INCOMPLETE"}
+        or parent["status"] not in {"PENDING", "RUNNING", "INCOMPLETE", "PENDING_APPROVAL"}
         or parent["enabled_at"] is not None
         or parent["accepted_attempt_id"] is not None
-        or attempt["approval_request_id"] is not None
         or attempt["status"] not in {"SELECTED", "RUNNING", "COMPLETE", "INCOMPLETE"}
     ):
         raise Problem(
@@ -296,6 +320,12 @@ def supersede(uow: UnitOfWork, *, validation_id: UUID, attempt_id: UUID) -> bool
             "updated_by_kind": uow.principal.kind.value,
         },
     )
+    if attempt["approval_request_id"] is not None:
+        approvals.void_if_stale(
+            uow,
+            subject_type=ApprovalSubjectType.ENGINE_RELEASE_VALIDATION,
+            subject_id=attempt_id,
+        )
     uow.audit(
         action="release_validation_attempt.supersede",
         object_type="release_validation_attempt",

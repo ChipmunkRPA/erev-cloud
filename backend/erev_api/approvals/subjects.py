@@ -194,6 +194,8 @@ from erev_api.db.tables import (
     policy_override,
     product,
     registry_version,
+    release_validation,
+    release_validation_attempt,
     role,
     role_assignment,
     role_permission,
@@ -4335,7 +4337,63 @@ def migration_ssp_replay_content(session: Session, batch_id: UUID) -> dict[str, 
     }
 
 
+def release_attempt_content(session: Session, attempt_id: UUID) -> Mapping[str, Any]:
+    row = (
+        session.execute(
+            select(release_validation_attempt).where(release_validation_attempt.c.id == attempt_id)
+        )
+        .mappings()
+        .one_or_none()
+    )
+    if row is None:
+        raise Problem("not-found")
+    parent = (
+        session.execute(
+            select(release_validation).where(
+                release_validation.c.id == row["release_validation_id"]
+            )
+        )
+        .mappings()
+        .one()
+    )
+    return {
+        "attempt_id": str(attempt_id),
+        "status": row["status"],
+        "validation_id": str(parent["id"]),
+        "engine_release_id": str(parent["engine_release_id"]),
+        "source_engine_release_id": None
+        if parent["source_engine_release_id"] is None
+        else str(parent["source_engine_release_id"]),
+        "effective_level": parent["effective_level"],
+        "population": row["population"],
+        "required_entity_ids": sorted(str(value) for value in row["required_entity_ids"]),
+        "dataset_file_id": None if row["dataset_file_id"] is None else str(row["dataset_file_id"]),
+        "dataset_sha256": row["dataset_sha256"],
+        "report_run_id": None if row["report_run_id"] is None else str(row["report_run_id"]),
+    }
+
+
+def release_attempt_entities(session: Session, attempt_id: UUID) -> SubjectEntities:
+    content = release_attempt_content(session, attempt_id)
+    return SubjectEntities(ids=frozenset(UUID(value) for value in content["required_entity_ids"]))
+
+
 SUBJECTS: Final[dict[ApprovalSubjectType, SubjectSpec]] = {
+    ApprovalSubjectType.ENGINE_RELEASE_VALIDATION: SubjectSpec(
+        subject_type=ApprovalSubjectType.ENGINE_RELEASE_VALIDATION,
+        table="release_validation_attempt",
+        required_permission="period.lock",
+        revenue_affecting=True,
+        min_approvers=1,
+        content=release_attempt_content,
+        entity_id=_tenant_level,
+        entities=release_attempt_entities,
+        amount_functional=lambda _session, _subject_id: None,
+        flags=lambda _session, _subject_id: frozenset(),
+        on_approved=_registered(ApprovalSubjectType.ENGINE_RELEASE_VALIDATION, "on_approved"),
+        on_rejected=_registered(ApprovalSubjectType.ENGINE_RELEASE_VALIDATION, "on_rejected"),
+        on_voided=_registered(ApprovalSubjectType.ENGINE_RELEASE_VALIDATION, "on_voided"),
+    ),
     ApprovalSubjectType.ROLE_ASSIGNMENT: SubjectSpec(
         subject_type=ApprovalSubjectType.ROLE_ASSIGNMENT,
         table="role_assignment",
@@ -5061,6 +5119,7 @@ SUBJECT_LABELS: Final[Mapping[ApprovalSubjectType, str]] = MappingProxyType(
         ApprovalSubjectType.POLICY_OVERRIDE: "Policy override",
         ApprovalSubjectType.MIGRATION_SSP_REPLAY: "Migration SSP replay",
         ApprovalSubjectType.EVIDENCE_SHRED: "Evidence file shredding",
+        ApprovalSubjectType.ENGINE_RELEASE_VALIDATION: "Engine release validation",
     }
 )
 

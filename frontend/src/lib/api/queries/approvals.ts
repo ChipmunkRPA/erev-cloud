@@ -151,6 +151,7 @@ export const SUBJECT_TYPES: readonly ApprovalSubjectType[] = [
   "MIGRATION_SSP_REPLAY",
   "EVIDENCE_SHRED",
   "STEP1_EVENT",
+  "ENGINE_RELEASE_VALIDATION",
 ];
 
 /**

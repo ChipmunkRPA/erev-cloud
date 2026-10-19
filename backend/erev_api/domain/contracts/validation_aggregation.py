@@ -24,7 +24,9 @@ from .release_validation import Aggregate, GroupResult, aggregate
 from .validation_population import read
 
 
-def assess(uow: UnitOfWork, *, validation_id: UUID, attempt_id: UUID) -> Aggregate:
+def assess(
+    uow: UnitOfWork, *, validation_id: UUID, attempt_id: UUID, for_approval: bool = False
+) -> Aggregate:
     """Return a decision from stored facts, without completing or enabling the validation.
 
     Hold the parent/attempt locks through the caller's transaction, as result writers do.
@@ -63,7 +65,7 @@ def assess(uow: UnitOfWork, *, validation_id: UUID, attempt_id: UUID) -> Aggrega
     if parent is None or attempt is None:
         raise Problem("not-found")
     if (
-        parent["status"] != "RUNNING"
+        parent["status"] != ("PENDING_APPROVAL" if for_approval else "RUNNING")
         or attempt["status"] not in {"RUNNING", "COMPLETE", "INCOMPLETE"}
         or parent["effective_level"] not in {"MINOR", "MAJOR"}
         or parent["enabled_at"] is not None

@@ -921,7 +921,7 @@ Event payloads are versioned Pydantic models `erev_api.events.payloads.<PascalCa
 | E-05 | `approval_request_status` | `PENDING`, `APPROVED`, `REJECTED`, `VOIDED`, `WITHDRAWN` | REQ-PLT-013/014: VOIDED = stale approval invalidated; WITHDRAWN = preparer cancelled before decision. |
 | E-06 | `approval_step_status` | `WAITING`, `ACTIVE`, `APPROVED`, `REJECTED`, `SKIPPED`, `VOIDED` | Multi-level routing. |
 | E-07 | `approval_decision_kind` | `APPROVE`, `REJECT`, `AUTO_APPROVE` | REQ-PLT-016 (rule-based auto-approval names the rule). |
-| E-08 | `approval_subject_type` | `SSP_BOOK_VERSION`, `SSP_OVERRIDE`, `CONTRACT_ACTIVATION`, `MODIFICATION`, `MANUAL_EVENT`, `ESTIMATE_VERSION`, `MANUAL_ADJUSTMENT`, `REGISTRY_VERSION`, `AI_SETTINGS_VERSION`, `RULE_SET_VERSION`, `POB_TEMPLATE_VERSION`, `ACCOUNT_MAPPING_VERSION`, `FX_RATE_SET_VERSION`, `ROLE_CHANGE`, `ROLE_ASSIGNMENT`, `SOD_EXCEPTION`, `PERIOD_LOCK`, `PERIOD_REOPEN`, `IMPORT_COMMIT`, `CONTRACT_VOID`, `COMBINATION_GROUP`, `JUDGEMENT_RECORD`, `JOURNAL_RUN`, `SUPPORT_GRANT`, `AI_PROPOSAL_ACCEPTANCE`, `PRINCIPAL_AGENT_CHANGE`, `ATTRIBUTE_CHANGE`, `EXCEPTION_WAIVER`, `MIGRATION_PROMOTION`, `MAPPING_PROFILE_VERSION`, `POLICY_OVERRIDE`, `MIGRATION_SSP_REPLAY`, `EVIDENCE_SHRED`, `STEP1_EVENT` | AI_SETTINGS_VERSION (migration 0156) binds tenant AI registry versions to independent settings.manage approval; historical REGISTRY_VERSION requests keep their original routing. REQ-PLT-013 object list; rev 1.72: `MIGRATION_SSP_REPLAY` (D-98 133 AMENDMENT 4; Alembic 0071); rev 1.142: `EVIDENCE_SHRED` (rulings R-49 (a), R-86; Alembic 0094; §16.10); REQ-REF-012; REQ-PLT-036; REQ-MOD-021; REQ-DAT-009, -013; REQ-MIG-003. Rev 1.2 (PRD Q14, D-76): a permanent lock uses subject `PERIOD_LOCK` with `period_lock.kind = 'PERMANENT_LOCK'` (E-63), routed to `period.lock`; no separate subject exists. An SSP override request (`POST /obligations/{id}/request-ssp-override`) uses `SSP_OVERRIDE`. Rev 1.13 (D-96), rev pending lane P5: the value `ENGINE_RELEASE_VALIDATION` is ruled and lands with the `erev_api.enums` StrEnum change — subject table `release_validation_attempt`; routed to `period.lock`; authority requires the frozen `required_entity_ids` set (§16.10 `find_authority` set form); `SUBJECTS` entry `required_permission="period.lock"`, `revenue_affecting=True`, `min_approvers=1`, `preparer_kind=SYSTEM`; `on_approved` enables the release and seeds T-PLT-46 `PENDING` rows for every entity/book portion of every group (MINOR/MAJOR only; rev 1.14); the value list is unchanged here because the architecture drift test compares it with the code. |
+| E-08 | `approval_subject_type` | `SSP_BOOK_VERSION`, `SSP_OVERRIDE`, `CONTRACT_ACTIVATION`, `MODIFICATION`, `MANUAL_EVENT`, `ESTIMATE_VERSION`, `MANUAL_ADJUSTMENT`, `REGISTRY_VERSION`, `AI_SETTINGS_VERSION`, `RULE_SET_VERSION`, `POB_TEMPLATE_VERSION`, `ACCOUNT_MAPPING_VERSION`, `FX_RATE_SET_VERSION`, `ROLE_CHANGE`, `ROLE_ASSIGNMENT`, `SOD_EXCEPTION`, `PERIOD_LOCK`, `PERIOD_REOPEN`, `IMPORT_COMMIT`, `CONTRACT_VOID`, `COMBINATION_GROUP`, `JUDGEMENT_RECORD`, `JOURNAL_RUN`, `SUPPORT_GRANT`, `AI_PROPOSAL_ACCEPTANCE`, `PRINCIPAL_AGENT_CHANGE`, `ATTRIBUTE_CHANGE`, `EXCEPTION_WAIVER`, `MIGRATION_PROMOTION`, `MAPPING_PROFILE_VERSION`, `POLICY_OVERRIDE`, `MIGRATION_SSP_REPLAY`, `EVIDENCE_SHRED`, `STEP1_EVENT`, `ENGINE_RELEASE_VALIDATION` | Revision 0169 implements `ENGINE_RELEASE_VALIDATION`: subject `release_validation_attempt`, permission `period.lock`, frozen entity-set authority, required retained impact preview and SYSTEM preparer. Independent approval enables and seeds the upgrade atomically. |
 | E-09 | `estimate_kind` | `VARIABLE_CONSIDERATION`, `RETURN_RATE`, `BREAKAGE`, `EAC`, `EXERCISE_LIKELIHOOD`, `IMPLICIT_PRICE_CONCESSION`, `RENEWAL_EXPECTATION`, `ROYALTY_ACCRUAL`, `EXPECTED_PURCHASES`, `SHARE_BASED_CONSIDERATION` | D-20; research 04 §1.2 (concessions), §8 (renewals for amortisation period), §5.9 (royalty accrual), §3.6 (expected purchases for consideration payable). `SHARE_BASED_CONSIDERATION` appended in rev 1.2 (POLICIES OQ-14, PT-10; D-76): share-based consideration payable to a customer measured under Topic 718 (parameters in T-CON-13). |
 | E-10 | `estimate_method` | `EXPECTED_VALUE`, `MOST_LIKELY_AMOUNT`, `ENTERED_AMOUNT`, `RATE`, `COST_BUILDUP` | POL-040 literals (entered amount under parity); `RATE` for returns, breakage and likelihood; `COST_BUILDUP` for EAC. |
 | E-11 | `recognition_method` | `POINT_IN_TIME`, `TIME_ELAPSED`, `UNITS_DELIVERED`, `OUTPUT_PERCENT`, `MILESTONE`, `COST_TO_COST`, `LABOUR_HOURS`, `RIGHT_TO_INVOICE`, `COST_RECOVERY`, `USAGE`, `ROYALTY`, `REDEMPTION_PATTERN`, `MANUAL` | Over-time measures use the POL-091 literals (`TIME_ELAPSED`, `UNITS_DELIVERED`, `MILESTONE`, `COST_TO_COST`, `LABOUR_HOURS`, `RIGHT_TO_INVOICE`, `COST_RECOVERY`); the others cover point in time (REQ-REC-001), percent-complete events (REQ-REC-006), usage and royalties (REQ-REC-010, -011), breakage and redemption (POL-055) and manual release (REQ-REC-023). Legacy method = `UNITS_DELIVERED`. |
@@ -1047,7 +1047,7 @@ Event payloads are versioned Pydantic models `erev_api.events.payloads.<PascalCa
 | E-131 | `ssp_quantity_unit` | `SERVICE_UNITS`, `INCREMENTS` | REQ-SSP-003. D-97 (3), rev 1.41 (lane ENG-C1b): what a series line's `quantity` counts when its SSP entry is priced `PER_INCREMENT` (T-REF-30 `quantity_unit`; ENGINE_SPEC S06-R-11 series row) — `SERVICE_UNITS`: service units each spanning the term, the remaining-increment SSP at d = value × the remaining increments × the remaining quantity, where the remaining increments = the term's increments under the pinned E-21 convention × ρ (ρ enters once); `INCREMENTS`: the quantity counts increments over the full term (seat-months), value × ρ × the remaining quantity. The supported meaning is the declared one — never inferred, no default, never both on one entry; required for a `PER_INCREMENT` entry and refused with any other basis; migration 0056 creates `erev.ssp_quantity_unit`. |
 | E-132 | `step1_gate_reason` | `BOOK_NOT_ASSESSED`, `GROUP_TOO_LARGE`, `ENGINE_REFUSED`, `BOOK_NOT_CONFIRMED` | API only. Rev 1.138 (supervisor rulings R-77 (6), R-82 (e), R-84 (b)): `step1_gate.reason` of API-S-EventAppend's 201 body (§16.3) — why the not-a-contract gate did not follow a not-probable assessment of a `DRAFT` contract. `BOOK_NOT_ASSESSED`: an enabled book of the contracting entity has no assessment in force or a probable one; `GROUP_TOO_LARGE`: the group is over the obligation budget of a request (RCP-18), so the engine cannot confirm the gate there; `ENGINE_REFUSED`: the dry run raised an engine error; `BOOK_NOT_CONFIRMED`: the dry run does not give `NOT_A_CONTRACT` in every book the group is computed in, or one of them is not a book the contracting entity keeps. The copy is the screen's. |
 
-**Rev 1.13 pending enumerations (D-96) — lifted in rev 1.19 (lane P5).** The six ruled enumerations E-125 to E-130 are now `E-` rows of the table above and `erev_api.enums` StrEnums (`VerificationOutcome`, `ReleaseValidationStatus`, `ValidationAttemptStatus`, `PostingAttributionCause`, `ValidationGroupOrchestrationState`, `UpgradeProcessingState`); the architecture drift test compares E-01 to E-130 with the code. The E-08 value `ENGINE_RELEASE_VALIDATION` and the E-68 values `COMPUTATION_INPUT`, `COMPUTATION_OUTPUT`, `VALIDATION_DATASET` stay rev pending lane P5's integration slice (they need the `SUBJECTS` entry and the file-store purpose policy, which are DB-backed).
+**Rev 1.13 pending enumerations (D-96) — lifted in rev 1.19 (lane P5).** The six ruled enumerations E-125 to E-130 are now `E-` rows of the table above and `erev_api.enums` StrEnums (`VerificationOutcome`, `ReleaseValidationStatus`, `ValidationAttemptStatus`, `PostingAttributionCause`, `ValidationGroupOrchestrationState`, `UpgradeProcessingState`); the architecture drift test compares E-01 to E-130 with the code. The E-08 and E-68 additions are implemented by revisions 0160, 0163 and 0169 (they need the `SUBJECTS` entry and the file-store purpose policy, which are DB-backed).
 
 **Table 3.4-R Reason code subsets (E-110; rev 1.2; SCREENS_B OQ-B-06).**
 
@@ -2386,12 +2386,15 @@ stream versions across the whole tenant, including unsampled groups. Start compa
 with a fresh population read and refuses a changed or unfingerprinted attempt. Final acceptance
 must revalidate it again; starting does not prohibit later business activity or enable a release.
 
-Implemented unapproved supersession: the service locks the validation and attempt in that
-order, marks the attempt SUPERSEDED, and audits once. The caller may freeze its replacement
-in the same transaction. Existing selection, dataset, report and result evidence is retained;
-result writers using those locks refuse new results for a superseded attempt. An already
-superseded retry is read-only. Approval-linked attempts and parent states outside
-PENDING/RUNNING/INCOMPLETE are refused until release approval resolution is implemented.
+Release acceptance (revision 0169): verified attached report bytes are read before taking the
+population fence. Acceptance rechecks the locked attempt and current population. No differences
+passes and seeds the queue atomically; MINOR differences fail; MAJOR differences submit an
+independent SYSTEM-prepared ENGINE_RELEASE_VALIDATION approval with frozen report values.
+Approval rechecks the population, enables/seeds atomically and marks only DIFFERENCES groups
+dirty, preserving earlier dirty stamps. Rejection leaves the release disabled. Invalidated or
+withdrawn approval transitions PENDING_APPROVAL to INCOMPLETE, permitting a new attempt.
+Supersession locks the pending request before the validation/attempt, preserves all evidence
+and voids the request as STALE_SUBJECT. Already enabled releases cannot be superseded.
 
 Transitions (DB-03): a re-run after `INCOMPLETE`, or any head/population change, creates attempt n+1 and marks n `SUPERSEDED` (rows kept; a pending approval on n is voided `STALE_SUBJECT`). Immutable selection columns are written once before any child job.
 
@@ -2435,7 +2438,23 @@ integration remain outstanding.
 - **Purpose.** Append-only event log of each group's upgrade processing after a MINOR or MAJOR release is enabled, kept per portion (group × entity × enabled book): pending until an explicit outcome per portion, the group terminal only when every portion is settled (D-96 (4); E; v4).
 - **Class.** IM-A (event log); RLS-T; AUD-FACT.
 - **REQ areas.** OPS, CTL.
-- **Implemented schema.** Revision 0166; automatic seeding and persistence integration remain pending.
+- **Implemented schema.** Revision 0166; seeding and computation persistence are implemented.
+
+| Column | Type | Null | Default | Constraints and notes |
+|---|---|---|---|---|
+| SC-T | | | | Tenant and row identity |
+| `release_validation_id` | uuid | N | | |
+| `release_validation_attempt_id` | uuid | N | | Accepted attempt |
+| `combination_group_id` | uuid | N | | |
+| `entity_id` | uuid | N | | |
+| `book_code` | erev.book_code | N | | |
+| `seq` | integer | N | | Append-only portion sequence |
+| `upgrade_state` | erev.upgrade_processing_state | N | | |
+| `contract_computation_id` | uuid | Y | | |
+| `subledger_posting_ids` | uuid[] | N | | |
+| `unresolved_origin_period_keys` | text[] | N | | |
+| `reason` | text | Y | | |
+| SC-C | | | | Creation stamps |
 
 Columns (draft §4b verbatim; rev 1.14 per portion): SC-T; `release_validation_id` N; `release_validation_attempt_id` N (the accepted attempt); `combination_group_id` N; `entity_id` uuid N; `book_code` erev.book_code N; `seq` integer N; `upgrade_state` E-130 (`PENDING`, `DEFERRED_NO_OPEN_PERIOD`, `SETTLED_NO_POSTING`, `POSTED`); `contract_computation_id` Y; `subledger_posting_ids` uuid[] N default `'{}'`; `unresolved_origin_period_keys` text[] N default `'{}'`; `reason` text Y; SC-C.
 
@@ -5033,7 +5052,21 @@ Keys: `PRIMARY KEY (tenant_id, id)`; `ix_posting_ack__batch (tenant_id, journal_
 - **Purpose.** Attribution metadata for every posting a group produces under an enabled release while its upgrade processing is pending: which validation, which computation, and a conservative cause label (D-96 (4); R6, F).
 - **Class.** IM-A; RLS-T; AUD-FACT.
 - **REQ areas.** OPS, CTL, RPT.
-- **Implemented schema.** Revision 0168; computation persistence and register integration remain pending.
+- **Implemented schema.** Revision 0168; computation persistence is implemented. Register integration remains pending.
+
+| Column | Type | Null | Default | Constraints and notes |
+|---|---|---|---|---|
+| SC-T | | | | Tenant and row identity |
+| `subledger_posting_id` | uuid | N | | Tenant/posting primary key |
+| `release_validation_attempt_id` | uuid | N | | Accepted attempt |
+| `combination_group_id` | uuid | N | | |
+| `contract_computation_id` | uuid | N | | |
+| `previous_computation_id` | uuid | Y | | |
+| `cause` | erev.posting_attribution_cause | N | | |
+| `sampled` | boolean | N | | |
+| `origin_periods` | jsonb | N | | |
+| `input_comparison` | jsonb | Y | | |
+| SC-C | | | | Creation stamps |
 
 Columns (draft §4b verbatim; rev 1.14 attribution input view): SC-T; `subledger_posting_id` N (`PRIMARY KEY (tenant_id, subledger_posting_id)`); `release_validation_attempt_id` N; `combination_group_id` N; `contract_computation_id` N; `previous_computation_id` Y; `cause` E-128 (F, v4: `UPGRADE_CONTEXT` is the default label. `UPGRADE_ONLY` is written **only** when the **attribution input view** of the current bundle equals that of the previous head's T-CON-25 input evidence. The attribution view is distinct from CV-25: it is the canonical **full** `InputBundle` — `known_at` **retained**, since the engine reads it for the event cutoff and SSP/template version selection, plus every other engine-read state (events, pins, resolved policies, period states, posted totals, master data, calendars) — with only the explicit release/schema representation fields normalised: `engine_version := ""`, `format_version := 0`, and the registered `INPUT_TRANSFORMS` applied to the older side so a schema-only representation change (the D-93 (5) `direction` default) does not count as an input change. Its SHA-256 is `attribution_input_sha256`, recorded for both sides; the CV-25 financial hash contract is untouched. `UPGRADE_AND_OTHER_INPUTS` when the two views differ — any proven non-release input change, including a `known_at`-only or period-state-only change, is "other inputs"; `UPGRADE_CONTEXT` when the comparison cannot be made (no previous-head evidence, no transform chain)); `sampled` boolean N; `origin_periods` jsonb N (period keys with `origin_period_id`, and open-period deltas without one); `input_comparison` jsonb Y (`{previous_attribution_input_sha256, current_attribution_input_sha256, transform_id}`); SC-C.
 
@@ -5045,8 +5078,8 @@ at least one unsettled portion in the accepted upgrade group, with posting and c
 identities bound to that release. Comparison-based cause labels require a distinct previous
 computation from the same group and valid string SHA-256 values consistent with the label.
 Processing-event and attribution inserts share a nonblocking group transaction guard.
-The runtime writer must still derive the comparison from retained input evidence and
-origins from posting facts; schema checks alone do not prove those calculations.
+The runtime writer derives comparison metadata from retained input evidence and origins
+from posting facts in the computation transaction.
 
 ### T-SL-12 `subledger_line_event`
 

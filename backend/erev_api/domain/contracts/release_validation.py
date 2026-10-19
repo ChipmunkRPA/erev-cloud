@@ -467,7 +467,7 @@ TRANSITIONS: Final[Mapping[ReleaseValidationStatus, frozenset[ReleaseValidationS
     _S.PENDING: frozenset({_S.RUNNING}),
     _S.RUNNING: frozenset({_S.INCOMPLETE, _S.PASSED, _S.FAILED, _S.PENDING_APPROVAL}),
     _S.INCOMPLETE: frozenset({_S.RUNNING}),
-    _S.PENDING_APPROVAL: frozenset({_S.APPROVED, _S.REJECTED}),
+    _S.PENDING_APPROVAL: frozenset({_S.APPROVED, _S.REJECTED, _S.INCOMPLETE}),
     _S.PASSED: frozenset(),
     _S.FAILED: frozenset(),
     _S.APPROVED: frozenset(),

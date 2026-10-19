@@ -2,6 +2,20 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Release acceptance and independent approval — October 19, 2026
+
+- Added finalization from an attached frozen report: matching results enable and seed atomically;
+  MINOR differences fail; MAJOR differences create a SYSTEM-prepared independent approval.
+- Approval binds the frozen dataset, population and entity set, rechecks current population,
+  enables/seeds atomically and dirties only DIFFERENCES groups while preserving prior stamps.
+  Rejection keeps the release disabled; stale/withdrawn reviews return it to INCOMPLETE.
+- Pending approval supersession now voids STALE_SUBJECT and permits a replacement attempt.
+  Revision 0169 adds the approval type and stale-review transition. Existing approval API,
+  inbox labels, generated schema and report filters recognize the new subject.
+- Targeted checks are recorded in the dated CI log. Release preparation/automatic orchestration,
+  baseline/bootstrap handling, computation admission and the true-up register remain development
+  priorities; current-candidate release verification and independent accounting sign-off remain open.
+
 ## Atomic upgrade computation persistence — October 19, 2026
 
 - Computation persistence now writes posting attribution and append-only portion outcomes in
@@ -245,26 +259,6 @@
   Verification evidence is recorded in docs/release/CI-2026-10-15.md.
 - Frozen-attempt persistence, fan-out/handler, dataset publication and release admission remain
   outstanding. This reader does not dispatch jobs or enable releases.
-
-## AI command audit coverage — October 15, 2026
-
-- Registered all ten AI command routes and added real API scenarios to the shared audit walk:
-  settings author/test/submit/withdraw, extraction/explanation requests, proposal accept/reject,
-  and the workspace kill switch. Retained synthetic proposal evidence needs no provider call.
-- Draft acceptance exposed a missing computation-evidence audit classification; it now names
-  the source computation's contract members. Pending-category negative controls remain active
-  through a synthetic pending catalogue, with a separate missing-live-AI-evidence assertion.
-- Verification evidence is recorded in docs/release/CI-2026-10-15.md. Full candidate acceptance,
-  replay orchestration/release admission and independent accounting sign-off remain open.
-
-## Verification helper typing — October 15, 2026
-
-- Resolved all nine errors found by the explicit scan of five regression-test modules:
-  separate AST owner/callee variables, concrete row mappings, typed route traversal, and
-  explicit optional-value assertions. The approval-race test imports the helper from its
-  defining module and still patches the production call site.
-- Evidence is recorded in docs/release/CI-2026-10-15.md. AI audit catalogue and lifecycle-walk
-  integration remain the next known CI gap; full candidate verification is still outstanding.
 
 ## Outstanding release verification
 

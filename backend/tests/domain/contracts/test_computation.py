@@ -1813,7 +1813,7 @@ def test_validation_population_requires_sealed_ledger_activity(world: World) -> 
         uow.commit()
 
 
-def pending_validation(world: World) -> UUID:
+def pending_validation(world: World, *, level: str = "MINOR") -> UUID:
     from erev_api.controls.release import current_release
     from erev_api.db import new_id
     from erev_api.db.tables import release_validation
@@ -1827,7 +1827,7 @@ def pending_validation(world: World) -> UUID:
                 tenant_id=world.place.tenant_id,
                 id=validation_id,
                 engine_release_id=release.id,
-                effective_level="MINOR",
+                effective_level=level,
                 status="PENDING",
                 created_at=uow.now,
                 created_by=uow.principal.id,
@@ -4293,3 +4293,185 @@ def test_computation_persists_upgrade_facts_atomically(
             attributed
         )
         uow.commit()
+
+
+@pytest.mark.parametrize(
+    "level,different,action",
+    [
+        ("MINOR", False, "accept"),
+        ("MINOR", True, "accept"),
+        ("MAJOR", False, "accept"),
+        ("MAJOR", True, "approve"),
+        ("MAJOR", True, "reject"),
+        ("MAJOR", True, "drift"),
+        ("MAJOR", True, "supersede"),
+    ],
+)
+def test_release_finalization_lifecycle(
+    world: World, monkeypatch: pytest.MonkeyPatch, level: str, different: bool, action: str
+) -> None:
+    from erev_api.controls.release import current_release
+    from erev_api.db.tables import (
+        approval_request,
+        job,
+        release_group_processing,
+        release_validation,
+        release_validation_attempt,
+        report_run,
+    )
+    from erev_api.domain.contracts import replay_job, validation_acceptance
+    from erev_api.domain.contracts.replay_execution import execute_running
+    from erev_api.domain.contracts.validation_artifacts import retain
+    from erev_api.domain.contracts.validation_attempts import freeze, supersede
+    from erev_api.domain.contracts.validation_fanout import enqueue
+    from erev_api.domain.contracts.validation_reports import attach
+    from erev_api.domain.reports import framework
+    from erev_api.jobs.context import JobRuntime
+    from erev_api.jobs.registry import run_job
+    from erev_api.schemas.reports import ReportRunCreateIn
+    from erev_engine.bundle import Diagnostic
+    from sqlalchemy import text
+    from support.reference import approve, reject
+
+    booked = k01(world)
+    computed(world.place, booked.combination_group["id"])
+    validation_id = pending_validation(world, level=level)
+    with world.place.uow() as uow:
+        frozen = freeze(uow, validation_id=validation_id, attempt_no=1)
+        fanout = enqueue(uow, validation_id=validation_id, attempt_id=frozen.id)
+        runtime = JobRuntime(
+            clock=uow.clock, keyring=uow.keyring, files=uow.files, engine_release=current_release()
+        )
+        uow.commit()
+
+    def candidate(bundle: Any) -> Any:
+        output = engine()(bundle)
+        return (
+            replace(
+                output,
+                diagnostics=(
+                    *output.diagnostics,
+                    Diagnostic("APPROVAL_PROBE", "INFO", None, None, None, {}),
+                ),
+            )
+            if different
+            else output
+        )
+
+    monkeypatch.setattr(
+        replay_job,
+        "execute_running",
+        lambda context, **kwargs: execute_running(context, **kwargs, engine=candidate),
+    )
+
+    def run(job_id: UUID) -> None:
+        with world.place.uow() as uow:
+            task_id = uow.session.scalar(
+                select(job.c.procrastinate_job_id).where(job.c.id == job_id)
+            )
+            uow.session.execute(
+                text("UPDATE procrastinate_jobs SET status = 'doing' WHERE id = :id"),
+                {"id": task_id},
+            )
+            uow.commit()
+        run_job(
+            job_id, world.place.tenant_id, attempt=1, runtime=runtime, delivered_task_id=task_id
+        )
+
+    for job_id in fanout.job_ids:
+        run(job_id)
+    with world.place.uow() as uow:
+        retain(uow, validation_id=validation_id, attempt_id=frozen.id)
+        report_id, _ = framework.create_run(
+            uow,
+            ReportRunCreateIn(
+                report_code="upgrade_validation",
+                output_format="JSON",
+                parameters={"release_validation_attempt_id": str(frozen.id)},
+            ),
+        )
+        report_job = uow.session.scalar(
+            select(report_run.c.job_id).where(report_run.c.id == report_id)
+        )
+        uow.commit()
+    assert report_job is not None
+    run(report_job)
+    with world.place.uow() as uow:
+        attach(uow, validation_id=validation_id, attempt_id=frozen.id, report_id=report_id)
+        uow.commit()
+    expected = "PASSED" if not different else "FAILED" if level == "MINOR" else "PENDING_APPROVAL"
+    # An uncommitted acceptance leaves both enablement and the processing queue unchanged.
+    with world.place.uow() as uow:
+        assert (
+            validation_acceptance.finalize(
+                uow, validation_id=validation_id, attempt_id=frozen.id, report_id=report_id
+            )
+            == expected
+        )
+    with world.place.uow() as uow:
+        assert uow.session.scalar(select(release_validation.c.status)) == "RUNNING"
+        assert uow.session.scalar(select(func.count()).select_from(release_group_processing)) == 0
+        assert (
+            validation_acceptance.finalize(
+                uow, validation_id=validation_id, attempt_id=frozen.id, report_id=report_id
+            )
+            == expected
+        )
+        uow.commit()
+    with world.place.uow() as uow:
+        assert (
+            validation_acceptance.finalize(
+                uow, validation_id=validation_id, attempt_id=frozen.id, report_id=report_id
+            )
+            == expected
+        )
+        assert not uow.audit_events
+        request_id = uow.session.scalar(select(release_validation_attempt.c.approval_request_id))
+        uow.commit()
+    if expected == "PENDING_APPROVAL":
+        assert request_id is not None
+        with world.place.uow() as uow:
+            request = (
+                uow.session.execute(
+                    select(approval_request).where(approval_request.c.id == request_id)
+                )
+                .mappings()
+                .one()
+            )
+            assert request["preparer_kind"] == "SYSTEM" and request["status"] == "PENDING"
+            assert uow.session.scalar(select(release_validation.c.enabled_at)) is None
+        if action == "drift":
+            flag_change(world, booked.contract["id"], 2)
+        if action == "supersede":
+            with world.place.uow() as uow:
+                assert supersede(uow, validation_id=validation_id, attempt_id=frozen.id)
+                replacement = freeze(uow, validation_id=validation_id, attempt_no=2)
+                assert replacement.id != frozen.id
+                uow.commit()
+            expected = "INCOMPLETE"
+        elif action == "reject":
+            response = reject(world.app, str(request_id), world.marcus, "Review declined")
+            assert response.status_code == 200, response.text
+            expected = "REJECTED"
+        else:
+            response = approve(world.app, str(request_id), world.marcus)
+            assert response.status_code == (409 if action == "drift" else 200), response.text
+            expected = "INCOMPLETE" if action == "drift" else "APPROVED"
+    with world.place.uow() as uow:
+        saved = uow.session.execute(select(release_validation)).mappings().one()
+        assert saved["status"] == expected
+        enabled = expected in {"PASSED", "APPROVED"}
+        assert (saved["enabled_at"] is not None) == enabled
+        assert (saved["processing_seed"] is not None) == enabled
+        assert uow.session.scalar(
+            select(func.count()).select_from(release_group_processing)
+        ) == int(enabled)
+        if action in {"drift", "supersede"}:
+            request = (
+                uow.session.execute(
+                    select(approval_request).where(approval_request.c.id == request_id)
+                )
+                .mappings()
+                .one()
+            )
+            assert request["status"] == "VOIDED" and request["void_reason"] == "STALE_SUBJECT"

@@ -171,6 +171,7 @@ class ApprovalSubjectType(StrEnum):
     # — the 0094 replay order
     EVIDENCE_SHRED = "EVIDENCE_SHRED"
     STEP1_EVENT = "STEP1_EVENT"
+    ENGINE_RELEASE_VALIDATION = "ENGINE_RELEASE_VALIDATION"
 
 
 class EstimateKind(StrEnum):
