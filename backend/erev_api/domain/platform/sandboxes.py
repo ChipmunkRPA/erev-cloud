@@ -1202,6 +1202,7 @@ def load_sandbox(  # noqa: PLR0912, PLR0915 — the SBX-04 sequence, one step af
     load: LoadParams,
     heartbeat: Callable[[], None] | None = None,
     budget_seconds: float = BUDGET_SECONDS,
+    scenario_creator: UUID | None = None,
 ) -> Loaded:
     """The SBX-04 load of snapshot ``snapshot_id`` into the pre-allocated sandbox, driven by the
     ``TENANT_SNAPSHOT`` job context ``jc`` (its principal is the SOURCE tenant's SYSTEM principal;
@@ -1643,6 +1644,15 @@ def load_sandbox(  # noqa: PLR0912, PLR0915 — the SBX-04 sequence, one step af
                     statement = statement.where(table.c[key] == value)
                 session.execute(statement.where(table.c.tenant_id == load.sandbox_tenant_id))
     beat()
+
+    if scenario_creator is not None:
+        from erev_api.domain.forecast.membership import ensure_creator
+
+        with system_unit_of_work(
+            runtime, sandbox_principal, request_id=f"job-{jc.job_id}-scenario-membership"
+        ) as uow:
+            ensure_creator(uow, scenario_creator)
+            uow.commit()
 
     # 4. the target: under the requesting user's SOURCE context (04 rev 1.56).
     with tenant_session(

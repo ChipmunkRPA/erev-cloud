@@ -13,7 +13,7 @@ from erev_api.db.session import (
     set_tenant_context,
     tenant_session,
 )
-from erev_api.db.tables import scenario, tenant, tenant_snapshot
+from erev_api.db.tables import audit_event, scenario, tenant, tenant_snapshot
 from erev_api.main import create_app
 from fastapi import FastAPI
 from sqlalchemy import insert
@@ -102,3 +102,149 @@ def test_scenario_catalogue(app: FastAPI, keyring: KeyRing, clock: FrozenClock) 
     filtered = call(app, "GET", "/api/v1/scenarios", params={"status": "ARCHIVED"}, headers=headers)
     assert filtered.status_code == 200, filtered.text
     assert [row["name"] for row in filtered.json()["items"]] == ["Old"]
+
+
+@pytest.mark.parametrize("late_creator", [False, True])
+def test_create_scenario_runs_snapshot_job(
+    app: FastAPI,
+    keyring: KeyRing,
+    clock: FrozenClock,
+    app_settings: Settings,
+    late_creator: bool,
+) -> None:
+    from datetime import timedelta
+    from uuid import UUID
+
+    from erev_api.auth.permissions import effective_grants
+    from erev_api.db.tables import job, role, role_assignment, tenant_membership
+    from erev_api.domain.platform import snapshot_job
+    from erev_api.enums import JobKind, MembershipStatus
+    from erev_api.files.store import LocalFileStore
+    from erev_api.jobs import registry
+    from erev_api.jobs.context import JobRuntime
+    from sqlalchemy import select, text
+    from support.factories import stamp_test_release
+    from support.principals import Member
+    from support.rows import RowContext, assignment_row, membership_row
+    from support.snapshots import confirm_retention
+
+    source = member(keyring, clock)
+    known_at = clock.now()
+    if late_creator:
+        newcomer = member(keyring, clock, name="late_creator")
+        membership_values = membership_row(
+            RowContext(source.tenant_id, newcomer.user_id), status=MembershipStatus.ACTIVE
+        )
+        membership_values["created_at"] = known_at + timedelta(minutes=1)
+        with tenant_session(
+            DbContext(tenant_id=source.tenant_id, user_id=None, entity_scope="*")
+        ) as session:
+            session.execute(insert(tenant_membership).values(**membership_values))
+        source = Member(
+            user_id=newcomer.user_id,
+            email=newcomer.email,
+            tenant_id=source.tenant_id,
+            membership_id=membership_values["id"],
+        )
+    ctx = DbContext(tenant_id=source.tenant_id, user_id=None, entity_scope="*")
+    with tenant_session(ctx) as session:
+        confirm_retention(session, source.tenant_id, at=clock.now() - timedelta(days=1))
+        role_id = session.execute(
+            select(role.c.id).where(role.c.code == "revenue_accountant")
+        ).scalar_one()
+        assignment = assignment_row(
+            source.tenant_id, membership_id=source.membership_id, role_id=role_id
+        )
+        if late_creator:
+            assignment["created_at"] = known_at + timedelta(minutes=1)
+        session.execute(insert(role_assignment).values(**assignment))
+    actor = enrolled(app, clock, source)
+    # scenario.use has no tenant.snapshot/fresh-step-up requirement.
+    clock.advance(timedelta(minutes=6))
+    headers = cookie_headers(actor.token, actor.csrf_token)
+    body = {
+        "name": "Forecast outlook",
+        "purpose": "Quarter planning",
+        "known_at": known_at.isoformat(),
+    }
+    created = call(app, "POST", "/api/v1/scenarios", json=body, headers=headers)
+    assert created.status_code == 202, created.text
+    repeated = call(app, "POST", "/api/v1/scenarios", json=body, headers=headers)
+    assert repeated.status_code == 202 and repeated.json() == created.json(), repeated.text
+    assert (
+        call(
+            app, "GET", "/api/v1/scenarios", headers=cookie_headers(actor.token, key=False)
+        ).json()["items"]
+        == []
+    )
+    job_id = UUID(created.json()["id"])
+    stamp_test_release()
+    with tenant_session(ctx) as session:
+        row = session.execute(select(job).where(job.c.id == job_id)).mappings().one()
+        session.execute(
+            text("UPDATE procrastinate_jobs SET status = 'doing' WHERE id = :id"),
+            {"id": row["procrastinate_job_id"]},
+        )
+    old = registry.HANDLERS.get(JobKind.TENANT_SNAPSHOT)
+    registry.HANDLERS[JobKind.TENANT_SNAPSHOT] = registry.HandlerSpec(
+        handler=snapshot_job.tenant_snapshot_export,
+        retry=snapshot_job.SNAPSHOT_RETRY,
+        on_failure=snapshot_job.snapshot_failed,
+    )
+    try:
+        registry.run_job(
+            job_id,
+            source.tenant_id,
+            attempt=1,
+            runtime=JobRuntime(
+                clock=clock, keyring=keyring, files=LocalFileStore(app_settings.file_root)
+            ),
+        )
+    finally:
+        if old is None:
+            registry.HANDLERS.pop(JobKind.TENANT_SNAPSHOT, None)
+        else:
+            registry.HANDLERS[JobKind.TENANT_SNAPSHOT] = old
+    with tenant_session(ctx) as session:
+        finished = session.execute(select(job).where(job.c.id == job_id)).mappings().one()
+        assert finished["state"] == "SUCCEEDED", str(finished["problem"])
+        assert finished["result"]["href"] == "/api/v1/scenarios"
+        assert (
+            session.execute(
+                select(audit_event.c.id).where(
+                    audit_event.c.object_id == UUID(created.json()["scenario_id"]),
+                    audit_event.c.action == "scenario.create",
+                )
+            ).scalar_one()
+            is not None
+        )
+    listed = call(app, "GET", "/api/v1/scenarios", headers=cookie_headers(actor.token, key=False))
+    assert listed.status_code == 200, listed.text
+    assert len(listed.json()["items"]) == 1
+    registered = listed.json()["items"][0]
+    assert registered["id"] == created.json()["scenario_id"]
+    assert registered["tenant_snapshot_id"] == created.json()["tenant_snapshot_id"]
+    assert registered["purpose"] == "Quarter planning"
+    target_id = UUID(registered["scenario_tenant_id"])
+    with tenant_session(DbContext(tenant_id=target_id, user_id=None, entity_scope="*")) as session:
+        assert (
+            session.execute(
+                select(audit_event.c.id).where(
+                    audit_event.c.object_id == UUID(created.json()["scenario_id"]),
+                    audit_event.c.action == "scenario.create",
+                )
+            ).scalar_one()
+            is not None
+        )
+    if late_creator:
+        target_id = UUID(registered["scenario_tenant_id"])
+        with tenant_session(
+            DbContext(tenant_id=target_id, user_id=None, entity_scope="*")
+        ) as session:
+            membership_id = session.execute(
+                select(tenant_membership.c.id).where(tenant_membership.c.user_id == source.user_id)
+            ).scalar_one()
+            grants = effective_grants(session, membership_id, at=clock.now())
+            assert "scenario.use" in grants.permissions
+            assert "contract.create" not in grants.permissions
+            assert "viewer" in grants.roles

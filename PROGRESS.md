@@ -2,6 +2,25 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Asynchronous scenario creation and creator access — October 19, 2026
+
+- POST /scenarios now accepts name, purpose and optional known_at, returns a TENANT_SNAPSHOT
+  job with preallocated scenario/snapshot ids, and registers the source scenario only after the
+  sandbox copy succeeds. Completion audits both tenants; job results link to the scenario list.
+- Preserves copied memberships. A creator absent from the historical snapshot receives only
+  Viewer plus a dedicated scenario.use role before period replay; inactive copied membership
+  refuses. Scenario sandbox codes use the allocated tenant id so equal names do not collide.
+- scenario.use does not inherit tenant.snapshot's step-up requirement; the ordinary snapshot
+  command still enforces it. Purpose input is limited to the database memo's 4000 characters.
+- Actual API + worker checks: copied creator, historical snapshot without creator (minimum grants),
+  idempotent request replay, source/sandbox audit records, populated tenant-isolated listing,
+  and ordinary snapshot permission/step-up regression: 4 passed, 4 deselected (10.92s).
+  Ruff, mypy (10 files), make openapi passed; generated frontend API types updated.
+- These are empty-business-data copies, not the Q4 world with contracts and closed periods.
+  Closed-period replay for a requester with only scenario.use, nonempty determinism, worker
+  interruption/failure boundaries, archive, refresh, event sets, forecasting and UI remain open.
+  FCS-1 is not complete and no forecast report builder is newly delivered. No deployment.
+
 ## Scenario catalogue API and refresh-compatible pointer — October 19, 2026
 
 - Added GET /scenarios with scenario.use authorization across the tenant, status filtering,
@@ -208,32 +227,6 @@
 - Reporting remains a development priority: 16 catalogue definitions still lack builders.
   Extract lock snapshots, previous-run watermark defaults and true-up register remain open.
   No deployment; no claim of reporting or production-readiness completion.
-
-## Tenant release creation and resumable API — October 19, 2026
-
-- Added authoritative tenant validation creation: empty tenants bootstrap; historical tenants
-  require preparation; skipped stronger releases retain their level; downgrades are refused.
-- Added POST /release-validations/current/advance with all-entity report permission and command
-  idempotency. It resumes frozen replay jobs, JSON reports, attachment and final acceptance;
-  MAJOR differences enter independent approval. Repeated calls reuse persisted work.
-- Seven focused database cases passed, including the actual API/replay/report/enable path.
-  Generated API and frontend types are updated. Detailed usage and evidence are in CI-2026-10-19.
-- This is caller-driven advancement. Automatic scheduling, explicit baseline preparation,
-  computation admission and the true-up register remain development priorities. No deployment.
-
-## Release acceptance and independent approval — October 19, 2026
-
-- Added finalization from an attached frozen report: matching results enable and seed atomically;
-  MINOR differences fail; MAJOR differences create a SYSTEM-prepared independent approval.
-- Approval binds the frozen dataset, population and entity set, rechecks current population,
-  enables/seeds atomically and dirties only DIFFERENCES groups while preserving prior stamps.
-  Rejection keeps the release disabled; stale/withdrawn reviews return it to INCOMPLETE.
-- Pending approval supersession now voids STALE_SUBJECT and permits a replacement attempt.
-  Revision 0169 adds the approval type and stale-review transition. Existing approval API,
-  inbox labels, generated schema and report filters recognize the new subject.
-- Targeted checks are recorded in the dated CI log. Release preparation/automatic orchestration,
-  baseline/bootstrap handling, computation admission and the true-up register remain development
-  priorities; current-candidate release verification and independent accounting sign-off remain open.
 
 ## Outstanding release verification
 

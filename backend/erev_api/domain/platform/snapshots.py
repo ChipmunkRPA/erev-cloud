@@ -55,6 +55,7 @@ __all__ = [
     "list_snapshots",
     "manifest_content",
     "request_snapshot",
+    "request_scenario_snapshot",
     "require_fresh_step_up",
 ]
 
@@ -154,10 +155,33 @@ def _source_kind(session: Session, tenant_id: UUID) -> TenantKind:
 def request_snapshot(
     uow: UnitOfWork, *, known_at: datetime, purpose: str, sandbox_name: str | None = None
 ) -> tuple[Mapping[str, Any], JobOut]:
-    """``POST /tenant/snapshots``: the QUEUED T-PLT-34 row and the API-S-Job of its deferred
-    ``TENANT_SNAPSHOT`` job (dispatched after commit, DG-KRN-JOB-02)."""
+    """A tenant.snapshot request requires fresh step-up before any deferred work."""
+    require_fresh_step_up(uow.principal.mfa_verified_at, uow.now)
+    return _request_snapshot(uow, known_at=known_at, purpose=purpose, sandbox_name=sandbox_name)
+
+
+def request_scenario_snapshot(
+    uow: UnitOfWork, *, known_at: datetime, name: str, scenario_request: Mapping[str, Any]
+) -> tuple[Mapping[str, Any], JobOut]:
+    """The scenario.use command's copy; this permission does not require step-up (API-R-46)."""
+    return _request_snapshot(
+        uow,
+        known_at=known_at,
+        purpose="SANDBOX_COPY",
+        sandbox_name=name,
+        scenario_request=scenario_request,
+    )
+
+
+def _request_snapshot(
+    uow: UnitOfWork,
+    *,
+    known_at: datetime,
+    purpose: str,
+    sandbox_name: str | None,
+    scenario_request: Mapping[str, Any] | None = None,
+) -> tuple[Mapping[str, Any], JobOut]:
     principal = uow.principal
-    require_fresh_step_up(principal.mfa_verified_at, uow.now)
     request = check_request(
         kind=_source_kind(uow.session, principal.tenant_id),
         known_at=known_at,
@@ -167,6 +191,8 @@ def request_snapshot(
     )
     snapshot_id = new_id()
     params = job_params(snapshot_id, request.known_at, request.purpose, request.sandbox_name)
+    if scenario_request is not None:
+        params["scenario"] = dict(scenario_request)
     sandbox_tenant_id: UUID | None = None
     if request.purpose in SANDBOX_PURPOSES:
         # SNP-2 (04 rev 1.67): the job exports and then loads a sandbox whose tenant id is
@@ -181,6 +207,7 @@ def request_snapshot(
                 name=request.sandbox_name or "",
                 requested_by=principal.id,
                 restore=False,
+                code=f"scn-{sandbox_tenant_id.hex}" if scenario_request is not None else None,
             )
         )
     job = uow.defer(

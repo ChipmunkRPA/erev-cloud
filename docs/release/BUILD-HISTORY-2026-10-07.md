@@ -6502,3 +6502,29 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Deferred portion handling uses the existing conservative origin rule; runtime closed-period
   and period-open rescheduling coverage remain outstanding, as do the true-up register,
   final acceptance, approval/admission integration and independent accounting sign-off.
+
+## Release acceptance and independent approval — October 19, 2026
+
+- Added finalization from an attached frozen report: matching results enable and seed atomically;
+  MINOR differences fail; MAJOR differences create a SYSTEM-prepared independent approval.
+- Approval binds the frozen dataset, population and entity set, rechecks current population,
+  enables/seeds atomically and dirties only DIFFERENCES groups while preserving prior stamps.
+  Rejection keeps the release disabled; stale/withdrawn reviews return it to INCOMPLETE.
+- Pending approval supersession now voids STALE_SUBJECT and permits a replacement attempt.
+  Revision 0169 adds the approval type and stale-review transition. Existing approval API,
+  inbox labels, generated schema and report filters recognize the new subject.
+- Targeted checks are recorded in the dated CI log. Release preparation/automatic orchestration,
+  baseline/bootstrap handling, computation admission and the true-up register remain development
+  priorities; current-candidate release verification and independent accounting sign-off remain open.
+
+## Tenant release creation and resumable API — October 19, 2026
+
+- Added authoritative tenant validation creation: empty tenants bootstrap; historical tenants
+  require preparation; skipped stronger releases retain their level; downgrades are refused.
+- Added POST /release-validations/current/advance with all-entity report permission and command
+  idempotency. It resumes frozen replay jobs, JSON reports, attachment and final acceptance;
+  MAJOR differences enter independent approval. Repeated calls reuse persisted work.
+- Seven focused database cases passed, including the actual API/replay/report/enable path.
+  Generated API and frontend types are updated. Detailed usage and evidence are in CI-2026-10-19.
+- This is caller-driven advancement. Automatic scheduling, explicit baseline preparation,
+  computation admission and the true-up register remain development priorities. No deployment.

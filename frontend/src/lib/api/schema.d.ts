@@ -6702,7 +6702,11 @@ export interface paths {
      */
     get: operations["scenarios_list"];
     put?: never;
-    post?: never;
+    /**
+     * Scenarios Create
+     * @description Copy a production snapshot into a scenario; register it only after the load succeeds.
+     */
+    post: operations["scenarios_create"];
     delete?: never;
     options?: never;
     head?: never;
@@ -20827,6 +20831,15 @@ export interface components {
       /** Name */
       name?: string | null;
     };
+    /** ScenarioCreateIn */
+    ScenarioCreateIn: {
+      /** Known At */
+      known_at?: string | null;
+      /** Name */
+      name: string;
+      /** Purpose */
+      purpose?: string | null;
+    };
     /**
      * ScenarioIn
      * @description One outcome of a version's scenario table (T-CON-13 ``scenarios``).
@@ -20884,6 +20897,41 @@ export interface components {
        * Format: date-time
        */
       updated_at: string;
+    };
+    /** ScenarioRequestedOut */
+    ScenarioRequestedOut: {
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      created_by: components["schemas"]["ActorOut"];
+      /** Finished At */
+      finished_at: string | null;
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      kind: components["schemas"]["JobKind"];
+      /** Mode */
+      mode?: string | null;
+      problem: components["schemas"]["ProblemOut"] | null;
+      progress: components["schemas"]["JobProgressOut"];
+      result: components["schemas"]["JobResultOut"] | null;
+      /**
+       * Scenario Id
+       * Format: uuid
+       */
+      scenario_id: string;
+      /** Started At */
+      started_at: string | null;
+      state: components["schemas"]["JobState"];
+      /**
+       * Tenant Snapshot Id
+       * Format: uuid
+       */
+      tenant_snapshot_id: string;
     };
     /**
      * ScenarioStatus
@@ -51189,6 +51237,73 @@ export interface operations {
         };
       };
       /** @description Problem: validation-failed */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+    };
+  };
+  scenarios_create: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description API-C-04: one key per user intent (8-255 characters); a repeat with the same key and body replays the stored response, another body is 422 idempotency-key-reused. */
+        "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ScenarioCreateIn"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ScenarioRequestedOut"];
+        };
+      };
+      /** @description Problem: unauthenticated, session-expired */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: forbidden, sandbox-restricted */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: idempotency-in-progress */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: validation-failed, idempotency-key-reused */
       422: {
         headers: {
           [name: string]: unknown;

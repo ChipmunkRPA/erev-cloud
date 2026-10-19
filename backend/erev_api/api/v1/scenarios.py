@@ -1,10 +1,19 @@
-"""API-R-46 scenario listing; creation and refresh are separate workflows."""
+"""API-R-46 scenario catalogue and asynchronous creation."""
 
 from typing import Annotated, Final
 
 from fastapi import APIRouter, Depends, Query, Response
 
-from erev_api.api.deps import API_PREFIX, GuardedRoute, problem_responses
+from erev_api.api.deps import (
+    API_PREFIX,
+    CommandContext,
+    GuardedRoute,
+    KernelDeps,
+    command,
+    kernel_deps,
+    problem_responses,
+    run_command,
+)
 from erev_api.api.lists import (
     TOTAL_COUNT_HEADER,
     FilterSpec,
@@ -16,10 +25,11 @@ from erev_api.api.lists import (
 from erev_api.auth.dependencies import require_all_entities
 from erev_api.auth.principal import RequestContext
 from erev_api.db.tables import scenario
-from erev_api.domain.forecast import scenarios
+from erev_api.domain.forecast import creation, scenarios
 from erev_api.enums import ScenarioStatus
 from erev_api.schemas.common import ListOut
-from erev_api.schemas.scenarios import ScenarioOut
+from erev_api.schemas.scenarios import ScenarioCreateIn, ScenarioOut, ScenarioRequestedOut
+from erev_api.uow import UnitOfWork
 
 SCENARIO_LIST: Final = ListSpec(
     resource="scenarios",
@@ -55,4 +65,39 @@ def scenarios_list(
     return ListOut[ScenarioOut](
         items=[ScenarioOut.model_validate(scenarios.scenario_out(row)) for row in result.items],
         next_cursor=result.next_cursor,
+    )
+
+
+@router.post(
+    "/scenarios",
+    operation_id="scenarios_create",
+    status_code=202,
+    response_model=ScenarioRequestedOut,
+    responses=problem_responses(
+        "unauthenticated",
+        "session-expired",
+        "forbidden",
+        "validation-failed",
+        "sandbox-restricted",
+        "idempotency-key-reused",
+        "idempotency-in-progress",
+    ),
+)
+def scenarios_create(
+    body: ScenarioCreateIn,
+    cmd: Annotated[CommandContext, Depends(command("scenario.use", all_entities=True))],
+    deps: Annotated[KernelDeps, Depends(kernel_deps)],
+) -> Response:
+    """Copy a production snapshot into a scenario; register it only after the load succeeds."""
+
+    def handle(uow: UnitOfWork) -> ScenarioRequestedOut:
+        scenario_id, snapshot_id, job = creation.request(
+            uow, name=body.name, purpose=body.purpose, known_at=body.known_at or uow.now
+        )
+        return ScenarioRequestedOut(
+            **job.model_dump(), scenario_id=scenario_id, tenant_snapshot_id=snapshot_id
+        )
+
+    return run_command(
+        cmd, deps, handle, status_code=202, location=lambda out: f"{API_PREFIX}/jobs/{out.id}"
     )

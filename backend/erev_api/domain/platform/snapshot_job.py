@@ -878,6 +878,15 @@ def tenant_snapshot_export(jc: JobContext, params: Mapping[str, Any]) -> JobOutc
     ``SUCCEEDED`` row is never re-exported (SNP-2; 04 rev 1.67; D-98 candidate 137 (1))."""
     parsed = parse_params(params)
     load = sandboxes.parse_load(params)
+    from erev_api.domain.forecast.creation import ScenarioRequest, register
+
+    requested = ScenarioRequest.model_validate(params["scenario"]) if "scenario" in params else None
+    if requested is not None and (
+        load is None
+        or load.requested_by != requested.requested_by
+        or parsed.purpose != "SANDBOX_COPY"
+    ):
+        raise _invalid("scenario", "A scenario requires its creator's sandbox copy.")
     with jc.unit_of_work() as uow:
         resolution = retention_policy_for(uow.session, parsed.known_at)
         reader = DbSnapshotReader(
@@ -902,7 +911,11 @@ def tenant_snapshot_export(jc: JobContext, params: Mapping[str, Any]) -> JobOutc
     }
     if load is not None:
         loaded = sandboxes.load_sandbox(
-            jc, snapshot_id=parsed.tenant_snapshot_id, load=load, heartbeat=jc.heartbeat
+            jc,
+            snapshot_id=parsed.tenant_snapshot_id,
+            load=load,
+            heartbeat=jc.heartbeat,
+            scenario_creator=requested.requested_by if requested else None,
         )
         counts.update(
             {
@@ -913,10 +926,21 @@ def tenant_snapshot_export(jc: JobContext, params: Mapping[str, Any]) -> JobOutc
                 "blocked_periods": loaded.blocked_periods,
             }
         )
+    if requested is not None and load is not None:
+        register(
+            jc,
+            requested=requested,
+            snapshot_id=parsed.tenant_snapshot_id,
+            target_id=load.sandbox_tenant_id,
+            known_at=parsed.known_at,
+        )
     return JobOutcome(
         state="SUCCEEDED",
         result={
-            "href": SNAPSHOTS_HREF.format(snapshot_id=result.snapshot_id),
+            **({"scenario_id": str(requested.id)} if requested else {}),
+            "href": "/api/v1/scenarios"
+            if requested
+            else SNAPSHOTS_HREF.format(snapshot_id=result.snapshot_id),
             "counts": counts,
             **({"sandbox_tenant_id": str(load.sandbox_tenant_id)} if load is not None else {}),
         },

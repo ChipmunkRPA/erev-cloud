@@ -1,5 +1,11 @@
 # eRev Cloud 1.0: stated limits of the release
 
+Scenario creation update: POST /scenarios now drives the snapshot worker, copies a sandbox,
+adds minimum creator access when absent from the historical snapshot, and registers/audits the
+scenario. Actual worker acceptance covers empty business data and both membership cases.
+Archive/refresh, nonempty contract/closed-period acceptance, worker interruption boundaries,
+forecast input/execution/output and UI remain outstanding. FCS-1 is still incomplete.
+
 Scenario catalogue update: GET /scenarios is now implemented with tenant isolation and status
 filtering. Creation, archive, refresh, forecast execution and forecast report builders remain
 unimplemented. Revision 0177 allows the pointer replacement required for future refresh while
