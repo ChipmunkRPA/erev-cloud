@@ -2402,6 +2402,7 @@ This subsection specifies every 1.0 report code of 04 T-RPT-01 (55 codes) and cl
 | RPT-55 | `contract_sample_pack` | Contract sample pack | PACK | REQ-RPT-015 | ZIP, PDF, XLSX | none | §6 |
 | RPT-56 | `ai_call_log_export` | AI call log export | EXTRACT | REQ-RPT-002 | CSV, XLSX | none | SF-15 call log; current authorized population, no entity/history filters |
 | RPT-57 | `upgrade_validation` | Upgrade validation | REGISTER | REQ-RPT-002 | XLSX, CSV, JSON | none | Frozen attempt dataset; complete entity population |
+| RPT-58 | `engine_trueup_register` | Engine true-up register | REGISTER | REQ-RPT-002 | XLSX, CSV, JSON | none | Required release_validation_id; exact cutoff; processing portions and attributed sealed lines |
 
 #### 5.6.1 Revenue, balances and disclosures
 

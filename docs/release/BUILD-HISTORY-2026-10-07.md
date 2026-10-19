@@ -6735,3 +6735,22 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Scenario creation, archive, refresh, creator grants, event-set replay and forecast jobs are
   still absent. No browser workflow or refresh business acceptance claimed. Seven missing
   report builders and engine_trueup_register remain outstanding; no deployment.
+
+## Asynchronous scenario creation and creator access — October 19, 2026
+
+- POST /scenarios now accepts name, purpose and optional known_at, returns a TENANT_SNAPSHOT
+  job with preallocated scenario/snapshot ids, and registers the source scenario only after the
+  sandbox copy succeeds. Completion audits both tenants; job results link to the scenario list.
+- Preserves copied memberships. A creator absent from the historical snapshot receives only
+  Viewer plus a dedicated scenario.use role before period replay; inactive copied membership
+  refuses. Scenario sandbox codes use the allocated tenant id so equal names do not collide.
+- scenario.use does not inherit tenant.snapshot's step-up requirement; the ordinary snapshot
+  command still enforces it. Purpose input is limited to the database memo's 4000 characters.
+- Actual API + worker checks: copied creator, historical snapshot without creator (minimum grants),
+  idempotent request replay, source/sandbox audit records, populated tenant-isolated listing,
+  and ordinary snapshot permission/step-up regression: 4 passed, 4 deselected (10.92s).
+  Ruff, mypy (10 files), make openapi passed; generated frontend API types updated.
+- These are empty-business-data copies, not the Q4 world with contracts and closed periods.
+  Closed-period replay for a requester with only scenario.use, nonempty determinism, worker
+  interruption/failure boundaries, archive, refresh, event sets, forecasting and UI remain open.
+  FCS-1 is not complete and no forecast report builder is newly delivered. No deployment.

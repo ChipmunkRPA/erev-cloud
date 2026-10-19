@@ -62,16 +62,16 @@ def _screens_index() -> dict[str, tuple[str, str, tuple[str, ...]]]:
 
 
 def test_seeded_codes() -> None:
-    # 04 T-RPT-01 and PHASES §5.4 (RPS-1): 58 current version-1 definitions in the seeded order,
-    # 54 RPS, 2 LMG and 2 FCS codes; names, kinds and formats of SCREENS_B §5.6; tie-outs from table
+    # 04 T-RPT-01 and PHASES §5.4 (RPS-1): 59 current version-1 definitions in the seeded order,
+    # 55 RPS, 2 LMG and 2 FCS codes; names, kinds and formats of SCREENS_B §5.6; tie-outs from table
     # 10-T only.
     seeded = _seeded_codes()
-    assert len(seeded) == 58
+    assert len(seeded) == 59
     current = [definition for definition in DEFINITIONS if definition.is_current]
     assert [definition.code for definition in current] == seeded
     assert all(definition.version == 1 for definition in DEFINITIONS)
     phases = _phase_codes()
-    assert {phase: len(codes) for phase, codes in phases.items()} == {"RPS": 54, "LMG": 2, "FCS": 2}
+    assert {phase: len(codes) for phase, codes in phases.items()} == {"RPS": 55, "LMG": 2, "FCS": 2}
     assert sorted(code for codes in phases.values() for code in codes) == sorted(seeded)
 
     pack = DEFINITIONS_BY_CODE["disclosure_pack"]

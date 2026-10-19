@@ -1,5 +1,12 @@
 # eRev Cloud 1.0: stated limits of the release
 
+October 19 engine true-up register update: revision 0180 now exposes exact-cutoff processing
+portions and actual attributed sealed ledger lines through JSON/CSV/XLSX reports. Same-source
+reruns rebuild from retained input facts; current worker grants apply. This supersedes earlier
+statements that this register is unimplemented/unseeded. Six other catalogue builders remain.
+Full upgrade lifecycle and deferred-period reopening/cross-entity browser acceptance are still
+open; the register does not complete those workflows or constitute accounting sign-off.
+
 October 19 variance header/totals update: both lock IDs/timestamps, frozen-comparison source
 labels, separate metric/currency totals and identical-lock empty copy are implemented.
 Earlier header/empty-state limitations below are superseded. Six other catalogue builders and

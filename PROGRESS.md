@@ -2,6 +2,22 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Engine true-up register — October 19, 2026
+
+- Implemented and registered engine_trueup_register (migration 0180): latest processing portions
+  at exact known_at, unresolved origin periods, sampled flag and actual attributed sealed lines.
+  Signed transaction/functional amounts remain separate by entity/book/period/currency/account role.
+- No-posting portions carry no invented amounts. A deferred portion remains deferred even when
+  it has postings. Whole-group terminal is withheld when an entity is outside the selected scope.
+- Retained input facts and hash supply same-source reruns. Workers reload current report/export
+  grants. JSON/CSV/XLSX use the normal report pipeline; viewer uses readable ordered column metadata.
+- Real computation cases: 3 passed (posted and no-posting outcomes); CSV worker plus bound rerun:
+  1 passed; database catalogue: 6 passed; catalogue/source contract: 23 passed; deferred/multicurrency
+  arithmetic and missing-attribution refusal: 1 passed. Type/lint checks pass.
+- Six catalogue builders remain: actual_vs_forecast, forecast_outputs, parallel_run_comparison,
+  contract_sample_pack, period_evidence_pack and disclosure_pack. Full upgrade lifecycle,
+  deferred-period reopening, cross-entity browser acceptance and accounting sign-off stay open.
+
 ## Close variance header, totals and empty state — October 19, 2026
 
 - Added earlier/later lock timestamps and copyable IDs to the report header, from hash-checked
@@ -204,25 +220,6 @@
 - Concurrent races across every custom write path and direct copy transaction are not yet
   acceptance-tested. Nonempty/closed-period scenario copy, refresh, event sets, forecast runs,
   report builders and UI remain open. No production-readiness or deployment claim.
-
-## Asynchronous scenario creation and creator access — October 19, 2026
-
-- POST /scenarios now accepts name, purpose and optional known_at, returns a TENANT_SNAPSHOT
-  job with preallocated scenario/snapshot ids, and registers the source scenario only after the
-  sandbox copy succeeds. Completion audits both tenants; job results link to the scenario list.
-- Preserves copied memberships. A creator absent from the historical snapshot receives only
-  Viewer plus a dedicated scenario.use role before period replay; inactive copied membership
-  refuses. Scenario sandbox codes use the allocated tenant id so equal names do not collide.
-- scenario.use does not inherit tenant.snapshot's step-up requirement; the ordinary snapshot
-  command still enforces it. Purpose input is limited to the database memo's 4000 characters.
-- Actual API + worker checks: copied creator, historical snapshot without creator (minimum grants),
-  idempotent request replay, source/sandbox audit records, populated tenant-isolated listing,
-  and ordinary snapshot permission/step-up regression: 4 passed, 4 deselected (10.92s).
-  Ruff, mypy (10 files), make openapi passed; generated frontend API types updated.
-- These are empty-business-data copies, not the Q4 world with contracts and closed periods.
-  Closed-period replay for a requester with only scenario.use, nonempty determinism, worker
-  interruption/failure boundaries, archive, refresh, event sets, forecasting and UI remain open.
-  FCS-1 is not complete and no forecast report builder is newly delivered. No deployment.
 
 ## Outstanding release verification
 

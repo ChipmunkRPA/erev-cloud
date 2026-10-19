@@ -164,6 +164,7 @@ from erev_api.domain.reports.builders import (
 )
 from erev_api.domain.reports.builders import contract_history as contract_history_builder
 from erev_api.domain.reports.builders import disaggregation as disaggregation_builder
+from erev_api.domain.reports.builders import engine_trueup_register as trueup_builder
 from erev_api.domain.reports.builders import (
     estimate_change_listing as estimate_change_listing_builder,
 )
@@ -376,6 +377,7 @@ BUILDERS: Final[Mapping[str, Builder]] = MappingProxyType(
         extract_schedule_builder.CODE: extract_schedule_builder.build,
         extract_obligations_builder.CODE: extract_obligations_builder.build,
         extract_events_builder.CODE: extract_events_builder.build,
+        trueup_builder.CODE: trueup_builder.build,
         upgrade_validation_builder.CODE: upgrade_validation_builder.build,
         variance_builder.CODE: variance_builder.build,
         export_visibility.CODE: log_export.build,
@@ -631,6 +633,11 @@ SOURCE_CONTRACTS: Final[Mapping[str, SourceContract]] = MappingProxyType(
                 "Both frozen locks and original retained computation evidence",
                 "consumed configuration retained in original input bundles",
             ),
+            (),
+        ),
+        trueup_builder.CODE: SourceContract(
+            RETAINED,
+            ("Exact cutoff; scoped processing events and attributed sealed ledger lines",),
             (),
         ),
         upgrade_validation_builder.CODE: SourceContract(
@@ -2281,6 +2288,10 @@ def _export_requester(
             raise Problem("invalid-transition")
         ctx = report_requester.validation_requester(jc, uow, run)
         variance_builder.prepare(uow, replace(report_params(run), requester=ctx))
+        return ctx
+    if str(run["report_code"]) == trueup_builder.CODE:
+        ctx = report_requester.validation_requester(jc, uow, run)
+        trueup_builder.require_access(uow, replace(report_params(run), requester=ctx))
         return ctx
     if str(run["report_code"]) == upgrade_validation_builder.CODE:
         if stored is not None or run["period_lock_id"] is not None:
