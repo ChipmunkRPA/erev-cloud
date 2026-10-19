@@ -2,6 +2,18 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Transactional forecast command replay — October 19, 2026
+
+- Added the internal command executor alongside file replay. Commands authorize and lock the
+  current contract in the target copy, apply retained payload/evidence through the normal event
+  path and capture the input only after synchronous computation succeeds. Large groups do not
+  enqueue deferred work that could overtake subsequent inputs. Ordinary HTTP behavior is unchanged.
+- Computation failure rolls back the event, computation, input capture and audit buffers. The
+  real scenario journey exercises failure after computation, subsequent successful replay and
+  mixed file/command order without new jobs. Targeted checks and Ruff/Mypy pass.
+- Resource materialization, durable refresh orchestration, scenario replacement and the forecast
+  report builders remain unfinished. No deployment or production-readiness claim.
+
 ## Transactional forecast file replay — October 19, 2026
 
 - Added an internal replay executor that creates, validates, previews, submits, commits and
@@ -213,21 +225,6 @@
   Ruff/Mypy and frontend type/lint/component checks pass.
 - Full populated accounting acceptance, PDF wide-table readability, browser acceptance, frozen
   snapshots and remaining export worker journeys remain open. No deployment or readiness claim.
-
-## Disclosure chapter viewer — October 19, 2026
-
-- Added seven-chapter disclosure view with expandable tables, period/QTD labels, interim flags,
-  original source IDs/digests and omission notes. Only expanded, included tables load rows;
-  amount columns identify shared currencies or carry companion currency columns when mixed.
-- Report data now includes typed chapter/table metadata and optional section_table selection.
-  Selected tables use normal pagination; cursor identity includes the table key. Unknown tables,
-  duplicate selections and cross-table cursors refuse. Reads keep report permission/entity scope
-  checks and verify the saved JSON digest before serving data. Ordinary directory reads remain.
-- Real API journey verifies seven sections, ten expedient rows, pagination and wrong-table cursor
-  refusal. Component check verifies lazy loading and omitted-table suppression. Ruff/Mypy,
-  frontend TypeScript and targeted ESLint pass; OpenAPI/client types regenerated.
-- Full browser/accessibility acceptance, frozen snapshots, quarter side-by-side layout, populated
-  accounting acceptance and remaining export worker journeys remain open. No deployment.
 
 ## Outstanding release verification
 

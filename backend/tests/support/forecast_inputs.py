@@ -356,3 +356,62 @@ def exercise_forecast_imports(world: object) -> None:
         uow.commit()
     assert world.scalar(select(func.count()).select_from(import_upload)) == before_imports + 1
     assert world.scalar(select(func.count()).select_from(job)) == before_jobs
+
+    from erev_api.domain.contracts import events as contract_events
+    from erev_api.schemas.events import EventAppendIn
+
+    command_body = EventAppendIn.model_validate(
+        {
+            "events": [
+                {
+                    "event_type": "PROGRESS_RECORDED",
+                    "effective_date": "2026-05-31",
+                    "payload": {
+                        "obligation_key": "O2",
+                        "cumulative_progress_ratio": "0.90",
+                        "measure": "OUTPUT_PERCENT",
+                    },
+                }
+            ],
+        }
+    )
+    before_head = world.scalar(
+        select(contract.c.head_stream_version).where(contract.c.id == contract_id)
+    )
+    compute = contract_events.compute_group
+
+    def fail_after_compute(*args, **kwargs):
+        compute(*args, **kwargs)
+        raise Problem("validation-failed", "injected replay computation failure")
+
+    with place.uow() as uow:
+        uow.ctx = replace(uow.ctx, tenant_kind=TenantKind.SANDBOX)
+        with patch.object(contract_events, "compute_group", side_effect=fail_after_compute):
+            with pytest.raises(Problem, match="injected replay computation failure"):
+                replay_apply.apply_command(
+                    uow, contract_id=contract_id, input_set_id=inline_id, body=command_body
+                )
+        uow.commit()
+    assert (
+        world.scalar(select(contract.c.head_stream_version).where(contract.c.id == contract_id))
+        == before_head
+    )
+    assert (
+        world.scalar(
+            select(forecast_event_set.c.api_commands).where(forecast_event_set.c.id == inline_id)
+        )
+        == []
+    )
+    with place.uow() as uow:
+        uow.ctx = replace(uow.ctx, tenant_kind=TenantKind.SANDBOX)
+        with patch.object(contract_events, "obligation_count", return_value=201):
+            recorded = replay_apply.apply_command(
+                uow, contract_id=contract_id, input_set_id=inline_id, body=command_body
+            )
+        assert recorded.job is None and recorded.appended is not None
+        assert recorded.appended.computation.status == "SUCCEEDED"
+        uow.commit()
+    assert world.scalar(select(func.count()).select_from(job)) == before_jobs
+    assert world.scalar(
+        select(forecast_event_set.c.input_sequence).where(forecast_event_set.c.id == inline_id)
+    ) == [{"kind": "IMPORT_UPLOAD", "id": str(applied_id)}, {"kind": "API_COMMAND", "index": 0}]

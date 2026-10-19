@@ -2048,7 +2048,11 @@ def record_events(
     body: EventAppendIn,
     engine: computation.Engine | None = None,
     forecast_event_set_id: UUID | None = None,
+    inline_compute: bool = False,
 ) -> Recorded:
+    if inline_compute and forecast_event_set_id is None:
+        raise Problem("validation-failed", "Inline replay requires a forecast input set.")
+
     def execute() -> Recorded:
         return _record_events(
             uow,
@@ -2058,6 +2062,7 @@ def record_events(
             engine=engine,
             allowed=RECORDED_TYPES,
             forecast=forecast_event_set_id is not None,
+            inline_compute=inline_compute,
         )
 
     if forecast_event_set_id is None:
@@ -2099,10 +2104,17 @@ def _record_events(
     engine: computation.Engine | None = None,
     allowed: frozenset[ContractEventType],
     forecast: bool = False,
+    inline_compute: bool = False,
 ) -> Recorded:
     """``POST /contracts/{id}/events`` (API-R-30; DG-CMD-09)."""
     session = uow.session
-    current = _locked_contract(uow, contract_id, expected_stream_version)
+    # A refresh replays against the new copy's current head, under the input-set lock.
+    # HTTP callers still supply their optimistic stream version through the normal path.
+    current = (
+        _locked_visible(uow, contract_id)
+        if inline_compute and forecast and expected_stream_version is None
+        else _locked_contract(uow, contract_id, expected_stream_version)
+    )
     evidence = evidence_errors(uow, body.evidence_file_ids)
     if evidence:
         raise Problem("validation-failed", errors=evidence)
@@ -2207,7 +2219,11 @@ def _record_events(
     head = int(current["head_stream_version"]) + len(events) + len(released)
     group_id = UUID(str(current["combination_group_id"]))
     outcome = None
-    if obligation_count(session, group_id) <= OBLIGATION_BUDGET:
+    if inline_compute:
+        outcome = compute_group(uow, group_id, engine=engine)
+        if outcome.deferred or outcome.status != ComputationStatus.SUCCEEDED:
+            raise Problem("validation-failed", "A replayed forecast event could not be computed.")
+    elif obligation_count(session, group_id) <= OBLIGATION_BUDGET:
         outcome = compute_group(uow, group_id, engine=engine, budget_seconds=ENGINE_BUDGET_SECONDS)
     detail: dict[str, Any] = {
         "event_ids": [str(row["id"]) for row in rows],

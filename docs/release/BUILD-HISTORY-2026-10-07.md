@@ -7302,3 +7302,18 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - User guide and release limitations describe the draft API and its boundaries. Frozen snapshots,
   chapter viewer, side-by-side quarter layout, export worker journeys and populated accounting
   acceptance remain open. This enables usable draft generation, not completed RPS-15/readiness.
+
+## Disclosure chapter viewer — October 19, 2026
+
+- Added seven-chapter disclosure view with expandable tables, period/QTD labels, interim flags,
+  original source IDs/digests and omission notes. Only expanded, included tables load rows;
+  amount columns identify shared currencies or carry companion currency columns when mixed.
+- Report data now includes typed chapter/table metadata and optional section_table selection.
+  Selected tables use normal pagination; cursor identity includes the table key. Unknown tables,
+  duplicate selections and cross-table cursors refuse. Reads keep report permission/entity scope
+  checks and verify the saved JSON digest before serving data. Ordinary directory reads remain.
+- Real API journey verifies seven sections, ten expedient rows, pagination and wrong-table cursor
+  refusal. Component check verifies lazy loading and omitted-table suppression. Ruff/Mypy,
+  frontend TypeScript and targeted ESLint pass; OpenAPI/client types regenerated.
+- Full browser/accessibility acceptance, frozen snapshots, quarter side-by-side layout, populated
+  accounting acceptance and remaining export worker journeys remain open. No deployment.

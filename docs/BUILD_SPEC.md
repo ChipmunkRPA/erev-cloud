@@ -11478,7 +11478,9 @@ Author BS-3. Uses DIN, SNP and RPS (PHASES §1 row 18). Indicative size 12 items
     verifies file and mapping hashes, and retains ordered typed command/file descriptors.
     The internal file executor now runs validation, diff, commit and computation in one
     transaction without queued stages, preserving retained quarantine behavior and rolling back
-    failed inputs. Normal import routes remain asynchronous. Resource copying, command replay,
+    failed inputs. A matching command executor locks the target's current head and runs ordinary
+    event authorization, validation and capture with synchronous computation, rolling back on
+    failure. Normal HTTP/import routes retain their existing behavior. Resource copying,
     refresh request/orchestration and final scenario switch remain missing; FCS-2 remains open.
   - **Prerequisites:** FCS-1
   - **Scope:**
