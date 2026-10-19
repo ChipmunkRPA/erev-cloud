@@ -2,6 +2,20 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Retained computation execution for close variance — October 19, 2026
+
+- Added the transaction-free execution phase: original retained inputs must reproduce their
+  output hashes and monetary endpoints before DRY_RUN. Common earlier posted amounts and
+  previous stream heads are explicit counterfactual adjustments, with original source hashes
+  and normalized input identity retained. The final replay must match later frozen money.
+- Identical saved computations produce a zero-change result without inventing a later cutoff.
+  Reference/calendar/FX changes still refuse. Actual first recomputation adds recorded SSP
+  policies, demonstrating a remaining reference-replay requirement rather than a posting change.
+- Real-engine carried-posting/delivery, retained hash/endpoint refusal and same-source checks:
+  20 passed. Actual database source selection/reuse: 1 passed. Ruff and source/test Mypy pass.
+- Group aggregation, reference replay, job/report registration, output formats, UI and full
+  frozen-close accounting acceptance remain outstanding. Seven builders remain unregistered.
+
 ## Retained inputs for close variance — October 19, 2026
 
 - Added the source read phase: complete frozen closes, historical per-contract computation
@@ -214,21 +228,6 @@
   contributor routes and broader acceptance. Pre-activation changes and shared valuation
   causes need further attribution support; independent accounting sign-off is still absent.
   Eight reports remain without complete registered builders. No deployment.
-
-## Bookings/billings/revenue source and aggregation implementation — October 19, 2026
-
-- Implemented scoped, cutoff-bound raw source capture for RPT-37, retaining event identity
-  decisions and sealed revenue lines. Billing reuses the engine-aligned invoice identity,
-  credit and void handling of the balance rollforward. Revenue preserves posting periods,
-  transaction/functional amounts and line identities, including signed reversals.
-- Implemented fiscal month/quarter/year presentation, entity/currency splits, signed totals
-  and journal-revenue comparison. Missing measure populations or FX valuation refuse.
-- Real source reads prove later invoices do not change an earlier cutoff or retained inputs;
-  scoped reads and retained scope/book mismatches are exercised. Targeted evidence is in
-  CI-2026-10-19.md. No full-suite rerun or deployment.
-- RPT-37 is not registered yet: activation-value and applied-modification attribution, FX
-  valuation, journal comparator sourcing, contributor routes and end-to-end publication remain.
-  Eight reports still lack complete registered builders; do not mark this report finished.
 
 ## Outstanding release verification
 

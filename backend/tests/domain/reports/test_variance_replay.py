@@ -381,3 +381,85 @@ def test_bad_plan_refuses_before_engine_execution(fault: str) -> None:
             project=_project,
             engine=forbidden,
         )
+
+
+def test_retained_execution_checks_originals_and_preserves_event_effects() -> None:
+    from uuid import uuid4
+
+    from erev_api.domain.reports.computation_sources import VerifiedComputation
+    from erev_api.domain.reports.variance_execution import RetainedReplay, execute
+    from erev_engine import upgrade
+
+    before, after = _active_pair()
+    group_id, release_id = uuid4(), uuid4()
+
+    def source(bundle: InputBundle) -> VerifiedComputation:
+        output = compute(bundle)
+        return VerifiedComputation(
+            uuid4(),
+            group_id,
+            release_id,
+            bundle,
+            upgrade.output_mapping(output),
+            output.sha256(),
+            {"ASC606": 0},
+            None,
+        )
+
+    # Simulate persistence of the earlier output before the later computation.
+    carried = tuple(
+        PostedAmountInput(
+            book_code=intent.book_code,
+            entity_code=intent.entity,
+            subject_key=intent.subject_key,
+            entry_kind=intent.entry_kind,
+            account_role=line.account_role,
+            clearing_purpose=line.clearing_purpose,
+            counterparty_entity_code=line.counterparty_entity,
+            period_key=intent.posting_period_key,
+            origin_period_key=intent.origin_period_key,
+            posting_class=intent.posting_class,
+            txn_currency=line.txn_currency,
+            functional_currency=line.functional_currency,
+            amount_txn=line.amount_txn * (1 if line.side == "D" else -1),
+            amount_functional=line.amount_functional * (1 if line.side == "D" else -1),
+            reason_code=intent.reason_code,
+            rate_refs=(),
+        )
+        for book in compute(before).books
+        for intent in book.posting_intents
+        for line in intent.lines
+    )
+    after = replace(
+        after,
+        posted=(*before.posted, *carried),
+        group=replace(after.group, previous_stream_heads=(("Contract 2", 9),)),
+    )
+    earlier, later = source(before), source(after)
+    first = Projection(before, "Mock Entity 2", "ASC606", "FY2023-P05")(compute(before))
+    last = Projection(after, "Mock Entity 2", "ASC606", "FY2023-P05")(compute(after))
+
+    def run(
+        left: VerifiedComputation, right: VerifiedComputation, end: dict[MeasureKey, Fraction]
+    ) -> RetainedReplay:
+        return execute(
+            left,
+            right,
+            entity_code="Mock Entity 2",
+            book_code="ASC606",
+            period_key="FY2023-P05",
+            earlier_metrics=first,
+            later_metrics=end,
+        )
+
+    result = run(earlier, later, last)
+    assert result.replay.measures[RPO].total == Fraction("-58.84")
+    assert result.normalized_fields == ("posted", "group.previous_stream_heads")
+    assert result.earlier.output_sha256 == earlier.output_sha256
+    unchanged = run(earlier, earlier, first)
+    assert unchanged.replay.executions == ()
+    assert all(item.total == 0 for item in unchanged.replay.measures.values())
+    with pytest.raises(Problem, match="retained output"):
+        run(earlier, replace(later, output_sha256="0" * 64), last)
+    with pytest.raises(Problem, match="frozen endpoint"):
+        run(earlier, later, {**last, RPO: last[RPO] + 1})

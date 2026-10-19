@@ -6631,3 +6631,18 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - All nine extract builders now exist; eight other catalogue builders remain. Locked datasets,
   watermarks, true-up, broader acceptance and independent accounting sign-off remain open.
   Continue unfinished reporting development; no deployment.
+
+## Bookings/billings/revenue source and aggregation implementation — October 19, 2026
+
+- Implemented scoped, cutoff-bound raw source capture for RPT-37, retaining event identity
+  decisions and sealed revenue lines. Billing reuses the engine-aligned invoice identity,
+  credit and void handling of the balance rollforward. Revenue preserves posting periods,
+  transaction/functional amounts and line identities, including signed reversals.
+- Implemented fiscal month/quarter/year presentation, entity/currency splits, signed totals
+  and journal-revenue comparison. Missing measure populations or FX valuation refuse.
+- Real source reads prove later invoices do not change an earlier cutoff or retained inputs;
+  scoped reads and retained scope/book mismatches are exercised. Targeted evidence is in
+  CI-2026-10-19.md. No full-suite rerun or deployment.
+- RPT-37 is not registered yet: activation-value and applied-modification attribution, FX
+  valuation, journal comparator sourcing, contributor routes and end-to-end publication remain.
+  Eight reports still lack complete registered builders; do not mark this report finished.

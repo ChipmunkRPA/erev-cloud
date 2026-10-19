@@ -1,5 +1,14 @@
 # eRev Cloud 1.0: stated limits of the release
 
+October 19 retained variance execution: original computation hashes and monetary endpoints
+are verified before replay on a common earlier posting basis; normalized fields and source
+identities are retained. Identical source computations yield zero change. First recomputation
+can add recorded SSP policies and still requires the reference replay phase. The real-engine
+carried-posting case and database source reuse pass targeted checks; group aggregation,
+report/job/UI, broader replay phases and frozen-close accounting acceptance remain unfinished.
+Seven report builders remain unregistered; this is not a completed RPT-38 report.
+
+
 Forecast input-set update: version creation, metadata editing, listing, retrieval and immutable
 publication APIs now exist in registered scenarios. They retain ordered input fields but do
 not yet attach committed imports or record successful business commands. Input replay, refresh,

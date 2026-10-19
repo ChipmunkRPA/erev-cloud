@@ -1,0 +1,133 @@
+"""Execute retained close-variance inputs after the authorized read transaction ends.
+
+Original computations must reproduce their retained output hashes and frozen money
+before counterfactual replay. Replay uses a common earlier posting basis, so posting
+an earlier computation is not counted a second time as a business event. The final
+counterfactual must still reproduce the later frozen money exactly.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, replace
+from fractions import Fraction
+from types import MappingProxyType
+from typing import Literal
+from uuid import UUID
+
+from erev_engine import ENGINE_VERSION, compute
+from erev_engine.stages.s15_disclosures.variance import Evaluation, decompose
+
+from erev_api.problems import Problem
+
+from .computation_sources import VerifiedComputation
+from .variance_projection import Projection
+from .variance_replay import Engine, Metrics, Replay, replay_period_money
+
+
+@dataclass(frozen=True)
+class SourceExecution:
+    computation_id: UUID
+    input_sha256: str
+    output_sha256: str
+
+
+@dataclass(frozen=True)
+class RetainedReplay:
+    earlier: SourceExecution
+    later: SourceExecution
+    normalized_fields: tuple[str, ...]
+    replay_input_sha256: str
+    replay: Replay
+
+
+def _refuse(detail: str) -> Problem:
+    return Problem("validation-failed", f"Retained close variance: {detail}")
+
+
+def execute(
+    earlier: VerifiedComputation,
+    later: VerifiedComputation,
+    *,
+    entity_code: str,
+    book_code: str,
+    period_key: str,
+    earlier_metrics: Metrics,
+    later_metrics: Metrics,
+    currency_view: Literal["transaction", "functional"] = "transaction",
+    engine: Engine = compute,
+) -> RetainedReplay:
+    """Pure calculation phase; accepts no session and never persists engine output.
+
+    The caller supplies authorized sources and frozen endpoints for this group.
+    Reference/calendar/FX/membership changes still require their own replay phases.
+    Normalization is explicit evidence, not an alteration of the retained source.
+    """
+    if earlier.group_id != later.group_id:
+        raise _refuse("group membership changes require a separate replay phase.")
+    for source in (earlier, later):
+        if source.bundle.engine_version != ENGINE_VERSION:
+            raise _refuse("the retained engine runtime is unavailable.")
+    for expected in (earlier_metrics, later_metrics):
+        if any(not isinstance(value, Fraction) for value in expected.values()):
+            raise _refuse("frozen amounts must be exact fractions.")
+
+    def verify(source: VerifiedComputation, expected: Metrics) -> SourceExecution:
+        output = engine(source.bundle)
+        if (
+            output.engine_version != source.bundle.engine_version
+            or output.input_sha256 != source.bundle.sha256()
+            or output.sha256() != source.output_sha256
+        ):
+            raise _refuse("the original computation does not reproduce its retained output.")
+        actual = Projection(source.bundle, entity_code, book_code, period_key, currency_view)(
+            output
+        )
+        if any(
+            actual.get(key, Fraction(0)) != expected.get(key, Fraction(0))
+            for key in actual.keys() | expected.keys()
+        ):
+            raise _refuse("the original computation does not reproduce its frozen endpoint.")
+        return SourceExecution(source.computation_id, source.bundle.sha256(), output.sha256())
+
+    before = verify(earlier, earlier_metrics)
+    after = verify(later, later_metrics)
+    if earlier.computation_id == later.computation_id:
+        if earlier.bundle != later.bundle or before != after:
+            raise _refuse("one computation identity has inconsistent retained sources.")
+        # Two closes may select the same last computation. Do not invent a later
+        # input cutoff just to satisfy the event replay's chronological contract.
+        measures = {
+            key: decompose(
+                earlier_metrics.get(key, Fraction(0)),
+                [Evaluation("PROGRESS", later_metrics.get(key, Fraction(0)))],
+            )
+            for key in sorted(earlier_metrics.keys() | later_metrics.keys())
+        }
+        replay = Replay(ENGINE_VERSION, (), MappingProxyType(measures))
+        return RetainedReplay(before, after, (), later.bundle.sha256(), replay)
+
+    normalized = []
+    if earlier.bundle.posted != later.bundle.posted:
+        normalized.append("posted")
+    if earlier.bundle.group.previous_stream_heads != later.bundle.group.previous_stream_heads:
+        normalized.append("group.previous_stream_heads")
+    counterfactual = replace(
+        later.bundle,
+        posted=earlier.bundle.posted,
+        group=replace(
+            later.bundle.group,
+            previous_stream_heads=earlier.bundle.group.previous_stream_heads,
+        ),
+    )
+    replay = replay_period_money(
+        earlier.bundle,
+        counterfactual,
+        entity_code=entity_code,
+        book_code=book_code,
+        period_key=period_key,
+        earlier_metrics=earlier_metrics,
+        later_metrics=later_metrics,
+        currency_view=currency_view,
+        engine=engine,
+    )
+    return RetainedReplay(before, after, tuple(normalized), counterfactual.sha256(), replay)

@@ -968,18 +968,19 @@ def test_variance_candidate_selection_excludes_later_recompute_without_new_event
     from uuid import uuid4
 
     from erev_api.db.tables import legal_entity
-    from erev_api.domain.reports import locked, variance_sources
+    from erev_api.domain.reports import locked, variance_execution, variance_sources
     from erev_api.domain.reports.evidence_close import FrozenClose, FrozenReport
+    from erev_api.domain.reports.variance_projection import Projection
 
     booked = k01(world)
     group_id = booked.combination_group["id"]
-    original, _, first = computed(world.place, group_id)
+    original, first_output, first = computed(world.place, group_id)
     with world.place.uow() as uow:
         cutoff = uow.session.execute(select(func.clock_timestamp())).scalar_one()
         entity_id = uow.session.execute(
             select(legal_entity.c.id).where(legal_entity.c.code == "AVM-US")
         ).scalar_one()
-    newer, _, second = computed(world.place, group_id)
+    newer, second_output, second = computed(world.place, group_id)
     assert original.events == newer.events
     assert original.known_at < newer.known_at
     lock_id = uuid4()
@@ -1008,6 +1009,38 @@ def test_variance_candidate_selection_excludes_later_recompute_without_new_event
         assert earlier.contract_computations == {"SF-ORD-10001": first["id"]}
         assert later.contract_computations == {"SF-ORD-10001": second["id"]}
         assert earlier.computations[first["id"]].bundle == original
+
+    # The first recompute introduces recorded SSP policy inputs. Those need the
+    # reference replay phase; operational normalization must not suppress them.
+    with pytest.raises(Problem, match="separate reference replay.*books"):
+        variance_execution.execute(
+            earlier.computations[first["id"]],
+            later.computations[second["id"]],
+            entity_code="AVM-US",
+            book_code="ASC606",
+            period_key="FY2026-P09",
+            earlier_metrics=Projection(original, "AVM-US", "ASC606", "FY2026-P09")(first_output),
+            later_metrics=Projection(newer, "AVM-US", "ASC606", "FY2026-P09")(second_output),
+        )
+    final_bundle, final_output, third = computed(world.place, group_id)
+    with world.place.uow() as uow:
+        final_source = computation_sources.read_for_report(uow, third["id"])
+    # Calculate after leaving the read transaction. Monetary endpoints here are
+    # persisted computes, not a substitute for full frozen-close acceptance.
+    result = variance_execution.execute(
+        later.computations[second["id"]],
+        final_source,
+        entity_code="AVM-US",
+        book_code="ASC606",
+        period_key="FY2026-P09",
+        earlier_metrics=Projection(newer, "AVM-US", "ASC606", "FY2026-P09")(second_output),
+        later_metrics=Projection(final_bundle, "AVM-US", "ASC606", "FY2026-P09")(final_output),
+    )
+    assert result.earlier.computation_id == second["id"]
+    assert result.later.computation_id == third["id"]
+    assert all(item.total == 0 and item.sums_exactly for item in result.replay.measures.values())
+    assert final_source.bundle.sha256() == final_bundle.sha256()
+    assert result.replay.executions == ()  # identical input hash reuses the saved computation
 
 
 @pytest.mark.parametrize("name", ["input", "output"])
