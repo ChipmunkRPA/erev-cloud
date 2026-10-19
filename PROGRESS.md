@@ -2,6 +2,22 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Forecast output section projections — October 19, 2026
+
+- Added RPT-39 table projections for billing by contract/horizon period, projected balances
+  by entity/currency/period end, and journal preview by period/account role/currency.
+- Billing consumes effective net document contributions (void/credit handling stays in the
+  existing billing reader), preserves signed credits and excludes dates outside the horizon.
+  Balance stocks remain separate by end date and skip input TOTAL rows to avoid double counting.
+  Journal preview retains gross debit/credit activity, including reversals, from signed sealed
+  ledger inputs; it does not create journal batches. Every total is currency-specific.
+- Three focused checks cover credit amounts, USD/JPY precision, multiple period-end stocks,
+  reversals and stored functional-currency amounts. Ruff/Mypy pass.
+- These are data projections, not a registered/completed forecast report. Five-section assembly,
+  source capture, forecast-run execution, retained report exports and UI remain open. Journal
+  reporting-currency valuation still needs its governed source adapter; no parity conversion is
+  assumed. Forecast and actual-vs-forecast remain unfinished. No deployment/readiness claim.
+
 ## Scenario refresh API, worker and atomic switch — October 19, 2026
 
 - Added POST /scenarios/{id}/refresh with source row precondition, published input selection,
@@ -216,28 +232,6 @@
   visual acceptance: wide tables, full browser/accounting validation and release checks remain.
 - RPS-15 remains open; other missing reports and system work remain. No deployment or readiness
   claim; changes published directly on main.
-
-## Atomic disclosure publication at lock — October 19, 2026
-
-- ASC606/IFRS15 lock approval now captures sixteen period/QTD inputs and policies through the
-  shared read-only SYSTEM reader, then publishes actual synchronous source reports, a seven-
-  chapter JSON disclosure parent and seven immutable snapshots within the lock transaction.
-  Source reports have null jobs, normal historical source bindings and actual output files;
-  the parent/snapshots alone claim the period lock. CTL-029/030 and audit evidence are recorded.
-- Validates lock/entity/calendar/book/cutoff, child plan/selectors, policy and dataset hashes,
-  source bindings and row identities. Uses UoW savepoints so failed publication drops records,
-  audit buffers and hooks. Repeated publication of an existing lock refuses. The seventh
-  snapshot also retains supporting waterfall inputs for later frozen reconstruction.
-- Existing twelve E-64 datasets keep their formats. Scope readers admit boolean quarter only
-  for disclosure parents; the report viewer distinguishes saved lock evidence from drafts.
-  The existing API serves the stored JSON chapters and seven scoped verified snapshots.
-- Targeted database journeys cover draft/rerun, late-child failure rollback, genuine source
-  identities, snapshot/parent HTTP reads, duplicate refusal and actual close approval capture.
-  Production Python typing/lint and frontend component/type checks pass. Independent accounting
-  acceptance, full browser/release checks and performance verification remain open.
-- Next: admission/rebuild from saved lock snapshots, locked XLSX/PDF exports and rerun; no
-  historical-lock backfill or current-data fallback. Other reporting/system backlog remains.
-  No deployment, new PR or production-readiness claim.
 
 ## Outstanding release verification
 

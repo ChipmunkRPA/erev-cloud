@@ -7395,3 +7395,25 @@ cleanup in the shared database session kernel was also repaired and regression-t
   TypeScript and targeted ESLint checked. Full browser acceptance remains open.
 - This is a per-report viewer, not a cross-report snapshot register. Lock approval persistence
   and as-locked execution still remain open; no deployment or readiness claim.
+
+## Atomic disclosure publication at lock — October 19, 2026
+
+- ASC606/IFRS15 lock approval now captures sixteen period/QTD inputs and policies through the
+  shared read-only SYSTEM reader, then publishes actual synchronous source reports, a seven-
+  chapter JSON disclosure parent and seven immutable snapshots within the lock transaction.
+  Source reports have null jobs, normal historical source bindings and actual output files;
+  the parent/snapshots alone claim the period lock. CTL-029/030 and audit evidence are recorded.
+- Validates lock/entity/calendar/book/cutoff, child plan/selectors, policy and dataset hashes,
+  source bindings and row identities. Uses UoW savepoints so failed publication drops records,
+  audit buffers and hooks. Repeated publication of an existing lock refuses. The seventh
+  snapshot also retains supporting waterfall inputs for later frozen reconstruction.
+- Existing twelve E-64 datasets keep their formats. Scope readers admit boolean quarter only
+  for disclosure parents; the report viewer distinguishes saved lock evidence from drafts.
+  The existing API serves the stored JSON chapters and seven scoped verified snapshots.
+- Targeted database journeys cover draft/rerun, late-child failure rollback, genuine source
+  identities, snapshot/parent HTTP reads, duplicate refusal and actual close approval capture.
+  Production Python typing/lint and frontend component/type checks pass. Independent accounting
+  acceptance, full browser/release checks and performance verification remain open.
+- Next: admission/rebuild from saved lock snapshots, locked XLSX/PDF exports and rerun; no
+  historical-lock backfill or current-data fallback. Other reporting/system backlog remains.
+  No deployment, new PR or production-readiness claim.
