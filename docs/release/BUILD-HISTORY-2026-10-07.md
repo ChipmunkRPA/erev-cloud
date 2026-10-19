@@ -6960,3 +6960,19 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Remaining report development: actual_vs_forecast, forecast_outputs, parallel_run_comparison,
   contract_sample_pack, period_evidence_pack, disclosure_pack, and engine_trueup_register.
   Wider variance replay and populated close/cell/browser accounting acceptance remain open.
+
+## Engine true-up register — October 19, 2026
+
+- Implemented and registered engine_trueup_register (migration 0180): latest processing portions
+  at exact known_at, unresolved origin periods, sampled flag and actual attributed sealed lines.
+  Signed transaction/functional amounts remain separate by entity/book/period/currency/account role.
+- No-posting portions carry no invented amounts. A deferred portion remains deferred even when
+  it has postings. Whole-group terminal is withheld when an entity is outside the selected scope.
+- Retained input facts and hash supply same-source reruns. Workers reload current report/export
+  grants. JSON/CSV/XLSX use the normal report pipeline; viewer uses readable ordered column metadata.
+- Real computation cases: 3 passed (posted and no-posting outcomes); CSV worker plus bound rerun:
+  1 passed; database catalogue: 6 passed; catalogue/source contract: 23 passed; deferred/multicurrency
+  arithmetic and missing-attribution refusal: 1 passed. Type/lint checks pass.
+- Six catalogue builders remain: actual_vs_forecast, forecast_outputs, parallel_run_comparison,
+  contract_sample_pack, period_evidence_pack and disclosure_pack. Full upgrade lifecycle,
+  deferred-period reopening, cross-entity browser acceptance and accounting sign-off stay open.

@@ -10146,6 +10146,12 @@ Author BS-3. Uses CTR (PHASES §1 row 12). Indicative size 16 items; this phase 
   - **Gates:** GK-01 `make ci`; GK-07 `make e2e SPEC=frontend/e2e/projects/screens.spec.ts`
 
 - [ ] **RPS-15 Disclosure snapshots and the disclosure pack.**
+  - October 19 assembly increment: `disclosure_assembly` groups complete verified inputs into
+    seven chapters at one entity/book/cutoff, retains source run/hash references and applies
+    nonpublic reliefs without discarding underlying child evidence. A 16-job database journey
+    now assembles all chapters. Final quarter-column rendering, frozen snapshots and parent
+    worker publication remain open; the fixture does not prove populated accounting acceptance.
+
   - October 19 expedient-input increment: `disclosure_expedients` resolves the ten entity-level
     practical-expedient policies with source IDs/levels and book-specific standard references.
     POL-195 hides rendered rows while retaining facts. Cost/default and IFRS forced-value reads

@@ -2,6 +2,23 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Seven-section disclosure assembly — October 19, 2026
+
+- Added disclosure_assembly.prepare/assemble: verifies complete attached child population and
+  common tenant/entity/book/cutoff, captures entity policy facts at that exact cutoff, and groups
+  verified child tables into all seven disclosure chapters with source run/hash references.
+- Captures all nonpublic relief and interim policy values. Applies POL-192/193/196 at table level:
+  balances remain while rollforward/other suppressed tables hide rows and totals. POL-195 hides
+  the expedient table. Original child inputs remain available separately; interim-required chapter
+  flags follow the resolved pack election. Disaggregation retains its existing timing-only handling.
+- The database journey now assembles seven chapters after executing all 16 child tasks; fixture
+  clock advances before parent creation so policy and child cutoffs match. It remains a no-booked-
+  population journey, not full accounting acceptance. Two focused assembly/omission checks pass;
+  Ruff and production-module Mypy pass.
+- Still open: final side-by-side period/quarter presentation, chapter workbook/PDF and viewer
+  integration, frozen disclosures and durable parent worker/dependency/publication lifecycle.
+  Five catalogue builders remain unregistered. This assembly model is not a finished disclosure pack.
+
 ## Practical expedient disclosure inputs — October 19, 2026
 
 - Added disclosure_expedients.capture for the ten PRACTICAL_EXPEDIENT registry parameters.
@@ -207,22 +224,6 @@
 - Still required: independent legacy monthly-output reader preserving legacy rounding, authorized
   eRev journal/balance source selection, retained binding and worker registration/export journeys.
   RPT-42 remains unregistered; six catalogue builders remain. No readiness claim or deployment.
-
-## Engine true-up register — October 19, 2026
-
-- Implemented and registered engine_trueup_register (migration 0180): latest processing portions
-  at exact known_at, unresolved origin periods, sampled flag and actual attributed sealed lines.
-  Signed transaction/functional amounts remain separate by entity/book/period/currency/account role.
-- No-posting portions carry no invented amounts. A deferred portion remains deferred even when
-  it has postings. Whole-group terminal is withheld when an entity is outside the selected scope.
-- Retained input facts and hash supply same-source reruns. Workers reload current report/export
-  grants. JSON/CSV/XLSX use the normal report pipeline; viewer uses readable ordered column metadata.
-- Real computation cases: 3 passed (posted and no-posting outcomes); CSV worker plus bound rerun:
-  1 passed; database catalogue: 6 passed; catalogue/source contract: 23 passed; deferred/multicurrency
-  arithmetic and missing-attribution refusal: 1 passed. Type/lint checks pass.
-- Six catalogue builders remain: actual_vs_forecast, forecast_outputs, parallel_run_comparison,
-  contract_sample_pack, period_evidence_pack and disclosure_pack. Full upgrade lifecycle,
-  deferred-period reopening, cross-entity browser acceptance and accounting sign-off stay open.
 
 ## Outstanding release verification
 

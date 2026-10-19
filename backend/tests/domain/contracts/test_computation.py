@@ -4946,6 +4946,9 @@ def test_disclosure_children_attach_once_and_survive_retry(world: World) -> None
     from support.rows import report_run_values
 
     with world.place.uow() as uow:
+        observation_time = max(uow.now, uow.session.scalar(select(func.clock_timestamp())))
+    world.place.clock.set(observation_time)
+    with world.place.uow() as uow:
         entities = tie_outs.entities(uow.session, (world.entity_id,))
         calendar = tie_outs.calendars(uow.session, entities)[world.entity_id]
         period = calendar.periods[1]
@@ -5072,3 +5075,15 @@ def test_disclosure_children_attach_once_and_survive_retry(world: World) -> None
         assert all(
             "ASC " not in row["disclosure"] for row in disclosure_expedients.dataset(ifrs).rows
         )
+
+    from erev_api.domain.reports import disclosure_assembly
+
+    with world.place.uow() as uow:
+        pack = disclosure_assembly.prepare(uow, parent["id"])
+        assert isinstance(pack, disclosure_assembly.Pack)
+        assert [section.number for section in pack.sections] == list(range(1, 8))
+        assert all(section.tables for section in pack.sections)
+        assert pack.policy_facts["known_at"] == parent["known_at"].isoformat()
+        assert {s.number for s in pack.sections if s.interim_required} == {1, 2, 4, 5}
+        assert len(pack.sections[-1].tables[0].data.rows) == 10
+        assert len(pack.children) == 16

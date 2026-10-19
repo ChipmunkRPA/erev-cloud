@@ -84,7 +84,12 @@ def capture(uow: UnitOfWork, *, entity_id: UUID, book: str, known_at: datetime) 
         raise Problem(
             "validation-failed", "Practical expedient disclosure references need updating."
         )
-    for code in [elections.REPORTING_TYPE, RELIEF, *(s.code for s in specs)]:
+    for code in [
+        elections.REPORTING_TYPE,
+        *elections.RELIEFS,
+        elections.INTERIM_PACK,
+        *(s.code for s in specs),
+    ]:
         value = resolve(
             uow.session, code, book_code=BookCode(book), entity_id=entity_id, known_at=known_at
         )
@@ -133,6 +138,13 @@ def capture(uow: UnitOfWork, *, entity_id: UUID, book: str, known_at: datetime) 
         "book": book,
         "known_at": known_at.isoformat(),
         "reporting_type": reporting_type,
+        "elected_reliefs": sorted(
+            code
+            for code in elections.RELIEFS
+            if reporting_type == elections.NONPUBLIC and resolved[code]["value"] == elections.ELECT
+        ),
+        "interim_pack": resolved[elections.INTERIM_PACK]["value"]
+        or (elections.IAS34_16A_L if book == "IFRS15" else elections.TOPIC_270_LIST),
         "resolved": resolved,
         "rows": rows,
         "omitted": omitted,
