@@ -2,6 +2,16 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Verified attempt report attachment — October 19, 2026
+
+- Added transaction-bound report attachment under parent/attempt locks. It requires a
+  completed report job for the exact attempt, rechecks caller permissions, rebuilds frozen
+  source rows/totals, and verifies the output binding and file integrity before attachment.
+- The reference is write-once. Retries recheck evidence without updating the row; rollback,
+  replacement refusal, revoked access and corrupted output are covered by database tests.
+- Final population acceptance, approval routing and admission remain unfinished. Attachment
+  is an internal operation awaiting final orchestration; it never enables the release.
+
 ## Validation report catalogue and worker integration — October 19, 2026
 
 - Registered upgrade_validation and its retained-source contract, with migration 0164.
@@ -254,16 +264,6 @@
 - Ten failure-first regressions reproduced uncaught parsing exceptions. Replay/codec checks and
   final typing/lint evidence are recorded in docs/release/CI-2026-10-15.md.
 - Persisted replay verification, release orchestration and RPT-38 remain outstanding.
-
-## Verified computation sources for report replay — October 15, 2026
-
-- The internal reader checks report.run over the complete stored group and performing entities
-  before opening files, then validates raw/logical hashes, codec/cutoff, group membership,
-  output book coverage, predecessor heads and ledger-cutoff shape. SYSTEM has no implicit grant.
-- Old inputs remain stable after the group advances. Missing evidence never rebuilds from current
-  state. Corruption and scope checks pass; final verification is in CI-2026-10-15.md.
-- This reader is not yet wired to RPT-38. Replay orchestration, ledger cross-checks and persisted
-  replay verification remain outstanding. Local recovery on frozen 659314a passed.
 
 ## Outstanding release verification
 

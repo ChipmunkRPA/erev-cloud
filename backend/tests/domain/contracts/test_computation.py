@@ -3015,6 +3015,12 @@ def test_validation_fanout_runs_frozen_match_and_no_source(
             select(report_run.c.job_id).where(report_run.c.id == report_id)
         )
         uow.commit()
+    from erev_api.domain.contracts.validation_reports import attach
+
+    original_report_id = report_id
+    with world.place.uow() as uow, pytest.raises(Problem) as pending_report:
+        attach(uow, validation_id=validation_id, attempt_id=frozen.id, report_id=report_id)
+    assert pending_report.value.slug == "invalid-transition"
     outputs = []
     for iteration in range(2):
         assert report_job is not None
@@ -3045,6 +3051,77 @@ def test_validation_fanout_runs_frozen_match_and_no_source(
                 )
                 uow.commit()
     assert outputs[0] == outputs[1]
+    # A corrupted output cannot become the attempt's official report.
+    import io
+
+    from erev_api.domain.contracts import validation_reports
+    from erev_api.files.store import open_file as read_report_file
+
+    def corrupt_report_file(*args: Any, **kwargs: Any) -> Any:
+        metadata, stream = read_report_file(*args, **kwargs)
+        stream.close()
+        return metadata, io.BytesIO(b"corrupted report output")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(validation_reports, "open_file", corrupt_report_file)
+        with world.place.uow() as uow, pytest.raises(Problem) as corrupted_report:
+            attach(
+                uow, validation_id=validation_id, attempt_id=frozen.id, report_id=original_report_id
+            )
+        assert corrupted_report.value.slug == "validation-failed"
+    # Rollback leaves the attachment unset; publication commits once and retries are read-only.
+    with world.place.uow() as uow:
+        attach(uow, validation_id=validation_id, attempt_id=frozen.id, report_id=original_report_id)
+    with world.place.uow() as uow:
+        assert (
+            uow.session.scalar(
+                select(release_validation_attempt.c.report_run_id).where(
+                    release_validation_attempt.c.id == frozen.id
+                )
+            )
+            is None
+        )
+        attach(uow, validation_id=validation_id, attempt_id=frozen.id, report_id=original_report_id)
+        uow.commit()
+    with world.place.uow() as uow:
+        version = uow.session.scalar(
+            select(release_validation_attempt.c.row_version).where(
+                release_validation_attempt.c.id == frozen.id
+            )
+        )
+        assert (
+            attach(
+                uow, validation_id=validation_id, attempt_id=frozen.id, report_id=original_report_id
+            )
+            == original_report_id
+        )
+        assert (
+            uow.session.scalar(
+                select(release_validation_attempt.c.row_version).where(
+                    release_validation_attempt.c.id == frozen.id
+                )
+            )
+            == version
+        )
+        assert (
+            uow.session.scalar(
+                select(release_validation.c.enabled_at).where(
+                    release_validation.c.id == validation_id
+                )
+            )
+            is None
+        )
+        uow.commit()
+    with world.place.uow() as uow, pytest.raises(Problem) as replacement_report:
+        attach(uow, validation_id=validation_id, attempt_id=frozen.id, report_id=report_id)
+    assert replacement_report.value.slug == "invalid-transition"
+    no_report_grant = replace(
+        world.place.principal,
+        permissions=world.place.principal.permissions - {"report.run"},
+    )
+    with world.place.uow(no_report_grant) as uow, pytest.raises(Problem) as unauthorized:
+        attach(uow, validation_id=validation_id, attempt_id=frozen.id, report_id=original_report_id)
+    assert unauthorized.value.slug == "forbidden"
 
     from erev_api.db.tables import api_client
     from erev_api.enums import PrincipalKind

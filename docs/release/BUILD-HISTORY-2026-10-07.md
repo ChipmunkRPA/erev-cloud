@@ -6161,3 +6161,13 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Fourteen database regressions pass, including the close/reopen/re-lock workflow. Schema,
   privacy, typing and lint verification is recorded in docs/release/CI-2026-10-15.md.
 - This supplies new source evidence needed by RPT-38; its replay integration and report remain open.
+
+## Verified computation sources for report replay — October 15, 2026
+
+- The internal reader checks report.run over the complete stored group and performing entities
+  before opening files, then validates raw/logical hashes, codec/cutoff, group membership,
+  output book coverage, predecessor heads and ledger-cutoff shape. SYSTEM has no implicit grant.
+- Old inputs remain stable after the group advances. Missing evidence never rebuilds from current
+  state. Corruption and scope checks pass; final verification is in CI-2026-10-15.md.
+- This reader is not yet wired to RPT-38. Replay orchestration, ledger cross-checks and persisted
+  replay verification remain outstanding. Local recovery on frozen 659314a passed.
