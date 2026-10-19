@@ -13,10 +13,11 @@ from pathlib import Path
 from typing import Any
 from uuid import UUID
 
-from erev_engine.canonical import sha256_hex
+from erev_engine.canonical import canonical_bytes, sha256_hex
+from erev_engine.upgrade import decode_input
 from sqlalchemy import select
 
-from erev_api.db.tables import job, legal_entity, migrated_legacy_row
+from erev_api.db.tables import job, legal_entity, migrated_legacy_row, migration_population_version
 from erev_api.domain.migration import legacy_db, repository
 from erev_api.files.store import lock_readable, open_file
 from erev_api.problems import Problem
@@ -159,8 +160,49 @@ def read_for_report(
         references.append(
             {"id": str(stored["id"]), "rowid": original.source_rowid, "sha256": original.sha256}
         )
+    # The legacy format has no currency column. Bind the currency used by the
+    # original import, never today's tenant reporting-currency configuration.
+    captures = (
+        uow.session.execute(
+            select(migration_population_version)
+            .where(
+                migration_population_version.c.migration_batch_id == migration_id,
+                migration_population_version.c.capture_operation_id == operation["id"],
+                migration_population_version.c.created_at <= known_at,
+            )
+            .order_by(migration_population_version.c.id)
+        )
+        .mappings()
+        .all()
+    )
+    currencies: set[str] = set()
+    captured_contracts: set[str] = set()
+    capture_references = []
+    for captured in captures:
+        document = captured["input_evidence"]
+        if sha256_hex(document) != captured["input_evidence_sha256"]:
+            raise _refuse("the original import input evidence digest differs.")
+        try:
+            bundle = decode_input(canonical_bytes(document))
+        except (ValueError, TypeError, KeyError) as error:
+            raise _refuse("the original import input evidence is malformed.") from error
+        for contract in bundle.contracts:
+            if contract.contracting_entity_code not in mapping.values():
+                raise _refuse("the original import contains an unconfirmed entity.")
+            currencies.add(contract.transaction_currency)
+            captured_contracts.add(contract.external_id)
+        capture_references.append(
+            {
+                "id": str(captured["id"]),
+                "sha256": captured["input_evidence_sha256"],
+            }
+        )
+    if captured_contracts != {row.contract_external_id for row in rows} or len(currencies) != 1:
+        raise _refuse("the original import must establish one currency for the full population.")
     evidence = {
         "version": 1,
+        "reporting_currency": next(iter(currencies)),
+        "capture_inputs": capture_references,
         "tenant_id": str(principal.tenant_id),
         "migration_id": str(migration_id),
         "mode": str(batch["mode"]),

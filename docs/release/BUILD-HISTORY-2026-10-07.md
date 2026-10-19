@@ -6848,3 +6848,17 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Amount-specific VC exemptions and foreign functional RPO remain unsupported and refuse.
   Retained-source loading, other replay phases, report/job/UI and financial acceptance remain
   required. Seven missing report builders remain unregistered. No deployment/readiness claim.
+
+## Retained inputs for close variance — October 19, 2026
+
+- Added the source read phase: complete frozen closes, historical per-contract computation
+  candidates, original evidence verification and whole-group entity authorization. Required
+  access entities accompany the result. Missing retained evidence never uses current inputs.
+- Filter computation availability before latest-version selection: a later recompute with no
+  new event must not replace the computation available at an earlier close cutoff.
+- Monetary frozen reads use report.run; evidence packs retain their extra audit.read requirement.
+  Five focused frozen-source checks and one retained-computation selection check pass; the latter
+  uses a population shell, not a full close. Source Mypy and changed-file Ruff pass.
+- Candidate selection is not endpoint reproduction. Job integration, operational input
+  normalization, other replay phases, report/UI and accounting acceptance remain required.
+  Seven missing report builders remain unregistered. No deployment/readiness claim.

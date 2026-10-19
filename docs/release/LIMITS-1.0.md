@@ -1,5 +1,12 @@
 # eRev Cloud 1.0: stated limits of the release
 
+Latest reporting update (October 19): parallel comparison capture now binds its currency to
+hash-verified original migration inputs and resolves post-cutover ranges through recorded open
+period states. Full snapshots and requested boundaries are retained for replay. Calendar definitions
+are resolved at capture time. Worker/export registration and publication authorization remain
+unfinished, as do replay migration and sandbox lifecycle; this is not a completed RPT-42 release.
+
+
 October 19 migration source admission update: original import operation/mapping, source file
 hash and retained history rows are now checked under complete mapped-entity report permission.
 Identity and renamed-entity imports pass, while incomplete scope and altered file bytes refuse.

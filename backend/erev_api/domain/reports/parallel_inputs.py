@@ -6,7 +6,7 @@ The expected digest and context come from the server-owned run binding, not call
 
 import json
 from collections.abc import Mapping
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 from uuid import UUID
 
@@ -116,15 +116,18 @@ def capture(
     migration_id: UUID,
     entity_ids: tuple[UUID, ...],
     known_at: datetime,
-    periods: tuple[Period, ...],
+    periods: tuple[Period, ...] | None = None,
+    from_period_key: str | None = None,
+    to_period_key: str | None = None,
 ) -> dict[str, Any]:
     """Compose authorized source readers into a detached, replayable input bundle.
 
-    Period and currency selection is explicit: the legacy database has no currency
-    column. The report parameter resolver must supply that confirmed selection.
+    Period ranges resolve against calendars and recorded open states. Currency comes
+    from the original import evidence because the legacy database has no currency column.
     """
     from erev_api.domain.migration import parallel_legacy
-    from erev_api.domain.reports import parallel_actual, parallel_sources
+    from erev_api.domain.reports import parallel_actual, parallel_periods, parallel_sources
+    from erev_api.domain.reports.builders import ReportParams
 
     scope = context(
         tenant_id=uow.principal.tenant_id,
@@ -138,6 +141,26 @@ def capture(
         entity_ids=entity_ids,
         known_at=known_at,
     )
+    if periods is not None and (from_period_key is not None or to_period_key is not None):
+        raise _refuse("choose either explicit periods or period range parameters.")
+    if periods is None:
+        periods = parallel_periods.resolve(
+            uow,
+            ReportParams(
+                "parallel_run_comparison",
+                1,
+                {"from_period_key": from_period_key, "to_period_key": to_period_key},
+                entity_ids,
+                known_at,
+                historical=True,
+            ),
+            migration_evidence=admitted.evidence,
+        )
+    cutover = admitted.evidence.get("cutover_date")
+    if cutover is None or any(p.start <= date.fromisoformat(cutover) for p in periods):
+        raise _refuse("comparison periods must start after the migration cutover.")
+    if any(period.currency != admitted.evidence["reporting_currency"] for period in periods):
+        raise _refuse("comparison currency differs from the original import.")
     legacy = parallel_legacy.snapshot(
         admitted.rows,
         source_id=f"migration:{migration_id}:file:{admitted.evidence['file_id']}",
@@ -154,6 +177,19 @@ def capture(
         scope=scope,
         legacy=legacy,
         actual=actual.snapshot,
-        migration_evidence=admitted.evidence,
+        migration_evidence={
+            **admitted.evidence,
+            "requested_periods": [
+                {
+                    "entity": p.entity_code,
+                    "book": p.book_code,
+                    "currency": p.currency,
+                    "key": p.key,
+                    "start": p.start.isoformat(),
+                    "end": p.end.isoformat(),
+                }
+                for p in sorted(periods)
+            ],
+        },
         actual_evidence=actual.evidence,
     )

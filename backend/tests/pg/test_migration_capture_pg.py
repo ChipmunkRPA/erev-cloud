@@ -733,7 +733,8 @@ def test_import_job_creates_the_confirmed_prerequisites_over_wld_f_15(
     registry.run_job(job_id, tenant_id, attempt=1, runtime=runtime)
     from dataclasses import replace
 
-    from erev_api.domain.reports import parallel_sources
+    from erev_api.domain.reports import parallel_inputs, parallel_sources
+    from erev_engine.canonical import sha256_hex
 
     report_ctx = replace(_ctx(tenant_id, clock), principal=maya_principal(someone))
     with unit_of_work(report_ctx, clock=clock, keyring=keyring, files=files) as uow:
@@ -752,6 +753,21 @@ def test_import_job_creates_the_confirmed_prerequisites_over_wld_f_15(
         assert admitted.evidence["file_sha256"] == legacy_db.file_sha256(FIXTURE)
         assert admitted.evidence["import_operation_id"] == str(job_id)
         assert len(admitted.evidence["rows"]) == 24
+        assert admitted.evidence["reporting_currency"] == "USD"
+        assert admitted.evidence["capture_inputs"]
+        inputs = parallel_inputs.capture(
+            uow,
+            migration_id=batch["id"],
+            entity_ids=entity_ids,
+            known_at=cutoff,
+        )
+        comparison_replay = parallel_inputs.rebuild(
+            inputs,
+            expected_sha256=sha256_hex(inputs),
+            scope=inputs["scope"],
+        )
+        # Dry-run import retains sources but publishes no actual accounting population.
+        assert comparison_replay.data.rows == ()
         with pytest.raises(Problem) as scope_refused:
             parallel_sources.read_for_report(
                 uow, batch["id"], entity_ids=entity_ids[:1], known_at=cutoff

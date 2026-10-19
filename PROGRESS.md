@@ -2,6 +2,21 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Parallel comparison period and currency selection — October 19, 2026
+
+- Source admission now verifies original import input-evidence hashes, requires full contract
+  population coverage and derives the single reporting currency from captured contract inputs.
+  Today's tenant currency cannot silently relabel a legacy source. Capture refuses other currencies.
+- Added period resolution from the first period starting after cutover through the latest open
+  period at known_at, using recorded state transitions. Explicit ranges may include closed periods;
+  reversed or pre-cutover ranges refuse. Missing open periods produce empty coverage, not zeros.
+- Connected defaults/ranges to parallel_inputs.capture and retained the requested period boundaries.
+  Calendar resolution uses current definitions at capture; the resulting selection is retained.
+- Targeted unit checks: 12 passed; three changed modules pass Mypy and changed files pass Ruff.
+  Real import capture/rebuild checks cover identity and renamed mappings; dry-run imports correctly
+  have no compared actuals. Worker registration, publication grants and export integration remain
+  next, along with complete replay/sandbox lifecycle. Six catalogue builders remain unregistered.
+
 ## Retained parallel comparison inputs — October 19, 2026
 
 - Added parallel_inputs.capture to compose authorized migration admission, independent legacy
@@ -206,20 +221,6 @@
   20 passed. Actual database source selection/reuse: 1 passed. Ruff and source/test Mypy pass.
 - Group aggregation, reference replay, job/report registration, output formats, UI and full
   frozen-close accounting acceptance remain outstanding. Seven builders remain unregistered.
-
-## Retained inputs for close variance — October 19, 2026
-
-- Added the source read phase: complete frozen closes, historical per-contract computation
-  candidates, original evidence verification and whole-group entity authorization. Required
-  access entities accompany the result. Missing retained evidence never uses current inputs.
-- Filter computation availability before latest-version selection: a later recompute with no
-  new event must not replace the computation available at an earlier close cutoff.
-- Monetary frozen reads use report.run; evidence packs retain their extra audit.read requirement.
-  Five focused frozen-source checks and one retained-computation selection check pass; the latter
-  uses a population shell, not a full close. Source Mypy and changed-file Ruff pass.
-- Candidate selection is not endpoint reproduction. Job integration, operational input
-  normalization, other replay phases, report/UI and accounting acceptance remain required.
-  Seven missing report builders remain unregistered. No deployment/readiness claim.
 
 ## Outstanding release verification
 
