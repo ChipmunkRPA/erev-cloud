@@ -1,8 +1,8 @@
 """Upgrade processing per portion, posting attribution and the frozen validation dataset
 (05 RCP-28a, RCP-29; 04 T-PLT-44, T-PLT-46, T-SL-11, T-RPT-01 rule 3; D-96 (4), (E), (F), R7).
 
-Pure functions over injected facts; the integration slice (after the P2 merge) wires them into
-``computation.persist()``, the ``REPLAY_VERIFY`` fan-out and the two report builders.
+Pure functions over injected facts, used by computation persistence, retained validation
+datasets and the validation report. The true-up register integration remains outstanding.
 
 - **Seeding** (C/E): ``seed_portions`` — only an effective MINOR/MAJOR validation with an
   accepted attempt seeds ``PENDING`` rows, one per portion (group × entity × enabled book);

@@ -59,7 +59,7 @@ from erev_api.domain.contracts import computation_evidence as evidence_writer
 from erev_api.domain.contracts.replay_verify import Trigger, VerificationRow
 from erev_api.domain.platform import file_evidence
 from erev_api.domain.reports import computation_sources
-from erev_api.enums import ContractEventType
+from erev_api.enums import ComputationTrigger, ContractEventType
 from erev_api.events.payloads import SignificantChangeFlaggedV1
 from erev_api.events.stream import EventIn, append_events
 from erev_api.explain import store
@@ -1337,8 +1337,13 @@ def test_verification_schema_guards_execution_identity_and_acceptance(world: Wor
                 == expected
             )
     # A populated evidence schema must not silently disappear on downgrade.
-    with pytest.raises(exc.DBAPIError):
-        command.downgrade(alembic_config(), "0160")
+    try:
+        with pytest.raises(exc.DBAPIError):
+            command.downgrade(alembic_config(), "0160")
+    finally:
+        # Alembic commits each completed migration before the populated-schema refusal.
+        # Restore newer revisions so subsequent computations see the current schema.
+        command.upgrade(alembic_config(), "head")
 
 
 @dataclass(frozen=True)
@@ -4117,3 +4122,174 @@ def test_processing_seed_includes_unsampled_groups(world: World, group_count: in
     with world.place.uow() as uow:
         assert seed(uow, validation_id=validation_id) == len(groups) * len(books)
         assert not uow.audit_events
+
+
+@pytest.mark.parametrize("has_previous, bill", [(False, False), (True, False), (True, True)])
+def test_computation_persists_upgrade_facts_atomically(
+    world: World, monkeypatch: pytest.MonkeyPatch, has_previous: bool, bill: bool
+) -> None:
+    from erev_api.controls.release import current_release
+    from erev_api.db.tables import job, posting_attribution, release_group_processing
+    from erev_api.db.transitions import apply
+    from erev_api.domain.contracts import replay_job, upgrade_persistence
+    from erev_api.domain.contracts.processing_seed import seed
+    from erev_api.domain.contracts.validation_artifacts import retain
+    from erev_api.domain.contracts.validation_attempts import freeze
+    from erev_api.domain.contracts.validation_fanout import enqueue
+    from erev_api.jobs.context import JobRuntime
+    from erev_api.jobs.registry import run_job
+    from sqlalchemy import text
+
+    assert replay_job.replay is not None
+    if bill:
+        from datetime import timedelta
+
+        from erev_api.enums import RegistryCategory
+        from support.rows import publish_registry_version
+
+        with world.place.uow() as uow:
+            publish_registry_version(
+                uow.session,
+                tenant_id=world.place.tenant_id,
+                category=RegistryCategory.ACCOUNTING_POLICY,
+                values={"billing.posting": "ENGINE"},
+                at=uow.now - timedelta(days=365),
+            )
+            uow.commit()
+    booked = k01(world)
+    group_id = booked.combination_group["id"]
+    if has_previous:
+        computed(world.place, group_id)
+    validation_id = pending_validation(world)
+    with world.place.uow() as uow:
+        frozen = freeze(uow, validation_id=validation_id, attempt_no=1)
+        fanout = enqueue(uow, validation_id=validation_id, attempt_id=frozen.id)
+        assert len(fanout.job_ids) == 1
+        runtime = JobRuntime(
+            clock=uow.clock, keyring=uow.keyring, files=uow.files, engine_release=current_release()
+        )
+        uow.commit()
+    child_id = fanout.job_ids[0]
+    with world.place.uow() as uow:
+        task_id = uow.session.scalar(select(job.c.procrastinate_job_id).where(job.c.id == child_id))
+        uow.session.execute(
+            text("UPDATE procrastinate_jobs SET status = 'doing' WHERE id = :id"), {"id": task_id}
+        )
+        uow.commit()
+    run_job(child_id, world.place.tenant_id, attempt=1, runtime=runtime, delivered_task_id=task_id)
+    with world.place.uow() as uow:
+        retain(uow, validation_id=validation_id, attempt_id=frozen.id)
+        # Exercise post-acceptance persistence; the acceptance command itself remains separate.
+        apply(
+            uow.session,
+            "release_validation",
+            validation_id,
+            to_status="PASSED",
+            expected_status="RUNNING",
+            set_values={"accepted_attempt_id": frozen.id, "enabled_at": uow.now},
+        )
+        assert seed(uow, validation_id=validation_id) == 1
+        uow.commit()
+    if bill:
+        from erev_api.events.payloads import BillingRecordedV1
+        from erev_api.money import MoneyIn
+
+        with world.place.uow() as uow:
+            append_events(
+                uow,
+                contract_id=booked.contract["id"],
+                expected_stream_version=2,
+                events=[
+                    EventIn(
+                        event_type=ContractEventType.BILLING_RECORDED,
+                        effective_date=date(2026, 2, 1),
+                        payload=BillingRecordedV1(
+                            invoice_number="UPGRADE-BILL-1",
+                            line_external_id="UPGRADE-BILL-1-L1",
+                            obligation_key="O1",
+                            amount=MoneyIn(amount="120000.00", currency="USD"),
+                            issue_date=date(2026, 2, 1),
+                        ),
+                    )
+                ],
+                origin="UI",
+            )
+            uow.commit()
+    counted = (
+        contract_computation,
+        computation_evidence,
+        file_object,
+        subledger_posting,
+        posting_attribution,
+        release_group_processing,
+    )
+    with world.place.uow() as uow:
+        before = [uow.session.scalar(select(func.count()).select_from(table)) for table in counted]
+    if bill:
+        with world.place.uow() as uow:
+            probe = bundles.build(uow.session, group_id, uow.now, (), ComputationTrigger.COMMAND)
+            assert any(event.event_type == "BILLING_RECORDED" for event in probe.events)
+            assert engine()(probe).books[0].posting_intents, (
+                "Billing must produce actual posting lines"
+            )
+        read_file = open_file
+
+        def corrupted_input(*args: Any, **kwargs: Any) -> Any:
+            metadata, stream = read_file(*args, **kwargs)
+            stream.close()
+            return metadata, io.BytesIO(b"corrupted previous input")
+
+        with monkeypatch.context() as patch:
+            patch.setattr(upgrade_persistence, "open_file", corrupted_input)
+            with pytest.raises(Problem) as invalid_input:
+                computed(world.place, group_id)
+            assert invalid_input.value.slug == "validation-failed"
+        with world.place.uow() as uow:
+            assert [
+                uow.session.scalar(select(func.count()).select_from(table)) for table in counted
+            ] == before
+    original = upgrade_persistence.record
+
+    def interrupted(*args: Any, **kwargs: Any) -> Any:
+        original(*args, **kwargs)
+        raise RuntimeError("upgrade persistence interrupted")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(upgrade_persistence, "record", interrupted)
+        with pytest.raises(RuntimeError, match="upgrade persistence interrupted"):
+            computed(world.place, group_id)
+    with world.place.uow() as uow:
+        assert [
+            uow.session.scalar(select(func.count()).select_from(table)) for table in counted
+        ] == before
+    bundle, output, stored = computed(world.place, group_id)
+    with world.place.uow() as uow:
+        events = (
+            uow.session.execute(
+                select(release_group_processing).order_by(release_group_processing.c.seq)
+            )
+            .mappings()
+            .all()
+        )
+        assert len(events) == 2
+        assert events[-1]["contract_computation_id"] == stored["id"]
+        assert events[-1]["upgrade_state"] == (
+            "SETTLED_NO_POSTING" if has_previous and not bill else "POSTED"
+        )
+        attributed = uow.session.execute(select(posting_attribution)).mappings().all()
+        assert {str(row["subledger_posting_id"]) for row in attributed} == set(
+            stored["subledger_posting_ids"].values()
+        )
+        assert all(
+            row["cause"] == ("UPGRADE_AND_OTHER_INPUTS" if bill else "UPGRADE_CONTEXT")
+            for row in attributed
+        )
+        assert all(row["release_validation_attempt_id"] == frozen.id for row in attributed)
+        assert all(row["origin_periods"]["periods"] for row in attributed)
+        replayed = computation.persist(uow, bundle, output)
+        assert replayed["replayed"] and replayed["id"] == stored["id"]
+        assert uow.session.scalar(select(func.count()).select_from(release_group_processing)) == 2
+        assert uow.session.scalar(select(func.count()).select_from(posting_attribution)) == len(
+            attributed
+        )
+        uow.commit()

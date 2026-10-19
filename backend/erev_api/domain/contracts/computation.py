@@ -111,6 +111,7 @@ from erev_api.domain.contracts import (
     fx_layers,
     loss_provisions,
     period_ends,
+    upgrade_persistence,
 )
 from erev_api.domain.journals import subledger
 from erev_api.enums import (
@@ -1503,6 +1504,18 @@ def _persist(
         )
         if posted is not None:
             posting_ids[book_output.book_code] = str(posted.posting_id)
+    facts.update(
+        upgrade_persistence.record(
+            uow,
+            bundle,
+            output,
+            found,
+            computation_id=computation_id,
+            release_id=computation_row["engine_release_id"],
+            predecessor=None if predecessor is None else UUID(str(predecessor)),
+            posting_ids=posting_ids,
+        )
+    )
     cleared = _update_heads(
         uow,
         found,

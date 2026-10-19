@@ -1,6 +1,18 @@
 # PROGRESS — eRev Cloud build loop notebook (under 20 KB)
 
-**Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
+**Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
+
+## Atomic upgrade computation persistence — October 19, 2026
+
+- Computation persistence now writes posting attribution and append-only portion outcomes in
+  the same transaction as postings and head updates, under the shared upgrade-group guard.
+- Attribution checks retained predecessor input integrity and records actual posting origins;
+  unavailable historical inputs retain the conservative context label. Exact replay adds no rows.
+- Database probes cover first computation, no-posting recomputation, changed billing,
+  corrupted input refusal and rollback. Full computation regression results are recorded in CI.
+- Deferred portion handling uses the existing conservative origin rule; runtime closed-period
+  and period-open rescheduling coverage remain outstanding, as do the true-up register,
+  final acceptance, approval/admission integration and independent accounting sign-off.
 
 ## Immutable posting attribution schema — October 19, 2026
 
@@ -253,16 +265,6 @@
   defining module and still patches the production call site.
 - Evidence is recorded in docs/release/CI-2026-10-15.md. AI audit catalogue and lifecycle-walk
   integration remain the next known CI gap; full candidate verification is still outstanding.
-
-## Frozen-CI failure triage — October 15, 2026
-
-- Rechecked the old failure nodes against current main: report-source scope inventory and
-  estimate-upload permission assertions needed updates. Upload-for-AI does not grant estimate
-  attachment rights. The settings fixture now uses independent administrator author/approver.
-- Job heartbeat verification now includes AI and release-verification foreign keys. Expanded
-  job/settings database checks pass; exact evidence is in docs/release/CI-2026-10-15.md.
-- Ten AI command routes still lack audit catalogue/walk integration; the AI lifecycle category
-  remains pending. The nine helper typing errors found during triage were resolved above.
 
 ## Outstanding release verification
 
