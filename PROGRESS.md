@@ -2,6 +2,26 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Versioned forecast input set API — October 19, 2026
+
+- Added scenario-only GET/POST /forecast-event-sets, GET/PATCH by id, and publish. Drafts carry
+  ordered upload/command fields, source scenario linkage and row ETags. New versions retain the
+  previous version reference and input arrays; one draft per code is admitted under a code lock.
+- Migration 0179 installs a forecast-specific DRAFT -> PUBLISHED -> SUPERSEDED lifecycle with
+  DB-04 immutable publication contents/stamps and one published version per tenant/code.
+  Publishing hashes canonical content and atomically supersedes the old version. No production
+  approval request is fabricated; shared production configuration approval rules are unchanged.
+  This scenario-specific rule is now explicit in T-FC-02.
+- Actual HTTP checks inside both created-scenario membership cases cover production refusal,
+  request replay, draft edit, stale ETag rejection, publish, API/direct-SQL publication freeze,
+  version 2 publication, retained old hash and published-only listing. With the scenario flow
+  and empty migration round trip: 4 passed (12.75s). Ruff, mypy (5 files, explicit package bases)
+  and OpenAPI/types generation pass. Existing OpenAPI paths/operations are unchanged.
+- FCS-2 remains incomplete: no committed-import linkage, automatic recording of successful
+  business commands, ordered input replay or refresh yet. These APIs currently manage input-set
+  versions; they do not execute or populate forecasts. Forecast runs/output and UI remain open.
+  Seven missing report builders remain missing. No deployment or readiness claim.
+
 ## Scenario archive and read-only command/worker gate — October 19, 2026
 
 - Added POST /scenarios/{id}/archive with row ETag, creator or tenant-wide Controller admission,
@@ -213,28 +233,6 @@
   and snapshot-delta semantics. Targeted evidence is in CI-2026-10-19.md.
 - Reporting remains unfinished: 13 missing builders, five of them extracts. Locked extracts,
   automatic watermarks, true-up and live browser acceptance remain open. No deployment.
-
-## Obligation BI extract — October 19, 2026
-
-- Added extract_obligations v1 with latest-per-contract chain selection, all book statuses,
-  explicit created/known cutoff and incremental created-time filtering. Former group versions
-  do not duplicate contracts, and after-cutoff candidates cannot displace earlier versions.
-- Exported fixed typed columns and exact decimal strings, with per-currency allocation and
-  cumulative-revenue sums. Registered JSON/CSV delivery and retained-source reruns; existing
-  extract page controls expose the report. User guide states snapshot-delta semantics.
-- Reporting remains open: 14 catalogue builders missing, six of them extracts. Locked extracts,
-  watermark defaults, true-up and live browser acceptance remain unfinished. No deployment.
-
-## Contract version BI extract — October 19, 2026
-
-- Added extract_contract_versions v1: all versions in one book, fixed source cutoff,
-  created-time incremental window, exact decimal strings and original computation members.
-  Partial combined-entity scope is refused; membership reads are batched.
-- Registered retained-input rebuilds and JSON/CSV metadata; existing extract controls expose
-  the report. Migration 0170 reconciles disclosed query sources. User guide documents types.
-- Actual delivery and rerun checks pass alongside event-extract regression. Reporting still
-  has 15 catalogue definitions without builders; locked extracts and true-up remain unfinished.
-  Evidence is in CI-2026-10-19.md. No deployment or readiness claim.
 
 ## Outstanding release verification
 

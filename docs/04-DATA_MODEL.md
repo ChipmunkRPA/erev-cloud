@@ -6022,7 +6022,7 @@ Keys: `PRIMARY KEY (tenant_id, id)`; `ux_scenario__tenant (tenant_id, scenario_t
 ### T-FC-02 `forecast_event_set`
 
 - **Purpose.** Named, versioned set of forecast inputs re-applied in order on refresh (REQ-FC-002, -004). Lives in the scenario tenant.
-- **Class.** IM-P (SC-V); RLS-T; PT-N; AUD-CMD.
+- **Class.** IM-P (SC-V); RLS-T; PT-N; AUD-CMD. Scenario publication uses DRAFT → PUBLISHED → SUPERSEDED under `scenario.use`; it creates no production approval request. DB-04 freezes published contents and publication stamps. At most one version of a code is PUBLISHED. A new draft retains the previous version reference and ordered input identifiers; publication stores the canonical content SHA-256.
 - **REQ areas.** FC.
 
 | Column | Type | Null | Default | Constraints and notes |

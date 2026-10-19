@@ -6540,3 +6540,25 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Reporting remains a development priority: 16 catalogue definitions still lack builders.
   Extract lock snapshots, previous-run watermark defaults and true-up register remain open.
   No deployment; no claim of reporting or production-readiness completion.
+
+## Contract version BI extract — October 19, 2026
+
+- Added extract_contract_versions v1: all versions in one book, fixed source cutoff,
+  created-time incremental window, exact decimal strings and original computation members.
+  Partial combined-entity scope is refused; membership reads are batched.
+- Registered retained-input rebuilds and JSON/CSV metadata; existing extract controls expose
+  the report. Migration 0170 reconciles disclosed query sources. User guide documents types.
+- Actual delivery and rerun checks pass alongside event-extract regression. Reporting still
+  has 15 catalogue definitions without builders; locked extracts and true-up remain unfinished.
+  Evidence is in CI-2026-10-19.md. No deployment or readiness claim.
+
+## Obligation BI extract — October 19, 2026
+
+- Added extract_obligations v1 with latest-per-contract chain selection, all book statuses,
+  explicit created/known cutoff and incremental created-time filtering. Former group versions
+  do not duplicate contracts, and after-cutoff candidates cannot displace earlier versions.
+- Exported fixed typed columns and exact decimal strings, with per-currency allocation and
+  cumulative-revenue sums. Registered JSON/CSV delivery and retained-source reruns; existing
+  extract page controls expose the report. User guide states snapshot-delta semantics.
+- Reporting remains open: 14 catalogue builders missing, six of them extracts. Locked extracts,
+  watermark defaults, true-up and live browser acceptance remain unfinished. No deployment.

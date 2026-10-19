@@ -1,5 +1,11 @@
 # eRev Cloud 1.0: stated limits of the release
 
+Forecast input-set update: version creation, metadata editing, listing, retrieval and immutable
+publication APIs now exist in registered scenarios. They retain ordered input fields but do
+not yet attach committed imports or record successful business commands. Input replay, refresh,
+forecast execution/output and UI remain unfinished; FCS-2 is not complete. Scenario publication
+uses its own audited lifecycle without a production approval request (T-FC-02, migration 0179).
+
 Scenario archive update: creator/Controller archive now preserves sandbox reads and gates
 HTTP business writes and worker attempt units of work through the source scenario status.
 Pending jobs block archive; late worker writes fail while job settlement remains available.

@@ -3006,6 +3006,59 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/forecast-event-sets": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List Sets */
+    get: operations["forecast_event_sets_list"];
+    put?: never;
+    /** Create Set */
+    post: operations["forecast_event_sets_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/forecast-event-sets/{event_set_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get Set */
+    get: operations["forecast_event_sets_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /** Update Set */
+    patch: operations["forecast_event_sets_update"];
+    trace?: never;
+  };
+  "/api/v1/forecast-event-sets/{event_set_id}/publish": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Publish Set */
+    post: operations["forecast_event_sets_publish"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/fx-rate-set-versions/{version_id}": {
     parameters: {
       query?: never;
@@ -13131,6 +13184,76 @@ export interface components {
       /** Void Refusal */
       void_refusal: string | null;
     };
+    /** EventSetCreateIn */
+    EventSetCreateIn: {
+      /** Code */
+      code: string;
+      /** Effective From */
+      effective_from?: string | null;
+      /** Effective To */
+      effective_to?: string | null;
+      /** Name */
+      name: string;
+    };
+    /** EventSetOut */
+    EventSetOut: {
+      /** Api Commands */
+      api_commands: {
+        [key: string]: unknown;
+      }[];
+      /** Code */
+      code: string;
+      /** Content Sha256 */
+      content_sha256: string | null;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /** Effective From */
+      effective_from: string | null;
+      /** Effective To */
+      effective_to: string | null;
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Import Upload Ids */
+      import_upload_ids: string[];
+      /** Name */
+      name: string;
+      /**
+       * Production Scenario Id
+       * Format: uuid
+       */
+      production_scenario_id: string;
+      /** Published At */
+      published_at: string | null;
+      /** Published By */
+      published_by: string | null;
+      /** Row Version */
+      row_version: number;
+      status: components["schemas"]["ConfigStatus"];
+      /** Supersedes Version Id */
+      supersedes_version_id: string | null;
+      /**
+       * Updated At
+       * Format: date-time
+       */
+      updated_at: string;
+      /** Version No */
+      version_no: number;
+    };
+    /** EventSetUpdateIn */
+    EventSetUpdateIn: {
+      /** Effective From */
+      effective_from?: string | null;
+      /** Effective To */
+      effective_to?: string | null;
+      /** Name */
+      name?: string | null;
+    };
     /** EventSourceRowOut */
     EventSourceRowOut: {
       /**
@@ -16027,6 +16150,13 @@ export interface components {
     ListOut_EventOut_: {
       /** Items */
       items: components["schemas"]["EventOut"][];
+      /** Next Cursor */
+      next_cursor: string | null;
+    };
+    /** ListOut[EventSetOut] */
+    ListOut_EventSetOut_: {
+      /** Items */
+      items: components["schemas"]["EventSetOut"][];
       /** Next Cursor */
       next_cursor: string | null;
     };
@@ -36139,6 +36269,486 @@ export interface operations {
       };
       /** @description Problem: validation-failed, idempotency-key-reused */
       422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+    };
+  };
+  forecast_event_sets_list: {
+    parameters: {
+      query?: {
+        status?: components["schemas"]["ConfigStatus"] | null;
+        limit?: number;
+        cursor?: string | null;
+        sort?: string | null;
+        q?: string | null;
+        count?: boolean;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ListOut_EventSetOut_"];
+        };
+      };
+      /** @description Problem: unauthenticated, session-expired */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: forbidden, sandbox-restricted */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: not-found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: invalid-transition, idempotency-in-progress */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: precondition-failed */
+      412: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: validation-failed, idempotency-key-reused */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: precondition-required */
+      428: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+    };
+  };
+  forecast_event_sets_create: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description API-C-04: one key per user intent (8-255 characters); a repeat with the same key and body replays the stored response, another body is 422 idempotency-key-reused. */
+        "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["EventSetCreateIn"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["EventSetOut"];
+        };
+      };
+      /** @description Problem: unauthenticated, session-expired */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: forbidden, sandbox-restricted */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: not-found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: invalid-transition, idempotency-in-progress */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: precondition-failed */
+      412: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: validation-failed, idempotency-key-reused */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: precondition-required */
+      428: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+    };
+  };
+  forecast_event_sets_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        event_set_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["EventSetOut"];
+        };
+      };
+      /** @description Problem: unauthenticated, session-expired */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: forbidden, sandbox-restricted */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: not-found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: invalid-transition, idempotency-in-progress */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: precondition-failed */
+      412: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: validation-failed, idempotency-key-reused */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: precondition-required */
+      428: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+    };
+  };
+  forecast_event_sets_update: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description API-C-04: one key per user intent (8-255 characters); a repeat with the same key and body replays the stored response, another body is 422 idempotency-key-reused. */
+        "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+      };
+      path: {
+        event_set_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["EventSetUpdateIn"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["EventSetOut"];
+        };
+      };
+      /** @description Problem: unauthenticated, session-expired */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: forbidden, sandbox-restricted */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: not-found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: invalid-transition, idempotency-in-progress */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: precondition-failed */
+      412: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: validation-failed, idempotency-key-reused */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: precondition-required */
+      428: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+    };
+  };
+  forecast_event_sets_publish: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description API-C-04: one key per user intent (8-255 characters); a repeat with the same key and body replays the stored response, another body is 422 idempotency-key-reused. */
+        "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+      };
+      path: {
+        event_set_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["EventSetOut"];
+        };
+      };
+      /** @description Problem: unauthenticated, session-expired */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: forbidden, sandbox-restricted */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: not-found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: invalid-transition, idempotency-in-progress */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: precondition-failed */
+      412: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: validation-failed, idempotency-key-reused */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: precondition-required */
+      428: {
         headers: {
           [name: string]: unknown;
         };

@@ -258,6 +258,9 @@ def test_create_scenario_runs_snapshot_job(
         user_id=source.user_id, email=source.email, tenant_id=target_id, membership_id=membership_id
     )
     sandbox_actor = workspace(app, target_member, sign_in(app, source.email), actor.secret)
+    from support.forecast_inputs import exercise_input_sets
+
+    exercise_input_sets(app, actor, sandbox_actor, target_id)
     write_headers = cookie_headers(sandbox_actor.token, sandbox_actor.csrf_token)
     view_body = {"screen_code": "SF-02", "name": "Before archive", "config": {}}
     wrote = call(app, "POST", "/api/v1/saved-views", json=view_body, headers=write_headers)
