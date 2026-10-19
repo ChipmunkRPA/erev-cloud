@@ -1533,3 +1533,19 @@ event replay for driver attribution, report registration/exports, cell explanati
 browser acceptance and the real K-03 financial acceptance remain outstanding. The
 seven previously listed missing report builders remain unregistered. No deployment or
 independent accounting sign-off is claimed.
+
+## October 19, 2026 — event-only variance replay core
+
+The new `variance_replay` service runs the engine with DRY_RUN inputs, orders added
+immutable events by ENG-06, evaluates each maximal driver run and reconciles its
+exact effects to both supplied frozen endpoints. It records execution hashes and
+all contributing event keys. Time progression has a separate step. Endpoint mismatch
+is an error, never a balancing OTHER amount. Unknown classifications are refused.
+
+This service is not yet called by a report or job. Callers must still obtain authorized,
+verified retained bundles and implement the fixed-period metric projection. Changed
+references, FX rates, membership and posting basis currently require separate phases;
+the service refuses them rather than mixing their effects into event attribution.
+The real-engine case covers two late billing events (liability 20 -> 170, change 150),
+not the complete K-03 financial acceptance. Nine focused tests, Ruff and Mypy pass.
+Seven report builders remain unregistered; production readiness is not established.

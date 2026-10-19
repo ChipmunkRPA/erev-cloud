@@ -6573,3 +6573,25 @@ cleanup in the shared database session kernel was also repaired and regression-t
   and snapshot-delta semantics. Targeted evidence is in CI-2026-10-19.md.
 - Reporting remains unfinished: 13 missing builders, five of them extracts. Locked extracts,
   automatic watermarks, true-up and live browser acceptance remain open. No deployment.
+
+## Contract balance BI extract — October 19, 2026
+
+- Added extract_balances v1 over latest per-contract versions, scoped by balance entity.
+  Fixed columns preserve transaction/functional currency amounts, with contract/entity labels.
+- Registered full/incremental JSON/CSV delivery and retained-input reruns. Control totals group
+  contract liability, contract asset and unbilled receivable by functional currency. Existing
+  extract controls expose the report; the guide states field types and snapshot-delta semantics.
+- Reporting remains open: 12 missing builders, four of them extracts. Locked datasets,
+  automatic watermarks, true-up and live browser acceptance remain unfinished. No deployment.
+
+## Sealed subledger BI extract — October 19, 2026
+
+- Added extract_subledger_lines v1 with explicit business/server recording and server seal
+  cutoffs, entity/book scope, exact decimals and retained contract/period/account labels.
+- Added JSON/CSV metadata and per-currency plus entity/book/currency/period control totals.
+  Registered source retention and reruns; migration 0171 updates disclosed query sources.
+- Actual API checks cover CSV hash, grouped balance, incremental selection, pre-seal exclusion
+  and reproduction. Evidence is in CI-2026-10-19.md. The guide explicitly distinguishes
+  recorded-time incremental output from commit-time change capture.
+- Reporting remains open: 11 missing builders, three of them extracts. Locked datasets,
+  watermark defaults, true-up and live browser acceptance remain unfinished. No deployment.

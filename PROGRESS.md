@@ -2,6 +2,18 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Event-only close variance replay — October 19, 2026
+
+- Added the DRY_RUN execution core: ENG-06 event order, maximal driver runs, separate time
+  progression, exact reconciliation to both frozen monetary endpoints and execution provenance.
+  Endpoint mismatch refuses; no balancing OTHER residual. Inputs remain unchanged.
+- Real engine: two late invoices move contract liability from 20 to 170, with 150 assigned to
+  LATE_EVENT and both event identities retained. Nine focused tests, Ruff and Mypy pass.
+- This is not wired to a report/job yet. Authorized retained source loading, complete monetary
+  projection, reference/FX/membership/posting-basis replay phases and RPT-38 report/UI remain
+  required. Changed reference inputs and unsupported event classifications currently refuse.
+  Seven missing report builders remain unregistered. No deployment or readiness claim.
+
 ## Frozen monetary changes for re-lock evidence — October 19, 2026
 
 - Added contract/currency comparison of frozen revenue, contract liability, contract asset plus
@@ -215,28 +227,6 @@
 - Actual API checks match the existing legacy history output and verify CSV hash and rerun;
   evidence is in CI-2026-10-19.md. Ten builders remain missing, including contract and journal
   extracts. Locked datasets, watermarks, true-up and browser acceptance remain open.
-
-## Sealed subledger BI extract — October 19, 2026
-
-- Added extract_subledger_lines v1 with explicit business/server recording and server seal
-  cutoffs, entity/book scope, exact decimals and retained contract/period/account labels.
-- Added JSON/CSV metadata and per-currency plus entity/book/currency/period control totals.
-  Registered source retention and reruns; migration 0171 updates disclosed query sources.
-- Actual API checks cover CSV hash, grouped balance, incremental selection, pre-seal exclusion
-  and reproduction. Evidence is in CI-2026-10-19.md. The guide explicitly distinguishes
-  recorded-time incremental output from commit-time change capture.
-- Reporting remains open: 11 missing builders, three of them extracts. Locked datasets,
-  watermark defaults, true-up and live browser acceptance remain unfinished. No deployment.
-
-## Contract balance BI extract — October 19, 2026
-
-- Added extract_balances v1 over latest per-contract versions, scoped by balance entity.
-  Fixed columns preserve transaction/functional currency amounts, with contract/entity labels.
-- Registered full/incremental JSON/CSV delivery and retained-input reruns. Control totals group
-  contract liability, contract asset and unbilled receivable by functional currency. Existing
-  extract controls expose the report; the guide states field types and snapshot-delta semantics.
-- Reporting remains open: 12 missing builders, four of them extracts. Locked datasets,
-  automatic watermarks, true-up and live browser acceptance remain unfinished. No deployment.
 
 ## Outstanding release verification
 
