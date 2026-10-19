@@ -82,7 +82,13 @@ def exercise_input_sets(app: FastAPI, source: Actor, sandbox: Actor, tenant_id: 
 
 def exercise_forecast_imports(world: object) -> None:
     """Run a real progress file through validation, diff and scenario commit."""
-    from erev_api.db.tables import approval_request, forecast_event_set, import_upload, job
+    from erev_api.db.tables import (
+        approval_request,
+        contract,
+        forecast_event_set,
+        import_upload,
+        job,
+    )
     from sqlalchemy import func, select
     from support.factories import ImportWorld, run_import_job, upload_import_source
 
@@ -100,6 +106,40 @@ def exercise_forecast_imports(world: object) -> None:
     )
     assert created_set.status_code == 201, created_set.text
     set_id = UUID(created_set.json()["id"])
+
+    contract_id = world.scalar(
+        select(contract.c.id).where(contract.c.external_id == "SF-ORD-10001")
+    )
+
+    def progress(ratio: str, day: str) -> None:
+        event_headers = headers()
+        head = world.scalar(
+            select(contract.c.head_stream_version).where(contract.c.id == contract_id)
+        )
+        event_headers["If-Match"] = f'"s{head}"'
+        appended = call(
+            world.app,
+            "POST",
+            f"/api/v1/contracts/{contract_id}/events",
+            params={"forecast_event_set_id": str(set_id)},
+            headers=event_headers,
+            json={
+                "events": [
+                    {
+                        "event_type": "PROGRESS_RECORDED",
+                        "effective_date": day,
+                        "payload": {
+                            "obligation_key": "O2",
+                            "cumulative_progress_ratio": ratio,
+                            "measure": "OUTPUT_PERCENT",
+                        },
+                    }
+                ]
+            },
+        )
+        assert appended.status_code == 201, appended.text
+
+    progress("0.50", "2026-02-01")
     content = (
         b"contract,event_type,effective_date,obligation_key,cumulative_progress_ratio,measure\n"
         b"SF-ORD-10001,PROGRESS_RECORDED,2026-02-28,O2,0.60,OUTPUT_PERCENT\n"
@@ -120,7 +160,10 @@ def exercise_forecast_imports(world: object) -> None:
     import_id = UUID(created.headers["X-Erev-Import-Id"])
     set_path = f"/api/v1/forecast-event-sets/{set_id}"
     publish_headers = headers()
-    publish_headers["If-Match"] = created_set.headers["ETag"]
+    before_publish = call(
+        world.app, "GET", set_path, headers=cookie_headers(world.actor.token, key=False)
+    )
+    publish_headers["If-Match"] = before_publish.headers["ETag"]
     premature = call(world.app, "POST", set_path + "/publish", headers=publish_headers)
     assert premature.status_code == 409, premature.text
     run_import_job(world, UUID(created.json()["id"]))
@@ -147,6 +190,18 @@ def exercise_forecast_imports(world: object) -> None:
     assert world.scalar(select(func.count()).select_from(approval_request)) == before_approvals
     captured = world.rows(select(forecast_event_set).where(forecast_event_set.c.id == set_id))[0]
     assert captured["import_upload_ids"] == [import_id]
+    progress("0.70", "2026-03-31")
+    expected_order = [
+        {"kind": "API_COMMAND", "index": 0},
+        {"kind": "IMPORT_UPLOAD", "id": str(import_id)},
+        {"kind": "API_COMMAND", "index": 1},
+    ]
+    assert (
+        world.scalar(
+            select(forecast_event_set.c.input_sequence).where(forecast_event_set.c.id == set_id)
+        )
+        == expected_order
+    )
     invalid_source = upload_import_source(
         world,
         "forecast-invalid.csv",
@@ -179,3 +234,14 @@ def exercise_forecast_imports(world: object) -> None:
     publish_headers["If-Match"] = current.headers["ETag"]
     published = call(world.app, "POST", set_path + "/publish", headers=publish_headers)
     assert published.status_code == 200, published.text
+
+    assert published.json()["input_sequence"] == expected_order
+    next_version = call(
+        world.app,
+        "POST",
+        "/api/v1/forecast-event-sets",
+        json={"code": "FILE_BASE", "name": "Next outlook"},
+        headers=headers(),
+    )
+    assert next_version.status_code == 201, next_version.text
+    assert next_version.json()["input_sequence"] == expected_order

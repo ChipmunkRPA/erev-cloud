@@ -41,6 +41,7 @@ forecast_event_set: Final = Table(
     Column("production_scenario_id", Uuid(), nullable=False),
     Column("import_upload_ids", ARRAY(Uuid()), nullable=False, server_default=text("'{}'")),
     Column("api_commands", JSONB(), nullable=False, server_default=text("'[]'::jsonb")),
+    Column("input_sequence", JSONB(none_as_null=True), nullable=True),
     *_sc_c_sc_m(),
     *_sc_v(),
 )

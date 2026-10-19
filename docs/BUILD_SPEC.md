@@ -11470,7 +11470,10 @@ Author BS-3. Uses DIN, SNP and RPS (PHASES §1 row 18). Indicative size 12 items
     and invoices retain their normal validation/diff/commit pipeline; submission applies BR-FC-02
     without an approval request. Commit rechecks uploader scenario permissions and contract bases,
     atomically appends successful upload IDs, and records the approval exemption. Publication
-    refuses in-flight imports. Refresh/replay remains missing; FCS-2 remains open.
+    refuses in-flight imports. Revision 0182 stores and validates the total application order
+    across files and API commands, includes it in publication hashes and copies it to new versions.
+    Populated historical sets without order evidence cannot be extended or replayed.
+    Refresh/replay remains missing; FCS-2 remains open.
   - **Prerequisites:** FCS-1
   - **Scope:**
     - Paths: `backend/erev_api/domain/forecast/event_sets.py` (`create`, `update`, `publish`; appending committed uploads in order; recording API commands into `api_commands`); `backend/erev_api/domain/imports/commands.py` (`forecast_event_set_id` in API-S-ImportCreate: scenario tenants only; commit without approval routing and audited, BR-FC-02); `backend/erev_api/domain/forecast/scenarios.py` (`refresh_scenario`: 05 SBX-07 supersession from a new snapshot, `scenario_tenant_id` repointed, published event set re-applied in stored order as the requester, SBX-09); `backend/erev_api/api/v1/forecast_event_sets.py`; `backend/erev_api/api/v1/scenarios.py` (`refresh`); `backend/tests/support/worlds.py` (`k11_hollenbrand`: WLD-K-11 with the J-04 delivery and invoices); `backend/tests/domain/forecast/test_event_sets.py`; `docs/api/openapi.json`; `frontend/src/lib/api/schema.d.ts`

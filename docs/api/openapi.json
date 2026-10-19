@@ -13517,6 +13517,21 @@
             "title": "Import Upload Ids",
             "type": "array"
           },
+          "input_sequence": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Input Sequence"
+          },
           "name": {
             "title": "Name",
             "type": "string"

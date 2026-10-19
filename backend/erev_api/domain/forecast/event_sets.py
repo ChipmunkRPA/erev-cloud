@@ -14,6 +14,7 @@ from erev_api.db import new_id
 from erev_api.db.session import DbContext, set_tenant_context, tenant_session
 from erev_api.db.tables import forecast_event_set as sets
 from erev_api.db.tables import import_upload, scenario, tenant
+from erev_api.domain.forecast import input_order
 from erev_api.problems import Problem
 from erev_api.uow import UnitOfWork
 
@@ -79,6 +80,7 @@ def create(uow: UnitOfWork, values: Mapping[str, Any]) -> dict[str, Any]:
         raise Problem(
             "invalid-transition", "Edit the existing draft before creating another version."
         )
+    ordered = [] if previous is None else input_order.sequence(dict(previous))
     identity = new_id()
     uow.session.execute(
         insert(sets).values(
@@ -90,6 +92,7 @@ def create(uow: UnitOfWork, values: Mapping[str, Any]) -> dict[str, Any]:
             supersedes_version_id=None if previous is None else previous["id"],
             import_upload_ids=[] if previous is None else previous["import_upload_ids"],
             api_commands=[] if previous is None else previous["api_commands"],
+            input_sequence=ordered,
             created_at=uow.now,
             created_by=uow.principal.id,
             created_by_kind=uow.principal.kind.value,
@@ -129,6 +132,10 @@ def change(
     if not publish and not changes:
         raise Problem("validation-failed", "Provide at least one field to update.")
     _range({**current, **changes})
+    if publish or any(
+        key in changes for key in ("api_commands", "import_upload_ids", "input_sequence")
+    ):
+        changes["input_sequence"] = input_order.sequence({**current, **changes})
     if publish:
         pending = uow.session.scalar(
             select(import_upload.c.id)
@@ -156,7 +163,7 @@ def change(
                 )
             )
         content = {
-            key: current[key]
+            key: changes.get(key, current[key])
             for key in (
                 "code",
                 "name",
@@ -167,6 +174,7 @@ def change(
                 "effective_to",
                 "import_upload_ids",
                 "api_commands",
+                "input_sequence",
             )
         }
         changes.update(
@@ -233,6 +241,7 @@ def capture_command[T](
         raise Problem("invalid-transition", "The input set belongs to another scenario.")
     if current["status"] != "DRAFT":
         raise Problem("invalid-transition", "Create a draft version before adding forecast events.")
+    ordered = input_order.sequence(current)
     with uow.savepoint():
         result = execute()
         commands = [
@@ -243,7 +252,10 @@ def capture_command[T](
             uow,
             identity,
             expected_version=current["row_version"],
-            values={"api_commands": commands},
+            values={
+                "api_commands": commands,
+                "input_sequence": [*ordered, {"kind": "API_COMMAND", "index": len(commands) - 1}],
+            },
         )
         uow.audit(
             action="forecast_event_set.capture_command",
@@ -267,6 +279,7 @@ def require_draft(uow: UnitOfWork, identity: UUID) -> dict[str, Any]:
     current = _row(uow.session, identity, lock=True)
     if current["production_scenario_id"] != scenario_id or current["status"] != "DRAFT":
         raise Problem("invalid-transition", "Choose a draft input set of this scenario.")
+    input_order.sequence(current)
     return current
 
 
@@ -289,7 +302,13 @@ def attach_import(uow: UnitOfWork, current: Mapping[str, Any], import_id: UUID) 
         uow,
         current["id"],
         expected_version=current["row_version"],
-        values={"import_upload_ids": [*current["import_upload_ids"], import_id]},
+        values={
+            "import_upload_ids": [*current["import_upload_ids"], import_id],
+            "input_sequence": [
+                *input_order.sequence(current),
+                {"kind": "IMPORT_UPLOAD", "id": str(import_id)},
+            ],
+        },
     )
     uow.audit(
         action="forecast_event_set.capture_import",

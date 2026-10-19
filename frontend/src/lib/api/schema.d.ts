@@ -13394,6 +13394,12 @@ export interface components {
       id: string;
       /** Import Upload Ids */
       import_upload_ids: string[];
+      /** Input Sequence */
+      input_sequence?:
+        | {
+            [key: string]: unknown;
+          }[]
+        | null;
       /** Name */
       name: string;
       /**

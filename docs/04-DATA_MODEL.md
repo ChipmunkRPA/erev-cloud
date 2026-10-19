@@ -6034,6 +6034,7 @@ Keys: `PRIMARY KEY (tenant_id, id)`; `ux_scenario__tenant (tenant_id, scenario_t
 | `production_scenario_id` | uuid | N | | `scenario.id` in the production tenant (soft reference; tenants never share foreign keys). |
 | `import_upload_ids` | uuid[] | N | `'{}'` | Ordered. |
 | `api_commands` | jsonb | N | `'[]'` | Ordered `[{method, path, body}]` recorded from API calls into the scenario tenant. |
+| `input_sequence` | jsonb | Y | | Revision 0182: total application order across both input arrays, using `{kind: API_COMMAND, index}` and `{kind: IMPORT_UPLOAD, id}`. New sets start with `[]`; NULL means historical order was not recorded. New publication includes it in `content_sha256`; published content is immutable. |
 | SC-C, SC-M, SC-V | | | | |
 
 Keys: `PRIMARY KEY (tenant_id, id)`; `ux_forecast_event_set__version (tenant_id, code, version_no)`.

@@ -45,6 +45,7 @@ class EventSetOut(BaseModel):
     production_scenario_id: UUID
     import_upload_ids: list[UUID]
     api_commands: list[dict[str, Any]]
+    input_sequence: list[dict[str, Any]] | None = None
     version_no: int
     status: ConfigStatus
     effective_from: datetime | None

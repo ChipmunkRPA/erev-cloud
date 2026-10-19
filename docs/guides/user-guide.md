@@ -752,5 +752,15 @@ Invalid or failed files contribute no input. Finish or cancel pending files befo
 the input set; published sets cannot receive new files. Configuration and contract-change
 imports continue to use their ordinary workflows.
 
+Input sets retain a single application sequence across manual commands and successfully
+committed files. For example, a manual progress update, file import and later manual adjustment
+remain in that order. The sequence is checked for missing or duplicate inputs, included in the
+publication hash and preserved when creating the next version. Invalid files add no sequence
+entry. File inputs enter the sequence when committed, rather than when uploaded.
+
+Historical populated sets created before revision 0182 have no recorded cross-input order.
+They remain readable, but cannot be extended or replayed from an inferred order; create a new
+input set with a new code. Historical empty sets can be versioned normally.
+
 Scenario refresh/replay, forecast execution, forecast output reports and actual-versus-forecast
 reports remain unfinished.
