@@ -2,6 +2,23 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Parallel comparison worker and export integration — October 19, 2026
+
+- Registered parallel_run_comparison and its retained-input source contract. Builder captures
+  authorized sources, records exact cutoff/parameter selection and rebuilds from hash-verified
+  retained facts. Changing entity, migration or period selection cannot reuse an unrelated binding.
+- Worker reloads the original initiator's current report/export grants before building and output
+  persistence. Source readers accept that verified principal with an explicit same-tenant check;
+  no impersonation or implicit SYSTEM report grant is introduced.
+- Real import -> CSV worker -> same-source rerun passes for identity and renamed entity mappings,
+  with identical output hashes/control totals. Revoking permissions after queueing prevents file
+  publication. These are empty comparisons because dry-run imports create no posted population.
+- Targeted catalogue/source/parallel suites: 35 passed; changed production modules pass Mypy and
+  Ruff. No schema change: the existing global definition already includes the output formats.
+- Five catalogue builders remain unregistered: actual_vs_forecast, forecast_outputs,
+  contract_sample_pack, period_evidence_pack and disclosure_pack. Populated RPT-42 worker/browser
+  acceptance, XLSX/PDF journeys and migration replay/sandbox lifecycle remain unfinished.
+
 ## Parallel comparison period and currency selection — October 19, 2026
 
 - Source admission now verifies original import input-evidence hashes, requires full contract
@@ -207,20 +224,6 @@
   selection/execution 1 passed; changed-file Ruff and source/replay-test Mypy pass.
 - Report registration/job/formats/UI, wider reference/FX/population phases and full frozen-close
   accounting acceptance remain open. Seven builders remain unregistered; no deployment.
-
-## Retained computation execution for close variance — October 19, 2026
-
-- Added the transaction-free execution phase: original retained inputs must reproduce their
-  output hashes and monetary endpoints before DRY_RUN. Common earlier posted amounts and
-  previous stream heads are explicit counterfactual adjustments, with original source hashes
-  and normalized input identity retained. The final replay must match later frozen money.
-- Identical saved computations produce a zero-change result without inventing a later cutoff.
-  Reference/calendar/FX changes still refuse. Actual first recomputation adds recorded SSP
-  policies, demonstrating a remaining reference-replay requirement rather than a posting change.
-- Real-engine carried-posting/delivery, retained hash/endpoint refusal and same-source checks:
-  20 passed. Actual database source selection/reuse: 1 passed. Ruff and source/test Mypy pass.
-- Group aggregation, reference replay, job/report registration, output formats, UI and full
-  frozen-close accounting acceptance remain outstanding. Seven builders remain unregistered.
 
 ## Outstanding release verification
 

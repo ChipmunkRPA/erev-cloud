@@ -78,7 +78,7 @@ The 71 `Contract_Live` columns map to eRev Cloud as fixed by the data model; `GE
 
 ## Parallel-run comparison (RPT-42)
 
-Report code `parallel_run_comparison` (REQ-MIG-007): for a migration and a period range (`migration_id`, `from_period_key`, `to_period_key`), section 1 compares the legacy journal lines by account with eRev's (legacy debit and credit, eRev debit and credit, difference) and section 2 compares contract balances per period end (legacy billed less recognized against eRev contract liability and contract asset plus unbilled receivable). Status at this revision: the definition is in the report catalogue, but no builder is registered for it, so a run produces no output yet.
+Report code `parallel_run_comparison` (REQ-MIG-007): for a migration and a period range (`migration_id`, `from_period_key`, `to_period_key`), section 1 compares the legacy journal lines by account with eRev's (legacy debit and credit, eRev debit and credit, difference) and section 2 compares contract balances per period end (legacy billed less recognized against eRev contract liability and contract asset plus unbilled receivable). The report now runs through the standard report worker and supports JSON, CSV, XLSX and PDF output. Current implementation compares same-tenant sources with the complete mapped entity scope. It binds the original import currency, defaults to periods after cutover through the latest recorded open period, and retains both inputs for same-source reruns. Unavailable actual periods produce an empty comparison rather than zero amounts. Replay migration and linked-sandbox execution remain unfinished; populated end-to-end migration acceptance is still outstanding.
 
 ## Acquired contracts and onboarding from other systems
 

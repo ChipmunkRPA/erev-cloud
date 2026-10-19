@@ -6862,3 +6862,17 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Candidate selection is not endpoint reproduction. Job integration, operational input
   normalization, other replay phases, report/UI and accounting acceptance remain required.
   Seven missing report builders remain unregistered. No deployment/readiness claim.
+
+## Retained computation execution for close variance — October 19, 2026
+
+- Added the transaction-free execution phase: original retained inputs must reproduce their
+  output hashes and monetary endpoints before DRY_RUN. Common earlier posted amounts and
+  previous stream heads are explicit counterfactual adjustments, with original source hashes
+  and normalized input identity retained. The final replay must match later frozen money.
+- Identical saved computations produce a zero-change result without inventing a later cutoff.
+  Reference/calendar/FX changes still refuse. Actual first recomputation adds recorded SSP
+  policies, demonstrating a remaining reference-replay requirement rather than a posting change.
+- Real-engine carried-posting/delivery, retained hash/endpoint refusal and same-source checks:
+  20 passed. Actual database source selection/reuse: 1 passed. Ruff and source/test Mypy pass.
+- Group aggregation, reference replay, job/report registration, output formats, UI and full
+  frozen-close accounting acceptance remain outstanding. Seven builders remain unregistered.

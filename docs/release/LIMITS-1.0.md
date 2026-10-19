@@ -1,5 +1,14 @@
 # eRev Cloud 1.0: stated limits of the release
 
+Latest update (October 19): RPT-42 is now registered in the standard report worker with retained
+input reruns and current initiating-user/API-client report/export permission checks. CSV export
+and rerun were exercised after real imports for identity and renamed mappings; these dry-run
+imports have no actual posted population, so the verified output is empty. Populated comparisons,
+XLSX/PDF rendering journeys, cross-tenant sandbox/replay migration and complete LMG-5 accounting
+acceptance remain open. Five catalogue builders remain unregistered: actual_vs_forecast,
+forecast_outputs, contract_sample_pack, period_evidence_pack and disclosure_pack.
+
+
 Latest reporting update (October 19): parallel comparison capture now binds its currency to
 hash-verified original migration inputs and resolves post-cutover ranges through recorded open
 period states. Full snapshots and requested boundaries are retained for replay. Calendar definitions

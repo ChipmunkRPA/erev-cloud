@@ -2,7 +2,7 @@
 
 Source readers must authorize and retain both inputs before calling this module.
 This module neither reconstructs legacy journals using the eRev engine nor treats
-an unavailable period as a zero-valued source. Registration awaits those readers.
+an unavailable period as a zero-valued source. The report adapter retains both inputs.
 """
 
 from collections import defaultdict

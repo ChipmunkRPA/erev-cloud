@@ -17,6 +17,7 @@ from erev_engine.canonical import canonical_bytes, sha256_hex
 from erev_engine.upgrade import decode_input
 from sqlalchemy import select
 
+from erev_api.auth.principal import Principal
 from erev_api.db.tables import job, legal_entity, migrated_legacy_row, migration_population_version
 from erev_api.domain.migration import legacy_db, repository
 from erev_api.files.store import lock_readable, open_file
@@ -36,14 +37,20 @@ def _refuse(detail: str) -> Problem:
 
 
 def read_for_report(
-    uow: UnitOfWork, migration_id: UUID, *, entity_ids: tuple[UUID, ...], known_at: datetime
+    uow: UnitOfWork,
+    migration_id: UUID,
+    *,
+    entity_ids: tuple[UUID, ...],
+    known_at: datetime,
+    requester: Principal | None = None,
 ) -> Admitted:
     if known_at.tzinfo is None:
         raise _refuse("the cutoff must include a time zone.")
-    principal = uow.principal
+    principal = requester or uow.principal
     scope = principal.permission_scopes.get("report.run")
     if (
-        "report.run" not in principal.permissions
+        principal.tenant_id != uow.principal.tenant_id
+        or "report.run" not in principal.permissions
         or not scope
         or (scope != "*" and not set(entity_ids) <= scope)
     ):

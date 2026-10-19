@@ -13,6 +13,7 @@ from uuid import UUID
 from erev_engine.canonical import sha256_hex
 from pydantic import TypeAdapter, ValidationError
 
+from erev_api.auth.principal import Principal
 from erev_api.domain.reports.parallel_comparison import Comparison, Period, Snapshot, compare
 from erev_api.problems import Problem
 from erev_api.uow import UnitOfWork
@@ -119,6 +120,7 @@ def capture(
     periods: tuple[Period, ...] | None = None,
     from_period_key: str | None = None,
     to_period_key: str | None = None,
+    requester: Principal | None = None,
 ) -> dict[str, Any]:
     """Compose authorized source readers into a detached, replayable input bundle.
 
@@ -138,6 +140,7 @@ def capture(
     admitted = parallel_sources.read_for_report(
         uow,
         migration_id,
+        requester=requester,
         entity_ids=entity_ids,
         known_at=known_at,
     )
@@ -170,6 +173,7 @@ def capture(
     actual = parallel_actual.read(
         uow,
         expected=legacy,
+        requester=requester,
         entity_ids=entity_ids,
         known_at=known_at,
     )

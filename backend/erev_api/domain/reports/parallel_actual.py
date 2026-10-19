@@ -13,6 +13,7 @@ from uuid import UUID
 
 from erev_engine.canonical import sha256_hex
 
+from erev_api.auth.principal import Principal
 from erev_api.domain.journals import views
 from erev_api.domain.reports import locked_ends, tie_outs
 from erev_api.domain.reports.builders import ReportParams, SourceCollector
@@ -28,12 +29,18 @@ class Read:
 
 
 def read(
-    uow: UnitOfWork, *, expected: Snapshot, entity_ids: tuple[UUID, ...], known_at: datetime
+    uow: UnitOfWork,
+    *,
+    expected: Snapshot,
+    entity_ids: tuple[UUID, ...],
+    known_at: datetime,
+    requester: Principal | None = None,
 ) -> Read:
-    actor = uow.principal
+    actor = requester or uow.principal
     scope = actor.permission_scopes.get("report.run")
     if (
-        "report.run" not in actor.permissions
+        actor.tenant_id != uow.principal.tenant_id
+        or "report.run" not in actor.permissions
         or not scope
         or (scope != "*" and not set(entity_ids) <= scope)
     ):

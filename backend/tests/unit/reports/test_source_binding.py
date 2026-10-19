@@ -296,8 +296,8 @@ def test_every_registered_live_builder_states_its_source_contract() -> None:
     """Codex 2202: the same-source promise covers all 15 registered builders — each declares its
     strategy, what its adapter binds and what stays OPEN; an empty capture is never 'complete'."""
     assert set(framework.SOURCE_CONTRACTS) == set(framework.BUILDERS)
-    # Includes the phased close-variance builder; six catalogue entries remain unregistered.
-    assert len(framework.BUILDERS) == 53
+    # Includes the phased close-variance builder; five catalogue entries remain unregistered.
+    assert len(framework.BUILDERS) == 54
     for code in (
         "je_population",
         "out_of_period_register",

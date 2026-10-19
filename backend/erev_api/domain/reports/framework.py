@@ -204,6 +204,7 @@ from erev_api.domain.reports.builders import modification_register as modificati
 from erev_api.domain.reports.builders import (
     out_of_period_register as out_of_period_register_builder,
 )
+from erev_api.domain.reports.builders import parallel_run_comparison as parallel_builder
 from erev_api.domain.reports.builders import (
     revenue_from_opening_liability as revenue_from_opening_liability_builder,
 )
@@ -378,6 +379,7 @@ BUILDERS: Final[Mapping[str, Builder]] = MappingProxyType(
         extract_obligations_builder.CODE: extract_obligations_builder.build,
         extract_events_builder.CODE: extract_events_builder.build,
         trueup_builder.CODE: trueup_builder.build,
+        parallel_builder.CODE: parallel_builder.build,
         upgrade_validation_builder.CODE: upgrade_validation_builder.build,
         variance_builder.CODE: variance_builder.build,
         export_visibility.CODE: log_export.build,
@@ -632,6 +634,13 @@ SOURCE_CONTRACTS: Final[Mapping[str, SourceContract]] = MappingProxyType(
             (
                 "Both frozen locks and original retained computation evidence",
                 "consumed configuration retained in original input bundles",
+            ),
+            (),
+        ),
+        parallel_builder.CODE: SourceContract(
+            RETAINED,
+            (
+                "Verified migration and historical journal/balance snapshots with bound scope",
             ),
             (),
         ),
@@ -2288,6 +2297,10 @@ def _export_requester(
             raise Problem("invalid-transition")
         ctx = report_requester.validation_requester(jc, uow, run)
         variance_builder.prepare(uow, replace(report_params(run), requester=ctx))
+        return ctx
+    if str(run["report_code"]) == parallel_builder.CODE:
+        ctx = report_requester.validation_requester(jc, uow, run)
+        parallel_builder.require_access(uow, replace(report_params(run), requester=ctx))
         return ctx
     if str(run["report_code"]) == trueup_builder.CODE:
         ctx = report_requester.validation_requester(jc, uow, run)

@@ -1039,6 +1039,85 @@ def test_import_job_creates_the_confirmed_prerequisites_over_wld_f_15(
             == 7
         )
 
+    from erev_api.db.tables import report_run
+    from erev_api.domain.reports import framework
+    from erev_api.schemas.reports import ReportRunCreateIn
+    from support.reference import assign
+
+    assign(someone, "revenue_accountant")
+
+    with tenant_session(context) as session:
+        report_time = max(clock.now(), session.scalar(select(func.clock_timestamp())))
+    clock.set(report_time)
+    report_ctx = replace(report_ctx, now=report_time)
+    with unit_of_work(report_ctx, clock=clock, keyring=keyring, files=files) as uow:
+        report_id, _ = framework.create_run(
+            uow,
+            ReportRunCreateIn(
+                report_code="parallel_run_comparison",
+                output_format="CSV",
+                parameters={"migration_id": str(batch["id"])},
+            ),
+        )
+        uow.commit()
+    outputs = []
+    for iteration in range(2):
+        with unit_of_work(report_ctx, clock=clock, keyring=keyring, files=files) as uow:
+            report_job = uow.session.scalar(
+                select(report_run.c.job_id).where(report_run.c.id == report_id)
+            )
+            report_task = uow.session.scalar(
+                select(job.c.procrastinate_job_id).where(job.c.id == report_job)
+            )
+            uow.session.execute(_FETCHED, {"id": report_task})
+            uow.commit()
+        registry.run_job(
+            report_job, tenant_id, attempt=1, runtime=runtime, delivered_task_id=report_task
+        )
+        with unit_of_work(report_ctx, clock=clock, keyring=keyring, files=files) as uow:
+            saved = (
+                uow.session.execute(select(report_run).where(report_run.c.id == report_id))
+                .mappings()
+                .one()
+            )
+            assert saved["status"] == "SUCCEEDED", uow.session.scalar(
+                select(job.c.problem).where(job.c.id == report_job)
+            )
+            assert saved["source_binding"]["strategy"] == "retained_inputs"
+            outputs.append((saved["output_sha256"], saved["control_totals"]))
+            if iteration == 0:
+                report_id, _ = framework.rerun(uow, report_id)
+                uow.commit()
+    assert outputs[0] == outputs[1]
+    from support.rows import revoke_role_assignments
+
+    with unit_of_work(report_ctx, clock=clock, keyring=keyring, files=files) as uow:
+        denied_id, _ = framework.rerun(uow, report_id)
+        denied_job = uow.session.scalar(
+            select(report_run.c.job_id).where(report_run.c.id == denied_id)
+        )
+        uow.commit()
+    with unit_of_work(report_ctx, clock=clock, keyring=keyring, files=files) as uow:
+        denied_task = uow.session.scalar(
+            select(job.c.procrastinate_job_id).where(job.c.id == denied_job)
+        )
+        assert denied_task is not None
+        uow.session.execute(_FETCHED, {"id": denied_task})
+        revoke_role_assignments(
+            uow.session, tenant_id=tenant_id, membership_id=someone.membership_id, at=clock.now()
+        )
+        uow.commit()
+    registry.run_job(
+        denied_job, tenant_id, attempt=1, runtime=runtime, delivered_task_id=denied_task
+    )
+    with tenant_session(context) as session:
+        denied = (
+            session.execute(select(report_run).where(report_run.c.id == denied_id)).mappings().one()
+        )
+        assert denied["status"] != "SUCCEEDED"
+        assert denied["output_file_id"] is None
+        assert denied["manifest_file_id"] is None
+
 
 def test_import_keeps_an_existing_ssp_only_product_over_a_second_label(
     committed_db: TestDatabase, keyring: KeyRing, clock: FrozenClock, app_settings: Settings
