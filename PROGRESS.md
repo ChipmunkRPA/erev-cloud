@@ -2,6 +2,23 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Close variance report dataset and contributor evidence — October 19, 2026
+
+- Added presentation over reconciled group replay: Change by driver and Changes by contract,
+  all four monetary measures, signed earlier/later/change values, currency-qualified row keys
+  and control totals. Billing remains an explicit driver rather than being relabeled Other.
+- Report evidence retains both lock identities/times/file hashes, group computation/input/output
+  hashes, normalized fields, replay executions, source rows and contributing event identities.
+  Summary cells retain their contract contributions. Endpoints, group identity, access scope and
+  driver totals are rechecked; sub-minor-unit money refuses rather than silently rounding.
+- Real-engine two-group fixture exercises the dataset, CSV/XLSX/PDF writers and JSON-safe
+  evidence; both lock IDs are supplied to the standard export stamp. Source/replay-test Mypy
+  and Ruff pass. This is an authored frozen-data fixture, not a full close/report API journey.
+- Report registration remains pending: the current framework runs builders inside its DB
+  transaction. RPT-38 needs authorized read, transaction-free compute and reauthorized publish
+  phases, source binding/rerun and cell routing before exposure. UI/header polish, wider replay
+  phases and accounting acceptance remain open. Seven builders remain unregistered; no deployment.
+
 ## Multi-group close variance and SSP readback — October 19, 2026
 
 - Added the pure multi-group execution phase over an authorized frozen pair: every monetary
@@ -214,20 +231,6 @@
 - Seven report builders remain missing. BBR complex attribution, locked/reporting-currency
   sources, wider scope/modification-cell/browser acceptance and accounting sign-off remain open.
   Existing BBR runs without aggregation evidence refuse a drill instead of reading live data.
-
-## BBR report delivery, currency valuation and journal comparison — October 19, 2026
-
-- Registered bookings_billings_revenue in the report framework with functional/month defaults,
-  fiscal ranges, scoped sources and retained-input reruns. JSON/CSV use the common report flow;
-  standard XLSX/PDF writers are available but were not separately exercised in this slice.
-- Added historical approved spot-rate valuation for contract/billing contributions, preserving
-  rate/version identities. Posted revenue keeps its stored functional amount. Missing or
-  ambiguous rates refuse. Journal revenue uses retained lifecycle evidence at the same cutoff.
-- Actual API report, PASS journal tie-out, CSV hash and identical rerun passed; migration 0175
-  reconciles IPE source disclosure. Evidence is in CI-2026-10-19.md.
-- Seven catalogue definitions still lack registered builders. BBR contributor cell routes,
-  reporting-currency and lock datasets, complex/shared attribution, cross-currency database
-  acceptance, browser acceptance and independent accounting approval remain open. No deployment.
 
 ## Outstanding release verification
 

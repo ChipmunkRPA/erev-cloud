@@ -562,6 +562,63 @@ def test_group_replay_reconciles_two_contracts_to_frozen_datasets() -> None:
     assert result.driver_totals[("USD", "RPO", "LATE_EVENT")] == Fraction("-117.68")
     assert result.driver_totals[("USD", "REVENUE", "LATE_EVENT")] == Fraction("117.68")
     assert all(item.sums_exactly for item in result.measures.values())
+    from erev_api.domain.reports import variance_presentation
+    from erev_api.domain.reports.outputs import RunStamp
+    from erev_api.domain.reports.outputs.csv import render_csv
+    from erev_api.domain.reports.outputs.pdf import render_pdf
+    from erev_api.domain.reports.outputs.xlsx import render_xlsx
+    from erev_engine.canonical import canonical_bytes
+
+    presentation = variance_presentation.dataset(pair, result)
+    data = presentation.data
+    contract_rows = [row for row in data.rows if row["section"] == "Changes by contract"]
+    assert len(contract_rows) == 6
+    assert data.control_totals["USD:REVENUE"] == "117.68"
+    assert data.control_totals["USD:RPO"] == "-117.68"
+    assert len(presentation.evidence["groups"]) == 2
+    for row in contract_rows:
+        assert row["driver_label"] == "Late events"
+        evidence = presentation.evidence["contributors"][row["row_key"]]
+        assert evidence["earlier_source_rows"]
+        assert evidence["later_source_rows"]
+        assert evidence["effects"][-1]["event_keys"]
+    summary_rows = [row for row in data.rows if row["section"] == "Change by driver"]
+    for row in summary_rows:
+        assert len(presentation.evidence["contributors"][row["row_key"]]["contracts"]) == 2
+    csv_output = render_csv(data)
+    assert b"Change by driver" in csv_output
+    assert b"-117.68" in csv_output
+    stamp = RunStamp(
+        "variance_between_closes",
+        "Variance between closes",
+        1,
+        "RPT-TEST",
+        {
+            "from_period_lock_id": str(pair.earlier.frozen.scope.lock_id),
+            "to_period_lock_id": str(pair.later.frozen.scope.lock_id),
+        },
+        ("Mock Entity 2",),
+        "ASC606",
+        "FY2023-P05",
+        "Frozen close comparison",
+        before.engine_version,
+        "test",
+        "Accountant",
+        before.known_at,
+        "0" * 64,
+    )
+    assert render_xlsx(data, stamp).startswith(b"PK")
+    pdf = render_pdf(data, stamp)
+    assert pdf.startswith(b"%PDF")
+    assert str(pair.earlier.frozen.scope.lock_id).encode() in pdf
+    assert str(pair.later.frozen.scope.lock_id).encode() in pdf
+    assert canonical_bytes(presentation.evidence)
+    with pytest.raises(Problem, match="below the currency"):
+        variance_presentation._money(Fraction(1, 1000), "USD")
+    with pytest.raises(Problem, match="access scope"):
+        variance_presentation.dataset(pair, replace(result, required_entity_ids=()))
+    with pytest.raises(Problem, match="driver totals differ"):
+        variance_presentation.dataset(pair, replace(result, driver_totals={}))
     with pytest.raises(Problem, match="no retained source"):
         variance_groups.execute(replace(pair, later=replace(pair.later, contract_computations={})))
 

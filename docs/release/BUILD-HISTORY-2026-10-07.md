@@ -6662,3 +6662,17 @@ cleanup in the shared database session kernel was also repaired and regression-t
   contributor routes and broader acceptance. Pre-activation changes and shared valuation
   causes need further attribution support; independent accounting sign-off is still absent.
   Eight reports remain without complete registered builders. No deployment.
+
+## BBR report delivery, currency valuation and journal comparison — October 19, 2026
+
+- Registered bookings_billings_revenue in the report framework with functional/month defaults,
+  fiscal ranges, scoped sources and retained-input reruns. JSON/CSV use the common report flow;
+  standard XLSX/PDF writers are available but were not separately exercised in this slice.
+- Added historical approved spot-rate valuation for contract/billing contributions, preserving
+  rate/version identities. Posted revenue keeps its stored functional amount. Missing or
+  ambiguous rates refuse. Journal revenue uses retained lifecycle evidence at the same cutoff.
+- Actual API report, PASS journal tie-out, CSV hash and identical rerun passed; migration 0175
+  reconciles IPE source disclosure. Evidence is in CI-2026-10-19.md.
+- Seven catalogue definitions still lack registered builders. BBR contributor cell routes,
+  reporting-currency and lock datasets, complex/shared attribution, cross-currency database
+  acceptance, browser acceptance and independent accounting approval remain open. No deployment.

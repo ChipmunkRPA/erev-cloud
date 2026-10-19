@@ -1,5 +1,13 @@
 # eRev Cloud 1.0: stated limits of the release
 
+October 19 variance presentation: driver/contract sections, exact currency/measure totals and
+contributor evidence now feed the standard export writers. Original lock/file/computation
+identities, replay hashes and event/source-row contributions remain attached. This is not a
+registered report: the worker still needs separate authorized-read, transaction-free-compute
+and reauthorized-publish phases, followed by source-bound reruns, cell routing and UI. Wider
+replay phases and full close accounting acceptance remain open; seven builders are unregistered.
+
+
 October 19 multi-group variance continuation: authorized retained groups now replay against
 partitioned frozen monetary endpoints and aggregate exact totals by currency, measure and
 driver. New own-pricing SSP readbacks are accepted only when they preserve the earlier
