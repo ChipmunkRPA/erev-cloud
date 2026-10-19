@@ -7334,3 +7334,19 @@ cleanup in the shared database session kernel was also repaired and regression-t
   Ruff/Mypy and frontend type/lint/component checks pass.
 - Full populated accounting acceptance, PDF wide-table readability, browser acceptance, frozen
   snapshots and remaining export worker journeys remain open. No deployment or readiness claim.
+
+## Immutable draft disclosure snapshots — October 19, 2026
+
+- Added disclosure_snapshots.write_draft: locks the running parent and saves all seven E-65
+  kinds with entity/book/period/cutoff, original per-section child inputs/stamps, policies and
+  supporting source digests. Suppression affects published tables, not retained snapshot inputs.
+- The normal worker attaches snapshot IDs in the same transaction as report output, source
+  binding and SUCCEEDED. Repeated writes reuse a complete identical set; duplicate/partial,
+  mismatched or unavailable attachments refuse. Drafts explicitly have no period_lock_id.
+- Real API/16-child/parent/rebuild journey now verifies seven rows per parent, hashes and
+  attachments, repeated-writer reuse, and new rerun IDs with identical per-kind data hashes.
+  Ruff and production-module Mypy pass. Snapshot rows use the existing append-only table.
+- Lock-time capture remains incomplete: current E-64 files cannot alone supply opening-liability
+  revenue and policy facts. The lock job must capture these at its exact cutoff and atomically
+  publish genuinely locked disclosures; drafts must never be promoted/relabeled as locked.
+  Snapshot read APIs and as-locked parent integration also remain open. No deployment.

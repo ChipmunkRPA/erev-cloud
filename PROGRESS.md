@@ -2,6 +2,20 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Atomic ordered forecast replay — October 19, 2026
+
+- Connected file materialization, retained mapping consumption and command/file execution into
+  one ordered replay operation for an empty target draft. It publishes only after every input
+  computes successfully and records source/target publication hashes plus upload bindings.
+- The caller owns the transaction; any failure or heartbeat cancellation rolls back the whole
+  bundle, including earlier inputs and staged file metadata/audit. The input set cannot be
+  replayed twice after publication. No child computation jobs can overtake the sequence.
+- The real scenario fixture exercises command → mapped file → command, cancellation after
+  the file with complete rollback, successful retry/publication and duplicate refusal.
+  Targeted scenario verification, Ruff and source-module Mypy pass.
+- Durable refresh job state, fresh-copy lifecycle and atomic scenario replacement still need
+  integration. Forecast report outputs and actual-vs-forecast remain unfinished; no deployment.
+
 ## Retained forecast import mappings — October 19, 2026
 
 - Revision 0183 retains a forecast replay import's verified original mapping as immutable JSON,
@@ -220,22 +234,6 @@
   refuses detail. Ruff/Mypy pass; OpenAPI and generated frontend types updated.
 - Lock-time capture/as-locked execution, snapshot register UI and full accounting acceptance remain
   open. Existing draft evidence is not relabelled as locked. No deployment.
-
-## Immutable draft disclosure snapshots — October 19, 2026
-
-- Added disclosure_snapshots.write_draft: locks the running parent and saves all seven E-65
-  kinds with entity/book/period/cutoff, original per-section child inputs/stamps, policies and
-  supporting source digests. Suppression affects published tables, not retained snapshot inputs.
-- The normal worker attaches snapshot IDs in the same transaction as report output, source
-  binding and SUCCEEDED. Repeated writes reuse a complete identical set; duplicate/partial,
-  mismatched or unavailable attachments refuse. Drafts explicitly have no period_lock_id.
-- Real API/16-child/parent/rebuild journey now verifies seven rows per parent, hashes and
-  attachments, repeated-writer reuse, and new rerun IDs with identical per-kind data hashes.
-  Ruff and production-module Mypy pass. Snapshot rows use the existing append-only table.
-- Lock-time capture remains incomplete: current E-64 files cannot alone supply opening-liability
-  revenue and policy facts. The lock job must capture these at its exact cutoff and atomically
-  publish genuinely locked disclosures; drafts must never be promoted/relabeled as locked.
-  Snapshot read APIs and as-locked parent integration also remain open. No deployment.
 
 ## Outstanding release verification
 

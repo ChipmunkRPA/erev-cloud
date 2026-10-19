@@ -489,3 +489,7 @@ def exercise_forecast_imports(world: object) -> None:
     with place.uow() as uow:
         next_replay = replay_inputs.load(uow, inline_id)
         assert next_replay.steps[0]["mapping_profile"] == retained_mapping
+
+    from support.forecast_replay import exercise_replay
+
+    exercise_replay(world, next_replay)
