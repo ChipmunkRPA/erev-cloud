@@ -2,6 +2,23 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Retained disclosure rerun reconstruction — October 19, 2026
+
+- Added version-2 disclosure input codec retaining original child stamps alongside typed JSON
+  inputs, identities, parameter/output hashes and policies. Rebuild validates scope, cutoff,
+  version, digests, stamp/dataset agreement and full population, then executes section/election
+  assembly again. It does not replay the saved parent output or resolve current child/policy data.
+- Internal rerun insertion attaches original child IDs without queuing new children. Readiness
+  validates retained inputs independently of current child job/file availability. Worker output
+  rendering consumes the reconstructed pack and preserves original input evidence.
+- The real parent/16-child journey now publishes a second parent with live capture forbidden;
+  hashes, totals, tie-outs, child IDs and evidence match. Scope/digest corruption refuses. The
+  newly retained stamp fields require evidence version 2; earlier internal version-1 captures
+  refuse rather than silently adding current stamps. Ruff/Mypy pass.
+- Public catalogue/API admission remains closed; frozen snapshots, viewer, quarter-column layout,
+  export worker journeys and populated accounting acceptance remain open. Five catalogue builders
+  are still unregistered. This internal rerun journey is not full disclosure completion.
+
 ## Disclosure parent artifact publication — October 19, 2026
 
 - Added disclosure_execution to turn verified children/policies into a canonical seven-section
@@ -207,24 +224,6 @@
   current permission checks on publication and full migration replay/sandbox acceptance. The
   capture composition is type-checked but still needs a real database integration journey.
   Six catalogue builders remain unregistered; RPT-42 is not yet a completed user-facing report.
-
-## Migration source admission for parallel comparison — October 19, 2026
-
-- Added parallel_sources.read_for_report. It binds the migration's original successful import
-  operation, subject/parameters and cutoff; retrieves the confirmed entity mapping; and requires
-  report permission for the complete mapped source population before opening plaintext.
-- Verifies original LEGACY_DATABASE purpose, size and SHA-256 against the migration, then compares
-  every retained history row's identity/raw hash with the original SQLite record. Temporary source
-  copies and streams close on failure. Evidence retains file, operation, mapping and row identities.
-- Linked sandboxes require their own authorized context; no tenant switch is performed. Current
-  support is same-tenant complete-source admission, not partial-entity or replay-sandbox completion.
-- Two real import scenarios pass (identity and renamed entity mappings), including incomplete-scope
-  denial and a same-size altered-file digest refusal. The fixture now carries the actual source hash
-  and job subject instead of placeholders. Ruff and new-module Mypy pass; checking the existing PG
-  test module also reports five pre-existing type diagnostics outside this change.
-- Next RPT-42 work: persist/rebuild the complete retained inputs, compose both readers with the
-  comparison, register the worker and exports, and finish migration replay/sandbox lifecycle.
-  Six catalogue builders remain unregistered; full LMG-4/5 accounting acceptance remains open.
 
 ## Outstanding release verification
 

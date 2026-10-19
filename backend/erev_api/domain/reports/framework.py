@@ -91,6 +91,7 @@ from sqlalchemy import (
     literal,
     or_,
     select,
+    update,
 )
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.dialects.postgresql import array as pg_array
@@ -1746,7 +1747,22 @@ def _insert_run(
         from erev_api.domain.reports.disclosure_children import ensure
 
         # Attach before commit/dispatch so the ready hook never observes a partial plan.
-        ensure(uow, run_id)
+        if resolved.source_binding is None:
+            ensure(uow, run_id)
+        else:
+            from erev_api.domain.reports.disclosure_inputs import rebuild
+
+            retained_run = dict(
+                session.execute(select(report_run).where(report_run.c.id == run_id))
+                .mappings()
+                .one()
+            )
+            pack, _, _ = rebuild(retained_run)
+            session.execute(
+                update(report_run)
+                .where(report_run.c.id == run_id)
+                .values(child_report_run_ids=[child.source.run_id for child in pack.children])
+            )
     return run_id, _job_out(session, deferred["id"])
 
 

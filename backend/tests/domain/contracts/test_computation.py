@@ -4938,7 +4938,9 @@ def test_disclosure_child_plan_queues_bound_month_and_quarter_reports(world: Wor
         # No commit: queued child jobs belong to the eventual parent's atomic transaction.
 
 
-def test_disclosure_children_attach_once_and_survive_retry(world: World) -> None:
+def test_disclosure_children_attach_once_and_survive_retry(
+    world: World, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from dataclasses import replace
 
     from erev_api.db.tables import engine_release, report_run
@@ -5230,3 +5232,72 @@ def test_disclosure_children_attach_once_and_survive_retry(world: World) -> None
         assert (
             evidence["disclosure_inputs"]["policies"]["known_at"] == parent["known_at"].isoformat()
         )
+
+    from erev_api.domain.reports import disclosure_inputs
+
+    with world.place.uow() as uow:
+        original = dict(published)
+        retained_pack, retained_stamps, retained_facts = disclosure_inputs.rebuild(original)
+        assert len(retained_pack.children) == len(retained_stamps) == 16
+        assert retained_facts == evidence["disclosure_inputs"]
+        with pytest.raises(Problem):
+            disclosure_inputs.rebuild({**original, "book_code": "IFRS15"})
+        import copy
+
+        damaged = copy.deepcopy(original)
+        damaged["source_binding"]["evidence"]["disclosure_inputs"]["children"][0][
+            "output_sha256"
+        ] = "f" * 64
+        with pytest.raises(Problem):
+            disclosure_inputs.rebuild(damaged)
+        count_before = uow.session.scalar(select(func.count()).select_from(report_run))
+        definition = framework.definition_row(uow.session, "disclosure_pack")
+        assert definition is not None
+        rerun_id, rerun_job = framework._insert_run(
+            uow,
+            definition=definition,
+            resolved=framework._Resolved(
+                parameters=dict(original["parameters"]),
+                entity_ids=tuple(original["entity_ids"]),
+                known_at=original["known_at"],
+                book_code=original["book_code"],
+                as_of_date=original["as_of_date"],
+                period_lock_id=None,
+                source_binding=original["source_binding"],
+            ),
+            output_format="JSON",
+            rerun_of=original["id"],
+        )
+        assert uow.session.scalar(select(func.count()).select_from(report_run)) == count_before + 1
+        uow.commit()
+    with world.place.uow() as uow:
+        rerun_task_id = uow.session.scalar(
+            select(job.c.procrastinate_job_id).where(job.c.id == rerun_job.id)
+        )
+        uow.session.execute(
+            text("UPDATE procrastinate_jobs SET status = 'doing' WHERE id = :id"),
+            {"id": rerun_task_id},
+        )
+        uow.commit()
+    monkeypatch.setattr(
+        disclosure_assembly, "prepare", lambda *args: pytest.fail("live capture on rerun")
+    )
+    run_job(
+        rerun_job.id,
+        world.place.tenant_id,
+        attempt=1,
+        runtime=runtime,
+        delivered_task_id=rerun_task_id,
+    )
+    with world.place.uow() as uow:
+        repeated = (
+            uow.session.execute(select(report_run).where(report_run.c.id == rerun_id))
+            .mappings()
+            .one()
+        )
+        assert repeated["status"] == "SUCCEEDED", repeated["problem"]
+        assert repeated["output_sha256"] == original["output_sha256"]
+        assert repeated["control_totals"] == original["control_totals"]
+        assert repeated["tie_out_results"] == original["tie_out_results"]
+        assert repeated["child_report_run_ids"] == original["child_report_run_ids"]
+        assert repeated["source_binding"]["evidence"] == original["source_binding"]["evidence"]

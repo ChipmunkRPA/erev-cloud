@@ -1,6 +1,6 @@
 """Build disclosure artifacts and retained provenance for atomic REPORT_RUN publication.
 
-Public registration and retained rerun reconstruction remain separate admission gates.
+Public registration and frozen snapshots remain separate admission gates.
 """
 
 import hashlib
@@ -9,7 +9,12 @@ from typing import Any
 
 from erev_engine.canonical import canonical_bytes, sha256_hex
 
-from erev_api.domain.reports import disclosure_assembly, disclosure_workbook, framework
+from erev_api.domain.reports import (
+    disclosure_assembly,
+    disclosure_inputs,
+    disclosure_workbook,
+    framework,
+)
 from erev_api.domain.reports.builders import RETAINED, SourceCollector
 from erev_api.domain.reports.outputs import Column, ReportData, manifest, pdf, xlsx
 from erev_api.problems import Problem
@@ -19,49 +24,31 @@ from erev_api.uow import UnitOfWork
 def build(
     uow: UnitOfWork, run: Mapping[str, Any], definition: Mapping[str, Any], style: str
 ) -> tuple[ReportData, framework._Rendered, dict[str, Any]]:
-    if run["source_binding"] is not None:
-        raise Problem("invalid-transition", "Retained disclosure rerun reconstruction is pending.")
     if run["report_version"] != 1 or run["period_lock_id"] is not None:
         raise Problem("validation-failed", "Unsupported disclosure version or frozen source.")
-    pack = disclosure_assembly.prepare(uow, run["id"])
-    if not isinstance(pack, disclosure_assembly.Pack):
-        raise Problem("invalid-transition", "Disclosure inputs have not completed.")
+    if run["source_binding"] is not None:
+        pack, child_stamps, facts = disclosure_inputs.rebuild(run)
+    else:
+        prepared = disclosure_assembly.prepare(uow, run["id"])
+        if not isinstance(prepared, disclosure_assembly.Pack):
+            raise Problem("invalid-transition", "Disclosure inputs have not completed.")
+        pack = prepared
+        child_stamps = {}
+        for child in pack.children:
+            child_definition = framework.definition_row(
+                uow.session, child.run["report_code"], child.run["report_version"]
+            )
+            if child_definition is None:
+                raise Problem("validation-failed", "A disclosure source definition is unavailable.")
+            child_stamps[child.source.run_id] = framework._run_stamp(
+                uow.session,
+                child.run,
+                child_definition,
+                output_sha256=child.output_sha256,
+                style=style,
+            )
+        facts = disclosure_inputs.capture(run, pack, child_stamps)
     stamp = framework._run_stamp(uow.session, run, definition, output_sha256="", style=style)
-    child_stamps = {}
-    inputs = []
-    for child in pack.children:
-        child_definition = framework.definition_row(
-            uow.session, child.run["report_code"], child.run["report_version"]
-        )
-        if child_definition is None:
-            raise Problem("validation-failed", "A disclosure source definition is unavailable.")
-        child_stamps[child.source.run_id] = framework._run_stamp(
-            uow.session,
-            child.run,
-            child_definition,
-            output_sha256=child.output_sha256,
-            style=style,
-        )
-        inputs.append(
-            {
-                "key": child.source.key,
-                "run_id": str(child.source.run_id),
-                "job_id": str(child.source.job_id),
-                "sections": list(child.source.sections),
-                "basis": child.source.basis,
-                "parameters_sha256": child.source.parameters_sha256,
-                "output_sha256": child.output_sha256,
-                "dataset": manifest.dataset_document(
-                    manifest.report_reference(
-                        child.run["report_code"],
-                        child_definition["name"],
-                        child.run["report_version"],
-                    ),
-                    child.run["parameters"],
-                    child.data,
-                ),
-            }
-        )
     chapters = disclosure_workbook.chapters(pack, stamp, child_stamps)
     xlsx.validate_chapters(chapters)
     rows = []
@@ -129,7 +116,7 @@ def build(
         {
             "chapters": 7,
             "tables": len(rows),
-            "children": len(inputs),
+            "children": len(pack.children),
             "omitted_tables": sum(row["omitted"] for row in rows),
         },
         ties,
@@ -163,17 +150,6 @@ def build(
         )
     else:
         raise Problem("validation-failed", "Disclosure packs support JSON, XLSX and PDF.")
-    facts = {
-        "version": 1,
-        "tenant_id": str(run["tenant_id"]),
-        "entity_ids": [str(identity) for identity in run["entity_ids"]],
-        "book": run["book_code"],
-        "known_at": run["known_at"].isoformat(),
-        "parameters": dict(run["parameters"]),
-        "children": inputs,
-        "policies": dict(pack.policy_facts),
-        "policy_sha256": pack.policy_sha256,
-    }
     collector = SourceCollector()
     collector.record_cutoff(run["known_at"])
     collector.record_evidence("disclosure_inputs", facts)

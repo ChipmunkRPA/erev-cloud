@@ -7036,3 +7036,22 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Still required: migration source-file/database admission, confirmed mapping retrieval, full
   retained binding/rebuild, worker/export integration and current grants at publication. Migration
   replay import and its sandbox lifecycle remain unfinished. Six builders remain unregistered.
+
+
+## Migration source admission for parallel comparison — October 19, 2026
+
+- Added parallel_sources.read_for_report. It binds the migration's original successful import
+  operation, subject/parameters and cutoff; retrieves the confirmed entity mapping; and requires
+  report permission for the complete mapped source population before opening plaintext.
+- Verifies original LEGACY_DATABASE purpose, size and SHA-256 against the migration, then compares
+  every retained history row's identity/raw hash with the original SQLite record. Temporary source
+  copies and streams close on failure. Evidence retains file, operation, mapping and row identities.
+- Linked sandboxes require their own authorized context; no tenant switch is performed. Current
+  support is same-tenant complete-source admission, not partial-entity or replay-sandbox completion.
+- Two real import scenarios pass (identity and renamed entity mappings), including incomplete-scope
+  denial and a same-size altered-file digest refusal. The fixture now carries the actual source hash
+  and job subject instead of placeholders. Ruff and new-module Mypy pass; checking the existing PG
+  test module also reports five pre-existing type diagnostics outside this change.
+- Next RPT-42 work: persist/rebuild the complete retained inputs, compose both readers with the
+  comparison, register the worker and exports, and finish migration replay/sandbox lifecycle.
+  Six catalogue builders remain unregistered; full LMG-4/5 accounting acceptance remains open.

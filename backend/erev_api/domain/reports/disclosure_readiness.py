@@ -32,6 +32,11 @@ def ready(session: Session, job_id: UUID, params: Mapping[str, Any]) -> bool:
         return True  # Let the normal terminal-run handler settle this delivery.
     if parent["period_lock_id"] is not None:
         raise Problem("invalid-transition", "Frozen disclosure execution is not available.")
+    if parent["source_binding"] is not None:
+        from erev_api.domain.reports.disclosure_inputs import rebuild
+
+        rebuild(dict(parent))
+        return True  # Retained inputs do not depend on live child jobs/files remaining available.
     ids = tuple(parent["child_report_run_ids"])
     expected = tuple(
         code
