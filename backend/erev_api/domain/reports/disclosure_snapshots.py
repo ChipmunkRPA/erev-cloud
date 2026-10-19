@@ -13,7 +13,7 @@ from sqlalchemy import insert, select
 
 from erev_api.db import new_id
 from erev_api.db.tables import disclosure_snapshot, legal_entity, period, report_run
-from erev_api.domain.reports import disclosure_inputs
+from erev_api.domain.reports import disclosure_assembly, disclosure_inputs
 from erev_api.enums import DisclosureKind
 from erev_api.problems import Problem
 from erev_api.uow import UnitOfWork
@@ -68,40 +68,7 @@ def write_draft(uow: UnitOfWork, run_id: UUID, binding: Mapping[str, Any]) -> li
     ).scalar_one_or_none()
     if period_id is None:
         raise Problem("validation-failed", "The disclosure source period is unavailable.")
-    documents = {}
-    for section, kind in zip(pack.sections, KINDS, strict=True):
-        documents[kind.value] = {
-            "schema_version": 1,
-            "kind": kind.value,
-            "section": section.number,
-            "title": section.title,
-            "entity_id": str(entity_id),
-            "book": run["book_code"],
-            "period_id": str(period_id),
-            "period_key": run["parameters"]["period_key"],
-            "known_at": run["known_at"].isoformat(),
-            "quarter": bool(run["parameters"].get("quarter")),
-            "period_lock_id": None,
-            "interim_required": section.interim_required,
-            "tables": [
-                {"key": table.key, "omitted": table.omitted, "notes": list(table.notes)}
-                for table in section.tables
-            ],
-            # Retain original inputs under elections; rendered reports stay separate.
-            "children": [
-                child for child in facts["children"] if section.number in child["sections"]
-            ],
-            "policies": facts["policies"],
-            "policy_sha256": facts["policy_sha256"],
-            "supporting_sources": [
-                {
-                    key: child[key]
-                    for key in ("key", "run_id", "job_id", "parameters_sha256", "output_sha256")
-                }
-                for child in facts["children"]
-                if not child["sections"]
-            ],
-        }
+    documents = documents_for(run, pack, facts, period_id)
     existing_rows = list(
         uow.session.execute(
             select(disclosure_snapshot).where(
@@ -154,3 +121,47 @@ def write_draft(uow: UnitOfWork, run_id: UUID, binding: Mapping[str, Any]) -> li
     ]
     uow.session.execute(insert(disclosure_snapshot), rows)
     return [row["id"] for row in rows]
+
+
+def documents_for(
+    run: Mapping[str, Any],
+    pack: disclosure_assembly.Pack,
+    facts: Mapping[str, Any],
+    period_id: UUID,
+) -> dict[str, Any]:
+    """Same seven chapter documents for draft and lock-time publication."""
+    documents = {}
+    for section, kind in zip(pack.sections, KINDS, strict=True):
+        documents[kind.value] = {
+            "schema_version": 1,
+            "kind": kind.value,
+            "section": section.number,
+            "title": section.title,
+            "entity_id": str(run["entity_ids"][0]),
+            "book": run["book_code"],
+            "period_id": str(period_id),
+            "period_key": run["parameters"]["period_key"],
+            "known_at": run["known_at"].isoformat(),
+            "quarter": bool(run["parameters"].get("quarter")),
+            "period_lock_id": None if run["period_lock_id"] is None else str(run["period_lock_id"]),
+            "interim_required": section.interim_required,
+            "tables": [
+                {"key": table.key, "omitted": table.omitted, "notes": list(table.notes)}
+                for table in section.tables
+            ],
+            # Retain original inputs under elections; rendered reports stay separate.
+            "children": [
+                child for child in facts["children"] if section.number in child["sections"]
+            ],
+            "policies": facts["policies"],
+            "policy_sha256": facts["policy_sha256"],
+            "supporting_sources": [
+                {
+                    key: child[key]
+                    for key in ("key", "run_id", "job_id", "parameters_sha256", "output_sha256")
+                }
+                for child in facts["children"]
+                if not child["sections"]
+            ],
+        }
+    return documents

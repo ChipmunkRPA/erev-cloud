@@ -294,8 +294,11 @@ def run_mismatch(run: Mapping[str, Any], scope: LockScope) -> str | None:
     if run["book_code"] != scope.book_code:
         return "book_code"
     parameters = dict(run["parameters"] or {})
+    admitted = ADMITTED_KEYS
+    if run.get("report_code") == "disclosure_pack" and isinstance(parameters.get("quarter"), bool):
+        admitted = admitted | {"quarter"}
     for key in sorted(parameters):
-        if key not in ADMITTED_KEYS:
+        if key not in admitted:
             return f"parameters.{key}"
     if "entity_codes" in parameters and [str(code) for code in parameters["entity_codes"]] != [
         scope.entity_code

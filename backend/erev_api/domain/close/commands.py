@@ -2306,6 +2306,9 @@ def _period_lock_approved(uow: UnitOfWork, subject_id: UUID, approval_request_id
     # 04 §14.1 rev 1.182 (review finding F7 (c)): ONE SYSTEM reader for the whole freeze phase —
     # the activity read, the twelve producers and both coverage reads — so the decision holds
     # two pooled connections at its peak and checks the second one out once.
+    from erev_api.domain.reports import disclosure_freeze, disclosure_lock
+    from erev_api.domain.reports.snapshots import SnapshotScope
+
     with freeze.system_unit(uow) as reader:
         freeze.allow_idle(reader.session)
         at_freeze = freeze.activity_before_freeze(principal.tenant_id, scope, reader=reader.session)
@@ -2329,6 +2332,19 @@ def _period_lock_approved(uow: UnitOfWork, subject_id: UUID, approval_request_id
             ) from refused
         except snapshots.MachineArtefactRefused as refused:
             raise freeze.artefact_refused(scope, str(refused)) from refused
+        disclosure_inputs = None
+        if scope.book_code in {"ASC606", "IFRS15"}:
+            disclosure_inputs = disclosure_freeze.capture(
+                reader,
+                SnapshotScope(
+                    entity_id=scope.entity_id,
+                    book_code=scope.book_code,
+                    period_id=scope.period_id,
+                    known_at=cutoff,
+                    frozen_at=cutoff,
+                ),
+                quarter=True,
+            )
         # R-19 (b): nothing of the period lies beyond the cutoff the datasets were frozen at, and
         # nothing was committed into the period since the freeze began — asked here, before any lock
         # write, and again as the decision's last read; R-42 (d): under the tenant's SYSTEM scope
@@ -2373,6 +2389,9 @@ def _period_lock_approved(uow: UnitOfWork, subject_id: UUID, approval_request_id
             cutoff_known_at=cutoff,
         )
         snapshots.write_lock_snapshots(uow, lock_id, datasets)
+        if disclosure_inputs is not None:
+            with uow.as_system():
+                disclosure_lock.publish(uow, lock_id, disclosure_inputs)
         # BS4-D-03 (BUILD_SPEC CLO-20): the LOCK step of the period's latest succeeded close run is
         # marked in this transaction, so a decision that is refused below, or answered 409 and
         # decided again, leaves that step PENDING.

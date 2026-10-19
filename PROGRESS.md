@@ -2,6 +2,28 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Atomic disclosure publication at lock — October 19, 2026
+
+- ASC606/IFRS15 lock approval now captures sixteen period/QTD inputs and policies through the
+  shared read-only SYSTEM reader, then publishes actual synchronous source reports, a seven-
+  chapter JSON disclosure parent and seven immutable snapshots within the lock transaction.
+  Source reports have null jobs, normal historical source bindings and actual output files;
+  the parent/snapshots alone claim the period lock. CTL-029/030 and audit evidence are recorded.
+- Validates lock/entity/calendar/book/cutoff, child plan/selectors, policy and dataset hashes,
+  source bindings and row identities. Uses UoW savepoints so failed publication drops records,
+  audit buffers and hooks. Repeated publication of an existing lock refuses. The seventh
+  snapshot also retains supporting waterfall inputs for later frozen reconstruction.
+- Existing twelve E-64 datasets keep their formats. Scope readers admit boolean quarter only
+  for disclosure parents; the report viewer distinguishes saved lock evidence from drafts.
+  The existing API serves the stored JSON chapters and seven scoped verified snapshots.
+- Targeted database journeys cover draft/rerun, late-child failure rollback, genuine source
+  identities, snapshot/parent HTTP reads, duplicate refusal and actual close approval capture.
+  Production Python typing/lint and frontend component/type checks pass. Independent accounting
+  acceptance, full browser/release checks and performance verification remain open.
+- Next: admission/rebuild from saved lock snapshots, locked XLSX/PDF exports and rerun; no
+  historical-lock backfill or current-data fallback. Other reporting/system backlog remains.
+  No deployment, new PR or production-readiness claim.
+
 ## Disclosure snapshot viewer — October 19, 2026
 
 - Disclosure report pages now expose a saved-snapshot panel: lazy paginated metadata,
@@ -203,24 +225,6 @@
 - Still open: final side-by-side period/quarter presentation, chapter workbook/PDF and viewer
   integration, frozen disclosures and durable parent worker/dependency/publication lifecycle.
   Five catalogue builders remain unregistered. This assembly model is not a finished disclosure pack.
-
-## Practical expedient disclosure inputs — October 19, 2026
-
-- Added disclosure_expedients.capture for the ten PRACTICAL_EXPEDIENT registry parameters.
-  Requires current scoped report permission and an entity existing at the aware cutoff; resolves
-  published entity/book policy values and retains their source IDs/levels, labels and references.
-- ASC606 and IFRS15 references follow the local POLICIES table; forced IFRS exclusions are
-  preserved. No website links are emitted. A nonpublic-only franchisor election on a public entity
-  refuses rather than implying eligibility. These are entity policies, not contract-use assertions.
-- POL-195 suppression hides rendered rows while retaining the full facts and omission note.
-  Registry category/reference drift refuses rather than silently dropping a newly added expedient.
-- Real registry reads verify ten ASC606 rows, the applied cost expedient with 340-40-25-4 and
-  IFRS forced royalty exclusion; the existing 16-child database journey passes. Focused omission
-  check passes; Ruff and Mypy pass for the new module.
-- Still required: bind these facts to the parent's exact cutoff and frozen disclosure snapshots,
-  assemble all seven sections, parent worker scheduling/publication, PDF and viewer. Policy test
-  cutoff uses DB observation time separately from the child-run fixture; full pack acceptance
-  is not implied. Five catalogue builders remain unregistered.
 ## Outstanding release verification
 
 These checks need current release-candidate evidence. Historical October 3 results

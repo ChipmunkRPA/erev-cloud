@@ -339,8 +339,8 @@ report rebuilds from its retained redacted source records and rechecks current r
 Create `disclosure_pack` through `POST /api/v1/report-runs` with one `entity_codes` entry,
 `book` (`ASC606` or `IFRS15`), an explicit `period_key`, and optionally `quarter: true`.
 Choose `JSON`, `XLSX` or `PDF`. This currently produces a draft for a period that was open
-at the selected source time. A locked source or a non-open period is refused; frozen
-close disclosures are not implemented yet.
+at the selected source time. On-demand creation with a locked source or a non-open period is
+refused. New successful lock approvals separately save the frozen disclosure evidence below.
 
 The response supplies the job and `X-Erev-Report-Run-Id`. Poll the run until it succeeds,
 then download `/api/v1/report-runs/{id}/output` with report export permission. JSON contains
@@ -376,7 +376,15 @@ contents. Both require report permission for the complete source report's entity
 Details preserve original child datasets and policy facts, including evidence omitted from
 the displayed pack under disclosure elections. The `data_sha256` identifies those retained
 contents. Unpublished or unattached records are not listed; metadata pages do not load the
-full datasets. Locked-period capture remains unfinished.
+full datasets.
+
+New ASC606/IFRS15 lock approvals capture period and quarter-to-date inputs and policy elections
+at the lock cutoff, then save a JSON disclosure report and seven locked snapshots in the same
+transaction. Find the saved disclosure report in Report runs to view its chapters or download
+its original JSON. Its source reports were calculated synchronously and have no queued job.
+Failure to capture or publish this evidence refuses the lock; existing locks are not backfilled.
+Creating a new report from a lock ID, re-running a locked pack, and exporting it as XLSX/PDF
+remain unavailable. Draft export and rerun behavior above is unchanged.
 
 #### Contract version extract
 

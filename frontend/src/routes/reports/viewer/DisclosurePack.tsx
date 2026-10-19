@@ -54,7 +54,7 @@ function Table({ runId, table, number }: { runId: string; table: DisclosureTable
   </details>;
 }
 
-export function DisclosurePack({ runId }: { runId: string }) {
+export function DisclosurePack({ runId, locked = false }: { runId: string; locked?: boolean }) {
   const sections = useQuery({
     queryKey: queryKey("report-runs", "tenant", { runId, disclosureSections: true }),
     queryFn: () => fetchDisclosureSections(runId),
@@ -62,7 +62,7 @@ export function DisclosurePack({ runId }: { runId: string }) {
   if (sections.isError) return <Banner tone="negative" title={t("reports.report.dataLoadError")} actions={<Button variant="link" onClick={() => void sections.refetch()}>{t("reports.report.retry")}</Button>} />;
   if (sections.data === undefined) return <p role="status">{t("reports.disclosure.loading")}</p>;
   return <div className="flex flex-col gap-6">
-    <p className="text-body-sm text-fg-2">{t("reports.disclosure.draft")}</p>
+    <p className="text-body-sm text-fg-2">{t(locked ? "reports.disclosure.locked" : "reports.disclosure.draft")}</p>
     <DisclosureSnapshots runId={runId} />
     {sections.data.map(section => <section key={section.number} className="flex flex-col gap-2">
       <h2 className="text-heading-sm">{section.number}. {section.title}</h2>

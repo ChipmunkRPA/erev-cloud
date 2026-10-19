@@ -10146,6 +10146,14 @@ Author BS-3. Uses CTR (PHASES §1 row 12). Indicative size 16 items; this phase 
   - **Gates:** GK-01 `make ci`; GK-07 `make e2e SPEC=frontend/e2e/projects/screens.spec.ts`
 
 - [ ] **RPS-15 Disclosure snapshots and the disclosure pack.**
+  - October 19 lock-publication increment: ASC606/IFRS15 lock approval captures sixteen period/
+    QTD inputs in the shared SYSTEM reader and atomically saves actual synchronous source reports,
+    a seven-chapter JSON parent, seven immutable snapshots and CTL-029/030 evidence. No fake jobs;
+    existing twelve E-64 dataset formats remain unchanged. Snapshot reads and the report viewer
+    admit the saved lock parent with its boolean quarter basis. New source selection, locked
+    rerun/XLSX/PDF, historical-lock backfill and complete accounting acceptance are not delivered.
+    Database checks cover ordinary draft/rerun plus lock publication and an actual close approval.
+
   - October 19 freeze-capture increment: a read-only SYSTEM producer captures all period/QTD
     report inputs and exact-cutoff policies without jobs or fabricated identities. A database
     check matches sixteen datasets to ordinary reports at the same cutoff. Lock-transaction

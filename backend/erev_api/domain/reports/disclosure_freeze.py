@@ -1,7 +1,7 @@
 """Read-only disclosure source capture at the lock decision's exact cutoff.
 
-Produces typed JSON evidence without invented job/run IDs. The lock transaction must persist
-source reports and seven snapshots before these inputs can be served as locked disclosures.
+Produces typed JSON evidence without invented job/run IDs. The lock transaction publishes
+source reports and seven snapshots through disclosure_lock before the close can succeed.
 """
 
 from typing import Any

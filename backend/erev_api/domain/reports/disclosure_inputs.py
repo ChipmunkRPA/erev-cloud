@@ -41,7 +41,7 @@ def capture(
             {
                 "key": child.source.key,
                 "run_id": str(child.source.run_id),
-                "job_id": str(child.source.job_id),
+                "job_id": None if child.source.job_id is None else str(child.source.job_id),
                 "sections": list(child.source.sections),
                 "basis": child.source.basis,
                 "parameters_sha256": child.source.parameters_sha256,

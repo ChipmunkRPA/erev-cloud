@@ -2684,6 +2684,17 @@ def _consistent_with_lock() -> Any:
     any status and however long ago the run completed. The SQL twin of ``locked.run_mismatch``."""
     parameters = report_run.c.parameters
     admitted = pg_array([literal(key) for key in sorted(locked.ADMITTED_KEYS)])
+    disclosure_admitted = pg_array(
+        [literal(key) for key in sorted(locked.ADMITTED_KEYS | {"quarter"})]
+    )
+    parameters_admitted = or_(
+        parameters.op("-")(admitted) == cast(literal("{}"), JSONB),
+        and_(
+            report_run.c.report_code == "disclosure_pack",
+            parameters.op("-")(disclosure_admitted) == cast(literal("{}"), JSONB),
+            func.jsonb_typeof(parameters["quarter"]) == "boolean",
+        ),
+    )
     period_selectors = [
         or_(parameters[key].astext.is_(None), parameters[key].astext == period.c.period_key)
         for key in locked.PERIOD_KEYS
@@ -2697,7 +2708,7 @@ def _consistent_with_lock() -> Any:
             period_lock.c.id == report_run.c.period_lock_id,
             report_run.c.entity_ids == pg_array([period_lock.c.entity_id]),
             report_run.c.book_code == period_lock.c.book_code,
-            parameters.op("-")(admitted) == cast(literal("{}"), JSONB),
+            parameters_admitted,
             or_(
                 parameters["entity_codes"].is_(None),
                 parameters["entity_codes"] == func.jsonb_build_array(legal_entity.c.code),

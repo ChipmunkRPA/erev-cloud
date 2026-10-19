@@ -49,7 +49,7 @@ class ChildSource:
     sections: tuple[int, ...]
     basis: str
     run_id: UUID
-    job_id: UUID
+    job_id: UUID | None
     parameters_sha256: str
 
 

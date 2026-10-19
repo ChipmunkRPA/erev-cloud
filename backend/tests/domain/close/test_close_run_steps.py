@@ -1191,6 +1191,28 @@ def test_lock_marks_lock_step(
     ]
     assert after["counts"] == run["counts"]
 
+    from erev_api.db.tables import disclosure_snapshot, report_run
+
+    disclosure_rows = _rows(
+        world.tenant_id,
+        select(disclosure_snapshot).where(
+            disclosure_snapshot.c.period_lock_id == lock["id"],
+        ),
+    )
+    assert len(disclosure_rows) == 7
+    parent_ids = {row["report_run_id"] for row in disclosure_rows}
+    assert len(parent_ids) == 1
+    (disclosure_parent,) = _rows(
+        world.tenant_id,
+        select(report_run).where(
+            report_run.c.id.in_(parent_ids),
+        ),
+    )
+    assert disclosure_parent["status"] == "SUCCEEDED"
+    assert disclosure_parent["period_lock_id"] == lock["id"]
+    assert len(disclosure_parent["child_report_run_ids"]) == 16
+    assert disclosure_parent["job_id"] is None
+
     # BS4-D-04: an unchanged dataset is the run's file; a changed one is a file of its own
     snapshots = _rows(
         world.tenant_id,

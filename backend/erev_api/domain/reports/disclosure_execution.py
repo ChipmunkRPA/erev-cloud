@@ -6,6 +6,7 @@ Public registration and frozen snapshots remain separate admission gates.
 import hashlib
 from collections.abc import Mapping
 from typing import Any
+from uuid import UUID
 
 from erev_engine.canonical import canonical_bytes, sha256_hex
 
@@ -17,7 +18,7 @@ from erev_api.domain.reports import (
     framework,
 )
 from erev_api.domain.reports.builders import RETAINED, SourceCollector
-from erev_api.domain.reports.outputs import Column, ReportData, manifest, pdf, xlsx
+from erev_api.domain.reports.outputs import Column, ReportData, RunStamp, manifest, pdf, xlsx
 from erev_api.problems import Problem
 from erev_api.uow import UnitOfWork
 
@@ -49,6 +50,19 @@ def build(
                 style=style,
             )
         facts = disclosure_inputs.capture(run, pack, child_stamps)
+    return render(uow, run, definition, style, pack, child_stamps, facts)
+
+
+def render(
+    uow: UnitOfWork,
+    run: Mapping[str, Any],
+    definition: Mapping[str, Any],
+    style: str,
+    pack: disclosure_assembly.Pack,
+    child_stamps: Mapping[UUID, RunStamp],
+    facts: Mapping[str, Any],
+) -> tuple[ReportData, framework._Rendered, dict[str, Any]]:
+    """Render already verified inputs, including synchronous lock-decision captures."""
     stamp = framework._run_stamp(uow.session, run, definition, output_sha256="", style=style)
     chapters = disclosure_workbook.chapters(pack, stamp, child_stamps)
     xlsx.validate_chapters(chapters)

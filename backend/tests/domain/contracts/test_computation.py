@@ -5499,3 +5499,104 @@ def test_disclosure_children_attach_once_and_survive_retry(
             assert captured["dataset"] == expected_inputs[captured["key"]]["dataset"]
             assert captured["output_sha256"] == sha256_hex(captured["dataset"])
             assert "run_id" not in captured and "job_id" not in captured
+
+        from erev_api.db.tables import period_lock, period_state_transition
+        from erev_api.domain.reports import disclosure_lock, disclosure_queries
+        from support.rows import CloseParts, insert_approval_request, period_lock_values
+
+        transition = (
+            uow.session.execute(
+                select(period_state_transition)
+                .where(
+                    period_state_transition.c.entity_id == world.entity_id,
+                    period_state_transition.c.period_id == period.id,
+                    period_state_transition.c.book_code == "ASC606",
+                )
+                .limit(1)
+            )
+            .mappings()
+            .one()
+        )
+        lock_values = period_lock_values(
+            world.place.tenant_id,
+            parts=CloseParts(
+                calendar_id=UUID(int=0),
+                entity_id=world.entity_id,
+                period_id=period.id,
+                period_state_transition_id=transition["id"],
+                approval_request_id=insert_approval_request(
+                    uow.session, tenant_id=world.place.tenant_id, entity_id=world.entity_id
+                ),
+                file_id=UUID(int=0),
+            ),
+            cutoff_known_at=parent["known_at"],
+            created_at=uow.now,
+            created_by=uow.principal.id,
+            created_by_kind=uow.principal.kind.value,
+        )
+        uow.session.execute(insert(period_lock).values(**lock_values))
+        # A failed publication must not leave a partial population of successful source runs.
+        malformed = copy.deepcopy(frozen_inputs)
+        malformed["children"][-1]["output_sha256"] = "f" * 64
+        audit_before = len(uow.audit_events)
+        with pytest.raises(Problem):
+            disclosure_lock.publish(uow, lock_values["id"], malformed)
+        assert len(uow.audit_events) == audit_before
+        assert uow.session.scalar(select(func.count()).select_from(report_run)) == before_capture
+        frozen_parent_id = disclosure_lock.publish(uow, lock_values["id"], frozen_inputs)
+        frozen_parent = (
+            uow.session.execute(select(report_run).where(report_run.c.id == frozen_parent_id))
+            .mappings()
+            .one()
+        )
+        assert frozen_parent["status"] == "SUCCEEDED"
+        assert frozen_parent["job_id"] is None
+        assert frozen_parent["period_lock_id"] == lock_values["id"]
+        assert frozen_parent["source_binding"] is None
+        assert len(frozen_parent["child_report_run_ids"]) == 16
+        assert len(frozen_parent["disclosure_snapshot_ids"]) == 7
+        assert (
+            uow.session.scalar(select(func.count()).select_from(report_run)) == before_capture + 17
+        )
+        for identity in frozen_parent["disclosure_snapshot_ids"]:
+            snapshot = disclosure_queries.get(
+                uow.session, replace(uow.principal, permission_scopes={"report.run": "*"}), identity
+            )
+            assert snapshot.source == "LOCKED"
+            assert snapshot.period_lock_id == lock_values["id"]
+            assert snapshot.data["known_at"] == parent["known_at"].isoformat()
+            assert sha256_hex(snapshot.data) == snapshot.data_sha256
+            if snapshot.disclosure_kind.value == "EXPEDIENTS_USED":
+                assert len(snapshot.data["supporting_children"]) == 2
+                for child in snapshot.data["supporting_children"]:
+                    assert child["dataset"] == expected_inputs[child["key"]]["dataset"]
+            for child in snapshot.data["children"]:
+                assert child["job_id"] is None
+                assert child["dataset"] == expected_inputs[child["key"]]["dataset"]
+                stored = (
+                    uow.session.execute(
+                        select(report_run).where(report_run.c.id == UUID(child["run_id"]))
+                    )
+                    .mappings()
+                    .one()
+                )
+                assert stored["status"] == "SUCCEEDED" and stored["job_id"] is None
+                assert stored["output_sha256"] == child["output_sha256"]
+        with pytest.raises(Problem) as duplicate:
+            disclosure_lock.publish(uow, lock_values["id"], frozen_inputs)
+        assert duplicate.value.slug == "invalid-transition"
+
+        uow.commit()
+    frozen_detail = get(world.app, f"/api/v1/report-runs/{frozen_parent_id}", actor)
+    assert frozen_detail.status_code == 200, frozen_detail.text
+    frozen_data = get(
+        world.app, f"/api/v1/report-runs/{frozen_parent_id}/data", actor, {"limit": 1}
+    )
+    assert frozen_data.status_code == 200, frozen_data.text
+    assert len(frozen_data.json()["sections"]) == 7
+    saved = get(
+        world.app, "/api/v1/disclosure-snapshots", actor, {"report_run_id": str(frozen_parent_id)}
+    )
+    assert saved.status_code == 200, saved.text
+    assert len(saved.json()["items"]) == 7
+    assert all(row["source"] == "LOCKED" for row in saved.json()["items"])

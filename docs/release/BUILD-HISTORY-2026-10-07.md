@@ -7174,3 +7174,21 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Remaining: registered parent worker/dependency scheduling, seven-section assembly, frozen
   disclosures, practical expedients, PDF and viewer. Five catalogue builders remain unregistered;
   no disclosure_pack completion or production-readiness claim.
+
+## Practical expedient disclosure inputs — October 19, 2026
+
+- Added disclosure_expedients.capture for the ten PRACTICAL_EXPEDIENT registry parameters.
+  Requires current scoped report permission and an entity existing at the aware cutoff; resolves
+  published entity/book policy values and retains their source IDs/levels, labels and references.
+- ASC606 and IFRS15 references follow the local POLICIES table; forced IFRS exclusions are
+  preserved. No website links are emitted. A nonpublic-only franchisor election on a public entity
+  refuses rather than implying eligibility. These are entity policies, not contract-use assertions.
+- POL-195 suppression hides rendered rows while retaining the full facts and omission note.
+  Registry category/reference drift refuses rather than silently dropping a newly added expedient.
+- Real registry reads verify ten ASC606 rows, the applied cost expedient with 340-40-25-4 and
+  IFRS forced royalty exclusion; the existing 16-child database journey passes. Focused omission
+  check passes; Ruff and Mypy pass for the new module.
+- Still required: bind these facts to the parent's exact cutoff and frozen disclosure snapshots,
+  assemble all seven sections, parent worker scheduling/publication, PDF and viewer. Policy test
+  cutoff uses DB observation time separately from the child-run fixture; full pack acceptance
+  is not implied. Five catalogue builders remain unregistered.

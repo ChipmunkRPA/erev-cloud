@@ -535,7 +535,7 @@ function ReportBody({ definition, access }: ReportBodyProps) {
     );
   } else if (succeeded && data !== undefined) {
     if (definition.code === "disclosure_pack") {
-      body = <DisclosurePack key={data.id} runId={data.id} />;
+      body = <DisclosurePack key={data.id} runId={data.id} locked={data.period_lock_id !== null} />;
     } else if (rows.isError) {
       body = (
         <Banner
