@@ -5761,6 +5761,7 @@ Onboarding through template `contracts` (rev 1.3; BUILD_SPEC BS3-D-25; REQ-MIG-0
 | `file_sha256` | erev.sha256 | N | | |
 | `parameters` | jsonb | N | `'{}'` | The template's `required_parameters` and optional batch parameters; for template `contracts`, the onboarding and acquisition parameters of T-IMP-01 (rev 1.3; BUILD_SPEC BS3-D-25). |
 | `mapping_profile_id` | uuid | Y | | FK → `import_mapping_profile` (PUBLISHED). |
+| `forecast_event_set_id` | uuid | Y | | Revision 0181: tenant-scoped FK → `forecast_event_set`; set at upload and immutable. Scenario fact imports only; successful commit appends the upload ID to the draft set. |
 | `status` | erev.import_status | N | `'UPLOADED'` | |
 | `row_count` | integer | Y | | |
 | `valid_row_count` | integer | Y | | |

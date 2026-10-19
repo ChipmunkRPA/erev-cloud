@@ -245,7 +245,13 @@ def imports_list(
     operation_id="imports_create",
     status_code=202,
     response_model=JobOut,
-    responses=problem_responses(*_COMMAND_PROBLEMS, "not-found", "duplicate-import"),
+    responses=problem_responses(
+        *_COMMAND_PROBLEMS,
+        "not-found",
+        "duplicate-import",
+        "invalid-transition",
+        "sandbox-restricted",
+    ),
 )
 def imports_create(
     body: ImportCreateIn,
@@ -394,7 +400,8 @@ def imports_submit(
     deps: Deps,
 ) -> Response:
     """Submit a DIFF_READY import for approval (``IMPORT_COMMIT``); approval defers the
-    commit."""
+    commit. Forecast fact imports in a registered scenario queue the commit directly under
+    BR-FC-02, without creating an approval request."""
 
     def handle(uow: UnitOfWork) -> ImportOut:
         return commit.submit_import(uow, import_id=import_id, body=body)

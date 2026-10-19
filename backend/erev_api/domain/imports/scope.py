@@ -1517,3 +1517,16 @@ def require_visible(principal: Principal, upload: Mapping[str, Any]) -> None:
     named = stored(upload)
     if scope is None or named is None or not named <= scope:
         raise Problem("not-found")
+
+
+def require_forecast_uploader(session: Session, upload: Mapping[str, Any], *, at: datetime) -> None:
+    """Revalidate the uploader's scenario grant at asynchronous commit, including token scope."""
+    grants = _uploader_grants(session, upload, at=at)
+    if (
+        grants is None
+        or "scenario.use" not in grants.permissions
+        or grants.permission_scopes.get("scenario.use") != "*"
+    ):
+        raise Problem(
+            "forbidden", "The uploader needs tenant-wide scenario.use for forecast imports."
+        )

@@ -267,6 +267,40 @@ def submit_import(uow: UnitOfWork, *, import_id: UUID, body: ImportSubmitIn) -> 
         set_values=_stamps(uow),
         expected_status=ImportStatus.DIFF_READY.value,
     )
+    if row.get("forecast_event_set_id") is not None:
+        from erev_api.domain.forecast import event_sets
+
+        event_sets.admit_import(
+            uow, UUID(str(row["forecast_event_set_id"])), str(row["template_code"])
+        )
+        apply(
+            session,
+            OBJECT_TYPE,
+            import_id,
+            to_status=ImportStatus.APPROVED.value,
+            set_values=_stamps(uow),
+            expected_status=ImportStatus.SUBMITTED.value,
+        )
+        job = uow.defer(
+            JobKind.IMPORT_COMMIT,
+            {"import_upload_id": str(import_id)},
+            subject_type=OBJECT_TYPE,
+            subject_id=import_id,
+        )
+        apply(session, OBJECT_TYPE, import_id, to_status=None, set_values={"job_id": job["id"]})
+        uow.audit(
+            action="import_upload.submit_forecast",
+            object_type=OBJECT_TYPE,
+            object_id=import_id,
+            before={"status": ImportStatus.DIFF_READY.value},
+            after={"status": ImportStatus.APPROVED.value, "job_id": str(job["id"])},
+            detail={
+                "rule_id": "BR-FC-02",
+                "forecast_event_set_id": str(row["forecast_event_set_id"]),
+            },
+            comment=body.comment,
+        )
+        return queries.get_import(session, import_id)
     request = submit_request(
         uow,
         subject_type=ApprovalSubjectType.IMPORT_COMMIT,
@@ -430,6 +464,35 @@ def _check_bases(uow: UnitOfWork, row: Mapping[str, Any]) -> None:
 def commit_upload(
     uow: UnitOfWork, import_id: UUID, *, parent_job_id: UUID | None = None
 ) -> Committed | None:
+    found = (
+        uow.session.execute(select(import_upload).where(import_upload.c.id == import_id))
+        .mappings()
+        .one_or_none()
+    )
+    if found is None:
+        return None
+    row = dict(found)
+    if _status(row) != ImportStatus.COMMITTING.value:
+        return None
+    identity = row.get("forecast_event_set_id")
+    if identity is None:
+        return _commit_upload(uow, import_id, parent_job_id=parent_job_id)
+    from erev_api.domain.forecast import event_sets
+
+    scope.require_forecast_uploader(uow.session, row, at=uow.now)
+    if row["template_code"] not in event_sets.FORECAST_TEMPLATES:
+        raise Problem("validation-failed", "This template cannot supply forecast facts.")
+    current = event_sets.require_draft(uow, UUID(str(identity)))
+    with uow.savepoint():
+        committed = _commit_upload(uow, import_id, parent_job_id=parent_job_id)
+        if committed is not None:
+            event_sets.attach_import(uow, current, import_id)
+        return committed
+
+
+def _commit_upload(
+    uow: UnitOfWork, import_id: UUID, *, parent_job_id: UUID | None = None
+) -> Committed | None:
     """IPL-10 in the caller's transaction; None when the import is not COMMITTING."""
     session = uow.session
     row = _locked(session, import_id)
@@ -459,7 +522,7 @@ def commit_upload(
     )
     request_id = row["approval_request_id"]
     consumed = None
-    if request_id is not None:
+    if request_id is not None or row.get("forecast_event_set_id") is not None:
         # DG-KRN-APR-05 rev 1.51 (D-98 candidate 119; Codex 0216 / 0226): the import's approved
         # basis is consumed EXACTLY ONCE, here — under the authoritative locks (the named contracts'
         # groups, then the contracts; DG-KRN-DB-08), which this transaction then HOLDS to its
@@ -489,14 +552,15 @@ def commit_upload(
             else []
         )
         locking.lock_groups_then_contracts(session, named)
-        consumed = consume_fresh_basis(
-            uow,
-            UUID(str(request_id)),
-            subject_type=ApprovalSubjectType.IMPORT_COMMIT,
-            subject_id=import_id,
-            keys=keys,
-            bases=bases,
-        )
+        if request_id is not None:
+            consumed = consume_fresh_basis(
+                uow,
+                UUID(str(request_id)),
+                subject_type=ApprovalSubjectType.IMPORT_COMMIT,
+                subject_id=import_id,
+                keys=keys,
+                bases=bases,
+            )
     # 05 IPL-10 rev 1.46 (ruling R-29; SC-2): the uploader's scope for the template's write
     # permission is read NOW; an upload naming an entity it no longer covers commits nothing, and
     # the plans run inside that scope
@@ -719,10 +783,16 @@ def _recorded(
         control_id="CTL-044",
         run_ref_type=RunRefType.IMPORT_UPLOAD,
         run_ref_id=import_id,
-        population_count=1,
+        population_count=0 if row.get("forecast_event_set_id") else 1,
         exception_count=0,
-        result=ControlResult.PASS,
+        result=(
+            ControlResult.NOT_APPLICABLE if row.get("forecast_event_set_id") else ControlResult.PASS
+        ),
         detail={
+            "forecast_event_set_id": str(row["forecast_event_set_id"])
+            if row.get("forecast_event_set_id")
+            else None,
+            "approval_exemption": "BR-FC-02" if row.get("forecast_event_set_id") else None,
             "uploader_id": None if row["created_by"] is None else str(row["created_by"]),
             "approver_id": None if approver_id is None else str(approver_id),
         },

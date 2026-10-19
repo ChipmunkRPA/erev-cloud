@@ -3596,7 +3596,8 @@ export interface paths {
     /**
      * Imports Submit
      * @description Submit a DIFF_READY import for approval (``IMPORT_COMMIT``); approval defers the
-     *     commit.
+     *     commit. Forecast fact imports in a registered scenario queue the commit directly under
+     *     BR-FC-02, without creating an approval request.
      */
     post: operations["imports_submit"];
     delete?: never;
@@ -14940,6 +14941,8 @@ export interface components {
       file: components["schemas"]["ImportFileOut"];
       /** Finding Counts */
       finding_counts: components["schemas"]["FindingCountOut"][];
+      /** Forecast Event Set Id */
+      forecast_event_set_id?: string | null;
       /** Header Match */
       header_match: components["schemas"]["HeaderMatchOut"][];
       /**
@@ -38796,7 +38799,7 @@ export interface operations {
           "application/problem+json": components["schemas"]["ProblemOut"];
         };
       };
-      /** @description Problem: forbidden */
+      /** @description Problem: forbidden, sandbox-restricted */
       403: {
         headers: {
           [name: string]: unknown;
@@ -38816,7 +38819,7 @@ export interface operations {
           "application/problem+json": components["schemas"]["ProblemOut"];
         };
       };
-      /** @description Problem: idempotency-in-progress, duplicate-import */
+      /** @description Problem: idempotency-in-progress, duplicate-import, invalid-transition */
       409: {
         headers: {
           [name: string]: unknown;

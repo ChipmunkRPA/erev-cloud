@@ -215,13 +215,21 @@ def create_import(uow: UnitOfWork, *, body: ImportCreateIn) -> CreatedImport:
         # BUILD_SPEC DIN-10: a PUBLISHED profile of the upload's CSV v2 template (T-IMP-02).
         errors += mapping_profiles.upload_errors(session, template, body.mapping_profile_id)
     if body.forecast_event_set_id is not None:
-        errors.append(
-            ProblemError(
-                field="forecast_event_set_id",
-                rule_id=RULE_ID,
-                message="Forecast event sets are available only in scenario workspaces.",
+        from erev_api.domain.forecast import event_sets
+
+        # Production requests retain the API-S-ImportCreate validation response.
+        if uow.ctx.tenant_kind.value != "sandbox":
+            raise Problem(
+                "validation-failed",
+                errors=[
+                    ProblemError(
+                        field="forecast_event_set_id",
+                        rule_id=RULE_ID,
+                        message="Forecast event sets are available only in scenario workspaces.",
+                    )
+                ],
             )
-        )
+        event_sets.admit_import(uow, body.forecast_event_set_id, template.code)
     stored = _file(session, uow.ctx, template, body.file_id, errors)
     if errors or stored is None:
         raise Problem("validation-failed", errors=errors)
@@ -246,6 +254,7 @@ def create_import(uow: UnitOfWork, *, body: ImportCreateIn) -> CreatedImport:
         "file_sha256": sha256,
         "parameters": dict(body.parameters),
         "mapping_profile_id": body.mapping_profile_id,
+        "forecast_event_set_id": body.forecast_event_set_id,
         "status": ImportStatus.UPLOADED.value,
         "is_quarantine_mode": bool(setting(session, QUARANTINE_KEY, known_at=uow.now)),
         # 04 rev 1.147 T-IMP-02 (rulings R-98, R-109 (a)): what the creating access token carried.

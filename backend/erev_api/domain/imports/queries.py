@@ -206,6 +206,7 @@ def import_outs(session: Session, rows: Sequence[Mapping[str, Any]]) -> list[Imp
                     size_bytes=int(stored["size_bytes"]),
                 ),
                 parameters=dict(row["parameters"] or {}),
+                forecast_event_set_id=row["forecast_event_set_id"],
                 status=row["status"],
                 counts=ImportCountsOut(
                     rows=row["row_count"],

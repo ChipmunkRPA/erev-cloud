@@ -67,6 +67,7 @@ import_upload: Final = Table(
     Column("file_sha256", CHAR(64), nullable=False),
     Column("parameters", JSONB(none_as_null=True), nullable=False, server_default="{}"),
     Column("mapping_profile_id", Uuid(), nullable=True),
+    Column("forecast_event_set_id", Uuid(), nullable=True),
     Column("status", import_status, nullable=False, server_default=text("'UPLOADED'")),
     Column("row_count", Integer(), nullable=True),
     Column("valid_row_count", Integer(), nullable=True),

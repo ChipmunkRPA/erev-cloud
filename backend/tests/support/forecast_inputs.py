@@ -78,3 +78,104 @@ def exercise_input_sets(app: FastAPI, source: Actor, sandbox: Actor, tenant_id: 
     )
     assert listed.status_code == 200, listed.text
     assert [row["id"] for row in listed.json()["items"]] == [next_version.json()["id"]]
+
+
+def exercise_forecast_imports(world: object) -> None:
+    """Run a real progress file through validation, diff and scenario commit."""
+    from erev_api.db.tables import approval_request, forecast_event_set, import_upload, job
+    from sqlalchemy import func, select
+    from support.factories import ImportWorld, run_import_job, upload_import_source
+
+    assert isinstance(world, ImportWorld)
+
+    def headers() -> dict[str, str]:
+        return cookie_headers(world.actor.token, world.actor.csrf_token)
+
+    created_set = call(
+        world.app,
+        "POST",
+        "/api/v1/forecast-event-sets",
+        json={"code": "FILE_BASE", "name": "File base"},
+        headers=headers(),
+    )
+    assert created_set.status_code == 201, created_set.text
+    set_id = UUID(created_set.json()["id"])
+    content = (
+        b"contract,event_type,effective_date,obligation_key,cumulative_progress_ratio,measure\n"
+        b"SF-ORD-10001,PROGRESS_RECORDED,2026-02-28,O2,0.60,OUTPUT_PERCENT\n"
+    )
+    source = upload_import_source(world, "forecast-progress.csv", content)
+    created = call(
+        world.app,
+        "POST",
+        "/api/v1/imports",
+        headers=headers(),
+        json={
+            "file_id": source,
+            "template_code": "progress_events",
+            "forecast_event_set_id": str(set_id),
+        },
+    )
+    assert created.status_code == 202, created.text
+    import_id = UUID(created.headers["X-Erev-Import-Id"])
+    set_path = f"/api/v1/forecast-event-sets/{set_id}"
+    publish_headers = headers()
+    publish_headers["If-Match"] = created_set.headers["ETag"]
+    premature = call(world.app, "POST", set_path + "/publish", headers=publish_headers)
+    assert premature.status_code == 409, premature.text
+    run_import_job(world, UUID(created.json()["id"]))
+    row = world.rows(select(import_upload).where(import_upload.c.id == import_id))[0]
+    assert row["status"] == "VALIDATED", row
+    diff_id = world.scalar(
+        select(job.c.id).where(job.c.subject_id == import_id, job.c.kind == "IMPORT_DIFF")
+    )
+    run_import_job(world, diff_id)
+    before_approvals = world.scalar(select(func.count()).select_from(approval_request))
+    submitted = call(
+        world.app, "POST", f"/api/v1/imports/{import_id}/submit", headers=headers(), json={}
+    )
+    assert submitted.status_code == 200, submitted.text
+    assert submitted.json()["approval_request_id"] is None
+    assert submitted.json()["status"] == "APPROVED"
+    assert submitted.json()["forecast_event_set_id"] == str(set_id)
+    commit_id = world.scalar(
+        select(job.c.id).where(job.c.subject_id == import_id, job.c.kind == "IMPORT_COMMIT")
+    )
+    run_import_job(world, commit_id)
+    committed = world.rows(select(import_upload).where(import_upload.c.id == import_id))[0]
+    assert committed["status"] == "COMMITTED", committed
+    assert world.scalar(select(func.count()).select_from(approval_request)) == before_approvals
+    captured = world.rows(select(forecast_event_set).where(forecast_event_set.c.id == set_id))[0]
+    assert captured["import_upload_ids"] == [import_id]
+    invalid_source = upload_import_source(
+        world,
+        "forecast-invalid.csv",
+        b"contract,event_type,effective_date,obligation_key,quantity,trigger\n"
+        b"SF-ORD-10001,DELIVERY_RECORDED,2026-02-28,O1,2,DELIVERY\n",
+    )
+    invalid = call(
+        world.app,
+        "POST",
+        "/api/v1/imports",
+        headers=headers(),
+        json={
+            "file_id": invalid_source,
+            "template_code": "progress_events",
+            "forecast_event_set_id": str(set_id),
+        },
+    )
+    assert invalid.status_code == 202, invalid.text
+    run_import_job(world, UUID(invalid.json()["id"]))
+    invalid_id = UUID(invalid.headers["X-Erev-Import-Id"])
+    assert (
+        world.scalar(select(import_upload.c.status).where(import_upload.c.id == invalid_id))
+        == "INVALID"
+    )
+    assert world.scalar(
+        select(forecast_event_set.c.import_upload_ids).where(forecast_event_set.c.id == set_id)
+    ) == [import_id]
+    current = call(world.app, "GET", set_path, headers=cookie_headers(world.actor.token, key=False))
+    publish_headers = headers()
+    publish_headers["If-Match"] = current.headers["ETag"]
+    published = call(world.app, "POST", set_path + "/publish", headers=publish_headers)
+    assert published.status_code == 200, published.text

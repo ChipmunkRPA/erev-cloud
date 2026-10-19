@@ -17362,6 +17362,18 @@
             "title": "Finding Counts",
             "type": "array"
           },
+          "forecast_event_set_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Forecast Event Set Id"
+          },
           "header_match": {
             "items": {
               "$ref": "#/components/schemas/HeaderMatchOut"
@@ -69931,7 +69943,7 @@
                 }
               }
             },
-            "description": "Problem: forbidden"
+            "description": "Problem: forbidden, sandbox-restricted"
           },
           "404": {
             "content": {
@@ -69961,7 +69973,7 @@
                 }
               }
             },
-            "description": "Problem: idempotency-in-progress, duplicate-import"
+            "description": "Problem: idempotency-in-progress, duplicate-import, invalid-transition"
           },
           "422": {
             "content": {
@@ -70619,7 +70631,7 @@
     },
     "/api/v1/imports/{import_id}/submit": {
       "post": {
-        "description": "Submit a DIFF_READY import for approval (``IMPORT_COMMIT``); approval defers the\ncommit.",
+        "description": "Submit a DIFF_READY import for approval (``IMPORT_COMMIT``); approval defers the\ncommit. Forecast fact imports in a registered scenario queue the commit directly under\nBR-FC-02, without creating an approval request.",
         "operationId": "imports_submit",
         "parameters": [
           {

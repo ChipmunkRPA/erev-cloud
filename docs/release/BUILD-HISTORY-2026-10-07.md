@@ -7237,3 +7237,34 @@ cleanup in the shared database session kernel was also repaired and regression-t
   publication, frozen snapshots, viewer and side-by-side period/QTD layout remain outstanding.
   All five unregistered reports remain explicitly unfinished: disclosure_pack, actual_vs_forecast,
   forecast_outputs, contract_sample_pack and period_evidence_pack. No deployment.
+
+## Disclosure dependency scheduling — October 19, 2026
+
+- REPORT_RUN now uses a read-only readiness gate for disclosure parents. It checks the exact
+  attached child population, scope/initiator, tenant/job/subject bindings and both job/report
+  completion. Pending children defer delivery before taking an attempt; failed, cancelled,
+  missing or inconsistent dependencies refuse instead of leaving the parent waiting indefinitely.
+- Internal report insertion attaches disclosure children before transaction commit/dispatch.
+  The public disclosure builder remains unregistered until rendering/publication and source
+  binding are integrated; this change does not enable a partially implemented public report.
+- Database journey covers a real parent delivery rescheduled at attempt 1 while remaining QUEUED,
+  sixteen completed child jobs, readiness after completion and wrong-job/attachment refusal.
+  Parent output persistence, retained reruns, frozen snapshots and viewer integration remain open.
+
+## Disclosure parent artifact publication — October 19, 2026
+
+- Added disclosure_execution to turn verified children/policies into a canonical seven-section
+  JSON document, a table directory and original retained inputs. XLSX/PDF use the same verified
+  chapter model. The parent hash identifies the canonical dataset; ordinary atomic report output
+  storage, success audit and CTL-029/030 recording publish the result and binding together.
+- Worker reloads the initiating user's current report/export grants, then assembles under that
+  context. Original source inputs/policies stay in the binding; omitted rows/totals stay out of
+  public sections. Aggregate child tie-outs include supporting inputs but expose only code/result,
+  not suppressed source amounts. Rendering rejects unsupported formats and retained reruns.
+- Real database journey now delivers the waiting parent again after 16 children finish, verifies
+  job/report SUCCEEDED, reads the stored seven-section JSON and reconciles file/output hashes,
+  counts and retained-input digest/cutoff. Ruff and production-module Mypy pass.
+- Public registration remains closed: retained rerun reconstruction, frozen snapshots, viewer,
+  side-by-side quarter layout and populated accounting acceptance are still required. The journey
+  has no booked accounting population and currently publishes JSON; worker XLSX/PDF journeys
+  remain to verify. Five catalogue builders remain unregistered. No deployment.

@@ -743,5 +743,14 @@ Publication serializes with captures and freezes their content hash. Create a ne
 to add more inputs after publication. Without the query parameter, ordinary event approval
 rules continue to apply.
 
-This supplies manual inputs for forecasting. Import association, scenario refresh/replay,
-forecast execution, forecast output reports and actual-versus-forecast reports remain unfinished.
+For file inputs, use the normal import flow with `forecast_event_set_id` in `POST /imports`.
+Supported forecast fact templates are `progress_events`, `usage`, `cost_events` and `invoices`.
+Validation and the dry-run diff run normally. Submitting a ready forecast import queues its
+commit without an approval request. The worker rechecks current uploader permissions and the
+contract versions from the diff. Only a successful commit adds the upload to the input set.
+Invalid or failed files contribute no input. Finish or cancel pending files before publishing
+the input set; published sets cannot receive new files. Configuration and contract-change
+imports continue to use their ordinary workflows.
+
+Scenario refresh/replay, forecast execution, forecast output reports and actual-versus-forecast
+reports remain unfinished.

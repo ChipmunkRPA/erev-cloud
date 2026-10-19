@@ -1149,6 +1149,7 @@ REBUILD_STEPS: Final[Mapping[tuple[str, str], str | None]] = MappingProxyType(
         ("estimate", "portfolio_id"): None,
         # operational job rows of the source are not rebuilt
         ("import_upload", "job_id"): None,
+        ("import_upload", "forecast_event_set_id"): None,
         ("ssp_calculator_run", "job_id"): None,
         # polymorphic subjects of a REGENERATED class (ruling D-98 candidate 34): the row travels,
         # its subject_id stays NULL

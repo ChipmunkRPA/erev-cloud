@@ -13,7 +13,7 @@ from erev_api.auth.principal import RequestContext
 from erev_api.db import new_id
 from erev_api.db.session import DbContext, set_tenant_context, tenant_session
 from erev_api.db.tables import forecast_event_set as sets
-from erev_api.db.tables import scenario, tenant
+from erev_api.db.tables import import_upload, scenario, tenant
 from erev_api.problems import Problem
 from erev_api.uow import UnitOfWork
 
@@ -130,6 +130,21 @@ def change(
         raise Problem("validation-failed", "Provide at least one field to update.")
     _range({**current, **changes})
     if publish:
+        pending = uow.session.scalar(
+            select(import_upload.c.id)
+            .where(
+                import_upload.c.forecast_event_set_id == identity,
+                import_upload.c.status.not_in(
+                    ("COMMITTED", "CANCELLED", "INVALID", "FAILED", "REJECTED")
+                ),
+            )
+            .limit(1)
+        )
+        if pending is not None:
+            raise Problem(
+                "invalid-transition",
+                "Finish or cancel pending forecast imports before publication.",
+            )
         if current["supersedes_version_id"] is not None:
             uow.session.execute(
                 update(sets)
@@ -238,3 +253,47 @@ def capture_command[T](
             detail={"command_index": len(commands) - 1},
         )
         return result
+
+
+# Forecast facts have the same validation/emitters as their production imports. Configuration
+# and contract-change templates have additional approval contracts and are not forecast facts.
+FORECAST_TEMPLATES = frozenset({"progress_events", "usage", "cost_events", "invoices"})
+
+
+def require_draft(uow: UnitOfWork, identity: UUID) -> dict[str, Any]:
+    scenario_id = _scenario(uow.session, uow.principal.db_context)
+    initial = _row(uow.session, identity)
+    _lock(uow.session, uow.principal.tenant_id, initial["code"])
+    current = _row(uow.session, identity, lock=True)
+    if current["production_scenario_id"] != scenario_id or current["status"] != "DRAFT":
+        raise Problem("invalid-transition", "Choose a draft input set of this scenario.")
+    return current
+
+
+def admit_import(uow: UnitOfWork, identity: UUID, template_code: str) -> None:
+    if (
+        "scenario.use" not in uow.principal.permissions
+        or uow.principal.permission_scopes.get("scenario.use") != "*"
+    ):
+        raise Problem("forbidden")
+    if template_code not in FORECAST_TEMPLATES:
+        raise Problem(
+            "validation-failed",
+            "Choose a forecast fact template: progress_events, usage, cost_events or invoices.",
+        )
+    require_draft(uow, identity)
+
+
+def attach_import(uow: UnitOfWork, current: Mapping[str, Any], import_id: UUID) -> None:
+    change(
+        uow,
+        current["id"],
+        expected_version=current["row_version"],
+        values={"import_upload_ids": [*current["import_upload_ids"], import_id]},
+    )
+    uow.audit(
+        action="forecast_event_set.capture_import",
+        object_type="forecast_event_set",
+        object_id=current["id"],
+        detail={"import_upload_id": str(import_id)},
+    )

@@ -150,6 +150,7 @@ class ImportOut(BaseModel):
     template: ImportTemplateRefOut
     file: ImportFileOut
     parameters: dict[str, Any]
+    forecast_event_set_id: uuid.UUID | None = None
     status: ImportStatus
     counts: ImportCountsOut
     is_quarantine_mode: bool

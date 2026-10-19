@@ -5887,3 +5887,15 @@ def test_forecast_event_capture_is_atomic_and_immutable(
             forecast_event_set_id=draft["id"],
             engine=engine(),
         )
+
+    from support.factories import ImportWorld
+    from support.forecast_inputs import exercise_forecast_imports
+
+    exercise_forecast_imports(
+        ImportWorld(
+            app=world.app,
+            actor=sandbox_actor,
+            clock=clock,
+            runtime=JobRuntime(clock=clock, keyring=world.place.keyring, files=world.place.files),
+        )
+    )

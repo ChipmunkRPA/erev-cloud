@@ -2,6 +2,23 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Forecast file input pipeline — October 19, 2026
+
+- Revision 0181 adds an immutable tenant-scoped import-to-input-set binding, exposed in import
+  reads. Scenario drafts accept progress, usage, cost and invoice fact files through existing
+  validation/diff/commit stages. Other import workflows retain their normal approval path.
+- Ready forecast files submit under BR-FC-02 without an approval request. The worker rechecks
+  the uploader's current scenario grant/token scope and underlying template write scope, locks
+  diff contract bases before applying, and atomically appends successful upload IDs to the set.
+- Input-set publication refuses pending files; invalid/failed files add no inputs. Captures and
+  publication share a lock. CTL-044 records the scenario approval exemption as not applicable.
+- Real scenario/API/worker journey passes file commit, no approval request, pending-publication
+  refusal and over-delivery rejection. Two ordinary import regression checks and the forecast
+  schema upgrade/downgrade check pass; Ruff/Mypy and OpenAPI generation pass.
+- Updated API/client types, snapshot handling, data model and user guide. Scenario refresh and
+  ordered replay still need implementation, followed by forecast execution and both forecast
+  reports. Evidence-pack reports also remain open. No deployment or production-readiness claim.
+
 ## Forecast manual event capture — October 19, 2026
 
 - Added explicit `forecast_event_set_id` on the contract event append API. Registered scenario
@@ -200,37 +217,6 @@
 - Public catalogue/API admission remains closed; frozen snapshots, viewer, quarter-column layout,
   export worker journeys and populated accounting acceptance remain open. Five catalogue builders
   are still unregistered. This internal rerun journey is not full disclosure completion.
-
-## Disclosure parent artifact publication — October 19, 2026
-
-- Added disclosure_execution to turn verified children/policies into a canonical seven-section
-  JSON document, a table directory and original retained inputs. XLSX/PDF use the same verified
-  chapter model. The parent hash identifies the canonical dataset; ordinary atomic report output
-  storage, success audit and CTL-029/030 recording publish the result and binding together.
-- Worker reloads the initiating user's current report/export grants, then assembles under that
-  context. Original source inputs/policies stay in the binding; omitted rows/totals stay out of
-  public sections. Aggregate child tie-outs include supporting inputs but expose only code/result,
-  not suppressed source amounts. Rendering rejects unsupported formats and retained reruns.
-- Real database journey now delivers the waiting parent again after 16 children finish, verifies
-  job/report SUCCEEDED, reads the stored seven-section JSON and reconciles file/output hashes,
-  counts and retained-input digest/cutoff. Ruff and production-module Mypy pass.
-- Public registration remains closed: retained rerun reconstruction, frozen snapshots, viewer,
-  side-by-side quarter layout and populated accounting acceptance are still required. The journey
-  has no booked accounting population and currently publishes JSON; worker XLSX/PDF journeys
-  remain to verify. Five catalogue builders remain unregistered. No deployment.
-
-## Disclosure dependency scheduling — October 19, 2026
-
-- REPORT_RUN now uses a read-only readiness gate for disclosure parents. It checks the exact
-  attached child population, scope/initiator, tenant/job/subject bindings and both job/report
-  completion. Pending children defer delivery before taking an attempt; failed, cancelled,
-  missing or inconsistent dependencies refuse instead of leaving the parent waiting indefinitely.
-- Internal report insertion attaches disclosure children before transaction commit/dispatch.
-  The public disclosure builder remains unregistered until rendering/publication and source
-  binding are integrated; this change does not enable a partially implemented public report.
-- Database journey covers a real parent delivery rescheduled at attempt 1 while remaining QUEUED,
-  sixteen completed child jobs, readiness after completion and wrong-job/attachment refusal.
-  Parent output persistence, retained reruns, frozen snapshots and viewer integration remain open.
 
 ## Outstanding release verification
 
