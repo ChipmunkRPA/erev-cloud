@@ -10146,6 +10146,11 @@ Author BS-3. Uses CTR (PHASES §1 row 12). Indicative size 16 items; this phase 
   - **Gates:** GK-01 `make ci`; GK-07 `make e2e SPEC=frontend/e2e/projects/screens.spec.ts`
 
 - [ ] **RPS-15 Disclosure snapshots and the disclosure pack.**
+  - October 19 viewer increment: the report screen shows seven chapters and lazily loads
+    included tables through paginated section_table reads. Source/period/omission metadata
+    stays visible; cross-table cursors refuse. OpenAPI/types and targeted API/component checks
+    pass. Frozen snapshots, quarter layout and full browser/accounting acceptance remain open.
+
   - October 19 draft API increment: disclosure_pack is registered as a composed worker and
     standard HTTP creation/rerun/detail/JSON download are exercised through the real 16-child
     journey. One entity, ASC606/IFRS15 and an explicit open-at-cutoff period are required.

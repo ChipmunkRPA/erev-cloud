@@ -155,13 +155,13 @@ export interface ReportRunRows {
  * `columns`. The data response is API-S-List plus `columns` (04 §16.9; D-88 L7-1-Q-5), so it has its own
  * page reader rather than `fetchListPage`.
  */
-export async function fetchReportRows(runId: string): Promise<ReportRunRows> {
+export async function fetchReportRows(runId: string, sectionTable?: string): Promise<ReportRunRows> {
   const rows: ReportRow[] = [];
   let columns: readonly ReportRunColumn[] | null = null;
   let cursor: string | null = null;
   do {
     const page: ReportRunData = await read<ReportRunData>(
-      `${REPORT_RUNS_PATH}/${runId}/data${listSearch({ limit: GRID_PAGE_SIZE, cursor })}`,
+      `${REPORT_RUNS_PATH}/${runId}/data${listSearch({ limit: GRID_PAGE_SIZE, cursor, section_table: sectionTable ?? null })}`,
     );
     rows.push(...page.items);
     columns ??= page.columns;
@@ -248,4 +248,12 @@ export async function fetchReportOutput(runId: string): Promise<Blob> {
   const response = await send("GET", reportOutputHref(runId));
   if (!response.ok) throw await readProblem(response);
   return response.blob();
+}
+
+export type DisclosureSection = components["schemas"]["DisclosureSectionOut"];
+export type DisclosureTable = components["schemas"]["DisclosureTableOut"];
+
+export async function fetchDisclosureSections(runId: string): Promise<readonly DisclosureSection[]> {
+  const page = await read<ReportRunData>(`${REPORT_RUNS_PATH}/${runId}/data?limit=1`);
+  return page.sections ?? [];
 }

@@ -185,6 +185,24 @@ class ReportColumnOut(BaseModel):
     kind: str
 
 
+class DisclosureTableOut(BaseModel):
+    key: str
+    title: str
+    basis: str
+    omitted: bool
+    notes: list[str]
+    source_run_id: uuid.UUID | None
+    source_sha256: str
+    row_count: int
+
+
+class DisclosureSectionOut(BaseModel):
+    number: int
+    title: str
+    interim_required: bool
+    tables: list[DisclosureTableOut]
+
+
 class ReportRunDataOut(BaseModel):
     """``GET /report-runs/{id}/data``: API-S-List of rows plus the additive member ``columns`` on
     every page, the definition's columns copied in order from the stored dataset document (builder
@@ -193,3 +211,4 @@ class ReportRunDataOut(BaseModel):
     items: list[ReportRowOut]
     next_cursor: str | None
     columns: list[ReportColumnOut]
+    sections: list[DisclosureSectionOut] = Field(default_factory=list)

@@ -7464,5 +7464,15 @@
   "reports.column.parallel.legacy_net_position": "Legacy billed less recognized",
   "reports.column.parallel.contract_liability": "eRev contract liability",
   "reports.column.parallel.contract_asset_and_unbilled": "eRev contract asset and unbilled receivable",
-  "reports.column.parallel.difference": "Difference"
+  "reports.column.parallel.difference": "Difference",
+  "reports.disclosure.period": "Period",
+  "reports.disclosure.quarter": "Quarter to date",
+  "reports.disclosure.interim": "Required for interim disclosure",
+  "reports.disclosure.source": "Source: {source}",
+  "reports.disclosure.policy": "Entity policies",
+  "reports.disclosure.omitted": "Omitted under the selected disclosure election.",
+  "reports.disclosure.empty": "No rows for this table.",
+  "reports.disclosure.draft": "Draft disclosure pack. Frozen close disclosures are not yet available.",
+  "reports.disclosure.loading": "Loading disclosure data",
+  "reports.disclosure.currency": "{column} currency"
 }

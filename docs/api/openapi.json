@@ -10877,6 +10877,96 @@
         "title": "DimensionValueUpdateIn",
         "type": "object"
       },
+      "DisclosureSectionOut": {
+        "properties": {
+          "interim_required": {
+            "title": "Interim Required",
+            "type": "boolean"
+          },
+          "number": {
+            "title": "Number",
+            "type": "integer"
+          },
+          "tables": {
+            "items": {
+              "$ref": "#/components/schemas/DisclosureTableOut"
+            },
+            "title": "Tables",
+            "type": "array"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "number",
+          "title",
+          "interim_required",
+          "tables"
+        ],
+        "title": "DisclosureSectionOut",
+        "type": "object"
+      },
+      "DisclosureTableOut": {
+        "properties": {
+          "basis": {
+            "title": "Basis",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "omitted": {
+            "title": "Omitted",
+            "type": "boolean"
+          },
+          "row_count": {
+            "title": "Row Count",
+            "type": "integer"
+          },
+          "source_run_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Run Id"
+          },
+          "source_sha256": {
+            "title": "Source Sha256",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "title",
+          "basis",
+          "omitted",
+          "notes",
+          "source_run_id",
+          "source_sha256",
+          "row_count"
+        ],
+        "title": "DisclosureTableOut",
+        "type": "object"
+      },
       "DistinctReviewIn": {
         "additionalProperties": false,
         "description": "``POST /contracts/{id}/obligations/{obligation_key}/distinct-review`` (04 §16.1; SCREENS\nR-17).",
@@ -33169,6 +33259,13 @@
               }
             ],
             "title": "Next Cursor"
+          },
+          "sections": {
+            "items": {
+              "$ref": "#/components/schemas/DisclosureSectionOut"
+            },
+            "title": "Sections",
+            "type": "array"
           }
         },
         "required": [
@@ -88673,6 +88770,23 @@
               "format": "uuid",
               "title": "Run Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "section_table",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Section Table"
             }
           },
           {

@@ -2,6 +2,21 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Disclosure chapter viewer — October 19, 2026
+
+- Added seven-chapter disclosure view with expandable tables, period/QTD labels, interim flags,
+  original source IDs/digests and omission notes. Only expanded, included tables load rows;
+  amount columns identify shared currencies or carry companion currency columns when mixed.
+- Report data now includes typed chapter/table metadata and optional section_table selection.
+  Selected tables use normal pagination; cursor identity includes the table key. Unknown tables,
+  duplicate selections and cross-table cursors refuse. Reads keep report permission/entity scope
+  checks and verify the saved JSON digest before serving data. Ordinary directory reads remain.
+- Real API journey verifies seven sections, ten expedient rows, pagination and wrong-table cursor
+  refusal. Component check verifies lazy loading and omitted-table suppression. Ruff/Mypy,
+  frontend TypeScript and targeted ESLint pass; OpenAPI/client types regenerated.
+- Full browser/accessibility acceptance, frozen snapshots, quarter side-by-side layout, populated
+  accounting acceptance and remaining export worker journeys remain open. No deployment.
+
 ## Draft disclosure public API admission — October 19, 2026
 
 - Registered the composed disclosure worker separately from single-table BUILDERS. Creation
@@ -210,21 +225,6 @@
 - Five catalogue builders remain unregistered: actual_vs_forecast, forecast_outputs,
   contract_sample_pack, period_evidence_pack and disclosure_pack. Populated RPT-42 worker/browser
   acceptance, XLSX/PDF journeys and migration replay/sandbox lifecycle remain unfinished.
-
-## Parallel comparison period and currency selection — October 19, 2026
-
-- Source admission now verifies original import input-evidence hashes, requires full contract
-  population coverage and derives the single reporting currency from captured contract inputs.
-  Today's tenant currency cannot silently relabel a legacy source. Capture refuses other currencies.
-- Added period resolution from the first period starting after cutover through the latest open
-  period at known_at, using recorded state transitions. Explicit ranges may include closed periods;
-  reversed or pre-cutover ranges refuse. Missing open periods produce empty coverage, not zeros.
-- Connected defaults/ranges to parallel_inputs.capture and retained the requested period boundaries.
-  Calendar resolution uses current definitions at capture; the resulting selection is retained.
-- Targeted unit checks: 12 passed; three changed modules pass Mypy and changed files pass Ruff.
-  Real import capture/rebuild checks cover identity and renamed mappings; dry-run imports correctly
-  have no compared actuals. Worker registration, publication grants and export integration remain
-  next, along with complete replay/sandbox lifecycle. Six catalogue builders remain unregistered.
 
 ## Outstanding release verification
 

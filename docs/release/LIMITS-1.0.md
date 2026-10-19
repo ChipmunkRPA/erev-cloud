@@ -1,5 +1,12 @@
 # eRev Cloud 1.0: stated limits of the release
 
+Latest disclosure viewer update (October 19): the report page now displays chapter/table
+metadata and loads expanded tables from saved JSON through scoped, paginated report reads.
+Omitted tables show notes without requesting amounts; money columns identify currencies.
+Targeted component and real API pagination checks pass. Full browser/accessibility acceptance,
+frozen snapshots, side-by-side quarter presentation and populated accounting acceptance remain.
+
+
 Latest disclosure update (October 19): draft disclosure_pack creation, job execution,
 JSON download and retained-input rerun now work through the standard report API. Only one
 entity, ASC606/IFRS15 and an explicit period open at the source cutoff are admitted. Frozen

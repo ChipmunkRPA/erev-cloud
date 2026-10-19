@@ -346,7 +346,10 @@ The response supplies the job and `X-Erev-Report-Run-Id`. Poll the run until it 
 then download `/api/v1/report-runs/{id}/output` with report export permission. JSON contains
 seven `sections` plus a table directory; Excel has Contents plus seven chapter worksheets.
 Quarter-to-date currently appears as separate labelled tables, not side-by-side columns.
-The regular data endpoint shows the directory; the dedicated chapter viewer is unfinished.
+The report page displays all seven chapter headings. Expand a table to load its rows and
+see its source digest, period basis and omission notes. Omitted tables do not load amounts.
+The data endpoint shows the directory by default; `section_table=<table key>` selects one
+stored table with ordinary pagination. Cursors cannot be reused between tables.
 
 `POST /api/v1/report-runs/{id}/rerun` rebuilds from the saved child inputs and policies.
 It rechecks current permissions, reuses the original child identities and does not queue new

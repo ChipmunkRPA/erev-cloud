@@ -5263,6 +5263,44 @@ def test_disclosure_children_attach_once_and_survive_retry(
     assert download.status_code == 200, download.text
     assert download.json() == document
 
+    index = get(world.app, f"/api/v1/report-runs/{parent['id']}/data", actor, {"limit": 1})
+    assert index.status_code == 200, index.text
+    assert len(index.json()["sections"]) == 7
+    policy_table = index.json()["sections"][-1]["tables"][0]
+    assert policy_table["key"] == "expedients" and policy_table["row_count"] == 10
+    table_page = get(
+        world.app,
+        f"/api/v1/report-runs/{parent['id']}/data",
+        actor,
+        {"section_table": "expedients", "limit": 1},
+    )
+    assert table_page.status_code == 200, table_page.text
+    assert len(table_page.json()["items"]) == 1
+    assert (
+        table_page.json()["columns"] == document["sections"][-1]["tables"][0]["dataset"]["columns"]
+    )
+    cursor = table_page.json()["next_cursor"]
+    assert cursor is not None
+    next_page = get(
+        world.app,
+        f"/api/v1/report-runs/{parent['id']}/data",
+        actor,
+        {"section_table": "expedients", "limit": 1, "cursor": cursor},
+    )
+    assert next_page.status_code == 200
+    assert next_page.json()["items"] != table_page.json()["items"]
+    wrong_table = get(
+        world.app,
+        f"/api/v1/report-runs/{parent['id']}/data",
+        actor,
+        {"section_table": "disaggregation:PERIOD", "cursor": cursor},
+    )
+    assert wrong_table.status_code == 422
+    unknown = get(
+        world.app, f"/api/v1/report-runs/{parent['id']}/data", actor, {"section_table": "missing"}
+    )
+    assert unknown.status_code == 422
+
     from erev_api.domain.reports import disclosure_inputs
 
     with world.place.uow() as uow:

@@ -53,6 +53,7 @@ import { CellContributors, type CellRequest } from "./viewer/CellContributors";
 import { ExportMenu } from "./viewer/ExportMenu";
 import { ParametersToolbar, toolbarKeys } from "./viewer/ParametersToolbar";
 import { ReportChart } from "./viewer/ReportChart";
+import { DisclosurePack } from "./viewer/DisclosurePack";
 import { type DrillRequest, figureLabel, ReportGrid } from "./viewer/ReportGrid";
 import { RunDetailsDrawer, valueText } from "./viewer/RunDetailsDrawer";
 import { runAsOf, RunStamp } from "./viewer/RunStamp";
@@ -533,7 +534,9 @@ function ReportBody({ definition, access }: ReportBodyProps) {
       />
     );
   } else if (succeeded && data !== undefined) {
-    if (rows.isError) {
+    if (definition.code === "disclosure_pack") {
+      body = <DisclosurePack key={data.id} runId={data.id} />;
+    } else if (rows.isError) {
       body = (
         <Banner
           tone="negative"

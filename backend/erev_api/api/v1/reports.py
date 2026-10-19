@@ -65,6 +65,7 @@ from erev_api.idempotency.store import Replay
 from erev_api.problems import Problem
 from erev_api.schemas.common import JobOut, ListOut
 from erev_api.schemas.reports import (
+    DisclosureSectionOut,
     ReportColumnOut,
     ReportDefinitionOut,
     ReportRowOut,
@@ -318,19 +319,64 @@ def report_runs_get(run_id: uuid.UUID, ctx: RunContext, deps: Deps) -> ReportRun
     ),
 )
 def report_runs_data(
-    run_id: uuid.UUID, response: Response, ctx: RunContext, deps: Deps, params: Params
+    run_id: uuid.UUID,
+    response: Response,
+    ctx: RunContext,
+    deps: Deps,
+    params: Params,
+    section_table: Annotated[str | None, Query(max_length=200)] = None,
 ) -> ReportRunDataOut:
     """The rows of a JSON run in response order, ``limit`` rows a page (RV-11 pages of 200); every
     page also carries ``columns``, the definition's columns in builder order (D-88 L7-1-Q-5)."""
-    if params.filters:
-        name = sorted(params.filters)[0]
+    unsupported = set(params.filters) - {"section_table"}
+    if unsupported:
+        name = sorted(unsupported)[0]
         raise invalid(name, f"{name} is not a filter of report run data.")
+    if len(params.filters.get("section_table", ())) > 1:
+        raise invalid("section_table", "Choose one table.")
     if params.sort is not None:
         raise invalid("sort", "Report run data keeps the response order.")
     if params.q is not None:
         raise invalid("q", "report run data has no search.")
-    rows, columns = framework.run_rows(ctx, run_id, files=deps.files, keyring=deps.keyring)
-    marker = str(run_id)
+    document = framework.run_document(ctx, run_id, files=deps.files, keyring=deps.keyring)
+    sections = []
+    selected = None
+    for section in document.get("sections", ()):
+        tables = []
+        for table in section["tables"]:
+            dataset = table["dataset"]
+            tables.append(
+                {
+                    **{
+                        key: table[key]
+                        for key in (
+                            "key",
+                            "basis",
+                            "omitted",
+                            "notes",
+                            "source_run_id",
+                            "source_sha256",
+                        )
+                    },
+                    "title": dataset["report"]["name"],
+                    "row_count": dataset["row_count"],
+                }
+            )
+            if table["key"] == section_table:
+                selected = dataset
+        sections.append(
+            {
+                "number": section["number"],
+                "title": section["title"],
+                "interim_required": section["interim_required"],
+                "tables": tables,
+            }
+        )
+    if section_table is not None and selected is None:
+        raise invalid("section_table", "This table is not part of the saved report.")
+    dataset = document if selected is None else selected
+    rows, columns = dataset["rows"], dataset["columns"]
+    marker = str(run_id) if section_table is None else f"{run_id}:{section_table}"
     offset = 0
     if params.cursor is not None:
         last = decode_cursor(params.cursor, sort=DATA_SORT, filters_sha256=marker)
@@ -348,6 +394,7 @@ def report_runs_data(
         items=[ReportRowOut.model_validate(item) for item in page],
         next_cursor=next_cursor,
         columns=[ReportColumnOut.model_validate(column) for column in columns],
+        sections=[DisclosureSectionOut.model_validate(section) for section in sections],
     )
 
 

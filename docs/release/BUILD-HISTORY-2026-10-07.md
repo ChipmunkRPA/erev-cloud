@@ -7071,3 +7071,19 @@ cleanup in the shared database session kernel was also repaired and regression-t
   current permission checks on publication and full migration replay/sandbox acceptance. The
   capture composition is type-checked but still needs a real database integration journey.
   Six catalogue builders remain unregistered; RPT-42 is not yet a completed user-facing report.
+
+
+## Parallel comparison period and currency selection — October 19, 2026
+
+- Source admission now verifies original import input-evidence hashes, requires full contract
+  population coverage and derives the single reporting currency from captured contract inputs.
+  Today's tenant currency cannot silently relabel a legacy source. Capture refuses other currencies.
+- Added period resolution from the first period starting after cutover through the latest open
+  period at known_at, using recorded state transitions. Explicit ranges may include closed periods;
+  reversed or pre-cutover ranges refuse. Missing open periods produce empty coverage, not zeros.
+- Connected defaults/ranges to parallel_inputs.capture and retained the requested period boundaries.
+  Calendar resolution uses current definitions at capture; the resulting selection is retained.
+- Targeted unit checks: 12 passed; three changed modules pass Mypy and changed files pass Ruff.
+  Real import capture/rebuild checks cover identity and renamed mappings; dry-run imports correctly
+  have no compared actuals. Worker registration, publication grants and export integration remain
+  next, along with complete replay/sandbox lifecycle. Six catalogue builders remain unregistered.

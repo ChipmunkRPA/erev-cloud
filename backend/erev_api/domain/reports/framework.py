@@ -3037,11 +3037,10 @@ def _entity_refs_of(session: Session, entity_ids: set[UUID]) -> dict[UUID, RefOu
     }
 
 
-def run_rows(
+def run_document(
     ctx: RequestContext, run_id: UUID, *, files: FileStore, keyring: KeyRing
-) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    """The rows of a SUCCEEDED JSON run and its columns ``{key, header, kind}`` in builder order,
-    both from its stored dataset document (04 §16.9; D-88 L7-1-Q-5)."""
+) -> dict[str, Any]:
+    """Authorize and verify the saved JSON dataset before serving rows or chapter metadata."""
     with tenant_session(ctx.principal.db_context, read_only=True) as session:
         row = run_row(session, ctx.principal, run_id, RUN_PERMISSION)
         require_report(ctx, str(row["report_code"]), run_id=run_id, keyring=keyring)  # R-13
@@ -3053,7 +3052,17 @@ def run_rows(
             session, UUID(str(row["output_file_id"])), files=files, keyring=keyring
         )
     with stream:
-        document = json.loads(stream.read())
+        content = stream.read()
+        document = json.loads(content)
+    if hashlib.sha256(content).hexdigest() != row["output_sha256"]:
+        raise Problem("validation-failed", "The saved report output digest differs.")
+    return dict(document)
+
+
+def run_rows(
+    ctx: RequestContext, run_id: UUID, *, files: FileStore, keyring: KeyRing
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    document = run_document(ctx, run_id, files=files, keyring=keyring)
     return (
         [dict(item) for item in document["rows"]],
         [dict(column) for column in document["columns"]],

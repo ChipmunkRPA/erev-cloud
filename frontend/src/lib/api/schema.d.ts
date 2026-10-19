@@ -12384,6 +12384,36 @@ export interface components {
        */
       parent_value_id?: string | null;
     };
+    /** DisclosureSectionOut */
+    DisclosureSectionOut: {
+      /** Interim Required */
+      interim_required: boolean;
+      /** Number */
+      number: number;
+      /** Tables */
+      tables: components["schemas"]["DisclosureTableOut"][];
+      /** Title */
+      title: string;
+    };
+    /** DisclosureTableOut */
+    DisclosureTableOut: {
+      /** Basis */
+      basis: string;
+      /** Key */
+      key: string;
+      /** Notes */
+      notes: string[];
+      /** Omitted */
+      omitted: boolean;
+      /** Row Count */
+      row_count: number;
+      /** Source Run Id */
+      source_run_id: string | null;
+      /** Source Sha256 */
+      source_sha256: string;
+      /** Title */
+      title: string;
+    };
     /**
      * DistinctReviewIn
      * @description ``POST /contracts/{id}/obligations/{obligation_key}/distinct-review`` (04 §16.1; SCREENS
@@ -20373,6 +20403,8 @@ export interface components {
       items: components["schemas"]["ReportRowOut"][];
       /** Next Cursor */
       next_cursor: string | null;
+      /** Sections */
+      sections?: components["schemas"]["DisclosureSectionOut"][];
     };
     /**
      * ReportRunOut
@@ -49586,6 +49618,7 @@ export interface operations {
   report_runs_data: {
     parameters: {
       query?: {
+        section_table?: string | null;
         limit?: number;
         cursor?: string | null;
         sort?: string | null;
