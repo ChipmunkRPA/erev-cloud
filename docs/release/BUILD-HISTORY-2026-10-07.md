@@ -7225,3 +7225,15 @@ cleanup in the shared database session kernel was also repaired and regression-t
   side-by-side presentation, PDF/viewer, frozen disclosures and parent worker publication remain
   open. The fixture has no booked accounting population; no full accounting acceptance claimed.
   Five catalogue builders remain unregistered; no deployment.
+
+## Disclosure chapter PDF adapter — October 19, 2026
+
+- Added PDF chapter export with an index whose page destinations follow actual pagination,
+  original child stamps, per-table headings, repeated continuation grid headers, wrapped notes
+  and parent-run page numbering. Tables start on separate pages; omitted amounts cannot render.
+- XLSX/PDF reuse the same disclosure source/policy validation and chapter omission checks.
+  Five focused PDF/workbook/single-report checks pass; production modules pass Ruff and Mypy.
+- This is an internal export adapter, not end-to-end disclosure delivery. Parent scheduling and
+  publication, frozen snapshots, viewer and side-by-side period/QTD layout remain outstanding.
+  All five unregistered reports remain explicitly unfinished: disclosure_pack, actual_vs_forecast,
+  forecast_outputs, contract_sample_pack and period_evidence_pack. No deployment.

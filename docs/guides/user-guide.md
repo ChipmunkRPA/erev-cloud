@@ -727,3 +727,21 @@ the expiry event may already have been recorded. Do not submit a duplicate expir
 
 These controls are hidden in historical views. Governed manual exercise and correction are
 still outstanding; the expiry command does not implement either operation.
+
+### Forecast event inputs
+
+In a registered scenario workspace, create a draft forecast event set, then send contract
+events to `POST /api/v1/contracts/{contract_id}/events?forecast_event_set_id={id}`. Use the
+normal event body, contract stream `If-Match`, and an idempotency key. This requires
+tenant-wide `scenario.use` and `event.record` for the contract's entity. Production and
+unregistered sandboxes cannot use this option.
+
+The scenario applies forecast facts without approval routing and records the command's
+method, path and JSON body in input order. Contract validation and event permissions still
+apply. A failed append leaves no command; a failed capture rolls back the appended facts.
+Publication serializes with captures and freezes their content hash. Create a new version
+to add more inputs after publication. Without the query parameter, ordinary event approval
+rules continue to apply.
+
+This supplies manual inputs for forecasting. Import association, scenario refresh/replay,
+forecast execution, forecast output reports and actual-versus-forecast reports remain unfinished.

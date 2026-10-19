@@ -55460,7 +55460,7 @@
         "x-erev-permission": "contract.read"
       },
       "post": {
-        "description": "Append 1 to 500 events atomically and compute the group (DG-CMD-09): 201 with\n``computation.status``, or 202 API-S-Job when the group has more than 200 obligations or the\nengine takes more than 30 seconds (RCP-18). An append naming ``LINE_ATTRIBUTES_CHANGED`` appends\nnothing and answers 201 ``{event_submission_id, approval_request_id}`` (ATTRIBUTE_CHANGE); a\nlocked field of an active contract answers 409 ``field-locked-after-activation`` (CTR-10), and\na change that names an SSP version answers 422 ``REQ-SSP-006``: the SSP override command sets\nit (04 §16.3 rev 1.231). A\ndelivery, progress, milestone, usage, cost or return event sent by a signed-in person appends\nnothing either: the request waits whole for another user's approval (MANUAL_EVENT; 04 §16.3\n\"Manual events\"), with ``evidence_file_ids`` for a progress, milestone, cost or acceptance\nevent (422 ``REQ-DAT-014`` without). An API client's events are appended directly (CTR-6).",
+        "description": "Append 1 to 500 events atomically and compute the group (DG-CMD-09): 201 with\n``computation.status``, or 202 API-S-Job when the group has more than 200 obligations or the\nengine takes more than 30 seconds (RCP-18). An append naming ``LINE_ATTRIBUTES_CHANGED`` appends\nnothing and answers 201 ``{event_submission_id, approval_request_id}`` (ATTRIBUTE_CHANGE); a\nlocked field of an active contract answers 409 ``field-locked-after-activation`` (CTR-10), and\na change that names an SSP version answers 422 ``REQ-SSP-006``: the SSP override command sets\nit (04 §16.3 rev 1.231). A\ndelivery, progress, milestone, usage, cost or return event sent by a signed-in person appends\nnothing either: the request waits whole for another user's approval (MANUAL_EVENT; 04 §16.3\n\"Manual events\"), with ``evidence_file_ids`` for a progress, milestone, cost or acceptance\nevent (422 ``REQ-DAT-014`` without). An API client's events are appended directly (CTR-6).\n\nWith ``forecast_event_set_id``, a registered scenario draft applies the events without\napproval routing (BR-FC-02), retaining this command in the input set atomically. Requires\ntenant-wide ``scenario.use`` as well as the contract's ``event.record`` permission.\nPublished input sets refuse additions; normal contract validation still applies.",
         "operationId": "contract_events_append",
         "parameters": [
           {
@@ -55471,6 +55471,23 @@
               "format": "uuid",
               "title": "Contract Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "forecast_event_set_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Forecast Event Set Id"
             }
           },
           {
@@ -55544,7 +55561,7 @@
                 }
               }
             },
-            "description": "Problem: forbidden"
+            "description": "Problem: forbidden, sandbox-restricted"
           },
           "404": {
             "content": {
@@ -55574,7 +55591,7 @@
                 }
               }
             },
-            "description": "Problem: idempotency-in-progress"
+            "description": "Problem: idempotency-in-progress, invalid-transition"
           },
           "412": {
             "content": {

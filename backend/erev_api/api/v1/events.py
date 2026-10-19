@@ -170,7 +170,9 @@ def _append_headers(contract_id: uuid.UUID, result: Any) -> dict[str, str]:
     status_code=201,
     response_model=EventsAppendedOut | SubmissionCreatedOut,
     responses={
-        **problem_responses(*_COMMAND_PROBLEMS, *_PRECONDITION_PROBLEMS),
+        **problem_responses(
+            *_COMMAND_PROBLEMS, *_PRECONDITION_PROBLEMS, "sandbox-restricted", "invalid-transition"
+        ),
         202: {"model": JobOut, "description": "The computation runs as a job (API-C-12)"},
     },
 )
@@ -179,6 +181,7 @@ def contract_events_append(
     body: EventAppendIn,
     cmd: Annotated[CommandContext, Depends(command(RECORD, precondition="contract"))],
     deps: Deps,
+    forecast_event_set_id: Annotated[uuid.UUID | None, Query()] = None,
 ) -> Response:
     """Append 1 to 500 events atomically and compute the group (DG-CMD-09): 201 with
     ``computation.status``, or 202 API-S-Job when the group has more than 200 obligations or the
@@ -190,11 +193,22 @@ def contract_events_append(
     delivery, progress, milestone, usage, cost or return event sent by a signed-in person appends
     nothing either: the request waits whole for another user's approval (MANUAL_EVENT; 04 §16.3
     "Manual events"), with ``evidence_file_ids`` for a progress, milestone, cost or acceptance
-    event (422 ``REQ-DAT-014`` without). An API client's events are appended directly (CTR-6)."""
+    event (422 ``REQ-DAT-014`` without). An API client's events are appended directly (CTR-6).
 
+    With ``forecast_event_set_id``, a registered scenario draft applies the events without
+    approval routing (BR-FC-02), retaining this command in the input set atomically. Requires
+    tenant-wide ``scenario.use`` as well as the contract's ``event.record`` permission.
+    Published input sets refuse additions; normal contract validation still applies.
+    """
+
+    # An explicit draft forecast set uses BR-FC-02 scenario approval semantics.
     def handle(uow: UnitOfWork) -> EventsAppendedOut | JobOut | SubmissionCreatedOut:
         recorded = events.record_events(
-            uow, contract_id=contract_id, expected_stream_version=cmd.expected_version, body=body
+            uow,
+            contract_id=contract_id,
+            expected_stream_version=cmd.expected_version,
+            body=body,
+            forecast_event_set_id=forecast_event_set_id,
         )
         if recorded.submission is not None:
             return recorded.submission

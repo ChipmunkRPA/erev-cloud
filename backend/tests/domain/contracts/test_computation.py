@@ -5696,3 +5696,194 @@ def test_disclosure_children_attach_once_and_survive_retry(
     assert repeated_lock["output_sha256"] == frozen_parent["output_sha256"]
     with world.place.uow() as uow:
         assert uow.session.scalar(select(func.count()).select_from(disclosure_snapshot)) == 21
+
+
+def test_forecast_event_capture_is_atomic_and_immutable(
+    world: World, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Real scenario guards, fact validation, atomic capture and publication immutability."""
+    from erev_api.db.tables import forecast_event_set
+    from erev_api.domain.contracts import events
+    from erev_api.domain.forecast import event_sets
+    from erev_api.schemas.events import EventAppendIn
+
+    booked = k01(world)
+    identity = booked.contract["id"]
+    principal = replace(
+        world.place.principal,
+        permissions=world.place.principal.permissions | {"scenario.use"},
+        permission_scopes={**world.place.principal.permission_scopes, "scenario.use": "*"},
+    )
+    with world.place.uow(principal) as uow, pytest.raises(Problem, match="scenario sandbox"):
+        event_sets.create(uow, {"code": "BASE", "name": "Forecast base"})
+    from datetime import UTC, datetime, timedelta
+
+    from erev_api.db.tables import job, tenant_membership
+    from erev_api.domain.platform import snapshot_job
+    from erev_api.enums import JobKind
+    from erev_api.jobs import registry
+    from erev_api.jobs.context import JobRuntime
+    from sqlalchemy import text
+    from support.http import call
+    from support.principals import Member, cookie_headers, sign_in
+    from support.principals import workspace as signed_workspace
+    from support.snapshots import confirm_retention
+
+    clock = world.place.clock
+    clock.advance(max(timedelta(minutes=1), datetime.now(UTC) - clock.now() + timedelta(minutes=1)))
+    source_actor = world.place.author
+    source_actor = signed_workspace(
+        world.app,
+        source_actor.member,
+        sign_in(world.app, source_actor.member.email),
+        source_actor.secret,
+    )
+    with tenant_session(principal.db_context) as session:
+        confirm_retention(session, principal.tenant_id, at=clock.now() - timedelta(days=1))
+    created = call(
+        world.app,
+        "POST",
+        "/api/v1/scenarios",
+        headers=cookie_headers(source_actor.token, source_actor.csrf_token),
+        json={"name": "Forecast fixture", "known_at": clock.now().isoformat()},
+    )
+    assert created.status_code == 202, created.text
+    job_id = UUID(created.json()["id"])
+    with tenant_session(principal.db_context) as session:
+        pending = session.execute(select(job).where(job.c.id == job_id)).mappings().one()
+        session.execute(
+            text("UPDATE procrastinate_jobs SET status = 'doing' WHERE id = :id"),
+            {"id": pending["procrastinate_job_id"]},
+        )
+    monkeypatch.setitem(
+        registry.HANDLERS,
+        JobKind.TENANT_SNAPSHOT,
+        registry.HandlerSpec(
+            handler=snapshot_job.tenant_snapshot_export,
+            retry=snapshot_job.SNAPSHOT_RETRY,
+            on_failure=snapshot_job.snapshot_failed,
+        ),
+    )
+    registry.run_job(
+        job_id,
+        principal.tenant_id,
+        attempt=1,
+        runtime=JobRuntime(clock=clock, keyring=world.place.keyring, files=world.place.files),
+    )
+    with tenant_session(principal.db_context) as session:
+        finished = session.execute(select(job).where(job.c.id == job_id)).mappings().one()
+        assert finished["state"] == "SUCCEEDED", finished["problem"]
+    listed = call(
+        world.app, "GET", "/api/v1/scenarios", headers=cookie_headers(source_actor.token, key=False)
+    )
+    target_id = UUID(listed.json()["items"][0]["scenario_tenant_id"])
+    with tenant_session(DbContext(tenant_id=target_id, user_id=None, entity_scope="*")) as session:
+        membership_id = session.execute(
+            select(tenant_membership.c.id).where(tenant_membership.c.user_id == principal.id)
+        ).scalar_one()
+    target_member = Member(
+        user_id=source_actor.member.user_id,
+        email=source_actor.member.email,
+        tenant_id=target_id,
+        membership_id=membership_id,
+    )
+    sandbox_actor = signed_workspace(
+        world.app, target_member, sign_in(world.app, target_member.email), source_actor.secret
+    )
+    world = replace(
+        world,
+        place=workspace(world.app, clock, world.place.keyring, world.place.files, sandbox_actor),
+    )
+    principal = world.place.principal
+    with world.place.uow(principal) as uow:
+        draft = event_sets.create(uow, {"code": "BASE", "name": "Forecast base"})
+        uow.commit()
+    head = world.place.scalar(
+        select(contract.c.head_stream_version).where(contract.c.id == identity)
+    )
+    body = EventAppendIn.model_validate(
+        {
+            "events": [
+                {
+                    "event_type": "PROGRESS_RECORDED",
+                    "effective_date": "2026-01-31",
+                    "payload": {
+                        "obligation_key": "O2",
+                        "cumulative_progress_ratio": "0.40",
+                        "measure": "OUTPUT_PERCENT",
+                    },
+                }
+            ]
+        }
+    )
+    # A failure after actual event execution must also undo facts/computation/audit buffers.
+    original_change = event_sets.change
+
+    def fail_capture(*_args: Any, **_kwargs: Any) -> None:
+        raise Problem("validation-failed", "capture failed")
+
+    monkeypatch.setattr(event_sets, "change", fail_capture)
+    with world.place.uow(principal) as uow:
+        with pytest.raises(Problem, match="capture failed"):
+            events.record_events(
+                uow,
+                contract_id=identity,
+                expected_stream_version=head,
+                body=body,
+                forecast_event_set_id=draft["id"],
+                engine=engine(),
+            )
+        assert (
+            uow.session.execute(
+                select(contract.c.head_stream_version).where(contract.c.id == identity)
+            ).scalar_one()
+            == head
+        )
+        uow.commit()
+    monkeypatch.setattr(event_sets, "change", original_change)
+    from support.http import call
+    from support.principals import cookie_headers
+
+    headers = cookie_headers(world.place.author.token, world.place.author.csrf_token)
+    headers["If-Match"] = f'"s{head}"'
+    path = f"/api/v1/contracts/{identity}/events"
+    response = call(
+        world.app,
+        "POST",
+        path,
+        headers=headers,
+        params={"forecast_event_set_id": str(draft["id"])},
+        json=body.model_dump(mode="json"),
+    )
+    assert response.status_code == 201 and "events" in response.json(), response.text
+    repeated = call(
+        world.app,
+        "POST",
+        path,
+        headers=headers,
+        params={"forecast_event_set_id": str(draft["id"])},
+        json=body.model_dump(mode="json"),
+    )
+    assert repeated.status_code == 201 and repeated.json() == response.json(), repeated.text
+    captured = world.place.rows(
+        select(forecast_event_set).where(forecast_event_set.c.id == draft["id"])
+    )[0]
+    assert captured["api_commands"] == [
+        {
+            "method": "POST",
+            "path": f"/contracts/{identity}/events",
+            "body": body.model_dump(mode="json"),
+        }
+    ]
+    with world.place.uow(principal) as uow:
+        event_sets.change(uow, draft["id"], expected_version=captured["row_version"], publish=True)
+        uow.commit()
+    with world.place.uow(principal) as uow, pytest.raises(Problem, match="draft version"):
+        events.record_events(
+            uow,
+            contract_id=identity,
+            expected_stream_version=head,
+            body=body,
+            forecast_event_set_id=draft["id"],
+            engine=engine(),
+        )

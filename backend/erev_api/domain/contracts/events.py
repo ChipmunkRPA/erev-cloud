@@ -2047,14 +2047,29 @@ def record_events(
     expected_stream_version: int | None,
     body: EventAppendIn,
     engine: computation.Engine | None = None,
+    forecast_event_set_id: UUID | None = None,
 ) -> Recorded:
-    return _record_events(
+    def execute() -> Recorded:
+        return _record_events(
+            uow,
+            contract_id=contract_id,
+            expected_stream_version=expected_stream_version,
+            body=body,
+            engine=engine,
+            allowed=RECORDED_TYPES,
+            forecast=forecast_event_set_id is not None,
+        )
+
+    if forecast_event_set_id is None:
+        return execute()
+    from erev_api.domain.forecast import event_sets
+
+    return event_sets.capture_command(
         uow,
+        forecast_event_set_id,
         contract_id=contract_id,
-        expected_stream_version=expected_stream_version,
-        body=body,
-        engine=engine,
-        allowed=RECORDED_TYPES,
+        body=body.model_dump(mode="json"),
+        execute=execute,
     )
 
 
@@ -2083,6 +2098,7 @@ def _record_events(
     body: EventAppendIn,
     engine: computation.Engine | None = None,
     allowed: frozenset[ContractEventType],
+    forecast: bool = False,
 ) -> Recorded:
     """``POST /contracts/{id}/events`` (API-R-30; DG-CMD-09)."""
     session = uow.session
@@ -2093,9 +2109,13 @@ def _record_events(
     refuse_activation_events(body.events)  # ruling R-20 (c)
     locks.refuse_locked_fields(uow, current, body.events, permission=RECORD_PERMISSION)
     locks.refuse_version_pin(body.events)  # item ATTR-SSP-PIN-1: the SSP override command's
-    subject = _submission_subject(uow, body.events)
+    subject = None if forecast else _submission_subject(uow, body.events)
     step1_preview = None
-    if subject is None and any(item.event_type in STEP1_DATED_TYPES for item in body.events):
+    if (
+        not forecast
+        and subject is None
+        and any(item.event_type in STEP1_DATED_TYPES for item in body.events)
+    ):
         if step1_approval.lock_basis(session, contract_id, known_at=uow.now):
             candidate, _gate = _validated(uow, current, body, engine=engine)
             pending = [*candidate, *_pending_hold_releases(session, current, uow.now, candidate)]

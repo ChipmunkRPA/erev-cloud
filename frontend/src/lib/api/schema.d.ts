@@ -1679,6 +1679,11 @@ export interface paths {
      *     nothing either: the request waits whole for another user's approval (MANUAL_EVENT; 04 §16.3
      *     "Manual events"), with ``evidence_file_ids`` for a progress, milestone, cost or acceptance
      *     event (422 ``REQ-DAT-014`` without). An API client's events are appended directly (CTR-6).
+     *
+     *     With ``forecast_event_set_id``, a registered scenario draft applies the events without
+     *     approval routing (BR-FC-02), retaining this command in the input set atomically. Requires
+     *     tenant-wide ``scenario.use`` as well as the contract's ``event.record`` permission.
+     *     Published input sets refuse additions; normal contract validation still applies.
      */
     post: operations["contract_events_append"];
     delete?: never;
@@ -31101,7 +31106,9 @@ export interface operations {
   };
   contract_events_append: {
     parameters: {
-      query?: never;
+      query?: {
+        forecast_event_set_id?: string | null;
+      };
       header: {
         /** @description API-C-04: one key per user intent (8-255 characters); a repeat with the same key and body replays the stored response, another body is 422 idempotency-key-reused. */
         "Idempotency-Key": components["parameters"]["IdempotencyKey"];
@@ -31147,7 +31154,7 @@ export interface operations {
           "application/problem+json": components["schemas"]["ProblemOut"];
         };
       };
-      /** @description Problem: forbidden */
+      /** @description Problem: forbidden, sandbox-restricted */
       403: {
         headers: {
           [name: string]: unknown;
@@ -31167,7 +31174,7 @@ export interface operations {
           "application/problem+json": components["schemas"]["ProblemOut"];
         };
       };
-      /** @description Problem: idempotency-in-progress */
+      /** @description Problem: idempotency-in-progress, invalid-transition */
       409: {
         headers: {
           [name: string]: unknown;

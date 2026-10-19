@@ -2,6 +2,21 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Forecast manual event capture — October 19, 2026
+
+- Added explicit `forecast_event_set_id` on the contract event append API. Registered scenario
+  drafts apply facts under BR-FC-02 and retain ordered method/path/body inputs atomically.
+  Requires tenant-wide scenario.use plus the ordinary contract event permission and validation.
+- Publication and command capture share the input-set lock; published versions reject new
+  events. A capture failure rolls back facts, computations and buffered audit work. Existing
+  ordinary event approval behavior remains the default when no input set is selected.
+- Real snapshot-to-scenario/API journey passes manual progress capture, same-key retry,
+  failed-capture rollback and published-set rejection. Two production approval/evidence checks
+  also pass. Ruff/Mypy and OpenAPI generation pass.
+- Updated API schema/client types and user guide. Import association, ordered refresh/replay,
+  forecast jobs, forecast outputs and actual-vs-forecast remain unimplemented; FCS-2 stays open.
+  Contract sample and period evidence packs also remain outstanding. No deployment.
+
 ## Readable wide disclosure PDFs — October 19, 2026
 
 - Replaced chapter-table ellipsis clipping with wrapped cells and horizontal column groups.
@@ -217,17 +232,6 @@
   sixteen completed child jobs, readiness after completion and wrong-job/attachment refusal.
   Parent output persistence, retained reruns, frozen snapshots and viewer integration remain open.
 
-## Disclosure chapter PDF adapter — October 19, 2026
-
-- Added PDF chapter export with an index whose page destinations follow actual pagination,
-  original child stamps, per-table headings, repeated continuation grid headers, wrapped notes
-  and parent-run page numbering. Tables start on separate pages; omitted amounts cannot render.
-- XLSX/PDF reuse the same disclosure source/policy validation and chapter omission checks.
-  Five focused PDF/workbook/single-report checks pass; production modules pass Ruff and Mypy.
-- This is an internal export adapter, not end-to-end disclosure delivery. Parent scheduling and
-  publication, frozen snapshots, viewer and side-by-side period/QTD layout remain outstanding.
-  All five unregistered reports remain explicitly unfinished: disclosure_pack, actual_vs_forecast,
-  forecast_outputs, contract_sample_pack and period_evidence_pack. No deployment.
 ## Outstanding release verification
 
 These checks need current release-candidate evidence. Historical October 3 results

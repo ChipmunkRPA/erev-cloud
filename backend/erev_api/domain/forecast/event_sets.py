@@ -190,3 +190,51 @@ def listing[T](ctx: RequestContext, *, page: Callable[[Session, Select[Any]], T]
     with tenant_session(ctx.principal.db_context, read_only=True) as session:
         _scenario(session, ctx.principal.db_context)
         return page(session, select(sets))
+
+
+def capture_command[T](
+    uow: UnitOfWork,
+    identity: UUID,
+    *,
+    contract_id: UUID,
+    body: Mapping[str, Any],
+    execute: Callable[[], T],
+) -> T:
+    """Apply and retain one forecast command in the same transaction as its facts.
+
+    Serialize with publication/version edits before acquiring contract locks. The caller
+    still executes the ordinary contract authorization and validation path.
+    """
+    if (
+        "scenario.use" not in uow.principal.permissions
+        or uow.principal.permission_scopes.get("scenario.use") != "*"
+    ):
+        raise Problem("forbidden")
+    scenario_id = _scenario(uow.session, uow.principal.db_context)
+    initial = _row(uow.session, identity)
+    _lock(uow.session, uow.principal.tenant_id, initial["code"])
+    current = _row(uow.session, identity, lock=True)
+    if current["production_scenario_id"] != scenario_id:
+        raise Problem("invalid-transition", "The input set belongs to another scenario.")
+    if current["status"] != "DRAFT":
+        raise Problem("invalid-transition", "Create a draft version before adding forecast events.")
+    with uow.savepoint():
+        result = execute()
+        commands = [
+            *current["api_commands"],
+            {"method": "POST", "path": f"/contracts/{contract_id}/events", "body": dict(body)},
+        ]
+        change(
+            uow,
+            identity,
+            expected_version=current["row_version"],
+            values={"api_commands": commands},
+        )
+        uow.audit(
+            action="forecast_event_set.capture_command",
+            object_type="forecast_event_set",
+            object_id=identity,
+            contract_id=contract_id,
+            detail={"command_index": len(commands) - 1},
+        )
+        return result

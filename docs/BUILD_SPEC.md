@@ -11461,6 +11461,12 @@ Author BS-3. Uses DIN, SNP and RPS (PHASES §1 row 18). Indicative size 12 items
   - **Gates:** GK-01 `make ci`; GK-02 `make test-pg`; GK-03 `make openapi`
 
 - [ ] **FCS-2 Forecast event sets and scenario refresh.**
+  - Implementation update (2026-10-19): the contract event append route accepts an explicit
+    `forecast_event_set_id`. Registered scenario drafts apply and audit facts without approval
+    routing (BR-FC-02), atomically retaining ordered method/path/body commands under the same
+    lock as publication. Normal contract validation and event permissions remain required;
+    input access additionally requires tenant-wide `scenario.use`. Published sets refuse writes.
+    Import association and refresh/replay are still missing; FCS-2 remains open.
   - **Prerequisites:** FCS-1
   - **Scope:**
     - Paths: `backend/erev_api/domain/forecast/event_sets.py` (`create`, `update`, `publish`; appending committed uploads in order; recording API commands into `api_commands`); `backend/erev_api/domain/imports/commands.py` (`forecast_event_set_id` in API-S-ImportCreate: scenario tenants only; commit without approval routing and audited, BR-FC-02); `backend/erev_api/domain/forecast/scenarios.py` (`refresh_scenario`: 05 SBX-07 supersession from a new snapshot, `scenario_tenant_id` repointed, published event set re-applied in stored order as the requester, SBX-09); `backend/erev_api/api/v1/forecast_event_sets.py`; `backend/erev_api/api/v1/scenarios.py` (`refresh`); `backend/tests/support/worlds.py` (`k11_hollenbrand`: WLD-K-11 with the J-04 delivery and invoices); `backend/tests/domain/forecast/test_event_sets.py`; `docs/api/openapi.json`; `frontend/src/lib/api/schema.d.ts`
