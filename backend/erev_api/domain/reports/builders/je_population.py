@@ -538,7 +538,7 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         approvals = _approvals(session, request_ids, known_at)
         # D-98 102a / 102c: the full transition history of every run in the population,
         # regardless of its current state, over both audit shapes (run and batch roll-up).
-        histories = _transitions(
+        histories = transition_history(
             session,
             sorted({UUID(str(row["run_id"])) for row in rows}, key=str),
             {UUID(str(row["batch_id"])): UUID(str(row["run_id"])) for row in rows},
@@ -664,7 +664,7 @@ def _gl_documents(session: Any, batch_ids: Sequence[UUID], known_at: datetime) -
     return found
 
 
-def _transitions(
+def transition_history(
     session: Any, run_ids: Sequence[UUID], batch_runs: Mapping[UUID, UUID]
 ) -> dict[UUID, tuple[Transition, ...]]:
     """Each run's full SOP-7 transition history over every audit record shape that changes a run's

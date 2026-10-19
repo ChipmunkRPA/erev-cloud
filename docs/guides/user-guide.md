@@ -271,9 +271,9 @@ Dataset schemas, version 1 (the table ids are those of the data model, `docs/04-
 | `extract_legacy_contract_live` | Legacy history rows over all dates (04 §17.1 rule 1) | The 71 legacy `Contract_Live` columns of 04 §17.2, in legacy order, with the legacy export format rules | `row_count` |
 
 Status at this revision: `extract_events`, `extract_contract_versions`, `extract_obligations`, `extract_schedule_lines`
-`extract_balances`, `extract_subledger_lines` and `extract_legacy_contract_live` produce JSON
-and CSV through the report page and API. Contract and journal-line extracts remain catalogue
-contracts without builders. Parquet extracts and
+`extract_balances`, `extract_subledger_lines`, `extract_legacy_contract_live` and
+`extract_journal_lines` produce JSON and CSV through the report page and API. The contract
+extract remains a catalogue contract without a builder. Parquet extracts and
 as-locked extract datasets remain unimplemented; supplying a lock is refused, never replaced
 with live data.
 
@@ -428,6 +428,28 @@ re-running it passes those inputs through the 71-column formatter again. This pr
 historical source even after new activity. Existing legacy formatting is preserved; the extract
 is not an independent accounting certification. Locked extract datasets and automatic
 previous-run watermarks remain unavailable.
+
+
+#### Journal line extract
+
+`extract_journal_lines` exports journal lines for the selected entities and book, excluding
+runs cancelled **as of the source instant**. A later cancellation does not remove an earlier
+historical population. The lifecycle reader uses stored transition times and audited run/batch
+transitions; an unknown historical state refuses the report rather than guessing.
+
+Dataset v1 follows T-SL-09 column order except `tenant_id`, then appends `je_no`, `run_no`,
+`batch_external_id` and `period_key`. Debit and credit amounts are exact decimal strings;
+`line_no` and `source_line_count` are integers; `created_at` is a UTC ISO timestamp;
+`dimensions`, `fx_rate_set_version_ids` and `fx_rate_ids` are canonical JSON strings. Other
+columns are strings or null as permitted by the source. Rows sort by run, JE number, line
+number and row ID. `row_count` counts lines, while `by_currency` contains separate
+`debit_functional` and `credit_functional` sums for each functional currency.
+
+Line, entry, batch and run must exist by the source time. Incremental mode further selects
+lines created after `known_since`. It is not a cancellation/deletion feed; use a full refresh
+when reconciling lifecycle changes affecting earlier lines. Re-runs rebuild from retained
+line values, labels and lifecycle evidence. CSV manifests hash the delivered bytes. Locked
+extract datasets and automatic previous-run watermarks remain unavailable.
 
 
 ### Evidence packs

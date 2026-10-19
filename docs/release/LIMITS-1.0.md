@@ -1,5 +1,13 @@
 # eRev Cloud 1.0: stated limits of the release
 
+October 19 journal reporting continuation: `extract_journal_lines` now exports source-time
+journal detail, resolving cancellation through stored times and audited lifecycle evidence.
+It retains source rows and state evidence for reruns, with CSV/JSON and per-functional-currency
+debit/credit totals. Migration 0173 updates source disclosure. Nine catalogue definitions still
+lack builders (also remove extract_journal_lines from earlier lists); extract_contracts is the
+remaining data extract. Locked datasets, watermarks, true-up and browser acceptance remain open.
+
+
 October 19 legacy reporting continuation: `extract_legacy_contract_live` now exports all-date
 ASC606 history in the established 71-column layout, with source creation cutoffs, incremental
 selection, exact trace inputs and retained current/predecessor inputs for reruns. Migration

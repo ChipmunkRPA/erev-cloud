@@ -2,6 +2,17 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Journal line BI extract — October 19, 2026
+
+- Added extract_journal_lines v1 with entity/book scope, source-time lifecycle reconstruction,
+  full/incremental creation windows, fixed typed columns and per-currency debit/credit totals.
+  A later cancellation does not erase an earlier historical population; unknown state refuses.
+- Registered JSON/CSV and retained line/label/lifecycle evidence for reruns. The existing JE
+  population shares its transition-history reader. Migration 0173 updates source disclosure.
+- Real API cancellation, historical reads, CSV hash, totals and rerun checks pass. Evidence is
+  in CI-2026-10-19.md. Nine builders remain missing, including the contract extract; locked
+  datasets, watermarks, true-up and browser acceptance remain unfinished. No deployment.
+
 ## Legacy Contract_Live BI extract — October 19, 2026
 
 - Added extract_legacy_contract_live v1 over all effective dates of ASC606 history with
@@ -241,23 +252,6 @@
 - Database encryption/read/hold and empty migration round-trip tests passed, with file-access,
   policy and registry checks. CI evidence is in the dated release record.
 - Dataset production, report publication, final acceptance, approvals and admission remain open.
-
-## Persisted validation assessment — October 15, 2026
-
-- Added assessment of frozen selections, accepted evidence and actual child-job completion
-  under validation/attempt locks. Changed populations or incomplete selections are refused.
-- Accepted evidence while its job still runs remains pending; cancellation and exhausted
-  retries make the assessment INCOMPLETE. The assessment makes no enablement transition.
-- Database lifecycle verification and typing/lint evidence are in the dated CI record.
-  Dataset/report publication, final acceptance, approvals and admission remain outstanding.
-
-## Validation aggregate refusal checks — October 15, 2026
-
-- Reproduced and fixed ERROR evidence counting toward a pass in the pure aggregator. It now
-  makes an otherwise terminal attempt INCOMPLETE, including alongside MAJOR differences.
-- PATCH validations are refused before population evaluation. All 22 aggregation/state-machine
-  tests and typing passed; dated CI evidence records the checks. Persisted job aggregation,
-  artifact publication, approval resolution and admission remain unfinished.
 
 ## Outstanding release verification
 

@@ -392,3 +392,64 @@ def test_legacy_extract_71_columns_and_reproduction(
         },
     )
     assert invalid.status_code == 422, invalid.text
+
+
+def test_journal_extract_historical_cancellation(
+    app: FastAPI, app_settings: Settings, clock: FrozenClock, keyring: KeyRing
+) -> None:
+    from decimal import Decimal
+
+    from erev_api.db.tables import journal_line
+    from erev_api.domain.reports.builders.extract_journal_lines import COLUMNS
+    from sqlalchemy import func
+    from support.worlds import journal_run
+
+    world = k01_pellworth(app, keyring, clock, LocalFileStore(app_settings.file_root))
+    clock.set(world.place.scalar(select(func.clock_timestamp())))
+    world = resigned(world)
+    journal = journal_run(world)
+    stamp = world.place.scalar(select(func.clock_timestamp()))
+    clock.set(stamp)
+    params = {"entity_codes": [AVM_US], "book": "ASC606", "known_at": stamp.isoformat()}
+    original, rows = report_run(world, "extract_journal_lines", params)
+    assert rows
+    assert [c.key for c in COLUMNS] == [
+        *[c.name for c in journal_line.c if c.name != "tenant_id"],
+        "je_no",
+        "run_no",
+        "batch_external_id",
+        "period_key",
+    ]
+    data = get(app, f"{REPORT_RUNS}/{original['id']}/output", world.maya).json()
+    totals = data["control_totals"]["by_currency"]["USD"]
+    assert Decimal(totals["debit_functional"]) > 0
+    assert Decimal(totals["debit_functional"]) == Decimal(totals["credit_functional"])
+    csv_run, _ = report_run(world, "extract_journal_lines", params, output_format="CSV")
+    base = f"{REPORT_RUNS}/{csv_run['id']}/output"
+    content = get(app, base, world.maya).content
+    manifest = get(app, base, world.maya, {"part": "manifest"}).json()
+    assert manifest["sha256"] == hashlib.sha256(content).hexdigest()
+    clock.advance(timedelta(seconds=2))
+    path = f"/api/v1/journal-runs/{journal['id']}"
+    shown = get(app, path, world.maya)
+    cancelled = post(
+        app,
+        path + "/cancel",
+        world.maya,
+        {"reason": "Verify historical extract"},
+        if_match=shown.headers["etag"],
+    )
+    assert cancelled.status_code == 200, cancelled.text
+    _, current = report_run(
+        world, "extract_journal_lines", {**params, "known_at": clock.now().isoformat()}
+    )
+    assert current == []
+    _, historic = report_run(world, "extract_journal_lines", params)
+    assert historic == rows
+    rerun = post(app, f"{REPORT_RUNS}/{original['id']}/rerun", world.maya, {})
+    assert rerun.status_code == 202, rerun.text
+    assert run_now(world, UUID(rerun.json()["id"]))["state"] == "SUCCEEDED"
+    assert (
+        get(app, f"{REPORT_RUNS}/{rerun.headers['x-erev-report-run-id']}/output", world.maya).json()
+        == data
+    )

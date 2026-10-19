@@ -6349,3 +6349,20 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Seven fan-out database cases and 17 scheduler regressions passed, alongside unit/architecture,
   typing and lint checks. Evidence: docs/release/CI-2026-10-15.md.
 - Aggregation, artifacts, approval resolution and final admission remain open.
+
+## Validation aggregate refusal checks — October 15, 2026
+
+- Reproduced and fixed ERROR evidence counting toward a pass in the pure aggregator. It now
+  makes an otherwise terminal attempt INCOMPLETE, including alongside MAJOR differences.
+- PATCH validations are refused before population evaluation. All 22 aggregation/state-machine
+  tests and typing passed; dated CI evidence records the checks. Persisted job aggregation,
+  artifact publication, approval resolution and admission remain unfinished.
+
+## Persisted validation assessment — October 15, 2026
+
+- Added assessment of frozen selections, accepted evidence and actual child-job completion
+  under validation/attempt locks. Changed populations or incomplete selections are refused.
+- Accepted evidence while its job still runs remains pending; cancellation and exhausted
+  retries make the assessment INCOMPLETE. The assessment makes no enablement transition.
+- Database lifecycle verification and typing/lint evidence are in the dated CI record.
+  Dataset/report publication, final acceptance, approvals and admission remain outstanding.
