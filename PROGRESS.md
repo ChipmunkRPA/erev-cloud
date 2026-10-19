@@ -2,6 +2,21 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Held forecast copy and activation gate — October 19, 2026
+
+- Snapshot loading can now retain SUSPENDED after successful copy/verification when its internal
+  caller requests deferred activation for the scenario requester. The load summary records this
+  explicitly; ordinary loads still activate immediately.
+- Added an internal activation gate for the completion transaction: the expected held snapshot
+  must have completed, period replay must permit point-in-time use, the registered scenario's
+  expected input publication/hash must match, and the current requester must hold scenario.use.
+  The gate updates status and audit without committing or changing the source scenario itself.
+- The scenario journey verifies real deferred loading, refusal to open the suspended workspace,
+  draft/hash refusals and successful activation. Ordinary scenario creation also passes;
+  targeted checks and Ruff/Mypy pass.
+- Persisted refresh orchestration, failure recovery and source scenario replacement remain
+  unconnected; forecast reporting is still unfinished. No deployment/readiness claim.
+
 ## Atomic ordered forecast replay — October 19, 2026
 
 - Connected file materialization, retained mapping consumption and command/file execution into
@@ -220,20 +235,6 @@
 - The collector is not yet invoked by lock approval: atomic persistence of genuine source report
   identities/seven locked snapshots and as-locked parent rendering remain to integrate. Existing
   draft snapshots stay drafts. No lock support, deployment or production-readiness claim.
-
-## Disclosure snapshot read APIs — October 19, 2026
-
-- Added API-R-42 disclosure snapshot list/detail with report.run authorization, entity/book/
-  period/kind/source-report filters and keyset pagination. Metadata lists avoid loading dataset
-  JSON; detail verifies digest, schema and snapshot/parent scope. Both return no-store responses.
-- Reads require a successful disclosure parent, actual snapshot attachment, matching entity,
-  book, period/calendar and lock identity, plus the parent's complete report permission scope.
-  Missing/out-of-scope records return 404; unpublished or unattached rows stay out of counts/pages.
-- Real API journey verifies seven draft records, filtering, count, disjoint pagination, detail
-  digest and explicit draft classification. An empty report permission scope yields no rows and
-  refuses detail. Ruff/Mypy pass; OpenAPI and generated frontend types updated.
-- Lock-time capture/as-locked execution, snapshot register UI and full accounting acceptance remain
-  open. Existing draft evidence is not relabelled as locked. No deployment.
 
 ## Outstanding release verification
 

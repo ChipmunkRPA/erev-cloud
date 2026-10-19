@@ -806,7 +806,9 @@ def provision_audit_key(runtime: Any, keyring: KeyRing, tenant_id: UUID) -> str:
 # --- a loaded sandbox's facts (05 SBX-04 rev 1.64; 04 §16.14 rev 1.125) ---------------------------
 
 
-def sandbox_load_of(session: Session, tenant_row: Mapping[str, Any]) -> dict[str, Any] | None:
+def sandbox_load_of(
+    session: Session, tenant_row: Mapping[str, Any], *, awaiting_forecast: bool = False
+) -> dict[str, Any] | None:
     """API-S-Tenant ``sandbox_load``: what the sandbox's own ``tenant.snapshot_loaded`` event says
     about its load — the SEED snapshot (the event's object), when it was loaded, the mismatch
     count, the blocked period states and the load report. None for a production tenant, a sandbox
@@ -827,6 +829,9 @@ def sandbox_load_of(session: Session, tenant_row: Mapping[str, Any]) -> dict[str
             .where(
                 audit_event.c.tenant_id == tenant_row["id"],
                 audit_event.c.action == ACTION_LOADED,
+                audit_event.c.detail["awaiting_forecast_replay"].as_boolean().is_(True)
+                if awaiting_forecast
+                else sa.true(),
                 audit_event.c.occurred_at >= created_at,
                 audit_event.c.occurred_at < created_at + LOAD_EVENT_WINDOW,
             )
@@ -1203,6 +1208,7 @@ def load_sandbox(  # noqa: PLR0912, PLR0915 — the SBX-04 sequence, one step af
     heartbeat: Callable[[], None] | None = None,
     budget_seconds: float = BUDGET_SECONDS,
     scenario_creator: UUID | None = None,
+    defer_activation: bool = False,
 ) -> Loaded:
     """The SBX-04 load of snapshot ``snapshot_id`` into the pre-allocated sandbox, driven by the
     ``TENANT_SNAPSHOT`` job context ``jc`` (its principal is the SOURCE tenant's SYSTEM principal;
@@ -1258,6 +1264,9 @@ def load_sandbox(  # noqa: PLR0912, PLR0915 — the SBX-04 sequence, one step af
     if load.requested_by is None:
         raise actor_required()
     requester: UUID = load.requested_by
+    if defer_activation and scenario_creator != requester:
+        raise actor_required()
+    final_status = TenantStatus.SUSPENDED if defer_activation else TenantStatus.ACTIVE
 
     # 1. authorise: the snapshot row, the manifest, the registry.
     with jc.unit_of_work() as uow:
@@ -1901,8 +1910,8 @@ def load_sandbox(  # noqa: PLR0912, PLR0915 — the SBX-04 sequence, one step af
         )
         report_file_id = UUID(str(stored_report.row["id"]))
         report_sha256 = str(stored_report.row["sha256"])
-        # 05 SBX-04 rev 1.64: the sandbox becomes a workspace here, with its summary event —
-        # until this transaction commits it is SUSPENDED: not selectable and closed to commands.
+        # Ordinary loads activate with the summary event. Forecast refresh copies can retain
+        # SUSPENDED until their inputs have replayed and the completion transaction activates them.
         uow.session.execute(
             sa.update(tenant)
             .where(
@@ -1910,7 +1919,7 @@ def load_sandbox(  # noqa: PLR0912, PLR0915 — the SBX-04 sequence, one step af
                 tenant.c.status == TenantStatus.SUSPENDED.value,
             )
             .values(
-                status=TenantStatus.ACTIVE.value,
+                status=final_status.value,
                 updated_at=uow.now,
                 updated_by=None,
                 updated_by_kind=PrincipalKind.SYSTEM.value,
@@ -1923,9 +1932,10 @@ def load_sandbox(  # noqa: PLR0912, PLR0915 — the SBX-04 sequence, one step af
             before=None,
             after={
                 "sandbox_tenant_id": str(load.sandbox_tenant_id),
-                "status": TenantStatus.ACTIVE.value,
+                "status": final_status.value,
             },
             detail={
+                "awaiting_forecast_replay": defer_activation,
                 "source_tenant_id": str(source_id),
                 "known_at": plan.known_at.isoformat(),
                 "manifest_sha256": str(row["manifest_sha256"]),

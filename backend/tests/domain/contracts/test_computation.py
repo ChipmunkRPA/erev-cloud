@@ -5764,12 +5764,17 @@ def test_forecast_event_capture_is_atomic_and_immutable(
             on_failure=snapshot_job.snapshot_failed,
         ),
     )
-    registry.run_job(
-        job_id,
-        principal.tenant_id,
-        attempt=1,
-        runtime=JobRuntime(clock=clock, keyring=world.place.keyring, files=world.place.files),
-    )
+    from erev_api.domain.platform import sandboxes
+
+    load_sandbox = sandboxes.load_sandbox
+
+    def held_load(*args, **kwargs):
+        return load_sandbox(*args, **kwargs, defer_activation=True)
+
+    runtime = JobRuntime(clock=clock, keyring=world.place.keyring, files=world.place.files)
+    with monkeypatch.context() as held:
+        held.setattr(sandboxes, "load_sandbox", held_load)
+        registry.run_job(job_id, principal.tenant_id, attempt=1, runtime=runtime)
     with tenant_session(principal.db_context) as session:
         finished = session.execute(select(job).where(job.c.id == job_id)).mappings().one()
         assert finished["state"] == "SUCCEEDED", finished["problem"]
@@ -5781,6 +5786,52 @@ def test_forecast_event_capture_is_atomic_and_immutable(
         membership_id = session.execute(
             select(tenant_membership.c.id).where(tenant_membership.c.user_id == principal.id)
         ).scalar_one()
+    from erev_api.db.tables import tenant
+    from erev_api.domain.forecast import activation
+    from erev_api.jobs.context import system_unit_of_work
+
+    denied_open = call(
+        world.app,
+        "POST",
+        "/api/v1/session/tenant",
+        headers=cookie_headers(source_actor.token, source_actor.csrf_token),
+        json={"tenant_id": str(target_id)},
+    )
+    assert denied_open.status_code == 409, denied_open.text
+    replay_actor = sandboxes.sandbox_actor(target_id, source_actor.member.user_id, at=clock.now())
+    with system_unit_of_work(runtime, replay_actor, request_id="held-forecast-copy") as uow:
+        assert (
+            uow.session.scalar(select(tenant.c.status).where(tenant.c.id == target_id))
+            == "SUSPENDED"
+        )
+        ready = event_sets.create(uow, {"code": "ACTIVATION", "name": "Activation inputs"})
+        with pytest.raises(Problem, match="not published"):
+            activation.activate(
+                uow,
+                snapshot_id=UUID(created.json()["tenant_snapshot_id"]),
+                input_set_id=ready["id"],
+                content_sha256="0" * 64,
+            )
+        published = event_sets.change(
+            uow, ready["id"], expected_version=ready["row_version"], publish=True
+        )
+        with pytest.raises(Problem, match="not published"):
+            activation.activate(
+                uow,
+                snapshot_id=UUID(created.json()["tenant_snapshot_id"]),
+                input_set_id=ready["id"],
+                content_sha256="0" * 64,
+            )
+        activation.activate(
+            uow,
+            snapshot_id=UUID(created.json()["tenant_snapshot_id"]),
+            input_set_id=ready["id"],
+            content_sha256=published["content_sha256"],
+        )
+        assert (
+            uow.session.scalar(select(tenant.c.status).where(tenant.c.id == target_id)) == "ACTIVE"
+        )
+        uow.commit()
     target_member = Member(
         user_id=source_actor.member.user_id,
         email=source_actor.member.email,

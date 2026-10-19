@@ -7350,3 +7350,17 @@ cleanup in the shared database session kernel was also repaired and regression-t
   revenue and policy facts. The lock job must capture these at its exact cutoff and atomically
   publish genuinely locked disclosures; drafts must never be promoted/relabeled as locked.
   Snapshot read APIs and as-locked parent integration also remain open. No deployment.
+
+## Disclosure snapshot read APIs — October 19, 2026
+
+- Added API-R-42 disclosure snapshot list/detail with report.run authorization, entity/book/
+  period/kind/source-report filters and keyset pagination. Metadata lists avoid loading dataset
+  JSON; detail verifies digest, schema and snapshot/parent scope. Both return no-store responses.
+- Reads require a successful disclosure parent, actual snapshot attachment, matching entity,
+  book, period/calendar and lock identity, plus the parent's complete report permission scope.
+  Missing/out-of-scope records return 404; unpublished or unattached rows stay out of counts/pages.
+- Real API journey verifies seven draft records, filtering, count, disjoint pagination, detail
+  digest and explicit draft classification. An empty report permission scope yields no rows and
+  refuses detail. Ruff/Mypy pass; OpenAPI and generated frontend types updated.
+- Lock-time capture/as-locked execution, snapshot register UI and full accounting acceptance remain
+  open. Existing draft evidence is not relabelled as locked. No deployment.
