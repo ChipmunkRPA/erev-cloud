@@ -35,3 +35,10 @@ export function fetchForecastRuns(cursor: string | null = null) {
 export function fetchForecastRun(id: string): Promise<ForecastRun> {
   return unwrap(api.GET("/api/v1/forecast-runs/{run_id}", { params: { path: { run_id: id } } }));
 }
+
+export function fetchComparisonForecasts(cursor: string | null = null) {
+  return fetchListPage<ForecastRun>("/api/v1/forecast-comparison-runs", {}, cursor, {
+    limit: 50,
+    count: false,
+  });
+}

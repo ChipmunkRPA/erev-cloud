@@ -1,5 +1,6 @@
 """API-R-46 scenario forecast execution and saved output catalogue."""
 
+from dataclasses import replace
 from typing import Annotated, Any
 from uuid import UUID
 
@@ -19,9 +20,9 @@ from erev_api.api.deps import (
 from erev_api.api.lists import TOTAL_COUNT_HEADER, ListParams, ListSpec, list_params, paginate
 from erev_api.auth.dependencies import require_all_entities, require_for_entity
 from erev_api.auth.principal import RequestContext
-from erev_api.db.session import tenant_session
-from erev_api.db.tables import forecast_run
-from erev_api.domain.forecast import event_sets, runs
+from erev_api.db.session import DbContext, set_tenant_context, tenant_session
+from erev_api.db.tables import forecast_event_set, forecast_run, tenant
+from erev_api.domain.forecast import event_sets, history, runs
 from erev_api.problems import Problem
 from erev_api.schemas.common import ListOut
 from erev_api.schemas.forecast_runs import (
@@ -131,3 +132,98 @@ def list_runs(
         return ListOut[ForecastRunOut](
             items=[visible(ctx, dict(row)) for row in result.items], next_cursor=result.next_cursor
         )
+
+
+@router.get(
+    "/forecast-comparison-runs",
+    operation_id="forecast_comparison_runs_list",
+    response_model=ListOut[ForecastRunOut],
+    responses=PROBLEMS,
+)
+def comparison_runs(
+    ctx: Reader, params: Annotated[ListParams, Depends(list_params)]
+) -> ListOut[ForecastRunOut]:
+    """Succeeded choices in current-to-oldest workspace order; cursor binds the refresh snapshot."""
+    scope = ctx.principal.permission_scopes.get("report.run")
+    if scope is None:
+        raise Problem("forbidden")
+    with tenant_session(ctx.principal.db_context, read_only=True) as session:
+        parent, logical, lineage = history.workspace_lineage(session, ctx)
+        snapshot = str(logical["tenant_snapshot_id"])
+        workspace, cursor = lineage[0], None
+        if params.cursor:
+            try:
+                bound, workspace_text, cursor = params.cursor.split(":", 2)
+                workspace = UUID(workspace_text)
+                if bound != snapshot or workspace not in lineage:
+                    raise ValueError("lineage")
+                cursor = cursor or None
+            except ValueError as error:
+                raise Problem(
+                    "validation-failed", "The forecast history changed; reload the list."
+                ) from error
+        try:
+            for index in range(lineage.index(workspace), len(lineage)):
+                workspace = lineage[index]
+                set_tenant_context(
+                    session,
+                    DbContext(
+                        tenant_id=workspace,
+                        user_id=ctx.principal.id,
+                        entity_scope=ctx.principal.db_context.entity_scope,
+                    ),
+                )
+                if (
+                    session.scalar(
+                        select(tenant.c.id).where(
+                            tenant.c.id == workspace,
+                            tenant.c.kind == "sandbox",
+                            tenant.c.source_tenant_id == parent,
+                            tenant.c.status.in_(("ACTIVE", "ARCHIVED")),
+                        )
+                    )
+                    is None
+                ):
+                    raise Problem("precondition-failed", "The forecast archive is unavailable.")
+                statement = (
+                    select(forecast_run)
+                    .join(
+                        forecast_event_set,
+                        (forecast_event_set.c.tenant_id == forecast_run.c.tenant_id)
+                        & (forecast_event_set.c.id == forecast_run.c.forecast_event_set_id),
+                    )
+                    .where(
+                        forecast_run.c.status == "SUCCEEDED",
+                        forecast_event_set.c.status == "PUBLISHED",
+                        forecast_event_set.c.production_scenario_id == logical["id"],
+                    )
+                )
+                if scope != "*":
+                    from sqlalchemy import cast
+                    from sqlalchemy.dialects.postgresql import JSONB
+
+                    statement = statement.where(
+                        forecast_run.c.parameters["entity_ids"].contained_by(
+                            cast([str(entity) for entity in scope], JSONB)
+                        )
+                    )
+                spec = replace(SPEC, resource=f"forecast-comparison-runs:{snapshot}:{workspace}")
+                page = paginate(
+                    session, statement, spec, replace(params, cursor=cursor, count=False)
+                )
+                if page.items:
+                    next_cursor = (
+                        f"{snapshot}:{workspace}:{page.next_cursor}"
+                        if page.next_cursor
+                        else f"{snapshot}:{lineage[index + 1]}:"
+                        if index + 1 < len(lineage)
+                        else None
+                    )
+                    return ListOut(
+                        items=[visible(ctx, dict(row)) for row in page.items],
+                        next_cursor=next_cursor,
+                    )
+                cursor = None
+            return ListOut(items=[], next_cursor=None)
+        finally:
+            set_tenant_context(session, ctx.principal.db_context)

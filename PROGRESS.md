@@ -2,6 +2,20 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Actual-vs-forecast selection and report screen flow — October 19, 2026
+
+- Added the SF-17 comparison form: saved forecast (including earlier refreshes), contract/category
+  rows, periods within its horizon, permission-gated formats, task progress/cancellation and
+  completed report links. Entity scope, book and currency basis follow the saved forecast.
+  Completion refreshes the choice list; membership changes reset form state.
+- Added paginated forecast-comparison-runs. It follows only successful scenario predecessors,
+  checks current permissions, returns succeeded publications only and binds cursors to the
+  current snapshot/workspace. Superseded/foreign lineage cursors are refused. OpenAPI regenerated.
+- Five focused frontend checks, TypeScript/ESLint, Ruff/Mypy and the real scenario journey pass.
+  The journey checks archived choices, pagination and invalid cursors, then runs JSON/XLSX/CSV/
+  PDF report jobs and same-source rebuilding with no actuals. Populated accounting acceptance
+  and rendered populated-report review are still outstanding. No deployment.
+
 ## Actual-vs-forecast standard report execution — October 19, 2026
 
 - Registered actual_vs_forecast in the standard report framework (56 registered definitions,
@@ -216,22 +230,6 @@
 - Still unfinished: forecast-run API/worker, durable report publication and exports, chart/UI,
   actual-vs-forecast, contract sample pack and period evidence pack. This internal assembly
   is not yet a registered report and does not establish production readiness.
-
-## Forecast output section projections — October 19, 2026
-
-- Added RPT-39 table projections for billing by contract/horizon period, projected balances
-  by entity/currency/period end, and journal preview by period/account role/currency.
-- Billing consumes effective net document contributions (void/credit handling stays in the
-  existing billing reader), preserves signed credits and excludes dates outside the horizon.
-  Balance stocks remain separate by end date and skip input TOTAL rows to avoid double counting.
-  Journal preview retains gross debit/credit activity, including reversals, from signed sealed
-  ledger inputs; it does not create journal batches. Every total is currency-specific.
-- Three focused checks cover credit amounts, USD/JPY precision, multiple period-end stocks,
-  reversals and stored functional-currency amounts. Ruff/Mypy pass.
-- These are data projections, not a registered/completed forecast report. Five-section assembly,
-  source capture, forecast-run execution, retained report exports and UI remain open. Journal
-  reporting-currency valuation still needs its governed source adapter; no parity conversion is
-  assumed. Forecast and actual-vs-forecast remain unfinished. No deployment/readiness claim.
 
 ## Outstanding release verification
 

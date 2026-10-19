@@ -8675,3 +8675,15 @@ Rules (rev 1.1; B1-033; DG-OQ-01, DG-OQ-02; DG-MIG-01 to DG-MIG-06):
 
 Rev 1.2 raises no open question (D-77). The choices taken where adopted proposals differ are table 1.2-D (B3-D01 to B3-D23).
 
+
+
+#### Forecast comparison selection endpoint (API-R-46 implementation addition)
+
+`GET /api/v1/forecast-comparison-runs` returns `ListOut<ForecastRunOut>` for succeeded runs
+whose published input set belongs to the active logical scenario. It includes the current
+workspace and successful refresh predecessors only, in newest-workspace-first order with
+normal report-run sorting inside each workspace. Current `scenario.use` across all entities
+and `report.run` for every forecast entity are required. Limits and cursors paginate the
+selection; cursors bind the current snapshot and workspace. There is no total-count header.
+A cursor from a superseded refresh is refused so the client reloads the list. The endpoint
+neither opens archived report downloads nor grants access to unrelated scenarios.

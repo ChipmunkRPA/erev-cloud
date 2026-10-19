@@ -11,8 +11,10 @@ from typing import Any
 from uuid import UUID
 
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from erev_api.auth.dependencies import require_for_entity
+from erev_api.auth.principal import RequestContext
 from erev_api.db.session import DbContext, set_tenant_context
 from erev_api.db.tables import forecast_event_set, forecast_run, scenario, scenario_refresh, tenant
 from erev_api.enums import PrincipalKind, TenantKind
@@ -51,17 +53,19 @@ def predecessors(current: UUID, refreshes: Sequence[Mapping[str, Any]]) -> tuple
     return tuple(chain)
 
 
-def resolve(uow: UnitOfWork, run_id: UUID) -> SavedForecast:
-    actor = uow.principal
+def workspace_lineage(
+    session: Session, ctx: RequestContext
+) -> tuple[UUID, dict[str, Any], tuple[UUID, ...]]:
+    actor = ctx.principal
     if (
-        uow.ctx.tenant_kind != TenantKind.SANDBOX
+        ctx.tenant_kind != TenantKind.SANDBOX
         or actor.kind != PrincipalKind.USER
         or "scenario.use" not in actor.permissions
         or actor.permission_scopes.get("scenario.use") != "*"
     ):
         raise Problem("forbidden")
     original = actor.db_context
-    parent = uow.session.execute(
+    parent = session.execute(
         select(tenant.c.source_tenant_id).where(
             tenant.c.id == actor.tenant_id,
             tenant.c.kind == "sandbox",
@@ -71,11 +75,9 @@ def resolve(uow: UnitOfWork, run_id: UUID) -> SavedForecast:
     if parent is None:
         raise Problem("not-found")
     try:
-        set_tenant_context(
-            uow.session, DbContext(tenant_id=parent, user_id=actor.id, entity_scope="*")
-        )
+        set_tenant_context(session, DbContext(tenant_id=parent, user_id=actor.id, entity_scope="*"))
         logical = (
-            uow.session.execute(
+            session.execute(
                 select(scenario).where(
                     scenario.c.scenario_tenant_id == actor.tenant_id, scenario.c.status == "ACTIVE"
                 )
@@ -89,11 +91,21 @@ def resolve(uow: UnitOfWork, run_id: UUID) -> SavedForecast:
             actor.tenant_id,
             [
                 dict(row)
-                for row in uow.session.execute(
+                for row in session.execute(
                     select(scenario_refresh).where(scenario_refresh.c.scenario_id == logical["id"])
                 ).mappings()
             ],
         )
+        return parent, dict(logical), lineage
+    finally:
+        set_tenant_context(session, original)
+
+
+def resolve(uow: UnitOfWork, run_id: UUID) -> SavedForecast:
+    actor = uow.principal
+    original = actor.db_context
+    parent, logical, lineage = workspace_lineage(uow.session, uow.ctx)
+    try:
         for workspace_id in lineage:
             set_tenant_context(
                 uow.session,

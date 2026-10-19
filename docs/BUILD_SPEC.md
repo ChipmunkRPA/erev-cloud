@@ -11597,8 +11597,12 @@ Author BS-3. Uses DIN, SNP and RPS (PHASES §1 row 18). Indicative size 12 items
     Registered the standard report builder and retained-fact source contract. The worker reloads
     current scenario/report permissions; same-source rebuild checks hash, tenant/run/entity/book/
     currency/selection scope and recomputes from facts. Revision 0187 corrects IPE metadata.
-    The real report worker produces JSON and rebuilds without live reads. UI selection, other
-    export formats and populated production-posting accounting acceptance remain open.
+    The real report worker produces JSON and rebuilds without live reads. SF-17 now includes
+    a comparison form with current/archived forecast selection, horizon/dimension/output controls,
+    task progress/cancellation and completed-report links. The comparison-choice endpoint pages
+    only authorized succeeded runs in the successful lineage, binding cursors to the snapshot.
+    JSON/XLSX/CSV/PDF jobs and same-source rebuilding pass for the empty-actuals journey.
+    Populated production-posting accounting acceptance remains open.
   - **Prerequisites:** FCS-3
   - **Scope:**
     - Paths: `backend/erev_api/domain/reports/builders/actual_vs_forecast.py` (RPT-40: forecast revenue of the run against revenue posted in the scenario tenant as of its latest refresh); `backend/tests/domain/forecast/test_actual_vs_forecast.py`

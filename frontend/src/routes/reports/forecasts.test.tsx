@@ -6,6 +6,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { ForecastRunsPage } from "./forecasts";
 
 const state = vi.hoisted(() => ({ sandbox: true, exportAllowed: true, submit: vi.fn() }));
+vi.mock("./ForecastComparisonForm", () => ({ ForecastComparisonForm: () => null }));
 vi.mock("./frame", () => ({ ReportsHeader: () => null }));
 vi.mock("../../lib/api/queries/me", () => ({
   useMe: () => ({

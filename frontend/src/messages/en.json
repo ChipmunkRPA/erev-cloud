@@ -7532,5 +7532,16 @@
   "reports.forecasts.complete": "Choose published inputs, entities, consecutive periods and an authorized output format.",
   "reports.forecasts.connectionError": "The request or job status could not be loaded. Retry to check the same request.",
   "reports.forecasts.loading": "Loading forecast workspace…",
-  "reports.forecasts.noEntities": "No eligible entities. Running forecasts requires report access and calendar configuration read access for each selected entity."
+  "reports.forecasts.noEntities": "No eligible entities. Running forecasts requires report access and calendar configuration read access for each selected entity.",
+  "reports.comparison.title": "Actual versus forecast",
+  "reports.comparison.basis": "Compare a saved forecast, including forecasts from earlier refreshes, with the current scenario snapshot’s production actuals. The forecast’s entity scope, book and currency basis are preserved.",
+  "reports.comparison.empty": "No succeeded forecasts are available for comparison.",
+  "reports.comparison.forecast": "Saved forecast",
+  "reports.comparison.dimension": "Compare by",
+  "reports.comparison.contract": "Contract",
+  "reports.comparison.category": "Revenue category",
+  "reports.comparison.format": "Comparison format",
+  "reports.comparison.run": "Run comparison",
+  "reports.comparison.rows": "rows",
+  "reports.comparison.open": "Open comparison report"
 }

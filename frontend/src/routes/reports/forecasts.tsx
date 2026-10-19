@@ -26,6 +26,7 @@ import {
 import { queryKey } from "../../lib/api/query-keys";
 import { t } from "../../lib/i18n/t";
 import { ReportsHeader } from "./frame";
+import { ForecastComparisonForm } from "./ForecastComparisonForm";
 import { ForecastPack } from "./viewer/ForecastPack";
 
 type Format = "JSON" | "XLSX" | "CSV";
@@ -117,12 +118,12 @@ export function ForecastRunsPage() {
   const command = useCommand({
     method: "POST",
     path: "/api/v1/forecast-runs",
-    invalidates: [forecastRunsKey],
+    invalidates: [forecastRunsKey, queryKey("forecast-comparison-runs", "tenant")],
   });
   const cancel = useCommand({
     method: "POST",
     path: `/api/v1/jobs/${command.jobId ?? ""}/cancel`,
-    invalidates: [forecastRunsKey],
+    invalidates: [forecastRunsKey, queryKey("forecast-comparison-runs", "tenant")],
   });
   const running =
     command.pending || command.job?.state === "QUEUED" || command.job?.state === "RUNNING";
@@ -341,6 +342,7 @@ export function ForecastRunsPage() {
               }
             />
           )}
+          <ForecastComparisonForm key={me.data?.active_membership_id} />
           <h2 className="text-heading-sm">{t("reports.forecasts.history")}</h2>
           {runs.data?.items.length === 0 && <p>{t("reports.forecasts.noRuns")}</p>}
           {runs.data?.items.map((run) => (

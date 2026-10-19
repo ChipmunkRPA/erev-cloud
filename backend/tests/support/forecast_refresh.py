@@ -334,6 +334,26 @@ def exercise_refresh_state(world: Any, source_actor: Actor, scenario_id: UUID) -
     )
     with system_unit_of_work(runtime, actor, request_id="forecast-history") as uow:
         saved = history.resolve(uow, saved_run_id)
+        from erev_api.api.lists import ListParams
+        from erev_api.api.v1.forecast_runs import comparison_runs
+
+        list_params = ListParams(limit=1, cursor=None, sort=None, q=None, count=False, filters={})
+        available_ids = []
+        for _ in range(10):
+            page = comparison_runs(uow.ctx, list_params)
+            available_ids.extend(item.id for item in page.items)
+            assert all(item.status == "SUCCEEDED" for item in page.items)
+            if page.next_cursor is None:
+                break
+            from dataclasses import replace
+
+            list_params = replace(list_params, cursor=page.next_cursor)
+        else:
+            raise AssertionError("History pagination did not finish")
+        assert saved_run_id in available_ids
+        assert len(available_ids) == len(set(available_ids))
+        with pytest.raises(Problem):
+            comparison_runs(uow.ctx, replace(list_params, cursor=f"{UUID(int=999)}:{old_target}:"))
         assert saved.forecast_tenant_id == old_target
         assert saved.scenario_id == scenario_id
         assert saved.source_tenant_id == source.principal.tenant_id
@@ -402,47 +422,49 @@ def exercise_refresh_state(world: Any, source_actor: Actor, scenario_id: UUID) -
     from erev_api.domain.reports.builders import actual_vs_forecast
     from erev_api.schemas.reports import ReportRunCreateIn
 
-    with system_unit_of_work(runtime, actor, request_id="comparison-report") as uow:
-        entity_codes = list(
-            uow.session.scalars(
-                select(legal_entity.c.code).where(
-                    legal_entity.c.id.in_(
-                        [UUID(value) for value in saved.run["parameters"]["entity_ids"]]
+    for output_format in ("JSON", "XLSX", "CSV", "PDF"):
+        with system_unit_of_work(runtime, actor, request_id="comparison-report") as uow:
+            entity_codes = list(
+                uow.session.scalars(
+                    select(legal_entity.c.code).where(
+                        legal_entity.c.id.in_(
+                            [UUID(value) for value in saved.run["parameters"]["entity_ids"]]
+                        )
                     )
                 )
             )
-        )
-        report_id, report_job = framework.create_run(
-            uow,
-            ReportRunCreateIn(
-                report_code="actual_vs_forecast",
-                output_format="JSON",
-                parameters={
-                    "forecast_run_id": str(saved_run_id),
-                    "entity_codes": entity_codes,
-                    "row_dimension": "REVENUE_CATEGORY",
-                    "currency_view": "transaction",
-                },
-            ),
-        )
-        queue_id = uow.session.scalar(
-            select(job.c.procrastinate_job_id).where(job.c.id == report_job.id)
-        )
-        uow.session.execute(
-            text("UPDATE procrastinate_jobs SET status = 'doing' WHERE id = :id"), {"id": queue_id}
-        )
-        uow.commit()
-    registry.run_job(report_job.id, actor.tenant_id, attempt=1, runtime=runtime)
-    with system_unit_of_work(runtime, actor, request_id="comparison-rebuild") as uow:
-        built = dict(
-            uow.session.execute(select(report_run).where(report_run.c.id == report_id))
-            .mappings()
-            .one()
-        )
-        assert built["status"] == "SUCCEEDED", built.get("problem")
-        with patch.object(
-            forecast_comparison_inputs, "read", side_effect=AssertionError("live source read")
-        ):
-            rebuilt = actual_vs_forecast.build(uow, framework.report_params(built))
-        assert rebuilt.rows == ()
-        assert rebuilt.control_totals == built["control_totals"]
+            report_id, report_job = framework.create_run(
+                uow,
+                ReportRunCreateIn(
+                    report_code="actual_vs_forecast",
+                    output_format=output_format,
+                    parameters={
+                        "forecast_run_id": str(saved_run_id),
+                        "entity_codes": entity_codes,
+                        "row_dimension": "REVENUE_CATEGORY",
+                        "currency_view": "transaction",
+                    },
+                ),
+            )
+            queue_id = uow.session.scalar(
+                select(job.c.procrastinate_job_id).where(job.c.id == report_job.id)
+            )
+            uow.session.execute(
+                text("UPDATE procrastinate_jobs SET status = 'doing' WHERE id = :id"),
+                {"id": queue_id},
+            )
+            uow.commit()
+        registry.run_job(report_job.id, actor.tenant_id, attempt=1, runtime=runtime)
+        with system_unit_of_work(runtime, actor, request_id="comparison-rebuild") as uow:
+            built = dict(
+                uow.session.execute(select(report_run).where(report_run.c.id == report_id))
+                .mappings()
+                .one()
+            )
+            assert built["status"] == "SUCCEEDED", built.get("problem")
+            with patch.object(
+                forecast_comparison_inputs, "read", side_effect=AssertionError("live source read")
+            ):
+                rebuilt = actual_vs_forecast.build(uow, framework.report_params(built))
+            assert rebuilt.rows == ()
+            assert rebuilt.control_totals == built["control_totals"]

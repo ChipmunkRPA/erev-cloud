@@ -7632,3 +7632,19 @@ cleanup in the shared database session kernel was also repaired and regression-t
   and queued cancellation. Ordinary scenario creation also passes; Ruff/Mypy/OpenAPI pass.
 - Refresh UI, broader concurrency/crash recovery and specified accounting acceptance remain
   open. Forecast output and actual-vs-forecast report builders remain unfinished. No deployment.
+
+## Forecast output section projections — October 19, 2026
+
+- Added RPT-39 table projections for billing by contract/horizon period, projected balances
+  by entity/currency/period end, and journal preview by period/account role/currency.
+- Billing consumes effective net document contributions (void/credit handling stays in the
+  existing billing reader), preserves signed credits and excludes dates outside the horizon.
+  Balance stocks remain separate by end date and skip input TOTAL rows to avoid double counting.
+  Journal preview retains gross debit/credit activity, including reversals, from signed sealed
+  ledger inputs; it does not create journal batches. Every total is currency-specific.
+- Three focused checks cover credit amounts, USD/JPY precision, multiple period-end stocks,
+  reversals and stored functional-currency amounts. Ruff/Mypy pass.
+- These are data projections, not a registered/completed forecast report. Five-section assembly,
+  source capture, forecast-run execution, retained report exports and UI remain open. Journal
+  reporting-currency valuation still needs its governed source adapter; no parity conversion is
+  assumed. Forecast and actual-vs-forecast remain unfinished. No deployment/readiness claim.
