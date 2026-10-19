@@ -7681,3 +7681,20 @@ cleanup in the shared database session kernel was also repaired and regression-t
   CSV file hashes and refusals. Real scenario capture-to-JSON and Ruff/Mypy also pass.
   Durable report publication/download routes, forecast execution,
   charts/UI, actual-vs-forecast and both evidence packs remain unfinished. No deployment.
+
+## Forecast report data API and viewer — October 19, 2026
+
+- Aligned forecast JSON with the existing report-data chapter/table envelope, including a
+  five-row section index, typed table datasets and per-table hashes. Added typed forecast
+  header metadata to GET report-runs/{id}/data; existing chapter pagination can serve each
+  forecast table independently and rejects cursors reused across the index and a table.
+- Added the forecast viewer branch with saved scenario/publication, horizon and cutoff,
+  expandable tables, currency-aware columns and retry/empty states. Reused the disclosure
+  table renderer without its policy/snapshot controls. CSV download filenames now use .zip
+  for forecast outputs, matching the archive format.
+- Four targeted backend checks, forecast/disclosure component checks, Ruff/Mypy, ESLint,
+  TypeScript and OpenAPI generation pass. No deployment or full-suite run.
+- Run admission/computation, durable report publication and end-to-end creation remain open;
+  the report is still unregistered. The viewer requires a saved forecast report and does not
+  yet make one available through the UI. Revenue chart, actual-vs-forecast and both evidence
+  packs remain unfinished. Production readiness and independent accounting acceptance remain open.

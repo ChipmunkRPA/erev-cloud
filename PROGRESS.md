@@ -2,6 +2,18 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Contract sample retained documents — October 19, 2026
+
+- Added attachment collection for sampled contracts/events, related modification/estimate/
+  adjustment evidence and referenced approvals/attachable subjects, including SSP studies.
+  Applies the original attachment cutoff plus current subject/file grants; missing, unreadable
+  or inconsistent bytes fail explicitly. External document URLs are never fetched.
+- Deduplicates payloads, uses ID-based archive paths, retains filename/media/hash metadata,
+  checks decrypted size/SHA-256 and takes file locks against concurrent shredding. File-count
+  and payload limits apply before collection. The real K01 archive journey verifies encrypted
+  attachment collection, duplicate references and safe paths; Ruff/Mypy pass. Public lifecycle/
+  rendering and journals remain.
+
 ## Contract sample approvals and audit slice — October 19, 2026
 
 - Added cutoff-bound approval requests/decisions and deduplicated contract audit trails. Shared
@@ -222,23 +234,6 @@
   Targeted source/export checks and Ruff/Mypy pass. Public admission/computation orchestration
   is still missing; this is an internal transaction primitive, not a completed forecast workflow.
   Revenue chart, actual-vs-forecast, evidence packs and accounting acceptance remain open.
-
-## Forecast report data API and viewer — October 19, 2026
-
-- Aligned forecast JSON with the existing report-data chapter/table envelope, including a
-  five-row section index, typed table datasets and per-table hashes. Added typed forecast
-  header metadata to GET report-runs/{id}/data; existing chapter pagination can serve each
-  forecast table independently and rejects cursors reused across the index and a table.
-- Added the forecast viewer branch with saved scenario/publication, horizon and cutoff,
-  expandable tables, currency-aware columns and retry/empty states. Reused the disclosure
-  table renderer without its policy/snapshot controls. CSV download filenames now use .zip
-  for forecast outputs, matching the archive format.
-- Four targeted backend checks, forecast/disclosure component checks, Ruff/Mypy, ESLint,
-  TypeScript and OpenAPI generation pass. No deployment or full-suite run.
-- Run admission/computation, durable report publication and end-to-end creation remain open;
-  the report is still unregistered. The viewer requires a saved forecast report and does not
-  yet make one available through the UI. Revenue chart, actual-vs-forecast and both evidence
-  packs remain unfinished. Production readiness and independent accounting acceptance remain open.
 
 ## Outstanding release verification
 

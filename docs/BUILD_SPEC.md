@@ -10284,6 +10284,12 @@ Author BS-3. Uses CTR (PHASES §1 row 12). Indicative size 16 items; this phase 
   - **Gates:** GK-01 `make ci`; GK-03 `make openapi`
 
 - [ ] **RPS-16 Period evidence packs and contract sample packs.**
+  - October 19 document increment: the sample document collector reads stored contract/event
+    attachments, related business-event subjects and approval evidence (including SSP study
+    subjects). Historical attachment selection never overrides current subject/file grants.
+    Deduplicated bytes use identifier-only archive paths, bounded counts/size, decrypted hashes
+    and file locks against shredding. Missing/unreadable sources refuse the collection; external
+    references are not fetched. Journal sources, retention/jobs and stamped rendering remain open.
   - October 19 approval/audit increment: sample computation sources identify referenced SSP,
     template and override approvals. The decision collector reads requests/decisions at known-at,
     preserves content hashes and decision metadata, and collects deduplicated linked audit events.

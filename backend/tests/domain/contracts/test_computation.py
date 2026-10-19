@@ -5969,21 +5969,27 @@ def test_contract_sample_computation_evidence_keeps_trace_and_full_schedule(
     import json
     from datetime import timedelta
 
+    from erev_api.domain.platform.attachments import attach_evidence
     from erev_api.domain.reports import (
         evidence_archive,
         evidence_sample_computations,
         evidence_sample_decisions,
+        evidence_sample_documents,
         evidence_sample_events,
     )
     from erev_api.domain.reports.evidence_commands import PERMISSIONS
+    from erev_api.enums import FilePurpose
     from erev_api.schemas.evidence_packs import ContractSamplePackCreateIn
 
     booked = k01(world)
     computed(world.place, booked.combination_group["id"])
     principal = replace(
         world.place.principal,
-        permissions=PERMISSIONS,
-        permission_scopes={permission: "*" for permission in PERMISSIONS},
+        permissions=world.place.principal.permissions | PERMISSIONS,
+        permission_scopes={
+            **world.place.principal.permission_scopes,
+            **{permission: "*" for permission in PERMISSIONS},
+        },
     )
     with world.place.uow(principal) as uow:
         clock.set(
@@ -6025,7 +6031,43 @@ def test_contract_sample_computation_evidence_keeps_trace_and_full_schedule(
         sequences = [row["chain_seq"] for row in audit["events"]]
         assert sequences == sorted(set(sequences))
         assert audit["control_totals"]["row_count"] == len(audit["events"])
-        archive = evidence_archive.build((*events.files, *result.files, *decisions.files))
+        content = b"contract,reference\nSF-ORD-10001,SIGNED-001\n"
+        stored = store_file(
+            uow,
+            purpose=FilePurpose.ATTACHMENT,
+            stream=io.BytesIO(content),
+            original_filename="../../contract.csv",
+            media_type="text/csv",
+        )
+        attach_evidence(
+            uow,
+            file_object_id=stored["id"],
+            subject_type="contract",
+            subject_ids=events.selection.contract_ids,
+        )
+        attach_evidence(
+            uow,
+            file_object_id=stored["id"],
+            subject_type="contract_event",
+            subject_ids=events.event_ids[:1],
+        )
+        documents = evidence_sample_documents.collect(
+            uow,
+            events.selection,
+            as_of=request.as_of,
+            event_ids=events.event_ids,
+            approval_request_ids=decisions.approval_request_ids,
+        )
+        assert documents.file_ids.count(stored["id"]) == 1
+        assert len(documents.attachment_ids) >= 2
+        payloads = [
+            file for file in documents.files if file.path == f"documents/{stored['id']}/content"
+        ]
+        assert len(payloads) == 1 and payloads[0].content == content
+        assert ".." not in payloads[0].path
+        archive = evidence_archive.build(
+            (*events.files, *result.files, *decisions.files, *documents.files)
+        )
         evidence_archive.verify(archive.content, expected_manifest_sha256=archive.manifest_sha256)
         before = evidence_sample_computations.collect(uow, events.selection, as_of=date(2025, 1, 1))
         assert not before.version_ids
@@ -6037,3 +6079,11 @@ def test_contract_sample_computation_evidence_keeps_trace_and_full_schedule(
             evidence_sample_computations.collect(uow, events.selection, as_of=request.as_of)
         with pytest.raises(Problem):
             evidence_sample_decisions.collect(uow, events.selection)
+        with pytest.raises(Problem):
+            evidence_sample_documents.collect(
+                uow,
+                events.selection,
+                as_of=request.as_of,
+                event_ids=events.event_ids,
+                approval_request_ids=decisions.approval_request_ids,
+            )
