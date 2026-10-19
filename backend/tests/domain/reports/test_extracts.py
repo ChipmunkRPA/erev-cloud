@@ -267,3 +267,75 @@ def test_latest_extracts_and_retained_sources(
         get(app, f"{REPORT_RUNS}/{rerun.headers['x-erev-report-run-id']}/output", world.maya).json()
         == data
     )
+
+
+def test_subledger_extract_seal_cutoff_and_controls(
+    app: FastAPI, app_settings: Settings, clock: FrozenClock, keyring: KeyRing
+) -> None:
+    from decimal import Decimal
+
+    from erev_api.db.tables import subledger_line, subledger_posting_seal
+    from erev_api.domain.reports.builders.extract_subledger_lines import COLUMNS
+    from sqlalchemy import func
+
+    world = k01_pellworth(app, keyring, clock, LocalFileStore(app_settings.file_root))
+    source = world.place.rows(select(subledger_line).where(subledger_line.c.book_code == "ASC606"))
+    assert source
+    stamp = world.place.scalar(select(func.clock_timestamp()))
+    clock.set(stamp)
+    world = resigned(world)
+    params = {"entity_codes": [AVM_US], "book": "ASC606", "known_at": stamp.isoformat()}
+    original, rows = report_run(world, "extract_subledger_lines", params)
+    assert {r["id"] for r in rows} == {str(r["id"]) for r in source}
+    assert [c.key for c in COLUMNS] == [
+        *[c.name for c in subledger_line.c if c.name != "tenant_id"],
+        "contract_external_id",
+        "period_key",
+        "origin_period_key",
+        "gl_account_code",
+    ]
+    output = get(app, f"{REPORT_RUNS}/{original['id']}/output", world.maya).json()
+    controls = output["control_totals"]
+    assert all(
+        Decimal(group["amount_functional"]) == 0
+        for group in controls["by_entity_book_currency_period"]
+    )
+    assert controls["row_count"] == len(source)
+    assert output["dataset"] == "extract_subledger_lines"
+    first_seal = world.place.scalar(
+        select(func.min(subledger_posting_seal.c.sealed_server_at)).where(
+            subledger_posting_seal.c.book_code == "ASC606"
+        )
+    )
+    _, before = report_run(
+        world,
+        "extract_subledger_lines",
+        {**params, "known_at": (first_seal - timedelta(microseconds=1)).isoformat()},
+    )
+    assert before == []
+    since = min(r["recorded_at"] for r in source)
+    _, incremental = report_run(
+        world,
+        "extract_subledger_lines",
+        {
+            **params,
+            "mode": "INCREMENTAL",
+            "known_since": since.isoformat(),
+        },
+    )
+    assert {r["id"] for r in incremental} == {
+        str(r["id"]) for r in source if r["recorded_at"] > since
+    }
+    csv_run, _ = report_run(world, "extract_subledger_lines", params, output_format="CSV")
+    base = f"{REPORT_RUNS}/{csv_run['id']}/output"
+    content = get(app, base, world.maya).content
+    manifest = get(app, base, world.maya, {"part": "manifest"}).json()
+    assert manifest["sha256"] == hashlib.sha256(content).hexdigest()
+    assert manifest["control_totals"] == controls
+    rerun = post(app, f"{REPORT_RUNS}/{original['id']}/rerun", world.maya, {})
+    assert rerun.status_code == 202, rerun.text
+    assert run_now(world, UUID(rerun.json()["id"]))["state"] == "SUCCEEDED"
+    assert (
+        get(app, f"{REPORT_RUNS}/{rerun.headers['x-erev-report-run-id']}/output", world.maya).json()
+        == output
+    )

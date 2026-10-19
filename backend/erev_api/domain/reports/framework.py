@@ -168,6 +168,7 @@ from erev_api.domain.reports.builders import extract_contract_versions as extrac
 from erev_api.domain.reports.builders import extract_events as extract_events_builder
 from erev_api.domain.reports.builders import extract_obligations as extract_obligations_builder
 from erev_api.domain.reports.builders import extract_schedule_lines as extract_schedule_builder
+from erev_api.domain.reports.builders import extract_subledger_lines as extract_subledger_builder
 from erev_api.domain.reports.builders import intercompany_pairs as intercompany_pairs_builder
 from erev_api.domain.reports.builders import je_population as je_population_builder
 from erev_api.domain.reports.builders import judgement_register as judgement_register_builder
@@ -357,6 +358,7 @@ _DATE: Final = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}$")
 BUILDERS: Final[Mapping[str, Builder]] = MappingProxyType(
     {
         extract_versions_builder.CODE: extract_versions_builder.build,
+        extract_subledger_builder.CODE: extract_subledger_builder.build,
         extract_balances_builder.CODE: extract_balances_builder.build,
         extract_schedule_builder.CODE: extract_schedule_builder.build,
         extract_obligations_builder.CODE: extract_obligations_builder.build,
@@ -572,6 +574,13 @@ SOURCE_CONTRACTS: Final[Mapping[str, SourceContract]] = MappingProxyType(
         extract_versions_builder.CODE: SourceContract(
             RETAINED,
             (_CUTOFF, "version source records and original computation membership"),
+        ),
+        extract_subledger_builder.CODE: SourceContract(
+            RETAINED,
+            (
+                _CUTOFF,
+                "sealed subledger source lines, seal timestamps and contract/period/account labels",
+            ),
         ),
         extract_balances_builder.CODE: SourceContract(
             RETAINED,
@@ -845,6 +854,7 @@ assert set(SOURCE_CONTRACTS) == set(BUILDERS), (
 PARAMETER_DEFAULTS: Final[Mapping[str, Mapping[str, Any]]] = MappingProxyType(
     {
         extract_versions_builder.CODE: MappingProxyType({"mode": "FULL"}),
+        extract_subledger_builder.CODE: MappingProxyType({"mode": "FULL"}),
         extract_balances_builder.CODE: MappingProxyType({"mode": "FULL"}),
         extract_schedule_builder.CODE: MappingProxyType({"mode": "FULL"}),
         extract_obligations_builder.CODE: MappingProxyType({"mode": "FULL"}),
@@ -1356,6 +1366,7 @@ def _resolve(
             extract_obligations_builder.CODE,
             extract_schedule_builder.CODE,
             extract_balances_builder.CODE,
+            extract_subledger_builder.CODE,
         }
         and parameters.get("mode") == "INCREMENTAL"
     ):

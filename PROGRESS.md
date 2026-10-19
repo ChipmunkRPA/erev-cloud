@@ -2,6 +2,18 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Sealed subledger BI extract — October 19, 2026
+
+- Added extract_subledger_lines v1 with explicit business/server recording and server seal
+  cutoffs, entity/book scope, exact decimals and retained contract/period/account labels.
+- Added JSON/CSV metadata and per-currency plus entity/book/currency/period control totals.
+  Registered source retention and reruns; migration 0171 updates disclosed query sources.
+- Actual API checks cover CSV hash, grouped balance, incremental selection, pre-seal exclusion
+  and reproduction. Evidence is in CI-2026-10-19.md. The guide explicitly distinguishes
+  recorded-time incremental output from commit-time change capture.
+- Reporting remains open: 11 missing builders, three of them extracts. Locked datasets,
+  watermark defaults, true-up and live browser acceptance remain unfinished. No deployment.
+
 ## Contract balance BI extract — October 19, 2026
 
 - Added extract_balances v1 over latest per-contract versions, scoped by balance entity.
@@ -244,23 +256,6 @@
 - Seven fan-out database cases and 17 scheduler regressions passed, alongside unit/architecture,
   typing and lint checks. Evidence: docs/release/CI-2026-10-15.md.
 - Aggregation, artifacts, approval resolution and final admission remain open.
-
-## Replay worker lifecycle — October 15, 2026
-
-- Registered REPLAY_VERIFY with frozen group binding, audited RUNNING/RETRYABLE transitions,
-  three-attempt retry policy, required exhaustion cleanup and cancellation hooks.
-- Cancellation fences acceptance; its guard uses a nonblocking job-unit lock to avoid waiting
-  on a worker commit, and refuses cancellation after acceptance. Registry checks also corrected
-  the stale AI_SETTINGS_VERSION phase inventory. CI evidence is in the dated release record.
-- Fan-out, aggregation/artifact publication, approval resolution and admission remain open.
-
-## Frozen replay execution service — October 15, 2026
-
-- Connected source loading, pure replay and atomic result persistence. The engine runs outside
-  database units; committed results are reused before evidence access or re-execution.
-- NO_SOURCE records absence without execution. ERROR evidence stays unaccepted for scheduler
-  retry handling; changed heads are refused at persistence. Verification is in the CI record.
-- Scheduler adapter/state transitions, fan-out, approval resolution and admission remain open.
 
 ## Outstanding release verification
 

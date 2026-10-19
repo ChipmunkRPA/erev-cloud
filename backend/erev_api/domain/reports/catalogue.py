@@ -1902,9 +1902,11 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
         "manifest (REQ-RPT-028).",
         ("mode", "entity_codes", "book", "period_lock_id", "known_at", "known_since"),
         overrides=_EXTRACT_MODE,
-        sources=("subledger_line", "contract", "period", "gl_account"),
+        sources=("subledger_line", "subledger_posting_seal", "contract", "period", "gl_account"),
         joins=(
             "subledger_line.contract_id = contract.id",
+            "subledger_line.subledger_posting_id = subledger_posting_seal.subledger_posting_id "
+            "(same tenant/book)",
             "subledger_line.period_id = period.id",
             "subledger_line.origin_period_id = period.id (origin period)",
             "subledger_line.gl_account_id = gl_account.id",
@@ -1913,7 +1915,8 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             _SCOPE,
             _BOOK,
             "subledger_line.recorded_at at or before the source time",
-            _SOURCE_TIME,
+            "source time is known_at; lock datasets unsupported",
+            "line recorded_server_at and posting sealed_server_at at or before source time",
             _INCREMENTAL,
         ),
     ),

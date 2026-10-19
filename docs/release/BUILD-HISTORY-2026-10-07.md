@@ -6323,3 +6323,20 @@ cleanup in the shared database session kernel was also repaired and regression-t
   propagate; acceptance still rechecks the head and attempt under locks.
 - Handler/fan-out, approval resolution and admission remain unfinished. Verification evidence
   is recorded in docs/release/CI-2026-10-15.md.
+
+## Frozen replay execution service — October 15, 2026
+
+- Connected source loading, pure replay and atomic result persistence. The engine runs outside
+  database units; committed results are reused before evidence access or re-execution.
+- NO_SOURCE records absence without execution. ERROR evidence stays unaccepted for scheduler
+  retry handling; changed heads are refused at persistence. Verification is in the CI record.
+- Scheduler adapter/state transitions, fan-out, approval resolution and admission remain open.
+
+## Replay worker lifecycle — October 15, 2026
+
+- Registered REPLAY_VERIFY with frozen group binding, audited RUNNING/RETRYABLE transitions,
+  three-attempt retry policy, required exhaustion cleanup and cancellation hooks.
+- Cancellation fences acceptance; its guard uses a nonblocking job-unit lock to avoid waiting
+  on a worker commit, and refuses cancellation after acceptance. Registry checks also corrected
+  the stale AI_SETTINGS_VERSION phase inventory. CI evidence is in the dated release record.
+- Fan-out, aggregation/artifact publication, approval resolution and admission remain open.

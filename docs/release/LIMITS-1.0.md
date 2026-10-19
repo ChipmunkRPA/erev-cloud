@@ -1,5 +1,14 @@
 # eRev Cloud 1.0: stated limits of the release
 
+October 19 subledger reporting continuation: `extract_subledger_lines` now exports sealed
+line detail with business/server recording cutoffs, a server seal cutoff, retained labels,
+JSON/CSV output and entity/book/currency/period control totals. Migration 0171 reconciles the
+disclosed query sources. There are now 11 catalogue definitions without builders (also remove
+extract_subledger_lines from earlier lists). Incremental selection is by business recorded_at,
+not commit time; late sealing/commit of older records is not an automatic change feed. Three
+extract builders, locked datasets, watermarks, true-up and live browser acceptance remain open.
+
+
 October 19 balance reporting continuation: `extract_balances` now exports latest per-contract
 balance rows with entity/contract labels, full/incremental source windows and retained-source
 reruns. Contract-liability, contract-asset and unbilled-receivable control totals are grouped

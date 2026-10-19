@@ -271,8 +271,8 @@ Dataset schemas, version 1 (the table ids are those of the data model, `docs/04-
 | `extract_legacy_contract_live` | Legacy history rows over all dates (04 §17.1 rule 1) | The 71 legacy `Contract_Live` columns of 04 §17.2, in legacy order, with the legacy export format rules | `row_count` |
 
 Status at this revision: `extract_events`, `extract_contract_versions`, `extract_obligations`, `extract_schedule_lines`
-and `extract_balances` produce JSON and CSV through the report page and API. The other four
-definitions remain catalogue contracts without builders. Parquet extracts and
+`extract_balances` and `extract_subledger_lines` produce JSON and CSV through the report page
+and API. The other three definitions remain catalogue contracts without builders. Parquet extracts and
 as-locked extract datasets remain unimplemented; supplying a lock is refused, never replaced
 with live data.
 
@@ -382,6 +382,30 @@ incremental mode further requires balance creation after `known_since`. The resu
 snapshot delta, not a deletion feed or a journal movement report. Re-runs preserve original
 balance values and labels through retained source records. CSV and JSON use schema version 1.
 Lock snapshots and automatic previous-run watermarks remain unavailable.
+
+
+#### Subledger line extract
+
+`extract_subledger_lines` exports sealed subledger detail for the selected entities and book.
+A line must have business `recorded_at`, database `recorded_server_at`, and its posting's
+`sealed_server_at` all at or before the source instant. An incomplete posting is never included.
+Incremental mode additionally requires `recorded_at > known_since`. This is a recorded-time
+extract, not a transaction-commit change feed: a late seal or commit for an older recorded time
+may require a full refresh/reconciliation. Commit-time history remains a separate limitation.
+
+Dataset v1 exports T-SL-04 columns in table order except `tenant_id`, then
+`contract_external_id`, `period_key`, nullable `origin_period_key` and `gl_account_code`.
+Amounts and FX rates are exact decimal strings; date columns use ISO dates; recording and
+creation timestamps use UTC ISO timestamps; flags are booleans; entry numbers are integers;
+`dimensions` is canonical JSON with registered contact fields redacted. Other columns are
+strings or null as permitted by the source. Row identity contains partition date and line ID.
+
+Control totals include `row_count`, functional-currency sums in `by_currency`, and
+`by_entity_book_currency_period`, listing each entity/book/functional-currency/period total.
+Complete balanced populations sum to zero in each group. Totals reflect the selected rows;
+they are not silently forced to zero. Contract, account and period labels and the seal timestamp
+are retained with the source records for reproducible reruns. CSV manifests hash the delivered
+bytes. Locked extract datasets and automatic previous-run watermarks remain unavailable.
 
 
 ### Evidence packs
