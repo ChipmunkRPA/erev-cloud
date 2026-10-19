@@ -1207,7 +1207,7 @@ TABLES: Final[tuple[TableClassification, ...]] = (
             R01: _cols(
                 "tenant_id id engine_release_id source_engine_release_id effective_level status "
                 "accepted_attempt_id enabled_at created_at created_by created_by_kind "
-                "updated_at updated_by updated_by_kind row_version"
+                "updated_at updated_by updated_by_kind row_version processing_seed"
             ),
         },
     ),

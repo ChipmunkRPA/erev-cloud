@@ -536,7 +536,7 @@ _VERIFICATION_DRAFTS = {
         "vel IN ('PATCH','MINOR','MAJOR','BASELINE','BOOTSTRAP'))`, C); `s"
         "tatus` E-126 (`PENDING`, `RUNNING`, `INCOMPLETE`, `PASSED`, `FAIL"
         "ED`, `PENDING_APPROVAL`, `APPROVED`, `REJECTED`); `accepted_attem"
-        "pt_id` Y; `enabled_at` Y; SC-C, SC-M.\n",
+        "pt_id` Y; `enabled_at` Y; `processing_seed` jsonb Y; SC-C, SC-M.\n",
     ),
     "release_validation_attempt": (
         "T-PLT-44",

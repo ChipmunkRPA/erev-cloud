@@ -6199,3 +6199,12 @@ cleanup in the shared database session kernel was also repaired and regression-t
   and independent-group progress. Final results are recorded in docs/release/CI-2026-10-15.md.
 - Replay fan-out must supply verify:<group id>; persisted verification and its transactional
   advisory lock remain outstanding. No replay handler is newly registered by this change.
+
+## Verification write transaction safeguards — October 15, 2026
+
+- Recording an ERROR preserves the group's nonterminal state so aggregation waits for retry
+  or exhaustion. Only an accepted non-error result marks the group COMPLETE.
+- A PostgreSQL adapter now implements the execution-lock port in the writer's existing
+  transaction. The lock lasts through commit/rollback, beyond the Python acquire block.
+- Verification results are recorded in docs/release/CI-2026-10-15.md. The database store and
+  replay handler remain outstanding; the adapter is not yet wired to a production write path.

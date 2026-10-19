@@ -153,7 +153,8 @@ TRANSITIONS: Final[Mapping[str, TableTransitions]] = MappingProxyType(
         "release_validation": TableTransitions(
             table="release_validation",
             status_column="status",
-            updatable_columns=frozenset(["accepted_attempt_id", "enabled_at"]) | _SC_M,
+            updatable_columns=frozenset(["accepted_attempt_id", "enabled_at", "processing_seed"])
+            | _SC_M,
             pairs=frozenset(
                 [
                     ("PENDING", "RUNNING"),
@@ -166,7 +167,7 @@ TRANSITIONS: Final[Mapping[str, TableTransitions]] = MappingProxyType(
                     ("PENDING_APPROVAL", "REJECTED"),
                 ]
             ),
-            set_once=frozenset(["accepted_attempt_id", "enabled_at"]),
+            set_once=frozenset(["accepted_attempt_id", "enabled_at", "processing_seed"]),
         ),
         "release_validation_attempt": TableTransitions(
             table="release_validation_attempt",

@@ -31,6 +31,7 @@ release_validation: Final = sa.Table(
         nullable=False,
     ),
     sa.Column("accepted_attempt_id", sa.Uuid(), nullable=True),
+    sa.Column("processing_seed", JSONB(none_as_null=True), nullable=True),
     sa.Column("enabled_at", sa.DateTime(timezone=True), nullable=True),
     *_sc_c(),
     *_sc_m(),

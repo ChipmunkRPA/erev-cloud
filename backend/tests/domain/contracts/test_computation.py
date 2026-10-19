@@ -2940,6 +2940,51 @@ def test_validation_fanout_runs_frozen_match_and_no_source(
             expected_status="RUNNING",
             set_values={"accepted_attempt_id": frozen.id, "enabled_at": uow.now},
         )
+        from erev_api.db.tables import book
+        from erev_api.domain.contracts.processing_seed import seed
+
+        seed_probe = uow.session.begin_nested()
+        enabled_books = set(uow.session.scalars(select(book.c.code).where(book.c.is_enabled)))
+        assert seed(uow, validation_id=validation_id) == len(enabled_books)
+        seeded = list(uow.session.execute(select(release_group_processing)).mappings())
+        assert {item["book_code"] for item in seeded} == enabled_books
+        assert len({item["combination_group_id"] for item in seeded}) == 1
+        assert len({item["entity_id"] for item in seeded}) == 1
+        assert all(item["upgrade_state"] == "PENDING" and item["seq"] == 1 for item in seeded)
+        manifest = uow.session.scalar(
+            select(release_validation.c.processing_seed).where(
+                release_validation.c.id == validation_id
+            )
+        )
+        audit_count = len(uow.audit_events)
+        with pytest.raises(DBAPIError), uow.session.begin_nested():
+            uow.session.execute(
+                update(release_validation)
+                .where(release_validation.c.id == validation_id)
+                .values(processing_seed={"version": 1, "count": 999})
+            )
+        # A later group cannot be silently added by a retry after acceptance.
+        insert_contract_rows(uow.session, world.place.tenant_id)
+        assert seed(uow, validation_id=validation_id) == len(seeded)
+        assert len(uow.audit_events) == audit_count
+        assert (
+            uow.session.scalar(
+                select(release_validation.c.processing_seed).where(
+                    release_validation.c.id == validation_id
+                )
+            )
+            == manifest
+        )
+        seed_probe.rollback()
+        assert (
+            uow.session.scalar(
+                select(release_validation.c.processing_seed).where(
+                    release_validation.c.id == validation_id
+                )
+            )
+            is None
+        )
+        assert uow.session.scalar(select(func.count()).select_from(release_group_processing)) == 0
         uow.session.execute(insert(release_group_processing).values(**row))
         with pytest.raises(DBAPIError), uow.session.begin_nested():
             uow.session.execute(insert(release_group_processing).values(**{**row, "id": new_id()}))
@@ -2949,6 +2994,9 @@ def test_validation_fanout_runs_frozen_match_and_no_source(
                 .where(release_group_processing.c.id == row["id"])
                 .values(reason="rewritten")
             )
+        with pytest.raises(Problem) as unmanifested:
+            seed(uow, validation_id=validation_id)
+        assert unmanifested.value.slug == "validation-failed"
         source_computation = uow.session.scalar(
             select(combination_group.c.head_computation_id).where(
                 combination_group.c.id == booked.combination_group["id"]
@@ -3897,3 +3945,103 @@ def test_validation_population_fence_is_tenant_scoped(world: World, keyring: Key
             writer.commit()
         with world.place.uow(system_principal(other)) as other_acceptance:
             hold(other_acceptance)
+
+
+@pytest.mark.parametrize("group_count", [0, 21])
+def test_processing_seed_includes_unsampled_groups(world: World, group_count: int) -> None:
+    from erev_api.controls.release import current_release
+    from erev_api.db.tables import (
+        book,
+        combination_group_member,
+        job,
+        release_group_processing,
+        release_validation_group,
+    )
+    from erev_api.db.transitions import apply
+    from erev_api.domain.contracts.processing_seed import seed
+    from erev_api.domain.contracts.validation_artifacts import retain
+    from erev_api.domain.contracts.validation_attempts import freeze
+    from erev_api.domain.contracts.validation_fanout import enqueue
+    from erev_api.jobs.context import JobRuntime
+    from erev_api.jobs.registry import run_job
+    from sqlalchemy import text
+    from support.rows import (
+        combination_group_member_values,
+        contract_event_values,
+        insert_contract_rows,
+    )
+
+    with world.place.uow() as uow:
+        groups = set()
+        for _ in range(group_count):
+            rows = insert_contract_rows(uow.session, world.place.tenant_id, head_stream_version=1)
+            event = contract_event_values(
+                world.place.tenant_id,
+                contract_id=rows.contract_id,
+                contracting_entity_id=rows.entity_id,
+                stream_version=1,
+                effective_date=date(2025, 1, 1),
+            )
+            uow.session.execute(insert(contract_event).values(**event))
+            uow.session.execute(
+                insert(combination_group_member).values(
+                    **combination_group_member_values(
+                        world.place.tenant_id,
+                        combination_group_id=rows.group_id,
+                        contract_id=rows.contract_id,
+                        join_event_id=event["id"],
+                    )
+                )
+            )
+            groups.add(rows.group_id)
+        uow.commit()
+    validation_id = pending_validation(world)
+    with world.place.uow() as uow:
+        frozen = freeze(uow, validation_id=validation_id, attempt_no=1)
+        fanout = enqueue(uow, validation_id=validation_id, attempt_id=frozen.id)
+        assert len(fanout.job_ids) == min(group_count, 20)
+        runtime = JobRuntime(
+            clock=uow.clock, keyring=uow.keyring, files=uow.files, engine_release=current_release()
+        )
+        uow.commit()
+    for job_id in fanout.job_ids:
+        with world.place.uow() as uow:
+            task_id = uow.session.scalar(
+                select(job.c.procrastinate_job_id).where(job.c.id == job_id)
+            )
+            uow.session.execute(
+                text("UPDATE procrastinate_jobs SET status = 'doing' WHERE id = :id"),
+                {"id": task_id},
+            )
+            uow.commit()
+        run_job(
+            job_id, world.place.tenant_id, attempt=1, runtime=runtime, delivered_task_id=task_id
+        )
+    with world.place.uow() as uow:
+        retain(uow, validation_id=validation_id, attempt_id=frozen.id)
+        with pytest.raises(Problem) as premature:
+            seed(uow, validation_id=validation_id)
+        assert premature.value.slug == "invalid-transition"
+        # This tests the seed boundary after acceptance, not the unfinished acceptance command.
+        apply(
+            uow.session,
+            "release_validation",
+            validation_id,
+            to_status="PASSED",
+            expected_status="RUNNING",
+            set_values={"accepted_attempt_id": frozen.id, "enabled_at": uow.now},
+        )
+        books = set(uow.session.scalars(select(book.c.code).where(book.c.is_enabled)))
+        assert seed(uow, validation_id=validation_id) == len(groups) * len(books)
+        seeded_groups = set(
+            uow.session.scalars(select(release_group_processing.c.combination_group_id))
+        )
+        selected_groups = set(
+            uow.session.scalars(select(release_validation_group.c.combination_group_id))
+        )
+        assert seeded_groups == groups
+        assert len(seeded_groups - selected_groups) == max(0, group_count - 20)
+        uow.commit()
+    with world.place.uow() as uow:
+        assert seed(uow, validation_id=validation_id) == len(groups) * len(books)
+        assert not uow.audit_events

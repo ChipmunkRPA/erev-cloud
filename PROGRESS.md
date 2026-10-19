@@ -2,6 +2,17 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Atomic upgrade processing queue seed — October 19, 2026
+
+- Added seeding of every current group/entity/enabled-book portion after an accepted upgrade,
+  under the tenant population fence. It checks the accepted attempt's population before the
+  first write and commits initial PENDING events with a write-once count/digest manifest.
+- Retries verify retained initial rows without drawing today's population; partial rows without
+  a manifest are refused. Migration 0167 seals the initial queue against later additions.
+- Database checks cover unsampled groups, empty populations, rollback, manifest immutability,
+  retries after activity and migration round-trip. Final acceptance and approval/admission
+  integration remain unfinished; callers must accept and seed in the same transaction.
+
 ## Upgrade processing event schema — October 19, 2026
 
 - Migration 0166 adds the tenant-isolated, append-only release_group_processing event log
@@ -261,15 +272,6 @@
   preserve coverage of their former prose/hybrid declarations. Populated downgrade is refused.
 - Verification evidence is in docs/release/CI-2026-10-15.md. Fan-out/handler,
   validation dataset publication and release admission remain unfinished; schema is not enablement.
-
-## Verification write transaction safeguards — October 15, 2026
-
-- Recording an ERROR preserves the group's nonterminal state so aggregation waits for retry
-  or exhaustion. Only an accepted non-error result marks the group COMPLETE.
-- A PostgreSQL adapter now implements the execution-lock port in the writer's existing
-  transaction. The lock lasts through commit/rollback, beyond the Python acquire block.
-- Verification results are recorded in docs/release/CI-2026-10-15.md. The database store and
-  replay handler remain outstanding; the adapter is not yet wired to a production write path.
 
 ## Outstanding release verification
 

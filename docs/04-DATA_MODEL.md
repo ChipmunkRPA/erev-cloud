@@ -2340,12 +2340,13 @@ Rules (rev 1.2):
 | `effective_level` | text | N | | |
 | `status` | erev.release_validation_status | N | | |
 | `accepted_attempt_id` | uuid | Y | | |
+| `processing_seed` | jsonb | Y | | Write-once initial portion count/digest, revision 0167 |
 | `enabled_at` | timestamptz | Y | | |
 | SC-C, SC-M | | | | Standard stamps |
 
 Keys: `PRIMARY KEY (tenant_id, id)`.
 
-Specification detail: Columns (draft §4b verbatim): SC-T; `engine_release_id` N; `source_engine_release_id` Y; `effective_level` N (`CHECK (effective_level IN ('PATCH','MINOR','MAJOR','BASELINE','BOOTSTRAP'))`, C); `status` E-126 (`PENDING`, `RUNNING`, `INCOMPLETE`, `PASSED`, `FAILED`, `PENDING_APPROVAL`, `APPROVED`, `REJECTED`); `accepted_attempt_id` Y; `enabled_at` Y; SC-C, SC-M.
+Specification detail: Columns (draft §4b verbatim): SC-T; `engine_release_id` N; `source_engine_release_id` Y; `effective_level` N (`CHECK (effective_level IN ('PATCH','MINOR','MAJOR','BASELINE','BOOTSTRAP'))`, C); `status` E-126 (`PENDING`, `RUNNING`, `INCOMPLETE`, `PASSED`, `FAILED`, `PENDING_APPROVAL`, `APPROVED`, `REJECTED`); `accepted_attempt_id` Y; `enabled_at` Y; `processing_seed` jsonb Y (write-once initial queue manifest, revision 0167); SC-C, SC-M.
 
 Keys and transitions (DB-03): `ux_release_validation__release (tenant_id, engine_release_id)`; created with `ON CONFLICT DO NOTHING` by whichever process stamps first (S05); transitions under `SELECT … FOR UPDATE`; `enabled_at` set only in the same statement as →`PASSED` or →`APPROVED`. `release_enabled(tenant, release) := EXISTS T-PLT-43 WHERE enabled_at IS NOT NULL` is enforced at one choke point, `computation.persist()` (`release-validation-pending`, 503); PATCH rows are `PASSED` at creation; `BOOTSTRAP` only for a tenant proven to have no `SUCCEEDED` `contract_computation` and no `ENGINE_COMPUTE` `subledger_posting` (recorded `population.bootstrap = {computations: 0, postings: 0}`); a non-empty tenant without a predecessor needs the `BASELINE` row written by the preparation artifact. Rev 1.14 (D-96 v4, C/E): the preparation artifact is stamped as its own `engine_release` row (same `engine_version`, new `build_sha`) and the `BASELINE` row names that row as `engine_release_id` (with `source_engine_release_id` = the historical build's row), because the gate is per process release — enabling only the historical build id would block the artifact's own recomputations; T-PLT-46 seeding and T-SL-11 attribution happen only for `effective_level IN ('MINOR','MAJOR')` rows with `accepted_attempt_id` set — `PATCH`, `BASELINE` and `BOOTSTRAP` rows seed nothing and produce no attribution.
 
@@ -2447,6 +2448,15 @@ portions cannot receive more events. Computations and posting IDs must belong to
 release and posting portion. Outcome checks distinguish pending, deferred, posted and verified
 no-posting records. Downgrade refuses a nonempty event log. Runtime seeding, conservative-origin
 calculation, posting attribution and admission integration remain unfinished.
+
+Revision 0167 adds `release_validation.processing_seed`, a write-once manifest containing
+version, accepted attempt, initial portion count and canonical key digest. `processing_seed.seed`
+requires an enabled accepted upgrade, takes the population fence, rechecks the frozen
+population and inserts every current group/entity/enabled-book portion before sealing the
+manifest. Retries validate the original initial events; they do not enumerate new portions.
+The database refuses new initial rows after sealing. Final acceptance must call seeding in
+the same transaction; the final acceptance command and computation/admission integration
+remain unfinished.
 
 ### T-PLT-47 `registry_parameter_correction`
 
