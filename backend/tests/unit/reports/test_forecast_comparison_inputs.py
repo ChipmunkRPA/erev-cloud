@@ -25,6 +25,7 @@ def test_rebuild_recalculates_facts_and_rejects_changed_binding_scope():
         "book_code": "ASC606",
         "currency_view": "transaction",
         "actuals_cutoff": "2026-10-19T00:00:00+00:00",
+        "last_refreshed_at": "2026-10-19T01:00:00Z",
         "horizon_periods": ["P10"],
         "selection": selection,
         "forecast_rows": [row],
@@ -41,6 +42,8 @@ def test_rebuild_recalculates_facts_and_rejects_changed_binding_scope():
         known_at=datetime(2026, 10, 20, tzinfo=UTC),
     )
     data = rebuild(facts, **args)
+    assert data.control_totals["last_refreshed_at"] == facts["last_refreshed_at"]
+    assert data.control_totals["forecast_run_id"] == facts["forecast_run_id"]
     assert data.rows[0]["variance"]["amount"] == "-20.00"
     assert data.rows[0]["variance_percent"] == "-20.00"
     with pytest.raises(Problem):

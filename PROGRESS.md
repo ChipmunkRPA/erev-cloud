@@ -2,6 +2,14 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Comparison report presentation — October 19, 2026
+
+- Saved and rebuilt comparison controls now retain forecast ID, refresh time, book and currency
+  basis. The viewer shows actuals cutoff, refresh time, variance definitions and a specific
+  empty-actuals message; columns use the saved report's labels and order.
+- Six focused calculation/rebuild checks, TypeScript and lint pass. Populated accounting
+  acceptance remains open. Contract sample and period evidence packs remain development gaps.
+
 ## Actual-vs-forecast selection and report screen flow — October 19, 2026
 
 - Added the SF-17 comparison form: saved forecast (including earlier refreshes), contract/category

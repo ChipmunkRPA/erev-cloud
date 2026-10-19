@@ -1,7 +1,7 @@
 """Assemble an actual-vs-forecast dataset from immutable, authorized source captures."""
 
 import json
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from typing import Any, Literal
@@ -80,7 +80,7 @@ def read(
             }
         )
     )
-    return Comparison(data, evidence)
+    return Comparison(_provenance(data, evidence), evidence)
 
 
 def rebuild(
@@ -126,7 +126,7 @@ def rebuild(
                     )
                 )
             populations.append(population)
-        return compare(
+        data = compare(
             populations[0],
             populations[1],
             horizon=horizon,
@@ -136,7 +136,22 @@ def rebuild(
             from_period_key=selection["from_period_key"],
             to_period_key=selection["to_period_key"],
         )
+        return _provenance(data, facts)
     except (KeyError, TypeError, ValueError, InvalidOperation) as error:
         raise Problem(
             "validation-failed", "The forecast comparison source binding is invalid."
         ) from error
+
+
+def _provenance(data: ReportData, facts: dict[str, Any]) -> ReportData:
+    """Keep the displayed comparison basis identical on live and retained-fact builds."""
+    return replace(
+        data,
+        control_totals={
+            **data.control_totals,
+            "forecast_run_id": facts["forecast_run_id"],
+            "last_refreshed_at": facts.get("last_refreshed_at"),
+            "book_code": facts["book_code"],
+            "currency_view": facts["currency_view"],
+        },
+    )

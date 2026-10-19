@@ -11602,6 +11602,8 @@ Author BS-3. Uses DIN, SNP and RPS (PHASES §1 row 18). Indicative size 12 items
     task progress/cancellation and completed-report links. The comparison-choice endpoint pages
     only authorized succeeded runs in the successful lineage, binding cursors to the snapshot.
     JSON/XLSX/CSV/PDF jobs and same-source rebuilding pass for the empty-actuals journey.
+    The viewer shows actuals cutoff, retained refresh time, variance definitions and empty-actuals
+    guidance, with saved column labels/order. Rebuilds preserve the displayed provenance.
     Populated production-posting accounting acceptance remains open.
   - **Prerequisites:** FCS-3
   - **Scope:**

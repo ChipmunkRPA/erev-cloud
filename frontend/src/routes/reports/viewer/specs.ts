@@ -726,7 +726,7 @@ function headerOf(key: string, context: ColumnContext): string {
   if (context.definition.code === "parallel_run_comparison") {
     return t(`reports.column.parallel.${key}`);
   }
-  if (context.definition.code === "engine_trueup_register") {
+  if (["engine_trueup_register", "actual_vs_forecast"].includes(context.definition.code)) {
     return context.columns?.find(column => column.key === key)?.header ?? key;
   }
   if (context.definition.code === "variance_between_closes") {
@@ -796,7 +796,7 @@ function orderedKeys(
     return ["measure_label", "scope", "currency", "earlier_value", "later_value", "change", "driver_label"]
       .filter(key => keys.includes(key));
   }
-  if (definition.kind === "LEGACY_EXPORT" || definition.code === "engine_trueup_register") {
+  if (definition.kind === "LEGACY_EXPORT" || ["engine_trueup_register", "actual_vs_forecast"].includes(definition.code)) {
     // The keys in `columns[].key` order; `row_key` and `section` stay hidden (STRUCTURAL), and a row field
     // that names no column keeps its row order after them.
     const listed = (columns ?? [])

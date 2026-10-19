@@ -45,7 +45,7 @@ import {
   periodsKey,
   STRUCTURE_READ_PERMISSION,
 } from "../../lib/api/queries/tenant";
-import { formatDate, formatNumber } from "../../lib/format";
+import { formatDate, formatNumber, formatTimestamp } from "../../lib/format";
 import { t } from "../../lib/i18n/t";
 import { withParams } from "../../lib/url/params";
 import { AsLockedBanner, LOCKED_STATES } from "./viewer/AsLockedBanner";
@@ -213,6 +213,11 @@ function emptyCopy(definition: ReportDefinition, run: ReportRun, context: Report
     return typeof value === "string" ? value : null;
   };
   switch (definition.code) {
+    case "actual_vs_forecast":
+      return {
+        title: t("reports.comparison.noActuals"),
+        description: t("reports.comparison.refreshActuals"),
+      };
     case "revenue_waterfall": {
       const from = parameter("from_period_key");
       const to = parameter("to_period_key");
@@ -713,7 +718,12 @@ function ReportBody({ definition, access }: ReportBodyProps) {
             </div>
           }
         />
-        <div className="px-[var(--gutter)] pb-[var(--panel-pad)]">{body}</div>
+        <div className="px-[var(--gutter)] pb-[var(--panel-pad)]">
+          {succeeded && data !== undefined && definition.code === "actual_vs_forecast" ? (
+            <ComparisonBasis run={data} />
+          ) : null}
+          {body}
+        </div>
       </div>
       {cellRequest === null ? null : (
         <CellContributors
@@ -785,6 +795,25 @@ function IpeDocumentation({ definition }: { readonly definition: ReportDefinitio
       <Button variant="secondary" onClick={download}>
         {t("reports.report.downloadDefinition")}
       </Button>
+    </div>
+  );
+}
+
+function ComparisonBasis({ run }: { readonly run: ReportRun }) {
+  const controls = run.control_totals ?? {};
+  const instant = (key: string) => {
+    const value = controls[key];
+    if (typeof value !== "string") return "—";
+    return formatTimestamp(value.replace(/\+00:00$/, "Z"));
+  };
+  return (
+    <div
+      className="mb-4 flex flex-col gap-1 text-body-sm"
+      aria-label={t("reports.comparison.basisTitle")}
+    >
+      <p>{t("reports.comparison.actualsCutoff", { instant: instant("actuals_known_at") })}</p>
+      <p>{t("reports.comparison.lastRefresh", { instant: instant("last_refreshed_at") })}</p>
+      <p>{t("reports.comparison.varianceBasis")}</p>
     </div>
   );
 }
