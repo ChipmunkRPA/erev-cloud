@@ -2,6 +2,19 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Disclosure snapshot viewer — October 19, 2026
+
+- Disclosure report pages now expose a saved-snapshot panel: lazy paginated metadata,
+  seven named kinds, explicit draft/locked classification, entity/book/period and individual
+  verified detail reads. Expanded records show cutoff, reporting basis, snapshot ID and digest;
+  verification failures offer retry without claiming successful validation.
+- Retained suppressed source amounts are not rendered in this panel. Original disclosure
+  tables continue to apply their elections. No new export permission or raw-data download.
+- Three focused component checks cover lazy loading, failure/retry and retained-input hiding;
+  TypeScript and targeted ESLint checked. Full browser acceptance remains open.
+- This is a per-report viewer, not a cross-report snapshot register. Lock approval persistence
+  and as-locked execution still remain open; no deployment or readiness claim.
+
 ## Read-only lock disclosure capture — October 19, 2026
 
 - Added disclosure_freeze.capture over the existing SnapshotScope and one read-only SYSTEM
@@ -208,23 +221,6 @@
   assemble all seven sections, parent worker scheduling/publication, PDF and viewer. Policy test
   cutoff uses DB observation time separately from the child-run fixture; full pack acceptance
   is not implied. Five catalogue builders remain unregistered.
-
-## Verified disclosure child results — October 19, 2026
-
-- Added disclosure_results.collect: authorize/resolve attached children, return pending IDs
-  without partial sections, refuse failed children, then verify the complete finished population.
-  Reads original child JSON files under readable-file locks with bounded aggregate input size.
-- Validates purpose/media type/size/file digest and run output hash, canonical report envelope,
-  parameter binding, row count, control totals and tie-outs. Restores date/timestamp cells to typed
-  ReportData; rejects duplicate row keys and envelopes that do not round-trip canonically.
-- Real database journey now executes all 16 child report jobs and collects their verified outputs,
-  after first observing pending children. This fixture has no booked accounting population; it
-  validates task/output integration, not populated disclosure accounting acceptance. Three focused
-  plan/decoder checks pass; Ruff and new-module Mypy pass.
-- Remaining: registered parent worker/dependency scheduling, seven-section assembly, frozen
-  disclosures, practical expedients, PDF and viewer. Five catalogue builders remain unregistered;
-  no disclosure_pack completion or production-readiness claim.
-
 ## Outstanding release verification
 
 These checks need current release-candidate evidence. Historical October 3 results

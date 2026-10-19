@@ -6,6 +6,7 @@ import { Button } from "../../../components/ui/Button";
 import { queryKey } from "../../../lib/api/query-keys";
 import { fetchDisclosureSections, fetchReportRows, type DisclosureTable, type ReportRow } from "../../../lib/api/queries/reports";
 import { t } from "../../../lib/i18n/t";
+import { DisclosureSnapshots } from "./DisclosureSnapshots";
 import { ReportGrid } from "./ReportGrid";
 import { isMoney, type ReportColumn } from "./specs";
 
@@ -62,6 +63,7 @@ export function DisclosurePack({ runId }: { runId: string }) {
   if (sections.data === undefined) return <p role="status">{t("reports.disclosure.loading")}</p>;
   return <div className="flex flex-col gap-6">
     <p className="text-body-sm text-fg-2">{t("reports.disclosure.draft")}</p>
+    <DisclosureSnapshots runId={runId} />
     {sections.data.map(section => <section key={section.number} className="flex flex-col gap-2">
       <h2 className="text-heading-sm">{section.number}. {section.title}</h2>
       {section.interim_required && <p className="text-body-sm text-fg-2">{t("reports.disclosure.interim")}</p>}

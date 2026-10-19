@@ -360,6 +360,13 @@ child reports. Suppressed disclosure amounts remain outside the exported section
 
 #### Disclosure snapshot evidence
 
+In a completed disclosure report, expand **Saved disclosure snapshots** to see its saved
+records by disclosure kind. Each record identifies its draft or locked source and its
+entity, book and period. Expand an individual record to ask the server to verify its saved
+content; the result shows its cutoff, reporting basis, ID and SHA-256. A failure offers Retry
+and does not indicate successful verification. This panel does not display the original
+suppressed source amounts. A draft remains draft evidence even after the period is closed.
+
 `GET /api/v1/disclosure-snapshots` lists retained snapshot metadata. Filter with `entity`,
 `book`, `period`, `disclosure_kind` or `report_run_id`; use ordinary `limit`, `cursor` and
 `count` pagination. `GET /api/v1/disclosure-snapshots/{id}` returns the verified snapshot

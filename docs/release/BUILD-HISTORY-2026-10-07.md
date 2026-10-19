@@ -7157,3 +7157,20 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - This helper is not yet wired to a registered parent builder/worker. Parent dependency waiting,
   child output verification and assembly, frozen snapshots, expedients, PDF and viewer remain open.
   Five catalogue builders remain unregistered; this does not complete RPS-15.
+
+
+## Verified disclosure child results — October 19, 2026
+
+- Added disclosure_results.collect: authorize/resolve attached children, return pending IDs
+  without partial sections, refuse failed children, then verify the complete finished population.
+  Reads original child JSON files under readable-file locks with bounded aggregate input size.
+- Validates purpose/media type/size/file digest and run output hash, canonical report envelope,
+  parameter binding, row count, control totals and tie-outs. Restores date/timestamp cells to typed
+  ReportData; rejects duplicate row keys and envelopes that do not round-trip canonically.
+- Real database journey now executes all 16 child report jobs and collects their verified outputs,
+  after first observing pending children. This fixture has no booked accounting population; it
+  validates task/output integration, not populated disclosure accounting acceptance. Three focused
+  plan/decoder checks pass; Ruff and new-module Mypy pass.
+- Remaining: registered parent worker/dependency scheduling, seven-section assembly, frozen
+  disclosures, practical expedients, PDF and viewer. Five catalogue builders remain unregistered;
+  no disclosure_pack completion or production-readiness claim.
