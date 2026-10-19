@@ -1,5 +1,18 @@
 # eRev Cloud 1.0: stated limits of the release
 
+October 19 reporting continuation: `extract_events` now has a scoped v1 builder, full and
+incremental windows, retained-source reruns, JSON/CSV output, CSV manifests and page controls.
+There are 16 catalogue definitions still without builders: actual_vs_forecast,
+bookings_billings_revenue, contract_sample_pack, disclosure_pack, extract_balances,
+extract_contract_versions, extract_contracts, extract_journal_lines,
+extract_legacy_contract_live, extract_obligations, extract_schedule_lines,
+extract_subledger_lines, forecast_outputs, parallel_run_comparison, period_evidence_pack,
+variance_between_closes. This count does not include remaining work inside registered reports.
+Extract lock snapshots and automatic previous-run watermark selection remain open. The event
+extract uses recorded timestamps; it does not resolve the separate historical commit-visibility
+gap. Live browser acceptance remains open. The upgrade true-up register is also unfinished.
+
+
 October 19 upgrade continuation: accepted upgrade computations now persist attribution and
 portion outcomes atomically with their postings, with retained-input integrity checks and
 idempotent replay. Final acceptance and independent approval now have domain commands and existing approval

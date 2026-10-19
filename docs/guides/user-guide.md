@@ -270,7 +270,36 @@ Dataset schemas, version 1 (the table ids are those of the data model, `docs/04-
 | `extract_events` | Contract events recorded at or before the source time (T-CON-05) | Every column except `tenant_id`; `payload` as canonical JSON | `row_count` |
 | `extract_legacy_contract_live` | Legacy history rows over all dates (04 §17.1 rule 1) | The 71 legacy `Contract_Live` columns of 04 §17.2, in legacy order, with the legacy export format rules | `row_count` |
 
-Status at this revision: the nine definitions are in the report catalogue (`GET /api/v1/report-definitions`), but no builder is registered for them, so a run of an extract does not produce output yet; the schemas above are the contract the builders will meet. Parquet extracts are a later release.
+Status at this revision: `extract_events` produces JSON and CSV through the report page and API.
+The other eight definitions remain catalogue contracts without builders. Parquet extracts and
+as-locked extract datasets remain unimplemented; supplying a lock is refused, never replaced
+with live data.
+
+For **Extract: events**, choose Full as of source time or Changes known since in the report
+page. Enter an explicit UTC timestamp such as `2026-09-01T00:00:00Z` for an incremental start.
+The start must precede the source time; events exactly at the start are excluded and events
+exactly at the source time are included. The API defaults to FULL and freezes `known_at` when
+the run is created, so later worker execution does not advance the watermark. The application
+does not yet fill the incremental start from a previous run automatically.
+
+Event dataset v1 types:
+
+| Fields | Type |
+|---|---|
+| `id`, `contract_id`, `contracting_entity_id`, `supersedes_event_id`, `approval_request_id`, `modification_id`, `estimate_version_id`, `manual_adjustment_id`, `import_upload_id`, `source_record_id`, `sync_run_id`, `created_by` | UUID string, nullable where the source permits |
+| `stream_version`, `schema_version`, `record_seq` | Integer |
+| `effective_date` | ISO date |
+| `recorded_at`, `created_at` | UTC ISO timestamp |
+| `is_manual` | Boolean |
+| `event_type`, `origin`, `payload_sha256`, `idempotency_key`, `request_id`, `created_by_kind` | String, nullable where the source permits |
+| `obligation_ids`, `payload` | Canonical JSON string |
+
+Rows retain table column order and sort by recorded time, record sequence and event ID.
+Control total `row_count` counts exported events. Registered contact fields are redacted
+recursively before source retention and export. `payload_sha256` remains the original event's
+stored digest; it is not a hash of the redacted payload. The CSV manifest's `sha256` hashes the
+actual delivered CSV bytes. CSV formula protection applies to text fields. Re-running a saved
+report rebuilds from its retained redacted source records and rechecks current report access.
 
 ### Evidence packs
 

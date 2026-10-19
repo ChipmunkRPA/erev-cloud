@@ -2,6 +2,18 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Event BI extract and reporting backlog — October 19, 2026
+
+- Registered extract_events with fixed schema v1, explicit entity scope, inclusive source cutoff,
+  exclusive incremental start, contact redaction and retained-input rebuilds. Added JSON/CSV
+  metadata and CSV byte-hash manifests; source time stays fixed across worker execution.
+- Added report-page full/incremental controls and documented field types and operating limits.
+  Actual API/worker delivery, incremental validation and rerun passed; existing viewer checks
+  and focused Python/frontend typing passed. Evidence is in CI-2026-10-19.md.
+- Reporting remains a development priority: 16 catalogue definitions still lack builders.
+  Extract lock snapshots, previous-run watermark defaults and true-up register remain open.
+  No deployment; no claim of reporting or production-readiness completion.
+
 ## Tenant release creation and resumable API — October 19, 2026
 
 - Added authoritative tenant validation creation: empty tenants bootstrap; historical tenants
@@ -250,17 +262,6 @@
   the data model. Exact migration, attempt and schema evidence is in docs/release/CI-2026-10-15.md.
 - Supersession/start orchestration, replay fan-out/handler, dataset publication and admission
   remain outstanding. This setting does not enable a release or deploy anything.
-
-## Frozen validation-attempt persistence — October 15, 2026
-
-- A parent-locked writer saves attempt metadata and selected group/head rows atomically before
-  any job dispatch. Retrying the same attempt preserves its seed and selection, including
-  NO_SOURCE. A new attempt requires the predecessor to be superseded explicitly.
-- The writer records a tenant-level freeze audit event and refuses partial entity scopes,
-  cross-tenant lookups, seed changes, skipped attempt numbers and active predecessors.
-- Exact verification is recorded in docs/release/CI-2026-10-15.md. The orchestrator still needs
-  replay-seed configuration resolution, supersession/start commands, fan-out/handler, dataset
-  publication and release admission. No release is enabled by freezing an attempt.
 
 ## Outstanding release verification
 

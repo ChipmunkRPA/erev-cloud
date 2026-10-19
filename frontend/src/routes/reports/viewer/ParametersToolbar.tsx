@@ -27,6 +27,8 @@ import { parameterKeys, type ReportContext } from "./specs";
  * A stored `parameters_schema` keeps JSONB key order (by length), not the table order (L7-3-Q-6).
  */
 const FIELD_ORDER: readonly string[] = [
+  "mode",
+  "known_since",
   "from_period_key",
   "to_period_key",
   "from_date",
@@ -53,7 +55,9 @@ function enumOf(definition: ReportDefinition, key: string): readonly string[] {
 /** The toolbar fields of a definition in §5.6 order. */
 export function toolbarKeys(definition: ReportDefinition): readonly string[] {
   const keys = new Set(parameterKeys(definition));
-  return FIELD_ORDER.filter((key) => keys.has(key));
+  return FIELD_ORDER.filter(
+    (key) => keys.has(key) && (key !== "mode" || definition.code.startsWith("extract_")),
+  );
 }
 
 /** A compact DS-CMP-21 select of the one-row toolbar (RV-08). */
@@ -222,6 +226,7 @@ export function ParametersToolbar({
                 onChange={(next) => onChange(key, next)}
               />
             );
+          case "mode":
           case "granularity":
           case "measure": {
             const options = enumOf(definition, key).map((item) => ({

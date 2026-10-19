@@ -26,6 +26,20 @@ EXTENSION: Final = "json"
 MANIFEST_SUFFIX: Final = ".manifest.json"
 
 
+def extract_metadata(code: str, parameters: Mapping[str, Any]) -> dict[str, Any]:
+    """Published v1 BI metadata; ordinary report envelopes remain unchanged."""
+    if code != "extract_events":
+        return {}
+    return {
+        "dataset": code,
+        "schema_version": 1,
+        "mode": parameters.get("mode", "FULL"),
+        "known_since": parameters.get("known_since"),
+        "known_at": parameters.get("known_at"),
+        "period_lock_id": parameters.get("period_lock_id"),
+    }
+
+
 def report_reference(code: str, name: str, version: int) -> dict[str, Any]:
     """API-S-ReportRun ``report``: ``{code, version, name}``."""
     return {"code": code, "name": name, "version": version}
@@ -35,6 +49,7 @@ def dataset_document(
     report: Mapping[str, Any], parameters: Mapping[str, Any], data: ReportData
 ) -> dict[str, Any]:
     return {
+        **extract_metadata(str(report["code"]), parameters),
         "report": dict(report),
         "parameters": dict(parameters),
         "columns": [
@@ -59,6 +74,7 @@ def manifest_document(
     *, stamp: RunStamp, data: ReportData, file_name: str, media_type: str, content: bytes
 ) -> dict[str, Any]:
     return {
+        **extract_metadata(stamp.report_code, stamp.parameters),
         "report": report_reference(stamp.report_code, stamp.report_name, stamp.report_version),
         "report_run_no": stamp.report_run_no,
         "parameters": dict(stamp.parameters),

@@ -163,6 +163,7 @@ from erev_api.domain.reports.builders import disaggregation as disaggregation_bu
 from erev_api.domain.reports.builders import (
     estimate_change_listing as estimate_change_listing_builder,
 )
+from erev_api.domain.reports.builders import extract_events as extract_events_builder
 from erev_api.domain.reports.builders import intercompany_pairs as intercompany_pairs_builder
 from erev_api.domain.reports.builders import je_population as je_population_builder
 from erev_api.domain.reports.builders import judgement_register as judgement_register_builder
@@ -351,6 +352,7 @@ _DATE: Final = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}$")
 
 BUILDERS: Final[Mapping[str, Builder]] = MappingProxyType(
     {
+        extract_events_builder.CODE: extract_events_builder.build,
         upgrade_validation_builder.CODE: upgrade_validation_builder.build,
         export_visibility.CODE: log_export.build,
         api_client_inventory_builder.CODE: api_client_inventory_builder.build,
@@ -559,6 +561,10 @@ _OPEN_ONLY: Final = (
 )
 SOURCE_CONTRACTS: Final[Mapping[str, SourceContract]] = MappingProxyType(
     {
+        extract_events_builder.CODE: SourceContract(
+            RETAINED,
+            (_CUTOFF, "scoped redacted event source records; dataset schema v1"),
+        ),
         upgrade_validation_builder.CODE: SourceContract(
             RETAINED, ("Frozen validation dataset file, digest, attempt and entity population",), ()
         ),
@@ -814,6 +820,7 @@ assert set(SOURCE_CONTRACTS) == set(BUILDERS), (
 # RPT-13 ``mode`` GROSS).
 PARAMETER_DEFAULTS: Final[Mapping[str, Mapping[str, Any]]] = MappingProxyType(
     {
+        extract_events_builder.CODE: MappingProxyType({"mode": "FULL"}),
         disaggregation_builder.CODE: MappingProxyType({"include_timing": True}),
         # SCREENS_B RPT-32 "Currency view: default functional" (D-98 85 / 97; RPS-12).
         contract_cost_rollforward_builder.CODE: MappingProxyType({"currency_view": "functional"}),
@@ -1313,6 +1320,12 @@ def _resolve(
         known_at_given = parsed is not None  # the caller supplied a cutoff (before normalisation)
     if KNOWN_AT in properties:
         parameters[KNOWN_AT] = utc_text(known_at)
+    if code == extract_events_builder.CODE and parameters.get("mode") == "INCREMENTAL":
+        since = parse_instant(parameters.get("known_since"))
+        if since is None or since >= known_at:
+            errors.append(
+                _finding("parameters.known_since", "Enter a time before the source time.")
+            )
     for key, setting_code in SETTING_DEFAULTS.get(code, {}).items():
         if key in properties and key not in parameters:
             parameters[key] = setting(session, setting_code, known_at=known_at)

@@ -6268,3 +6268,14 @@ cleanup in the shared database session kernel was also repaired and regression-t
   Verification evidence is recorded in docs/release/CI-2026-10-15.md.
 - Frozen-attempt persistence, fan-out/handler, dataset publication and release admission remain
   outstanding. This reader does not dispatch jobs or enable releases.
+
+## Frozen validation-attempt persistence — October 15, 2026
+
+- A parent-locked writer saves attempt metadata and selected group/head rows atomically before
+  any job dispatch. Retrying the same attempt preserves its seed and selection, including
+  NO_SOURCE. A new attempt requires the predecessor to be superseded explicitly.
+- The writer records a tenant-level freeze audit event and refuses partial entity scopes,
+  cross-tenant lookups, seed changes, skipped attempt numbers and active predecessors.
+- Exact verification is recorded in docs/release/CI-2026-10-15.md. The orchestrator still needs
+  replay-seed configuration resolution, supersession/start commands, fan-out/handler, dataset
+  publication and release admission. No release is enabled by freezing an attempt.
