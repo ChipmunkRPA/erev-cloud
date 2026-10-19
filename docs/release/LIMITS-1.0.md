@@ -1,5 +1,14 @@
 # eRev Cloud 1.0: stated limits of the release
 
+October 19 obligation reporting continuation: `extract_obligations` now exports latest
+per-contract versions with full/incremental windows, retained source rebuilding, all source
+columns except tenant_id/trace_nodes, and per-currency allocation/revenue control totals.
+There are now 14 catalogue definitions without builders (also remove extract_obligations
+from the earlier lists). Six extract builders, lock snapshots, automatic previous-run
+watermarks, true-up reporting and live browser acceptance remain unfinished. Incremental
+obligation output is a latest-population snapshot delta, not a deletion feed.
+
+
 October 19 contract-version reporting continuation: `extract_contract_versions` now has a
 v1 full/incremental builder, retained-source reruns and JSON/CSV delivery. Membership comes
 from the original computation; partial combined-entity selections refuse group totals.

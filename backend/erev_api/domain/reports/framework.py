@@ -165,6 +165,7 @@ from erev_api.domain.reports.builders import (
 )
 from erev_api.domain.reports.builders import extract_contract_versions as extract_versions_builder
 from erev_api.domain.reports.builders import extract_events as extract_events_builder
+from erev_api.domain.reports.builders import extract_obligations as extract_obligations_builder
 from erev_api.domain.reports.builders import intercompany_pairs as intercompany_pairs_builder
 from erev_api.domain.reports.builders import je_population as je_population_builder
 from erev_api.domain.reports.builders import judgement_register as judgement_register_builder
@@ -354,6 +355,7 @@ _DATE: Final = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}$")
 BUILDERS: Final[Mapping[str, Builder]] = MappingProxyType(
     {
         extract_versions_builder.CODE: extract_versions_builder.build,
+        extract_obligations_builder.CODE: extract_obligations_builder.build,
         extract_events_builder.CODE: extract_events_builder.build,
         upgrade_validation_builder.CODE: upgrade_validation_builder.build,
         export_visibility.CODE: log_export.build,
@@ -566,6 +568,10 @@ SOURCE_CONTRACTS: Final[Mapping[str, SourceContract]] = MappingProxyType(
         extract_versions_builder.CODE: SourceContract(
             RETAINED,
             (_CUTOFF, "version source records and original computation membership"),
+        ),
+        extract_obligations_builder.CODE: SourceContract(
+            RETAINED,
+            (_CUTOFF, "latest per-contract obligation source records and contract identifiers"),
         ),
         extract_events_builder.CODE: SourceContract(
             RETAINED,
@@ -827,6 +833,7 @@ assert set(SOURCE_CONTRACTS) == set(BUILDERS), (
 PARAMETER_DEFAULTS: Final[Mapping[str, Mapping[str, Any]]] = MappingProxyType(
     {
         extract_versions_builder.CODE: MappingProxyType({"mode": "FULL"}),
+        extract_obligations_builder.CODE: MappingProxyType({"mode": "FULL"}),
         extract_events_builder.CODE: MappingProxyType({"mode": "FULL"}),
         disaggregation_builder.CODE: MappingProxyType({"include_timing": True}),
         # SCREENS_B RPT-32 "Currency view: default functional" (D-98 85 / 97; RPS-12).
@@ -1328,7 +1335,12 @@ def _resolve(
     if KNOWN_AT in properties:
         parameters[KNOWN_AT] = utc_text(known_at)
     if (
-        code in {extract_events_builder.CODE, extract_versions_builder.CODE}
+        code
+        in {
+            extract_events_builder.CODE,
+            extract_versions_builder.CODE,
+            extract_obligations_builder.CODE,
+        }
         and parameters.get("mode") == "INCREMENTAL"
     ):
         since = parse_instant(parameters.get("known_since"))

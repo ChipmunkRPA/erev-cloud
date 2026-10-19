@@ -875,6 +875,7 @@ def chain_versions(
     *,
     book_code: str,
     cutoff: datetime | None,
+    created_cutoff: datetime | None = None,
     versions: Sequence[UUID] | None = None,
     only_contract: UUID | None = None,
 ) -> Select[Any]:
@@ -903,6 +904,8 @@ def chain_versions(
     ]
     if cutoff is not None:
         conditions.append(version.c.known_at <= cutoff)
+    if created_cutoff is not None:
+        conditions.append(version.c.created_at <= created_cutoff)
     if versions is not None:
         conditions.append(in_versions(version.c.id, versions))
     if only_contract is not None:
@@ -938,6 +941,7 @@ def chain_latest(
     *,
     book_code: str,
     cutoff: datetime | None,
+    created_cutoff: datetime | None = None,
     versions: Sequence[UUID] | None = None,
     only_contract: UUID | None = None,
 ) -> Select[Any]:
@@ -948,7 +952,11 @@ def chain_latest(
     contract that left a group is read from that group's last version with it until its own
     group is computed."""
     on_chain = chain_versions(
-        book_code=book_code, cutoff=cutoff, versions=versions, only_contract=only_contract
+        book_code=book_code,
+        cutoff=cutoff,
+        created_cutoff=created_cutoff,
+        versions=versions,
+        only_contract=only_contract,
     ).subquery("on_chain")
     return (
         select(on_chain.c.contract_id, on_chain.c.id, on_chain.c.status_in_book)
@@ -963,6 +971,7 @@ def recorded_latest(
     *,
     book_code: str,
     cutoff: datetime | None,
+    created_cutoff: datetime | None = None,
     versions: Sequence[UUID] | None = None,
     only_contract: UUID | None = None,
 ) -> Select[Any]:
@@ -981,6 +990,8 @@ def recorded_latest(
     ]
     if cutoff is not None:
         conditions.append(version.c.known_at <= cutoff)
+    if created_cutoff is not None:
+        conditions.append(version.c.created_at <= created_cutoff)
     if versions is not None:
         conditions.append(in_versions(version.c.id, versions))
     if only_contract is not None:
@@ -1020,6 +1031,7 @@ def read_from(
     *,
     book_code: str,
     cutoff: datetime | None,
+    created_cutoff: datetime | None = None,
     statuses: Iterable[str] | None = INCLUDED_STATUSES,
     versions: Sequence[UUID] | None = None,
     only_contract: UUID | None = None,
@@ -1039,12 +1051,21 @@ def read_from(
     The two selections are common table expressions, formed once for the statement. The first
     condition — the version is one that is read — lets the caller's table be entered by the
     version, an index condition on uuid columns as under form (1); the second keeps each
-    contract to its own version."""
+    contract to its own version. ``created_cutoff`` optionally excludes later-created candidates
+    before latest selection; BI extracts use this without changing existing disclosure reads."""
     pairs = chain_latest(
-        book_code=book_code, cutoff=cutoff, versions=versions, only_contract=only_contract
+        book_code=book_code,
+        cutoff=cutoff,
+        created_cutoff=created_cutoff,
+        versions=versions,
+        only_contract=only_contract,
     ).cte()
     recorded = recorded_latest(
-        book_code=book_code, cutoff=cutoff, versions=versions, only_contract=only_contract
+        book_code=book_code,
+        cutoff=cutoff,
+        created_cutoff=created_cutoff,
+        versions=versions,
+        only_contract=only_contract,
     ).cte()
     named = select(pairs.c.contract_id, pairs.c.id)
     named_versions = select(pairs.c.id)

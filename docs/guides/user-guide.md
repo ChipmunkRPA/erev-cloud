@@ -270,8 +270,8 @@ Dataset schemas, version 1 (the table ids are those of the data model, `docs/04-
 | `extract_events` | Contract events recorded at or before the source time (T-CON-05) | Every column except `tenant_id`; `payload` as canonical JSON | `row_count` |
 | `extract_legacy_contract_live` | Legacy history rows over all dates (04 §17.1 rule 1) | The 71 legacy `Contract_Live` columns of 04 §17.2, in legacy order, with the legacy export format rules | `row_count` |
 
-Status at this revision: `extract_events` and `extract_contract_versions` produce JSON and CSV
-through the report page and API. The other seven definitions remain catalogue contracts without builders. Parquet extracts and
+Status at this revision: `extract_events`, `extract_contract_versions` and `extract_obligations` produce JSON and CSV
+through the report page and API. The other six definitions remain catalogue contracts without builders. Parquet extracts and
 as-locked extract datasets remain unimplemented; supplying a lock is refused, never replaced
 with live data.
 
@@ -319,6 +319,29 @@ JSON strings. Other fields are strings or null as allowed by the source. Control
 `row_count` counts versions, not member contracts. Re-runs retain the original source values
 and member identifiers. CSV uses the same v1 manifest and formula protection as event exports.
 Lock snapshots are not yet supported for this extract.
+
+
+#### Obligation extract
+
+`extract_obligations` reads each contract's latest computed version in the selected book at
+`known_at`, including statuses that disclosure reports normally exclude. It follows the
+contract's version chain across combinations, avoiding duplicate rows from former groups.
+Versions created after the source instant cannot displace an earlier eligible version.
+Incremental mode returns only rows in that latest population created after `known_since`;
+it is a snapshot delta, not a deletion feed or the full obligation-version history.
+
+Dataset v1 contains every T-CON-11 column in table order except `tenant_id` and `trace_nodes`,
+then `contract_external_id`. Money, quantities, allocation weights and ratios are exact decimal
+strings; version and boundary numbers are integers; flags are booleans; dates are ISO dates;
+creation timestamps are UTC ISO timestamps. `account_overrides` and `hold_types` are canonical
+JSON strings. Other columns are strings, with null preserved where permitted by the source.
+Rows sort by contract external ID, obligation key and version-row ID.
+
+The control totals contain `row_count` and `by_currency`, with separate `allocated_amount`
+and `revenue_cum` sums for every transaction currency. They never add different currencies
+together. The selected entities restrict contracting entities; retained-source reruns recheck
+that scope. The CSV manifest uses schema version 1 and hashes delivered bytes. As-locked
+extracts and automatic previous-run watermark selection remain unavailable.
 
 
 ### Evidence packs

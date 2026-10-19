@@ -28,7 +28,7 @@ MANIFEST_SUFFIX: Final = ".manifest.json"
 
 def extract_metadata(code: str, parameters: Mapping[str, Any]) -> dict[str, Any]:
     """Published v1 BI metadata; ordinary report envelopes remain unchanged."""
-    if code not in {"extract_events", "extract_contract_versions"}:
+    if code not in {"extract_events", "extract_contract_versions", "extract_obligations"}:
         return {}
     return {
         "dataset": code,

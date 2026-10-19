@@ -151,3 +151,86 @@ def test_contract_version_extract_delivery(
         get(app, f"{REPORT_RUNS}/{rerun.headers['x-erev-report-run-id']}/output", world.maya).json()
         == original
     )
+
+
+def test_obligation_extract_latest_and_retained_sources(
+    app: FastAPI, app_settings: Settings, clock: FrozenClock, keyring: KeyRing
+) -> None:
+    from datetime import date
+    from decimal import Decimal
+
+    from erev_api.db.tables import contract, obligation_version
+    from erev_api.domain.reports.builders.extract_obligations import COLUMNS
+    from erev_api.enums import ContractEventType
+    from erev_api.events.payloads import BillingRecordedV1
+    from erev_api.events.stream import EventIn
+    from erev_api.money import MoneyIn
+    from sqlalchemy import func
+    from support.factories import appended, computed
+    from support.worlds import K01
+
+    world = k01_pellworth(app, keyring, clock, LocalFileStore(app_settings.file_root))
+    stamp = world.place.scalar(select(func.clock_timestamp()))
+    clock.set(stamp + timedelta(seconds=1))
+    world = resigned(world)
+    params = {"entity_codes": [AVM_US], "book": "ASC606", "known_at": clock.now().isoformat()}
+    original, rows = report_run(world, "extract_obligations", params)
+    assert rows
+    expected_columns = [
+        c.name for c in obligation_version.c if c.name not in {"tenant_id", "trace_nodes"}
+    ]
+    assert [col.key for col in COLUMNS] == [*expected_columns, "contract_external_id"]
+    data = get(app, f"{REPORT_RUNS}/{original['id']}/output", world.maya).json()
+    assert data["control_totals"]["by_currency"]["USD"] == {
+        key: str(sum((Decimal(row[key]) for row in rows), Decimal(0)))
+        for key in ("allocated_amount", "revenue_cum")
+    }
+    booked = world.contracts[K01]
+    cid = UUID(str(booked.contract["id"]))
+    group_id = UUID(str(booked.combination_group["id"]))
+    appended(
+        world.place,
+        cid,
+        world.place.scalar(select(contract.c.head_stream_version).where(contract.c.id == cid)),
+        [
+            EventIn(
+                event_type=ContractEventType.BILLING_RECORDED,
+                effective_date=date(2026, 9, 16),
+                payload=BillingRecordedV1(
+                    invoice_number="EXTRACT-NEW",
+                    line_external_id="EXTRACT-NEW-1",
+                    obligation_key="O1",
+                    amount=MoneyIn(amount="5000.00", currency="USD"),
+                    issue_date=date(2026, 9, 16),
+                ),
+            ),
+        ],
+    )
+    clock.advance(timedelta(seconds=2))
+    computed(world.place, group_id)
+    _, latest = report_run(
+        world, "extract_obligations", {**params, "known_at": clock.now().isoformat()}
+    )
+    assert {r["id"] for r in rows}.isdisjoint(r["id"] for r in latest)
+    assert len(latest) == len(rows)
+    assert sum(Decimal(r["billed_cum"]) for r in latest) > sum(
+        Decimal(r["billed_cum"]) for r in rows
+    )
+    _, incremental = report_run(
+        world,
+        "extract_obligations",
+        {
+            **params,
+            "known_at": clock.now().isoformat(),
+            "mode": "INCREMENTAL",
+            "known_since": params["known_at"],
+        },
+    )
+    assert incremental == latest
+    rerun = post(app, f"{REPORT_RUNS}/{original['id']}/rerun", world.maya, {})
+    assert rerun.status_code == 202, rerun.text
+    assert run_now(world, UUID(rerun.json()["id"]))["state"] == "SUCCEEDED"
+    assert (
+        get(app, f"{REPORT_RUNS}/{rerun.headers['x-erev-report-run-id']}/output", world.maya).json()
+        == data
+    )

@@ -2,6 +2,17 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Obligation BI extract — October 19, 2026
+
+- Added extract_obligations v1 with latest-per-contract chain selection, all book statuses,
+  explicit created/known cutoff and incremental created-time filtering. Former group versions
+  do not duplicate contracts, and after-cutoff candidates cannot displace earlier versions.
+- Exported fixed typed columns and exact decimal strings, with per-currency allocation and
+  cumulative-revenue sums. Registered JSON/CSV delivery and retained-source reruns; existing
+  extract page controls expose the report. User guide states snapshot-delta semantics.
+- Reporting remains open: 14 catalogue builders missing, six of them extracts. Locked extracts,
+  watermark defaults, true-up and live browser acceptance remain unfinished. No deployment.
+
 ## Contract version BI extract — October 19, 2026
 
 - Added extract_contract_versions v1: all versions in one book, fixed source cutoff,
@@ -254,15 +265,6 @@
 - Linked approvals and non-retryable parent states fail closed. The release approval subject,
   stale-approval invalidation, fan-out, replay handler and final admission remain outstanding.
 - Verification evidence is recorded in docs/release/CI-2026-10-15.md.
-
-## Validation start and full-population fence — October 15, 2026
-
-- Frozen attempts now retain a versioned full-population fingerprint, including unsampled
-  heads and current member stream versions. Start refuses population drift or legacy attempts
-  lacking that fingerprint, and atomically marks parent/attempt RUNNING with an audit event.
-- A matching running retry is read-only; final acceptance still needs a fresh population check.
-  Verification is recorded in docs/release/CI-2026-10-15.md.
-- Supersession, replay fan-out/handler, datasets and release admission remain unfinished.
 
 ## Outstanding release verification
 

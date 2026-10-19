@@ -6289,3 +6289,12 @@ cleanup in the shared database session kernel was also repaired and regression-t
   the data model. Exact migration, attempt and schema evidence is in docs/release/CI-2026-10-15.md.
 - Supersession/start orchestration, replay fan-out/handler, dataset publication and admission
   remain outstanding. This setting does not enable a release or deploy anything.
+
+## Validation start and full-population fence — October 15, 2026
+
+- Frozen attempts now retain a versioned full-population fingerprint, including unsampled
+  heads and current member stream versions. Start refuses population drift or legacy attempts
+  lacking that fingerprint, and atomically marks parent/attempt RUNNING with an audit event.
+- A matching running retry is read-only; final acceptance still needs a fresh population check.
+  Verification is recorded in docs/release/CI-2026-10-15.md.
+- Supersession, replay fan-out/handler, datasets and release admission remain unfinished.
