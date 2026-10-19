@@ -2,6 +2,18 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Contract sample journal evidence — October 19, 2026
+
+- Added journal collection through the existing retained grouping/drill-back reader, including
+  aggregated lines whose contract ID is absent. Separates whole-line amounts from sampled
+  contributions and checks source counts, cutoff/currency/entity consistency and net amounts.
+- Resolves posting entities beyond contracting scope and authorizes every source companion.
+  Retains as-of run/batch state, labelled cancellations and journal approval references.
+- The K01 journey now commits real journal calculation, traces populated draft lines and
+  reconciles source amounts in the combined evidence archive. Ruff/Mypy pass. Multi-contract,
+  cross-entity and historical journal lifecycle acceptance remain; public retention/jobs and
+  PDF/XLSX rendering are still unfinished. No deployment.
+
 ## Contract sample retained documents — October 19, 2026
 
 - Added attachment collection for sampled contracts/events, related modification/estimate/
@@ -218,22 +230,6 @@
 - FCS-3 remains open: K-11 specified accounting acceptance, broader concurrency/crash coverage,
   creation screens, revenue chart, general report-catalogue execution and same-source reruns
   are still unfinished. Actual-vs-forecast and evidence packs remain priorities. No deployment.
-
-## Atomic forecast report publication — October 19, 2026
-
-- Added an internal publisher for a running forecast: verifies its published input identity/hash,
-  current scenario and requested entity/book/horizon scope, then stores an ordinary report run,
-  encrypted output and CTL-029/CTL-030/audit evidence in the caller's transaction. Reports are
-  attached to the parent forecast. Duplicate formats are refused under the parent row lock.
-- JSON, XLSX and CSV publication preserve the captured currency view, output visibility basis,
-  cutoff, engine release, actual scenario name and tenant negative-number style. CSV also saves
-  its manifest for the normal manifest download route. Independent child source evidence is
-  retained internally; computation reruns remain explicitly open rather than claiming a rebuild.
-- The real scenario journey verifies rollback after file storage, successful publication,
-  duplicate refusal, three-format persistence, saved JSON API reading and CSV/manifest downloads.
-  Targeted source/export checks and Ruff/Mypy pass. Public admission/computation orchestration
-  is still missing; this is an internal transaction primitive, not a completed forecast workflow.
-  Revenue chart, actual-vs-forecast, evidence packs and accounting acceptance remain open.
 
 ## Outstanding release verification
 

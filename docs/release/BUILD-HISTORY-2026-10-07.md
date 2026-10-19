@@ -7698,3 +7698,19 @@ cleanup in the shared database session kernel was also repaired and regression-t
   the report is still unregistered. The viewer requires a saved forecast report and does not
   yet make one available through the UI. Revenue chart, actual-vs-forecast and both evidence
   packs remain unfinished. Production readiness and independent accounting acceptance remain open.
+
+## Atomic forecast report publication — October 19, 2026
+
+- Added an internal publisher for a running forecast: verifies its published input identity/hash,
+  current scenario and requested entity/book/horizon scope, then stores an ordinary report run,
+  encrypted output and CTL-029/CTL-030/audit evidence in the caller's transaction. Reports are
+  attached to the parent forecast. Duplicate formats are refused under the parent row lock.
+- JSON, XLSX and CSV publication preserve the captured currency view, output visibility basis,
+  cutoff, engine release, actual scenario name and tenant negative-number style. CSV also saves
+  its manifest for the normal manifest download route. Independent child source evidence is
+  retained internally; computation reruns remain explicitly open rather than claiming a rebuild.
+- The real scenario journey verifies rollback after file storage, successful publication,
+  duplicate refusal, three-format persistence, saved JSON API reading and CSV/manifest downloads.
+  Targeted source/export checks and Ruff/Mypy pass. Public admission/computation orchestration
+  is still missing; this is an internal transaction primitive, not a completed forecast workflow.
+  Revenue chart, actual-vs-forecast, evidence packs and accounting acceptance remain open.

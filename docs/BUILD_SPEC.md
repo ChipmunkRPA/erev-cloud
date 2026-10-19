@@ -10284,6 +10284,14 @@ Author BS-3. Uses CTR (PHASES §1 row 12). Indicative size 16 items; this phase 
   - **Gates:** GK-01 `make ci`; GK-03 `make openapi`
 
 - [ ] **RPS-16 Period evidence packs and contract sample packs.**
+  - October 19 journal increment: sample journal sources now use recorded grouping/drill-back
+    to locate sampled contributions inside aggregated lines, retain whole-line/context amounts,
+    validate source counts/currencies/cutoffs/net totals, and preserve historical run/batch state
+    with labelled cancellations. Posting/companion entities require complete source permissions.
+    The real K01 journey commits journal calculation before reading its retained inclusion record,
+    verifies populated draft lines and incorporates them into the combined source archive.
+    Broader multi-contract/cross-entity/lifecycle acceptance, unified source retention, public jobs
+    and PDF/XLSX rendering remain open.
   - October 19 document increment: the sample document collector reads stored contract/event
     attachments, related business-event subjects and approval evidence (including SSP study
     subjects). Historical attachment selection never overrides current subject/file grants.

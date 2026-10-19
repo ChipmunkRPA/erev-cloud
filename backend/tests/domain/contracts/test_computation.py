@@ -5969,6 +5969,8 @@ def test_contract_sample_computation_evidence_keeps_trace_and_full_schedule(
     import json
     from datetime import timedelta
 
+    from erev_api.db import new_id
+    from erev_api.domain.journals import summarise
     from erev_api.domain.platform.attachments import attach_evidence
     from erev_api.domain.reports import (
         evidence_archive,
@@ -5976,6 +5978,7 @@ def test_contract_sample_computation_evidence_keeps_trace_and_full_schedule(
         evidence_sample_decisions,
         evidence_sample_documents,
         evidence_sample_events,
+        evidence_sample_journals,
     )
     from erev_api.domain.reports.evidence_commands import PERMISSIONS
     from erev_api.enums import FilePurpose
@@ -5999,6 +6002,26 @@ def test_contract_sample_computation_evidence_keeps_trace_and_full_schedule(
         kind="CONTRACT_SAMPLE", contract_external_ids=["SF-ORD-10001"], as_of=date(2026, 9, 30)
     )
     with world.place.uow(principal) as uow:
+        journal_period_id = uow.session.execute(
+            select(period.c.id).where(
+                period.c.period_key == "FY2026-P01",
+            )
+        ).scalar_one()
+        summarise.calculate(
+            uow,
+            {
+                "journal_run_id": str(new_id()),
+                "entity_id": str(world.entity_id),
+                "book_code": "ASC606",
+                "period_id": str(journal_period_id),
+                "mode": "GROSS",
+                "grain": "ENTITY_BOOK_CURRENCY_PERIOD_ACCOUNT_DIMENSIONS",
+                "cutoff_known_at": uow.now.isoformat(),
+            },
+            job_id=None,
+        )
+        uow.commit()
+    with world.place.uow(principal) as uow:
         events = evidence_sample_events.collect(uow, request)
         result = evidence_sample_computations.collect(uow, events.selection, as_of=request.as_of)
         files = {file.path: json.loads(file.content) for file in result.files}
@@ -6010,6 +6033,16 @@ def test_contract_sample_computation_evidence_keeps_trace_and_full_schedule(
         schedule_data = files[f"{prefix}/schedule.json"]
         assert schedule_data["lines"]
         assert any(line["period_end_date"] > "2026-09-30" for line in schedule_data["lines"])
+        journals = evidence_sample_journals.collect(uow, events.selection, as_of=request.as_of)
+        journal_data = json.loads(journals.files[0].content)
+        assert journal_data["lines"]
+        assert all(row["run_state_as_of"] == "draft" for row in journal_data["lines"])
+        assert all(row["batch_acknowledged_at_as_of"] is None for row in journal_data["lines"])
+        assert all(row["sources"] for row in journal_data["lines"])
+        for row in journal_data["lines"]:
+            assert Decimal(row["sample_contribution"]["net_functional"]) == (
+                Decimal(row["line"]["debit_functional"]) - Decimal(row["line"]["credit_functional"])
+            )
         decisions = evidence_sample_decisions.collect(
             uow,
             replace(
@@ -6066,7 +6099,7 @@ def test_contract_sample_computation_evidence_keeps_trace_and_full_schedule(
         assert len(payloads) == 1 and payloads[0].content == content
         assert ".." not in payloads[0].path
         archive = evidence_archive.build(
-            (*events.files, *result.files, *decisions.files, *documents.files)
+            (*events.files, *result.files, *decisions.files, *documents.files, *journals.files)
         )
         evidence_archive.verify(archive.content, expected_manifest_sha256=archive.manifest_sha256)
         before = evidence_sample_computations.collect(uow, events.selection, as_of=date(2025, 1, 1))
