@@ -2,6 +2,21 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Retained forecast import mappings — October 19, 2026
+
+- Revision 0183 retains a forecast replay import's verified original mapping as immutable JSON,
+  separate from published target configuration. Internal replay validates its hash/template and
+  persists it; ordinary import APIs cannot supply this snapshot and retain publication rules.
+- Validation and header preview consume the retained aliases/constants. Published-input reading
+  preserves the same mapping for subsequent refreshes, including when the source profile is
+  absent or superseded in the new copy. Upload audit identifies its original profile and hash.
+- The scenario journey imports an alias column without a target profile, computes successfully,
+  then publishes and reads back the retained mapping; ordinary customer import also passes.
+  Static checks and forecast schema upgrade/downgrade pass. Snapshot inventory clears this
+  operational field with the source forecast binding.
+- Durable refresh request/orchestration, scenario replacement and forecast report builders remain
+  unfinished. No deployment or production-readiness claim.
+
 ## Forecast replay file materialization — October 19, 2026
 
 - Added target file materialization from the authorized published-input bundle. It checks the
@@ -221,23 +236,6 @@
   revenue and policy facts. The lock job must capture these at its exact cutoff and atomically
   publish genuinely locked disclosures; drafts must never be promoted/relabeled as locked.
   Snapshot read APIs and as-locked parent integration also remain open. No deployment.
-
-## Quarterly disclosure comparison summaries — October 19, 2026
-
-- Added semantic period/QTD comparison for the six displayed flow reports. Row identities use
-  section/contract/obligation/dimension/line codes and currency instead of source row positions or
-  conditional currency suffixes. Different labels receive separate columns; missing population
-  stays blank with presence flags. Duplicate identities or schema/election mismatch refuse.
-- Disaggregation uses each source's existing range total, excluding its varying monthly buckets.
-  No money is summed or rounded. Comparison summaries precede original source tables in JSON,
-  workbook and PDF chapters; canonical parent hashes include comparison output. Summary digests
-  identify their dataset and notes retain both original source run/hash references.
-- The viewer labels combined-basis tables and their comparison digest separately from policies.
-  Two populated alignment checks pass. The real 16-child/API/parent/rerun journey verifies six
-  summaries, their hashes and workbook period/QTD headers; same-source rerun remains identical.
-  Ruff/Mypy and frontend type/lint/component checks pass.
-- Full populated accounting acceptance, PDF wide-table readability, browser acceptance, frozen
-  snapshots and remaining export worker journeys remain open. No deployment or readiness claim.
 
 ## Outstanding release verification
 

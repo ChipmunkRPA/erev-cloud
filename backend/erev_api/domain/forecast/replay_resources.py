@@ -27,8 +27,8 @@ def materialize_files(
     """Re-encrypt source bytes through normal upload policy, authorization and audit.
 
     The caller supplies a bundle from the authorized published-input reader. Mapping profiles
-    remain retained descriptors for the refresh worker to resolve separately; they are never
-    silently replaced by the latest target profile. No source object is mutated or linked by
+    remain retained descriptors for the file executor's mapping_snapshot argument; they are
+    never silently replaced by the latest target profile. No source object is mutated or linked by
     its old tenant storage key. The caller persists the returned bindings with its replay state.
     """
     if (

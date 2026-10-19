@@ -208,7 +208,11 @@ def load(uow: UnitOfWork, identity: UUID) -> ReplayInputs:
         )
         if "import.upload" not in principal.permissions:
             raise Problem("forbidden")
-        profile = None
+        profile = upload.get("forecast_mapping_snapshot")
+        if profile is not None:
+            from erev_api.domain.forecast import replay_mapping
+
+            replay_mapping.profile(profile, template_code=template_code)
         if upload["mapping_profile_id"] is not None:
             found_profile = (
                 uow.session.execute(

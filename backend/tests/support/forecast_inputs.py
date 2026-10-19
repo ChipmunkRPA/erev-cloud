@@ -361,7 +361,23 @@ def exercise_forecast_imports(world: object) -> None:
     inline_source = upload_import_source(
         world,
         "inline-progress.csv",
-        content.replace(b"0.60", b"0.80").replace(b"2026-02-28", b"2026-04-30"),
+        content.replace(b"0.60", b"0.80")
+        .replace(b"2026-02-28", b"2026-04-30")
+        .replace(b"cumulative_progress_ratio", b"completion"),
+    )
+    from erev_engine.canonical import sha256_hex
+
+    retained_mapping = {
+        "id": str(uuid4()),
+        "code": "ORIGINAL_MAPPING",
+        "name": "Original source mapping",
+        "version_no": 1,
+        "effective_from": None,
+        "template_code": "progress_events",
+        "mappings": {"aliases": {"completion": "cumulative_progress_ratio"}},
+    }
+    retained_mapping["content_sha256"] = sha256_hex(
+        {key: value for key, value in retained_mapping.items() if key != "id"}
     )
     before_jobs = world.scalar(select(func.count()).select_from(job))
     before_imports = world.scalar(select(func.count()).select_from(import_upload))
@@ -376,11 +392,14 @@ def exercise_forecast_imports(world: object) -> None:
                 forecast_event_set_id=inline_id,
             ),
             quarantine=False,
+            mapping_snapshot=retained_mapping,
         )
         uow.commit()
     applied = world.rows(select(import_upload).where(import_upload.c.id == applied_id))[0]
     assert applied["status"] == "COMMITTED" and applied["job_id"] is None
     assert applied["approval_request_id"] is None
+    assert applied["forecast_mapping_snapshot"] == retained_mapping
+    assert applied["mapping_profile_id"] is None
     assert world.scalar(select(func.count()).select_from(job)) == before_jobs
     assert world.scalar(
         select(forecast_event_set.c.import_upload_ids).where(forecast_event_set.c.id == inline_id)
@@ -460,3 +479,13 @@ def exercise_forecast_imports(world: object) -> None:
     assert world.scalar(
         select(forecast_event_set.c.input_sequence).where(forecast_event_set.c.id == inline_id)
     ) == [{"kind": "IMPORT_UPLOAD", "id": str(applied_id)}, {"kind": "API_COMMAND", "index": 0}]
+
+    inline_path = f"/api/v1/forecast-event-sets/{inline_id}"
+    inline_current = call(world.app, "GET", inline_path, headers=headers())
+    inline_headers = headers()
+    inline_headers["If-Match"] = inline_current.headers["ETag"]
+    inline_published = call(world.app, "POST", inline_path + "/publish", headers=inline_headers)
+    assert inline_published.status_code == 200, inline_published.text
+    with place.uow() as uow:
+        next_replay = replay_inputs.load(uow, inline_id)
+        assert next_replay.steps[0]["mapping_profile"] == retained_mapping

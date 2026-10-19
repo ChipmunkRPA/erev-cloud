@@ -191,18 +191,37 @@ def create_import(uow: UnitOfWork, *, body: ImportCreateIn) -> CreatedImport:
     return CreatedImport(job=job, import_id=identity)
 
 
-def create_inline_import(uow: UnitOfWork, *, body: ImportCreateIn, quarantine: bool) -> UUID:
+def create_inline_import(
+    uow: UnitOfWork,
+    *,
+    body: ImportCreateIn,
+    quarantine: bool,
+    mapping_snapshot: dict[str, Any] | None = None,
+) -> UUID:
     """A refresh worker owns all stages; no validation job may race its transaction."""
     if UPLOAD_PERMISSION not in uow.principal.permissions:
         raise Problem("forbidden")
     if body.forecast_event_set_id is None:
         raise Problem("validation-failed", "Inline imports require a forecast input set.")
-    identity, _job = _create_import(uow, body=body, schedule=False, quarantine=quarantine)
+    if mapping_snapshot is not None:
+        from erev_api.domain.forecast import replay_mapping
+
+        if body.mapping_profile_id is not None:
+            raise Problem("validation-failed", "Choose one mapping source for forecast replay.")
+        replay_mapping.profile(mapping_snapshot, template_code=body.template_code)
+    identity, _job = _create_import(
+        uow, body=body, schedule=False, quarantine=quarantine, mapping_snapshot=mapping_snapshot
+    )
     return identity
 
 
 def _create_import(
-    uow: UnitOfWork, *, body: ImportCreateIn, schedule: bool, quarantine: bool | None = None
+    uow: UnitOfWork,
+    *,
+    body: ImportCreateIn,
+    schedule: bool,
+    quarantine: bool | None = None,
+    mapping_snapshot: dict[str, Any] | None = None,
 ) -> tuple[UUID, JobOut | None]:
     """IPL-01: create an ``import_upload`` and defer its validation."""
     session = uow.session
@@ -277,6 +296,7 @@ def _create_import(
         "parameters": dict(body.parameters),
         "mapping_profile_id": body.mapping_profile_id,
         "forecast_event_set_id": body.forecast_event_set_id,
+        "forecast_mapping_snapshot": mapping_snapshot,
         "status": ImportStatus.UPLOADED.value,
         "is_quarantine_mode": bool(setting(session, QUARANTINE_KEY, known_at=uow.now))
         if quarantine is None
@@ -315,6 +335,12 @@ def _create_import(
             "template_version": template.version,
             "file_object_id": str(stored["id"]),
             "file_sha256": sha256,
+            "forecast_mapping": None
+            if mapping_snapshot is None
+            else {
+                "source_profile_id": mapping_snapshot["id"],
+                "content_sha256": mapping_snapshot["content_sha256"],
+            },
             "status": ImportStatus.UPLOADED.value,
             "job_id": None if deferred is None else str(deferred["id"]),
         },

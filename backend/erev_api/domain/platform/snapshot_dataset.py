@@ -840,7 +840,11 @@ _FILE_OBJECT_COLUMN: Final = "file_object_id"
 # LargeBinary type; a found column
 # that is not declared here fails the inventory (the drift guard forces a decision).
 EXCLUDED_COLUMNS: Final[Mapping[str, frozenset[str]]] = MappingProxyType(
-    {"tenant_membership": frozenset({"invitation_token_sha256"})}
+    {
+        "tenant_membership": frozenset({"invitation_token_sha256"}),
+        # Operational forecast bindings are not carried by a production snapshot copy.
+        "import_upload": frozenset({"forecast_mapping_snapshot"}),
+    }
 )
 _EXCLUDED_NAME: Final = re.compile(
     r"(_token_sha256$|_ciphertext$|token|secret|password|recovery_code)"

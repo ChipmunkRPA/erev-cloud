@@ -7317,3 +7317,20 @@ cleanup in the shared database session kernel was also repaired and regression-t
   frontend TypeScript and targeted ESLint pass; OpenAPI/client types regenerated.
 - Full browser/accessibility acceptance, frozen snapshots, quarter side-by-side layout, populated
   accounting acceptance and remaining export worker journeys remain open. No deployment.
+
+## Quarterly disclosure comparison summaries — October 19, 2026
+
+- Added semantic period/QTD comparison for the six displayed flow reports. Row identities use
+  section/contract/obligation/dimension/line codes and currency instead of source row positions or
+  conditional currency suffixes. Different labels receive separate columns; missing population
+  stays blank with presence flags. Duplicate identities or schema/election mismatch refuse.
+- Disaggregation uses each source's existing range total, excluding its varying monthly buckets.
+  No money is summed or rounded. Comparison summaries precede original source tables in JSON,
+  workbook and PDF chapters; canonical parent hashes include comparison output. Summary digests
+  identify their dataset and notes retain both original source run/hash references.
+- The viewer labels combined-basis tables and their comparison digest separately from policies.
+  Two populated alignment checks pass. The real 16-child/API/parent/rerun journey verifies six
+  summaries, their hashes and workbook period/QTD headers; same-source rerun remains identical.
+  Ruff/Mypy and frontend type/lint/component checks pass.
+- Full populated accounting acceptance, PDF wide-table readability, browser acceptance, frozen
+  snapshots and remaining export worker journeys remain open. No deployment or readiness claim.

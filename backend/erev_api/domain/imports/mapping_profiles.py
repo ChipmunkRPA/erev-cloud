@@ -583,6 +583,12 @@ def upload_header_match(
         if upload["mapping_profile_id"] is None
         else profile(session, UUID(str(upload["mapping_profile_id"])))
     )
+    if upload.get("forecast_mapping_snapshot") is not None:
+        from erev_api.domain.forecast import replay_mapping
+
+        found = replay_mapping.profile(
+            upload["forecast_mapping_snapshot"], template_code=template.code
+        )
     try:
         _, stream = open_file(session, upload["file_object_id"], files=files, keyring=keyring)
     except Problem as problem:

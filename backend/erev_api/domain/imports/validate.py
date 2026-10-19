@@ -1034,6 +1034,12 @@ def validate_upload(
         if row["mapping_profile_id"] is None
         else mapping_profiles.profile(session, UUID(str(row["mapping_profile_id"])))
     )
+    if row.get("forecast_mapping_snapshot") is not None:
+        from erev_api.domain.forecast import replay_mapping
+
+        found = replay_mapping.profile(
+            row["forecast_mapping_snapshot"], template_code=template.code
+        )
     if found is not None:
         # BUILD_SPEC DIN-10: the file is read through its mapping profile (REQ-DAT-013).
         mapped = mapping_profiles.mapped_sheet(sheet, found)

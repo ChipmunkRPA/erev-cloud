@@ -1,5 +1,6 @@
 """Transactional import execution for a refresh worker replaying one input at a time."""
 
+from typing import Any
 from uuid import UUID
 
 from erev_api.domain.contracts import events
@@ -12,17 +13,25 @@ from erev_api.uow import UnitOfWork
 
 
 def apply_file(
-    uow: UnitOfWork, body: ImportCreateIn, *, quarantine: bool, parent_job_id: UUID | None = None
+    uow: UnitOfWork,
+    body: ImportCreateIn,
+    *,
+    quarantine: bool,
+    parent_job_id: UUID | None = None,
+    mapping_snapshot: dict[str, Any] | None = None,
 ) -> UUID:
     """Validate, preview, commit and compute before the caller advances to its next input.
 
-    The worker has already copied the source file and resolved its retained mapping in this
-    target workspace. Every ordinary template validation and permission check still applies.
+    The worker has already copied the source file into this target workspace and supplies
+    the source reader's retained mapping snapshot when the import used a profile.
+    Every ordinary template validation and permission check still applies.
     A failed stage rolls back facts, input sequence, files registered by these stages and audit
     buffers. The caller commits this step with its durable replay cursor in the same transaction.
     """
     with uow.savepoint():
-        identity = upload.create_inline_import(uow, body=body, quarantine=quarantine)
+        identity = upload.create_inline_import(
+            uow, body=body, quarantine=quarantine, mapping_snapshot=mapping_snapshot
+        )
         if not validate.start_validation(uow, identity):
             raise Problem("invalid-transition", "The replay import could not start validation.")
         outcome = validate.validate_upload(uow, identity, defer_diff=False)
