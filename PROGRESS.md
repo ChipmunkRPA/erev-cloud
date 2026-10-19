@@ -2,6 +2,22 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## BBR activated bookings and application value attribution — October 19, 2026
+
+- Added activated-contract values from each contract's own signed booking line consideration,
+  with booking/activation provenance. Drafts and voided contracts contribute no new bookings.
+  Separate-contract modifications are identified through their applied booking event and
+  excluded from the new-contract column, preventing later activation from double counting.
+- Added original application-group/version reads and predecessor-based modification price
+  differences, retained for rebuilds and counted once per modification, not per obligation.
+  Missing predecessors, ambiguous applications and shared valuation causes refuse attribution.
+- Real K01 booking value 135,000 and K02 applied modification 60,000 checks pass. Targeted
+  evidence and two pre-existing test-module typing findings are in CI-2026-10-19.md.
+- BBR still needs FX valuation, journal comparator sourcing, source adapter/registration,
+  contributor routes and broader acceptance. Pre-activation changes and shared valuation
+  causes need further attribution support; independent accounting sign-off is still absent.
+  Eight reports remain without complete registered builders. No deployment.
+
 ## Bookings/billings/revenue source and aggregation implementation — October 19, 2026
 
 - Implemented scoped, cutoff-bound raw source capture for RPT-37, retaining event identity
@@ -234,26 +250,6 @@
   framework, typing and lint evidence is in CI-2026-10-19.md.
 - Official attempt report attachment, final acceptance, approvals and admission remain open.
   Repository work only; no deployment or independent accounting sign-off.
-
-## Bound upgrade-validation report builder — October 15, 2026
-
-- Added the report builder over the verified dataset, typed change-count columns and canonical
-  text for structured before/after values. Its source binding records the exact file, hash,
-  attempt and frozen entity set; reruns rebuild rows rather than reuse cached output.
-- JSON/CSV reproducibility and requester-grant checks passed database tests. Unsupported modes
-  and incomplete/incompatible bindings fail before evidence reads. Dated CI evidence records
-  the checks. Catalogue/job registration and requester reload wiring remain unfinished.
-- Final acceptance, approvals and admission remain open; no deployment.
-
-## Authorized validation report source — October 15, 2026
-
-- Added a retained-dataset reader that checks current report.run permission across the full
-  frozen entity set before file access. Partial entity selection, wrong tenant and mismatched
-  rerun file/hash bindings are refused; SYSTEM has no implicit reader grant.
-- Dataset metadata, digest, canonical JSON, source identity and record cutoff are checked.
-  Matching/differing report data reproduces after later contract activity; database and typing
-  evidence is in the dated CI record. Report catalogue/job integration remains unfinished.
-- Final acceptance, approvals and admission also remain open; no deployment.
 
 ## Outstanding release verification
 

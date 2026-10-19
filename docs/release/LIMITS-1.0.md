@@ -1,5 +1,17 @@
 # eRev Cloud 1.0: stated limits of the release
 
+October 19 BBR attribution continuation: activated bookings now use the contract's signed
+stated line consideration (not its group's allocated transaction price), with original event
+provenance. Separate-contract modification bookings are excluded from the new-contract column.
+Applied modifications use their historical application group's version minus its predecessor,
+once per modification. Missing/ambiguous sources and shared valuation causes refuse; mutable
+modification rows changed after the requested cutoff also refuse. Pre-activation amendments,
+shared-cause attribution and broader cross-entity/separate-contract acceptance remain open.
+FX valuation, journal source comparison, contributor routes and report registration remain
+unfinished. Eight reports still lack complete registered builders. The booking metric basis
+and the finished report still require independent accounting sign-off.
+
+
 October 19 BBR implementation continuation: source capture and fiscal presentation now exist
 for bookings_billings_revenue. Billing follows existing invoice identity/credit/void rules;
 revenue uses sealed lines with server capture cutoffs and posting-period attribution. The report

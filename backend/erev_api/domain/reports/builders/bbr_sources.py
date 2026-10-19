@@ -17,7 +17,7 @@ from uuid import UUID
 from erev_engine.canonical import canonical_bytes
 from sqlalchemy import select
 
-from erev_api.db.tables import contract_event, subledger_line, subledger_posting_seal
+from erev_api.db.tables import contract_event, modification, subledger_line, subledger_posting_seal
 from erev_api.domain.reports import tie_outs
 from erev_api.domain.reports.builders import ReportParams
 from erev_api.domain.reports.builders.contract_balance_rollforward import (
@@ -56,6 +56,7 @@ class Contribution:
     period_id: UUID | None = None
     functional_currency: str | None = None
     functional_amount: Decimal | None = None
+    basis_ids: tuple[UUID, ...] = ()
 
 
 def read(uow: UnitOfWork, params: ReportParams, *, period_ids: Iterable[UUID]) -> dict[str, Any]:
@@ -132,13 +133,24 @@ def read(uow: UnitOfWork, params: ReportParams, *, period_ids: Iterable[UUID]) -
             )
             .order_by(subledger_line.c.period_id, subledger_line.c.id)
         )
+        event_rows = [dict(r) for r in uow.session.execute(events).mappings()]
+        booking_ids = [r["id"] for r in event_rows if str(r["event_type"]) == "CONTRACT_BOOKED"]
+        modification_bookings = list(
+            uow.session.scalars(
+                select(modification.c.applied_event_id).where(
+                    modification.c.tenant_id == tenant,
+                    modification.c.applied_event_id.in_(booking_ids),
+                )
+            )
+        )
         result = json.loads(
             canonical_bytes(
                 redact_contacts(
                     {
                         "book_code": params.book_code,
                         "period_ids": wanted_periods,
-                        "events": [dict(r) for r in uow.session.execute(events).mappings()],
+                        "events": event_rows,
+                        "modification_booking_ids": modification_bookings,
                         "revenue": [dict(r) for r in uow.session.execute(revenue).mappings()],
                     }
                 )

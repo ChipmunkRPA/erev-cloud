@@ -14,6 +14,7 @@ from erev_api.domain.reports.builders import (
     ReportParams,
     SourceBinding,
     SourceCollector,
+    bbr_bookings,
     bbr_sources,
 )
 from erev_api.enums import ContractEventType
@@ -56,6 +57,11 @@ def test_bbr_source_cutoff_scope_and_retained_inputs(
     )
     with world.place.uow() as uow:
         original = bbr_sources.read(uow, params, period_ids=period_ids)
+    bookings = bbr_bookings.new_contracts(original)
+    assert len(bookings) == 1
+    assert bookings[0].amount == Decimal("135000.00")
+    assert bookings[0].contract_id == cid
+    assert len(bookings[0].basis_ids) == 2
     bills = bbr_sources.billings(original)
     revenues = bbr_sources.revenue(original)
     assert bills and revenues
@@ -94,6 +100,7 @@ def test_bbr_source_cutoff_scope_and_retained_inputs(
             period_ids=period_ids,
         )
     assert historic == original
+    assert bbr_bookings.new_contracts(current) == bookings
     assert sum((r.amount for r in bbr_sources.billings(current)), Decimal(0)) == (
         sum((r.amount for r in bills), Decimal(0)) + Decimal("5000.00")
     )

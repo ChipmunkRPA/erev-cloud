@@ -6393,3 +6393,23 @@ cleanup in the shared database session kernel was also repaired and regression-t
   original file; rollback leaves neither the reference nor a completed attempt. Parent release
   enablement is unchanged. Lifecycle/integrity verification is in the dated CI record.
 - Report publication, final population acceptance, approvals and admission remain unfinished.
+
+## Authorized validation report source — October 15, 2026
+
+- Added a retained-dataset reader that checks current report.run permission across the full
+  frozen entity set before file access. Partial entity selection, wrong tenant and mismatched
+  rerun file/hash bindings are refused; SYSTEM has no implicit reader grant.
+- Dataset metadata, digest, canonical JSON, source identity and record cutoff are checked.
+  Matching/differing report data reproduces after later contract activity; database and typing
+  evidence is in the dated CI record. Report catalogue/job integration remains unfinished.
+- Final acceptance, approvals and admission also remain open; no deployment.
+
+## Bound upgrade-validation report builder — October 15, 2026
+
+- Added the report builder over the verified dataset, typed change-count columns and canonical
+  text for structured before/after values. Its source binding records the exact file, hash,
+  attempt and frozen entity set; reruns rebuild rows rather than reuse cached output.
+- JSON/CSV reproducibility and requester-grant checks passed database tests. Unsupported modes
+  and incomplete/incompatible bindings fail before evidence reads. Dated CI evidence records
+  the checks. Catalogue/job registration and requester reload wiring remain unfinished.
+- Final acceptance, approvals and admission remain open; no deployment.

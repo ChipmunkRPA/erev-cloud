@@ -73,3 +73,108 @@ def test_currency_split_and_missing_valuation_refuse() -> None:
         bbr.dataset(sources, currency_view="functional", **args)
     with pytest.raises(Problem, match="all four"):
         bbr.dataset({"billings": []}, currency_view="transaction", **args)
+
+
+def test_activation_booking_identity_and_separate_modification_exclusion() -> None:
+    from erev_api.domain.reports.builders.bbr_bookings import new_contracts
+
+    booking = {
+        "id": str(UUID(int=10)),
+        "contract_id": str(UUID(int=20)),
+        "contracting_entity_id": str(ENTITY.id),
+        "event_type": "CONTRACT_BOOKED",
+        "record_seq": 1,
+        "effective_date": "2026-07-01",
+        "supersedes_event_id": None,
+        "payload": {
+            "transaction_currency": "USD",
+            "lines": [
+                {"total_price": {"amount": "100", "currency": "USD"}},
+                {"total_price": {"amount": "-10", "currency": "USD"}},
+            ],
+        },
+    }
+    activation = {
+        **booking,
+        "id": str(UUID(int=11)),
+        "event_type": "CONTRACT_ACTIVATED",
+        "record_seq": 2,
+        "effective_date": "2026-07-02",
+        "payload": {},
+    }
+    source = {"events": [booking], "modification_booking_ids": []}
+    assert new_contracts(source) == ()
+    source["events"] = [
+        booking,
+        activation,
+        {**activation, "id": str(UUID(int=12)), "record_seq": 3},
+    ]
+    values = new_contracts(source)
+    assert len(values) == 1 and values[0].amount == Decimal("90")
+    assert values[0].effective_date == date(2026, 7, 2)
+    assert values[0].basis_ids == (UUID(int=10), UUID(int=11))
+    assert new_contracts({**source, "modification_booking_ids": [booking["id"]]}) == ()
+    with pytest.raises(Problem, match="no booking source"):
+        new_contracts({**source, "events": [activation]})
+    void = {**activation, "event_type": "CONTRACT_VOIDED", "id": str(UUID(int=13)), "record_seq": 4}
+    assert new_contracts({**source, "events": [booking, activation, void]}) == ()
+
+
+def test_modification_uses_application_group_and_requires_complete_price_basis() -> None:
+    from erev_api.domain.reports.builders import bbr_modifications
+
+    group, later_group = str(UUID(int=30)), str(UUID(int=31))
+    event, before_id, version_id = (str(UUID(int=n)) for n in (32, 33, 34))
+    before = {
+        "id": before_id,
+        "combination_group_id": group,
+        "book_code": "ASC606",
+        "transaction_currency": "USD",
+        "transaction_price": "240000.00",
+    }
+    version = {
+        **before,
+        "id": version_id,
+        "previous_version_id": before_id,
+        "transaction_price": "300000.00",
+        "cause_event_ids": [event],
+    }
+    source = {
+        "modifications": [
+            {
+                "id": str(UUID(int=35)),
+                "contract_id": str(UUID(int=36)),
+                "contracting_entity_id": str(ENTITY.id),
+                "effective_date": "2026-09-16",
+                "applied_event_id": event,
+            }
+        ],
+        "applications": [{"id": event, "combination_group_id": group}],
+        "versions": [
+            version,
+            {
+                **version,
+                "id": str(UUID(int=37)),
+                "combination_group_id": later_group,
+                "transaction_price": "900000.00",
+            },
+        ],
+        "predecessors": [before],
+        "cause_types": {event: "CONTRACT_AMENDED"},
+    }
+    assert bbr_modifications.values(source)[0].amount == Decimal("60000.00")
+    with pytest.raises(Problem, match="predecessor is unavailable"):
+        bbr_modifications.values({**source, "predecessors": []})
+    with pytest.raises(Problem, match="unique application version"):
+        bbr_modifications.values(
+            {**source, "versions": [version, {**version, "id": str(UUID(int=38))}]}
+        )
+    extra = str(UUID(int=39))
+    with pytest.raises(Problem, match="shared or unknown"):
+        bbr_modifications.values(
+            {
+                **source,
+                "versions": [{**version, "cause_event_ids": [event, extra]}],
+                "cause_types": {event: "CONTRACT_AMENDED", extra: "ESTIMATE_CHANGED"},
+            }
+        )

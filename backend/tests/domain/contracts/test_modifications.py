@@ -932,6 +932,33 @@ def test_wld_x_06_applied_schedule_by_obligation(
     assert allocated == {"O1": Decimal("233273.47"), "O2": Decimal("66726.53")}
     assert allocated["O1"] - Decimal("84821.92") == Decimal("148451.55")
 
+    # BBR counts the application price change once, independent of its two obligation rows.
+    from erev_api.domain.reports.builders import ReportParams, SourceCollector, bbr_modifications
+    from sqlalchemy import func
+
+    entity = k02.place.scalar(
+        select(contract.c.contracting_entity_id).where(contract.c.id == contract_id)
+    )
+    cutoff = k02.place.scalar(select(func.clock_timestamp()))
+    params = ReportParams(
+        "bookings_billings_revenue",
+        1,
+        {},
+        (entity,),
+        cutoff,
+        book_code="ASC606",
+        sources=SourceCollector(),
+        historical=True,
+    )
+    with k02.place.uow() as uow:
+        source = bbr_modifications.read(uow, params, start=date(2026, 9, 1), end=date(2026, 9, 30))
+    values = bbr_modifications.values(source)
+    assert len(values) == 1
+    assert values[0].amount == Decimal("60000.00")
+    assert values[0].source_id == UUID(created["id"])
+    assert values[0].contract_id == contract_id
+    assert len(values[0].basis_ids) == 3
+
 
 def test_separate_contract_books_new_contract(
     k02: K02World, runtime: JobRuntime, clock: FrozenClock
