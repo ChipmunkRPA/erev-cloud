@@ -2,6 +2,17 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Tenant population transaction fence — October 19, 2026
+
+- Migration 0165 adds shared transaction guards to writes on all 12 population-reader
+  tables and their partitions. The acceptance helper reserves the tenant exclusively;
+  conflicts refuse immediately and map to retryable lock-conflict responses.
+- Database checks cover concurrent shared writers, both contention directions, commit/
+  rollback release, tenant isolation, trigger/partition coverage, migration round-trip and
+  existing validation/report workflows. Six cases passed; typing and lint also passed.
+- Final acceptance must acquire the fence before validation locks and reread under READ
+  COMMITTED. The helper is not yet connected to final acceptance or approval/admission.
+
 ## Completed-attempt population reassessment — October 19, 2026
 
 - Assessment now accepts COMPLETE/INCOMPLETE attempts while the parent remains RUNNING.
@@ -257,15 +268,6 @@
   and independent-group progress. Final results are recorded in docs/release/CI-2026-10-15.md.
 - Replay fan-out must supply verify:<group id>; persisted verification and its transactional
   advisory lock remain outstanding. No replay handler is newly registered by this change.
-
-## Replay job execution identity — October 15, 2026
-
-- Handlers can read the registry's exact task_id and attempt number through read-only context
-  properties. Inline work has neither, including when it inherits a guarded parent runtime.
-- Database coverage checks retry identity, stale-task fencing and duplicate delivery. The
-  transaction inventory now names the existing SCH-11 tenant-directory read; writes stay guarded.
-- Persistence tables, verification handler and same-group scheduler locking remain outstanding.
-  Verification evidence is recorded in docs/release/CI-2026-10-15.md.
 
 ## Outstanding release verification
 

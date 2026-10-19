@@ -2376,6 +2376,8 @@ Keys: `PRIMARY KEY (tenant_id, id)`.
 
 Specification detail: Columns (draft §4b verbatim): SC-T; `release_validation_id` N; `attempt_no` N; `seed` N (`platform.replay_seed`, T-PLT-31, default 20260912); `population` jsonb N (`{groups, open_activity, remaining, nominal, sampled, strata:[{book, method, present, sampled}], no_source, no_head}`); `required_entity_ids` uuid[] N (every entity with ≥ 1 group member at selection, R5); `status` E-127 (`SELECTED`, `RUNNING`, `COMPLETE`, `INCOMPLETE`, `SUPERSEDED`); `dataset_file_id` Y, `dataset_sha256` Y (purpose `VALIDATION_DATASET`, written once at →`COMPLETE`/`INCOMPLETE`); `report_run_id` Y; `approval_request_id` Y; SC-C, SC-M.
 
+Implementation note (migration 0165): final population checks have a tenant-specific transaction fence. Writes to every table read by the population reader take a shared advisory lock; the acceptance helper takes it exclusively before validation locks and rereads under READ COMMITTED. Both sides refuse contention with a retryable lock conflict. Partition row triggers inherit the guard. Final acceptance/approval/admission integration remains unfinished; holding the fence alone does not enable a release.
+
 Population identity: newly frozen attempts also store fingerprint_version = 1 and fingerprint
 inside the population JSON. The SHA-256 covers canonical, sorted group identities and heads,
 open-activity flags, book/method strata, required entities, and current member identities and

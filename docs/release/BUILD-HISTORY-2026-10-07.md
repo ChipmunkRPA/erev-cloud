@@ -6180,3 +6180,12 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Ten failure-first regressions reproduced uncaught parsing exceptions. Replay/codec checks and
   final typing/lint evidence are recorded in docs/release/CI-2026-10-15.md.
 - Persisted replay verification, release orchestration and RPT-38 remain outstanding.
+
+## Replay job execution identity — October 15, 2026
+
+- Handlers can read the registry's exact task_id and attempt number through read-only context
+  properties. Inline work has neither, including when it inherits a guarded parent runtime.
+- Database coverage checks retry identity, stale-task fencing and duplicate delivery. The
+  transaction inventory now names the existing SCH-11 tenant-directory read; writes stay guarded.
+- Persistence tables, verification handler and same-group scheduler locking remain outstanding.
+  Verification evidence is recorded in docs/release/CI-2026-10-15.md.

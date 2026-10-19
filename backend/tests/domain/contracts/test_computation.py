@@ -3726,3 +3726,61 @@ def test_replay_difference_artifact_is_atomic_and_reused(
     for suffix in ("", "/content"):
         response = get(world.app, f"/api/v1/files/{file_id}{suffix}", world.place.author)
         assert response.status_code == 404, response.text
+
+
+def test_validation_population_fence_serializes_writers(world: World) -> None:
+    from erev_api.domain.contracts.validation_fence import hold
+    from erev_api.problems import from_db_error
+    from sqlalchemy.exc import DBAPIError
+    from support.rows import combination_group_values
+
+    tenant = world.place.tenant_id
+    with world.place.uow() as writer:
+        writer.session.execute(insert(combination_group).values(**combination_group_values(tenant)))
+        # A second writer shares the tenant gate; final acceptance cannot pass either writer.
+        with world.place.uow() as second_writer:
+            second_writer.session.execute(
+                insert(combination_group).values(**combination_group_values(tenant))
+            )
+            with world.place.uow() as acceptance, pytest.raises(Problem) as refused:
+                hold(acceptance)
+            assert refused.value.slug == "lock-conflict"
+            second_writer.commit()
+        writer.commit()
+    with world.place.uow() as acceptance:
+        hold(acceptance)
+        with pytest.raises(DBAPIError) as refused_write, world.place.uow() as writer:
+            writer.session.execute(
+                insert(combination_group).values(**combination_group_values(tenant))
+            )
+        problem = from_db_error(refused_write.value)
+        assert problem is not None and problem.slug == "lock-conflict"
+        # Reentrant calls retain the same transaction reservation.
+        hold(acceptance)
+        acceptance.commit()
+    with world.place.uow() as writer:
+        writer.session.execute(insert(combination_group).values(**combination_group_values(tenant)))
+        writer.commit()
+    with world.place.uow() as acceptance:
+        hold(acceptance)
+        # Rollback also releases the fence.
+    with world.place.uow() as writer:
+        writer.session.execute(insert(combination_group).values(**combination_group_values(tenant)))
+        writer.commit()
+
+
+def test_validation_population_fence_is_tenant_scoped(world: World, keyring: KeyRing) -> None:
+    from erev_api.domain.contracts.validation_fence import hold
+    from support.factories import tenant_factory, tenant_id_of
+    from support.rows import combination_group_values
+
+    other = tenant_id_of(tenant_factory(keyring=keyring))
+    with world.place.uow() as acceptance:
+        hold(acceptance)
+        with world.place.uow(system_principal(other)) as writer:
+            writer.session.execute(
+                insert(combination_group).values(**combination_group_values(other))
+            )
+            writer.commit()
+        with world.place.uow(system_principal(other)) as other_acceptance:
+            hold(other_acceptance)
