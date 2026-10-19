@@ -11541,7 +11541,7 @@ Author BS-3. Uses DIN, SNP and RPS (PHASES §1 row 18). Indicative size 12 items
     report publication. The real scenario API/worker journey produces JSON/XLSX/CSV records
     and covers production refusal, idempotency, cancellation and failure. Revision 0185 admits
     forecast_run job subjects. K-11 accounting acceptance, broader recovery/concurrency,
-    creation screens, revenue chart, general report-catalogue execution and same-source reruns
+    revenue chart, general report-catalogue execution and same-source reruns
     remain unfinished; FCS-3 remains open.
   - **Prerequisites:** FCS-2
   - **Scope:**
@@ -11638,6 +11638,11 @@ Author BS-3. Uses DIN, SNP and RPS (PHASES §1 row 18). Indicative size 12 items
   - **Gates:** GK-01 `make ci`; GK-03 `make openapi`
 
 - [ ] **FCS-7 Scenario, forecast event set and forecast run screens.**
+  - Implementation update (2026-10-19): `/reports/forecasts` now offers published-input
+    selection, scoped entity/calendar horizons, currency view and JSON/XLSX/CSV formats,
+    asynchronous run progress/cancellation, paginated run history and saved report links/preview.
+    Creation remains scenario-only. Scenario creation/refresh and input editing screens,
+    dedicated run details, revenue chart and actual-vs-forecast navigation remain unfinished.
   - **Prerequisites:** FCS-6
   - **Scope:**
     - Paths: `frontend/src/routes/forecasts/scenarios.tsx` (SF-17); `frontend/src/routes/forecasts/event-set.tsx` (SF-17:event-set); `frontend/src/routes/forecasts/run.tsx` (SF-17:run); `frontend/src/app/router.tsx`; `frontend/src/messages/en.json` (namespace `forecasts`); `frontend/src/routes/forecasts/__tests__/scenarios.test.tsx`; `frontend/e2e/projects/screens.spec.ts`; `backend/erev_api/domain/demo/avenmoor.py` (seeded scenario "Q4 2026 outlook" with event set "Q4 base" and one forecast run for the captures, header XR-09)

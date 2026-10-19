@@ -782,6 +782,13 @@ and accounting acceptance are still required.
 
 ### Running a forecast through the API
 
+In a scenario workspace, open **Reports → Scenarios and forecasts**. Select a published input
+set, entities, book and consecutive start/end periods, then choose the currency view and output
+formats. **Run forecast** starts a background job; its progress and cancellation control appear
+below the form. The history lists saved reports, with an expandable preview for JSON and links
+to each report for downloads. File formats require export permission for every selected entity.
+Scenario creation, refresh and input-set editing still use the APIs.
+
 In the scenario workspace, publish the applied input set and send `POST /api/v1/forecast-runs`
 with an idempotency key and this body (replace identifiers and periods with your scenario's values):
 

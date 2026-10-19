@@ -7500,3 +7500,18 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - This supplies a required input for deterministic refresh/replay; the refresh orchestration,
   forecast computation, forecast reports and evidence-pack reports remain unfinished.
   No deployment or production-readiness claim.
+
+## Published forecast replay inputs — October 19, 2026
+
+- Added the source reader for refresh: verified publication hash, complete input order and
+  published version ancestry; inherited file inputs must belong to that chain and be committed.
+  The reader checks the current requester's scenario and underlying event/import permissions.
+- Retains original file/evidence bytes with size/hash verification and a combined size limit;
+  keeps the committed template version, parameters, quarantine setting and verified mapping
+  definition. Only captured contract-event POST commands are admitted, never arbitrary URLs.
+  Publication and reading share the same canonical content definition.
+- The mixed-input scenario journey verifies inherited source-file materialization, ordered event
+  bodies, publication/file corruption rejection and permission refusal; Ruff/Mypy pass.
+  Refresh orchestration, applying
+  these inputs in a new copy and switching the scenario are still unfinished. Forecast outputs,
+  actual-vs-forecast and evidence packs also remain open. No deployment/readiness claim.

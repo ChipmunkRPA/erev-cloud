@@ -460,6 +460,12 @@ export const SCREEN_ROUTES: readonly RouteObject[] = [
     }),
   },
   {
+    id: "SF-17",
+    path: "/reports/forecasts",
+    handle: { sf: "SF-17", screen: "SF-17", titleKey: "reports.forecasts.title" },
+    lazy: async () => ({ Component: (await import("../routes/reports/forecasts")).ForecastRunsPage }),
+  },
+  {
     // SCREENS_B RT-32 SF-08:report Report view (RV-01 to RV-14).
     id: "SF-08:report",
     path: "/reports/:reportCode",
