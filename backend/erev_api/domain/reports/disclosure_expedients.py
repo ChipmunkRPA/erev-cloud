@@ -9,12 +9,12 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import select, text
 
 from erev_api.db.tables import legal_entity
 from erev_api.domain.reports import elections
 from erev_api.domain.reports.outputs import Column, ReportData
-from erev_api.enums import BookCode, RegistryCategory
+from erev_api.enums import BookCode, PrincipalKind, RegistryCategory
 from erev_api.problems import Problem
 from erev_api.registry.policies import POLICY_PARAMETERS
 from erev_api.registry.resolve import resolve
@@ -62,6 +62,22 @@ def capture(uow: UnitOfWork, *, entity_id: UUID, book: str, known_at: datetime) 
         or (scope != "*" and entity_id not in scope)
     ):
         raise Problem("forbidden")
+    return _capture(uow, entity_id=entity_id, book=book, known_at=known_at)
+
+
+def capture_for_lock(
+    uow: UnitOfWork, *, entity_id: UUID, book: str, known_at: datetime
+) -> dict[str, Any]:
+    """Only the lock freeze's read-only SYSTEM context may bypass caller report grants."""
+    if (
+        uow.principal.kind is not PrincipalKind.SYSTEM
+        or uow.session.scalar(text("SHOW transaction_read_only")) != "on"
+    ):
+        raise Problem("forbidden")
+    return _capture(uow, entity_id=entity_id, book=book, known_at=known_at)
+
+
+def _capture(uow: UnitOfWork, *, entity_id: UUID, book: str, known_at: datetime) -> dict[str, Any]:
     if known_at.tzinfo is None or book not in {"ASC606", "IFRS15"}:
         raise Problem("validation-failed", "Choose an accounting book and an aware policy cutoff.")
     entity = uow.session.execute(

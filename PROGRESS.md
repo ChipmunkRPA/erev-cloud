@@ -2,6 +2,24 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Read-only lock disclosure capture — October 19, 2026
+
+- Added disclosure_freeze.capture over the existing SnapshotScope and one read-only SYSTEM
+  reader. It executes the nine period/seven quarter source producers, normalizes parameters,
+  fixes historical cutoff, preserves typed canonical datasets and their input bindings, and
+  captures practical-expedient/nonpublic/interim policy facts at the same instant.
+- Enforces entity-calendar membership, accounting book, aware/equal freeze cutoff, schema,
+  unique row identities and bounded retained payload size. Does not enqueue jobs or invent
+  report/job IDs. Policies expose a separate lock-only entry requiring SYSTEM plus a read-only
+  transaction; ordinary SYSTEM calls still fail the existing report permission gate.
+- Real database journey captures sixteen inputs under freeze.system_unit and compares every
+  dataset against ordinary child jobs at the same cutoff; no report count change. Caller
+  context and ordinary SYSTEM policy access refuse. Ruff/Mypy pass. Fixture has no booked
+  accounting population, so independent accounting correctness is not implied.
+- The collector is not yet invoked by lock approval: atomic persistence of genuine source report
+  identities/seven locked snapshots and as-locked parent rendering remain to integrate. Existing
+  draft snapshots stay drafts. No lock support, deployment or production-readiness claim.
+
 ## Disclosure snapshot read APIs — October 19, 2026
 
 - Added API-R-42 disclosure snapshot list/detail with report.run authorization, entity/book/
@@ -206,22 +224,6 @@
 - Remaining: registered parent worker/dependency scheduling, seven-section assembly, frozen
   disclosures, practical expedients, PDF and viewer. Five catalogue builders remain unregistered;
   no disclosure_pack completion or production-readiness claim.
-
-## Durable disclosure parent-child attachment — October 19, 2026
-
-- Added disclosure_children.ensure: locks the parent run, checks the initiating actor's current
-  run/export permission, creates and attaches the complete child population in one transaction.
-  Existing attachments are reused without fresh calendar resolution or replacement child runs.
-- Reuse checks child identities/order, code/version, creator, entity/book/cutoff, output format,
-  historical currency basis and matching period/quarter intervals. Missing, duplicated or mismatched
-  children refuse. Locked parents explicitly require the separate frozen-disclosure source path.
-- Real database check passes for 16 children, repeated calls and reuse after commit in a fresh
-  transaction, plus permission denial and corrupted attachment refusal without new rows. Ruff and
-  new-module Mypy pass. Concurrent callers serialize on the parent row; no concurrent stress test
-  or completed pack publication is claimed.
-- This helper is not yet wired to a registered parent builder/worker. Parent dependency waiting,
-  child output verification and assembly, frozen snapshots, expedients, PDF and viewer remain open.
-  Five catalogue builders remain unregistered; this does not complete RPS-15.
 
 ## Outstanding release verification
 

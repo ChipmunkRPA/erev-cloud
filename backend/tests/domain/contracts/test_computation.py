@@ -5464,3 +5464,38 @@ def test_disclosure_children_attach_once_and_survive_retry(
         assert {
             row["disclosure_kind"]: row["data_sha256"] for row in repeated_snapshots
         } == snapshot_hashes
+
+    from erev_api.domain.close import freeze
+    from erev_api.domain.reports import disclosure_freeze
+    from erev_api.domain.reports.snapshots import SnapshotScope
+
+    freeze_scope = SnapshotScope(
+        entity_id=world.entity_id,
+        book_code="ASC606",
+        period_id=period.id,
+        known_at=parent["known_at"],
+        frozen_at=parent["known_at"],
+    )
+    with world.place.uow() as uow:
+        before_capture = uow.session.scalar(select(func.count()).select_from(report_run))
+        with pytest.raises(Problem) as refused_capture:
+            disclosure_freeze.capture(uow, freeze_scope, quarter=True)
+        assert refused_capture.value.slug == "forbidden"
+        with freeze.system_unit(uow) as reader:
+            frozen_inputs = disclosure_freeze.capture(reader, freeze_scope, quarter=True)
+            with pytest.raises(Problem) as ordinary_policy:
+                disclosure_expedients.capture(
+                    reader, entity_id=world.entity_id, book="ASC606", known_at=parent["known_at"]
+                )
+            assert ordinary_policy.value.slug == "forbidden"
+        assert uow.session.scalar(select(func.count()).select_from(report_run)) == before_capture
+        assert len(frozen_inputs["children"]) == 16
+        assert frozen_inputs["policy_sha256"] == sha256_hex(frozen_inputs["policies"])
+        assert frozen_inputs["known_at"] == parent["known_at"].isoformat()
+        expected_inputs = {
+            child["key"]: child for child in evidence["disclosure_inputs"]["children"]
+        }
+        for captured in frozen_inputs["children"]:
+            assert captured["dataset"] == expected_inputs[captured["key"]]["dataset"]
+            assert captured["output_sha256"] == sha256_hex(captured["dataset"])
+            assert "run_id" not in captured and "job_id" not in captured

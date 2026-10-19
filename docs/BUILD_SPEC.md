@@ -10146,6 +10146,11 @@ Author BS-3. Uses CTR (PHASES §1 row 12). Indicative size 16 items; this phase 
   - **Gates:** GK-01 `make ci`; GK-07 `make e2e SPEC=frontend/e2e/projects/screens.spec.ts`
 
 - [ ] **RPS-15 Disclosure snapshots and the disclosure pack.**
+  - October 19 freeze-capture increment: a read-only SYSTEM producer captures all period/QTD
+    report inputs and exact-cutoff policies without jobs or fabricated identities. A database
+    check matches sixteen datasets to ordinary reports at the same cutoff. Lock-transaction
+    persistence and as-locked parent rendering are still pending; this is not lock integration.
+
   - October 19 snapshot-read increment: API-R-42 list/detail now return scoped, attached
     published snapshot metadata and verified evidence. Filters/count/keyset pagination and
     draft classification pass a real API journey. Lock-time/as-locked integration remains open.

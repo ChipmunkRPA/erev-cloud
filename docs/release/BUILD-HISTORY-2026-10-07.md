@@ -7140,3 +7140,20 @@ cleanup in the shared database session kernel was also repaired and regression-t
   frozen snapshots, practical expedients, PDF and viewer. Nine live child inputs cover section 6
   in addition to the spec's older eight-core-child acceptance; full pack acceptance remains open.
   Five catalogue builders remain unregistered; no deployment.
+
+
+## Durable disclosure parent-child attachment — October 19, 2026
+
+- Added disclosure_children.ensure: locks the parent run, checks the initiating actor's current
+  run/export permission, creates and attaches the complete child population in one transaction.
+  Existing attachments are reused without fresh calendar resolution or replacement child runs.
+- Reuse checks child identities/order, code/version, creator, entity/book/cutoff, output format,
+  historical currency basis and matching period/quarter intervals. Missing, duplicated or mismatched
+  children refuse. Locked parents explicitly require the separate frozen-disclosure source path.
+- Real database check passes for 16 children, repeated calls and reuse after commit in a fresh
+  transaction, plus permission denial and corrupted attachment refusal without new rows. Ruff and
+  new-module Mypy pass. Concurrent callers serialize on the parent row; no concurrent stress test
+  or completed pack publication is claimed.
+- This helper is not yet wired to a registered parent builder/worker. Parent dependency waiting,
+  child output verification and assembly, frozen snapshots, expedients, PDF and viewer remain open.
+  Five catalogue builders remain unregistered; this does not complete RPS-15.
