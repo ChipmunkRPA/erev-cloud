@@ -1,4 +1,4 @@
-"""Assess frozen replay evidence and actual job completion before artifact publication."""
+"""Reassess replay evidence and population before publication or final acceptance."""
 
 from uuid import UUID
 
@@ -28,8 +28,10 @@ def assess(uow: UnitOfWork, *, validation_id: UUID, attempt_id: UUID) -> Aggrega
     """Return a decision from stored facts, without completing or enabling the validation.
 
     Hold the parent/attempt locks through the caller's transaction, as result writers do.
-    Artifact publication and final acceptance must revalidate the population again. Job rows
-    are read in one snapshot without locking: cancellation takes the job lock before parents.
+    Completed attempts are reassessed from current population/job facts, never a cached
+    publication decision. This does not attach/verify reports or enable the release. Final
+    acceptance must call it in its own transaction and fence concurrent population writers.
+    Job rows are read without locking: cancellation takes the job lock before parents.
     """
     if uow.principal.db_context.entity_scope != "*":
         raise Problem("forbidden", "Release validation requires the complete tenant population.")
@@ -62,12 +64,15 @@ def assess(uow: UnitOfWork, *, validation_id: UUID, attempt_id: UUID) -> Aggrega
         raise Problem("not-found")
     if (
         parent["status"] != "RUNNING"
-        or attempt["status"] != "RUNNING"
+        or attempt["status"] not in {"RUNNING", "COMPLETE", "INCOMPLETE"}
         or parent["effective_level"] not in {"MINOR", "MAJOR"}
         or parent["enabled_at"] is not None
         or parent["accepted_attempt_id"] is not None
     ):
         raise Problem("invalid-transition")
+    completed = attempt["status"] in {"COMPLETE", "INCOMPLETE"}
+    if completed and (attempt["dataset_file_id"] is None or attempt["dataset_sha256"] is None):
+        raise Problem("validation-failed", "The completed attempt has no retained dataset.")
     if (
         attempt["population"].get("fingerprint_version") != 1
         or attempt["population"].get("fingerprint") != read(uow).fingerprint()
@@ -159,4 +164,10 @@ def assess(uow: UnitOfWork, *, validation_id: UUID, attempt_id: UUID) -> Aggrega
         elif row["job_state"] in {"SUCCEEDED", "SUCCEEDED_WITH_EXCEPTIONS"}:
             state = State.COMPLETE
         facts.append(GroupResult(state, outcome))
-    return aggregate(parent["effective_level"], facts)
+    decision = aggregate(parent["effective_level"], facts)
+    if completed and (
+        decision.status is None
+        or (decision.status == "INCOMPLETE") != (attempt["status"] == "INCOMPLETE")
+    ):
+        raise Problem("validation-failed", "The attempt completion disagrees with its replay jobs.")
+    return decision

@@ -2,6 +2,17 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Completed-attempt population reassessment — October 19, 2026
+
+- Assessment now accepts COMPLETE/INCOMPLETE attempts while the parent remains RUNNING.
+  It rechecks the full population fingerprint and actual job outcomes, requires retained
+  dataset references and rejects lifecycle/outcome disagreement.
+- Matching/differing completed attempts retain their decisions until contract activity changes;
+  changed populations fail reassessment while the original audit reports remain reproducible.
+  Cancellation and retry exhaustion remain INCOMPLETE after dataset publication.
+- Final acceptance still needs report verification, concurrent population-writer fencing,
+  approval routing and admission integration. This change performs no release enablement.
+
 ## Verified attempt report attachment — October 19, 2026
 
 - Added transaction-bound report attachment under parent/attempt locks. It requires a
@@ -255,15 +266,6 @@
   transaction inventory now names the existing SCH-11 tenant-directory read; writes stay guarded.
 - Persistence tables, verification handler and same-group scheduler locking remain outstanding.
   Verification evidence is recorded in docs/release/CI-2026-10-15.md.
-
-## Malformed replay evidence — October 15, 2026
-
-- Malformed input/output evidence now produces an integrity mismatch before engine execution,
-  including missing input bodies, invalid decimal tags, invalid JSON/UTF-8 and non-object outputs.
-  The shared codec also rejects non-finite decimals. No current-state fallback is introduced.
-- Ten failure-first regressions reproduced uncaught parsing exceptions. Replay/codec checks and
-  final typing/lint evidence are recorded in docs/release/CI-2026-10-15.md.
-- Persisted replay verification, release orchestration and RPT-38 remain outstanding.
 
 ## Outstanding release verification
 

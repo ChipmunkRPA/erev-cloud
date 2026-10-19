@@ -6171,3 +6171,12 @@ cleanup in the shared database session kernel was also repaired and regression-t
   state. Corruption and scope checks pass; final verification is in CI-2026-10-15.md.
 - This reader is not yet wired to RPT-38. Replay orchestration, ledger cross-checks and persisted
   replay verification remain outstanding. Local recovery on frozen 659314a passed.
+
+## Malformed replay evidence — October 15, 2026
+
+- Malformed input/output evidence now produces an integrity mismatch before engine execution,
+  including missing input bodies, invalid decimal tags, invalid JSON/UTF-8 and non-object outputs.
+  The shared codec also rejects non-finite decimals. No current-state fallback is introduced.
+- Ten failure-first regressions reproduced uncaught parsing exceptions. Replay/codec checks and
+  final typing/lint evidence are recorded in docs/release/CI-2026-10-15.md.
+- Persisted replay verification, release orchestration and RPT-38 remain outstanding.

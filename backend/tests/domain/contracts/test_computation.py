@@ -2905,6 +2905,7 @@ def test_validation_fanout_runs_frozen_match_and_no_source(
     with world.place.uow() as uow:
         count = uow.session.scalar(select(func.count()).select_from(file_object))
         assert retain(uow, validation_id=validation_id, attempt_id=frozen.id) == dataset
+        assert assess(uow, validation_id=validation_id, attempt_id=frozen.id) == decision
         assert not uow.audit_events
         assert uow.session.scalar(select(func.count()).select_from(file_object)) == count
 
@@ -2960,6 +2961,9 @@ def test_validation_fanout_runs_frozen_match_and_no_source(
                 uow, frozen.id, entity_ids=entities, known_at=uow.now - timedelta(days=1)
             )
     flag_change(world, booked.contract["id"], 2)
+    with world.place.uow() as uow, pytest.raises(Problem) as completed_drift:
+        assess(uow, validation_id=validation_id, attempt_id=frozen.id)
+    assert completed_drift.value.slug == "validation-failed"
     with world.place.uow() as uow:
         repeated = validation_sources.read_for_report(
             uow,
@@ -3450,7 +3454,9 @@ def test_validation_fanout_serializes_concurrent_deliveries(world: World) -> Non
         )
 
 
-@pytest.mark.parametrize("scenario", ["queued", "cancelled", "drift", "superseded"])
+@pytest.mark.parametrize(
+    "scenario", ["queued", "cancelled", "drift", "superseded", "premature_complete"]
+)
 def test_validation_aggregation_stored_lifecycle(world: World, scenario: str) -> None:
     from erev_api.domain.contracts import replay_job
     from erev_api.domain.contracts.validation_aggregation import assess
@@ -3473,7 +3479,18 @@ def test_validation_aggregation_stored_lifecycle(world: World, scenario: str) ->
             cancel_job(uow, fanout.job_ids[0])
         if scenario == "superseded":
             supersede(uow, validation_id=validation_id, attempt_id=frozen.id)
-        if scenario in {"drift", "superseded"}:
+        if scenario == "premature_complete":
+            from erev_api.db.transitions import apply
+
+            apply(
+                uow.session,
+                "release_validation_attempt",
+                frozen.id,
+                to_status="COMPLETE",
+                expected_status="RUNNING",
+                set_values={},
+            )
+        if scenario in {"drift", "superseded", "premature_complete"}:
             with pytest.raises(Problem):
                 assess(uow, validation_id=validation_id, attempt_id=frozen.id)
             with pytest.raises(Problem):
@@ -3484,6 +3501,7 @@ def test_validation_aggregation_stored_lifecycle(world: World, scenario: str) ->
             assert result.reasons == (("CANCELLED",) if scenario == "cancelled" else ())
             if scenario == "cancelled":
                 assert retain(uow, validation_id=validation_id, attempt_id=frozen.id).file_id
+                assert assess(uow, validation_id=validation_id, attempt_id=frozen.id) == result
             else:
                 with pytest.raises(Problem):
                     retain(uow, validation_id=validation_id, attempt_id=frozen.id)
@@ -3552,6 +3570,7 @@ def test_validation_aggregation_waits_for_retries_then_reports_exhaustion(
                 )
                 with stream:
                     payload = json.loads(stream.read())
+                assert assess(uow, validation_id=validation_id, attempt_id=frozen.id) == result
                 assert payload["groups"][0]["outcome"] == "ERROR"
                 assert payload["groups"][0]["orchestration_state"] == "FAILED_EXHAUSTED"
                 assert (
