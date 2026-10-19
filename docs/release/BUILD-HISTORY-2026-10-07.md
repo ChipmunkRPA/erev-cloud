@@ -6340,3 +6340,12 @@ cleanup in the shared database session kernel was also repaired and regression-t
   on a worker commit, and refuses cancellation after acceptance. Registry checks also corrected
   the stale AI_SETTINGS_VERSION phase inventory. CI evidence is in the dated release record.
 - Fan-out, aggregation/artifact publication, approval resolution and admission remain open.
+
+## Frozen validation job fan-out — October 15, 2026
+
+- Added transactional job binding for each frozen selection, with population/release checks
+  and reuse of existing jobs on retry. Lost dispatch recovery and concurrent callbacks create
+  one queue entry; rollback leaves no partial bindings. No sample is redrawn.
+- Seven fan-out database cases and 17 scheduler regressions passed, alongside unit/architecture,
+  typing and lint checks. Evidence: docs/release/CI-2026-10-15.md.
+- Aggregation, artifacts, approval resolution and final admission remain open.

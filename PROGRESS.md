@@ -2,6 +2,17 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Legacy Contract_Live BI extract — October 19, 2026
+
+- Added extract_legacy_contract_live v1 over all effective dates of ASC606 history with
+  creation/source cutoffs and incremental row selection. Other books are refused explicitly.
+- Preserved the 71-column formatter and original exact trace texts. Retained current and
+  predecessor inputs supply reruns without querying today's history. CSV/JSON metadata and
+  source contracts are registered; migration 0172 reconciles disclosed query sources.
+- Actual API checks match the existing legacy history output and verify CSV hash and rerun;
+  evidence is in CI-2026-10-19.md. Ten builders remain missing, including contract and journal
+  extracts. Locked datasets, watermarks, true-up and browser acceptance remain open.
+
 ## Sealed subledger BI extract — October 19, 2026
 
 - Added extract_subledger_lines v1 with explicit business/server recording and server seal
@@ -247,15 +258,6 @@
 - PATCH validations are refused before population evaluation. All 22 aggregation/state-machine
   tests and typing passed; dated CI evidence records the checks. Persisted job aggregation,
   artifact publication, approval resolution and admission remain unfinished.
-
-## Frozen validation job fan-out — October 15, 2026
-
-- Added transactional job binding for each frozen selection, with population/release checks
-  and reuse of existing jobs on retry. Lost dispatch recovery and concurrent callbacks create
-  one queue entry; rollback leaves no partial bindings. No sample is redrawn.
-- Seven fan-out database cases and 17 scheduler regressions passed, alongside unit/architecture,
-  typing and lint checks. Evidence: docs/release/CI-2026-10-15.md.
-- Aggregation, artifacts, approval resolution and final admission remain open.
 
 ## Outstanding release verification
 

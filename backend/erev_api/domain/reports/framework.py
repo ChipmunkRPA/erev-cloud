@@ -166,6 +166,7 @@ from erev_api.domain.reports.builders import (
 from erev_api.domain.reports.builders import extract_balances as extract_balances_builder
 from erev_api.domain.reports.builders import extract_contract_versions as extract_versions_builder
 from erev_api.domain.reports.builders import extract_events as extract_events_builder
+from erev_api.domain.reports.builders import extract_legacy_contract_live as extract_legacy_builder
 from erev_api.domain.reports.builders import extract_obligations as extract_obligations_builder
 from erev_api.domain.reports.builders import extract_schedule_lines as extract_schedule_builder
 from erev_api.domain.reports.builders import extract_subledger_lines as extract_subledger_builder
@@ -358,6 +359,7 @@ _DATE: Final = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}$")
 BUILDERS: Final[Mapping[str, Builder]] = MappingProxyType(
     {
         extract_versions_builder.CODE: extract_versions_builder.build,
+        extract_legacy_builder.CODE: extract_legacy_builder.build,
         extract_subledger_builder.CODE: extract_subledger_builder.build,
         extract_balances_builder.CODE: extract_balances_builder.build,
         extract_schedule_builder.CODE: extract_schedule_builder.build,
@@ -574,6 +576,10 @@ SOURCE_CONTRACTS: Final[Mapping[str, SourceContract]] = MappingProxyType(
         extract_versions_builder.CODE: SourceContract(
             RETAINED,
             (_CUTOFF, "version source records and original computation membership"),
+        ),
+        extract_legacy_builder.CODE: SourceContract(
+            RETAINED,
+            (_CUTOFF, "all-date legacy source rows, predecessor inputs and exact trace texts"),
         ),
         extract_subledger_builder.CODE: SourceContract(
             RETAINED,
@@ -854,6 +860,7 @@ assert set(SOURCE_CONTRACTS) == set(BUILDERS), (
 PARAMETER_DEFAULTS: Final[Mapping[str, Mapping[str, Any]]] = MappingProxyType(
     {
         extract_versions_builder.CODE: MappingProxyType({"mode": "FULL"}),
+        extract_legacy_builder.CODE: MappingProxyType({"mode": "FULL"}),
         extract_subledger_builder.CODE: MappingProxyType({"mode": "FULL"}),
         extract_balances_builder.CODE: MappingProxyType({"mode": "FULL"}),
         extract_schedule_builder.CODE: MappingProxyType({"mode": "FULL"}),
@@ -1367,6 +1374,7 @@ def _resolve(
             extract_schedule_builder.CODE,
             extract_balances_builder.CODE,
             extract_subledger_builder.CODE,
+            extract_legacy_builder.CODE,
         }
         and parameters.get("mode") == "INCREMENTAL"
     ):
@@ -1375,6 +1383,10 @@ def _resolve(
             errors.append(
                 _finding("parameters.known_since", "Enter a time before the source time.")
             )
+    if code == extract_legacy_builder.CODE and parameters.get("book") not in {None, "ASC606"}:
+        errors.append(
+            _finding("parameters.book", "The legacy Contract_Live dataset requires ASC606.")
+        )
     for key, setting_code in SETTING_DEFAULTS.get(code, {}).items():
         if key in properties and key not in parameters:
             parameters[key] = setting(session, setting_code, known_at=known_at)

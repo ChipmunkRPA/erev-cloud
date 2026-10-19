@@ -1,5 +1,13 @@
 # eRev Cloud 1.0: stated limits of the release
 
+October 19 legacy reporting continuation: `extract_legacy_contract_live` now exports all-date
+ASC606 history in the established 71-column layout, with source creation cutoffs, incremental
+selection, exact trace inputs and retained current/predecessor inputs for reruns. Migration
+0172 updates query-source disclosure. There are now 10 catalogue definitions without builders
+(also remove extract_legacy_contract_live from earlier lists). Contract and journal-line
+extracts, locked datasets, watermarks, true-up and live browser acceptance remain unfinished.
+
+
 October 19 subledger reporting continuation: `extract_subledger_lines` now exports sealed
 line detail with business/server recording cutoffs, a server seal cutoff, retained labels,
 JSON/CSV output and entity/book/currency/period control totals. Migration 0171 reconciles the

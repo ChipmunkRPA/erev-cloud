@@ -35,6 +35,7 @@ def extract_metadata(code: str, parameters: Mapping[str, Any]) -> dict[str, Any]
         "extract_schedule_lines",
         "extract_balances",
         "extract_subledger_lines",
+        "extract_legacy_contract_live",
     }:
         return {}
     return {

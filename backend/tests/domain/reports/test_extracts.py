@@ -339,3 +339,56 @@ def test_subledger_extract_seal_cutoff_and_controls(
         get(app, f"{REPORT_RUNS}/{rerun.headers['x-erev-report-run-id']}/output", world.maya).json()
         == output
     )
+
+
+def test_legacy_extract_71_columns_and_reproduction(
+    app: FastAPI, app_settings: Settings, clock: FrozenClock, keyring: KeyRing
+) -> None:
+    from erev_api.domain.reports import legacy_columns
+    from sqlalchemy import func
+
+    world = k01_pellworth(app, keyring, clock, LocalFileStore(app_settings.file_root))
+    stamp = world.place.scalar(select(func.clock_timestamp()))
+    clock.set(stamp)
+    world = resigned(world)
+    params = {"entity_codes": [AVM_US], "book": "ASC606", "known_at": stamp.isoformat()}
+    original, rows = report_run(world, "extract_legacy_contract_live", params)
+    assert rows
+    assert len(legacy_columns.COLUMNS) == 71
+    data = get(app, f"{REPORT_RUNS}/{original['id']}/output", world.maya).json()
+    assert [col["key"] for col in data["columns"]] == [col.key for col in legacy_columns.COLUMNS]
+    _, reference = report_run(
+        world,
+        "legacy_contract_history_export",
+        {
+            **params,
+            "from_date": "1900-01-01",
+            "to_date": "2100-12-31",
+        },
+    )
+    assert rows == reference
+    csv_run, _ = report_run(world, "extract_legacy_contract_live", params, output_format="CSV")
+    base = f"{REPORT_RUNS}/{csv_run['id']}/output"
+    content = get(app, base, world.maya).content
+    manifest = get(app, base, world.maya, {"part": "manifest"}).json()
+    assert manifest["sha256"] == hashlib.sha256(content).hexdigest()
+    assert manifest["dataset"] == "extract_legacy_contract_live"
+    assert manifest["row_count"] == len(rows)
+    rerun = post(app, f"{REPORT_RUNS}/{original['id']}/rerun", world.maya, {})
+    assert rerun.status_code == 202, rerun.text
+    assert run_now(world, UUID(rerun.json()["id"]))["state"] == "SUCCEEDED"
+    assert (
+        get(app, f"{REPORT_RUNS}/{rerun.headers['x-erev-report-run-id']}/output", world.maya).json()
+        == data
+    )
+    invalid = post(
+        app,
+        REPORT_RUNS,
+        world.maya,
+        {
+            "report_code": "extract_legacy_contract_live",
+            "output_format": "JSON",
+            "parameters": {**params, "book": "IFRS15"},
+        },
+    )
+    assert invalid.status_code == 422, invalid.text

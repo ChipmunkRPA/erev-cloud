@@ -271,8 +271,9 @@ Dataset schemas, version 1 (the table ids are those of the data model, `docs/04-
 | `extract_legacy_contract_live` | Legacy history rows over all dates (04 §17.1 rule 1) | The 71 legacy `Contract_Live` columns of 04 §17.2, in legacy order, with the legacy export format rules | `row_count` |
 
 Status at this revision: `extract_events`, `extract_contract_versions`, `extract_obligations`, `extract_schedule_lines`
-`extract_balances` and `extract_subledger_lines` produce JSON and CSV through the report page
-and API. The other three definitions remain catalogue contracts without builders. Parquet extracts and
+`extract_balances`, `extract_subledger_lines` and `extract_legacy_contract_live` produce JSON
+and CSV through the report page and API. Contract and journal-line extracts remain catalogue
+contracts without builders. Parquet extracts and
 as-locked extract datasets remain unimplemented; supplying a lock is refused, never replaced
 with live data.
 
@@ -406,6 +407,27 @@ Complete balanced populations sum to zero in each group. Totals reflect the sele
 they are not silently forced to zero. Contract, account and period labels and the seal timestamp
 are retained with the source records for reproducible reruns. CSV manifests hash the delivered
 bytes. Locked extract datasets and automatic previous-run watermarks remain unavailable.
+
+
+#### Legacy Contract_Live dataset
+
+`extract_legacy_contract_live` exports all effective dates of ASC606 history using the 71
+Contract_Live columns, in their original order. Other books are refused. Full mode includes
+historical obligation rows whose version is known and whose version/row is created by the
+source instant. Incremental mode further selects rows created after `known_since`; it does
+not limit effective dates to the current year.
+
+The names, types, exact-number formatting and date formatting are the same as the legacy
+contract history export. Previous-version values and the six exact source texts come from the
+original version inputs and retained calculation traces. Missing exact sources refuse the run;
+rounded posted values are not substituted. The control total is `row_count`. The CSV manifest
+identifies dataset schema version 1 and hashes delivered bytes.
+
+A saved run retains current and predecessor inputs, exact source texts and consumed labels;
+re-running it passes those inputs through the 71-column formatter again. This preserves its
+historical source even after new activity. Existing legacy formatting is preserved; the extract
+is not an independent accounting certification. Locked extract datasets and automatic
+previous-run watermarks remain unavailable.
 
 
 ### Evidence packs
