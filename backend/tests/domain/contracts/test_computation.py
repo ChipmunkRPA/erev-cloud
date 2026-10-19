@@ -960,6 +960,56 @@ def test_report_reads_original_computation_after_group_advances(world: World) ->
         assert latest.output_sha256 == second_output.sha256()
 
 
+def test_variance_candidate_selection_excludes_later_recompute_without_new_events(
+    world: World,
+) -> None:
+    """Actual retained inputs; the frozen population shell isolates version selection."""
+    import hashlib
+    from uuid import uuid4
+
+    from erev_api.db.tables import legal_entity
+    from erev_api.domain.reports import locked, variance_sources
+    from erev_api.domain.reports.evidence_close import FrozenClose, FrozenReport
+
+    booked = k01(world)
+    group_id = booked.combination_group["id"]
+    original, _, first = computed(world.place, group_id)
+    with world.place.uow() as uow:
+        cutoff = uow.session.execute(select(func.clock_timestamp())).scalar_one()
+        entity_id = uow.session.execute(
+            select(legal_entity.c.id).where(legal_entity.c.code == "AVM-US")
+        ).scalar_one()
+    newer, _, second = computed(world.place, group_id)
+    assert original.events == newer.events
+    assert original.known_at < newer.known_at
+    lock_id = uuid4()
+    content = b"row_key,contract_external_id\ncontract:SF-ORD-10001,SF-ORD-10001\n"
+    dataset = locked.LockedDataset(
+        lock_id, "CONTRACT_BALANCES", uuid4(), hashlib.sha256(content).hexdigest(), 1, {}, content
+    )
+    frozen = FrozenClose(
+        locked.LockScope(lock_id, entity_id, "AVM-US", "ASC606", uuid4(), "FY2026-P09"),
+        {"cutoff_known_at": cutoff},
+        (FrozenReport("contract_balances", uuid4(), None, dataset),),
+    )
+    with world.place.uow() as uow:
+        earlier = variance_sources._side(uow, frozen)
+        later = variance_sources._side(
+            uow,
+            replace(
+                frozen,
+                record={
+                    "cutoff_known_at": uow.session.execute(
+                        select(func.clock_timestamp())
+                    ).scalar_one()
+                },
+            ),
+        )
+        assert earlier.contract_computations == {"SF-ORD-10001": first["id"]}
+        assert later.contract_computations == {"SF-ORD-10001": second["id"]}
+        assert earlier.computations[first["id"]].bundle == original
+
+
 @pytest.mark.parametrize("name", ["input", "output"])
 @pytest.mark.parametrize(
     "fault", ["bytes", "purpose", "size", "digest", "forged metadata", "missing"]

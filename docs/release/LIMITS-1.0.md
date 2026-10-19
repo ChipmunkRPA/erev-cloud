@@ -1584,3 +1584,23 @@ Nineteen scoped tests, Ruff and Mypy pass. This is not K-03 financial acceptance
 a completed report. Authorized retained-source loading, reference/FX/membership/
 posting-basis replay and report/job/UI remain open; seven builders remain unregistered.
 No deployment or independent accounting sign-off is claimed.
+
+## October 19, 2026 — frozen-close and computation source read phase
+
+`variance_sources.read_pair` loads verified frozen closes and retained computation
+candidates for their monetary contract population. Computation input/output files
+are checked by the existing evidence reader, including source hashes, runtime,
+stream heads, predecessor and complete group/entity authorization. Missing evidence
+is never reconstructed from current data. Required access entities are returned
+for later run/rerun authorization. A no-new-event recompute is filtered by actual
+computation cutoff/creation before latest-version selection, preserving older reads.
+
+Frozen monetary data requires report.run; the existing evidence-pack reader still
+also requires audit.read. Authorization precedes file access. Five focused frozen
+source/permission/regression tests pass, plus one actual retained-computation test
+showing old/new selection across a no-new-event recompute. The latter uses a synthetic
+frozen-population shell to isolate selection, not a complete accounting close.
+Implementation Mypy and changed-file Ruff pass. A candidate must still reproduce
+frozen endpoints; job integration, operational input normalization, remaining replay
+phases, report registration/UI and independent financial acceptance remain open.
+No additional report builder is registered, and no deployment is performed.

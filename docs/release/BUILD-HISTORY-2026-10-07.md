@@ -6617,3 +6617,17 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Real API cancellation, historical reads, CSV hash, totals and rerun checks pass. Evidence is
   in CI-2026-10-19.md. Nine builders remain missing, including the contract extract; locked
   datasets, watermarks, true-up and browser acceptance remain unfinished. No deployment.
+
+## Contract BI extract and source history — October 19, 2026
+
+- Added extract_contracts v1: fixed header columns, historical customer/entity codes,
+  JSON/CSV, creation-time incremental windows and retained inputs for identical reruns.
+- Migration 0174 captures contract/header and code changes atomically in append-only source
+  revisions; existing rows receive migration-time baselines. Missing earlier coverage refuses.
+  Capture time is not commit time; restored sandboxes start new history.
+- Actual API export, subsequent contract update, historical read, rerun, CSV hash and database
+  capture protections passed. Source disclosure matches the migrated catalogue. Targeted
+  inventory/privacy checks and typing passed; details in CI-2026-10-19.md.
+- All nine extract builders now exist; eight other catalogue builders remain. Locked datasets,
+  watermarks, true-up, broader acceptance and independent accounting sign-off remain open.
+  Continue unfinished reporting development; no deployment.

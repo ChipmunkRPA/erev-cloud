@@ -648,6 +648,56 @@ def test_first_close_has_no_relock_payload(sources: Sources) -> None:
         assert evidence_relock.collect(uow, resolve(uow, request)) == ()
 
 
+def test_variance_frozen_sources_need_report_permission_without_audit_access(
+    sources: Sources,
+) -> None:
+    from erev_api.domain.reports import variance_sources
+
+    body, first_id = _relock_for_pack(sources)
+    report_only = replace(
+        sources.principal,
+        permissions=frozenset({"report.run"}),
+        permission_scopes={"report.run": "*"},
+    )
+    with sources.world.place.uow(report_only) as uow:
+        scope = locked.lock_scope(uow.session, first_id)
+        assert scope is not None
+        pair = variance_sources.read_pair(
+            uow,
+            from_period_lock_id=first_id,
+            to_period_lock_id=UUID(body["period_lock_id"]),
+            entity_ids=(scope.entity_id,),
+        )
+        assert len(pair.earlier.frozen.reports) == len(pair.later.frozen.reports) == 12
+        assert pair.required_entity_ids == (scope.entity_id,)
+        assert not pair.earlier.computations  # this fixture has no accounting population
+        with pytest.raises(Problem) as error:
+            evidence_close.read_locked(uow, resolve(uow, ADAPTER.validate_python(body)))
+        assert error.value.slug == "forbidden"  # pack permission is unchanged
+
+
+@pytest.mark.parametrize("scope_kind", ["missing_permission", "hidden_entity", "system"])
+def test_variance_frozen_sources_authorize_before_files(
+    sources: Sources, monkeypatch: pytest.MonkeyPatch, scope_kind: str
+) -> None:
+    body, first_id = _relock_for_pack(sources)
+    principal = sources.principal
+    if scope_kind == "missing_permission":
+        principal = replace(principal, permissions=frozenset())
+    elif scope_kind == "hidden_entity":
+        principal = replace(principal, permission_scopes={"report.run": frozenset({UUID(int=999)})})
+    else:
+        principal = system_principal(principal.tenant_id)
+
+    def forbidden(*args: Any, **kwargs: Any) -> Any:
+        pytest.fail("unauthorized frozen source access must not read files")
+
+    monkeypatch.setattr(locked, "open_file", forbidden)
+    with sources.world.place.uow(principal) as uow, pytest.raises(Problem) as error:
+        evidence_close.read_for_report(uow, first_id)
+    assert error.value.slug == ("not-found" if scope_kind == "hidden_entity" else "forbidden")
+
+
 @pytest.mark.parametrize("reference_in", ["item", "not_stated_total"])
 def test_reconciliation_pack_keeps_signed_lock_history_after_new_generation_and_reopen(
     sources: Sources,

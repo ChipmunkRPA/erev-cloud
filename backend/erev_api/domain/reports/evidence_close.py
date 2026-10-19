@@ -79,10 +79,33 @@ def read_locked(uow: UnitOfWork, selection: SourceSelection) -> FrozenClose:
         or checked.lock_known_at != selection.lock_known_at
     ):
         raise Problem("validation-failed", "The stored CLOSE selection differs from its lock.")
+    return _read_frozen(uow, scope)
+
+
+def read_for_report(uow: UnitOfWork, lock_id: UUID) -> FrozenClose:
+    """Verified frozen figures under report.run; no audit/access evidence is exposed.
+
+    Pack collection still uses read_locked and its additional audit.read check.
+    Workers must provide the actual authorized requester, not SYSTEM.
+    """
+    principal = uow.principal
+    grant = principal.permission_scopes.get("report.run")
+    if "report.run" not in principal.permissions or not grant:
+        raise Problem("forbidden")
+    scope = locked.lock_scope(uow.session, lock_id)
+    if scope is None or (grant != "*" and scope.entity_id not in grant):
+        raise Problem("not-found")
+    refusal = locked.froze_nothing(uow.session, scope)
+    if refusal is not None:
+        raise Problem("validation-failed", refusal)
+    return _read_frozen(uow, scope)
+
+
+def _read_frozen(uow: UnitOfWork, scope: locked.LockScope) -> FrozenClose:
     lock = (
         uow.session.execute(
             select(period_lock).where(
-                period_lock.c.tenant_id == selection.tenant_id,
+                period_lock.c.tenant_id == uow.principal.tenant_id,
                 period_lock.c.id == scope.lock_id,
             )
         )
@@ -92,7 +115,7 @@ def read_locked(uow: UnitOfWork, selection: SourceSelection) -> FrozenClose:
     rows = (
         uow.session.execute(
             select(lock_snapshot).where(
-                lock_snapshot.c.tenant_id == selection.tenant_id,
+                lock_snapshot.c.tenant_id == uow.principal.tenant_id,
                 lock_snapshot.c.period_lock_id == scope.lock_id,
             )
         )

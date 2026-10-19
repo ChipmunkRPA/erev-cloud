@@ -2,6 +2,20 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Retained inputs for close variance — October 19, 2026
+
+- Added the source read phase: complete frozen closes, historical per-contract computation
+  candidates, original evidence verification and whole-group entity authorization. Required
+  access entities accompany the result. Missing retained evidence never uses current inputs.
+- Filter computation availability before latest-version selection: a later recompute with no
+  new event must not replace the computation available at an earlier close cutoff.
+- Monetary frozen reads use report.run; evidence packs retain their extra audit.read requirement.
+  Five focused frozen-source checks and one retained-computation selection check pass; the latter
+  uses a population shell, not a full close. Source Mypy and changed-file Ruff pass.
+- Candidate selection is not endpoint reproduction. Job integration, operational input
+  normalization, other replay phases, report/UI and accounting acceptance remain required.
+  Seven missing report builders remain unregistered. No deployment/readiness claim.
+
 ## Dated RPO in close variance replay — October 19, 2026
 
 - Connected RPO through the existing dated trace reader: selected period-end scheduled/awaiting
@@ -215,20 +229,6 @@
 - RPT-37 is not registered yet: activation-value and applied-modification attribution, FX
   valuation, journal comparator sourcing, contributor routes and end-to-end publication remain.
   Eight reports still lack complete registered builders; do not mark this report finished.
-
-## Contract BI extract and source history — October 19, 2026
-
-- Added extract_contracts v1: fixed header columns, historical customer/entity codes,
-  JSON/CSV, creation-time incremental windows and retained inputs for identical reruns.
-- Migration 0174 captures contract/header and code changes atomically in append-only source
-  revisions; existing rows receive migration-time baselines. Missing earlier coverage refuses.
-  Capture time is not commit time; restored sandboxes start new history.
-- Actual API export, subsequent contract update, historical read, rerun, CSV hash and database
-  capture protections passed. Source disclosure matches the migrated catalogue. Targeted
-  inventory/privacy checks and typing passed; details in CI-2026-10-19.md.
-- All nine extract builders now exist; eight other catalogue builders remain. Locked datasets,
-  watermarks, true-up, broader acceptance and independent accounting sign-off remain open.
-  Continue unfinished reporting development; no deployment.
 
 ## Outstanding release verification
 
