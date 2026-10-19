@@ -6809,3 +6809,15 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - RPT-38 remains incomplete: ordered DRY_RUN driver replay, report registration/formats, cell
   explanations, browser and K-03 financial acceptance still required. Seven missing report
   builders remain unregistered. No deployment or accounting/production-readiness claim.
+
+## Event-only close variance replay — October 19, 2026
+
+- Added the DRY_RUN execution core: ENG-06 event order, maximal driver runs, separate time
+  progression, exact reconciliation to both frozen monetary endpoints and execution provenance.
+  Endpoint mismatch refuses; no balancing OTHER residual. Inputs remain unchanged.
+- Real engine: two late invoices move contract liability from 20 to 170, with 150 assigned to
+  LATE_EVENT and both event identities retained. Nine focused tests, Ruff and Mypy pass.
+- This is not wired to a report/job yet. Authorized retained source loading, complete monetary
+  projection, reference/FX/membership/posting-basis replay phases and RPT-38 report/UI remain
+  required. Changed reference inputs and unsupported event classifications currently refuse.
+  Seven missing report builders remain unregistered. No deployment or readiness claim.

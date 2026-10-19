@@ -1,5 +1,12 @@
 # eRev Cloud 1.0: stated limits of the release
 
+October 19 migration source admission update: original import operation/mapping, source file
+hash and retained history rows are now checked under complete mapped-entity report permission.
+Identity and renamed-entity imports pass, while incomplete scope and altered file bytes refuse.
+This supports same-tenant full-source admission only. Partial-entity comparisons, replay-sandbox
+authorization, full retained rebuild and worker/export registration remain outstanding; RPT-42
+is still unregistered and the complete migration acceptance has not been established.
+
 October 19 eRev comparison input update: an entity-authorized reader now supplies historical
 journal facts and standard traced/frozen contract balances with retained source references.
 A real computation/ledger case matches the existing gross journal view; unavailable contract

@@ -2,6 +2,24 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Migration source admission for parallel comparison — October 19, 2026
+
+- Added parallel_sources.read_for_report. It binds the migration's original successful import
+  operation, subject/parameters and cutoff; retrieves the confirmed entity mapping; and requires
+  report permission for the complete mapped source population before opening plaintext.
+- Verifies original LEGACY_DATABASE purpose, size and SHA-256 against the migration, then compares
+  every retained history row's identity/raw hash with the original SQLite record. Temporary source
+  copies and streams close on failure. Evidence retains file, operation, mapping and row identities.
+- Linked sandboxes require their own authorized context; no tenant switch is performed. Current
+  support is same-tenant complete-source admission, not partial-entity or replay-sandbox completion.
+- Two real import scenarios pass (identity and renamed entity mappings), including incomplete-scope
+  denial and a same-size altered-file digest refusal. The fixture now carries the actual source hash
+  and job subject instead of placeholders. Ruff and new-module Mypy pass; checking the existing PG
+  test module also reports five pre-existing type diagnostics outside this change.
+- Next RPT-42 work: persist/rebuild the complete retained inputs, compose both readers with the
+  comparison, register the worker and exports, and finish migration replay/sandbox lifecycle.
+  Six catalogue builders remain unregistered; full LMG-4/5 accounting acceptance remains open.
+
 ## Authorized eRev parallel-run inputs — October 19, 2026
 
 - Added parallel_actual.read: requires report.run for the requested entity IDs, resolves exact
@@ -211,18 +229,6 @@
   Mypy pass. Dated RPO is explicitly unsupported by this entry point, not silently omitted.
 - Retained source loading, RPO projection, other replay phases and report/job/UI integration
   remain required. Seven missing report builders remain unregistered. No deployment/readiness claim.
-
-## Event-only close variance replay — October 19, 2026
-
-- Added the DRY_RUN execution core: ENG-06 event order, maximal driver runs, separate time
-  progression, exact reconciliation to both frozen monetary endpoints and execution provenance.
-  Endpoint mismatch refuses; no balancing OTHER residual. Inputs remain unchanged.
-- Real engine: two late invoices move contract liability from 20 to 170, with 150 assigned to
-  LATE_EVENT and both event identities retained. Nine focused tests, Ruff and Mypy pass.
-- This is not wired to a report/job yet. Authorized retained source loading, complete monetary
-  projection, reference/FX/membership/posting-basis replay phases and RPT-38 report/UI remain
-  required. Changed reference inputs and unsupported event classifications currently refuse.
-  Seven missing report builders remain unregistered. No deployment or readiness claim.
 
 ## Outstanding release verification
 

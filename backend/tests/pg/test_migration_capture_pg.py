@@ -608,6 +608,7 @@ def test_import_job_creates_the_confirmed_prerequisites_over_wld_f_15(
     keyring: KeyRing,
     clock: FrozenClock,
     target: str,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """LM-CL-09 / LM-CL-03 (04 §17.2 rev 1.64; D-98 candidate 133; Codex 1106 R1 / C1): the import
     over the shipped WLD-F-15 with NO provisioned selling entity and NO product — only a fiscal
@@ -668,6 +669,7 @@ def test_import_job_creates_the_confirmed_prerequisites_over_wld_f_15(
         batch = migration_batch_values(
             tenant_id,
             source_file_id=stored["id"],
+            source_sha256=stored["sha256"],
             status="PROFILED",
             profile=legacy_db.profile(FIXTURE).as_json(),
         )
@@ -711,6 +713,8 @@ def test_import_job_creates_the_confirmed_prerequisites_over_wld_f_15(
             now=clock.now(),
             created_by=someone.user_id,
             created_by_kind=PrincipalKind.USER,
+            subject_type="migration_batch",
+            subject_id=batch["id"],
         )
         registry.dispatch(
             uow.session,
@@ -727,6 +731,54 @@ def test_import_job_creates_the_confirmed_prerequisites_over_wld_f_15(
         ).scalar_one()
         session.execute(_FETCHED, {"id": task_id})
     registry.run_job(job_id, tenant_id, attempt=1, runtime=runtime)
+    from dataclasses import replace
+
+    from erev_api.domain.reports import parallel_sources
+
+    report_ctx = replace(_ctx(tenant_id, clock), principal=maya_principal(someone))
+    with unit_of_work(report_ctx, clock=clock, keyring=keyring, files=files) as uow:
+        cutoff = max(uow.now, uow.session.scalar(select(func.clock_timestamp())))
+        entity_ids = tuple(uow.session.scalars(select(legal_entity.c.id)))
+        admitted = parallel_sources.read_for_report(
+            uow,
+            batch["id"],
+            entity_ids=entity_ids,
+            known_at=cutoff,
+        )
+        assert len(admitted.rows) == 24
+        assert admitted.entity_mapping == dict(
+            zip(ENTITIES, (target, "Mock Entity 2"), strict=True)
+        )
+        assert admitted.evidence["file_sha256"] == legacy_db.file_sha256(FIXTURE)
+        assert admitted.evidence["import_operation_id"] == str(job_id)
+        assert len(admitted.evidence["rows"]) == 24
+        with pytest.raises(Problem) as scope_refused:
+            parallel_sources.read_for_report(
+                uow, batch["id"], entity_ids=entity_ids[:1], known_at=cutoff
+            )
+        assert scope_refused.value.slug == "forbidden"
+
+        import io
+
+        original_open = parallel_sources.open_file
+
+        def altered_source(*args: Any, **kwargs: Any) -> Any:
+            meta, stream = original_open(*args, **kwargs)
+            with stream:
+                content = stream.read()
+            # Same length; only the digest can detect this change before SQLite is read.
+            return meta, io.BytesIO(content[:-1] + bytes([content[-1] ^ 1]))
+
+        with monkeypatch.context() as patch:
+            patch.setattr(parallel_sources, "open_file", altered_source)
+            with pytest.raises(Problem, match="digest differs"):
+                parallel_sources.read_for_report(
+                    uow,
+                    batch["id"],
+                    entity_ids=entity_ids,
+                    known_at=cutoff,
+                )
+
     with tenant_session(context) as session:
         state, problem = session.execute(
             select(job.c.state, job.c.problem).where(job.c.id == job_id)
