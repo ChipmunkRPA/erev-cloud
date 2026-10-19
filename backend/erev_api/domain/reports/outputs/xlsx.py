@@ -281,8 +281,8 @@ def render_xlsx_pack(sections: tuple[WorkbookSection, ...], stamp: RunStamp) -> 
     )
 
 
-def render_xlsx_chapters(chapters: tuple[WorkbookChapter, ...], stamp: RunStamp) -> bytes:
-    """One sheet per chapter, with separately typed and stamped tables placed consecutively."""
+def validate_chapters(chapters: tuple[WorkbookChapter, ...]) -> None:
+    """Reject ambiguous chapter identities and amounts in omitted tables."""
     if (
         not chapters
         or len({c.key for c in chapters}) != len(chapters)
@@ -302,6 +302,12 @@ def render_xlsx_chapters(chapters: tuple[WorkbookChapter, ...], stamp: RunStamp)
         for s in sections
     ):
         raise ValueError("omitted sections require a note and no rendered source rows")
+
+
+def render_xlsx_chapters(chapters: tuple[WorkbookChapter, ...], stamp: RunStamp) -> bytes:
+    """One sheet per chapter, with separately typed and stamped tables placed consecutively."""
+    validate_chapters(chapters)
+    sections = tuple(s for chapter in chapters for s in chapter.tables)
     contents = ReportData(
         (
             Column("chapter", "Chapter", "text"),

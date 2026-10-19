@@ -19,7 +19,9 @@ from erev_api.domain.reports.outputs.xlsx import (
 from erev_api.problems import Problem
 
 
-def render(pack: Pack, stamp: RunStamp, child_stamps: Mapping[UUID, RunStamp]) -> bytes:
+def chapters(
+    pack: Pack, stamp: RunStamp, child_stamps: Mapping[UUID, RunStamp]
+) -> tuple[WorkbookChapter, ...]:
     """Preserve chapter/table boundaries and bind each table to its original output stamp.
 
     Period and quarter sources remain separately labelled tables here. A future
@@ -101,4 +103,9 @@ def render(pack: Pack, stamp: RunStamp, child_stamps: Mapping[UUID, RunStamp]) -
                 )
             )
         chapters.append(WorkbookChapter(str(section.number), section.title, tuple(tables)))
-    return render_xlsx_chapters(tuple(chapters), stamp)
+    return tuple(chapters)
+
+
+def render(pack: Pack, stamp: RunStamp, child_stamps: Mapping[UUID, RunStamp]) -> bytes:
+    """Export the verified chapters to one workbook."""
+    return render_xlsx_chapters(chapters(pack, stamp, child_stamps), stamp)

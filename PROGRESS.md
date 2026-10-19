@@ -2,6 +2,18 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Disclosure chapter PDF adapter — October 19, 2026
+
+- Added PDF chapter export with an index whose page destinations follow actual pagination,
+  original child stamps, per-table headings, repeated continuation grid headers, wrapped notes
+  and parent-run page numbering. Tables start on separate pages; omitted amounts cannot render.
+- XLSX/PDF reuse the same disclosure source/policy validation and chapter omission checks.
+  Five focused PDF/workbook/single-report checks pass; production modules pass Ruff and Mypy.
+- This is an internal export adapter, not end-to-end disclosure delivery. Parent scheduling and
+  publication, frozen snapshots, viewer and side-by-side period/QTD layout remain outstanding.
+  All five unregistered reports remain explicitly unfinished: disclosure_pack, actual_vs_forecast,
+  forecast_outputs, contract_sample_pack and period_evidence_pack. No deployment.
+
 ## Disclosure chapter workbook adapter — October 19, 2026
 
 - Added render_xlsx_chapters with multiple independently typed/stamped tables per worksheet.
@@ -201,28 +213,6 @@
 - Still required: migration source-file/database admission, confirmed mapping retrieval, full
   retained binding/rebuild, worker/export integration and current grants at publication. Migration
   replay import and its sandbox lifecycle remain unfinished. Six builders remain unregistered.
-
-## Independent legacy monthly comparison inputs — October 19, 2026
-
-- Implemented migration.parallel_legacy.snapshot over retained Contract_Live history. Gross
-  journal construction follows component-major ordering, binary64 four-place rounding, the
-  two-place zero filter, compensated grouped sums and final cents; no eRev engine output is used.
-  Compatibility floating arithmetic is isolated from the exact comparison layer.
-- Period-end contract balances sum latest obligation positions, never repeated contract totals.
-  Coverage stops at the last source economic date. Entity mappings, duplicate identities,
-  nonfinite amounts and unsupported currency/book selections refuse. Cross-entity contracts
-  refuse rather than misattribute a legacy consolidated journal. Only two-decimal source currency
-  is supported; the legacy format has no per-row currency column.
-- Source identity includes raw-row digests, requested period boundaries and confirmed entity
-  mapping. Journal/balance facts carry exact source-row references. Authorization and retained
-  file/database integrity admission still belong to the upcoming report source reader.
-- All ten archived monthly legacy gross exports (Jan–Oct 2023) match by account/debit/credit,
-  preserving October's 5,043.84 debit / 5,043.85 credit imbalance. SQLite January Contract 2
-  balance is -58.85. Focused checks: 17 passed; Ruff and Mypy pass.
-- Remaining RPT-42 work: authorized eRev period/journal/balance selection, complete retained
-  binding and report worker/export integration. Migration replay import remains unfinished
-  (jobs.py explicitly refuses it); sandbox access must retain tenant/grant boundaries. These
-  source checks do not complete LMG-4/5 or independent accounting acceptance.
 
 ## Outstanding release verification
 

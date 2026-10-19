@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
+from textwrap import wrap
 from typing import Final
 
 from erev_api.domain.reports.outputs import (
@@ -24,6 +25,7 @@ from erev_api.domain.reports.outputs import (
     parameter_text,
     total_text,
 )
+from erev_api.domain.reports.outputs.xlsx import WorkbookChapter, validate_chapters
 
 MEDIA_TYPE: Final = "application/pdf"
 EXTENSION: Final = "pdf"
@@ -217,3 +219,53 @@ def render_pdf(data: ReportData, stamp: RunStamp) -> bytes:
     header, body = _grid(data, stamp.negative_number_style)
     lines = [*_stamp_lines(data, stamp), _Line(()), header, *body]
     return _document(_pages(lines, header), stamp)
+
+
+def render_pdf_chapters(chapters: tuple[WorkbookChapter, ...], stamp: RunStamp) -> bytes:
+    """Render a paginated pack with an index, original source stamps and omission notes.
+
+    Each source table starts on a fresh page; continuation pages repeat its grid header.
+    Index destinations are computed after pagination so long tables cannot shift references.
+    """
+    validate_chapters(chapters)
+    table_pages: list[list[_Line]] = []
+    entries: list[tuple[str, int]] = []
+    width = int((PAGE_WIDTH - 2 * MARGIN) // CHARACTER_WIDTH)
+    for chapter in chapters:
+        for table in chapter.tables:
+            title = f"{chapter.key}. {chapter.title} / {table.title}"
+            entries.append((title, len(table_pages)))
+            heading = [_Line(((MARGIN, part),), bold=True) for part in wrap(title, width)]
+            notes = [
+                _Line(((MARGIN, part),))
+                for note in ("Omitted" if table.omitted else "Included", *table.notes)
+                for part in wrap(note, width)
+            ]
+            header, body = _grid(table.data, table.stamp.negative_number_style)
+            table_pages.extend(
+                _pages(
+                    [
+                        *heading,
+                        *_stamp_lines(table.data, table.stamp),
+                        *notes,
+                        _Line(()),
+                        header,
+                        *body,
+                    ],
+                    header,
+                )
+            )
+    # Use a dedicated page column: adding page numbers never changes index wrapping.
+    index_header = _Line(((MARGIN, "Contents"),), bold=True)
+    index_lines = [index_header, _Line(((MARGIN, f"Run {stamp.report_run_no}"),))]
+    for title, _ in entries:
+        index_lines.extend(_Line(((MARGIN, part),)) for part in wrap(title, width - 12))
+    index_count = len(_pages(index_lines, index_header))
+    index_lines = [index_header, _Line(((MARGIN, f"Run {stamp.report_run_no}"),))]
+    for title, offset in entries:
+        for number, part in enumerate(wrap(title, width - 12)):
+            cells: tuple[tuple[float, str], ...] = ((float(MARGIN), part),)
+            if number == 0:
+                cells += ((PAGE_WIDTH - MARGIN - 45.0, str(index_count + offset + 1)),)
+            index_lines.append(_Line(cells))
+    return _document([*_pages(index_lines, index_header), *table_pages], stamp)

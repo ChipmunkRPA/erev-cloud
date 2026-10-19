@@ -6993,3 +6993,26 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Still required: independent legacy monthly-output reader preserving legacy rounding, authorized
   eRev journal/balance source selection, retained binding and worker registration/export journeys.
   RPT-42 remains unregistered; six catalogue builders remain. No readiness claim or deployment.
+
+
+## Independent legacy monthly comparison inputs — October 19, 2026
+
+- Implemented migration.parallel_legacy.snapshot over retained Contract_Live history. Gross
+  journal construction follows component-major ordering, binary64 four-place rounding, the
+  two-place zero filter, compensated grouped sums and final cents; no eRev engine output is used.
+  Compatibility floating arithmetic is isolated from the exact comparison layer.
+- Period-end contract balances sum latest obligation positions, never repeated contract totals.
+  Coverage stops at the last source economic date. Entity mappings, duplicate identities,
+  nonfinite amounts and unsupported currency/book selections refuse. Cross-entity contracts
+  refuse rather than misattribute a legacy consolidated journal. Only two-decimal source currency
+  is supported; the legacy format has no per-row currency column.
+- Source identity includes raw-row digests, requested period boundaries and confirmed entity
+  mapping. Journal/balance facts carry exact source-row references. Authorization and retained
+  file/database integrity admission still belong to the upcoming report source reader.
+- All ten archived monthly legacy gross exports (Jan–Oct 2023) match by account/debit/credit,
+  preserving October's 5,043.84 debit / 5,043.85 credit imbalance. SQLite January Contract 2
+  balance is -58.85. Focused checks: 17 passed; Ruff and Mypy pass.
+- Remaining RPT-42 work: authorized eRev period/journal/balance selection, complete retained
+  binding and report worker/export integration. Migration replay import remains unfinished
+  (jobs.py explicitly refuses it); sandbox access must retain tenant/grant boundaries. These
+  source checks do not complete LMG-4/5 or independent accounting acceptance.

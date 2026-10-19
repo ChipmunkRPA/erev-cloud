@@ -81,3 +81,56 @@ def test_omitted_rows_or_totals_cannot_leak_into_workbook() -> None:
         render_xlsx_pack((replace(section, data=replace(DATA, rows=())),), STAMP)
     with pytest.raises(ValueError):
         render_xlsx_pack((), STAMP)
+
+
+def test_pdf_pack_has_source_stamps_index_and_safe_omissions() -> None:
+    from erev_api.domain.reports.outputs.pdf import render_pdf_chapters
+    from erev_api.domain.reports.outputs.xlsx import WorkbookChapter
+    from tests.domain.reports.test_framework import pdf_pages
+
+    populated = replace(
+        DATA,
+        rows=tuple({**DATA.rows[0], "row_key": str(n)} for n in range(130)),
+    )
+    chapters = (
+        WorkbookChapter(
+            "1", "Revenue", (WorkbookSection("revenue", "Revenue", populated, STAMP, ("Period",)),)
+        ),
+        WorkbookChapter(
+            "2",
+            "Expedients",
+            (
+                WorkbookSection(
+                    "relief",
+                    "Expedients",
+                    ReportData((), (), {}),
+                    STAMP,
+                    ("Omitted under elected relief.",),
+                    True,
+                ),
+            ),
+        ),
+    )
+    raw = render_pdf_chapters(chapters, STAMP)
+    assert render_pdf_chapters(chapters, STAMP) == raw
+    pages = pdf_pages(raw)
+    assert pages[0][:2] == ["Contents", "Run RPT-PACK"]
+    assert "2" in pages[0]  # First chapter starts after the contents page.
+    assert "Output SHA-256: " + "a" * 64 in pages[1]
+    assert pages[2][:2] == ["Category", "Revenue (USD)"]
+    assert "Omitted under elected relief." in pages[-1]
+    assert "123.45" not in pages[-1]
+    assert [page[-1] for page in pages] == [
+        f"Run RPT-PACK · page {n} of {len(pages)}" for n in range(1, len(pages) + 1)
+    ]
+    with pytest.raises(ValueError):
+        render_pdf_chapters(
+            (
+                WorkbookChapter(
+                    "bad",
+                    "Bad",
+                    (WorkbookSection("leak", "Leak", DATA, STAMP, ("Omitted",), True),),
+                ),
+            ),
+            STAMP,
+        )
