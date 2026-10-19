@@ -117,3 +117,44 @@ def test_inconsistent_sources_refuse(fault: str) -> None:
         new = replace(new, balances=(replace(new.balances[0], liability=D(1)),))
     with pytest.raises(Problem):
         compare(old, new)
+
+
+def test_retained_inputs_rebuild_and_reject_modified_scope_or_amounts() -> None:
+    import json
+    from datetime import UTC, datetime
+    from uuid import UUID
+
+    from erev_api.domain.reports import parallel_inputs
+    from erev_engine.canonical import sha256_hex
+
+    old, new = sources()
+    scope = parallel_inputs.context(
+        tenant_id=UUID(int=1),
+        migration_id=UUID(int=2),
+        entity_ids=(UUID(int=3),),
+        known_at=datetime(2026, 10, 19, tzinfo=UTC),
+    )
+    actual_evidence = {
+        **{key: scope[key] for key in ("tenant_id", "entity_ids", "known_at")},
+        "expected_source": {"id": old.source_id, "sha256": old.sha256},
+    }
+    new = replace(new, sha256=sha256_hex(actual_evidence))
+    retained = parallel_inputs.retain(
+        scope=scope,
+        legacy=old,
+        actual=new,
+        migration_evidence=scope,
+        actual_evidence=actual_evidence,
+    )
+    digest = sha256_hex(retained)
+    restored = parallel_inputs.rebuild(
+        json.loads(json.dumps(retained)),
+        expected_sha256=digest,
+        scope=scope,
+    )
+    assert restored == compare(old, new)
+    with pytest.raises(Problem, match="scope differs"):
+        parallel_inputs.rebuild(retained, expected_sha256=digest, scope={**scope, "entity_ids": []})
+    retained["actual"]["journals"][0]["debit"] = "0.00"
+    with pytest.raises(Problem, match="digest differs"):
+        parallel_inputs.rebuild(retained, expected_sha256=digest, scope=scope)

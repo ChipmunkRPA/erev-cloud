@@ -6821,3 +6821,30 @@ cleanup in the shared database session kernel was also repaired and regression-t
   projection, reference/FX/membership/posting-basis replay phases and RPT-38 report/UI remain
   required. Changed reference inputs and unsupported event classifications currently refuse.
   Seven missing report builders remain unregistered. No deployment or readiness claim.
+
+
+## Fixed-period variance revenue/balance projection — October 19, 2026
+
+- Connected event replay to a server-owned monetary projection for recognized revenue, contract
+  liability and contract asset plus unbilled receivable. Revenue is signed posted basis plus
+  posting intents in the selected posting period; schedules never substitute for revenue.
+- Transaction/functional views use exact minor-unit conversion. Missing monetary values,
+  inconsistent currencies, unknown subjects and duplicate balance identities refuse.
+- Real-engine late-invoice replay now uses this adapter. Fifteen focused checks, Ruff and
+  Mypy pass. Dated RPO is explicitly unsupported by this entry point, not silently omitted.
+- Retained source loading, RPO projection, other replay phases and report/job/UI integration
+  remain required. Seven missing report builders remain unregistered. No deployment/readiness claim.
+
+
+
+## Dated RPO in close variance replay — October 19, 2026
+
+- Connected RPO through the existing dated trace reader: selected period-end scheduled/awaiting
+  remainder, disclosure-entry/status checks and retained duration/right-to-invoice exemptions.
+  The projection now receives each executed input bundle, including new activation events.
+- Real engine: May delivery leaves April RPO at 795, moves May RPO to 736.16, and attributes
+  revenue +58.84/RPO -58.84 to LATE_EVENT. Activation, duration exemption and missing-trace
+  cases are covered. Nineteen focused tests, Ruff and Mypy pass; no database writes in projection.
+- Amount-specific VC exemptions and foreign functional RPO remain unsupported and refuse.
+  Retained-source loading, other replay phases, report/job/UI and financial acceptance remain
+  required. Seven missing report builders remain unregistered. No deployment/readiness claim.

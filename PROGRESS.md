@@ -2,6 +2,21 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Retained parallel comparison inputs — October 19, 2026
+
+- Added parallel_inputs.capture to compose authorized migration admission, independent legacy
+  projection and historical eRev reading into a detached JSON input bundle. Period/currency
+  selection remains explicit; current support requires the complete mapped entity scope.
+- Saved inputs include both full snapshots, original source evidence, tenant/migration/entity
+  scope and cutoff. Rebuild checks the server-bound digest, version, scope and source linkage,
+  then recomputes the comparison without consulting mutable source tables.
+- Targeted comparison suite: 10 passed, including JSON round-trip, changed amount digest refusal
+  and changed entity scope refusal. New module passes Mypy; changed files pass Ruff.
+- Still open: report parameter resolution, worker registration, persistence/export integration,
+  current permission checks on publication and full migration replay/sandbox acceptance. The
+  capture composition is type-checked but still needs a real database integration journey.
+  Six catalogue builders remain unregistered; RPT-42 is not yet a completed user-facing report.
+
 ## Migration source admission for parallel comparison — October 19, 2026
 
 - Added parallel_sources.read_for_report. It binds the migration's original successful import
@@ -205,30 +220,6 @@
 - Candidate selection is not endpoint reproduction. Job integration, operational input
   normalization, other replay phases, report/UI and accounting acceptance remain required.
   Seven missing report builders remain unregistered. No deployment/readiness claim.
-
-## Dated RPO in close variance replay — October 19, 2026
-
-- Connected RPO through the existing dated trace reader: selected period-end scheduled/awaiting
-  remainder, disclosure-entry/status checks and retained duration/right-to-invoice exemptions.
-  The projection now receives each executed input bundle, including new activation events.
-- Real engine: May delivery leaves April RPO at 795, moves May RPO to 736.16, and attributes
-  revenue +58.84/RPO -58.84 to LATE_EVENT. Activation, duration exemption and missing-trace
-  cases are covered. Nineteen focused tests, Ruff and Mypy pass; no database writes in projection.
-- Amount-specific VC exemptions and foreign functional RPO remain unsupported and refuse.
-  Retained-source loading, other replay phases, report/job/UI and financial acceptance remain
-  required. Seven missing report builders remain unregistered. No deployment/readiness claim.
-
-## Fixed-period variance revenue/balance projection — October 19, 2026
-
-- Connected event replay to a server-owned monetary projection for recognized revenue, contract
-  liability and contract asset plus unbilled receivable. Revenue is signed posted basis plus
-  posting intents in the selected posting period; schedules never substitute for revenue.
-- Transaction/functional views use exact minor-unit conversion. Missing monetary values,
-  inconsistent currencies, unknown subjects and duplicate balance identities refuse.
-- Real-engine late-invoice replay now uses this adapter. Fifteen focused checks, Ruff and
-  Mypy pass. Dated RPO is explicitly unsupported by this entry point, not silently omitted.
-- Retained source loading, RPO projection, other replay phases and report/job/UI integration
-  remain required. Seven missing report builders remain unregistered. No deployment/readiness claim.
 
 ## Outstanding release verification
 
