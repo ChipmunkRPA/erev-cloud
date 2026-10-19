@@ -110,3 +110,8 @@ export function mayCreateEvidence(access: Access, entityId: string): boolean {
 export function mayChooseEvidenceSources(access: Access): boolean {
   return [...EXPORT, "config.read"].every((permission) => access.holdsAnywhere(permission));
 }
+
+/** The server resolves the selected contracts and enforces their full source scope. */
+export function mayCreateSampleEvidence(access: Access): boolean {
+  return EXPORT.every((permission) => access.holdsAnywhere(permission));
+}

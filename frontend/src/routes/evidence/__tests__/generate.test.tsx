@@ -3,6 +3,7 @@ import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/re
 import { http, HttpResponse } from "msw";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { GenerateClosePack } from "../generate";
+import { GenerateSamplePack } from "../generate-sample";
 import type { Entity, Period, Book } from "../../../lib/api/queries/tenant";
 import type { PeriodLockRow } from "../../../lib/api/queries/periods";
 import type { Job } from "../../../lib/api/jobs";
@@ -337,4 +338,113 @@ it("keeps authorized historical sources available when their entity or book is n
   expect(
     (within(dialog).getByRole("combobox", { name: /Book/ }) as HTMLInputElement).value,
   ).toContain("(inactive)");
+});
+
+function openSample(
+  member = signedInMe({ permissions: permissions.filter((p) => p !== "config.read") }),
+) {
+  return renderApp("/reports/evidence", {
+    me: member,
+    screenRoutes: [
+      {
+        id: "SF-09",
+        path: "/reports/evidence",
+        handle: { sf: "SF-09", screen: "SF-09", titleKey: "evidence.packs.title" },
+        Component: GenerateSamplePack,
+      },
+      probeRoute("SF-09:pack", "/reports/evidence/:packId", "evidence.packs.detailTitle"),
+    ],
+  });
+}
+it("creates a contract sample without configuration permission and preserves exact IDs", async () => {
+  const bodies: unknown[] = [];
+  const keys: (string | null)[] = [];
+  server.use(
+    http.post(apiUrl("/api/v1/evidence-packs"), async ({ request }) => {
+      bodies.push(await request.json());
+      keys.push(request.headers.get("Idempotency-Key"));
+      return accepted();
+    }),
+  );
+  const app = openSample();
+  fireEvent.click(await screen.findByRole("button", { name: "Generate contract sample pack" }));
+  const dialog = await screen.findByRole("dialog");
+  fireEvent.change(within(dialog).getByLabelText(/Contract external IDs/), {
+    target: { value: "SF-ORD-10001\nACME,2026\n" },
+  });
+  fireEvent.change(within(dialog).getByRole("textbox", { name: /Effective through/ }), {
+    target: { value: "2026-09-30" },
+  });
+  fireEvent.click(within(dialog).getByRole("button", { name: "Generate pack" }));
+  await waitFor(() =>
+    expect(app.router.state.location.pathname).toBe(`/reports/evidence/${packId}`),
+  );
+  expect(bodies).toEqual([
+    {
+      kind: "CONTRACT_SAMPLE",
+      contract_external_ids: ["SF-ORD-10001", "ACME,2026"],
+      as_of: "2026-09-30",
+    },
+  ]);
+  expect(keys[0]).toMatch(/^[0-9a-f-]{36}$/i);
+});
+it("refuses duplicate sample IDs and future cutoff dates before sending", async () => {
+  let calls = 0;
+  server.use(
+    http.post(apiUrl("/api/v1/evidence-packs"), () => {
+      calls += 1;
+      return accepted();
+    }),
+  );
+  openSample();
+  fireEvent.click(await screen.findByRole("button", { name: "Generate contract sample pack" }));
+  const dialog = await screen.findByRole("dialog");
+  const contracts = within(dialog).getByLabelText(/Contract external IDs/);
+  const date = within(dialog).getByRole("textbox", { name: /Effective through/ });
+  fireEvent.change(contracts, { target: { value: "C-1\nC-1" } });
+  fireEvent.change(date, { target: { value: "2099-01-01" } });
+  fireEvent.click(within(dialog).getByRole("button", { name: "Generate pack" }));
+  expect(await screen.findByText("Remove duplicate contract IDs.")).not.toBeNull();
+  expect(screen.getByText("The cutoff date cannot be in the future.")).not.toBeNull();
+  expect(calls).toBe(0);
+});
+it("hides sample creation when evidence export permission is missing", async () => {
+  openSample(signedInMe({ permissions: permissions.filter((p) => p !== "evidence.export") }));
+  await waitFor(() =>
+    expect(screen.queryByRole("button", { name: "Generate contract sample pack" })).toBeNull(),
+  );
+});
+
+it("keeps an accepted sample in progress and recovers its link from the job result", async () => {
+  let calls = 0;
+  server.use(
+    http.post(apiUrl("/api/v1/evidence-packs"), () => {
+      calls += 1;
+      return HttpResponse.json(job, {
+        status: 202,
+        headers: { Location: `/api/v1/jobs/${job.id}` },
+      });
+    }),
+    http.get(apiUrl(`/api/v1/jobs/${job.id}`), () =>
+      HttpResponse.json({
+        ...job,
+        state: "SUCCEEDED",
+        result: { href: `/api/v1/evidence-packs/${packId}`, counts: { packs: 1 } },
+      }),
+    ),
+  );
+  openSample();
+  fireEvent.click(await screen.findByRole("button", { name: "Generate contract sample pack" }));
+  const dialog = await screen.findByRole("dialog");
+  fireEvent.change(within(dialog).getByLabelText(/Contract external IDs/), {
+    target: { value: "C-1" },
+  });
+  fireEvent.change(within(dialog).getByRole("textbox", { name: /Effective through/ }), {
+    target: { value: "2026-09-30" },
+  });
+  fireEvent.click(within(dialog).getByRole("button", { name: "Generate pack" }));
+  const link = await screen.findByRole("link", { name: "Open contract sample pack" });
+  expect(link.getAttribute("href")).toBe(`/reports/evidence/${packId}`);
+  fireEvent.click(within(dialog).getByRole("button", { name: "Generate pack" }));
+  expect(calls).toBe(1);
 });

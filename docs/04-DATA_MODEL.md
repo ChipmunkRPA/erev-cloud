@@ -8719,4 +8719,6 @@ routes. Completion is atomic with its manifest, file reference and SUCCEEDED tra
 Retained reads reauthorize dependencies, verify hashes and original source bytes, and reuse the
 saved PDF/XLSX instead of rendering again. GET detail/download/manifest support both kinds;
 GET register currently lists CLOSE only. Contract sample detail shows selectors, cutoffs and
-manifest downloads. The sample creation form/register are still pending.
+manifest downloads. The sample creation form now accepts exact external IDs and an explicit
+cutoff, uses the idempotent command pipeline, and recovers accepted result links through the
+job if the pack header is unavailable. The sample register/list remains pending.

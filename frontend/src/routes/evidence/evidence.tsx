@@ -24,6 +24,7 @@ import {
 import { formatTimestamp } from "../../lib/format";
 import { t } from "../../lib/i18n/t";
 import { GenerateClosePack } from "./generate";
+import { GenerateSamplePack } from "./generate-sample";
 import { AuditorRequests } from "./requests";
 import { ReportsHeader } from "../reports/frame";
 import { bookLabel, hashPrefix } from "../reports/viewer/RunStamp";
@@ -207,7 +208,8 @@ export function EvidencePacksPage() {
           <EvidenceAccessLimited />
         ) : (
           <>
-            <div className="flex justify-end">
+            <div className="flex flex-wrap justify-end gap-2">
+              <GenerateSamplePack />
               <GenerateClosePack />
             </div>
             <AuditorRequests />
