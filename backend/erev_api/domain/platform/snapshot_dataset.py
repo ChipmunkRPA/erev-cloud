@@ -511,6 +511,10 @@ RULES: Final[Mapping[str, TableRule]] = MappingProxyType(
         "app_user": _shared("global identities; memberships reference them (SBX-03)"),
         "tenant": _shared("the sandbox tenant row is created by provisioning (SBX-02)"),
         # --- the snapshot's own bookkeeping (T-PLT-34, slice I-1) ------------------------------
+        "scenario": _regenerated(_K.OPERATIONAL, "production-side scenario pointer"),
+        "forecast_event_set": _regenerated(_K.OPERATIONAL, "scenario-only inputs"),
+        "forecast_run": _regenerated(_K.DERIVED, "scenario-only forecast output"),
+        "deal_preview": _regenerated(_K.DERIVED, "scenario deal preview"),
         "tenant_snapshot": _regenerated(
             _K.SNAPSHOT_BOOKKEEPING,
             "the source's snapshot rows (T-PLT-34); a sandbox's own come from its commands",
@@ -551,18 +555,6 @@ PENDING: Final[Mapping[str, PendingTable]] = MappingProxyType(
             _pending("cost_asset_version", _C.REGENERATED, _K.DERIVED, "CST", "engine state"),
             _pending("portfolio", _C.COPIED, _K.CONFIGURATION, "CTR", "portfolios (T-CON-21)"),
             _pending("portfolio_member", _C.COPIED, _K.CONFIGURATION, "CTR", "T-CON-22"),
-            _pending(
-                "scenario",
-                _C.REGENERATED,
-                _K.OPERATIONAL,
-                "FCS",
-                "production-side pointer to a scenario tenant (T-FC-01, SBX-09)",
-            ),
-            _pending(
-                "forecast_event_set", _C.REGENERATED, _K.OPERATIONAL, "FCS", "scenario tenant only"
-            ),
-            _pending("forecast_run", _C.REGENERATED, _K.DERIVED, "FCS", "scenario tenant only"),
-            _pending("deal_preview", _C.REGENERATED, _K.DERIVED, "FCS", "scenario tenant only"),
         )
     )
 )

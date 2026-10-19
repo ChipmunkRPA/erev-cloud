@@ -7,7 +7,9 @@ verify current and historical valuation and version identity. This does not yet 
 cross-currency contract-to-report journey or independent accounting acceptance.
 
 Forecast dependency clarification: forecast_outputs and actual_vs_forecast lack their upstream
-scenario, event-set and forecast-run tables/domain execution (FCS-1 to FCS-3), not just rendering.
+scenario workflows and forecast domain execution (FCS-1 to FCS-3), not just rendering.
+Migration 0176 now supplies the four forecast tables and database guards; APIs, replay, jobs
+and output builders remain absent. This does not complete FCS-1 or either forecast report.
 They cannot be completed by substituting current actuals. Seven catalogue builders remain missing,
 with this broader subsystem still outstanding. No deployment or production readiness claim.
 

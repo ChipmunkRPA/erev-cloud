@@ -3244,7 +3244,6 @@ TABLES: Final[tuple[TableClassification, ...]] = (
             ),
             R02: _cols("name purpose"),
         },
-        status=Status.PENDING,
     ),
     _table(
         "forecast_event_set",
@@ -3263,7 +3262,6 @@ TABLES: Final[tuple[TableClassification, ...]] = (
             ),
             R02: _cols("code name api_commands effective_from effective_to"),
         },
-        status=Status.PENDING,
     ),
     _table(
         "forecast_run",
@@ -3281,7 +3279,6 @@ TABLES: Final[tuple[TableClassification, ...]] = (
             ),
             R02: _cols("parameters problem"),
         },
-        status=Status.PENDING,
     ),
     _table(
         "deal_preview",
@@ -3295,7 +3292,6 @@ TABLES: Final[tuple[TableClassification, ...]] = (
             ),
             R02: _cols("input result pinned_refs"),
         },
-        status=Status.PENDING,
     ),
     # ---- AI tables (04 T-AI-nn)
     _table(

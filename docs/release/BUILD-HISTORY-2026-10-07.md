@@ -6468,3 +6468,25 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Migration, database schema and lifecycle probes passed; details are in the dated CI record.
   Automatic seeding, computation persistence, posting attribution and final acceptance remain
   unfinished. No deployment or independent accounting sign-off occurred.
+
+## Atomic upgrade processing queue seed — October 19, 2026
+
+- Added seeding of every current group/entity/enabled-book portion after an accepted upgrade,
+  under the tenant population fence. It checks the accepted attempt's population before the
+  first write and commits initial PENDING events with a write-once count/digest manifest.
+- Retries verify retained initial rows without drawing today's population; partial rows without
+  a manifest are refused. Migration 0167 seals the initial queue against later additions.
+- Database checks cover unsampled groups, empty populations, rollback, manifest immutability,
+  retries after activity and migration round-trip. Final acceptance and approval/admission
+  integration remain unfinished; callers must accept and seed in the same transaction.
+
+## Immutable posting attribution schema — October 19, 2026
+
+- Migration 0168 adds tenant-isolated, append-only posting_attribution with one row per
+  posting. Inserts require the accepted, enabled release and an unsettled processing group,
+  matching posting/computation ownership and valid cause-comparison metadata.
+- Processing events and attribution share a nonblocking group transaction guard so their
+  checks cannot race settlement. Privacy and sandbox snapshot inventories are reconciled.
+- Database probes cover attribution, duplicate/mutation/unsupported-cause refusal, terminal
+  groups, contention and migration round-trip. Persistence/report integration remains open,
+  alongside final acceptance, approval routing and admission. No deployment.

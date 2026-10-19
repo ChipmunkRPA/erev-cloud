@@ -54,6 +54,12 @@ from erev_api.db.tables.engine_output import (  # noqa: E402
     schedule,
     schedule_line,
 )
+from erev_api.db.tables.forecast import (  # noqa: E402
+    deal_preview,
+    forecast_event_set,
+    forecast_run,
+    scenario,
+)
 from erev_api.db.tables.imports import (  # noqa: E402
     exception_item,
     import_mapping_profile,
@@ -196,6 +202,10 @@ from erev_api.db.tables.subledger import (  # noqa: E402
 )
 
 __all__ = [
+    "deal_preview",
+    "forecast_event_set",
+    "forecast_run",
+    "scenario",
     "computation_verification",
     "release_validation_group",
     "release_group_processing",

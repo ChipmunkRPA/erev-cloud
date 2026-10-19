@@ -2,6 +2,21 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Forecast persistence foundation; reporting backlog retained — October 19, 2026
+
+- Migration 0176 adds scenario, versioned forecast_event_set, forecast_run and deal_preview,
+  with tenant-bound keys/RLS, sandbox guards, published-input freeze, terminal run freeze and
+  write-once preview save linkage. Privacy and snapshot inventories now include these tables.
+- This is schema groundwork only. Scenario creation/refresh APIs, input replay, forecast jobs,
+  output builders and UI remain unfinished; FCS-1 is not complete.
+- Reporting priorities remain: forecast_outputs, actual_vs_forecast, parallel_run_comparison,
+  variance_between_closes, contract_sample_pack, period_evidence_pack and disclosure_pack.
+  Separately, engine_trueup_register and existing-report acceptance gaps remain open.
+- Focused verification: PostgreSQL migration round trip and installed RLS/transition bodies pass;
+  database lint passes; privacy/snapshot checks: 76 passed. Architecture replay: 68 passed,
+  5 failed at the existing multiline CHECK parser in migration 0166, before 0176; not waived.
+- No deployment, forecast execution, financial acceptance or production-readiness claim.
+
 ## BBR actual FX admission fix; forecast dependency audit — October 19, 2026
 
 - Fixed a real cross-currency defect: BBR matched `SPOT`, while E-51 and approved database
@@ -216,28 +231,6 @@
 - Deferred portion handling uses the existing conservative origin rule; runtime closed-period
   and period-open rescheduling coverage remain outstanding, as do the true-up register,
   final acceptance, approval/admission integration and independent accounting sign-off.
-
-## Immutable posting attribution schema — October 19, 2026
-
-- Migration 0168 adds tenant-isolated, append-only posting_attribution with one row per
-  posting. Inserts require the accepted, enabled release and an unsettled processing group,
-  matching posting/computation ownership and valid cause-comparison metadata.
-- Processing events and attribution share a nonblocking group transaction guard so their
-  checks cannot race settlement. Privacy and sandbox snapshot inventories are reconciled.
-- Database probes cover attribution, duplicate/mutation/unsupported-cause refusal, terminal
-  groups, contention and migration round-trip. Persistence/report integration remains open,
-  alongside final acceptance, approval routing and admission. No deployment.
-
-## Atomic upgrade processing queue seed — October 19, 2026
-
-- Added seeding of every current group/entity/enabled-book portion after an accepted upgrade,
-  under the tenant population fence. It checks the accepted attempt's population before the
-  first write and commits initial PENDING events with a write-once count/digest manifest.
-- Retries verify retained initial rows without drawing today's population; partial rows without
-  a manifest are refused. Migration 0167 seals the initial queue against later additions.
-- Database checks cover unsampled groups, empty populations, rollback, manifest immutability,
-  retries after activity and migration round-trip. Final acceptance and approval/admission
-  integration remain unfinished; callers must accept and seed in the same transaction.
 
 ## Outstanding release verification
 
