@@ -2,6 +2,17 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Actual-vs-forecast comparison projection — October 19, 2026
+
+- Implemented contract/category revenue comparisons, saved-horizon validation, entity scope,
+  signed variance and percentage, zero-forecast null percentage and separate currency totals.
+  No-actuals output differs from zero-net production postings; no currency conversion is inferred.
+- Four focused checks cover population union, credit signs, currencies, zero bases, no actuals,
+  category aggregation, period/entity selection and invalid numeric inputs. Ruff/Mypy pass.
+- FCS-4 remains unavailable until production actuals are captured at refresh before scenario
+  replay, old forecast records can be resolved across refreshes, and the retained builder and
+  UI are connected. Current scenario recomputation must not be mistaken for posted actuals.
+
 ## Forecast run creation and history screen — October 19, 2026
 
 - Added `/reports/forecasts` with published-input selection, scoped entities, consecutive
