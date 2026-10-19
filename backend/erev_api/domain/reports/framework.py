@@ -145,6 +145,7 @@ from erev_api.domain.reports.builders import (
     balance_aging as balance_aging_builder,
 )
 from erev_api.domain.reports.builders import book_bridge as book_bridge_builder
+from erev_api.domain.reports.builders import bookings_billings_revenue as bbr_builder
 from erev_api.domain.reports.builders import (
     chain_verification_report as chain_verification_report_builder,
 )
@@ -423,6 +424,7 @@ BUILDERS: Final[Mapping[str, Builder]] = MappingProxyType(
         scope_exclusion_register_builder.CODE: scope_exclusion_register_builder.build,
         # BUILD_SPEC RPS-12 (SCREENS_B §5.6.6 RPT-33 to RPT-35; lane F-RPS-REG): the book bridge,
         # the adoption bridge, intercompany pairs and balance aging.
+        bbr_builder.CODE: bbr_builder.build,
         book_bridge_builder.CODE: book_bridge_builder.build,
         adoption_bridge_builder.CODE: adoption_bridge_builder.build,
         intercompany_pairs_builder.CODE: intercompany_pairs_builder.build,
@@ -851,6 +853,14 @@ SOURCE_CONTRACTS: Final[Mapping[str, SourceContract]] = MappingProxyType(
             OPEN, _OPEN_ONLY, (_SCOPE_EXCLUSION_REGISTER_OPEN,)
         ),
         # RPS-12 (RPT-33 to RPT-35): the analysis reports read live; no source adapter yet.
+        bbr_builder.CODE: SourceContract(
+            RETAINED,
+            (
+                _CUTOFF,
+                "booking, modification, billing, sealed revenue, historical journal "
+                "and spot FX sources",
+            ),
+        ),
         book_bridge_builder.CODE: SourceContract(OPEN, _OPEN_ONLY, (_BOOK_BRIDGE_OPEN,)),
         adoption_bridge_builder.CODE: SourceContract(OPEN, _OPEN_ONLY, (_ADOPTION_BRIDGE_OPEN,)),
         intercompany_pairs_builder.CODE: SourceContract(
@@ -909,6 +919,7 @@ PARAMETER_DEFAULTS: Final[Mapping[str, Mapping[str, Any]]] = MappingProxyType(
         ),
         # SCREENS_B RPT-33 "Currency view: default functional"; RPT-35 "default transaction"
         # (RPS-12).
+        bbr_builder.CODE: MappingProxyType({"currency_view": "functional", "granularity": "MONTH"}),
         book_bridge_builder.CODE: MappingProxyType(
             {"currency_view": book_bridge_builder.DEFAULT_CURRENCY_VIEW}
         ),

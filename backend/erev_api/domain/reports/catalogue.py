@@ -1674,24 +1674,43 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
         sources=(
             "contract_event",
             "modification",
+            "combination_group_member",
+            "contract_version",
             "subledger_line",
+            "subledger_posting_seal",
             "journal_line",
+            "journal_entry",
+            "journal_batch",
+            "journal_run",
+            "audit_event",
             "legal_entity",
             "period",
+            "fx_rate",
+            "fx_rate_set",
+            "fx_rate_set_version",
         ),
         joins=(
-            "modification.applied_event_id = contract_event.id",
-            "subledger_line.contract_event_id = contract_event.id",
-            "subledger_line.period_id = period.id",
-            "subledger_line.entity_id = legal_entity.id",
+            "modification applied_event_id binds its original application group and "
+            "contract_version; predecessor supplies price delta",
+            "subledger_line joins its posting seal; journal lines join entries, batches and "
+            "runs with lifecycle evidence",
+            "entity fiscal calendars bucket contributions; historical approved spot rates "
+            "value non-functional contract and billing amounts",
         ),
         filters=(
-            _SCOPE,
-            _BOOK,
-            _PERIODS,
-            "booked: activated contracts and applied modifications effective in the range",
-            "billings: billing events effective in the range",
-            "revenue: subledger_line.account_role = 'REVENUE'",
+            "entity code in entity_codes and within the caller's entity scope",
+            "book_code = book",
+            "period_key from from_period_key to to_period_key",
+            "source-time event/version creation and sealed posting cutoffs; retained inputs "
+            "supply reruns",
+            "activated contract stated line values exclude bookings linked to "
+            "separate-contract modifications",
+            "applied modification counted once; missing or shared valuation basis refuses",
+            "billing identity, credit and void rules; revenue uses posting period",
+            "journal revenue excludes runs cancelled as of source time; unknown historical "
+            "state refuses",
+            "functional contract/billing amounts use unique approved effective-day spot "
+            "rate; reporting currency and lock datasets unsupported",
         ),
         tie_outs=("TO_BBR_EQ_JE_REVENUE",),
     ),

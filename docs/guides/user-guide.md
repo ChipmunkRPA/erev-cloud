@@ -252,6 +252,27 @@ Every report you open or export is a report run: a stored, numbered record that 
 A failed run keeps its record with status Failed and the problem that stopped it.
 
 
+### Bookings, billings and revenue
+
+Run `bookings_billings_revenue` from Reports for an entity scope, book and fiscal period range.
+Choose Month, Quarter or Year; Functional is the default currency view. Transaction view splits
+rows by currency when necessary. The output includes four signed measures and totals per currency:
+activated new contract line consideration, applied modification price change, net billings and
+posted revenue. Separate-contract modifications are excluded from the new-contract measure.
+
+Billing uses invoice identity, credit and void rules. Revenue belongs to its posting period,
+including late-effective activity carried into a later period. The revenue check compares this
+amount with journal revenue in the same scope/range, using each run's state at the source time.
+A failed check remains visible; it does not manufacture matching figures.
+
+Functional contract/billing values use the unique approved spot rate for their effective day
+as known at the source cutoff. Posted revenue uses its stored functional amount. The retained
+inputs include rate/version and application-version evidence so a rerun keeps its source basis.
+Missing rates, ambiguous or shared modification valuation, missing predecessors and uncovered
+historical modification state refuse. These metric conventions still await independent
+accounting sign-off. Reporting currency, locked datasets and cell contributor navigation are
+not yet implemented for this report.
+
 ### Data extracts
 
 The nine extracts are CSV datasets with a JSON manifest for BI tools (REQ-RPT-028), run like any report with `POST /api/v1/report-runs` and downloaded from `GET /api/v1/report-runs/{id}/output` (`?part=manifest` for the manifest). Parameters: `mode` `FULL` (every row as of the source time: the lock of the context period when it is locked, else now, through `period_lock_id` or `known_at`) or `INCREMENTAL` (rows created — recorded, for events and subledger lines — after `known_since` and at or before the source time); `entity_codes` and `book` from the context (`book` is absent for `extract_contracts` and `extract_events`). Values follow the CSV rules above; columns holding personal data are never added. The manifest carries `dataset`, `schema_version`, `mode`, `known_since`, `known_at`, `period_lock_id`, `row_count`, `control_totals` and `sha256`.

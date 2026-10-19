@@ -6413,3 +6413,24 @@ cleanup in the shared database session kernel was also repaired and regression-t
   and incomplete/incompatible bindings fail before evidence reads. Dated CI evidence records
   the checks. Catalogue/job registration and requester reload wiring remain unfinished.
 - Final acceptance, approvals and admission remain open; no deployment.
+
+## Validation report catalogue and worker integration — October 19, 2026
+
+- Registered upgrade_validation and its retained-source contract, with migration 0164.
+  Jobs reload the human or API-client initiator and enforce current report/export grants
+  over the complete frozen entity population before reading or publishing evidence.
+- Actual JSON/CSV jobs and reruns passed, including API-client revocation and retry exhaustion
+  without output. Required report parameters now fail validation when absent. Catalogue,
+  framework, typing and lint evidence is in CI-2026-10-19.md.
+- Official attempt report attachment, final acceptance, approvals and admission remain open.
+  Repository work only; no deployment or independent accounting sign-off.
+
+## Verified attempt report attachment — October 19, 2026
+
+- Added transaction-bound report attachment under parent/attempt locks. It requires a
+  completed report job for the exact attempt, rechecks caller permissions, rebuilds frozen
+  source rows/totals, and verifies the output binding and file integrity before attachment.
+- The reference is write-once. Retries recheck evidence without updating the row; rollback,
+  replacement refusal, revoked access and corrupted output are covered by database tests.
+- Final population acceptance, approval routing and admission remain unfinished. Attachment
+  is an internal operation awaiting final orchestration; it never enables the release.

@@ -6,6 +6,7 @@ quarters and years come from the entity calendar, not calendar-month arithmetic.
 """
 
 from collections.abc import Mapping, Sequence
+from dataclasses import replace
 from datetime import date
 from decimal import Decimal, localcontext
 from typing import Any, Final
@@ -14,10 +15,20 @@ from uuid import UUID
 from erev_engine.stages.s01_canonicalize import encode_key
 
 from erev_api.domain.reports import tie_outs
+from erev_api.domain.reports.builders import (
+    ReportParams,
+    bbr_bookings,
+    bbr_currency,
+    bbr_journal,
+    bbr_modifications,
+    bbr_sources,
+    unknown_filter,
+)
 from erev_api.domain.reports.builders.bbr_sources import Contribution
 from erev_api.domain.reports.outputs import Column, ReportData
 from erev_api.domain.reports.tie_outs import EntityRef, PeriodRef
 from erev_api.problems import Problem
+from erev_api.uow import UnitOfWork
 
 CODE: Final = "bookings_billings_revenue"
 MEASURES: Final = ("booked_new", "booked_modifications", "billings", "revenue")
@@ -149,4 +160,64 @@ def dataset(
         tie_out_results=(
             tie_outs.compared("TO_BBR_EQ_JE_REVENUE", journal_revenue, actual_revenue),
         ),
+    )
+
+
+def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
+    if params.period_lock_id is not None:
+        raise Problem("validation-failed", "Bookings, billings and revenue has no lock dataset.")
+    for name in params.filters:
+        if name != "entity_code":
+            raise unknown_filter(name, ("entity_code",))
+    entities = tie_outs.entities(uow.session, params.entity_ids, params=params)
+    if "entity_code" in params.filters:
+        entities = tuple(e for e in entities if e.code == params.filters["entity_code"])
+    book = tie_outs.book_of(uow.session, params)
+    scoped = replace(params, entity_ids=tuple(e.id for e in entities), book_code=book)
+    calendars = tie_outs.calendars(uow.session, entities, params=params)
+    periods = {
+        e.id: tie_outs.range_of(params, calendars[e.id], e, year_default=True) for e in entities
+    }
+    all_periods = [p for rows in periods.values() for p in rows]
+    period_ids = [p.id for p in all_periods]
+    raw = bbr_sources.read(uow, scoped, period_ids=period_ids)
+    contributions: dict[str, Sequence[Contribution]] = {
+        "booked_new": bbr_bookings.new_contracts(raw),
+        "billings": bbr_sources.billings(raw),
+        "revenue": bbr_sources.revenue(raw),
+        "booked_modifications": (),
+    }
+    if all_periods:
+        modified = bbr_modifications.read(
+            uow,
+            scoped,
+            start=min(p.start for p in all_periods),
+            end=max(p.end for p in all_periods),
+        )
+        contributions["booked_modifications"] = bbr_modifications.values(modified)
+    # Restrict before FX valuation: out-of-range events cannot demand irrelevant rates.
+    for measure, rows in contributions.items():
+        contributions[measure] = tuple(
+            r
+            for r in rows
+            if any(
+                (
+                    r.period_id == p.id
+                    if measure == "revenue"
+                    else p.start <= r.effective_date <= p.end
+                )
+                for p in periods[r.entity_id]
+            )
+        )
+    view = str(params.parameters.get("currency_view") or "functional")
+    if view == "functional":
+        contributions = dict(bbr_currency.functional(uow, scoped, contributions, entities))
+    expected = bbr_journal.totals(uow, scoped, period_ids=period_ids, view=view)
+    return dataset(
+        contributions,
+        entities=entities,
+        periods=periods,
+        granularity=str(params.parameters.get("granularity") or "MONTH"),
+        currency_view=view,
+        journal_revenue=expected,
     )

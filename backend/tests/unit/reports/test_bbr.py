@@ -178,3 +178,53 @@ def test_modification_uses_application_group_and_requires_complete_price_basis()
                 "cause_types": {event: "CONTRACT_AMENDED", extra: "ESTIMATE_CHANGED"},
             }
         )
+
+
+def test_functional_valuation_reuses_retained_spot_rate_without_live_reads() -> None:
+    from datetime import UTC, datetime
+    from unittest.mock import Mock
+
+    from erev_api.domain.reports.builders import ReportParams, SourceBinding, bbr_currency
+
+    rate = {
+        "id": str(UUID(int=41)),
+        "fx_rate_set_version_id": str(UUID(int=42)),
+        "base_currency": "EUR",
+        "quote_currency": "USD",
+        "effective_date": "2026-07-04",
+        "rate_type": "SPOT",
+        "rate": "1.2345",
+    }
+    cutoff = datetime(2026, 9, 30, tzinfo=UTC)
+    binding = SourceBinding(
+        cutoff=cutoff,
+        versions={},
+        labels={},
+        row_keys=frozenset(),
+        evidence={bbr_currency.EVIDENCE: [rate]},
+    )
+    params = ReportParams(
+        "bookings_billings_revenue",
+        1,
+        {},
+        (ENTITY.id,),
+        cutoff,
+        book_code="ASC606",
+        binding=binding,
+    )
+    source = replace(contribution("100.01", date(2026, 7, 4)), currency="EUR")
+    uow = Mock()
+    result = bbr_currency.functional(uow, params, {"billings": [source]}, (ENTITY,))
+    valued = result["billings"][0]
+    assert valued.functional_amount == Decimal("123.46")
+    assert valued.functional_currency == "USD"
+    assert valued.basis_ids == (UUID(int=41), UUID(int=42))
+    assert valued.amount == Decimal("100.01") and valued.currency == "EUR"
+    uow.session.execute.assert_not_called()
+    with pytest.raises(Problem, match="one approved spot rate"):
+        bbr_currency.functional(
+            uow,
+            replace(params, binding=replace(binding, evidence={bbr_currency.EVIDENCE: []})),
+            {"billings": [source]},
+            (ENTITY,),
+        )

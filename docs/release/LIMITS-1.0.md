@@ -1,5 +1,17 @@
 # eRev Cloud 1.0: stated limits of the release
 
+October 19 BBR delivery continuation: bookings_billings_revenue is registered and runs through
+the report API/worker with fiscal buckets, retained reruns and historical journal-revenue
+comparison. Functional contract/billing contributions use a unique historical approved spot
+rate on their effective day; revenue retains posted functional amounts. Missing/ambiguous FX
+refuses. Seven definitions still lack registered builders: actual_vs_forecast, forecast_outputs,
+parallel_run_comparison, variance_between_closes, contract_sample_pack, period_evidence_pack
+and disclosure_pack. BBR's cell contributor routes, reporting-currency/lock datasets, complex
+attribution and broader scenario/browser acceptance remain unfinished. Standard XLSX/PDF writers
+are wired by the framework but not individually verified here. Independent approval of the
+contract-value and spot-rate metric basis is still required. No deployment/readiness claim.
+
+
 October 19 BBR attribution continuation: activated bookings now use the contract's signed
 stated line consideration (not its group's allocated transaction price), with original event
 provenance. Separate-contract modification bookings are excluded from the new-contract column.

@@ -2,6 +2,20 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## BBR report delivery, currency valuation and journal comparison — October 19, 2026
+
+- Registered bookings_billings_revenue in the report framework with functional/month defaults,
+  fiscal ranges, scoped sources and retained-input reruns. JSON/CSV use the common report flow;
+  standard XLSX/PDF writers are available but were not separately exercised in this slice.
+- Added historical approved spot-rate valuation for contract/billing contributions, preserving
+  rate/version identities. Posted revenue keeps its stored functional amount. Missing or
+  ambiguous rates refuse. Journal revenue uses retained lifecycle evidence at the same cutoff.
+- Actual API report, PASS journal tie-out, CSV hash and identical rerun passed; migration 0175
+  reconciles IPE source disclosure. Evidence is in CI-2026-10-19.md.
+- Seven catalogue definitions still lack registered builders. BBR contributor cell routes,
+  reporting-currency and lock datasets, complex/shared attribution, cross-currency database
+  acceptance, browser acceptance and independent accounting approval remain open. No deployment.
+
 ## BBR activated bookings and application value attribution — October 19, 2026
 
 - Added activated-contract values from each contract's own signed booking line consideration,
@@ -229,27 +243,6 @@
   Cancellation and retry exhaustion remain INCOMPLETE after dataset publication.
 - Final acceptance still needs report verification, concurrent population-writer fencing,
   approval routing and admission integration. This change performs no release enablement.
-
-## Verified attempt report attachment — October 19, 2026
-
-- Added transaction-bound report attachment under parent/attempt locks. It requires a
-  completed report job for the exact attempt, rechecks caller permissions, rebuilds frozen
-  source rows/totals, and verifies the output binding and file integrity before attachment.
-- The reference is write-once. Retries recheck evidence without updating the row; rollback,
-  replacement refusal, revoked access and corrupted output are covered by database tests.
-- Final population acceptance, approval routing and admission remain unfinished. Attachment
-  is an internal operation awaiting final orchestration; it never enables the release.
-
-## Validation report catalogue and worker integration — October 19, 2026
-
-- Registered upgrade_validation and its retained-source contract, with migration 0164.
-  Jobs reload the human or API-client initiator and enforce current report/export grants
-  over the complete frozen entity population before reading or publishing evidence.
-- Actual JSON/CSV jobs and reruns passed, including API-client revocation and retry exhaustion
-  without output. Required report parameters now fail validation when absent. Catalogue,
-  framework, typing and lint evidence is in CI-2026-10-19.md.
-- Official attempt report attachment, final acceptance, approvals and admission remain open.
-  Repository work only; no deployment or independent accounting sign-off.
 
 ## Outstanding release verification
 
