@@ -27,6 +27,7 @@ class SavedRevenue:
     report_run_id: UUID
     dataset_sha256: str
     revenue: dict[str, Any]
+    entities: dict[str, UUID]
 
 
 def read(uow: UnitOfWork, forecast_run_id: UUID) -> SavedRevenue:
@@ -68,7 +69,13 @@ def read(uow: UnitOfWork, forecast_run_id: UUID) -> SavedRevenue:
                 raise Problem("precondition-failed", "The saved forecast dataset digest differs.")
             document = json.loads(content)
             revenue = _revenue(document, saved, evidence)
-            return SavedRevenue(saved, row["id"], row["output_sha256"], revenue)
+            return SavedRevenue(
+                saved,
+                row["id"],
+                row["output_sha256"],
+                revenue,
+                _entities(document, saved, evidence),
+            )
         raise Problem("precondition-failed", "The saved forecast has no retained revenue dataset.")
     finally:
         set_tenant_context(uow.session, original)
@@ -106,3 +113,23 @@ def _revenue(
         return dict(dataset)
     except (KeyError, TypeError, ValueError) as error:
         raise Problem("precondition-failed", "The saved forecast revenue scope differs.") from error
+
+
+def _entities(
+    document: dict[str, Any], saved: history.SavedForecast, evidence: dict[str, Any]
+) -> dict[str, UUID]:
+    try:
+        source = evidence["children"]["scope"]
+        if sha256_hex(source) != document["source_evidence_sha256"]["scope"]:
+            raise ValueError("scope hash")
+        entities = source["evidence"]["configuration"]["entities"]
+        if set(entities) != set(saved.run["parameters"]["entity_ids"]):
+            raise ValueError("entities")
+        result = {value["code"]: UUID(identity) for identity, value in entities.items()}
+        if len(result) != len(entities) or any(not code for code in result):
+            raise ValueError("entity codes")
+        return result
+    except (KeyError, TypeError, ValueError) as error:
+        raise Problem(
+            "precondition-failed", "The saved forecast entity mapping differs."
+        ) from error

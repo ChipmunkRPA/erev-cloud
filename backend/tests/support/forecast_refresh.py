@@ -310,6 +310,16 @@ def exercise_refresh_state(world: Any, source_actor: Actor, scenario_id: UUID) -
         assert revenue.forecast.forecast_tenant_id == old_target
         assert any(column["key"].startswith("period:") for column in revenue.revenue["columns"])
         assert "sections" not in revenue.revenue
+        from erev_api.domain.reports.forecast_dimensions import forecast_rows
+
+        projected = forecast_rows(revenue, require_category=True)
+        assert projected
+        assert {str(row.entity_id) for row in projected} <= set(
+            saved.run["parameters"]["entity_ids"]
+        )
+        assert {row.period_key for row in projected} <= set(
+            saved.run["parameters"]["horizon_periods"]
+        )
         from erev_api.domain.reports import forecast_actuals_saved
 
         actuals = forecast_actuals_saved.read(uow, saved_run_id)

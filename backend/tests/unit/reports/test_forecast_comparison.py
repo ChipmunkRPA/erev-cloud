@@ -71,3 +71,17 @@ def test_selected_horizon_scopes_and_category_aggregation():
 def test_nonfinite_values_are_refused():
     with pytest.raises(Problem, match="Incomplete forecast comparison source"):
         report([revenue("C1", "NaN")], [revenue("C1", "10")])
+
+
+def test_unassigned_category_does_not_merge_with_named_category():
+    data = report(
+        [
+            Revenue(ENTITY, "C1", None, "P10", "USD", Decimal("100")),
+            Revenue(ENTITY, "C2", "Unassigned", "P10", "USD", Decimal("50")),
+        ],
+        [Revenue(ENTITY, "C1", None, "P10", "USD", Decimal("80"))],
+        row_dimension="REVENUE_CATEGORY",
+    )
+    rows = {r["row_key"]: r for r in data.rows}
+    assert rows["revenue_category::P10"]["variance"]["amount"] == "-20.00"
+    assert rows["revenue_category:Unassigned:P10"]["forecast_revenue"]["amount"] == "50.00"

@@ -22,7 +22,7 @@ from erev_api.problems import Problem
 class Revenue:
     entity_id: UUID
     contract_external_id: str
-    revenue_category: str
+    revenue_category: str | None
     period_key: str
     currency: str
     amount: Decimal
@@ -71,12 +71,17 @@ def compare(
                 if source.entity_id not in scope or source.period_key not in selected:
                     continue
                 label = getattr(source, key)
-                if not label or not source.currency or not source.amount.is_finite():
+                if (
+                    (not label and key == "contract_external_id")
+                    or label == ""
+                    or not source.currency
+                    or not source.amount.is_finite()
+                ):
                     raise Problem("precondition-failed", "Incomplete forecast comparison source.")
                 # Currency minor units are shared with the normal report output writers.
                 money(source.amount, source.currency)
                 amounts = values.setdefault(
-                    (label, source.period_key, source.currency), [Decimal(0), Decimal(0)]
+                    (label or "", source.period_key, source.currency), [Decimal(0), Decimal(0)]
                 )
                 amounts[side] += source.amount
                 if side == 1:
@@ -92,10 +97,11 @@ def compare(
                 values.items(),
                 key=lambda item: (item[0][0], selected.index(item[0][1]), item[0][2]),
             ):
-                row_key = f"{prefix}:{encode_key(label)}:{encode_key(period)}"
+                encoded_label = encode_key(label) if label else ""
+                row_key = f"{prefix}:{encoded_label}:{encode_key(period)}"
                 if len(currencies[(label, period)]) > 1:
                     row_key += f":{encode_key(currency)}"
-                row = _row(row_key, key, label, period, currency, amounts)
+                row = _row(row_key, key, label or None, period, currency, amounts)
                 rows.append(row)
                 aggregate = totals.setdefault(currency, [Decimal(0), Decimal(0)])
                 aggregate[0] += Decimal(row["forecast_revenue"]["amount"])

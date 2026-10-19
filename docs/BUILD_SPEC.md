@@ -11586,7 +11586,11 @@ Author BS-3. Uses DIN, SNP and RPS (PHASES §1 row 18). Indicative size 12 items
     The internal actuals reader now authorizes the current scenario and forecast, binds the
     exact current snapshot/cutoff, verifies encrypted data integrity and returns only the saved
     forecast's book/entity/horizon population. Missing legacy captures fail explicitly.
-    Dimension mapping, report builder/registration and UI remain open;
+    Forecast output now retains revenue category alongside obligation rows; the forecast-side
+    mapper uses hashed saved entity configuration, expands period money cells and excludes
+    totals. Legacy missing categories are refused for category comparisons, and null categories
+    do not collide with named categories. Actual-side dimension mapping, report builder/
+    registration and UI remain open;
     this report is not yet runnable.
   - **Prerequisites:** FCS-3
   - **Scope:**

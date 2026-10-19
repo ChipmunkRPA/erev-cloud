@@ -30,7 +30,7 @@ from erev_api.domain.reports.builders import (
     revenue_waterfall,
     rpo,
 )
-from erev_api.domain.reports.outputs import ReportData
+from erev_api.domain.reports.outputs import Column, ReportData
 from erev_api.domain.reports.tie_outs import PeriodRef
 from erev_api.enums import TenantKind
 from erev_api.problems import Problem
@@ -133,6 +133,14 @@ def capture(uow: UnitOfWork, params: ReportParams, *, horizon: Sequence[str]) ->
             row_dimension="OBLIGATION",
             granularity="MONTH",
             measure="TOTAL",
+        ),
+    )
+    # Keep classification alongside obligation rows so comparisons use the original labels.
+    revenue = replace(
+        revenue,
+        columns=(
+            *revenue.columns,
+            Column("revenue_category", "Revenue category", "text", empty_text="Unassigned"),
         ),
     )
     billing_params = child("bookings_billings_revenue")
