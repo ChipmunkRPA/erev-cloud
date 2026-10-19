@@ -2,6 +2,18 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Unified contract sample source snapshot — October 19, 2026
+
+- Combined event/computation/journal/decision/document collectors at one cutoff; merged all
+  dependency identities and permission scopes, including journal approval references. Captures
+  a canonical scope alongside the source manifest in an encrypted SNAPSHOT_DATASET archive.
+- Added typed immutable source binding/pack values and authorized retained reads. File metadata,
+  bytes, manifest and embedded scope must agree; retries do not recollect business evidence.
+- The real K01 journey persists a pack binding and encrypted snapshot, then reads it across UOWs
+  with collectors disabled; digest tampering and revoked export scope are refused. Ruff/Mypy pass.
+- Source-file deletion/retention registry integration must precede public release. Public create/
+  worker/read/download, stamped PDF/XLSX and broader acceptance remain; no complete-pack claim.
+
 ## Contract sample journal evidence — October 19, 2026
 
 - Added journal collection through the existing retained grouping/drill-back reader, including

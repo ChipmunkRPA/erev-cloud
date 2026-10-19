@@ -5965,11 +5965,13 @@ def test_forecast_event_capture_is_atomic_and_immutable(
 def test_contract_sample_computation_evidence_keeps_trace_and_full_schedule(
     world: World,
     clock: FrozenClock,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     import json
     from datetime import timedelta
 
     from erev_api.db import new_id
+    from erev_api.db.tables import evidence_pack
     from erev_api.domain.journals import summarise
     from erev_api.domain.platform.attachments import attach_evidence
     from erev_api.domain.reports import (
@@ -5979,10 +5981,13 @@ def test_contract_sample_computation_evidence_keeps_trace_and_full_schedule(
         evidence_sample_documents,
         evidence_sample_events,
         evidence_sample_journals,
+        evidence_sample_sources,
     )
     from erev_api.domain.reports.evidence_commands import PERMISSIONS
     from erev_api.enums import FilePurpose
+    from erev_api.files.store import sidecar_key
     from erev_api.schemas.evidence_packs import ContractSamplePackCreateIn
+    from support.rows import evidence_pack_values
 
     booked = k01(world)
     computed(world.place, booked.combination_group["id"])
@@ -6104,10 +6109,54 @@ def test_contract_sample_computation_evidence_keeps_trace_and_full_schedule(
         evidence_archive.verify(archive.content, expected_manifest_sha256=archive.manifest_sha256)
         before = evidence_sample_computations.collect(uow, events.selection, as_of=date(2025, 1, 1))
         assert not before.version_ids
+        uow.commit()
+    with world.place.uow(principal) as uow:
+        bound = evidence_sample_sources.prepare(uow, request)
+        pack = evidence_pack_values(uow.principal.tenant_id, **bound.pack_values())
+        uow.session.execute(insert(evidence_pack).values(**pack))
+        uow.commit()
+
+    def no_recollection(*args, **kwargs):
+        raise AssertionError("Retained source read must not recollect live evidence")
+
+    with monkeypatch.context() as patch:
+        for module in (
+            evidence_sample_events,
+            evidence_sample_computations,
+            evidence_sample_journals,
+            evidence_sample_decisions,
+            evidence_sample_documents,
+        ):
+            patch.setattr(module, "collect", no_recollection)
+        with world.place.uow(principal) as uow:
+            loaded = evidence_sample_sources.load(uow, pack["id"])
+            assert loaded == bound
+            retained = evidence_sample_sources.read(uow, loaded)
+            assert retained.manifest_sha256 == bound.manifest_sha256
+            assert any(
+                item["path"] == "sample/journals.json"
+                for item in retained.manifest_document()["files"]
+            )
+            meta = (
+                uow.session.execute(
+                    select(file_object).where(file_object.c.id == bound.source_file_id)
+                )
+                .mappings()
+                .one()
+            )
+            assert uow.files.exists(sidecar_key(meta["storage_key"]))
+            with uow.files.open(meta["storage_key"]) as stream:
+                assert stream.read() != retained.content
+            with pytest.raises(Problem):
+                evidence_sample_sources.read(
+                    uow, bound.model_copy(update={"source_file_sha256": "0" * 64})
+                )
     denied = replace(
         principal, permission_scopes={**principal.permission_scopes, "report.export": frozenset()}
     )
     with world.place.uow(denied) as uow:
+        with pytest.raises(Problem):
+            evidence_sample_sources.load(uow, pack["id"])
         with pytest.raises(Problem):
             evidence_sample_computations.collect(uow, events.selection, as_of=request.as_of)
         with pytest.raises(Problem):

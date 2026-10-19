@@ -10284,6 +10284,14 @@ Author BS-3. Uses CTR (PHASES §1 row 12). Indicative size 16 items; this phase 
   - **Gates:** GK-01 `make ci`; GK-03 `make openapi`
 
 - [ ] **RPS-16 Period evidence packs and contract sample packs.**
+  - October 19 unified snapshot increment: all five source collectors now feed one encrypted
+    SNAPSHOT_DATASET archive with an embedded canonical permission/source scope. Typed bindings
+    persist through evidence_pack.source_binding and bind selectors, file size/hash and manifest.
+    Retained reads reauthorize current source/document grants and verify bytes/embedded scope
+    without business-source recollection. The real K01 journey persists a pack binding and reads
+    it across transactions with collectors disabled, checking encryption, hash tampering and
+    revoked export permission. Source-file deletion/retention registry integration is required
+    before public creation; worker/download lifecycle and stamped PDF/XLSX remain unfinished.
   - October 19 journal increment: sample journal sources now use recorded grouping/drill-back
     to locate sampled contributions inside aggregated lines, retain whole-line/context amounts,
     validate source counts/currencies/cutoffs/net totals, and preserve historical run/batch state
