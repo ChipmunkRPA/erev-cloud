@@ -788,6 +788,9 @@ formats. **Run forecast** starts a background job; its progress and cancellation
 below the form. The history lists saved reports, with an expandable preview for JSON and links
 to each report for downloads. File formats require export permission for every selected entity.
 Scenario creation, refresh and input-set editing still use the APIs.
+Creation and refresh also retain a separate encrypted production-actuals capture at the
+snapshot cutoff. The requesting member needs report access for every captured source entity.
+This capture is reused on retry; it does not copy production journals into the scenario.
 
 In the scenario workspace, publish the applied input set and send `POST /api/v1/forecast-runs`
 with an idempotency key and this body (replace identifiers and periods with your scenario's values):

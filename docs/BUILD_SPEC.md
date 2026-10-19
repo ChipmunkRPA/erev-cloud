@@ -11580,8 +11580,10 @@ Author BS-3. Uses DIN, SNP and RPS (PHASES §1 row 18). Indicative size 12 items
     retained canonical data are refused. Added a production-only actuals reader using the journal
     extract's retained lifecycle evidence at the snapshot cutoff. It retains revenue lines only
     from batches acknowledged by that cutoff, with historical cancellations and both currency
-    bases. Sandbox journals are refused as a source. Wiring durable actuals retention into
-    creation/refresh, dimension mapping, report builder/registration and UI remain open;
+    bases. Sandbox journals are refused as a source. Creation/refresh workers now retain both
+    books in encrypted snapshot-data files, with an immutable per-snapshot reference (0186).
+    Retries reuse the capture; completed legacy snapshots cannot acquire a new baseline.
+    Retained actuals reading, dimension mapping, report builder/registration and UI remain open;
     this report is not yet runnable.
   - **Prerequisites:** FCS-3
   - **Scope:**

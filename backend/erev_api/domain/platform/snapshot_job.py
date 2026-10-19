@@ -932,6 +932,15 @@ def tenant_snapshot_export(jc: JobContext, params: Mapping[str, Any]) -> JobOutc
         or parsed.purpose != "SANDBOX_COPY"
     ):
         raise _invalid("scenario", "A scenario requires its creator's sandbox copy.")
+    if requested is not None:
+        from erev_api.domain.forecast import actuals_retention
+
+        actuals_retention.retain(
+            jc,
+            snapshot_id=parsed.tenant_snapshot_id,
+            requested_by=requested.requested_by,
+            known_at=parsed.known_at,
+        )
     with jc.unit_of_work() as uow:
         resolution = retention_policy_for(uow.session, parsed.known_at)
         reader = DbSnapshotReader(

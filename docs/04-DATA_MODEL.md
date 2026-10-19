@@ -6060,6 +6060,28 @@ Keys: `PRIMARY KEY (tenant_id, id)`; `ux_forecast_event_set__version (tenant_id,
 
 Keys: `PRIMARY KEY (tenant_id, id)`.
 
+### T-FC-06 `forecast_actuals_capture`
+
+- **Purpose.** Immutable production journal actuals captured for scenario creation/refresh,
+  independently of SBX-03 snapshots, which never copy journals. Revision 0186.
+- **Class.** IM-A; RLS-T; SC-C. One record per production tenant and snapshot. Not copied to sandboxes.
+
+| Column | Type | Null | Constraints and notes |
+|---|---|---|---|
+| SC-T | | | Tenant-scoped primary key |
+| `tenant_snapshot_id` | uuid | N | Tenant FK to snapshot; unique with tenant_id |
+| `known_at` | timestamptz | N | Exact snapshot cutoff |
+| `dataset_file_id` | uuid | N | Tenant FK to encrypted file_object, purpose SNAPSHOT_DATASET |
+| `dataset_sha256` | char(64) | N | Canonical data digest |
+| `entity_ids` | jsonb | N | Array of captured entity UUID strings |
+| SC-C | | | Requester and creation time |
+
+The file holds ASC606 and IFRS15 captures, each with its source tenant, cutoff, entity scope,
+and acknowledged revenue lines with original transaction/functional debits and credits.
+Creation/refresh workers retain it before snapshot completion and replay. Retrying the same
+snapshot reuses its capture; a completed legacy snapshot cannot acquire a new baseline.
+Failed refresh evidence remains retained. Downgrade is refused while capture records exist.
+
 ### T-FC-04 `deal_preview`
 
 - **Purpose.** Audited deal-desk allocation preview (REQ-FC-006). Nothing else persists unless saved as a scenario contract.

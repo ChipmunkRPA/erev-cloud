@@ -94,3 +94,16 @@ deal_preview: Final = Table(
     Column("saved_contract_id", Uuid()),
     *_sc_c(),
 )
+
+forecast_actuals_capture: Final = Table(
+    "forecast_actuals_capture",
+    metadata,
+    Column("tenant_id", Uuid(), primary_key=True),
+    Column("id", Uuid(), primary_key=True),
+    Column("tenant_snapshot_id", Uuid(), nullable=False),
+    _timestamp("known_at", nullable=False),
+    Column("dataset_file_id", Uuid(), nullable=False),
+    Column("dataset_sha256", CHAR(64), nullable=False),
+    Column("entity_ids", JSONB(), nullable=False),
+    *_sc_c(),
+)

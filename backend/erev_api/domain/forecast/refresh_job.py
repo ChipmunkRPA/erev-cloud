@@ -72,6 +72,11 @@ def run(jc: JobContext, params: Mapping[str, Any], reserved: Mapping[str, Any]) 
         or parsed.tenant_snapshot_id != current["tenant_snapshot_id"]
     ):
         raise Problem("precondition-failed", "The refresh job does not match its reservation.")
+    from erev_api.domain.forecast import actuals_retention
+
+    actuals_retention.retain(
+        jc, snapshot_id=parsed.tenant_snapshot_id, requested_by=actor.id, known_at=parsed.known_at
+    )
     with jc.unit_of_work() as uow:
         resolution = snapshots.retention_policy_for(uow.session, parsed.known_at)
         reader = snapshots.DbSnapshotReader(

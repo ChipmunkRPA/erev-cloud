@@ -181,6 +181,39 @@ def exercise_refresh_state(world: Any, source_actor: Actor, scenario_id: UUID) -
                 "problem"
             ]
             assert refreshed["status"] == ("FAILED" if fail_completion else "SUCCEEDED")
+            import hashlib
+            import json
+
+            from erev_api.db.tables import forecast_actuals_capture
+            from erev_api.files.store import open_file
+
+            retained = (
+                uow.session.execute(
+                    select(forecast_actuals_capture).where(
+                        forecast_actuals_capture.c.tenant_snapshot_id == snapshot_id,
+                    )
+                )
+                .mappings()
+                .one()
+            )
+            _, stream = open_file(
+                uow.session, retained["dataset_file_id"], files=uow.files, keyring=uow.keyring
+            )
+            with stream:
+                content = stream.read()
+            assert hashlib.sha256(content).hexdigest() == retained["dataset_sha256"]
+            actuals_document = json.loads(content)
+            assert actuals_document["tenant_snapshot_id"] == str(snapshot_id)
+            assert set(actuals_document["books"]) == {"ASC606", "IFRS15"}
+            assert all(book["rows"] == [] for book in actuals_document["books"].values())
+            with pytest.raises(DBAPIError), uow.savepoint():
+                uow.session.execute(
+                    update(forecast_actuals_capture)
+                    .where(
+                        forecast_actuals_capture.c.id == retained["id"],
+                    )
+                    .values(dataset_sha256="0" * 64)
+                )
             assert current["scenario_tenant_id"] == (
                 old_target if fail_completion else pending["target_tenant_id"]
             )

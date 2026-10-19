@@ -2,6 +2,21 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Durable actuals capture in creation and refresh — October 19, 2026
+
+- Revision 0186 adds immutable, tenant-scoped forecast_actuals_capture records, unique per
+  source snapshot and linked to encrypted SNAPSHOT_DATASET files. Both ASC606/IFRS15 retain
+  their own cutoff, entity scope and acknowledged revenue lines. Downgrade refuses evidence loss.
+- Scenario creation and refresh workers retain actuals before snapshot completion/replay under
+  the requester's current production permissions. Snapshot-row locking serializes retries;
+  existing captures are reused. Completed legacy snapshots cannot acquire a later baseline.
+  Journals still are not copied into sandboxes; failed-refresh capture evidence is preserved.
+- The real creation/refresh journey passes migration, both-book file digest/content checks and
+  immutable-update refusal. Ruff/Mypy pass. Source actuals require report.run for every captured
+  source entity; no scope is silently omitted.
+- Still open: authorized retained-actuals reader, contract/category mapping, comparison report
+  builder/registration and UI. No deployment or overall production-readiness claim.
+
 ## Snapshot-cutoff production actuals reader — October 19, 2026
 
 - Confirmed SBX-03 snapshots deliberately omit journals. Added a separate production-only
@@ -210,35 +225,6 @@
   targeted checks and Ruff/Mypy pass.
 - Persisted refresh orchestration, failure recovery and source scenario replacement remain
   unconnected; forecast reporting is still unfinished. No deployment/readiness claim.
-
-## Atomic ordered forecast replay — October 19, 2026
-
-- Connected file materialization, retained mapping consumption and command/file execution into
-  one ordered replay operation for an empty target draft. It publishes only after every input
-  computes successfully and records source/target publication hashes plus upload bindings.
-- The caller owns the transaction; any failure or heartbeat cancellation rolls back the whole
-  bundle, including earlier inputs and staged file metadata/audit. The input set cannot be
-  replayed twice after publication. No child computation jobs can overtake the sequence.
-- The real scenario fixture exercises command → mapped file → command, cancellation after
-  the file with complete rollback, successful retry/publication and duplicate refusal.
-  Targeted scenario verification, Ruff and source-module Mypy pass.
-- Durable refresh job state, fresh-copy lifecycle and atomic scenario replacement still need
-  integration. Forecast report outputs and actual-vs-forecast remain unfinished; no deployment.
-
-## Retained forecast import mappings — October 19, 2026
-
-- Revision 0183 retains a forecast replay import's verified original mapping as immutable JSON,
-  separate from published target configuration. Internal replay validates its hash/template and
-  persists it; ordinary import APIs cannot supply this snapshot and retain publication rules.
-- Validation and header preview consume the retained aliases/constants. Published-input reading
-  preserves the same mapping for subsequent refreshes, including when the source profile is
-  absent or superseded in the new copy. Upload audit identifies its original profile and hash.
-- The scenario journey imports an alias column without a target profile, computes successfully,
-  then publishes and reads back the retained mapping; ordinary customer import also passes.
-  Static checks and forecast schema upgrade/downgrade pass. Snapshot inventory clears this
-  operational field with the source forecast binding.
-- Durable refresh request/orchestration, scenario replacement and forecast report builders remain
-  unfinished. No deployment or production-readiness claim.
 
 ## Outstanding release verification
 

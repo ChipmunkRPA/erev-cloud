@@ -56,6 +56,7 @@ from erev_api.db.tables.engine_output import (  # noqa: E402
 )
 from erev_api.db.tables.forecast import (  # noqa: E402
     deal_preview,
+    forecast_actuals_capture,
     forecast_event_set,
     forecast_run,
     scenario,
@@ -205,6 +206,7 @@ from erev_api.db.tables.subledger import (  # noqa: E402
 __all__ = [
     "deal_preview",
     "forecast_event_set",
+    "forecast_actuals_capture",
     "forecast_run",
     "scenario",
     "scenario_refresh",
