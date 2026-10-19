@@ -2,6 +2,21 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Bookings/billings/revenue source and aggregation implementation — October 19, 2026
+
+- Implemented scoped, cutoff-bound raw source capture for RPT-37, retaining event identity
+  decisions and sealed revenue lines. Billing reuses the engine-aligned invoice identity,
+  credit and void handling of the balance rollforward. Revenue preserves posting periods,
+  transaction/functional amounts and line identities, including signed reversals.
+- Implemented fiscal month/quarter/year presentation, entity/currency splits, signed totals
+  and journal-revenue comparison. Missing measure populations or FX valuation refuse.
+- Real source reads prove later invoices do not change an earlier cutoff or retained inputs;
+  scoped reads and retained scope/book mismatches are exercised. Targeted evidence is in
+  CI-2026-10-19.md. No full-suite rerun or deployment.
+- RPT-37 is not registered yet: activation-value and applied-modification attribution, FX
+  valuation, journal comparator sourcing, contributor routes and end-to-end publication remain.
+  Eight reports still lack complete registered builders; do not mark this report finished.
+
 ## Contract BI extract and source history — October 19, 2026
 
 - Added extract_contracts v1: fixed header columns, historical customer/entity codes,
@@ -239,24 +254,6 @@
   Matching/differing report data reproduces after later contract activity; database and typing
   evidence is in the dated CI record. Report catalogue/job integration remains unfinished.
 - Final acceptance, approvals and admission also remain open; no deployment.
-
-## Frozen attempt dataset publication — October 15, 2026
-
-- Added terminal-job dataset assembly from frozen selections and retained comparisons. It
-  verifies artifact identities, digests and detail counts; failed and no-source rows remain.
-- Dataset reference and COMPLETE/INCOMPLETE attempt status commit together. Retries read the
-  original file; rollback leaves neither the reference nor a completed attempt. Parent release
-  enablement is unchanged. Lifecycle/integrity verification is in the dated CI record.
-- Report publication, final population acceptance, approvals and admission remain unfinished.
-
-## Retained replay difference details — October 15, 2026
-
-- Candidate comparisons now carry full difference rows and check them against their summary.
-  Persistence stores an encrypted, identity-bound difference artifact in the same transaction
-  as the result and accepted pointer, including an explicit empty comparison for MATCH.
-- Rollback, retry reuse, encryption, evidence holds and generic download denial passed database
-  checks. Unit/typing evidence is in the dated CI record. Historical results are not backfilled.
-- Attempt datasets, reports, final acceptance, approvals and admission remain unfinished.
 
 ## Outstanding release verification
 

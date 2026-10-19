@@ -6375,3 +6375,21 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Database encryption/read/hold and empty migration round-trip tests passed, with file-access,
   policy and registry checks. CI evidence is in the dated release record.
 - Dataset production, report publication, final acceptance, approvals and admission remain open.
+
+## Retained replay difference details — October 15, 2026
+
+- Candidate comparisons now carry full difference rows and check them against their summary.
+  Persistence stores an encrypted, identity-bound difference artifact in the same transaction
+  as the result and accepted pointer, including an explicit empty comparison for MATCH.
+- Rollback, retry reuse, encryption, evidence holds and generic download denial passed database
+  checks. Unit/typing evidence is in the dated CI record. Historical results are not backfilled.
+- Attempt datasets, reports, final acceptance, approvals and admission remain unfinished.
+
+## Frozen attempt dataset publication — October 15, 2026
+
+- Added terminal-job dataset assembly from frozen selections and retained comparisons. It
+  verifies artifact identities, digests and detail counts; failed and no-source rows remain.
+- Dataset reference and COMPLETE/INCOMPLETE attempt status commit together. Retries read the
+  original file; rollback leaves neither the reference nor a completed attempt. Parent release
+  enablement is unchanged. Lifecycle/integrity verification is in the dated CI record.
+- Report publication, final population acceptance, approvals and admission remain unfinished.

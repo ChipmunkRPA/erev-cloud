@@ -1,5 +1,14 @@
 # eRev Cloud 1.0: stated limits of the release
 
+October 19 BBR implementation continuation: source capture and fiscal presentation now exist
+for bookings_billings_revenue. Billing follows existing invoice identity/credit/void rules;
+revenue uses sealed lines with server capture cutoffs and posting-period attribution. The report
+is not registered: booking and modification valuation, governed FX, journal source selection,
+contributor routing and final API/output integration remain unfinished. The count remains eight
+reports without complete registered builders. Functional amounts are never inferred from
+transaction amounts when currencies differ. No production-readiness or deployment claim.
+
+
 October 19 contract reporting continuation: `extract_contracts` now exports captured headers
 and historical customer/entity codes, with JSON/CSV, creation-time incremental selection and
 retained inputs for reruns. Migration 0174 adds atomic, append-only source revision capture and

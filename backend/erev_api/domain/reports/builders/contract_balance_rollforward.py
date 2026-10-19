@@ -465,7 +465,7 @@ class Document:
 
 
 @dataclass(frozen=True, slots=True)
-class _StoredEvent:
+class BillingSourceEvent:
     """A stored contract event read as ``billing_identity.BillingEvent`` (ENG-06 order)."""
 
     event_id: UUID
@@ -489,7 +489,7 @@ class _StoredEvent:
         return (self.effective_date, self.record_seq, str(self.event_id))
 
 
-def kept_documents(events: Iterable[_StoredEvent], voided: Iterable[UUID]) -> list[Document]:
+def kept_documents(events: Iterable[BillingSourceEvent], voided: Iterable[UUID]) -> list[Document]:
     """The billing documents of one contract's stream, in ENG-06 order: the kept
     ``BILLING_RECORDED`` lines of S10-R-07 (a status update of a line adds no billing) and the
     ``CREDIT_MEMO_RECORDED`` events, less the events ``voided`` names. Pure."""
@@ -751,7 +751,7 @@ def _streams(
         .order_by(contract_event.c.effective_date, contract_event.c.record_seq, contract_event.c.id)
     ).mappings()
     consumed: list[UUID] = []
-    events: dict[tuple[UUID, UUID], list[_StoredEvent]] = {}
+    events: dict[tuple[UUID, UUID], list[BillingSourceEvent]] = {}
     voided: dict[UUID, set[UUID]] = {}
     void_contracts: set[UUID] = set()
     for row in rows:
@@ -767,7 +767,7 @@ def _streams(
             continue
         key = (contract_key, UUID(str(row["contracting_entity_id"])))
         events.setdefault(key, []).append(
-            _StoredEvent(
+            BillingSourceEvent(
                 event_id=UUID(str(row["id"])),
                 contract_id=contract_key,
                 event_type=event_type,

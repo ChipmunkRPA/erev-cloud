@@ -260,7 +260,7 @@ def test_a_difference_between_the_documents_and_the_engines_delta_is_never_plugg
 
 
 def event(number: int, event_type: str, day: date, payload: dict[str, Any]) -> Any:
-    return cbr._StoredEvent(UUID(int=number), UUID(int=99), event_type, day, number, payload)
+    return cbr.BillingSourceEvent(UUID(int=number), UUID(int=99), event_type, day, number, payload)
 
 
 def test_kept_documents_follow_the_engines_identity_rule() -> None:
