@@ -33,14 +33,23 @@ def billing(
     *,
     periods: Sequence[PeriodRef],
     contract_labels: Mapping[UUID, str],
+    entity_periods: Mapping[UUID, Sequence[PeriodRef]] | None = None,
 ) -> ReportData:
     """Net effective billing by contract/period, including credits and excluding voids upstream."""
     _horizon(periods)
+    if entity_periods is not None:
+        for entity_horizon in entity_periods.values():
+            _horizon(entity_horizon)
+            if tuple(p.key for p in entity_horizon) != tuple(p.key for p in periods):
+                raise Problem("validation-failed", "Entity forecast period keys must agree.")
     values: dict[tuple[str, str], dict[str, Decimal]] = {}
     with localcontext() as context:
         context.prec = 80
         for source in contributions:
-            period = next((p for p in periods if p.start <= source.effective_date <= p.end), None)
+            horizon = periods if entity_periods is None else entity_periods.get(source.entity_id)
+            if horizon is None:
+                raise Problem("precondition-failed", "A billing entity has no forecast calendar.")
+            period = next((p for p in horizon if p.start <= source.effective_date <= p.end), None)
             if period is None:
                 continue
             label = contract_labels.get(source.contract_id)

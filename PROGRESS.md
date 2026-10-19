@@ -2,6 +2,23 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Forecast output source capture and five-section assembly — October 19, 2026
+
+- Connected the internal RPT-39 assembly to the existing revenue waterfall, net billing,
+  period-end balance, RPO and sealed-subledger readers. All reads share an exact cutoff,
+  book and authorized entity scope. Each child keeps independent source evidence; multiple
+  balance-period reads cannot overwrite one another. Same-source reruns remain open.
+- Billing uses each entity's own calendar boundaries; balance stocks are grouped by actual
+  end date. Horizons must be consecutive in every selected calendar. Functional billing uses
+  the governed spot-rate adapter; unsupported report-currency conversion is refused.
+- The five tables omit report tie-outs; projected RPO includes section 1 only and preserves
+  underlying election controls. Journal preview creates no posting or journal batch.
+- Real computed scenario capture passes within the existing replay/refresh journey; four
+  focused projection checks and Ruff/Mypy pass. No full-suite run or deployment.
+- Still unfinished: forecast-run API/worker, durable report publication and exports, chart/UI,
+  actual-vs-forecast, contract sample pack and period evidence pack. This internal assembly
+  is not yet a registered report and does not establish production readiness.
+
 ## Forecast output section projections — October 19, 2026
 
 - Added RPT-39 table projections for billing by contract/horizon period, projected balances
@@ -213,25 +230,6 @@
   WinAnsi limitation, broad browser/release checks and independent accounting sign-off remain.
   Four unregistered report families and the other system backlog still need development.
   No deployment; publish directly to main.
-
-## Frozen disclosure execution and exports — October 19, 2026
-
-- Added a verified E-65 reader: complete seven-kind population, single synchronous origin,
-  immutable attachment/scope/cutoff, payload hashes, typed child data/stamps and reconstructed
-  document equality. All original inputs, including supporting waterfalls, come from snapshots.
-- Ordinary report creation and rerun now admit lock-backed disclosure packs, deriving the exact
-  lock cutoff and checking explicit selectors. Period-only uses nine inputs, quarter uses sixteen.
-  The normal worker renders JSON/XLSX/PDF with current requester permissions. Existing frozen
-  inputs are reused; no source jobs, new snapshots, child file reads or live-policy fallback.
-- Snapshot listing follows attachments for derived exports. Closed-period report views default
-  to frozen disclosures and saved quarter inputs, without forwarding an unrelated global timestamp.
-  Locks without complete E-65 evidence refuse rather than reconstructing past disclosures today.
-- Real database/API/worker journey passes all formats, matching original quarterly JSON digest,
-  same-source rerun, monthly selection and unchanged snapshot count. Python lint/type checks
-  and focused frontend parameter/type/lint checks pass. PDF byte-format verification is not
-  visual acceptance: wide tables, full browser/accounting validation and release checks remain.
-- RPS-15 remains open; other missing reports and system work remain. No deployment or readiness
-  claim; changes published directly on main.
 
 ## Outstanding release verification
 

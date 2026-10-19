@@ -107,3 +107,26 @@ def test_journal_preview_preserves_debits_credits_and_stored_fx_basis() -> None:
     assert revenue["debit"]["amount"] == "11.00" and revenue["credit"]["amount"] == "110.00"
     with pytest.raises(Problem, match="stored currency basis"):
         sections.journals(data, periods=periods(), currency_view="reporting")
+
+
+def test_billing_uses_each_entity_calendar_boundaries() -> None:
+    from dataclasses import replace
+
+    horizon = periods()
+    entity, contract = uuid4(), uuid4()
+    shifted = (
+        replace(horizon[0], end=date(2026, 11, 5)),
+        replace(horizon[1], start=date(2026, 11, 6)),
+    )
+    row = Contribution(
+        "contract_event", uuid4(), contract, entity, date(2026, 11, 3), "USD", Decimal("12")
+    )
+    result = sections.billing(
+        (row,), periods=horizon, contract_labels={contract: "C1"}, entity_periods={entity: shifted}
+    )
+    assert result.rows[0]["period:FY2026-P10"]["amount"] == "12.00"
+    assert result.rows[0]["period:FY2026-P11"]["amount"] == "0.00"
+    with pytest.raises(Problem, match="no forecast calendar"):
+        sections.billing(
+            (row,), periods=horizon, contract_labels={contract: "C1"}, entity_periods={}
+        )

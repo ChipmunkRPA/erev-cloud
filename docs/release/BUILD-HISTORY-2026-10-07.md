@@ -7417,3 +7417,22 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Next: admission/rebuild from saved lock snapshots, locked XLSX/PDF exports and rerun; no
   historical-lock backfill or current-data fallback. Other reporting/system backlog remains.
   No deployment, new PR or production-readiness claim.
+
+## Frozen disclosure execution and exports — October 19, 2026
+
+- Added a verified E-65 reader: complete seven-kind population, single synchronous origin,
+  immutable attachment/scope/cutoff, payload hashes, typed child data/stamps and reconstructed
+  document equality. All original inputs, including supporting waterfalls, come from snapshots.
+- Ordinary report creation and rerun now admit lock-backed disclosure packs, deriving the exact
+  lock cutoff and checking explicit selectors. Period-only uses nine inputs, quarter uses sixteen.
+  The normal worker renders JSON/XLSX/PDF with current requester permissions. Existing frozen
+  inputs are reused; no source jobs, new snapshots, child file reads or live-policy fallback.
+- Snapshot listing follows attachments for derived exports. Closed-period report views default
+  to frozen disclosures and saved quarter inputs, without forwarding an unrelated global timestamp.
+  Locks without complete E-65 evidence refuse rather than reconstructing past disclosures today.
+- Real database/API/worker journey passes all formats, matching original quarterly JSON digest,
+  same-source rerun, monthly selection and unchanged snapshot count. Python lint/type checks
+  and focused frontend parameter/type/lint checks pass. PDF byte-format verification is not
+  visual acceptance: wide tables, full browser/accounting validation and release checks remain.
+- RPS-15 remains open; other missing reports and system work remain. No deployment or readiness
+  claim; changes published directly on main.
