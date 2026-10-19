@@ -7016,3 +7016,23 @@ cleanup in the shared database session kernel was also repaired and regression-t
   binding and report worker/export integration. Migration replay import remains unfinished
   (jobs.py explicitly refuses it); sandbox access must retain tenant/grant boundaries. These
   source checks do not complete LMG-4/5 or independent accounting acceptance.
+
+
+## Authorized eRev parallel-run inputs — October 19, 2026
+
+- Added parallel_actual.read: requires report.run for the requested entity IDs, resolves exact
+  calendar boundaries, reads historical sealed journal facts through the existing legacy journal
+  consolidation, and reads traced/frozen contract balances through the standard balance reader.
+  It never switches tenant or implicitly authorizes a migration sandbox.
+- Journal groups optionally retain composite line/partition/posting references. Their normal view
+  behavior is unchanged when source capture is off. Actual facts retain period/currency, source
+  version or frozen-lock/hash references, cutoff and a deterministic source-evidence digest.
+- Missing expected contract balances withhold the period and record the missing population;
+  unmatched currencies and calendar boundaries refuse. Missing actuals are never fabricated zeros.
+- A real booking/computation/ledger case proves account totals match legacy_je_summary, repeat
+  reads retain the same digest, missing population is excluded and report permission is required.
+  Targeted PostgreSQL check: 1 passed; Ruff and Mypy pass. This is not LMG-5's complete migration
+  acceptance or a cross-entity/locked-period browser journey.
+- Still required: migration source-file/database admission, confirmed mapping retrieval, full
+  retained binding/rebuild, worker/export integration and current grants at publication. Migration
+  replay import and its sandbox lifecycle remain unfinished. Six builders remain unregistered.

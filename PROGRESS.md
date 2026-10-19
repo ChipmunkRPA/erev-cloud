@@ -2,6 +2,24 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Disclosure parent artifact publication — October 19, 2026
+
+- Added disclosure_execution to turn verified children/policies into a canonical seven-section
+  JSON document, a table directory and original retained inputs. XLSX/PDF use the same verified
+  chapter model. The parent hash identifies the canonical dataset; ordinary atomic report output
+  storage, success audit and CTL-029/030 recording publish the result and binding together.
+- Worker reloads the initiating user's current report/export grants, then assembles under that
+  context. Original source inputs/policies stay in the binding; omitted rows/totals stay out of
+  public sections. Aggregate child tie-outs include supporting inputs but expose only code/result,
+  not suppressed source amounts. Rendering rejects unsupported formats and retained reruns.
+- Real database journey now delivers the waiting parent again after 16 children finish, verifies
+  job/report SUCCEEDED, reads the stored seven-section JSON and reconciles file/output hashes,
+  counts and retained-input digest/cutoff. Ruff and production-module Mypy pass.
+- Public registration remains closed: retained rerun reconstruction, frozen snapshots, viewer,
+  side-by-side quarter layout and populated accounting acceptance are still required. The journey
+  has no booked accounting population and currently publishes JSON; worker XLSX/PDF journeys
+  remain to verify. Five catalogue builders remain unregistered. No deployment.
+
 ## Disclosure dependency scheduling — October 19, 2026
 
 - REPORT_RUN now uses a read-only readiness gate for disclosure parents. It checks the exact
@@ -207,25 +225,6 @@
 - Next RPT-42 work: persist/rebuild the complete retained inputs, compose both readers with the
   comparison, register the worker and exports, and finish migration replay/sandbox lifecycle.
   Six catalogue builders remain unregistered; full LMG-4/5 accounting acceptance remains open.
-
-## Authorized eRev parallel-run inputs — October 19, 2026
-
-- Added parallel_actual.read: requires report.run for the requested entity IDs, resolves exact
-  calendar boundaries, reads historical sealed journal facts through the existing legacy journal
-  consolidation, and reads traced/frozen contract balances through the standard balance reader.
-  It never switches tenant or implicitly authorizes a migration sandbox.
-- Journal groups optionally retain composite line/partition/posting references. Their normal view
-  behavior is unchanged when source capture is off. Actual facts retain period/currency, source
-  version or frozen-lock/hash references, cutoff and a deterministic source-evidence digest.
-- Missing expected contract balances withhold the period and record the missing population;
-  unmatched currencies and calendar boundaries refuse. Missing actuals are never fabricated zeros.
-- A real booking/computation/ledger case proves account totals match legacy_je_summary, repeat
-  reads retain the same digest, missing population is excluded and report permission is required.
-  Targeted PostgreSQL check: 1 passed; Ruff and Mypy pass. This is not LMG-5's complete migration
-  acceptance or a cross-entity/locked-period browser journey.
-- Still required: migration source-file/database admission, confirmed mapping retrieval, full
-  retained binding/rebuild, worker/export integration and current grants at publication. Migration
-  replay import and its sandbox lifecycle remain unfinished. Six builders remain unregistered.
 
 ## Outstanding release verification
 

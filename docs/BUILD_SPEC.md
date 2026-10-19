@@ -10146,6 +10146,12 @@ Author BS-3. Uses CTR (PHASES §1 row 12). Indicative size 16 items; this phase 
   - **Gates:** GK-01 `make ci`; GK-07 `make e2e SPEC=frontend/e2e/projects/screens.spec.ts`
 
 - [ ] **RPS-15 Disclosure snapshots and the disclosure pack.**
+  - October 19 publication increment: the report worker publishes canonical seven-section JSON
+    and retained child/policy provenance through normal atomic file/status/control recording.
+    A real 16-child then parent-worker journey verifies successful stored output and hashes.
+    XLSX/PDF dispatch uses the chapter adapters, but public registration stays closed pending
+    retained reruns and remaining frozen-source/viewer work. No accounting acceptance claimed.
+
   - October 19 dependency increment: REPORT_RUN waits for the attached disclosure children
     through the queue readiness hook without spending handler attempts. Internal insertion binds
     children before dispatch. Missing/failed or inconsistent dependencies refuse. Public parent

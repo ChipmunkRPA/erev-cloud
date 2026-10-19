@@ -5179,3 +5179,54 @@ def test_disclosure_children_attach_once_and_survive_retry(world: World) -> None
         bad_stamps[first_id] = replace(bad_stamps[first_id], output_sha256="d" * 64)
         with pytest.raises(Problem):
             disclosure_workbook.render(pack, pack_stamp, bad_stamps)
+
+    # Publish the actual parent through the worker; the public catalogue gate remains closed.
+    with world.place.uow() as uow:
+        parent_task_id = uow.session.scalar(
+            select(job.c.procrastinate_job_id).where(job.c.id == parent["job_id"])
+        )
+        uow.session.execute(
+            text("UPDATE procrastinate_jobs SET status = 'doing' WHERE id = :id"),
+            {"id": parent_task_id},
+        )
+        uow.commit()
+    run_job(
+        parent["job_id"],
+        world.place.tenant_id,
+        attempt=1,
+        runtime=runtime,
+        delivered_task_id=parent_task_id,
+    )
+    with world.place.uow() as uow:
+        published = (
+            uow.session.execute(select(report_run).where(report_run.c.id == parent["id"]))
+            .mappings()
+            .one()
+        )
+        assert published["status"] == "SUCCEEDED", published["problem"]
+        assert (
+            uow.session.scalar(select(job.c.state).where(job.c.id == parent["job_id"]))
+            == "SUCCEEDED"
+        )
+        metadata, stream = open_file(
+            uow.session, published["output_file_id"], files=uow.files, keyring=uow.keyring
+        )
+        with stream:
+            output = stream.read()
+        import json
+
+        from erev_engine.canonical import sha256_hex
+
+        document = json.loads(output)
+        assert len(document["sections"]) == 7
+        assert document["row_count"] == published["row_count"]
+        assert document["control_totals"]["children"] == 16
+        assert (
+            hashlib.sha256(output).hexdigest() == published["output_sha256"] == metadata["sha256"]
+        )
+        evidence = published["source_binding"]["evidence"]
+        assert sha256_hex(evidence["disclosure_inputs"]) == evidence["disclosure_inputs_sha256"]
+        assert len(evidence["disclosure_inputs"]["children"]) == 16
+        assert (
+            evidence["disclosure_inputs"]["policies"]["known_at"] == parent["known_at"].isoformat()
+        )

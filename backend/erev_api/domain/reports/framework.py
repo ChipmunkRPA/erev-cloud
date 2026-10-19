@@ -2295,6 +2295,12 @@ def _export_requester(
 ) -> RequestContext | None:
     """Recheck before transitions, completed-job replay, building and output persistence."""
     stored = run.get("ai_export_access")
+    if str(run["report_code"]) == "disclosure_pack":
+        if stored is not None or run["period_lock_id"] is not None:
+            raise Problem("invalid-transition")
+        ctx = report_requester.validation_requester(jc, uow, run)
+        parallel_builder.require_access(uow, replace(report_params(run), requester=ctx))
+        return ctx
     if str(run["report_code"]) == variance_builder.CODE:
         if stored is not None or run["period_lock_id"] is not None:
             raise Problem("invalid-transition")
@@ -2421,6 +2427,17 @@ def run_report(jc: JobContext, params: Mapping[str, Any]) -> JobOutcome:
             data = locked.report_data(frozen)
             jc.heartbeat()
             rendered = _render_locked(session, run, definition, frozen, data, style)
+        elif str(run["report_code"]) == "disclosure_pack":
+            from erev_api.domain.reports.disclosure_execution import build as build_disclosure
+
+            if requester is None:
+                raise Problem("forbidden")
+            original_context = uow.ctx
+            uow.ctx = requester
+            try:
+                data, rendered, source_binding = build_disclosure(uow, run, definition, style)
+            finally:
+                uow.ctx = original_context
         else:
             if builder is None:
                 raise Problem("validation-failed", NOT_AVAILABLE)
