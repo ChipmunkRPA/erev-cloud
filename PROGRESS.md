@@ -2,6 +2,20 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## BBR actual FX admission fix; forecast dependency audit — October 19, 2026
+
+- Fixed a real cross-currency defect: BBR matched `SPOT`, while E-51 and approved database
+  rate rows use `spot`. Both live and retained readers now use RateType.SPOT.value. The old
+  authored uppercase fixture masked the mismatch and has been corrected.
+- Actual API-created, submitted and independently approved spot versions now exercise BBR:
+  100.01 EUR × 1.2345 = 123.46 USD; after approval of 1.3000 the old cutoff still uses v1 and
+  the new cutoff uses v2 (130.01 USD), preserving the exact version identities.
+- Forecast audit found no implemented scenario/event-set/run tables or domain runtime; these
+  are still pending in privacy/snapshot catalogues and FCS-1 to FCS-3. Forecast reports require
+  that foundation before a genuine output builder. No forecast implementation is claimed yet.
+- Seven report builders remain unregistered; count does not represent the size of the forecast
+  subsystem work. Independent accounting sign-off and broad acceptance remain open. No deployment.
+
 ## BBR cell contributions and business-record navigation — October 19, 2026
 
 - Retain valued pre-aggregation contributions beside the original raw sources. All four BBR
@@ -224,29 +238,6 @@
 - Database checks cover unsampled groups, empty populations, rollback, manifest immutability,
   retries after activity and migration round-trip. Final acceptance and approval/admission
   integration remain unfinished; callers must accept and seed in the same transaction.
-
-## Upgrade processing event schema — October 19, 2026
-
-- Migration 0166 adds the tenant-isolated, append-only release_group_processing event log
-  per group/entity/book portion, reusing the existing processing-state enum. Its privacy
-  catalogue entry is reconciled with the implemented schema.
-- Guards require the accepted attempt of an enabled upgrade, valid initial portions,
-  sequential events, preserved prior postings and bound computation/posting evidence.
-  Outcome checks distinguish deferrals, posted portions and verified no-posting settlement.
-- Migration, database schema and lifecycle probes passed; details are in the dated CI record.
-  Automatic seeding, computation persistence, posting attribution and final acceptance remain
-  unfinished. No deployment or independent accounting sign-off occurred.
-
-## Tenant population transaction fence — October 19, 2026
-
-- Migration 0165 adds shared transaction guards to writes on all 12 population-reader
-  tables and their partitions. The acceptance helper reserves the tenant exclusively;
-  conflicts refuse immediately and map to retryable lock-conflict responses.
-- Database checks cover concurrent shared writers, both contention directions, commit/
-  rollback release, tenant isolation, trigger/partition coverage, migration round-trip and
-  existing validation/report workflows. Six cases passed; typing and lint also passed.
-- Final acceptance must acquire the fence before validation locks and reread under READ
-  COMMITTED. The helper is not yet connected to final acceptance or approval/admission.
 
 ## Outstanding release verification
 

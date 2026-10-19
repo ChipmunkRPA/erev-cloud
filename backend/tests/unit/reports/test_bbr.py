@@ -192,7 +192,7 @@ def test_functional_valuation_reuses_retained_spot_rate_without_live_reads() -> 
         "base_currency": "EUR",
         "quote_currency": "USD",
         "effective_date": "2026-07-04",
-        "rate_type": "SPOT",
+        "rate_type": "spot",
         "rate": "1.2345",
     }
     cutoff = datetime(2026, 9, 30, tzinfo=UTC)

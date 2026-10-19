@@ -15,6 +15,7 @@ from erev_api.domain.reports import tie_outs
 from erev_api.domain.reports.builders import ReportParams
 from erev_api.domain.reports.builders.bbr_sources import Contribution
 from erev_api.domain.reports.tie_outs import EntityRef
+from erev_api.enums import RateType
 from erev_api.problems import Problem
 from erev_api.uow import UnitOfWork
 
@@ -42,7 +43,7 @@ def functional(
             rates = [
                 dict(r)
                 for r in rate_rows
-                if str(r["rate_type"]) == "SPOT"
+                if str(r["rate_type"]) == RateType.SPOT.value
                 and (r["base_currency"], r["quote_currency"], r["effective_date"]) in needed
             ]
         rates = json.loads(canonical_bytes(rates))
@@ -63,7 +64,7 @@ def functional(
                 if r["base_currency"] == row.currency
                 and r["quote_currency"] == target
                 and date.fromisoformat(r["effective_date"]) == row.effective_date
-                and r["rate_type"] == "SPOT"
+                and r["rate_type"] == RateType.SPOT.value
             ]
             if len(matches) != 1:
                 raise Problem(

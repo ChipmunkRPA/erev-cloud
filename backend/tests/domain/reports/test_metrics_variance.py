@@ -225,3 +225,106 @@ def test_bbr_report_delivery_and_retained_reproduction(
         get(app, f"{REPORT_RUNS}/{rerun.headers['x-erev-report-run-id']}/output", world.maya).json()
         == data
     )
+
+
+def test_bbr_functional_valuation_reads_approved_historical_spot_rates(
+    app: FastAPI, app_settings: Settings, clock: FrozenClock, keyring: KeyRing
+) -> None:
+    from datetime import timedelta
+
+    from erev_api.domain.reports.builders import bbr_currency
+    from erev_api.domain.reports.builders.bbr_sources import Contribution
+    from erev_api.domain.reports.tie_outs import EntityRef
+    from support.reference import approve, post
+    from support.worlds import resigned
+
+    world = k01_pellworth(app, keyring, clock, LocalFileStore(app_settings.file_root))
+    clock.set(world.place.scalar(select(func.clock_timestamp())))
+    world = resigned(world)
+    entity = world.place.rows(select(legal_entity).where(legal_entity.c.code == AVM_US))[0]
+    reference = EntityRef(entity["id"], entity["code"], entity["calendar_id"], "USD", "UTC")
+    made = post(
+        app,
+        "/api/v1/fx-rate-sets",
+        world.maya,
+        {"code": "BBR-SPOT", "name": "BBR spot", "rate_type": "spot"},
+    )
+    assert made.status_code == 201, made.text
+    set_id = made.json()["id"]
+
+    def publish(rate: str) -> str:
+        draft = post(
+            app,
+            f"/api/v1/fx-rate-sets/{set_id}/versions",
+            world.maya,
+            {
+                "coverage_from": "2026-01-01",
+                "coverage_to": "2026-01-01",
+                "rates": [
+                    {
+                        "base_currency": "EUR",
+                        "quote_currency": "USD",
+                        "rate": rate,
+                        "effective_date": "2026-01-01",
+                    }
+                ],
+            },
+        )
+        assert draft.status_code == 201, draft.text
+        version = draft.json()
+        submitted = post(
+            app,
+            f"/api/v1/fx-rate-set-versions/{version['id']}/submit",
+            world.maya,
+            {"comment": "Report valuation"},
+            if_match=f'"r{version["row_version"]}"',
+        )
+        assert submitted.status_code == 200, submitted.text
+        decision = approve(app, submitted.json()["pending_approval_request_id"], world.marcus)
+        assert decision.status_code == 200 and decision.json()["status"] == "APPROVED", (
+            decision.text
+        )
+        return str(version["id"])
+
+    first = publish("1.2345")
+    cutoff = clock.now()
+    params = ReportParams(
+        "bookings_billings_revenue",
+        1,
+        {},
+        (entity["id"],),
+        cutoff,
+        book_code="ASC606",
+        sources=SourceCollector(),
+    )
+    source = Contribution(
+        "contract_event",
+        UUID(int=101),
+        UUID(int=102),
+        entity["id"],
+        date(2026, 1, 1),
+        "EUR",
+        Decimal("100.01"),
+    )
+    with world.place.uow() as uow:
+        valued = bbr_currency.functional(uow, params, {"billings": [source]}, (reference,))
+    assert valued["billings"][0].functional_amount == Decimal("123.46")
+    assert valued["billings"][0].basis_ids[-1] == UUID(first)
+    assert params.sources is not None
+    retained = params.sources.evidence[bbr_currency.EVIDENCE]
+    assert len(retained) == 1 and retained[0]["rate_type"] == "spot"
+    clock.advance(timedelta(minutes=1))
+    second = publish("1.3000")
+    with world.place.uow() as uow:
+        historical = bbr_currency.functional(
+            uow, replace(params, sources=None), {"billings": [source]}, (reference,)
+        )
+        current = bbr_currency.functional(
+            uow,
+            replace(params, sources=None, known_at=clock.now()),
+            {"billings": [source]},
+            (reference,),
+        )
+    assert historical == valued
+    assert current["billings"][0].functional_amount == Decimal("130.01")
+    assert current["billings"][0].basis_ids[-1] == UUID(second)

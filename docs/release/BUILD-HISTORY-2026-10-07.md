@@ -6445,3 +6445,26 @@ cleanup in the shared database session kernel was also repaired and regression-t
   Cancellation and retry exhaustion remain INCOMPLETE after dataset publication.
 - Final acceptance still needs report verification, concurrent population-writer fencing,
   approval routing and admission integration. This change performs no release enablement.
+
+## Tenant population transaction fence — October 19, 2026
+
+- Migration 0165 adds shared transaction guards to writes on all 12 population-reader
+  tables and their partitions. The acceptance helper reserves the tenant exclusively;
+  conflicts refuse immediately and map to retryable lock-conflict responses.
+- Database checks cover concurrent shared writers, both contention directions, commit/
+  rollback release, tenant isolation, trigger/partition coverage, migration round-trip and
+  existing validation/report workflows. Six cases passed; typing and lint also passed.
+- Final acceptance must acquire the fence before validation locks and reread under READ
+  COMMITTED. The helper is not yet connected to final acceptance or approval/admission.
+
+## Upgrade processing event schema — October 19, 2026
+
+- Migration 0166 adds the tenant-isolated, append-only release_group_processing event log
+  per group/entity/book portion, reusing the existing processing-state enum. Its privacy
+  catalogue entry is reconciled with the implemented schema.
+- Guards require the accepted attempt of an enabled upgrade, valid initial portions,
+  sequential events, preserved prior postings and bound computation/posting evidence.
+  Outcome checks distinguish deferrals, posted portions and verified no-posting settlement.
+- Migration, database schema and lifecycle probes passed; details are in the dated CI record.
+  Automatic seeding, computation persistence, posting attribution and final acceptance remain
+  unfinished. No deployment or independent accounting sign-off occurred.

@@ -1,5 +1,17 @@
 # eRev Cloud 1.0: stated limits of the release
 
+October 19 actual FX correction: BBR's live and retained rate readers now match E-51's lowercase
+`spot` via RateType.SPOT.value. The previous uppercase literal excluded real approved spot rates;
+the old retained-input unit fixture did not catch it. Actual approved v1/v2 database rates now
+verify current and historical valuation and version identity. This does not yet prove an entire
+cross-currency contract-to-report journey or independent accounting acceptance.
+
+Forecast dependency clarification: forecast_outputs and actual_vs_forecast lack their upstream
+scenario, event-set and forecast-run tables/domain execution (FCS-1 to FCS-3), not just rendering.
+They cannot be completed by substituting current actuals. Seven catalogue builders remain missing,
+with this broader subsystem still outstanding. No deployment or production readiness claim.
+
+
 October 19 BBR cell continuation: all four money columns now expose retained contribution
 lists through the report-cell endpoint. The UI shows source IDs and links to contract history,
 billing, modification detail or contract journals. These links open the relevant record view;
