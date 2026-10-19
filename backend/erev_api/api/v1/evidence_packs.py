@@ -1,4 +1,4 @@
-"""API-R-42 CLOSE pack creation and retained reads; other kinds remain pending."""
+"""API-R-42 CLOSE and CONTRACT_SAMPLE creation and reads; register lists CLOSE packs."""
 
 from typing import Annotated, Literal
 from urllib.parse import quote
@@ -28,7 +28,12 @@ from erev_api.audit.writer import record_facts
 from erev_api.auth.dependencies import require
 from erev_api.auth.principal import RequestContext
 from erev_api.db.tables import evidence_pack, legal_entity, period
-from erev_api.domain.reports import evidence_commands, evidence_queries
+from erev_api.domain.reports import (
+    evidence_commands,
+    evidence_queries,
+    evidence_sample_commands,
+    evidence_sample_queries,
+)
 from erev_api.enums import BookCode, RunStatus
 from erev_api.problems import Problem
 from erev_api.schemas.common import JobOut, ListOut
@@ -36,6 +41,8 @@ from erev_api.schemas.evidence_packs import (
     ClosePackCreateIn,
     ClosePackOut,
     ClosePackSummaryOut,
+    ContractSamplePackCreateIn,
+    ContractSamplePackOut,
     EvidencePackCreateIn,
 )
 from erev_api.uow import UnitOfWork, unit_of_work
@@ -130,15 +137,19 @@ def evidence_packs_create(
     cmd: Annotated[CommandContext, Depends(command("evidence.export"))],
     deps: Deps,
 ) -> Response:
-    """Create a first-close pack with a dedicated audit job; replay its original IDs."""
+    """Create a first-close or human-requested contract sample; replay its original IDs."""
     started: dict[str, UUID] = {}
 
     def handle(uow: UnitOfWork) -> JobOut:
-        if not isinstance(body, ClosePackCreateIn):
+        if not isinstance(body, (ClosePackCreateIn, ContractSamplePackCreateIn)):
             raise Problem("validation-failed", "This evidence pack kind is not yet supported.")
         # Supplemental denials are audited just as on the download route.
         evidence_queries.require_permissions(uow, None, evidence_commands.PERMISSIONS)
-        pack_id, job = evidence_commands.create_close(uow, body)
+        pack_id, job = (
+            evidence_sample_commands.create(uow, body)
+            if isinstance(body, ContractSamplePackCreateIn)
+            else evidence_commands.create_close(uow, body)
+        )
         started["pack_id"] = pack_id
         return job
 
@@ -157,7 +168,7 @@ def evidence_packs_create(
 @router.get(
     "/evidence-packs/{pack_id}",
     operation_id="evidence_packs_get",
-    response_model=ClosePackOut,
+    response_model=ClosePackOut | ContractSamplePackOut,
     responses=problem_responses(*PROBLEMS),
 )
 def evidence_packs_get(
@@ -165,19 +176,28 @@ def evidence_packs_get(
     response: Response,
     ctx: Annotated[RequestContext, Depends(require("report.run"))],
     deps: Deps,
-) -> ClosePackOut:
-    """Read a retained CLOSE header and manifest under current source scope."""
+) -> ClosePackOut | ContractSamplePackOut:
+    """Read a retained CLOSE or CONTRACT_SAMPLE header under current source scope."""
     with unit_of_work(ctx, clock=deps.clock, keyring=deps.keyring, files=deps.files) as uow:
-        result = evidence_queries.get_close(uow, pack_id)
+        result = (
+            evidence_sample_queries.get(uow, pack_id)
+            if evidence_sample_queries.is_sample(uow, pack_id)
+            else evidence_queries.get_close(uow, pack_id)
+        )
         uow.audit(
             action="evidence.read",
             object_type="evidence_pack",
             object_id=pack_id,
-            contract_ids=[],
+            contract_ids=result.contract_ids if isinstance(result, ContractSamplePackOut) else [],
             detail={
                 "view": "detail",
                 "status": result.status.value,
-                "period_lock_id": str(result.period_lock_id),
+                "kind": result.kind,
+                **(
+                    {"period_lock_id": str(result.period_lock_id)}
+                    if isinstance(result, ClosePackOut)
+                    else {}
+                ),
                 "manifest_sha256": result.manifest_sha256,
             },
         )
@@ -200,7 +220,11 @@ def evidence_packs_download(
 ) -> Response:
     """Reauthorize and verify retained bytes, committing one export audit before serving them."""
     with unit_of_work(ctx, clock=deps.clock, keyring=deps.keyring, files=deps.files) as uow:
-        filename, content = evidence_queries.download_close(uow, pack_id)
+        filename, content = (
+            evidence_sample_queries.download(uow, pack_id)
+            if evidence_sample_queries.is_sample(uow, pack_id)
+            else evidence_queries.download_close(uow, pack_id)
+        )
         uow.commit()
     return Response(
         content,
@@ -231,7 +255,11 @@ def evidence_packs_manifest(
 ) -> Response:
     """Download the exact manifest bytes from the verified archive, with an export audit."""
     with unit_of_work(ctx, clock=deps.clock, keyring=deps.keyring, files=deps.files) as uow:
-        filename, content = evidence_queries.download_close(uow, pack_id, manifest_only=True)
+        filename, content = (
+            evidence_sample_queries.download(uow, pack_id, manifest_only=True)
+            if evidence_sample_queries.is_sample(uow, pack_id)
+            else evidence_queries.download_close(uow, pack_id, manifest_only=True)
+        )
         uow.commit()
     return Response(
         content,

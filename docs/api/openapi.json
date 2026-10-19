@@ -9250,6 +9250,150 @@
         "title": "ContractSamplePackCreateIn",
         "type": "object"
       },
+      "ContractSamplePackOut": {
+        "properties": {
+          "all_entities": {
+            "title": "All Entities",
+            "type": "boolean"
+          },
+          "as_of": {
+            "format": "date",
+            "title": "As Of",
+            "type": "string"
+          },
+          "contract_external_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Contract External Ids",
+            "type": "array"
+          },
+          "contract_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Contract Ids",
+            "type": "array"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "download_href": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Download Href"
+          },
+          "file_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Count"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "job_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Id"
+          },
+          "kind": {
+            "const": "CONTRACT_SAMPLE",
+            "title": "Kind",
+            "type": "string"
+          },
+          "known_at": {
+            "format": "date-time",
+            "title": "Known At",
+            "type": "string"
+          },
+          "manifest": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EvidenceManifestOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "manifest_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manifest Sha256"
+          },
+          "pack_no": {
+            "title": "Pack No",
+            "type": "string"
+          },
+          "source_entity_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Source Entity Ids",
+            "type": "array"
+          },
+          "status": {
+            "$ref": "#/components/schemas/RunStatus"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "pack_no",
+          "kind",
+          "status",
+          "contract_ids",
+          "contract_external_ids",
+          "source_entity_ids",
+          "all_entities",
+          "as_of",
+          "known_at",
+          "job_id",
+          "file_count",
+          "manifest_sha256",
+          "manifest",
+          "download_href",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ContractSamplePackOut",
+        "type": "object"
+      },
       "ContractSourceOut": {
         "description": "One item of ``GET /contracts/{id}/sources`` (04 API-R-28, T-CON-02; SCREENS §6.6; BUILD_SPEC\nDIN-4, BS3-D-04): a link of the contract to a source record, with the record's identity and the\nimport row it came from. [J] L5-1-Q-18: 04 §16 names no item schema; the members are the\nT-CON-02 columns, the T-SRC-01 identity and the T-IMP-03 sheet and row number.",
         "properties": {
@@ -63632,7 +63776,7 @@
         "x-erev-permission": "report.run"
       },
       "post": {
-        "description": "Create a first-close pack with a dedicated audit job; replay its original IDs.",
+        "description": "Create a first-close or human-requested contract sample; replay its original IDs.",
         "operationId": "evidence_packs_create",
         "parameters": [
           {
@@ -63783,7 +63927,7 @@
     },
     "/api/v1/evidence-packs/{pack_id}": {
       "get": {
-        "description": "Read a retained CLOSE header and manifest under current source scope.",
+        "description": "Read a retained CLOSE or CONTRACT_SAMPLE header under current source scope.",
         "operationId": "evidence_packs_get",
         "parameters": [
           {
@@ -63802,7 +63946,15 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ClosePackOut"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ClosePackOut"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ContractSamplePackOut"
+                    }
+                  ],
+                  "title": "Response Evidence Packs Get"
                 }
               }
             },

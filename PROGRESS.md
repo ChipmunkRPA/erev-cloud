@@ -4,6 +4,25 @@
 
 
 
+
+## Contract sample API and worker lifecycle — October 19, 2026
+
+- Human requests can now create CONTRACT_SAMPLE packs through POST /evidence-packs, atomically
+  retaining source dependencies, a stable render stamp and the EVIDENCE_PACK job. The worker
+  rehydrates the active initiator's current grants instead of granting SYSTEM source access.
+- Added atomic encrypted final retention, current-scope detail/manifest/ZIP reads and audited
+  downloads. Successful retries reuse verified bytes; missing/damaged sources never trigger
+  recollection. Existing failure/cancellation hooks settle sample packs too.
+- Detail UI now handles sample contracts/cutoffs and scoped downloads; generated API schemas
+  include the sample response. The register still lists CLOSE only; sample creation UI and
+  sample-list pagination remain next feature work. Creation captures sources synchronously.
+- Real K01 API/worker/download journey passes, including encrypted output, no re-render on
+  retained reads, queued cancellation and permission-revoked terminal attempt/download refusal.
+  17 evidence UI checks, 121 focused schema/file/storage checks, TypeScript, lint and Mypy pass.
+- Fixed a stale transition-history function reference in period-pack journal collection; the
+  existing real CTL-041 close-pack journey passes again.
+- Broader multi-contract/combined-group acceptance and independent accounting sign-off remain.
+
 ## Contract sample PDF/XLSX assembly — October 19, 2026
 
 - Added stamped nine-chapter PDF/XLSX workpapers from the authorized retained sample archive.
@@ -217,30 +236,6 @@
 - The real scenario journey passes all three retained formats and archived revenue reading
   after refresh. Ruff/Mypy pass. Production actuals, comparison builder/registration and UI
   remain open; no generic archived-download access or production-readiness claim is added.
-
-## Forecast lookup across scenario refreshes — October 19, 2026
-
-- Added an internal saved-forecast resolver from the active scenario through successful refresh
-  predecessors. Failed/disconnected copies are excluded; ambiguous or cyclic lineage is refused.
-  Saved runs must be succeeded and belong to a published input set of the same logical scenario.
-- Current requester entity permissions are checked again. Tenant SQL context is restored on
-  both successful reads and refusals. The result separates production snapshot cutoff from
-  refresh completion time, for the eventual posted-actual reader and report header.
-- The real scenario/refresh journey passes archived-run resolution, missing-run refusal,
-  permission removal and context restoration; three lineage checks and Ruff/Mypy pass.
-- Actual-vs-forecast remains unfinished: posted-actual capture, archived output retrieval,
-  retained-source report builder, catalogue registration and UI still need connection.
-
-## Actual-vs-forecast comparison projection — October 19, 2026
-
-- Implemented contract/category revenue comparisons, saved-horizon validation, entity scope,
-  signed variance and percentage, zero-forecast null percentage and separate currency totals.
-  No-actuals output differs from zero-net production postings; no currency conversion is inferred.
-- Four focused checks cover population union, credit signs, currencies, zero bases, no actuals,
-  category aggregation, period/entity selection and invalid numeric inputs. Ruff/Mypy pass.
-- FCS-4 remains unavailable until production actuals are captured at refresh before scenario
-  replay, old forecast records can be resolved across refreshes, and the retained builder and
-  UI are connected. Current scenario recomputation must not be mistaken for posted actuals.
 
 ## Outstanding release verification
 

@@ -141,7 +141,7 @@ def _overview(path: str, value: Any, stamp: RunStamp) -> WorkbookSection | None:
             "id",
             "entity_id",
             "book_code",
-            "account_code",
+            "gl_account_code",
             "debit_txn",
             "credit_txn",
             "txn_currency",

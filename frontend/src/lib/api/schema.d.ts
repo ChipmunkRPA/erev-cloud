@@ -2613,7 +2613,7 @@ export interface paths {
     put?: never;
     /**
      * Evidence Packs Create
-     * @description Create a first-close pack with a dedicated audit job; replay its original IDs.
+     * @description Create a first-close or human-requested contract sample; replay its original IDs.
      */
     post: operations["evidence_packs_create"];
     delete?: never;
@@ -2631,7 +2631,7 @@ export interface paths {
     };
     /**
      * Evidence Packs Get
-     * @description Read a retained CLOSE header and manifest under current source scope.
+     * @description Read a retained CLOSE or CONTRACT_SAMPLE header under current source scope.
      */
     get: operations["evidence_packs_get"];
     put?: never;
@@ -11830,6 +11830,59 @@ export interface components {
        * @enum {string}
        */
       kind: "CONTRACT_SAMPLE";
+    };
+    /** ContractSamplePackOut */
+    ContractSamplePackOut: {
+      /** All Entities */
+      all_entities: boolean;
+      /**
+       * As Of
+       * Format: date
+       */
+      as_of: string;
+      /** Contract External Ids */
+      contract_external_ids: string[];
+      /** Contract Ids */
+      contract_ids: string[];
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /** Download Href */
+      download_href: string | null;
+      /** File Count */
+      file_count: number | null;
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Job Id */
+      job_id: string | null;
+      /**
+       * Kind
+       * @constant
+       */
+      kind: "CONTRACT_SAMPLE";
+      /**
+       * Known At
+       * Format: date-time
+       */
+      known_at: string;
+      manifest: components["schemas"]["EvidenceManifestOut"] | null;
+      /** Manifest Sha256 */
+      manifest_sha256: string | null;
+      /** Pack No */
+      pack_no: string;
+      /** Source Entity Ids */
+      source_entity_ids: string[];
+      status: components["schemas"]["RunStatus"];
+      /**
+       * Updated At
+       * Format: date-time
+       */
+      updated_at: string;
     };
     /**
      * ContractSourceOut
@@ -35385,7 +35438,8 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ClosePackOut"];
+          "application/json":
+            components["schemas"]["ClosePackOut"] | components["schemas"]["ContractSamplePackOut"];
         };
       };
       /** @description Problem: unauthenticated, session-expired */

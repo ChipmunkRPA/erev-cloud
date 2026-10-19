@@ -1081,6 +1081,12 @@ FILE_READ_ACCESS: Final[Mapping[FilePurpose, PurposeAccess]] = MappingProxyType(
                     entity=evidence_sample_file.c.entity_ids,
                     route=INTERNAL,
                 ),
+                FileOwner(
+                    evidence_pack,
+                    "file_id",
+                    entity=evidence_pack.c.entity_id,
+                    route=EVIDENCE_DOWNLOAD_ROUTE,
+                ),
                 FileOwner(forecast_actuals_capture, "dataset_file_id", route=INTERNAL),
                 FileOwner(tenant_snapshot, "manifest_file_id", route=SNAPSHOT_MANIFEST_ROUTE),
             ),

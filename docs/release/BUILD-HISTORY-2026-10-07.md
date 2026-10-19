@@ -7743,3 +7743,27 @@ cleanup in the shared database session kernel was also repaired and regression-t
   workspaces cannot create forecasts. Three focused UI checks cover submission and access.
 - Scenario creation/refresh and input editing UI remain open, along with forecast revenue
   chart, actual-vs-forecast, contract sample pack and period evidence pack. No deployment.
+
+## Actual-vs-forecast comparison projection — October 19, 2026
+
+- Implemented contract/category revenue comparisons, saved-horizon validation, entity scope,
+  signed variance and percentage, zero-forecast null percentage and separate currency totals.
+  No-actuals output differs from zero-net production postings; no currency conversion is inferred.
+- Four focused checks cover population union, credit signs, currencies, zero bases, no actuals,
+  category aggregation, period/entity selection and invalid numeric inputs. Ruff/Mypy pass.
+- FCS-4 remains unavailable until production actuals are captured at refresh before scenario
+  replay, old forecast records can be resolved across refreshes, and the retained builder and
+  UI are connected. Current scenario recomputation must not be mistaken for posted actuals.
+
+## Forecast lookup across scenario refreshes — October 19, 2026
+
+- Added an internal saved-forecast resolver from the active scenario through successful refresh
+  predecessors. Failed/disconnected copies are excluded; ambiguous or cyclic lineage is refused.
+  Saved runs must be succeeded and belong to a published input set of the same logical scenario.
+- Current requester entity permissions are checked again. Tenant SQL context is restored on
+  both successful reads and refusals. The result separates production snapshot cutoff from
+  refresh completion time, for the eventual posted-actual reader and report header.
+- The real scenario/refresh journey passes archived-run resolution, missing-run refusal,
+  permission removal and context restoration; three lineage checks and Ruff/Mypy pass.
+- Actual-vs-forecast remains unfinished: posted-actual capture, archived output retrieval,
+  retained-source report builder, catalogue registration and UI still need connection.

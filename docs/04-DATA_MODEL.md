@@ -1887,6 +1887,7 @@ An upload over its purpose limit, or of a media type outside its list, returns 4
 | `JOURNAL_EXPORT` | `journal_batch.detail_file_id` | route: internal | - |
 | `SNAPSHOT_DATASET` | `lock_snapshot.file_id` | `report.run` | `period_lock.entity_id` |
 | `SNAPSHOT_DATASET` | `evidence_sample_file.file_id` | route: internal | - |
+| `SNAPSHOT_DATASET` | `evidence_pack.file_id` | route: GET /evidence-packs/{id}/download | - |
 | `SNAPSHOT_DATASET` | `forecast_actuals_capture.dataset_file_id` | route: internal | - |
 | `SNAPSHOT_DATASET` | `tenant_snapshot.manifest_file_id` | route: GET /tenant/snapshots/{id}/manifest | - |
 | `IMPACT_PREVIEW` | `approval_request.impact_preview_file_id` | rule: the readers of the request's content (API-R-09) | - |
@@ -8704,3 +8705,18 @@ means all entities. Creation locks every referenced file against shredding and w
 in the same transaction as the pack binding. Retained load refuses missing, extra or
 scope-inconsistent links. Links grant no generic file access; current source permissions
 still apply. Production evidence dependencies are excluded from scenario snapshots.
+
+**Contract sample lifecycle (October 19, 2026).** Human `CONTRACT_SAMPLE` creation through
+API-R-42 captures authorized sources synchronously, queues EVIDENCE_PACK, and retains the
+render stamp in `source_binding.render_stamp`. The stamp carries the selected process release,
+requester identity, entity codes and creation time. Legacy source-only bindings without a stamp
+remain readable as sources but cannot complete. Sample jobs refresh current active-user grants;
+SYSTEM worker status conveys no source permission. API-client sample creation is not supported.
+
+Final sample ZIPs use encrypted `SNAPSHOT_DATASET` storage through `evidence_pack.file_id`;
+legacy CLOSE outputs retain their existing purpose. Both are accessible only through the pack
+routes. Completion is atomic with its manifest, file reference and SUCCEEDED transition.
+Retained reads reauthorize dependencies, verify hashes and original source bytes, and reuse the
+saved PDF/XLSX instead of rendering again. GET detail/download/manifest support both kinds;
+GET register currently lists CLOSE only. Contract sample detail shows selectors, cutoffs and
+manifest downloads. The sample creation form/register are still pending.

@@ -7,7 +7,8 @@ import { readProblem } from "../problems";
 import { queryKey } from "../query-keys";
 import type { components } from "../schema";
 
-export type EvidencePack = components["schemas"]["ClosePackOut"];
+export type EvidencePack =
+  components["schemas"]["ClosePackOut"] | components["schemas"]["ContractSamplePackOut"];
 export type EvidencePackSummary = components["schemas"]["ClosePackSummaryOut"];
 export const EVIDENCE_PACKS_PATH = "/api/v1/evidence-packs";
 export const EVIDENCE_PACKS_ROUTE = "/reports/evidence";
@@ -18,7 +19,16 @@ export function mayReadEvidence(access: Access): boolean {
   return READ.every((permission) => access.holdsAnywhere(permission));
 }
 
-export function mayDownloadEvidence(access: Access, pack: EvidencePackSummary): boolean {
+export function mayDownloadEvidence(
+  access: Access,
+  pack: EvidencePackSummary | EvidencePack,
+): boolean {
+  if (pack.kind === "CONTRACT_SAMPLE")
+    return EXPORT.every((permission) =>
+      pack.all_entities
+        ? access.holdsForAll(permission)
+        : pack.source_entity_ids.every((id) => access.holds(permission, { id })),
+    );
   return EXPORT.every((permission) => access.holds(permission, { id: pack.entity_id }));
 }
 

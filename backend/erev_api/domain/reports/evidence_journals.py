@@ -162,7 +162,7 @@ def collect(uow: UnitOfWork, selection: SourceSelection) -> tuple[PackFile, ...]
             .order_by(journal_batch.c.id)
         ).mappings()
     ]
-    histories = je_population._transitions(
+    histories = je_population.transition_history(
         uow.session,
         [run["id"] for run in runs],
         {batch["id"]: batch["journal_run_id"] for batch in batches},

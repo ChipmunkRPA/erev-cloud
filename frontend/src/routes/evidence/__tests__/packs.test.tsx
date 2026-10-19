@@ -59,7 +59,7 @@ function open(detail = true, member = me) {
     screenRoutes: SCREEN_ROUTES,
   });
 }
-function serve(value = pack) {
+function serve(value: EvidencePack = pack) {
   server.use(http.get(apiUrl(`/api/v1/evidence-packs/${pack.id}`), () => HttpResponse.json(value)));
 }
 it("shows retained identity and every manifest hash", async () => {
@@ -305,4 +305,32 @@ it("shows a complete first-close contents list without expecting a self-hashed m
   const contents = screen.getByRole("table", { name: "Contents" });
   expect(within(contents).queryByText("Missing")).toBeNull();
   expect(within(contents).getAllByText("Present")).toHaveLength(12);
+});
+
+it("shows contract sample scope and downloads without close-only fields", async () => {
+  serve({
+    id: pack.id,
+    pack_no: pack.pack_no,
+    kind: "CONTRACT_SAMPLE",
+    status: "SUCCEEDED",
+    contract_ids: [pack.id],
+    contract_external_ids: ["SF-ORD-10001"],
+    source_entity_ids: [pack.entity_id],
+    all_entities: false,
+    as_of: "2026-09-30",
+    known_at: "2026-10-01T10:00:00Z",
+    job_id: null,
+    file_count: pack.file_count,
+    manifest: pack.manifest,
+    manifest_sha256: pack.manifest_sha256,
+    download_href: pack.download_href,
+    created_at: pack.created_at,
+    updated_at: pack.updated_at,
+  });
+  open();
+  await screen.findByRole("heading", { name: pack.pack_no });
+  expect(screen.getByText("Contract sample")).not.toBeNull();
+  expect(screen.getByText("SF-ORD-10001")).not.toBeNull();
+  expect(screen.getByRole("button", { name: "Download pack" })).not.toBeNull();
+  expect(screen.queryByText(pack.period_lock_id)).toBeNull();
 });

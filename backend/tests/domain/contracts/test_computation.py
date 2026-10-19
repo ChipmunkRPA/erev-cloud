@@ -6220,3 +6220,74 @@ def test_contract_sample_computation_evidence_keeps_trace_and_full_schedule(
                 event_ids=events.event_ids,
                 approval_request_ids=decisions.approval_request_ids,
             )
+
+    # The public request drives the actual persisted worker, then retained API downloads.
+    from erev_api.domain.reports import evidence as evidence_worker  # noqa: F401
+    from erev_api.domain.reports import evidence_sample_storage
+    from erev_api.jobs.context import JobRuntime
+    from erev_api.jobs.registry import run_job
+    from support.principals import enrolled
+    from support.reference import assign, get, post
+
+    assign(world.place.author.member, "auditor")
+    caller = enrolled(world.app, clock, world.place.author.member)
+    created = post(world.app, "/api/v1/evidence-packs", caller, request.model_dump(mode="json"))
+    assert created.status_code == 202, created.text
+    public_id = UUID(created.headers["X-Erev-Evidence-Pack-Id"])
+    job_id = UUID(created.json()["id"])
+    runtime = JobRuntime(clock=clock, keyring=world.place.keyring, files=world.place.files)
+    run_job(job_id, world.place.tenant_id, attempt=1, runtime=runtime)
+    header = get(world.app, f"/api/v1/evidence-packs/{public_id}", caller)
+    assert header.status_code == 200, header.text
+    assert header.json()["status"] == "SUCCEEDED", get(
+        world.app, f"/api/v1/jobs/{job_id}", caller
+    ).text
+    with monkeypatch.context() as patch:
+        patch.setattr(evidence_sample_rendering, "assemble", no_recollection)
+        downloaded = get(world.app, f"/api/v1/evidence-packs/{public_id}/download", caller)
+        assert downloaded.status_code == 200, downloaded.text
+        manifest = get(world.app, f"/api/v1/evidence-packs/{public_id}/manifest", caller)
+        assert manifest.status_code == 200, manifest.text
+        evidence_archive.verify(
+            downloaded.content, expected_manifest_sha256=header.json()["manifest_sha256"]
+        )
+        with world.place.uow(principal) as uow:
+            repeated = evidence_sample_storage.finish(uow, public_id)
+            assert repeated.archive.content == downloaded.content
+            meta = (
+                uow.session.execute(select(file_object).where(file_object.c.id == repeated.file_id))
+                .mappings()
+                .one()
+            )
+            assert uow.files.exists(sidecar_key(meta["storage_key"]))
+            with uow.files.open(meta["storage_key"]) as encrypted:
+                assert encrypted.read() != downloaded.content
+
+    cancelled = post(world.app, "/api/v1/evidence-packs", caller, request.model_dump(mode="json"))
+    assert cancelled.status_code == 202, cancelled.text
+    cancelled_pack = UUID(cancelled.headers["X-Erev-Evidence-Pack-Id"])
+    cancel = post(world.app, f"/api/v1/jobs/{cancelled.json()['id']}/cancel", caller, {})
+    assert cancel.status_code == 200, cancel.text
+    assert (
+        get(world.app, f"/api/v1/evidence-packs/{cancelled_pack}", caller).json()["status"]
+        == "FAILED"
+    )
+    revoked = post(world.app, "/api/v1/evidence-packs", caller, request.model_dump(mode="json"))
+    assert revoked.status_code == 202, revoked.text
+    revoked_pack = UUID(revoked.headers["X-Erev-Evidence-Pack-Id"])
+    from support.rows import revoke_role_assignments
+
+    with world.place.uow(principal) as uow:
+        revoke_role_assignments(
+            uow.session,
+            tenant_id=principal.tenant_id,
+            membership_id=caller.member.membership_id,
+            at=clock.now(),
+        )
+        uow.commit()
+    run_job(UUID(revoked.json()["id"]), world.place.tenant_id, attempt=3, runtime=runtime)
+    assert (
+        world.place.scalar(select(evidence_pack.c.status).where(evidence_pack.c.id == revoked_pack))
+        == "FAILED"
+    )
+    assert get(world.app, f"/api/v1/evidence-packs/{public_id}/download", caller).status_code == 403

@@ -88,6 +88,7 @@ def test_dg_arc_08_owner_rules_are_well_formed() -> None:
             seen.setdefault(owner.ref, set()).add(purpose)
     assert {ref: purposes for ref, purposes in seen.items() if len(purposes) > 1} == {
         "file_attachment.file_object_id": {FilePurpose.ATTACHMENT, FilePurpose.SSP_STUDY},
+        "evidence_pack.file_id": {FilePurpose.EVIDENCE_PACK, FilePurpose.SNAPSHOT_DATASET},
         "evidence_sample_file.file_id": {
             FilePurpose.ATTACHMENT,
             FilePurpose.SSP_STUDY,

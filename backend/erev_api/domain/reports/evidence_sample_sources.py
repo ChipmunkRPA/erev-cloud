@@ -32,6 +32,7 @@ from erev_api.domain.reports import (
 )
 from erev_api.domain.reports.evidence_archive import Archive, PackFile
 from erev_api.domain.reports.evidence_commands import PERMISSIONS
+from erev_api.domain.reports.outputs import RunStamp
 from erev_api.enums import FilePurpose
 from erev_api.files.store import lock_readable, open_file, store_file
 from erev_api.problems import Problem
@@ -93,6 +94,7 @@ class SampleSources(BaseModel):
     source_file_sha256: Sha256
     source_file_bytes: Annotated[int, Field(gt=0, le=512 * 1024 * 1024)]
     manifest_sha256: Sha256
+    render_stamp: RunStamp | None = None
 
     def pack_values(self) -> dict[str, Any]:
         return {

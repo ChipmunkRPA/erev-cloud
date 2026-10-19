@@ -1,4 +1,6 @@
-"""Queue readiness for retained CLOSE sources; never selects or creates replacement reports.
+"""Queue readiness for retained CLOSE and CONTRACT_SAMPLE sources.
+
+Never selects or creates replacement reports.
 
 This callback reads as the worker, not as a public authorization boundary. The
 completion handler must still reauthorize and verify every source/output.
@@ -39,9 +41,10 @@ def close_ready(session: Session, job_id: UUID, params: Mapping[str, Any]) -> bo
         .mappings()
         .one_or_none()
     )
-    if row is None or row["kind"] != "CLOSE" or row["job_id"] != job_id:
-        raise Problem("validation-failed", "The evidence job does not match a retained CLOSE pack.")
-    bound = checked_row(dict(row))
+    if row is None or row["kind"] not in {"CLOSE", "CONTRACT_SAMPLE"} or row["job_id"] != job_id:
+        raise Problem(
+            "validation-failed", "The evidence job does not match a supported retained pack."
+        )
     if row["status"] not in {"QUEUED", "RUNNING", "SUCCEEDED"}:
         raise Problem("invalid-transition", "The evidence pack cannot be resumed.")
     parent = session.execute(
@@ -52,6 +55,23 @@ def close_ready(session: Session, job_id: UUID, params: Mapping[str, Any]) -> bo
     ).one_or_none()
     if parent is None or tuple(parent) != ("EVIDENCE_PACK", "evidence_pack", pack_id):
         raise Problem("validation-failed", "The evidence job subject differs from its pack.")
+    if row["kind"] == "CONTRACT_SAMPLE":
+        from erev_api.domain.reports.evidence_sample_sources import SampleSources
+
+        try:
+            bound_sample = SampleSources.model_validate(row["source_binding"])
+            if bound_sample.render_stamp is None or any(
+                row[key] != value
+                for key, value in bound_sample.pack_values().items()
+                if key != "source_binding"
+            ):
+                raise ValueError("binding")
+        except ValueError as error:
+            raise Problem(
+                "validation-failed", "The sample job has no valid retained sources."
+            ) from error
+        return True
+    bound = checked_row(dict(row))
     sources = (
         session.execute(
             select(

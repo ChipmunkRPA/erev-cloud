@@ -118,3 +118,23 @@ class ClosePackOut(ClosePackSummaryOut):
     report_run_ids: list[UUID]
     manifest: EvidenceManifestOut | None
     download_href: str | None
+
+
+class ContractSamplePackOut(BaseModel):
+    id: UUID
+    pack_no: str
+    kind: Literal["CONTRACT_SAMPLE"]
+    status: RunStatus
+    contract_ids: list[UUID]
+    contract_external_ids: list[str]
+    source_entity_ids: list[UUID]
+    all_entities: bool
+    as_of: date
+    known_at: datetime
+    job_id: UUID | None
+    file_count: int | None
+    manifest_sha256: str | None
+    manifest: EvidenceManifestOut | None
+    download_href: str | None
+    created_at: datetime
+    updated_at: datetime

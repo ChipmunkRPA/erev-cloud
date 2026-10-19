@@ -1,8 +1,8 @@
-"""EVIDENCE_PACK worker: retained first-close completion, failure and cancellation.
+"""EVIDENCE_PACK worker: retained first-close and contract-sample lifecycle.
 
-PREPARE_CLOSE performs the durable post-lock handoff before the bound build. Other pack
-kinds and re-lock driver variance remain unavailable. Public creation and download commands
-are separate; no worker capability is a caller permission.
+PREPARE_CLOSE performs the durable post-lock handoff before the bound build. Samples
+reauthorize the active human requester. CHANGE/ACCESS and re-lock variance remain unavailable.
+Public commands are separate; no worker capability is a caller permission.
 """
 
 from __future__ import annotations
@@ -161,15 +161,54 @@ def build_pack(jc: JobContext, params: Mapping[str, Any]) -> JobOutcome:
         if current is None or current["state"] != "RUNNING":
             raise Problem("invalid-transition", "The evidence job is not running.")
         row = _pack(uow, params, jc.job_id)
-        if row is None or row["kind"] != "CLOSE":
+        if row is None or row["kind"] not in {"CLOSE", "CONTRACT_SAMPLE"}:
             raise Problem("validation-failed", "This evidence job has no supported retained pack.")
-        bound = checked_row(row)
         if current["cancel_requested_at"] is not None:
             _stop(uow, row, reason="cancelled")
             uow.commit()
             return JobOutcome(state="SUCCEEDED", result={"counts": {"packs": 0}})
         if not close_ready(uow.session, jc.job_id, params):
             raise Problem("invalid-transition", "The retained report jobs are not ready.")
+        if row["kind"] == "CONTRACT_SAMPLE":
+            from erev_api.domain.ai.access import AIAccessRefused, job_requester
+            from erev_api.domain.reports import evidence_sample_storage
+
+            if (row["created_by"], row["created_by_kind"]) != (
+                current["created_by"],
+                current["created_by_kind"],
+            ):
+                raise Problem(
+                    "validation-failed", "The sample job requester differs from its pack."
+                )
+            try:
+                requester = job_requester(jc, uow.session, kind=JobKind.EVIDENCE_PACK)
+            except AIAccessRefused as error:
+                raise Problem(
+                    "forbidden", "The sample requester is no longer authorized."
+                ) from error
+            uow.ctx = replace(uow.ctx, principal=requester)
+            if row["status"] == "QUEUED":
+                apply(
+                    uow.session,
+                    "evidence_pack",
+                    row["id"],
+                    to_status="RUNNING",
+                    expected_status="QUEUED",
+                    set_values={},
+                )
+            retained_sample = evidence_sample_storage.finish(uow, row["id"])
+            uow.commit()
+            return JobOutcome(
+                state="SUCCEEDED",
+                result={
+                    "href": f"/api/v1/evidence-packs/{row['id']}",
+                    "counts": {
+                        "packs": 1,
+                        "files": len(retained_sample.archive.manifest_document()["files"]),
+                    },
+                },
+            )
+        bound = checked_row(row)
         # An internal worker capability is restricted to the immutable selected entity.
         # Public creation/download must authorize their actual caller independently.
         entity_scope = frozenset({bound.entity_id})

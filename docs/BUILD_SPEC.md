@@ -10284,6 +10284,7 @@ Author BS-3. Uses CTR (PHASES §1 row 12). Indicative size 16 items; this phase 
   - **Gates:** GK-01 `make ci`; GK-03 `make openapi`
 
 - [ ] **RPS-16 Period evidence packs and contract sample packs.**
+    - October 19 lifecycle increment: human CONTRACT_SAMPLE creation, requester-authorized EVIDENCE_PACK execution, encrypted output retention, detail/manifest/ZIP APIs and sample detail UI are implemented. Immutable creation stamp and source dependencies support verified retries without re-rendering. K01 exercises real API/worker flow, cancellation and revoked authorization. The register remains CLOSE-only; sample creation form/list pagination and broader accounting acceptance remain unfinished.
     - October 19 rendering increment: retained contract sample sources now assemble stamped PDF/XLSX chapters plus unchanged original evidence into a verified ZIP. Accounting grids and exact field tables cover all collected sections. Unicode/control values use JSON escapes; source hashes and cutoff/basis notes remain visible. K01 verifies both outputs without recollection. Public sample create/worker/read/download and UI remain pending.
     - October 19: sample snapshots and original document dependencies now have immutable tenant FK retention links, deletion holds, and strict retained-load completeness checks (0188). Public create/job/download, rendered output and UI remain unfinished.
   - October 19 unified snapshot increment: all five source collectors now feed one encrypted

@@ -55,7 +55,11 @@ function supporting(prefix: string): string[] {
   return ["csv", "manifest.json", "source.json"].map((suffix) => `${prefix}.${suffix}`);
 }
 
-export function ClosePackContents({ pack }: { readonly pack: EvidencePack }) {
+export function ClosePackContents({
+  pack,
+}: {
+  readonly pack: Extract<EvidencePack, { kind: "CLOSE" }>;
+}) {
   if (pack.status !== "SUCCEEDED" || pack.manifest === null) return null;
   const paths = new Set(pack.manifest.files.map((file) => file.path));
   const rows: { key: string; missing: string[] }[] = sections.map((section) => ({
