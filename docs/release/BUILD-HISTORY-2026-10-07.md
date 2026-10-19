@@ -7541,3 +7541,16 @@ cleanup in the shared database session kernel was also repaired and regression-t
   mixed file/command order without new jobs. Targeted checks and Ruff/Mypy pass.
 - Resource materialization, durable refresh orchestration, scenario replacement and the forecast
   report builders remain unfinished. No deployment or production-readiness claim.
+
+## Forecast replay file materialization — October 19, 2026
+
+- Added target file materialization from the authorized published-input bundle. It checks the
+  exact file manifest, bounded bytes and retained hashes, and requires a draft of the same
+  logical scenario plus tenant-wide scenario permission. Copying uses the normal authorized
+  upload path with content checks, encryption, deduplication, uploader access and audit.
+- Returns target file bindings and rewritten command evidence/import source references without
+  mutating the source bundle. Mapping descriptors remain retained for separate resolution.
+  The scenario journey checks deduplication, evidence rebinding/readback and corrupt/missing
+  file refusal; targeted verification and Ruff/Mypy pass.
+- Mapping-profile resolution, persisted refresh orchestration, final scenario switch and
+  forecast report builders remain open. No deployment or production-readiness claim.

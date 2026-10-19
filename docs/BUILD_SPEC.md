@@ -11577,8 +11577,12 @@ Author BS-3. Uses DIN, SNP and RPS (PHASES §1 row 18). Indicative size 12 items
     canonical data for every output format. An internal archived-revenue reader verifies the
     dataset digest, scenario/input/parent identity, book/currency/entity/horizon scope and table
     hash before returning only revenue. Legacy JSON is supported; legacy file-only runs without
-    retained canonical data are refused. Production-actual capture, retained-source report
-    builder/registration and screen connection remain open; this report is not yet runnable.
+    retained canonical data are refused. Added a production-only actuals reader using the journal
+    extract's retained lifecycle evidence at the snapshot cutoff. It retains revenue lines only
+    from batches acknowledged by that cutoff, with historical cancellations and both currency
+    bases. Sandbox journals are refused as a source. Wiring durable actuals retention into
+    creation/refresh, dimension mapping, report builder/registration and UI remain open;
+    this report is not yet runnable.
   - **Prerequisites:** FCS-3
   - **Scope:**
     - Paths: `backend/erev_api/domain/reports/builders/actual_vs_forecast.py` (RPT-40: forecast revenue of the run against revenue posted in the scenario tenant as of its latest refresh); `backend/tests/domain/forecast/test_actual_vs_forecast.py`

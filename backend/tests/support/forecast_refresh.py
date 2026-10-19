@@ -25,6 +25,33 @@ def exercise_refresh_state(world: Any, source_actor: Actor, scenario_id: UUID) -
     source = workspace(
         world.app, world.place.clock, world.place.keyring, world.place.files, source_actor
     )
+    from erev_api.db.tables import legal_entity
+    from erev_api.domain.reports import forecast_actuals
+    from erev_api.domain.reports.builders import ReportParams
+
+    with source.uow() as uow:
+        actual_params = ReportParams(
+            report_code="actual_vs_forecast",
+            report_version=1,
+            parameters={},
+            entity_ids=tuple(uow.session.scalars(select(legal_entity.c.id))),
+            known_at=uow.now,
+            book_code="ASC606",
+            historical=True,
+        )
+        actuals = forecast_actuals.capture(uow, actual_params)
+        assert actuals["rows"] == []  # Scenario forecasts do not become production postings.
+        assert actuals["source_tenant_id"] == str(source.principal.tenant_id)
+        assert actuals["known_at"] == uow.now.isoformat()
+    with world.place.uow() as uow:
+        from dataclasses import replace
+
+        from erev_api.enums import TenantKind
+
+        uow.ctx = replace(uow.ctx, tenant_kind=TenantKind.SANDBOX)
+        with pytest.raises(Problem):
+            forecast_actuals.capture(uow, actual_params)
+
     with source.uow() as uow:
         current = dict(
             uow.session.execute(select(scenario).where(scenario.c.id == scenario_id))

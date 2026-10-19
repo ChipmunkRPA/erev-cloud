@@ -2,6 +2,20 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Snapshot-cutoff production actuals reader — October 19, 2026
+
+- Confirmed SBX-03 snapshots deliberately omit journals. Added a separate production-only
+  actuals reader using the journal extract's cutoff-bound lifecycle evidence and current entity
+  permissions. It retains acknowledged revenue batches only, preserving transaction/functional
+  debits and credits and journal/contract/obligation identities for the comparison mapper.
+- Later acknowledgements/cancellations are evaluated at the snapshot cutoff; cancelled lines,
+  duplicate lines, out-of-scope books/entities and post-cutoff lines are excluded or refused.
+  Scenario journals cannot be passed off as production actuals.
+- Six focused checks and the real scenario journey pass, including empty production actuals
+  despite scenario computations and refusal of a sandbox source. Ruff/Mypy pass.
+- Still required: durable capture retention in creation/refresh, category/contract mapping,
+  comparison builder/registration and UI. FCS-4 is not yet runnable. No deployment.
+
 ## Retained forecast data and archived revenue reading — October 19, 2026
 
 - Forecast publication now retains encrypted canonical JSON for XLSX/CSV runs as well; JSON
@@ -225,19 +239,6 @@
   operational field with the source forecast binding.
 - Durable refresh request/orchestration, scenario replacement and forecast report builders remain
   unfinished. No deployment or production-readiness claim.
-
-## Forecast replay file materialization — October 19, 2026
-
-- Added target file materialization from the authorized published-input bundle. It checks the
-  exact file manifest, bounded bytes and retained hashes, and requires a draft of the same
-  logical scenario plus tenant-wide scenario permission. Copying uses the normal authorized
-  upload path with content checks, encryption, deduplication, uploader access and audit.
-- Returns target file bindings and rewritten command evidence/import source references without
-  mutating the source bundle. Mapping descriptors remain retained for separate resolution.
-  The scenario journey checks deduplication, evidence rebinding/readback and corrupt/missing
-  file refusal; targeted verification and Ruff/Mypy pass.
-- Mapping-profile resolution, persisted refresh orchestration, final scenario switch and
-  forecast report builders remain open. No deployment or production-readiness claim.
 
 ## Outstanding release verification
 
