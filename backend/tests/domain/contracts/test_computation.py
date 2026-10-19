@@ -4819,3 +4819,73 @@ def test_release_orchestration_api_resumes_to_enabled(world: World) -> None:
     with world.place.uow() as uow:
         assert uow.session.scalar(select(func.count()).select_from(release_validation_attempt)) == 1
         assert uow.session.scalar(select(func.count()).select_from(report_run)) == 1
+
+
+def test_parallel_actual_reads_recorded_journals_and_balances(world: World) -> None:
+    from dataclasses import replace
+
+    from erev_api.domain.journals import views
+    from erev_api.domain.reports import parallel_actual
+    from erev_api.domain.reports.parallel_comparison import Balance, Period, Snapshot
+
+    booked = k01(world)
+    computed(world.place, booked.combination_group["id"])
+    period = Period("AVM-US", "ASC606", "USD", "FY2026-P01", date(2026, 1, 1), date(2026, 1, 31))
+    expected = Snapshot(
+        "population-evidence",
+        "a" * 64,
+        frozenset({period}),
+        (),
+        (Balance(period, "SF-ORD-10001", Decimal(0), ("legacy-row:1",)),),
+    )
+    with world.place.uow() as uow:
+        cutoff = uow.session.scalar(select(func.clock_timestamp()))
+        assert cutoff is not None
+        source = parallel_actual.read(
+            uow, expected=expected, entity_ids=(world.entity_id,), known_at=cutoff
+        )
+        assert source.snapshot.periods == frozenset({period})
+        assert source.snapshot.balances
+        assert source.snapshot.journals
+        assert all(row.source_rows for row in source.snapshot.journals)
+        assert all(
+            "subledger-line:" in ref for row in source.snapshot.journals for ref in row.source_rows
+        )
+        normal = views.legacy_view(
+            uow,
+            ["AVM-US"],
+            "ASC606",
+            period.start,
+            period.end,
+            "GROSS",
+            known_at=cutoff,
+            historical=True,
+        )
+        assert {row.account: (row.debit, row.credit) for row in source.snapshot.journals} == {
+            row.account: (row.debit, row.credit) for row in normal.by_account
+        }
+        for row in source.snapshot.balances:
+            assert row.liability is not None and row.asset_and_unbilled is not None
+            assert row.net_position == row.liability - row.asset_and_unbilled
+        repeated = parallel_actual.read(
+            uow, expected=expected, entity_ids=(world.entity_id,), known_at=cutoff
+        )
+        assert repeated == source
+        incomplete = replace(
+            expected,
+            balances=(
+                *expected.balances,
+                Balance(period, "not-yet-imported", Decimal(0), ("legacy-row:2",)),
+            ),
+        )
+        missing = parallel_actual.read(
+            uow, expected=incomplete, entity_ids=(world.entity_id,), known_at=cutoff
+        )
+        assert not missing.snapshot.periods and not missing.snapshot.journals
+        assert missing.evidence["unavailable_periods"][0]["missing_contracts"] == [
+            "not-yet-imported"
+        ]
+    denied = replace(world.place.principal, permissions=frozenset())
+    with world.place.uow(principal=denied) as uow, pytest.raises(Problem) as refused:
+        parallel_actual.read(uow, expected=expected, entity_ids=(world.entity_id,), known_at=cutoff)
+    assert refused.value.slug == "forbidden"

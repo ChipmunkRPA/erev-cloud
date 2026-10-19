@@ -6794,3 +6794,18 @@ cleanup in the shared database session kernel was also repaired and regression-t
   business commands, ordered input replay or refresh yet. These APIs currently manage input-set
   versions; they do not execute or populate forecasts. Forecast runs/output and UI remain open.
   Seven missing report builders remain missing. No deployment or readiness claim.
+
+## Frozen monetary changes for re-lock evidence — October 19, 2026
+
+- Added contract/currency comparison of frozen revenue, contract liability, contract asset plus
+  unbilled receivable and disclosed RPO. Exact arithmetic retains both lock/file identities and
+  contributing row keys; currencies remain separate and exempt RPO is excluded.
+- Re-lock evidence now includes `relock/frozen_measure_changes.json` beside the verified original
+  stored comparison. Rejects mismatched/unordered locks, missing sources, corrupt bytes and
+  invalid/duplicate monetary rows. No current-contract values or guessed driver attribution.
+- Focused monetary/source checks: 23 passed; real lock/reopen/re-lock path: 1 passed. Ruff passes;
+  the two implementation modules and new test pass Mypy. The two existing integration test files
+  have seven Mypy errors also reproduced from HEAD; they are not new and remain outstanding.
+- RPT-38 remains incomplete: ordered DRY_RUN driver replay, report registration/formats, cell
+  explanations, browser and K-03 financial acceptance still required. Seven missing report
+  builders remain unregistered. No deployment or accounting/production-readiness claim.

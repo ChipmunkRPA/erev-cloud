@@ -237,6 +237,7 @@ def _consolidated(
     to_date: date,
     known_at: datetime | None = None,
     historical: bool = False,
+    include_sources: bool = False,
 ) -> list[dict[str, Any]]:
     """Σ ``amount_txn`` per (book, entity, legacy key, account, currency) over the window."""
     tenant_id = subledger_line.c.tenant_id
@@ -300,6 +301,19 @@ def _consolidated(
             subledger_line.c.txn_currency,
         )
     )
+    if include_sources:
+        statement = statement.add_columns(
+            func.jsonb_agg(
+                func.jsonb_build_object(
+                    "line_id",
+                    subledger_line.c.id,
+                    "period_end_date",
+                    subledger_line.c.period_end_date,
+                    "posting_id",
+                    subledger_line.c.subledger_posting_id,
+                )
+            ).label("source_rows")
+        )
     if known_at is not None:
         statement = statement.where(subledger.recorded_by(known_at, historical=historical))
     return [dict(row) for row in session.execute(statement).mappings()]

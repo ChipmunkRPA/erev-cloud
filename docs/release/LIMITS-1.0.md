@@ -1,5 +1,12 @@
 # eRev Cloud 1.0: stated limits of the release
 
+October 19 eRev comparison input update: an entity-authorized reader now supplies historical
+journal facts and standard traced/frozen contract balances with retained source references.
+A real computation/ledger case matches the existing gross journal view; unavailable contract
+populations withhold period coverage. Migration source admission, mapping, complete binding and
+worker/export integration remain open. This does not authorize cross-tenant sandbox reads or
+complete the still-unfinished migration replay lifecycle; RPT-42 remains unregistered.
+
 October 19 legacy comparison input update: an independent history projection now reproduces
 all ten archived Jan–Oct 2023 gross journal exports and derives period-end contract positions.
 Its source currency must have two decimal places, mappings must be complete, and contracts

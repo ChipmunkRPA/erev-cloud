@@ -2,6 +2,25 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Authorized eRev parallel-run inputs — October 19, 2026
+
+- Added parallel_actual.read: requires report.run for the requested entity IDs, resolves exact
+  calendar boundaries, reads historical sealed journal facts through the existing legacy journal
+  consolidation, and reads traced/frozen contract balances through the standard balance reader.
+  It never switches tenant or implicitly authorizes a migration sandbox.
+- Journal groups optionally retain composite line/partition/posting references. Their normal view
+  behavior is unchanged when source capture is off. Actual facts retain period/currency, source
+  version or frozen-lock/hash references, cutoff and a deterministic source-evidence digest.
+- Missing expected contract balances withhold the period and record the missing population;
+  unmatched currencies and calendar boundaries refuse. Missing actuals are never fabricated zeros.
+- A real booking/computation/ledger case proves account totals match legacy_je_summary, repeat
+  reads retain the same digest, missing population is excluded and report permission is required.
+  Targeted PostgreSQL check: 1 passed; Ruff and Mypy pass. This is not LMG-5's complete migration
+  acceptance or a cross-entity/locked-period browser journey.
+- Still required: migration source-file/database admission, confirmed mapping retrieval, full
+  retained binding/rebuild, worker/export integration and current grants at publication. Migration
+  replay import and its sandbox lifecycle remain unfinished. Six builders remain unregistered.
+
 ## Independent legacy monthly comparison inputs — October 19, 2026
 
 - Implemented migration.parallel_legacy.snapshot over retained Contract_Live history. Gross
@@ -204,21 +223,6 @@
   projection, reference/FX/membership/posting-basis replay phases and RPT-38 report/UI remain
   required. Changed reference inputs and unsupported event classifications currently refuse.
   Seven missing report builders remain unregistered. No deployment or readiness claim.
-
-## Frozen monetary changes for re-lock evidence — October 19, 2026
-
-- Added contract/currency comparison of frozen revenue, contract liability, contract asset plus
-  unbilled receivable and disclosed RPO. Exact arithmetic retains both lock/file identities and
-  contributing row keys; currencies remain separate and exempt RPO is excluded.
-- Re-lock evidence now includes `relock/frozen_measure_changes.json` beside the verified original
-  stored comparison. Rejects mismatched/unordered locks, missing sources, corrupt bytes and
-  invalid/duplicate monetary rows. No current-contract values or guessed driver attribution.
-- Focused monetary/source checks: 23 passed; real lock/reopen/re-lock path: 1 passed. Ruff passes;
-  the two implementation modules and new test pass Mypy. The two existing integration test files
-  have seven Mypy errors also reproduced from HEAD; they are not new and remain outstanding.
-- RPT-38 remains incomplete: ordered DRY_RUN driver replay, report registration/formats, cell
-  explanations, browser and K-03 financial acceptance still required. Seven missing report
-  builders remain unregistered. No deployment or accounting/production-readiness claim.
 
 ## Outstanding release verification
 
