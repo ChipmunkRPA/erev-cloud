@@ -639,9 +639,7 @@ SOURCE_CONTRACTS: Final[Mapping[str, SourceContract]] = MappingProxyType(
         ),
         parallel_builder.CODE: SourceContract(
             RETAINED,
-            (
-                "Verified migration and historical journal/balance snapshots with bound scope",
-            ),
+            ("Verified migration and historical journal/balance snapshots with bound scope",),
             (),
         ),
         trueup_builder.CODE: SourceContract(
@@ -1744,6 +1742,11 @@ def _insert_run(
         },
         detail={} if rerun_of is None else {"rerun_of": str(rerun_of)},
     )
+    if str(definition["code"]) == "disclosure_pack":
+        from erev_api.domain.reports.disclosure_children import ensure
+
+        # Attach before commit/dispatch so the ready hook never observes a partial plan.
+        ensure(uow, run_id)
     return run_id, _job_out(session, deferred["id"])
 
 
@@ -2339,7 +2342,13 @@ def _export_requester(
     return ctx
 
 
-@task(JobKind.REPORT_RUN, retry=REPORT_RUN_RETRY, on_failure=run_failed)
+def dependencies_ready(session: Session, job_id: UUID, params: Mapping[str, Any]) -> bool:
+    from erev_api.domain.reports.disclosure_readiness import ready
+
+    return ready(session, job_id, params)
+
+
+@task(JobKind.REPORT_RUN, retry=REPORT_RUN_RETRY, on_failure=run_failed, ready=dependencies_ready)
 def run_report(jc: JobContext, params: Mapping[str, Any]) -> JobOutcome:
     """``REPORT_RUN``: build, render, store and stamp the run named by ``params.report_run_id``."""
     run_id = UUID(str(params["report_run_id"]))

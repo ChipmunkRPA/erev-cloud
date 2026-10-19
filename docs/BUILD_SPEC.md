@@ -10146,6 +10146,13 @@ Author BS-3. Uses CTR (PHASES §1 row 12). Indicative size 16 items; this phase 
   - **Gates:** GK-01 `make ci`; GK-07 `make e2e SPEC=frontend/e2e/projects/screens.spec.ts`
 
 - [ ] **RPS-15 Disclosure snapshots and the disclosure pack.**
+  - October 19 dependency increment: REPORT_RUN waits for the attached disclosure children
+    through the queue readiness hook without spending handler attempts. Internal insertion binds
+    children before dispatch. Missing/failed or inconsistent dependencies refuse. Public parent
+    registration, output persistence/source binding, frozen sources and viewer remain incomplete.
+    PDF chapter export now shares the workbook's verified input adapter and provides an index,
+    paginated tables and omission notes; this is not yet a public end-to-end pack.
+
   - October 19 workbook-adapter increment: `disclosure_workbook.render` consumes the assembled
     pack and validated child stamps to produce Contents plus seven chapter worksheets, each with
     multiple typed tables. A real 16-child journey reopens and verifies the workbook. Period and

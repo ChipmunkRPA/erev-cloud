@@ -2,6 +2,19 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Disclosure dependency scheduling — October 19, 2026
+
+- REPORT_RUN now uses a read-only readiness gate for disclosure parents. It checks the exact
+  attached child population, scope/initiator, tenant/job/subject bindings and both job/report
+  completion. Pending children defer delivery before taking an attempt; failed, cancelled,
+  missing or inconsistent dependencies refuse instead of leaving the parent waiting indefinitely.
+- Internal report insertion attaches disclosure children before transaction commit/dispatch.
+  The public disclosure builder remains unregistered until rendering/publication and source
+  binding are integrated; this change does not enable a partially implemented public report.
+- Database journey covers a real parent delivery rescheduled at attempt 1 while remaining QUEUED,
+  sixteen completed child jobs, readiness after completion and wrong-job/attachment refusal.
+  Parent output persistence, retained reruns, frozen snapshots and viewer integration remain open.
+
 ## Disclosure chapter PDF adapter — October 19, 2026
 
 - Added PDF chapter export with an index whose page destinations follow actual pagination,

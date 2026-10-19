@@ -4942,7 +4942,8 @@ def test_disclosure_children_attach_once_and_survive_retry(world: World) -> None
     from dataclasses import replace
 
     from erev_api.db.tables import engine_release, report_run
-    from erev_api.domain.reports import disclosure_children, tie_outs
+    from erev_api.domain.reports import disclosure_children, disclosure_readiness, tie_outs
+    from erev_api.enums import JobKind
     from support.rows import report_run_values
 
     with world.place.uow() as uow:
@@ -4969,10 +4970,18 @@ def test_disclosure_children_attach_once_and_survive_retry(world: World) -> None
             created_by=uow.principal.id,
             created_by_kind=uow.principal.kind.value,
         )
+        parent_params = {"report_run_id": str(parent["id"])}
+        parent_job = uow.defer(
+            JobKind.REPORT_RUN, parent_params, subject_type="report_run", subject_id=parent["id"]
+        )
+        parent["job_id"] = parent_job["id"]
         uow.session.execute(insert(report_run).values(**parent))
         first = disclosure_children.ensure(uow, parent["id"])
         count = uow.session.scalar(select(func.count()).select_from(report_run))
         assert len(first) == 16
+        assert not disclosure_readiness.ready(uow.session, parent["job_id"], parent_params)
+        with pytest.raises(Problem):
+            disclosure_readiness.ready(uow.session, first[0].job_id, parent_params)
         assert disclosure_children.ensure(uow, parent["id"]) == first
         assert uow.session.scalar(select(func.count()).select_from(report_run)) == count
         stored = uow.session.scalar(
@@ -5003,6 +5012,8 @@ def test_disclosure_children_attach_once_and_survive_retry(world: World) -> None
         )
         with pytest.raises(Problem):
             disclosure_children.ensure(uow, parent["id"])
+        with pytest.raises(Problem):
+            disclosure_readiness.ready(uow.session, parent["job_id"], parent_params)
         assert uow.session.scalar(select(func.count()).select_from(report_run)) == count
 
     from erev_api.db.tables import job
@@ -5018,6 +5029,38 @@ def test_disclosure_children_attach_once_and_survive_retry(world: World) -> None
         pending = disclosure_results.collect(uow, parent["id"])
         assert set(pending.pending) == {child.run_id for child in first}
         assert pending.children == ()
+    with world.place.uow() as uow:
+        parent_task_id = uow.session.scalar(
+            select(job.c.procrastinate_job_id).where(job.c.id == parent["job_id"])
+        )
+        uow.session.execute(
+            text("UPDATE procrastinate_jobs SET status = 'doing' WHERE id = :id"),
+            {"id": parent_task_id},
+        )
+        uow.commit()
+    run_job(
+        parent["job_id"],
+        world.place.tenant_id,
+        attempt=1,
+        runtime=runtime,
+        delivered_task_id=parent_task_id,
+    )
+    with world.place.uow() as uow:
+        waiting_job = (
+            uow.session.execute(select(job).where(job.c.id == parent["job_id"])).mappings().one()
+        )
+        assert waiting_job["state"] == "QUEUED"
+        assert waiting_job["started_at"] is None
+        delivery = uow.session.execute(
+            text("SELECT args FROM procrastinate_jobs WHERE id = :id"),
+            {"id": waiting_job["procrastinate_job_id"]},
+        ).scalar_one()
+        assert delivery["attempt"] == 1
+        assert waiting_job["procrastinate_job_id"] != parent_task_id
+        assert (
+            uow.session.scalar(select(report_run.c.status).where(report_run.c.id == parent["id"]))
+            == "QUEUED"
+        )
     for child in first:
         with world.place.uow() as uow:
             task_id = uow.session.scalar(
@@ -5036,6 +5079,7 @@ def test_disclosure_children_attach_once_and_survive_retry(world: World) -> None
             delivered_task_id=task_id,
         )
     with world.place.uow() as uow:
+        assert disclosure_readiness.ready(uow.session, parent["job_id"], parent_params)
         completed = disclosure_results.collect(uow, parent["id"])
         assert completed.pending == ()
         assert len(completed.children) == 16
