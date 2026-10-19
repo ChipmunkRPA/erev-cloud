@@ -7598,3 +7598,19 @@ cleanup in the shared database session kernel was also repaired and regression-t
   targeted checks and Ruff/Mypy pass.
 - Persisted refresh orchestration, failure recovery and source scenario replacement remain
   unconnected; forecast reporting is still unfinished. No deployment/readiness claim.
+
+## Durable scenario refresh reservation — October 19, 2026
+
+- Revision 0184 adds production-scoped refresh records with immutable source/target tenants,
+  selected input/hash, snapshot and job identities. Partial uniqueness admits one queued/running
+  refresh per scenario; transition guards freeze terminal evidence and set-once result fields.
+- Internal admission serializes on the source scenario, verifies the selected published inputs
+  and the requester's queued copy job, and records the reservation. Start/failure transitions
+  retain lifecycle audit. Archived or replaced source scenarios cannot start refresh execution.
+- A running reservation now associates a held target with its original logical scenario for
+  input replay; source pointer replacement is not needed to prepare the new inputs. Archiving
+  refuses pending refreshes. Refresh records are operational, excluded from snapshot copying.
+- The scenario journey verifies reservation, duplicate refusal, archive protection, repeat start,
+  failure and immutable fields. Schema/transition/RLS round-trip and Ruff/Mypy checks pass.
+- The request endpoint, worker integration, terminal cleanup and atomic source switch remain
+  unfinished. Forecast outputs/actual-vs-forecast still remain open; no deployment/readiness claim.

@@ -11,6 +11,7 @@ from typing import Any
 from uuid import UUID
 
 from erev_api.auth.dependencies import require_for_entity
+from erev_api.domain.reports import forecast_actual_labels
 from erev_api.domain.reports.builders import ReportParams, SourceCollector, extract_journal_lines
 from erev_api.domain.reports.builders.je_population import Transition, state_as_of
 from erev_api.enums import PrincipalKind, TenantKind
@@ -60,10 +61,15 @@ def capture(uow: UnitOfWork, params: ReportParams) -> dict[str, Any]:
         "known_at": params.known_at.isoformat(),
         "book_code": params.book_code,
         "entity_ids": sorted(str(entity) for entity in params.entity_ids),
-        "rows": posted_rows(
-            records,
+        "rows": forecast_actual_labels.attach(
+            uow.session,
+            posted_rows(
+                records,
+                known_at=params.known_at,
+                entity_ids=params.entity_ids,
+                book_code=params.book_code,
+            ),
             known_at=params.known_at,
-            entity_ids=params.entity_ids,
             book_code=params.book_code,
         ),
     }

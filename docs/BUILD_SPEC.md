@@ -11589,8 +11589,12 @@ Author BS-3. Uses DIN, SNP and RPS (PHASES §1 row 18). Indicative size 12 items
     Forecast output now retains revenue category alongside obligation rows; the forecast-side
     mapper uses hashed saved entity configuration, expands period money cells and excludes
     totals. Legacy missing categories are refused for category comparisons, and null categories
-    do not collide with named categories. Actual-side dimension mapping, report builder/
-    registration and UI remain open;
+    do not collide with named categories. Production capture now retains fixed contract labels
+    and category availability: only unambiguous obligation/product histories whose product
+    record predates the cutoff supply a category. Actual-side mapping uses stored debit/credit
+    amounts in the forecast currency basis. An internal comparison assembler connects both
+    authorized readers, checks for a refresh race and retains pre-aggregation facts/digests.
+    Report-framework registration, same-source rebuild and UI remain open;
     this report is not yet runnable.
   - **Prerequisites:** FCS-3
   - **Scope:**

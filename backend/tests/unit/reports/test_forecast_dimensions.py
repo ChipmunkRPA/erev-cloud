@@ -60,3 +60,48 @@ def test_incomplete_or_ambiguous_forecast_rows_are_refused(bad):
         source.revenue["rows"][0]["period:P10"]["amount"] = "NaN"
     with pytest.raises(Problem):
         forecast_rows(source, require_category=False)
+
+
+def actual(category=True):
+    from erev_api.domain.reports.forecast_actuals_saved import Actuals
+
+    parent = saved().forecast
+    row = {
+        "id": "line",
+        "entity_id": str(UUID(int=5)),
+        "period_key": "P10",
+        "contract_label_known": True,
+        "contract_external_id": "C1",
+        "revenue_category_known": category,
+        "revenue_category": None,
+        "txn_currency": "USD",
+        "debit_txn": "20.00",
+        "credit_txn": "100.00",
+        "functional_currency": "EUR",
+        "debit_functional": "18.00",
+        "credit_functional": "90.00",
+    }
+    return Actuals(parent, UUID(int=7), "b" * 64, (row,))
+
+
+def test_actual_signed_amounts_use_saved_currency_basis():
+    from erev_api.domain.reports.forecast_dimensions import actual_rows
+
+    source = actual()
+    assert actual_rows(source, require_category=True)[0].amount == Decimal("80.00")
+    source.forecast.run["parameters"]["currency_view"] = "functional"
+    result = actual_rows(source, require_category=True)[0]
+    assert result.amount == Decimal("72.00")
+    assert result.currency == "EUR"
+
+
+def test_unknown_actual_category_cannot_be_treated_as_unassigned():
+    from erev_api.domain.reports.forecast_dimensions import actual_rows
+
+    source = actual(False)
+    assert actual_rows(source, require_category=False)[0].contract_external_id == "C1"
+    with pytest.raises(Problem):
+        actual_rows(source, require_category=True)
+    source.rows[0]["contract_label_known"] = False
+    with pytest.raises(Problem):
+        actual_rows(source, require_category=False)

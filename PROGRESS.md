@@ -2,6 +2,21 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Actual dimensions and comparison assembly — October 19, 2026
+
+- Actuals capture now freezes immutable contract external IDs and category availability. A
+  single obligation/product history and a product unchanged since the cutoff establish the
+  category; changed/ambiguous/missing history stays explicitly unknown rather than becoming
+  Unassigned. Contract mapping still works when only category history is unavailable.
+- Added actual-line projection using saved transaction/functional credit minus debit. Connected
+  both authorized retained-source readers to the comparison projector, with refresh-race checks
+  and pre-aggregation fact/digest evidence for the forthcoming report-framework adapter.
+- Seven focused dimension checks pass. The real scenario journey verifies populated obligation
+  label lookup, historical absence and archived forecast plus empty actuals comparison. Ruff/
+  Mypy pass. Populated production-posting accounting acceptance is still outstanding.
+- Report-framework registration, same-source rebuilding and UI remain open; the internal
+  comparison path is implemented but the public report is not yet runnable. No deployment.
+
 ## Saved forecast dimension mapping — October 19, 2026
 
 - Forecast revenue exports now retain the original revenue category. The archived reader
@@ -221,22 +236,6 @@
   and queued cancellation. Ordinary scenario creation also passes; Ruff/Mypy/OpenAPI pass.
 - Refresh UI, broader concurrency/crash recovery and specified accounting acceptance remain
   open. Forecast output and actual-vs-forecast report builders remain unfinished. No deployment.
-
-## Durable scenario refresh reservation — October 19, 2026
-
-- Revision 0184 adds production-scoped refresh records with immutable source/target tenants,
-  selected input/hash, snapshot and job identities. Partial uniqueness admits one queued/running
-  refresh per scenario; transition guards freeze terminal evidence and set-once result fields.
-- Internal admission serializes on the source scenario, verifies the selected published inputs
-  and the requester's queued copy job, and records the reservation. Start/failure transitions
-  retain lifecycle audit. Archived or replaced source scenarios cannot start refresh execution.
-- A running reservation now associates a held target with its original logical scenario for
-  input replay; source pointer replacement is not needed to prepare the new inputs. Archiving
-  refuses pending refreshes. Refresh records are operational, excluded from snapshot copying.
-- The scenario journey verifies reservation, duplicate refusal, archive protection, repeat start,
-  failure and immutable fields. Schema/transition/RLS round-trip and Ruff/Mypy checks pass.
-- The request endpoint, worker integration, terminal cleanup and atomic source switch remain
-  unfinished. Forecast outputs/actual-vs-forecast still remain open; no deployment/readiness claim.
 
 ## Outstanding release verification
 

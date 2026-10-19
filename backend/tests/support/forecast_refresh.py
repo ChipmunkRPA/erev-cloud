@@ -43,6 +43,41 @@ def exercise_refresh_state(world: Any, source_actor: Actor, scenario_id: UUID) -
         assert actuals["rows"] == []  # Scenario forecasts do not become production postings.
         assert actuals["source_tenant_id"] == str(source.principal.tenant_id)
         assert actuals["known_at"] == uow.now.isoformat()
+    # Exercise label resolution against the populated scenario obligation history.
+    with world.place.uow() as uow:
+        from datetime import UTC, datetime
+
+        from erev_api.db.tables import obligation_version
+        from erev_api.domain.reports.forecast_actual_labels import attach
+        from sqlalchemy import func
+
+        version = (
+            uow.session.execute(
+                select(obligation_version)
+                .where(obligation_version.c.book_code == "ASC606")
+                .limit(1)
+            )
+            .mappings()
+            .one()
+        )
+        raw = {
+            "contract_id": str(version["contract_id"]),
+            "obligation_id": str(version["obligation_id"]),
+        }
+        labeled = attach(
+            uow.session,
+            [raw],
+            known_at=max(uow.now, uow.session.scalar(select(func.clock_timestamp()))),
+            book_code="ASC606",
+        )[0]
+        assert labeled["contract_label_known"] is True
+        assert labeled["contract_external_id"]
+        assert labeled["revenue_category_known"] is True
+        historical = attach(
+            uow.session, [raw], known_at=datetime(2000, 1, 1, tzinfo=UTC), book_code="ASC606"
+        )[0]
+        assert historical["contract_label_known"] is False
+        assert historical["revenue_category_known"] is False
     with world.place.uow() as uow:
         from dataclasses import replace
 
@@ -327,6 +362,18 @@ def exercise_refresh_state(world: Any, source_actor: Actor, scenario_id: UUID) -
         assert actuals.forecast.actuals_snapshot_id == snapshot_id
         assert actuals.forecast.actuals_cutoff == saved.actuals_cutoff
         assert actuals.dataset_sha256 == retained["dataset_sha256"]
+        from erev_api.domain.reports import forecast_comparison_inputs
+
+        comparison = forecast_comparison_inputs.read(
+            uow, saved_run_id, row_dimension="REVENUE_CATEGORY"
+        )
+        assert comparison.data.rows == ()
+        assert (
+            comparison.data.control_totals["empty_title"]
+            == "No actuals yet for the forecast horizon"
+        )
+        assert comparison.evidence["forecast_rows"]
+        assert comparison.evidence["actuals_dataset_sha256"] == actuals.dataset_sha256
         assert uow.session.scalar(text("SELECT current_setting('app.tenant_id')")) == str(
             actor.tenant_id
         )
