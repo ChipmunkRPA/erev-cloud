@@ -6928,3 +6928,22 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Six catalogue builders remain unregistered. RPT-38 still needs populated close-to-report
   financial acceptance, cell explanation routing, UI/header polish, wider reference/FX and
   new/regrouped contract replay. No production readiness or deployment claim.
+
+## Close variance cell explanations and viewer sections — October 19, 2026
+
+- Connected Change cells in both variance sections to retained contributor evidence. Contract
+  amounts reconcile exactly; identity/hash/scope checks bind them to original groups, and SQL
+  resolves contracts only through the retained computation/book. A run effect is not split into
+  invented per-event amounts. Current contributor visibility applies to contract records.
+- Added optional plain-text contributor details: contract name, drivers, event keys, both lock
+  IDs and source-row keys where available. The viewer links to internal contract history.
+  OpenAPI/client types are regenerated. Older evidence without cell facts refuses by name.
+- Fixed numeric section routing; exports retain readable section labels. Both sections expose
+  only Change as drillable and hide internal measure/driver fields. Reruns refresh derived
+  contributor evidence while still validating and recomputing the original source identities.
+- Real-engine replay/presentation suite: 25 passed, including cell arithmetic/hash refusal with
+  a lookup seam (not an HTTP/DB cell journey). Worker/rerun/permission-loss regression: 2 passed;
+  frontend variance/BBR checks: 3 passed. Mypy, tsc, Ruff, ESLint and make openapi pass.
+- Six catalogue builders remain unregistered. Populated close-to-report/cell browser acceptance,
+  headers/empty-state polish, broader reference/FX/population replay and accounting sign-off
+  remain open. No deployment or production readiness claim.

@@ -5001,3 +5001,40 @@ def test_disclosure_children_attach_once_and_survive_retry(world: World) -> None
         with pytest.raises(Problem):
             disclosure_children.ensure(uow, parent["id"])
         assert uow.session.scalar(select(func.count()).select_from(report_run)) == count
+
+    from erev_api.db.tables import job
+    from erev_api.domain.reports import disclosure_results
+    from erev_api.jobs.context import JobRuntime
+    from erev_api.jobs.registry import run_job
+    from sqlalchemy import text
+
+    runtime = JobRuntime(
+        clock=world.place.clock, keyring=world.place.keyring, files=world.place.files
+    )
+    with world.place.uow() as uow:
+        pending = disclosure_results.collect(uow, parent["id"])
+        assert set(pending.pending) == {child.run_id for child in first}
+        assert pending.children == ()
+    for child in first:
+        with world.place.uow() as uow:
+            task_id = uow.session.scalar(
+                select(job.c.procrastinate_job_id).where(job.c.id == child.job_id)
+            )
+            uow.session.execute(
+                text("UPDATE procrastinate_jobs SET status = 'doing' WHERE id = :id"),
+                {"id": task_id},
+            )
+            uow.commit()
+        run_job(
+            child.job_id,
+            world.place.tenant_id,
+            attempt=1,
+            runtime=runtime,
+            delivered_task_id=task_id,
+        )
+    with world.place.uow() as uow:
+        completed = disclosure_results.collect(uow, parent["id"])
+        assert completed.pending == ()
+        assert len(completed.children) == 16
+        assert [child.source for child in completed.children] == list(first)
+        assert all(child.output_sha256 for child in completed.children)

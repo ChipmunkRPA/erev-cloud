@@ -2,6 +2,22 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Verified disclosure child results — October 19, 2026
+
+- Added disclosure_results.collect: authorize/resolve attached children, return pending IDs
+  without partial sections, refuse failed children, then verify the complete finished population.
+  Reads original child JSON files under readable-file locks with bounded aggregate input size.
+- Validates purpose/media type/size/file digest and run output hash, canonical report envelope,
+  parameter binding, row count, control totals and tie-outs. Restores date/timestamp cells to typed
+  ReportData; rejects duplicate row keys and envelopes that do not round-trip canonically.
+- Real database journey now executes all 16 child report jobs and collects their verified outputs,
+  after first observing pending children. This fixture has no booked accounting population; it
+  validates task/output integration, not populated disclosure accounting acceptance. Three focused
+  plan/decoder checks pass; Ruff and new-module Mypy pass.
+- Remaining: registered parent worker/dependency scheduling, seven-section assembly, frozen
+  disclosures, practical expedients, PDF and viewer. Five catalogue builders remain unregistered;
+  no disclosure_pack completion or production-readiness claim.
+
 ## Durable disclosure parent-child attachment — October 19, 2026
 
 - Added disclosure_children.ensure: locks the parent run, checks the initiating actor's current
@@ -202,25 +218,6 @@
 - Remaining report development: actual_vs_forecast, forecast_outputs, parallel_run_comparison,
   contract_sample_pack, period_evidence_pack, disclosure_pack, and engine_trueup_register.
   Wider variance replay and populated close/cell/browser accounting acceptance remain open.
-
-## Close variance cell explanations and viewer sections — October 19, 2026
-
-- Connected Change cells in both variance sections to retained contributor evidence. Contract
-  amounts reconcile exactly; identity/hash/scope checks bind them to original groups, and SQL
-  resolves contracts only through the retained computation/book. A run effect is not split into
-  invented per-event amounts. Current contributor visibility applies to contract records.
-- Added optional plain-text contributor details: contract name, drivers, event keys, both lock
-  IDs and source-row keys where available. The viewer links to internal contract history.
-  OpenAPI/client types are regenerated. Older evidence without cell facts refuses by name.
-- Fixed numeric section routing; exports retain readable section labels. Both sections expose
-  only Change as drillable and hide internal measure/driver fields. Reruns refresh derived
-  contributor evidence while still validating and recomputing the original source identities.
-- Real-engine replay/presentation suite: 25 passed, including cell arithmetic/hash refusal with
-  a lookup seam (not an HTTP/DB cell journey). Worker/rerun/permission-loss regression: 2 passed;
-  frontend variance/BBR checks: 3 passed. Mypy, tsc, Ruff, ESLint and make openapi pass.
-- Six catalogue builders remain unregistered. Populated close-to-report/cell browser acceptance,
-  headers/empty-state polish, broader reference/FX/population replay and accounting sign-off
-  remain open. No deployment or production readiness claim.
 
 ## Outstanding release verification
 

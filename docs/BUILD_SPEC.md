@@ -10146,6 +10146,11 @@ Author BS-3. Uses CTR (PHASES §1 row 12). Indicative size 16 items; this phase 
   - **Gates:** GK-01 `make ci`; GK-07 `make e2e SPEC=frontend/e2e/projects/screens.spec.ts`
 
 - [ ] **RPS-15 Disclosure snapshots and the disclosure pack.**
+  - October 19 result-reader increment: `disclosure_results.collect` distinguishes pending/failed
+    children and verifies the complete set of original JSON outputs before assembly. Checks bind
+    output metadata/digests, normalized parameters and dataset totals. A database journey executes
+    all 16 child jobs and reads their outputs; populated accounting acceptance is still open.
+
   - October 19 parent-attachment increment: `disclosure_children.ensure` binds child IDs under
     a parent row lock and reuses them across transactions. Current initiating-user permissions
     and child scope/selector identities are rechecked. Targeted database acceptance passes;
