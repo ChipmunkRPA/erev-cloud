@@ -6646,3 +6646,19 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - RPT-37 is not registered yet: activation-value and applied-modification attribution, FX
   valuation, journal comparator sourcing, contributor routes and end-to-end publication remain.
   Eight reports still lack complete registered builders; do not mark this report finished.
+
+## BBR activated bookings and application value attribution — October 19, 2026
+
+- Added activated-contract values from each contract's own signed booking line consideration,
+  with booking/activation provenance. Drafts and voided contracts contribute no new bookings.
+  Separate-contract modifications are identified through their applied booking event and
+  excluded from the new-contract column, preventing later activation from double counting.
+- Added original application-group/version reads and predecessor-based modification price
+  differences, retained for rebuilds and counted once per modification, not per obligation.
+  Missing predecessors, ambiguous applications and shared valuation causes refuse attribution.
+- Real K01 booking value 135,000 and K02 applied modification 60,000 checks pass. Targeted
+  evidence and two pre-existing test-module typing findings are in CI-2026-10-19.md.
+- BBR still needs FX valuation, journal comparator sourcing, source adapter/registration,
+  contributor routes and broader acceptance. Pre-activation changes and shared valuation
+  causes need further attribution support; independent accounting sign-off is still absent.
+  Eight reports remain without complete registered builders. No deployment.

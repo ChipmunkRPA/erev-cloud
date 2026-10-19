@@ -15,6 +15,7 @@ from typing import Literal
 from uuid import UUID
 
 from erev_engine import ENGINE_VERSION, compute
+from erev_engine.bundle import BookInput, InputBundle, OutputBundle
 from erev_engine.stages.s15_disclosures.variance import Evaluation, decompose
 
 from erev_api.problems import Problem
@@ -44,6 +45,49 @@ def _refuse(detail: str) -> Problem:
     return Problem("validation-failed", f"Retained close variance: {detail}")
 
 
+def _readback_books(
+    earlier: InputBundle, later: InputBundle, reproduced: OutputBundle
+) -> tuple[tuple[BookInput, ...], tuple[str, ...]]:
+    """Remove only new SSP readbacks proven by the earlier original output.
+
+    First pricing selects a version; the next input records that choice. This is
+    persistence of the same decision, not a new SSP election. Modification weight
+    readbacks and changes to an existing choice require their own replay phase.
+    """
+    old_books = {book.book_code: book for book in earlier.books}
+    outputs = {book.book_code: book for book in reproduced.books}
+    books = []
+    normalized = []
+    for book in later.books:
+        old = old_books.get(book.book_code)
+        output = outputs.get(book.book_code)
+        if old is None or output is None:
+            books.append(book)
+            continue
+        identities = {(p.code, p.scope, p.subject_key) for p in old.policies}
+        priced = {
+            row.subject_key: row.columns.get("ssp_book_version_key")
+            for row in output.obligation_versions
+        }
+        kept = []
+        for policy in book.policies:
+            if (
+                (policy.code, policy.scope, policy.subject_key) not in identities
+                and policy.code == "ssp.version_basis"
+                and policy.scope == "OBLIGATION"
+                and policy.level == "O"
+                and policy.source_ref == "RECORDED"
+                and policy.pin == "K"
+                and isinstance(priced.get(policy.subject_key), str)
+                and policy.value == {"recorded": priced[policy.subject_key]}
+            ):
+                normalized.append(f"books.{book.book_code}.ssp_readback.{policy.subject_key}")
+            else:
+                kept.append(policy)
+        books.append(replace(book, policies=tuple(kept)))
+    return tuple(books), tuple(normalized)
+
+
 def execute(
     earlier: VerifiedComputation,
     later: VerifiedComputation,
@@ -71,7 +115,9 @@ def execute(
         if any(not isinstance(value, Fraction) for value in expected.values()):
             raise _refuse("frozen amounts must be exact fractions.")
 
-    def verify(source: VerifiedComputation, expected: Metrics) -> SourceExecution:
+    def verify(
+        source: VerifiedComputation, expected: Metrics
+    ) -> tuple[SourceExecution, OutputBundle]:
         output = engine(source.bundle)
         if (
             output.engine_version != source.bundle.engine_version
@@ -87,10 +133,12 @@ def execute(
             for key in actual.keys() | expected.keys()
         ):
             raise _refuse("the original computation does not reproduce its frozen endpoint.")
-        return SourceExecution(source.computation_id, source.bundle.sha256(), output.sha256())
+        return SourceExecution(
+            source.computation_id, source.bundle.sha256(), output.sha256()
+        ), output
 
-    before = verify(earlier, earlier_metrics)
-    after = verify(later, later_metrics)
+    before, earlier_output = verify(earlier, earlier_metrics)
+    after, _ = verify(later, later_metrics)
     if earlier.computation_id == later.computation_id:
         if earlier.bundle != later.bundle or before != after:
             raise _refuse("one computation identity has inconsistent retained sources.")
@@ -111,8 +159,11 @@ def execute(
         normalized.append("posted")
     if earlier.bundle.group.previous_stream_heads != later.bundle.group.previous_stream_heads:
         normalized.append("group.previous_stream_heads")
+    books, readbacks = _readback_books(earlier.bundle, later.bundle, earlier_output)
+    normalized.extend(readbacks)
     counterfactual = replace(
         later.bundle,
+        books=books,
         posted=earlier.bundle.posted,
         group=replace(
             later.bundle.group,

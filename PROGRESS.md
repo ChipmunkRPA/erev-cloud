@@ -2,6 +2,22 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Multi-group close variance and SSP readback — October 19, 2026
+
+- Added the pure multi-group execution phase over an authorized frozen pair: every monetary
+  contract must have a source, groups select one computation each, and exact driver totals
+  retain currency/measure identity and each group's execution evidence. Missing, new, removed
+  or regrouped populations refuse until explicit population replay is implemented.
+- First-compute SSP readbacks now normalize only when the new recorded version exactly matches
+  the earlier reproduced obligation's selected SSP version. Existing choices, overrides,
+  mismatched versions and modification-weight readbacks retain reference-replay requirements.
+- Actual consecutive persisted computations now reconcile with posted/head/readback adjustments.
+  Two real-engine groups reconcile revenue +117.68 and RPO -117.68 against authored frozen CSVs;
+  this is not a full close workflow. Replay suite 21 passed, reference guards 4 passed, database
+  selection/execution 1 passed; changed-file Ruff and source/replay-test Mypy pass.
+- Report registration/job/formats/UI, wider reference/FX/population phases and full frozen-close
+  accounting acceptance remain open. Seven builders remain unregistered; no deployment.
+
 ## Retained computation execution for close variance — October 19, 2026
 
 - Added the transaction-free execution phase: original retained inputs must reproduce their
@@ -212,22 +228,6 @@
 - Seven catalogue definitions still lack registered builders. BBR contributor cell routes,
   reporting-currency and lock datasets, complex/shared attribution, cross-currency database
   acceptance, browser acceptance and independent accounting approval remain open. No deployment.
-
-## BBR activated bookings and application value attribution — October 19, 2026
-
-- Added activated-contract values from each contract's own signed booking line consideration,
-  with booking/activation provenance. Drafts and voided contracts contribute no new bookings.
-  Separate-contract modifications are identified through their applied booking event and
-  excluded from the new-contract column, preventing later activation from double counting.
-- Added original application-group/version reads and predecessor-based modification price
-  differences, retained for rebuilds and counted once per modification, not per obligation.
-  Missing predecessors, ambiguous applications and shared valuation causes refuse attribution.
-- Real K01 booking value 135,000 and K02 applied modification 60,000 checks pass. Targeted
-  evidence and two pre-existing test-module typing findings are in CI-2026-10-19.md.
-- BBR still needs FX valuation, journal comparator sourcing, source adapter/registration,
-  contributor routes and broader acceptance. Pre-activation changes and shared valuation
-  causes need further attribution support; independent accounting sign-off is still absent.
-  Eight reports remain without complete registered builders. No deployment.
 
 ## Outstanding release verification
 

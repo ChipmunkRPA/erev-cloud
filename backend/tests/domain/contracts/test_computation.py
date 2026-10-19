@@ -1010,18 +1010,19 @@ def test_variance_candidate_selection_excludes_later_recompute_without_new_event
         assert later.contract_computations == {"SF-ORD-10001": second["id"]}
         assert earlier.computations[first["id"]].bundle == original
 
-    # The first recompute introduces recorded SSP policy inputs. Those need the
-    # reference replay phase; operational normalization must not suppress them.
-    with pytest.raises(Problem, match="separate reference replay.*books"):
-        variance_execution.execute(
-            earlier.computations[first["id"]],
-            later.computations[second["id"]],
-            entity_code="AVM-US",
-            book_code="ASC606",
-            period_key="FY2026-P09",
-            earlier_metrics=Projection(original, "AVM-US", "ASC606", "FY2026-P09")(first_output),
-            later_metrics=Projection(newer, "AVM-US", "ASC606", "FY2026-P09")(second_output),
-        )
+    result = variance_execution.execute(
+        earlier.computations[first["id"]],
+        later.computations[second["id"]],
+        entity_code="AVM-US",
+        book_code="ASC606",
+        period_key="FY2026-P09",
+        earlier_metrics=Projection(original, "AVM-US", "ASC606", "FY2026-P09")(first_output),
+        later_metrics=Projection(newer, "AVM-US", "ASC606", "FY2026-P09")(second_output),
+    )
+    assert "posted" in result.normalized_fields
+    assert "group.previous_stream_heads" in result.normalized_fields
+    assert "books.ASC606.ssp_readback.SF-ORD-10001/O1" in result.normalized_fields
+    assert all(item.total == 0 and item.sums_exactly for item in result.replay.measures.values())
     final_bundle, final_output, third = computed(world.place, group_id)
     with world.place.uow() as uow:
         final_source = computation_sources.read_for_report(uow, third["id"])

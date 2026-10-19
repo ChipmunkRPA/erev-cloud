@@ -1,5 +1,14 @@
 # eRev Cloud 1.0: stated limits of the release
 
+October 19 multi-group variance continuation: authorized retained groups now replay against
+partitioned frozen monetary endpoints and aggregate exact totals by currency, measure and
+driver. New own-pricing SSP readbacks are accepted only when they preserve the earlier
+reproduced output's SSP selection; actual first recomputation now reconciles. Other reference
+changes, modification-weight readbacks, FX and population changes still need replay phases.
+Report/job/formats/UI and full frozen-close accounting acceptance remain outstanding; seven
+builders remain unregistered. No deployment or production readiness claim.
+
+
 October 19 retained variance execution: original computation hashes and monetary endpoints
 are verified before replay on a common earlier posting basis; normalized fields and source
 identities are retained. Identical source computations yield zero change. First recomputation

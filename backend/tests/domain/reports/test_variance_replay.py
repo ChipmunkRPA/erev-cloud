@@ -463,3 +463,139 @@ def test_retained_execution_checks_originals_and_preserves_event_effects() -> No
         run(earlier, replace(later, output_sha256="0" * 64), last)
     with pytest.raises(Problem, match="frozen endpoint"):
         run(earlier, later, {**last, RPO: last[RPO] + 1})
+
+
+def test_group_replay_reconciles_two_contracts_to_frozen_datasets() -> None:
+    """Real engine execution; authored frozen CSVs, not a full lock workflow."""
+    import csv
+    import hashlib
+    from io import StringIO
+    from uuid import UUID, uuid4
+
+    from erev_api.domain.reports import locked, variance_groups
+    from erev_api.domain.reports.computation_sources import VerifiedComputation
+    from erev_api.domain.reports.evidence_close import FrozenClose, FrozenReport
+    from erev_api.domain.reports.variance_sources import Pair, Side
+    from erev_engine import upgrade
+
+    before, after = _active_pair()
+    entity_id, period_id = uuid4(), uuid4()
+    group_ids = [uuid4(), uuid4()]
+    release_id = uuid4()
+
+    def side(bundle: InputBundle, day: int) -> Side:
+        scope = locked.LockScope(
+            uuid4(), entity_id, "Mock Entity 2", "ASC606", period_id, "FY2023-P05"
+        )
+        sources: dict[UUID, VerifiedComputation] = {}
+        contracts = {}
+        amounts = {}
+        for number, group_id in enumerate(group_ids, start=2):
+            named = upgrade.decode_input(
+                upgrade.encode_input(bundle).replace(b"Contract 2", f"Contract {number}".encode())
+            )
+            output = compute(named)
+            identity = uuid4()
+            sources[identity] = VerifiedComputation(
+                identity,
+                group_id,
+                release_id,
+                named,
+                upgrade.output_mapping(output),
+                output.sha256(),
+                {"ASC606": 0},
+                None,
+            )
+            contracts[f"Contract {number}"] = identity
+            amounts.update(
+                Projection(named, scope.entity_code, scope.book_code, scope.period_key)(output)
+            )
+        common = ["row_key", "entity_code", "contract_external_id", "currency"]
+        reports = []
+        for kind, extra in (
+            ("WATERFALL", ["obligation_key", "period_key", "recognised"]),
+            ("CONTRACT_BALANCES", ["contract_liability", "contract_asset", "unbilled_receivable"]),
+            ("RPO", ["obligation_key", "section", "total"]),
+        ):
+            stream = StringIO(newline="")
+            writer = csv.writer(stream)
+            writer.writerow(common + extra)
+            for name in contracts:
+
+                def amount(measure: str, contract_name: str = name) -> str:
+                    value = amounts.get(MeasureKey(contract_name, "USD", measure), Fraction(0))
+                    return str(Decimal(value.numerator) / Decimal(value.denominator))
+
+                values = (
+                    ["O1", scope.period_key, amount("REVENUE")]
+                    if kind == "WATERFALL"
+                    else [amount("CONTRACT_LIABILITY"), amount("CONTRACT_ASSET_AND_UNBILLED"), "0"]
+                    if kind == "CONTRACT_BALANCES"
+                    else ["O1", "1", amount("RPO")]
+                )
+                writer.writerow([f"{kind}:{name}", scope.entity_code, name, "USD", *values])
+            content = stream.getvalue().encode()
+            dataset = locked.LockedDataset(
+                scope.lock_id,
+                kind,
+                uuid4(),
+                hashlib.sha256(content).hexdigest(),
+                len(contracts),
+                {},
+                content,
+            )
+            reports.append(FrozenReport(kind, uuid4(), None, dataset))
+        frozen = FrozenClose(
+            scope,
+            {
+                "created_at": datetime(2023, 6, day, tzinfo=UTC),
+                "snapshot_manifest_sha256": "a" * 64,
+            },
+            tuple(reports),
+        )
+        return Side(frozen, sources, contracts)
+
+    pair = Pair(side(before, 1), side(after, 3), (entity_id,))
+    result = variance_groups.execute(pair)
+    assert len(result.groups) == 2
+    assert result.required_entity_ids == (entity_id,)
+    assert result.driver_totals[("USD", "RPO", "LATE_EVENT")] == Fraction("-117.68")
+    assert result.driver_totals[("USD", "REVENUE", "LATE_EVENT")] == Fraction("117.68")
+    assert all(item.sums_exactly for item in result.measures.values())
+    with pytest.raises(Problem, match="no retained source"):
+        variance_groups.execute(replace(pair, later=replace(pair.later, contract_computations={})))
+
+
+@pytest.mark.parametrize("fault", ["version", "source", "weight", "existing"])
+def test_ssp_readback_normalization_preserves_actual_reference_changes(fault: str) -> None:
+    from erev_api.domain.reports.variance_execution import _readback_books
+    from erev_engine.bundle import ResolvedPolicyInput
+
+    before, after = _active_pair()
+    output = compute(before)
+    book = before.books[0]
+    row = output.books[0].obligation_versions[0]
+    version = row.columns["ssp_book_version_key"]
+    assert isinstance(version, str)
+    policy = ResolvedPolicyInput(
+        "ssp.version_basis",
+        "OBLIGATION",
+        row.subject_key,
+        {"recorded": version},
+        "O",
+        "RECORDED",
+        "K",
+    )
+    if fault == "version":
+        policy = replace(policy, value={"recorded": "unrelated@v1"})
+    elif fault == "source":
+        policy = replace(policy, source_ref="OVERRIDE")
+    elif fault == "weight":
+        policy = replace(policy, value={"recorded": version, "recorded@event": version})
+    else:
+        before = replace(before, books=(replace(book, policies=(*book.policies, policy)),))
+        policy = replace(policy, value={"recorded": "different@v2"})
+    after = replace(after, books=(replace(book, policies=(*book.policies, policy)),))
+    books, normalized = _readback_books(before, after, output)
+    assert books == after.books
+    assert normalized == ()
