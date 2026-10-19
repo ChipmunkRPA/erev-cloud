@@ -26,7 +26,7 @@ from .variance_measures import MeasureKey
 from .variance_projection import MEASURES, Projection
 
 type Metrics = Mapping[MeasureKey, Fraction]
-type Project = Callable[[OutputBundle], Metrics]
+type Project = Callable[[InputBundle, OutputBundle], Metrics]
 type Engine = Callable[[InputBundle], OutputBundle]
 
 _DRIVERS: Final = {
@@ -158,7 +158,7 @@ def replay_events(
         output = engine(dry)
         if output.engine_version != ENGINE_VERSION or output.input_sha256 != dry.sha256():
             raise _refuse("the engine output does not identify the executed input/runtime.")
-        values = _metric_values(project(output))
+        values = _metric_values(project(dry, output))
         executions.append(Execution(name, keys, dry.sha256(), output.sha256()))
         return values
 
@@ -207,13 +207,9 @@ def replay_period_money(
     currency_view: Literal["transaction", "functional"] = "transaction",
     engine: Engine = compute,
 ) -> Replay:
-    """Revenue and balance replay with the real fixed-period projection.
-
-    RPO is not yet supported by this adapter; passing it refuses rather than
-    silently omitting a requested measure from the decomposition.
-    """
+    """Fixed-period revenue, balance and dated RPO replay over retained inputs."""
     if any(key.measure not in MEASURES for key in earlier_metrics.keys() | later_metrics.keys()):
-        raise _refuse("this projection supports revenue and balances; dated RPO is still required.")
+        raise _refuse("an unsupported monetary measure was requested.")
     projection = Projection(before, entity_code, book_code, period_key, currency_view)
     entity = next(item for item in before.entities if item.code == entity_code)
     period_end = next(item.end_date for item in entity.periods if item.period_key == period_key)
@@ -223,6 +219,6 @@ def replay_period_money(
         earlier_period_end=period_end,
         earlier_metrics=earlier_metrics,
         later_metrics=later_metrics,
-        project=projection,
+        project=lambda bundle, output: replace(projection, basis=bundle)(output),
         engine=engine,
     )

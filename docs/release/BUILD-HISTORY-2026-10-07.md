@@ -6606,3 +6606,14 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Actual API checks match the existing legacy history output and verify CSV hash and rerun;
   evidence is in CI-2026-10-19.md. Ten builders remain missing, including contract and journal
   extracts. Locked datasets, watermarks, true-up and browser acceptance remain open.
+
+## Journal line BI extract — October 19, 2026
+
+- Added extract_journal_lines v1 with entity/book scope, source-time lifecycle reconstruction,
+  full/incremental creation windows, fixed typed columns and per-currency debit/credit totals.
+  A later cancellation does not erase an earlier historical population; unknown state refuses.
+- Registered JSON/CSV and retained line/label/lifecycle evidence for reruns. The existing JE
+  population shares its transition-history reader. Migration 0173 updates source disclosure.
+- Real API cancellation, historical reads, CSV hash, totals and rerun checks pass. Evidence is
+  in CI-2026-10-19.md. Nine builders remain missing, including the contract extract; locked
+  datasets, watermarks, true-up and browser acceptance remain unfinished. No deployment.

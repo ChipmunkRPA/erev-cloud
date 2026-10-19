@@ -3,8 +3,8 @@
 Revenue is posted basis plus signed posting intents in the selected posting period,
 as in the stage 15 waterfall; schedules are not recognized revenue. Balances are the
 engine's period-end rows. All values retain contract and currency identity and are
-converted from integer minor units exactly. RPO requires the dated disclosure reader
-and is deliberately not represented by an allocation-minus-revenue approximation.
+converted from integer minor units exactly. RPO uses the shared dated disclosure
+reader and retained exemption policies rather than an allocation-minus-revenue approximation.
 """
 
 from __future__ import annotations
@@ -19,9 +19,10 @@ from erev_engine.stages.s01_canonicalize.convert import contract_key_from_subjec
 
 from erev_api.problems import Problem
 
+from . import variance_rpo
 from .variance_measures import MeasureKey
 
-MEASURES: Final = frozenset({"REVENUE", "CONTRACT_LIABILITY", "CONTRACT_ASSET_AND_UNBILLED"})
+MEASURES: Final = frozenset({"REVENUE", "CONTRACT_LIABILITY", "CONTRACT_ASSET_AND_UNBILLED", "RPO"})
 
 
 def _refuse(detail: str) -> Problem:
@@ -151,4 +152,13 @@ class Projection:
                     raise _refuse("a revenue intent must carry nonnegative integer minor units.")
                 currency = line.txn_currency if suffix == "txn" else line.functional_currency
                 revenue(intent.subject_key, currency, value if line.side == "C" else -value)
+        result.update(
+            variance_rpo.project(
+                self.basis,
+                book,
+                entity_code=self.entity_code,
+                period_key=self.period_key,
+                functional=self.currency_view == "functional",
+            )
+        )
         return result

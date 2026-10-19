@@ -2,6 +2,18 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Dated RPO in close variance replay — October 19, 2026
+
+- Connected RPO through the existing dated trace reader: selected period-end scheduled/awaiting
+  remainder, disclosure-entry/status checks and retained duration/right-to-invoice exemptions.
+  The projection now receives each executed input bundle, including new activation events.
+- Real engine: May delivery leaves April RPO at 795, moves May RPO to 736.16, and attributes
+  revenue +58.84/RPO -58.84 to LATE_EVENT. Activation, duration exemption and missing-trace
+  cases are covered. Nineteen focused tests, Ruff and Mypy pass; no database writes in projection.
+- Amount-specific VC exemptions and foreign functional RPO remain unsupported and refuse.
+  Retained-source loading, other replay phases, report/job/UI and financial acceptance remain
+  required. Seven missing report builders remain unregistered. No deployment/readiness claim.
+
 ## Fixed-period variance revenue/balance projection — October 19, 2026
 
 - Connected event replay to a server-owned monetary projection for recognized revenue, contract
@@ -217,17 +229,6 @@
 - All nine extract builders now exist; eight other catalogue builders remain. Locked datasets,
   watermarks, true-up, broader acceptance and independent accounting sign-off remain open.
   Continue unfinished reporting development; no deployment.
-
-## Journal line BI extract — October 19, 2026
-
-- Added extract_journal_lines v1 with entity/book scope, source-time lifecycle reconstruction,
-  full/incremental creation windows, fixed typed columns and per-currency debit/credit totals.
-  A later cancellation does not erase an earlier historical population; unknown state refuses.
-- Registered JSON/CSV and retained line/label/lifecycle evidence for reruns. The existing JE
-  population shares its transition-history reader. Migration 0173 updates source disclosure.
-- Real API cancellation, historical reads, CSV hash, totals and rerun checks pass. Evidence is
-  in CI-2026-10-19.md. Nine builders remain missing, including the contract extract; locked
-  datasets, watermarks, true-up and browser acceptance remain unfinished. No deployment.
 
 ## Outstanding release verification
 

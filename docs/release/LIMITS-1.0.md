@@ -1566,3 +1566,21 @@ Mypy pass. This still is not the report/job pipeline. Dated RPO, authorized reta
 source selection, reference/FX/membership/posting-basis replay and report/UI remain
 open. No missing report builder is newly registered; no deployment or full financial
 acceptance is claimed.
+
+## October 19, 2026 — dated RPO in variance replay
+
+RPO now uses the existing dated trace reader, with transient in-memory row keys and
+no persisted contract/version writes. It reads scheduled and awaiting remainders at
+the selected period end, applies contract status and disclosure-entry dates, and
+uses retained duration/right-to-invoice exemption policies. Every replay projection
+receives the bundle actually executed, including newly admitted activation events.
+Amount-specific VC exemptions still require dated exclusion evidence and refuse;
+foreign-currency functional RPO also refuses without a supported valuation basis.
+
+Real-engine coverage proves a May delivery leaves April RPO at 795 and moves May
+RPO to 736.16, with +58.84 revenue and -58.84 RPO reconciled under LATE_EVENT. It also
+covers activation during replay, duration exemption and missing-trace refusal.
+Nineteen scoped tests, Ruff and Mypy pass. This is not K-03 financial acceptance or
+a completed report. Authorized retained-source loading, reference/FX/membership/
+posting-basis replay and report/job/UI remain open; seven builders remain unregistered.
+No deployment or independent accounting sign-off is claimed.
