@@ -1,5 +1,11 @@
 # eRev Cloud 1.0: stated limits of the release
 
+Latest disclosure snapshot update (October 19): draft report success now atomically retains
+seven immutable E-65 snapshot records with original child/policy evidence. Draft records have
+no lock ID and cannot substitute for lock-time capture. Lock-job integration, snapshot read
+APIs and as-locked disclosure execution remain incomplete; no locked-period support is claimed.
+
+
 Latest quarterly disclosure update (October 19): six displayed flow inputs now receive
 period/QTD comparison summaries in JSON/viewer and chapter Excel/PDF exports. Original tables
 remain available. Semantic identities include currency; missing rows remain blank with presence

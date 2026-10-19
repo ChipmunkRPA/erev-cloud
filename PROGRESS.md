@@ -2,6 +2,22 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Immutable draft disclosure snapshots — October 19, 2026
+
+- Added disclosure_snapshots.write_draft: locks the running parent and saves all seven E-65
+  kinds with entity/book/period/cutoff, original per-section child inputs/stamps, policies and
+  supporting source digests. Suppression affects published tables, not retained snapshot inputs.
+- The normal worker attaches snapshot IDs in the same transaction as report output, source
+  binding and SUCCEEDED. Repeated writes reuse a complete identical set; duplicate/partial,
+  mismatched or unavailable attachments refuse. Drafts explicitly have no period_lock_id.
+- Real API/16-child/parent/rebuild journey now verifies seven rows per parent, hashes and
+  attachments, repeated-writer reuse, and new rerun IDs with identical per-kind data hashes.
+  Ruff and production-module Mypy pass. Snapshot rows use the existing append-only table.
+- Lock-time capture remains incomplete: current E-64 files cannot alone supply opening-liability
+  revenue and policy facts. The lock job must capture these at its exact cutoff and atomically
+  publish genuinely locked disclosures; drafts must never be promoted/relabeled as locked.
+  Snapshot read APIs and as-locked parent integration also remain open. No deployment.
+
 ## Quarterly disclosure comparison summaries — October 19, 2026
 
 - Added semantic period/QTD comparison for the six displayed flow reports. Row identities use
@@ -210,21 +226,6 @@
   frozen snapshots, practical expedients, PDF and viewer. Nine live child inputs cover section 6
   in addition to the spec's older eight-core-child acceptance; full pack acceptance remains open.
   Five catalogue builders remain unregistered; no deployment.
-
-## Disclosure workbook output foundation — October 19, 2026
-
-- Added WorkbookSection and render_xlsx_pack: a contents worksheet identifies each section's
-  source run/hash/status, followed by separately typed worksheets with their original source stamps,
-  totals and tie-outs. Indexed names remain unique after Excel's 31-character truncation.
-- Sections omitted under an election require a note and cannot carry rendered rows, totals or
-  tie-outs. Their undisplayed source data must remain in retained evidence, outside the workbook.
-- Shared the existing cell/grid writer with single-report exports, preserving numeric money,
-  formula guards and disabled automatic URL conversion. Apostrophes at worksheet-name edges are
-  sanitized. A seven-section workbook round-trip and existing single-report checks pass (4 checks);
-  Ruff and Mypy pass for the changed output code.
-- This is the output component, not a registered disclosure_pack builder. Child-run orchestration,
-  frozen disclosure snapshot binding, seven-section assembly, PDF and viewer remain unfinished.
-  Five catalogue builders remain unregistered. No new PR or deployment.
 
 ## Outstanding release verification
 

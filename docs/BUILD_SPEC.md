@@ -10146,6 +10146,11 @@ Author BS-3. Uses CTR (PHASES §1 row 12). Indicative size 16 items; this phase 
   - **Gates:** GK-01 `make ci`; GK-07 `make e2e SPEC=frontend/e2e/projects/screens.spec.ts`
 
 - [ ] **RPS-15 Disclosure snapshots and the disclosure pack.**
+  - October 19 draft-snapshot increment: successful draft packs now atomically attach seven
+    append-only E-65 snapshots retaining original input evidence and policy facts. Repeated writer
+    calls reuse identical records; reruns create new records with identical data digests. These
+    rows have no lock ID. Lock-time capture, snapshot read APIs and as-locked execution remain open.
+
   - October 19 quarterly comparison increment: six displayed flow inputs receive adjacent
     period/QTD summaries, matched by semantic identity and currency. Disaggregation uses existing
     range totals; absent rows remain blank. Original source tables remain in all formats. Real

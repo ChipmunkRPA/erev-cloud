@@ -4943,7 +4943,7 @@ def test_disclosure_children_attach_once_and_survive_retry(
 ) -> None:
     from dataclasses import replace
 
-    from erev_api.db.tables import report_run
+    from erev_api.db.tables import disclosure_snapshot, report_run
     from erev_api.domain.reports import disclosure_children, disclosure_readiness, tie_outs
     from support.principals import sign_in
     from support.principals import workspace as signed_workspace
@@ -5209,6 +5209,17 @@ def test_disclosure_children_attach_once_and_survive_retry(
         with pytest.raises(Problem):
             disclosure_workbook.render(pack, pack_stamp, bad_stamps)
 
+    from erev_api.domain.reports import disclosure_snapshots
+
+    original_writer = disclosure_snapshots.write_draft
+
+    def write_twice(uow, identity, binding):
+        ids = original_writer(uow, identity, binding)
+        assert original_writer(uow, identity, binding) == ids
+        return ids
+
+    monkeypatch.setattr(disclosure_snapshots, "write_draft", write_twice)
+
     # Publish the actual parent through the worker; the public catalogue gate remains closed.
     with world.place.uow() as uow:
         parent_task_id = uow.session.scalar(
@@ -5233,6 +5244,19 @@ def test_disclosure_children_attach_once_and_survive_retry(
             .one()
         )
         assert published["status"] == "SUCCEEDED", published["problem"]
+        snapshots = list(
+            uow.session.execute(
+                select(disclosure_snapshot).where(
+                    disclosure_snapshot.c.report_run_id == parent["id"]
+                )
+            ).mappings()
+        )
+        assert len(snapshots) == 7
+        assert {row["id"] for row in snapshots} == set(published["disclosure_snapshot_ids"])
+        assert all(
+            row["period_lock_id"] is None and row["period_id"] == period.id for row in snapshots
+        )
+        assert sum(len(row["data"]["children"]) for row in snapshots) == 14
         assert (
             uow.session.scalar(select(job.c.state).where(job.c.id == parent["job_id"]))
             == "SUCCEEDED"
@@ -5246,6 +5270,8 @@ def test_disclosure_children_attach_once_and_survive_retry(
 
         from erev_engine.canonical import sha256_hex
 
+        assert all(sha256_hex(row["data"]) == row["data_sha256"] for row in snapshots)
+        snapshot_hashes = {row["disclosure_kind"]: row["data_sha256"] for row in snapshots}
         document = json.loads(output)
         assert len(document["sections"]) == 7
         comparisons = [
@@ -5370,3 +5396,16 @@ def test_disclosure_children_attach_once_and_survive_retry(
         assert repeated["tie_out_results"] == original["tie_out_results"]
         assert repeated["child_report_run_ids"] == original["child_report_run_ids"]
         assert repeated["source_binding"]["evidence"] == original["source_binding"]["evidence"]
+
+        repeated_snapshots = list(
+            uow.session.execute(
+                select(disclosure_snapshot).where(disclosure_snapshot.c.report_run_id == rerun_id)
+            ).mappings()
+        )
+        assert len(repeated_snapshots) == 7
+        assert set(repeated["disclosure_snapshot_ids"]).isdisjoint(
+            original["disclosure_snapshot_ids"]
+        )
+        assert {
+            row["disclosure_kind"]: row["data_sha256"] for row in repeated_snapshots
+        } == snapshot_hashes

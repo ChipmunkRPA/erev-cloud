@@ -2542,6 +2542,10 @@ def run_report(jc: JobContext, params: Mapping[str, Any]) -> JobOutcome:
         }
         if run["period_lock_id"] is None:
             values["source_binding"] = source_binding  # S15-R-24; NULL stays for as-locked runs
+        if str(run["report_code"]) == "disclosure_pack":
+            from erev_api.domain.reports.disclosure_snapshots import write_draft
+
+            values["disclosure_snapshot_ids"] = write_draft(uow, run_id, source_binding)
         finished = apply(
             session, TABLE, run_id, to_status=SUCCEEDED, set_values=values, expected_status=RUNNING
         )

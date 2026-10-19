@@ -7105,3 +7105,19 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Five catalogue builders remain unregistered: actual_vs_forecast, forecast_outputs,
   contract_sample_pack, period_evidence_pack and disclosure_pack. Populated RPT-42 worker/browser
   acceptance, XLSX/PDF journeys and migration replay/sandbox lifecycle remain unfinished.
+
+
+## Disclosure workbook output foundation — October 19, 2026
+
+- Added WorkbookSection and render_xlsx_pack: a contents worksheet identifies each section's
+  source run/hash/status, followed by separately typed worksheets with their original source stamps,
+  totals and tie-outs. Indexed names remain unique after Excel's 31-character truncation.
+- Sections omitted under an election require a note and cannot carry rendered rows, totals or
+  tie-outs. Their undisplayed source data must remain in retained evidence, outside the workbook.
+- Shared the existing cell/grid writer with single-report exports, preserving numeric money,
+  formula guards and disabled automatic URL conversion. Apostrophes at worksheet-name edges are
+  sanitized. A seven-section workbook round-trip and existing single-report checks pass (4 checks);
+  Ruff and Mypy pass for the changed output code.
+- This is the output component, not a registered disclosure_pack builder. Child-run orchestration,
+  frozen disclosure snapshot binding, seven-section assembly, PDF and viewer remain unfinished.
+  Five catalogue builders remain unregistered. No new PR or deployment.
