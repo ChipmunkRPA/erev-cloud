@@ -2,6 +2,25 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Frozen disclosure execution and exports — October 19, 2026
+
+- Added a verified E-65 reader: complete seven-kind population, single synchronous origin,
+  immutable attachment/scope/cutoff, payload hashes, typed child data/stamps and reconstructed
+  document equality. All original inputs, including supporting waterfalls, come from snapshots.
+- Ordinary report creation and rerun now admit lock-backed disclosure packs, deriving the exact
+  lock cutoff and checking explicit selectors. Period-only uses nine inputs, quarter uses sixteen.
+  The normal worker renders JSON/XLSX/PDF with current requester permissions. Existing frozen
+  inputs are reused; no source jobs, new snapshots, child file reads or live-policy fallback.
+- Snapshot listing follows attachments for derived exports. Closed-period report views default
+  to frozen disclosures and saved quarter inputs, without forwarding an unrelated global timestamp.
+  Locks without complete E-65 evidence refuse rather than reconstructing past disclosures today.
+- Real database/API/worker journey passes all formats, matching original quarterly JSON digest,
+  same-source rerun, monthly selection and unchanged snapshot count. Python lint/type checks
+  and focused frontend parameter/type/lint checks pass. PDF byte-format verification is not
+  visual acceptance: wide tables, full browser/accounting validation and release checks remain.
+- RPS-15 remains open; other missing reports and system work remain. No deployment or readiness
+  claim; changes published directly on main.
+
 ## Atomic disclosure publication at lock — October 19, 2026
 
 - ASC606/IFRS15 lock approval now captures sixteen period/QTD inputs and policies through the
@@ -208,23 +227,6 @@
   side-by-side presentation, PDF/viewer, frozen disclosures and parent worker publication remain
   open. The fixture has no booked accounting population; no full accounting acceptance claimed.
   Five catalogue builders remain unregistered; no deployment.
-
-## Seven-section disclosure assembly — October 19, 2026
-
-- Added disclosure_assembly.prepare/assemble: verifies complete attached child population and
-  common tenant/entity/book/cutoff, captures entity policy facts at that exact cutoff, and groups
-  verified child tables into all seven disclosure chapters with source run/hash references.
-- Captures all nonpublic relief and interim policy values. Applies POL-192/193/196 at table level:
-  balances remain while rollforward/other suppressed tables hide rows and totals. POL-195 hides
-  the expedient table. Original child inputs remain available separately; interim-required chapter
-  flags follow the resolved pack election. Disaggregation retains its existing timing-only handling.
-- The database journey now assembles seven chapters after executing all 16 child tasks; fixture
-  clock advances before parent creation so policy and child cutoffs match. It remains a no-booked-
-  population journey, not full accounting acceptance. Two focused assembly/omission checks pass;
-  Ruff and production-module Mypy pass.
-- Still open: final side-by-side period/quarter presentation, chapter workbook/PDF and viewer
-  integration, frozen disclosures and durable parent worker/dependency/publication lifecycle.
-  Five catalogue builders remain unregistered. This assembly model is not a finished disclosure pack.
 ## Outstanding release verification
 
 These checks need current release-candidate evidence. Historical October 3 results

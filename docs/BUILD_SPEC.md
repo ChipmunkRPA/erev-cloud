@@ -10146,6 +10146,15 @@ Author BS-3. Uses CTR (PHASES §1 row 12). Indicative size 16 items; this phase 
   - **Gates:** GK-01 `make ci`; GK-07 `make e2e SPEC=frontend/e2e/projects/screens.spec.ts`
 
 - [ ] **RPS-15 Disclosure snapshots and the disclosure pack.**
+  - October 19 frozen-execution increment: new report creation/rerun accepts an E-65 lock and
+    derives exact cutoff/scope. Reconstructs all inputs from seven authenticated snapshot documents,
+    preserves synchronous provenance and original stamps, and selects period-only or period/QTD
+    populations. JSON/XLSX/PDF execute through the ordinary worker and current-requester checks;
+    no child jobs, new snapshots, live policies or child file reads. Snapshot list filters follow
+    attached evidence for derived exports. A real API/worker journey verifies all three formats,
+    monthly selection, quarterly/rerun JSON identity and unchanged snapshot count. PDF wide-table
+    readability, full browser/accounting acceptance and release checks remain open.
+
   - October 19 lock-publication increment: ASC606/IFRS15 lock approval captures sixteen period/
     QTD inputs in the shared SYSTEM reader and atomically saves actual synchronous source reports,
     a seven-chapter JSON parent, seven immutable snapshots and CTL-029/030 evidence. No fake jobs;

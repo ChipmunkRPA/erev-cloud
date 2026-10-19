@@ -11,6 +11,7 @@ from erev_api.api.lists import (
     FilterSpec,
     ListParams,
     ListSpec,
+    invalid,
     list_params,
     paginate,
 )
@@ -38,8 +39,8 @@ SPEC = ListSpec(
         "disclosure_kind": FilterSpec(
             "disclosure_kind", snapshot.c.disclosure_kind, "in", choices=frozenset(DisclosureKind)
         ),
-        "report_run_id": FilterSpec("report_run_id", snapshot.c.report_run_id, "exact"),
     },
+    custom_filters=frozenset({"report_run_id"}),
 )
 
 
@@ -59,11 +60,16 @@ def disclosure_snapshots_list(
     disclosure_kind: Annotated[list[DisclosureKind] | None, Query()] = None,
     report_run_id: Annotated[UUID | None, Query()] = None,
 ) -> ListOut[DisclosureSnapshotSummaryOut]:
-    del entity, book, period_key, disclosure_kind, report_run_id
+    del entity, book, period_key, disclosure_kind
+    if len(params.filters.get("report_run_id", ())) > 1:
+        raise invalid("report_run_id", "Choose one report run.")
     result = queries.read(
         ctx,
         lambda session: paginate(
-            session, disclosure_queries.statement(ctx.principal), SPEC, params
+            session,
+            disclosure_queries.statement(ctx.principal, attached_to=report_run_id),
+            SPEC,
+            params,
         ),
     )
     response.headers["Cache-Control"] = "no-store"

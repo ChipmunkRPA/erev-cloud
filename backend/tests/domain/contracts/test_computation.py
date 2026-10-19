@@ -5600,3 +5600,99 @@ def test_disclosure_children_attach_once_and_survive_retry(
     assert saved.status_code == 200, saved.text
     assert len(saved.json()["items"]) == 7
     assert all(row["source"] == "LOCKED" for row in saved.json()["items"])
+
+    # Frozen exports rebuild from E-65. Child output files and current policy/builders are not read.
+    from erev_api.domain.reports import disclosure_frozen
+
+    monkeypatch.setattr(
+        disclosure_expedients, "capture", lambda *args, **kwargs: pytest.fail("live policies")
+    )
+    with world.place.uow() as uow:
+        frozen = disclosure_frozen.read(uow.session, dict(frozen_parent))
+        assert len(frozen.pack.children) == 16
+        assert tuple(frozen_parent["disclosure_snapshot_ids"]) == frozen.snapshot_ids
+        damaged_run = {**frozen_parent, "known_at": uow.now}
+        if uow.now != frozen_parent["known_at"]:
+            with pytest.raises(Problem):
+                disclosure_frozen.read(uow.session, damaged_run)
+        bad_attached = {**frozen_parent, "disclosure_snapshot_ids": []}
+        with pytest.raises(Problem):
+            disclosure_frozen.read(uow.session, bad_attached)
+
+    def finish_frozen(response: Any) -> Mapping[str, Any]:
+        assert response.status_code == 202, response.text
+        identity = UUID(response.headers["X-Erev-Report-Run-Id"])
+        job_id = UUID(response.json()["id"])
+        with world.place.uow() as uow:
+            task_id = uow.session.scalar(
+                select(job.c.procrastinate_job_id).where(job.c.id == job_id)
+            )
+            uow.session.execute(
+                text("UPDATE procrastinate_jobs SET status = 'doing' WHERE id = :id"),
+                {"id": task_id},
+            )
+            uow.commit()
+        run_job(
+            job_id, world.place.tenant_id, attempt=1, runtime=runtime, delivered_task_id=task_id
+        )
+        with world.place.uow() as uow:
+            built = dict(
+                uow.session.execute(select(report_run).where(report_run.c.id == identity))
+                .mappings()
+                .one()
+            )
+            assert built["status"] == "SUCCEEDED", built["problem"]
+            assert built["source_binding"] is None
+            assert built["disclosure_snapshot_ids"] == frozen_parent["disclosure_snapshot_ids"]
+        return built
+
+    for output_format in ("JSON", "XLSX", "PDF"):
+        built = finish_frozen(
+            post(
+                world.app,
+                "/api/v1/report-runs",
+                actor,
+                {
+                    "report_code": "disclosure_pack",
+                    "output_format": output_format,
+                    "parameters": {"period_lock_id": str(lock_values["id"]), "quarter": True},
+                },
+            )
+        )
+        assert built["output_sha256"] == frozen_parent["output_sha256"]
+        exported = get(world.app, f"/api/v1/report-runs/{built['id']}/output", actor)
+        assert exported.status_code == 200, exported.text
+        if output_format == "XLSX":
+            assert exported.content.startswith(b"PK")
+        elif output_format == "PDF":
+            assert exported.content.startswith(b"%PDF-")
+        else:
+            assert len(exported.json()["sections"]) == 7
+        attached = get(
+            world.app,
+            "/api/v1/disclosure-snapshots",
+            actor,
+            {"report_run_id": str(built["id"]), "limit": 3, "count": True},
+        )
+        assert attached.status_code == 200, attached.text
+        assert attached.headers["X-Erev-Total-Count"] == "7"
+
+    monthly = finish_frozen(
+        post(
+            world.app,
+            "/api/v1/report-runs",
+            actor,
+            {
+                "report_code": "disclosure_pack",
+                "output_format": "JSON",
+                "parameters": {"period_lock_id": str(lock_values["id"])},
+            },
+        )
+    )
+    assert len(monthly["child_report_run_ids"]) == 9
+    repeated_lock = finish_frozen(
+        post(world.app, f"/api/v1/report-runs/{frozen_parent_id}/rerun", actor, {})
+    )
+    assert repeated_lock["output_sha256"] == frozen_parent["output_sha256"]
+    with world.place.uow() as uow:
+        assert uow.session.scalar(select(func.count()).select_from(disclosure_snapshot)) == 21

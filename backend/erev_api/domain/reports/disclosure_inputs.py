@@ -93,6 +93,22 @@ def rebuild(
             or sha256_hex(facts["policies"]) != facts["policy_sha256"]
         ):
             raise ValueError("scope or digest")
+        return from_facts(run, facts)
+    except (KeyError, TypeError, ValueError, AttributeError) as error:
+        raise Problem("validation-failed", "The retained disclosure inputs are invalid.") from error
+
+
+def from_facts(
+    run: Mapping[str, Any], facts: dict[str, Any], *, synchronous: bool = False
+) -> tuple[disclosure_assembly.Pack, dict[UUID, RunStamp], dict[str, Any]]:
+    """Decode authenticated retained facts; the lock reader supplies synchronous provenance."""
+    try:
+        if (
+            facts["version"] != 2
+            or any(facts[key] != value for key, value in scope(run).items())
+            or sha256_hex(facts["policies"]) != facts["policy_sha256"]
+        ):
+            raise ValueError("scope or digest")
         children = []
         stamps = {}
         for item in facts["children"]:
@@ -104,11 +120,12 @@ def rebuild(
                 tuple(item["sections"]),
                 item["basis"],
                 UUID(item["run_id"]),
-                UUID(item["job_id"]),
+                None if synchronous and item["job_id"] is None else UUID(item["job_id"]),
                 item["parameters_sha256"],
             )
             if (
-                source.key != f"{code}:{source.basis}"
+                (synchronous and source.job_id is not None)
+                or source.key != f"{code}:{source.basis}"
                 or source.sections != disclosure_plan.SECTIONS[code]
                 or source.basis not in {"PERIOD", "QUARTER_TO_DATE"}
                 or report["version"] != 1

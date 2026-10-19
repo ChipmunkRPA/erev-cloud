@@ -28,6 +28,7 @@ from erev_api.domain.reports import (
     tie_outs,
 )
 from erev_api.domain.reports.builders import SourceBinding
+from erev_api.domain.reports.evidence_archive import MAX_PAYLOAD_BYTES
 from erev_api.domain.reports.outputs import ReportData, manifest, utc_text
 from erev_api.enums import ControlResult
 from erev_api.numbering import next_number
@@ -329,6 +330,13 @@ def publish(uow: UnitOfWork, lock_id: UUID, captured: Mapping[str, Any]) -> UUID
         documents["EXPEDIENTS_USED"]["supporting_children"] = [
             child for child in facts["children"] if not child["sections"]
         ]
+        if (
+            sum(len(canonical_bytes(document)) for document in documents.values())
+            > MAX_PAYLOAD_BYTES
+        ):
+            raise Problem(
+                "validation-failed", "Disclosure snapshots exceed the retained input limit."
+            )
         rows = [
             {
                 "tenant_id": uow.principal.tenant_id,

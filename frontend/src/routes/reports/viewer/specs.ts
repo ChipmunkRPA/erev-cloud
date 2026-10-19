@@ -311,7 +311,8 @@ const PERIOD_KEYS: readonly string[] = ["period_key", "from_period_key", "to_per
  * such a report to "As locked"; every other report shows current figures and says so.
  */
 export function hasLockDataset(code: string): boolean {
-  return Object.hasOwn(LOCK_DATASETS, code);
+  // Disclosure packs use seven E-65 snapshots, separately from the E-64 table.
+  return code === "disclosure_pack" || Object.hasOwn(LOCK_DATASETS, code);
 }
 
 /** True for a report whose runs can name a lock at all: its schema has `period_lock_id`. */
@@ -441,7 +442,10 @@ export function runParameters(
       }
     }
     parameters[LOCK_KEY] = context.snapshot;
-    if (has("known_at") && context.knownAt !== null) {
+    if (definition.code === "disclosure_pack") {
+      parameters.quarter = values.quarter !== "false";
+    }
+    if (has("known_at") && context.knownAt !== null && definition.code !== "disclosure_pack") {
       parameters.known_at = context.knownAt;
     }
     return parameters;

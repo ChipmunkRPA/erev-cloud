@@ -1470,7 +1470,7 @@ def _resolve(
     if parameters.get("period_lock_id") is not None:
         lock_id = UUID(str(parameters["period_lock_id"]))
         scope = locked.lock_scope(session, lock_id)
-        kind = locked.snapshot_kind_of(code)
+        kind = "DISCLOSURE" if code == "disclosure_pack" else locked.snapshot_kind_of(code)
         if scope is None or scope.entity_id not in entities.values():
             errors.append(_finding("parameters.period_lock_id", LOCK_UNKNOWN, RULE_SCOPE))
         elif kind is None:
@@ -1488,7 +1488,7 @@ def _resolve(
             # CLO8-SCOPE-R1: the run's scope IS the lock's — explicit selectors must equal it,
             # omitted ones are derived, nothing else is admitted; the run persists that scope.
             normalized, lock_errors = locked.reconcile_selectors(
-                given, scope, properties, kind=kind
+                given, scope, properties, kind=kind, disclosure=code == "disclosure_pack"
             )
             errors.extend(lock_errors)
             if KNOWN_AT in properties:
@@ -1497,6 +1497,23 @@ def _resolve(
                 # F-RPS-CUTOFF-R1 × CLO-8 (record §43 addendum): the stored basis survives the
                 # lock normalisation — an admitted key, not a selector; the scope stays the lock's.
                 normalized[KNOWN_AT_BASIS] = basis
+            if code == "disclosure_pack":
+                cutoff = session.scalar(
+                    select(period_lock.c.cutoff_known_at).where(period_lock.c.id == lock_id)
+                )
+                if cutoff is None:
+                    errors.append(
+                        _finding("parameters.period_lock_id", "The lock has no disclosure cutoff.")
+                    )
+                else:
+                    if known_at_given and known_at != cutoff:
+                        errors.append(
+                            _finding("parameters.known_at", "Use the lock's saved cutoff.")
+                        )
+                    known_at = cutoff
+                    normalized[KNOWN_AT] = utc_text(cutoff)
+                    normalized[KNOWN_AT_BASIS] = HISTORICAL_BASIS
+                    historical = True
             parameters = normalized
             entity_ids = (scope.entity_id,)
     if code == "disclosure_pack":
@@ -1761,7 +1778,24 @@ def _insert_run(
         from erev_api.domain.reports.disclosure_children import ensure
 
         # Attach before commit/dispatch so the ready hook never observes a partial plan.
-        if resolved.source_binding is None:
+        if resolved.period_lock_id is not None:
+            from erev_api.domain.reports.disclosure_frozen import read
+
+            frozen_run = dict(
+                session.execute(select(report_run).where(report_run.c.id == run_id))
+                .mappings()
+                .one()
+            )
+            frozen = read(session, frozen_run, allow_unattached=True)
+            session.execute(
+                update(report_run)
+                .where(report_run.c.id == run_id)
+                .values(
+                    child_report_run_ids=[child.source.run_id for child in frozen.pack.children],
+                    disclosure_snapshot_ids=list(frozen.snapshot_ids),
+                )
+            )
+        elif resolved.source_binding is None:
             ensure(uow, run_id)
         else:
             from erev_api.domain.reports.disclosure_inputs import rebuild
@@ -2326,7 +2360,7 @@ def _export_requester(
     """Recheck before transitions, completed-job replay, building and output persistence."""
     stored = run.get("ai_export_access")
     if str(run["report_code"]) == "disclosure_pack":
-        if stored is not None or run["period_lock_id"] is not None:
+        if stored is not None:
             raise Problem("invalid-transition")
         ctx = report_requester.validation_requester(jc, uow, run)
         parallel_builder.require_access(uow, replace(report_params(run), requester=ctx))
@@ -2447,7 +2481,7 @@ def run_report(jc: JobContext, params: Mapping[str, Any]) -> JobOutcome:
             raise Problem("validation-failed", NOT_AVAILABLE)
         heads = {} if requester is not None else _ledger_heads(session)
         style = str(setting(session, NEGATIVE_NUMBER_STYLE, known_at=uow.now))
-        if run["period_lock_id"] is not None:
+        if run["period_lock_id"] is not None and run["report_code"] != "disclosure_pack":
             # S15-R-19 (rev 1.31; D-98 candidate 96): an as-locked run reads the lock's frozen
             # dataset of the report's kind and no live table; refusals by name, never a live label.
             locked.assert_run_matches(session, run)  # CLO8-SCOPE-R1: the run's scope is the lock's
@@ -2542,7 +2576,7 @@ def run_report(jc: JobContext, params: Mapping[str, Any]) -> JobOutcome:
         }
         if run["period_lock_id"] is None:
             values["source_binding"] = source_binding  # S15-R-24; NULL stays for as-locked runs
-        if str(run["report_code"]) == "disclosure_pack":
+        if str(run["report_code"]) == "disclosure_pack" and run["period_lock_id"] is None:
             from erev_api.domain.reports.disclosure_snapshots import write_draft
 
             values["disclosure_snapshot_ids"] = write_draft(uow, run_id, source_binding)

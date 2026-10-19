@@ -26,8 +26,13 @@ from erev_api.uow import UnitOfWork
 def build(
     uow: UnitOfWork, run: Mapping[str, Any], definition: Mapping[str, Any], style: str
 ) -> tuple[ReportData, framework._Rendered, dict[str, Any]]:
-    if run["report_version"] != 1 or run["period_lock_id"] is not None:
+    if run["report_version"] != 1:
         raise Problem("validation-failed", "Unsupported disclosure version or frozen source.")
+    if run["period_lock_id"] is not None:
+        from erev_api.domain.reports.disclosure_frozen import read
+
+        frozen = read(uow.session, run)
+        return render(uow, run, definition, style, frozen.pack, frozen.stamps, frozen.facts)
     if run["source_binding"] is not None:
         pack, child_stamps, facts = disclosure_inputs.rebuild(run)
     else:

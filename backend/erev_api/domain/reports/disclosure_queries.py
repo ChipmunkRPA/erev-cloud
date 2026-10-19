@@ -16,7 +16,9 @@ from erev_api.problems import Problem
 from erev_api.schemas.disclosures import DisclosureSnapshotOut, DisclosureSnapshotSummaryOut
 
 
-def statement(principal: Principal, *, detail: bool = False) -> Select[Any]:
+def statement(
+    principal: Principal, *, detail: bool = False, attached_to: UUID | None = None
+) -> Select[Any]:
     columns = [
         snapshot.c.id,
         snapshot.c.disclosure_kind,
@@ -72,6 +74,18 @@ def statement(principal: Principal, *, detail: bool = False) -> Select[Any]:
             ),
         )
     )
+    if attached_to is not None:
+        attachments = framework.visible(
+            select(func.unnest(report_run.c.disclosure_snapshot_ids)).where(
+                report_run.c.tenant_id == principal.tenant_id,
+                report_run.c.id == attached_to,
+                report_run.c.report_code == "disclosure_pack",
+                report_run.c.status == "SUCCEEDED",
+            ),
+            principal,
+            "report.run",
+        ).correlate(None)
+        query = query.where(snapshot.c.id.in_(attachments))
     return framework.visible(query, principal, "report.run")
 
 

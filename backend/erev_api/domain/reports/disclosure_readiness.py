@@ -31,7 +31,10 @@ def ready(session: Session, job_id: UUID, params: Mapping[str, Any]) -> bool:
     if parent["status"] in {"SUCCEEDED", "FAILED"}:
         return True  # Let the normal terminal-run handler settle this delivery.
     if parent["period_lock_id"] is not None:
-        raise Problem("invalid-transition", "Frozen disclosure execution is not available.")
+        from erev_api.domain.reports.disclosure_frozen import read
+
+        read(session, dict(parent))
+        return True
     if parent["source_binding"] is not None:
         from erev_api.domain.reports.disclosure_inputs import rebuild
 

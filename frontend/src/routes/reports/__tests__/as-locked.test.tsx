@@ -26,7 +26,7 @@ import {
 import { installGridViewport } from "../../../test/layout";
 import { apiUrl, installMswServer, server } from "../../../test/msw";
 import { toolbarKeys } from "../viewer/ParametersToolbar";
-import { LEGACY_JE_SUMMARY, PACK_CODES } from "../viewer/specs";
+import { hasLockDataset, runParameters, LEGACY_JE_SUMMARY, PACK_CODES } from "../viewer/specs";
 
 installMswServer();
 installMemoryStorage();
@@ -437,7 +437,8 @@ const VIEWS = AS_LOCKED.definitions
   .map((definition) => definition.code)
   .filter((code) => !PACK_CODES.has(code) && code !== LEGACY_JE_SUMMARY);
 const WITH_DATASET = VIEWS.filter((code) => Object.hasOwn(AS_LOCKED.kinds, code));
-const WITHOUT_DATASET = VIEWS.filter((code) => !Object.hasOwn(AS_LOCKED.kinds, code));
+// The composed E-65 disclosure path has separate cases below and does not use this E-64 fake.
+const WITHOUT_DATASET = VIEWS.filter((code) => code !== "disclosure_pack" && !Object.hasOwn(AS_LOCKED.kinds, code));
 
 /**
  * SF-08:report of a frozen report on a locked August: as locked by default on the lock whose
@@ -904,4 +905,18 @@ describe("RV-04 on a permanently locked period: the lock the permanent lock seal
     ).toBeTruthy();
     expect(screen.queryByTestId("SF-08-banner-rerun-result")).toBeNull();
   });
+});
+
+
+it("disclosure uses its lock cutoff and saved quarter inputs instead of the global current timestamp", () => {
+  const definition = definitionOf("disclosure_pack");
+  const context = {
+    entity: LOCK.entity_code, book: LOCK.book_code, periodKey: LOCK.period_key,
+    periods: PERIODS, snapshot: LOCK.id, knownAt: "2026-10-19T00:00:00Z", currencyView: null,
+  };
+  expect(hasLockDataset("disclosure_pack")).toBe(true);
+  const parameters = runParameters(definition, context, {});
+  expect(parameters).toEqual({ entity_codes: [LOCK.entity_code], book: LOCK.book_code,
+    period_key: LOCK.period_key, period_lock_id: LOCK.id, quarter: true });
+  expect(runParameters(definition, context, { quarter: "false" }).quarter).toBe(false);
 });

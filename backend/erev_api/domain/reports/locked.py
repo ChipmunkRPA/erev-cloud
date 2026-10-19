@@ -242,7 +242,12 @@ def report_data(dataset: LockedDataset) -> ReportData:
 
 
 def reconcile_selectors(
-    given: Mapping[str, Any], scope: LockScope, properties: Mapping[str, Any], *, kind: str
+    given: Mapping[str, Any],
+    scope: LockScope,
+    properties: Mapping[str, Any],
+    *,
+    kind: str,
+    disclosure: bool = False,
 ) -> tuple[dict[str, Any], list[ProblemError]]:
     """The parameters an as-locked run persists, and the findings against the caller's ``given``
     (S15-R-19 rev 1.31, CLO8-SCOPE-R1): every explicit entity, book or period selector must equal
@@ -255,7 +260,7 @@ def reconcile_selectors(
         errors.append(ProblemError(field=f"parameters.{key}", rule_id=RULE, message=message))
 
     for key in sorted(given):
-        if key not in ADMITTED_KEYS:
+        if key not in (ADMITTED_KEYS | {"quarter"} if disclosure else ADMITTED_KEYS):
             refuse(key, NOT_A_LOCK_SELECTOR.format(key=key, kind=kind, lock=scope.lock_id))
     if "entity_codes" in given:
         codes = [str(code) for code in given["entity_codes"]]
@@ -280,6 +285,8 @@ def reconcile_selectors(
     for key in PERIOD_KEYS:
         if key in properties:
             parameters[key] = scope.period_key
+    if disclosure:
+        parameters["quarter"] = given.get("quarter", False)
     return parameters, errors
 
 
