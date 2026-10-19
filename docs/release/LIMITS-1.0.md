@@ -1,5 +1,12 @@
 # eRev Cloud 1.0: stated limits of the release
 
+Scenario archive update: creator/Controller archive now preserves sandbox reads and gates
+HTTP business writes and worker attempt units of work through the source scenario status.
+Pending jobs block archive; late worker writes fail while job settlement remains available.
+Migration 0178 freezes archived scenario fields. API/worker acceptance covers empty-business
+scenarios, not all concurrent/custom-write paths or nonempty/closed-period copies. Refresh,
+event sets, forecasts, reporting output and the scenario UI remain unfinished.
+
 Scenario creation update: POST /scenarios now drives the snapshot worker, copies a sandbox,
 adds minimum creator access when absent from the historical snapshot, and registers/audits the
 scenario. Actual worker acceptance covers empty business data and both membership cases.

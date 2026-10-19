@@ -222,6 +222,9 @@ def system_unit_of_work(
     with unit_of_work(ctx, clock=clock, keyring=keyring, files=files) as uow:
         if runtime.attempt is not None:
             runtime.attempt.enter(uow, clock)
+            from erev_api.db.scenario_writes import require_writable
+
+            require_writable(uow.session, principal.db_context)
         yield uow
 
 

@@ -6528,3 +6528,15 @@ cleanup in the shared database session kernel was also repaired and regression-t
   Generated API and frontend types are updated. Detailed usage and evidence are in CI-2026-10-19.
 - This is caller-driven advancement. Automatic scheduling, explicit baseline preparation,
   computation admission and the true-up register remain development priorities. No deployment.
+
+## Event BI extract and reporting backlog — October 19, 2026
+
+- Registered extract_events with fixed schema v1, explicit entity scope, inclusive source cutoff,
+  exclusive incremental start, contact redaction and retained-input rebuilds. Added JSON/CSV
+  metadata and CSV byte-hash manifests; source time stays fixed across worker execution.
+- Added report-page full/incremental controls and documented field types and operating limits.
+  Actual API/worker delivery, incremental validation and rerun passed; existing viewer checks
+  and focused Python/frontend typing passed. Evidence is in CI-2026-10-19.md.
+- Reporting remains a development priority: 16 catalogue definitions still lack builders.
+  Extract lock snapshots, previous-run watermark defaults and true-up register remain open.
+  No deployment; no claim of reporting or production-readiness completion.

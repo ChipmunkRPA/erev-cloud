@@ -1,8 +1,9 @@
 """API-R-46 scenario catalogue and asynchronous creation."""
 
 from typing import Annotated, Final
+from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, Response
+from fastapi import APIRouter, Depends, Query, Request, Response
 
 from erev_api.api.deps import (
     API_PREFIX,
@@ -10,8 +11,10 @@ from erev_api.api.deps import (
     GuardedRoute,
     KernelDeps,
     command,
+    expected_version,
     kernel_deps,
     problem_responses,
+    row_etag,
     run_command,
 )
 from erev_api.api.lists import (
@@ -25,8 +28,9 @@ from erev_api.api.lists import (
 from erev_api.auth.dependencies import require_all_entities
 from erev_api.auth.principal import RequestContext
 from erev_api.db.tables import scenario
-from erev_api.domain.forecast import creation, scenarios
+from erev_api.domain.forecast import archive, creation, scenarios
 from erev_api.enums import ScenarioStatus
+from erev_api.idempotency.store import Replay
 from erev_api.schemas.common import ListOut
 from erev_api.schemas.scenarios import ScenarioCreateIn, ScenarioOut, ScenarioRequestedOut
 from erev_api.uow import UnitOfWork
@@ -101,3 +105,43 @@ def scenarios_create(
     return run_command(
         cmd, deps, handle, status_code=202, location=lambda out: f"{API_PREFIX}/jobs/{out.id}"
     )
+
+
+def _archive_replay(request: Request, ctx: RequestContext, replay: Replay) -> None:
+    archive.authorize_replay(ctx, UUID(str(request.path_params["scenario_id"])))
+
+
+@router.post(
+    "/scenarios/{scenario_id}/archive",
+    operation_id="scenarios_archive",
+    response_model=ScenarioOut,
+    responses=problem_responses(
+        "unauthenticated",
+        "session-expired",
+        "forbidden",
+        "not-found",
+        "invalid-transition",
+        "precondition-required",
+        "precondition-failed",
+        "validation-failed",
+        "idempotency-key-reused",
+        "idempotency-in-progress",
+    ),
+)
+def scenarios_archive(
+    scenario_id: UUID,
+    cmd: Annotated[
+        CommandContext, Depends(command(per_subject=True, replay_guard=_archive_replay))
+    ],
+    deps: Annotated[KernelDeps, Depends(kernel_deps)],
+) -> Response:
+    """Archive an idle scenario as its creator or a Controller; preserve sandbox read access."""
+
+    def handle(uow: UnitOfWork) -> ScenarioOut:
+        version = expected_version(cmd.ctx.if_match, "row")
+        assert version is not None
+        return ScenarioOut.model_validate(
+            scenarios.scenario_out(archive.archive(uow, scenario_id, expected_version=version))
+        )
+
+    return run_command(cmd, deps, handle, etag=lambda out: row_etag(out.row_version))

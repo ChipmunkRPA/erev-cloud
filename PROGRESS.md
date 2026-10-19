@@ -2,6 +2,26 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Scenario archive and read-only command/worker gate — October 19, 2026
+
+- Added POST /scenarios/{id}/archive with row ETag, creator or tenant-wide Controller admission,
+  replay authorization, pending-job refusal and atomic audit records in source and sandbox.
+  The sandbox remains ACTIVE/selectable for reading; its source scenario becomes ARCHIVED.
+- HTTP commands check the exact source scenario before cached replay and acquire a shared lock
+  during business transactions. Worker attempt units of work use the same gate; operational
+  failure settlement remains possible. This source-row lock orders normal writes against archive.
+- Migration 0178 freezes archived scenario fields and forbids reactivation. The scope trigger
+  rechecks sandbox provenance only when its pointer/source changes: a Controller need not also
+  hold a membership in the sandbox merely to archive an existing relationship.
+- Actual API/worker + migration checks: creator/Controller archive, non-owner denial, queued-job
+  refusal, successful archive replay, rejected replay of a formerly successful sandbox write,
+  retained reads, delayed worker refusal with FAILED settlement/no business audit, mirrored
+  archive audit, migration round trip and ordinary saved-view regression: 5 passed (11.26s).
+  Ruff, mypy (7 files), OpenAPI/types generation passed.
+- Concurrent races across every custom write path and direct copy transaction are not yet
+  acceptance-tested. Nonempty/closed-period scenario copy, refresh, event sets, forecast runs,
+  report builders and UI remain open. No production-readiness or deployment claim.
+
 ## Asynchronous scenario creation and creator access — October 19, 2026
 
 - POST /scenarios now accepts name, purpose and optional known_at, returns a TENANT_SNAPSHOT
@@ -215,18 +235,6 @@
 - Actual delivery and rerun checks pass alongside event-extract regression. Reporting still
   has 15 catalogue definitions without builders; locked extracts and true-up remain unfinished.
   Evidence is in CI-2026-10-19.md. No deployment or readiness claim.
-
-## Event BI extract and reporting backlog — October 19, 2026
-
-- Registered extract_events with fixed schema v1, explicit entity scope, inclusive source cutoff,
-  exclusive incremental start, contact redaction and retained-input rebuilds. Added JSON/CSV
-  metadata and CSV byte-hash manifests; source time stays fixed across worker execution.
-- Added report-page full/incremental controls and documented field types and operating limits.
-  Actual API/worker delivery, incremental validation and rerun passed; existing viewer checks
-  and focused Python/frontend typing passed. Evidence is in CI-2026-10-19.md.
-- Reporting remains a development priority: 16 catalogue definitions still lack builders.
-  Extract lock snapshots, previous-run watermark defaults and true-up register remain open.
-  No deployment; no claim of reporting or production-readiness completion.
 
 ## Outstanding release verification
 

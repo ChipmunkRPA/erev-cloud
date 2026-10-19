@@ -953,6 +953,23 @@ TRANSITIONS: Final[Mapping[str, TableTransitions]] = MappingProxyType(
         # when the job fails before the run starts. The output, totals, tie-outs, ledger heads,
         # child runs, snapshots, start, finish and problem change while QUEUED or RUNNING; a
         # SUCCEEDED or FAILED run changes in SC-M only. The start and finish are set once.
+        "scenario": TableTransitions(
+            table="scenario",
+            status_column="status",
+            updatable_columns=frozenset(
+                {
+                    "name",
+                    "purpose",
+                    "scenario_tenant_id",
+                    "tenant_snapshot_id",
+                    "base_known_at",
+                    "last_refreshed_at",
+                }
+            )
+            | _SC_M,
+            pairs=frozenset({("ACTIVE", "ARCHIVED")}),
+            frozen_while=frozenset({"ARCHIVED"}),
+        ),
         "forecast_run": TableTransitions(
             table="forecast_run",
             status_column="status",

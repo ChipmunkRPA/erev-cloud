@@ -46,6 +46,7 @@ from erev_api.auth.keyring import KeyRing
 from erev_api.auth.principal import RequestContext
 from erev_api.clock import Clock, get_clock
 from erev_api.config import LOOPBACK_ORIGIN_HOSTS, Settings
+from erev_api.db import scenario_writes
 from erev_api.db.session import tenant_session
 from erev_api.enums import FilePurpose, TenantStatus
 from erev_api.files.store import FileStore, store_file
@@ -315,6 +316,7 @@ def command(
     ) -> CommandContext:
         await run_in_threadpool(refuse_operator_command, request, ctx)
         refuse_inactive_tenant(ctx)
+        await run_in_threadpool(scenario_writes.check_command, ctx.principal.db_context)
         validate_idempotency_key(request)
         version = expected_version(ctx.if_match, precondition)
         query: dict[str, list[str]] = {}
@@ -423,6 +425,7 @@ def run_command(
     """
     try:
         with unit_of_work(cmd.ctx, clock=deps.clock, keyring=deps.keyring, files=deps.files) as uow:
+            scenario_writes.require_writable(uow.session, uow.principal.db_context)
             result = fn(uow)
             if status_of is not None:
                 status_code = status_of(result)

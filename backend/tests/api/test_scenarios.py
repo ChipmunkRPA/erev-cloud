@@ -248,3 +248,146 @@ def test_create_scenario_runs_snapshot_job(
             assert "scenario.use" in grants.permissions
             assert "contract.create" not in grants.permissions
             assert "viewer" in grants.roles
+
+    # The archived sandbox remains readable, including for an already signed-in session.
+    with tenant_session(DbContext(tenant_id=target_id, user_id=None, entity_scope="*")) as session:
+        membership_id = session.execute(
+            select(tenant_membership.c.id).where(tenant_membership.c.user_id == source.user_id)
+        ).scalar_one()
+    target_member = Member(
+        user_id=source.user_id, email=source.email, tenant_id=target_id, membership_id=membership_id
+    )
+    sandbox_actor = workspace(app, target_member, sign_in(app, source.email), actor.secret)
+    write_headers = cookie_headers(sandbox_actor.token, sandbox_actor.csrf_token)
+    view_body = {"screen_code": "SF-02", "name": "Before archive", "config": {}}
+    wrote = call(app, "POST", "/api/v1/saved-views", json=view_body, headers=write_headers)
+    assert wrote.status_code == 201, wrote.text
+    from erev_api.db import transitions
+    from support.principals import colleague
+    from support.rows import job_row
+
+    archive_actor = actor
+    if not late_creator:
+        colleague_member = colleague(source.tenant_id, "other_planner")
+        with tenant_session(ctx) as session:
+            insert_role_assignment(
+                session,
+                tenant_id=source.tenant_id,
+                membership_id=colleague_member.membership_id,
+                role_code="revenue_accountant",
+            )
+        other_actor = enrolled(app, clock, colleague_member)
+        denied_headers = cookie_headers(other_actor.token, other_actor.csrf_token)
+        denied_headers["If-Match"] = f'"r{registered["row_version"]}"'
+        denied = call(
+            app, "POST", f"/api/v1/scenarios/{registered['id']}/archive", headers=denied_headers
+        )
+        assert denied.status_code == 403, denied.text
+        with tenant_session(ctx) as session:
+            insert_role_assignment(
+                session,
+                tenant_id=source.tenant_id,
+                membership_id=colleague_member.membership_id,
+                role_code="controller",
+            )
+        archive_actor = workspace(
+            app, colleague_member, sign_in(app, colleague_member.email), other_actor.secret
+        )
+    target_context = DbContext(tenant_id=target_id, user_id=None, entity_scope="*")
+    with tenant_session(target_context) as session:
+        pending = job_row(RowContext(target_id, source.user_id), session)
+        session.execute(insert(job).values(**pending))
+    busy_headers = cookie_headers(archive_actor.token, archive_actor.csrf_token)
+    busy_headers["If-Match"] = f'"r{registered["row_version"]}"'
+    busy = call(app, "POST", f"/api/v1/scenarios/{registered['id']}/archive", headers=busy_headers)
+    assert busy.status_code == 409, busy.text
+    with tenant_session(target_context) as session:
+        transitions.apply(
+            session,
+            "job",
+            pending["id"],
+            to_status="CANCELLED",
+            expected_status="QUEUED",
+            set_values={"finished_at": clock.now()},
+        )
+    archive_headers = cookie_headers(archive_actor.token, archive_actor.csrf_token)
+    archive_headers["If-Match"] = f'"r{registered["row_version"]}"'
+    archived = call(
+        app, "POST", f"/api/v1/scenarios/{registered['id']}/archive", headers=archive_headers
+    )
+    assert archived.status_code == 200, archived.text
+    assert archived.json()["status"] == "ARCHIVED"
+    replay = call(
+        app, "POST", f"/api/v1/scenarios/{registered['id']}/archive", headers=archive_headers
+    )
+    assert replay.status_code == 200 and replay.json() == archived.json(), replay.text
+    refused = call(app, "POST", "/api/v1/saved-views", json=view_body, headers=write_headers)
+    assert refused.status_code == 409, refused.text
+    assert refused.json()["errors"][0]["rule_id"] == "SCENARIO_ARCHIVED"
+    readable = call(
+        app, "GET", "/api/v1/saved-views", headers=cookie_headers(sandbox_actor.token, key=False)
+    )
+    assert readable.status_code == 200, readable.text
+    assert readable.json()["items"][0]["name"] == "Before archive"
+    # A delayed business worker is refused, but job failure settlement can still commit.
+    from collections.abc import Mapping
+    from typing import Any
+
+    from erev_api.auth.principal import system_principal
+    from erev_api.jobs.context import JobContext, system_unit_of_work
+
+    runtime = JobRuntime(clock=clock, keyring=keyring, files=LocalFileStore(app_settings.file_root))
+    with system_unit_of_work(
+        runtime, system_principal(target_id), request_id="test-late-job"
+    ) as uow:
+        delayed = uow.defer(JobKind.AUDIT_CHAIN_VERIFY, {})
+        delayed_id = UUID(str(delayed["id"]))
+        uow.commit()
+    with tenant_session(target_context) as session:
+        task_id = session.execute(
+            select(job.c.procrastinate_job_id).where(job.c.id == delayed_id)
+        ).scalar_one()
+        session.execute(
+            text("UPDATE procrastinate_jobs SET status = 'doing' WHERE id = :id"), {"id": task_id}
+        )
+
+    def attempted_write(jc: JobContext, params: Mapping[str, Any]) -> registry.JobOutcome:
+        with jc.unit_of_work() as uow:
+            uow.audit(
+                action="test.archived_write",
+                object_type="scenario",
+                object_id=UUID(registered["id"]),
+            )
+            uow.commit()
+        return registry.JobOutcome(state="SUCCEEDED", result={})
+
+    prior = registry.HANDLERS.get(JobKind.AUDIT_CHAIN_VERIFY)
+    registry.HANDLERS[JobKind.AUDIT_CHAIN_VERIFY] = registry.HandlerSpec(
+        handler=attempted_write, retry=registry.RetryPolicy(max_attempts=1)
+    )
+    try:
+        registry.run_job(delayed_id, target_id, attempt=1, runtime=runtime)
+    finally:
+        if prior is None:
+            registry.HANDLERS.pop(JobKind.AUDIT_CHAIN_VERIFY, None)
+        else:
+            registry.HANDLERS[JobKind.AUDIT_CHAIN_VERIFY] = prior
+    with tenant_session(target_context) as session:
+        settled = session.execute(select(job).where(job.c.id == delayed_id)).mappings().one()
+        assert settled["state"] == "FAILED", str(settled["problem"])
+        assert settled["problem"]["errors"][0]["rule_id"] == "SCENARIO_ARCHIVED"
+        assert (
+            session.execute(
+                select(audit_event.c.id).where(audit_event.c.action == "test.archived_write")
+            ).first()
+            is None
+        )
+        assert (
+            session.execute(
+                select(audit_event.c.id).where(
+                    audit_event.c.action == "scenario.archive",
+                    audit_event.c.object_id == UUID(registered["id"]),
+                )
+            ).scalar_one()
+            is not None
+        )
