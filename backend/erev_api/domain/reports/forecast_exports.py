@@ -38,6 +38,7 @@ class Export:
     extension: str
     dataset: bytes
     dataset_sha256: str
+    manifest: bytes | None = None
 
 
 def document(captured: Captured, identity: Identity, stamp: RunStamp) -> dict[str, Any]:
@@ -202,4 +203,6 @@ def render(captured: Captured, identity: Identity, stamp: RunStamp, *, format: s
             zipfile.ZipInfo("manifest.json", date_time=(1980, 1, 1, 0, 0, 0)),
             canonical_bytes(envelope),
         )
-    return Export(buffer.getvalue(), "application/zip", "zip", dataset, digest)
+    return Export(
+        buffer.getvalue(), "application/zip", "zip", dataset, digest, canonical_bytes(envelope)
+    )

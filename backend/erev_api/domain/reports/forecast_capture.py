@@ -53,6 +53,7 @@ class Captured:
     book: str
     known_at: datetime
     output_format: str | None
+    currency_view: str = "transaction"
 
 
 def capture(uow: UnitOfWork, params: ReportParams, *, horizon: Sequence[str]) -> Captured:
@@ -236,4 +237,5 @@ def capture(uow: UnitOfWork, params: ReportParams, *, horizon: Sequence[str]) ->
         base.book_code,
         base.known_at,
         base.output_format,
+        view,
     )

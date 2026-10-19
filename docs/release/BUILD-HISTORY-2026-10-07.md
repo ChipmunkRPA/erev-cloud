@@ -7468,3 +7468,20 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Updated API schema/client types and user guide. Import association, ordered refresh/replay,
   forecast jobs, forecast outputs and actual-vs-forecast remain unimplemented; FCS-2 stays open.
   Contract sample and period evidence packs also remain outstanding. No deployment.
+
+## Forecast file input pipeline — October 19, 2026
+
+- Revision 0181 adds an immutable tenant-scoped import-to-input-set binding, exposed in import
+  reads. Scenario drafts accept progress, usage, cost and invoice fact files through existing
+  validation/diff/commit stages. Other import workflows retain their normal approval path.
+- Ready forecast files submit under BR-FC-02 without an approval request. The worker rechecks
+  the uploader's current scenario grant/token scope and underlying template write scope, locks
+  diff contract bases before applying, and atomically appends successful upload IDs to the set.
+- Input-set publication refuses pending files; invalid/failed files add no inputs. Captures and
+  publication share a lock. CTL-044 records the scenario approval exemption as not applicable.
+- Real scenario/API/worker journey passes file commit, no approval request, pending-publication
+  refusal and over-delivery rejection. Two ordinary import regression checks and the forecast
+  schema upgrade/downgrade check pass; Ruff/Mypy and OpenAPI generation pass.
+- Updated API/client types, snapshot handling, data model and user guide. Scenario refresh and
+  ordered replay still need implementation, followed by forecast execution and both forecast
+  reports. Evidence-pack reports also remain open. No deployment or production-readiness claim.

@@ -11537,8 +11537,11 @@ Author BS-3. Uses DIN, SNP and RPS (PHASES §1 row 18). Indicative size 12 items
     CSV uses separate files with a hash manifest. Output-format changes require recapture for
     RPO visibility. JSON now uses the report-data chapter/table envelope with typed forecast
     header metadata; the viewer can expand saved forecast tables independently. Forecast-run
-    execution, durable publication, end-to-end creation, revenue chart and same-source reruns
-    remain unfinished; the report is not registered and FCS-3 remains open.
+    execution and end-to-end creation remain unfinished. An internal publisher now attaches
+    immutable report records, encrypted files and control/audit evidence to a running forecast
+    in one transaction, with source/scope checks and duplicate-format refusal. Public admission,
+    worker orchestration, revenue chart and same-source reruns remain unfinished; the report
+    is not registered and FCS-3 remains open.
   - **Prerequisites:** FCS-2
   - **Scope:**
     - Paths: `backend/erev_api/domain/forecast/runs.py` (`run_forecast(jc, params) -> JobOutcome`: computes the scenario groups over the horizon and creates the `forecast_outputs` report run); `backend/erev_api/domain/reports/builders/forecast_outputs.py` (RPT-39 sections 1 to 5); `backend/erev_api/jobs/` handler `FORECAST_RUN` (removed from `PENDING_JOB_HANDLERS`); `backend/erev_api/api/v1/forecast_runs.py`; `backend/tests/domain/forecast/test_forecast_runs.py`; `docs/api/openapi.json`; `frontend/src/lib/api/schema.d.ts`

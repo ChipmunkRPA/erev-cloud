@@ -1990,7 +1990,9 @@ def sources_out(run: Mapping[str, Any]) -> ReportRunSourcesOut:
     """API-S-ReportRun ``sources`` (04 §16.9 rev 1.55): the binding summarised with its lifecycle
     ``kind``; ``bound: false`` with the kind for an as-locked, pending, failed or legacy run."""
     kind = run_kind(run)
-    if kind in (KIND_BOUND, KIND_RETAINED):
+    if kind in (KIND_BOUND, KIND_RETAINED) or (
+        kind == KIND_OPEN and run.get("report_code") == "forecast_outputs"
+    ):
         try:
             binding = SourceBinding.from_stored(run["source_binding"])
         except (ValueError, KeyError, TypeError):

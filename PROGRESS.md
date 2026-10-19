@@ -2,6 +2,22 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Atomic forecast report publication — October 19, 2026
+
+- Added an internal publisher for a running forecast: verifies its published input identity/hash,
+  current scenario and requested entity/book/horizon scope, then stores an ordinary report run,
+  encrypted output and CTL-029/CTL-030/audit evidence in the caller's transaction. Reports are
+  attached to the parent forecast. Duplicate formats are refused under the parent row lock.
+- JSON, XLSX and CSV publication preserve the captured currency view, output visibility basis,
+  cutoff, engine release, actual scenario name and tenant negative-number style. CSV also saves
+  its manifest for the normal manifest download route. Independent child source evidence is
+  retained internally; computation reruns remain explicitly open rather than claiming a rebuild.
+- The real scenario journey verifies rollback after file storage, successful publication,
+  duplicate refusal, three-format persistence, saved JSON API reading and CSV/manifest downloads.
+  Targeted source/export checks and Ruff/Mypy pass. Public admission/computation orchestration
+  is still missing; this is an internal transaction primitive, not a completed forecast workflow.
+  Revenue chart, actual-vs-forecast, evidence packs and accounting acceptance remain open.
+
 ## Forecast report data API and viewer — October 19, 2026
 
 - Aligned forecast JSON with the existing report-data chapter/table envelope, including a
@@ -213,23 +229,6 @@
 - This supplies a required input for deterministic refresh/replay; the refresh orchestration,
   forecast computation, forecast reports and evidence-pack reports remain unfinished.
   No deployment or production-readiness claim.
-
-## Forecast file input pipeline — October 19, 2026
-
-- Revision 0181 adds an immutable tenant-scoped import-to-input-set binding, exposed in import
-  reads. Scenario drafts accept progress, usage, cost and invoice fact files through existing
-  validation/diff/commit stages. Other import workflows retain their normal approval path.
-- Ready forecast files submit under BR-FC-02 without an approval request. The worker rechecks
-  the uploader's current scenario grant/token scope and underlying template write scope, locks
-  diff contract bases before applying, and atomically appends successful upload IDs to the set.
-- Input-set publication refuses pending files; invalid/failed files add no inputs. Captures and
-  publication share a lock. CTL-044 records the scenario approval exemption as not applicable.
-- Real scenario/API/worker journey passes file commit, no approval request, pending-publication
-  refusal and over-delivery rejection. Two ordinary import regression checks and the forecast
-  schema upgrade/downgrade check pass; Ruff/Mypy and OpenAPI generation pass.
-- Updated API/client types, snapshot handling, data model and user guide. Scenario refresh and
-  ordered replay still need implementation, followed by forecast execution and both forecast
-  reports. Evidence-pack reports also remain open. No deployment or production-readiness claim.
 
 ## Outstanding release verification
 
