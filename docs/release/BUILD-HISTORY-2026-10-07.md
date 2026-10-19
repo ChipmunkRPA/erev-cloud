@@ -7485,3 +7485,18 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Updated API/client types, snapshot handling, data model and user guide. Scenario refresh and
   ordered replay still need implementation, followed by forecast execution and both forecast
   reports. Evidence-pack reports also remain open. No deployment or production-readiness claim.
+
+## Forecast input application order — October 19, 2026
+
+- Revision 0182 records one sequence across API commands and successful file commits. Both
+  capture paths append the sequence under the input-set lock, in the same transaction as facts.
+  Publication validates complete, unique coverage and per-source order, then hashes the sequence.
+  New versions preserve the sequence alongside their copied command/file inputs.
+- Historical populated sets without sequence evidence remain readable but cannot be extended
+  or replayed by guessing an order. Empty historical sets can initialize a verified empty order.
+- Mixed API/file/API capture, published order and version copying pass the real scenario journey;
+  five malformed/legacy order checks and the schema upgrade/downgrade check pass. Python lint,
+  type checking and OpenAPI generation pass.
+- This supplies a required input for deterministic refresh/replay; the refresh orchestration,
+  forecast computation, forecast reports and evidence-pack reports remain unfinished.
+  No deployment or production-readiness claim.

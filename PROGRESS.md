@@ -2,6 +2,24 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Forecast-run API and worker — October 19, 2026
+
+- Added POST/GET/list forecast-runs in scenario workspaces, with idempotent admission,
+  published-input hash verification, scoped report/export permissions and consecutive horizon
+  validation. Requested formats default to JSON; callers may select XLSX/CSV too.
+- Registered FORECAST_RUN: reloads the active requester, validates the queued input/state hash,
+  recomputes activated scenario groups and publishes all selected five-section reports with
+  the parent success transition in one transaction. It does not reapply already-applied inputs.
+  Cancellation checkpoints roll back partial work; the final job-row check serializes cancellation
+  with publication. Queued cancellation/failure settles the parent and completed publication
+  cannot be cancelled. Revision 0185 admits forecast_run as the durable job subject.
+- Real API/worker verification covers idempotency, three reports, production refusal, listing,
+  completed-cancel refusal, queued cancellation and computation failure without partial reports.
+  OpenAPI/client schemas and the user guide now describe the runnable API.
+- FCS-3 remains open: K-11 specified accounting acceptance, broader concurrency/crash coverage,
+  creation screens, revenue chart, general report-catalogue execution and same-source reruns
+  are still unfinished. Actual-vs-forecast and evidence packs remain priorities. No deployment.
+
 ## Atomic forecast report publication — October 19, 2026
 
 - Added an internal publisher for a running forecast: verifies its published input identity/hash,
@@ -214,21 +232,6 @@
   Refresh orchestration, applying
   these inputs in a new copy and switching the scenario are still unfinished. Forecast outputs,
   actual-vs-forecast and evidence packs also remain open. No deployment/readiness claim.
-
-## Forecast input application order — October 19, 2026
-
-- Revision 0182 records one sequence across API commands and successful file commits. Both
-  capture paths append the sequence under the input-set lock, in the same transaction as facts.
-  Publication validates complete, unique coverage and per-source order, then hashes the sequence.
-  New versions preserve the sequence alongside their copied command/file inputs.
-- Historical populated sets without sequence evidence remain readable but cannot be extended
-  or replayed by guessing an order. Empty historical sets can initialize a verified empty order.
-- Mixed API/file/API capture, published order and version copying pass the real scenario journey;
-  five malformed/legacy order checks and the schema upgrade/downgrade check pass. Python lint,
-  type checking and OpenAPI generation pass.
-- This supplies a required input for deterministic refresh/replay; the refresh orchestration,
-  forecast computation, forecast reports and evidence-pack reports remain unfinished.
-  No deployment or production-readiness claim.
 
 ## Outstanding release verification
 

@@ -1774,7 +1774,7 @@ Keys: `PRIMARY KEY (tenant_id, id)`; `ux_numbering_series__code_scope (tenant_id
 | `started_at` | timestamptz | Y | | |
 | `finished_at` | timestamptz | Y | | |
 | `cancel_requested_at` | timestamptz | Y | | |
-| `subject_type` | text | Y | | Resource the job works on: `contract`, `combination_group`, `modification`, `estimate_version`, `import_upload`, `journal_run`, `close_run`, `report_run`, `evidence_pack`, `ssp_calculator_run`, `sync_run`, `migration_batch`, `registry_version`, `ai_proposal`, `reconciliation` (rev 1.121), `period_state` (rev 1.164: the period state a `PERIOD_OPEN_REDIRTY` job re-marks) or `tenant`. `CHECK ((subject_type IS NULL) = (subject_id IS NULL))`. Set at insert (rev 1.2; SCREENS R-09). |
+| `subject_type` | text | Y | | Resource the job works on: `contract`, `combination_group`, `modification`, `estimate_version`, `import_upload`, `journal_run`, `close_run`, `report_run`, `evidence_pack`, `ssp_calculator_run`, `sync_run`, `migration_batch`, `registry_version`, `ai_proposal`, `reconciliation` (rev 1.121), `period_state` (rev 1.164: the period state a `PERIOD_OPEN_REDIRTY` job re-marks) or `tenant`; forecast execution also admits `forecast_run` (revision 0185). `CHECK ((subject_type IS NULL) = (subject_id IS NULL))`. Set at insert (rev 1.2; SCREENS R-09). |
 | `subject_id` | uuid | Y | | |
 | SC-C, SC-M | | | | |
 

@@ -625,7 +625,7 @@ A sandbox is a workspace of kind `SANDBOX`: it runs the same engine, it can neve
 - Keep a stored backup: the same command with purpose `STORED_BACKUP` stores the snapshot without creating a sandbox; `GET /api/v1/tenant/snapshots` lists them. Purpose `SANDBOX_SEED`, like `SANDBOX_COPY`, asks the sandbox `name` and loads that sandbox in the same job.
 - Restore: `POST /api/v1/tenant/sandboxes` with a `SUCCEEDED` `tenant_snapshot_id` and a `name` creates a new sandbox from the stored snapshot. A restore never targets production.
 - Reset a sandbox: `POST /api/v1/tenant/reset` (`sandbox.reset`, with a fresh authenticator code) replaces the sandbox by a successor, from its seed snapshot (`mode` `SNAPSHOT`) or empty (`EMPTY`); the old one is archived and nothing is deleted. It answers 202 with the `SANDBOX_RESET` job. A production workspace answers 409 `production-reset-forbidden`.
-- Scenario workspaces (`scenario.use`) are sandboxes created from a production snapshot. Scenario creation, input publication and refresh are available through the API; forecast runs and deal previews remain unfinished.
+- Scenario workspaces (`scenario.use`) are sandboxes created from a production snapshot. Scenario creation, input publication, refresh and forecast runs are available through the API; deal previews remain unfinished.
 
 The Sandbox copies settings page is `/settings/sandbox`. In a production workspace it creates a sandbox copy and lists the sandboxes copied from the workspace and the stored snapshots, each with its restore into a new sandbox; in a sandbox it says what the workspace was copied from and offers the reset.
 
@@ -676,7 +676,7 @@ eRev Cloud rebuilds the desktop application eRev (the Excel templates over `ASC6
 | Typed "Current Period" date prompt | Effective date in the import wizard; the context pill for reads |
 | Excel files overwritten in the application folder | Downloads with report run records and hashes |
 | `Processing Time Log` naive local timestamp | `recorded_at` in UTC and the audit log |
-| Forecasting by copying the application folder and re-running templates | Scenario workspaces (specified; not in the API at this revision) |
+| Forecasting by copying the application folder and re-running templates | Scenario workspaces and forecast runs through the API |
 | Direct SQLite access for BI tools | CSV extracts with manifests, including the 71-column dataset |
 
 ## Demo workspaces
@@ -776,5 +776,40 @@ usable and archives the unfinished target. Cancel a queued/running refresh throu
 a completed switch cannot be cancelled. After a failed partial copy, submit a fresh refresh
 request. A retry after a completed copy can reuse that held copy; a completed switch is retained.
 
-The refresh screen, forecast execution, forecast output reports and actual-versus-forecast
-reports remain unfinished. Broader crash/recovery and accounting acceptance are still required.
+The refresh screen and actual-versus-forecast reports remain unfinished. Broader crash/recovery
+and accounting acceptance are still required.
+
+
+### Running a forecast through the API
+
+In the scenario workspace, publish the applied input set and send `POST /api/v1/forecast-runs`
+with an idempotency key and this body (replace identifiers and periods with your scenario's values):
+
+```json
+{
+  "forecast_event_set_id": "<published-input-set-id>",
+  "parameters": {
+    "horizon_periods": ["FY2026-P10", "FY2026-P11", "FY2026-P12"],
+    "entity_ids": ["<entity-id>"],
+    "book_code": "ASC606",
+    "currency_view": "transaction",
+    "output_formats": ["JSON", "XLSX", "CSV"]
+  }
+}
+```
+
+The response is 202 with job and forecast-run identifiers. Poll `GET /forecast-runs/{id}`;
+a succeeded run includes `report_run_ids`. The normal report-run data and output routes serve
+these saved reports. JSON exposes the five sections; XLSX has a contents page and five sheets;
+CSV downloads a ZIP of five tables with a separate manifest available through the manifest route.
+The default format is JSON. File formats additionally require report export access for the selected
+entities. Functional currency follows the existing report adapters and may refuse unsupported
+balance valuation; reporting currency is not yet offered.
+
+Runs recompute the scenario's activated contract groups, then capture and publish the selected
+outputs together. They do not reapply the selected events: input application happened before
+publication. If scenario contract heads or the selected publication change while the job waits,
+the run fails and requires a fresh request. Production workspaces cannot run forecasts. Failed
+or cancelled computations retain no partial reports. A completed publication cannot be cancelled.
+The forecast-run creation screen, revenue chart, general report-catalogue execution and accounting
+acceptance are still unfinished.

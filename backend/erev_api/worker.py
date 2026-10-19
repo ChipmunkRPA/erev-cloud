@@ -116,6 +116,7 @@ HANDLER_MODULES: Final[tuple[str, ...]] = (
     "erev_api.domain.close.close_runs",  # CLO-19 CLOSE_RUN (lane F-CLO-B)
     "erev_api.domain.reference.period_redirty_job",  # PERIOD_OPEN_REDIRTY (R-101 (a))
     "erev_api.domain.reports.framework",
+    "erev_api.domain.forecast.run_job",
     "erev_api.domain.reports.evidence",
     "erev_api.domain.platform.snapshot_job",  # SNP-1 TENANT_SNAPSHOT (lane F-SNP, merge prep)
     "erev_api.domain.platform.sandbox_reset_job",  # SNP-3 SANDBOX_RESET (lane F-SNP)

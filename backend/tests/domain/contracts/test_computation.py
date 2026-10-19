@@ -5955,7 +5955,7 @@ def test_forecast_event_capture_is_atomic_and_immutable(
 
     from support.forecast_reports import exercise_capture
 
-    exercise_capture(world)
+    exercise_capture(world, source_actor)
 
     from support.forecast_refresh import exercise_refresh_state
 

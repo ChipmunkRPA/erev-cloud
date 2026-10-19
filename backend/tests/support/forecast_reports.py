@@ -12,7 +12,7 @@ from erev_api.enums import TenantKind
 from sqlalchemy import func, select
 
 
-def exercise_capture(world: Any) -> None:
+def exercise_capture(world: Any, source_actor: Any) -> None:
     with world.place.uow() as uow:
         uow.ctx = replace(uow.ctx, tenant_kind=TenantKind.SANDBOX)
         entities = tuple(uow.session.scalars(select(contract.c.contracting_entity_id).distinct()))
@@ -192,3 +192,119 @@ def exercise_capture(world: Any) -> None:
     )
     assert manifest_file.file_name.endswith(".zip.manifest.json")
     manifest_file.stream.close()
+    from erev_api.db.session import tenant_session
+    from erev_api.db.tables import job
+    from erev_api.domain.forecast import run_job
+    from erev_api.jobs import registry
+    from erev_api.jobs.context import JobRuntime
+    from sqlalchemy import text
+
+    body = {
+        "forecast_event_set_id": str(publication["id"]),
+        "parameters": {
+            "horizon_periods": ["FY2026-P06", "FY2026-P07"],
+            "entity_ids": [str(e) for e in entities],
+            "book_code": "ASC606",
+            "output_formats": ["JSON", "XLSX", "CSV"],
+        },
+    }
+    headers = cookie_headers(world.place.author.token, world.place.author.csrf_token)
+    requested = call(world.app, "POST", "/api/v1/forecast-runs", headers=headers, json=body)
+    assert requested.status_code == 202, requested.text
+    assert (
+        call(world.app, "POST", "/api/v1/forecast-runs", headers=headers, json=body).json()
+        == requested.json()
+    )
+    from uuid import UUID
+
+    job_id = UUID(requested.json()["id"])
+    requested_id = UUID(requested.json()["forecast_run_id"])
+    with tenant_session(world.place.principal.db_context) as session:
+        queued = session.execute(select(job).where(job.c.id == job_id)).mappings().one()
+        session.execute(
+            text("UPDATE procrastinate_jobs SET status = 'doing' WHERE id = :id"),
+            {"id": queued["procrastinate_job_id"]},
+        )
+    registry.run_job(
+        job_id,
+        world.place.tenant_id,
+        attempt=1,
+        runtime=JobRuntime(
+            clock=world.place.clock, keyring=world.place.keyring, files=world.place.files
+        ),
+    )
+    done = call(
+        world.app,
+        "GET",
+        f"/api/v1/forecast-runs/{requested_id}",
+        headers=cookie_headers(world.place.author.token, key=False),
+    )
+    assert done.status_code == 200, done.text
+    assert done.json()["status"] == "SUCCEEDED", done.text
+    assert len(done.json()["report_run_ids"]) == 3
+    with world.place.uow() as uow, pytest.raises(Problem, match="already been published"):
+        run_job.cancel_guard(uow, {"forecast_run_id": str(requested_id)}, job_id)
+    production = call(
+        world.app,
+        "POST",
+        "/api/v1/forecast-runs",
+        json=body,
+        headers=cookie_headers(source_actor.token, source_actor.csrf_token),
+    )
+    assert production.status_code == 409, production.text
+    listing = call(
+        world.app,
+        "GET",
+        "/api/v1/forecast-runs",
+        headers=cookie_headers(world.place.author.token, key=False),
+    )
+    assert listing.status_code == 200, listing.text
+    assert str(requested_id) in {item["id"] for item in listing.json()["items"]}
+    for cancel in (True, False):
+        another = call(
+            world.app,
+            "POST",
+            "/api/v1/forecast-runs",
+            json=body,
+            headers=cookie_headers(world.place.author.token, world.place.author.csrf_token),
+        )
+        assert another.status_code == 202, another.text
+        other_job = UUID(another.json()["id"])
+        if cancel:
+            stopped = call(
+                world.app,
+                "POST",
+                f"/api/v1/jobs/{other_job}/cancel",
+                headers=cookie_headers(world.place.author.token, world.place.author.csrf_token),
+            )
+            assert stopped.status_code == 200, stopped.text
+        else:
+            with tenant_session(world.place.principal.db_context) as session:
+                queued = session.execute(select(job).where(job.c.id == other_job)).mappings().one()
+                session.execute(
+                    text("UPDATE procrastinate_jobs SET status = 'doing' WHERE id = :id"),
+                    {"id": queued["procrastinate_job_id"]},
+                )
+            with patch.object(
+                run_job.computation,
+                "recompute",
+                side_effect=Problem("invalid-transition", "Forecast computation refused"),
+            ):
+                registry.run_job(
+                    other_job,
+                    world.place.tenant_id,
+                    attempt=1,
+                    runtime=JobRuntime(
+                        clock=world.place.clock,
+                        keyring=world.place.keyring,
+                        files=world.place.files,
+                    ),
+                )
+        settled = call(
+            world.app,
+            "GET",
+            f"/api/v1/forecast-runs/{another.json()['forecast_run_id']}",
+            headers=cookie_headers(world.place.author.token, key=False),
+        )
+        assert settled.json()["status"] == "FAILED", settled.text
+        assert settled.json()["report_run_ids"] == []

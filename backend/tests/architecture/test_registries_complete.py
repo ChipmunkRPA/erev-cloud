@@ -33,7 +33,6 @@ _OUTBOX_COLUMN: Final = 3
 
 PENDING_JOB_HANDLERS: tuple[tuple[str, str], ...] = (
     ("DEAL_PREVIEW", "FCS"),
-    ("FORECAST_RUN", "FCS"),
 )
 
 
