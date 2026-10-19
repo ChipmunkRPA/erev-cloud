@@ -2,6 +2,25 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Registered close variance worker — October 19, 2026
+
+- Registered variance_between_closes with an adapter source contract. Creation authorizes both
+  frozen locks and complete retained groups; stored run scope includes every required entity.
+  Locks unavailable at the requested cutoff refuse. No schema/API shape change is required.
+- REPORT_RUN now reads/authorizes, closes its UOW, computes with attempt-fenced heartbeats,
+  then reopens a UOW and reauthorizes before rendering/storage. The builder compares original
+  source identities again. Same-source reruns reread and recompute; no saved-output replay.
+- Source bindings retain lock manifests, contract/computation mappings, runtime/input/output
+  identities, complete entity requirements and contributor evidence. Direct in-transaction
+  calls without the phased calculation result refuse.
+- Seeded empty locks with real snapshot files: actual job/output/rerun passes; an injected
+  post-compute permission loss prevents output publication. The calculation hook proves all
+  read sessions are outside transactions. Both cases pass; existing report/rerun regression,
+  catalogue/source-contract checks, source Mypy and changed-file Ruff pass.
+- Six catalogue builders remain unregistered. RPT-38 still needs populated close-to-report
+  financial acceptance, cell explanation routing, UI/header polish, wider reference/FX and
+  new/regrouped contract replay. No production readiness or deployment claim.
+
 ## Close variance report dataset and contributor evidence — October 19, 2026
 
 - Added presentation over reconciled group replay: Change by driver and Changes by contract,
@@ -202,35 +221,6 @@
   database lint passes; privacy/snapshot checks: 76 passed. Architecture replay: 68 passed,
   5 failed at the existing multiline CHECK parser in migration 0166, before 0176; not waived.
 - No deployment, forecast execution, financial acceptance or production-readiness claim.
-
-## BBR actual FX admission fix; forecast dependency audit — October 19, 2026
-
-- Fixed a real cross-currency defect: BBR matched `SPOT`, while E-51 and approved database
-  rate rows use `spot`. Both live and retained readers now use RateType.SPOT.value. The old
-  authored uppercase fixture masked the mismatch and has been corrected.
-- Actual API-created, submitted and independently approved spot versions now exercise BBR:
-  100.01 EUR × 1.2345 = 123.46 USD; after approval of 1.3000 the old cutoff still uses v1 and
-  the new cutoff uses v2 (130.01 USD), preserving the exact version identities.
-- Forecast audit found no implemented scenario/event-set/run tables or domain runtime; these
-  are still pending in privacy/snapshot catalogues and FCS-1 to FCS-3. Forecast reports require
-  that foundation before a genuine output builder. No forecast implementation is claimed yet.
-- Seven report builders remain unregistered; count does not represent the size of the forecast
-  subsystem work. Independent accounting sign-off and broad acceptance remain open. No deployment.
-
-## BBR cell contributions and business-record navigation — October 19, 2026
-
-- Retain valued pre-aggregation contributions beside the original raw sources. All four BBR
-  money cells rebuild their amounts from those inputs and list source IDs and contributions.
-  New contract-event/modification owner rules use the existing reader-scope redaction path.
-- Enabled four drills in the report grid. The contributor panel links business records to
-  contract history/billing, modification detail or contract journals; it does not send these
-  records to unsupported calculation-graph routes. Source IDs remain visible.
-- Actual API revenue totals, zero cell, new booking and billing contributions pass; a later
-  invoice does not change an earlier report's contributions. Frontend drill/link tests pass,
-  as do frontend typing and targeted backend typing/lint. See CI-2026-10-19.md.
-- Seven report builders remain missing. BBR complex attribution, locked/reporting-currency
-  sources, wider scope/modification-cell/browser acceptance and accounting sign-off remain open.
-  Existing BBR runs without aggregation evidence refuse a drill instead of reading live data.
 
 ## Outstanding release verification
 

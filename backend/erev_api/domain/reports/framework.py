@@ -220,6 +220,7 @@ from erev_api.domain.reports.builders import ssp_override_listing as ssp_overrid
 from erev_api.domain.reports.builders import ssp_version_diff as ssp_version_diff_builder
 from erev_api.domain.reports.builders import upgrade_validation as upgrade_validation_builder
 from erev_api.domain.reports.builders import user_access_listing as user_access_listing_builder
+from erev_api.domain.reports.builders import variance_between_closes as variance_builder
 from erev_api.domain.reports.outputs import ReportData, RunStamp, display_timestamp, utc_text
 from erev_api.domain.reports.outputs import csv as csv_output
 from erev_api.domain.reports.outputs import manifest as manifest_output
@@ -373,6 +374,7 @@ BUILDERS: Final[Mapping[str, Builder]] = MappingProxyType(
         extract_obligations_builder.CODE: extract_obligations_builder.build,
         extract_events_builder.CODE: extract_events_builder.build,
         upgrade_validation_builder.CODE: upgrade_validation_builder.build,
+        variance_builder.CODE: variance_builder.build,
         export_visibility.CODE: log_export.build,
         api_client_inventory_builder.CODE: api_client_inventory_builder.build,
         revenue_waterfall_builder.CODE: revenue_waterfall_builder.build,
@@ -619,6 +621,14 @@ SOURCE_CONTRACTS: Final[Mapping[str, SourceContract]] = MappingProxyType(
         extract_events_builder.CODE: SourceContract(
             RETAINED,
             (_CUTOFF, "scoped redacted event source records; dataset schema v1"),
+        ),
+        variance_builder.CODE: SourceContract(
+            ADAPTER,
+            (
+                "Both frozen locks and original retained computation evidence",
+                "consumed configuration retained in original input bundles",
+            ),
+            (),
         ),
         upgrade_validation_builder.CODE: SourceContract(
             RETAINED, ("Frozen validation dataset file, digest, attempt and entity population",), ()
@@ -1378,6 +1388,8 @@ def _resolve(
         if any(code not in entities for code in codes):
             errors.append(_finding(f"parameters.{ENTITY_CODES}", ENTITY_UNKNOWN, RULE_SCOPE))
         entity_ids = tuple(entities[code] for code in codes if code in entities)
+    elif code == variance_builder.CODE:
+        entity_ids = tuple(entities.values())
     elif ENTITY_CODES in properties and entities:
         parameters[ENTITY_CODES] = sorted(entities)
         entity_ids = tuple(entities[code] for code in sorted(entities))
@@ -1652,6 +1664,25 @@ def _insert_run(
             entity_ids=resolved.entity_ids,
             known_at=resolved.known_at,
         )
+    if str(definition["code"]) == variance_builder.CODE:
+        prepared = variance_builder.prepare(
+            uow,
+            ReportParams(
+                report_code=variance_builder.CODE,
+                report_version=int(definition["version"]),
+                parameters=resolved.parameters,
+                entity_ids=resolved.entity_ids,
+                known_at=resolved.known_at,
+                period_lock_id=resolved.period_lock_id,
+                binding=SourceBinding.from_stored(resolved.source_binding),
+            ),
+        )
+        resolved = replace(
+            resolved,
+            entity_ids=prepared.pair.required_entity_ids,
+            book_code=prepared.pair.earlier.frozen.scope.book_code,
+        )
+        report_requester.require_export(uow.principal, output_format, resolved.entity_ids)
     release_id = _release_id(session)
     run_id = new_id()
     run_no = next_number(uow, SERIES)
@@ -2198,6 +2229,12 @@ def _export_requester(
 ) -> RequestContext | None:
     """Recheck before transitions, completed-job replay, building and output persistence."""
     stored = run.get("ai_export_access")
+    if str(run["report_code"]) == variance_builder.CODE:
+        if stored is not None or run["period_lock_id"] is not None:
+            raise Problem("invalid-transition")
+        ctx = report_requester.validation_requester(jc, uow, run)
+        variance_builder.prepare(uow, replace(report_params(run), requester=ctx))
+        return ctx
     if str(run["report_code"]) == upgrade_validation_builder.CODE:
         if stored is not None or run["period_lock_id"] is not None:
             raise Problem("invalid-transition")
@@ -2265,6 +2302,25 @@ def run_report(jc: JobContext, params: Mapping[str, Any]) -> JobOutcome:
                 detail={"job_id": str(jc.job_id)},
             )
             uow.commit()
+    execution_result = None
+    if str(run["report_code"]) == variance_builder.CODE:
+        with jc.unit_of_work() as read_uow:
+            source_run = _lock_run(read_uow.session, run_id)
+            ctx = _export_requester(jc, read_uow, source_run)
+            prepared = variance_builder.prepare(
+                read_uow, replace(report_params(source_run), requester=ctx)
+            )
+        # No UOW or SQL transaction survives into engine execution. Heartbeats also
+        # fence a lost attempt between group/event evaluations.
+        from erev_engine import compute
+        from erev_engine.bundle import InputBundle, OutputBundle
+
+        def variance_compute(bundle: InputBundle) -> OutputBundle:
+            jc.heartbeat()
+            return compute(bundle)
+
+        execution_result = variance_builder.calculate(prepared, engine=variance_compute)
+        jc.heartbeat()
     with jc.unit_of_work() as uow:
         session = uow.session
         run = _lock_run(session, run_id)
@@ -2303,6 +2359,7 @@ def run_report(jc: JobContext, params: Mapping[str, Any]) -> JobOutcome:
                     sources=collector,
                     requester=requester,
                     access_binding=run.get("ai_export_access"),
+                    execution_result=execution_result,
                 ),
             )
             jc.heartbeat()

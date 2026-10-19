@@ -1,5 +1,16 @@
 # eRev Cloud 1.0: stated limits of the release
 
+Current reporting update — October 19: variance_between_closes is now registered and runs
+through phased source loading, transaction-free computation and reauthorized output publication.
+Source-bound reruns recompute from original evidence. A seeded empty-lock workflow exercises
+actual jobs and stored outputs; post-compute permission loss prevents publication. This does
+not establish populated close financial acceptance, cell explanation/UI completeness or support
+for all reference, FX and population changes. Six catalogue builders remain unregistered:
+actual_vs_forecast, forecast_outputs, parallel_run_comparison, contract_sample_pack,
+period_evidence_pack and disclosure_pack. engine_trueup_register remains separately outstanding.
+Earlier dated reporting entries below describe the implementation stage when recorded.
+
+
 October 19 variance presentation: driver/contract sections, exact currency/measure totals and
 contributor evidence now feed the standard export writers. Original lock/file/computation
 identities, replay hashes and event/source-row contributions remain attached. This is not a

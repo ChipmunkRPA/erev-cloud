@@ -1201,3 +1201,88 @@ def test_close_source_binding_round_trips_without_reselecting_or_requeuing(
     with sources.world.place.uow(reader) as uow, pytest.raises(Problem) as error:
         evidence_sources.load_close(uow, new_id())
     assert error.value.slug == "not-found"
+
+
+@pytest.mark.parametrize("revoke", [False, True])
+def test_variance_report_worker_and_bound_rerun(
+    sources: Sources, clock: FrozenClock, monkeypatch: pytest.MonkeyPatch, revoke: bool
+) -> None:
+    """Seeded empty locks with actual snapshot files, report jobs, storage and rerun."""
+    from erev_api.domain.reports import framework
+    from erev_api.domain.reports import requester as report_requester
+    from erev_api.domain.reports.builders import variance_between_closes as builder
+    from erev_api.domain.reports.variance_replay import Engine
+    from erev_api.schemas.reports import ReportRunCreateIn
+    from sqlalchemy.orm import Session
+
+    sessions: set[Session] = set()
+    original_prepare = builder.prepare
+    original_calculate = builder.calculate
+    original_requester = report_requester.validation_requester
+    calculated = False
+
+    def track_prepare(*args: Any, **kwargs: Any) -> builder.Prepared:
+        sessions.add(args[0].session)
+        return original_prepare(*args, **kwargs)
+
+    def calculate(prepared: builder.Prepared, *, engine: Engine) -> builder.Calculated:
+        nonlocal calculated
+        assert sessions and all(not session.in_transaction() for session in sessions)
+        result = original_calculate(prepared, engine=engine)
+        calculated = True
+        return result
+
+    def requester(*args: Any, **kwargs: Any) -> Any:
+        context = original_requester(*args, **kwargs)
+        if calculated and revoke:
+            return replace(
+                context,
+                principal=replace(context.principal, permissions=frozenset(), permission_scopes={}),
+            )
+        return context
+
+    monkeypatch.setattr(builder, "prepare", track_prepare)
+    monkeypatch.setattr(builder, "calculate", calculate)
+    monkeypatch.setattr(report_requester, "validation_requester", requester)
+    body, earlier_id = _relock_for_pack(sources)
+    with sources.world.place.uow(sources.principal) as uow:
+        clock.set(
+            uow.session.execute(select(func.clock_timestamp())).scalar_one() + timedelta(seconds=1)
+        )
+    with sources.world.place.uow(sources.principal) as uow:
+        run_id, queued = framework.create_run(
+            uow,
+            ReportRunCreateIn(
+                report_code="variance_between_closes",
+                output_format="JSON",
+                parameters={
+                    "from_period_lock_id": str(earlier_id),
+                    "to_period_lock_id": body["period_lock_id"],
+                },
+            ),
+        )
+        uow.commit()
+    finished = run_journal_job(sources.world, queued.id, attempts=2 if revoke else 1)
+    assert calculated
+    if revoke:
+        assert finished["state"] == "FAILED", finished
+        with sources.world.place.uow(sources.principal) as uow:
+            refused = framework.run_row(uow.session, uow.principal, run_id, "report.run")
+            assert refused["status"] == "FAILED"
+            assert refused["output_file_id"] is None
+        return
+    assert finished["state"] == "SUCCEEDED", finished
+    with sources.world.place.uow(sources.principal) as uow:
+        run = framework.run_row(uow.session, uow.principal, run_id, "report.run")
+        assert run["status"] == "SUCCEEDED"
+        assert run["row_count"] == 0
+        assert run["source_binding"]["strategy"] == "adapter"
+        assert run["source_binding"]["evidence"]["close_variance_sources"]["sides"][0][
+            "lock_id"
+        ] == str(earlier_id)
+        second_id, second_job = framework.rerun(uow, run_id)
+        uow.commit()
+    assert run_journal_job(sources.world, second_job.id, attempts=1)["state"] == "SUCCEEDED"
+    with sources.world.place.uow(sources.principal) as uow:
+        second = framework.run_row(uow.session, uow.principal, second_id, "report.run")
+        assert second["output_sha256"] == run["output_sha256"]
