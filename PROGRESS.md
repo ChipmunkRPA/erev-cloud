@@ -2,6 +2,20 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Disclosure snapshot read APIs — October 19, 2026
+
+- Added API-R-42 disclosure snapshot list/detail with report.run authorization, entity/book/
+  period/kind/source-report filters and keyset pagination. Metadata lists avoid loading dataset
+  JSON; detail verifies digest, schema and snapshot/parent scope. Both return no-store responses.
+- Reads require a successful disclosure parent, actual snapshot attachment, matching entity,
+  book, period/calendar and lock identity, plus the parent's complete report permission scope.
+  Missing/out-of-scope records return 404; unpublished or unattached rows stay out of counts/pages.
+- Real API journey verifies seven draft records, filtering, count, disjoint pagination, detail
+  digest and explicit draft classification. An empty report permission scope yields no rows and
+  refuses detail. Ruff/Mypy pass; OpenAPI and generated frontend types updated.
+- Lock-time capture/as-locked execution, snapshot register UI and full accounting acceptance remain
+  open. Existing draft evidence is not relabelled as locked. No deployment.
+
 ## Immutable draft disclosure snapshots — October 19, 2026
 
 - Added disclosure_snapshots.write_draft: locks the running parent and saves all seven E-65
@@ -208,24 +222,6 @@
 - This helper is not yet wired to a registered parent builder/worker. Parent dependency waiting,
   child output verification and assembly, frozen snapshots, expedients, PDF and viewer remain open.
   Five catalogue builders remain unregistered; this does not complete RPS-15.
-
-## Disclosure child report planning — October 19, 2026
-
-- Added disclosure_plan.requests for the eight core reports plus contract_cost_rollforward
-  required by section 6. Month-only plans contain nine children; quarter-to-date adds seven flow
-  reports, using the entity's fiscal quarter. Closing balances and RPO reuse the period-end stock.
-- Child selectors explicitly bind one entity, book, historical known_at and transaction currency
-  view. Disaggregation requests revenue category/timing; waterfall preserves recognized/scheduled
-  states. Every request passes the existing report parameter schema checks.
-- Added queue through framework.create_run with a savepoint around the full plan. Returned child
-  records retain section/basis, run/job IDs and the normalized parameter hash. The caller owns
-  parent attachment, durable plan reuse and retry idempotency; this helper never commits.
-- Two focused plan checks pass. A real database case verifies 16 scoped child runs and rollback
-  on a later invalid child; Ruff and new-module Mypy pass.
-- Remaining disclosure work: parent scheduling/child persistence, result verification/assembly,
-  frozen snapshots, practical expedients, PDF and viewer. Nine live child inputs cover section 6
-  in addition to the spec's older eight-core-child acceptance; full pack acceptance remains open.
-  Five catalogue builders remain unregistered; no deployment.
 
 ## Outstanding release verification
 

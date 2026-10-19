@@ -2240,6 +2240,40 @@ export interface paths {
     patch: operations["dimension_values_update"];
     trace?: never;
   };
+  "/api/v1/disclosure-snapshots": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Disclosure Snapshots List */
+    get: operations["disclosure_snapshots_list"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/disclosure-snapshots/{snapshot_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Disclosure Snapshots Get */
+    get: operations["disclosure_snapshots_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/entities": {
     parameters: {
       query?: never;
@@ -12384,6 +12418,19 @@ export interface components {
        */
       parent_value_id?: string | null;
     };
+    /**
+     * DisclosureKind
+     * @description E-65 ``disclosure_kind`` (04 §3.4).
+     * @enum {string}
+     */
+    DisclosureKind:
+      | "RPO"
+      | "CONTRACT_BALANCE_ROLLFORWARD"
+      | "REVENUE_FROM_OPENING_LIABILITY"
+      | "PRIOR_PERIOD_POB_REVENUE"
+      | "DISAGGREGATION"
+      | "COST_ROLLFORWARD"
+      | "EXPEDIENTS_USED";
     /** DisclosureSectionOut */
     DisclosureSectionOut: {
       /** Interim Required */
@@ -12394,6 +12441,96 @@ export interface components {
       tables: components["schemas"]["DisclosureTableOut"][];
       /** Title */
       title: string;
+    };
+    /** DisclosureSnapshotOut */
+    DisclosureSnapshotOut: {
+      book: components["schemas"]["BookCode"];
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /** Data */
+      data: {
+        [key: string]: unknown;
+      };
+      /** Data Sha256 */
+      data_sha256: string;
+      disclosure_kind: components["schemas"]["DisclosureKind"];
+      /** Entity Code */
+      entity_code: string;
+      /**
+       * Entity Id
+       * Format: uuid
+       */
+      entity_id: string;
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /**
+       * Period Id
+       * Format: uuid
+       */
+      period_id: string;
+      /** Period Key */
+      period_key: string;
+      /** Period Lock Id */
+      period_lock_id: string | null;
+      /**
+       * Report Run Id
+       * Format: uuid
+       */
+      report_run_id: string;
+      /**
+       * Source
+       * @enum {string}
+       */
+      source: "DRAFT" | "LOCKED";
+    };
+    /** DisclosureSnapshotSummaryOut */
+    DisclosureSnapshotSummaryOut: {
+      book: components["schemas"]["BookCode"];
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /** Data Sha256 */
+      data_sha256: string;
+      disclosure_kind: components["schemas"]["DisclosureKind"];
+      /** Entity Code */
+      entity_code: string;
+      /**
+       * Entity Id
+       * Format: uuid
+       */
+      entity_id: string;
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /**
+       * Period Id
+       * Format: uuid
+       */
+      period_id: string;
+      /** Period Key */
+      period_key: string;
+      /** Period Lock Id */
+      period_lock_id: string | null;
+      /**
+       * Report Run Id
+       * Format: uuid
+       */
+      report_run_id: string;
+      /**
+       * Source
+       * @enum {string}
+       */
+      source: "DRAFT" | "LOCKED";
     };
     /** DisclosureTableOut */
     DisclosureTableOut: {
@@ -16147,6 +16284,13 @@ export interface components {
     ListOut_DimensionValueOut_: {
       /** Items */
       items: components["schemas"]["DimensionValueOut"][];
+      /** Next Cursor */
+      next_cursor: string | null;
+    };
+    /** ListOut[DisclosureSnapshotSummaryOut] */
+    ListOut_DisclosureSnapshotSummaryOut_: {
+      /** Items */
+      items: components["schemas"]["DisclosureSnapshotSummaryOut"][];
       /** Next Cursor */
       next_cursor: string | null;
     };
@@ -33365,6 +33509,129 @@ export interface operations {
       };
       /** @description Problem: precondition-required */
       428: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+    };
+  };
+  disclosure_snapshots_list: {
+    parameters: {
+      query?: {
+        entity?: string[] | null;
+        book?: components["schemas"]["BookCode"] | null;
+        period?: string | null;
+        disclosure_kind?: components["schemas"]["DisclosureKind"][] | null;
+        report_run_id?: string | null;
+        limit?: number;
+        cursor?: string | null;
+        sort?: string | null;
+        q?: string | null;
+        count?: boolean;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ListOut_DisclosureSnapshotSummaryOut_"];
+        };
+      };
+      /** @description Problem: unauthenticated, session-expired */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: validation-failed */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+    };
+  };
+  disclosure_snapshots_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        snapshot_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DisclosureSnapshotOut"];
+        };
+      };
+      /** @description Problem: unauthenticated, session-expired */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: not-found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: validation-failed */
+      422: {
         headers: {
           [name: string]: unknown;
         };

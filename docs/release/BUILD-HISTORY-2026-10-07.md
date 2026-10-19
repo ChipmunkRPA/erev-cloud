@@ -7121,3 +7121,22 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - This is the output component, not a registered disclosure_pack builder. Child-run orchestration,
   frozen disclosure snapshot binding, seven-section assembly, PDF and viewer remain unfinished.
   Five catalogue builders remain unregistered. No new PR or deployment.
+
+
+## Disclosure child report planning — October 19, 2026
+
+- Added disclosure_plan.requests for the eight core reports plus contract_cost_rollforward
+  required by section 6. Month-only plans contain nine children; quarter-to-date adds seven flow
+  reports, using the entity's fiscal quarter. Closing balances and RPO reuse the period-end stock.
+- Child selectors explicitly bind one entity, book, historical known_at and transaction currency
+  view. Disaggregation requests revenue category/timing; waterfall preserves recognized/scheduled
+  states. Every request passes the existing report parameter schema checks.
+- Added queue through framework.create_run with a savepoint around the full plan. Returned child
+  records retain section/basis, run/job IDs and the normalized parameter hash. The caller owns
+  parent attachment, durable plan reuse and retry idempotency; this helper never commits.
+- Two focused plan checks pass. A real database case verifies 16 scoped child runs and rollback
+  on a later invalid child; Ruff and new-module Mypy pass.
+- Remaining disclosure work: parent scheduling/child persistence, result verification/assembly,
+  frozen snapshots, practical expedients, PDF and viewer. Nine live child inputs cover section 6
+  in addition to the spec's older eight-core-child acceptance; full pack acceptance remains open.
+  Five catalogue builders remain unregistered; no deployment.

@@ -10146,6 +10146,10 @@ Author BS-3. Uses CTR (PHASES §1 row 12). Indicative size 16 items; this phase 
   - **Gates:** GK-01 `make ci`; GK-07 `make e2e SPEC=frontend/e2e/projects/screens.spec.ts`
 
 - [ ] **RPS-15 Disclosure snapshots and the disclosure pack.**
+  - October 19 snapshot-read increment: API-R-42 list/detail now return scoped, attached
+    published snapshot metadata and verified evidence. Filters/count/keyset pagination and
+    draft classification pass a real API journey. Lock-time/as-locked integration remains open.
+
   - October 19 draft-snapshot increment: successful draft packs now atomically attach seven
     append-only E-65 snapshots retaining original input evidence and policy facts. Repeated writer
     calls reuse identical records; reruns create new records with identical data digests. These

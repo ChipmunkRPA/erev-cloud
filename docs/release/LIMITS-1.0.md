@@ -1,5 +1,11 @@
 # eRev Cloud 1.0: stated limits of the release
 
+Latest snapshot read update (October 19): disclosure snapshot list/detail APIs now support
+scoped metadata pagination/filtering and verified retained evidence. Drafts are explicitly
+labelled and source-parent attachment/scope is checked. Real API and permission-scope checks
+pass. Lock-time capture, as-locked execution and a dedicated snapshot register UI remain open.
+
+
 Latest disclosure snapshot update (October 19): draft report success now atomically retains
 seven immutable E-65 snapshot records with original child/policy evidence. Draft records have
 no lock ID and cannot substitute for lock-time capture. Lock-job integration, snapshot read

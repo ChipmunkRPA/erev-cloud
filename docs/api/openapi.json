@@ -10877,6 +10877,20 @@
         "title": "DimensionValueUpdateIn",
         "type": "object"
       },
+      "DisclosureKind": {
+        "description": "E-65 ``disclosure_kind`` (04 §3.4).",
+        "enum": [
+          "RPO",
+          "CONTRACT_BALANCE_ROLLFORWARD",
+          "REVENUE_FROM_OPENING_LIABILITY",
+          "PRIOR_PERIOD_POB_REVENUE",
+          "DISAGGREGATION",
+          "COST_ROLLFORWARD",
+          "EXPEDIENTS_USED"
+        ],
+        "title": "DisclosureKind",
+        "type": "string"
+      },
       "DisclosureSectionOut": {
         "properties": {
           "interim_required": {
@@ -10906,6 +10920,178 @@
           "tables"
         ],
         "title": "DisclosureSectionOut",
+        "type": "object"
+      },
+      "DisclosureSnapshotOut": {
+        "properties": {
+          "book": {
+            "$ref": "#/components/schemas/BookCode"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "data": {
+            "additionalProperties": true,
+            "title": "Data",
+            "type": "object"
+          },
+          "data_sha256": {
+            "title": "Data Sha256",
+            "type": "string"
+          },
+          "disclosure_kind": {
+            "$ref": "#/components/schemas/DisclosureKind"
+          },
+          "entity_code": {
+            "title": "Entity Code",
+            "type": "string"
+          },
+          "entity_id": {
+            "format": "uuid",
+            "title": "Entity Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "period_id": {
+            "format": "uuid",
+            "title": "Period Id",
+            "type": "string"
+          },
+          "period_key": {
+            "title": "Period Key",
+            "type": "string"
+          },
+          "period_lock_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Period Lock Id"
+          },
+          "report_run_id": {
+            "format": "uuid",
+            "title": "Report Run Id",
+            "type": "string"
+          },
+          "source": {
+            "enum": [
+              "DRAFT",
+              "LOCKED"
+            ],
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "disclosure_kind",
+          "entity_id",
+          "entity_code",
+          "book",
+          "period_id",
+          "period_key",
+          "period_lock_id",
+          "report_run_id",
+          "source",
+          "data_sha256",
+          "created_at",
+          "data"
+        ],
+        "title": "DisclosureSnapshotOut",
+        "type": "object"
+      },
+      "DisclosureSnapshotSummaryOut": {
+        "properties": {
+          "book": {
+            "$ref": "#/components/schemas/BookCode"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "data_sha256": {
+            "title": "Data Sha256",
+            "type": "string"
+          },
+          "disclosure_kind": {
+            "$ref": "#/components/schemas/DisclosureKind"
+          },
+          "entity_code": {
+            "title": "Entity Code",
+            "type": "string"
+          },
+          "entity_id": {
+            "format": "uuid",
+            "title": "Entity Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "period_id": {
+            "format": "uuid",
+            "title": "Period Id",
+            "type": "string"
+          },
+          "period_key": {
+            "title": "Period Key",
+            "type": "string"
+          },
+          "period_lock_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Period Lock Id"
+          },
+          "report_run_id": {
+            "format": "uuid",
+            "title": "Report Run Id",
+            "type": "string"
+          },
+          "source": {
+            "enum": [
+              "DRAFT",
+              "LOCKED"
+            ],
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "disclosure_kind",
+          "entity_id",
+          "entity_code",
+          "book",
+          "period_id",
+          "period_key",
+          "period_lock_id",
+          "report_run_id",
+          "source",
+          "data_sha256",
+          "created_at"
+        ],
+        "title": "DisclosureSnapshotSummaryOut",
         "type": "object"
       },
       "DisclosureTableOut": {
@@ -20933,6 +21119,34 @@
           "next_cursor"
         ],
         "title": "ListOut[DimensionValueOut]",
+        "type": "object"
+      },
+      "ListOut_DisclosureSnapshotSummaryOut_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/DisclosureSnapshotSummaryOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor"
+        ],
+        "title": "ListOut[DisclosureSnapshotSummaryOut]",
         "type": "object"
       },
       "ListOut_EffectiveFxRateOut_": {
@@ -60090,6 +60304,326 @@
           "API-R-21 Dimensions"
         ],
         "x-erev-permission": "masterdata.maintain"
+      }
+    },
+    "/api/v1/disclosure-snapshots": {
+      "get": {
+        "operationId": "disclosure_snapshots_list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "entity",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Entity"
+            }
+          },
+          {
+            "in": "query",
+            "name": "book",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/BookCode"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Book"
+            }
+          },
+          {
+            "in": "query",
+            "name": "period",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Period"
+            }
+          },
+          {
+            "in": "query",
+            "name": "disclosure_kind",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/DisclosureKind"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Disclosure Kind"
+            }
+          },
+          {
+            "in": "query",
+            "name": "report_run_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Report Run Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sort"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "count",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Count",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListOut_DisclosureSnapshotSummaryOut_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: unauthenticated, session-expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: validation-failed"
+          }
+        },
+        "summary": "Disclosure Snapshots List",
+        "tags": [
+          "API-R-42 Disclosures"
+        ],
+        "x-erev-permission": "report.run"
+      }
+    },
+    "/api/v1/disclosure-snapshots/{snapshot_id}": {
+      "get": {
+        "operationId": "disclosure_snapshots_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "snapshot_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Snapshot Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DisclosureSnapshotOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: unauthenticated, session-expired"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: not-found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemOut"
+                }
+              }
+            },
+            "description": "Problem: validation-failed"
+          }
+        },
+        "summary": "Disclosure Snapshots Get",
+        "tags": [
+          "API-R-42 Disclosures"
+        ],
+        "x-erev-permission": "report.run"
       }
     },
     "/api/v1/entities": {
@@ -102794,6 +103328,9 @@
     },
     {
       "name": "API-R-41 Reports"
+    },
+    {
+      "name": "API-R-42 Disclosures"
     },
     {
       "name": "API-R-42 Evidence packs"

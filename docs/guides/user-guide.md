@@ -358,6 +358,19 @@ stored table with ordinary pagination. Cursors cannot be reused between tables.
 It rechecks current permissions, reuses the original child identities and does not queue new
 child reports. Suppressed disclosure amounts remain outside the exported sections.
 
+#### Disclosure snapshot evidence
+
+`GET /api/v1/disclosure-snapshots` lists retained snapshot metadata. Filter with `entity`,
+`book`, `period`, `disclosure_kind` or `report_run_id`; use ordinary `limit`, `cursor` and
+`count` pagination. `GET /api/v1/disclosure-snapshots/{id}` returns the verified snapshot
+contents. Both require report permission for the complete source report's entity scope.
+
+`source: DRAFT` and a null `period_lock_id` identify on-demand evidence, not a frozen close.
+Details preserve original child datasets and policy facts, including evidence omitted from
+the displayed pack under disclosure elections. The `data_sha256` identifies those retained
+contents. Unpublished or unattached records are not listed; metadata pages do not load the
+full datasets. Locked-period capture remains unfinished.
+
 #### Contract version extract
 
 `extract_contract_versions` exports all persisted versions of the selected book, including

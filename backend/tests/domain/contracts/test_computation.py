@@ -5297,6 +5297,61 @@ def test_disclosure_children_attach_once_and_survive_retry(
             evidence["disclosure_inputs"]["policies"]["known_at"] == parent["known_at"].isoformat()
         )
 
+    snapshots_page = get(
+        world.app,
+        "/api/v1/disclosure-snapshots",
+        actor,
+        {
+            "report_run_id": str(parent["id"]),
+            "limit": 3,
+            "count": True,
+        },
+    )
+    assert snapshots_page.status_code == 200, snapshots_page.text
+    assert snapshots_page.headers["X-Erev-Total-Count"] == "7"
+    assert snapshots_page.headers["Cache-Control"] == "no-store"
+    first_items = snapshots_page.json()["items"]
+    assert len(first_items) == 3
+    assert all(item["source"] == "DRAFT" and "data" not in item for item in first_items)
+    next_snapshots = get(
+        world.app,
+        "/api/v1/disclosure-snapshots",
+        actor,
+        {
+            "report_run_id": str(parent["id"]),
+            "limit": 3,
+            "cursor": snapshots_page.json()["next_cursor"],
+        },
+    )
+    assert next_snapshots.status_code == 200, next_snapshots.text
+    assert {item["id"] for item in first_items}.isdisjoint(
+        item["id"] for item in next_snapshots.json()["items"]
+    )
+    snapshot_detail = get(world.app, f"/api/v1/disclosure-snapshots/{first_items[0]['id']}", actor)
+    assert snapshot_detail.status_code == 200, snapshot_detail.text
+    assert sha256_hex(snapshot_detail.json()["data"]) == snapshot_detail.json()["data_sha256"]
+    expedients = get(
+        world.app,
+        "/api/v1/disclosure-snapshots",
+        actor,
+        {
+            "report_run_id": str(parent["id"]),
+            "disclosure_kind": "EXPEDIENTS_USED",
+            "entity": entities[0].code,
+            "book": "ASC606",
+            "period": period.key,
+        },
+    )
+    assert expedients.status_code == 200 and len(expedients.json()["items"]) == 1
+    from erev_api.domain.reports import disclosure_queries
+
+    with world.place.uow() as uow:
+        excluded = replace(uow.principal, permission_scopes={"report.run": frozenset()})
+        assert not uow.session.execute(disclosure_queries.statement(excluded)).all()
+        with pytest.raises(Problem) as hidden:
+            disclosure_queries.get(uow.session, excluded, UUID(first_items[0]["id"]))
+        assert hidden.value.slug == "not-found"
+
     detail = get(world.app, f"/api/v1/report-runs/{parent['id']}", actor)
     assert detail.status_code == 200, detail.text
     download = get(world.app, f"/api/v1/report-runs/{parent['id']}/output", actor)
