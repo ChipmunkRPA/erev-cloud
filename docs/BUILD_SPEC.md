@@ -11571,8 +11571,11 @@ Author BS-3. Uses DIN, SNP and RPS (PHASES §1 row 18). Indicative size 12 items
     captured forecast and posted-actual revenue: contract/category dimensions, selected saved
     horizon, entity filtering, signed variances, zero-base null percentages and currency totals.
     Empty posted populations remain distinct from zero-net postings. Targeted checks pass.
-    The refresh-bound production-actual capture, cross-refresh forecast lookup, retained-source
-    builder/registration and screen connection are still open; this report is not yet runnable.
+    Added an internal historical-run resolver that walks only the current scenario's successful
+    refresh chain, rechecks saved entity permissions, and returns the production snapshot cutoff
+    separately from refresh completion time. The refresh-bound production-actual capture,
+    archived output reading, retained-source builder/registration and screen connection are still
+    open; this report is not yet runnable.
   - **Prerequisites:** FCS-3
   - **Scope:**
     - Paths: `backend/erev_api/domain/reports/builders/actual_vs_forecast.py` (RPT-40: forecast revenue of the run against revenue posted in the scenario tenant as of its latest refresh); `backend/tests/domain/forecast/test_actual_vs_forecast.py`

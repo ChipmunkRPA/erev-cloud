@@ -7515,3 +7515,17 @@ cleanup in the shared database session kernel was also repaired and regression-t
   Refresh orchestration, applying
   these inputs in a new copy and switching the scenario are still unfinished. Forecast outputs,
   actual-vs-forecast and evidence packs also remain open. No deployment/readiness claim.
+
+## Transactional forecast file replay — October 19, 2026
+
+- Added an internal replay executor that creates, validates, previews, submits, commits and
+  computes one forecast file in the caller's transaction. No asynchronous stage/compute jobs
+  can overtake the next input. Retained quarantine behavior is explicit; normal import routes
+  retain their asynchronous execution and approval rules.
+- Failed stages roll back facts, captured input order and audit buffers. Existing template,
+  draft-set, uploader and contract permissions remain enforced. The scenario journey covers
+  successful replay without queued jobs and invalid-input rollback; ordinary import coverage
+  is retained. Targeted checks and Ruff/Mypy pass.
+- This is an internal building block, not a finished refresh endpoint. Resource copying,
+  command replay, durable refresh orchestration and atomic scenario replacement remain open.
+  Forecast outputs, actual-vs-forecast and both evidence packs remain reporting priorities.

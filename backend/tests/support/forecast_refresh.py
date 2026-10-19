@@ -4,7 +4,7 @@ from typing import Any
 from uuid import UUID
 
 import pytest
-from erev_api.db.tables import forecast_event_set, scenario, scenario_refresh
+from erev_api.db.tables import forecast_event_set, forecast_run, scenario, scenario_refresh
 from erev_api.domain.forecast import archive, refresh_state
 from erev_api.domain.platform import snapshots
 from erev_api.problems import Problem
@@ -15,6 +15,10 @@ from support.principals import Actor
 
 
 def exercise_refresh_state(world: Any, source_actor: Actor, scenario_id: UUID) -> None:
+    saved_run_id = world.place.scalar(
+        select(forecast_run.c.id).where(forecast_run.c.status == "SUCCEEDED").limit(1)
+    )
+    assert saved_run_id is not None
     input_id = world.place.scalar(
         select(forecast_event_set.c.id).where(forecast_event_set.c.code == "REPLAY_TXN")
     )
@@ -223,4 +227,39 @@ def exercise_refresh_state(world: Any, source_actor: Actor, scenario_id: UUID) -
         assert (
             archive._row(uow.session, scenario_id)["scenario_tenant_id"]
             == current["scenario_tenant_id"]
+        )
+
+    # A refreshed workspace resolves its old saved forecast through successful lineage only.
+    from erev_api.domain.forecast import history
+    from erev_api.domain.platform import sandboxes
+    from erev_api.jobs.context import system_unit_of_work
+
+    actor = sandboxes.sandbox_actor(
+        refreshed["target_tenant_id"], source.principal.id, at=world.place.clock.now()
+    )
+    with system_unit_of_work(runtime, actor, request_id="forecast-history") as uow:
+        saved = history.resolve(uow, saved_run_id)
+        assert saved.forecast_tenant_id == old_target
+        assert saved.scenario_id == scenario_id
+        assert saved.source_tenant_id == source.principal.tenant_id
+        assert saved.actuals_cutoff == current["base_known_at"]
+        assert saved.last_refreshed_at == current["last_refreshed_at"]
+        assert uow.session.scalar(text("SELECT current_setting('app.tenant_id')")) == str(
+            actor.tenant_id
+        )
+        with pytest.raises(Problem):
+            history.resolve(uow, UUID(int=999))
+        assert uow.session.scalar(text("SELECT current_setting('app.tenant_id')")) == str(
+            actor.tenant_id
+        )
+
+        from dataclasses import replace
+
+        uow.ctx = replace(
+            uow.ctx, principal=replace(actor, permission_scopes={"scenario.use": "*"})
+        )
+        with pytest.raises(Problem):
+            history.resolve(uow, saved_run_id)
+        assert uow.session.scalar(text("SELECT current_setting('app.tenant_id')")) == str(
+            actor.tenant_id
         )

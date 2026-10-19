@@ -2,6 +2,19 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Forecast lookup across scenario refreshes — October 19, 2026
+
+- Added an internal saved-forecast resolver from the active scenario through successful refresh
+  predecessors. Failed/disconnected copies are excluded; ambiguous or cyclic lineage is refused.
+  Saved runs must be succeeded and belong to a published input set of the same logical scenario.
+- Current requester entity permissions are checked again. Tenant SQL context is restored on
+  both successful reads and refusals. The result separates production snapshot cutoff from
+  refresh completion time, for the eventual posted-actual reader and report header.
+- The real scenario/refresh journey passes archived-run resolution, missing-run refusal,
+  permission removal and context restoration; three lineage checks and Ruff/Mypy pass.
+- Actual-vs-forecast remains unfinished: posted-actual capture, archived output retrieval,
+  retained-source report builder, catalogue registration and UI still need connection.
+
 ## Actual-vs-forecast comparison projection — October 19, 2026
 
 - Implemented contract/category revenue comparisons, saved-horizon validation, entity scope,
@@ -224,20 +237,6 @@
   mixed file/command order without new jobs. Targeted checks and Ruff/Mypy pass.
 - Resource materialization, durable refresh orchestration, scenario replacement and the forecast
   report builders remain unfinished. No deployment or production-readiness claim.
-
-## Transactional forecast file replay — October 19, 2026
-
-- Added an internal replay executor that creates, validates, previews, submits, commits and
-  computes one forecast file in the caller's transaction. No asynchronous stage/compute jobs
-  can overtake the next input. Retained quarantine behavior is explicit; normal import routes
-  retain their asynchronous execution and approval rules.
-- Failed stages roll back facts, captured input order and audit buffers. Existing template,
-  draft-set, uploader and contract permissions remain enforced. The scenario journey covers
-  successful replay without queued jobs and invalid-input rollback; ordinary import coverage
-  is retained. Targeted checks and Ruff/Mypy pass.
-- This is an internal building block, not a finished refresh endpoint. Resource copying,
-  command replay, durable refresh orchestration and atomic scenario replacement remain open.
-  Forecast outputs, actual-vs-forecast and both evidence packs remain reporting priorities.
 
 ## Outstanding release verification
 
