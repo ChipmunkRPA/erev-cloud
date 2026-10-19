@@ -6689,6 +6689,26 @@ export interface paths {
     patch: operations["saved_views_update"];
     trace?: never;
   };
+  "/api/v1/scenarios": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Scenarios List
+     * @description List this workspace's scenarios; filter by status and page by name, created_at or id.
+     */
+    get: operations["scenarios_list"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/schedule-lines": {
     parameters: {
       query?: never;
@@ -16308,6 +16328,13 @@ export interface components {
       /** Next Cursor */
       next_cursor: string | null;
     };
+    /** ListOut[ScenarioOut] */
+    ListOut_ScenarioOut_: {
+      /** Items */
+      items: components["schemas"]["ScenarioOut"][];
+      /** Next Cursor */
+      next_cursor: string | null;
+    };
     /** ListOut[ScheduleLineOut] */
     ListOut_ScheduleLineOut_: {
       /** Items */
@@ -20815,6 +20842,55 @@ export interface components {
        */
       probability?: string | null;
     };
+    /** ScenarioOut */
+    ScenarioOut: {
+      /**
+       * Base Known At
+       * Format: date-time
+       */
+      base_known_at: string;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      created_by: components["schemas"]["ActorOut"];
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Last Refreshed At */
+      last_refreshed_at: string | null;
+      /** Name */
+      name: string;
+      /** Purpose */
+      purpose: string | null;
+      /** Row Version */
+      row_version: number;
+      /**
+       * Scenario Tenant Id
+       * Format: uuid
+       */
+      scenario_tenant_id: string;
+      status: components["schemas"]["ScenarioStatus"];
+      /**
+       * Tenant Snapshot Id
+       * Format: uuid
+       */
+      tenant_snapshot_id: string;
+      /**
+       * Updated At
+       * Format: date-time
+       */
+      updated_at: string;
+    };
+    /**
+     * ScenarioStatus
+     * @description E-100 ``scenario_status`` (04 §3.4).
+     * @enum {string}
+     */
+    ScenarioStatus: "ACTIVE" | "ARCHIVED";
     /**
      * ScheduleKind
      * @description E-27 ``schedule_kind`` (04 §3.4).
@@ -51056,6 +51132,63 @@ export interface operations {
         };
       };
       /** @description Problem: validation-failed, idempotency-key-reused */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+    };
+  };
+  scenarios_list: {
+    parameters: {
+      query?: {
+        status?: components["schemas"]["ScenarioStatus"] | null;
+        limit?: number;
+        cursor?: string | null;
+        sort?: string | null;
+        q?: string | null;
+        count?: boolean;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ListOut_ScenarioOut_"];
+        };
+      };
+      /** @description Problem: unauthenticated, session-expired */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemOut"];
+          "application/problem+json": components["schemas"]["ProblemOut"];
+        };
+      };
+      /** @description Problem: validation-failed */
       422: {
         headers: {
           [name: string]: unknown;

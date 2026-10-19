@@ -1,5 +1,10 @@
 # eRev Cloud 1.0: stated limits of the release
 
+Scenario catalogue update: GET /scenarios is now implemented with tenant isolation and status
+filtering. Creation, archive, refresh, forecast execution and forecast report builders remain
+unimplemented. Revision 0177 allows the pointer replacement required for future refresh while
+retaining the source-tenant guard. No end-to-end forecast workflow is claimed.
+
 October 19 actual FX correction: BBR's live and retained rate readers now match E-51's lowercase
 `spot` via RateType.SPOT.value. The previous uppercase literal excluded real approved spot rates;
 the old retained-input unit fixture did not catch it. Actual approved v1/v2 database rates now

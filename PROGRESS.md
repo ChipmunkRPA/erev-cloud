@@ -2,6 +2,21 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Scenario catalogue API and refresh-compatible pointer — October 19, 2026
+
+- Added GET /scenarios with scenario.use authorization across the tenant, status filtering,
+  stable cursor pagination and named creator output. Tenant identity/internal actor fields are
+  omitted. OpenAPI and frontend API types regenerated.
+- Migration 0177 removes the unintended immutable scenario_tenant_id check from 0176: FCS-2
+  refresh must be able to replace the sandbox. Production/source-sandbox relationship checks
+  remain; this migration does not implement refresh or permit cross-production targets.
+- Actual HTTP check covers denial without permission, populated ACTIVE/ARCHIVED listing,
+  status filtering and exclusion of another tenant's scenario. Together with forecast migration
+  round trip: 2 passed (7.70s). Ruff, mypy (4 files) and make openapi passed.
+- Scenario creation, archive, refresh, creator grants, event-set replay and forecast jobs are
+  still absent. No browser workflow or refresh business acceptance claimed. Seven missing
+  report builders and engine_trueup_register remain outstanding; no deployment.
+
 ## Forecast persistence foundation; reporting backlog retained — October 19, 2026
 
 - Migration 0176 adds scenario, versioned forecast_event_set, forecast_run and deal_preview,
@@ -219,18 +234,6 @@
 - Targeted checks are recorded in the dated CI log. Release preparation/automatic orchestration,
   baseline/bootstrap handling, computation admission and the true-up register remain development
   priorities; current-candidate release verification and independent accounting sign-off remain open.
-
-## Atomic upgrade computation persistence — October 19, 2026
-
-- Computation persistence now writes posting attribution and append-only portion outcomes in
-  the same transaction as postings and head updates, under the shared upgrade-group guard.
-- Attribution checks retained predecessor input integrity and records actual posting origins;
-  unavailable historical inputs retain the conservative context label. Exact replay adds no rows.
-- Database probes cover first computation, no-posting recomputation, changed billing,
-  corrupted input refusal and rollback. Full computation regression results are recorded in CI.
-- Deferred portion handling uses the existing conservative origin rule; runtime closed-period
-  and period-open rescheduling coverage remain outstanding, as do the true-up register,
-  final acceptance, approval/admission integration and independent accounting sign-off.
 
 ## Outstanding release verification
 

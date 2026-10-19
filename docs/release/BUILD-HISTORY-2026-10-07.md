@@ -6490,3 +6490,15 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Database probes cover attribution, duplicate/mutation/unsupported-cause refusal, terminal
   groups, contention and migration round-trip. Persistence/report integration remains open,
   alongside final acceptance, approval routing and admission. No deployment.
+
+## Atomic upgrade computation persistence — October 19, 2026
+
+- Computation persistence now writes posting attribution and append-only portion outcomes in
+  the same transaction as postings and head updates, under the shared upgrade-group guard.
+- Attribution checks retained predecessor input integrity and records actual posting origins;
+  unavailable historical inputs retain the conservative context label. Exact replay adds no rows.
+- Database probes cover first computation, no-posting recomputation, changed billing,
+  corrupted input refusal and rollback. Full computation regression results are recorded in CI.
+- Deferred portion handling uses the existing conservative origin rule; runtime closed-period
+  and period-open rescheduling coverage remain outstanding, as do the true-up register,
+  final acceptance, approval/admission integration and independent accounting sign-off.
