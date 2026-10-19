@@ -2,6 +2,21 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## BBR cell contributions and business-record navigation — October 19, 2026
+
+- Retain valued pre-aggregation contributions beside the original raw sources. All four BBR
+  money cells rebuild their amounts from those inputs and list source IDs and contributions.
+  New contract-event/modification owner rules use the existing reader-scope redaction path.
+- Enabled four drills in the report grid. The contributor panel links business records to
+  contract history/billing, modification detail or contract journals; it does not send these
+  records to unsupported calculation-graph routes. Source IDs remain visible.
+- Actual API revenue totals, zero cell, new booking and billing contributions pass; a later
+  invoice does not change an earlier report's contributions. Frontend drill/link tests pass,
+  as do frontend typing and targeted backend typing/lint. See CI-2026-10-19.md.
+- Seven report builders remain missing. BBR complex attribution, locked/reporting-currency
+  sources, wider scope/modification-cell/browser acceptance and accounting sign-off remain open.
+  Existing BBR runs without aggregation evidence refuse a drill instead of reading live data.
+
 ## BBR report delivery, currency valuation and journal comparison — October 19, 2026
 
 - Registered bookings_billings_revenue in the report framework with functional/month defaults,
@@ -232,17 +247,6 @@
   existing validation/report workflows. Six cases passed; typing and lint also passed.
 - Final acceptance must acquire the fence before validation locks and reread under READ
   COMMITTED. The helper is not yet connected to final acceptance or approval/admission.
-
-## Completed-attempt population reassessment — October 19, 2026
-
-- Assessment now accepts COMPLETE/INCOMPLETE attempts while the parent remains RUNNING.
-  It rechecks the full population fingerprint and actual job outcomes, requires retained
-  dataset references and rejects lifecycle/outcome disagreement.
-- Matching/differing completed attempts retain their decisions until contract activity changes;
-  changed populations fail reassessment while the original audit reports remain reproducible.
-  Cancellation and retry exhaustion remain INCOMPLETE after dataset publication.
-- Final acceptance still needs report verification, concurrent population-writer fencing,
-  approval routing and admission integration. This change performs no release enablement.
 
 ## Outstanding release verification
 

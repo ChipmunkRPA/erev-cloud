@@ -5,6 +5,7 @@
 // cell (REQ-UX-009). The panel carries `data-testid="SF-08-explain"` (SCREENS §6.7).
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useId, useRef } from "react";
+import { Link } from "react-router";
 
 import { useExplain } from "../../../components/explain/ExplainTrigger";
 import { Banner } from "../../../components/feedback/Banner";
@@ -31,17 +32,27 @@ export interface CellRequest {
 }
 
 function objectLabel(objectType: string): string {
-  return EXPLAIN_OBJECT_TYPES.some((item) => item === objectType)
+  return (EXPLAIN_OBJECT_TYPES.some((item) => item === objectType) || objectType === "contract_event" || objectType === "modification")
     ? t(`reports.explain.object.${objectType}`)
     : objectType;
 }
 
 function measureLabel(measure: string): string {
+  if (["booked_new", "booked_modifications", "billings", "revenue"].includes(measure)) {
+    return t(`reports.explain.measure.bbr_${measure}`);
+  }
   const key = measureLabelKey(measure);
   return key === null ? measure : t(key);
 }
 
+export function sourceHref(contributor: ReportCellContributor): string | null {
+  // Only the internal business-record routes supplied by BBR; no arbitrary API/external links.
+  return /^\/contracts\/[0-9a-f-]{36}\/(?:history|billing|journals|modifications\/[0-9a-f-]{36})$/i.test(contributor.href)
+    ? contributor.href : null;
+}
+
 function figureOf(contributor: ReportCellContributor) {
+  if (sourceHref(contributor) !== null) return null;
   const objectType = EXPLAIN_OBJECT_TYPES.find((item) => item === contributor.object_type);
   return objectType === undefined
     ? null
@@ -189,9 +200,16 @@ export function CellContributors({
                   className="border-t border-hairline"
                 >
                   <td className="py-1 pe-2">
-                    <Button variant="link" onClick={() => openContributor(contributor)}>
-                      {objectLabel(contributor.object_type)}
-                    </Button>
+                    {sourceHref(contributor) !== null ? (
+                      <Link to={contributor.href} className="text-accent underline" onClick={() => onClose(false)}>
+                        {objectLabel(contributor.object_type)}
+                        <span className="block font-mono text-xs">{contributor.id}</span>
+                      </Link>
+                    ) : (
+                      <Button variant="link" onClick={() => openContributor(contributor)}>
+                        {objectLabel(contributor.object_type)}
+                      </Button>
+                    )}
                   </td>
                   <td className="py-1 pe-2 text-fg-2">{measureLabel(contributor.measure)}</td>
                   <td className="num py-1 text-end text-fg-1">

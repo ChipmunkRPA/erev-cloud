@@ -149,6 +149,70 @@ def test_bbr_report_delivery_and_retained_reproduction(
     assert len(rows) == 1 and rows[0]["revenue"]["amount"] != "0.00"
     data = get(app, f"{REPORT_RUNS}/{original['id']}/output", world.maya).json()
     assert data["tie_out_results"][0]["result"] == "PASS"
+    cell_path = f"/api/v1/explain/report-runs/{original['id']}/cell"
+    explained = get(
+        app, cell_path, world.maya, {"row_key": rows[0]["row_key"], "column_key": "revenue"}
+    )
+    assert explained.status_code == 200, explained.text
+    detail = explained.json()
+    assert detail["value"] == rows[0]["revenue"]
+    assert detail["contributors"]["items"]
+    assert sum(
+        (Decimal(c["value"]["amount"]) for c in detail["contributors"]["items"]), Decimal(0)
+    ) == Decimal(detail["value"]["amount"])
+    assert all(c["href"].endswith("/journals") for c in detail["contributors"]["items"])
+    empty = get(
+        app, cell_path, world.maya, {"row_key": rows[0]["row_key"], "column_key": "booked_new"}
+    )
+    assert empty.status_code == 200 and empty.json()["contributors"]["items"] == []
+    unsupported = get(
+        app, cell_path, world.maya, {"row_key": rows[0]["row_key"], "column_key": "entity_code"}
+    )
+    assert unsupported.status_code == 422
+    annual, annual_rows = report_run(
+        world,
+        "bookings_billings_revenue",
+        {
+            **params,
+            "from_period_key": "FY2026-P01",
+            "granularity": "YEAR",
+        },
+    )
+    booked = get(
+        app,
+        f"/api/v1/explain/report-runs/{annual['id']}/cell",
+        world.maya,
+        {"row_key": annual_rows[0]["row_key"], "column_key": "booked_new"},
+    )
+    assert booked.status_code == 200, booked.text
+    assert booked.json()["value"]["amount"] == "135000.00"
+    assert booked.json()["contributors"]["items"][0]["object_type"] == "contract_event"
+    annual_cell = f"/api/v1/explain/report-runs/{annual['id']}/cell"
+    billing_query = {"row_key": annual_rows[0]["row_key"], "column_key": "billings"}
+    earlier_billing = get(app, annual_cell, world.maya, billing_query)
+    assert earlier_billing.status_code == 200 and earlier_billing.json()["contributors"]["items"]
+    cid = UUID(str(world.contracts[K01].contract["id"]))
+    head = world.place.scalar(select(contract.c.head_stream_version).where(contract.c.id == cid))
+    appended(
+        world.place,
+        cid,
+        head,
+        [
+            EventIn(
+                event_type=ContractEventType.BILLING_RECORDED,
+                effective_date=date(2026, 9, 16),
+                payload=BillingRecordedV1(
+                    invoice_number="BBR-CELL-LATER",
+                    line_external_id="BBR-CELL-LATER-1",
+                    obligation_key="O1",
+                    amount=MoneyIn(amount="5000.00", currency="USD"),
+                    issue_date=date(2026, 9, 16),
+                ),
+            )
+        ],
+    )
+    assert get(app, annual_cell, world.maya, billing_query).json() == earlier_billing.json()
+
     csv_run, _ = report_run(world, "bookings_billings_revenue", params, output_format="CSV")
     base = f"{REPORT_RUNS}/{csv_run['id']}/output"
     content = get(app, base, world.maya).content

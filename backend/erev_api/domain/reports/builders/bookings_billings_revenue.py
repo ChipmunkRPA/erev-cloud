@@ -5,14 +5,17 @@ period (including late-event carries); bookings and billing use their effective 
 quarters and years come from the entity calendar, not calendar-month arithmetic.
 """
 
+import json
 from collections.abc import Mapping, Sequence
-from dataclasses import replace
+from dataclasses import asdict, replace
 from datetime import date
 from decimal import Decimal, localcontext
 from typing import Any, Final
 from uuid import UUID
 
+from erev_engine.canonical import canonical_bytes
 from erev_engine.stages.s01_canonicalize import encode_key
+from sqlalchemy.orm import Session
 
 from erev_api.domain.reports import tie_outs
 from erev_api.domain.reports.builders import (
@@ -212,6 +215,15 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     view = str(params.parameters.get("currency_view") or "functional")
     if view == "functional":
         contributions = dict(bbr_currency.functional(uow, scoped, contributions, entities))
+    tie_outs.record_evidence(
+        params,
+        "bbr_aggregation_inputs_v1",
+        json.loads(
+            canonical_bytes(
+                {measure: [asdict(row) for row in rows] for measure, rows in contributions.items()}
+            )
+        ),
+    )
     expected = bbr_journal.totals(uow, scoped, period_ids=period_ids, view=view)
     return dataset(
         contributions,
@@ -221,3 +233,98 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         currency_view=view,
         journal_revenue=expected,
     )
+
+
+def cell(
+    session: Session, params: ReportParams, row_key: str, column_key: str
+) -> tuple[Mapping[str, str], list[dict[str, Any]]]:
+    if column_key not in MEASURES:
+        raise tie_outs.invalid("column_key", "Choose a bookings, billings or revenue amount.")
+    raw = tie_outs.bound_evidence(params, "bbr_aggregation_inputs_v1")
+    contributions = {}
+    for measure in MEASURES:
+        contributions[measure] = tuple(
+            Contribution(
+                source_type=r["source_type"],
+                source_id=UUID(r["source_id"]),
+                contract_id=UUID(r["contract_id"]),
+                entity_id=UUID(r["entity_id"]),
+                effective_date=date.fromisoformat(r["effective_date"]),
+                currency=r["currency"],
+                amount=Decimal(r["amount"]),
+                period_id=UUID(r["period_id"]) if r["period_id"] else None,
+                functional_currency=r["functional_currency"],
+                functional_amount=Decimal(r["functional_amount"])
+                if r["functional_amount"] is not None
+                else None,
+                basis_ids=tuple(UUID(i) for i in r["basis_ids"]),
+            )
+            for r in raw[measure]
+        )
+    entities = tie_outs.entities(session, params.entity_ids, params=params)
+    if "entity_code" in params.filters:
+        entities = tuple(e for e in entities if e.code == params.filters["entity_code"])
+    calendars = tie_outs.calendars(session, entities, params=params)
+    periods = {
+        e.id: tie_outs.range_of(params, calendars[e.id], e, year_default=True) for e in entities
+    }
+    view = str(params.parameters.get("currency_view") or "functional")
+    granularity = str(params.parameters.get("granularity") or "MONTH")
+    data = dataset(
+        contributions,
+        entities=entities,
+        periods=periods,
+        granularity=granularity,
+        currency_view=view,
+        journal_revenue={},
+    )
+    row = next((r for r in data.rows if r["row_key"] == row_key), None)
+    if row is None:
+        raise tie_outs.invalid("row_key", "The retained BBR report has no such row.")
+    by_entity = {e.id: e for e in entities}
+    items = []
+    for source in contributions[column_key]:
+        entity = by_entity[source.entity_id]
+        period = next(
+            (
+                p
+                for p in periods[entity.id]
+                if (
+                    p.id == source.period_id
+                    if column_key == "revenue"
+                    else p.start <= source.effective_date <= p.end
+                )
+            ),
+            None,
+        )
+        if period is None:
+            continue
+        currency = source.currency if view == "transaction" else entity.functional_currency
+        bucket, _ = _bucket(period, granularity)
+        base = f"period:{encode_key(bucket)}:{encode_key(entity.code)}"
+        if row_key not in {base, f"{base}:{currency}"} or row["currency"] != currency:
+            continue
+        amount = (
+            source.amount
+            if view == "transaction" or source.functional_amount is None
+            else source.functional_amount
+        )
+        if source.source_type == "modification":
+            href = f"/contracts/{source.contract_id}/modifications/{source.source_id}"
+        elif source.source_type == "contract_event":
+            tab = "billing" if column_key == "billings" else "history"
+            href = f"/contracts/{source.contract_id}/{tab}"
+        elif source.source_type == "subledger_line":
+            href = f"/contracts/{source.contract_id}/journals"
+        else:
+            raise Problem("invalid-transition", "Unknown retained BBR contribution source.")
+        items.append(
+            {
+                "object_type": source.source_type,
+                "id": source.source_id,
+                "measure": column_key,
+                "value": tie_outs.money(amount, currency),
+                "href": href,
+            }
+        )
+    return row[column_key], items

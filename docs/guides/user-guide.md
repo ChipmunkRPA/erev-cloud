@@ -270,8 +270,13 @@ as known at the source cutoff. Posted revenue uses its stored functional amount.
 inputs include rate/version and application-version evidence so a rerun keeps its source basis.
 Missing rates, ambiguous or shared modification valuation, missing predecessors and uncovered
 historical modification state refuse. These metric conventions still await independent
-accounting sign-off. Reporting currency, locked datasets and cell contributor navigation are
-not yet implemented for this report.
+accounting sign-off. Reporting currency and locked datasets are not yet implemented for this report.
+
+Select a money cell to see its retained contributions, source IDs and amounts. Business-record
+links open the contract history, billing or journal tab, or the specific modification detail.
+The general contract tabs do not automatically select the source row; use the displayed ID to
+identify it. Contribution amounts keep the original report currency and source basis even after
+later events. Older runs without retained aggregation inputs cannot provide this drill.
 
 ### Data extracts
 

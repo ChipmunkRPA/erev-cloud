@@ -1,5 +1,15 @@
 # eRev Cloud 1.0: stated limits of the release
 
+October 19 BBR cell continuation: all four money columns now expose retained contribution
+lists through the report-cell endpoint. The UI shows source IDs and links to contract history,
+billing, modification detail or contract journals. These links open the relevant record view;
+history/billing/journal links do not select an individual source row automatically. Existing
+runs without the new aggregation evidence refuse explanation. Actual revenue/new-booking/billing
+cells are exercised; a modification-cell journey, narrower-reader scope acceptance and live
+browser navigation are still owed. Seven catalogue builders remain unregistered. Accounting
+sign-off and the other BBR limits below remain open; no deployment/readiness claim.
+
+
 October 19 BBR delivery continuation: bookings_billings_revenue is registered and runs through
 the report API/worker with fiscal buckets, retained reruns and historical journal-revenue
 comparison. Functional contract/billing contributions use a unique historical approved spot

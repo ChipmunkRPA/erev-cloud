@@ -6434,3 +6434,14 @@ cleanup in the shared database session kernel was also repaired and regression-t
   replacement refusal, revoked access and corrupted output are covered by database tests.
 - Final population acceptance, approval routing and admission remain unfinished. Attachment
   is an internal operation awaiting final orchestration; it never enables the release.
+
+## Completed-attempt population reassessment — October 19, 2026
+
+- Assessment now accepts COMPLETE/INCOMPLETE attempts while the parent remains RUNNING.
+  It rechecks the full population fingerprint and actual job outcomes, requires retained
+  dataset references and rejects lifecycle/outcome disagreement.
+- Matching/differing completed attempts retain their decisions until contract activity changes;
+  changed populations fail reassessment while the original audit reports remain reproducible.
+  Cancellation and retry exhaustion remain INCOMPLETE after dataset publication.
+- Final acceptance still needs report verification, concurrent population-writer fencing,
+  approval routing and admission integration. This change performs no release enablement.
