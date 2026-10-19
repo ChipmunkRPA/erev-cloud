@@ -2,6 +2,22 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Draft disclosure public API admission — October 19, 2026
+
+- Registered the composed disclosure worker separately from single-table BUILDERS. Creation
+  and rerun use REGISTERED_REPORTS; its retained source contract is exposed through normal run
+  metadata. There are 55 registered execution paths and four still-unregistered catalogue entries.
+- Require one entity, ASC606/IFRS15 and explicit period. Initial attachment requires an open
+  period at the source cutoff; missing/non-open/ambiguous state refuses. Explicit locked sources
+  retain their existing no-frozen-dataset refusal. No live fallback for frozen requests.
+- Converted the real 16-child/parent/rerun journey to HTTP creation and rerun, and verified run
+  detail and JSON output download. Missing book/period and LEGACY requests return 422.
+  The retained rerun still adds only one parent and reproduces hashes/totals with live capture
+  forbidden. Source-contract/catalogue checks pass (23); Ruff/Mypy pass.
+- User guide and release limitations describe the draft API and its boundaries. Frozen snapshots,
+  chapter viewer, side-by-side quarter layout, export worker journeys and populated accounting
+  acceptance remain open. This enables usable draft generation, not completed RPS-15/readiness.
+
 ## Retained disclosure rerun reconstruction — October 19, 2026
 
 - Added version-2 disclosure input codec retaining original child stamps alongside typed JSON
@@ -209,21 +225,6 @@
   Real import capture/rebuild checks cover identity and renamed mappings; dry-run imports correctly
   have no compared actuals. Worker registration, publication grants and export integration remain
   next, along with complete replay/sandbox lifecycle. Six catalogue builders remain unregistered.
-
-## Retained parallel comparison inputs — October 19, 2026
-
-- Added parallel_inputs.capture to compose authorized migration admission, independent legacy
-  projection and historical eRev reading into a detached JSON input bundle. Period/currency
-  selection remains explicit; current support requires the complete mapped entity scope.
-- Saved inputs include both full snapshots, original source evidence, tenant/migration/entity
-  scope and cutoff. Rebuild checks the server-bound digest, version, scope and source linkage,
-  then recomputes the comparison without consulting mutable source tables.
-- Targeted comparison suite: 10 passed, including JSON round-trip, changed amount digest refusal
-  and changed entity scope refusal. New module passes Mypy; changed files pass Ruff.
-- Still open: report parameter resolution, worker registration, persistence/export integration,
-  current permission checks on publication and full migration replay/sandbox acceptance. The
-  capture composition is type-checked but still needs a real database integration journey.
-  Six catalogue builders remain unregistered; RPT-42 is not yet a completed user-facing report.
 
 ## Outstanding release verification
 

@@ -11,7 +11,7 @@ from uuid import UUID
 from erev_engine.canonical import sha256_hex
 from sqlalchemy import select, update
 
-from erev_api.db.tables import report_run
+from erev_api.db.tables import period_state_transition, report_run
 from erev_api.domain.reports import disclosure_plan, framework, tie_outs
 from erev_api.domain.reports.disclosure_plan import ChildSource
 from erev_api.domain.reports.requester import require_export
@@ -131,6 +131,33 @@ def ensure(uow: UnitOfWork, parent_id: UUID) -> tuple[ChildSource, ...]:
         entity = entities[0]
         calendar = tie_outs.calendars(uow.session, entities)[entity.id]
         period = tie_outs.period_of(params, calendar, entity)
+        transitions = period_state_transition.c
+        states = uow.session.execute(
+            select(transitions.to_state, transitions.created_at, transitions.created_txid)
+            .where(
+                transitions.tenant_id == principal.tenant_id,
+                transitions.entity_id == entity.id,
+                transitions.period_id == period.id,
+                transitions.book_code == parent["book_code"],
+                transitions.created_at <= params.known_at,
+            )
+            .order_by(
+                transitions.created_at.desc(),
+                transitions.created_txid.desc(),
+                transitions.id.desc(),
+            )
+            .limit(2)
+        ).all()
+        ambiguous = (
+            len(states) == 2
+            and states[0][1:] == states[1][1:]
+            and states[0].to_state != states[1].to_state
+        )
+        if not states or states[0].to_state != "open" or ambiguous:
+            raise _refuse(
+                "live draft packs require an open period at the source cutoff; "
+                "frozen disclosure sources are not yet available."
+            )
         planned = disclosure_plan.requests(
             entity_code=entity.code,
             book=str(parent["book_code"]),

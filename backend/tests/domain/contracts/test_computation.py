@@ -4943,10 +4943,11 @@ def test_disclosure_children_attach_once_and_survive_retry(
 ) -> None:
     from dataclasses import replace
 
-    from erev_api.db.tables import engine_release, report_run
+    from erev_api.db.tables import report_run
     from erev_api.domain.reports import disclosure_children, disclosure_readiness, tie_outs
-    from erev_api.enums import JobKind
-    from support.rows import report_run_values
+    from support.principals import sign_in
+    from support.principals import workspace as signed_workspace
+    from support.reference import post
 
     with world.place.uow() as uow:
         observation_time = max(uow.now, uow.session.scalar(select(func.clock_timestamp())))
@@ -4955,29 +4956,52 @@ def test_disclosure_children_attach_once_and_survive_retry(
         entities = tie_outs.entities(uow.session, (world.entity_id,))
         calendar = tie_outs.calendars(uow.session, entities)[world.entity_id]
         period = calendar.periods[1]
-        release_id = uow.session.scalar(select(engine_release.c.id).limit(1))
-        parent = report_run_values(
-            uow.principal.tenant_id,
-            engine_release_id=release_id,
-            report_code="disclosure_pack",
-            book_code="ASC606",
-            known_at=uow.now,
-            entity_ids=[world.entity_id],
-            parameters={
+    actor = signed_workspace(
+        world.app,
+        world.place.author.member,
+        sign_in(world.app, world.place.author.member.email),
+        world.place.author.secret,
+    )
+    for invalid in (
+        {"entity_codes": [entities[0].code], "period_key": period.key},
+        {"entity_codes": [entities[0].code], "book": "ASC606"},
+        {"entity_codes": [entities[0].code], "book": "LEGACY", "period_key": period.key},
+    ):
+        refused = post(
+            world.app,
+            "/api/v1/report-runs",
+            actor,
+            {
+                "report_code": "disclosure_pack",
+                "output_format": "JSON",
+                "parameters": invalid,
+            },
+        )
+        assert refused.status_code == 422, refused.text
+    response = post(
+        world.app,
+        "/api/v1/report-runs",
+        actor,
+        {
+            "report_code": "disclosure_pack",
+            "output_format": "JSON",
+            "parameters": {
                 "entity_codes": [entities[0].code],
                 "book": "ASC606",
                 "period_key": period.key,
                 "quarter": True,
             },
-            created_by=uow.principal.id,
-            created_by_kind=uow.principal.kind.value,
+        },
+    )
+    assert response.status_code == 202, response.text
+    parent_id = UUID(response.headers["X-Erev-Report-Run-Id"])
+    with world.place.uow() as uow:
+        parent = dict(
+            uow.session.execute(select(report_run).where(report_run.c.id == parent_id))
+            .mappings()
+            .one()
         )
-        parent_params = {"report_run_id": str(parent["id"])}
-        parent_job = uow.defer(
-            JobKind.REPORT_RUN, parent_params, subject_type="report_run", subject_id=parent["id"]
-        )
-        parent["job_id"] = parent_job["id"]
-        uow.session.execute(insert(report_run).values(**parent))
+        parent_params = {"report_run_id": str(parent_id)}
         first = disclosure_children.ensure(uow, parent["id"])
         count = uow.session.scalar(select(func.count()).select_from(report_run))
         assert len(first) == 16
@@ -5233,6 +5257,12 @@ def test_disclosure_children_attach_once_and_survive_retry(
             evidence["disclosure_inputs"]["policies"]["known_at"] == parent["known_at"].isoformat()
         )
 
+    detail = get(world.app, f"/api/v1/report-runs/{parent['id']}", actor)
+    assert detail.status_code == 200, detail.text
+    download = get(world.app, f"/api/v1/report-runs/{parent['id']}/output", actor)
+    assert download.status_code == 200, download.text
+    assert download.json() == document
+
     from erev_api.domain.reports import disclosure_inputs
 
     with world.place.uow() as uow:
@@ -5251,28 +5281,15 @@ def test_disclosure_children_attach_once_and_survive_retry(
         with pytest.raises(Problem):
             disclosure_inputs.rebuild(damaged)
         count_before = uow.session.scalar(select(func.count()).select_from(report_run))
-        definition = framework.definition_row(uow.session, "disclosure_pack")
-        assert definition is not None
-        rerun_id, rerun_job = framework._insert_run(
-            uow,
-            definition=definition,
-            resolved=framework._Resolved(
-                parameters=dict(original["parameters"]),
-                entity_ids=tuple(original["entity_ids"]),
-                known_at=original["known_at"],
-                book_code=original["book_code"],
-                as_of_date=original["as_of_date"],
-                period_lock_id=None,
-                source_binding=original["source_binding"],
-            ),
-            output_format="JSON",
-            rerun_of=original["id"],
-        )
+    response = post(world.app, f"/api/v1/report-runs/{original['id']}/rerun", actor, {})
+    assert response.status_code == 202, response.text
+    rerun_id = UUID(response.headers["X-Erev-Report-Run-Id"])
+    rerun_job_id = UUID(response.json()["id"])
+    with world.place.uow() as uow:
         assert uow.session.scalar(select(func.count()).select_from(report_run)) == count_before + 1
-        uow.commit()
     with world.place.uow() as uow:
         rerun_task_id = uow.session.scalar(
-            select(job.c.procrastinate_job_id).where(job.c.id == rerun_job.id)
+            select(job.c.procrastinate_job_id).where(job.c.id == rerun_job_id)
         )
         uow.session.execute(
             text("UPDATE procrastinate_jobs SET status = 'doing' WHERE id = :id"),
@@ -5283,7 +5300,7 @@ def test_disclosure_children_attach_once_and_survive_retry(
         disclosure_assembly, "prepare", lambda *args: pytest.fail("live capture on rerun")
     )
     run_job(
-        rerun_job.id,
+        rerun_job_id,
         world.place.tenant_id,
         attempt=1,
         runtime=runtime,

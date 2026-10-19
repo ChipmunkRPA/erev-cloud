@@ -7055,3 +7055,19 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Next RPT-42 work: persist/rebuild the complete retained inputs, compose both readers with the
   comparison, register the worker and exports, and finish migration replay/sandbox lifecycle.
   Six catalogue builders remain unregistered; full LMG-4/5 accounting acceptance remains open.
+
+
+## Retained parallel comparison inputs — October 19, 2026
+
+- Added parallel_inputs.capture to compose authorized migration admission, independent legacy
+  projection and historical eRev reading into a detached JSON input bundle. Period/currency
+  selection remains explicit; current support requires the complete mapped entity scope.
+- Saved inputs include both full snapshots, original source evidence, tenant/migration/entity
+  scope and cutoff. Rebuild checks the server-bound digest, version, scope and source linkage,
+  then recomputes the comparison without consulting mutable source tables.
+- Targeted comparison suite: 10 passed, including JSON round-trip, changed amount digest refusal
+  and changed entity scope refusal. New module passes Mypy; changed files pass Ruff.
+- Still open: report parameter resolution, worker registration, persistence/export integration,
+  current permission checks on publication and full migration replay/sandbox acceptance. The
+  capture composition is type-checked but still needs a real database integration journey.
+  Six catalogue builders remain unregistered; RPT-42 is not yet a completed user-facing report.

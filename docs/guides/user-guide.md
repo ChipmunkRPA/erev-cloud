@@ -334,6 +334,24 @@ stored digest; it is not a hash of the redacted payload. The CSV manifest's `sha
 actual delivered CSV bytes. CSV formula protection applies to text fields. Re-running a saved
 report rebuilds from its retained redacted source records and rechecks current report access.
 
+#### Draft disclosure packs
+
+Create `disclosure_pack` through `POST /api/v1/report-runs` with one `entity_codes` entry,
+`book` (`ASC606` or `IFRS15`), an explicit `period_key`, and optionally `quarter: true`.
+Choose `JSON`, `XLSX` or `PDF`. This currently produces a draft for a period that was open
+at the selected source time. A locked source or a non-open period is refused; frozen
+close disclosures are not implemented yet.
+
+The response supplies the job and `X-Erev-Report-Run-Id`. Poll the run until it succeeds,
+then download `/api/v1/report-runs/{id}/output` with report export permission. JSON contains
+seven `sections` plus a table directory; Excel has Contents plus seven chapter worksheets.
+Quarter-to-date currently appears as separate labelled tables, not side-by-side columns.
+The regular data endpoint shows the directory; the dedicated chapter viewer is unfinished.
+
+`POST /api/v1/report-runs/{id}/rerun` rebuilds from the saved child inputs and policies.
+It rechecks current permissions, reuses the original child identities and does not queue new
+child reports. Suppressed disclosure amounts remain outside the exported sections.
+
 #### Contract version extract
 
 `extract_contract_versions` exports all persisted versions of the selected book, including

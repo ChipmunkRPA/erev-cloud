@@ -1,5 +1,15 @@
 # eRev Cloud 1.0: stated limits of the release
 
+Latest disclosure update (October 19): draft disclosure_pack creation, job execution,
+JSON download and retained-input rerun now work through the standard report API. Only one
+entity, ASC606/IFRS15 and an explicit period open at the source cutoff are admitted. Frozen
+snapshots, the chapter viewer, side-by-side quarter layout and populated accounting acceptance
+remain unfinished. XLSX/PDF rendering is connected but worker export journeys remain to verify.
+There are now 55 registered report execution paths (54 single-table builders plus this composed
+worker); actual_vs_forecast, forecast_outputs, contract_sample_pack and period_evidence_pack
+remain unregistered. Older dated counts below describe earlier implementation stages.
+
+
 Latest update (October 19): RPT-42 is now registered in the standard report worker with retained
 input reruns and current initiating-user/API-client report/export permission checks. CSV export
 and rerun were exercised after real imports for identity and renamed mappings; these dry-run

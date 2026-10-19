@@ -589,8 +589,15 @@ _OPEN_ONLY: Final = (
     "effective record cutoff (the basis; nothing else is bound — a rerun is a NEW live evaluation, "
     "labelled open, never a reproduction)",
 )
+# Composed reports use the worker's chapter-aware execution path, not a single-table builder.
+REGISTERED_REPORTS: Final = frozenset(BUILDERS) | {"disclosure_pack"}
+
 SOURCE_CONTRACTS: Final[Mapping[str, SourceContract]] = MappingProxyType(
     {
+        "disclosure_pack": SourceContract(
+            RETAINED,
+            ("Original child datasets, source stamps and exact-cutoff disclosure policies",),
+        ),
         extract_versions_builder.CODE: SourceContract(
             RETAINED,
             (_CUTOFF, "version source records and original computation membership"),
@@ -901,7 +908,7 @@ SOURCE_CONTRACTS: Final[Mapping[str, SourceContract]] = MappingProxyType(
         ),
     }
 )
-assert set(SOURCE_CONTRACTS) == set(BUILDERS), (
+assert set(SOURCE_CONTRACTS) == REGISTERED_REPORTS, (
     "every registered live builder states its source contract"
 )
 
@@ -1492,6 +1499,13 @@ def _resolve(
                 normalized[KNOWN_AT_BASIS] = basis
             parameters = normalized
             entity_ids = (scope.entity_id,)
+    if code == "disclosure_pack":
+        if len(entity_ids) != 1:
+            errors.append(_finding("parameters.entity_codes", "Choose one entity."))
+        if parameters.get("book") not in {"ASC606", "IFRS15"}:
+            errors.append(_finding("parameters.book", "Choose ASC606 or IFRS15."))
+        if not parameters.get("period_key"):
+            errors.append(_finding("parameters.period_key", "Choose a disclosure period."))
     errors += _calendar_errors(session, code, parameters, entity_ids)
     as_of = _parse_date(parameters.get("as_of"))
     book = parameters.get("book")
@@ -1788,7 +1802,7 @@ def create_run(uow: UnitOfWork, body: ReportRunCreateIn) -> tuple[UUID, JobOut]:
     errors += [] if errors else findings
     if errors:
         raise _invalid(errors)
-    if str(definition["code"]) not in BUILDERS:
+    if str(definition["code"]) not in REGISTERED_REPORTS:
         raise _invalid([_finding("report_code", NOT_AVAILABLE, RULE_REPORT)])
     return _insert_run(
         uow,
@@ -1811,7 +1825,7 @@ def rerun(uow: UnitOfWork, run_id: UUID) -> tuple[UUID, JobOut]:
     definition = definition_row(
         session, str(original["report_code"]), int(original["report_version"])
     )
-    if definition is None or str(definition["code"]) not in BUILDERS:
+    if definition is None or str(definition["code"]) not in REGISTERED_REPORTS:
         raise _invalid([_finding("report_code", NOT_AVAILABLE, RULE_REPORT)])
     # S15-R-24: a live run reruns from ITS bound sources — never from today's rows; without a
     # binding it is refused by name. An as-locked run reruns from its frozen dataset (S15-R-19).
