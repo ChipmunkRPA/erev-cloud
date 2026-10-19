@@ -6774,3 +6774,23 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Concurrent races across every custom write path and direct copy transaction are not yet
   acceptance-tested. Nonempty/closed-period scenario copy, refresh, event sets, forecast runs,
   report builders and UI remain open. No production-readiness or deployment claim.
+
+## Versioned forecast input set API — October 19, 2026
+
+- Added scenario-only GET/POST /forecast-event-sets, GET/PATCH by id, and publish. Drafts carry
+  ordered upload/command fields, source scenario linkage and row ETags. New versions retain the
+  previous version reference and input arrays; one draft per code is admitted under a code lock.
+- Migration 0179 installs a forecast-specific DRAFT -> PUBLISHED -> SUPERSEDED lifecycle with
+  DB-04 immutable publication contents/stamps and one published version per tenant/code.
+  Publishing hashes canonical content and atomically supersedes the old version. No production
+  approval request is fabricated; shared production configuration approval rules are unchanged.
+  This scenario-specific rule is now explicit in T-FC-02.
+- Actual HTTP checks inside both created-scenario membership cases cover production refusal,
+  request replay, draft edit, stale ETag rejection, publish, API/direct-SQL publication freeze,
+  version 2 publication, retained old hash and published-only listing. With the scenario flow
+  and empty migration round trip: 4 passed (12.75s). Ruff, mypy (5 files, explicit package bases)
+  and OpenAPI/types generation pass. Existing OpenAPI paths/operations are unchanged.
+- FCS-2 remains incomplete: no committed-import linkage, automatic recording of successful
+  business commands, ordered input replay or refresh yet. These APIs currently manage input-set
+  versions; they do not execute or populate forecasts. Forecast runs/output and UI remain open.
+  Seven missing report builders remain missing. No deployment or readiness claim.

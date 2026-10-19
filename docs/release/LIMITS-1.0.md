@@ -1,5 +1,12 @@
 # eRev Cloud 1.0: stated limits of the release
 
+October 19 legacy comparison input update: an independent history projection now reproduces
+all ten archived Jan–Oct 2023 gross journal exports and derives period-end contract positions.
+Its source currency must have two decimal places, mappings must be complete, and contracts
+spanning mapped entities refuse. It does not authorize or load a migration by itself. Report
+source admission, eRev data selection, binding and worker integration remain outstanding;
+migration replay import is also still unfinished. RPT-42 remains unregistered.
+
 October 19 parallel-run comparison phase: exact comparison of supplied independent journal and
 balance snapshots and the two viewer sections are implemented. Legacy monthly-output reading
 with original rounding, authorized eRev source selection, retained binding and worker registration

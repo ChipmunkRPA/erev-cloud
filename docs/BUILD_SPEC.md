@@ -10770,6 +10770,7 @@ Author BS-3. Uses DIN, SNP and RPS (PHASES §1 row 18). Indicative size 12 items
   - **Gates:** GK-01 `make ci`; GK-02 `make test-pg`
 
 - [ ] **LMG-5 Parallel-run comparison report.**
+  - October 19, 2026 legacy input phase: migration.parallel_legacy.snapshot independently derives gross journal cents and period-end contract positions from retained history, preserving original binary64 component/filter/group/final-rounding behavior. Every archived Jan–Oct monthly gross export matches by account and side, including the October one-cent imbalance. Raw-row digests and mapping/period identity are retained. This is source projection evidence, not command-driven LMG-5 acceptance; authorized eRev source selection, file/database admission, full binding and worker registration remain open, alongside the unfinished migration replay import prerequisite.
   - October 19, 2026 comparison phase: parallel_comparison.compare now reconciles independently produced journal and contract-balance snapshots using exact differences, complete-period intersection, separate currency totals and contributor references. Viewer sections/columns/empty copy are ready. Explicit-fact checks cover cents, missing versus zero populations and incompatible sources; independent legacy rounding/source readers, authorized eRev source binding, registration and command-driven January/October acceptance remain open. This does not complete LMG-5.
   - **Prerequisites:** LMG-4
   - **Scope:**

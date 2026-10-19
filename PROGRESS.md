@@ -2,6 +2,28 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Independent legacy monthly comparison inputs — October 19, 2026
+
+- Implemented migration.parallel_legacy.snapshot over retained Contract_Live history. Gross
+  journal construction follows component-major ordering, binary64 four-place rounding, the
+  two-place zero filter, compensated grouped sums and final cents; no eRev engine output is used.
+  Compatibility floating arithmetic is isolated from the exact comparison layer.
+- Period-end contract balances sum latest obligation positions, never repeated contract totals.
+  Coverage stops at the last source economic date. Entity mappings, duplicate identities,
+  nonfinite amounts and unsupported currency/book selections refuse. Cross-entity contracts
+  refuse rather than misattribute a legacy consolidated journal. Only two-decimal source currency
+  is supported; the legacy format has no per-row currency column.
+- Source identity includes raw-row digests, requested period boundaries and confirmed entity
+  mapping. Journal/balance facts carry exact source-row references. Authorization and retained
+  file/database integrity admission still belong to the upcoming report source reader.
+- All ten archived monthly legacy gross exports (Jan–Oct 2023) match by account/debit/credit,
+  preserving October's 5,043.84 debit / 5,043.85 credit imbalance. SQLite January Contract 2
+  balance is -58.85. Focused checks: 17 passed; Ruff and Mypy pass.
+- Remaining RPT-42 work: authorized eRev period/journal/balance selection, complete retained
+  binding and report worker/export integration. Migration replay import remains unfinished
+  (jobs.py explicitly refuses it); sandbox access must retain tenant/grant boundaries. These
+  source checks do not complete LMG-4/5 or independent accounting acceptance.
+
 ## Parallel-run comparison calculation and viewer — October 19, 2026
 
 - Added parallel_comparison.compare for independently produced journal and contract-balance
@@ -197,26 +219,6 @@
 - RPT-38 remains incomplete: ordered DRY_RUN driver replay, report registration/formats, cell
   explanations, browser and K-03 financial acceptance still required. Seven missing report
   builders remain unregistered. No deployment or accounting/production-readiness claim.
-
-## Versioned forecast input set API — October 19, 2026
-
-- Added scenario-only GET/POST /forecast-event-sets, GET/PATCH by id, and publish. Drafts carry
-  ordered upload/command fields, source scenario linkage and row ETags. New versions retain the
-  previous version reference and input arrays; one draft per code is admitted under a code lock.
-- Migration 0179 installs a forecast-specific DRAFT -> PUBLISHED -> SUPERSEDED lifecycle with
-  DB-04 immutable publication contents/stamps and one published version per tenant/code.
-  Publishing hashes canonical content and atomically supersedes the old version. No production
-  approval request is fabricated; shared production configuration approval rules are unchanged.
-  This scenario-specific rule is now explicit in T-FC-02.
-- Actual HTTP checks inside both created-scenario membership cases cover production refusal,
-  request replay, draft edit, stale ETag rejection, publish, API/direct-SQL publication freeze,
-  version 2 publication, retained old hash and published-only listing. With the scenario flow
-  and empty migration round trip: 4 passed (12.75s). Ruff, mypy (5 files, explicit package bases)
-  and OpenAPI/types generation pass. Existing OpenAPI paths/operations are unchanged.
-- FCS-2 remains incomplete: no committed-import linkage, automatic recording of successful
-  business commands, ordered input replay or refresh yet. These APIs currently manage input-set
-  versions; they do not execute or populate forecasts. Forecast runs/output and UI remain open.
-  Seven missing report builders remain missing. No deployment or readiness claim.
 
 ## Outstanding release verification
 
