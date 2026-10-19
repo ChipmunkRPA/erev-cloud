@@ -6146,6 +6146,43 @@ def test_contract_sample_computation_evidence_keeps_trace_and_full_schedule(
                     for h in holds
                 )
             retained = evidence_sample_sources.read(uow, loaded)
+            import zipfile
+
+            from erev_api.domain.reports import evidence_sample_rendering
+            from erev_api.domain.reports.outputs import RunStamp
+
+            stamp = RunStamp(
+                report_code="contract_sample_pack",
+                report_name="Contract sample",
+                report_version=1,
+                report_run_no=pack["pack_no"],
+                parameters={},
+                entity_codes=("US",),
+                book=None,
+                as_of=request.as_of.isoformat(),
+                source="retained",
+                engine_version="test",
+                build_sha="test",
+                run_by=str(principal.id),
+                run_at=uow.now,
+                output_sha256="",
+            )
+            rendered = evidence_sample_rendering.assemble(uow, pack["id"], stamp)
+            evidence_archive.verify(
+                rendered.content, expected_manifest_sha256=rendered.manifest_sha256
+            )
+            with zipfile.ZipFile(io.BytesIO(rendered.content)) as exported:
+                pdf = exported.read("reports/contract_sample.pdf")
+                assert pdf.startswith(b"%PDF-") and b"Contract sample evidence pack" in pdf
+                assert b"Allocation walk" in pdf and b"sample_contribution" in pdf
+                with zipfile.ZipFile(
+                    io.BytesIO(exported.read("reports/contract_sample.xlsx"))
+                ) as workbook:
+                    assert b"Recognition schedules" in workbook.read("xl/sharedStrings.xml")
+                    assert b"allocated_amount" in workbook.read("xl/sharedStrings.xml")
+                for entry in retained.manifest_document()["files"]:
+                    with zipfile.ZipFile(io.BytesIO(retained.content)) as original:
+                        assert exported.read(entry["path"]) == original.read(entry["path"])
             assert retained.manifest_sha256 == bound.manifest_sha256
             assert any(
                 item["path"] == "sample/journals.json"

@@ -7733,3 +7733,13 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - FCS-3 remains open: K-11 specified accounting acceptance, broader concurrency/crash coverage,
   creation screens, revenue chart, general report-catalogue execution and same-source reruns
   are still unfinished. Actual-vs-forecast and evidence packs remain priorities. No deployment.
+
+## Forecast run creation and history screen — October 19, 2026
+
+- Added `/reports/forecasts` with published-input selection, scoped entities, consecutive
+  calendar horizon, transaction/functional currency and JSON/XLSX/CSV output choices.
+- Connected idempotent submission, job progress/cancellation, paginated run history, saved
+  report links and JSON table previews. Errors and missing permissions are visible; production
+  workspaces cannot create forecasts. Three focused UI checks cover submission and access.
+- Scenario creation/refresh and input editing UI remain open, along with forecast revenue
+  chart, actual-vs-forecast, contract sample pack and period evidence pack. No deployment.

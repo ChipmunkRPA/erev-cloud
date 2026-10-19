@@ -3,6 +3,20 @@
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
 
+
+## Contract sample PDF/XLSX assembly — October 19, 2026
+
+- Added stamped nine-chapter PDF/XLSX workpapers from the authorized retained sample archive.
+  Accounting grids show allocations, schedules, journal lines/contributions, events and documents;
+  complete source-field tables preserve versions, trace nodes, approvals and linked audit evidence.
+- Exact JSON values retain decimal precision, empty/null fields and long text in numbered parts.
+  Unicode/control values use explicit escapes for the PDF standard font. Source file hashes and
+  cutoff/basis notes accompany sections; binary originals remain byte-for-byte in the final ZIP.
+- The populated K01 journey assembles both formats with live collectors disabled and verifies
+  ZIP contents and unchanged originals. Precision/long-text check, Ruff/Mypy and PDF preview pass.
+- Public sample create/worker/read/download and UI remain unfinished; rendering is an assembly
+  component, not a claim that RPS-16 or the production-readiness goal is complete.
+
 ## Contract sample dependency retention — October 19, 2026
 
 - Added immutable tenant FK links from sample packs to captured snapshots and original
@@ -227,16 +241,6 @@
 - FCS-4 remains unavailable until production actuals are captured at refresh before scenario
   replay, old forecast records can be resolved across refreshes, and the retained builder and
   UI are connected. Current scenario recomputation must not be mistaken for posted actuals.
-
-## Forecast run creation and history screen — October 19, 2026
-
-- Added `/reports/forecasts` with published-input selection, scoped entities, consecutive
-  calendar horizon, transaction/functional currency and JSON/XLSX/CSV output choices.
-- Connected idempotent submission, job progress/cancellation, paginated run history, saved
-  report links and JSON table previews. Errors and missing permissions are visible; production
-  workspaces cannot create forecasts. Three focused UI checks cover submission and access.
-- Scenario creation/refresh and input editing UI remain open, along with forecast revenue
-  chart, actual-vs-forecast, contract sample pack and period evidence pack. No deployment.
 
 ## Outstanding release verification
 
