@@ -2,6 +2,17 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Contract version BI extract — October 19, 2026
+
+- Added extract_contract_versions v1: all versions in one book, fixed source cutoff,
+  created-time incremental window, exact decimal strings and original computation members.
+  Partial combined-entity scope is refused; membership reads are batched.
+- Registered retained-input rebuilds and JSON/CSV metadata; existing extract controls expose
+  the report. Migration 0170 reconciles disclosed query sources. User guide documents types.
+- Actual delivery and rerun checks pass alongside event-extract regression. Reporting still
+  has 15 catalogue definitions without builders; locked extracts and true-up remain unfinished.
+  Evidence is in CI-2026-10-19.md. No deployment or readiness claim.
+
 ## Event BI extract and reporting backlog — October 19, 2026
 
 - Registered extract_events with fixed schema v1, explicit entity scope, inclusive source cutoff,
@@ -252,16 +263,6 @@
 - A matching running retry is read-only; final acceptance still needs a fresh population check.
   Verification is recorded in docs/release/CI-2026-10-15.md.
 - Supersession, replay fan-out/handler, datasets and release admission remain unfinished.
-
-## Configured replay seed — October 15, 2026
-
-- Added platform.replay_seed to the tenant configuration registry with default 20260912 and
-  signed-bigint validation. Revision 0162 seeds existing databases without deleting historical
-  catalogue metadata on downgrade. New attempts resolve configuration; retries keep their seed.
-- Corrected the missing composite primary-key declarations for the three validation tables in
-  the data model. Exact migration, attempt and schema evidence is in docs/release/CI-2026-10-15.md.
-- Supersession/start orchestration, replay fan-out/handler, dataset publication and admission
-  remain outstanding. This setting does not enable a release or deploy anything.
 
 ## Outstanding release verification
 

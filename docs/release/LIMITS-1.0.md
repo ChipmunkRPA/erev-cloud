@@ -1,5 +1,14 @@
 # eRev Cloud 1.0: stated limits of the release
 
+October 19 contract-version reporting continuation: `extract_contract_versions` now has a
+v1 full/incremental builder, retained-source reruns and JSON/CSV delivery. Membership comes
+from the original computation; partial combined-entity selections refuse group totals.
+Migration 0170 updates the report's disclosed query sources. There are now 15 catalogue
+reports without builders (remove extract_contract_versions from the earlier list below).
+The other seven extract builders, locked extract datasets, previous-run watermark defaults,
+true-up reporting and live browser acceptance remain open.
+
+
 October 19 reporting continuation: `extract_events` now has a scoped v1 builder, full and
 incremental windows, retained-source reruns, JSON/CSV output, CSV manifests and page controls.
 There are 16 catalogue definitions still without builders: actual_vs_forecast,

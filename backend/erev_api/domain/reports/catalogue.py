@@ -1864,12 +1864,17 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
         "(REQ-RPT-028).",
         ("mode", "entity_codes", "book", "period_lock_id", "known_at", "known_since"),
         overrides=_EXTRACT_MODE,
-        sources=("contract_version", "combination_group_member", "contract"),
+        sources=("contract_version", "contract_computation", "contract"),
         joins=(
-            "combination_group_member.combination_group_id = contract_version.combination_group_id",
-            "combination_group_member.contract_id = contract.id",
+            "contract_version.contract_computation_id = contract_computation.id",
+            "contract_computation.stream_heads keys = contract.id (original members)",
         ),
-        filters=(_SCOPE, _BOOK, _SOURCE_TIME, _INCREMENTAL),
+        filters=(
+            "Every original member contracting entity must be in the report scope",
+            _BOOK,
+            "version known_at and created_at at or before known_at source time; lock unsupported",
+            _INCREMENTAL,
+        ),
     ),
     _definition(
         "extract_schedule_lines",

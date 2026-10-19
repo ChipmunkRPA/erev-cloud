@@ -270,8 +270,8 @@ Dataset schemas, version 1 (the table ids are those of the data model, `docs/04-
 | `extract_events` | Contract events recorded at or before the source time (T-CON-05) | Every column except `tenant_id`; `payload` as canonical JSON | `row_count` |
 | `extract_legacy_contract_live` | Legacy history rows over all dates (04 §17.1 rule 1) | The 71 legacy `Contract_Live` columns of 04 §17.2, in legacy order, with the legacy export format rules | `row_count` |
 
-Status at this revision: `extract_events` produces JSON and CSV through the report page and API.
-The other eight definitions remain catalogue contracts without builders. Parquet extracts and
+Status at this revision: `extract_events` and `extract_contract_versions` produce JSON and CSV
+through the report page and API. The other seven definitions remain catalogue contracts without builders. Parquet extracts and
 as-locked extract datasets remain unimplemented; supplying a lock is refused, never replaced
 with live data.
 
@@ -300,6 +300,26 @@ recursively before source retention and export. `payload_sha256` remains the ori
 stored digest; it is not a hash of the redacted payload. The CSV manifest's `sha256` hashes the
 actual delivered CSV bytes. CSV formula protection applies to text fields. Re-running a saved
 report rebuilds from its retained redacted source records and rechecks current report access.
+
+#### Contract version extract
+
+`extract_contract_versions` exports all persisted versions of the selected book, including
+superseded versions. Both the version's `known_at` and `created_at` must be at or before the
+source instant. Incremental mode additionally requires `created_at > known_since`.
+`contract_external_ids` contains the members recorded in that version's computation, encoded
+as a sorted canonical JSON array. It does not use today's combination-group membership.
+Every member's contracting entity must be selected and authorized; partial combined versions
+are refused because their monetary fields contain whole-group totals.
+
+Dataset v1 follows the T-CON-08 table order, excluding `tenant_id`, and appends
+`contract_external_ids`. Monetary and exact numeric columns are full-precision decimal strings;
+`version_no` and `modification_boundary_no` are integers; `known_at` and `created_at` are UTC
+ISO timestamps. `cause_event_ids`, `pinned_policies` and `contract_external_ids` are canonical
+JSON strings. Other fields are strings or null as allowed by the source. Control total
+`row_count` counts versions, not member contracts. Re-runs retain the original source values
+and member identifiers. CSV uses the same v1 manifest and formula protection as event exports.
+Lock snapshots are not yet supported for this extract.
+
 
 ### Evidence packs
 

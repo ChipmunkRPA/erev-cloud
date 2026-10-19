@@ -1,6 +1,8 @@
 """Event BI extract through the real API and worker, including incremental and retained reads."""
 
 import hashlib
+import json
+from datetime import timedelta
 from uuid import UUID
 
 import pytest
@@ -92,3 +94,60 @@ def test_event_extract_delivery_and_incremental(
     assert run_now(world, UUID(rerun.json()["id"]))["state"] == "SUCCEEDED"
     repeated = get(app, f"{REPORT_RUNS}/{rerun.headers['x-erev-report-run-id']}/output", world.maya)
     assert repeated.json() == output
+
+
+def test_contract_version_extract_delivery(
+    app: FastAPI, app_settings: Settings, clock: FrozenClock, keyring: KeyRing
+) -> None:
+    from erev_api.db.tables import contract, contract_computation, contract_version
+    from erev_api.domain.reports.builders.extract_contract_versions import KEYS
+
+    world = k01_pellworth(app, keyring, clock, LocalFileStore(app_settings.file_root))
+    versions = world.place.rows(
+        select(contract_version).where(contract_version.c.book_code == "ASC606")
+    )
+    cutoff = max(max(row["created_at"], row["known_at"]) for row in versions)
+    clock.set(cutoff)
+    world = resigned(world)
+    params = {"entity_codes": [AVM_US], "book": "ASC606", "known_at": cutoff.isoformat()}
+    run, rows = report_run(world, "extract_contract_versions", params)
+    assert {row["id"] for row in rows} == {str(row["id"]) for row in versions}
+    assert list(KEYS) == [col.name for col in contract_version.c if col.name != "tenant_id"]
+    by_id = {str(row["id"]): row for row in versions}
+    for row in rows:
+        source = by_id[row["id"]]
+        assert row["transaction_price"] == str(source["transaction_price"])
+        heads = world.place.scalar(
+            select(contract_computation.c.stream_heads).where(
+                contract_computation.c.id == source["contract_computation_id"],
+            )
+        )
+        contracts = world.place.rows(select(contract.c.external_id).where(contract.c.id.in_(heads)))
+        assert json.loads(row["contract_external_ids"]) == sorted(
+            item["external_id"] for item in contracts
+        )
+    since = min(row["created_at"] for row in versions)
+    if since == cutoff:
+        since -= timedelta(microseconds=1)
+    _, incremental = report_run(
+        world,
+        "extract_contract_versions",
+        {
+            **params,
+            "mode": "INCREMENTAL",
+            "known_since": since.isoformat(),
+        },
+    )
+    assert {row["id"] for row in incremental} == {
+        str(row["id"]) for row in versions if row["created_at"] > since
+    }
+    original = get(app, f"{REPORT_RUNS}/{run['id']}/output", world.maya).json()
+    assert original["schema_version"] == 1
+    assert original["dataset"] == "extract_contract_versions"
+    rerun = post(app, f"{REPORT_RUNS}/{run['id']}/rerun", world.maya, {})
+    assert rerun.status_code == 202, rerun.text
+    assert run_now(world, UUID(rerun.json()["id"]))["state"] == "SUCCEEDED"
+    assert (
+        get(app, f"{REPORT_RUNS}/{rerun.headers['x-erev-report-run-id']}/output", world.maya).json()
+        == original
+    )
