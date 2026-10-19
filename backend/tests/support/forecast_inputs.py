@@ -313,6 +313,51 @@ def exercise_forecast_imports(world: object) -> None:
     )
     assert inline_set.status_code == 201, inline_set.text
     inline_id = UUID(inline_set.json()["id"])
+
+    from erev_api.domain.forecast import replay_resources
+
+    with place.uow() as uow:
+        uow.ctx = replace(uow.ctx, tenant_kind=TenantKind.SANDBOX)
+        materialized = replay_resources.materialize_files(uow, inputs, target_set_id=inline_id)
+        assert materialized.file_ids[inputs.files[0].id] == inputs.files[0].id
+        assert materialized.steps[1]["file_id"] == str(inputs.files[0].id)
+        assert materialized.steps[1]["template_version"] == inputs.steps[1]["template_version"]
+        assert materialized.steps[1] is not inputs.steps[1]
+        # A source-only evidence id must be rewritten to a real target upload.
+        from uuid import uuid4
+
+        source_evidence_id = uuid4()
+        evidence = replace(inputs.files[0], id=source_evidence_id, purpose="ATTACHMENT")
+        command_step = {
+            **inputs.steps[0],
+            "body": {**inputs.steps[0]["body"], "evidence_file_ids": [str(source_evidence_id)]},
+        }
+        with_evidence = replace(
+            inputs,
+            files=(*inputs.files, evidence),
+            steps=(command_step, *inputs.steps[1:]),
+        )
+        rebound = replay_resources.materialize_files(uow, with_evidence, target_set_id=inline_id)
+        target_evidence_id = rebound.file_ids[source_evidence_id]
+        assert target_evidence_id != source_evidence_id
+        assert rebound.steps[0]["body"]["evidence_file_ids"] == [str(target_evidence_id)]
+        assert command_step["body"]["evidence_file_ids"] == [str(source_evidence_id)]
+        _, copied_stream = replay_inputs.open_file(
+            uow.session, target_evidence_id, files=uow.files, keyring=uow.keyring
+        )
+        with copied_stream:
+            assert copied_stream.read() == evidence.content
+        with pytest.raises(Problem, match="retained hash"):
+            replay_resources.materialize_files(
+                uow,
+                replace(inputs, files=(replace(inputs.files[0], content=b"corrupt"),)),
+                target_set_id=inline_id,
+            )
+        with pytest.raises(Problem, match="manifest"):
+            replay_resources.materialize_files(
+                uow, replace(inputs, files=()), target_set_id=inline_id
+            )
+        uow.commit()
     inline_source = upload_import_source(
         world,
         "inline-progress.csv",

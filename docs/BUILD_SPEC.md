@@ -11480,7 +11480,9 @@ Author BS-3. Uses DIN, SNP and RPS (PHASES §1 row 18). Indicative size 12 items
     transaction without queued stages, preserving retained quarantine behavior and rolling back
     failed inputs. A matching command executor locks the target's current head and runs ordinary
     event authorization, validation and capture with synchronous computation, rolling back on
-    failure. Normal HTTP/import routes retain their existing behavior. Resource copying,
+    failure. Normal HTTP/import routes retain their existing behavior. File materialization
+    now verifies retained bytes and the exact file manifest, uses normal authorized target
+    uploads and returns rebound evidence/source references. Mapping-profile resolution,
     refresh request/orchestration and final scenario switch remain missing; FCS-2 remains open.
   - **Prerequisites:** FCS-1
   - **Scope:**
