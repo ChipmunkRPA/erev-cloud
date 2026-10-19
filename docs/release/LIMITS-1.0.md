@@ -1,5 +1,12 @@
 # eRev Cloud 1.0: stated limits of the release
 
+October 19 schedule reporting continuation: `extract_schedule_lines` now exports latest
+per-contract schedule rows with line-entity scope, period labels, precise values, per-currency
+amount totals and retained-source reruns. There are now 13 catalogue definitions without
+builders (also remove extract_schedule_lines from the earlier lists). Five extract builders,
+lock snapshots, automatic watermarks, true-up reporting and live browser acceptance remain open.
+
+
 October 19 obligation reporting continuation: `extract_obligations` now exports latest
 per-contract versions with full/incremental windows, retained source rebuilding, all source
 columns except tenant_id/trace_nodes, and per-currency allocation/revenue control totals.

@@ -2,6 +2,17 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Schedule line BI extract — October 19, 2026
+
+- Added extract_schedule_lines v1 over latest per-contract versions, scoped by schedule entity,
+  with period and contract identifiers. Known/created cutoffs and incremental line creation
+  windows use the SQL chain reader. Row identity includes the source partition date.
+- Registered JSON/CSV metadata and retained-input rebuilding; exact decimal values and
+  per-currency amount totals use existing extract page controls. User guide documents types
+  and snapshot-delta semantics. Targeted evidence is in CI-2026-10-19.md.
+- Reporting remains unfinished: 13 missing builders, five of them extracts. Locked extracts,
+  automatic watermarks, true-up and live browser acceptance remain open. No deployment.
+
 ## Obligation BI extract — October 19, 2026
 
 - Added extract_obligations v1 with latest-per-contract chain selection, all book statuses,
@@ -249,22 +260,6 @@
   propagate; acceptance still rechecks the head and attempt under locks.
 - Handler/fan-out, approval resolution and admission remain unfinished. Verification evidence
   is recorded in docs/release/CI-2026-10-15.md.
-
-## Replay identity checks before comparison — October 15, 2026
-
-- Reproduced six wrong source/executed identities that candidate normalisation previously
-  reported MATCH. Both replay paths now bind versions, trace versions and input hashes before
-  comparison; input codec/source disagreement also fails as an integrity incident.
-- Legitimate cross-version comparison remains supported. Test evidence is in
-  docs/release/CI-2026-10-15.md. Replay handler/fan-out and release admission remain unfinished.
-
-## Unapproved validation attempt supersession — October 15, 2026
-
-- Added audited, idempotent supersession under the same parent/attempt locks as result writers.
-  Replacement selection can share its transaction; historical selections and evidence remain.
-- Linked approvals and non-retryable parent states fail closed. The release approval subject,
-  stale-approval invalidation, fan-out, replay handler and final admission remain outstanding.
-- Verification evidence is recorded in docs/release/CI-2026-10-15.md.
 
 ## Outstanding release verification
 

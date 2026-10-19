@@ -270,8 +270,9 @@ Dataset schemas, version 1 (the table ids are those of the data model, `docs/04-
 | `extract_events` | Contract events recorded at or before the source time (T-CON-05) | Every column except `tenant_id`; `payload` as canonical JSON | `row_count` |
 | `extract_legacy_contract_live` | Legacy history rows over all dates (04 §17.1 rule 1) | The 71 legacy `Contract_Live` columns of 04 §17.2, in legacy order, with the legacy export format rules | `row_count` |
 
-Status at this revision: `extract_events`, `extract_contract_versions` and `extract_obligations` produce JSON and CSV
-through the report page and API. The other six definitions remain catalogue contracts without builders. Parquet extracts and
+Status at this revision: `extract_events`, `extract_contract_versions`, `extract_obligations` and `extract_schedule_lines`
+produce JSON and CSV through the report page and API. The other five definitions remain
+catalogue contracts without builders. Parquet extracts and
 as-locked extract datasets remain unimplemented; supplying a lock is refused, never replaced
 with live data.
 
@@ -342,6 +343,25 @@ and `revenue_cum` sums for every transaction currency. They never add different 
 together. The selected entities restrict contracting entities; retained-source reruns recheck
 that scope. The CSV manifest uses schema version 1 and hashes delivered bytes. As-locked
 extracts and automatic previous-run watermark selection remain unavailable.
+
+
+#### Schedule line extract
+
+`extract_schedule_lines` exports the schedule lines of each contract's latest eligible version
+in the selected book, with `contract_external_id` and `period_key`. The source cutoff applies
+to the contract version's known/created times and each line's creation time; incremental mode
+additionally requires the line's creation time to be after `known_since`. This is a snapshot
+delta, not a history or deletion feed. The line's `entity_id` determines entity scope, including
+lines performed by another entity. Re-runs rebuild from retained lines and labels.
+
+Dataset v1 follows T-ENG-02 column order, excluding `tenant_id`, and appends the two labels.
+`period_end_date` is an ISO date; `created_at` is a UTC ISO timestamp; `is_released_at_close` is
+boolean; `amount`, `cumulative_amount`, `cumulative_exact` and nullable `quantity` are exact
+decimal strings. Identifiers, codes and the calculation trace reference are strings. Rows sort
+by contract external ID, period end and line ID. Row identity includes period end and line ID
+because the source table is partitioned. Control totals contain `row_count` and `by_currency`,
+with an `amount` sum for each currency. CSV and JSON use dataset schema version 1. Lock
+snapshots and automatic previous-run watermarks remain unavailable.
 
 
 ### Evidence packs

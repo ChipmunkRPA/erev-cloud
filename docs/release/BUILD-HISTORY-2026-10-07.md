@@ -6298,3 +6298,19 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - A matching running retry is read-only; final acceptance still needs a fresh population check.
   Verification is recorded in docs/release/CI-2026-10-15.md.
 - Supersession, replay fan-out/handler, datasets and release admission remain unfinished.
+
+## Unapproved validation attempt supersession — October 15, 2026
+
+- Added audited, idempotent supersession under the same parent/attempt locks as result writers.
+  Replacement selection can share its transaction; historical selections and evidence remain.
+- Linked approvals and non-retryable parent states fail closed. The release approval subject,
+  stale-approval invalidation, fan-out, replay handler and final admission remain outstanding.
+- Verification evidence is recorded in docs/release/CI-2026-10-15.md.
+
+## Replay identity checks before comparison — October 15, 2026
+
+- Reproduced six wrong source/executed identities that candidate normalisation previously
+  reported MATCH. Both replay paths now bind versions, trace versions and input hashes before
+  comparison; input codec/source disagreement also fails as an integrity incident.
+- Legitimate cross-version comparison remains supported. Test evidence is in
+  docs/release/CI-2026-10-15.md. Replay handler/fan-out and release admission remain unfinished.

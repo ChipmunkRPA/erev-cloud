@@ -153,14 +153,15 @@ def test_contract_version_extract_delivery(
     )
 
 
+@pytest.mark.parametrize("code", ["extract_obligations", "extract_schedule_lines"])
 def test_obligation_extract_latest_and_retained_sources(
-    app: FastAPI, app_settings: Settings, clock: FrozenClock, keyring: KeyRing
+    app: FastAPI, app_settings: Settings, clock: FrozenClock, keyring: KeyRing, code: str
 ) -> None:
     from datetime import date
     from decimal import Decimal
 
-    from erev_api.db.tables import contract, obligation_version
-    from erev_api.domain.reports.builders.extract_obligations import COLUMNS
+    from erev_api.db.tables import contract, obligation_version, schedule_line
+    from erev_api.domain.reports.builders import extract_obligations, extract_schedule_lines
     from erev_api.enums import ContractEventType
     from erev_api.events.payloads import BillingRecordedV1
     from erev_api.events.stream import EventIn
@@ -171,19 +172,30 @@ def test_obligation_extract_latest_and_retained_sources(
 
     world = k01_pellworth(app, keyring, clock, LocalFileStore(app_settings.file_root))
     stamp = world.place.scalar(select(func.clock_timestamp()))
-    clock.set(stamp + timedelta(seconds=1))
+    clock.set(stamp)
     world = resigned(world)
     params = {"entity_codes": [AVM_US], "book": "ASC606", "known_at": clock.now().isoformat()}
-    original, rows = report_run(world, "extract_obligations", params)
+    original, rows = report_run(world, code, params)
     assert rows
-    expected_columns = [
-        c.name for c in obligation_version.c if c.name not in {"tenant_id", "trace_nodes"}
-    ]
-    assert [col.key for col in COLUMNS] == [*expected_columns, "contract_external_id"]
+    table = obligation_version if code == "extract_obligations" else schedule_line
+    columns = (
+        extract_obligations.COLUMNS
+        if code == "extract_obligations"
+        else extract_schedule_lines.COLUMNS
+    )
+    expected_columns = [c.name for c in table.c if c.name not in {"tenant_id", "trace_nodes"}]
+    extra = (
+        ["contract_external_id"]
+        if code == "extract_obligations"
+        else ["contract_external_id", "period_key"]
+    )
+    assert [col.key for col in columns] == [*expected_columns, *extra]
     data = get(app, f"{REPORT_RUNS}/{original['id']}/output", world.maya).json()
     assert data["control_totals"]["by_currency"]["USD"] == {
         key: str(sum((Decimal(row[key]) for row in rows), Decimal(0)))
-        for key in ("allocated_amount", "revenue_cum")
+        for key in (
+            ("allocated_amount", "revenue_cum") if code == "extract_obligations" else ("amount",)
+        )
     }
     booked = world.contracts[K01]
     cid = UUID(str(booked.contract["id"]))
@@ -207,18 +219,18 @@ def test_obligation_extract_latest_and_retained_sources(
         ],
     )
     clock.advance(timedelta(seconds=2))
+    clock.set(world.place.scalar(select(func.clock_timestamp())) + timedelta(seconds=1))
     computed(world.place, group_id)
-    _, latest = report_run(
-        world, "extract_obligations", {**params, "known_at": clock.now().isoformat()}
-    )
+    _, latest = report_run(world, code, {**params, "known_at": clock.now().isoformat()})
     assert {r["id"] for r in rows}.isdisjoint(r["id"] for r in latest)
     assert len(latest) == len(rows)
-    assert sum(Decimal(r["billed_cum"]) for r in latest) > sum(
-        Decimal(r["billed_cum"]) for r in rows
-    )
+    if code == "extract_obligations":
+        assert sum(Decimal(r["billed_cum"]) for r in latest) > sum(
+            Decimal(r["billed_cum"]) for r in rows
+        )
     _, incremental = report_run(
         world,
-        "extract_obligations",
+        code,
         {
             **params,
             "known_at": clock.now().isoformat(),
