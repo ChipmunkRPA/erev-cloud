@@ -915,6 +915,7 @@ def _finish(
     progress: Callable[[int, int | None], None] | None = None,
     *,
     quarantine: bool = False,
+    defer_diff: bool = True,
     named_entity_ids: frozenset[UUID] | None = None,
     named_contracts: Mapping[int, tuple[UUID, UUID]] | None = None,
 ) -> Outcome:
@@ -982,7 +983,7 @@ def _finish(
         before={"status": ImportStatus.VALIDATING.value},
         after={"status": target.value, **counts, "exception_items": exceptions},
     )
-    if target is ImportStatus.VALIDATED:
+    if target is ImportStatus.VALIDATED and defer_diff:
         # PRD SM-05: validation runs on into the dry-run diff (05 IPL-07; BUILD_SPEC DIN-3).
         uow.defer(
             JobKind.IMPORT_DIFF,
@@ -1004,6 +1005,7 @@ def validate_upload(
     upload_id: UUID,
     *,
     progress: Callable[[int, int | None], None] | None = None,
+    defer_diff: bool = True,
 ) -> Outcome | None:
     """IPL-02 to IPL-06 for a VALIDATING upload; None when the upload is no longer VALIDATING."""
     session = uow.session
@@ -1113,6 +1115,7 @@ def validate_upload(
         validation,
         progress,
         quarantine=quarantine,
+        defer_diff=defer_diff,
         # a file whose rows were not read (a header mismatch, no data rows, the row limit) names
         # nothing this job examined, and a row naming a reference that does not resolve names
         # something this job could not place (R-98 (2)): the upload stays unresolved

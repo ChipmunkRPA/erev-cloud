@@ -186,6 +186,24 @@ def _constraint(error: IntegrityError) -> str | None:
 
 
 def create_import(uow: UnitOfWork, *, body: ImportCreateIn) -> CreatedImport:
+    identity, job = _create_import(uow, body=body, schedule=True)
+    assert job is not None
+    return CreatedImport(job=job, import_id=identity)
+
+
+def create_inline_import(uow: UnitOfWork, *, body: ImportCreateIn, quarantine: bool) -> UUID:
+    """A refresh worker owns all stages; no validation job may race its transaction."""
+    if UPLOAD_PERMISSION not in uow.principal.permissions:
+        raise Problem("forbidden")
+    if body.forecast_event_set_id is None:
+        raise Problem("validation-failed", "Inline imports require a forecast input set.")
+    identity, _job = _create_import(uow, body=body, schedule=False, quarantine=quarantine)
+    return identity
+
+
+def _create_import(
+    uow: UnitOfWork, *, body: ImportCreateIn, schedule: bool, quarantine: bool | None = None
+) -> tuple[UUID, JobOut | None]:
     """IPL-01: create an ``import_upload`` and defer its validation."""
     session = uow.session
     template = templates.find_template(session, body.template_code, body.template_version)
@@ -237,11 +255,15 @@ def create_import(uow: UnitOfWork, *, body: ImportCreateIn) -> CreatedImport:
     _refuse_duplicate(session, template, sha256)
     upload_id = new_id()
     import_no = numbering.next_number(uow, SERIES)
-    deferred = uow.defer(
-        JobKind.IMPORT_VALIDATE,
-        {"import_upload_id": str(upload_id)},
-        subject_type=OBJECT_TYPE,
-        subject_id=upload_id,
+    deferred = (
+        uow.defer(
+            JobKind.IMPORT_VALIDATE,
+            {"import_upload_id": str(upload_id)},
+            subject_type=OBJECT_TYPE,
+            subject_id=upload_id,
+        )
+        if schedule
+        else None
     )
     principal = uow.principal
     values: dict[str, Any] = {
@@ -256,14 +278,16 @@ def create_import(uow: UnitOfWork, *, body: ImportCreateIn) -> CreatedImport:
         "mapping_profile_id": body.mapping_profile_id,
         "forecast_event_set_id": body.forecast_event_set_id,
         "status": ImportStatus.UPLOADED.value,
-        "is_quarantine_mode": bool(setting(session, QUARANTINE_KEY, known_at=uow.now)),
+        "is_quarantine_mode": bool(setting(session, QUARANTINE_KEY, known_at=uow.now))
+        if quarantine is None
+        else quarantine,
         # 04 rev 1.147 T-IMP-02 (rulings R-98, R-109 (a)): what the creating access token carried.
         # The jobs that process the upload hold it to these codes (``scope.uploader_bounds``);
         # a person's upload is held to that person's grants and stores nothing here.
         "uploader_scopes": (
             sorted(principal.permissions) if principal.kind is PrincipalKind.API_CLIENT else None
         ),
-        "job_id": deferred["id"],
+        "job_id": None if deferred is None else deferred["id"],
         "created_at": uow.now,
         "created_by": principal.id,
         "created_by_kind": principal.kind.value,
@@ -292,7 +316,7 @@ def create_import(uow: UnitOfWork, *, body: ImportCreateIn) -> CreatedImport:
             "file_object_id": str(stored["id"]),
             "file_sha256": sha256,
             "status": ImportStatus.UPLOADED.value,
-            "job_id": str(deferred["id"]),
+            "job_id": None if deferred is None else str(deferred["id"]),
         },
     )
-    return CreatedImport(job=job_out_of(session, UUID(str(deferred["id"]))), import_id=upload_id)
+    return upload_id, None if deferred is None else job_out_of(session, UUID(str(deferred["id"])))

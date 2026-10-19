@@ -7285,3 +7285,20 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Public catalogue/API admission remains closed; frozen snapshots, viewer, quarter-column layout,
   export worker journeys and populated accounting acceptance remain open. Five catalogue builders
   are still unregistered. This internal rerun journey is not full disclosure completion.
+
+
+## Draft disclosure public API admission — October 19, 2026
+
+- Registered the composed disclosure worker separately from single-table BUILDERS. Creation
+  and rerun use REGISTERED_REPORTS; its retained source contract is exposed through normal run
+  metadata. There are 55 registered execution paths and four still-unregistered catalogue entries.
+- Require one entity, ASC606/IFRS15 and explicit period. Initial attachment requires an open
+  period at the source cutoff; missing/non-open/ambiguous state refuses. Explicit locked sources
+  retain their existing no-frozen-dataset refusal. No live fallback for frozen requests.
+- Converted the real 16-child/parent/rerun journey to HTTP creation and rerun, and verified run
+  detail and JSON output download. Missing book/period and LEGACY requests return 422.
+  The retained rerun still adds only one parent and reproduces hashes/totals with live capture
+  forbidden. Source-contract/catalogue checks pass (23); Ruff/Mypy pass.
+- User guide and release limitations describe the draft API and its boundaries. Frozen snapshots,
+  chapter viewer, side-by-side quarter layout, export worker journeys and populated accounting
+  acceptance remain open. This enables usable draft generation, not completed RPS-15/readiness.

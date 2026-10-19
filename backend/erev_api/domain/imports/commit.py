@@ -63,7 +63,7 @@ from erev_api.db.tables import (
     tenant_membership,
 )
 from erev_api.db.transitions import apply
-from erev_api.domain.contracts import period_ends, repo
+from erev_api.domain.contracts import compute_job, period_ends, repo
 from erev_api.domain.imports import commands, diff, job_hooks, queries, scope, templates
 from erev_api.domain.imports.csv_v2.framework import ApplyContext, CsvRow, CsvTemplate
 from erev_api.domain.imports.exceptions import raise_exception_item, severity_of
@@ -223,12 +223,16 @@ def _auto_approvable(uow: UnitOfWork, row: Mapping[str, Any]) -> bool:
     return not commands.posts_into_closing_period(uow.session, row)
 
 
-def submit_import(uow: UnitOfWork, *, import_id: UUID, body: ImportSubmitIn) -> ImportOut:
+def submit_import(
+    uow: UnitOfWork, *, import_id: UUID, body: ImportSubmitIn, defer_commit: bool = True
+) -> ImportOut:
     """``POST /imports/{id}/submit``: DIFF_READY → SUBMITTED with the ``IMPORT_COMMIT`` request."""
     session = uow.session
     row = _locked(session, import_id)
     if row is None:
         raise Problem("not-found")
+    if not defer_commit and row.get("forecast_event_set_id") is None:
+        raise Problem("validation-failed", "Inline commits require a forecast input set.")
     # Ruling R-98 (8): an upload outside the caller's read scope answers as an unknown id.
     scope.require_visible(uow.principal, row)
     if row["created_by"] != uow.principal.id:
@@ -281,19 +285,27 @@ def submit_import(uow: UnitOfWork, *, import_id: UUID, body: ImportSubmitIn) -> 
             set_values=_stamps(uow),
             expected_status=ImportStatus.SUBMITTED.value,
         )
-        job = uow.defer(
-            JobKind.IMPORT_COMMIT,
-            {"import_upload_id": str(import_id)},
-            subject_type=OBJECT_TYPE,
-            subject_id=import_id,
+        job = (
+            uow.defer(
+                JobKind.IMPORT_COMMIT,
+                {"import_upload_id": str(import_id)},
+                subject_type=OBJECT_TYPE,
+                subject_id=import_id,
+            )
+            if defer_commit
+            else None
         )
-        apply(session, OBJECT_TYPE, import_id, to_status=None, set_values={"job_id": job["id"]})
+        if job is not None:
+            apply(session, OBJECT_TYPE, import_id, to_status=None, set_values={"job_id": job["id"]})
         uow.audit(
             action="import_upload.submit_forecast",
             object_type=OBJECT_TYPE,
             object_id=import_id,
             before={"status": ImportStatus.DIFF_READY.value},
-            after={"status": ImportStatus.APPROVED.value, "job_id": str(job["id"])},
+            after={
+                "status": ImportStatus.APPROVED.value,
+                "job_id": None if job is None else str(job["id"]),
+            },
             detail={
                 "rule_id": "BR-FC-02",
                 "forecast_event_set_id": str(row["forecast_event_set_id"]),
@@ -462,7 +474,11 @@ def _check_bases(uow: UnitOfWork, row: Mapping[str, Any]) -> None:
 
 
 def commit_upload(
-    uow: UnitOfWork, import_id: UUID, *, parent_job_id: UUID | None = None
+    uow: UnitOfWork,
+    import_id: UUID,
+    *,
+    parent_job_id: UUID | None = None,
+    inline_compute: bool = False,
 ) -> Committed | None:
     found = (
         uow.session.execute(select(import_upload).where(import_upload.c.id == import_id))
@@ -476,6 +492,8 @@ def commit_upload(
         return None
     identity = row.get("forecast_event_set_id")
     if identity is None:
+        if inline_compute:
+            raise Problem("validation-failed", "Inline computation requires a forecast input set.")
         return _commit_upload(uow, import_id, parent_job_id=parent_job_id)
     from erev_api.domain.forecast import event_sets
 
@@ -484,14 +502,20 @@ def commit_upload(
         raise Problem("validation-failed", "This template cannot supply forecast facts.")
     current = event_sets.require_draft(uow, UUID(str(identity)))
     with uow.savepoint():
-        committed = _commit_upload(uow, import_id, parent_job_id=parent_job_id)
+        committed = _commit_upload(
+            uow, import_id, parent_job_id=parent_job_id, inline_compute=inline_compute
+        )
         if committed is not None:
             event_sets.attach_import(uow, current, import_id)
         return committed
 
 
 def _commit_upload(
-    uow: UnitOfWork, import_id: UUID, *, parent_job_id: UUID | None = None
+    uow: UnitOfWork,
+    import_id: UUID,
+    *,
+    parent_job_id: UUID | None = None,
+    inline_compute: bool = False,
 ) -> Committed | None:
     """IPL-10 in the caller's transaction; None when the import is not COMMITTING."""
     session = uow.session
@@ -609,6 +633,13 @@ def _commit_upload(
     # IPL-11: durable jobs share the import transaction; dispatch happens only after commit.
     # One group per child keeps a failed calculation from blocking unrelated imported groups.
     for group_id in sorted(affected_groups):
+        if inline_compute:
+            outcome = compute_job.compute_group(uow, group_id)
+            if outcome.status != "SUCCEEDED":
+                raise Problem(
+                    "validation-failed", "A replayed forecast import could not be computed."
+                )
+            continue
         uow.defer(
             JobKind.CONTRACT_COMPUTE,
             {

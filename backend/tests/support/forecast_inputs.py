@@ -299,3 +299,60 @@ def exercise_forecast_imports(world: object) -> None:
     denied = replace(place.principal, permissions=place.principal.permissions - {"scenario.use"})
     with place.uow(denied) as uow, pytest.raises(Problem):
         replay_inputs.load(uow, next_id)
+
+    from erev_api.domain.forecast import replay_apply
+    from erev_api.enums import TenantKind
+    from erev_api.schemas.imports import ImportCreateIn
+
+    inline_set = call(
+        world.app,
+        "POST",
+        "/api/v1/forecast-event-sets",
+        json={"code": "INLINE", "name": "Inline replay"},
+        headers=headers(),
+    )
+    assert inline_set.status_code == 201, inline_set.text
+    inline_id = UUID(inline_set.json()["id"])
+    inline_source = upload_import_source(
+        world,
+        "inline-progress.csv",
+        content.replace(b"0.60", b"0.80").replace(b"2026-02-28", b"2026-04-30"),
+    )
+    before_jobs = world.scalar(select(func.count()).select_from(job))
+    before_imports = world.scalar(select(func.count()).select_from(import_upload))
+    with place.uow() as uow:
+        uow.ctx = replace(uow.ctx, tenant_kind=TenantKind.SANDBOX)
+        # The executor, like the eventual refresh worker, owns one complete transaction.
+        applied_id = replay_apply.apply_file(
+            uow,
+            ImportCreateIn(
+                file_id=UUID(inline_source),
+                template_code="progress_events",
+                forecast_event_set_id=inline_id,
+            ),
+            quarantine=False,
+        )
+        uow.commit()
+    applied = world.rows(select(import_upload).where(import_upload.c.id == applied_id))[0]
+    assert applied["status"] == "COMMITTED" and applied["job_id"] is None
+    assert applied["approval_request_id"] is None
+    assert world.scalar(select(func.count()).select_from(job)) == before_jobs
+    assert world.scalar(
+        select(forecast_event_set.c.import_upload_ids).where(forecast_event_set.c.id == inline_id)
+    ) == [applied_id]
+    # Invalid replay inputs are rolled back even if the parent catches the failure and commits.
+    with place.uow() as uow:
+        uow.ctx = replace(uow.ctx, tenant_kind=TenantKind.SANDBOX)
+        with pytest.raises(Problem, match="failed validation"):
+            replay_apply.apply_file(
+                uow,
+                ImportCreateIn(
+                    file_id=UUID(invalid_source),
+                    template_code="progress_events",
+                    forecast_event_set_id=inline_id,
+                ),
+                quarantine=False,
+            )
+        uow.commit()
+    assert world.scalar(select(func.count()).select_from(import_upload)) == before_imports + 1
+    assert world.scalar(select(func.count()).select_from(job)) == before_jobs

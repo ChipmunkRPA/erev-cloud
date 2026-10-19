@@ -2,6 +2,20 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Transactional forecast file replay — October 19, 2026
+
+- Added an internal replay executor that creates, validates, previews, submits, commits and
+  computes one forecast file in the caller's transaction. No asynchronous stage/compute jobs
+  can overtake the next input. Retained quarantine behavior is explicit; normal import routes
+  retain their asynchronous execution and approval rules.
+- Failed stages roll back facts, captured input order and audit buffers. Existing template,
+  draft-set, uploader and contract permissions remain enforced. The scenario journey covers
+  successful replay without queued jobs and invalid-input rollback; ordinary import coverage
+  is retained. Targeted checks and Ruff/Mypy pass.
+- This is an internal building block, not a finished refresh endpoint. Resource copying,
+  command replay, durable refresh orchestration and atomic scenario replacement remain open.
+  Forecast outputs, actual-vs-forecast and both evidence packs remain reporting priorities.
+
 ## Published forecast replay inputs — October 19, 2026
 
 - Added the source reader for refresh: verified publication hash, complete input order and
@@ -214,22 +228,6 @@
   frontend TypeScript and targeted ESLint pass; OpenAPI/client types regenerated.
 - Full browser/accessibility acceptance, frozen snapshots, quarter side-by-side layout, populated
   accounting acceptance and remaining export worker journeys remain open. No deployment.
-
-## Draft disclosure public API admission — October 19, 2026
-
-- Registered the composed disclosure worker separately from single-table BUILDERS. Creation
-  and rerun use REGISTERED_REPORTS; its retained source contract is exposed through normal run
-  metadata. There are 55 registered execution paths and four still-unregistered catalogue entries.
-- Require one entity, ASC606/IFRS15 and explicit period. Initial attachment requires an open
-  period at the source cutoff; missing/non-open/ambiguous state refuses. Explicit locked sources
-  retain their existing no-frozen-dataset refusal. No live fallback for frozen requests.
-- Converted the real 16-child/parent/rerun journey to HTTP creation and rerun, and verified run
-  detail and JSON output download. Missing book/period and LEGACY requests return 422.
-  The retained rerun still adds only one parent and reproduces hashes/totals with live capture
-  forbidden. Source-contract/catalogue checks pass (23); Ruff/Mypy pass.
-- User guide and release limitations describe the draft API and its boundaries. Frozen snapshots,
-  chapter viewer, side-by-side quarter layout, export worker journeys and populated accounting
-  acceptance remain open. This enables usable draft generation, not completed RPS-15/readiness.
 
 ## Outstanding release verification
 
