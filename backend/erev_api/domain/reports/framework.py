@@ -122,7 +122,8 @@ from erev_api.domain.ai import export_visibility, log_export
 from erev_api.domain.ai.access import job_requester
 from erev_api.domain.platform import approval_queries
 from erev_api.domain.platform.jobs import job_outs
-from erev_api.domain.reports import catalogue, locked, tie_outs
+from erev_api.domain.reports import catalogue, locked, tie_outs, validation_sources
+from erev_api.domain.reports import requester as report_requester
 from erev_api.domain.reports.builders import (
     ADAPTER,
     OPEN,
@@ -205,6 +206,7 @@ from erev_api.domain.reports.builders import sod_conflict_report as sod_conflict
 from erev_api.domain.reports.builders import ssp_change_log as ssp_change_log_builder
 from erev_api.domain.reports.builders import ssp_override_listing as ssp_override_listing_builder
 from erev_api.domain.reports.builders import ssp_version_diff as ssp_version_diff_builder
+from erev_api.domain.reports.builders import upgrade_validation as upgrade_validation_builder
 from erev_api.domain.reports.builders import user_access_listing as user_access_listing_builder
 from erev_api.domain.reports.outputs import ReportData, RunStamp, display_timestamp, utc_text
 from erev_api.domain.reports.outputs import csv as csv_output
@@ -349,6 +351,7 @@ _DATE: Final = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}$")
 
 BUILDERS: Final[Mapping[str, Builder]] = MappingProxyType(
     {
+        upgrade_validation_builder.CODE: upgrade_validation_builder.build,
         export_visibility.CODE: log_export.build,
         api_client_inventory_builder.CODE: api_client_inventory_builder.build,
         revenue_waterfall_builder.CODE: revenue_waterfall_builder.build,
@@ -556,6 +559,9 @@ _OPEN_ONLY: Final = (
 )
 SOURCE_CONTRACTS: Final[Mapping[str, SourceContract]] = MappingProxyType(
     {
+        upgrade_validation_builder.CODE: SourceContract(
+            RETAINED, ("Frozen validation dataset file, digest, attempt and entity population",), ()
+        ),
         export_visibility.CODE: SourceContract(
             OPEN,
             _OPEN_ONLY,
@@ -1150,7 +1156,10 @@ def parameter_errors(
     """Findings of ``parameters`` under a closed ``parameters_schema``: unknown keys, schema
     violations and a start after its end (T-RPT-01 rule 1; REQ-RPT-012)."""
     properties: Mapping[str, Any] = schema.get("properties", {})
-    errors: list[ProblemError] = []
+    errors: list[ProblemError] = [
+        _finding(f"parameters.{key}", f"{key} is required.")
+        for key in sorted(set(schema.get("required", ())) - set(parameters))
+    ]
     for key in sorted(parameters):
         field = f"parameters.{key}"
         if key not in properties:
@@ -1531,6 +1540,14 @@ def _insert_run(
         log_export.require_access(uow.ctx, access)
     elif access is not None:
         raise Problem("validation-failed", "Call export binding requires its report definition.")
+    if str(definition["code"]) == upgrade_validation_builder.CODE:
+        report_requester.require_export(uow.principal, output_format, resolved.entity_ids)
+        validation_sources.read_for_report(
+            uow,
+            UUID(str(resolved.parameters["release_validation_attempt_id"])),
+            entity_ids=resolved.entity_ids,
+            known_at=resolved.known_at,
+        )
     release_id = _release_id(session)
     run_id = new_id()
     run_no = next_number(uow, SERIES)
@@ -2077,6 +2094,18 @@ def _export_requester(
 ) -> RequestContext | None:
     """Recheck before transitions, completed-job replay, building and output persistence."""
     stored = run.get("ai_export_access")
+    if str(run["report_code"]) == upgrade_validation_builder.CODE:
+        if stored is not None or run["period_lock_id"] is not None:
+            raise Problem("invalid-transition")
+        ctx = report_requester.validation_requester(jc, uow, run)
+        validation_sources.read_for_report(
+            uow,
+            UUID(str(run["parameters"]["release_validation_attempt_id"])),
+            entity_ids=run["entity_ids"],
+            known_at=run["known_at"],
+            requester=ctx.principal,
+        )
+        return ctx
     if str(run["report_code"]) != export_visibility.CODE:
         if stored is not None:
             raise Problem(

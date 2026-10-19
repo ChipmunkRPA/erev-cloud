@@ -6141,3 +6141,23 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Focused corruption and comparison tests and backend typing pass. The database re-lock workflow and lint
   pass; evidence is recorded in docs/release/CI-2026-10-15.md.
 - RPT-38 driver attribution and the pre-approval diff remain outstanding.
+
+## Close comparison navigation — October 15, 2026
+
+- The history grid, drawer and keyboard action now traverse reopen records to the prior
+  freezing lock before constructing RPT-38 selectors. Incomplete, cyclic or out-of-order
+  history produces no comparison link; permanent-lock records are not report snapshots.
+- Correcting the synthetic history to the real backend chain reproduced two link failures.
+  All 16 history tests, frontend typing and repository lint pass.
+- The missing RPT-38 builder and driver attribution remain open. This repairs its entry path.
+
+## Typed computation evidence — October 15, 2026
+
+- Revision 0160 retains encrypted typed inputs and canonical outputs for new computations,
+  with original file digests, logical hashes, book coverage, predecessor and ledger cutoffs
+  captured before their own postings. Storage failure rolls back the computation.
+- Existing computations are not reconstructed or backfilled. Evidence has no generic download
+  route and remains held against deletion. Verified backfill and replay jobs remain open.
+- Fourteen database regressions pass, including the close/reopen/re-lock workflow. Schema,
+  privacy, typing and lint verification is recorded in docs/release/CI-2026-10-15.md.
+- This supplies new source evidence needed by RPT-38; its replay integration and report remain open.

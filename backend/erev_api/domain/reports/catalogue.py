@@ -1,7 +1,7 @@
 """Standard report catalogue (04 T-RPT-01 and table 10-T; SCREENS_B §5.6; BUILD_SPEC RPS-1).
 
 ``DEFINITIONS`` holds one version-1 definition per seeded code of 04 T-RPT-01, in that list's order:
-the 53 RPS codes, the 2 LMG codes and the 2 FCS codes of PHASES §5.4. Tenants cannot modify a
+the 54 RPS codes, the 2 LMG codes and the 2 FCS codes of PHASES §5.4. Tenants cannot modify a
 definition (REQ-RPT-001). A changed definition is a new version, seeded by a later revision.
 
 ``parameters_schema`` is a closed JSON Schema (``additionalProperties: false``, T-RPT-01 rule 1). It
@@ -2082,6 +2082,32 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "joins": [],
             "filters": ["Original requester scope and current source/export permissions"],
             "parameters": [],
+        },
+    ),
+    ReportDefinition(
+        code="upgrade_validation",
+        version=1,
+        name="Upgrade validation",
+        kind="REGISTER",
+        description="Frozen release validation outcomes and detailed comparison evidence.",
+        parameters_schema={
+            **parameters_schema(
+                ("release_validation_attempt_id",), {"release_validation_attempt_id": _UUID}
+            ),
+            "required": ["release_validation_attempt_id"],
+        },
+        output_formats=("XLSX", "CSV", "JSON"),
+        ipe_logic={
+            "version": 1,
+            "source_tables": ["release_validation_attempt", "file_object"],
+            "joins": ["Immutable attempt dataset file and digest"],
+            "filters": ["Current report permission for every frozen entity; no partial population"],
+            "parameters": [
+                "entity_codes",
+                "release_validation_attempt_id",
+                "known_at",
+                "known_at_basis",
+            ],
         },
     ),
 )

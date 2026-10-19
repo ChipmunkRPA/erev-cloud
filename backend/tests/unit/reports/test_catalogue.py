@@ -62,16 +62,16 @@ def _screens_index() -> dict[str, tuple[str, str, tuple[str, ...]]]:
 
 
 def test_seeded_codes() -> None:
-    # 04 T-RPT-01 and PHASES §5.4 (RPS-1): 57 current version-1 definitions in the seeded order,
-    # 53 RPS, 2 LMG and 2 FCS codes; names, kinds and formats of SCREENS_B §5.6; tie-outs from table
+    # 04 T-RPT-01 and PHASES §5.4 (RPS-1): 58 current version-1 definitions in the seeded order,
+    # 54 RPS, 2 LMG and 2 FCS codes; names, kinds and formats of SCREENS_B §5.6; tie-outs from table
     # 10-T only.
     seeded = _seeded_codes()
-    assert len(seeded) == 57
+    assert len(seeded) == 58
     current = [definition for definition in DEFINITIONS if definition.is_current]
     assert [definition.code for definition in current] == seeded
     assert all(definition.version == 1 for definition in DEFINITIONS)
     phases = _phase_codes()
-    assert {phase: len(codes) for phase, codes in phases.items()} == {"RPS": 53, "LMG": 2, "FCS": 2}
+    assert {phase: len(codes) for phase, codes in phases.items()} == {"RPS": 54, "LMG": 2, "FCS": 2}
     assert sorted(code for codes in phases.values() for code in codes) == sorted(seeded)
 
     pack = DEFINITIONS_BY_CODE["disclosure_pack"]
@@ -182,3 +182,16 @@ def test_live_call_export_rejects_misleading_filter_schemas() -> None:
                     "properties": {key: {"type": "string"}},
                 },
             )
+
+
+@pytest.mark.parametrize(
+    "parameters",
+    [{}, {"release_validation_attempt_id": None}, {"release_validation_attempt_id": "bad"}],
+)
+def test_upgrade_validation_requires_attempt_identity(parameters: dict[str, object]) -> None:
+    from erev_api.domain.reports.framework import parameter_errors
+
+    errors = parameter_errors(
+        DEFINITIONS_BY_CODE["upgrade_validation"].parameters_schema, parameters
+    )
+    assert errors and errors[0].field == "parameters.release_validation_attempt_id"

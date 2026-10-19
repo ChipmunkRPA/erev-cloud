@@ -2998,6 +2998,146 @@ def test_validation_fanout_runs_frozen_match_and_no_source(
         with pytest.raises(Problem):
             builder.build(uow, replace(bound_params, requester=wrong_tenant))
 
+    from erev_api.db.tables import report_run
+    from erev_api.domain.reports import framework
+    from erev_api.schemas.reports import ReportRunCreateIn
+
+    with world.place.uow() as uow:
+        report_id, _ = framework.create_run(
+            uow,
+            ReportRunCreateIn(
+                report_code="upgrade_validation",
+                output_format="CSV" if different else "JSON",
+                parameters={"release_validation_attempt_id": str(frozen.id)},
+            ),
+        )
+        report_job = uow.session.scalar(
+            select(report_run.c.job_id).where(report_run.c.id == report_id)
+        )
+        uow.commit()
+    outputs = []
+    for iteration in range(2):
+        assert report_job is not None
+        with world.place.uow() as uow:
+            task_id = uow.session.scalar(
+                select(job.c.procrastinate_job_id).where(job.c.id == report_job)
+            )
+            uow.session.execute(
+                text("UPDATE procrastinate_jobs SET status = 'doing' WHERE id = :id"),
+                {"id": task_id},
+            )
+            uow.commit()
+        run_job(
+            report_job, world.place.tenant_id, attempt=1, runtime=runtime, delivered_task_id=task_id
+        )
+        with world.place.uow() as uow:
+            saved = (
+                uow.session.execute(select(report_run).where(report_run.c.id == report_id))
+                .mappings()
+                .one()
+            )
+            assert saved["status"] == "SUCCEEDED", dict(saved)
+            outputs.append((saved["output_sha256"], saved["control_totals"]))
+            if iteration == 0:
+                report_id, _ = framework.rerun(uow, report_id)
+                report_job = uow.session.scalar(
+                    select(report_run.c.job_id).where(report_run.c.id == report_id)
+                )
+                uow.commit()
+    assert outputs[0] == outputs[1]
+
+    from erev_api.db.tables import api_client
+    from erev_api.enums import PrincipalKind
+    from support.rows import api_client_values
+
+    client_row = api_client_values(
+        world.place.tenant_id,
+        status="ACTIVE",
+        is_all_entities=True,
+        scopes=["report.run", "report.export"],
+    )
+    with world.place.uow() as uow:
+        uow.session.execute(insert(api_client).values(**client_row))
+        uow.commit()
+    client_principal = replace(
+        world.place.principal,
+        kind=PrincipalKind.API_CLIENT,
+        id=client_row["id"],
+        membership_id=None,
+        permissions=frozenset({"report.run", "report.export"}),
+        permission_scopes={"report.run": "*", "report.export": "*"},
+        roles=(),
+        auth_method="client_credentials",
+        mfa_verified_at=None,
+        session_id=None,
+    )
+    for client_revoked in (False, True):
+        with world.place.uow(client_principal) as uow:
+            client_report, _ = framework.create_run(
+                uow,
+                ReportRunCreateIn(
+                    report_code="upgrade_validation",
+                    output_format="CSV",
+                    parameters={"release_validation_attempt_id": str(frozen.id)},
+                ),
+            )
+            client_job = uow.session.scalar(
+                select(report_run.c.job_id).where(report_run.c.id == client_report)
+            )
+            assert client_job is not None
+            uow.commit()
+        with world.place.uow() as uow:
+            if client_revoked:
+                uow.session.execute(
+                    update(api_client)
+                    .where(api_client.c.id == client_row["id"])
+                    .values(status="REVOKED", updated_at=uow.now)
+                )
+            task_id = uow.session.scalar(
+                select(job.c.procrastinate_job_id).where(job.c.id == client_job)
+            )
+            uow.session.execute(
+                text("UPDATE procrastinate_jobs SET status = 'doing' WHERE id = :id"),
+                {"id": task_id},
+            )
+            uow.commit()
+        run_job(
+            client_job, world.place.tenant_id, attempt=1, runtime=runtime, delivered_task_id=task_id
+        )
+        if client_revoked:
+            with world.place.uow() as uow:
+                uow.session.execute(
+                    text("UPDATE procrastinate_jobs SET status = 'succeeded' WHERE id = :id"),
+                    {"id": task_id},
+                )
+                task_id = uow.session.scalar(
+                    select(job.c.procrastinate_job_id).where(job.c.id == client_job)
+                )
+                uow.session.execute(
+                    text("UPDATE procrastinate_jobs SET status = 'doing' WHERE id = :id"),
+                    {"id": task_id},
+                )
+                uow.commit()
+            run_job(
+                client_job,
+                world.place.tenant_id,
+                attempt=2,
+                runtime=runtime,
+                delivered_task_id=task_id,
+            )
+        with world.place.uow() as uow:
+            saved = (
+                uow.session.execute(select(report_run).where(report_run.c.id == client_report))
+                .mappings()
+                .one()
+            )
+            if client_revoked:
+                assert saved["output_file_id"] is None
+                problem = uow.session.scalar(select(job.c.problem).where(job.c.id == client_job))
+                assert problem is not None and problem["type"].endswith("/forbidden")
+            else:
+                assert saved["status"] == "SUCCEEDED", dict(saved)
+
     principal = world.place.principal
     denied = [
         replace(principal, permissions=principal.permissions - {"report.run"}),

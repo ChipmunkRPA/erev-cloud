@@ -2,6 +2,17 @@
 
 **Owner workflow: test, then commit and push directly to main. Create no new PRs unless branch protection requires one. No deployment.**
 
+## Validation report catalogue and worker integration — October 19, 2026
+
+- Registered upgrade_validation and its retained-source contract, with migration 0164.
+  Jobs reload the human or API-client initiator and enforce current report/export grants
+  over the complete frozen entity population before reading or publishing evidence.
+- Actual JSON/CSV jobs and reruns passed, including API-client revocation and retry exhaustion
+  without output. Required report parameters now fail validation when absent. Catalogue,
+  framework, typing and lint evidence is in CI-2026-10-19.md.
+- Official attempt report attachment, final acceptance, approvals and admission remain open.
+  Repository work only; no deployment or independent accounting sign-off.
+
 ## Bound upgrade-validation report builder — October 15, 2026
 
 - Added the report builder over the verified dataset, typed change-count columns and canonical
@@ -253,26 +264,6 @@
   state. Corruption and scope checks pass; final verification is in CI-2026-10-15.md.
 - This reader is not yet wired to RPT-38. Replay orchestration, ledger cross-checks and persisted
   replay verification remain outstanding. Local recovery on frozen 659314a passed.
-
-## Typed computation evidence — October 15, 2026
-
-- Revision 0160 retains encrypted typed inputs and canonical outputs for new computations,
-  with original file digests, logical hashes, book coverage, predecessor and ledger cutoffs
-  captured before their own postings. Storage failure rolls back the computation.
-- Existing computations are not reconstructed or backfilled. Evidence has no generic download
-  route and remains held against deletion. Verified backfill and replay jobs remain open.
-- Fourteen database regressions pass, including the close/reopen/re-lock workflow. Schema,
-  privacy, typing and lint verification is recorded in docs/release/CI-2026-10-15.md.
-- This supplies new source evidence needed by RPT-38; its replay integration and report remain open.
-
-## Close comparison navigation — October 15, 2026
-
-- The history grid, drawer and keyboard action now traverse reopen records to the prior
-  freezing lock before constructing RPT-38 selectors. Incomplete, cyclic or out-of-order
-  history produces no comparison link; permanent-lock records are not report snapshots.
-- Correcting the synthetic history to the real backend chain reproduced two link failures.
-  All 16 history tests, frontend typing and repository lint pass.
-- The missing RPT-38 builder and driver attribution remain open. This repairs its entry path.
 
 ## Outstanding release verification
 
