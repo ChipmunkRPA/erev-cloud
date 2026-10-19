@@ -6892,3 +6892,20 @@ cleanup in the shared database session kernel was also repaired and regression-t
   selection/execution 1 passed; changed-file Ruff and source/replay-test Mypy pass.
 - Report registration/job/formats/UI, wider reference/FX/population phases and full frozen-close
   accounting acceptance remain open. Seven builders remain unregistered; no deployment.
+
+## Close variance report dataset and contributor evidence — October 19, 2026
+
+- Added presentation over reconciled group replay: Change by driver and Changes by contract,
+  all four monetary measures, signed earlier/later/change values, currency-qualified row keys
+  and control totals. Billing remains an explicit driver rather than being relabeled Other.
+- Report evidence retains both lock identities/times/file hashes, group computation/input/output
+  hashes, normalized fields, replay executions, source rows and contributing event identities.
+  Summary cells retain their contract contributions. Endpoints, group identity, access scope and
+  driver totals are rechecked; sub-minor-unit money refuses rather than silently rounding.
+- Real-engine two-group fixture exercises the dataset, CSV/XLSX/PDF writers and JSON-safe
+  evidence; both lock IDs are supplied to the standard export stamp. Source/replay-test Mypy
+  and Ruff pass. This is an authored frozen-data fixture, not a full close/report API journey.
+- Report registration remains pending: the current framework runs builders inside its DB
+  transaction. RPT-38 needs authorized read, transaction-free compute and reauthorized publish
+  phases, source binding/rerun and cell routing before exposure. UI/header polish, wider replay
+  phases and accounting acceptance remain open. Seven builders remain unregistered; no deployment.

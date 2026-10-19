@@ -4889,3 +4889,50 @@ def test_parallel_actual_reads_recorded_journals_and_balances(world: World) -> N
     with world.place.uow(principal=denied) as uow, pytest.raises(Problem) as refused:
         parallel_actual.read(uow, expected=expected, entity_ids=(world.entity_id,), known_at=cutoff)
     assert refused.value.slug == "forbidden"
+
+
+def test_disclosure_child_plan_queues_bound_month_and_quarter_reports(world: World) -> None:
+    from erev_api.db.tables import report_run
+    from erev_api.domain.reports import disclosure_plan, tie_outs
+
+    with world.place.uow() as uow:
+        entities = tie_outs.entities(uow.session, (world.entity_id,))
+        calendars = tie_outs.calendars(uow.session, entities)
+        calendar = calendars[world.entity_id]
+        selected = calendar.periods[1]
+        plan = disclosure_plan.requests(
+            entity_code=entities[0].code,
+            book="ASC606",
+            calendar=calendar,
+            period_key=selected.key,
+            known_at=uow.now,
+            quarter=True,
+        )
+        children = disclosure_plan.queue(uow, plan)
+        assert len(children) == 16
+        assert len({child.run_id for child in children}) == 16
+        stored = (
+            uow.session.execute(
+                select(report_run).where(report_run.c.id.in_([child.run_id for child in children]))
+            )
+            .mappings()
+            .all()
+        )
+        assert len(stored) == 16
+        assert all(row["entity_ids"] == [world.entity_id] for row in stored)
+        assert all(row["known_at"] == uow.now for row in stored)
+        assert all(row["output_format"] == "JSON" for row in stored)
+        assert all(child.parameters_sha256 for child in children)
+        from dataclasses import replace
+
+        invalid = replace(
+            plan[1],
+            body=plan[1].body.model_copy(
+                update={"parameters": {**plan[1].body.parameters, "unsupported_selector": True}}
+            ),
+        )
+        count_before = uow.session.scalar(select(func.count()).select_from(report_run))
+        with pytest.raises(Problem):
+            disclosure_plan.queue(uow, (plan[0], invalid))
+        assert uow.session.scalar(select(func.count()).select_from(report_run)) == count_before
+        # No commit: queued child jobs belong to the eventual parent's atomic transaction.

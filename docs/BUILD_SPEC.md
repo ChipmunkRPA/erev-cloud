@@ -10146,6 +10146,13 @@ Author BS-3. Uses CTR (PHASES §1 row 12). Indicative size 16 items; this phase 
   - **Gates:** GK-01 `make ci`; GK-07 `make e2e SPEC=frontend/e2e/projects/screens.spec.ts`
 
 - [ ] **RPS-15 Disclosure snapshots and the disclosure pack.**
+  - October 19 child-plan increment: `disclosure_plan` queues nine period inputs (the eight
+    core reports plus the section-6 cost rollforward), and seven additional flow reports when
+    quarter-to-date is requested. Fiscal-quarter selection and normalized scope/cutoff binding
+    pass targeted checks. The queue helper rolls back partial plans. Parent attachment/retry
+    lifecycle, frozen sources, expedients and assembly remain open; the old eight-child acceptance
+    must be reconciled with the section-6 cost source during complete pack integration.
+
   - October 19 workbook increment: `outputs.xlsx.render_xlsx_pack` now renders a contents
     worksheet plus independently typed section worksheets with source run/hash stamps, totals,
     tie-outs and omission notes. Omitted datasets cannot include rows or totals. Seven-section

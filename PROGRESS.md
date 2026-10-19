@@ -2,6 +2,24 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Disclosure child report planning — October 19, 2026
+
+- Added disclosure_plan.requests for the eight core reports plus contract_cost_rollforward
+  required by section 6. Month-only plans contain nine children; quarter-to-date adds seven flow
+  reports, using the entity's fiscal quarter. Closing balances and RPO reuse the period-end stock.
+- Child selectors explicitly bind one entity, book, historical known_at and transaction currency
+  view. Disaggregation requests revenue category/timing; waterfall preserves recognized/scheduled
+  states. Every request passes the existing report parameter schema checks.
+- Added queue through framework.create_run with a savepoint around the full plan. Returned child
+  records retain section/basis, run/job IDs and the normalized parameter hash. The caller owns
+  parent attachment, durable plan reuse and retry idempotency; this helper never commits.
+- Two focused plan checks pass. A real database case verifies 16 scoped child runs and rollback
+  on a later invalid child; Ruff and new-module Mypy pass.
+- Remaining disclosure work: parent scheduling/child persistence, result verification/assembly,
+  frozen snapshots, practical expedients, PDF and viewer. Nine live child inputs cover section 6
+  in addition to the spec's older eight-core-child acceptance; full pack acceptance remains open.
+  Five catalogue builders remain unregistered; no deployment.
+
 ## Disclosure workbook output foundation — October 19, 2026
 
 - Added WorkbookSection and render_xlsx_pack: a contents worksheet identifies each section's
@@ -206,23 +224,6 @@
 - Six catalogue builders remain unregistered. RPT-38 still needs populated close-to-report
   financial acceptance, cell explanation routing, UI/header polish, wider reference/FX and
   new/regrouped contract replay. No production readiness or deployment claim.
-
-## Close variance report dataset and contributor evidence — October 19, 2026
-
-- Added presentation over reconciled group replay: Change by driver and Changes by contract,
-  all four monetary measures, signed earlier/later/change values, currency-qualified row keys
-  and control totals. Billing remains an explicit driver rather than being relabeled Other.
-- Report evidence retains both lock identities/times/file hashes, group computation/input/output
-  hashes, normalized fields, replay executions, source rows and contributing event identities.
-  Summary cells retain their contract contributions. Endpoints, group identity, access scope and
-  driver totals are rechecked; sub-minor-unit money refuses rather than silently rounding.
-- Real-engine two-group fixture exercises the dataset, CSV/XLSX/PDF writers and JSON-safe
-  evidence; both lock IDs are supplied to the standard export stamp. Source/replay-test Mypy
-  and Ruff pass. This is an authored frozen-data fixture, not a full close/report API journey.
-- Report registration remains pending: the current framework runs builders inside its DB
-  transaction. RPT-38 needs authorized read, transaction-free compute and reauthorized publish
-  phases, source binding/rerun and cell routing before exposure. UI/header polish, wider replay
-  phases and accounting acceptance remain open. Seven builders remain unregistered; no deployment.
 
 ## Outstanding release verification
 
