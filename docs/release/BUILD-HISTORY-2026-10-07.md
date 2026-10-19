@@ -6876,3 +6876,19 @@ cleanup in the shared database session kernel was also repaired and regression-t
   20 passed. Actual database source selection/reuse: 1 passed. Ruff and source/test Mypy pass.
 - Group aggregation, reference replay, job/report registration, output formats, UI and full
   frozen-close accounting acceptance remain outstanding. Seven builders remain unregistered.
+
+## Multi-group close variance and SSP readback — October 19, 2026
+
+- Added the pure multi-group execution phase over an authorized frozen pair: every monetary
+  contract must have a source, groups select one computation each, and exact driver totals
+  retain currency/measure identity and each group's execution evidence. Missing, new, removed
+  or regrouped populations refuse until explicit population replay is implemented.
+- First-compute SSP readbacks now normalize only when the new recorded version exactly matches
+  the earlier reproduced obligation's selected SSP version. Existing choices, overrides,
+  mismatched versions and modification-weight readbacks retain reference-replay requirements.
+- Actual consecutive persisted computations now reconcile with posted/head/readback adjustments.
+  Two real-engine groups reconcile revenue +117.68 and RPO -117.68 against authored frozen CSVs;
+  this is not a full close workflow. Replay suite 21 passed, reference guards 4 passed, database
+  selection/execution 1 passed; changed-file Ruff and source/replay-test Mypy pass.
+- Report registration/job/formats/UI, wider reference/FX/population phases and full frozen-close
+  accounting acceptance remain open. Seven builders remain unregistered; no deployment.

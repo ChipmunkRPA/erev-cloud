@@ -10146,6 +10146,12 @@ Author BS-3. Uses CTR (PHASES §1 row 12). Indicative size 16 items; this phase 
   - **Gates:** GK-01 `make ci`; GK-07 `make e2e SPEC=frontend/e2e/projects/screens.spec.ts`
 
 - [ ] **RPS-15 Disclosure snapshots and the disclosure pack.**
+  - October 19 workbook increment: `outputs.xlsx.render_xlsx_pack` now renders a contents
+    worksheet plus independently typed section worksheets with source run/hash stamps, totals,
+    tie-outs and omission notes. Omitted datasets cannot include rows or totals. Seven-section
+    workbook and existing XLSX checks pass. Child-run orchestration, snapshot binding, PDF and
+    viewer integration remain open; this does not complete or register disclosure_pack.
+
   - **Prerequisites:** RPS-14
   - **Scope:**
     - Paths: `backend/erev_api/domain/reports/disclosures.py` (`write_disclosure_snapshots` called by the lock job; `disclosure_pack` builder with child runs, T-RPT-01 rule 2); `backend/erev_api/domain/close/commands.py` (lock job writes T-RPT-03 rows); `backend/erev_api/api/v1/disclosures.py`; `backend/erev_api/schemas/disclosures.py`; `backend/tests/domain/reports/test_disclosure_pack.py`; `docs/api/openapi.json`; `frontend/src/lib/api/schema.d.ts`

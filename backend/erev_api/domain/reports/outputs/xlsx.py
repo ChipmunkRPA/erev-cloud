@@ -1,7 +1,8 @@
 """XLSX outputs with the RV-07 header block (SCREENS_B RV-02, RV-07, RPT-R-03; DESIGN_SYSTEM
 DS-FMT-26; 03 REQ-RPT-002, REQ-RPT-024, REQ-SEC-011; BUILD_SPEC RPS-2).
 
-One worksheet. The header block lists, one label and value per row: "Report" ``<name> v<version>``,
+Single reports use one worksheet; render_xlsx_pack adds a contents worksheet and one
+worksheet per section with its own source stamp, columns, totals and tie-outs. The header block lists, one label and value per row: "Report" ``<name> v<version>``,
 "Run", "Entity", "Book", "As of", "Source", "Engine" ``<engine version> (<build sha>)``, "Run by",
 "Run at" (UTC), "Rows", "Output SHA-256", then "Parameters" with every parameter, "Control totals"
 and, when the report has tie-outs, "Tie-outs". A blank row separates it from the grid header, which
@@ -14,6 +15,7 @@ from __future__ import annotations
 
 import io
 import re
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any, Final
@@ -83,7 +85,7 @@ class _Formats:
 
 def sheet_name(report_name: str) -> str:
     """A worksheet name Excel accepts: at most 31 characters, none of ``[]:*?/\\``."""
-    return _SHEET_UNSAFE.sub(" ", report_name)[:SHEET_NAME_LENGTH].strip() or "Report"
+    return _SHEET_UNSAFE.sub(" ", report_name)[:SHEET_NAME_LENGTH].strip().strip("'") or "Report"
 
 
 def _naive_utc(moment: datetime) -> datetime:
@@ -207,8 +209,20 @@ def render_xlsx(data: ReportData, stamp: RunStamp) -> bytes:
         }
     )
     sheet = workbook.add_worksheet(sheet_name(stamp.report_name))
-    formats = _Formats(workbook, stamp.negative_number_style)
+    _grid(sheet, _Formats(workbook, stamp.negative_number_style), data, stamp)
+    workbook.close()
+    return buffer.getvalue()
+
+
+def _grid(
+    sheet: Any, formats: _Formats, data: ReportData, stamp: RunStamp, notes: tuple[str, ...] = ()
+) -> None:
     header_row = _header_block(sheet, formats, data, stamp) + 1
+    for note in notes:
+        sheet.write_string(header_row, 0, guard(note))
+        header_row += 1
+    if notes:
+        header_row += 1
     columns = layout(data)
     for col, item in enumerate(columns):
         sheet.write_string(header_row, col, guard(item.header), formats.bold)
@@ -225,5 +239,90 @@ def render_xlsx(data: ReportData, stamp: RunStamp) -> bytes:
             )
     sheet.set_column(0, max(len(columns), 2) - 1, 20)
     sheet.freeze_panes(header_row + 1, 0)
-    workbook.close()
+
+
+@dataclass(frozen=True, slots=True)
+class WorkbookSection:
+    """A rendered section with its own source-run stamp and optional election notes.
+
+    Suppressed source facts belong in retained evidence, not the rendered dataset.
+    """
+
+    key: str
+    title: str
+    data: ReportData
+    stamp: RunStamp
+    notes: tuple[str, ...] = ()
+    omitted: bool = False
+
+
+def render_xlsx_pack(sections: tuple[WorkbookSection, ...], stamp: RunStamp) -> bytes:
+    """An indexed workbook preserving each section's schema, totals and source identity."""
+    if not sections or len({s.key for s in sections}) != len(sections):
+        raise ValueError("a workbook pack requires uniquely keyed sections")
+    if any(
+        not s.key
+        or not s.title
+        or (
+            s.omitted
+            and (s.data.rows or s.data.control_totals or s.data.tie_out_results or not s.notes)
+        )
+        for s in sections
+    ):
+        raise ValueError("omitted sections require a note and no rendered source rows")
+    contents = ReportData(
+        (
+            Column("title", "Section", "text"),
+            Column("status", "Status", "text"),
+            Column("source_run", "Source run", "code"),
+            Column("source_sha256", "Source output SHA-256", "code"),
+            Column("rows", "Rows", "integer"),
+            Column("worksheet", "Worksheet", "text"),
+        ),
+        tuple(
+            {
+                "row_key": section.key,
+                "title": section.title,
+                "status": "Omitted" if section.omitted else "Included",
+                "source_run": section.stamp.report_run_no,
+                "source_sha256": section.stamp.output_sha256,
+                "rows": section.data.row_count,
+                "worksheet": sheet_name(f"{index:02d} {section.title}"),
+            }
+            for index, section in enumerate(sections, start=1)
+        ),
+        {"sections": len(sections), "omitted_sections": sum(s.omitted for s in sections)},
+    )
+    buffer = io.BytesIO()
+    with xlsxwriter.Workbook(
+        buffer,
+        {
+            "in_memory": True,
+            "strings_to_formulas": False,
+            "strings_to_numbers": False,
+            "strings_to_urls": False,
+        },
+    ) as workbook:
+        workbook.set_properties(
+            {
+                "title": f"{stamp.report_name} v{stamp.report_version}",
+                "subject": stamp.report_run_no,
+                "created": _naive_utc(stamp.run_at),
+            }
+        )
+        _grid(
+            workbook.add_worksheet("Contents"),
+            _Formats(workbook, stamp.negative_number_style),
+            contents,
+            stamp,
+        )
+        for section, row in zip(sections, contents.rows, strict=True):
+            sheet = workbook.add_worksheet(str(row["worksheet"]))
+            _grid(
+                sheet,
+                _Formats(workbook, stamp.negative_number_style),
+                section.data,
+                section.stamp,
+                (section.title, *section.notes),
+            )
     return buffer.getvalue()

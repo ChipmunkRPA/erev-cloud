@@ -2,6 +2,21 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Disclosure workbook output foundation — October 19, 2026
+
+- Added WorkbookSection and render_xlsx_pack: a contents worksheet identifies each section's
+  source run/hash/status, followed by separately typed worksheets with their original source stamps,
+  totals and tie-outs. Indexed names remain unique after Excel's 31-character truncation.
+- Sections omitted under an election require a note and cannot carry rendered rows, totals or
+  tie-outs. Their undisplayed source data must remain in retained evidence, outside the workbook.
+- Shared the existing cell/grid writer with single-report exports, preserving numeric money,
+  formula guards and disabled automatic URL conversion. Apostrophes at worksheet-name edges are
+  sanitized. A seven-section workbook round-trip and existing single-report checks pass (4 checks);
+  Ruff and Mypy pass for the changed output code.
+- This is the output component, not a registered disclosure_pack builder. Child-run orchestration,
+  frozen disclosure snapshot binding, seven-section assembly, PDF and viewer remain unfinished.
+  Five catalogue builders remain unregistered. No new PR or deployment.
+
 ## Parallel comparison worker and export integration — October 19, 2026
 
 - Registered parallel_run_comparison and its retained-input source contract. Builder captures
@@ -208,22 +223,6 @@
   transaction. RPT-38 needs authorized read, transaction-free compute and reauthorized publish
   phases, source binding/rerun and cell routing before exposure. UI/header polish, wider replay
   phases and accounting acceptance remain open. Seven builders remain unregistered; no deployment.
-
-## Multi-group close variance and SSP readback — October 19, 2026
-
-- Added the pure multi-group execution phase over an authorized frozen pair: every monetary
-  contract must have a source, groups select one computation each, and exact driver totals
-  retain currency/measure identity and each group's execution evidence. Missing, new, removed
-  or regrouped populations refuse until explicit population replay is implemented.
-- First-compute SSP readbacks now normalize only when the new recorded version exactly matches
-  the earlier reproduced obligation's selected SSP version. Existing choices, overrides,
-  mismatched versions and modification-weight readbacks retain reference-replay requirements.
-- Actual consecutive persisted computations now reconcile with posted/head/readback adjustments.
-  Two real-engine groups reconcile revenue +117.68 and RPO -117.68 against authored frozen CSVs;
-  this is not a full close workflow. Replay suite 21 passed, reference guards 4 passed, database
-  selection/execution 1 passed; changed-file Ruff and source/replay-test Mypy pass.
-- Report registration/job/formats/UI, wider reference/FX/population phases and full frozen-close
-  accounting acceptance remain open. Seven builders remain unregistered; no deployment.
 
 ## Outstanding release verification
 
