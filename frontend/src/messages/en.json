@@ -1,4 +1,9 @@
 {
+  "reports.inputs.import": "Import changes into this draft",
+  "reports.inputs.importTarget": "Forecast assumption target",
+  "reports.inputs.draftRequired": "Choose an available draft assumption set before uploading.",
+  "reports.inputs.importEffect": "This import belongs to the selected scenario assumption set. Supported changes are progress, usage, costs and invoices. Finish validation and commit before publishing the assumptions.",
+  "reports.inputs.back": "Back to forecast assumptions",
   "reports.inputs.title": "Manage forecast assumptions",
   "reports.inputs.hide": "Hide assumption management",
   "reports.inputs.description": "Create a draft, review captured inputs, and publish it for forecast runs. Reusing an existing code creates its next version with the previous inputs; finish any existing draft first. Publication makes the version immutable.",

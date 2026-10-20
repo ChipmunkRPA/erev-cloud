@@ -1,5 +1,12 @@
 # eRev Cloud 1.0: stated limits of the release
 
+Current forecast import update (October 19): draft assumption records now open a targeted
+import workflow. The upload page verifies and identifies the draft, restricts supported fact
+templates, and preserves the association through corrected-file uploads. Import validation
+and commit still govern attachment. Direct command capture and detailed input review remain
+open; earlier blanket statements that import selection has no UI are superseded by this entry.
+
+
 Current assumption lifecycle update (October 19): forecast page now supports draft creation,
 name editing, publication confirmation and paginated version inspection. Published versions
 are immutable and refresh the report input selector. Business-change capture UI, import

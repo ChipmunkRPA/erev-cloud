@@ -42,3 +42,19 @@ export function fetchComparisonForecasts(cursor: string | null = null) {
     count: false,
   });
 }
+
+export function fetchForecastInput(id: string): Promise<ForecastInput> {
+  return unwrap(
+    api.GET("/api/v1/forecast-event-sets/{event_set_id}", {
+      params: { path: { event_set_id: id } },
+    }),
+  );
+}
+
+/** Forecast fact templates accepted by the scenario import API. */
+export const FORECAST_IMPORT_TEMPLATES: ReadonlySet<string> = new Set([
+  "progress_events",
+  "usage",
+  "cost_events",
+  "invoices",
+]);

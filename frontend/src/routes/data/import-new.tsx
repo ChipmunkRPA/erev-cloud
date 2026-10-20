@@ -10,6 +10,8 @@
 // file, creates the import and opens its `validate` step while the validation job runs. A refused
 // file names the reason on the dropzone (ERR-37, IMP-05).
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { fetchForecastInput, FORECAST_IMPORT_TEMPLATES } from "../../lib/api/queries/forecasts";
+import { queryKey } from "../../lib/api/query-keys";
 import { type DragEvent, type FormEvent, type ReactNode, useId, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 
@@ -226,10 +228,22 @@ function NewImportPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const search = new URLSearchParams(location.search);
+  const eventSet = search.get(EVENT_SET_PARAM);
+  const forecastInput = useQuery({
+    queryKey: queryKey("forecast-event-sets", "tenant", { id: eventSet }),
+    queryFn: () => fetchForecastInput(eventSet ?? ""),
+    enabled: eventSet !== null,
+    retry: false,
+  });
+  const forecastReady =
+    eventSet === null || (forecastInput.isSuccess && forecastInput.data.status === "DRAFT");
   const corrected = isCorrectedState(location.state) ? location.state.parameters : {};
   const templates = useQuery({ queryKey: importTemplatesKey(), queryFn: fetchImportTemplates });
   const [templateCode, setTemplateCode] = useState<string | null>(search.get("template"));
-  const template = templates.data?.find((candidate) => candidate.code === templateCode);
+  const eligibleTemplates = (templates.data ?? []).filter(
+    (candidate) => eventSet === null || FORECAST_IMPORT_TEMPLATES.has(candidate.code),
+  );
+  const template = eligibleTemplates.find((candidate) => candidate.code === templateCode);
   const initialEffective =
     typeof corrected.effective_date === "string" ? corrected.effective_date : null;
   const [effective, setEffective] = useState<string | null>(initialEffective);
@@ -268,7 +282,7 @@ function NewImportPage() {
     enabled: csv,
     retry: false,
   });
-  const templateOptions = (templates.data ?? []).map((candidate) => ({
+  const templateOptions = eligibleTemplates.map((candidate) => ({
     value: candidate.code,
     label: templateName(candidate),
     group: t(`data.imports.new.group.${candidate.family}`),
@@ -283,6 +297,7 @@ function NewImportPage() {
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
+    if (!forecastReady || uploading || command.pending) return;
     const found: Record<string, string> = {};
     if (template === undefined) {
       found.template = t("data.imports.new.required.template");
@@ -315,7 +330,6 @@ function NewImportPage() {
     if (modeParameter !== undefined && mode !== null) {
       parameters[MODE] = mode;
     }
-    const eventSet = search.get(EVENT_SET_PARAM);
     const body: ImportCreateBody = {
       file_id: stored.id,
       template_code: template.code,
@@ -384,6 +398,36 @@ function NewImportPage() {
         title={t("data.imports.new.title")}
         crumbs={[{ label: t("data.imports.title"), to: IMPORTS_ROUTE }]}
       />
+      {eventSet !== null ? (
+        <section className="flex flex-col gap-2">
+          <h2>{t("reports.inputs.importTarget")}</h2>
+          {forecastInput.isPending ? <p role="status">{t("reports.inputs.loading")}</p> : null}
+          {forecastInput.data ? (
+            <p>
+              {forecastInput.data.code} — {forecastInput.data.name} · v
+              {forecastInput.data.version_no} · {forecastInput.data.status}
+            </p>
+          ) : null}
+          {forecastInput.isError ? (
+            <Banner
+              tone="negative"
+              title={t("reports.inputs.loadError")}
+              actions={
+                <Button onClick={() => void forecastInput.refetch()}>
+                  {t("reports.inputs.retry")}
+                </Button>
+              }
+            />
+          ) : null}
+          {forecastInput.isSuccess && !forecastReady ? (
+            <Banner tone="negative" title={t("reports.inputs.draftRequired")} />
+          ) : null}
+          <p>{t("reports.inputs.importEffect")}</p>
+          <Link className="underline" to="/reports/forecasts">
+            {t("reports.inputs.back")}
+          </Link>
+        </section>
+      ) : null}
       <div data-testid="SF-10-stepper">
         <Stepper label={t("data.imports.stepper")} steps={uploadSteps()} currentId="upload" />
       </div>
@@ -522,7 +566,12 @@ function NewImportPage() {
           }}
         />
         <div>
-          <Button variant="primary" type="submit" loading={uploading || command.pending}>
+          <Button
+            variant="primary"
+            type="submit"
+            loading={uploading || command.pending}
+            disabledReason={!forecastReady ? t("reports.inputs.draftRequired") : undefined}
+          >
             {t("data.imports.upload.submit")}
           </Button>
         </div>

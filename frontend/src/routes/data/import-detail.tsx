@@ -399,8 +399,11 @@ export function importSteps(
 }
 
 /** SF-10:new with the same template and mode (SCR-URL-28); the effective date rides on the state. */
-export function correctedFileRoute(item: ImportItem): string {
+export function correctedFileRoute(
+  item: Pick<ImportItem, "template" | "parameters" | "forecast_event_set_id">,
+): string {
   const search = new URLSearchParams({ template: item.template.code });
+  if (item.forecast_event_set_id) search.set("event_set", item.forecast_event_set_id);
   const mode = item.parameters.mode;
   if (typeof mode === "string") {
     search.set("mode", mode);

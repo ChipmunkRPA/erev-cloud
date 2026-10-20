@@ -6,6 +6,20 @@
 
 
 
+## Forecast fact import entry and correction continuity — October 19, 2026
+
+- Draft assumption records now link to the import wizard for import.upload readers, carrying
+  the selected input-set ID. The upload page reads that set, displays code/name/version/status,
+  blocks unavailable or non-draft targets before file upload and lists only backend-supported
+  progress_events, usage, cost_events and invoices templates.
+- Import creation retains the same forecast_event_set_id. Corrected-file navigation now keeps
+  that association alongside template/mode; previously it silently fell back to ordinary import.
+  Validation/commit and backend draft/permission checks continue to govern attachment.
+- Seven focused import/assumption checks cover the link, displayed target, template restriction,
+  publication guard, submitted ID and corrected-file identity. Frontend types/lint pass.
+- This supplies forecast fact import authoring through the existing pipeline. Direct business
+  command capture, richer input review and accounting acceptance remain open. No deployment.
+
 ## Forecast assumption lifecycle controls — October 19, 2026
 
 - Forecast runs now include a lazy-loaded, paginated assumption manager within the existing
@@ -232,20 +246,6 @@
 - Forty-five existing report-page checks and three focused parameter checks pass, plus
   TypeScript/ESLint. Object-valued advanced filters and richer record pickers remain separate
   UI work; broader reporting and accounting acceptance remain open. No deployment.
-
-## Forecast run-record re-export — October 19, 2026
-
-- Original succeeded forecast records now offer Re-export saved forecast instead of an
-  unsupported new-computation rerun. The action creates a catalogue report with the original
-  parameters/version/format, follows its REPORT_RUN job and opens the new record.
-- Re-export navigation does not invent CTL-029 comparison results for an original catalogue
-  creation. Bound catalogue reports retain the normal same-source rerun action; incomplete
-  or unbound forecast records do not offer unsupported computation reruns.
-- Forecast record and report-view stamps identify a saved forecast cutoff, and source text
-  explains that exports reuse original figures. Twenty-six run-record checks pass, including
-  the POST /report-runs action and navigation without a misleading equality banner.
-- Broader reporting/business acceptance and independent accounting sign-off remain open.
-  No deployment or production-readiness claim.
 
 ## Outstanding release verification
 

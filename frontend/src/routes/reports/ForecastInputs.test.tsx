@@ -2,8 +2,10 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
+import { MemoryRouter } from "react-router";
 import { ForecastInputs } from "./ForecastInputs";
 const state = vi.hoisted(() => ({ fetch: vi.fn(), submit: vi.fn(), status: "DRAFT" }));
+vi.mock("../../lib/access", () => ({ useAccess: () => ({ holdsAnywhere: () => true }) }));
 vi.mock("../../lib/api/lists", () => ({ fetchListPage: state.fetch }));
 vi.mock("../../lib/api/commands", () => ({
   useCommand: (options: { path: string; method: string }) => ({
@@ -36,7 +38,9 @@ function open() {
   });
   render(
     <QueryClientProvider client={new QueryClient()}>
-      <ForecastInputs />
+      <MemoryRouter>
+        <ForecastInputs />
+      </MemoryRouter>
     </QueryClientProvider>,
   );
   fireEvent.click(screen.getByRole("button", { name: "Manage forecast assumptions" }));
@@ -69,6 +73,9 @@ it("requires publication confirmation and sends the saved row version", async ()
   open();
   fireEvent.click(await screen.findByRole("button", { name: "Publish assumptions" }));
   expect(state.submit).not.toHaveBeenCalled();
+  expect(
+    screen.getByRole("link", { name: "Import changes into this draft" }).getAttribute("href"),
+  ).toBe("/data/imports/new?event_set=input");
   expect(screen.getByText(/contains no captured changes/)).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Confirm publication" }));
   await waitFor(() =>

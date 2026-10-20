@@ -8283,3 +8283,17 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Three focused interaction checks cover duplicate requests, same-report recovery and network
   errors; TypeScript and ESLint pass. Other reporting workflows and independent accounting
   acceptance remain open. No deployment or production-readiness claim.
+
+## Forecast run-record re-export — October 19, 2026
+
+- Original succeeded forecast records now offer Re-export saved forecast instead of an
+  unsupported new-computation rerun. The action creates a catalogue report with the original
+  parameters/version/format, follows its REPORT_RUN job and opens the new record.
+- Re-export navigation does not invent CTL-029 comparison results for an original catalogue
+  creation. Bound catalogue reports retain the normal same-source rerun action; incomplete
+  or unbound forecast records do not offer unsupported computation reruns.
+- Forecast record and report-view stamps identify a saved forecast cutoff, and source text
+  explains that exports reuse original figures. Twenty-six run-record checks pass, including
+  the POST /report-runs action and navigation without a misleading equality banner.
+- Broader reporting/business acceptance and independent accounting sign-off remain open.
+  No deployment or production-readiness claim.

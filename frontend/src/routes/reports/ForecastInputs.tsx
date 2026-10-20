@@ -1,3 +1,5 @@
+import { Link } from "react-router";
+import { useAccess } from "../../lib/access";
 import { useState } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { Banner } from "../../components/feedback/Banner";
@@ -14,6 +16,7 @@ import { TextField } from "../contracts/drawers/common";
 const key = queryKey("forecast-event-sets", "tenant");
 const label = (value: string) => t(`reports.inputs.${value}`);
 function InputRecord({ row }: { readonly row: ForecastInput }) {
+  const access = useAccess();
   const [name, setName] = useState(row.name);
   const [confirming, setConfirming] = useState(false);
   const [networkError, setNetworkError] = useState(false);
@@ -54,6 +57,14 @@ function InputRecord({ row }: { readonly row: ForecastInput }) {
       ) : null}
       {row.status === "DRAFT" ? (
         <>
+          {access.holdsAnywhere("import.upload") ? (
+            <Link
+              className="underline"
+              to={`/data/imports/new?event_set=${encodeURIComponent(row.id)}`}
+            >
+              {label("import")}
+            </Link>
+          ) : null}
           <TextField
             name={`input-name-${row.id}`}
             label={label("name")}
