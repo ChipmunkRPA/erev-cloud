@@ -340,3 +340,107 @@ def test_rollforward_compares_uploaded_gl_role_balances(world: ReportWorld) -> N
         assert result["result"] == "PASS", result["details"]
         assert len(result["details"]) == 3
         assert result["details"][0]["reconciliation_id"] == draft["id"]
+
+
+@pytest.mark.slow
+def test_foreign_contract_balances_use_dated_functional_targets(
+    app: FastAPI,
+    keyring: KeyRing,
+    clock: FrozenClock,
+    app_settings: Settings,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from support import close_run_worlds
+    from support import close_runs as runs
+    from support import reconciliations as recon
+
+    world = close_run_worlds.eur_receivable(
+        app, keyring, clock, LocalFileStore(app_settings.file_root)
+    )
+    for period_key in ("FY2026-P08", "FY2026-P09"):
+        closed = runs.closed(world, monkeypatch, entity_code=AVM_US, period_key=period_key)
+        assert closed["status"] == "SUCCEEDED"
+        world = runs.journal_posted(world, clock, closed["journal_run_id"])
+    for period_key, expected in (("FY2026-P08", "11050.00"), ("FY2026-P09", "11200.00")):
+        draft = recon.generated(
+            app,
+            world.maya,
+            world.runtime,
+            entity_code=AVM_US,
+            period_key=period_key,
+            kind=recon.SUBLEDGER_TO_GL,
+            book="ASC606",
+        )
+        file_id = recon.uploaded(
+            app,
+            world.maya,
+            f"functional-{period_key}.csv",
+            recon.trial_balance_csv(
+                [
+                    ("1105", "USD", expected),
+                    ("2100", "USD", "0"),
+                    ("4010", "USD", "-11000.00"),
+                    ("7200", "USD", str(D("11000") - D(expected))),
+                ]
+            ),
+        )
+        reconciled = recon.attached(
+            app, world.maya, world.runtime, draft["id"], {"file_id": file_id}
+        )
+        assert reconciled["variance_count"] == 0
+        params = {
+            "entity_codes": [AVM_US],
+            "book": "ASC606",
+            "period_key": period_key,
+            "currency_view": "functional",
+        }
+        run, rows = report_run(world, "contract_balances", params)
+        row = keyed(rows)[f"contract:{close_run_worlds.EUR_CONTRACT}:{AVM_US}"]
+        assert row["unbilled_receivable"] == usd(expected)
+        assert row["currency"] == "USD"
+        assert tie(run, tie_outs.TO_ROLLFORWARD_EQ_GL)["result"] == "PASS"
+        assert tie(run, tie_outs.TO_BALANCES_EQ_ROLLFORWARD)["result"] == "PASS"
+        _, txn = report_run(world, "contract_balances", {**params, "currency_view": "transaction"})
+        assert keyed(txn)[row["row_key"]]["unbilled_receivable"] == {
+            "amount": "10000.00",
+            "currency": "EUR",
+        }
+
+
+@pytest.mark.slow
+def test_functional_balance_reads_locked_endpoint_and_reruns(
+    app: FastAPI,
+    keyring: KeyRing,
+    clock: FrozenClock,
+    app_settings: Settings,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from uuid import UUID
+
+    from support import close_run_worlds, worlds
+    from support.reference import post
+
+    world, _ = close_run_worlds.august_locked(
+        app, keyring, clock, LocalFileStore(app_settings.file_root), monkeypatch
+    )
+    run, rows = report_run(
+        world,
+        "contract_balances",
+        {
+            "entity_codes": [AVM_US],
+            "book": "ASC606",
+            "period_key": "FY2026-P08",
+            "currency_view": "functional",
+        },
+    )
+    row = keyed(rows)[f"contract:{close_run_worlds.EUR_CONTRACT}:{AVM_US}"]
+    assert row["unbilled_receivable"] == usd("11050.00")
+    started = post(app, f"/api/v1/report-runs/{run['id']}/rerun", world.maya, {})
+    assert started.status_code == 202, started.text
+    finished = worlds.run_now(world, UUID(str(started.json()["id"])))
+    assert finished["state"] == "SUCCEEDED", finished
+    repeated = get(
+        app, f"/api/v1/report-runs/{started.headers['x-erev-report-run-id']}/data", world.maya
+    )
+    assert repeated.status_code == 200, repeated.text
+    assert repeated.json()["items"] == rows

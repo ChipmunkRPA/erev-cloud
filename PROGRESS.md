@@ -6,6 +6,20 @@
 
 
 
+## Dated functional contract balances and GL comparison — October 20, 2026
+
+- Contract balances now reads retained engine functional targets at the selected period,
+  preserving historical-layer liability valuation and monetary asset remeasurement. Foreign
+  balances without dated evidence are refused rather than converted with a current rate.
+- GL reconciliation uses the same dated targets. Actual EUR 10,000 receivable reports show
+  USD 11,050 in August and USD 11,200 in September, both matching uploaded GL balances.
+- Locked endpoints select computations available at the lock cutoff and verify the frozen
+  transaction endpoint before projecting functional values; selected versions are retained
+  for reruns. Locked-endpoint report/rerun and missing-evidence controls pass targeted journeys.
+- Full functional movement attribution, reporting-currency translation, additional captions
+  without engine functional targets, population replay and RPO partial exclusions remain open.
+  This is a functional balance checkpoint, not completion of all reporting currencies. No deployment.
+
 ## Reporting reference/FX attribution and GL tie-out — October 20, 2026
 
 - Close variance now replays retained reference inputs before business events and FX rates
@@ -219,22 +233,6 @@
   Python lint/types pass. Sequence allocation may leave harmless gaps after scratch rollback.
 - Job/API retention, result presentation, scenario save and SF-18 UI remain unfinished, as do
   Tamsin acceptance and independent accounting sign-off. No deployment.
-
-## Deal preview input and engine boundary — October 19, 2026
-
-- Code inspection confirmed deal preview had only its persisted table, without an API,
-  worker, engine adapter or screen. Added proposed-deal/create/save request schemas: exactly
-  one customer identity/name, bounded nonempty lines, positive decimal-string quantities,
-  nonnegative API money, one currency, strict positive terms and calendar-date input.
-- Added pure deal_compute boundary using the complete revenue engine in DRY_RUN mode. It
-  rejects multiple contracts or posted ledger baselines, preserves engine refusals, returns
-  the full engine result/trace and verifies input/result fingerprints. No database writes.
-- Four targeted schema/refusal checks pass. A separate real ASC606 kit-world computation
-  confirms two USD 1000.00 allocations, DRY_RUN isolation and both fingerprints; lint/types pass.
-- This is the compute foundation, not a working deal-preview feature. Authorized product/SSP
-  resolution and bundle construction, retained audited jobs/API, result presentation, scenario
-  save and SF-18 UI remain to implement. Tamsin acceptance and accounting sign-off remain open.
-  No deployment or production-readiness claim.
 
 ## Outstanding release verification
 

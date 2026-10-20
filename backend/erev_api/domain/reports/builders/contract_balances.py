@@ -27,7 +27,7 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Any, Final
 
-from erev_api.domain.reports import locked_ends, rollforward_gl, tie_outs
+from erev_api.domain.reports import functional_balances, locked_ends, rollforward_gl, tie_outs
 from erev_api.domain.reports.builders import ReportParams
 from erev_api.domain.reports.builders import contract_balance_rollforward as rollforward
 from erev_api.domain.reports.outputs import Column, ReportData
@@ -93,6 +93,16 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     )
     functional = {item.id: item.functional_currency for item in found}
     view = str(params.parameters.get("currency_view") or "transaction")
+    if view == "functional":
+        balances = functional_balances.read(
+            session,
+            params,
+            balances,
+            entities=found,
+            periods=at,
+            book_code=book_code,
+            locked=ends,
+        )
     if view != "transaction" and any(row.currency != functional[row.entity_id] for row in balances):
         raise tie_outs.invalid("currency_view", rollforward.FUNCTIONAL_ONLY)
     include_zero = bool(params.parameters.get("include_zero", False))
@@ -157,6 +167,7 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         params=params,
         contract_id=contract_id,
         documents=False,  # CTL-030 compares the CLOSING line: no flow of the path is read
+        functional=view == "functional",
         locked=ends,
     )
     return ReportData(

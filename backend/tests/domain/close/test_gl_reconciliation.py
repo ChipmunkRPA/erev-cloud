@@ -1431,21 +1431,10 @@ def test_role_not_stated_for_a_balance_held_in_another_currency(
     files: LocalFileStore,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Supervisor ruling R-74 (a): a stored balance is in the contract's transaction currency and
-    its functional amount is stored for the version's latest period only; the platform translates
-    no balance. ``close_run_worlds.eur_receivable``: AVM-US keeps USD and ``SF-ORD-EU-3001``
-    holds an unbilled receivable of EUR 10,000.00 from 31 Aug 2026; August and September are
-    closed by their runs and their journals reach the ledger, which so carries the receivable at
-    the closing rates — 11,050.00 at 31 Aug (1.105000) and 11,200.00 at 30 Sep (1.120000) on
-    account 1105.
+    """Missing dated evidence stays NOT_STATED, including permission-safe contract details.
 
-    August is not the version's latest period: the unbilled receivable is not stated — no
-    subledger amount, no difference, the contract and the reason named — and its one
-    ``NOT_STATED`` item carries the ledger's 11,050.00 for the preparer to explain. September is:
-    the row states 11,200.00 and ties.
-
-    The contracts of a not-stated row are named to a reader who reads them and counted for one
-    who does not (``not_stated.contract_count``; 04 §16.8 rev 1.253)."""
+    Simulate a legacy trace without August functional targets; September still ties.
+    """
     world = close_run_worlds.eur_receivable(app, keyring, clock, files)
     runtime = world.runtime
     maya = world.maya
@@ -1455,6 +1444,24 @@ def test_role_not_stated_for_a_balance_held_in_another_currency(
         # the ledger holds the period's journal: approved, exported and acknowledged (PRD SM-08)
         world = runs.journal_posted(world, clock, closed["journal_run_id"])
     contract_id = str(world.contracts[close_run_worlds.EUR_CONTRACT].contract["id"])
+    from erev_api.explain import store as trace_store
+
+    original_load = trace_store.load_trace
+
+    def without_august(*args: Any, **kwargs: Any) -> Any:
+        trace = original_load(*args, **kwargs)
+        if trace is None:
+            return None
+        return replace(
+            trace,
+            nodes=tuple(
+                node
+                for node in trace.nodes
+                if not ("_functional:" in node.id and node.id.endswith(":FY2026-P08"))
+            ),
+        )
+
+    monkeypatch.setattr(trace_store, "load_trace", without_august)
 
     def reconciled(period_key: str, stated: Mapping[str, str]) -> dict[str, Any]:
         draft = recon.generated(
@@ -1487,7 +1494,7 @@ def test_role_not_stated_for_a_balance_held_in_another_currency(
         "not_stated": {
             "reason": (
                 "1 contract(s) in another currency than USD hold no USD balance at FY2026-P08: "
-                "the functional balance is stored for a contract version's latest period only."
+                "dated functional balance evidence is unavailable."
             ),
             "contracts": [{"id": contract_id, "external_id": close_run_worlds.EUR_CONTRACT}],
             "contract_count": 1,

@@ -14,7 +14,6 @@ from decimal import Decimal
 from typing import TYPE_CHECKING, Any, Final
 from uuid import UUID
 
-from erev_engine.stages.s01_canonicalize import contract_entity_subject_key
 from sqlalchemy import and_, func, or_, select, tuple_
 from sqlalchemy.orm import Session
 
@@ -30,9 +29,10 @@ from erev_api.db.tables import (
     subledger_posting_seal,
 )
 from erev_api.domain.close import trial_balance
-from erev_api.domain.reports import tie_outs
+from erev_api.domain.reports import functional_balances, tie_outs
 from erev_api.enums import AccountRole, AccountType, ConfigStatus
 from erev_api.explain import store as trace_store
+from erev_api.problems import Problem
 
 if TYPE_CHECKING:
     from erev_api.domain.close import gates
@@ -59,7 +59,7 @@ CONTROL_ROLES: Final = tuple(POSITION_ROLES)
 # SCREENS_B §2.2 "Not stated by the subledger": the reasons of a role row without an amount.
 NOT_STATED_FOREIGN: Final = (
     "{count} contract(s) in another currency than {functional} hold no {functional} balance at "
-    "{period_key}: the functional balance is stored for a contract version's latest period only."
+    "{period_key}: dated functional balance evidence is unavailable."
 )
 NOT_STATED_UNREADABLE: Final = (
     "The balances of {count} contract(s) at {period_key} cannot be read from their calculation "
@@ -286,47 +286,45 @@ def _period_ref(session: Session, scope: gates.PeriodScope) -> tie_outs.PeriodRe
 def _functional_balances(
     session: Session, scope: gates.PeriodScope, rows: Sequence[tie_outs.BalanceRow]
 ) -> dict[tuple[UUID, UUID], dict[str, Decimal]]:
-    """The stored functional balances (04 T-CON-09) of the member contracts in ``rows`` whose
-    version's latest period is the reconciled one — the only period a functional balance is
-    stored for — by (contract version, contract): the three role balances by their measure. The
-    latest period of a member is the last one a balance node of its subject carries
-    (``tie_outs.traced_balances``); a member whose stored transaction balances are not the
-    period's is left out."""
+    """Dated functional role balances, including historical periods in retained traces."""
     if not rows:
         return {}
-    latest: dict[UUID, Mapping[str, str]] = {}
-    for version_id in sorted({row.version_id for row in rows}, key=str):
-        trace = trace_store.load_trace(session, version_id)
-        nodes = () if trace is None else ((node.id, node.value) for node in trace.nodes)
-        latest[version_id] = tie_outs.traced_balances(nodes).latest
-    by_key = {
-        (row.version_id, row.contract_id): row
-        for row in rows
-        if latest[row.version_id].get(contract_entity_subject_key(row.external_id, row.entity_code))
-        == scope.period_key
+    by_key = {(row.version_id, row.contract_id): row for row in rows}
+    traces = {
+        version_id: trace_store.load_trace(session, version_id)
+        for version_id in {row.version_id for row in rows}
     }
-    if not by_key:
-        return {}
     balance = contract_version_balance
     measures = [measure for measure, _ in POSITION_ROLES.values()]
     found: dict[tuple[UUID, UUID], dict[str, Decimal]] = {}
-    for stored in session.execute(
-        select(
-            balance.c.contract_version_id,
-            balance.c.contract_id,
-            *(balance.c[f"{measure}_txn"] for measure in measures),
-            *(balance.c[f"{measure}_functional"] for measure in measures),
-        ).where(
+    for held in session.execute(
+        select(balance).where(
             balance.c.entity_id == scope.entity_id,
             tuple_(balance.c.contract_version_id, balance.c.contract_id).in_(
                 sorted(by_key, key=str)
             ),
         )
     ).mappings():
+        stored = dict(held)
         key = (UUID(str(stored["contract_version_id"])), UUID(str(stored["contract_id"])))
         row = by_key[key]
-        if all(Decimal(stored[f"{measure}_txn"]) == row.value(measure) for measure in measures):
-            found[key] = {measure: Decimal(stored[f"{measure}_functional"]) for measure in measures}
+        trace = traces[row.version_id]
+        if trace is None:
+            continue
+        try:
+            found[key] = functional_balances.project(
+                trace,
+                external_id=row.external_id,
+                entity_code=row.entity_code,
+                period_key=scope.period_key,
+                stored=stored,
+                version_id=row.version_id,
+                measures=measures,
+            )
+        except Problem:
+            # The role comparator already renders these sources as NOT_STATED;
+            # unavailable historic evidence must not be turned into a zero balance.
+            continue
     return found
 
 

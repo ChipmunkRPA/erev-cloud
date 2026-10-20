@@ -8568,3 +8568,19 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Usage/invoice input continues through forecast imports. Effective-date controls on input-set
   metadata, populated comparison/report accounting acceptance, deal preview and independent
   sign-off remain open. No deployment or production-readiness claim.
+
+## Deal preview input and engine boundary — October 19, 2026
+
+- Code inspection confirmed deal preview had only its persisted table, without an API,
+  worker, engine adapter or screen. Added proposed-deal/create/save request schemas: exactly
+  one customer identity/name, bounded nonempty lines, positive decimal-string quantities,
+  nonnegative API money, one currency, strict positive terms and calendar-date input.
+- Added pure deal_compute boundary using the complete revenue engine in DRY_RUN mode. It
+  rejects multiple contracts or posted ledger baselines, preserves engine refusals, returns
+  the full engine result/trace and verifies input/result fingerprints. No database writes.
+- Four targeted schema/refusal checks pass. A separate real ASC606 kit-world computation
+  confirms two USD 1000.00 allocations, DRY_RUN isolation and both fingerprints; lint/types pass.
+- This is the compute foundation, not a working deal-preview feature. Authorized product/SSP
+  resolution and bundle construction, retained audited jobs/API, result presentation, scenario
+  save and SF-18 UI remain to implement. Tamsin acceptance and accounting sign-off remain open.
+  No deployment or production-readiness claim.

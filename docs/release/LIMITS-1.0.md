@@ -1,5 +1,12 @@
 # eRev Cloud 1.0: stated limits of the release
 
+Current functional balance update (October 20): contract balances now uses dated retained engine
+functional targets, including historical periods and verified locked transaction endpoints.
+GL reconciliation uses the same targets, and selected source versions are retained for report
+reruns. EUR receivable August/September and locked-period/rerun journeys pass. Nonzero captions
+without functional targets remain explicit refusals. Full functional rollforward movements and
+reporting-currency translation remain outstanding; this does not complete multi-currency reporting.
+
 Current reporting implementation update (October 20): close variance now evaluates changed
 reference inputs separately from business events, then changed FX rates, retaining phase hashes
 and changed fields. Group/calendar/population changes still need additional work. Contract balances and

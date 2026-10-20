@@ -63,7 +63,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from erev_api.db.tables import contract_event, subledger_line
-from erev_api.domain.reports import locked_ends, rollforward_gl, tie_outs
+from erev_api.domain.reports import functional_balances, locked_ends, rollforward_gl, tie_outs
 from erev_api.domain.reports.builders import ReportParams
 from erev_api.domain.reports.outputs import Column, ReportData
 from erev_api.domain.reports.tie_outs import (
@@ -271,6 +271,7 @@ def rollforwards(
     params: ReportParams,
     contract_id: UUID | None = None,
     documents: bool = True,
+    functional: bool = False,
     locked: tie_outs.LockedEnds | None = None,
 ) -> tuple[ContractRollforward, ...]:
     """The rollforward of every member contract and entity with a balance at either end.
@@ -303,6 +304,30 @@ def rollforwards(
         traces=traces,
         locked_ends=locked,
     )
+    if functional:
+        if documents:
+            raise tie_outs.invalid(
+                "currency_view", "Functional movement attribution is not available yet."
+            )
+        entities = tie_outs.entities(session, entity_ids, params=params)
+        opening_rows = functional_balances.read(
+            session,
+            params,
+            opening_rows,
+            entities=entities,
+            periods=before,
+            book_code=book_code,
+            locked=locked,
+        )
+        closing_rows = functional_balances.read(
+            session,
+            params,
+            closing_rows,
+            entities=entities,
+            periods=closing_at,
+            book_code=book_code,
+            locked=locked,
+        )
     ends: dict[tuple[UUID, UUID], list[BalanceRow | None]] = {}
     for row in opening_rows:
         ends.setdefault((row.contract_id, row.entity_id), [None, None])[0] = row
