@@ -7871,3 +7871,17 @@ cleanup in the shared database session kernel was also repaired and regression-t
   source-contract/rebuild checks pass; Ruff/Mypy pass.
 - Dedicated UI selection, all file-format verification and populated accounting acceptance
   remain. FCS-4 is now registered/runnable, but its acceptance is not complete. No deployment.
+
+## Actual-vs-forecast selection and report screen flow — October 19, 2026
+
+- Added the SF-17 comparison form: saved forecast (including earlier refreshes), contract/category
+  rows, periods within its horizon, permission-gated formats, task progress/cancellation and
+  completed report links. Entity scope, book and currency basis follow the saved forecast.
+  Completion refreshes the choice list; membership changes reset form state.
+- Added paginated forecast-comparison-runs. It follows only successful scenario predecessors,
+  checks current permissions, returns succeeded publications only and binds cursors to the
+  current snapshot/workspace. Superseded/foreign lineage cursors are refused. OpenAPI regenerated.
+- Five focused frontend checks, TypeScript/ESLint, Ruff/Mypy and the real scenario journey pass.
+  The journey checks archived choices, pagination and invalid cursors, then runs JSON/XLSX/CSV/
+  PDF report jobs and same-source rebuilding with no actuals. Populated accounting acceptance
+  and rendered populated-report review are still outstanding. No deployment.

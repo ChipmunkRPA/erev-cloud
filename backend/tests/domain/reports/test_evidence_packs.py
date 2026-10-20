@@ -11,6 +11,7 @@ import hashlib
 import io
 import json
 from copy import copy
+from dataclasses import replace
 from zipfile import ZipFile
 
 import pytest
@@ -57,6 +58,35 @@ def test_ctl_041_close_pack_manifest(
     assert header.status_code == 200, header.text
     downloaded = get(app, f"{path}/download", auditor)
     assert downloaded.status_code == 200, downloaded.text
+    # Catalogue output uses the same retained pack under current source authorization.
+    from erev_api.domain.reports import evidence_catalogue, evidence_commands, evidence_sources
+    from erev_api.problems import Problem
+
+    principal = replace(
+        world.place.principal,
+        permissions=evidence_commands.PERMISSIONS,
+        permission_scopes={permission: "*" for permission in evidence_commands.PERMISSIONS},
+    )
+    with world.place.uow(principal) as uow:
+        source = evidence_sources.load_close(uow, pack["id"])
+        bound = evidence_catalogue.bind(
+            uow,
+            pack["id"],
+            request=source.request,
+            entity_ids=(source.entity_id,),
+            known_at=source.cutoff_known_at,
+            output_format="ZIP",
+        )
+        output = evidence_catalogue.read(uow, bound)
+        assert output.content == downloaded.content
+        changed = bound.model_copy(update={"source_binding_sha256": "f" * 64})
+        with pytest.raises(Problem):
+            evidence_catalogue.read(uow, changed)
+        uow.commit()
+    denied = replace(principal, permissions=principal.permissions - {"evidence.export"})
+    with world.place.uow(denied) as uow, pytest.raises(Problem) as refusal:
+        evidence_catalogue.read(uow, bound)
+    assert refusal.value.status == 403
     digest = header.json()["manifest_sha256"]
     manifest = evidence_archive.verify(downloaded.content, expected_manifest_sha256=digest)
     with ZipFile(io.BytesIO(downloaded.content)) as archive:

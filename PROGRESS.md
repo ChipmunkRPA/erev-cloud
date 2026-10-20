@@ -6,6 +6,21 @@
 
 
 
+## Catalogue evidence source/output adapter — October 19, 2026
+
+- RPT-54/55 now have an internal adapter for an explicitly selected retained pack. It binds
+  exact selectors, entity scope, source cutoff, source hash and pack/job identity; reauthorization
+  refuses changed sources and requires current evidence permissions in every source entity.
+- ZIP output preserves the complete original archive. Sample PDF/XLSX extraction preserves the
+  retained chapter bytes and emits provenance linking the artifact to the pack manifest.
+- Five focused archive/format checks pass; actual closed-period pack binding/read, altered-source
+  refusal and revoked-export refusal pass. Ruff/Mypy pass.
+- This is an internal adapter, not catalogue availability: ordinary report creation, persistent
+  binding and dependency dispatch still need integration. The catalogue still refuses these codes.
+- Reinspection confirms disclosure_pack already has child orchestration and a worker execution
+  path. Its remaining acceptance gaps need auditing; do not describe orchestration as absent.
+  No deployment or readiness claim.
+
 ## CHANGE/ACCESS evidence workflow — October 19, 2026
 
 - Added atomic API creation, retained child-report readiness, current-requester worker
@@ -227,20 +242,6 @@
   empty-actuals message; columns use the saved report's labels and order.
 - Six focused calculation/rebuild checks, TypeScript and lint pass. Populated accounting
   acceptance remains open. Contract sample and period evidence packs remain development gaps.
-
-## Actual-vs-forecast selection and report screen flow — October 19, 2026
-
-- Added the SF-17 comparison form: saved forecast (including earlier refreshes), contract/category
-  rows, periods within its horizon, permission-gated formats, task progress/cancellation and
-  completed report links. Entity scope, book and currency basis follow the saved forecast.
-  Completion refreshes the choice list; membership changes reset form state.
-- Added paginated forecast-comparison-runs. It follows only successful scenario predecessors,
-  checks current permissions, returns succeeded publications only and binds cursors to the
-  current snapshot/workspace. Superseded/foreign lineage cursors are refused. OpenAPI regenerated.
-- Five focused frontend checks, TypeScript/ESLint, Ruff/Mypy and the real scenario journey pass.
-  The journey checks archived choices, pagination and invalid cursors, then runs JSON/XLSX/CSV/
-  PDF report jobs and same-source rebuilding with no actuals. Populated accounting acceptance
-  and rendered populated-report review are still outstanding. No deployment.
 
 ## Outstanding release verification
 
