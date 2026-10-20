@@ -6,6 +6,20 @@
 
 
 
+## Close variance snapshot selection — October 19, 2026
+
+- Variance-between-closes parameters now choose Earlier close and Later close from authorized
+  history for the selected entity, book and period. Options show the recorded timestamp,
+  actor and approval number; only dataset-freezing LOCK records are offered, not REOPEN or
+  PERMANENT_LOCK. Both selectors share the existing period-history cache.
+- Explicit saved IDs remain intact outside the current context/list. Without a resolvable
+  period or config.read scope, the manual parameter remains and no history read is made.
+  Loading, empty and retry states are shown; the backend still validates source compatibility
+  and chronological ordering before executing the comparison.
+- Seven focused selector/toolbar checks pass with TypeScript/ESLint. Populated close-variance
+  acceptance, remaining report workflows and independent accounting sign-off are still open.
+  No deployment.
+
 ## Migration report record selector — October 19, 2026
 
 - Migration report parameters now offer searchable authorized records by migration number,
@@ -234,22 +248,6 @@
   code. This is registration coverage, not full accounting or release acceptance. Next:
   forecast_outputs entry-point integration; broader multi-contract/re-lock/report acceptance
   and independent accounting sign-off remain open. No deployment or readiness claim.
-
-## Public period evidence catalogue report — October 19, 2026
-
-- Registered period_evidence_pack through POST /report-runs. Lock selectors reconcile to the
-  frozen entity/book/period and cutoff; declared evidence permissions govern admission/scope.
-- Standard list/detail/output/rerun and idempotent replay paths check current source access.
-  Lists filter before counts/cursors. Direct framework output reads also reauthorize sources;
-  generic file routes remain restricted to their existing report-output route.
-- Same-source reruns preserve the bound evidence pack and original archive, with explicit
-  provenance. Failed-pack metadata can still be authorized; readiness/download reject failure.
-- Actual public API creation, dependencies, worker output, list/detail/download, limited-user
-  denial and original-source rerun pass. Existing report lifecycle/rerun regression passes;
-  Ruff/Mypy pass. User guide updated.
-- Next: contract_sample_pack public catalogue admission and full sample orchestration acceptance;
-  fresh historical sample capture and wider accounting/re-lock acceptance remain open.
-  No deployment or production-readiness claim.
 
 ## Outstanding release verification
 

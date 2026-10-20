@@ -21,6 +21,7 @@ import { formatDate, NO_VALUE } from "../../../lib/format";
 import { hasMessage, t } from "../../../lib/i18n/t";
 import { TextField } from "../../contracts/drawers/common";
 import { parameterKeys, type ReportContext } from "./specs";
+import { CloseLockParameter } from "./CloseLockParameter";
 import { MigrationParameter } from "./MigrationParameter";
 import { ReportFilters } from "./ReportFilters";
 import { filterRows, validFilterRows } from "./filterValues";
@@ -253,6 +254,22 @@ export function ParametersToolbar({
       {keys.map((key) => {
         const value = values[key] ?? "";
         const error = errors[key];
+        if (
+          definition.code === "variance_between_closes" &&
+          (key === "from_period_lock_id" || key === "to_period_lock_id")
+        ) {
+          return (
+            <CloseLockParameter
+              key={key}
+              name={key}
+              context={context}
+              value={value}
+              error={error}
+              disabled={disabled}
+              onChange={(next) => onChange(key, next)}
+            />
+          );
+        }
         switch (key) {
           case "migration_id":
             return (

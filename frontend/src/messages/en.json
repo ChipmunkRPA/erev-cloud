@@ -1,4 +1,10 @@
 {
+  "reports.parameters.from_period_lock_id": "Earlier close",
+  "reports.parameters.to_period_lock_id": "Later close",
+  "reports.parameters.locks.context": "Select an entity, book and period to choose retained close snapshots.",
+  "reports.parameters.locks.loading": "Loading close snapshots\u2026",
+  "reports.parameters.locks.error": "Could not load close snapshots",
+  "reports.parameters.locks.empty": "No dataset-freezing locks are available for this period.",
   "reports.parameters.migration_id": "Migration",
   "reports.parameters.migrations.loading": "Loading migrations\u2026",
   "reports.parameters.migrations.error": "Could not load migrations",

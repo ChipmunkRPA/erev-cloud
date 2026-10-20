@@ -62,7 +62,7 @@ it("submits user-entered sample identifiers and lock selectors without editing t
   fireEvent.change(screen.getByRole("textbox", { name: /Contract external IDs/ }), {
     target: { value: "C-01, C-02" },
   });
-  fireEvent.change(screen.getByRole("textbox", { name: /From period lock ID/ }), {
+  fireEvent.change(screen.getByRole("textbox", { name: /Earlier close/ }), {
     target: { value: "saved-lock" },
   });
   fireEvent.click(screen.getByRole("button", { name: "Run report" }));
