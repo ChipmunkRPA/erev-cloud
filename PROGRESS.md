@@ -2,6 +2,21 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Dated fixed allocation for historical RPO — October 20, 2026
+
+- Stage 09 retains original fixed allocations by reporting period and version date, including
+  returns. Historical reads reconcile this evidence to version remainders without counting
+  return reductions twice; legacy traces keep their existing behavior.
+- Earlier RPO excludes later fixed estimate changes. Same-version rollforwards attribute VC
+  movements only when complete original event shares match the dated allocation difference.
+  Positive and negative first-batch estimates are covered using real engine trace output.
+- Historical future schedule reconstruction after later modifications remains open; the
+  scheduled-remainder check still refuses unsupported schedules rather than prorating them.
+  Compound competing causes and independent accounting acceptance also remain open.
+- 109 focused tests plus two database report journeys pass; Ruff and targeted mypy pass.
+  Migration 0213 describes the evidence. No deployment.
+
+
 ## First-entry batch estimate attribution — October 20, 2026
 
 - Initial disclosure entry now separates later original estimate-event shares from NEW_CONTRACTS
@@ -223,23 +238,6 @@
   new-liability reversal presentation, remaining close-only histories and other release gaps
   still need work. No deployment or production-readiness claim.
 
-## Retained revenue history for close passes — October 20, 2026
-
-- Real period-end passes now freeze revenue paid-line identities and both original currency
-  amounts alongside the existing FX population. The populations are distinct and covered by
-  the same immutable encrypted evidence file and hash; an empty revenue population is explicit.
-- Revenue attribution reads original close-pass evidence before falling back to ordinary
-  computation evidence. A close pass lacking the new revenue population is refused instead
-  of treating absent history as zero. Ledger role, selected line and retained hashes remain
-  checked; recursive original-owner attribution and both currency views use the shared reader.
-- Necessary checks passed: a real close release retains all original group revenue lines and
-  their transaction/functional amounts; the existing FX close remains immutable/idempotent;
-  combined-member deliveries, returns and report reruns remain correct. Three integration
-  scenarios and scoped lint/types passed. No deployment.
-- This completes capture/reader integration, not all close revenue scenarios. A nonzero
-  close-only revenue posting still needs an end-to-end attribution scenario; mixed TIME/EVENT,
-  intercompany reversal and asset/new-liability presentation remain open, as do the other
-  documented feature/release gaps and independent accounting sign-off.
 
 ## Outstanding release verification
 

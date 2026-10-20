@@ -617,3 +617,34 @@ def test_first_entry_separates_later_original_estimate_events(later_amount: str)
     assert movement.lines["VC_ESTIMATE_CHANGES"] == final - initial
     assert movement.lines["CLOSING"] == final
     assert movement.lines["UNEXPLAINED"] == 0
+
+    # Read January from its original allocation, not the latest February amount.
+    for period_key, expected in (("FY2026-P01", initial), ("FY2026-P02", final)):
+        result = variance_rpo.project(
+            bundle,
+            book,
+            entity_code=bundle.entities[0].code,
+            period_key=period_key,
+            functional=False,
+        )
+        assert sum(result.values()) == expected
+    nodes = {node.id: node for node in book.trace.nodes}
+    january = date(2026, 1, 31)
+    for ob in obligations:
+        subject = f"{ob.external_id}/{ob.obligation_key}"
+        for day, period_key in ((january, "FY2026-P01"), (end, "FY2026-P02")):
+            amount = Decimal(nodes[f"fixed_allocation:{subject}:{period_key}"].value)
+            cuts.setdefault((vid, day), {})[ob.row_id] = replace(
+                cuts[vid, end][ob.row_id],
+                fixed_allocation=amount,
+                awaiting=amount,
+            )
+    (january_row,) = rpo.rollforward_lines(store, ranges={eid: (before, january)}, applied={})
+    assert january_row.lines["NEW_CONTRACTS"] == january_row.lines["CLOSING"] == initial
+    assert january_row.lines["VC_ESTIMATE_CHANGES"] == january_row.lines["UNEXPLAINED"] == 0
+    (february_row,) = rpo.rollforward_lines(store, ranges={eid: (january, end)}, applied={})
+    assert february_row.lines["OPENING"] == initial
+    assert february_row.lines["NEW_CONTRACTS"] == 0
+    assert february_row.lines["VC_ESTIMATE_CHANGES"] == final - initial
+    assert february_row.lines["CLOSING"] == final
+    assert february_row.lines["UNEXPLAINED"] == 0

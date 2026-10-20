@@ -9679,3 +9679,21 @@ cleanup in the shared database session kernel was also repaired and regression-t
   close-pass-only revenue histories, asset/new-liability reversal presentation, per-obligation
   opening consumption and complex membership/carry histories. Final release verification
   and independent accounting acceptance remain open; Reporting is not yet complete.
+
+## Retained revenue history for close passes — October 20, 2026
+
+- Real period-end passes now freeze revenue paid-line identities and both original currency
+  amounts alongside the existing FX population. The populations are distinct and covered by
+  the same immutable encrypted evidence file and hash; an empty revenue population is explicit.
+- Revenue attribution reads original close-pass evidence before falling back to ordinary
+  computation evidence. A close pass lacking the new revenue population is refused instead
+  of treating absent history as zero. Ledger role, selected line and retained hashes remain
+  checked; recursive original-owner attribution and both currency views use the shared reader.
+- Necessary checks passed: a real close release retains all original group revenue lines and
+  their transaction/functional amounts; the existing FX close remains immutable/idempotent;
+  combined-member deliveries, returns and report reruns remain correct. Three integration
+  scenarios and scoped lint/types passed. No deployment.
+- This completes capture/reader integration, not all close revenue scenarios. A nonzero
+  close-only revenue posting still needs an end-to-end attribution scenario; mixed TIME/EVENT,
+  intercompany reversal and asset/new-liability presentation remain open, as do the other
+  documented feature/release gaps and independent accounting sign-off.

@@ -112,6 +112,7 @@ REVENUE: Final = "revenue_cum"
 BILLED: Final = "billed_cum"
 PROGRESS: Final = "progress_ratio"
 REALISED: Final = "realised_allocation"
+FIXED_ALLOCATION: Final = "fixed_allocation"
 FIXED_SCHEDULE: Final = "scheduled_fixed_amount"
 RPO: Final = "rpo_amount"
 RELEASE: Final = "incentive_release_cum"  # ENGINE_SPEC_B S10-R-26, per ``<contract>@<entity>``
@@ -120,7 +121,7 @@ FIXED: Final = "#FIXED"  # the component of the returns reduction (ENGINE_SPEC_B
 REDUCE: Final = "REDUCE_CONTRACT_QUANTITY"  # POL-053
 STATE: Final = "-"  # the period slot of a version-state node (ENGINE_SPEC CV-50)
 # The obligation measures read by date: each of their period nodes carries its period's end.
-DATED: Final = (REVENUE, BILLED, PROGRESS, REALISED)
+DATED: Final = (REVENUE, BILLED, PROGRESS, REALISED, FIXED_ALLOCATION)
 # The ``<contract>@<entity>`` measures read by the period key of that subject's cut.
 KEYED: Final = (RELEASE,)
 # The two parts of an obligation's remainder (04 T-CON-11). ``SCHEDULED`` is also the measure of
@@ -920,6 +921,7 @@ class ObligationAt:
     fixed_schedule: Mapping[str, Decimal] | None = None
     realised_traced: bool = False
     realised_through: Decimal = ZERO  # completed period ends on or before the requested date
+    fixed_allocation: Decimal | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -1096,6 +1098,37 @@ def version_at(
             realised_stored = Decimal(realised_state[0])
             realised, _ = _read(nodes, REALISED, subject, day, named, stored=realised_stored)
             shift += realised_stored - realised
+        fixed_allocation = None
+        fixed_state = nodes.states.get(f"{FIXED_ALLOCATION}:{subject}")
+        if fixed_state is None and _measures(nodes, FIXED_ALLOCATION, subject):
+            raise Unreadable(
+                f"obligations[{subject}].{FIXED_ALLOCATION}",
+                "Dated fixed allocation has no retained version-state amount.",
+            )
+        if fixed_state is not None:
+            fixed_stored = Decimal(fixed_state[0])
+            stated = (
+                Decimal(row[REVENUE])
+                + Decimal(row[SCHEDULED])
+                + Decimal(row[AWAITING])
+                - realised_stored
+            )
+            if fixed_stored != stated or not _measures(nodes, FIXED_ALLOCATION, subject):
+                raise Unreadable(
+                    f"obligations[{subject}].{FIXED_ALLOCATION}",
+                    "Retained fixed allocation does not reconcile to the version remainder.",
+                )
+            fixed_allocation, _ = _read(
+                nodes,
+                FIXED_ALLOCATION,
+                subject,
+                day,
+                named,
+                stored=fixed_stored,
+            )
+            # The fixed series already includes return reductions. Do not add
+            # the legacy returns shift again when original dated evidence exists.
+            shift = fixed_stored - fixed_allocation + realised_stored - realised
         recognised = _measures(nodes, REVENUE, subject)
         if recognised:  # an obligation the engine measures no revenue for keeps its status
             status = _status(status, revenue, progress)
@@ -1115,6 +1148,7 @@ def version_at(
             billed_measured=_measured(billed_at),
             realised=realised,
             realised_stored=realised_stored,
+            fixed_allocation=fixed_allocation,
             realised_traced=realised_state is not None,
             fixed_schedule=(
                 None

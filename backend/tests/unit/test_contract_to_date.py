@@ -1089,3 +1089,14 @@ def test_future_draft_requires_explicit_no_period_and_zero_guard(evidence: str) 
             Decimal(0),
             None,
         )
+
+
+@pytest.mark.parametrize("evidence", ["no_state", "no_series", "mismatch"])
+def test_fixed_allocation_requires_reconciled_state_and_dated_evidence(evidence: str) -> None:
+    kept = []
+    if evidence != "no_state":
+        kept.append(node("fixed_allocation", "C-1/O1", "-", "999999.00"))
+    if evidence != "no_series":
+        kept.extend(series("fixed_allocation", "C-1/O1", {"P01": "500.00"}))
+    with pytest.raises(to_date.Unreadable, match="1 field needs attention"):
+        read(JANUARY, trace(*kept))

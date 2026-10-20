@@ -163,6 +163,7 @@ __all__ = [
 # readers need realization evidence independently of recognized revenue. Explicit no-fee
 # states and fixed schedule component nodes (with their own formula/narrative ids) are part
 # of the same cut; reports must not mix missing legacy components with explicit zero states.
+# Dated fixed-allocation trace evidence is additive and belongs to the pending 0.4.0 cut.
 ENGINE_VERSION: Final[str] = "0.3.0"
 
 # DG-ENG-05 identities, named in ``EngineError.detail["identity"]`` (CTL-012).

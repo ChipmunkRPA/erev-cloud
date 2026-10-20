@@ -1120,10 +1120,17 @@ def _obligation_lines(
         )
     if opening is not None:
         lines["OPENING"] = rpo_of(opening, before, DEFAULT_BANDS, store.at(opening, before))[0]
+
+    def fixed(ob: _Ob, day: date) -> Decimal:
+        at = store.at(ob, day)
+        return (
+            ob.allocated - at.realised_stored
+            if at.fixed_allocation is None
+            else at.fixed_allocation
+        )
+
     previous_obligation = opening
-    previous = (
-        ZERO if opening is None else opening.allocated - store.at(opening, before).realised_stored
-    )
+    previous = ZERO if opening is None else fixed(opening, before)
     realised_opening = ZERO if opening is None else store.at(opening, before).realised
     terminal_cancellation: _Ob | None = None
     segment_start = before
@@ -1165,9 +1172,7 @@ def _obligation_lines(
                 ),
                 terminal_cancellation,
             )
-        allocated = (
-            ZERO if current is None else current.allocated - store.at(current, end).realised_stored
-        )
+        allocated = ZERO if current is None else fixed(current, end)
         if current is not None and previous_obligation is None:
             # Fees realized by completed periods before admission enter with the contract;
             # later realization is independently identified variable consideration.
@@ -1179,7 +1184,10 @@ def _obligation_lines(
             lines["NEW_CONTRACTS"] += entry_realised
             lines["VC_ESTIMATE_CHANGES"] -= entry_realised
             later = [
-                (event, day) for event, day in version.estimate_dates if day > version.effective
+                (event, day)
+                for event, day in version.estimate_dates
+                if day > version.effective
+                and (store.at(current, end).fixed_allocation is None or day <= end)
             ]
             if (
                 later
@@ -1256,6 +1264,26 @@ def _obligation_lines(
         previous = allocated
         previous_obligation = current
     closing = _in_version(store, closing_version, obligation_id)
+    if opening is not None and closing is not None and not moved:
+        open_fixed = store.at(opening, before).fixed_allocation
+        close_fixed = store.at(closing, end).fixed_allocation
+        if open_fixed is not None and close_fixed is not None and opening_version is not None:
+            events = [event for event, day in opening_version.estimate_dates if before < day <= end]
+            if events and all(
+                (closing.version_id, event) in store.estimate_event_allocations for event in events
+            ):
+                subject = obligation_subject_key(closing.external_id, closing.obligation_key)
+                change = sum(
+                    (
+                        store.estimate_event_allocations[closing.version_id, event].get(
+                            subject, ZERO
+                        )
+                        for event in events
+                    ),
+                    ZERO,
+                )
+                if change == close_fixed - open_fixed:
+                    lines["VC_ESTIMATE_CHANGES"] += change
     realised_closing = ZERO if closing is None else store.at(closing, end).realised
     lines["VC_ESTIMATE_CHANGES"] += realised_closing - realised_opening
     if closing is not None:

@@ -1236,6 +1236,39 @@ def _emit_fixed_schedule(
         previous, previous_usage = ev, usage_node
 
 
+def _emit_fixed_allocation(
+    ctx: BookContext,
+    st: AllocatedState,
+    tb: TraceBuilder,
+    evaluator: components.Evaluator,
+    targets: Sequence[Target],
+    version_day: date,
+) -> None:
+    """Retain the original fixed allocation at each measured cut, including returns."""
+    ob = evaluator.ob
+    ends = {period.period_key: period.end_date for period in evaluator.periods}
+    points: list[tuple[str | None, date]] = [
+        (target.period_key, ends[target.period_key]) for target in targets
+    ]
+    points.append((None, version_day))
+    for period_key, day in points:
+        segment = components.active_segment(ob, "FIXED", day)
+        value, exact = _allocation(ctx, st, ob, evaluator, segment, day)
+        tb.node(
+            measure="fixed_allocation",
+            subject_key=ob.subject_key,
+            period_key=period_key,
+            value=value,
+            currency=ctx.txn_currency,
+            minor_unit=evaluator.mu,
+            formula_id=ALLOCATION_FORMULA,
+            inputs=_segment_lineage(tb, ob, segment),
+            params={"allocated": str(value), "as_of": day.isoformat(), "kind": "posted"},
+            exact=exact,
+            narrative_key=_narrative(ALLOCATION_FORMULA),
+        )
+
+
 def _emit_realised_allocation(
     ctx: BookContext,
     st: AllocatedState,
@@ -1298,6 +1331,7 @@ def build(
     for subject_key in sorted(result.evaluators):
         evaluator = result.evaluators[subject_key]
         ob = evaluator.ob
+        _emit_fixed_allocation(ctx, st, tb, evaluator, targets.get(subject_key, ()), v)
         _emit_realised_allocation(ctx, st, tb, evaluator, targets.get(subject_key, ()), v)
         _emit_fixed_schedule(
             ctx, tb, evaluator, targets.get(subject_key, ()), causes.get(subject_key, ())

@@ -812,6 +812,9 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "and legacy pins without an explicit effect are not assumed to have zero impact",
             "first-entry batches separate later estimate-event shares from new contracts when all "
             "changes fall within the range and no modification or cancellation competes",
+            "dated fixed-allocation evidence reconciles to version remainders and excludes future "
+            "estimate changes from earlier RPO; same-version estimate movements require complete "
+            "original shares matching the dated allocation difference",
         ),
         tie_outs=("TO_ROLLFORWARD_BALANCES", "TO_RPO_ROLLFORWARD_EQ_RPO"),
     ),
