@@ -562,6 +562,9 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "cross-member billing asset settlements retain original asset amounts and owner "
             "transfers; asset bridge v2 separates settled assets from any excess billing that "
             "creates a liability, with independently reconciled per-period billing roles",
+            "contracting intercompany relief uses the same-entity INTERCOMPANY_DUE_TO counterpart "
+            "and its original paid population; bridge v6 includes source-backed same-currency "
+            "groups and return-month-only presentation, while earlier bindings retain their scope",
             "unexplained OTHER on any individual contract fails even when currency totals cancel",
             _as_locked("CONTRACT_BALANCE_ROLLFORWARD"),
         ),
@@ -641,9 +644,10 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "created liability before subsequent opening-liability consumption",
             "functional/reporting cross-member liability relief includes source-proven revenue "
             "reversals using original functional targets and recursive paid-line attribution",
-            "ordinary transaction revenue reversals use original signed transaction sources, "
-            "original layer creation dates and recursively verified paid lines; intercompany "
-            "reversals and earlier bindings retain their original builder",
+            "transaction revenue reversals use original signed sources, layer creation dates "
+            "and recursively verified paid lines, including contracting intercompany due-to "
+            "counterparts; asset settlement and new liabilities are not opening relief; earlier "
+            "legacy bindings retain their original builder",
             _as_locked("CONTRACT_BALANCE_ROLLFORWARD"),
         ),
     ),

@@ -1326,3 +1326,126 @@ def test_combined_invoice_settles_another_members_asset(fx: FxWorld) -> None:  #
             fx.app, f"/api/v1/report-runs/{restarted.headers['x-erev-report-run-id']}/data", fx.maya
         )
         assert repeated.status_code == 200 and repeated.json()["items"] == rows, repeated.text
+
+
+def test_intercompany_due_to_sources_support_progress_reversal(
+    app: FastAPI,
+    keyring: KeyRing,
+    clock: FrozenClock,
+    files: LocalFileStore,
+) -> None:
+    from erev_api.domain.reports.revenue_attribution import for_control
+    from support.reference import get
+    from support.worlds import approved_manual_events
+
+    world = worlds.k04_saltmarsh(app, keyring, clock, files)
+    report = world.report
+    customer = report.place.scalar(
+        select(contract.c.customer_id).where(contract.c.id == world.contract_id)
+    )
+    members = []
+    for name, performing in (("IC-ADVANCE", AVM_UK), ("IC-SERVICE", worlds.AVM_US)):
+        booked = booked_contract(
+            report.place,
+            {
+                "external_id": name,
+                "customer_id": str(customer),
+                "contracting_entity_code": AVM_UK,
+                "transaction_currency": "GBP",
+                "inception_date": "2026-04-01",
+                "lines": [
+                    {
+                        "obligation_key": "O1",
+                        "product_code": worlds.IMPLEMENTATION_UK,
+                        "quantity": "1",
+                        "total_price": {"amount": "8000.00", "currency": "GBP"},
+                        "performing_entity_code": performing,
+                    }
+                ],
+            },
+            activate=True,
+        )
+        members.append(UUID(str(booked.contract["id"])))
+    source, recognizer = members
+    _grouped(app, report.maya, report.marcus, members)
+    head = report.place.scalar(
+        select(contract.c.head_stream_version).where(contract.c.id == source)
+    )
+    invoice = _invoice("IC-ADV", "2026-04-01", "8000.00")
+    invoice["payload"]["amount"]["currency"] = "GBP"
+    _recorded(report, source, int(head), invoice)
+    evidence = worlds.evidence_file(app, report.maya)
+    for day, ratio in (("2026-05-31", "0.50"), ("2026-06-30", "0.25")):
+        approved_manual_events(
+            report.place,
+            report.priya,
+            recognizer,
+            {
+                "event_type": "PROGRESS_RECORDED",
+                "effective_date": day,
+                "payload": {
+                    "obligation_key": "O1",
+                    "cumulative_progress_ratio": ratio,
+                    "measure": "OUTPUT_PERCENT",
+                },
+            },
+            evidence_file_ids=[evidence],
+        )
+    with report.place.uow() as uow:
+        controls = (
+            uow.session.execute(
+                select(subledger_line).where(
+                    subledger_line.c.contract_id == recognizer,
+                    subledger_line.c.entity_id == world.uk_entity_id,
+                    subledger_line.c.entry_kind == "INTERCOMPANY",
+                    subledger_line.c.account_role == "CONTRACT_LIABILITY",
+                )
+            )
+            .mappings()
+            .all()
+        )
+        assert any(row["amount_functional"] < 0 for row in controls)
+        for control in controls:
+            counterpart, attributed = for_control(uow, control["id"])
+            role = uow.session.execute(
+                select(subledger_line.c.account_role).where(subledger_line.c.id == counterpart)
+            ).scalar_one()
+            assert role == "INTERCOMPANY_DUE_TO"
+            assert attributed.delta.amount == -control["amount_functional"]
+    for first, view in (
+        ("FY2026-P05", "transaction"),
+        ("FY2026-P05", "functional"),
+        ("FY2026-P05", "reporting"),
+        ("FY2026-P06", "transaction"),
+        ("FY2026-P06", "functional"),
+        ("FY2026-P06", "reporting"),
+    ):
+        run, rows = worlds.report_run(
+            report,
+            "revenue_from_opening_liability",
+            {
+                "entity_codes": [AVM_UK],
+                "book": "ASC606",
+                "currency_view": view,
+                "from_period_key": first,
+                "to_period_key": "FY2026-P06",
+            },
+        )
+        income = next(row for row in rows if row.get("contract_external_id") == "IC-SERVICE")
+        if view in {"transaction", "functional"}:
+            assert income["revenue_recognized"]["amount"] == (
+                "2000.00" if first == "FY2026-P05" else "-2000.00"
+            )
+            assert income["revenue_from_opening"]["amount"] == (
+                "4000.00" if first == "FY2026-P05" else "0.00"
+            )
+        restarted = post(app, f"/api/v1/report-runs/{run['id']}/rerun", report.maya, {})
+        assert restarted.status_code == 202, restarted.text
+        complete = worlds.run_now(report, UUID(restarted.json()["id"]))
+        assert complete["state"] == "SUCCEEDED", complete
+        repeated = get(
+            app,
+            f"/api/v1/report-runs/{restarted.headers['x-erev-report-run-id']}/data",
+            report.maya,
+        )
+        assert repeated.status_code == 200 and repeated.json()["items"] == rows, repeated.text

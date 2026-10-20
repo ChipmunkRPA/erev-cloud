@@ -1,4 +1,4 @@
-"""Replay ordinary revenue lines from original functional targets and paid history."""
+"""Replay revenue and contracting intercompany targets from original paid history."""
 
 from __future__ import annotations
 
@@ -41,7 +41,7 @@ def read(
 ) -> Attribution:
     """Authorize each original computation and recurse through its sealed cutoff.
 
-    Ordinary unsplit revenue targets are supported. Mixed TIME/EVENT functional
+    Unsplit revenue and contracting-entity due-to targets are supported. Mixed TIME/EVENT
     allocation requires its own retained sources. Close histories must retain their
     original revenue paid population.
     Missing history never becomes a residual or a guessed owner.
@@ -68,6 +68,7 @@ def read(
     if row is None:
         raise ValueError("Revenue line is not visible.")
     line = dict(row)
+    role = str(line["account_role"])
     document = read_for_line(uow, line_id, revenue=True)
     if document is None:
         raise ValueError("Revenue line lacks original computation evidence.")
@@ -121,7 +122,7 @@ def read(
         raise ValueError("Revenue paid population differs from the original target period.")
     expected_ref = (
         f"posted/{line['book_code']}/{entity.code}/{line['subject_key']}/"
-        f"{line['entry_kind']}/REVENUE/{target_period}/{basis}"
+        f"{line['entry_kind']}/{role}/{target_period}/{basis}"
     )
     if original.ref_id != expected_ref:
         raise ValueError("Revenue history does not name the original role and posting basis.")
@@ -159,7 +160,7 @@ def read(
         if not isinstance(key, str) or key not in nodes:
             raise ValueError("Revenue target is not retained.")
         node = nodes[key]
-        expected_prefix = f"posting_target:{line['subject_key']}/{line['entry_kind']}/REVENUE:"
+        expected_prefix = f"posting_target:{line['subject_key']}/{line['entry_kind']}/{role}:"
         if (
             node.formula_id != "post.role_target.v1"
             or not key.startswith(expected_prefix)
@@ -265,7 +266,7 @@ def read(
             or saved["book_code"] != str(line["book_code"])
             or saved["subject_key"] != line["subject_key"]
             or saved["entry_kind"] != line["entry_kind"]
-            or saved["account_role"] != "REVENUE"
+            or saved["account_role"] != role
             or saved["txn_currency"] != str(line["txn_currency"]).strip()
             or saved["functional_currency"] != currency
             or (basis != "ALL" and saved["posting_class"] != basis)
@@ -323,12 +324,13 @@ def for_control(
     view: str = "functional",
     cache: dict[UUID, Attribution] | None = None,
 ) -> tuple[UUID, Attribution]:
-    """Resolve a revenue control debit to the revenue credit in its exact entry."""
+    """Resolve a control line to its same-entity revenue or intercompany due-to leg."""
     control = (
         uow.session.execute(select(subledger_line).where(subledger_line.c.id == control_id))
         .mappings()
         .one()
     )
+    counterpart = "INTERCOMPANY_DUE_TO" if control["entry_kind"] == "INTERCOMPANY" else "REVENUE"
     lines = (
         uow.session.execute(
             select(subledger_line).where(
@@ -337,7 +339,7 @@ def for_control(
                 subledger_line.c.book_code == control["book_code"],
                 subledger_line.c.entity_id == control["entity_id"],
                 subledger_line.c.contract_id == control["contract_id"],
-                subledger_line.c.account_role == "REVENUE",
+                subledger_line.c.account_role == counterpart,
             )
         )
         .mappings()

@@ -1,5 +1,33 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## Contracting intercompany revenue counterparts and reversals — October 20, 2026
+
+- Revenue control attribution now resolves the contracting entity's INTERCOMPANY_DUE_TO leg
+  within the same posting/entry/entity/contract. Original target, selected line, both currency
+  amounts and recursively retained paid history must agree. It does not substitute the other
+  entity's REVENUE leg or currency. Report evidence explicitly identifies the counterpart role.
+- Ordinary computation history captures due-to lines at the original sealed cutoff. New close
+  evidence declares the retained revenue roles; old close documents without due-to coverage
+  refuse intercompany attribution rather than treating missing history as zero.
+- Transaction reversal disclosure now uses the same original counterpart sources and separates
+  asset/new-liability effects from consumed opening liabilities. Earlier legacy bindings retain
+  their original builder. Functional/reporting intercompany relief uses the retained source proof.
+- Presentation bridge v6 includes source-backed same-currency groups as well as foreign groups,
+  including a return-month-only range whose original consumption predates the range. Earlier
+  v1-v5 bindings retain their scope. Migration 0206 describes the expanded report logic.
+- Real approved cross-company progress scenario: one member advances GBP 8,000; another member
+  performs through AVM-US and recognizes GBP 4,000 in May, then revises progress to recognize
+  GBP 2,000 cumulatively in June. Full-range opening relief remains GBP 4,000; June alone has
+  GBP -2,000 revenue and zero opening relief because the reversal creates a new liability.
+- Necessary checks passed: approved intercompany progress reversal in transaction/functional/
+  reporting views, full-range and reversal-month-only identical reruns, ordinary cross-member
+  return regression, real FX close evidence, catalogue migration, scoped lint and types.
+- Mixed TIME/EVENT source allocation remains unimplemented in the generic close-release part
+  interface. Current public ordinary revenue binding leaves released_at_close empty and posts
+  relief as EVENT; do not infer TIME ownership from period-end source dates. Performing-side
+  cross-calendar cases, close-only revenue histories, complex group changes and other documented
+  release gaps still require work. No deployment or production-readiness claim.
+
 ## Cross-member billing asset settlement and excess liabilities — October 20, 2026
 
 - Functional/reporting billings now retain signed asset-settlement amounts and both sides of

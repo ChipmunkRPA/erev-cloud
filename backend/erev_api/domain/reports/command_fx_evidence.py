@@ -47,7 +47,8 @@ def read_revenue(uow: UnitOfWork, line: Mapping[str, Any]) -> dict[str, Any] | N
     if (
         line["contract_version_id"] is None
         or line["entry_kind"] not in {"REVENUE_RECOGNITION", "INTERCOMPANY"}
-        or line["account_role"] != "REVENUE"
+        or line["account_role"] not in {"REVENUE", "INTERCOMPANY_DUE_TO"}
+        or (line["account_role"] == "INTERCOMPANY_DUE_TO" and line["entry_kind"] != "INTERCOMPANY")
     ):
         return None
     return _read(uow, line)
@@ -177,7 +178,7 @@ def _read(uow: UnitOfWork, line: Mapping[str, Any]) -> dict[str, Any]:
             members,
             book_code,
             ledger_cutoff=source.ledger_cutoff[book_code],
-            revenue=line["account_role"] == "REVENUE",
+            revenue=line["account_role"] in {"REVENUE", "INTERCOMPANY_DUE_TO"},
         ),
     }
 

@@ -9573,3 +9573,40 @@ cleanup in the shared database session kernel was also repaired and regression-t
   cross-member asset-creating/carried/other-control histories, pre-close unposted FX paths,
   recorded registry gaps and final accounting/release acceptance remain open. Reporting
   is not yet complete. No deployment.
+
+## Signed revenue calculation sources — October 20, 2026
+
+- Added exact signed expansion of retained S12 revenue cumulative targets, preserving each
+  original movement, owner, layer and kind. The reader handles liability consumption, asset
+  creation, asset settlement and liability creation, including negative contributions and
+  opposing owners at a zero net target. Every intermediate total must reproduce its trace;
+  missing, duplicate, cyclic, changed-amount or wrong-currency sources are refused.
+- Combined-member revenue attribution now verifies selected relief against the complete
+  signed target. New runs retain the source projection and movement population for rerun;
+  existing bindings retain their earlier validation path. This connects the source reader
+  to live rollforward and opening-liability disclosures rather than a standalone calculator.
+- Necessary checks: real cross-member functional/reporting disclosures and bound reruns;
+  six signed-source/corruption checks; lint and types. No deployment.
+- This is the source expansion needed for further posting-delta work, not completion of
+  negative-revenue reporting. Original/prior target and paid-history reconciliation, asset
+  presentation transfers, per-obligation opening consumption and complex carried histories
+  remain open. Final release verification and independent accounting acceptance remain open.
+
+## Reporting and forecast data catalogue reconciliation — October 20, 2026
+
+- Classified the 43 missing code columns across retained evidence-sample dependencies,
+  forecast actuals captures, scenario refresh records, ordered inputs and import replay
+  mappings. Business payloads remain confidential financial data; identifiers and lifecycle
+  metadata follow the existing registry rules. Existing retention categories are preserved;
+  proposed classifications still require owner acceptance, not implied legal approval.
+- Added the missing scenario-refresh model section and explicit sample dependency columns;
+  documented frozen import mappings. The catalogue now matches all 174 documented tables
+  and every implemented column. Updated the strict documentation reader for the existing
+  four-column table format and reconciled document order.
+- Snapshot checks now explicitly verify that copied imports clear the regenerated forecast
+  input-set reference and source-only mapping without mutating source data. The recorded
+  reference-count/excluded-column drift and privacy registry failures are resolved:
+  76 targeted catalogue and snapshot checks pass. No database migration or deployment.
+- Remaining Reporting work is unchanged: original negative-revenue reversal attribution,
+  per-obligation opening consumption, complex cross-member asset/carried histories and
+  pre-close FX paths. Final release checks and independent accounting acceptance are open.

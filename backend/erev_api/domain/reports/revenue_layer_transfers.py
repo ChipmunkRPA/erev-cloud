@@ -52,6 +52,9 @@ def read(
     liability: Amounts = {}
     asset_transfers: Amounts = defaultdict(Decimal)
     asset_sources = params.binding is None or "revenue_asset_sources_v1" in params.binding.evidence
+    intercompany = (
+        params.binding is None or "revenue_intercompany_sources_v1" in params.binding.evidence
+    )
     consumed: set[UUID] = set()
     evidence: dict[str, Any] = {}
     signed_key = "revenue_signed_sources_v1"
@@ -142,7 +145,10 @@ def read(
                 and movement["effective_date"] <= periods[entity][-1].end
                 and (
                     params.binding is None
-                    or "combined_liability_bridge_v5" in params.binding.evidence
+                    or any(
+                        key in params.binding.evidence
+                        for key in ("combined_liability_bridge_v5", "combined_liability_bridge_v6")
+                    )
                 )
             ):
                 affected.add(recognizer)
@@ -216,7 +222,9 @@ def read(
                     if entry.period_id == at.id and entry.flow.is_revenue
                 ]
                 verify_period = verify_postings and all(
-                    entry.entry_kind == "REVENUE_RECOGNITION" for entry in entries
+                    entry.entry_kind == "REVENUE_RECOGNITION"
+                    or (intercompany and entry.entry_kind == "INTERCOMPANY")
+                    for entry in entries
                 )
                 signed_liability = Fraction(0)
                 if verify_period:
@@ -275,6 +283,15 @@ def read(
                         posted_ids.update((revenue_id, *result.paid_line_ids))
                         posted_evidence[str(entry.line_id)] = {
                             "revenue_line_id": str(revenue_id),
+                            **(
+                                {
+                                    "counterpart_role": "INTERCOMPANY_DUE_TO"
+                                    if entry.entry_kind == "INTERCOMPANY"
+                                    else "REVENUE"
+                                }
+                                if intercompany
+                                else {}
+                            ),
                             "paid_line_ids": list(map(str, result.paid_line_ids)),
                             "sources": [str(identity) for identity in result.delta.source_ids],
                             "evidence": [
@@ -367,6 +384,8 @@ def read(
                 "currency_view", "Revenue asset sources differ from retained evidence."
             )
         tie_outs.record_evidence(params, "revenue_asset_sources_v1", asset_evidence)
+    if intercompany:
+        tie_outs.record_evidence(params, "revenue_intercompany_sources_v1", True)
     tie_outs.require_members(params, "revenue_transfer_layer", consumed)
     tie_outs.record_members(params, "revenue_transfer_layer", consumed)
     tie_outs.record_evidence(params, KEY, evidence)

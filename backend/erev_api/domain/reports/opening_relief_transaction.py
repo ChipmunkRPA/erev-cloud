@@ -9,9 +9,7 @@ from typing import Any
 from uuid import UUID
 
 from erev_engine.money import DECIMAL_CONTEXT
-from sqlalchemy import select
 
-from erev_api.db.tables import subledger_line
 from erev_api.domain.reports import locked_ends, tie_outs
 from erev_api.domain.reports.builders import ReportParams
 from erev_api.domain.reports.builders import contract_balance_rollforward as rollforward
@@ -33,27 +31,6 @@ def _build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     session = uow.session
     book = tie_outs.book_of(session, params)
     entities, periods, before = rollforward.ranges(session, params)
-    if params.binding is None:
-        negative = session.execute(
-            select(subledger_line.c.id)
-            .where(
-                subledger_line.c.book_code == book,
-                subledger_line.c.entity_id.in_(list(params.entity_ids)),
-                subledger_line.c.period_id.in_([p.id for items in periods.values() for p in items]),
-                subledger_line.c.account_role == rollforward.LIABILITY_ROLE,
-                subledger_line.c.entry_kind == "INTERCOMPANY",
-                subledger_line.c.amount_txn < 0,
-                tie_outs.line_recorded_by(params, params.known_at),
-            )
-            .limit(1)
-        ).scalar_one_or_none()
-        if negative is not None:
-            from .builders.revenue_from_opening_liability import legacy_build
-
-            # Preserve the earlier intercompany reversal path pending an
-            # entity-qualified revenue counterpart adapter.
-            tie_outs.record_evidence(params, "opening_relief_legacy_negative_v1", True)
-            return legacy_build(uow, params)
     cutoff = tie_outs.cutoff_for(session, params)
     locked = locked_ends.Reader(
         uow,
@@ -159,9 +136,12 @@ def _build(uow: UnitOfWork, params: ReportParams) -> ReportData:
             for index, (_, entry) in enumerate(entries):
                 if not entry.flow.is_revenue:
                     continue
-                if entry.line_id is None or entry.entry_kind != "REVENUE_RECOGNITION":
+                if entry.line_id is None or entry.entry_kind not in {
+                    "REVENUE_RECOGNITION",
+                    "INTERCOMPANY",
+                }:
                     raise tie_outs.invalid(
-                        "currency_view", "Reversal requires ordinary posted revenue sources."
+                        "currency_view", "Reversal requires original posted revenue sources."
                     )
                 try:
                     revenue_id, result = for_control(
@@ -176,14 +156,18 @@ def _build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                 dates = {(owner, layer): created for owner, layer, created in result.layer_dates}
                 released = ZERO
                 for part in result.delta.movements:
-                    if (
-                        part.movement_kind != "LIABILITY_LAYER_CONSUMED"
-                        or part.contract_id not in member_ids
-                    ):
+                    if part.contract_id not in member_ids or part.movement_kind not in {
+                        "LIABILITY_LAYER_CONSUMED",
+                        "LIABILITY_LAYER_CREATED",
+                        "ASSET_LAYER_CREATED",
+                        "ASSET_LAYER_SETTLED",
+                    }:
                         raise tie_outs.invalid(
                             "currency_view",
-                            "Reversal needs separate asset or membership attribution.",
+                            "Reversal source kind or original member ownership is unsupported.",
                         )
+                    if part.movement_kind != "LIABILITY_LAYER_CONSUMED":
+                        continue
                     created = dates.get((part.contract_id, part.layer_key))
                     if created is None:
                         raise tie_outs.invalid(

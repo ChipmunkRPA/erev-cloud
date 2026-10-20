@@ -27,7 +27,8 @@ if TYPE_CHECKING:
 
 ZERO = Decimal(0)
 ROLE = "contract_liability"
-KEY = "combined_liability_bridge_v5"
+KEY = "combined_liability_bridge_v6"
+RETURN_KEY = "combined_liability_bridge_v5"
 MIXED_KEY = "combined_liability_bridge_v4"
 REVENUE_KEY = "combined_liability_bridge_v3"
 ENDPOINT_KEY = "combined_liability_bridge_v2"
@@ -53,7 +54,7 @@ def apply(
     if params.binding is not None:
         evidence_key = next(
             key
-            for key in (KEY, MIXED_KEY, REVENUE_KEY, ENDPOINT_KEY, LEGACY_KEY)
+            for key in (KEY, RETURN_KEY, MIXED_KEY, REVENUE_KEY, ENDPOINT_KEY, LEGACY_KEY)
             if key in params.binding.evidence
         )
     if evidence_key == LEGACY_KEY:
@@ -66,6 +67,20 @@ def apply(
         # Presentation can change when billing is added at a different historical
         # rate, even with no memo and no FX journal. Include both endpoint populations.
         members = set(foreign_members)
+        if evidence_key == KEY:
+            source_members = {
+                (owner, entity) for owner, entity, _ in (*transfers, *liability_relief)
+            }
+            source_versions = {
+                (row.version_id, row.entity_id)
+                for row in (*opening, *closing)
+                if (row.contract_id, row.entity_id) in source_members
+            }
+            members.update(
+                (row.contract_id, row.entity_id)
+                for row in (*opening, *closing)
+                if (row.version_id, row.entity_id) in source_versions
+            )
     consumed: set[UUID] = set()
     facts: dict[str, Any] = {}
     cache: dict[tuple[UUID, UUID, UUID, str], Decimal] = {}
@@ -162,7 +177,7 @@ def apply(
             changed = {name: dict(values) for name, values in lines.items()}
             changed["RECLASSIFICATIONS"][ROLE] += amount
             changed["OTHER"][ROLE] -= amount
-            if evidence_key in {KEY, MIXED_KEY} and consumed_liability is not None:
+            if evidence_key in {KEY, RETURN_KEY, MIXED_KEY} and consumed_liability is not None:
                 raw_relief = -sum(
                     (
                         changed[label][ROLE]
@@ -234,11 +249,11 @@ def apply(
         "endpoints": facts,
         (
             "source_transfers"
-            if evidence_key in {KEY, MIXED_KEY, REVENUE_KEY}
+            if evidence_key in {KEY, RETURN_KEY, MIXED_KEY, REVENUE_KEY}
             else "memo_transfers"
         ): {":".join(map(str, key)): str(value) for key, value in sorted(transfers.items())},
     }
-    if evidence_key in {KEY, MIXED_KEY}:
+    if evidence_key in {KEY, RETURN_KEY, MIXED_KEY}:
         evidence["liability_relief"] = {
             ":".join(map(str, key)): str(value) for key, value in sorted(liability_relief.items())
         }

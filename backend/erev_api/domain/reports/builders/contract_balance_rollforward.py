@@ -565,6 +565,7 @@ def rollforwards(
                     "combined_liability_bridge_v3",
                     "combined_liability_bridge_v4",
                     "combined_liability_bridge_v5",
+                    "combined_liability_bridge_v6",
                 )
             )
         )
@@ -627,6 +628,7 @@ def rollforwards(
                     "combined_liability_bridge_v3",
                     "combined_liability_bridge_v4",
                     "combined_liability_bridge_v5",
+                    "combined_liability_bridge_v6",
                 )
             )
         )

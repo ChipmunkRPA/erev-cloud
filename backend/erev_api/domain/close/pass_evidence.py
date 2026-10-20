@@ -89,6 +89,7 @@ def capture(
     }
     if revenue_posted_lines is not None:
         document["revenue_posted_lines"] = list(revenue_posted_lines)
+        document["revenue_account_roles"] = ["REVENUE", "INTERCOMPANY_DUE_TO"]
     content = canonical_bytes(document)
     if len(content) > MAX_TRACE_BYTES:
         raise Problem(
@@ -147,7 +148,8 @@ def read_for_line(
         return None
     if revenue and (
         line["entry_kind"] not in {"REVENUE_RECOGNITION", "INTERCOMPANY"}
-        or line["account_role"] != "REVENUE"
+        or line["account_role"] not in {"REVENUE", "INTERCOMPANY_DUE_TO"}
+        or (line["account_role"] == "INTERCOMPANY_DUE_TO" and line["entry_kind"] != "INTERCOMPANY")
     ):
         raise ValueError("Revenue evidence requires a revenue ledger line.")
     records = session.execute(
@@ -207,6 +209,14 @@ def read_for_line(
         if revenue:
             if "revenue_posted_lines" not in document:
                 raise ValueError("This historical close pass did not retain revenue paid lines.")
+            if line[
+                "account_role"
+            ] == "INTERCOMPANY_DUE_TO" and "INTERCOMPANY_DUE_TO" not in document.get(
+                "revenue_account_roles", []
+            ):
+                raise ValueError(
+                    "This historical close pass did not retain intercompany due-to history."
+                )
             document = {**document, "posted_lines": document["revenue_posted_lines"]}
         return document
     from erev_api.domain.reports import command_fx_evidence
@@ -328,7 +338,9 @@ def capture_posted_lines(
             subledger_line.c.entry_kind.in_(
                 ("REVENUE_RECOGNITION", "INTERCOMPANY") if revenue else ("FX_REMEASUREMENT",)
             ),
-            subledger_line.c.account_role == ("REVENUE" if revenue else "CONTRACT_LIABILITY"),
+            subledger_line.c.account_role.in_(
+                ("REVENUE", "INTERCOMPANY_DUE_TO") if revenue else ("CONTRACT_LIABILITY",)
+            ),
             *(
                 (subledger_posting_seal.c.chain_seq <= ledger_cutoff,)
                 if ledger_cutoff is not None

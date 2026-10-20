@@ -2,6 +2,34 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Contracting intercompany revenue counterparts and reversals — October 20, 2026
+
+- Revenue control attribution now resolves the contracting entity's INTERCOMPANY_DUE_TO leg
+  within the same posting/entry/entity/contract. Original target, selected line, both currency
+  amounts and recursively retained paid history must agree. It does not substitute the other
+  entity's REVENUE leg or currency. Report evidence explicitly identifies the counterpart role.
+- Ordinary computation history captures due-to lines at the original sealed cutoff. New close
+  evidence declares the retained revenue roles; old close documents without due-to coverage
+  refuse intercompany attribution rather than treating missing history as zero.
+- Transaction reversal disclosure now uses the same original counterpart sources and separates
+  asset/new-liability effects from consumed opening liabilities. Earlier legacy bindings retain
+  their original builder. Functional/reporting intercompany relief uses the retained source proof.
+- Presentation bridge v6 includes source-backed same-currency groups as well as foreign groups,
+  including a return-month-only range whose original consumption predates the range. Earlier
+  v1-v5 bindings retain their scope. Migration 0206 describes the expanded report logic.
+- Real approved cross-company progress scenario: one member advances GBP 8,000; another member
+  performs through AVM-US and recognizes GBP 4,000 in May, then revises progress to recognize
+  GBP 2,000 cumulatively in June. Full-range opening relief remains GBP 4,000; June alone has
+  GBP -2,000 revenue and zero opening relief because the reversal creates a new liability.
+- Necessary checks passed: approved intercompany progress reversal in transaction/functional/
+  reporting views, full-range and reversal-month-only identical reruns, ordinary cross-member
+  return regression, real FX close evidence, catalogue migration, scoped lint and types.
+- Mixed TIME/EVENT source allocation remains unimplemented in the generic close-release part
+  interface. Current public ordinary revenue binding leaves released_at_close empty and posts
+  relief as EVENT; do not infer TIME ownership from period-end source dates. Performing-side
+  cross-calendar cases, close-only revenue histories, complex group changes and other documented
+  release gaps still require work. No deployment or production-readiness claim.
+
 ## Cross-member billing asset settlement and excess liabilities — October 20, 2026
 
 - Functional/reporting billings now retain signed asset-settlement amounts and both sides of
@@ -182,43 +210,6 @@
   internal reconciliation/reader addition does not yet enable complete negative-revenue
   reports. Per-obligation opening consumption, asset presentation transfers and final
   accounting/release acceptance remain open. No deployment.
-
-## Signed revenue calculation sources — October 20, 2026
-
-- Added exact signed expansion of retained S12 revenue cumulative targets, preserving each
-  original movement, owner, layer and kind. The reader handles liability consumption, asset
-  creation, asset settlement and liability creation, including negative contributions and
-  opposing owners at a zero net target. Every intermediate total must reproduce its trace;
-  missing, duplicate, cyclic, changed-amount or wrong-currency sources are refused.
-- Combined-member revenue attribution now verifies selected relief against the complete
-  signed target. New runs retain the source projection and movement population for rerun;
-  existing bindings retain their earlier validation path. This connects the source reader
-  to live rollforward and opening-liability disclosures rather than a standalone calculator.
-- Necessary checks: real cross-member functional/reporting disclosures and bound reruns;
-  six signed-source/corruption checks; lint and types. No deployment.
-- This is the source expansion needed for further posting-delta work, not completion of
-  negative-revenue reporting. Original/prior target and paid-history reconciliation, asset
-  presentation transfers, per-obligation opening consumption and complex carried histories
-  remain open. Final release verification and independent accounting acceptance remain open.
-
-## Reporting and forecast data catalogue reconciliation — October 20, 2026
-
-- Classified the 43 missing code columns across retained evidence-sample dependencies,
-  forecast actuals captures, scenario refresh records, ordered inputs and import replay
-  mappings. Business payloads remain confidential financial data; identifiers and lifecycle
-  metadata follow the existing registry rules. Existing retention categories are preserved;
-  proposed classifications still require owner acceptance, not implied legal approval.
-- Added the missing scenario-refresh model section and explicit sample dependency columns;
-  documented frozen import mappings. The catalogue now matches all 174 documented tables
-  and every implemented column. Updated the strict documentation reader for the existing
-  four-column table format and reconciled document order.
-- Snapshot checks now explicitly verify that copied imports clear the regenerated forecast
-  input-set reference and source-only mapping without mutating source data. The recorded
-  reference-count/excluded-column drift and privacy registry failures are resolved:
-  76 targeted catalogue and snapshot checks pass. No database migration or deployment.
-- Remaining Reporting work is unchanged: original negative-revenue reversal attribution,
-  per-obligation opening consumption, complex cross-member asset/carried histories and
-  pre-close FX paths. Final release checks and independent accounting acceptance are open.
 
 ## Outstanding release verification
 
