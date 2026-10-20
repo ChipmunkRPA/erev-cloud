@@ -21,11 +21,14 @@ import {
   fetchEvidencePacksPage,
   mayReadEvidence,
   mayCreateSampleEvidence,
+  mayCreateRegisterEvidence,
   type EvidencePackSummary,
+  type EvidencePackQuery,
 } from "../../lib/api/queries/evidence-packs";
 import { formatDate, formatTimestamp } from "../../lib/format";
 import { t } from "../../lib/i18n/t";
 import { GenerateClosePack } from "./generate";
+import { GenerateRegisterPack } from "./generate-register";
 import { GenerateSamplePack } from "./generate-sample";
 import { AuditorRequests } from "./requests";
 import { ReportsHeader } from "../reports/frame";
@@ -83,9 +86,13 @@ function PackRegister() {
   ];
   const filters = parseFilters(search, fields).filters;
   const params = new URLSearchParams(search);
-  const kind = params.get("kind") === "CONTRACT_SAMPLE" ? "CONTRACT_SAMPLE" : "CLOSE";
-  const query = {
-    kind: kind as "CLOSE" | "CONTRACT_SAMPLE",
+  const requestedKind = params.get("kind");
+  const kind =
+    requestedKind === "CONTRACT_SAMPLE" || requestedKind === "CHANGE" || requestedKind === "ACCESS"
+      ? requestedKind
+      : "CLOSE";
+  const query: EvidencePackQuery = {
+    kind,
     entities: params.getAll("entity"),
     book: params.get("book"),
     period: params.get("period"),
@@ -115,7 +122,14 @@ function PackRegister() {
         id: "kind",
         header: t("evidence.packs.kind"),
         kind: "text",
-        value: (p) => t(p.kind === "CLOSE" ? "evidence.packs.close" : "evidence.packs.sample"),
+        value: (p) =>
+          t(
+            p.kind === "CONTRACT_SAMPLE"
+              ? "evidence.packs.sample"
+              : p.kind === "ACCESS"
+                ? "evidence.packs.accessPack"
+                : `evidence.packs.${p.kind.toLowerCase()}`,
+          ),
       },
       ...(kind === "CLOSE"
         ? [
@@ -138,29 +152,46 @@ function PackRegister() {
               value: (p: EvidencePackSummary) => (p.kind === "CLOSE" ? p.period_key : null),
             },
           ]
-        : [
-            {
-              id: "contracts",
-              header: t("evidence.packs.sampleContracts"),
-              kind: "text" as const,
-              value: (p: EvidencePackSummary) =>
-                p.kind === "CONTRACT_SAMPLE" ? p.contract_external_ids.join(", ") : null,
-            },
-            {
-              id: "as_of",
-              header: t("evidence.packs.sampleAsOf"),
-              kind: "text" as const,
-              value: (p: EvidencePackSummary) =>
-                p.kind === "CONTRACT_SAMPLE" ? formatDate(p.as_of) : null,
-            },
-            {
-              id: "known_at",
-              header: t("evidence.packs.sampleKnownAt"),
-              kind: "text" as const,
-              value: (p: EvidencePackSummary) =>
-                p.kind === "CONTRACT_SAMPLE" ? formatTimestamp(p.known_at) : null,
-            },
-          ]),
+        : kind !== "CONTRACT_SAMPLE"
+          ? [
+              {
+                id: "entities",
+                header: t("evidence.packs.entity"),
+                kind: "text" as const,
+                value: (p: EvidencePackSummary) =>
+                  "entity_codes" in p ? p.entity_codes.join(", ") : null,
+              },
+              {
+                id: "dates",
+                header: t("evidence.register.dates"),
+                kind: "text" as const,
+                value: (p: EvidencePackSummary) =>
+                  "from_date" in p ? (p.as_of ?? `${p.from_date} – ${p.to_date}`) : null,
+              },
+            ]
+          : [
+              {
+                id: "contracts",
+                header: t("evidence.packs.sampleContracts"),
+                kind: "text" as const,
+                value: (p: EvidencePackSummary) =>
+                  p.kind === "CONTRACT_SAMPLE" ? p.contract_external_ids.join(", ") : null,
+              },
+              {
+                id: "as_of",
+                header: t("evidence.packs.sampleAsOf"),
+                kind: "text" as const,
+                value: (p: EvidencePackSummary) =>
+                  p.kind === "CONTRACT_SAMPLE" ? formatDate(p.as_of) : null,
+              },
+              {
+                id: "known_at",
+                header: t("evidence.packs.sampleKnownAt"),
+                kind: "text" as const,
+                value: (p: EvidencePackSummary) =>
+                  p.kind === "CONTRACT_SAMPLE" ? formatTimestamp(p.known_at) : null,
+              },
+            ]),
       {
         id: "status",
         header: t("evidence.packs.status"),
@@ -202,6 +233,13 @@ function PackRegister() {
         label={t("evidence.packs.kind")}
         value={kind}
         options={[
+          ...(["CHANGE", "ACCESS"] as const).map((value) => ({
+            value,
+            label: t(value === "ACCESS" ? "evidence.packs.accessPack" : "evidence.packs.change"),
+            disabledReason: mayCreateRegisterEvidence(access, value)
+              ? undefined
+              : t("evidence.packs.accessDescription"),
+          })),
           { value: "CLOSE", label: t("evidence.packs.close") },
           {
             value: "CONTRACT_SAMPLE",
@@ -223,7 +261,9 @@ function PackRegister() {
           {t(
             kind === "CLOSE"
               ? "evidence.packs.scopeDescription"
-              : "evidence.packs.sampleScopeDescription",
+              : kind === "CONTRACT_SAMPLE"
+                ? "evidence.packs.sampleScopeDescription"
+                : "evidence.register.basis",
           )}
         </p>
       </Banner>
@@ -272,6 +312,8 @@ export function EvidencePacksPage() {
         ) : (
           <>
             <div className="flex flex-wrap justify-end gap-2">
+              <GenerateRegisterPack kind="CHANGE" />
+              <GenerateRegisterPack kind="ACCESS" />
               <GenerateSamplePack />
               <GenerateClosePack />
             </div>

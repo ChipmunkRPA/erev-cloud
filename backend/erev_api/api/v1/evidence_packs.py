@@ -1,4 +1,4 @@
-"""API-R-42 CLOSE and CONTRACT_SAMPLE creation, scoped registers and retained reads."""
+"""API-R-42 evidence creation, scoped registers and retained reads."""
 
 from typing import Annotated, Literal
 from urllib.parse import quote
@@ -31,20 +31,25 @@ from erev_api.db.tables import evidence_pack, legal_entity, period
 from erev_api.domain.reports import (
     evidence_commands,
     evidence_queries,
+    evidence_register_commands,
+    evidence_register_queries,
+    evidence_register_sources,
     evidence_sample_commands,
     evidence_sample_queries,
 )
 from erev_api.enums import BookCode, RunStatus
-from erev_api.problems import Problem
 from erev_api.schemas.common import JobOut, ListOut
 from erev_api.schemas.evidence_packs import (
-    ClosePackCreateIn,
+    AccessPackCreateIn,
+    ChangePackCreateIn,
     ClosePackOut,
     ClosePackSummaryOut,
     ContractSamplePackCreateIn,
     ContractSamplePackOut,
     ContractSamplePackSummaryOut,
     EvidencePackCreateIn,
+    RegisterPackOut,
+    RegisterPackSummaryOut,
 )
 from erev_api.uow import UnitOfWork, unit_of_work
 
@@ -93,10 +98,25 @@ SAMPLE_LIST = ListSpec(
 )
 
 
+REGISTER_LIST = ListSpec(
+    resource="register_evidence_packs",
+    sort_keys=PACK_LIST.sort_keys,
+    default_sort=PACK_LIST.default_sort,
+    filters={
+        "kind": FilterSpec(
+            "kind", evidence_pack.c.kind, "exact", choices=frozenset({"CHANGE", "ACCESS"})
+        ),
+        "status": PACK_LIST.filters["status"],
+    },
+)
+
+
 @router.get(
     "/evidence-packs",
     operation_id="evidence_packs_list",
-    response_model=ListOut[ClosePackSummaryOut | ContractSamplePackSummaryOut],
+    response_model=ListOut[
+        ClosePackSummaryOut | ContractSamplePackSummaryOut | RegisterPackSummaryOut
+    ],
     responses=problem_responses(*PROBLEMS),
 )
 def evidence_packs_list(
@@ -107,36 +127,45 @@ def evidence_packs_list(
     entity: Annotated[list[str] | None, Query(description="Entity code; repeatable")] = None,
     book: Annotated[BookCode | None, Query()] = None,
     period_key: Annotated[str | None, Query(alias="period", description="Period key")] = None,
-    kind: Annotated[Literal["CLOSE", "CONTRACT_SAMPLE"] | None, Query()] = None,
+    kind: Annotated[Literal["CLOSE", "CONTRACT_SAMPLE", "CHANGE", "ACCESS"] | None, Query()] = None,
     status: Annotated[list[RunStatus] | None, Query()] = None,
-) -> ListOut[ClosePackSummaryOut | ContractSamplePackSummaryOut]:
-    """Retained register: CLOSE by default; select CONTRACT_SAMPLE explicitly.
+) -> ListOut[ClosePackSummaryOut | ContractSamplePackSummaryOut | RegisterPackSummaryOut]:
+    """Retained register: CLOSE by default; select other kinds explicitly.
 
-    Both kinds support status filters and id/created_at/pack_no sorts. Entity/book/period
-    filters apply only to CLOSE. Samples authorize full source/document scope before counts
+    All kinds support status filters and id/created_at/pack_no sorts. Entity/book/period
+    filters apply only to CLOSE. Other packs authorize full source scope before counts
     and pagination. Archive verification belongs to download, not this metadata list.
     """
     sample = kind == "CONTRACT_SAMPLE"
+    register = kind in {"CHANGE", "ACCESS"}
     del entity, book, period_key, status  # validated here; applied through PACK_LIST
     with unit_of_work(ctx, clock=deps.clock, keyring=deps.keyring, files=deps.files) as uow:
         evidence_queries.require_permissions(
             uow,
             None,
-            evidence_commands.PERMISSIONS if sample else evidence_queries.READ_PERMISSIONS,
+            evidence_register_sources.PERMISSIONS
+            if register
+            else (evidence_commands.PERMISSIONS if sample else evidence_queries.READ_PERMISSIONS),
         )
         result = paginate(
             uow.session,
-            evidence_sample_queries.list_statement(uow.principal)
+            evidence_register_queries.list_statement(uow.principal, str(kind))
+            if register
+            else evidence_sample_queries.list_statement(uow.principal)
             if sample
             else evidence_queries.list_statement(uow.principal),
-            SAMPLE_LIST if sample else PACK_LIST,
+            REGISTER_LIST if register else SAMPLE_LIST if sample else PACK_LIST,
             params,
-            visible=(lambda row: evidence_sample_queries.visible(uow, row["id"]))
+            visible=(lambda row: evidence_register_queries.visible(uow, row["id"]))
+            if register
+            else (lambda row: evidence_sample_queries.visible(uow, row["id"]))
             if sample
             else None,
         )
         items = [
-            evidence_sample_queries.summary(row) if sample else evidence_queries.summary(row)
+            evidence_register_queries.summary(row)
+            if register
+            else (evidence_sample_queries.summary(row) if sample else evidence_queries.summary(row))
             for row in result.items
         ]
         record_facts(
@@ -151,7 +180,7 @@ def evidence_packs_list(
     response.headers["Cache-Control"] = "no-store"
     if result.total_count is not None:
         response.headers[TOTAL_COUNT_HEADER] = result.total_count
-    return ListOut[ClosePackSummaryOut | ContractSamplePackSummaryOut](
+    return ListOut[ClosePackSummaryOut | ContractSamplePackSummaryOut | RegisterPackSummaryOut](
         items=items, next_cursor=result.next_cursor
     )
 
@@ -170,12 +199,15 @@ def evidence_packs_create(
     cmd: Annotated[CommandContext, Depends(command("evidence.export"))],
     deps: Deps,
 ) -> Response:
-    """Create a first-close or human-requested contract sample; replay its original IDs."""
+    """Create a close or human-requested sample/change/access pack; replay its original IDs."""
     started: dict[str, UUID] = {}
 
     def handle(uow: UnitOfWork) -> JobOut:
-        if not isinstance(body, (ClosePackCreateIn, ContractSamplePackCreateIn)):
-            raise Problem("validation-failed", "This evidence pack kind is not yet supported.")
+        if isinstance(body, (ChangePackCreateIn, AccessPackCreateIn)):
+            evidence_queries.require_permissions(uow, None, evidence_register_sources.PERMISSIONS)
+            pack_id, job = evidence_register_commands.create(uow, body)
+            started["pack_id"] = pack_id
+            return job
         # Supplemental denials are audited just as on the download route.
         evidence_queries.require_permissions(uow, None, evidence_commands.PERMISSIONS)
         pack_id, job = (
@@ -201,7 +233,7 @@ def evidence_packs_create(
 @router.get(
     "/evidence-packs/{pack_id}",
     operation_id="evidence_packs_get",
-    response_model=ClosePackOut | ContractSamplePackOut,
+    response_model=ClosePackOut | ContractSamplePackOut | RegisterPackOut,
     responses=problem_responses(*PROBLEMS),
 )
 def evidence_packs_get(
@@ -209,11 +241,13 @@ def evidence_packs_get(
     response: Response,
     ctx: Annotated[RequestContext, Depends(require("report.run"))],
     deps: Deps,
-) -> ClosePackOut | ContractSamplePackOut:
-    """Read a retained CLOSE or CONTRACT_SAMPLE header under current source scope."""
+) -> ClosePackOut | ContractSamplePackOut | RegisterPackOut:
+    """Read a retained pack header under current source scope."""
     with unit_of_work(ctx, clock=deps.clock, keyring=deps.keyring, files=deps.files) as uow:
         result = (
-            evidence_sample_queries.get(uow, pack_id)
+            evidence_register_queries.get(uow, pack_id)
+            if evidence_register_queries.is_register(uow, pack_id)
+            else evidence_sample_queries.get(uow, pack_id)
             if evidence_sample_queries.is_sample(uow, pack_id)
             else evidence_queries.get_close(uow, pack_id)
         )
@@ -254,7 +288,9 @@ def evidence_packs_download(
     """Reauthorize and verify retained bytes, committing one export audit before serving them."""
     with unit_of_work(ctx, clock=deps.clock, keyring=deps.keyring, files=deps.files) as uow:
         filename, content = (
-            evidence_sample_queries.download(uow, pack_id)
+            evidence_register_queries.download(uow, pack_id)
+            if evidence_register_queries.is_register(uow, pack_id)
+            else evidence_sample_queries.download(uow, pack_id)
             if evidence_sample_queries.is_sample(uow, pack_id)
             else evidence_queries.download_close(uow, pack_id)
         )
@@ -289,7 +325,9 @@ def evidence_packs_manifest(
     """Download the exact manifest bytes from the verified archive, with an export audit."""
     with unit_of_work(ctx, clock=deps.clock, keyring=deps.keyring, files=deps.files) as uow:
         filename, content = (
-            evidence_sample_queries.download(uow, pack_id, manifest_only=True)
+            evidence_register_queries.download(uow, pack_id, manifest_only=True)
+            if evidence_register_queries.is_register(uow, pack_id)
+            else evidence_sample_queries.download(uow, pack_id, manifest_only=True)
             if evidence_sample_queries.is_sample(uow, pack_id)
             else evidence_queries.download_close(uow, pack_id, manifest_only=True)
         )

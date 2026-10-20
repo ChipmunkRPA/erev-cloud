@@ -1,7 +1,8 @@
-"""EVIDENCE_PACK worker: retained first-close and contract-sample lifecycle.
+"""EVIDENCE_PACK worker: retained close, sample, change and access lifecycle.
 
 PREPARE_CLOSE performs the durable post-lock handoff before the bound build. Samples
-reauthorize the active human requester. CHANGE/ACCESS remain unavailable.
+reauthorize the active human requester. CHANGE/ACCESS wait for their retained
+report jobs before encrypted completion.
 Public commands are separate; no worker capability is a caller permission.
 """
 
@@ -161,7 +162,7 @@ def build_pack(jc: JobContext, params: Mapping[str, Any]) -> JobOutcome:
         if current is None or current["state"] != "RUNNING":
             raise Problem("invalid-transition", "The evidence job is not running.")
         row = _pack(uow, params, jc.job_id)
-        if row is None or row["kind"] not in {"CLOSE", "CONTRACT_SAMPLE"}:
+        if row is None or row["kind"] not in {"CLOSE", "CONTRACT_SAMPLE", "CHANGE", "ACCESS"}:
             raise Problem("validation-failed", "This evidence job has no supported retained pack.")
         if current["cancel_requested_at"] is not None:
             _stop(uow, row, reason="cancelled")
@@ -169,22 +170,22 @@ def build_pack(jc: JobContext, params: Mapping[str, Any]) -> JobOutcome:
             return JobOutcome(state="SUCCEEDED", result={"counts": {"packs": 0}})
         if not close_ready(uow.session, jc.job_id, params):
             raise Problem("invalid-transition", "The retained report jobs are not ready.")
-        if row["kind"] == "CONTRACT_SAMPLE":
+        if row["kind"] in {"CONTRACT_SAMPLE", "CHANGE", "ACCESS"}:
             from erev_api.domain.ai.access import AIAccessRefused, job_requester
-            from erev_api.domain.reports import evidence_sample_storage
+            from erev_api.domain.reports import evidence_register_storage, evidence_sample_storage
 
             if (row["created_by"], row["created_by_kind"]) != (
                 current["created_by"],
                 current["created_by_kind"],
             ):
                 raise Problem(
-                    "validation-failed", "The sample job requester differs from its pack."
+                    "validation-failed", "The evidence job requester differs from its pack."
                 )
             try:
                 requester = job_requester(jc, uow.session, kind=JobKind.EVIDENCE_PACK)
             except AIAccessRefused as error:
                 raise Problem(
-                    "forbidden", "The sample requester is no longer authorized."
+                    "forbidden", "The evidence requester is no longer authorized."
                 ) from error
             uow.ctx = replace(uow.ctx, principal=requester)
             if row["status"] == "QUEUED":
@@ -196,7 +197,11 @@ def build_pack(jc: JobContext, params: Mapping[str, Any]) -> JobOutcome:
                     expected_status="QUEUED",
                     set_values={},
                 )
-            retained_sample = evidence_sample_storage.finish(uow, row["id"])
+            retained_pack = (
+                evidence_sample_storage.finish(uow, row["id"])
+                if row["kind"] == "CONTRACT_SAMPLE"
+                else evidence_register_storage.finish(uow, row["id"])
+            )
             uow.commit()
             return JobOutcome(
                 state="SUCCEEDED",
@@ -204,7 +209,7 @@ def build_pack(jc: JobContext, params: Mapping[str, Any]) -> JobOutcome:
                     "href": f"/api/v1/evidence-packs/{row['id']}",
                     "counts": {
                         "packs": 1,
-                        "files": len(retained_sample.archive.manifest_document()["files"]),
+                        "files": len(retained_pack.archive.manifest_document()["files"]),
                     },
                 },
             )

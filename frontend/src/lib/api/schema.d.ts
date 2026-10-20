@@ -2604,17 +2604,17 @@ export interface paths {
     };
     /**
      * Evidence Packs List
-     * @description Retained register: CLOSE by default; select CONTRACT_SAMPLE explicitly.
+     * @description Retained register: CLOSE by default; select other kinds explicitly.
      *
-     *     Both kinds support status filters and id/created_at/pack_no sorts. Entity/book/period
-     *     filters apply only to CLOSE. Samples authorize full source/document scope before counts
+     *     All kinds support status filters and id/created_at/pack_no sorts. Entity/book/period
+     *     filters apply only to CLOSE. Other packs authorize full source scope before counts
      *     and pagination. Archive verification belongs to download, not this metadata list.
      */
     get: operations["evidence_packs_list"];
     put?: never;
     /**
      * Evidence Packs Create
-     * @description Create a first-close or human-requested contract sample; replay its original IDs.
+     * @description Create a close or human-requested sample/change/access pack; replay its original IDs.
      */
     post: operations["evidence_packs_create"];
     delete?: never;
@@ -2632,7 +2632,7 @@ export interface paths {
     };
     /**
      * Evidence Packs Get
-     * @description Read a retained CLOSE or CONTRACT_SAMPLE header under current source scope.
+     * @description Read a retained pack header under current source scope.
      */
     get: operations["evidence_packs_get"];
     put?: never;
@@ -17078,12 +17078,13 @@ export interface components {
       /** Next Cursor */
       next_cursor: string | null;
     };
-    /** ListOut[Union[ClosePackSummaryOut, ContractSamplePackSummaryOut]] */
-    ListOut_Union_ClosePackSummaryOut__ContractSamplePackSummaryOut__: {
+    /** ListOut[Union[ClosePackSummaryOut, ContractSamplePackSummaryOut, RegisterPackSummaryOut]] */
+    ListOut_Union_ClosePackSummaryOut__ContractSamplePackSummaryOut__RegisterPackSummaryOut__: {
       /** Items */
       items: (
         | components["schemas"]["ClosePackSummaryOut"]
         | components["schemas"]["ContractSamplePackSummaryOut"]
+        | components["schemas"]["RegisterPackSummaryOut"]
       )[];
       /** Next Cursor */
       next_cursor: string | null;
@@ -20457,6 +20458,107 @@ export interface components {
       id: string;
       /** Name */
       name: string;
+    };
+    /** RegisterPackOut */
+    RegisterPackOut: {
+      /** As Of */
+      as_of: string | null;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /** Download Href */
+      download_href: string | null;
+      /** Entity Codes */
+      entity_codes: string[];
+      /** Entity Ids */
+      entity_ids: string[];
+      /** File Count */
+      file_count: number | null;
+      /** From Date */
+      from_date: string | null;
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Job Id */
+      job_id: string | null;
+      /**
+       * Kind
+       * @enum {string}
+       */
+      kind: "CHANGE" | "ACCESS";
+      /**
+       * Known At
+       * Format: date-time
+       */
+      known_at: string;
+      manifest: components["schemas"]["EvidenceManifestOut"] | null;
+      /** Manifest Sha256 */
+      manifest_sha256: string | null;
+      /** Pack No */
+      pack_no: string;
+      /** Report Run Ids */
+      report_run_ids: string[];
+      status: components["schemas"]["RunStatus"];
+      /** To Date */
+      to_date: string | null;
+      /**
+       * Updated At
+       * Format: date-time
+       */
+      updated_at: string;
+    };
+    /** RegisterPackSummaryOut */
+    RegisterPackSummaryOut: {
+      /** As Of */
+      as_of: string | null;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /** Entity Codes */
+      entity_codes: string[];
+      /** Entity Ids */
+      entity_ids: string[];
+      /** File Count */
+      file_count: number | null;
+      /** From Date */
+      from_date: string | null;
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Job Id */
+      job_id: string | null;
+      /**
+       * Kind
+       * @enum {string}
+       */
+      kind: "CHANGE" | "ACCESS";
+      /**
+       * Known At
+       * Format: date-time
+       */
+      known_at: string;
+      /** Manifest Sha256 */
+      manifest_sha256: string | null;
+      /** Pack No */
+      pack_no: string;
+      /** Report Run Ids */
+      report_run_ids: string[];
+      status: components["schemas"]["RunStatus"];
+      /** To Date */
+      to_date: string | null;
+      /**
+       * Updated At
+       * Format: date-time
+       */
+      updated_at: string;
     };
     /**
      * RegistryCategory
@@ -35319,7 +35421,7 @@ export interface operations {
         book?: components["schemas"]["BookCode"] | null;
         /** @description Period key */
         period?: string | null;
-        kind?: ("CLOSE" | "CONTRACT_SAMPLE") | null;
+        kind?: ("CLOSE" | "CONTRACT_SAMPLE" | "CHANGE" | "ACCESS") | null;
         status?: components["schemas"]["RunStatus"][] | null;
         limit?: number;
         cursor?: string | null;
@@ -35339,7 +35441,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ListOut_Union_ClosePackSummaryOut__ContractSamplePackSummaryOut__"];
+          "application/json": components["schemas"]["ListOut_Union_ClosePackSummaryOut__ContractSamplePackSummaryOut__RegisterPackSummaryOut__"];
         };
       };
       /** @description Problem: unauthenticated, session-expired */
@@ -35493,7 +35595,9 @@ export interface operations {
         };
         content: {
           "application/json":
-            components["schemas"]["ClosePackOut"] | components["schemas"]["ContractSamplePackOut"];
+            | components["schemas"]["ClosePackOut"]
+            | components["schemas"]["ContractSamplePackOut"]
+            | components["schemas"]["RegisterPackOut"];
         };
       };
       /** @description Problem: unauthenticated, session-expired */

@@ -397,3 +397,50 @@ it("does not fetch sample history without export permission", async () => {
   await screen.findByRole("radio", { name: "Contract sample" });
   expect(reads).toBe(0);
 });
+
+it.each(["CHANGE", "ACCESS"] as const)(
+  "opens %s detail without contract permission and preserves its register link",
+  async (kind) => {
+    const value: EvidencePack = {
+      id: pack.id,
+      pack_no: pack.pack_no,
+      kind,
+      status: "SUCCEEDED",
+      entity_ids: [pack.entity_id],
+      entity_codes: [pack.entity_code],
+      as_of: kind === "ACCESS" ? "2026-09-30" : null,
+      from_date: kind === "CHANGE" ? "2026-09-01" : null,
+      to_date: kind === "CHANGE" ? "2026-09-30" : null,
+      known_at: pack.created_at,
+      created_at: pack.created_at,
+      updated_at: pack.updated_at,
+      job_id: null,
+      report_run_ids: [],
+      file_count: pack.file_count,
+      manifest: pack.manifest,
+      manifest_sha256: pack.manifest_sha256,
+      download_href: pack.download_href,
+    };
+    serve(value);
+    open(
+      true,
+      signedInMe({
+        permissions: [
+          "report.run",
+          "audit.read",
+          "report.export",
+          "evidence.export",
+          "access.approve",
+        ],
+      }),
+    );
+    await screen.findByRole("heading", { name: pack.pack_no });
+    expect(
+      screen.getByText(kind === "CHANGE" ? "Change evidence" : "Access evidence"),
+    ).not.toBeNull();
+    expect(screen.getByRole("button", { name: "Download pack" })).not.toBeNull();
+    expect(screen.getByRole("link", { name: "Evidence packs" }).getAttribute("href")).toBe(
+      `/reports/evidence?kind=${kind}`,
+    );
+  },
+);

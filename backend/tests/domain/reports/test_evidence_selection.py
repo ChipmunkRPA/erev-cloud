@@ -1517,3 +1517,76 @@ def test_register_pack_sources_keep_original_reports_and_current_scope(
     with sources.world.place.uow(denied) as uow, pytest.raises(Problem) as error:
         registers.collect(uow, pack["id"])
     assert error.value.slug == "forbidden"
+
+
+@pytest.mark.parametrize("kind", ["CHANGE", "ACCESS"])
+def test_register_pack_api_worker_and_retained_download(
+    sources: Sources, clock: FrozenClock, kind: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from erev_api.domain.reports import evidence, evidence_readiness
+
+    assert callable(evidence.build_pack)
+    from erev_api.domain.reports import evidence_register_sources as registers
+    from support.reference import assign, get, post
+
+    world = sources.world
+    assign(world.maya.member, "auditor")
+    if kind == "ACCESS":
+        assign(world.maya.member, "tenant_admin")
+    with world.place.uow() as uow:
+        clock.set(uow.session.scalar(select(func.clock_timestamp())) + timedelta(seconds=1))
+    actor = enrolled(world.app, clock, world.maya.member)
+    body = (
+        {"kind": kind, "from_date": "2026-01-01", "to_date": clock.now().date().isoformat()}
+        if kind == "CHANGE"
+        else {"kind": kind, "as_of": clock.now().date().isoformat()}
+    )
+    created = post(world.app, "/api/v1/evidence-packs", actor, body)
+    assert created.status_code == 202, created.text
+    pack_id = UUID(created.headers["X-Erev-Evidence-Pack-Id"])
+    job_id = UUID(created.json()["id"])
+    path = f"/api/v1/evidence-packs/{pack_id}"
+    queued = get(world.app, path, actor)
+    assert queued.status_code == 200, queued.text
+    assert queued.json()["status"] == "QUEUED"
+    assert get(world.app, path + "/download", actor).status_code == 409
+    with system_session(world) as session:
+        row = (
+            session.execute(select(evidence_pack).where(evidence_pack.c.id == pack_id))
+            .mappings()
+            .one()
+        )
+        bound = registers.checked_row(dict(row))
+        assert not evidence_readiness.close_ready(
+            session, job_id, {"evidence_pack_id": str(pack_id)}
+        )
+    for report in bound.reports:
+        result = run_journal_job(world, report.job_id, attempts=1)
+        assert result["state"] == "SUCCEEDED", result
+    result = run_journal_job(world, job_id, attempts=1)
+    assert result["state"] == "SUCCEEDED", result
+    finished = get(world.app, path, actor)
+    assert finished.status_code == 200, finished.text
+    header = finished.json()
+    assert header["status"] == "SUCCEEDED"
+    assert header["kind"] == kind
+    assert header["file_count"] == (12 if kind == "ACCESS" else 9)
+    listed = get(world.app, "/api/v1/evidence-packs", actor, {"kind": kind, "status": "SUCCEEDED"})
+    assert listed.status_code == 200, listed.text
+    assert [item["id"] for item in listed.json()["items"]] == [str(pack_id)]
+    assert "manifest" not in listed.json()["items"][0]
+
+    def no_prepare(*args: Any, **kwargs: Any) -> None:
+        raise AssertionError("Downloads must not regenerate reports")
+
+    monkeypatch.setattr(registers, "prepare", no_prepare)
+    archive = get(world.app, path + "/download", actor)
+    assert archive.status_code == 200, archive.text
+    manifest = evidence_archive.verify(
+        archive.content, expected_manifest_sha256=header["manifest_sha256"]
+    )
+    assert manifest == header["manifest"]
+    exported_manifest = get(world.app, path + "/manifest", actor)
+    assert exported_manifest.status_code == 200, exported_manifest.text
+    assert exported_manifest.json() == manifest
+    assert get(world.app, path + "/download", actor).content == archive.content

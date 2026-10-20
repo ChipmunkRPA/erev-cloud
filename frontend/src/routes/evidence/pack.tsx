@@ -106,7 +106,7 @@ function PackRecord({ id }: { readonly id: string }) {
         breadcrumb={[
           {
             label: t("evidence.packs.title"),
-            to: `${EVIDENCE_PACKS_ROUTE}${data.kind === "CLOSE" ? evidencePackContext(data) : "?kind=CONTRACT_SAMPLE"}`,
+            to: `${EVIDENCE_PACKS_ROUTE}${data.kind === "CLOSE" ? evidencePackContext(data) : `?kind=${data.kind}`}`,
           },
         ]}
         chips={<EvidencePackStatus status={data.status} />}
@@ -120,16 +120,42 @@ function PackRecord({ id }: { readonly id: string }) {
                 { label: t("evidence.packs.lock"), value: data.period_lock_id },
                 { label: t("evidence.packs.created"), value: formatTimestamp(data.created_at) },
               ]
-            : [
-                { label: t("evidence.packs.kind"), value: t("evidence.packs.sample") },
-                {
-                  label: t("evidence.packs.sampleContracts"),
-                  value: data.contract_external_ids.join(", "),
-                },
-                { label: t("evidence.packs.sampleAsOf"), value: formatDate(data.as_of) },
-                { label: t("evidence.packs.sampleKnownAt"), value: formatTimestamp(data.known_at) },
-                { label: t("evidence.packs.created"), value: formatTimestamp(data.created_at) },
-              ]
+            : data.kind === "CONTRACT_SAMPLE"
+              ? [
+                  { label: t("evidence.packs.kind"), value: t("evidence.packs.sample") },
+                  {
+                    label: t("evidence.packs.sampleContracts"),
+                    value: data.contract_external_ids.join(", "),
+                  },
+                  { label: t("evidence.packs.sampleAsOf"), value: formatDate(data.as_of) },
+                  {
+                    label: t("evidence.packs.sampleKnownAt"),
+                    value: formatTimestamp(data.known_at),
+                  },
+                  { label: t("evidence.packs.created"), value: formatTimestamp(data.created_at) },
+                ]
+              : [
+                  {
+                    label: t("evidence.packs.kind"),
+                    value: t(
+                      data.kind === "ACCESS"
+                        ? "evidence.packs.accessPack"
+                        : "evidence.packs.change",
+                    ),
+                  },
+                  { label: t("evidence.packs.entity"), value: data.entity_codes.join(", ") },
+                  {
+                    label: t("evidence.register.dates"),
+                    value: data.as_of
+                      ? formatDate(data.as_of)
+                      : `${data.from_date ? formatDate(data.from_date) : "—"} – ${data.to_date ? formatDate(data.to_date) : "—"}`,
+                  },
+                  {
+                    label: t("evidence.packs.sampleKnownAt"),
+                    value: formatTimestamp(data.known_at),
+                  },
+                  { label: t("evidence.packs.created"), value: formatTimestamp(data.created_at) },
+                ]
         }
         actions={
           succeeded && data.download_href !== null && mayDownloadEvidence(access, data) ? (
@@ -161,7 +187,14 @@ function PackRecord({ id }: { readonly id: string }) {
           {data.kind === "CLOSE" ? (
             <ClosePackContents pack={data} />
           ) : (
-            <Banner tone="info" title={t("evidence.packs.sampleBasis")} />
+            <Banner
+              tone="info"
+              title={t(
+                data.kind === "CONTRACT_SAMPLE"
+                  ? "evidence.packs.sampleBasis"
+                  : "evidence.register.basis",
+              )}
+            />
           )}
           <h2 className="text-title-md">{t("evidence.packs.files")}</h2>
           <dl>

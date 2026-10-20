@@ -3,6 +3,7 @@ import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/re
 import { http, HttpResponse } from "msw";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { GenerateClosePack } from "../generate";
+import { GenerateRegisterPack } from "../generate-register";
 import { GenerateSamplePack } from "../generate-sample";
 import type { Entity, Period, Book } from "../../../lib/api/queries/tenant";
 import type { PeriodLockRow } from "../../../lib/api/queries/periods";
@@ -449,3 +450,62 @@ it("keeps an accepted sample in progress and recovers its link from the job resu
   fireEvent.click(within(dialog).getByRole("button", { name: "Generate pack" }));
   expect(calls).toBe(1);
 });
+
+it.each(["CHANGE", "ACCESS"] as const)(
+  "creates %s evidence with dates and opens its retained record",
+  async (kind) => {
+    const bodies: unknown[] = [];
+    server.use(
+      http.post(apiUrl("/api/v1/evidence-packs"), async ({ request }) => {
+        bodies.push(await request.json());
+        return accepted();
+      }),
+    );
+    const app = renderApp("/reports/evidence", {
+      me: signedInMe({
+        permissions: [
+          "report.run",
+          "report.export",
+          "evidence.export",
+          "audit.read",
+          "access.approve",
+        ],
+      }),
+      screenRoutes: [
+        {
+          id: "SF-09",
+          path: "/reports/evidence",
+          handle: { sf: "SF-09", screen: "SF-09", titleKey: "evidence.packs.title" },
+          Component: () => <GenerateRegisterPack kind={kind} />,
+        },
+        probeRoute("SF-09:pack", "/reports/evidence/:packId", "evidence.packs.detailTitle"),
+      ],
+    });
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: kind === "CHANGE" ? "Generate change evidence" : "Generate access evidence",
+      }),
+    );
+    const dialog = await screen.findByRole("dialog");
+    if (kind === "CHANGE")
+      fireEvent.change(within(dialog).getByRole("textbox", { name: /From date/ }), {
+        target: { value: "2026-09-01" },
+      });
+    fireEvent.change(
+      within(dialog).getByRole("textbox", {
+        name: kind === "CHANGE" ? /Through date/ : /Effective through/,
+      }),
+      { target: { value: "2026-09-30" } },
+    );
+    fireEvent.click(within(dialog).getByRole("button", { name: "Generate pack" }));
+    await waitFor(() =>
+      expect(app.router.state.location.pathname).toBe(`/reports/evidence/${packId}`),
+    );
+    expect(app.router.state.location.search).toBe(`?kind=${kind}`);
+    expect(bodies).toEqual([
+      kind === "CHANGE"
+        ? { kind, from_date: "2026-09-01", to_date: "2026-09-30" }
+        : { kind, as_of: "2026-09-30" },
+    ]);
+  },
+);

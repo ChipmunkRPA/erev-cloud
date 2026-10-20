@@ -7569,5 +7569,16 @@
   "reports.comparison.format": "Comparison format",
   "reports.comparison.run": "Run comparison",
   "reports.comparison.rows": "rows",
-  "reports.comparison.open": "Open comparison report"
+  "reports.comparison.open": "Open comparison report",
+  "evidence.packs.change": "Change evidence",
+  "evidence.packs.accessPack": "Access evidence",
+  "evidence.register.dates": "Evidence dates",
+  "evidence.register.basis": "Retains the original report outputs and source snapshots. Access evidence uses tenant-wide permissions and includes access-review records; change evidence includes registered release facts. This pack is not an independent certification.",
+  "evidence.register.from": "From date",
+  "evidence.register.to": "Through date",
+  "evidence.register.dateError": "Enter valid dates, no later than today. The start must be on or before the end.",
+  "evidence.register.change": "Generate change evidence",
+  "evidence.register.access": "Generate access evidence",
+  "evidence.register.openResult": "Open evidence pack",
+  "evidence.register.accepted": "Evidence generation has been queued. Open the pack to follow its progress."
 }

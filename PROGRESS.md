@@ -6,6 +6,19 @@
 
 
 
+## CHANGE/ACCESS evidence workflow — October 19, 2026
+
+- Added atomic API creation, retained child-report readiness, current-requester worker
+  authorization, encrypted final archives, scoped list/detail and verified ZIP/manifest downloads.
+- Reporting now offers change/access generation forms, kind filters and retained detail pages.
+  CHANGE uses inclusive dates; ACCESS requires tenant-wide evidence and access.approve grants.
+- Real API → report workers → parent worker → list/detail/download passes for both kinds;
+  retained repeat downloads keep original bytes. Targeted UI flows, types and lint pass.
+- Still open: populated review campaigns through the complete parent flow, cancellation/revocation
+  acceptance specific to these kinds, and wider RPS-16 accounting acceptance. Next reporting
+  development: catalogue PACK builders and disclosure orchestration; remaining forecast work.
+  No deployment or production-readiness claim.
+
 ## Encrypted ACCESS review retention — October 19, 2026
 
 - ACCESS v4 now includes encrypted retained review evidence, with only IDs, cutoffs, hashes
@@ -229,19 +242,6 @@
   PDF report jobs and same-source rebuilding with no actuals. Populated accounting acceptance
   and rendered populated-report review are still outstanding. No deployment.
 
-## Actual-vs-forecast standard report execution — October 19, 2026
-
-- Registered actual_vs_forecast in the standard report framework (56 registered definitions,
-  including disclosure; 55 ordinary builders). Workers reload current scenario/report access.
-  Live builds use the requesting user for authorized source reads and restore worker context.
-- Added retained-fact rebuilding with digest, tenant/run/entity/book/currency/selection and
-  cutoff checks. It recomputes variances from original facts without live-source reads or saved
-  output replay. Revision 0187 updates report IPE to the real retained snapshot/file sources.
-- The real scenario journey creates a standard REPORT_RUN, executes it to SUCCEEDED JSON and
-  rebuilds the same empty-actuals result with live reads forbidden. Migration and 17 focused
-  source-contract/rebuild checks pass; Ruff/Mypy pass.
-- Dedicated UI selection, all file-format verification and populated accounting acceptance
-  remain. FCS-4 is now registered/runnable, but its acceptance is not complete. No deployment.
 ## Outstanding release verification
 
 These checks need current release-candidate evidence. Historical October 3 results

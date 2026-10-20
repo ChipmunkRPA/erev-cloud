@@ -141,3 +141,27 @@ class ContractSamplePackSummaryOut(BaseModel):
 class ContractSamplePackOut(ContractSamplePackSummaryOut):
     manifest: EvidenceManifestOut | None
     download_href: str | None
+
+
+class RegisterPackSummaryOut(BaseModel):
+    id: UUID
+    pack_no: str
+    kind: Literal["CHANGE", "ACCESS"]
+    status: RunStatus
+    entity_ids: list[UUID]
+    entity_codes: list[str]
+    as_of: date | None
+    from_date: date | None
+    to_date: date | None
+    known_at: datetime
+    job_id: UUID | None
+    report_run_ids: list[UUID]
+    file_count: int | None
+    manifest_sha256: str | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class RegisterPackOut(RegisterPackSummaryOut):
+    manifest: EvidenceManifestOut | None
+    download_href: str | None

@@ -23667,7 +23667,7 @@
         "title": "ListOut[Union[AIProposalOut, AIExtractionProposalOut]]",
         "type": "object"
       },
-      "ListOut_Union_ClosePackSummaryOut__ContractSamplePackSummaryOut__": {
+      "ListOut_Union_ClosePackSummaryOut__ContractSamplePackSummaryOut__RegisterPackSummaryOut__": {
         "properties": {
           "items": {
             "items": {
@@ -23677,6 +23677,9 @@
                 },
                 {
                   "$ref": "#/components/schemas/ContractSamplePackSummaryOut"
+                },
+                {
+                  "$ref": "#/components/schemas/RegisterPackSummaryOut"
                 }
               ]
             },
@@ -23699,7 +23702,7 @@
           "items",
           "next_cursor"
         ],
-        "title": "ListOut[Union[ClosePackSummaryOut, ContractSamplePackSummaryOut]]",
+        "title": "ListOut[Union[ClosePackSummaryOut, ContractSamplePackSummaryOut, RegisterPackSummaryOut]]",
         "type": "object"
       },
       "ListOut_UserOut_": {
@@ -33229,6 +33232,333 @@
           "name"
         ],
         "title": "RefOut",
+        "type": "object"
+      },
+      "RegisterPackOut": {
+        "properties": {
+          "as_of": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "download_href": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Download Href"
+          },
+          "entity_codes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Entity Codes",
+            "type": "array"
+          },
+          "entity_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Entity Ids",
+            "type": "array"
+          },
+          "file_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Count"
+          },
+          "from_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From Date"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "job_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Id"
+          },
+          "kind": {
+            "enum": [
+              "CHANGE",
+              "ACCESS"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "known_at": {
+            "format": "date-time",
+            "title": "Known At",
+            "type": "string"
+          },
+          "manifest": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EvidenceManifestOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "manifest_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manifest Sha256"
+          },
+          "pack_no": {
+            "title": "Pack No",
+            "type": "string"
+          },
+          "report_run_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Report Run Ids",
+            "type": "array"
+          },
+          "status": {
+            "$ref": "#/components/schemas/RunStatus"
+          },
+          "to_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "To Date"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "pack_no",
+          "kind",
+          "status",
+          "entity_ids",
+          "entity_codes",
+          "as_of",
+          "from_date",
+          "to_date",
+          "known_at",
+          "job_id",
+          "report_run_ids",
+          "file_count",
+          "manifest_sha256",
+          "created_at",
+          "updated_at",
+          "manifest",
+          "download_href"
+        ],
+        "title": "RegisterPackOut",
+        "type": "object"
+      },
+      "RegisterPackSummaryOut": {
+        "properties": {
+          "as_of": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "entity_codes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Entity Codes",
+            "type": "array"
+          },
+          "entity_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Entity Ids",
+            "type": "array"
+          },
+          "file_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Count"
+          },
+          "from_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From Date"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "job_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Id"
+          },
+          "kind": {
+            "enum": [
+              "CHANGE",
+              "ACCESS"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "known_at": {
+            "format": "date-time",
+            "title": "Known At",
+            "type": "string"
+          },
+          "manifest_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manifest Sha256"
+          },
+          "pack_no": {
+            "title": "Pack No",
+            "type": "string"
+          },
+          "report_run_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Report Run Ids",
+            "type": "array"
+          },
+          "status": {
+            "$ref": "#/components/schemas/RunStatus"
+          },
+          "to_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "To Date"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "pack_no",
+          "kind",
+          "status",
+          "entity_ids",
+          "entity_codes",
+          "as_of",
+          "from_date",
+          "to_date",
+          "known_at",
+          "job_id",
+          "report_run_ids",
+          "file_count",
+          "manifest_sha256",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "RegisterPackSummaryOut",
         "type": "object"
       },
       "RegistryCategory": {
@@ -63660,7 +63990,7 @@
     },
     "/api/v1/evidence-packs": {
       "get": {
-        "description": "Retained register: CLOSE by default; select CONTRACT_SAMPLE explicitly.\n\nBoth kinds support status filters and id/created_at/pack_no sorts. Entity/book/period\nfilters apply only to CLOSE. Samples authorize full source/document scope before counts\nand pagination. Archive verification belongs to download, not this metadata list.",
+        "description": "Retained register: CLOSE by default; select other kinds explicitly.\n\nAll kinds support status filters and id/created_at/pack_no sorts. Entity/book/period\nfilters apply only to CLOSE. Other packs authorize full source scope before counts\nand pagination. Archive verification belongs to download, not this metadata list.",
         "operationId": "evidence_packs_list",
         "parameters": [
           {
@@ -63727,7 +64057,9 @@
                 {
                   "enum": [
                     "CLOSE",
-                    "CONTRACT_SAMPLE"
+                    "CONTRACT_SAMPLE",
+                    "CHANGE",
+                    "ACCESS"
                   ],
                   "type": "string"
                 },
@@ -63833,7 +64165,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ListOut_Union_ClosePackSummaryOut__ContractSamplePackSummaryOut__"
+                  "$ref": "#/components/schemas/ListOut_Union_ClosePackSummaryOut__ContractSamplePackSummaryOut__RegisterPackSummaryOut__"
                 }
               }
             },
@@ -63907,7 +64239,7 @@
         "x-erev-permission": "report.run"
       },
       "post": {
-        "description": "Create a first-close or human-requested contract sample; replay its original IDs.",
+        "description": "Create a close or human-requested sample/change/access pack; replay its original IDs.",
         "operationId": "evidence_packs_create",
         "parameters": [
           {
@@ -64058,7 +64390,7 @@
     },
     "/api/v1/evidence-packs/{pack_id}": {
       "get": {
-        "description": "Read a retained CLOSE or CONTRACT_SAMPLE header under current source scope.",
+        "description": "Read a retained pack header under current source scope.",
         "operationId": "evidence_packs_get",
         "parameters": [
           {
@@ -64083,6 +64415,9 @@
                     },
                     {
                       "$ref": "#/components/schemas/ContractSamplePackOut"
+                    },
+                    {
+                      "$ref": "#/components/schemas/RegisterPackOut"
                     }
                   ],
                   "title": "Response Evidence Packs Get"

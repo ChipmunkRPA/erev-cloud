@@ -1,4 +1,4 @@
-"""Queue readiness for retained CLOSE and CONTRACT_SAMPLE sources.
+"""Queue readiness for retained close, sample, change and access sources.
 
 Never selects or creates replacement reports.
 
@@ -41,7 +41,11 @@ def close_ready(session: Session, job_id: UUID, params: Mapping[str, Any]) -> bo
         .mappings()
         .one_or_none()
     )
-    if row is None or row["kind"] not in {"CLOSE", "CONTRACT_SAMPLE"} or row["job_id"] != job_id:
+    if (
+        row is None
+        or row["kind"] not in {"CLOSE", "CONTRACT_SAMPLE", "CHANGE", "ACCESS"}
+        or row["job_id"] != job_id
+    ):
         raise Problem(
             "validation-failed", "The evidence job does not match a supported retained pack."
         )
@@ -71,7 +75,17 @@ def close_ready(session: Session, job_id: UUID, params: Mapping[str, Any]) -> bo
                 "validation-failed", "The sample job has no valid retained sources."
             ) from error
         return True
-    bound = checked_row(dict(row))
+    audit_bound: QueuedSources | None = None
+    if row["kind"] in {"CHANGE", "ACCESS"}:
+        from erev_api.domain.reports import evidence_register_sources, evidence_register_storage
+
+        register_bound = evidence_register_sources.checked_row(dict(row))
+        evidence_register_storage.complete_binding(register_bound)
+        reports = register_bound.reports
+    else:
+        bound = checked_row(dict(row))
+        reports = bound.supporting_reports
+        audit_bound = bound if isinstance(bound, QueuedSources) else None
     sources = (
         session.execute(
             select(
@@ -94,24 +108,24 @@ def close_ready(session: Session, job_id: UUID, params: Mapping[str, Any]) -> bo
             )
             .where(
                 of_session_tenant(report_run),
-                report_run.c.id.in_([report.run_id for report in bound.supporting_reports]),
+                report_run.c.id.in_([report.run_id for report in reports]),
             )
         )
         .mappings()
         .all()
     )
     if {source["id"]: source["job_id"] for source in sources} != {
-        source.run_id: source.job_id for source in bound.supporting_reports
+        source.run_id: source.job_id for source in reports
     }:
         raise Problem("validation-failed", "A retained supporting report job is missing.")
     ready = True
-    if isinstance(bound, QueuedSources):
+    if audit_bound is not None:
         ready = (
             evidence_verification.completed(
                 session,
-                job_id=bound.audit_verification_job_id,
-                lock_id=bound.request.period_lock_id,
-                pack_id=bound.pack_id,
+                job_id=audit_bound.audit_verification_job_id,
+                lock_id=audit_bound.request.period_lock_id,
+                pack_id=audit_bound.pack_id,
             )
             is not None
         )

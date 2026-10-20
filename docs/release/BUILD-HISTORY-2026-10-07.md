@@ -7857,3 +7857,17 @@ cleanup in the shared database session kernel was also repaired and regression-t
   Mypy pass. Populated production-posting accounting acceptance is still outstanding.
 - Report-framework registration, same-source rebuilding and UI remain open; the internal
   comparison path is implemented but the public report is not yet runnable. No deployment.
+
+## Actual-vs-forecast standard report execution — October 19, 2026
+
+- Registered actual_vs_forecast in the standard report framework (56 registered definitions,
+  including disclosure; 55 ordinary builders). Workers reload current scenario/report access.
+  Live builds use the requesting user for authorized source reads and restore worker context.
+- Added retained-fact rebuilding with digest, tenant/run/entity/book/currency/selection and
+  cutoff checks. It recomputes variances from original facts without live-source reads or saved
+  output replay. Revision 0187 updates report IPE to the real retained snapshot/file sources.
+- The real scenario journey creates a standard REPORT_RUN, executes it to SUCCEEDED JSON and
+  rebuilds the same empty-actuals result with live reads forbidden. Migration and 17 focused
+  source-contract/rebuild checks pass; Ruff/Mypy pass.
+- Dedicated UI selection, all file-format verification and populated accounting acceptance
+  remain. FCS-4 is now registered/runnable, but its acceptance is not complete. No deployment.
