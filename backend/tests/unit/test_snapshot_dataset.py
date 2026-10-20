@@ -209,7 +209,9 @@ def test_references_resolve_every_id_column_of_the_copied_tables() -> None:
     # + the array reference ssp_calculator_run.entity_ids → legal_entity (04 rev 1.277 T-REF-32;
     # item SSP-ENTITY-SCOPE-1, lane SECFIX-APR, revision 0123): the entities the provider of a
     # calculator run read, a requirement set (ruling R-98) = 211
-    assert len(refs) == len(INV.references) == 215
+    # Forecast input sets are regenerated; copied uploads must clear that reference.
+    assert len(refs) == len(INV.references) == 216
+    assert refs[("import_upload", "forecast_event_set_id")].target == "forecast_event_set"
     assert refs[("period_lock", "judgement_record_id")].target == "judgement_record"
     assert refs[("approval_request", "entity_ids")].target == "legal_entity"
     assert refs[("approval_request", "entity_ids")].array
@@ -985,7 +987,8 @@ def test_cutoff_rule_drift_guards() -> None:
 def test_excluded_column_scan_is_pinned_and_guarded() -> None:
     assert sd.scan_excluded_columns() == (("tenant_membership", "invitation_token_sha256"),)
     assert dict(sd.EXCLUDED_COLUMNS) == {
-        "tenant_membership": frozenset({"invitation_token_sha256"})
+        "tenant_membership": frozenset({"invitation_token_sha256"}),
+        "import_upload": frozenset({"forecast_mapping_snapshot"}),
     }
     scanned = _copy()
     scanned.tables["erev.customer"].append_column(
@@ -1313,6 +1316,16 @@ def test_export_nulls_secret_columns_and_regenerated_references_and_normalises_i
     assert exported["invitation_token_sha256"] is None  # Q-5
     line = sd.encode_rows(membership, [row]).content
     assert b'"invitation_token_sha256":null' in line and b"abab" not in line
+    upload = {
+        "id": UUID(int=8),
+        "created_at": KNOWN_AT,
+        "forecast_event_set_id": UUID(int=9),
+        "forecast_mapping_snapshot": {"mapping": "source-only"},
+    }
+    copied = sd.export_row(INV.dataset("import_upload"), upload)
+    assert copied["forecast_event_set_id"] is None
+    assert copied["forecast_mapping_snapshot"] is None
+    assert upload["forecast_mapping_snapshot"] == {"mapping": "source-only"}
     contract = {"id": UUID(int=2), "created_at": KNOWN_AT, "latest_computation_id": UUID(int=9)}
     assert sd.export_row(CONTRACT, contract)["latest_computation_id"] is None
     kept = {"id": UUID(int=3), "created_at": KNOWN_AT, "renewal_of_contract_id": UUID(int=4)}

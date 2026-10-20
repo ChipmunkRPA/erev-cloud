@@ -1,5 +1,24 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## Reporting and forecast data catalogue reconciliation — October 20, 2026
+
+- Classified the 43 missing code columns across retained evidence-sample dependencies,
+  forecast actuals captures, scenario refresh records, ordered inputs and import replay
+  mappings. Business payloads remain confidential financial data; identifiers and lifecycle
+  metadata follow the existing registry rules. Existing retention categories are preserved;
+  proposed classifications still require owner acceptance, not implied legal approval.
+- Added the missing scenario-refresh model section and explicit sample dependency columns;
+  documented frozen import mappings. The catalogue now matches all 174 documented tables
+  and every implemented column. Updated the strict documentation reader for the existing
+  four-column table format and reconciled document order.
+- Snapshot checks now explicitly verify that copied imports clear the regenerated forecast
+  input-set reference and source-only mapping without mutating source data. The recorded
+  reference-count/excluded-column drift and privacy registry failures are resolved:
+  76 targeted catalogue and snapshot checks pass. No database migration or deployment.
+- Remaining Reporting work is unchanged: original negative-revenue reversal attribution,
+  per-obligation opening consumption, complex cross-member asset/carried histories and
+  pre-close FX paths. Final release checks and independent accounting acceptance are open.
+
 ## Transaction opening-liability group consumption — October 20, 2026
 
 - Positive transaction RPT-04 now pools control flows by retained computation version,

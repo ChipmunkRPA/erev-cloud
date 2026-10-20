@@ -308,7 +308,7 @@ def extract_declarations(body: str, where: str, own_ref: str | None = None) -> D
             break
         rows.append(line)
     outside_lines = lines[:header_index] + lines[header_index + 2 + len(rows) :]
-    if header == LITERAL_HEADER:
+    if header in (LITERAL_HEADER, ["Column", "Type", "Null", "Constraints and notes"]):
         columns = []
         for row in rows:
             first = _cells(row)[0]
@@ -476,7 +476,7 @@ def test_prv_01_catalogue_matches_04_tables() -> None:
     # + T-CON-27 private contract navigation history (0159) = 162.
     # + computation_evidence promoted from hybrid (0160) = 163.
     # Release processing and attribution promoted from prose (0166/0168); + history (0174).
-    assert formats == {"literal": 170}, formats
+    assert formats == {"literal": 174}, formats
     assert [t.name for t in TABLES] == list(sections), "catalogue follows 04 document order"
 
 

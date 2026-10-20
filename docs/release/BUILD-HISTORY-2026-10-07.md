@@ -9351,3 +9351,22 @@ cleanup in the shared database session kernel was also repaired and regression-t
   report path is unchanged. Split targets, regrouped/keyless historical subjects, combined
   and late-carried public acceptance, populated foreign two-lock acceptance, recorded registry
   gaps and final accounting/release acceptance remain open. No deployment or readiness claim.
+
+## Source-timed EVENT FX reporting — October 20, 2026
+
+- Functional/reporting rollforwards now consume actual command EVENT posting deltas with
+  original event sequence, source key, owner and asset/liability layer. Original and correcting
+  postings net by dated source before walking the balance path. Billing settlement precedes
+  its invoice; relief FX precedes revenue. New reports remove both old synthetic settlement
+  movements, avoiding duplicate timing. Historical bindings retain the original path.
+- New event_posted_fx_v1 bindings retain every command line, recursive paid dependency and
+  evidence hash. Report execution rechecks its requester before authorized computation reads;
+  close snapshots retain the restricted read-only SYSTEM path. Migration 0194 documents these
+  source tables and semantics in the report IPE catalogue.
+- Necessary checks: ERP and ENGINE foreign invoice rollforwards with source bindings and
+  identical reruns; repeated liability close; command reversal and its net-zero report; scoped
+  projection/path/catalogue checks and lint/types. No deployment.
+- Still open: split-target formulas, regrouped/keyless historical subjects, combined-membership
+  and late-carried public acceptance, populated foreign two-lock acceptance, recorded privacy/
+  snapshot registry gaps and final accounting/release acceptance. These ordinary settlement
+  cases do not establish production readiness or all Reporting requirements.

@@ -2521,19 +2521,6 @@ TABLES: Final[tuple[TableClassification, ...]] = (
     ),
     # ---- CON tables (04 T-CON-nn)
     _table(
-        "close_pass_evidence",
-        "T-CLS-10",
-        "Encrypted calculation evidence of a sealed close-pass posting.",
-        Retention.AUDIT_RETENTION_YEARS,
-        {
-            R01: _cols(
-                "tenant_id id subledger_posting_id combination_group_id pass_name "
-                "file_id document_sha256 created_at created_by created_by_kind"
-            ),
-            SPEC_C2_LEDGER: _cols("entry_numbers"),
-        },
-    ),
-    _table(
         "computation_evidence",
         "T-CON-25",
         (
@@ -3074,12 +3061,14 @@ TABLES: Final[tuple[TableClassification, ...]] = (
                 "tenant_id id import_no template_version file_object_id file_sha256 "
                 "mapping_profile_id status row_count valid_row_count warning_count error_count "
                 "diff_file_id approval_request_id committed_at job_id named_entity_ids created_at "
+                "forecast_event_set_id "
                 "created_by created_by_kind updated_at updated_by updated_by_kind row_version"
             ),
             # 04 rev 1.147 (revision 0102): permission codes, as T-PLT-15 / T-PLT-16 ``scopes``
             R03: _cols("uploader_scopes"),
             SPEC_C2_PAYLOAD: _cols(
-                "template_code parameters is_quarantine_mode control_totals diff_summary"
+                "template_code parameters is_quarantine_mode control_totals diff_summary "
+                "forecast_mapping_snapshot"
             ),
         },
     ),
@@ -3273,7 +3262,7 @@ TABLES: Final[tuple[TableClassification, ...]] = (
                 "status content_sha256 approval_request_id published_at published_by "
                 "supersedes_version_id"
             ),
-            R02: _cols("code name api_commands effective_from effective_to"),
+            R02: _cols("code name api_commands input_sequence effective_from effective_to"),
         },
     ),
     _table(
@@ -3291,6 +3280,36 @@ TABLES: Final[tuple[TableClassification, ...]] = (
                 "updated_by_kind row_version"
             ),
             R02: _cols("parameters problem"),
+        },
+    ),
+    _table(
+        "scenario_refresh",
+        "T-FC-05",
+        "Refresh lifecycle with pinned source/target inputs and retained failure evidence.",
+        Retention.TENANT_LIFETIME,
+        {
+            R01: _cols(
+                "tenant_id id scenario_id source_tenant_id source_input_set_id "
+                "source_content_sha256 "
+                "target_tenant_id tenant_snapshot_id job_id status target_input_set_id "
+                "target_content_sha256 started_at finished_at created_at "
+                "created_by created_by_kind "
+                "updated_at updated_by updated_by_kind row_version"
+            ),
+            R02: _cols("problem"),
+        },
+    ),
+    _table(
+        "forecast_actuals_capture",
+        "T-FC-06",
+        "Immutable production actuals for forecast comparison at a retained snapshot cutoff.",
+        Retention.TENANT_LIFETIME,
+        {
+            R01: _cols(
+                "tenant_id id tenant_snapshot_id known_at dataset_file_id "
+                "dataset_sha256 entity_ids "
+                "created_at created_by created_by_kind"
+            )
         },
     ),
     _table(
@@ -3472,6 +3491,31 @@ TABLES: Final[tuple[TableClassification, ...]] = (
                 "billed_cum revenue_cum remaining_allocation position_obligation "
                 "netting_reclass_amount trace_nodes row"
             ),
+        },
+    ),
+    _table(
+        "evidence_sample_file",
+        "T-RPT-05",
+        "Retained evidence-pack file dependencies and the entity scope required to read them.",
+        Retention.AUDIT_RETENTION_YEARS,
+        {
+            R01: _cols(
+                "tenant_id id evidence_pack_id file_id entity_ids created_at "
+                "created_by created_by_kind"
+            )
+        },
+    ),
+    _table(
+        "close_pass_evidence",
+        "T-CLS-10",
+        "Encrypted calculation evidence of a sealed close-pass posting.",
+        Retention.AUDIT_RETENTION_YEARS,
+        {
+            R01: _cols(
+                "tenant_id id subledger_posting_id combination_group_id pass_name "
+                "file_id document_sha256 created_at created_by created_by_kind"
+            ),
+            SPEC_C2_LEDGER: _cols("entry_numbers"),
         },
     ),
 )

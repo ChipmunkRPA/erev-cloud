@@ -6,6 +6,25 @@
 
 
 
+## Reporting and forecast data catalogue reconciliation — October 20, 2026
+
+- Classified the 43 missing code columns across retained evidence-sample dependencies,
+  forecast actuals captures, scenario refresh records, ordered inputs and import replay
+  mappings. Business payloads remain confidential financial data; identifiers and lifecycle
+  metadata follow the existing registry rules. Existing retention categories are preserved;
+  proposed classifications still require owner acceptance, not implied legal approval.
+- Added the missing scenario-refresh model section and explicit sample dependency columns;
+  documented frozen import mappings. The catalogue now matches all 174 documented tables
+  and every implemented column. Updated the strict documentation reader for the existing
+  four-column table format and reconciled document order.
+- Snapshot checks now explicitly verify that copied imports clear the regenerated forecast
+  input-set reference and source-only mapping without mutating source data. The recorded
+  reference-count/excluded-column drift and privacy registry failures are resolved:
+  76 targeted catalogue and snapshot checks pass. No database migration or deployment.
+- Remaining Reporting work is unchanged: original negative-revenue reversal attribution,
+  per-obligation opening consumption, complex cross-member asset/carried histories and
+  pre-close FX paths. Final release checks and independent accounting acceptance are open.
+
 ## Transaction opening-liability group consumption — October 20, 2026
 
 - Positive transaction RPT-04 now pools control flows by retained computation version,
@@ -208,25 +227,6 @@
   acceptance, recorded privacy/snapshot registry gaps and final accounting/release acceptance.
   Group settlement/exit cases do not establish every membership transition or production
   readiness. No deployment.
-
-## Source-timed EVENT FX reporting — October 20, 2026
-
-- Functional/reporting rollforwards now consume actual command EVENT posting deltas with
-  original event sequence, source key, owner and asset/liability layer. Original and correcting
-  postings net by dated source before walking the balance path. Billing settlement precedes
-  its invoice; relief FX precedes revenue. New reports remove both old synthetic settlement
-  movements, avoiding duplicate timing. Historical bindings retain the original path.
-- New event_posted_fx_v1 bindings retain every command line, recursive paid dependency and
-  evidence hash. Report execution rechecks its requester before authorized computation reads;
-  close snapshots retain the restricted read-only SYSTEM path. Migration 0194 documents these
-  source tables and semantics in the report IPE catalogue.
-- Necessary checks: ERP and ENGINE foreign invoice rollforwards with source bindings and
-  identical reruns; repeated liability close; command reversal and its net-zero report; scoped
-  projection/path/catalogue checks and lint/types. No deployment.
-- Still open: split-target formulas, regrouped/keyless historical subjects, combined-membership
-  and late-carried public acceptance, populated foreign two-lock acceptance, recorded privacy/
-  snapshot registry gaps and final accounting/release acceptance. These ordinary settlement
-  cases do not establish production readiness or all Reporting requirements.
 
 ## Outstanding release verification
 

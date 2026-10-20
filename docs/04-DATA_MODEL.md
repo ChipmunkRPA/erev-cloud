@@ -5770,6 +5770,7 @@ Onboarding through template `contracts` (rev 1.3; BUILD_SPEC BS3-D-25; REQ-MIG-0
 | `parameters` | jsonb | N | `'{}'` | The template's `required_parameters` and optional batch parameters; for template `contracts`, the onboarding and acquisition parameters of T-IMP-01 (rev 1.3; BUILD_SPEC BS3-D-25). |
 | `mapping_profile_id` | uuid | Y | | FK → `import_mapping_profile` (PUBLISHED). |
 | `forecast_event_set_id` | uuid | Y | | Revision 0181: tenant-scoped FK → `forecast_event_set`; set at upload and immutable. Scenario fact imports only; successful commit appends the upload ID to the draft set. |
+| `forecast_mapping_snapshot` | jsonb | Y | | Revision 0183: frozen import mapping used when replaying a forecast input; excluded from general tenant snapshot copies. |
 | `status` | erev.import_status | N | `'UPLOADED'` | |
 | `row_count` | integer | Y | | |
 | `valid_row_count` | integer | Y | | |
@@ -6067,6 +6068,31 @@ Keys: `PRIMARY KEY (tenant_id, id)`; `ux_forecast_event_set__version (tenant_id,
 | SC-C, SC-M | | | | |
 
 Keys: `PRIMARY KEY (tenant_id, id)`.
+
+### T-FC-05 `scenario_refresh`
+
+- **Purpose.** Tracks each production-side scenario refresh with pinned source inputs, a new target tenant and retained success/failure evidence (revision 0184).
+- **Class.** IM-S; RLS-T; SC-C, SC-M. Source identities and hashes are immutable. The worker updates status, target publication, timestamps and failure details. Snapshot copies regenerate this operational record.
+
+| Column | Type | Null | Default | Constraints and notes |
+|---|---|---|---|---|
+| SC-T | | | | |
+| `scenario_id` | uuid | N | | Production scenario |
+| `source_tenant_id` | uuid | N | | Original scenario tenant |
+| `source_input_set_id` | uuid | N | | Published source inputs in source tenant |
+| `source_content_sha256` | char(64) | N | | Pinned source digest |
+| `target_tenant_id` | uuid | N | | Fresh target; differs from source |
+| `tenant_snapshot_id` | uuid | N | | Production snapshot |
+| `job_id` | uuid | N | | Refresh job |
+| `status` | erev.run_status | N | `'QUEUED'` | Guarded worker transitions |
+| `target_input_set_id` | uuid | Y | | Published inputs in target tenant |
+| `target_content_sha256` | char(64) | Y | | Target publication digest |
+| `started_at` | timestamptz | Y | | |
+| `finished_at` | timestamptz | Y | | |
+| `problem` | jsonb | Y | | Structured worker failure |
+| SC-C, SC-M | | | | |
+
+Keys: `PRIMARY KEY (tenant_id, id)`. One active refresh per scenario, one record per target tenant and job. Original and failed targets remain attributable; a successful refresh changes the scenario pointer only after publication.
 
 ### T-FC-06 `forecast_actuals_capture`
 
@@ -8697,6 +8723,14 @@ A cursor from a superseded refresh is refused so the client reloads the list. Th
 neither opens archived report downloads nor grants access to unrelated scenarios.
 
 ### T-RPT-05 `evidence_sample_file`
+
+| Column | Type | Null | Default | Constraints and notes |
+|---|---|---|---|---|
+| SC-T | | | | |
+| `evidence_pack_id` | uuid | N | | Retained pack dependency |
+| `file_id` | uuid | N | | Referenced encrypted source file |
+| `entity_ids` | uuid[] | Y | | Required source scope; NULL means all entities |
+| SC-C | | | | |
 
 Revision 0188. Tenant-scoped append-only (IM-A, RLS-T) retained dependency links for a
 contract sample or access-review capture (the original table name is retained). Standard tenant/id and SC-C columns; `evidence_pack_id` and `file_id`
