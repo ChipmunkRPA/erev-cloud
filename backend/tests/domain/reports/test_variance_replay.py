@@ -894,12 +894,27 @@ def test_group_replay_reconciles_two_contracts_to_frozen_datasets() -> None:
             )
         ),
     )
-    with pytest.raises(Problem, match="business events require a separate phase"):
-        variance_groups.execute(
-            replace(membership_pair, later=side(mixed, 2, prepared=((merged_id, mixed),)))
+    mixed_pair = replace(membership_pair, later=side(mixed, 2, prepared=((merged_id, mixed),)))
+    mixed_result = variance_groups.execute(mixed_pair)
+    joined_metrics = Projection(joined, "Mock Entity 2", "ASC606", "FY2023-P05")(compute(joined))
+    mixed_metrics = Projection(mixed, "Mock Entity 2", "ASC606", "FY2023-P05")(compute(mixed))
+    for key, change in mixed_result.measures.items():
+        assert change.sums_exactly
+        assert (
+            sum(effect.amount for effect in change.effects if effect.driver == "MODIFICATION")
+            == membership.measures[key].total
         )
-
-    sides = identities(membership_pair)
+        assert sum(
+            effect.amount for effect in change.effects if effect.driver == "LATE_EVENT"
+        ) == mixed_metrics.get(key, Fraction(0)) - joined_metrics.get(key, Fraction(0))
+    assert any(
+        effect.amount
+        for change in mixed_result.measures.values()
+        for effect in change.effects
+        if effect.driver == "LATE_EVENT"
+    )
+    shown = variance_presentation.dataset(mixed_pair, mixed_result)
+    sides = identities(mixed_pair)
     rebound = replace(
         binding,
         row_keys=frozenset(row["row_key"] for row in shown.data.rows),
@@ -934,7 +949,9 @@ def test_group_replay_reconciles_two_contracts_to_frozen_datasets() -> None:
             value["amount"]
         )
         assert any(
-            "group.membership" in detail for item in contributors for detail in item["details"]
+            "group.membership" in detail or delivery.event_key in detail
+            for item in contributors
+            for detail in item["details"]
         )
 
 

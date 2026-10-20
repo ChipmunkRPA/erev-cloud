@@ -8813,3 +8813,20 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Full functional movement attribution, reporting-currency translation, additional captions
   without engine functional targets, population replay and RPO partial exclusions remain open.
   This is a functional balance checkpoint, not completion of all reporting currencies. No deployment.
+
+## Partial RPO targeted-VC exemptions — October 20, 2026
+
+- POL-200 now excludes the dated targeted-VC quota only for wholly unsatisfied obligations
+  with zero recognized revenue. Inception allocation nodes and later allocated deltas supply
+  amounts; immutable estimate identities/version evidence distinguishes targeted from ordinary
+  price changes. Fixed and untargeted consideration remain in disclosed RPO.
+- Net bands and cell contributors are apportioned at currency precision. Reports list the
+  excluded portion; dashboard uses the net amount. Frozen RPO retains net and excluded amounts
+  on one obligation identity. Rollforward has an EXEMPTIONS movement for exclusion/release;
+  close-variance replay shares the quota reader instead of refusing these elections.
+- Three focused checks cover real-engine positive/negative/untargeted changes, historical caps,
+  partial report rows and release on performance; 27 affected replay checks pass. Existing
+  approved-policy and rollforward API journeys pass, with the new movement included. Lint/types pass.
+- Full populated partial-exemption API/lock/export acceptance remains to be completed. This does
+  not complete multi-currency movement translation, population replay or all release acceptance.
+  No deployment; direct main publication.

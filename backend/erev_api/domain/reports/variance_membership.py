@@ -1,8 +1,7 @@
-"""Isolate changes in group partition when retained business inputs are unchanged.
+"""Replay group membership first, then newly recorded business events.
 
-Both frozen sides are reproduced. Old groups are checked at the later cutoff and
-new groups are replayed on the earlier posted basis. A mixed business/reference
-change is refused until its own counterfactual phase is available.
+Both frozen sides are reproduced on the earlier posted basis. Reference, policy
+and contract-record changes still require a separate counterfactual phase.
 """
 
 from __future__ import annotations
@@ -10,9 +9,12 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import fields, replace
 from fractions import Fraction
+from itertools import groupby
+from operator import attrgetter
 from types import MappingProxyType
 from uuid import NAMESPACE_URL, UUID, uuid5
 
+from erev_engine.bundle import EventInput, InputBundle
 from erev_engine.canonical import canonical_bytes
 from erev_engine.stages.s01_canonicalize.convert import contract_key_from_subject
 from erev_engine.stages.s15_disclosures.variance import Evaluation, decompose
@@ -22,7 +24,7 @@ from erev_api.problems import Problem
 from .computation_sources import VerifiedComputation
 from .variance_execution import RetainedReplay, SourceExecution, verify_source
 from .variance_projection import Projection
-from .variance_replay import Engine, Execution, Metrics, Replay
+from .variance_replay import Engine, Execution, Metrics, Replay, driver
 
 
 def _refuse(detail: str) -> Problem:
@@ -178,22 +180,21 @@ def execute(
     if any(new_events.get(key) != value for key, value in old_events.items()):
         raise _refuse("an earlier immutable event changed or disappeared.")
     added = tuple(sorted(new_events.keys() - old_events.keys()))
-    if any(new_events[key].event_type != "COMBINATION_CHANGED" for key in added):
-        raise _refuse("business events require a separate phase before membership attribution.")
     if any(
         new_events[key].recorded_at <= old[old_owner[new_events[key].contract_key]].bundle.known_at
         for key in added
     ):
         raise _refuse(
-            "a newly supplied membership event was already known at the earlier source cutoff."
+            "a newly supplied replay event was already known at the earlier source cutoff."
         )
     cutoff = max(source.bundle.known_at for source in new.values())
     if cutoff < max(source.bundle.known_at for source in old.values()):
         raise _refuse("the source cutoffs are reversed.")
     old_verified: dict[UUID, SourceExecution] = {}
     new_verified: dict[UUID, SourceExecution] = {}
-    normalized: dict[UUID, tuple[str, str]] = {}
+    normalized: dict[UUID, str] = {}
     baselines: dict[UUID, Execution] = {}
+    phases: dict[UUID, list[tuple[Execution, Metrics]]] = {}
     for side, metrics, verified in ((old, earlier, old_verified), (new, later, new_verified)):
         for key, source in side.items():
             expected = {
@@ -250,7 +251,98 @@ def execute(
             ):
                 raise _refuse("time/posting normalization does not reproduce the frozen endpoint.")
             if side is new:
-                normalized[key] = (bundle.sha256(), output.sha256())
+                normalized[key] = bundle.sha256()
+                period_end = next(
+                    period.end_date
+                    for entity in bundle.entities
+                    if entity.code == entity_code
+                    for period in entity.periods
+                    if period.period_key == period_key
+                )
+                membership_events = tuple(
+                    event_key
+                    for event_key in added
+                    if new_events[event_key].contract_key in members
+                    and new_events[event_key].event_type == "COMBINATION_CHANGED"
+                )
+                business = sorted(
+                    (
+                        new_events[event_key]
+                        for event_key in added
+                        if new_events[event_key].contract_key in members
+                        and new_events[event_key].event_type != "COMBINATION_CHANGED"
+                    ),
+                    key=lambda event: (event.effective_date, event.record_seq, event.event_key),
+                )
+                # Validate every driver before running the counterfactual sequence.
+                event_runs = [
+                    (name, tuple(events))
+                    for name, events in groupby(
+                        business, key=lambda event: driver(event, period_end)
+                    )
+                ]
+                accumulated = [
+                    event
+                    for event in bundle.events
+                    if event.event_key not in added or event.event_key in membership_events
+                ]
+                states: list[tuple[Execution, Metrics]] = []
+
+                def evaluate(
+                    name: str,
+                    event_keys: tuple[str, ...],
+                    phase_bundle: InputBundle,
+                    phase_events: list[EventInput],
+                    changed: tuple[str, ...] = (),
+                ) -> tuple[Execution, Metrics]:
+                    candidate = replace(
+                        phase_bundle,
+                        events=tuple(
+                            sorted(
+                                phase_events,
+                                key=attrgetter("effective_date", "record_seq", "event_key"),
+                            )
+                        ),
+                    )
+                    result = engine(candidate)
+                    if (
+                        result.input_sha256 != candidate.sha256()
+                        or result.engine_version != candidate.engine_version
+                    ):
+                        raise _refuse(
+                            "a membership/event phase does not identify its executed input."
+                        )
+                    state = Projection(candidate, entity_code, book_code, period_key)(result)
+                    return (
+                        Execution(name, event_keys, candidate.sha256(), result.sha256(), changed),
+                        state,
+                    )
+
+                states.append(
+                    evaluate(
+                        "MODIFICATION",
+                        membership_events,
+                        bundle,
+                        accumulated,
+                        ("group.membership",),
+                    )
+                )
+                for name, events in event_runs:
+                    accumulated.extend(events)
+                    states.append(
+                        evaluate(
+                            name, tuple(event.event_key for event in events), bundle, accumulated
+                        )
+                    )
+                final = states[-1][1]
+                if any(
+                    final.get(k, Fraction(0)) != expected.get(k, Fraction(0))
+                    for k in final.keys() | expected.keys()
+                ):
+                    raise _refuse(
+                        "membership and business phases do not reproduce the frozen endpoint."
+                    )
+                phases[key] = states
             else:
                 baselines[key] = Execution(
                     "BASELINE", (), bundle.sha256(), output.sha256(), ("known_at",)
@@ -261,21 +353,24 @@ def execute(
         identity = uuid5(NAMESPACE_URL, f"erev:membership:{old_key}:{new_key}")
         aliases[name] = identity
         names = {n for n in old_owner if old_owner[n] == old_key and new_owner[n] == new_key}
-        measures = {
-            k: decompose(
-                earlier.get(k, Fraction(0)), [Evaluation("MODIFICATION", later.get(k, Fraction(0)))]
-            )
-            for k in earlier.keys() | later.keys()
-            if k.contract_external_id in names
-        }
-        measures = {
-            key: replace(
-                change,
-                effects=tuple(replace(effect, event_keys=added) for effect in change.effects),
-            )
-            for key, change in measures.items()
-        }
-        input_hash, output_hash = normalized[new_key]
+        states = phases[new_key]
+        metric_keys = set(earlier) | set(later)
+        for _, state in states:
+            metric_keys.update(state)
+        measures = {}
+        for metric in sorted(metric_keys):
+            if metric.contract_external_id not in names:
+                continue
+            evaluations = [
+                Evaluation(step.driver, state.get(metric, Fraction(0)), event_key)
+                for step, state in states
+                for event_key in (step.event_keys or (None,))
+            ]
+            change = decompose(earlier.get(metric, Fraction(0)), evaluations)
+            if not change.sums_exactly or change.metric_after != later.get(metric, Fraction(0)):
+                raise _refuse("membership/event effects do not reconcile to the frozen change.")
+            measures[metric] = change
+        input_hash = normalized[new_key]
         runs[identity] = RetainedReplay(
             old_verified[old_key],
             new_verified[new_key],
@@ -283,12 +378,7 @@ def execute(
             input_hash,
             Replay(
                 new[new_key].bundle.engine_version,
-                (
-                    baselines[old_key],
-                    Execution(
-                        "MODIFICATION", added, input_hash, output_hash, ("group.membership",)
-                    ),
-                ),
+                (baselines[old_key], *(step for step, _ in states)),
                 MappingProxyType(measures),
             ),
         )

@@ -1,5 +1,16 @@
 # eRev Cloud 1.0: stated limits of the release
 
+Current mixed-membership update (October 20): group reorganization can now be followed by
+new business-event phases in the same comparison. Membership runs first, then ordered driver
+runs with late-event precedence. Exact phase amounts, source event keys and execution hashes
+are retained, and the final state must reproduce frozen endpoints. A real-engine merge plus
+late-delivery witness independently checks both effects and report/cell provenance. This
+supersedes the business-event refusal immediately below; simultaneous contract/estimate record,
+policy/reference or FX changes remain unsupported. Missing member sources, group-level posted
+redistribution, combined-contract FX ownership, late-carried FX and full lock-flow acceptance
+remain open. No deployment or independent accounting sign-off claimed.
+
+
 Current membership-attribution update (October 20): isolated merges/splits of existing retained
 contracts now produce verified group.membership contributions under MODIFICATION. Original
 computations and frozen endpoints are reproduced, old groups are checked at the later cutoff,

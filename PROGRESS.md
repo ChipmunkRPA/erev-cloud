@@ -6,6 +6,21 @@
 
 
 
+## Membership plus business-event variance replay — October 20, 2026
+
+- Group merges/splits can now coexist with newly recorded business events. The replay first
+  evaluates the new partition without those business events, then adds consecutive event-driver
+  runs in effective-date/sequence order. Late-event precedence remains explicit. Each phase
+  retains its input/output hashes and source event keys; final metrics must match frozen values.
+- The targeted real-engine witness now combines a nonzero merge redistribution with a late
+  delivery. Membership effects equal the isolated merge; delivery effects equal an independent
+  before/after engine projection. Report/cell amounts and retained source identities reconcile.
+  Existing reverse split, population and export checks in the same journey pass; lint/types pass.
+- This supersedes the simultaneous-business-event refusal below. Mixed contract/estimate record,
+  policy/reference or FX changes, missing member sources, group-level posted redistribution,
+  combined-contract FX ownership and late-carried FX remain open. This is authored frozen-data
+  validation, not full lock-flow acceptance. No deployment or accounting sign-off claimed.
+
 ## Isolated group-membership variance replay — October 20, 2026
 
 - Close variance now detects connected group reorganizations and can attribute pure merge/split
@@ -213,23 +228,6 @@
   member additions/removals within a retained group still requires membership replay.
 - The 27 focused replay checks pass, including real-engine group entry/exit, exact endpoints,
   presentation and cell source selection. Python lint/types pass. No deployment.
-
-## Partial RPO targeted-VC exemptions — October 20, 2026
-
-- POL-200 now excludes the dated targeted-VC quota only for wholly unsatisfied obligations
-  with zero recognized revenue. Inception allocation nodes and later allocated deltas supply
-  amounts; immutable estimate identities/version evidence distinguishes targeted from ordinary
-  price changes. Fixed and untargeted consideration remain in disclosed RPO.
-- Net bands and cell contributors are apportioned at currency precision. Reports list the
-  excluded portion; dashboard uses the net amount. Frozen RPO retains net and excluded amounts
-  on one obligation identity. Rollforward has an EXEMPTIONS movement for exclusion/release;
-  close-variance replay shares the quota reader instead of refusing these elections.
-- Three focused checks cover real-engine positive/negative/untargeted changes, historical caps,
-  partial report rows and release on performance; 27 affected replay checks pass. Existing
-  approved-policy and rollforward API journeys pass, with the new movement included. Lint/types pass.
-- Full populated partial-exemption API/lock/export acceptance remains to be completed. This does
-  not complete multi-currency movement translation, population replay or all release acceptance.
-  No deployment; direct main publication.
 
 ## Outstanding release verification
 
