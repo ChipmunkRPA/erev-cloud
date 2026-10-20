@@ -7827,3 +7827,17 @@ cleanup in the shared database session kernel was also repaired and regression-t
   retained empty actuals and denies access after permission removal. Ruff/Mypy pass.
 - Remaining FCS-4 work: contract/category dimension mapping, comparison report builder and
   registration, screen connection and populated accounting acceptance. No deployment.
+
+
+## Saved forecast dimension mapping — October 19, 2026
+
+- Forecast revenue exports now retain the original revenue category. The archived reader
+  validates the saved scope-evidence hash and resolves entity IDs from the retained entity
+  configuration, not current names or inferred ordering.
+- Added the forecast-side comparison mapper: expands obligation rows over the saved horizon,
+  preserves period money signs/currencies, excludes totals and refuses duplicate/incomplete
+  rows. Legacy data without category still supports contract mapping but refuses category use.
+  Nullable categories remain separate from a literal category named Unassigned.
+- Ten focused mapper/comparison checks and the real archived-forecast refresh journey pass;
+  Ruff/Mypy pass. Actual-side dimension mapping, report builder/registration and UI still
+  remain. FCS-4 is not yet runnable; no deployment.

@@ -6,6 +6,19 @@
 
 
 
+## As-of access-review evidence collection — October 19, 2026
+
+- Added campaign/item evidence with original membership snapshots, counts and transition
+  references. Historical output distinguishes pending decisions, requested revocation, confirmed
+  revocation and later cancellation; future comments/reviewer identities do not leak backwards.
+- Verifies source permission, snapshot hash/canonical bytes and complete member population.
+  Uses tenant-wide access.approve, matching the source API, plus evidence permissions.
+- Actual API create/start/decision/revoke/confirm/cancel collection passes. Seven focused
+  timestamp/state checks, Mypy and Ruff pass. The audit slice is not full-chain verification.
+- Collector returns personal payloads for encrypted storage; no personal source data is placed
+  in source-binding JSON. Encrypted retention/dependency links and public CHANGE/ACCESS
+  lifecycle/UI remain next. No deployment or production-readiness claim.
+
 ## Release provenance and access-role evidence — October 19, 2026
 
 - CHANGE source v2 now captures requesting-process release registry facts and all registrations
@@ -232,19 +245,6 @@
   Mypy pass. Populated production-posting accounting acceptance is still outstanding.
 - Report-framework registration, same-source rebuilding and UI remain open; the internal
   comparison path is implemented but the public report is not yet runnable. No deployment.
-
-## Saved forecast dimension mapping — October 19, 2026
-
-- Forecast revenue exports now retain the original revenue category. The archived reader
-  validates the saved scope-evidence hash and resolves entity IDs from the retained entity
-  configuration, not current names or inferred ordering.
-- Added the forecast-side comparison mapper: expands obligation rows over the saved horizon,
-  preserves period money signs/currencies, excludes totals and refuses duplicate/incomplete
-  rows. Legacy data without category still supports contract mapping but refuses category use.
-  Nullable categories remain separate from a literal category named Unassigned.
-- Ten focused mapper/comparison checks and the real archived-forecast refresh journey pass;
-  Ruff/Mypy pass. Actual-side dimension mapping, report builder/registration and UI still
-  remain. FCS-4 is not yet runnable; no deployment.
 ## Outstanding release verification
 
 These checks need current release-candidate evidence. Historical October 3 results

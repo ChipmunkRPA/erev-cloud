@@ -391,3 +391,99 @@ def test_the_snapshot_states_the_entities_of_a_role_for_named_entities(
         True,
         [],
     )
+
+
+def test_access_pack_collection_keeps_historical_decisions_and_source_permission(
+    app: FastAPI,
+    clock: FrozenClock,
+    world: World,
+    keyring: KeyRing,
+    app_settings: Settings,
+) -> None:
+    from dataclasses import replace
+    from datetime import timedelta
+
+    from erev_api.auth.principal import RequestContext, system_principal
+    from erev_api.domain.reports import evidence_access_reviews as evidence
+    from erev_api.domain.reports.evidence_archive import build, verify
+    from erev_api.enums import TenantKind
+    from erev_api.files.store import LocalFileStore
+    from erev_api.problems import Problem
+    from erev_api.uow import unit_of_work
+
+    campaign, items = started_campaign(app, clock, world, [world.grace])
+    pending_at = clock.now()
+    clock.set(clock.now() + timedelta(seconds=1))
+    target = items[str(world.lena.member.membership_id)]
+    path = f"{REVIEWS}/{campaign}/items/{target['id']}"
+    response = post(
+        app,
+        f"{path}/decide",
+        world.grace,
+        {
+            "decision": "REVOKE_REQUESTED",
+            "comment": COMMENT,
+        },
+    )
+    assert response.status_code == 200, response.text
+    requested_at = clock.now()
+    clock.set(clock.now() + timedelta(seconds=1))
+    with tenant_session(_context(world.tenant_id), read_only=True) as session:
+        assignment = session.scalar(
+            select(role_assignment.c.id).where(
+                role_assignment.c.membership_id == world.lena.member.membership_id
+            )
+        )
+    response = post(app, f"{ASSIGNMENTS}/{assignment}/revoke", world.tomas, {"reason": REASON})
+    assert response.status_code == 200, response.text
+    response = post(app, f"{path}/confirm-revocation", world.grace)
+    assert response.status_code == 200, response.text
+    revoked_at = clock.now()
+    clock.set(clock.now() + timedelta(seconds=1))
+    cancelled = post(app, f"{REVIEWS}/{campaign}/cancel", world.tomas)
+    assert cancelled.status_code == 200, cancelled.text
+
+    grants = evidence.evidence_access_roles.PERMISSIONS | {"access.approve"}
+    principal = replace(
+        system_principal(world.tenant_id),
+        permissions=grants,
+        permission_scopes={code: "*" for code in grants},
+    )
+    context = RequestContext(
+        principal=principal,
+        tenant_kind=TenantKind.PRODUCTION,
+        request_id="access-evidence-acceptance",
+        source_ip=None,
+        user_agent=None,
+        idempotency_key=None,
+        if_match=None,
+        now=clock.now(),
+        format_locale="en-US",
+    )
+    store = LocalFileStore(app_settings.file_root)
+    for instant, decision, status in (
+        (pending_at, "PENDING", "IN_REVIEW"),
+        (requested_at, "REVOKE_REQUESTED", "IN_REVIEW"),
+        (revoked_at, "REVOKED", "IN_REVIEW"),
+        (clock.now(), "REVOKED", "CANCELLED"),
+    ):
+        with unit_of_work(context, clock=clock, keyring=keyring, files=store) as uow:
+            captured = evidence.collect(uow, as_of=instant)
+            assert captured.campaign_ids == (UUID(campaign),)
+            assert len(captured.source_file_ids) == 1
+            assert len(captured.files) == 3
+            archive = build(captured.files)
+            verify(archive.content, expected_manifest_sha256=archive.manifest_sha256)
+            document = json.loads(
+                next(file.content for file in captured.files if file.path.endswith("/review.json"))
+            )
+            item = next(row for row in document["items"] if row["id"] == target["id"])
+            assert item["decision"] == decision
+            assert document["campaign"]["status"] == status
+            assert (item["revocation_completed_at"] is not None) == (decision == "REVOKED")
+            assert (item["comment"] is None) == (decision == "PENDING")
+    denied = replace(context, principal=replace(principal, permissions=grants - {"access.approve"}))
+    with unit_of_work(denied, clock=clock, keyring=keyring, files=store) as uow:
+        with pytest.raises(Problem) as error:
+            evidence.collect(uow, as_of=clock.now())
+        assert error.value.slug == "forbidden"

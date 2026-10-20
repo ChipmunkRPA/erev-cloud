@@ -8773,3 +8773,20 @@ unrestricted tenant entity scope, because definitions are tenant-wide. Enumerati
 entity IDs is not an all-entities grant. v1 register-only bindings remain readable; none of these
 bindings alone enables parent completion or public CHANGE/ACCESS endpoints. Access-review
 evidence and the public lifecycle/UI remain to be implemented.
+
+### Access-review evidence collector — October 19, 2026
+
+ACCESS review collection requires tenant-wide access.approve, preserving API-R-51 and the
+original snapshot file's source permission, plus the tenant-wide evidence grants. It reads
+campaigns created by the effective instant, validates the recorded campaign transition sequence,
+and reconstructs decision/revocation state from their distinct timestamps. Later decisions,
+comments, reviewer IDs and completed revocations are absent from earlier evidence. The original
+membership snapshot is captured at started_at, not the campaign's nominal as_of; output labels
+that basis and verifies its file metadata/hash, canonical bytes, campaign identity and complete
+membership population. The campaign audit slice does not assert full-chain verification.
+
+The collector returns access/reviews/index.json, one review.json per campaign, and original
+membership_snapshot.json for campaigns already started. Source file IDs accompany the output
+for dependency retention. These payloads contain member data and must be stored encrypted;
+they are not embedded in the immutable source-binding JSON. Encryption/dependency integration,
+parent completion and public ACCESS endpoints are still pending.
