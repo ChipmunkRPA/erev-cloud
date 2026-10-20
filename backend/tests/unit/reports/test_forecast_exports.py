@@ -148,3 +148,28 @@ def test_saved_forecast_dataset_pages_through_report_data_endpoint(monkeypatch) 
         reports.report_runs_data(
             run_id, Response(), None, deps, replace(params, cursor=index.next_cursor), "billing"
         )
+
+
+def test_catalogue_decodes_all_saved_sections_without_recapturing() -> None:
+    from erev_api.domain.reports.forecast_catalogue_sources import sections
+
+    captured, identity, stamp = fixture()
+    document = json.loads(render(captured, identity, stamp, format="JSON").dataset)
+    decoded = sections(document)
+    assert decoded == captured.sections
+
+
+@pytest.mark.parametrize("corruption", ["missing_section", "changed_billing", "changed_index"])
+def test_catalogue_refuses_incomplete_or_changed_saved_sections(corruption) -> None:
+    from erev_api.domain.reports.forecast_catalogue_sources import sections
+
+    captured, identity, stamp = fixture()
+    document = json.loads(render(captured, identity, stamp, format="JSON").dataset)
+    if corruption == "missing_section":
+        document["sections"].pop()
+    elif corruption == "changed_billing":
+        document["sections"][1]["tables"][0]["dataset"]["rows"][0]["amount"]["amount"] = "0.00"
+    else:
+        document["rows"][0]["rows"] += 1
+    with pytest.raises(Problem, match="verification"):
+        sections(document)

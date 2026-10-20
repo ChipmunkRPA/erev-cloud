@@ -7926,3 +7926,27 @@ cleanup in the shared database session kernel was also repaired and regression-t
   schedule evidence into a hash-verified archive. Ruff/Mypy pass.
 - This is a linked audit slice, not complete-chain verification. Journal/documents, source retention,
   public jobs/read/download, PDF/XLSX and broader historical/multi-entity acceptance remain open.
+
+## Contract sample retained documents — October 19, 2026
+
+- Added attachment collection for sampled contracts/events, related modification/estimate/
+  adjustment evidence and referenced approvals/attachable subjects, including SSP studies.
+  Applies the original attachment cutoff plus current subject/file grants; missing, unreadable
+  or inconsistent bytes fail explicitly. External document URLs are never fetched.
+- Deduplicates payloads, uses ID-based archive paths, retains filename/media/hash metadata,
+  checks decrypted size/SHA-256 and takes file locks against concurrent shredding. File-count
+  and payload limits apply before collection. The real K01 archive journey verifies encrypted
+  attachment collection, duplicate references and safe paths; Ruff/Mypy pass. Public lifecycle/
+  rendering and journals remain.
+
+## Contract sample journal evidence — October 19, 2026
+
+- Added journal collection through the existing retained grouping/drill-back reader, including
+  aggregated lines whose contract ID is absent. Separates whole-line amounts from sampled
+  contributions and checks source counts, cutoff/currency/entity consistency and net amounts.
+- Resolves posting entities beyond contracting scope and authorizes every source companion.
+  Retains as-of run/batch state, labelled cancellations and journal approval references.
+- The K01 journey now commits real journal calculation, traces populated draft lines and
+  reconciles source amounts in the combined evidence archive. Ruff/Mypy pass. Multi-contract,
+  cross-entity and historical journal lifecycle acceptance remain; public retention/jobs and
+  PDF/XLSX rendering are still unfinished. No deployment.

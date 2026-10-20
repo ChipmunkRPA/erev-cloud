@@ -6,6 +6,21 @@
 
 
 
+## Reporting priority and saved forecast reader — October 19, 2026
+
+- Reporting remains a feature-development priority. Catalogue registration counts do not
+  establish report completeness or accounting acceptance.
+- Added a format-specific saved forecast reader for the upcoming forecast_outputs catalogue
+  entry. It reads retained JSON/CSV/XLSX datasets through scenario lineage and current export
+  permissions, checks the parent and file identity, and decodes all five saved sections.
+  It never recaptures the current scenario or substitutes a different format's disclosure.
+- Eight focused forecast-export checks pass, including complete section decoding and rejection
+  of changed/missing sections. The new database reader and public catalogue integration still
+  need integration verification; forecast_outputs remains unregistered.
+- Next development: wire forecast_outputs admission, immutable source binding, worker and
+  report-centre access; then complete remaining report workflows and populated acceptance.
+  No deployment or production-readiness claim.
+
 ## Public contract sample catalogue report — October 19, 2026
 
 - Registered contract_sample_pack with ZIP/PDF/XLSX and the complete evidence permission set.
@@ -225,30 +240,6 @@
   with collectors disabled; digest tampering and revoked export scope are refused. Ruff/Mypy pass.
 - Source-file deletion/retention registry integration must precede public release. Public create/
   worker/read/download, stamped PDF/XLSX and broader acceptance remain; no complete-pack claim.
-
-## Contract sample journal evidence — October 19, 2026
-
-- Added journal collection through the existing retained grouping/drill-back reader, including
-  aggregated lines whose contract ID is absent. Separates whole-line amounts from sampled
-  contributions and checks source counts, cutoff/currency/entity consistency and net amounts.
-- Resolves posting entities beyond contracting scope and authorizes every source companion.
-  Retains as-of run/batch state, labelled cancellations and journal approval references.
-- The K01 journey now commits real journal calculation, traces populated draft lines and
-  reconciles source amounts in the combined evidence archive. Ruff/Mypy pass. Multi-contract,
-  cross-entity and historical journal lifecycle acceptance remain; public retention/jobs and
-  PDF/XLSX rendering are still unfinished. No deployment.
-
-## Contract sample retained documents — October 19, 2026
-
-- Added attachment collection for sampled contracts/events, related modification/estimate/
-  adjustment evidence and referenced approvals/attachable subjects, including SSP studies.
-  Applies the original attachment cutoff plus current subject/file grants; missing, unreadable
-  or inconsistent bytes fail explicitly. External document URLs are never fetched.
-- Deduplicates payloads, uses ID-based archive paths, retains filename/media/hash metadata,
-  checks decrypted size/SHA-256 and takes file locks against concurrent shredding. File-count
-  and payload limits apply before collection. The real K01 archive journey verifies encrypted
-  attachment collection, duplicate references and safe paths; Ruff/Mypy pass. Public lifecycle/
-  rendering and journals remain.
 
 ## Outstanding release verification
 
