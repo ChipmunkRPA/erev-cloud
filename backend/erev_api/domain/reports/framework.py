@@ -592,10 +592,18 @@ _OPEN_ONLY: Final = (
     "labelled open, never a reproduction)",
 )
 # Composed reports use the worker's chapter-aware execution path, not a single-table builder.
-REGISTERED_REPORTS: Final = frozenset(BUILDERS) | {"disclosure_pack", "period_evidence_pack"}
+REGISTERED_REPORTS: Final = frozenset(BUILDERS) | {
+    "disclosure_pack",
+    "period_evidence_pack",
+    "contract_sample_pack",
+}
 
 SOURCE_CONTRACTS: Final[Mapping[str, SourceContract]] = MappingProxyType(
     {
+        "contract_sample_pack": SourceContract(
+            ADAPTER,
+            ("Explicit retained contract sample, source grants and original artifact",),
+        ),
         "period_evidence_pack": SourceContract(
             ADAPTER,
             ("Explicit retained evidence pack, source hash, cutoff and original archive",),
@@ -1042,6 +1050,10 @@ ADMITTING_PERMISSIONS: Final = (RUN_PERMISSION, *sorted(set(RUN_PERMISSIONS.valu
 # ``report.export`` for a file); ``require_report`` and ``runs_statement`` are the only readers.
 REQUIRED_PERMISSIONS: Final[Mapping[str, tuple[RequiredPermission, ...]]] = MappingProxyType(
     {
+        "contract_sample_pack": tuple(
+            RequiredPermission(permission)
+            for permission in ("audit.read", "contract.read", "report.export", "evidence.export")
+        ),
         "period_evidence_pack": tuple(
             RequiredPermission(permission)
             for permission in ("audit.read", "contract.read", "report.export", "evidence.export")

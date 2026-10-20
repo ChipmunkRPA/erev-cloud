@@ -551,7 +551,7 @@ extract datasets and automatic previous-run watermarks remain unavailable.
 
 ### Evidence packs
 
-The period evidence pack (report code `period_evidence_pack`, kind `PACK`, output ZIP; one entity, book and period, at a lock) collects the close certification, the lock snapshot ids and hashes, the journal batch register with its balancing and completeness results, the reconciliations with their sign-offs, the rollforwards, RPO and disaggregation, the manual adjustment, modification, SSP and configuration registers, the late-entry and out-of-period reports, the user listing and the separation-of-duties report as of period end, and the audit chain verification, each file with its SHA-256 in the manifest (REQ-RPT-014). The contract sample pack (`contract_sample_pack`; ZIP, PDF or XLSX) does the same for a sample of contracts as of a date (REQ-RPT-015). Downloading a pack needs `evidence.export`. Status on October 19, 2026: a period lock queues automatic close-pack preparation. Close and re-lock packs can also be requested from the evidence page or API. Preparation success means the pack is queued; its own status must be SUCCEEDED before download. For approval-driven locks, Controllers, Revenue Reviewers and Auditors with the entity in scope receive the lock notification only after the automatic archive is available. It links to the period cockpit. Failed or cancelled generation sends no availability notice; manually requested packs do not repeat it. Contract samples can be generated and found in the evidence page’s Contract sample view. Re-lock packs retain both lock IDs, the original stored comparison, frozen monetary changes and a separately generated variance-between-closes CSV with its IPE manifest. Change and access packs can also be generated, listed and downloaded from the evidence page. The period evidence catalogue report is available; the contract sample catalogue report remains unavailable.
+The period evidence pack (report code `period_evidence_pack`, kind `PACK`, output ZIP; one entity, book and period, at a lock) collects the close certification, the lock snapshot ids and hashes, the journal batch register with its balancing and completeness results, the reconciliations with their sign-offs, the rollforwards, RPO and disaggregation, the manual adjustment, modification, SSP and configuration registers, the late-entry and out-of-period reports, the user listing and the separation-of-duties report as of period end, and the audit chain verification, each file with its SHA-256 in the manifest (REQ-RPT-014). The contract sample pack (`contract_sample_pack`; ZIP, PDF or XLSX) does the same for a sample of contracts as of a date (REQ-RPT-015). Downloading a pack needs `evidence.export`. Status on October 19, 2026: a period lock queues automatic close-pack preparation. Close and re-lock packs can also be requested from the evidence page or API. Preparation success means the pack is queued; its own status must be SUCCEEDED before download. For approval-driven locks, Controllers, Revenue Reviewers and Auditors with the entity in scope receive the lock notification only after the automatic archive is available. It links to the period cockpit. Failed or cancelled generation sends no availability notice; manually requested packs do not repeat it. Contract samples can be generated and found in the evidence page’s Contract sample view. Re-lock packs retain both lock IDs, the original stored comparison, frozen monetary changes and a separately generated variance-between-closes CSV with its IPE manifest. Change and access packs can also be generated, listed and downloaded from the evidence page. Both period and contract sample evidence reports are available through the report catalogue.
 
 The ordinary Reports workflow also accepts `period_evidence_pack` through
 `POST /api/v1/report-runs`, with `output_format: "ZIP"` and parameters `entity_codes`
@@ -564,6 +564,18 @@ rerunning and downloading require current source access plus `report.run`, `repo
 `audit.read`, `contract.read` and `evidence.export` for the full source entity scope.
 The output preserves the source pack's identity and stamps; the accompanying manifest
 identifies that source explicitly.
+
+For a contract sample through Reports, POST `/api/v1/report-runs` with
+`report_code: "contract_sample_pack"`, `output_format: "ZIP"`, `"PDF"` or `"XLSX"`,
+and parameters `contract_external_ids` (1–50 exact IDs) and `as_of` (effective date).
+Optional `entity_codes` restricts the permitted source population. Optional `known_at`
+selects a historical knowledge cutoff; omitted, it uses the creation time. The cutoff
+cannot be in the future or earlier than the effective date. Later attachments and events
+are excluded from historical capture. Creation timestamps still show when generation
+actually occurred. The source pack and original documents retain their current read
+permissions, including any additional permissions required by attached evidence.
+PDF/XLSX outputs are the original stamped chapters of the retained sample archive;
+ZIP includes those chapters and the underlying evidence. Reruns reuse that same source.
 
 To create a close or re-lock pack, POST `/api/v1/evidence-packs` with an `Idempotency-Key` and
 `kind: "CLOSE"`, `entity_code`, `book`, `period_key` and the exact `period_lock_id`. The caller

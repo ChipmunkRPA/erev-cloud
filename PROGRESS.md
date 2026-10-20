@@ -6,6 +6,22 @@
 
 
 
+## Public contract sample catalogue report — October 19, 2026
+
+- Registered contract_sample_pack with ZIP/PDF/XLSX and the complete evidence permission set.
+  Catalogue creation uses the existing source-pack dependency, worker and current-source read
+  authorization; source-document permissions still apply to metadata, lists and downloads.
+- Threaded optional known_at through sample creation into the existing historical collectors.
+  Generation timestamps stay current. Same-source reruns preserve the bound original artifact.
+- Real K01 API → source pack → report worker → download/rerun passes for all three formats.
+  A later attachment appears in current capture but not in historical PDF/XLSX sources;
+  missing SSP-document permission hides rows before count/cursor, and revoked grants refuse
+  downloads. Sixteen source-contract checks and Ruff/Mypy pass.
+- Catalogue audit: 58 registered report codes; forecast_outputs is the remaining unregistered
+  code. This is registration coverage, not full accounting or release acceptance. Next:
+  forecast_outputs entry-point integration; broader multi-contract/re-lock/report acceptance
+  and independent accounting sign-off remain open. No deployment or readiness claim.
+
 ## Public period evidence catalogue report — October 19, 2026
 
 - Registered period_evidence_pack through POST /report-runs. Lock selectors reconcile to the
@@ -233,17 +249,6 @@
   and payload limits apply before collection. The real K01 archive journey verifies encrypted
   attachment collection, duplicate references and safe paths; Ruff/Mypy pass. Public lifecycle/
   rendering and journals remain.
-
-## Contract sample approvals and audit slice — October 19, 2026
-
-- Added cutoff-bound approval requests/decisions and deduplicated contract audit trails. Shared
-  audit events authorize every linked contract; approval content requires its whole entity scope.
-  Original decision hashes/MFA/delegation details are retained, credentials/contacts redacted.
-- Computation evidence now supplies SSP/template and override approval references. The real K01
-  journey verifies populated decisions/audit rows and combines them with events, allocation and
-  schedule evidence into a hash-verified archive. Ruff/Mypy pass.
-- This is a linked audit slice, not complete-chain verification. Journal/documents, source retention,
-  public jobs/read/download, PDF/XLSX and broader historical/multi-entity acceptance remain open.
 
 ## Outstanding release verification
 

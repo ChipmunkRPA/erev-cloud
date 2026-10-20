@@ -7915,3 +7915,14 @@ cleanup in the shared database session kernel was also repaired and regression-t
   earlier-effective selection and revoked export permission checks pass. Ruff/Mypy pass.
 - Public jobs, PDF/XLSX, documents, journal/approval/audit sections and combined-group acceptance
   remain. This collector is not a completed sample pack. No deployment.
+
+## Contract sample approvals and audit slice — October 19, 2026
+
+- Added cutoff-bound approval requests/decisions and deduplicated contract audit trails. Shared
+  audit events authorize every linked contract; approval content requires its whole entity scope.
+  Original decision hashes/MFA/delegation details are retained, credentials/contacts redacted.
+- Computation evidence now supplies SSP/template and override approval references. The real K01
+  journey verifies populated decisions/audit rows and combines them with events, allocation and
+  schedule evidence into a hash-verified archive. Ruff/Mypy pass.
+- This is a linked audit slice, not complete-chain verification. Journal/documents, source retention,
+  public jobs/read/download, PDF/XLSX and broader historical/multi-entity acceptance remain open.

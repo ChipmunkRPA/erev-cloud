@@ -12,6 +12,7 @@ import io
 import json
 import zipfile
 from dataclasses import replace
+from datetime import datetime
 from typing import Annotated, Any, Literal, Self
 from uuid import UUID, uuid4
 
@@ -162,8 +163,10 @@ def authorize(uow: UnitOfWork, scope: SampleScope, *, lock_documents: bool = Tru
         )
 
 
-def prepare(uow: UnitOfWork, request: ContractSamplePackCreateIn) -> SampleSources:
-    events = evidence_sample_events.collect(uow, request)
+def prepare(
+    uow: UnitOfWork, request: ContractSamplePackCreateIn, *, known_at: datetime | None = None
+) -> SampleSources:
+    events = evidence_sample_events.collect(uow, request, known_at=known_at)
     computations = evidence_sample_computations.collect(uow, events.selection, as_of=request.as_of)
     journals = evidence_sample_journals.collect(uow, events.selection, as_of=request.as_of)
     expanded = replace(

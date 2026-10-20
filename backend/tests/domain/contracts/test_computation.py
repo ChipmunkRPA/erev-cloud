@@ -6323,6 +6323,117 @@ def test_contract_sample_computation_evidence_keeps_trace_and_full_schedule(
         assert (
             invisible.items == [] and invisible.total_count == "0" and invisible.next_cursor is None
         )
+    # Catalogue entry points use the same exact source permissions and retained artifacts.
+    from erev_api.api.v1.reports import RUN_LIST
+    from erev_api.db.tables import report_run
+    from erev_api.domain.reports import (
+        evidence_catalogue_access,
+        evidence_catalogue_jobs,
+        framework,
+    )
+
+    historical_cutoff = clock.now()
+    clock.advance(timedelta(seconds=1))
+    with world.place.uow(principal) as uow:
+        later = store_file(
+            uow,
+            purpose=FilePurpose.ATTACHMENT,
+            stream=io.BytesIO(b"contract,note\nSF-ORD-10001,later evidence\n"),
+            original_filename="later.csv",
+            media_type="text/csv",
+        )
+        attach_evidence(
+            uow,
+            file_object_id=later["id"],
+            subject_type="contract",
+            subject_ids=events.selection.contract_ids,
+        )
+        uow.commit()
+    catalogue_ids = []
+    for output_format in ("ZIP", "PDF", "XLSX"):
+        started = post(
+            world.app,
+            "/api/v1/report-runs",
+            caller,
+            {
+                "report_code": "contract_sample_pack",
+                "output_format": output_format,
+                "parameters": {
+                    "contract_external_ids": request.contract_external_ids,
+                    "as_of": request.as_of.isoformat(),
+                    **(
+                        {"known_at": historical_cutoff.isoformat()}
+                        if output_format != "ZIP"
+                        else {}
+                    ),
+                },
+            },
+        )
+        assert started.status_code == 202, started.text
+        report_id = UUID(started.headers["X-Erev-Report-Run-Id"])
+        report_job = UUID(started.json()["id"])
+        catalogue_ids.append(report_id)
+        with world.place.uow(principal) as uow:
+            row = dict(
+                uow.session.execute(select(report_run).where(report_run.c.id == report_id))
+                .mappings()
+                .one()
+            )
+            dependency = evidence_catalogue_jobs.source(row)
+            sample_sources = evidence_sample_sources.load(uow, dependency.pack_id)
+            retained_ids = {grant.file_id for grant in sample_sources.scope.document_grants}
+            assert (later["id"] in retained_ids) == (output_format == "ZIP")
+            assert dependency.known_at == (
+                clock.now() if output_format == "ZIP" else historical_cutoff
+            )
+            assert row["created_at"] == clock.now()
+
+            assert not framework.dependencies_ready(
+                uow.session, report_job, {"report_run_id": str(report_id)}
+            )
+        run_job(dependency.job_id, world.place.tenant_id, attempt=1, runtime=runtime)
+        run_job(report_job, world.place.tenant_id, attempt=1, runtime=runtime)
+        shown = get(world.app, f"/api/v1/report-runs/{report_id}", caller)
+        assert shown.status_code == 200, shown.text
+        assert shown.json()["status"] == "SUCCEEDED", get(
+            world.app, f"/api/v1/jobs/{report_job}", caller
+        ).text
+        exported = get(world.app, f"/api/v1/report-runs/{report_id}/output", caller)
+        assert exported.status_code == 200, exported.text
+        with world.place.uow(principal) as uow:
+            retained = evidence_sample_storage.read(uow, dependency.pack_id)
+        if output_format == "ZIP":
+            assert exported.content == retained.archive.content
+        else:
+            with zipfile.ZipFile(io.BytesIO(retained.archive.content)) as archive:
+                assert exported.content == archive.read(
+                    f"reports/contract_sample.{output_format.lower()}"
+                )
+        again = post(world.app, f"/api/v1/report-runs/{report_id}/rerun", caller, {})
+        assert again.status_code == 202, again.text
+        repeated_id = UUID(again.headers["X-Erev-Report-Run-Id"])
+        run_job(UUID(again.json()["id"]), world.place.tenant_id, attempt=1, runtime=runtime)
+        repeated = get(world.app, f"/api/v1/report-runs/{repeated_id}/output", caller)
+        assert repeated.status_code == 200, repeated.text
+        assert repeated.content == exported.content
+        with world.place.uow(no_studies) as uow:
+            assert not evidence_catalogue_access.visible(uow, row)
+    with world.place.uow(no_studies) as uow:
+        hidden = paginate(
+            uow.session,
+            framework.runs_statement(no_studies),
+            RUN_LIST,
+            ListParams(
+                limit=1,
+                cursor=None,
+                sort=None,
+                q=None,
+                count=True,
+                filters={"report_code": ("contract_sample_pack",)},
+            ),
+            visible=lambda row: evidence_catalogue_access.visible(uow, dict(row)),
+        )
+        assert hidden.items == [] and hidden.total_count == "0" and hidden.next_cursor is None
     from support.rows import revoke_role_assignments
 
     with world.place.uow(principal) as uow:
@@ -6339,3 +6450,5 @@ def test_contract_sample_computation_evidence_keeps_trace_and_full_schedule(
         == "FAILED"
     )
     assert get(world.app, f"/api/v1/evidence-packs/{public_id}/download", caller).status_code == 403
+    for report_id in catalogue_ids:
+        assert get(world.app, f"/api/v1/report-runs/{report_id}/output", caller).status_code == 403

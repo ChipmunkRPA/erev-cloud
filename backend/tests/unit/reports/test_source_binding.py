@@ -296,8 +296,8 @@ def test_every_registered_live_builder_states_its_source_contract() -> None:
     """Codex 2202: the same-source promise covers all 15 registered builders — each declares its
     strategy, what its adapter binds and what stays OPEN; an empty capture is never 'complete'."""
     assert set(framework.SOURCE_CONTRACTS) == framework.REGISTERED_REPORTS
-    # Includes the composed disclosure worker; three catalogue entries remain unavailable.
-    assert len(framework.REGISTERED_REPORTS) == 56
+    # Includes disclosure and both evidence-pack workers; forecast_outputs remains unregistered.
+    assert len(framework.REGISTERED_REPORTS) == 58
     assert len(framework.BUILDERS) == 55
     for code in (
         "je_population",
@@ -314,6 +314,7 @@ def test_every_registered_live_builder_states_its_source_contract() -> None:
             assert contract.open, code  # an open builder names what it does not bind
     adapters = {code for code, c in framework.SOURCE_CONTRACTS.items() if c.strategy == ADAPTER}
     assert {"rpo", "revenue_waterfall", "contract_history", "rpo_rollforward"} <= adapters
+    assert {"period_evidence_pack", "contract_sample_pack"} <= adapters
     assert framework.SOURCE_CONTRACTS["api_client_inventory"].strategy == RETAINED
     # ENG-C4's eighteenth builder is an adapter: the bound cutoff, its selected versions and its
     # historical membership candidates; open = the reference-line population (frps3c-1 retained
@@ -365,7 +366,11 @@ def test_every_registered_live_builder_states_its_source_contract() -> None:
     for code in ("rpo", "revenue_waterfall", "rpo_rollforward", "contract_history"):
         assert framework.SOURCE_CONTRACTS[code].open == (), code
     for code, contract in framework.SOURCE_CONTRACTS.items():
-        if contract.strategy == ADAPTER:
+        if code in {"period_evidence_pack", "contract_sample_pack"}:
+            # These adapt retained artifacts, rather than recomputing accounting datasets.
+            assert contract.strategy == ADAPTER and contract.open == (), code
+            assert any("original" in item for item in contract.bound), code
+        elif contract.strategy == ADAPTER:
             assert not any(o.startswith("consumed-configuration") for o in contract.open), code
             assert any("consumed configuration retained" in o for o in contract.bound), code
 

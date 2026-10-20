@@ -1,5 +1,6 @@
 """Create a contract sample and its retained rendering inputs in one transaction."""
 
+from datetime import datetime
 from uuid import UUID
 
 from erev_engine.canonical import sha256_hex
@@ -19,10 +20,12 @@ from erev_api.schemas.evidence_packs import ContractSamplePackCreateIn
 from erev_api.uow import UnitOfWork
 
 
-def create(uow: UnitOfWork, request: ContractSamplePackCreateIn) -> tuple[UUID, JobOut]:
+def create(
+    uow: UnitOfWork, request: ContractSamplePackCreateIn, *, known_at: datetime | None = None
+) -> tuple[UUID, JobOut]:
     if uow.principal.kind != PrincipalKind.USER or not PERMISSIONS <= uow.principal.permissions:
         raise Problem("forbidden")
-    bound = evidence_sample_sources.prepare(uow, request)
+    bound = evidence_sample_sources.prepare(uow, request, known_at=known_at)
     pack_id = new_id()
     pack_no = next_number(uow, "EVIDENCE_PACK")
     release = (

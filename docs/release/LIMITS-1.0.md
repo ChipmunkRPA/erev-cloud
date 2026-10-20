@@ -1802,3 +1802,19 @@ No additional report builder is registered, and no deployment is performed.
 - Next: contract_sample_pack public catalogue admission and full sample orchestration acceptance;
   fresh historical sample capture and wider accounting/re-lock acceptance remain open.
   No deployment or production-readiness claim.
+
+## Public contract sample catalogue report — October 19, 2026
+
+- Registered contract_sample_pack with ZIP/PDF/XLSX and the complete evidence permission set.
+  Catalogue creation uses the existing source-pack dependency, worker and current-source read
+  authorization; source-document permissions still apply to metadata, lists and downloads.
+- Threaded optional known_at through sample creation into the existing historical collectors.
+  Generation timestamps stay current. Same-source reruns preserve the bound original artifact.
+- Real K01 API → source pack → report worker → download/rerun passes for all three formats.
+  A later attachment appears in current capture but not in historical PDF/XLSX sources;
+  missing SSP-document permission hides rows before count/cursor, and revoked grants refuse
+  downloads. Sixteen source-contract checks and Ruff/Mypy pass.
+- Catalogue audit: 58 registered report codes; forecast_outputs is the remaining unregistered
+  code. This is registration coverage, not full accounting or release acceptance. Next:
+  forecast_outputs entry-point integration; broader multi-contract/re-lock/report acceptance
+  and independent accounting sign-off remain open. No deployment or readiness claim.

@@ -106,12 +106,6 @@ def prepare(uow: UnitOfWork, run: Mapping[str, Any]) -> dict[str, Any]:
         close = evidence_sources.load_close(uow, pack_id)
         entities = (close.entity_id,)
     else:
-        if run["known_at"] != uow.now:
-            raise Problem(
-                "validation-failed",
-                "New sample evidence requires the creation cutoff; "
-                "reruns preserve their original cutoff.",
-            )
         sample_request = ContractSamplePackCreateIn.model_validate(
             {
                 "kind": "CONTRACT_SAMPLE",
@@ -119,7 +113,7 @@ def prepare(uow: UnitOfWork, run: Mapping[str, Any]) -> dict[str, Any]:
                 "as_of": params["as_of"],
             }
         )
-        pack_id, _ = evidence_sample_commands.create(uow, sample_request)
+        pack_id, _ = evidence_sample_commands.create(uow, sample_request, known_at=run["known_at"])
         sample = evidence_sample_sources.load(uow, pack_id)
         entities = sample.scope.source_entity_ids
         request = sample_request
