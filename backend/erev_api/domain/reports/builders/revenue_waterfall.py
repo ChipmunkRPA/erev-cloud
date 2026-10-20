@@ -24,7 +24,7 @@ R-116 (c)). Per obligation and period of the range:
   (``reports.cuts.obligations_at``; 04 API-C-10) and not the version's stored column, which is
   the amount at the version's own date.
 
-So recognized + scheduled + awaiting trigger is the obligation's allocation at every as-of
+In transaction currency, recognized + scheduled + awaiting trigger is the allocation at every as-of
 (S15-R-02). A cell is recognized + scheduled; ``total`` adds the range's cells and the awaiting
 amount. Rows
 aggregate obligations by ``row_dimension``: ``contract:<external id>``, ``obligation:<external
@@ -45,14 +45,16 @@ answers ``NOT_APPLICABLE``.
 ``cell`` answers ``GET /explain/report-runs/{id}/cell``: the cell's value and its schedule lines,
 subledger lines and, for ``awaiting_trigger``, obligation versions (SB-R-07; REQ-RPT-017).
 
-[J] L6-3-Q-20: ``currency_view`` ``functional`` and ``reporting`` are served for obligations whose
-transaction currency is the entity's functional currency; schedule lines hold no functional amounts.
+Functional recognized revenue reads posted functional amounts. Reporting recognized revenue
+uses each posting period's approved average rate. Scheduled and awaiting-trigger figures are
+forecasts translated at the as-of closing rate, not historical revenue or journal entries.
+Rates are retained with the report; forecast rounding is per schedule contribution.
 """
 
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date
 from decimal import Decimal
 from typing import Any, Final
@@ -73,7 +75,7 @@ from erev_api.db.tables import (
     schedule_line,
     subledger_line,
 )
-from erev_api.domain.reports import cuts, tie_outs
+from erev_api.domain.reports import cuts, reporting_currency, tie_outs
 from erev_api.domain.reports.builders import ReportParams, filter_problem, unknown_filter
 from erev_api.domain.reports.outputs import Column, ReportData
 from erev_api.domain.reports.tie_outs import ZERO, Calendar, EntityRef, PeriodRef, add
@@ -88,9 +90,6 @@ TOTAL: Final = "total"
 PERIOD_PREFIX: Final = "period:"
 TOTAL_PREFIX: Final = "TOTAL:"
 FILTERS: Final = ("contract_external_id", "entity_code", "product_code", "revenue_category")
-FUNCTIONAL_ONLY: Final = (
-    "The functional and reporting views show contracts in the entity's functional currency only."
-)
 UNKNOWN_CELL: Final = "The run holds no cell {row_key} / {column_key}."
 
 
@@ -108,6 +107,7 @@ class _Obligation:
     entity_code: str
     currency: str
     awaiting: Decimal  # at the end of the as-of period (``population``)
+    functional_recognized: dict[str, Decimal] = field(default_factory=dict)
     recognized: dict[str, Decimal] = field(default_factory=dict)  # period key → amount
     scheduled: dict[str, Decimal] = field(default_factory=dict)
     # the lines a cell names: of a period up to the as-of beside its posted revenue, of a later
@@ -132,6 +132,7 @@ class Population:
     period_ids: tuple[UUID, ...]  # the periods up to each entity's as-of period
     entity_ids: tuple[UUID, ...]
     restricted: bool
+    translation_rates: tuple[Mapping[str, Any], ...] = ()
 
 
 def _buckets(periods: Sequence[PeriodRef], granularity: str) -> tuple[_Bucket, ...]:
@@ -188,10 +189,11 @@ def population(session: Session, params: ReportParams) -> Population:
     if by_id and posted_ids:
         _recognized(session, by_id, book_code, posted_ids, key_of, end_of, as_of_ends, params)
     view = str(params.parameters.get("currency_view") or "transaction")
-    if view != "transaction" and any(
-        ob.currency != _functional(found_entities, ob.entity_id) for ob in obligations
-    ):
-        raise tie_outs.invalid("currency_view", FUNCTIONAL_ONLY)
+    rates: tuple[Mapping[str, Any], ...] = ()
+    if view != "transaction":
+        rates = _translate(
+            session, params, obligations, found_entities, found_calendars, as_of_ends
+        )
     return Population(
         book_code=book_code,
         obligations=tuple(obligations),
@@ -199,11 +201,117 @@ def population(session: Session, params: ReportParams) -> Population:
         period_ids=posted_ids,
         entity_ids=tuple(item.id for item in found_entities),
         restricted=contract_id is not None or bool(params.filters),
+        translation_rates=rates,
     )
 
 
-def _functional(found: Sequence[EntityRef], entity_id: UUID) -> str:
-    return next(item.functional_currency for item in found if item.id == entity_id)
+def _translate(
+    session: Session,
+    params: ReportParams,
+    obligations: Sequence[_Obligation],
+    entities: Sequence[EntityRef],
+    calendars: Mapping[UUID, Calendar],
+    as_of_ends: Mapping[UUID, date],
+) -> tuple[Mapping[str, Any], ...]:
+    """Actuals use posted functional revenue; future amounts use dated forecast FX.
+
+    Conversion is per contributing line, so cells, buckets and totals sum the same
+    rounded values. No future average rates or recomputation of historical revenue.
+    """
+    if not obligations:
+        return ()
+    tenant_id = session.execute(
+        select(legal_entity.c.tenant_id).where(legal_entity.c.id == obligations[0].entity_id)
+    ).scalar_one()
+    reporting = params.parameters.get("currency_view") == "reporting"
+    rates: dict[str, reporting_currency.Translation] = {}
+    by_entity = {entity.id: entity for entity in entities}
+
+    def rate(
+        entity: EntityRef, period: PeriodRef, kind: str, *, target: str | None = None
+    ) -> reporting_currency.Translation:
+        key = (
+            f"waterfall_fx_v1:{entity.id}:{entity.functional_currency}:"
+            f"{target or 'reporting'}:{period.key}:{kind}"
+        )
+        if key not in rates:
+            rates[key] = reporting_currency.rates_for_period(
+                session,
+                params,
+                tenant_id=tenant_id,
+                entities=(entity,),
+                periods={entity.id: period},
+                rate_type=kind,
+                evidence_key=key,
+                target_currency=target,
+            )
+        return rates[key]
+
+    for ob in obligations:
+        entity = by_entity[ob.entity_id]
+        if any(currency != entity.functional_currency for currency in ob.functional_recognized):
+            raise tie_outs.invalid(
+                "currency_view", "Posted functional currency differs from entity."
+            )
+        calendar = calendars[entity.id]
+        endpoint = calendar.holding(as_of_ends[entity.id])
+        if endpoint is None:
+            raise tie_outs.invalid(
+                "currency_view", "Forecast translation requires a dated endpoint."
+            )
+        source_currency = ob.currency
+        ob.currency = entity.functional_currency
+        # The original schedule remains a transaction-currency source, but only
+        # future schedule contributions belong in the converted displayed cells.
+        ob.schedule_lines = {
+            key: lines for key, lines in ob.schedule_lines.items() if key in ob.scheduled
+        }
+        for key, lines in ob.subledger_lines.items():
+            if reporting:
+                translated = rate(entity, calendar.named(key, "currency_view"), "average")
+                lines = [
+                    (identifier, translated.amount(entity.id, amount))
+                    for identifier, amount in lines
+                ]
+                ob.currency = translated.currency
+                ob.subledger_lines[key] = lines
+            ob.recognized[key] = -sum((amount for _, amount in lines), ZERO)
+
+        forecast = bool(ob.awaiting or any(ob.scheduled.values()))
+        functional_rate = None
+        if forecast and source_currency != entity.functional_currency:
+            functional_rate = rate(
+                replace(entity, functional_currency=source_currency),
+                endpoint,
+                "closing",
+                target=entity.functional_currency,
+            )
+        reporting_rate = rate(entity, endpoint, "closing") if reporting and forecast else None
+        if reporting_rate is not None:
+            ob.currency = reporting_rate.currency
+
+        def convert(
+            amount: Decimal,
+            functional_rate: reporting_currency.Translation | None = functional_rate,
+            reporting_rate: reporting_currency.Translation | None = reporting_rate,
+            entity_id: UUID = entity.id,
+        ) -> Decimal:
+            if functional_rate is not None:
+                amount = functional_rate.amount(entity_id, amount)
+            if reporting_rate is not None:
+                amount = reporting_rate.amount(entity_id, amount)
+            return amount
+
+        ob.awaiting = convert(ob.awaiting)
+        for key, lines in ob.schedule_lines.items():
+            converted = [(identifier, convert(amount)) for identifier, amount in lines]
+            ob.schedule_lines[key] = converted
+            ob.scheduled[key] = sum((amount for _, amount in converted), ZERO)
+    return tuple(
+        {"entity_id": str(entity_id), **fact}
+        for translation in rates.values()
+        for entity_id, fact in translation.rates.items()
+    )
 
 
 def _as_of_end(
@@ -440,6 +548,8 @@ def _recognized(
         subledger_line.c.entity_id,
         subledger_line.c.period_id,
         subledger_line.c.amount_txn,
+        subledger_line.c.amount_functional,
+        subledger_line.c.functional_currency,
     ).where(
         subledger_line.c.book_code == book_code,
         subledger_line.c.account_role == tie_outs.REVENUE,
@@ -457,11 +567,16 @@ def _recognized(
         and end_of[UUID(str(row["period_id"]))]
         <= as_of_ends[by_id[UUID(str(row["obligation_id"]))].entity_id]
     ]
+    tie_outs.require_members(params, "subledger_line", (row["id"] for row in rows))
     tie_outs.record_members(params, "subledger_line", (row["id"] for row in rows))
     for row in rows:
         ob = by_id[UUID(str(row["obligation_id"]))]
         key = key_of[UUID(str(row["period_id"]))]
         amount = Decimal(row["amount_txn"])
+        if params.parameters.get("currency_view", "transaction") != "transaction":
+            amount = Decimal(row["amount_functional"])
+            currency = str(row["functional_currency"]).strip()
+            add(ob.functional_recognized, currency, -amount)
         ob.subledger_lines.setdefault(key, []).append((UUID(str(row["id"])), amount))
         ob.recognized[key] = ob.recognized.get(key, ZERO) - amount
 
@@ -512,7 +627,9 @@ def _cell(members: Sequence[_Obligation], bucket: _Bucket, state: str | None) ->
     return total
 
 
-def _columns(dimension: str, found: Population, by_state: bool, mixed: bool) -> tuple[Column, ...]:
+def _columns(
+    dimension: str, found: Population, by_state: bool, mixed: bool, converted: bool = False
+) -> tuple[Column, ...]:
     columns = [
         Column("contract_external_id", "Contract", "code"),
         Column("customer_name", "Customer", "text"),
@@ -537,12 +654,16 @@ def _columns(dimension: str, found: Population, by_state: bool, mixed: bool) -> 
             )
             columns.append(
                 Column(
-                    f"{PERIOD_PREFIX}{bucket.key}:{SCHEDULED}", f"{bucket.label} scheduled", "money"
+                    f"{PERIOD_PREFIX}{bucket.key}:{SCHEDULED}",
+                    f"{bucket.label} scheduled" + (" (as-of FX)" if converted else ""),
+                    "money",
                 )
             )
         else:
             columns.append(Column(f"{PERIOD_PREFIX}{bucket.key}", bucket.label, "money"))
-    columns.append(Column(AWAITING, "Awaiting trigger", "money"))
+    columns.append(
+        Column(AWAITING, "Awaiting trigger" + (" (as-of FX)" if converted else ""), "money")
+    )
     columns.append(Column(TOTAL, "Total", "money"))
     return tuple(columns)
 
@@ -628,7 +749,13 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
             }
         )
     mixed = len(totals) > 1
-    columns = _columns(dimension, found, by_state, mixed)
+    columns = _columns(
+        dimension,
+        found,
+        by_state,
+        mixed,
+        params.parameters.get("currency_view", "transaction") != "transaction",
+    )
     keys = {column.key for column in columns}
     shaped = tuple(
         {"row_key": row["row_key"], **{name: value for name, value in row.items() if name in keys}}
@@ -641,6 +768,14 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
             "recognized_total": tie_outs.by_currency(recognized),
             "scheduled_total": tie_outs.by_currency(scheduled),
             "awaiting_trigger_total": tie_outs.by_currency(awaiting),
+            "currency_view": str(params.parameters.get("currency_view") or "transaction"),
+            "forecast_currency_basis": "as_of_closing_rate"
+            if params.parameters.get("currency_view", "transaction") != "transaction"
+            else "transaction",
+            "tie_out_currency_basis": "functional"
+            if params.parameters.get("currency_view", "transaction") != "transaction"
+            else "transaction",
+            "translation_rates": list(found.translation_rates),
         },
         tie_out_results=(tie_out(session, params, found),),
     )
@@ -651,17 +786,26 @@ def tie_out(session: Session, params: ReportParams, found: Population) -> dict[s
     if found.restricted:
         return tie_outs.not_applicable(tie_outs.TO_WATERFALL_EQ_JE_REVENUE)
     actual: dict[str, Decimal] = {}
+    functional = params.parameters.get("currency_view", "transaction") != "transaction"
     for ob in found.obligations:
-        add(actual, ob.currency, sum(ob.recognized.values(), ZERO))
+        if functional:
+            for currency, amount in ob.functional_recognized.items():
+                add(actual, currency, amount)
+        else:
+            add(actual, ob.currency, sum(ob.recognized.values(), ZERO))
     expected = tie_outs.journal_revenue(
         session,
         entity_ids=found.entity_ids,
         book_code=found.book_code,
         period_ids=found.period_ids,
         known_at=params.known_at,
+        functional=functional,
         params=params,  # S15-R-24: the tie-out's journal-run membership is bound
     )
-    return tie_outs.compared(tie_outs.TO_WATERFALL_EQ_JE_REVENUE, expected, actual)
+    result = tie_outs.compared(tie_outs.TO_WATERFALL_EQ_JE_REVENUE, expected, actual)
+    if functional:
+        result["details"] = [{"currency_basis": "functional", "forecast_included": "false"}]
+    return result
 
 
 def cell(
@@ -704,6 +848,10 @@ def cell(
             for key in bucket.period_keys:
                 if state in (None, SCHEDULED, RECOGNIZED):
                     for line_id, amount in ob.schedule_lines.get(key, ()):
+                        if params.parameters.get(
+                            "currency_view", "transaction"
+                        ) != "transaction" and (key not in ob.scheduled or state == RECOGNIZED):
+                            continue
                         contributors.append(
                             _contributor(
                                 "schedule_line",
@@ -718,7 +866,15 @@ def cell(
                 if state in (None, RECOGNIZED):
                     for line_id, amount in ob.subledger_lines.get(key, ()):
                         contributors.append(
-                            _contributor("subledger_line", line_id, amount, currency)
+                            _contributor(
+                                "subledger_line",
+                                line_id,
+                                -amount
+                                if params.parameters.get("currency_view", "transaction")
+                                != "transaction"
+                                else amount,
+                                currency,
+                            )
                         )
         if column_key in (AWAITING, TOTAL):
             value += ob.awaiting if column_key == AWAITING or buckets else ZERO
@@ -732,6 +888,14 @@ def cell(
                         measure="awaiting_trigger_amount",
                     )
                 )
+    if params.parameters.get("currency_view", "transaction") != "transaction":
+        for contributor in contributors:
+            contributor["details"] = [
+                "Contribution shown in the report currency; the source retains its original value.",
+                "Recognized revenue uses posted functional amounts, with reporting average FX."
+                if contributor["object_type"] == "subledger_line"
+                else "Forecast translated using retained as-of closing rates.",
+            ]
     return tie_outs.money(value, currency), contributors
 
 

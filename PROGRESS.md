@@ -6,6 +6,24 @@
 
 
 
+## Revenue waterfall currency views — October 20, 2026
+
+- Removed the foreign-contract refusal and the reporting-as-functional shortcut. Recognized
+  revenue uses posted functional amounts; reporting translates each contributing revenue line
+  using its posting period's approved average rate, preserving independent functional JE ties.
+- Scheduled and awaiting-trigger amounts are explicitly forecast translations at the as-of
+  period closing rate (transaction to functional, then functional to reporting). They do not
+  restate historical revenue or value deferred-revenue layers. Rates/version IDs and rounding
+  inputs are retained; future average rates are not required. Headers and cell details identify
+  the forecast basis, and displayed cell contributions sum to converted totals.
+- Necessary API checks cover EUR actual revenue, functional JE agreement, revised reporting
+  average rates versus retained reruns, GBP future schedules performed by a USD entity,
+  awaiting-trigger translation, and cell contributors. Existing cross-entity transaction
+  waterfall and row-identity checks pass; Python lint/types pass. No deployment.
+- RPO currency views, multi-layer FX attribution, combined-contract/group membership replay
+  and independent accounting acceptance remain outstanding. Locked snapshots retain their
+  existing transaction-currency schema; this change does not add alternate lock-dataset views.
+
 ## Revenue disaggregation currency views — October 20, 2026
 
 - Fixed currency_view being ignored by revenue disaggregation. Functional view now reads posted
@@ -212,21 +230,6 @@
 - Five focused assumption-manager tests pass, covering lifecycle, UTC conversion, preserving
   untouched timestamps, clearing boundaries and invalid-range refusal. TypeScript and lint pass.
   Remaining report/accounting acceptance and independent sign-off are still open. No deployment.
-
-## Scenario refresh continuation fix — October 19, 2026
-
-- Fixed a live Reporting workflow defect: acceptedJob previously remained pinned after its
-  refresh appeared in the durable register. A later refresh then appeared to be a missing
-  outcome forever, blocked new submissions and kept polling/displaying the old job.
-- Acknowledged requests now release that local pin and follow the latest durable refresh.
-  A terminal accepted job also releases it when a newer register row is dated at/after that
-  job's completion, handling a completed refresh skipped between polls. Timestamp ordering
-  compares instants, not lexicographic strings with potentially different offsets.
-- Focused checks cover repeat refreshes, reopened in-flight work and a skipped terminal
-  outcome followed by newer work. Existing backend authorization and row-version guards remain.
-- Code review confirms variance_between_closes has prepare/replay/presentation and retained
-  binding support. Its remaining business acceptance must not be described as absent code.
-  Independent accounting acceptance and other release gaps remain open. No deployment.
 
 ## Outstanding release verification
 

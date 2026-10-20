@@ -1,5 +1,15 @@
 # eRev Cloud 1.0: stated limits of the release
 
+Current waterfall currency update (October 20): foreign-currency obligations now support
+functional actuals and reporting actuals at retained posting-period average rates. Scheduled
+and awaiting-trigger amounts use explicitly labelled as-of closing-rate forecasts; these are
+not historical deferred-revenue layer valuations. Cells retain source links and converted
+contributions; journal comparison stays in functional currency. Necessary API witnesses cover
+actuals, forecast schedules, awaiting-trigger amounts and rate-revision/rerun behavior. RPO
+currency views, multi-layer FX and group-change attribution remain open. Existing locked
+WATERFALL datasets remain transaction currency. No deployment or production-readiness claim.
+
+
 Current revenue disaggregation update (October 20): functional and reporting views now honor
 the selected currency basis. Functional revenue comes from posted amounts; reporting uses
 retained period-average rates, with line-level currency rounding and summed display totals.

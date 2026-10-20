@@ -63,6 +63,7 @@ def rates_for_period(
     locked: tie_outs.LockedEnds | None = None,
     rate_type: str = "closing",
     evidence_key: str = EVIDENCE,
+    target_currency: str | None = None,
 ) -> Translation:
     if params.binding is not None:
         evidence = params.binding.evidence.get(evidence_key)
@@ -71,11 +72,14 @@ def rates_for_period(
                 "currency_view", "Retained reporting-currency rates are missing."
             )
     else:
-        target = str(
-            session.execute(
-                select(tenant.c.reporting_currency).where(tenant.c.id == tenant_id)
-            ).scalar_one()
-        ).strip()
+        target = (
+            target_currency
+            or str(
+                session.execute(
+                    select(tenant.c.reporting_currency).where(tenant.c.id == tenant_id)
+                ).scalar_one()
+            ).strip()
+        )
         evidence = {"currency": target, "rates": {}}
         cutoff = tie_outs.cutoff_for(session, params)
         for entity in entities:
@@ -132,6 +136,8 @@ def rates_for_period(
     try:
         target = str(evidence["currency"])
         tie_outs.minor_unit(target)
+        if target_currency is not None and target != target_currency:
+            raise ValueError("inconsistent target currency")
         rates = {}
         for entity in entities:
             at = periods[entity.id]

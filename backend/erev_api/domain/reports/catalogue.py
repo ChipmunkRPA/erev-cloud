@@ -370,6 +370,11 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
         },
         sources=(
             "schedule_line",
+            "subledger_line",
+            "tenant",
+            "fx_rate",
+            "fx_rate_set",
+            "fx_rate_set_version",
             "contract_version",
             "obligation_version",
             "contract",

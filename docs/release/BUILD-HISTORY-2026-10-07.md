@@ -8723,3 +8723,19 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Four focused selector/submission/pagination checks pass; TypeScript and ESLint pass.
   Real browser/Tamsin accounting acceptance and independent sign-off remain open. Report gaps
   still require the broader implementation/evidence review. No deployment; main-only publication.
+
+
+## Scenario refresh continuation fix — October 19, 2026
+
+- Fixed a live Reporting workflow defect: acceptedJob previously remained pinned after its
+  refresh appeared in the durable register. A later refresh then appeared to be a missing
+  outcome forever, blocked new submissions and kept polling/displaying the old job.
+- Acknowledged requests now release that local pin and follow the latest durable refresh.
+  A terminal accepted job also releases it when a newer register row is dated at/after that
+  job's completion, handling a completed refresh skipped between polls. Timestamp ordering
+  compares instants, not lexicographic strings with potentially different offsets.
+- Focused checks cover repeat refreshes, reopened in-flight work and a skipped terminal
+  outcome followed by newer work. Existing backend authorization and row-version guards remain.
+- Code review confirms variance_between_closes has prepare/replay/presentation and retained
+  binding support. Its remaining business acceptance must not be described as absent code.
+  Independent accounting acceptance and other release gaps remain open. No deployment.

@@ -297,3 +297,71 @@ def test_the_home_of_an_entity_that_performs_in_another_currency_is_refused_whoe
     assert [(error["field"], error["message"]) for error in home.json()["errors"]] == [
         ("entity", dashboard.UNCONVERTED.format(currency="USD"))
     ]
+
+
+@pytest.mark.slow
+def test_waterfall_forecast_uses_as_of_closing_rate(world: ReportWorld) -> None:
+    from decimal import ROUND_HALF_UP
+
+    params = {
+        **parameters(AVM_US),
+        "to_period_key": "FY2026-P09",
+        "as_of": "2026-05-31",
+        "measure": "BY_STATE",
+    }
+    _, transaction = report_run(world, "revenue_waterfall", params)
+    run, converted = report_run(
+        world, "revenue_waterfall", {**params, "currency_view": "functional"}
+    )
+    source = keyed(transaction)[O1_ROW]
+    result = keyed(converted)[O1_ROW]
+    (closing,) = [
+        item
+        for item in run["control_totals"]["translation_rates"]
+        if item["base_currency"] == "GBP" and item["quote_currency"] == "USD"
+    ]
+    assert closing["period_key"] == MAY
+    assert closing["rate_type"] == "closing"
+    assert run["control_totals"]["forecast_currency_basis"] == "as_of_closing_rate"
+    for month in range(6, 10):
+        column = f"period:FY2026-P{month:02d}:scheduled"
+        expected = (Decimal(source[column]["amount"]) * Decimal(closing["rate"])).quantize(
+            Decimal("0.01"), rounding=ROUND_HALF_UP
+        )
+        assert result[column] == {"amount": str(expected), "currency": "USD"}
+        assert expected > 0
+    cell = get(
+        world.app,
+        CELL.format(run_id=run["id"]),
+        world.maya,
+        {"row_key": O1_ROW, "column_key": "period:FY2026-P06:scheduled"},
+    )
+    assert cell.status_code == 200, cell.text
+    assert cell.json()["value"] == result["period:FY2026-P06:scheduled"]
+    assert sum(
+        Decimal(item["value"]["amount"]) for item in cell.json()["contributors"]["items"]
+    ) == Decimal(result["period:FY2026-P06:scheduled"]["amount"])
+
+    # The partially completed UK obligation has an awaiting-trigger balance at April.
+    awaiting_params = {
+        **parameters(AVM_US, AVM_UK),
+        "as_of": "2026-04-30",
+        "measure": "BY_STATE",
+    }
+    _, original = report_run(world, "revenue_waterfall", awaiting_params)
+    translated, output = report_run(
+        world, "revenue_waterfall", {**awaiting_params, "currency_view": "reporting"}
+    )
+    amount = Decimal(keyed(original)[O2_ROW]["awaiting_trigger"]["amount"])
+    assert amount > 0
+    uk_id = world.place.scalar(select(legal_entity.c.id).where(legal_entity.c.code == AVM_UK))
+    (closing,) = [
+        item
+        for item in translated["control_totals"]["translation_rates"]
+        if item["base_currency"] == "GBP"
+        and item["quote_currency"] == "USD"
+        and item["rate_type"] == "closing"
+        and item["entity_id"] == str(uk_id)
+    ]
+    expected = (amount * Decimal(closing["rate"])).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    assert keyed(output)[O2_ROW]["awaiting_trigger"] == {"amount": str(expected), "currency": "USD"}
