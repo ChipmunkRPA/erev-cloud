@@ -478,6 +478,7 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "subledger_posting",
             "contract_version_balance",
             "calc_trace",
+            "fx_layer_movement",
             "contract_event",
             "contract",
             "customer",

@@ -400,6 +400,28 @@ def test_foreign_contract_balances_use_dated_functional_targets(
         assert row["currency"] == "USD"
         assert tie(run, tie_outs.TO_ROLLFORWARD_EQ_GL)["result"] == "PASS"
         assert tie(run, tie_outs.TO_BALANCES_EQ_ROLLFORWARD)["result"] == "PASS"
+        movement_run, movement_rows = report_run(
+            world,
+            "contract_balance_rollforward",
+            {
+                "entity_codes": [AVM_US],
+                "book": "ASC606",
+                "currency_view": "functional",
+                "from_period_key": period_key,
+                "to_period_key": period_key,
+            },
+        )
+        movement = keyed(movement_rows)
+        assert movement["CLOSING"]["unbilled_receivable"] == usd(expected)
+        fx = movement["FX_REMEASUREMENT"]
+        assert sum(
+            D(fx[role]["amount"])
+            for role in ("contract_liability", "contract_asset", "unbilled_receivable")
+        ) == (D("50") if period_key.endswith("08") else D("150"))
+        assert tie(movement_run, tie_outs.TO_ROLLFORWARD_BALANCES)["result"] == "PASS"
+        assert tie(movement_run, tie_outs.TO_ROLLFORWARD_EQ_GL)["result"] == "PASS"
+        assert tie(movement_run, tie_outs.TO_BALANCES_EQ_ROLLFORWARD)["result"] == "PASS"
+
         _, txn = report_run(world, "contract_balances", {**params, "currency_view": "transaction"})
         assert keyed(txn)[row["row_key"]]["unbilled_receivable"] == {
             "amount": "10000.00",
@@ -435,6 +457,124 @@ def test_functional_balance_reads_locked_endpoint_and_reruns(
     )
     row = keyed(rows)[f"contract:{close_run_worlds.EUR_CONTRACT}:{AVM_US}"]
     assert row["unbilled_receivable"] == usd("11050.00")
+    movement, movement_rows = report_run(
+        world,
+        "contract_balance_rollforward",
+        {
+            "entity_codes": [AVM_US],
+            "book": "ASC606",
+            "currency_view": "functional",
+            "from_period_key": "FY2026-P08",
+            "to_period_key": "FY2026-P08",
+        },
+    )
+    assert keyed(movement_rows)["CLOSING"]["unbilled_receivable"] == usd("11050.00")
+    assert tie(movement, tie_outs.TO_ROLLFORWARD_BALANCES)["result"] == "PASS"
+    started = post(app, f"/api/v1/report-runs/{run['id']}/rerun", world.maya, {})
+    assert started.status_code == 202, started.text
+    finished = worlds.run_now(world, UUID(str(started.json()["id"])))
+    assert finished["state"] == "SUCCEEDED", finished
+    repeated = get(
+        app, f"/api/v1/report-runs/{started.headers['x-erev-report-run-id']}/data", world.maya
+    )
+    assert repeated.status_code == 200, repeated.text
+    assert repeated.json()["items"] == rows
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("billing_mode", ["ERP", "ENGINE"])
+def test_functional_rollforward_invoice_uses_layer_carrying(
+    app: FastAPI,
+    keyring: KeyRing,
+    clock: FrozenClock,
+    app_settings: Settings,
+    monkeypatch: pytest.MonkeyPatch,
+    billing_mode: str,
+) -> None:
+    from datetime import date
+    from uuid import UUID
+
+    from erev_api.db.tables import contract
+    from erev_api.enums import ContractEventType
+    from erev_api.events.payloads import BillingRecordedV1
+    from erev_api.events.stream import EventIn
+    from erev_api.money import MoneyIn
+    from sqlalchemy import select
+    from support import close_run_worlds
+    from support import close_runs as runs
+    from support.factories import appended, computed
+
+    world = close_run_worlds.eur_receivable(
+        app, keyring, clock, LocalFileStore(app_settings.file_root)
+    )
+    if billing_mode == "ENGINE":
+        from erev_api.db.session import DbContext, tenant_session
+        from erev_api.enums import RegistryCategory, RegistryScope
+        from support.rows import publish_registry_version
+
+        with tenant_session(
+            DbContext(tenant_id=world.tenant_id, user_id=None, entity_scope="*")
+        ) as session:
+            publish_registry_version(
+                session,
+                tenant_id=world.tenant_id,
+                category=RegistryCategory.ACCOUNTING_POLICY,
+                scope=RegistryScope.ENTITY,
+                entity_id=world.entity_id,
+                values={"billing.posting": "ENGINE"},
+                at=clock.now(),
+            )
+    held = world.contracts[close_run_worlds.EUR_CONTRACT]
+    identity = UUID(str(held.contract["id"]))
+    head = world.place.scalar(
+        select(contract.c.head_stream_version).where(contract.c.id == identity)
+    )
+    day = date(2026, 9, 15)
+    appended(
+        world.place,
+        identity,
+        int(head),
+        [
+            EventIn(
+                event_type=ContractEventType.BILLING_RECORDED,
+                effective_date=day,
+                payload=BillingRecordedV1(
+                    invoice_number="EUR-INVOICE",
+                    line_external_id="EUR-INVOICE-1",
+                    obligation_key="O1",
+                    issue_date=day,
+                    amount=MoneyIn(amount="10000.00", currency="EUR"),
+                ),
+            )
+        ],
+    )
+    computed(world.place, UUID(str(held.combination_group["id"])))
+    for key in ("FY2026-P08", "FY2026-P09"):
+        closed = runs.closed(world, monkeypatch, entity_code=AVM_US, period_key=key)
+        assert closed["status"] == "SUCCEEDED"
+        world = runs.journal_posted(world, clock, closed["journal_run_id"])
+    run, rows = report_run(
+        world,
+        "contract_balance_rollforward",
+        {
+            "entity_codes": [AVM_US],
+            "book": "ASC606",
+            "currency_view": "functional",
+            "from_period_key": "FY2026-P09",
+            "to_period_key": "FY2026-P09",
+        },
+    )
+    figures = keyed(rows)
+    assert figures["OPENING"]["unbilled_receivable"] == usd("11050.00")
+    spot = D(close_run_worlds.EUR_SEPTEMBER[0]) * 10000
+    assert figures["BILLINGS"]["unbilled_receivable"] == usd(f"{-spot:.2f}")
+    assert figures["FX_REMEASUREMENT"]["unbilled_receivable"] == usd(f"{spot - D('11050'):.2f}")
+    assert figures["CLOSING"]["unbilled_receivable"] == usd("0.00")
+    assert tie(run, tie_outs.TO_ROLLFORWARD_BALANCES)["result"] == "PASS"
+
+    from support import worlds
+    from support.reference import post
+
     started = post(app, f"/api/v1/report-runs/{run['id']}/rerun", world.maya, {})
     assert started.status_code == 202, started.text
     finished = worlds.run_now(world, UUID(str(started.json()["id"])))

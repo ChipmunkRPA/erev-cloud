@@ -1,5 +1,15 @@
 # eRev Cloud 1.0: stated limits of the release
 
+Current functional rollforward update (October 20): contract balance rollforward now reads
+functional opening/closing targets and functional flows. Historical invoice layers supply billing
+in ERP and ENGINE modes; ENGINE billing must reproduce posted functional totals. Settlement FX
+is timed before its invoice and removed from the period-end FX component without changing net
+FX. Historical/locked balances, uploaded GL comparisons, both billing modes and retained reruns
+pass targeted journeys. Multi-layer monetary-liability FX and combined-contract layer attribution
+still need work; ambiguous multi-layer FX is refused. Reporting-currency translation and broader
+multi-currency report coverage remain incomplete. Earlier blanket functional-rollforward refusals
+are superseded for these supported source paths. No deployment.
+
 Current population variance update (October 20): whole independent groups entering/leaving a
 frozen population now receive explicit, source-verified contributions and drill-through. The
 absent side has no synthetic computation. Entries use NEW_CONTRACT; departures remain OTHER

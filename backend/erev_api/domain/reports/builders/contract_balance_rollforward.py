@@ -33,6 +33,13 @@ Per member contract and contracting entity over the range:
   any liability difference, is ``OTHER`` (unexplained; REQ-RPT-006);
 - ``FX_REMEASUREMENT`` and ``BUSINESS_COMBINATIONS`` are 0 in the transaction view.
 
+The functional view reads dated engine balance targets and posted functional control flows.
+Billing is valued from retained historical layer creation/settlement amounts and, in ENGINE
+posting mode, must equal posted functional billing. Settlement FX is moved before its billing
+flow with an equal offset to period-end FX. Layer identities and verified traces are retained
+for reruns. FX on more than one open liability layer still needs explicit per-layer attribution
+and is refused rather than apportioned using functional balances as weights.
+
 Section 1 "Rollforward" gives one row per line code (``<line>:<ISO>`` when several currencies);
 section 2 "By contract" one row per contract for ``balance_role``. Tie-outs:
 ``TO_ROLLFORWARD_BALANCES`` passes when every ``OTHER`` cell is 0 (opening plus activity equals
@@ -52,7 +59,7 @@ contract is activated late: its lines are movements of the period they are poste
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Any, Final
@@ -62,7 +69,7 @@ from erev_engine import billing_identity
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from erev_api.db.tables import contract_event, subledger_line
+from erev_api.db.tables import contract_event, fx_layer_movement, subledger_line
 from erev_api.domain.reports import functional_balances, locked_ends, rollforward_gl, tie_outs
 from erev_api.domain.reports.builders import ReportParams
 from erev_api.domain.reports.outputs import Column, ReportData
@@ -76,6 +83,7 @@ from erev_api.domain.reports.tie_outs import (
     add,
 )
 from erev_api.enums import ContractEventType
+from erev_api.explain import store as trace_store
 from erev_api.uow import UnitOfWork
 
 CODE: Final = "contract_balance_rollforward"
@@ -120,6 +128,7 @@ LIABILITY_ROLE: Final = "CONTRACT_LIABILITY"
 BILLING: Final = "BILLING"
 REVENUE: Final = "REVENUE"
 RECLASSIFICATION: Final = "RECLASSIFICATION"
+FX: Final = "FX"
 FAMILIES: Final[Mapping[str, str]] = {
     "BILLING": BILLING,
     "CREDIT_MEMO": BILLING,
@@ -133,6 +142,7 @@ FAMILY_LINES: Final[Mapping[str, str]] = {
     BILLING: "BILLINGS",
     REVENUE: "REVENUE_FROM_PERIOD_BILLINGS",
     RECLASSIFICATION: "RECLASSIFICATIONS",
+    FX: "FX_REMEASUREMENT",
 }
 # A contract's billing stream (04 E-03): the documents and what voids them.
 DOCUMENT_TYPES: Final = (
@@ -208,6 +218,25 @@ def path(
     for flow in flows:
         family = family_of(flow)
         label = FAMILY_LINES[family]
+        if family == FX:
+            live = [layer for layer in layers if layer[1] > 0]
+            if live:
+                if len(live) > 1:
+                    raise tie_outs.invalid(
+                        "currency_view",
+                        "FX on multiple liability layers requires layer-specific attribution.",
+                    )
+                if live[0][1] < flow.amount:
+                    raise tie_outs.invalid(
+                        "currency_view", "FX movement exceeds the liability carrying amount."
+                    )
+                live[0][1] -= flow.amount
+                lines[label][LIABILITY] -= flow.amount
+                continue
+            role = UNBILLED if asset[UNBILLED] else ASSET
+            asset[role] += flow.amount
+            lines[label][role] += flow.amount
+            continue
         if flow.amount < 0:
             left = -flow.amount
             for role in (UNBILLED, ASSET):
@@ -304,11 +333,10 @@ def rollforwards(
         traces=traces,
         locked_ends=locked,
     )
+    transaction_ends = {
+        (row.contract_id, row.entity_id): row for row in (*opening_rows, *closing_rows)
+    }
     if functional:
-        if documents:
-            raise tie_outs.invalid(
-                "currency_view", "Functional movement attribution is not available yet."
-            )
         entities = tie_outs.entities(session, entity_ids, params=params)
         opening_rows = functional_balances.read(
             session,
@@ -333,13 +361,26 @@ def rollforwards(
         ends.setdefault((row.contract_id, row.entity_id), [None, None])[0] = row
     for row in closing_rows:
         ends.setdefault((row.contract_id, row.entity_id), [None, None])[1] = row
-    posted = _lines(session, entity_ids, book_code, periods, known_at, contract_id, params=params)
+    posted = _lines(
+        session,
+        entity_ids,
+        book_code,
+        periods,
+        known_at,
+        contract_id,
+        params=params,
+        functional=functional,
+    )
+    booked_billing: dict[tuple[UUID, UUID], list[Entry]] = {}
+    if functional and documents:
+        # Read billing at its source date in either posting mode. ENGINE totals
+        # must match their posted functional amounts before substituting the path.
+        for key, entries in posted.items():
+            booked_billing[key] = [entry for entry in entries if entry.entry_kind in BILLING_KINDS]
+            posted[key] = [entry for entry in entries if entry.entry_kind not in BILLING_KINDS]
     unposted: dict[tuple[UUID, UUID], list[Entry]] = {}
     if documents:
-        described_rows = {
-            key: closing if closing is not None else opening
-            for key, (opening, closing) in ends.items()
-        }
+        described_rows = transaction_ends
         unposted = _billing(
             session,
             rows={key: row for key, row in described_rows.items() if row is not None},
@@ -351,6 +392,28 @@ def rollforwards(
             params=params,
             locked=locked,
         )
+    if functional and documents:
+        unposted = _functional_documents(
+            session, unposted, transaction_ends, params, posted, periods
+        )
+        for key, entries in booked_billing.items():
+            for period_id in {entry.period_id for entry in entries}:
+                booked = sum(
+                    (entry.flow.amount for entry in entries if entry.period_id == period_id), ZERO
+                )
+                sourced = sum(
+                    (
+                        entry.flow.amount
+                        for entry in unposted.get(key, ())
+                        if entry.period_id == period_id and entry.flow.kind == BILLING
+                    ),
+                    ZERO,
+                )
+                if booked != sourced:
+                    raise tie_outs.invalid(
+                        "currency_view",
+                        "Dated billing layers differ from posted functional billing.",
+                    )
     found: list[ContractRollforward] = []
     for (contract_key, entity_id), (opening, closing) in ends.items():
         described = closing if closing is not None else opening
@@ -359,7 +422,11 @@ def rollforwards(
         entries = sorted(
             [*posted.get(key, ()), *unposted.get(key, ())], key=lambda entry: entry.order
         )
-        lines = path(_values(opening), [entry.flow for entry in entries], _values(closing))
+        lines = path(
+            _values(opening),
+            [entry.flow for entry in entries] if documents else [],
+            _values(closing),
+        )
         found.append(
             ContractRollforward(
                 contract_id=contract_key,
@@ -405,6 +472,7 @@ def _lines(
     contract_id: UUID | None,
     *,
     params: ReportParams,
+    functional: bool = False,
 ) -> dict[tuple[UUID, UUID], list[Entry]]:
     """The subledger lines of the role over the range, per contract and entity. S15-R-24 /
     frps3c-2: the line ids consumed are recorded as ``members.subledger_line`` on a live build; a
@@ -427,6 +495,7 @@ def _lines(
         subledger_line.c.recorded_at,
         subledger_line.c.entry_no,
         subledger_line.c.amount_txn,
+        subledger_line.c.amount_functional,
         subledger_line.c.entry_kind,
     ).where(
         subledger_line.c.book_code == book_code,
@@ -464,7 +533,14 @@ def _lines(
                     int(row["entry_no"]),
                     str(row["id"]),
                 ),
-                flow=line_flow(entry_kind, Decimal(row["amount_txn"])),
+                flow=(
+                    Flow(Decimal(row["amount_functional"]), False, FX)
+                    if functional and entry_kind == "FX_REMEASUREMENT"
+                    else line_flow(
+                        entry_kind,
+                        Decimal(row["amount_functional" if functional else "amount_txn"]),
+                    )
+                ),
                 period_id=UUID(str(row["period_id"])),
                 entry_kind=entry_kind,
             )
@@ -472,6 +548,137 @@ def _lines(
     tie_outs.require_members(params, "subledger_line", consumed)
     tie_outs.record_members(params, "subledger_line", consumed)
     return found
+
+
+def _functional_documents(
+    session: Session,
+    entries: Mapping[tuple[UUID, UUID], list[Entry]],
+    rows: Mapping[tuple[UUID, UUID], BalanceRow],
+    params: ReportParams,
+    posted: dict[tuple[UUID, UUID], list[Entry]],
+    periods: Mapping[UUID, tuple[PeriodRef, ...]],
+) -> dict[tuple[UUID, UUID], list[Entry]]:
+    """ERP billing takes its actual historical layer carrying, never today's rate."""
+    result: dict[tuple[UUID, UUID], list[Entry]] = {}
+    consumed: list[UUID] = []
+    settlements: dict[tuple[UUID, UUID, UUID], Decimal] = {}
+    for key, items in entries.items():
+        row = rows[key]
+        currency = tie_outs.entities(session, (row.entity_id,), params=params)[
+            0
+        ].functional_currency
+        if row.currency == currency:
+            result[key] = list(items)
+            continue
+        trace = trace_store.load_trace(session, row.version_id)
+        if trace is None:
+            raise tie_outs.invalid("currency_view", "Functional billing trace is unavailable.")
+        nodes = {node.id: node for node in trace.nodes}
+        translated = []
+        for entry in items:
+            event_id = UUID(str(entry.order[-1]))
+            found = (
+                session.execute(
+                    select(fx_layer_movement).where(
+                        fx_layer_movement.c.contract_version_id == row.version_id,
+                        fx_layer_movement.c.contract_id == row.contract_id,
+                        fx_layer_movement.c.entity_id == row.entity_id,
+                        fx_layer_movement.c.source_event_id == event_id,
+                        fx_layer_movement.c.balance_role.in_(
+                            ("CONTRACT_LIABILITY", "CONTRACT_ASSET")
+                        ),
+                        fx_layer_movement.c.movement_kind.in_(
+                            (
+                                *(
+                                    ("LIABILITY_LAYER_CREATED", "ASSET_LAYER_SETTLED")
+                                    if entry.flow.amount < 0
+                                    else ("LIABILITY_LAYER_CONSUMED", "ASSET_LAYER_CREATED")
+                                ),
+                                "ASSET_LAYER_REMEASURED",
+                                "LIABILITY_LAYER_REMEASURED",
+                            )
+                        ),
+                    )
+                )
+                .mappings()
+                .all()
+            )
+            remeasured = [
+                item for item in found if str(item["movement_kind"]).endswith("_REMEASURED")
+            ]
+            all_sources = found
+            found = [
+                item for item in found if not str(item["movement_kind"]).endswith("_REMEASURED")
+            ]
+            if (
+                not found
+                or any(
+                    str(item["functional_currency"]).strip() != currency
+                    or str(item["txn_currency"]).strip() != row.currency
+                    for item in all_sources
+                )
+                or any(
+                    item["trace_node_id"] not in nodes
+                    or nodes[item["trace_node_id"]].currency != currency
+                    or Decimal(nodes[item["trace_node_id"]].value)
+                    != Decimal(item["amount_functional"])
+                    for item in all_sources
+                )
+                or sum((Decimal(item["amount_txn"]) for item in found), ZERO)
+                != abs(entry.flow.amount)
+            ):
+                raise tie_outs.invalid(
+                    "currency_view",
+                    f"Billing {event_id} has no matching functional layer evidence.",
+                )
+            consumed.extend(UUID(str(item["id"])) for item in all_sources)
+            settlement = sum(
+                (
+                    Decimal(item["amount_functional"])
+                    * (-1 if item["balance_role"] == "CONTRACT_LIABILITY" else 1)
+                    for item in remeasured
+                ),
+                ZERO,
+            )
+            if settlement:
+                if entry.period_id is None:
+                    raise tie_outs.invalid(
+                        "currency_view", "Billing settlement lacks its report period."
+                    )
+                settlement_key = (*key, entry.period_id)
+                settlements[settlement_key] = settlements.get(settlement_key, ZERO) + settlement
+                translated.append(
+                    replace(
+                        entry,
+                        order=(*entry.order, 0),
+                        flow=Flow(settlement, False, FX),
+                    )
+                )
+            amount = sum((Decimal(item["amount_functional"]) for item in found), ZERO)
+            translated.append(
+                replace(
+                    entry,
+                    order=(*entry.order, 1),
+                    flow=Flow(-amount if entry.flow.amount < 0 else amount, False, BILLING),
+                )
+            )
+        result[key] = translated
+    # Settlement FX belongs immediately before the invoice. Remove that same
+    # amount from period-end posted FX, retaining its net movement exactly.
+    for (contract_id, entity_id, period_id), settlement in settlements.items():
+        key = (contract_id, entity_id)
+        at = next(item for item in periods[entity_id] if item.id == period_id)
+        posted.setdefault(key, []).append(
+            Entry(
+                order=(at.end, LINE_RANK, at.end, params.known_at, 0, "settlement-timing"),
+                flow=Flow(-settlement, False, FX),
+                period_id=period_id,
+                entry_kind="FX_REMEASUREMENT",
+            )
+        )
+    tie_outs.require_members(params, "functional_billing_layer", consumed)
+    tie_outs.record_members(params, "functional_billing_layer", consumed)
+    return result
 
 
 @dataclass(frozen=True, slots=True)
@@ -584,6 +791,9 @@ def document_entries(wanted: Sequence[PeriodRef], documents: Sequence[Document])
                 str(document.event_id),
             ),
             flow=document_flow(document.amount),
+            period_id=next(
+                item.id for item in wanted if item.start <= document.effective_date <= item.end
+            ),
         )
         for document in documents
         if any(item.start <= document.effective_date <= item.end for item in wanted)
@@ -737,6 +947,7 @@ def _billing(
                     str(document.event_id),
                 ),
                 flow=document_flow(document.amount),
+                period_id=item.id,
             )
             for (item, _), here in zip(deltas, entering, strict=True)
             if item.id in named
@@ -865,6 +1076,7 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         cutoff=cutoff,
         params=params,
         contract_id=contract_id,
+        functional=params.parameters.get("currency_view") == "functional",
         locked=ends,
     )
     _check_view(params, found, items)
@@ -932,6 +1144,16 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         contract_id=contract_id,
         locked_ends=ends,
     )
+    if params.parameters.get("currency_view") == "functional":
+        closing_balances = functional_balances.read(
+            session,
+            params,
+            closing_balances,
+            entities=found,
+            periods={key: (value[-1] if value else None) for key, value in periods.items()},
+            book_code=book_code,
+            locked=ends,
+        )
     return ReportData(
         columns=COLUMNS,
         rows=tuple(rows),

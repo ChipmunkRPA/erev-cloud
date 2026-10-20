@@ -6,6 +6,23 @@
 
 
 
+## Functional contract-balance movements — October 20, 2026
+
+- Contract balance rollforward now supports functional currency using dated engine balances,
+  posted functional control flows and historical billing-layer carrying. Revenue, reclassification
+  and FX remain distinct. Closing balances and GL comparisons use the same functional basis.
+- Both ERP and ENGINE billing use dated source documents; ENGINE amounts must match posted
+  functional billing. Layer amounts must match retained, hash-verified trace nodes and transaction
+  amounts. Consumed layer IDs are retained for reruns; missing evidence is refused.
+- Settlement FX is placed immediately before its own invoice, with an equal adjustment to
+  period-end FX, preserving posted net FX and avoiding a spurious liability/billing split.
+- Targeted journeys pass: EUR receivable August/September with GL tie-outs, ERP and ENGINE
+  invoice settlement plus rerun, locked-period functional movement and existing transaction
+  invoice rollforward. ERP: opening USD 11,050 + FX 50 - billing 11,100 = zero. Lint/types pass.
+- Remaining: FX attribution across multiple open monetary liability layers, combined-contract
+  layer attribution, reporting-currency translation and broader report coverage. Ambiguous
+  multi-layer FX remains refused. Full four-workstream completion is not claimed. No deployment.
+
 ## Independent group population changes in close variance — October 20, 2026
 
 - Frozen close comparisons now support entire independent contract groups entering or leaving
@@ -213,24 +230,6 @@
   screen, scenario save, actual-versus-forecast populated K11 and multi-contract K03/close
   variance remain open. Tamsin acceptance and independent sign-off are also outstanding.
   No deployment; direct main workflow.
-
-## Asynchronous deal preview API and worker — October 19, 2026
-
-- Added POST /deal-previews with idempotent command admission and a reserved preview identity;
-  registered DEAL_PREVIEW worker execution. It reloads the active human initiator and current
-  grants, uses fenced units of work, checks cancellation and retains the computed evidence.
-  Already-retained previews refuse later cancellation; job results carry identity/hash/link only.
-- Added scoped GET list and detail. Entity authorization filters before pagination/counting;
-  lists return proposal metadata without engine traces, details verify input/result hashes
-  and return retained result/pins without exposing the internal input bundle. Both use no-store.
-- Migration 0189 adds deal_preview to the job subject constraint. Downgrade refuses while such
-  jobs remain. Removed the pending-handler entry and retained registry negative-case checks.
-- Real API/worker/database journey passes duplicate-request identity, successful USD 120000.00
-  allocation, one retained preview, zero production contracts, summary/detail reads and entity
-  scope filtering. Five registry checks, Python lint/types and OpenAPI generation pass.
-- Scenario save, user-facing allocation/range/indicator projection and SF-18 UI still need
-  implementation. Tamsin accounting acceptance, broader release verification and independent
-  sign-off remain open. No deployment.
 
 ## Outstanding release verification
 
