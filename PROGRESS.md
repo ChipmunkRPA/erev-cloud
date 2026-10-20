@@ -6,6 +6,22 @@
 
 
 
+## Catalogue evidence dependency/execution chain — October 19, 2026
+
+- Ordinary report insertion now prepares and persists an explicit source pack binding in the
+  initial INSERT, atomically with its jobs. Immutable report parameters/entity scope are not
+  updated later. Retained preparation reuses the same pack; selectors and cutoff remain fixed.
+- REPORT_RUN readiness waits for the exact EVIDENCE_PACK job and verifies its subject/hash.
+  The worker rehydrates the current requester, verifies source access and stores the original
+  artifact plus provenance through normal report completion/control recording.
+- Real close acceptance exercises internal report creation, child reports/audit verification,
+  source-pack completion and catalogue report worker completion; output bytes/hash match.
+  Ruff and Mypy pass. Sample orchestration acceptance remains open.
+- Public catalogue admission is still disabled: registration, lock resolution, source contracts
+  and addressed/list/download authorization must be integrated before exposing RPT-54/55.
+  Fresh sample capture currently requires the creation-time known_at; historical fresh capture
+  remains unsupported (retained reruns preserve the original cutoff). No deployment.
+
 ## Catalogue evidence source/output adapter — October 19, 2026
 
 - RPT-54/55 now have an internal adapter for an explicitly selected retained pack. It binds
@@ -234,14 +250,6 @@
 - Targeted database collection/archive verification and two integrity/redaction checks pass.
   Computed versions/allocation/schedules, journals, decisions, audit slice, actual documents,
   stamped PDF/XLSX and public job/read/download integration remain. No complete-pack claim.
-
-## Comparison report presentation — October 19, 2026
-
-- Saved and rebuilt comparison controls now retain forecast ID, refresh time, book and currency
-  basis. The viewer shows actuals cutoff, refresh time, variance definitions and a specific
-  empty-actuals message; columns use the saved report's labels and order.
-- Six focused calculation/rebuild checks, TypeScript and lint pass. Populated accounting
-  acceptance remains open. Contract sample and period evidence packs remain development gaps.
 
 ## Outstanding release verification
 

@@ -1766,6 +1766,20 @@ def _insert_run(
         if resolved.source_binding is None
         else dict(resolved.source_binding),
     }
+    if str(definition["code"]) in {"period_evidence_pack", "contract_sample_pack"}:
+        from erev_api.domain.reports.evidence_catalogue_jobs import prepare
+
+        values.update(
+            prepare(
+                uow,
+                {
+                    "tenant_id": uow.principal.tenant_id,
+                    "id": run_id,
+                    **values,
+                    **_stamp(uow),
+                },
+            )
+        )
     session.execute(
         insert(report_run).values(
             tenant_id=uow.principal.tenant_id, id=run_id, **values, **_stamp(uow)
@@ -2368,6 +2382,19 @@ def _export_requester(
 ) -> RequestContext | None:
     """Recheck before transitions, completed-job replay, building and output persistence."""
     stored = run.get("ai_export_access")
+    if str(run["report_code"]) in {"period_evidence_pack", "contract_sample_pack"}:
+        from erev_api.domain.reports import evidence_catalogue, evidence_catalogue_jobs
+
+        if stored is not None:
+            raise Problem("invalid-transition")
+        ctx = report_requester.validation_requester(jc, uow, run)
+        original_context = uow.ctx
+        uow.ctx = ctx
+        try:
+            evidence_catalogue.authorize(uow, evidence_catalogue_jobs.source(run))
+        finally:
+            uow.ctx = original_context
+        return ctx
     if str(run["report_code"]) == "disclosure_pack":
         if stored is not None:
             raise Problem("invalid-transition")
@@ -2427,8 +2454,9 @@ def _export_requester(
 
 def dependencies_ready(session: Session, job_id: UUID, params: Mapping[str, Any]) -> bool:
     from erev_api.domain.reports.disclosure_readiness import ready
+    from erev_api.domain.reports.evidence_catalogue_jobs import ready as evidence_ready
 
-    return ready(session, job_id, params)
+    return evidence_ready(session, job_id, params) and ready(session, job_id, params)
 
 
 @task(JobKind.REPORT_RUN, retry=REPORT_RUN_RETRY, on_failure=run_failed, ready=dependencies_ready)
@@ -2494,7 +2522,18 @@ def run_report(jc: JobContext, params: Mapping[str, Any]) -> JobOutcome:
             raise Problem("validation-failed", NOT_AVAILABLE)
         heads = {} if requester is not None else _ledger_heads(session)
         style = str(setting(session, NEGATIVE_NUMBER_STYLE, known_at=uow.now))
-        if run["period_lock_id"] is not None and run["report_code"] != "disclosure_pack":
+        if str(run["report_code"]) in {"period_evidence_pack", "contract_sample_pack"}:
+            from erev_api.domain.reports.evidence_catalogue_execution import build as build_evidence
+
+            if requester is None:
+                raise Problem("forbidden")
+            original_context = uow.ctx
+            uow.ctx = requester
+            try:
+                data, rendered, source_binding = build_evidence(uow, run)
+            finally:
+                uow.ctx = original_context
+        elif run["period_lock_id"] is not None and run["report_code"] != "disclosure_pack":
             # S15-R-19 (rev 1.31; D-98 candidate 96): an as-locked run reads the lock's frozen
             # dataset of the report's kind and no live table; refusals by name, never a live label.
             locked.assert_run_matches(session, run)  # CLO8-SCOPE-R1: the run's scope is the lock's
@@ -2587,8 +2626,8 @@ def run_report(jc: JobContext, params: Mapping[str, Any]) -> JobOutcome:
             "ledger_heads": heads,
             "finished_at": uow.now,
         }
-        if run["period_lock_id"] is None:
-            values["source_binding"] = source_binding  # S15-R-24; NULL stays for as-locked runs
+        if run["period_lock_id"] is None or run["report_code"] == "period_evidence_pack":
+            values["source_binding"] = source_binding  # Ordinary as-locked datasets retain NULL.
         if str(run["report_code"]) == "disclosure_pack" and run["period_lock_id"] is None:
             from erev_api.domain.reports.disclosure_snapshots import write_draft
 

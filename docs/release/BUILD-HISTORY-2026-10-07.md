@@ -7885,3 +7885,11 @@ cleanup in the shared database session kernel was also repaired and regression-t
   The journey checks archived choices, pagination and invalid cursors, then runs JSON/XLSX/CSV/
   PDF report jobs and same-source rebuilding with no actuals. Populated accounting acceptance
   and rendered populated-report review are still outstanding. No deployment.
+
+## Comparison report presentation — October 19, 2026
+
+- Saved and rebuilt comparison controls now retain forecast ID, refresh time, book and currency
+  basis. The viewer shows actuals cutoff, refresh time, variance definitions and a specific
+  empty-actuals message; columns use the saved report's labels and order.
+- Six focused calculation/rebuild checks, TypeScript and lint pass. Populated accounting
+  acceptance remains open. Contract sample and period evidence packs remain development gaps.

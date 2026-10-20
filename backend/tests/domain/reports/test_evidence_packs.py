@@ -29,7 +29,7 @@ from fastapi import FastAPI
 from support.close_world import actor_with_role
 from support.db import TestDatabase
 from support.evidence_packs import retained_close_pack
-from support.reference import get
+from support.reference import assign, get
 
 
 @pytest.fixture
@@ -62,6 +62,7 @@ def test_ctl_041_close_pack_manifest(
     from erev_api.domain.reports import evidence_catalogue, evidence_commands, evidence_sources
     from erev_api.problems import Problem
 
+    assign(world.maya.member, "auditor")
     principal = replace(
         world.place.principal,
         permissions=evidence_commands.PERMISSIONS,
@@ -82,7 +83,83 @@ def test_ctl_041_close_pack_manifest(
         changed = bound.model_copy(update={"source_binding_sha256": "f" * 64})
         with pytest.raises(Problem):
             evidence_catalogue.read(uow, changed)
+        from erev_api.db.tables import report_run
+        from erev_api.domain.reports import evidence_catalogue_jobs, framework
+        from sqlalchemy import select
+
+        definition = framework.definition_row(uow.session, "period_evidence_pack")
+        assert definition is not None
+        params = {
+            "entity_codes": [source.request.entity_code],
+            "book": source.request.book.value,
+            "period_key": source.request.period_key,
+            "period_lock_id": str(source.request.period_lock_id),
+            "known_at": source.cutoff_known_at.isoformat(),
+        }
+        run_id, queued = framework._insert_run(
+            uow,
+            definition=definition,
+            resolved=framework._Resolved(
+                parameters=params,
+                entity_ids=(source.entity_id,),
+                known_at=source.cutoff_known_at,
+                book_code=source.request.book.value,
+                as_of_date=None,
+                period_lock_id=source.request.period_lock_id,
+            ),
+            output_format="ZIP",
+            rerun_of=None,
+        )
+        report = dict(
+            uow.session.execute(select(report_run).where(report_run.c.id == run_id))
+            .mappings()
+            .one()
+        )
+        attached = evidence_catalogue_jobs.source(report)
+        assert attached.pack_id != bound.pack_id  # A new request has its own explicit source.
+        assert (
+            evidence_catalogue_jobs.prepare(uow, report)["source_binding"]
+            == report["source_binding"]
+        )
+        assert not framework.dependencies_ready(
+            uow.session, queued.id, {"report_run_id": str(run_id)}
+        )
+        bad = {**report, "known_at": clock.now()}
+        with pytest.raises(Problem):
+            evidence_catalogue_jobs.source(bad)
         uow.commit()
+    from erev_api.files.store import open_file
+    from support import worlds
+
+    with world.place.uow(principal) as uow:
+        child_source = evidence_sources.load_close(uow, attached.pack_id)
+    assert isinstance(child_source, evidence_sources.QueuedCloseSources)
+    for child_id in [
+        child_source.audit_verification_job_id,
+        *[item.job_id for item in child_source.supporting_reports],
+        attached.job_id,
+    ]:
+        result = worlds.run_now(world, child_id)
+        assert result["state"] == "SUCCEEDED", result
+    with world.place.uow(principal) as uow:
+        assert framework.dependencies_ready(uow.session, queued.id, {"report_run_id": str(run_id)})
+    result = worlds.run_now(world, queued.id)
+    assert result["state"] == "SUCCEEDED", result
+    with world.place.uow(principal) as uow:
+        completed = (
+            uow.session.execute(select(report_run).where(report_run.c.id == run_id))
+            .mappings()
+            .one()
+        )
+        assert completed["status"] == "SUCCEEDED"
+        artifact = evidence_catalogue.read(uow, attached)
+        _, stream = open_file(
+            uow.session, completed["output_file_id"], files=uow.files, keyring=uow.keyring
+        )
+        with stream:
+            assert stream.read() == artifact.content
+        assert completed["output_sha256"] == artifact.sha256
+        assert evidence_catalogue_jobs.source(dict(completed)) == attached
     denied = replace(principal, permissions=principal.permissions - {"evidence.export"})
     with world.place.uow(denied) as uow, pytest.raises(Problem) as refusal:
         evidence_catalogue.read(uow, bound)
