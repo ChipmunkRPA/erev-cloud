@@ -6,6 +6,17 @@
 
 
 
+## Report export recovery — October 19, 2026
+
+- Export menus now guard duplicate submissions during the request, the accepted-but-not-yet-
+  loaded job interval and job execution. Running jobs keep format choices visibly unavailable.
+- Network failures and malformed accepted responses now show a recovery message. Cancellation
+  has its own message. A completed export whose report record cannot be loaded offers a retry
+  against the same report; it never queues another report or announces successful preparation.
+- Three focused interaction checks cover duplicate requests, same-report recovery and network
+  errors; TypeScript and ESLint pass. Other reporting workflows and independent accounting
+  acceptance remain open. No deployment or production-readiness claim.
+
 ## Saved report column metadata — October 19, 2026
 
 - Ordinary report grids now use saved column order where no dedicated layout applies, and
@@ -235,19 +246,6 @@
   includes real memberships. Revoked export is refused; Mypy and Ruff pass.
 - This is the retained report section, not completed CHANGE/ACCESS packs. Release evidence,
   role matrix/access reviews, parent retention/API/UI remain next development work. No deployment.
-
-## Re-lock variance report integration — October 19, 2026
-
-- Close-pack creation now queues the existing variance-between-closes builder for re-locks.
-  New v3 bindings retain the previous/current locks, report run and request cutoff; ordinary
-  supporting reports retain the freeze cutoff. v1/v2 first-close bindings remain unchanged.
-- Readiness waits for the variance job and audit verification; assembly includes the retained
-  CSV, IPE manifest, source identity, original stored comparison and frozen measure changes.
-  Frontend now permits re-lock selection and describes the additional evidence.
-- Actual queue/worker/retained-output acceptance over seeded empty locks passes, as does the
-  real first-close command journey. Focused binding/assembly checks and 34 UI checks pass.
-- Still open: populated re-open/re-lock end-to-end acceptance, cross-contract driver evidence,
-  catalogue PACK builders, change/access packs and independent accounting sign-off. No deployment.
 
 ## Outstanding release verification
 

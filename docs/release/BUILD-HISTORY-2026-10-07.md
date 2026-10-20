@@ -8029,3 +8029,16 @@ cleanup in the shared database session kernel was also repaired and regression-t
   TypeScript, Mypy and lint pass. No deployment.
 - Reporting remains unfinished: broader sample accounting acceptance, period-pack completion,
   relock variance, change/access packs and forecast/report orchestration remain tracked.
+
+## Re-lock variance report integration — October 19, 2026
+
+- Close-pack creation now queues the existing variance-between-closes builder for re-locks.
+  New v3 bindings retain the previous/current locks, report run and request cutoff; ordinary
+  supporting reports retain the freeze cutoff. v1/v2 first-close bindings remain unchanged.
+- Readiness waits for the variance job and audit verification; assembly includes the retained
+  CSV, IPE manifest, source identity, original stored comparison and frozen measure changes.
+  Frontend now permits re-lock selection and describes the additional evidence.
+- Actual queue/worker/retained-output acceptance over seeded empty locks passes, as does the
+  real first-close command journey. Focused binding/assembly checks and 34 UI checks pass.
+- Still open: populated re-open/re-lock end-to-end acceptance, cross-contract driver evidence,
+  catalogue PACK builders, change/access packs and independent accounting sign-off. No deployment.
