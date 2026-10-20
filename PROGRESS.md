@@ -6,6 +6,21 @@
 
 
 
+## Exact paid-origin window for carried FX — October 20, 2026
+
+- TIME FX historical attribution now selects the target period plus its immediately preceding
+  continuous closed/permanently-locked run, bounded by the retained anchor. It no longer treats
+  every period between sparse calculation targets as paid: an intervening open period stops
+  pooling, matching S14. EVENT/ALL retain their exact source origin. All period states come from
+  the original encrypted computation input; today's calendar does not change reruns.
+- Necessary verification covers sparse targets across an intervening open period, a retained
+  anchor inside a locked run, EVENT origin isolation and refusal of TIME in a non-postable
+  period; the existing actual multi-layer repeated-close/report scenario checks integration.
+  Scoped lint/types pass. No deployment.
+- Still open: end-to-end late-carried public acceptance, populated foreign two-lock acceptance,
+  recorded privacy/snapshot registry gaps and final accounting/release acceptance. Correcting
+  this selector does not establish those broader acceptance cases or production readiness.
+
 ## Regrouped FX source ownership — October 20, 2026
 
 - Historical FX matching now uses S14's retained-membership regrouping rule. A stored group
@@ -207,26 +222,6 @@
   separate reporting FX change (including unchanged engine inputs) and population/membership
   handling. Public reporting-currency variance, populated foreign lock-to-lock acceptance and
   the other documented gaps remain. No deployment or independent accounting sign-off.
-
-## Functional close-variance attribution — October 20, 2026
-
-- Variance between closes now exposes transaction/functional currency selection. The selected
-  basis flows through frozen endpoints, ordinary groups, membership changes, population changes,
-  driver totals and presentation. Functional source identity and cell evidence bind the currency
-  choice; old transaction bindings retain their original form. Migration 0190 updates the stored
-  report schema so existing repositories receive the selector.
-- Foreign RPO replay now values each obligation from retained positive closing rates, rounding
-  gross consideration and exempt amounts separately before subtraction. Missing/ambiguous rates
-  and historical locks without the selected frozen view refuse; endpoint differences are never
-  hidden in OTHER. A real-engine EUR example gives USD 79.51 of RPO FX movement, including
-  per-obligation rounding, and conserves all replay endpoints.
-- Necessary checks: populated real-engine group replay against authored frozen bundles; retained
-  currency selection and missing-view refusal; database worker/reauthorization/bound-rerun on
-  empty published locks; frontend fixtures and scoped lint/types. These are distinct witnesses,
-  not a populated foreign-currency public-lock acceptance test.
-- Remaining: reporting-currency close variance (not offered yet), populated foreign-currency
-  lock-to-lock acceptance, combined/late-carried liability FX and documented release gaps.
-  No deployment or independent accounting sign-off; the overall objective remains unfinished.
 
 ## Outstanding release verification
 

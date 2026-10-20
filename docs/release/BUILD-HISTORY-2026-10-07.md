@@ -9169,3 +9169,23 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Remaining implementation includes close-variance currency selection and attribution against
   these snapshots, combined/late-carried liability FX and documented reporting/release gaps.
   No deployment or independent accounting sign-off; no production-readiness claim.
+
+## Functional close-variance attribution — October 20, 2026
+
+- Variance between closes now exposes transaction/functional currency selection. The selected
+  basis flows through frozen endpoints, ordinary groups, membership changes, population changes,
+  driver totals and presentation. Functional source identity and cell evidence bind the currency
+  choice; old transaction bindings retain their original form. Migration 0190 updates the stored
+  report schema so existing repositories receive the selector.
+- Foreign RPO replay now values each obligation from retained positive closing rates, rounding
+  gross consideration and exempt amounts separately before subtraction. Missing/ambiguous rates
+  and historical locks without the selected frozen view refuse; endpoint differences are never
+  hidden in OTHER. A real-engine EUR example gives USD 79.51 of RPO FX movement, including
+  per-obligation rounding, and conserves all replay endpoints.
+- Necessary checks: populated real-engine group replay against authored frozen bundles; retained
+  currency selection and missing-view refusal; database worker/reauthorization/bound-rerun on
+  empty published locks; frontend fixtures and scoped lint/types. These are distinct witnesses,
+  not a populated foreign-currency public-lock acceptance test.
+- Remaining: reporting-currency close variance (not offered yet), populated foreign-currency
+  lock-to-lock acceptance, combined/late-carried liability FX and documented release gaps.
+  No deployment or independent accounting sign-off; the overall objective remains unfinished.

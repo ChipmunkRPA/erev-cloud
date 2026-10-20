@@ -24,6 +24,7 @@ from sqlalchemy import insert, select
 
 from erev_api.db import new_id
 from erev_api.db.tables import close_pass_evidence, subledger_line, subledger_posting
+from erev_api.domain.reports.fx_paid_periods import paid_origins
 from erev_api.domain.reports.fx_subjects import retained_subject
 from erev_api.domain.reports.liability_fx_trace import LayerDelta, PostingDelta, from_pass
 from erev_api.enums import FilePurpose
@@ -352,12 +353,14 @@ def _paid_layers(
     )
     bundle = upgrade.decode_input(canonical_bytes(document["input"]))
     entity = next(item for item in bundle.entities if item.code == line["entity_code"])
-    positions = {item.period_key: index for index, item in enumerate(entity.periods)}
-    if target_period not in positions or (
-        prior_period is not None and prior_period not in positions
-    ):
-        raise ValueError("FX paid-source periods are absent from the retained calendar.")
     basis = delta.params["class"]
+    origins = paid_origins(
+        entity.periods,
+        book=str(line["book_code"]),
+        target=target_period,
+        previous=prior_period,
+        basis=basis,
+    )
     subject = retained_subject(line["subject_key"], bundle, line["entity_code"])
     base = f"posting_target:{subject}/FX_REMEASUREMENT/CONTRACT_LIABILITY"
     target_subject = str(delta.inputs[0]).rsplit(":", 1)[0]
@@ -389,16 +392,7 @@ def _paid_layers(
         ):
             continue
         origin = saved["origin_key"] or saved["period_key"]
-        if basis == "TIME":
-            if origin not in positions:
-                raise ValueError("FX history has a period outside its retained calendar.")
-            if not (
-                (positions[prior_period] if prior_period is not None else -1)
-                < positions[origin]
-                <= positions[target_period]
-            ):
-                continue
-        elif origin != target_period:
+        if origin not in origins:
             continue
         if UUID(saved["contract_id"]) not in owners.values():
             raise ValueError("FX history includes a contract outside the authorized owners.")
