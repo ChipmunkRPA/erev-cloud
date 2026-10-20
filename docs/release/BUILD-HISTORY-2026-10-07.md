@@ -8345,3 +8345,16 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Forty-eight focused report-page checks pass, including workspace/access/empty-migration
   visibility, with TypeScript and ESLint. This completes catalogue access, not the remaining
   populated reporting workflows, accounting acceptance or independent sign-off. No deployment.
+
+## Migration reconciliation workflow — October 19, 2026
+
+- Replaced the empty migration Reconciliation step with a runnable workflow for opening-balance
+  and replay batches: POST reconcile, persisted job recovery/polling, failure display and retry,
+  and migration refresh at task completion. In-flight or successful reconciliation prevents a
+  duplicate submission while the batch state refreshes.
+- Imported/reconciled/submitted/promoted batches can navigate to this step. Report-authorized
+  readers can open the retained reconciliation report or the report viewer with migration_id
+  pinned, plus parallel comparison with the same batch selected. Period inputs remain editable
+  in the report toolbar. Profile, promotion and other migration UI gaps remain separate work.
+- Twenty-three focused migration checks, TypeScript and ESLint pass. Full populated accounting
+  acceptance and independent sign-off remain outstanding; no deployment or readiness claim.

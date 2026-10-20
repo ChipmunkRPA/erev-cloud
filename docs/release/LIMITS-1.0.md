@@ -1,5 +1,12 @@
 # eRev Cloud 1.0: stated limits of the release
 
+Current deal bundle update (October 19): authorized proposal assembly now reuses ordinary
+booking and reference-resolution rules inside a rolled-back scratch transaction. Successful
+and failed assembly retain no temporary contracts/customers/audits; synthetic input identity
+is reproducible within the same reference cutoff. Sequence gaps can remain after rollback.
+Worker/API retention, result shaping, scenario save and the deal-preview screen are still absent.
+
+
 Current deal-preview foundation (October 19): request schemas and a pure DRY_RUN engine
 boundary now exist. The boundary preserves full engine output and verifies fingerprints,
 rejecting posted baselines. This is not yet exposed as a product feature: authorized bundle

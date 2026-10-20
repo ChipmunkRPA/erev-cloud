@@ -23,7 +23,7 @@ class DealInputIn(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
     customer_id: UUID | None = None
-    customer_name: str | None = Field(default=None, min_length=1, max_length=400)
+    customer_name: str | None = Field(default=None, min_length=1, max_length=255)
     entity_code: str = Field(min_length=1, max_length=128)
     start_date: date
     lines: list[DealLineIn] = Field(min_length=1, max_length=500)

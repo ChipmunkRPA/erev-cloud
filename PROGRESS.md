@@ -6,6 +6,23 @@
 
 
 
+## Deal preview authorized bundle assembly — October 19, 2026
+
+- Added deal_bundle booking conversion and assembly: resolve the active contracting entity,
+  enforce its scenario.use scope and functional currency, then use existing booking and
+  bundle resolution for products, approved SSP, templates, policies and accounting books.
+- Internal booking runs in a savepoint under system authority only after authorization. Both
+  success and errors roll back temporary contract/group/customer/obligation rows and buffered
+  audits; no computation persistence, file write or job enqueue is invoked inside the boundary.
+- Proposed lines get stable keys and term end dates. Synthetic booking evidence uses the
+  proposal's customer reference and sequence, removing rolled-back surrogate/sequence IDs
+  that initially caused repeated-input fingerprints to differ. Calendar overflow is refused.
+- Real database verification covers ASC606 allocation of USD 120000.00, repeatable input hashes,
+  permission refusal, injected resolution failure and unchanged row/audit counts after commit.
+  Python lint/types pass. Sequence allocation may leave harmless gaps after scratch rollback.
+- Job/API retention, result presentation, scenario save and SF-18 UI remain unfinished, as do
+  Tamsin acceptance and independent accounting sign-off. No deployment.
+
 ## Deal preview input and engine boundary — October 19, 2026
 
 - Code inspection confirmed deal preview had only its persisted table, without an API,
@@ -231,19 +248,6 @@
 - Fifteen focused migration screen checks pass, including exact decimal rendering and a
   nonzero-but-within-tolerance case; TypeScript and ESLint pass. Populated accounting
   acceptance, other report workflows and independent sign-off remain open. No deployment.
-
-## Migration reconciliation workflow — October 19, 2026
-
-- Replaced the empty migration Reconciliation step with a runnable workflow for opening-balance
-  and replay batches: POST reconcile, persisted job recovery/polling, failure display and retry,
-  and migration refresh at task completion. In-flight or successful reconciliation prevents a
-  duplicate submission while the batch state refreshes.
-- Imported/reconciled/submitted/promoted batches can navigate to this step. Report-authorized
-  readers can open the retained reconciliation report or the report viewer with migration_id
-  pinned, plus parallel comparison with the same batch selected. Period inputs remain editable
-  in the report toolbar. Profile, promotion and other migration UI gaps remain separate work.
-- Twenty-three focused migration checks, TypeScript and ESLint pass. Full populated accounting
-  acceptance and independent sign-off remain outstanding; no deployment or readiness claim.
 
 ## Outstanding release verification
 

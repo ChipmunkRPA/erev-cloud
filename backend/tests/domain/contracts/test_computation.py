@@ -6506,3 +6506,77 @@ def test_contract_sample_computation_evidence_keeps_trace_and_full_schedule(
     assert get(world.app, f"/api/v1/evidence-packs/{public_id}/download", caller).status_code == 403
     for report_id in catalogue_ids:
         assert get(world.app, f"/api/v1/report-runs/{report_id}/output", caller).status_code == 403
+
+
+def test_deal_preview_bundle_leaves_no_contract_or_audit(
+    world: World, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from erev_api.db.tables import combination_group, customer, obligation
+    from erev_api.domain.forecast import deal_bundle, deal_compute
+    from erev_api.schemas.deal_previews import DealInputIn
+
+    proposal = DealInputIn.model_validate(
+        {
+            "customer_name": "Proposed buyer",
+            "entity_code": "AVM-US",
+            "start_date": "2026-01-01",
+            "lines": [
+                {
+                    "product_code": PLATFORM,
+                    "quantity": "1",
+                    "term_months": 12,
+                    "price": {"amount": "120000.00", "currency": "USD"},
+                }
+            ],
+        }
+    )
+    unauthorized = replace(
+        world.place.principal,
+        permissions=world.place.principal.permissions - {"scenario.use"},
+        permission_scopes={
+            key: value
+            for key, value in world.place.principal.permission_scopes.items()
+            if key != "scenario.use"
+        },
+    )
+    with world.place.uow(unauthorized) as denied, pytest.raises(Problem):
+        deal_bundle.build(denied, proposal, UUID("c8b993f8-1cb7-43ba-8a61-0d3ce5627ddd"))
+    principal = replace(
+        world.place.principal,
+        permissions=world.place.principal.permissions | {"scenario.use"},
+        permission_scopes={**world.place.principal.permission_scopes, "scenario.use": "*"},
+    )
+    identity = UUID("c8b993f8-1cb7-43ba-8a61-0d3ce5627ddd")
+    with world.place.uow(principal) as uow:
+        tables = (contract, combination_group, customer, obligation)
+        before = [uow.session.scalar(select(func.count()).select_from(table)) for table in tables]
+        audits = uow.audit_events
+        bundle = deal_bundle.build(uow, proposal, identity)
+        assert uow.principal == principal
+        assert uow.audit_events == audits
+        assert before == [
+            uow.session.scalar(select(func.count()).select_from(table)) for table in tables
+        ]
+        result = deal_compute.compute(bundle)
+        assert result.input.trigger == "DRY_RUN"
+        assert result.output.books[0].obligation_versions[0].columns["allocated_amount"] == 12000000
+        repeated = deal_bundle.build(uow, proposal, identity)
+        assert repeated.sha256() == bundle.sha256()
+        with monkeypatch.context() as patch:
+
+            def unavailable(*args: Any, **kwargs: Any) -> Any:
+                raise Problem("validation-failed", "Injected configuration resolution failure")
+
+            patch.setattr(deal_bundle.bundles, "build", unavailable)
+            with pytest.raises(Problem, match="Injected configuration"):
+                deal_bundle.build(uow, proposal, identity)
+        assert uow.principal == principal
+        assert uow.audit_events == audits
+        assert before == [
+            uow.session.scalar(select(func.count()).select_from(table)) for table in tables
+        ]
+        uow.commit()
+    with world.place.uow() as uow:
+        assert before == [
+            uow.session.scalar(select(func.count()).select_from(table)) for table in tables
+        ]
