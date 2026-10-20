@@ -59,6 +59,14 @@ function InputRecord({ row }: { readonly row: ForecastInput }) {
       ) : null}
       {row.status === "DRAFT" ? (
         <>
+          {access.holdsAnywhere("event.record") ? (
+            <div>
+              <Link className="underline" to="/contracts">
+                {label("recordChanges")}
+              </Link>
+              <p>{label("recordHint")}</p>
+            </div>
+          ) : null}
           {access.holdsAnywhere("import.upload") ? (
             <Link
               className="underline"

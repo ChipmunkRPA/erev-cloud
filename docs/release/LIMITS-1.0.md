@@ -1,5 +1,12 @@
 # eRev Cloud 1.0: stated limits of the release
 
+Current direct forecast capture update (October 19): delivery/progress/milestone/cost/return
+forms can explicitly target a draft assumption set in an authorized scenario workspace.
+They use the existing atomic event-capture API and preserve contract/evidence validation.
+Normal event approval is the default. Usage/invoices use forecast imports. Historical statements
+that all direct event capture lacks UI are superseded; broader accounting acceptance remains open.
+
+
 Current captured-input review update (October 19): assumption versions now show retained
 contract-event bodies and import-source links in recorded application order. Numeric strings
 retain their precision. Missing sequence evidence is reported instead of inferred; linked

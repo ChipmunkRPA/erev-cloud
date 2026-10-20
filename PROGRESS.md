@@ -6,6 +6,21 @@
 
 
 
+## Direct forecast event capture from contract forms — October 19, 2026
+
+- Existing delivery/progress/milestone/cost/return drawers now offer a paginated draft selector
+  in sandbox workspaces with tenant-wide scenario.use. Normal approval remains the default;
+  selecting a draft explicitly changes the action and explains scenario recording/replay.
+- Submission carries forecast_event_set_id to the existing atomic capture endpoint, retains
+  contract stream concurrency and evidence validation, then invalidates assumption reads.
+  An unavailable selected draft blocks submission; the target is locked while submitting.
+  Draft management links to contracts with instructions to select that draft in the event form.
+- Ten existing/extended event-drawer checks pass, including the selected target in the request,
+  retained-input refresh and forecast-specific success message; frontend types/lint pass.
+- Usage/invoice input continues through forecast imports. Effective-date controls on input-set
+  metadata, populated comparison/report accounting acceptance, deal preview and independent
+  sign-off remain open. No deployment or production-readiness claim.
+
 ## Captured forecast input review — October 19, 2026
 
 - Assumption versions now expand a read-only review of captured contract event bodies and
@@ -234,19 +249,6 @@
   Selecting a single context entity takes precedence over the saved subset.
 - Thirty-three focused run-record/parameter checks pass. Other reporting business workflows,
   populated accounting acceptance and independent sign-off remain open. No deployment.
-
-## Report filters and saved-link preservation — October 19, 2026
-
-- Added field/value filter rows to report toolbars whose schema declares filters. Users can
-  add/remove conditions without entering JSON. Incomplete/duplicate fields remain editable
-  and block live report submission instead of overwriting another condition.
-- Report parameter conversion now produces the filters object; saved-report links retain
-  string-valued objects. Previously opening a file report could omit its filters when creating
-  the view run. Values containing punctuation survive the full saved-link round trip.
-- Four focused toolbar checks and twenty-six run-record checks pass; TypeScript/ESLint pass.
-  Backend authorization and supported-field validation remain authoritative. Richer record
-  selectors, other reporting workflows and independent accounting acceptance remain open.
-  No deployment or production-readiness claim.
 
 ## Outstanding release verification
 

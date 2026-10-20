@@ -8311,3 +8311,16 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Forty-five existing report-page checks and three focused parameter checks pass, plus
   TypeScript/ESLint. Object-valued advanced filters and richer record pickers remain separate
   UI work; broader reporting and accounting acceptance remain open. No deployment.
+
+## Report filters and saved-link preservation — October 19, 2026
+
+- Added field/value filter rows to report toolbars whose schema declares filters. Users can
+  add/remove conditions without entering JSON. Incomplete/duplicate fields remain editable
+  and block live report submission instead of overwriting another condition.
+- Report parameter conversion now produces the filters object; saved-report links retain
+  string-valued objects. Previously opening a file report could omit its filters when creating
+  the view run. Values containing punctuation survive the full saved-link round trip.
+- Four focused toolbar checks and twenty-six run-record checks pass; TypeScript/ESLint pass.
+  Backend authorization and supported-field validation remain authoritative. Richer record
+  selectors, other reporting workflows and independent accounting acceptance remain open.
+  No deployment or production-readiness claim.

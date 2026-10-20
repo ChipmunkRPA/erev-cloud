@@ -12,7 +12,7 @@ import type { Job } from "../../../lib/api/jobs";
 import type { Contract } from "../../../lib/api/queries/contracts";
 import type { Obligation } from "../../../lib/api/queries/obligations";
 import { registerCurrencies } from "../../../lib/format";
-import { renderWithApp } from "../../../test/app";
+import { renderWithApp, signedInMe } from "../../../test/app";
 import { apiUrl, installMswServer, server } from "../../../test/msw";
 import {
   CONTRACT_ID,
@@ -188,7 +188,9 @@ function type(scope: HTMLElement, name: RegExp, value: string): void {
 /** Opens the drawer of `kind` on O1 and fills the fields its events need: the preview is asked for. */
 async function open(
   kind: EventKind = "delivery",
+  forecast = false,
 ): Promise<{ readonly drawer: HTMLElement; readonly panel: HTMLElement }> {
+  const me = signedInMe({ permissions: ["contract.read", "event.record", "scenario.use"] });
   renderWithApp(
     <RecordEventDrawer
       contract={CONTRACT}
@@ -197,6 +199,17 @@ async function open(
       obligationKey="O1"
       onClose={() => undefined}
     />,
+    forecast
+      ? {
+          me: {
+            ...me,
+            memberships: me.memberships.map((membership) => ({
+              ...membership,
+              tenant: { ...membership.tenant, kind: "sandbox" as const },
+            })),
+          },
+        }
+      : {},
   );
   const drawer = await screen.findByRole("dialog", { name: TITLES[kind] });
   const panel = within(drawer).getByRole("region", { name: "Preview" });
@@ -449,4 +462,36 @@ describe("SF-03 Record event: what the preview panel says of its dry run", () =>
       cleanup();
     }
   }, 120_000);
+});
+
+it("records a scenario event into the explicitly selected draft and refreshes its retained inputs", async () => {
+  serveDryRuns({ state: "SUCCEEDED", result: resultWith({ summary: summary("12000.00") }) });
+  const captured: { target: string | null; body: unknown }[] = [];
+  let reads = 0;
+  server.use(
+    http.get(apiUrl("/api/v1/forecast-event-sets"), () => {
+      reads++;
+      return HttpResponse.json({
+        items: [{ id: "draft", code: "BUDGET", name: "Budget", version_no: 1, status: "DRAFT" }],
+        next_cursor: null,
+      });
+    }),
+    http.post(apiUrl(`/api/v1/contracts/${CONTRACT_ID}/events`), async ({ request }) => {
+      captured.push({
+        target: new URL(request.url).searchParams.get("forecast_event_set_id"),
+        body: await request.json(),
+      });
+      return HttpResponse.json({}, { status: 201 });
+    }),
+  );
+  const { drawer } = await open("delivery", true);
+  const target = await within(drawer).findByRole("combobox", { name: "Forecast assumption set" });
+  fireEvent.change(target, { target: { value: "BUDGET" } });
+  fireEvent.mouseDown(await screen.findByRole("option", { name: "BUDGET — Budget (v1)" }));
+  fireEvent.click(within(drawer).getByRole("button", { name: "Record in forecast draft" }));
+  await waitFor(() => expect(captured).toHaveLength(1));
+  expect(captured[0]?.target).toBe("draft");
+  expect(captured[0]?.body).toMatchObject({ events: [{ event_type: "DELIVERY_RECORDED" }] });
+  await waitFor(() => expect(reads).toBeGreaterThan(1));
+  expect(await screen.findByText("Event recorded in the forecast draft.")).toBeTruthy();
 });

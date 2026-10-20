@@ -6,6 +6,9 @@
 // CREDIT_MEMO_RECORDED in one `events` array; RETURN_EXCEEDS_DELIVERED and REFUND_EXCEEDS_BILLED show
 // their messages on the quantity and credit fields. A dry run that ended without a summary is said as
 // what it is (SCREENS §4.9.3 rev 1.79): failed or cancelled, with "Retry", or not shown to this reader.
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKey } from "../../../lib/api/query-keys";
+import { useForecastEventTarget } from "./forecast-target";
 import { useEffect, useId, useMemo, useState } from "react";
 
 import { Banner } from "../../../components/feedback/Banner";
@@ -552,6 +555,8 @@ export function RecordEventDrawer({
   const [files, setFiles] = useState<readonly File[]>([]);
   const [attempted, setAttempted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const forecast = useForecastEventTarget(submitting);
+  const queryClient = useQueryClient();
   const [problem, setProblem] = useState<ApiProblem | null>(null);
   const [previewJob, setPreviewJob] = useState<string | null>(null);
   const [previewProblem, setPreviewProblem] = useState<ApiProblem | null>(null);
@@ -609,7 +614,7 @@ export function RecordEventDrawer({
 
   const submit = async () => {
     setAttempted(true);
-    if (built.events === null || evidenceMissing) {
+    if (submitting || !forecast.valid || built.events === null || evidenceMissing) {
       return;
     }
     setSubmitting(true);
@@ -619,7 +624,7 @@ export function RecordEventDrawer({
       const outcome = await sendCommand<{ readonly approval_request_id?: string | null }>(
         keys,
         "POST",
-        `${CONTRACTS_PATH}/${contract.id}/events`,
+        `${CONTRACTS_PATH}/${contract.id}/events${forecast.id === null ? "" : `?forecast_event_set_id=${encodeURIComponent(forecast.id)}`}`,
         {
           events: built.events,
           comment: form.comment.trim() === "" ? null : form.comment.trim(),
@@ -632,12 +637,20 @@ export function RecordEventDrawer({
         return;
       }
       await refresh();
+      if (forecast.id !== null)
+        await queryClient.invalidateQueries({
+          queryKey: queryKey("forecast-event-sets", "tenant"),
+        });
       const requestId = outcome.data?.approval_request_id ?? null;
       toast.show({
         tone: "positive",
         message:
           requestId === null
-            ? t("contracts.drawer.event.recorded")
+            ? t(
+                forecast.id === null
+                  ? "contracts.drawer.event.recorded"
+                  : "contracts.drawer.forecast.recorded",
+              )
             : t("contracts.drawer.submittedForApproval", {
                 request: await requestNumber(requestId),
               }),
@@ -750,7 +763,14 @@ export function RecordEventDrawer({
       dirty={JSON.stringify(form) !== JSON.stringify(emptyEventForm(obligationKey ?? null))}
       submitting={submitting}
       banner={<RefusalBanner problem={problem} placed={placed} />}
-      primaryAction={{ label: t("contracts.drawer.submitForApproval"), form: formId }}
+      primaryAction={{
+        label: t(
+          forecast.id === null
+            ? "contracts.drawer.submitForApproval"
+            : "contracts.drawer.forecast.submit",
+        ),
+        form: formId,
+      }}
       onClose={onClose}
     >
       <form
@@ -763,6 +783,7 @@ export function RecordEventDrawer({
           void submit();
         }}
       >
+        {forecast.control}
         {kind === "cost" ? (
           <SelectField
             name="event-purpose"
