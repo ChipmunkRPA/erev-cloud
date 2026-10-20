@@ -6,6 +6,18 @@
 
 
 
+## Contract sample history register — October 19, 2026
+
+- Added sample history to the API and evidence page, with contract IDs, effective/known cutoffs,
+  status, file count, manifest hash and links back to retained details/downloads.
+- Counts and cursor pages include only packs whose full source/document scope is currently
+  authorized. SQL prefilters entity scope; streamed composite checks avoid locking documents.
+  Source-only internal bindings are excluded. CLOSE remains the default view.
+- 14 focused PostgreSQL checks (including real K01 lifecycle/list), 34 evidence register/generation UI checks,
+  TypeScript, Mypy and lint pass. No deployment.
+- Reporting remains unfinished: broader sample accounting acceptance, period-pack completion,
+  relock variance, change/access packs and forecast/report orchestration remain tracked.
+
 ## Contract sample creation form — October 19, 2026
 
 - Added the sample-generation action to the evidence page. Users paste 1–50 exact external
@@ -236,20 +248,6 @@
   despite scenario computations and refusal of a sandbox source. Ruff/Mypy pass.
 - Still required: durable capture retention in creation/refresh, category/contract mapping,
   comparison builder/registration and UI. FCS-4 is not yet runnable. No deployment.
-
-## Retained forecast data and archived revenue reading — October 19, 2026
-
-- Forecast publication now retains encrypted canonical JSON for XLSX/CSV runs as well; JSON
-  reuses its existing output file. The dataset reference is saved with the source binding in
-  the same publication transaction, so later comparison does not recalculate the original forecast.
-- Added an internal reader through the authorized scenario history resolver. It checks the
-  saved output hash, scenario/input/parent identities, book/currency/entity/horizon scope and
-  revenue-table hash, returning only revenue. Legacy JSON remains readable; old file-only
-  outputs without retained data are explicitly refused. Tenant context is restored on exit.
-- The real scenario journey passes all three retained formats and archived revenue reading
-  after refresh. Ruff/Mypy pass. Production actuals, comparison builder/registration and UI
-  remain open; no generic archived-download access or production-readiness claim is added.
-
 ## Outstanding release verification
 
 These checks need current release-candidate evidence. Historical October 3 results

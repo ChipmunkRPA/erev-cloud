@@ -120,7 +120,7 @@ class ClosePackOut(ClosePackSummaryOut):
     download_href: str | None
 
 
-class ContractSamplePackOut(BaseModel):
+class ContractSamplePackSummaryOut(BaseModel):
     id: UUID
     pack_no: str
     kind: Literal["CONTRACT_SAMPLE"]
@@ -134,7 +134,10 @@ class ContractSamplePackOut(BaseModel):
     job_id: UUID | None
     file_count: int | None
     manifest_sha256: str | None
-    manifest: EvidenceManifestOut | None
-    download_href: str | None
     created_at: datetime
     updated_at: datetime
+
+
+class ContractSamplePackOut(ContractSamplePackSummaryOut):
+    manifest: EvidenceManifestOut | None
+    download_href: str | None

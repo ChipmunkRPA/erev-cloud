@@ -334,3 +334,66 @@ it("shows contract sample scope and downloads without close-only fields", async 
   expect(screen.getByRole("button", { name: "Download pack" })).not.toBeNull();
   expect(screen.queryByText(pack.period_lock_id)).toBeNull();
 });
+
+it("switches to sample history without applying close selectors", async () => {
+  const sample = {
+    id: pack.id,
+    pack_no: "EVP-SAMPLE-01",
+    kind: "CONTRACT_SAMPLE",
+    status: "SUCCEEDED",
+    contract_ids: [pack.id],
+    contract_external_ids: ["SF-ORD-10001"],
+    source_entity_ids: [pack.entity_id],
+    all_entities: false,
+    as_of: "2026-09-30",
+    known_at: pack.created_at,
+    job_id: null,
+    file_count: 12,
+    manifest_sha256: pack.manifest_sha256,
+    created_at: pack.created_at,
+    updated_at: pack.updated_at,
+  };
+  const reads: URL[] = [];
+  server.use(
+    http.get(apiUrl("/api/v1/evidence-packs"), ({ request }) => {
+      const url = new URL(request.url);
+      reads.push(url);
+      return HttpResponse.json({
+        items: url.searchParams.get("kind") === "CONTRACT_SAMPLE" ? [sample] : [pack],
+        next_cursor: null,
+      });
+    }),
+  );
+  renderApp("/reports/evidence?entity=AVM-US&book=ASC606&period=FY2026-P09", {
+    me,
+    screenRoutes: SCREEN_ROUTES,
+  });
+  await screen.findByRole("link", { name: pack.pack_no });
+  fireEvent.click(screen.getByRole("radio", { name: "Contract sample" }));
+  expect((await screen.findByRole("link", { name: sample.pack_no })).getAttribute("href")).toBe(
+    `/reports/evidence/${pack.id}?kind=CONTRACT_SAMPLE`,
+  );
+  expect(screen.getByText("SF-ORD-10001")).not.toBeNull();
+  expect(screen.queryByRole("link", { name: pack.pack_no })).toBeNull();
+  const query = reads.find(
+    (url) => url.searchParams.get("kind") === "CONTRACT_SAMPLE",
+  )?.searchParams;
+  expect(query).toBeDefined();
+  for (const key of ["entity", "book", "period"]) expect(query?.has(key)).toBe(false);
+});
+
+it("does not fetch sample history without export permission", async () => {
+  let reads = 0;
+  server.use(
+    http.get(apiUrl("/api/v1/evidence-packs"), () => {
+      reads++;
+      return HttpResponse.json({ items: [], next_cursor: null });
+    }),
+  );
+  renderApp("/reports/evidence?kind=CONTRACT_SAMPLE", {
+    me: signedInMe({ permissions: ["report.run", "audit.read", "contract.read"] }),
+    screenRoutes: SCREEN_ROUTES,
+  });
+  await screen.findByRole("radio", { name: "Contract sample" });
+  expect(reads).toBe(0);
+});

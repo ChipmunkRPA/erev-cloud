@@ -7767,3 +7767,17 @@ cleanup in the shared database session kernel was also repaired and regression-t
   permission removal and context restoration; three lineage checks and Ruff/Mypy pass.
 - Actual-vs-forecast remains unfinished: posted-actual capture, archived output retrieval,
   retained-source report builder, catalogue registration and UI still need connection.
+
+
+## Retained forecast data and archived revenue reading — October 19, 2026
+
+- Forecast publication now retains encrypted canonical JSON for XLSX/CSV runs as well; JSON
+  reuses its existing output file. The dataset reference is saved with the source binding in
+  the same publication transaction, so later comparison does not recalculate the original forecast.
+- Added an internal reader through the authorized scenario history resolver. It checks the
+  saved output hash, scenario/input/parent identities, book/currency/entity/horizon scope and
+  revenue-table hash, returning only revenue. Legacy JSON remains readable; old file-only
+  outputs without retained data are explicitly refused. Tenant context is restored on exit.
+- The real scenario journey passes all three retained formats and archived revenue reading
+  after refresh. Ruff/Mypy pass. Production actuals, comparison builder/registration and UI
+  remain open; no generic archived-download access or production-readiness claim is added.

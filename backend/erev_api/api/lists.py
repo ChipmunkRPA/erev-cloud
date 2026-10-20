@@ -16,7 +16,7 @@ from __future__ import annotations
 import base64
 import binascii
 import json
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Final, Literal
 from uuid import UUID
@@ -250,9 +250,18 @@ def _ordering(
 
 
 def paginate(
-    session: Session, stmt: sa.Select[Any], spec: ListSpec, params: ListParams
+    session: Session,
+    stmt: sa.Select[Any],
+    spec: ListSpec,
+    params: ListParams,
+    *,
+    visible: Callable[[Mapping[str, Any]], bool] | None = None,
 ) -> ListResult:
-    """One page of ``stmt`` under ``params`` (DG-LST-01 to DG-LST-07)."""
+    """One page of ``stmt`` under ``params`` (DG-LST-01 to DG-LST-07).
+
+    Optional current-record authorization runs before counting and page selection. Callers
+    should prefilter coarse scopes in SQL and use a read-only predicate for composite grants.
+    """
     sort = params.sort or spec.default_sort
     key = sort.removeprefix("-")
     if key not in spec.sort_keys:
@@ -276,9 +285,18 @@ def paginate(
         )
     total_count: str | None = None
     if params.count:
-        capped = session.execute(
-            sa.select(sa.func.count()).select_from(stmt.limit(COUNT_CAP + 1).subquery())
-        ).scalar_one()
+        if visible is None:
+            capped = session.execute(
+                sa.select(sa.func.count()).select_from(stmt.limit(COUNT_CAP + 1).subquery())
+            ).scalar_one()
+        else:
+            capped = 0
+            with session.execute(stmt.execution_options(yield_per=500)) as candidates:
+                for row in candidates.mappings():
+                    if visible(dict(row)):
+                        capped += 1
+                        if capped > COUNT_CAP:
+                            break
         total_count = f"{COUNT_CAP}+" if capped > COUNT_CAP else str(capped)
     filters_sha256 = sha256_hex(
         {"filters": {name: list(values) for name, values in params.filters.items()}, "q": params.q}
@@ -292,7 +310,21 @@ def paginate(
             raise invalid("cursor", _CURSOR_INVALID)
         stmt = stmt.where(_after(column, id_column, last, by_id=by_id, descending=descending))
     ordering = _ordering(column, id_column, by_id=by_id, descending=descending)
-    rows = session.execute(stmt.order_by(*ordering).limit(params.limit + 1)).mappings().all()
+    if visible is None:
+        rows = session.execute(stmt.order_by(*ordering).limit(params.limit + 1)).mappings().all()
+    else:
+        # Keep source rows private until authorized. A public cursor always names the last
+        # returned row, never a hidden candidate, and lookahead counts only visible rows.
+        accepted = []
+        with session.execute(
+            stmt.order_by(*ordering).execution_options(yield_per=500)
+        ) as candidates:
+            for row in candidates.mappings():
+                if visible(dict(row)):
+                    accepted.append(row)
+                    if len(accepted) > params.limit:
+                        break
+        rows = accepted
     items: list[Mapping[str, Any]] = [dict(row) for row in rows[: params.limit]]
     next_cursor = None
     if len(rows) > params.limit:

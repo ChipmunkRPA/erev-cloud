@@ -20,7 +20,7 @@ from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validato
 from sqlalchemy import insert, select
 
 from erev_api.auth.dependencies import require_for_entity
-from erev_api.db.tables import contract, evidence_pack, evidence_sample_file
+from erev_api.db.tables import contract, evidence_pack, evidence_sample_file, file_object
 from erev_api.domain.platform import file_access
 from erev_api.domain.reports import (
     evidence_archive,
@@ -112,7 +112,7 @@ class SampleSources(BaseModel):
         }
 
 
-def authorize(uow: UnitOfWork, scope: SampleScope) -> None:
+def authorize(uow: UnitOfWork, scope: SampleScope, *, lock_documents: bool = True) -> None:
     if scope.tenant_id != uow.principal.tenant_id or not PERMISSIONS <= uow.principal.permissions:
         raise Problem("forbidden")
     for permission in PERMISSIONS:
@@ -143,7 +143,20 @@ def authorize(uow: UnitOfWork, scope: SampleScope) -> None:
         ):
             raise Problem("not-found")
     files = frozenset(grant.file_id for grant in scope.document_grants)
-    if lock_readable(uow.session, files) != files:
+    readable = (
+        lock_readable(uow.session, files)
+        if lock_documents
+        else frozenset(
+            uow.session.execute(
+                select(file_object.c.id).where(
+                    file_object.c.tenant_id == scope.tenant_id,
+                    file_object.c.id.in_(files),
+                    file_object.c.shredded_at.is_(None),
+                )
+            ).scalars()
+        )
+    )
+    if readable != files:
         raise Problem(
             "validation-failed", "Retained sample source documents are no longer available."
         )
@@ -300,7 +313,7 @@ def retain(uow: UnitOfWork, pack_id: UUID, bound: SampleSources) -> None:
     )
 
 
-def load(uow: UnitOfWork, pack_id: UUID) -> SampleSources:
+def load(uow: UnitOfWork, pack_id: UUID, *, lock_documents: bool = True) -> SampleSources:
     row = (
         uow.session.execute(
             select(evidence_pack).where(
@@ -326,7 +339,7 @@ def load(uow: UnitOfWork, pack_id: UUID) -> SampleSources:
         raise Problem(
             "validation-failed", "The contract sample has no valid retained sources."
         ) from error
-    authorize(uow, bound.scope)
+    authorize(uow, bound.scope, lock_documents=lock_documents)
     references = uow.session.execute(
         select(evidence_sample_file.c.file_id, evidence_sample_file.c.entity_ids).where(
             evidence_sample_file.c.tenant_id == uow.principal.tenant_id,

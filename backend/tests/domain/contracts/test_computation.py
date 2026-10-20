@@ -6275,6 +6275,54 @@ def test_contract_sample_computation_evidence_keeps_trace_and_full_schedule(
     revoked = post(world.app, "/api/v1/evidence-packs", caller, request.model_dump(mode="json"))
     assert revoked.status_code == 202, revoked.text
     revoked_pack = UUID(revoked.headers["X-Erev-Evidence-Pack-Id"])
+    page = get(
+        world.app,
+        "/api/v1/evidence-packs",
+        caller,
+        {"kind": "CONTRACT_SAMPLE", "limit": "1", "count": "true"},
+    )
+    assert page.status_code == 200, page.text
+    assert page.headers["X-Erev-Total-Count"] == "3"
+    first_id = page.json()["items"][0]["id"]
+    assert "manifest" not in page.json()["items"][0]
+    cursor = page.json()["next_cursor"]
+    following = get(
+        world.app,
+        "/api/v1/evidence-packs",
+        caller,
+        {"kind": "CONTRACT_SAMPLE", "limit": "1", "cursor": cursor},
+    )
+    assert following.status_code == 200, following.text
+    assert following.json()["items"][0]["id"] != first_id
+    from erev_api.api.lists import ListParams, paginate
+    from erev_api.api.v1.evidence_packs import SAMPLE_LIST
+    from erev_api.domain.reports import evidence_sample_queries
+
+    no_studies = replace(
+        principal,
+        permissions=principal.permissions - {"ssp.read"},
+        permission_scopes={
+            key: value for key, value in principal.permission_scopes.items() if key != "ssp.read"
+        },
+    )
+    with world.place.uow(no_studies) as uow:
+        invisible = paginate(
+            uow.session,
+            evidence_sample_queries.list_statement(no_studies),
+            SAMPLE_LIST,
+            ListParams(
+                limit=1,
+                cursor=None,
+                sort=None,
+                q=None,
+                count=True,
+                filters={"kind": ("CONTRACT_SAMPLE",)},
+            ),
+            visible=lambda row: evidence_sample_queries.visible(uow, row["id"]),
+        )
+        assert (
+            invisible.items == [] and invisible.total_count == "0" and invisible.next_cursor is None
+        )
     from support.rows import revoke_role_assignments
 
     with world.place.uow(principal) as uow:

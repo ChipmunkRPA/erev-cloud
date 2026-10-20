@@ -1,4 +1,4 @@
-"""API-R-42 CLOSE and CONTRACT_SAMPLE creation and reads; register lists CLOSE packs."""
+"""API-R-42 CLOSE and CONTRACT_SAMPLE creation, scoped registers and retained reads."""
 
 from typing import Annotated, Literal
 from urllib.parse import quote
@@ -43,6 +43,7 @@ from erev_api.schemas.evidence_packs import (
     ClosePackSummaryOut,
     ContractSamplePackCreateIn,
     ContractSamplePackOut,
+    ContractSamplePackSummaryOut,
     EvidencePackCreateIn,
 )
 from erev_api.uow import UnitOfWork, unit_of_work
@@ -79,10 +80,23 @@ PACK_LIST = ListSpec(
 )
 
 
+SAMPLE_LIST = ListSpec(
+    resource="contract_sample_packs",
+    sort_keys=PACK_LIST.sort_keys,
+    default_sort=PACK_LIST.default_sort,
+    filters={
+        "kind": FilterSpec(
+            "kind", evidence_pack.c.kind, "exact", choices=frozenset({"CONTRACT_SAMPLE"})
+        ),
+        "status": PACK_LIST.filters["status"],
+    },
+)
+
+
 @router.get(
     "/evidence-packs",
     operation_id="evidence_packs_list",
-    response_model=ListOut[ClosePackSummaryOut],
+    response_model=ListOut[ClosePackSummaryOut | ContractSamplePackSummaryOut],
     responses=problem_responses(*PROBLEMS),
 )
 def evidence_packs_list(
@@ -93,21 +107,38 @@ def evidence_packs_list(
     entity: Annotated[list[str] | None, Query(description="Entity code; repeatable")] = None,
     book: Annotated[BookCode | None, Query()] = None,
     period_key: Annotated[str | None, Query(alias="period", description="Period key")] = None,
-    kind: Annotated[Literal["CLOSE"] | None, Query()] = None,
+    kind: Annotated[Literal["CLOSE", "CONTRACT_SAMPLE"] | None, Query()] = None,
     status: Annotated[list[RunStatus] | None, Query()] = None,
-) -> ListOut[ClosePackSummaryOut]:
-    """Retained CLOSE register; entity/book/period/kind/status filters, id/created_at/pack_no sorts.
+) -> ListOut[ClosePackSummaryOut | ContractSamplePackSummaryOut]:
+    """Retained register: CLOSE by default; select CONTRACT_SAMPLE explicitly.
 
-    Counts and pages intersect source permission scopes. Archive verification belongs to the
-    individual read/download, not this metadata list. Legacy unbound and other kinds are omitted.
+    Both kinds support status filters and id/created_at/pack_no sorts. Entity/book/period
+    filters apply only to CLOSE. Samples authorize full source/document scope before counts
+    and pagination. Archive verification belongs to download, not this metadata list.
     """
-    del entity, book, period_key, kind, status  # validated here; applied through PACK_LIST
+    sample = kind == "CONTRACT_SAMPLE"
+    del entity, book, period_key, status  # validated here; applied through PACK_LIST
     with unit_of_work(ctx, clock=deps.clock, keyring=deps.keyring, files=deps.files) as uow:
-        evidence_queries.require_permissions(uow, None, evidence_queries.READ_PERMISSIONS)
-        result = paginate(
-            uow.session, evidence_queries.list_statement(uow.principal), PACK_LIST, params
+        evidence_queries.require_permissions(
+            uow,
+            None,
+            evidence_commands.PERMISSIONS if sample else evidence_queries.READ_PERMISSIONS,
         )
-        items = [evidence_queries.summary(row) for row in result.items]
+        result = paginate(
+            uow.session,
+            evidence_sample_queries.list_statement(uow.principal)
+            if sample
+            else evidence_queries.list_statement(uow.principal),
+            SAMPLE_LIST if sample else PACK_LIST,
+            params,
+            visible=(lambda row: evidence_sample_queries.visible(uow, row["id"]))
+            if sample
+            else None,
+        )
+        items = [
+            evidence_sample_queries.summary(row) if sample else evidence_queries.summary(row)
+            for row in result.items
+        ]
         record_facts(
             uow,
             action="evidence.read",
@@ -120,7 +151,9 @@ def evidence_packs_list(
     response.headers["Cache-Control"] = "no-store"
     if result.total_count is not None:
         response.headers[TOTAL_COUNT_HEADER] = result.total_count
-    return ListOut[ClosePackSummaryOut](items=items, next_cursor=result.next_cursor)
+    return ListOut[ClosePackSummaryOut | ContractSamplePackSummaryOut](
+        items=items, next_cursor=result.next_cursor
+    )
 
 
 @router.post(

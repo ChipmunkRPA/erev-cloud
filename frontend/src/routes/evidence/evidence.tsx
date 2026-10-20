@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Link, useLocation } from "react-router";
+import { Link, useLocation, useSearchParams } from "react-router";
 import { DataGrid } from "../../components/data-grid/DataGrid";
 import type { GridColumn, GridSource } from "../../components/data-grid/types";
 import { FilterBar } from "../../components/filter-bar/FilterBar";
@@ -7,6 +7,7 @@ import { parseFilters, type FilterField } from "../../components/filter-bar/filt
 import { Banner } from "../../components/feedback/Banner";
 import { EmptyState } from "../../components/feedback/EmptyState";
 import { Skeleton } from "../../components/feedback/Skeleton";
+import { SegmentedControl } from "../../components/ui/SegmentedControl";
 import { Button } from "../../components/ui/Button";
 import { CopySimple } from "../../components/icons/registry";
 import { NoValue } from "../../components/money/Num";
@@ -19,9 +20,10 @@ import {
   evidencePacksKey,
   fetchEvidencePacksPage,
   mayReadEvidence,
+  mayCreateSampleEvidence,
   type EvidencePackSummary,
 } from "../../lib/api/queries/evidence-packs";
-import { formatTimestamp } from "../../lib/format";
+import { formatDate, formatTimestamp } from "../../lib/format";
 import { t } from "../../lib/i18n/t";
 import { GenerateClosePack } from "./generate";
 import { GenerateSamplePack } from "./generate-sample";
@@ -65,6 +67,8 @@ function ManifestHash({ sha }: { readonly sha: string | null }) {
 
 function PackRegister() {
   const { search } = useLocation();
+  const [, setSearchParams] = useSearchParams();
+  const access = useAccess();
   const fields: readonly FilterField[] = [
     {
       name: "status",
@@ -79,7 +83,9 @@ function PackRegister() {
   ];
   const filters = parseFilters(search, fields).filters;
   const params = new URLSearchParams(search);
+  const kind = params.get("kind") === "CONTRACT_SAMPLE" ? "CONTRACT_SAMPLE" : "CLOSE";
   const query = {
+    kind: kind as "CLOSE" | "CONTRACT_SAMPLE",
     entities: params.getAll("entity"),
     book: params.get("book"),
     period: params.get("period"),
@@ -109,26 +115,52 @@ function PackRegister() {
         id: "kind",
         header: t("evidence.packs.kind"),
         kind: "text",
-        value: () => t("evidence.packs.close"),
+        value: (p) => t(p.kind === "CLOSE" ? "evidence.packs.close" : "evidence.packs.sample"),
       },
-      {
-        id: "entity",
-        header: t("evidence.packs.entity"),
-        kind: "text",
-        value: (p) => p.entity_code,
-      },
-      {
-        id: "book",
-        header: t("evidence.packs.book"),
-        kind: "text",
-        value: (p) => bookLabel(p.book),
-      },
-      {
-        id: "period",
-        header: t("evidence.packs.period"),
-        kind: "text",
-        value: (p) => p.period_key,
-      },
+      ...(kind === "CLOSE"
+        ? [
+            {
+              id: "entity",
+              header: t("evidence.packs.entity"),
+              kind: "text" as const,
+              value: (p: EvidencePackSummary) => (p.kind === "CLOSE" ? p.entity_code : null),
+            },
+            {
+              id: "book",
+              header: t("evidence.packs.book"),
+              kind: "text" as const,
+              value: (p: EvidencePackSummary) => (p.kind === "CLOSE" ? bookLabel(p.book) : null),
+            },
+            {
+              id: "period",
+              header: t("evidence.packs.period"),
+              kind: "text" as const,
+              value: (p: EvidencePackSummary) => (p.kind === "CLOSE" ? p.period_key : null),
+            },
+          ]
+        : [
+            {
+              id: "contracts",
+              header: t("evidence.packs.sampleContracts"),
+              kind: "text" as const,
+              value: (p: EvidencePackSummary) =>
+                p.kind === "CONTRACT_SAMPLE" ? p.contract_external_ids.join(", ") : null,
+            },
+            {
+              id: "as_of",
+              header: t("evidence.packs.sampleAsOf"),
+              kind: "text" as const,
+              value: (p: EvidencePackSummary) =>
+                p.kind === "CONTRACT_SAMPLE" ? formatDate(p.as_of) : null,
+            },
+            {
+              id: "known_at",
+              header: t("evidence.packs.sampleKnownAt"),
+              kind: "text" as const,
+              value: (p: EvidencePackSummary) =>
+                p.kind === "CONTRACT_SAMPLE" ? formatTimestamp(p.known_at) : null,
+            },
+          ]),
       {
         id: "status",
         header: t("evidence.packs.status"),
@@ -162,33 +194,64 @@ function PackRegister() {
         width: 192,
       },
     ],
-    [],
+    [kind],
   );
   return (
     <>
-      <Banner tone="info" title={t("evidence.packs.scope")}>
-        <p>{t("evidence.packs.scopeDescription")}</p>
-      </Banner>
-      <DataGrid<EvidencePackSummary>
-        filterBar={<FilterBar fields={fields} testId="SF-09-filter-bar" />}
-        name="evidence-packs"
-        title={t("evidence.packs.title")}
-        errorTitle={t("evidence.packs.loadError")}
-        columns={columns}
-        source={source}
-        countLabel={(count, formatted) => t("evidence.packs.count", { count, formatted })}
-        rowKey={(p) => p.id}
-        rowLabel={(p) => p.pack_no}
-        rowHref={(p) => evidencePackRoute(p.id, p)}
-        testIdPrefix="SF-09"
-        rowTestKey={(p) => p.pack_no}
-        emptyState={
-          <EmptyState
-            title={t("evidence.packs.empty")}
-            description={t("evidence.packs.emptyDescription")}
-          />
-        }
+      <SegmentedControl
+        label={t("evidence.packs.kind")}
+        value={kind}
+        options={[
+          { value: "CLOSE", label: t("evidence.packs.close") },
+          {
+            value: "CONTRACT_SAMPLE",
+            label: t("evidence.packs.sample"),
+            disabledReason: mayCreateSampleEvidence(access)
+              ? undefined
+              : t("evidence.packs.accessDescription"),
+          },
+        ]}
+        onChange={(value) => {
+          const next = new URLSearchParams(search);
+          next.set("kind", value);
+          for (const key of ["entity", "book", "period", "cursor", "sort"]) next.delete(key);
+          setSearchParams(next);
+        }}
       />
+      <Banner tone="info" title={t("evidence.packs.scope")}>
+        <p>
+          {t(
+            kind === "CLOSE"
+              ? "evidence.packs.scopeDescription"
+              : "evidence.packs.sampleScopeDescription",
+          )}
+        </p>
+      </Banner>
+      {kind === "CONTRACT_SAMPLE" && !mayCreateSampleEvidence(access) ? (
+        <EvidenceAccessLimited />
+      ) : (
+        <DataGrid<EvidencePackSummary>
+          key={kind}
+          filterBar={<FilterBar fields={fields} testId="SF-09-filter-bar" />}
+          name={`evidence-packs-${kind}`}
+          title={t("evidence.packs.title")}
+          errorTitle={t("evidence.packs.loadError")}
+          columns={columns}
+          source={source}
+          countLabel={(count, formatted) => t("evidence.packs.count", { count, formatted })}
+          rowKey={(p) => p.id}
+          rowLabel={(p) => p.pack_no}
+          rowHref={(p) => evidencePackRoute(p.id, p)}
+          testIdPrefix="SF-09"
+          rowTestKey={(p) => p.pack_no}
+          emptyState={
+            <EmptyState
+              title={t("evidence.packs.empty")}
+              description={t("evidence.packs.emptyDescription")}
+            />
+          }
+        />
+      )}
     </>
   );
 }

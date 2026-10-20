@@ -2604,10 +2604,11 @@ export interface paths {
     };
     /**
      * Evidence Packs List
-     * @description Retained CLOSE register; entity/book/period/kind/status filters, id/created_at/pack_no sorts.
+     * @description Retained register: CLOSE by default; select CONTRACT_SAMPLE explicitly.
      *
-     *     Counts and pages intersect source permission scopes. Archive verification belongs to the
-     *     individual read/download, not this metadata list. Legacy unbound and other kinds are omitted.
+     *     Both kinds support status filters and id/created_at/pack_no sorts. Entity/book/period
+     *     filters apply only to CLOSE. Samples authorize full source/document scope before counts
+     *     and pagination. Archive verification belongs to download, not this metadata list.
      */
     get: operations["evidence_packs_list"];
     put?: never;
@@ -11884,6 +11885,56 @@ export interface components {
        */
       updated_at: string;
     };
+    /** ContractSamplePackSummaryOut */
+    ContractSamplePackSummaryOut: {
+      /** All Entities */
+      all_entities: boolean;
+      /**
+       * As Of
+       * Format: date
+       */
+      as_of: string;
+      /** Contract External Ids */
+      contract_external_ids: string[];
+      /** Contract Ids */
+      contract_ids: string[];
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /** File Count */
+      file_count: number | null;
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Job Id */
+      job_id: string | null;
+      /**
+       * Kind
+       * @constant
+       */
+      kind: "CONTRACT_SAMPLE";
+      /**
+       * Known At
+       * Format: date-time
+       */
+      known_at: string;
+      /** Manifest Sha256 */
+      manifest_sha256: string | null;
+      /** Pack No */
+      pack_no: string;
+      /** Source Entity Ids */
+      source_entity_ids: string[];
+      status: components["schemas"]["RunStatus"];
+      /**
+       * Updated At
+       * Format: date-time
+       */
+      updated_at: string;
+    };
     /**
      * ContractSourceOut
      * @description One item of ``GET /contracts/{id}/sources`` (04 API-R-28, T-CON-02; SCREENS §6.6; BUILD_SPEC
@@ -16437,13 +16488,6 @@ export interface components {
       /** Next Cursor */
       next_cursor: string | null;
     };
-    /** ListOut[ClosePackSummaryOut] */
-    ListOut_ClosePackSummaryOut_: {
-      /** Items */
-      items: components["schemas"]["ClosePackSummaryOut"][];
-      /** Next Cursor */
-      next_cursor: string | null;
-    };
     /** ListOut[CloseRunOut] */
     ListOut_CloseRunOut_: {
       /** Items */
@@ -17030,6 +17074,16 @@ export interface components {
       /** Items */
       items: (
         components["schemas"]["AIProposalOut"] | components["schemas"]["AIExtractionProposalOut"]
+      )[];
+      /** Next Cursor */
+      next_cursor: string | null;
+    };
+    /** ListOut[Union[ClosePackSummaryOut, ContractSamplePackSummaryOut]] */
+    ListOut_Union_ClosePackSummaryOut__ContractSamplePackSummaryOut__: {
+      /** Items */
+      items: (
+        | components["schemas"]["ClosePackSummaryOut"]
+        | components["schemas"]["ContractSamplePackSummaryOut"]
       )[];
       /** Next Cursor */
       next_cursor: string | null;
@@ -35265,7 +35319,7 @@ export interface operations {
         book?: components["schemas"]["BookCode"] | null;
         /** @description Period key */
         period?: string | null;
-        kind?: "CLOSE" | null;
+        kind?: ("CLOSE" | "CONTRACT_SAMPLE") | null;
         status?: components["schemas"]["RunStatus"][] | null;
         limit?: number;
         cursor?: string | null;
@@ -35285,7 +35339,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ListOut_ClosePackSummaryOut_"];
+          "application/json": components["schemas"]["ListOut_Union_ClosePackSummaryOut__ContractSamplePackSummaryOut__"];
         };
       };
       /** @description Problem: unauthenticated, session-expired */

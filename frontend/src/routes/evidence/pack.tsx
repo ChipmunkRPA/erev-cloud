@@ -106,7 +106,7 @@ function PackRecord({ id }: { readonly id: string }) {
         breadcrumb={[
           {
             label: t("evidence.packs.title"),
-            to: `${EVIDENCE_PACKS_ROUTE}${data.kind === "CLOSE" ? evidencePackContext(data) : ""}`,
+            to: `${EVIDENCE_PACKS_ROUTE}${data.kind === "CLOSE" ? evidencePackContext(data) : "?kind=CONTRACT_SAMPLE"}`,
           },
         ]}
         chips={<EvidencePackStatus status={data.status} />}

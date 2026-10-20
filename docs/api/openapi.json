@@ -9386,12 +9386,133 @@
           "job_id",
           "file_count",
           "manifest_sha256",
+          "created_at",
+          "updated_at",
           "manifest",
-          "download_href",
+          "download_href"
+        ],
+        "title": "ContractSamplePackOut",
+        "type": "object"
+      },
+      "ContractSamplePackSummaryOut": {
+        "properties": {
+          "all_entities": {
+            "title": "All Entities",
+            "type": "boolean"
+          },
+          "as_of": {
+            "format": "date",
+            "title": "As Of",
+            "type": "string"
+          },
+          "contract_external_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Contract External Ids",
+            "type": "array"
+          },
+          "contract_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Contract Ids",
+            "type": "array"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "file_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Count"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "job_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Id"
+          },
+          "kind": {
+            "const": "CONTRACT_SAMPLE",
+            "title": "Kind",
+            "type": "string"
+          },
+          "known_at": {
+            "format": "date-time",
+            "title": "Known At",
+            "type": "string"
+          },
+          "manifest_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manifest Sha256"
+          },
+          "pack_no": {
+            "title": "Pack No",
+            "type": "string"
+          },
+          "source_entity_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Source Entity Ids",
+            "type": "array"
+          },
+          "status": {
+            "$ref": "#/components/schemas/RunStatus"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "pack_no",
+          "kind",
+          "status",
+          "contract_ids",
+          "contract_external_ids",
+          "source_entity_ids",
+          "all_entities",
+          "as_of",
+          "known_at",
+          "job_id",
+          "file_count",
+          "manifest_sha256",
           "created_at",
           "updated_at"
         ],
-        "title": "ContractSamplePackOut",
+        "title": "ContractSamplePackSummaryOut",
         "type": "object"
       },
       "ContractSourceOut": {
@@ -21187,34 +21308,6 @@
         "title": "ListOut[CloseChecklistTemplateOut]",
         "type": "object"
       },
-      "ListOut_ClosePackSummaryOut_": {
-        "properties": {
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/ClosePackSummaryOut"
-            },
-            "title": "Items",
-            "type": "array"
-          },
-          "next_cursor": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Next Cursor"
-          }
-        },
-        "required": [
-          "items",
-          "next_cursor"
-        ],
-        "title": "ListOut[ClosePackSummaryOut]",
-        "type": "object"
-      },
       "ListOut_CloseRunOut_": {
         "properties": {
           "items": {
@@ -23572,6 +23665,41 @@
           "next_cursor"
         ],
         "title": "ListOut[Union[AIProposalOut, AIExtractionProposalOut]]",
+        "type": "object"
+      },
+      "ListOut_Union_ClosePackSummaryOut__ContractSamplePackSummaryOut__": {
+        "properties": {
+          "items": {
+            "items": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ClosePackSummaryOut"
+                },
+                {
+                  "$ref": "#/components/schemas/ContractSamplePackSummaryOut"
+                }
+              ]
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor"
+        ],
+        "title": "ListOut[Union[ClosePackSummaryOut, ContractSamplePackSummaryOut]]",
         "type": "object"
       },
       "ListOut_UserOut_": {
@@ -63532,7 +63660,7 @@
     },
     "/api/v1/evidence-packs": {
       "get": {
-        "description": "Retained CLOSE register; entity/book/period/kind/status filters, id/created_at/pack_no sorts.\n\nCounts and pages intersect source permission scopes. Archive verification belongs to the\nindividual read/download, not this metadata list. Legacy unbound and other kinds are omitted.",
+        "description": "Retained register: CLOSE by default; select CONTRACT_SAMPLE explicitly.\n\nBoth kinds support status filters and id/created_at/pack_no sorts. Entity/book/period\nfilters apply only to CLOSE. Samples authorize full source/document scope before counts\nand pagination. Archive verification belongs to download, not this metadata list.",
         "operationId": "evidence_packs_list",
         "parameters": [
           {
@@ -63597,7 +63725,10 @@
             "schema": {
               "anyOf": [
                 {
-                  "const": "CLOSE",
+                  "enum": [
+                    "CLOSE",
+                    "CONTRACT_SAMPLE"
+                  ],
                   "type": "string"
                 },
                 {
@@ -63702,7 +63833,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ListOut_ClosePackSummaryOut_"
+                  "$ref": "#/components/schemas/ListOut_Union_ClosePackSummaryOut__ContractSamplePackSummaryOut__"
                 }
               }
             },

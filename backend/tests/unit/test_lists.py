@@ -323,3 +323,35 @@ def test_dg_lst_04_an_enumeration_literal_is_bound_as_a_value_of_its_column() ->
     assert where(owner_id=(owner,)) == "thing.owner_id = CAST(%(param_1)s AS UUID)"
     since = where(**{"from": ("2026-09-01T00:00:00Z",)})
     assert since == "thing.created_at >= CAST(%(param_1)s AS TIMESTAMP WITH TIME ZONE)"
+
+
+@pytest.mark.parametrize("sort", ["-id", "-submitted_at"])
+def test_authorized_rows_define_counts_pages_and_cursors(
+    db: Callable[[DbContext], Session], sort: str
+) -> None:
+    session = db(DbContext(tenant_id=new_id(), user_id=None, entity_scope="*"))
+    statement, spec = _probe_list(6)
+
+    def visible(row):
+        # Composite authorization may query other records while the candidate cursor is open.
+        return session.scalar(sa.select(sa.literal(row["id"] % 2 == 0)))
+
+    first = paginate(session, statement, spec, _params(sort=sort, count=True), visible=visible)
+    assert [row["id"] for row in first.items] == [6, 4]
+    assert first.total_count == "3"
+    assert first.next_cursor is not None
+    encoded = json.loads(
+        base64.urlsafe_b64decode(first.next_cursor + "=" * (-len(first.next_cursor) % 4))
+    )
+    assert encoded["k"][-1] == "4"
+    second = paginate(
+        session,
+        statement,
+        spec,
+        _params(sort=sort, cursor=first.next_cursor, count=True),
+        visible=visible,
+    )
+    assert [row["id"] for row in second.items] == [2]
+    assert second.next_cursor is None and second.total_count == "3"
+    hidden = paginate(session, statement, spec, _params(count=True), visible=lambda row: False)
+    assert hidden.items == [] and hidden.next_cursor is None and hidden.total_count == "0"

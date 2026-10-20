@@ -8718,7 +8718,11 @@ legacy CLOSE outputs retain their existing purpose. Both are accessible only thr
 routes. Completion is atomic with its manifest, file reference and SUCCEEDED transition.
 Retained reads reauthorize dependencies, verify hashes and original source bytes, and reuse the
 saved PDF/XLSX instead of rendering again. GET detail/download/manifest support both kinds;
-GET register currently lists CLOSE only. Contract sample detail shows selectors, cutoffs and
+GET register defaults to CLOSE and accepts kind=CONTRACT_SAMPLE. Sample registers apply
+current composite source/document authorization before counts, cursors and pagination;
+source-only legacy bindings without a render stamp are excluded. Status filtering is supported;
+entity/book/period filters remain CLOSE-only. Summary responses omit manifests and download links. Contract sample detail shows selectors, cutoffs and
 manifest downloads. The sample creation form now accepts exact external IDs and an explicit
 cutoff, uses the idempotent command pipeline, and recovers accepted result links through the
-job if the pack header is unavailable. The sample register/list remains pending.
+job if the pack header is unavailable. The register switches between close and sample history,
+showing sampled contracts and cutoffs and preserving the sample view on return from details.

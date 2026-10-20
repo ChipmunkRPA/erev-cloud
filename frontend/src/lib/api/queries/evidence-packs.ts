@@ -1,4 +1,4 @@
-// CLOSE evidence reads use the ordinary authenticated API pipeline. The server applies
+// Evidence reads use the ordinary authenticated API pipeline. The server applies
 // the intersection of source permissions before pagination and verifies each download.
 import type { Access } from "../../access";
 import { send } from "../client";
@@ -9,7 +9,9 @@ import type { components } from "../schema";
 
 export type EvidencePack =
   components["schemas"]["ClosePackOut"] | components["schemas"]["ContractSamplePackOut"];
-export type EvidencePackSummary = components["schemas"]["ClosePackSummaryOut"];
+export type EvidencePackSummary =
+  | components["schemas"]["ClosePackSummaryOut"]
+  | components["schemas"]["ContractSamplePackSummaryOut"];
 export const EVIDENCE_PACKS_PATH = "/api/v1/evidence-packs";
 export const EVIDENCE_PACKS_ROUTE = "/reports/evidence";
 const READ = ["report.run", "audit.read", "contract.read"] as const;
@@ -32,7 +34,10 @@ export function mayDownloadEvidence(
   return EXPORT.every((permission) => access.holds(permission, { id: pack.entity_id }));
 }
 
-type PackScope = Pick<EvidencePackSummary, "entity_code" | "book" | "period_key">;
+type PackScope = Pick<
+  components["schemas"]["ClosePackSummaryOut"],
+  "entity_code" | "book" | "period_key"
+>;
 
 export function evidencePackContext(pack: PackScope): string {
   return `?${new URLSearchParams({
@@ -42,11 +47,16 @@ export function evidencePackContext(pack: PackScope): string {
   }).toString()}`;
 }
 
-export function evidencePackRoute(id: string, pack: PackScope): string {
-  return `${EVIDENCE_PACKS_ROUTE}/${encodeURIComponent(id)}${evidencePackContext(pack)}`;
+export function evidencePackRoute(
+  id: string,
+  pack: PackScope | { kind: "CONTRACT_SAMPLE" },
+): string {
+  const context = "entity_code" in pack ? evidencePackContext(pack) : "?kind=CONTRACT_SAMPLE";
+  return `${EVIDENCE_PACKS_ROUTE}/${encodeURIComponent(id)}${context}`;
 }
 
 export interface EvidencePackQuery {
+  readonly kind?: "CLOSE" | "CONTRACT_SAMPLE";
   readonly entities: readonly string[];
   readonly book: string | null;
   readonly period: string | null;
@@ -55,6 +65,7 @@ export interface EvidencePackQuery {
 
 export function evidencePacksKey(query: EvidencePackQuery) {
   return queryKey("evidence-packs", "tenant", {
+    kind: query.kind ?? "CLOSE",
     entities: query.entities.join(","),
     book: query.book,
     period: query.period,
@@ -74,11 +85,11 @@ export function fetchEvidencePacksPage(
   return fetchListPage(
     EVIDENCE_PACKS_PATH,
     {
-      entity: query.entities,
-      book: query.book,
-      period: query.period,
+      ...(query.kind === "CONTRACT_SAMPLE"
+        ? {}
+        : { entity: query.entities, book: query.book, period: query.period }),
       status: query.statuses,
-      kind: "CLOSE",
+      kind: query.kind ?? "CLOSE",
       sort,
     },
     cursor,
