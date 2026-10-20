@@ -1,5 +1,15 @@
 # eRev Cloud 1.0: stated limits of the release
 
+Current membership/estimate update (October 20): membership replay reconstructs the earlier
+member/portfolio estimate set and introduces later approved versions before application events.
+Historical versions cannot disappear or change contents. A real-engine merge + delivery + VC
+revision witness verifies that membership keeps its isolated effect, an unapplied version has
+zero effect, and application has a separate dated event contribution with retained source keys.
+This supersedes the blanket estimate-record refusal below. Contract-header changes, inconsistent
+earlier bases, missing members, group-level postings, combined/late-carried liability FX and
+alternate-currency frozen close integration remain open. No deployment or accounting sign-off.
+
+
 Current membership/reference update (October 20): merges/splits can now coexist with changes
 to SSP/template/rule references and resolved accounting policies. Membership first uses prior
 member policies and a coherent prior reference basis; a distinct OTHER phase applies later

@@ -6,6 +6,23 @@
 
 
 
+## Estimate versions in membership replay — October 20, 2026
+
+- Group changes can now coexist with new approved estimate versions. The membership phase
+  reconstructs the earlier contract/portfolio-owned estimate set; the reference phase introduces
+  later versions before their ordered business application events. Original versions must remain
+  unchanged and retained, and duplicate identities with different contents are refused.
+- A real-engine/frozen-data witness combines merge, delivery and an added VC version/application
+  event. Membership effects equal the isolated merge; introducing an unapplied version has zero
+  effect; the dated application contributes the independently projected change under LATE_EVENT.
+  The actual VC amount changes, all sums reconcile and application keys remain in the evidence.
+- Necessary grouped journey also covers reverse split, RPO policy changes, conflicting policies,
+  report/cell provenance and exports. Lint/types checked. This supersedes the blanket estimate-
+  record refusal below; contract-header changes and incompatible earlier bases remain separate.
+- Remaining: contract-header replay, missing member sources, group-level posting redistribution,
+  combined/late-carried liability FX and alternate-currency frozen close integration. No deployment
+  or independent accounting sign-off claimed.
+
 ## Reference/policy phases with group changes — October 20, 2026
 
 - Membership replay now reconstructs prior member policies for the new group, carrying only
@@ -199,39 +216,6 @@
 - Retained reports predating original-term evidence cannot silently reconstruct it from current
   data. Missing retained input/terms is refused; create a fresh report after source availability.
   No deployment; the four priority workstreams are not yet all complete.
-
-## Reporting-currency contract balance rollforward — October 20, 2026
-
-- Reporting view now uses the engine's S12-R-18 translation: preceding closing rate for opening,
-  each posting period's average rate for movements, closing rate for closing. TRANSLATION and
-  ROUNDING are explicit aggregate and by-contract lines, separate from FX_REMEASUREMENT.
-- Intermediate functional endpoints and cumulative path deltas retain the original range's
-  opening-liability identity across months. Rate/version facts are pinned per entity, period and
-  type; locked endpoints use frozen cutoffs. Balance and GL comparisons remain functional.
-- Unexplained functional OTHER fails the movement tie even if translation rounds it to zero.
-  Missing flow periods or required rates are refused; no current-rate substitution on reruns.
-- Targeted two-month API journey: EUR 10,000 closing, translated functional FX 180.59 and separate
-  translation -180.59. Publishing a new closing rate changes a fresh run to EUR 8,960 while the
-  original rerun retains its rows. Range-opening versus new-billing attribution is checked.
-  Locked-period reporting and the existing balance translation journey also pass; lint/types pass.
-- Remaining: broader reporting-currency coverage (including revenue/RPO), multi-layer monetary
-  liability FX and combined-contract attribution; the other priority workstream gaps remain as
-  previously stated. No deployment; this does not close the entire four-workstream request.
-
-## Reporting-currency contract balances — October 20, 2026
-
-- Contract balances now translates dated functional balances into the tenant reporting currency
-  using approved closing rates. Rows show functional currency and the closing rate; totals sum
-  rounded contract rows. Currency precision uses exact rational half-up rounding.
-- Rate amounts, row/version IDs and cutoffs are retained for reruns. Locked endpoints select rates
-  at their frozen cutoff. Missing or ambiguous rates are refused; no runtime rate inversion or
-  triangulation is performed. Balance and GL comparisons remain explicitly functional.
-- Targeted API journey verifies USD 11,050 becomes EUR 9,945.01 at 0.900001; after publishing
-  0.8, a new report shows EUR 8,840 and the retained rerun reproduces the earlier rows.
-  Locked-period identity translation/rerun also passes; Python lint and types pass.
-- Remaining: reporting-currency movement reports need opening/flow/closing rate treatment and
-  explicit translation differences; broader report coverage, multi-layer FX and combined-contract
-  attribution remain open. This is an incremental feature completion, not four-workstream closure.
 
 ## Outstanding release verification
 

@@ -1,7 +1,7 @@
 """Replay membership, references/policies, new business events and FX rates.
 
-Both frozen sides are reproduced on the earlier posted basis. Contract and
-estimate-record changes still require a separate counterfactual phase.
+Both frozen sides are reproduced on the earlier posted basis. Contract-header
+changes still require a separate counterfactual phase.
 """
 
 from __future__ import annotations
@@ -15,7 +15,7 @@ from types import MappingProxyType
 from typing import Literal
 from uuid import NAMESPACE_URL, UUID, uuid5
 
-from erev_engine.bundle import EventInput, InputBundle, ResolvedPolicyInput
+from erev_engine.bundle import EstimateVersionInput, EventInput, InputBundle, ResolvedPolicyInput
 from erev_engine.canonical import canonical_bytes
 from erev_engine.stages.s01_canonicalize.convert import contract_key_from_subject
 from erev_engine.stages.s15_disclosures.variance import Evaluation, decompose
@@ -113,7 +113,7 @@ def execute(
     if len({canonical_bytes(source.bundle.fx_rates) for source in old.values()}) != 1:
         raise _refuse("earlier groups have inconsistent FX bases.")
     earlier_fx = next(iter(old.values())).bundle.fx_rates
-    for field in ("contracts", "estimate_versions"):
+    for field in ("contracts",):
         before = {
             canonical_bytes(item)
             for source in old.values()
@@ -126,6 +126,17 @@ def execute(
         }
         if before != after:
             raise _refuse(f"membership is mixed with a {field} change.")
+    estimate_sides = []
+    for side in (old, new):
+        versions: dict[str, EstimateVersionInput] = {}
+        for source in side.values():
+            for version in source.bundle.estimate_versions:
+                if version.version_key in versions and versions[version.version_key] != version:
+                    raise _refuse("one estimate version has inconsistent retained contents.")
+                versions[version.version_key] = version
+        estimate_sides.append(versions)
+    if any(estimate_sides[1].get(key) != version for key, version in estimate_sides[0].items()):
+        raise _refuse("an earlier immutable estimate version changed or disappeared.")
     for field in ("products", "portfolios"):
         before = {
             canonical_bytes(item)
@@ -192,7 +203,20 @@ def execute(
             prior_books.append(
                 replace(target_book, policies=tuple(policies[k] for k in sorted(policies)))
             )
-        return replace(target, books=tuple(prior_books), **old_references)
+        portfolios = {"PORTFOLIO:" + p.code for p in target.group.portfolios}
+        estimates = tuple(
+            sorted(
+                (
+                    version
+                    for version in estimate_sides[0].values()
+                    if contract_key_from_subject(version.estimate_key) in members | portfolios
+                ),
+                key=lambda version: (version.estimate_key, version.version_no),
+            )
+        )
+        return replace(
+            target, books=tuple(prior_books), estimate_versions=estimates, **old_references
+        )
 
     old_events = {
         event.event_key: event for source in old.values() for event in source.bundle.events
@@ -357,7 +381,7 @@ def execute(
                 )
                 changed_references = tuple(
                     field
-                    for field in ("books", *reference_fields)
+                    for field in ("books", "estimate_versions", *reference_fields)
                     if getattr(membership_basis, field) != getattr(business_basis, field)
                 )
                 if changed_references:

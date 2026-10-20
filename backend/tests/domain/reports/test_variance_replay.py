@@ -913,6 +913,73 @@ def test_group_replay_reconciles_two_contracts_to_frozen_datasets() -> None:
         for effect in change.effects
         if effect.driver == "LATE_EVENT"
     )
+    # An approved VC version is introduced with its application event after merging.
+    previous_estimate = next(
+        v for v in joined.estimate_versions if v.estimate_key.startswith("Contract 2/")
+    )
+    revised_estimate = replace(
+        previous_estimate,
+        version_no=2,
+        version_key=previous_estimate.estimate_key + "@v2",
+        effective_date=date(2023, 5, 31),
+        constrained_amount=Decimal("-150"),
+        supersedes_version_key=previous_estimate.version_key,
+        content_sha256=sha256_hex({"version": 2, "amount": "-150"}),
+    )
+    estimate_event = replace(
+        bundles.event(
+            "Contract 2",
+            11,
+            "ESTIMATE_CHANGED",
+            date(2023, 5, 31),
+            {"estimate_version_id": revised_estimate.version_key},
+        ),
+        recorded_at=joined.known_at,
+        estimate_version_key=revised_estimate.version_key,
+    )
+    with_version = replace(
+        mixed,
+        estimate_versions=tuple(
+            sorted(
+                (*mixed.estimate_versions, revised_estimate),
+                key=lambda v: (v.estimate_key, v.version_no),
+            )
+        ),
+    )
+    estimated = replace(
+        with_version,
+        events=tuple(
+            sorted(
+                (*with_version.events, estimate_event),
+                key=lambda e: (e.effective_date, e.record_seq, e.event_key),
+            )
+        ),
+    )
+    estimate_pair = replace(
+        membership_pair, later=side(estimated, 2, prepared=((merged_id, estimated),))
+    )
+    estimate_result = variance_groups.execute(estimate_pair)
+    estimate_metrics = Projection(estimated, "Mock Entity 2", "ASC606", "FY2023-P05")(
+        compute(estimated)
+    )
+    assert any(
+        estimate_metrics.get(k, Fraction(0)) != mixed_metrics.get(k, Fraction(0))
+        for k in estimate_metrics.keys() | mixed_metrics.keys()
+    )
+    for key, change in estimate_result.measures.items():
+        assert change.sums_exactly
+        assert (
+            sum(e.amount for e in change.effects if e.driver == "MODIFICATION")
+            == membership.measures[key].total
+        )
+        assert sum(e.amount for e in change.effects if e.driver == "OTHER") == 0
+        assert sum(
+            e.amount for e in change.effects if e.driver == "LATE_EVENT"
+        ) == estimate_metrics.get(key, Fraction(0)) - joined_metrics.get(key, Fraction(0))
+    assert all(
+        any(estimate_event.event_key in step.event_keys for step in run.replay.executions)
+        for run in estimate_result.groups.values()
+    )
     # The exemption election changes in the same close as merge and delivery.
     elected = replace(
         joined,
