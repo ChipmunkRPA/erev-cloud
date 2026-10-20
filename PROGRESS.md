@@ -6,6 +6,24 @@
 
 
 
+## Transaction opening-liability group consumption — October 20, 2026
+
+- Positive transaction RPT-04 now pools control flows by retained computation version,
+  entity and currency, assigning actual opening-layer consumption to the recognizing
+  member. Earlier credit-memo debits reduce the available opening layer. Opening holders
+  remain visible even when another member recognizes the revenue; groups and source
+  method are retained for identical reruns. Migration 0199 updates the IPE description.
+- Necessary verification: the combined-member disclosure reports USD 54,000 opening relief
+  for an August-start range and zero for a July-start range, with unchanged USD 54,000
+  recognized revenue and identical bound reruns. Existing single-contract results pass.
+  All 28 control-path unit checks pass, including credit-memo consumption before revenue;
+  implementation lint and types pass.
+- Negative transaction revenue deliberately retains the existing net-reversal calculation;
+  original reversal-source attribution remains unfinished. Per-obligation consumption,
+  cross-member asset-creating/carried/other-control histories, pre-close unposted FX paths,
+  recorded registry gaps and final accounting/release acceptance remain open. Reporting
+  is not yet complete. No deployment.
+
 ## Opening-liability disclosure in functional/reporting currency — October 20, 2026
 
 - New functional/reporting revenue_from_opening_liability requests now consume the retained
@@ -209,22 +227,6 @@
   and late-carried public acceptance, populated foreign two-lock acceptance, recorded privacy/
   snapshot registry gaps and final accounting/release acceptance. These ordinary settlement
   cases do not establish production readiness or all Reporting requirements.
-
-## Contract-computation FX evidence — October 20, 2026
-
-- The shared FX attribution reader now adapts original command-computation input/output
-  evidence as well as close-pass envelopes. It authorizes the complete retained group,
-  verifies the encrypted source hashes, version trace and exact posting intent, and uses
-  the original per-book seal cutoff to select historical paid lines. Version evidence keeps
-  its real version identity; no synthetic close record or current-rate reconstruction is used.
-- Paid attribution now follows actual command settlement and reversal histories recursively.
-  Necessary checks passed: actual GBP 1,080 settlement and GBP 540 reversal with the original
-  paid-line identity and both computation evidence hashes, plus scoped lint/types.
-- Still open: public rollforward EVENT settlement timing must consume these sources without
-  duplicating the existing before-invoice settlement flow and period-end offset. The TIME
-  report path is unchanged. Split targets, regrouped/keyless historical subjects, combined
-  and late-carried public acceptance, populated foreign two-lock acceptance, recorded registry
-  gaps and final accounting/release acceptance remain open. No deployment or readiness claim.
 
 ## Outstanding release verification
 

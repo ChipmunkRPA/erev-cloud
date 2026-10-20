@@ -2,7 +2,8 @@
 §5.6.1 RPT-04; ENGINE_SPEC_B §15.2.2 S15-R-05, S15-INV-05; POLICIES POL-126; 03 REQ-RPT-007;
 BUILD_SPEC RPS-3).
 
-Per member contract and contracting entity: the opening contract liability at the end of the period
+The legacy calculation, retained for existing bindings and negative transaction revenue:
+per member contract and contracting entity, the opening contract liability at the end of the period
 before the range (``tie_outs.balances_at``); revenue recognized = −Σ ``REVENUE`` subledger lines of
 the range, plus the relief another entity's performance makes of this entity's liability (the
 contracting side of an intercompany pair, entry kind ``INTERCOMPANY``: ENGINE_SPEC_B S12-R-03;
@@ -27,6 +28,9 @@ S15-R-20 rev 1.168; item RPT-ROLLFWD-LOCKED-CLOSING-1; the supervisor's ruling o
 the lock's, as the contract balance roll-forward opens (``reports.locked_ends``) — the two
 reports are one disclosure and state one opening. In the legacy transaction path a contract
 outside the lock's opening contributes no relief.
+New positive transaction requests pool opening balances and ordered control flows by the
+retained computation version, entity and currency. Actual opening consumption after earlier
+non-revenue debits is assigned to the recognizing member. The group path must reconcile.
 New functional/reporting requests use the retained rollforward sources, with reporting
 openings at preceding closing rates and flows at period averages. Combined-contract relief
 may be recognized by a different member from the opening holder; both are shown without
@@ -185,12 +189,23 @@ def footnote(resolved: Iterable[str]) -> str:
 
 def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     view = str(params.parameters.get("currency_view") or "transaction")
+    if view == "transaction" and (
+        params.binding is None or "opening_relief_transaction_v1" in params.binding.evidence
+    ):
+        from ..opening_relief_transaction import build as transaction_build
+
+        return transaction_build(uow, params)
     if view in {"functional", "reporting"} and (
         params.binding is None or "opening_relief_currency_v1" in params.binding.evidence
     ):
         from ..opening_relief_currency import build as currency_build
 
         return currency_build(uow, params)
+    return legacy_build(uow, params)
+
+
+def legacy_build(uow: UnitOfWork, params: ReportParams) -> ReportData:
+    """Original bound-run path, including existing net-reversal behavior."""
     session = uow.session
     book_code = tie_outs.book_of(session, params)
     found, periods, before = rollforward.ranges(session, params)

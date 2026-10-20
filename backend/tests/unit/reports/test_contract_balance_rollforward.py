@@ -413,3 +413,16 @@ def test_offsetting_member_errors_do_not_pass_the_aggregate_tie() -> None:
     totals = {"USD": cbr.path({**NONE, LIABILITY: D(5)}, (), {**NONE, LIABILITY: D(5)})}
     assert cbr.balances_tie(totals)["result"] == "PASS"
     assert cbr.balances_tie(totals, members)["result"] == "FAIL"
+
+
+def test_opening_relief_is_reduced_by_a_prior_credit_memo() -> None:
+    attributed: dict[int, Decimal] = {}
+    lines = cbr.path(
+        {**NONE, LIABILITY: D(100)},
+        [cbr.Flow(D(80), False, cbr.BILLING), cbr.Flow(D(50), True, cbr.REVENUE)],
+        {**NONE, ASSET: D(30)},
+        opening_relief=attributed,
+    )
+    assert attributed == {1: D(20)}
+    assert lines["REVENUE_FROM_OPENING"][LIABILITY] == D(-20)
+    assert all(amount == 0 for amount in lines["OTHER"].values())

@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from decimal import Decimal
 from typing import Any
+from uuid import UUID
 
 from erev_api.domain.reports import locked_ends, reporting_rollforward, tie_outs
 from erev_api.domain.reports.builders import ReportParams
@@ -18,8 +20,6 @@ ZERO = Decimal(0)
 
 
 def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
-    from .builders import revenue_from_opening_liability as disclosure
-
     session = uow.session
     book = tie_outs.book_of(session, params)
     entities, periods, before = rollforward.ranges(session, params)
@@ -106,6 +106,37 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
             ("relief", from_opening),
         ):
             tie_outs.add(group, name, value)
+    return finish(
+        uow,
+        params,
+        contracts=contracts,
+        totals=totals,
+        entities=entities,
+        periods=periods,
+        book=book,
+        view=view,
+        rates=rates,
+        source_key=KEY,
+    )
+
+
+def finish(
+    uow: UnitOfWork,
+    params: ReportParams,
+    *,
+    contracts: list[dict[str, Any]],
+    totals: dict[str, dict[str, Decimal]],
+    entities: Sequence[tie_outs.EntityRef],
+    periods: Mapping[UUID, tuple[tie_outs.PeriodRef, ...]],
+    book: str,
+    view: str,
+    rates: list[dict[str, Any]],
+    source_key: str,
+    legacy_contract_footnote: bool = False,
+) -> ReportData:
+    from .builders import revenue_from_opening_liability as disclosure
+
+    session = uow.session
     labels = sorted(
         {f"{p[0].name} to {p[-1].name}" if len(p) > 1 else p[0].name for p in periods.values() if p}
     )
@@ -136,19 +167,35 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
             for entity in entities
         }
     )
-    evidence = {"currency_view": view, "method": "retained_rollforward_sources_v1"}
-    if params.binding is not None and params.binding.evidence[KEY] != evidence:
+    evidence = {
+        "currency_view": view,
+        "method": (
+            "retained_rollforward_sources_v1"
+            if source_key == KEY
+            else "retained_group_control_path_v1"
+        ),
+    }
+    if params.binding is not None and params.binding.evidence[source_key] != evidence:
         raise tie_outs.invalid(
             "currency_view", "Opening-relief method differs from retained evidence."
         )
-    tie_outs.record_evidence(params, KEY, evidence)
+    tie_outs.record_evidence(params, source_key, evidence)
     footnote = (
         "Revenue follows the original liability layers. Combined-contract relief is shown "
         "against the recognizing member, which may differ from the member "
         "holding the opening balance."
     )
+    if source_key != KEY:
+        footnote = (
+            "Opening relief follows FIFO consumption of the retained group control path. "
+            "Combined-contract relief is shown against the recognizing member, which may "
+            "differ from the member holding the opening balance. Applied policy: "
+            f"{disclosure.APPLIED}."
+        )
     if any(policy != disclosure.APPLIED for policy in policies):
         footnote += " Per-obligation consumption is not provided in this contract-level disclosure."
+    if legacy_contract_footnote:
+        footnote = disclosure.footnote(policies)
     return ReportData(
         columns=disclosure.COLUMNS,
         rows=tuple(rows),

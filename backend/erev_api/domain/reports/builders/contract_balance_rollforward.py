@@ -240,7 +240,11 @@ class ContractRollforward:
 
 
 def path(
-    opening: Mapping[str, Decimal], flows: Sequence[Flow], closing: Mapping[str, Decimal]
+    opening: Mapping[str, Decimal],
+    flows: Sequence[Flow],
+    closing: Mapping[str, Decimal],
+    *,
+    opening_relief: dict[int, Decimal] | None = None,
 ) -> Lines:
     """The S15-R-02 lines of one contract and entity (module docstring; ENGINE_SPEC_B EX-15-B)."""
     lines: Lines = {line: dict.fromkeys(ROLLFORWARD_BALANCES, ZERO) for line in LINES}
@@ -251,7 +255,7 @@ def path(
     if opening.get(LIABILITY, ZERO) > 0:
         layers.append(["OPENING", opening[LIABILITY], None])
     asset = {UNBILLED: opening.get(UNBILLED, ZERO), ASSET: opening.get(ASSET, ZERO)}
-    for flow in flows:
+    for flow_index, flow in enumerate(flows):
         family = family_of(flow)
         label = FAMILY_LINES[family]
         if family == FX:
@@ -320,6 +324,8 @@ def path(
             layer[1] -= take
             need -= take
             relieved = family == REVENUE and layer[0] == "OPENING"
+            if relieved and opening_relief is not None:
+                opening_relief[flow_index] = opening_relief.get(flow_index, ZERO) + take
             lines["REVENUE_FROM_OPENING" if relieved else label][LIABILITY] -= take
         if need > 0:
             asset[ASSET] += need

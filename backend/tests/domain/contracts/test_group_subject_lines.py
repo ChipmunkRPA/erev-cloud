@@ -786,3 +786,29 @@ def test_combined_revenue_relief_retains_the_consumed_members_owner(fx: FxWorld)
         assert reloaded.status_code == 200 and reloaded.json()["items"] == disclosure_rows, (
             reloaded.text
         )
+    for first, expected in ((AUGUST, "54000.00"), ("FY2026-P07", "0.00")):
+        run, rows = worlds.report_run(
+            reporting,
+            "revenue_from_opening_liability",
+            {
+                "entity_codes": [AVM_UK],
+                "book": "ASC606",
+                "currency_view": "transaction",
+                "from_period_key": first,
+                "to_period_key": SEPTEMBER,
+            },
+        )
+        summary = next(row for row in rows if str(row["row_key"]).startswith("summary:"))
+        recipient = next(row for row in rows if row.get("contract_external_id") == FIRST_UK)
+        assert summary["revenue_from_opening"] == {"amount": expected, "currency": "USD"}
+        assert recipient["revenue_from_opening"] == summary["revenue_from_opening"]
+        assert recipient["opening_contract_liability"]["amount"] == "0.00"
+        assert recipient["revenue_recognized"] == {"amount": "54000.00", "currency": "USD"}
+        replay = post(fx.app, f"/api/v1/report-runs/{run['id']}/rerun", fx.maya, {})
+        assert replay.status_code == 202, replay.text
+        finished = worlds.run_now(reporting, UUID(replay.json()["id"]))
+        assert finished["state"] == "SUCCEEDED", finished
+        repeated = get(
+            fx.app, f"/api/v1/report-runs/{replay.headers['x-erev-report-run-id']}/data", fx.maya
+        )
+        assert repeated.status_code == 200 and repeated.json()["items"] == rows, repeated.text

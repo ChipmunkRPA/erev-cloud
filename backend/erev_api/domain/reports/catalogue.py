@@ -616,6 +616,11 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "same-member opening cap; original bindings retain their prior path",
             "reporting openings use preceding closing rates and recognized flows use their "
             "period averages; translation rates and source method are bound for rerun",
+            "new positive transaction runs pool control flows by retained computation version, "
+            "entity and currency; actual opening-layer consumption is assigned to each recognizing "
+            "member after prior non-revenue debits; source groups and lines are bound",
+            "negative transaction revenue preserves the existing net-reversal path pending "
+            "original reversal-source replay; earlier bindings retain their original builder",
             _as_locked("CONTRACT_BALANCE_ROLLFORWARD"),
         ),
     ),
