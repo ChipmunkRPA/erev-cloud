@@ -8830,3 +8830,16 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Full populated partial-exemption API/lock/export acceptance remains to be completed. This does
   not complete multi-currency movement translation, population replay or all release acceptance.
   No deployment; direct main publication.
+
+## Independent group population changes in close variance — October 20, 2026
+
+- Frozen close comparisons now support entire independent contract groups entering or leaving
+  the population. The present side must reproduce its retained output hash and frozen money;
+  the absent side is recorded as absent, with no fabricated empty input/computation.
+- Entries use NEW_CONTRACT and exits OTHER with explicit population.entered/population.left
+  evidence. Exits do not assert cancellation. Retained presentation and cell drill-through
+  validate the available source and current contract access on either side.
+- Existing groups still use event/reference/FX replay. A contract moving between groups or
+  member additions/removals within a retained group still requires membership replay.
+- The 27 focused replay checks pass, including real-engine group entry/exit, exact endpoints,
+  presentation and cell source selection. Python lint/types pass. No deployment.

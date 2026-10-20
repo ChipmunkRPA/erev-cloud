@@ -6,6 +6,23 @@
 
 
 
+## FX after membership/event variance replay — October 20, 2026
+
+- Reorganized groups now replay membership and business events on the coherent earlier FX
+  basis, then apply the later source rates in a separate FX phase. Rates no longer have to
+  remain identical across the two closes. Inconsistent earlier-group rate bases are refused
+  explicitly rather than choosing one member's rates. Final frozen endpoint checks remain.
+- The retained membership worker accepts an explicit transaction/functional projection, used
+  consistently for original-source verification and every intermediate phase. Actual source
+  and counterfactual hashes remain separate. Existing frozen CSV currency schemas are unchanged.
+- Necessary real-engine witness merges two EUR contracts of a USD entity and revises rates:
+  each contract's functional revenue increases by USD 60 under FX. Membership and FX effects
+  independently equal their projected endpoint differences. Existing grouped replay, reverse
+  split, mixed delivery, report/cell and export journey also passes; lint/types pass.
+- Still open: alternate-currency frozen datasets and close-report integration; mixed contract/
+  estimate/reference changes; missing members; group-level posting redistribution; combined
+  contract/late-carried liability FX. No deployment or accounting sign-off claimed.
+
 ## Membership plus business-event variance replay — October 20, 2026
 
 - Group merges/splits can now coexist with newly recorded business events. The replay first
@@ -215,19 +232,6 @@
 - Remaining: FX attribution across multiple open monetary liability layers, combined-contract
   layer attribution, reporting-currency translation and broader report coverage. Ambiguous
   multi-layer FX remains refused. Full four-workstream completion is not claimed. No deployment.
-
-## Independent group population changes in close variance — October 20, 2026
-
-- Frozen close comparisons now support entire independent contract groups entering or leaving
-  the population. The present side must reproduce its retained output hash and frozen money;
-  the absent side is recorded as absent, with no fabricated empty input/computation.
-- Entries use NEW_CONTRACT and exits OTHER with explicit population.entered/population.left
-  evidence. Exits do not assert cancellation. Retained presentation and cell drill-through
-  validate the available source and current contract access on either side.
-- Existing groups still use event/reference/FX replay. A contract moving between groups or
-  member additions/removals within a retained group still requires membership replay.
-- The 27 focused replay checks pass, including real-engine group entry/exit, exact endpoints,
-  presentation and cell source selection. Python lint/types pass. No deployment.
 
 ## Outstanding release verification
 

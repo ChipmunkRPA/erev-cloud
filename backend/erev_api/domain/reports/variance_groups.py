@@ -3,8 +3,8 @@
 This worker calculation runs after source loading has closed its transaction. It
 keeps currency/measure totals separate and retains each group's execution evidence.
 Independent groups entering/leaving the population have explicit source-backed
-contributions. Isolated merges/splits use verified membership replay on connected groups;
-mixed business/reference changes still require separate phases. No empty bundle is invented.
+contributions. Merges/splits replay membership, business events and FX on connected groups;
+mixed contract/reference changes still require separate phases. No empty bundle is invented.
 """
 
 from __future__ import annotations

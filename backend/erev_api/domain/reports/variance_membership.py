@@ -1,4 +1,4 @@
-"""Replay group membership first, then newly recorded business events.
+"""Replay membership, then new business events, then changed FX rates.
 
 Both frozen sides are reproduced on the earlier posted basis. Reference, policy
 and contract-record changes still require a separate counterfactual phase.
@@ -12,6 +12,7 @@ from fractions import Fraction
 from itertools import groupby
 from operator import attrgetter
 from types import MappingProxyType
+from typing import Literal
 from uuid import NAMESPACE_URL, UUID, uuid5
 
 from erev_engine.bundle import EventInput, InputBundle
@@ -41,6 +42,7 @@ def execute(
     book_code: str,
     period_key: str,
     engine: Engine,
+    currency_view: Literal["transaction", "functional"] = "transaction",
 ) -> tuple[dict[UUID, RetainedReplay], dict[str, UUID]]:
     old_owner = {
         name: key
@@ -105,11 +107,15 @@ def execute(
         "ssp_versions",
         "pob_template_versions",
         "rule_set_versions",
-        "fx_rates",
     )
     for field in shared:
         if len({canonical_bytes(getattr(source.bundle, field)) for source in sources}) != 1:
             raise _refuse(f"membership is mixed with a {field} change.")
+    # Repartitioning needs a coherent earlier FX basis; never select one member's
+    # rates arbitrarily when the original groups used different rate sets.
+    if len({canonical_bytes(source.bundle.fx_rates) for source in old.values()}) != 1:
+        raise _refuse("earlier groups have inconsistent FX bases.")
+    earlier_fx = next(iter(old.values())).bundle.fx_rates
     for field in ("contracts", "estimate_versions"):
         before = {
             canonical_bytes(item)
@@ -209,6 +215,7 @@ def execute(
                 entity_code=entity_code,
                 book_code=book_code,
                 period_key=period_key,
+                currency_view=currency_view,
             )
     posted = tuple(line for source in old.values() for line in source.bundle.posted)
     if any(contract_key_from_subject(line.subject_key) not in old_owner for line in posted):
@@ -243,7 +250,7 @@ def execute(
                 or output.engine_version != bundle.engine_version
             ):
                 raise _refuse("a dry-run output does not identify its executed input.")
-            actual = Projection(bundle, entity_code, book_code, period_key)(output)
+            actual = Projection(bundle, entity_code, book_code, period_key, currency_view)(output)
             expected = {k: v for k, v in metrics.items() if k.contract_external_id in members}
             if any(
                 actual.get(k, Fraction(0)) != expected.get(k, Fraction(0))
@@ -312,17 +319,20 @@ def execute(
                         raise _refuse(
                             "a membership/event phase does not identify its executed input."
                         )
-                    state = Projection(candidate, entity_code, book_code, period_key)(result)
+                    state = Projection(
+                        candidate, entity_code, book_code, period_key, currency_view
+                    )(result)
                     return (
                         Execution(name, event_keys, candidate.sha256(), result.sha256(), changed),
                         state,
                     )
 
+                business_basis = replace(bundle, fx_rates=earlier_fx)
                 states.append(
                     evaluate(
                         "MODIFICATION",
                         membership_events,
-                        bundle,
+                        business_basis,
                         accumulated,
                         ("group.membership",),
                     )
@@ -331,16 +341,21 @@ def execute(
                     accumulated.extend(events)
                     states.append(
                         evaluate(
-                            name, tuple(event.event_key for event in events), bundle, accumulated
+                            name,
+                            tuple(event.event_key for event in events),
+                            business_basis,
+                            accumulated,
                         )
                     )
+                if earlier_fx != bundle.fx_rates:
+                    states.append(evaluate("FX", (), bundle, accumulated, ("fx_rates",)))
                 final = states[-1][1]
                 if any(
                     final.get(k, Fraction(0)) != expected.get(k, Fraction(0))
                     for k in final.keys() | expected.keys()
                 ):
                     raise _refuse(
-                        "membership and business phases do not reproduce the frozen endpoint."
+                        "membership, business and FX phases do not reproduce the frozen endpoint."
                     )
                 phases[key] = states
             else:

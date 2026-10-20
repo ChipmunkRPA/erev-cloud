@@ -1,5 +1,16 @@
 # eRev Cloud 1.0: stated limits of the release
 
+Current membership/FX update (October 20): membership and new business events now run on the
+earlier coherent FX basis, followed by a separate later-rate FX phase. A real-engine witness
+for two merged EUR contracts shows USD 60 functional revenue FX movement per contract and
+independent phase reconciliation. Earlier groups with inconsistent FX bases remain refused.
+The worker supports explicit functional projection; existing frozen datasets and the public
+close-report currency selection are unchanged. Alternate currency lock datasets/integration,
+mixed contract/reference changes, missing members, group-level posted redistribution and
+combined-contract/late-carried liability FX remain open. This supersedes the mixed FX refusal
+below. No deployment or independent accounting acceptance claimed.
+
+
 Current mixed-membership update (October 20): group reorganization can now be followed by
 new business-event phases in the same comparison. Membership runs first, then ordered driver
 runs with late-event precedence. Exact phase amounts, source event keys and execution hashes

@@ -1072,3 +1072,103 @@ def test_fx_change_replays_real_engine_functional_revenue() -> None:
     assert result.measures[key].effects[-1].driver == "FX"
     assert result.measures[key].effects[-1].amount == 60
     assert result.executions[-1].changed_fields == ("fx_rates",)
+
+
+def test_membership_replay_separates_real_functional_fx() -> None:
+    from uuid import uuid4
+
+    from erev_api.domain.reports import variance_membership
+    from erev_api.domain.reports.computation_sources import VerifiedComputation
+    from erev_engine import upgrade
+    from erev_engine.canonical import canonical_bytes
+    from support import step1_worlds
+
+    first = step1_worlds.eur_mixed_rates()
+    second = upgrade.decode_input(upgrade.encode_input(first).replace(b"C-STEP1", b"C-SECOND"))
+    merged = replace(
+        first,
+        known_at=first.known_at + timedelta(days=1),
+        contracts=tuple(sorted((*first.contracts, *second.contracts), key=lambda c: c.external_id)),
+        books=tuple(
+            replace(
+                book,
+                policies=tuple(
+                    {
+                        canonical_bytes(policy): policy
+                        for source in (first, second)
+                        for held in source.books
+                        if held.book_code == book.book_code
+                        for policy in held.policies
+                    }.values()
+                ),
+            )
+            for book in first.books
+        ),
+        group=replace(
+            first.group,
+            group_key="MERGED",
+            member_contract_keys=("C-SECOND", "C-STEP1"),
+            criterion="25_9_A",
+        ),
+        events=tuple(
+            sorted(
+                (*first.events, *second.events),
+                key=lambda e: (e.effective_date, e.record_seq, e.event_key),
+            )
+        ),
+    )
+    changed = replace(
+        merged,
+        fx_rates=tuple(
+            replace(rate, rate=rate.rate + Decimal("0.10"), version_key="CORRECTED")
+            for rate in merged.fx_rates
+        ),
+    )
+    entity = first.entities[0].code
+
+    def project(bundle: InputBundle) -> dict[MeasureKey, Fraction]:
+        return Projection(bundle, entity, "ASC606", "FY2026-P01", "functional")(compute(bundle))
+
+    def source(bundle: InputBundle) -> VerifiedComputation:
+        output = compute(bundle)
+        return VerifiedComputation(
+            uuid4(),
+            uuid4(),
+            uuid4(),
+            bundle,
+            upgrade.output_mapping(output),
+            output.sha256(),
+            {"ASC606": 0},
+            None,
+        )
+
+    originals = [source(first), source(second)]
+    final = source(changed)
+    earlier = {**project(first), **project(second)}
+    intermediate, later = project(merged), project(changed)
+    results, aliases = variance_membership.execute(
+        {item.group_id: item for item in originals},
+        {final.group_id: final},
+        earlier,
+        later,
+        entity_code=entity,
+        book_code="ASC606",
+        period_key="FY2026-P01",
+        currency_view="functional",
+        engine=compute,
+    )
+    for contract in ("C-STEP1", "C-SECOND"):
+        result = results[aliases[contract]]
+        revenue = result.replay.measures[MeasureKey(contract, "USD", "REVENUE")]
+        assert revenue.effects[-1].driver == "FX"
+        assert revenue.effects[-1].amount == 60
+        assert result.replay.executions[-1].changed_fields == ("fx_rates",)
+        for key, change in result.replay.measures.items():
+            assert change.sums_exactly
+            assert change.metric_after == later.get(key, Fraction(0))
+            assert sum(
+                e.amount for e in change.effects if e.driver == "MODIFICATION"
+            ) == intermediate.get(key, Fraction(0)) - earlier.get(key, Fraction(0))
+            assert sum(e.amount for e in change.effects if e.driver == "FX") == later.get(
+                key, Fraction(0)
+            ) - intermediate.get(key, Fraction(0))
