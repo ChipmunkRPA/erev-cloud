@@ -7987,3 +7987,21 @@ cleanup in the shared database session kernel was also repaired and regression-t
   ZIP contents and unchanged originals. Precision/long-text check, Ruff/Mypy and PDF preview pass.
 - Public sample create/worker/read/download and UI remain unfinished; rendering is an assembly
   component, not a claim that RPS-16 or the production-readiness goal is complete.
+
+## Contract sample API and worker lifecycle — October 19, 2026
+
+- Human requests can now create CONTRACT_SAMPLE packs through POST /evidence-packs, atomically
+  retaining source dependencies, a stable render stamp and the EVIDENCE_PACK job. The worker
+  rehydrates the active initiator's current grants instead of granting SYSTEM source access.
+- Added atomic encrypted final retention, current-scope detail/manifest/ZIP reads and audited
+  downloads. Successful retries reuse verified bytes; missing/damaged sources never trigger
+  recollection. Existing failure/cancellation hooks settle sample packs too.
+- Detail UI now handles sample contracts/cutoffs and scoped downloads; generated API schemas
+  include the sample response. The register still lists CLOSE only; sample creation UI and
+  sample-list pagination remain next feature work. Creation captures sources synchronously.
+- Real K01 API/worker/download journey passes, including encrypted output, no re-render on
+  retained reads, queued cancellation and permission-revoked terminal attempt/download refusal.
+  17 evidence UI checks, 121 focused schema/file/storage checks, TypeScript, lint and Mypy pass.
+- Fixed a stale transition-history function reference in period-pack journal collection; the
+  existing real CTL-041 close-pack journey passes again.
+- Broader multi-contract/combined-group acceptance and independent accounting sign-off remain.

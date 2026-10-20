@@ -191,6 +191,9 @@ def exercise_capture(world: Any, source_actor: Any) -> None:
                 retained = stream.read()
             assert hashlib.sha256(retained).hexdigest() == output_row["output_sha256"]
             assert forecast_saved._revenue(json.loads(retained), saved, evidence)["rows"]
+            assert forecast_catalogue.document_for_run(uow, dict(output_row)) == json.loads(
+                retained
+            )
             pending = {
                 **dict(output_row),
                 "status": "QUEUED",
@@ -333,6 +336,22 @@ def exercise_capture(world: Any, source_actor: Any) -> None:
         )
         assert response.status_code == 200, response.text
         assert response.json()["status"] == "SUCCEEDED", response.text
+        preview = call(
+            world.app,
+            "GET",
+            f"/api/v1/report-runs/{catalogue_id}/data",
+            headers=cookie_headers(world.place.author.token, key=False),
+        )
+        assert preview.status_code == 200, preview.text
+        assert len(preview.json()["sections"]) == 5
+        table = call(
+            world.app,
+            "GET",
+            f"/api/v1/report-runs/{catalogue_id}/data?section_table=revenue&limit=1",
+            headers=cookie_headers(world.place.author.token, key=False),
+        )
+        assert table.status_code == 200, table.text
+        assert len(table.json()["items"]) == 1
         download = call(
             world.app,
             "GET",

@@ -3227,6 +3227,10 @@ def run_document(
         if row["status"] != SUCCEEDED or row["output_file_id"] is None:
             raise Problem("invalid-transition", NOT_FINISHED)
         if row["output_format"] != JSON_FORMAT:
+            if row["report_code"] == "forecast_outputs":
+                from erev_api.domain.reports.forecast_catalogue import document_for_run
+
+                return document_for_run(uow, row)
             raise Problem("invalid-transition", DATA_OF_JSON_RUNS)
         _, stream = open_file(
             session, UUID(str(row["output_file_id"])), files=files, keyring=keyring

@@ -5,7 +5,12 @@ import { MemoryRouter } from "react-router";
 import { afterEach, expect, it, vi } from "vitest";
 import { ForecastRunsPage } from "./forecasts";
 
-const state = vi.hoisted(() => ({ sandbox: true, exportAllowed: true, submit: vi.fn() }));
+const state = vi.hoisted(() => ({
+  sandbox: true,
+  exportAllowed: true,
+  showOutput: false,
+  submit: vi.fn(),
+}));
 vi.mock("./ForecastComparisonForm", () => ({ ForecastComparisonForm: () => null }));
 vi.mock("./frame", () => ({ ReportsHeader: () => null }));
 vi.mock("../../lib/api/queries/me", () => ({
@@ -32,7 +37,21 @@ vi.mock("../../lib/api/queries/forecasts", () => ({
   forecastInputsKey: ["inputs"],
   forecastRunsKey: ["runs"],
   fetchForecastInputs: async () => [{ id: "input", name: "Base", version_no: 2 }],
-  fetchForecastRuns: async () => ({ items: [], nextCursor: null }),
+  fetchForecastRuns: async () => ({
+    items: state.showOutput
+      ? [
+          {
+            id: "forecast",
+            status: "SUCCEEDED",
+            created_at: "2026-10-19",
+            problem: null,
+            parameters: { horizon_periods: ["2026-01"] },
+            report_run_ids: ["xlsx-output"],
+          },
+        ]
+      : [],
+    nextCursor: null,
+  }),
 }));
 vi.mock("../../lib/api/queries/tenant", () => ({
   entitiesKey: () => ["entities"],
@@ -41,9 +60,22 @@ vi.mock("../../lib/api/queries/tenant", () => ({
     ["01", "02"].map((n) => ({ period: { period_key: `2026-${n}`, name: `Period ${n}` } })),
 }));
 
+vi.mock("./viewer/ForecastPack", () => ({ ForecastPack: () => <p>Saved forecast sections</p> }));
+vi.mock("../../lib/api/queries/reports", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../lib/api/queries/reports")>()),
+  fetchReportRun: async () => ({
+    id: "xlsx-output",
+    report_run_no: "RPT-1",
+    status: "SUCCEEDED",
+    output: { format: "XLSX" },
+    entity_scope: [{ id: "entity", code: "US" }],
+  }),
+}));
+
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  state.showOutput = false;
   state.sandbox = true;
   state.exportAllowed = true;
 });
@@ -96,4 +128,16 @@ it("keeps file export unavailable without export permission", async () => {
   fireEvent.click(await screen.findByLabelText("US"));
   expect((screen.getByLabelText("XLSX") as HTMLInputElement).disabled).toBe(true);
   expect((screen.getByLabelText("JSON") as HTMLInputElement).disabled).toBe(false);
+});
+
+it("opens saved file-format sections only with export access", async () => {
+  state.showOutput = true;
+  page();
+  fireEvent.click(await screen.findByRole("button", { name: "View forecast figures" }));
+  expect(screen.getByText("Saved forecast sections")).toBeTruthy();
+  cleanup();
+  state.exportAllowed = false;
+  page();
+  await screen.findByText("XLSX — RPT-1");
+  expect(screen.queryByRole("button", { name: "View forecast figures" })).toBeNull();
 });

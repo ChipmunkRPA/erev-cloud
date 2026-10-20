@@ -255,7 +255,9 @@ forecast cutoff; an explicitly supplied different historical cutoff is refused.
 
 Choose a format published by that forecast: JSON, XLSX or CSV. XLSX contains five sheets;
 CSV downloads as a ZIP with five section files and a manifest. A missing format is refused,
-since formats can have different disclosure visibility. For these forecast reports,
+since formats can have different disclosure visibility. The report detail and forecast history
+can display all five saved sections for JSON, CSV and XLSX; viewing CSV/XLSX sections
+requires export permission for every report entity. For these forecast reports,
 `output_sha256` identifies the canonical JSON dataset in every format; the CSV manifest
 also provides the hashes of the individual CSV files. File stamps identify the new report run.
 

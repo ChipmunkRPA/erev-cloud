@@ -6,6 +6,21 @@
 
 
 
+## Forecast file-format viewing — October 19, 2026
+
+- Fixed the report-centre mismatch where CSV/XLSX forecast detail requested section data but
+  the data route accepted only JSON. Forecast file formats now read their own saved canonical
+  datasets, with parent/publication/digest verification and current export authorization.
+  Other report formats retain their existing data-route rules.
+- The forecast history page offers inline figures for completed CSV/XLSX outputs when the
+  viewer holds export permission for the report's entities. Original forecast publications
+  and ordinary catalogue reports both use the saved format's visibility, without recapture.
+- Real forecast workflow passes with original-publication reads and public catalogue section
+  metadata/paged revenue rows for JSON/CSV/XLSX. Four focused UI checks and backend lint/type
+  checks pass. Broader reporting features and accounting acceptance remain open.
+- Next: continue the RPS/FCS reporting workflow/content gap audit; registration coverage is
+  not a completion claim. No deployment.
+
 ## Public forecast catalogue reports — October 19, 2026
 
 - Registered forecast_outputs for JSON/CSV/XLSX through ordinary POST /report-runs and
@@ -219,24 +234,6 @@
   form follows the job and recovers the result link without permitting duplicate submission.
 - 22 focused generation/register UI checks, TypeScript and ESLint pass. The evidence register
   still lists CLOSE packs only; authorized sample-list pagination and discovery remain next.
-
-## Contract sample API and worker lifecycle — October 19, 2026
-
-- Human requests can now create CONTRACT_SAMPLE packs through POST /evidence-packs, atomically
-  retaining source dependencies, a stable render stamp and the EVIDENCE_PACK job. The worker
-  rehydrates the active initiator's current grants instead of granting SYSTEM source access.
-- Added atomic encrypted final retention, current-scope detail/manifest/ZIP reads and audited
-  downloads. Successful retries reuse verified bytes; missing/damaged sources never trigger
-  recollection. Existing failure/cancellation hooks settle sample packs too.
-- Detail UI now handles sample contracts/cutoffs and scoped downloads; generated API schemas
-  include the sample response. The register still lists CLOSE only; sample creation UI and
-  sample-list pagination remain next feature work. Creation captures sources synchronously.
-- Real K01 API/worker/download journey passes, including encrypted output, no re-render on
-  retained reads, queued cancellation and permission-revoked terminal attempt/download refusal.
-  17 evidence UI checks, 121 focused schema/file/storage checks, TypeScript, lint and Mypy pass.
-- Fixed a stale transition-history function reference in period-pack journal collection; the
-  existing real CTL-041 close-pack journey passes again.
-- Broader multi-contract/combined-group acceptance and independent accounting sign-off remain.
 
 ## Outstanding release verification
 

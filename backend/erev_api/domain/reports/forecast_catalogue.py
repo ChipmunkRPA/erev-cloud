@@ -120,3 +120,22 @@ def render(uow: UnitOfWork, run: Mapping[str, Any], stamp: RunStamp) -> forecast
     return forecast_exports.render_document(
         saved.document, saved.sections, stamp, format=saved.output_format
     )
+
+
+def document_for_run(uow: UnitOfWork, run: Mapping[str, Any]) -> dict[str, Any]:
+    """View a saved format's sections without converting its disclosure visibility."""
+    evidence = (run.get("source_binding") or {}).get("evidence", {})
+    if KEY in evidence:
+        saved = read(uow, run)
+    else:
+        try:
+            saved = sources.read(
+                uow, UUID(str(evidence["forecast_run_id"])), output_format=run["output_format"]
+            )
+        except (ValueError, KeyError, TypeError) as error:
+            raise Problem("precondition-failed", "The forecast dataset is unavailable.") from error
+        if saved.report_id != run["id"]:
+            raise Problem("precondition-failed", "The forecast publication identity differs.")
+    if saved.dataset_sha256 != run["output_sha256"]:
+        raise Problem("precondition-failed", "The saved forecast output digest differs.")
+    return saved.document

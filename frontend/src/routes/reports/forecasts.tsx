@@ -32,8 +32,15 @@ import { ForecastPack } from "./viewer/ForecastPack";
 type Format = "JSON" | "XLSX" | "CSV";
 
 function Output({ id }: { id: string }) {
+  const access = useAccess();
   const [open, setOpen] = useState(false);
   const report = useQuery({ queryKey: reportRunKey(id), queryFn: () => fetchReportRun(id) });
+  const canPreview =
+    report.data?.status === "SUCCEEDED" &&
+    (report.data.output?.format === "JSON" ||
+      (report.data.output != null &&
+        ["CSV", "XLSX"].includes(report.data.output.format) &&
+        access.holdsForEvery("report.export", report.data.entity_scope)));
   return (
     <div className="flex flex-col gap-2">
       {report.isError && (
@@ -56,12 +63,12 @@ function Output({ id }: { id: string }) {
         {report.data?.output?.format ?? t("reports.forecasts.output")} —{" "}
         {report.data?.report_run_no ?? id}
       </Link>
-      {report.data?.output?.format === "JSON" && (
+      {canPreview && (
         <Button variant="secondary" onClick={() => setOpen(!open)}>
           {t(open ? "reports.forecasts.hide" : "reports.forecasts.view")}
         </Button>
       )}
-      {open && <ForecastPack runId={id} />}
+      {open && canPreview && <ForecastPack runId={id} />}
     </div>
   );
 }
