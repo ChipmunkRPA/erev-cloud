@@ -1712,6 +1712,20 @@ def _target_node(
         "amount_functional": str(amount_functional),
         "signs": "|".join(str(sign) for share in shares for _, sign in share.inputs),
         "time": str(time_functional if fx else time_txn),
+        "time_functional": str(time_functional),
+        # Preserve the class of each original signed input. A mixed part cannot
+        # identify its owners by a ratio; consumers must require finer evidence.
+        "input_classes": "|".join(
+            (
+                "EVENT"
+                if share.time_txn == share.time_functional == 0
+                else "TIME"
+                if (share.time_txn, share.time_functional) == (share.txn, share.functional)
+                else "MIXED"
+            )
+            for share in shares
+            for _ in share.inputs
+        ),
     }
     if splits:
         params.update(splits[0].split or {})

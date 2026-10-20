@@ -203,3 +203,21 @@ def test_zero_functional_rounding_keeps_the_transaction_source_sign() -> None:
     assert result[0].amount == 0
     assert result[0].coefficient == -1
     assert result[0].movement_id == movements[0]["id"]
+
+
+def test_input_classes_require_original_unmixed_sources() -> None:
+    from erev_api.domain.reports.revenue_trace import input_classes
+
+    assert input_classes({}, 2, Fraction(100), Fraction(0)) == (False, False)
+    assert input_classes({}, 2, Fraction(100), Fraction(100)) == (True, True)
+    with pytest.raises(InvalidRevenueTrace, match="retained component"):
+        input_classes({}, 2, Fraction(100), Fraction(40))
+    for classes, count in (("MIXED", 1), ("TIME|EVENT", 1), ("TIME", 0)):
+        with pytest.raises(InvalidRevenueTrace, match="unambiguous"):
+            input_classes(
+                {"input_classes": classes, "time_functional": "10"}, count, Fraction(0), Fraction(0)
+            )
+    # Zero transaction revenue can retain a functional TIME residual.
+    assert input_classes(
+        {"input_classes": "TIME", "time_functional": "10"}, 1, Fraction(0), Fraction(0)
+    ) == (True,)

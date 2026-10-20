@@ -41,8 +41,9 @@ def read(
 ) -> Attribution:
     """Authorize each original computation and recurse through its sealed cutoff.
 
-    Unsplit revenue and contracting-entity due-to targets are supported. Mixed TIME/EVENT
-    allocation requires its own retained sources. Close histories must retain their
+    Unsplit revenue and contracting-entity due-to targets are supported. Mixed targets
+    require retained TIME/EVENT classes for each original input; internally mixed inputs
+    still require finer source evidence. Close histories must retain their
     original revenue paid population.
     Missing history never becomes a residual or a guessed owner.
     """
@@ -164,7 +165,15 @@ def read(
         if (
             node.formula_id != "post.role_target.v1"
             or not key.startswith(expected_prefix)
-            or set(node.params) - {"signs", "time", "amount_functional", "minor_unit"}
+            or set(node.params)
+            - {
+                "signs",
+                "time",
+                "time_functional",
+                "input_classes",
+                "amount_functional",
+                "minor_unit",
+            }
             or node.currency != str(line["txn_currency"]).strip()
         ):
             raise ValueError("Revenue requires an unsplit original role target.")
@@ -175,16 +184,23 @@ def read(
         time_txn = Fraction(node.params["time"]) / (
             10 ** bundle.currencies[str(line["txn_currency"]).strip()].minor_unit
         )
-        if time_txn and time_txn != txn:
-            raise ValueError("Mixed revenue TIME allocation needs retained component sources.")
-        is_time = bool(time_txn)
+        classes = revenue_trace.input_classes(node.params, len(node.inputs), txn, time_txn)
+        time_functional = (
+            Fraction(node.params["time_functional"]) / (10**scale)
+            if "time_functional" in node.params
+            else Fraction(node.params["amount_functional"]) / (10**scale)
+            if time_txn
+            else Fraction(0)
+        )
         signs = node.params["signs"].split("|") if node.inputs else []
         if len(signs) != len(node.inputs) or any(sign not in {"1", "-1"} for sign in signs):
             raise ValueError("Invalid revenue target signs.")
         parts = []
         identities: set[UUID] = set()
         transaction = Fraction(0)
-        for child, sign in zip(node.inputs, signs, strict=True):
+        sourced_time_txn = Fraction(0)
+        sourced_time_functional = Fraction(0)
+        for child, sign, is_time in zip(node.inputs, signs, classes, strict=True):
             if (
                 not isinstance(child, str)
                 or not child.startswith("revenue_cum:")
@@ -192,6 +208,8 @@ def read(
             ):
                 raise ValueError("Revenue target requires original component attribution.")
             transaction += int(sign) * Fraction(nodes[child].value)
+            if is_time:
+                sourced_time_txn += int(sign) * Fraction(nodes[child].value)
             functional = child.replace("revenue_cum:", "revenue_functional:", 1)
             if functional not in nodes:
                 subject, key_period = child.split(":", 1)[1].rsplit(":", 1)
@@ -208,6 +226,8 @@ def read(
                 continue
             for part in revenue_trace.project(trace, functional, raw, currency=currency):
                 identities.add(part.movement_id)
+                if is_time:
+                    sourced_time_functional += int(sign) * part.amount
                 parts.append(
                     revenue_trace.RevenueMovement(
                         part.contract_id,
@@ -227,9 +247,11 @@ def read(
                 )
         if transaction != txn:
             raise ValueError("Revenue target transaction sources do not reconcile.")
+        if sourced_time_txn != time_txn or sourced_time_functional != time_functional:
+            raise ValueError("Revenue TIME sources do not reconcile in both currencies.")
         return revenue_trace.RevenueTarget(
             amount,
-            amount if is_time else Fraction(0),
+            time_txn if view == "transaction" else time_functional,
             tuple(parts),
             tuple(sorted(identities, key=str)),
         )

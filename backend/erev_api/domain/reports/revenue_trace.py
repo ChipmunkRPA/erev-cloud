@@ -21,6 +21,29 @@ class InvalidRevenueTrace(ValueError):
     """Revenue cannot be reproduced from its retained signed sources."""
 
 
+def input_classes(
+    params: Mapping[str, str], count: int, transaction: Fraction, time: Fraction
+) -> tuple[bool, ...]:
+    """Read original per-input classes; legacy evidence supports uniform targets only."""
+    if "input_classes" not in params:
+        if time and time != transaction:
+            raise InvalidRevenueTrace(
+                "Mixed revenue TIME allocation needs retained component sources."
+            )
+        return (bool(time),) * count
+    classes = params["input_classes"].split("|") if count else []
+    if (
+        len(classes) != count
+        or any(value not in {"TIME", "EVENT"} for value in classes)
+        or "time_functional" not in params
+        or (not count and params["input_classes"])
+    ):
+        raise InvalidRevenueTrace(
+            "Revenue input classes lack unambiguous retained component sources."
+        )
+    return tuple(value == "TIME" for value in classes)
+
+
 @dataclass(frozen=True, slots=True)
 class RevenueSource:
     movement_id: UUID

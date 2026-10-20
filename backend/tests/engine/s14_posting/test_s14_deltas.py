@@ -1098,3 +1098,43 @@ def test_s14_r27_posted_totals_tag_template_reasons_only() -> None:
     clean = PostedTotals.of(ctx, PostedIndex((item(_period(2), None, 500000, "CLAWBACK"),)))
     assert clean.attributable(key, _period(2), ("EVENT",))
     assert clean.attributable(key, _period(1), ("EVENT",))
+
+
+def test_role_trace_retains_distinct_time_event_sources() -> None:
+    from erev_api.domain.reports.revenue_trace import input_classes
+    from erev_engine.stages.s14_posting.targets import _Share, _target_node
+
+    ctx = book_context()
+    tb = TraceBuilder(engine_version=ENGINE_VERSION)
+    time = _target("revenue_cum", "time-owner", _period(1), 10000)
+    event = _target("revenue_cum", "event-owner", _period(1), -4000)
+    _emit(tb, (time, event))
+    shares = [
+        _Share(
+            part_key=("ASC606", ENTITY, name, "REVENUE", ""),
+            txn=target.value,
+            functional=functional,
+            time_txn=target.value if released else 0,
+            time_functional=functional if released else 0,
+            inputs=((target.node_id, 1),),
+            split=None,
+            passes=frozenset(),
+            rates=(),
+            currencies=("USD", "GBP"),
+        )
+        for name, target, functional, released in (
+            ("time-owner", time, 8000, True),
+            ("event-owner", event, -3600, False),
+        )
+    ]
+    key = RoleKey("ASC606", ENTITY, "combined", "REVENUE_RECOGNITION", REVENUE, None, None)
+    node_id, amounts = _target_node(
+        ctx, tb, key, _period(1), shares, key.node_subject, "USD", False, ()
+    )
+    trace = tb.build(root_measures={})
+    node = next(node for node in trace.nodes if node.id == node_id)
+    assert reevaluate(trace)[node_id] == "60.00"
+    assert amounts == (6000, 4400, 10000, 8000)
+    assert node.params["time_functional"] == "8000"
+    assert input_classes(node.params, 2, Fraction(60), Fraction(100)) == (True, False)
+    assert node.inputs == (time.node_id, event.node_id)

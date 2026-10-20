@@ -2,6 +2,12 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Retained TIME/EVENT input classes — October 20, 2026
+
+- Engine traces retain each input's class and functional TIME total; reporting verifies
+  both currencies before attribution. Internally mixed inputs remain unsupported.
+- See [scope and verification](docs/release/REPORTING-SOURCE-CLASSES-2026-10-20.md).
+
 ## Reporting GL source navigation and inventory — October 20, 2026
 
 - New GL tie-out details retain the source book and period key and link to that exact
