@@ -8185,3 +8185,18 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Next development: wire forecast_outputs admission, immutable source binding, worker and
   report-centre access; then complete remaining report workflows and populated acceptance.
   No deployment or production-readiness claim.
+
+## Bound forecast catalogue exports — October 19, 2026
+
+- Added pre-insert forecast publication binding and per-use authorization. Bindings pin the
+  forecast workspace, parent, published report, dataset file/hash and format; entity/book/
+  currency scope must match. Historical cutoffs cannot silently select another publication.
+- Refactored the existing JSON/CSV/XLSX renderer to render verified saved sections directly.
+  Catalogue re-export uses the saved five-section dataset and current report stamp without
+  reading today's scenario or recalculating forecast results.
+- The real forecast-event capture scenario passes with binding and re-export of all three
+  formats, identical retained dataset bytes/hash and rejection of changed format. Eight
+  focused export checks and Ruff/Mypy also pass.
+- Remaining: public catalogue admission, REPORT_RUN worker and read/list access integration.
+  This is an internal completed path, not a publicly registered forecast_outputs report yet.
+  Broader reporting workflows and accounting acceptance remain open. No deployment.

@@ -6,6 +6,19 @@
 
 
 
+## Single-table PDF clipping fix — October 19, 2026
+
+- Ordinary report PDFs now retain the compact layout only when every cell/header and source
+  stamp fits. Otherwise they reuse the chapter renderer's wrapped rows, repeated identifiers,
+  horizontal column groups and full source text. Large amounts and long identifiers are no
+  longer silently replaced by ellipses. Existing chapter behavior is reused unchanged.
+- Six focused output checks pass, including extracted large negative values/currencies,
+  continued-page headers and footer page counts; Python typing/lint pass. Rendered a four-page
+  wide sample and visually checked the first two groups: values, currencies and identifiers
+  remain legible with no overlap. Wide reports may now use more pages.
+- This fixes clipping, not the existing WinAnsi font character-set limitation. Full populated
+  accounting acceptance and independent sign-off remain open. No deployment.
+
 ## Disclosure source filtering and status correction — October 19, 2026
 
 - Added API source=DRAFT|LOCKED filtering from immutable period_lock_id before pagination and
@@ -230,21 +243,6 @@
   audit reporting feature/content gaps and complete the outstanding workflows, including
   multi-contract samples, reopen/relock, forecast comparisons and report-centre usability.
   No deployment or production-readiness claim.
-
-## Bound forecast catalogue exports — October 19, 2026
-
-- Added pre-insert forecast publication binding and per-use authorization. Bindings pin the
-  forecast workspace, parent, published report, dataset file/hash and format; entity/book/
-  currency scope must match. Historical cutoffs cannot silently select another publication.
-- Refactored the existing JSON/CSV/XLSX renderer to render verified saved sections directly.
-  Catalogue re-export uses the saved five-section dataset and current report stamp without
-  reading today's scenario or recalculating forecast results.
-- The real forecast-event capture scenario passes with binding and re-export of all three
-  formats, identical retained dataset bytes/hash and rejection of changed format. Eight
-  focused export checks and Ruff/Mypy also pass.
-- Remaining: public catalogue admission, REPORT_RUN worker and read/list access integration.
-  This is an internal completed path, not a publicly registered forecast_outputs report yet.
-  Broader reporting workflows and accounting acceptance remain open. No deployment.
 
 ## Outstanding release verification
 

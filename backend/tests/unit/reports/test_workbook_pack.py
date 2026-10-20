@@ -157,6 +157,14 @@ def test_pdf_wide_tables_keep_values_currency_and_row_context_without_clipping()
         for n in range(65)
     )
     data = ReportData(columns, rows, {})
+    # The ordinary single-table exporter must use the same lossless layout for a wide report.
+    from pypdf import PdfReader
+
+    single = pdf.render_pdf(data, STAMP)
+    exported_text = "\n".join(page.extract_text() for page in PdfReader(io.BytesIO(single)).pages)
+    assert "123,456,789,012,345.67" in exported_text
+    assert "Column group 2" in exported_text
+    assert pdf.ELLIPSIS not in exported_text
     pages = pdf._chapter_table_pages(data, STAMP, "Quarterly revenue comparison", ("Included",))
     for page in pages:
         assert len(page) <= int((pdf.PAGE_HEIGHT - 2 * pdf.MARGIN) // pdf.LINE_HEIGHT)

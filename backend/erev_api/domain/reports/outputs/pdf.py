@@ -6,8 +6,8 @@ WinAnsiEncoding, uncompressed content streams and no creation date. The first pa
 stamp lines (report name and version, run number, entity, book, as of, source, engine release, run
 by, run time, rows, output SHA-256, every parameter, the control totals and tie-outs), then the grid
 header and the rows; a page that continues the grid repeats its header. Every page footer reads
-"Run <run no> · page <n> of <m>". Single-table reports retain their compact legacy layout;
-chapter packs wrap full text and paginate horizontal column groups instead of truncating cells.
+"Run <run no> · page <n> of <m>". Single-table reports retain their compact layout when content fits; otherwise they use the
+chapter layout with wrapped text and horizontal column groups instead of truncating cells.
 """
 
 from __future__ import annotations
@@ -227,9 +227,40 @@ def _document(pages: Sequence[Sequence[_Line]], stamp: RunStamp) -> bytes:
 
 
 def render_pdf(data: ReportData, stamp: RunStamp) -> bytes:
-    """The PDF bytes of ``data`` under ``stamp``."""
+    """Keep the compact grid only when every value and stamp fits without clipping."""
     header, body = _grid(data, stamp.negative_number_style)
-    lines = [*_stamp_lines(data, stamp), _Line(()), header, *body]
+    stamp_lines = _stamp_lines(data, stamp)
+    columns = layout(data)
+    original = [
+        [item.header for item in columns],
+        *[
+            [
+                display_text(
+                    item.column, item.part, row.get(item.column.key), stamp.negative_number_style
+                )
+                for item in columns
+            ]
+            for row in data.rows
+            if columns
+        ],
+    ]
+    compact = [header, *body]
+    fits = stamp_lines == _stamp_lines(data, stamp, wrapped=True) and all(
+        [text for _, text in line.cells] == expected
+        and all(
+            x + _measure(text)
+            <= (
+                line.cells[index + 1][0] - COLUMN_GAP
+                if index + 1 < len(line.cells)
+                else PAGE_WIDTH - MARGIN
+            )
+            for index, (x, text) in enumerate(line.cells)
+        )
+        for line, expected in zip(compact, original, strict=True)
+    )
+    if not fits:
+        return _document(_chapter_table_pages(data, stamp, stamp.report_name, ()), stamp)
+    lines = [*stamp_lines, _Line(()), header, *body]
     return _document(_pages(lines, header), stamp)
 
 
