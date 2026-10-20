@@ -416,6 +416,9 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "scheduled and awaiting remainders use original period-level recognition-hold and "
             "pattern evidence reconciled to the version state; future holds do not alter earlier "
             "time-based projections",
+            "fixed-only manual releases, deferrals and schedule overrides replay only events "
+            "effective at the reporting cut; unsupported component mixtures or unreproducible "
+            "snapshots retain explicit projection errors",
         ),
         tie_outs=("TO_WATERFALL_EQ_JE_REVENUE",),
     ),
@@ -767,6 +770,9 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "scheduled and awaiting remainders use original period-level recognition-hold and "
             "pattern evidence reconciled to the version state; future holds do not alter earlier "
             "time-based projections",
+            "fixed-only manual releases, deferrals and schedule overrides replay only events "
+            "effective at the reporting cut; unsupported component mixtures or unreproducible "
+            "snapshots retain explicit projection errors",
         ),
         tie_outs=("TO_RPO_ROLLFORWARD_EQ_RPO",),
     ),
@@ -841,6 +847,9 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "scheduled and awaiting remainders use original period-level recognition-hold and "
             "pattern evidence reconciled to the version state; future holds do not alter earlier "
             "time-based projections",
+            "fixed-only manual releases, deferrals and schedule overrides replay only events "
+            "effective at the reporting cut; unsupported component mixtures or unreproducible "
+            "snapshots retain explicit projection errors",
         ),
         tie_outs=("TO_ROLLFORWARD_BALANCES", "TO_RPO_ROLLFORWARD_EQ_RPO"),
     ),

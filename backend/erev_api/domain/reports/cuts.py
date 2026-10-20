@@ -244,6 +244,11 @@ def projected_after(
     obligation: str,
 ) -> tuple[tuple[str, date, Decimal], ...] | None:
     """Original period projections, independent of later surviving schedule lines."""
+    if at.projection_error is not None and at.scheduled != ZERO:
+        raise ScheduleUnreadable(
+            f"obligations[{obligation}].scheduled_amount",
+            f"Contract {contract}, obligation {obligation}: {at.projection_error}",
+        )
     rows = at.period_schedule
     if rows is None:
         return None

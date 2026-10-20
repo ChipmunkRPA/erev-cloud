@@ -1236,6 +1236,28 @@ def _emit_fixed_schedule(
         previous, previous_usage = ev, usage_node
 
 
+def _unavailable_projection(
+    ctx: BookContext,
+    tb: TraceBuilder,
+    evaluator: components.Evaluator,
+    period_key: str,
+    cut: date,
+    reason: str,
+) -> None:
+    tb.node(
+        measure="scheduled_projection_unavailable",
+        subject_key=evaluator.ob.subject_key,
+        period_key=period_key,
+        value=0,
+        currency=ctx.txn_currency,
+        minor_unit=evaluator.mu,
+        formula_id=FIXED_SCHEDULE_FORMULA,
+        inputs=[],
+        params={"cause": "FIXED_SCHEDULE", "signs": "", "as_of": cut.isoformat(), "reason": reason},
+        narrative_key=_narrative(FIXED_SCHEDULE_FORMULA),
+    )
+
+
 def _emit_dated_schedule(
     ctx: BookContext,
     st: AllocatedState,
@@ -1265,15 +1287,84 @@ def _emit_dated_schedule(
             and event.event_type in ("HOLD_APPLIED", "HOLD_RELEASED")
             for event in st.measure_events
         )
-        if seg is None or not (later_allocation or later_hold):
+        if seg is None or not (later_allocation or later_hold or evaluator.adjustments):
             continue
         ev = evaluator.posted(cut)
-        if ev.guard is not None or ev.adjusted or ev.fixed is None:
+        if (
+            _pattern(ob, ev, cut) != DETERMINISTIC
+            or ev.hold is not None
+            or ev.netting is not None
+            or ev.fixed is None
+        ):
             continue
         # Explicit original terms are required; do not fall back to a later obligation term.
         if seg.totals.start_date is None or seg.totals.end_date is None:
             continue
-        previous = ev.fixed.posted
+        adjusted: dict[date, components.Evaluation] = {}
+        if ev.adjustments:
+            # A fixed-only snapshot can replay the original manual rules without assigning
+            # combined fixed/realized amounts to components by ratio.
+            if (
+                any(item.component != "FIXED" for item in ob.segments)
+                or evaluator.attribution is not None
+            ):
+                _unavailable_projection(
+                    ctx,
+                    tb,
+                    evaluator,
+                    target.period_key,
+                    cut,
+                    "Manual adjustments combine fixed and realized or netted components.",
+                )
+                continue
+            snapshot_contract = replace(
+                evaluator.contract,
+                status_in_book={
+                    book: tuple((day, status) for day, status in history if day <= cut)
+                    for book, history in evaluator.contract.status_in_book.items()
+                },
+            )
+            snapshot_ob = replace(
+                ob, segments=tuple(item for item in ob.segments if item.effective_date <= cut)
+            )
+            snapshot_state = replace(
+                st,
+                measure_events=tuple(
+                    event for event in st.measure_events if event.effective_date <= cut
+                ),
+            )
+            snapshot = components.Evaluator(
+                ctx, snapshot_state, snapshot_ob, contract=snapshot_contract
+            )
+            try:
+                adjusted = {
+                    period.end_date: snapshot.posted(period.end_date)
+                    for period in evaluator.periods
+                    if period.end_date >= cut and period.start_date <= seg.totals.end_date
+                }
+            except EngineError:
+                # A later allocation may have made a forward override valid. Do not invent
+                # a projection when the original-cut snapshot cannot reproduce it.
+                _unavailable_projection(
+                    ctx,
+                    tb,
+                    evaluator,
+                    target.period_key,
+                    cut,
+                    "The original-cut manual adjustment snapshot cannot be projected.",
+                )
+                continue
+            if cut not in adjusted or adjusted[cut].value != ev.value:
+                _unavailable_projection(
+                    ctx,
+                    tb,
+                    evaluator,
+                    target.period_key,
+                    cut,
+                    "The original-cut adjustment snapshot does not match retained revenue.",
+                )
+                continue
+        previous = ev.value if adjusted else ev.fixed.posted
         previous_node: str | None = None
         for future in evaluator.periods:
             end = future.end_date
@@ -1342,6 +1433,22 @@ def _emit_dated_schedule(
                 params=posted_params,
                 narrative_key=_narrative(components.REVENUE_CUM_FORMULA),
             )
+            projected_value = part.posted
+            if end in adjusted:
+                projected_value = adjusted[end].value
+                for applied in adjusted[end].adjustments:
+                    posted = tb.node(
+                        measure=f"scheduled_adjustment@{applied.adjustment.event.event_key}",
+                        subject_key=ob.subject_key,
+                        period_key=slot,
+                        value=applied.value,
+                        currency=ctx.txn_currency,
+                        minor_unit=evaluator.mu,
+                        formula_id=applied.formula_id,
+                        inputs=[posted],
+                        params=applied.params,
+                        narrative_key=_narrative(applied.formula_id),
+                    )
             if end == cut:
                 previous_node = posted
                 continue
@@ -1350,7 +1457,7 @@ def _emit_dated_schedule(
                 measure="scheduled_period_at_cut",
                 subject_key=ob.subject_key,
                 period_key=slot,
-                value=part.posted - previous,
+                value=projected_value - previous,
                 currency=ctx.txn_currency,
                 minor_unit=evaluator.mu,
                 formula_id=FIXED_SCHEDULE_FORMULA,
@@ -1368,7 +1475,7 @@ def _emit_dated_schedule(
             for i, cause in enumerate(own):
                 # All of this period's frozen fixed movement belongs to one retained source.
                 # Other causes from subsequent changes carry zero in the frozen schedule.
-                amount = part.posted - previous if i == 0 else 0
+                amount = projected_value - previous if i == 0 else 0
                 tb.node(
                     measure="scheduled_fixed_at_cut",
                     subject_key=ob.subject_key,
@@ -1387,7 +1494,7 @@ def _emit_dated_schedule(
                     },
                     narrative_key=_narrative(FIXED_SCHEDULE_FORMULA),
                 )
-            previous = part.posted
+            previous = projected_value
             previous_node = posted
 
 

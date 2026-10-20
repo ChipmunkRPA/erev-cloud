@@ -1,5 +1,20 @@
 # eRev Cloud 1.0: stated limits of the release
 
+### October 20 — manual adjustments in historical schedules
+
+Fixed-only time-based schedule projections now replay manual releases, deferrals and schedule
+overrides effective at the original reporting cut. Later events, allocation segments and
+contract-status transitions are excluded from the snapshot. Six real engine cases cover each
+adjustment kind followed by a release or estimate change and compare every future period with
+the original pre-change schedule; the resulting trace chains reproduce their values.
+
+This does not establish arbitrary mixed fixed/realized or netted manual adjustment projection,
+or full public API acceptance of combined lifecycle scenarios. Unsupported component mixtures,
+invalid original-cut projections and snapshot/revenue mismatches retain explicit errors instead
+of silently falling back to current schedules. Original calendar/term gaps, legacy evidence and
+independent accounting acceptance remain open. No deployment.
+
+
 ### October 20 — dated recognition-hold classification
 
 Scheduled versus awaiting-trigger remainder now follows retained per-period engine evidence,

@@ -2,6 +2,23 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Original-cut manual schedule projection — October 20, 2026
+
+- Fixed-only deterministic schedules now replay manual release, manual defer and schedule
+  override formulas against original allocation segments and events effective by the report
+  cut. Future manual changes and later estimate allocations do not backfill that projection.
+  Every applied adjustment retains its formula, parameters and input chain for trace replay.
+- Six real engine cases compare each adjustment kind with a later release or estimate change;
+  projected future periods match the original pre-change calculation. Frozen contract-status
+  cuts are excluded from time-based projection. 99 scoped tests pass, including hold/manual
+  ordering and rejection of explicit unavailable evidence. Two DB report journeys, lint/types
+  and all three migrated IPE definitions also pass verification.
+- Mixed fixed/realized or netted adjustments and snapshots that cannot reproduce original
+  revenue retain an explicit projection error; reports do not silently use the latest schedule.
+  Missing calendar/terms, legacy evidence gaps, compound lifecycle/API acceptance and independent
+  accounting sign-off remain open. Migration 0217 records scope. No deployment.
+
+
 ## Dated recognition-hold remainder classification — October 20, 2026
 
 - Stage 09 retains the scheduled remainder and its hold/pattern evidence at each measured
@@ -215,29 +232,6 @@
   and other documented implementation/release gaps remain open. More complex membership and
   mixed billing/credit-memo histories still need end-to-end coverage. No deployment or claim
   of production readiness; independent accounting sign-off remains outstanding.
-
-## Cross-member asset settlement from revenue returns — October 20, 2026
-
-- Functional/reporting revenue returns can now settle another authorized group member's asset.
-  The original signed posting replay identifies that asset owner and retains both sides of the
-  settlement transfer. Asset settlement is never classified as opening-liability consumption.
-- A new asset presentation bridge independently reconciles retained asset-layer carrying with
-  presented contract-asset plus unbilled balances at each opening, closing and monthly endpoint.
-  Creation, settlement and remeasurement amounts must match their original trace; member
-  transfers and group endpoint differences must conserve zero. OTHER does not determine the
-  adjustment. Every consumed layer and endpoint/source-transfer amount is bound for rerun.
-- The revenue asset-source method is retained even when no transfer occurs, preserving scope
-  on rerun. Earlier bindings keep their original method. Migration 0204 records the expanded
-  report logic. Cross-member billing asset settlements still need their own source presentation;
-  this change covers revenue-return settlements.
-- The real combined foreign scenario recognizes revenue for two members and then returns the
-  second member's delivery, settling the first member's asset at retained spot .84. The return
-  generates GBP 45,360 of equal/opposite member transfers and zero opening-liability relief.
-- Necessary checks passed: full-range and return-month-only functional/reporting outputs and
-  identical reruns, the existing asset-to-new-liability return case, catalogue migration
-  consistency, scoped lint and types.
-  Mixed TIME/EVENT attribution, intercompany counterparts, remaining close-only histories and
-  the other release gaps remain open. No deployment or production-readiness claim.
 
 
 ## Outstanding release verification

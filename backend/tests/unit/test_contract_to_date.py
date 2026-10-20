@@ -1328,3 +1328,122 @@ def test_scheduled_remainder_requires_its_original_state_and_series(evidence: st
         kept.extend(series("scheduled_remainder", "C-1/O1", {"P01": "500.00"}))
     with pytest.raises(to_date.Unreadable, match="1 field needs attention"):
         read(JANUARY, trace(*kept))
+
+
+@pytest.mark.parametrize(
+    "kind, extra",
+    [
+        ("MANUAL_RELEASE", {"amount": Decimal("10")}),
+        ("MANUAL_DEFER", {"amount": Decimal("5")}),
+        (
+            "SCHEDULE_OVERRIDE",
+            {
+                "periods": [
+                    {"period_key": "FY2026-P02", "amount": Decimal("2")},
+                    {"period_key": "FY2026-P03", "amount": Decimal("3")},
+                ]
+            },
+        ),
+    ],
+)
+@pytest.mark.parametrize("later_change", ["release", "estimate"])
+def test_historical_schedule_replays_only_adjustments_effective_at_the_cut(
+    kind, extra, later_change
+) -> None:
+    from dataclasses import replace
+
+    from erev_api.domain.reports import cuts
+    from erev_engine.trace import reevaluate
+    from support import allocation_worlds as worlds
+    from support import bundles
+
+    targeted = worlds.element("100", keys=["A"])
+    base = worlds.targeted_world(estimates=[targeted])
+    base = replace(
+        base,
+        pob_template_versions=tuple(
+            replace(
+                template,
+                recognition_method="TIME_ELAPSED",
+                satisfaction_pattern="OVER_TIME",
+                over_time_criterion="OT_A",
+                ratable_convention="DAILY",
+            )
+            for template in base.pob_template_versions
+        ),
+    )
+    first = bundles.event(
+        "K-01",
+        len(base.events) + 1,
+        "MANUAL_ADJUSTMENT_APPLIED",
+        date(2026, 2, 1),
+        {
+            "manual_adjustment_id": "MA-1",
+            "kind": kind,
+            "period_key": "FY2026-P02",
+            "obligation_key": "A",
+            **extra,
+        },
+        obligation_keys=["A"],
+    )
+    original_bundle = replace(base, events=(*base.events, first))
+    later = bundles.event(
+        "K-01",
+        len(base.events) + 2,
+        "MANUAL_ADJUSTMENT_APPLIED",
+        date(2026, 4, 1),
+        {
+            "manual_adjustment_id": "MA-2",
+            "kind": "MANUAL_RELEASE",
+            "period_key": "FY2026-P04",
+            "obligation_key": "A",
+            "remaining": True,
+        },
+        obligation_keys=["A"],
+    )
+    bundle = (
+        replace(base, events=(*base.events, first, later))
+        if later_change == "release"
+        else worlds.with_changes(
+            original_bundle, [worlds.later_version(targeted, 2, date(2026, 4, 1), "200")]
+        )
+    )
+    original, book = (erev_engine.compute(value).books[0] for value in (original_bundle, bundle))
+    assert reevaluate(book.trace) == {node.id: node.value for node in book.trace.nodes}
+    day = date(2026, 2, 28)
+    _, at, rows = product_read(bundle, book, day)
+    row = next(row for row in rows if row["obligation_key"] == "A")
+    found = at.obligations[row["id"]]
+    projected = cuts.projected_after(found, day, contract="K-01", obligation="A")
+    assert projected is not None
+    ends = {period.period_key: period.end_date for period in bundle.entities[0].periods}
+    expected = {}
+    for line in original.schedules:
+        if line.subject_key == "K-01/A" and ends[line.period_key] > day:
+            expected[line.period_key] = expected.get(line.period_key, Decimal(0)) + major(
+                line.amount
+            )
+    assert {key: amount for key, _, amount in projected if amount} == {
+        k: v for k, v in expected.items() if v
+    }
+    assert any(node.measure.startswith("scheduled_adjustment@") for node in book.trace.nodes)
+
+
+def test_unavailable_manual_projection_does_not_fall_back_to_latest_schedule() -> None:
+    from erev_api.domain.reports import cuts
+
+    nodes = trace(
+        node(
+            "scheduled_projection_unavailable",
+            "C-1/O1",
+            "P01",
+            "0",
+            as_of=JANUARY.isoformat(),
+            reason="Mixed components require original attribution.",
+        )
+    )
+    at = read(JANUARY, to_date.nodes_at(nodes, [JANUARY])).obligations[row()["id"]]
+    assert at.scheduled > 0
+    assert at.projection_error == "Mixed components require original attribution."
+    with pytest.raises(cuts.ScheduleUnreadable, match="1 field needs attention"):
+        cuts.projected_after(at, JANUARY, contract="C-1", obligation="O1")

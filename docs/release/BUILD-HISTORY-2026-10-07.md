@@ -9744,3 +9744,26 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Migration 0203 describes the source method. Mixed TIME/EVENT source allocation, intercompany
   counterparts, foreign-owner asset settlement, remaining close-only histories and the other
   documented release gaps remain open. No deployment or production-readiness claim.
+
+## Cross-member asset settlement from revenue returns — October 20, 2026
+
+- Functional/reporting revenue returns can now settle another authorized group member's asset.
+  The original signed posting replay identifies that asset owner and retains both sides of the
+  settlement transfer. Asset settlement is never classified as opening-liability consumption.
+- A new asset presentation bridge independently reconciles retained asset-layer carrying with
+  presented contract-asset plus unbilled balances at each opening, closing and monthly endpoint.
+  Creation, settlement and remeasurement amounts must match their original trace; member
+  transfers and group endpoint differences must conserve zero. OTHER does not determine the
+  adjustment. Every consumed layer and endpoint/source-transfer amount is bound for rerun.
+- The revenue asset-source method is retained even when no transfer occurs, preserving scope
+  on rerun. Earlier bindings keep their original method. Migration 0204 records the expanded
+  report logic. Cross-member billing asset settlements still need their own source presentation;
+  this change covers revenue-return settlements.
+- The real combined foreign scenario recognizes revenue for two members and then returns the
+  second member's delivery, settling the first member's asset at retained spot .84. The return
+  generates GBP 45,360 of equal/opposite member transfers and zero opening-liability relief.
+- Necessary checks passed: full-range and return-month-only functional/reporting outputs and
+  identical reruns, the existing asset-to-new-liability return case, catalogue migration
+  consistency, scoped lint and types.
+  Mixed TIME/EVENT attribution, intercompany counterparts, remaining close-only histories and
+  the other release gaps remain open. No deployment or production-readiness claim.
