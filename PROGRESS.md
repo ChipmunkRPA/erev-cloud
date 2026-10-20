@@ -6,6 +6,21 @@
 
 
 
+## Bound forecast catalogue exports — October 19, 2026
+
+- Added pre-insert forecast publication binding and per-use authorization. Bindings pin the
+  forecast workspace, parent, published report, dataset file/hash and format; entity/book/
+  currency scope must match. Historical cutoffs cannot silently select another publication.
+- Refactored the existing JSON/CSV/XLSX renderer to render verified saved sections directly.
+  Catalogue re-export uses the saved five-section dataset and current report stamp without
+  reading today's scenario or recalculating forecast results.
+- The real forecast-event capture scenario passes with binding and re-export of all three
+  formats, identical retained dataset bytes/hash and rejection of changed format. Eight
+  focused export checks and Ruff/Mypy also pass.
+- Remaining: public catalogue admission, REPORT_RUN worker and read/list access integration.
+  This is an internal completed path, not a publicly registered forecast_outputs report yet.
+  Broader reporting workflows and accounting acceptance remain open. No deployment.
+
 ## Reporting priority and saved forecast reader — October 19, 2026
 
 - Reporting remains a feature-development priority. Catalogue registration counts do not
@@ -228,18 +243,6 @@
   refusal; 11 file-registry checks plus Ruff/Mypy pass. No broad suite rerun or deployment.
 - Reporting remains feature work: public sample create/job/download and rendered PDF/XLSX/UI,
   period pack/relock completion, and populated actual-versus-forecast acceptance remain open.
-
-## Unified contract sample source snapshot — October 19, 2026
-
-- Combined event/computation/journal/decision/document collectors at one cutoff; merged all
-  dependency identities and permission scopes, including journal approval references. Captures
-  a canonical scope alongside the source manifest in an encrypted SNAPSHOT_DATASET archive.
-- Added typed immutable source binding/pack values and authorized retained reads. File metadata,
-  bytes, manifest and embedded scope must agree; retries do not recollect business evidence.
-- The real K01 journey persists a pack binding and encrypted snapshot, then reads it across UOWs
-  with collectors disabled; digest tampering and revoked export scope are refused. Ruff/Mypy pass.
-- Source-file deletion/retention registry integration must precede public release. Public create/
-  worker/read/download, stamped PDF/XLSX and broader acceptance remain; no complete-pack claim.
 
 ## Outstanding release verification
 

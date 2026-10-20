@@ -7950,3 +7950,15 @@ cleanup in the shared database session kernel was also repaired and regression-t
   reconciles source amounts in the combined evidence archive. Ruff/Mypy pass. Multi-contract,
   cross-entity and historical journal lifecycle acceptance remain; public retention/jobs and
   PDF/XLSX rendering are still unfinished. No deployment.
+
+## Unified contract sample source snapshot — October 19, 2026
+
+- Combined event/computation/journal/decision/document collectors at one cutoff; merged all
+  dependency identities and permission scopes, including journal approval references. Captures
+  a canonical scope alongside the source manifest in an encrypted SNAPSHOT_DATASET archive.
+- Added typed immutable source binding/pack values and authorized retained reads. File metadata,
+  bytes, manifest and embedded scope must agree; retries do not recollect business evidence.
+- The real K01 journey persists a pack binding and encrypted snapshot, then reads it across UOWs
+  with collectors disabled; digest tampering and revoked export scope are refused. Ruff/Mypy pass.
+- Source-file deletion/retention registry integration must precede public release. Public create/
+  worker/read/download, stamped PDF/XLSX and broader acceptance remain; no complete-pack claim.

@@ -168,7 +168,7 @@ def exercise_capture(world: Any, source_actor: Any) -> None:
 
     from erev_api.db.tables import report_run
     from erev_api.domain.forecast import history
-    from erev_api.domain.reports import forecast_saved
+    from erev_api.domain.reports import forecast_catalogue, forecast_saved
     from erev_api.files.store import open_file
 
     with world.place.uow() as uow:
@@ -191,6 +191,24 @@ def exercise_capture(world: Any, source_actor: Any) -> None:
                 retained = stream.read()
             assert hashlib.sha256(retained).hexdigest() == output_row["output_sha256"]
             assert forecast_saved._revenue(json.loads(retained), saved, evidence)["rows"]
+            pending = {
+                **dict(output_row),
+                "status": "QUEUED",
+                "source_binding": None,
+            }
+            values = forecast_catalogue.prepare(uow, pending)
+            bound = {**pending, **values}
+            export_stamp = replace(
+                stamp,
+                parameters=values["parameters"],
+                entity_codes=tuple(values["parameters"]["entity_codes"]),
+                report_run_no="RPT-REEXPORT",
+            )
+            reexport = forecast_catalogue.render(uow, bound, export_stamp)
+            assert reexport.dataset == retained
+            assert reexport.dataset_sha256 == output_row["output_sha256"]
+            with pytest.raises(Problem, match="differs"):
+                forecast_catalogue.read(uow, {**bound, "output_format": "PDF"})
     from support.http import call
     from support.principals import cookie_headers
 

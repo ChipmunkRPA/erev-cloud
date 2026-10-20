@@ -13,7 +13,7 @@ from uuid import UUID
 
 from erev_engine.canonical import canonical_bytes, sha256_hex
 
-from erev_api.domain.reports.forecast_capture import Captured
+from erev_api.domain.reports.forecast_capture import Captured, Section
 from erev_api.domain.reports.outputs import Column, ReportData, RunStamp, manifest, utc_text, xlsx
 from erev_api.domain.reports.outputs import csv as csv_output
 from erev_api.problems import Problem
@@ -146,6 +146,23 @@ def render(captured: Captured, identity: Identity, stamp: RunStamp, *, format: s
     if captured.output_format != format:
         raise Problem("validation-failed", "Recapture forecast sources for this output format.")
     data = document(captured, identity, stamp)
+    return render_document(data, captured.sections, stamp, format=format)
+
+
+def render_document(
+    data: dict[str, Any], sections: tuple[Section, ...], stamp: RunStamp, *, format: str
+) -> Export:
+    """Render an admitted, verified publication without recapturing scenario state."""
+    if (
+        format not in {"JSON", "XLSX", "CSV"}
+        or stamp.report_code != "forecast_outputs"
+        or stamp.report_version != 1
+        or stamp.book != data["book"]
+        or list(stamp.entity_codes) != data["entity_codes"]
+        or dict(stamp.parameters) != data["parameters"]
+        or tuple(section.key for section in sections) != KEYS
+    ):
+        raise Problem("validation-failed", "Saved forecast export scope differs.")
     dataset = canonical_bytes(data)
     digest = hashlib.sha256(dataset).hexdigest()
     stamp = replace(stamp, output_sha256=digest)
@@ -153,13 +170,13 @@ def render(captured: Captured, identity: Identity, stamp: RunStamp, *, format: s
         return Export(dataset, manifest.MEDIA_TYPE, "json", dataset, digest)
     horizon = data["horizon_periods"]
     notes = (
-        f"Scenario {identity.scenario_name}",
-        f"Event set {identity.event_set_name} v{identity.event_set_version}",
+        f"Scenario {data['scenario']['name']}",
+        f"Event set {data['event_set']['name']} v{data['event_set']['version']}",
         f"Horizon {horizon[0]} – {horizon[-1]}",
-        f"Known at {utc_text(captured.known_at)}",
+        f"Known at {data['known_at']}",
     )
     if format == "XLSX":
-        sections = tuple(
+        workbook_sections = tuple(
             xlsx.WorkbookSection(
                 section.key,
                 section.title,
@@ -167,14 +184,14 @@ def render(captured: Captured, identity: Identity, stamp: RunStamp, *, format: s
                 stamp,
                 notes,
             )
-            for section in captured.sections
+            for section in sections
         )
-        content = xlsx.render_xlsx_pack(sections, stamp)
+        content = xlsx.render_xlsx_pack(workbook_sections, stamp)
         return Export(content, xlsx.MEDIA_TYPE, "xlsx", dataset, digest)
     buffer = io.BytesIO()
     files = []
     with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
-        for index, section in enumerate(captured.sections, start=1):
+        for index, section in enumerate(sections, start=1):
             content = csv_output.render_csv(section.data)
             name = f"{index:02d}-{section.key}.csv"
             # Fixed ZIP metadata makes identical inputs byte reproducible.
