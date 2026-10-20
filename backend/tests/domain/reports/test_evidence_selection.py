@@ -1204,7 +1204,8 @@ def test_close_source_binding_round_trips_without_reselecting_or_requeuing(
 
 
 @pytest.mark.parametrize(
-    "revoke,currency_view", [(False, "transaction"), (True, "transaction"), (False, "functional")]
+    "revoke,currency_view",
+    [(False, "transaction"), (True, "transaction"), (False, "functional"), (False, "reporting")],
 )
 def test_variance_report_worker_and_bound_rerun(
     sources: Sources,

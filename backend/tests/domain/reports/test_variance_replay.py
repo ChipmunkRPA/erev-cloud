@@ -565,8 +565,25 @@ def test_group_replay_reconciles_two_contracts_to_frozen_datasets() -> None:
             from erev_api.domain.reports import snapshot_views
             from erev_engine.stages.s15_disclosures import snapshots as snapshot_engine
 
+            fact = {
+                "base_currency": "USD",
+                "quote_currency": "USD",
+                "period_key": scope.period_key,
+                "period_end": "2023-05-31",
+                "rate": "1",
+                "rate_id": None,
+                "version_id": None,
+                "rate_cutoff": "2023-06-01T00:00:00+00:00",
+            }
+            controls = {
+                "reporting_currency": "USD",
+                "translation_rates": [
+                    {**fact, "rate_type": "closing"},
+                    *([{**fact, "rate_type": "average"}] if kind == "WATERFALL" else []),
+                ],
+            }
             variant = snapshot_engine.Encoded(
-                kind, content, dataset.file_sha256, len(contracts), {}
+                kind, content, dataset.file_sha256, len(contracts), controls
             )
             packed = snapshot_views.pack({view: variant for view in snapshot_views.VIEWS})
             dataset = replace(
@@ -606,6 +623,10 @@ def test_group_replay_reconciles_two_contracts_to_frozen_datasets() -> None:
     projected = variance_presentation.dataset(pair, functional)
     assert projected.data.control_totals["currency_view"] == "functional"
     assert projected.evidence["currency_view"] == "functional"
+    reporting = variance_groups.execute(pair, currency_view="reporting")
+    reported = variance_presentation.dataset(pair, reporting)
+    assert reported.data.control_totals["USD:REVENUE"] == "117.68"
+    assert all(run.replay.reporting_basis_sha256 for run in reporting.groups.values())
     presentation = variance_presentation.dataset(pair, result)
     data = presentation.data
     contract_rows = [
@@ -880,6 +901,13 @@ def test_group_replay_reconciles_two_contracts_to_frozen_datasets() -> None:
         (entity_id,),
     )
     membership = variance_groups.execute(membership_pair)
+    reporting_membership = variance_groups.execute(membership_pair, currency_view="reporting")
+    assert all(change.sums_exactly for change in reporting_membership.measures.values())
+    assert all(
+        run.replay.executions[-1].changed_fields == ("reporting_rates",)
+        for run in reporting_membership.groups.values()
+    )
+
     assert all(change.sums_exactly for change in membership.measures.values())
     assert any(change.total for change in membership.measures.values())
     assert all(
@@ -1603,3 +1631,64 @@ def test_reporting_projection_rounds_each_contribution_and_obligation() -> None:
             "reporting",
             replace(basis, period_key="OTHER"),
         )
+
+
+def test_reporting_replay_separates_business_and_reporting_fx_including_same_computation() -> None:
+    from uuid import uuid4
+
+    from erev_api.domain.reports import variance_execution, variance_population
+    from erev_api.domain.reports.computation_sources import VerifiedComputation
+    from erev_api.domain.reports.variance_reporting import Basis
+    from erev_engine import upgrade
+
+    before, after = _active_pair()
+    old = Basis(
+        "USD", "EUR", "FY2023-P05", date(2023, 5, 31), Fraction("0.9"), Fraction("0.8"), "a" * 64
+    )
+    new = replace(old, closing=Fraction("0.85"), average=Fraction("0.7"), evidence_sha256="b" * 64)
+
+    def values(bundle: InputBundle, rates: Basis) -> dict[MeasureKey, Fraction]:
+        return Projection(bundle, "Mock Entity 2", "ASC606", "FY2023-P05", "reporting", rates)(
+            compute(bundle)
+        )
+
+    earlier, later = values(before, old), values(after, new)
+    common = dict(
+        entity_code="Mock Entity 2",
+        book_code="ASC606",
+        period_key="FY2023-P05",
+        currency_view="reporting",
+        earlier_reporting_basis=old,
+        later_reporting_basis=new,
+    )
+    result = replay_period_money(
+        before, after, earlier_metrics=earlier, later_metrics=later, **common
+    )
+    unchanged_rates = values(after, old)
+    for key, change in result.measures.items():
+        assert change.sums_exactly
+        assert change.effects[-1].driver == "FX"
+        assert change.effects[-1].amount == later.get(key, Fraction(0)) - unchanged_rates.get(
+            key, Fraction(0)
+        )
+    assert result.executions[-1].changed_fields == ("reporting_rates",)
+    output = compute(after)
+    source = VerifiedComputation(
+        uuid4(),
+        uuid4(),
+        uuid4(),
+        after,
+        upgrade.output_mapping(output),
+        output.sha256(),
+        {"ASC606": 0},
+        None,
+    )
+    same = variance_execution.execute(
+        source, source, earlier_metrics=unchanged_rates, later_metrics=later, **common
+    )
+    assert all(change.effects[0].driver == "FX" for change in same.replay.measures.values())
+    assert same.replay.reporting_basis_sha256 == ("a" * 64, "b" * 64)
+    entering = variance_population.execute(source, later, entering=True, **common)
+    for key, change in entering.replay.measures.items():
+        assert change.effects[0].amount == unchanged_rates.get(key, Fraction(0))
+        assert change.effects[-1].amount == later[key] - unchanged_rates.get(key, Fraction(0))

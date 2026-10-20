@@ -27,7 +27,7 @@ BINDING: Final = "close_variance_sources"
 class Prepared:
     pair: variance_sources.Pair
     identity: dict[str, Any]
-    currency_view: Literal["transaction", "functional"] = "transaction"
+    currency_view: Literal["transaction", "functional", "reporting"] = "transaction"
 
 
 @dataclass(frozen=True)
@@ -44,9 +44,10 @@ def prepare(uow: UnitOfWork, params: ReportParams) -> Prepared:
     from erev_api.domain.reports import variance_sources
 
     view = params.parameters.get("currency_view", "transaction")
-    if view not in ("transaction", "functional"):
+    if view not in ("transaction", "functional", "reporting"):
         raise Problem(
-            "validation-failed", "Close variance supports transaction or functional currency."
+            "validation-failed",
+            "Close variance supports transaction, functional or reporting currency.",
         )
 
     if (

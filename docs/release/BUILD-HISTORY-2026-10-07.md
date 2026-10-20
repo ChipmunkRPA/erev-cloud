@@ -8999,3 +8999,21 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - RPO rollforward multi-currency movement/FX attribution is still outstanding, as are the other
   documented multi-layer FX and group-change attribution gaps. Existing locked datasets remain
   transaction currency. No deployment or independent accounting sign-off claimed.
+
+## Layer-specific liability FX attribution — October 20, 2026
+
+- Functional balance rollforwards now retain new billing layer identities and read verified
+  liability creation/remeasurement movements. Period totals must equal posted control FX;
+  missing layers, inconsistent traces/currencies or mismatched totals are refused explicitly.
+- Opening layers retain their original range-opening classification; new layers remain separate.
+  Revenue-relief FX precedes revenue and closing FX follows it. Billing settlement FX also carries
+  its source layer identity. No functional-balance-weight apportionment is used. Source movement
+  membership is retained for reruns; existing transaction paths and locked schemas are unchanged.
+- Necessary real API witness: approved POL-163 override, one opening advance plus two new advances,
+  monthly close FX, then delivery and a new close pass. Closing GBP 94,600 becomes GBP 55,900;
+  revenue from opening is GBP 37,575, and balance ties pass. The pre-delivery report reruns unchanged.
+  FIFO layer unit checks and ERP/ENGINE functional-invoice regressions pass; lint/types checked.
+- This supersedes the blanket multi-open-layer FX refusal for attributable movements. Combined
+  contract layer ownership and late-carried FX that cannot match dated movement evidence remain
+  separate work, along with group-membership variance attribution and broader release acceptance.
+  No deployment or independent accounting sign-off claimed.

@@ -6,6 +6,27 @@
 
 
 
+## Reporting-currency close variance — October 20, 2026
+
+- The public variance report now offers reporting currency (migration 0191). Ordinary replay,
+  connected membership changes and independent population changes use authenticated lock rate
+  bases. Business effects use earlier reporting rates; a final FX phase applies later reporting
+  rates after any transaction/functional FX phase. Identical retained computations with changed
+  lock rates produce FX effects, never a fabricated business event or PROGRESS residual.
+- Replay evidence retains both reporting-basis hashes and marks the reporting_rates phase.
+  Entry effects are valued at earlier rates before FX; exits remove the earlier frozen value.
+  Currency/period basis changes and missing historical rates explicitly refuse. New reporting
+  waterfall snapshots retain the selected period's average even when there is no revenue, so
+  later population comparisons need not read current reference settings.
+- Necessary checks: real-engine business/FX and unchanged-computation cases, population entry,
+  combined-membership reporting replay against authored frozen datasets, and public empty-lock
+  jobs with bound reruns/revocation. Actual empty lock publication verifies retained averages;
+  68 focused registry/rate checks, 96 frontend checks and scoped lint/types pass.
+- Still outstanding: populated foreign-currency public lock-to-lock acceptance, combined and
+  late-carried liability FX, other documented reporting gaps and final release verification.
+  Older locks missing required currency/rate evidence cannot be silently reconstructed.
+  No deployment or independent accounting sign-off; production readiness remains unproven.
+
 ## Retained reporting-rate projection — October 20, 2026
 
 - Added a reporting-rate basis read only from verified WATERFALL, CONTRACT_BALANCES and RPO
@@ -194,24 +215,6 @@
 - Still open: simultaneous membership/business/reference replay, members entering/leaving a
   surviving group without a prior source, group-level posted redistribution, combined-contract
   FX ownership and late-carried FX. No deployment or accounting sign-off claimed.
-
-## Layer-specific liability FX attribution — October 20, 2026
-
-- Functional balance rollforwards now retain new billing layer identities and read verified
-  liability creation/remeasurement movements. Period totals must equal posted control FX;
-  missing layers, inconsistent traces/currencies or mismatched totals are refused explicitly.
-- Opening layers retain their original range-opening classification; new layers remain separate.
-  Revenue-relief FX precedes revenue and closing FX follows it. Billing settlement FX also carries
-  its source layer identity. No functional-balance-weight apportionment is used. Source movement
-  membership is retained for reruns; existing transaction paths and locked schemas are unchanged.
-- Necessary real API witness: approved POL-163 override, one opening advance plus two new advances,
-  monthly close FX, then delivery and a new close pass. Closing GBP 94,600 becomes GBP 55,900;
-  revenue from opening is GBP 37,575, and balance ties pass. The pre-delivery report reruns unchanged.
-  FIFO layer unit checks and ERP/ENGINE functional-invoice regressions pass; lint/types checked.
-- This supersedes the blanket multi-open-layer FX refusal for attributable movements. Combined
-  contract layer ownership and late-carried FX that cannot match dated movement evidence remain
-  separate work, along with group-membership variance attribution and broader release acceptance.
-  No deployment or independent accounting sign-off claimed.
 
 ## Outstanding release verification
 

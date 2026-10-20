@@ -22,10 +22,16 @@ from erev_engine.stages.s15_disclosures.variance import Decomposition
 
 from erev_api.problems import Problem
 
-from . import variance_execution, variance_measures, variance_membership, variance_population
+from . import (
+    variance_execution,
+    variance_measures,
+    variance_membership,
+    variance_population,
+    variance_reporting,
+)
 from .computation_sources import VerifiedComputation
 from .variance_measures import MeasureKey
-from .variance_replay import Engine
+from .variance_replay import Engine, validate_reporting_pair
 from .variance_sources import Pair, Side
 
 
@@ -36,7 +42,7 @@ class GroupReplay:
     driver_totals: Mapping[tuple[str, str, str], Fraction]  # currency, measure, driver
     required_entity_ids: tuple[UUID, ...]
     contract_groups: Mapping[str, UUID] = field(default_factory=dict)
-    currency_view: Literal["transaction", "functional"] = "transaction"
+    currency_view: Literal["transaction", "functional", "reporting"] = "transaction"
 
 
 def _refuse(detail: str) -> Problem:
@@ -66,9 +72,16 @@ def execute(
     pair: Pair,
     *,
     engine: Engine = compute,
-    currency_view: Literal["transaction", "functional"] = "transaction",
+    currency_view: Literal["transaction", "functional", "reporting"] = "transaction",
 ) -> GroupReplay:
     """Reproduce every monetary endpoint and then aggregate exact driver effects."""
+    earlier_basis = (
+        variance_reporting.for_close(pair.earlier.frozen) if currency_view == "reporting" else None
+    )
+    later_basis = (
+        variance_reporting.for_close(pair.later.frozen) if currency_view == "reporting" else None
+    )
+    validate_reporting_pair(currency_view, earlier_basis, later_basis)
     # Also verifies lock ordering, scope and complete frozen monetary datasets.
     variance_measures.compare(pair.earlier.frozen, pair.later.frozen, currency_view)
     earlier = variance_measures.endpoints(pair.earlier.frozen, currency_view)
@@ -133,6 +146,8 @@ def execute(
             period_key=scope.period_key,
             engine=engine,
             currency_view=currency_view,
+            earlier_reporting_basis=earlier_basis,
+            later_reporting_basis=later_basis,
         )
         runs.update(membership)
         for result in membership.values():
@@ -167,6 +182,8 @@ def execute(
                 period_key=scope.period_key,
                 engine=engine,
                 currency_view=currency_view,
+                earlier_reporting_basis=earlier_basis,
+                later_reporting_basis=later_basis,
             )
             runs[group_id] = population
             for key, decomposition in population.replay.measures.items():
@@ -200,6 +217,8 @@ def execute(
             },
             engine=engine,
             currency_view=currency_view,
+            earlier_reporting_basis=earlier_basis,
+            later_reporting_basis=later_basis,
         )
         runs[group_id] = result
         for key, decomposition in result.replay.measures.items():

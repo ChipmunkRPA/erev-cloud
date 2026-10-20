@@ -15,7 +15,9 @@ from erev_engine.stages.s15_disclosures.variance import Evaluation, decompose
 
 from .computation_sources import VerifiedComputation
 from .variance_execution import SourceExecution, verify_source
-from .variance_replay import Engine, Execution, Metrics, Replay
+from .variance_projection import Projection
+from .variance_replay import Engine, Execution, Metrics, Replay, validate_reporting_pair
+from .variance_reporting import Basis
 
 
 @dataclass(frozen=True)
@@ -36,9 +38,12 @@ def execute(
     book_code: str,
     period_key: str,
     engine: Engine = compute,
-    currency_view: Literal["transaction", "functional"] = "transaction",
+    currency_view: Literal["transaction", "functional", "reporting"] = "transaction",
+    earlier_reporting_basis: Basis | None = None,
+    later_reporting_basis: Basis | None = None,
 ) -> PopulationReplay:
-    verified, _ = verify_source(
+    validate_reporting_pair(currency_view, earlier_reporting_basis, later_reporting_basis)
+    verified, output = verify_source(
         source,
         metrics,
         entity_code=entity_code,
@@ -46,30 +51,52 @@ def execute(
         period_key=period_key,
         engine=engine,
         currency_view=currency_view,
+        reporting_basis=later_reporting_basis if entering else earlier_reporting_basis,
     )
     # Absence alone does not prove termination or a particular business event.
     driver = "NEW_CONTRACT" if entering else "OTHER"
     change = "population.entered" if entering else "population.left"
+    entry = (
+        Projection(
+            source.bundle,
+            entity_code,
+            book_code,
+            period_key,
+            currency_view,
+            earlier_reporting_basis,
+        )(output)
+        if entering and currency_view == "reporting"
+        else metrics
+    )
+    executions = [Execution(driver, (), verified.input_sha256, verified.output_sha256, (change,))]
+    if entering and currency_view == "reporting":
+        executions.append(
+            Execution("FX", (), verified.input_sha256, verified.output_sha256, ("reporting_rates",))
+        )
     replay = Replay(
         ENGINE_VERSION,
-        (
-            Execution(
-                driver,
-                (),
-                verified.input_sha256,
-                verified.output_sha256,
-                (change,),
-            ),
-        ),
+        tuple(executions),
         MappingProxyType(
             {
                 key: decompose(
                     Fraction(0) if entering else value,
-                    [Evaluation(driver, value if entering else Fraction(0))],
+                    [
+                        Evaluation(
+                            driver, entry.get(key, Fraction(0)) if entering else Fraction(0)
+                        ),
+                        *(
+                            [Evaluation("FX", value)]
+                            if entering and currency_view == "reporting"
+                            else []
+                        ),
+                    ],
                 )
                 for key, value in metrics.items()
             }
         ),
+        (earlier_reporting_basis.evidence_sha256, later_reporting_basis.evidence_sha256)
+        if earlier_reporting_basis is not None and later_reporting_basis is not None
+        else None,
     )
     return PopulationReplay(
         None if entering else verified,

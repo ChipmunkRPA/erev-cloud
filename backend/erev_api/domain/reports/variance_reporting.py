@@ -141,3 +141,26 @@ def from_close(source: FrozenClose, *, functional_currency: str, period_end: dat
         Fraction(selected["average"]["rate"]) if "average" in selected else None,
         sha256_hex({"lock_id": str(source.scope.lock_id), "datasets": hashes, "rates": selected}),
     )
+
+
+def for_close(source: FrozenClose) -> Basis:
+    """Resolve entity currency and calendar from the balances rate evidence, never live settings."""
+    candidates = [r.dataset for r in source.reports if r.dataset.kind == "CONTRACT_BALANCES"]
+    if len(candidates) != 1:
+        raise _refuse("one balances snapshot is required.")
+    dataset = locked.verify(candidates[0])
+    _, _, metadata = locked.currency_rows(dataset, "reporting")
+    if metadata is None:
+        raise _refuse("the lock did not retain reporting-rate controls.")
+    rates = metadata.get("translation_rates")
+    if not isinstance(rates, list) or len(rates) != 1 or not isinstance(rates[0], dict):
+        raise _refuse("one entity/period closing conversion is required.")
+    try:
+        functional = rates[0]["base_currency"]
+        if not isinstance(functional, str):
+            raise ValueError("invalid currency")
+        tie_outs.minor_unit(functional)
+        end = date.fromisoformat(rates[0]["period_end"])
+    except (KeyError, TypeError, ValueError) as error:
+        raise _refuse("invalid retained currency/calendar basis.") from error
+    return from_close(source, functional_currency=functional, period_end=end)

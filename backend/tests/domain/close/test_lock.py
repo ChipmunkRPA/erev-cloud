@@ -706,6 +706,10 @@ def test_lock_writes_certification_and_snapshots(world: CloseWorld, clock: Froze
                 for basis in snapshot_views.VIEWS:
                     _, _, controls = snapshot_views.select(data, basis)
                     assert controls is not None
+                    if _value(snapshot["snapshot_kind"]) == "WATERFALL" and basis == "reporting":
+                        assert any(
+                            fact["rate_type"] == "average" for fact in controls["translation_rates"]
+                        )
 
             hashes[_value(snapshot["snapshot_kind"])] = expected
         head = session.execute(

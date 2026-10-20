@@ -68,7 +68,7 @@ from erev_engine.stages.s15_disclosures import snapshots as engine
 from sqlalchemy import select
 
 from erev_api.db.tables import legal_entity, period
-from erev_api.domain.reports import elections, framework, locked, tie_outs
+from erev_api.domain.reports import elections, framework, locked, reporting_currency, tie_outs
 from erev_api.domain.reports.builders import ReportParams
 from erev_api.domain.reports.builders import contract_balance_rollforward as cbr_builder
 from erev_api.domain.reports.builders import contract_balances as balances_builder
@@ -653,6 +653,26 @@ def freeze_waterfall(uow: UnitOfWork, scope: SnapshotScope) -> engine.Encoded:
     if len(period_keys) != 1:  # Q6 (D-98 139 amendment 3): a snapshot covers the lock's ONE period
         raise SnapshotRefusal("WATERFALL", MULTI_PERIOD.format(count=len(period_keys)))
     (only,) = period_keys
+    rates = list(found.translation_rates)
+    if scope.currency_view == "reporting" and not any(
+        fact.get("rate_type") == "average" and fact.get("period_key") == only for fact in rates
+    ):
+        # Future comparisons may introduce revenue into a previously empty period. Retain its
+        # approved average now, so the old-rate business phase never consults live settings.
+        entities = tie_outs.entities(uow.session, (scope.entity_id,), params=params)
+        calendars = tie_outs.calendars(uow.session, entities, params=params)
+        translation = reporting_currency.rates_for_period(
+            uow.session,
+            params,
+            tenant_id=uow.principal.tenant_id,
+            entities=entities,
+            periods={item.id: calendars[item.id].named(only, "currency_view") for item in entities},
+            rate_type="average",
+            evidence_key="snapshot_reporting_average_v1",
+        )
+        rates.extend(
+            {"entity_id": str(identity), **fact} for identity, fact in translation.rates.items()
+        )
     rows: list[dict[str, Any]] = []
     recognised: dict[str, Decimal] = {}
     scheduled: dict[str, Decimal] = {}
@@ -693,7 +713,7 @@ def freeze_waterfall(uow: UnitOfWork, scope: SnapshotScope) -> engine.Encoded:
             "awaiting_trigger_total": tie_outs.by_currency(awaiting),
             **(
                 {
-                    "translation_rates": list(found.translation_rates),
+                    "translation_rates": rates,
                     "forecast_currency_basis": "as_of_closing_rate"
                     if scope.currency_view != "transaction"
                     else "transaction",

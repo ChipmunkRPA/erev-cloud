@@ -22,7 +22,14 @@ from erev_api.problems import Problem
 
 from .computation_sources import VerifiedComputation
 from .variance_projection import Projection
-from .variance_replay import Engine, Metrics, Replay, replay_period_money
+from .variance_replay import (
+    Engine,
+    Execution,
+    Metrics,
+    Replay,
+    replay_period_money,
+    validate_reporting_pair,
+)
 from .variance_reporting import Basis
 
 
@@ -131,7 +138,9 @@ def execute(
     period_key: str,
     earlier_metrics: Metrics,
     later_metrics: Metrics,
-    currency_view: Literal["transaction", "functional"] = "transaction",
+    currency_view: Literal["transaction", "functional", "reporting"] = "transaction",
+    earlier_reporting_basis: Basis | None = None,
+    later_reporting_basis: Basis | None = None,
     engine: Engine = compute,
 ) -> RetainedReplay:
     """Pure calculation phase; accepts no session and never persists engine output.
@@ -141,6 +150,7 @@ def execute(
     still require population replay.
     Normalization is explicit evidence, not an alteration of the retained source.
     """
+    validate_reporting_pair(currency_view, earlier_reporting_basis, later_reporting_basis)
     if earlier.group_id != later.group_id:
         raise _refuse("group membership changes require a separate replay phase.")
     for source in (earlier, later):
@@ -157,6 +167,7 @@ def execute(
         book_code=book_code,
         period_key=period_key,
         currency_view=currency_view,
+        reporting_basis=earlier_reporting_basis,
         engine=engine,
     )
     after, _ = verify_source(
@@ -166,6 +177,7 @@ def execute(
         book_code=book_code,
         period_key=period_key,
         currency_view=currency_view,
+        reporting_basis=later_reporting_basis,
         engine=engine,
     )
     if earlier.computation_id == later.computation_id:
@@ -176,11 +188,29 @@ def execute(
         measures = {
             key: decompose(
                 earlier_metrics.get(key, Fraction(0)),
-                [Evaluation("PROGRESS", later_metrics.get(key, Fraction(0)))],
+                [
+                    Evaluation(
+                        "FX" if currency_view == "reporting" else "PROGRESS",
+                        later_metrics.get(key, Fraction(0)),
+                    )
+                ],
             )
             for key in sorted(earlier_metrics.keys() | later_metrics.keys())
         }
         replay = Replay(ENGINE_VERSION, (), MappingProxyType(measures))
+        if earlier_reporting_basis is not None and later_reporting_basis is not None:
+            replay = replace(
+                replay,
+                executions=(
+                    Execution(
+                        "FX", (), before.input_sha256, before.output_sha256, ("reporting_rates",)
+                    ),
+                ),
+                reporting_basis_sha256=(
+                    earlier_reporting_basis.evidence_sha256,
+                    later_reporting_basis.evidence_sha256,
+                ),
+            )
         return RetainedReplay(before, after, (), later.bundle.sha256(), replay)
 
     normalized = []
@@ -208,6 +238,8 @@ def execute(
         earlier_metrics=earlier_metrics,
         later_metrics=later_metrics,
         currency_view=currency_view,
+        earlier_reporting_basis=earlier_reporting_basis,
+        later_reporting_basis=later_reporting_basis,
         engine=engine,
     )
     return RetainedReplay(before, after, tuple(normalized), counterfactual.sha256(), replay)

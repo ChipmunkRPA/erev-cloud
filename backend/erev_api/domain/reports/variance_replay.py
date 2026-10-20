@@ -24,6 +24,7 @@ from erev_api.problems import Problem
 
 from .variance_measures import MeasureKey
 from .variance_projection import MEASURES, Projection
+from .variance_reporting import Basis
 
 type Metrics = Mapping[MeasureKey, Fraction]
 type Project = Callable[[InputBundle, OutputBundle], Metrics]
@@ -71,6 +72,7 @@ class Replay:
     engine_version: str
     executions: tuple[Execution, ...]
     measures: Mapping[MeasureKey, Decomposition]
+    reporting_basis_sha256: tuple[str, str] | None = None
 
 
 def _refuse(detail: str) -> Problem:
@@ -167,6 +169,7 @@ def replay_events(
     later_metrics: Metrics,
     project: Project,
     engine: Engine = compute,
+    final_project: Project | None = None,
 ) -> Replay:
     """Execute one compute per maximal same-driver run, then bind every effect.
 
@@ -186,13 +189,17 @@ def replay_events(
     executions: list[Execution] = []
 
     def evaluate(
-        bundle: InputBundle, name: str, keys: tuple[str, ...], changed: tuple[str, ...] = ()
+        bundle: InputBundle,
+        name: str,
+        keys: tuple[str, ...],
+        changed: tuple[str, ...] = (),
+        projector: Project | None = None,
     ) -> dict[MeasureKey, Fraction]:
         dry = replace(bundle, trigger="DRY_RUN", events=tuple(sorted(bundle.events, key=_order)))
         output = engine(dry)
         if output.engine_version != ENGINE_VERSION or output.input_sha256 != dry.sha256():
             raise _refuse("the engine output does not identify the executed input/runtime.")
-        values = _metric_values(project(dry, output))
+        values = _metric_values((projector or project)(dry, output))
         executions.append(Execution(name, keys, dry.sha256(), output.sha256(), changed))
         return values
 
@@ -221,6 +228,9 @@ def replay_events(
     if before.fx_rates != after.fx_rates:
         current = replace(current, fx_rates=after.fx_rates)
         values = evaluate(current, "FX", (), ("fx_rates",))
+        states.append(("FX", (), values))
+    if final_project is not None:
+        values = evaluate(current, "FX", (), ("reporting_rates",), projector=final_project)
         states.append(("FX", (), values))
     if not _equal(values, expected_after):
         raise _refuse("the final replay does not reproduce its frozen monetary endpoint.")
@@ -253,21 +263,61 @@ def replay_period_money(
     period_key: str,
     earlier_metrics: Metrics,
     later_metrics: Metrics,
-    currency_view: Literal["transaction", "functional"] = "transaction",
+    currency_view: Literal["transaction", "functional", "reporting"] = "transaction",
+    earlier_reporting_basis: Basis | None = None,
+    later_reporting_basis: Basis | None = None,
     engine: Engine = compute,
 ) -> Replay:
     """Fixed-period revenue, balance and dated RPO replay over retained inputs."""
     if any(key.measure not in MEASURES for key in earlier_metrics.keys() | later_metrics.keys()):
         raise _refuse("an unsupported monetary measure was requested.")
-    projection = Projection(before, entity_code, book_code, period_key, currency_view)
+    validate_reporting_pair(currency_view, earlier_reporting_basis, later_reporting_basis)
+    projection = Projection(
+        before, entity_code, book_code, period_key, currency_view, earlier_reporting_basis
+    )
     entity = next(item for item in before.entities if item.code == entity_code)
     period_end = next(item.end_date for item in entity.periods if item.period_key == period_key)
-    return replay_events(
+    result = replay_events(
         before,
         after,
         earlier_period_end=period_end,
         earlier_metrics=earlier_metrics,
         later_metrics=later_metrics,
         project=lambda bundle, output: replace(projection, basis=bundle)(output),
+        final_project=(
+            lambda bundle, output: replace(
+                projection, basis=bundle, reporting_basis=later_reporting_basis
+            )(output)
+        )
+        if currency_view == "reporting"
+        else None,
         engine=engine,
     )
+
+    return (
+        replace(
+            result,
+            reporting_basis_sha256=(
+                earlier_reporting_basis.evidence_sha256,
+                later_reporting_basis.evidence_sha256,
+            ),
+        )
+        if earlier_reporting_basis is not None and later_reporting_basis is not None
+        else result
+    )
+
+
+def validate_reporting_pair(view: str, earlier: Basis | None, later: Basis | None) -> None:
+    if view != "reporting":
+        if earlier is not None or later is not None:
+            raise _refuse("reporting rates require reporting currency selection.")
+        return
+    if earlier is None or later is None:
+        raise _refuse("reporting replay requires both retained rate bases.")
+    if (earlier.functional_currency, earlier.currency, earlier.period_key, earlier.period_end) != (
+        later.functional_currency,
+        later.currency,
+        later.period_key,
+        later.period_end,
+    ):
+        raise _refuse("reporting currency or period changes require a basis migration.")

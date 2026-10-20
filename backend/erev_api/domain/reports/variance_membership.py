@@ -25,7 +25,16 @@ from erev_api.problems import Problem
 from .computation_sources import VerifiedComputation
 from .variance_execution import RetainedReplay, SourceExecution, verify_source
 from .variance_projection import Projection
-from .variance_replay import Engine, Execution, Metrics, Replay, driver, validate_contract_basis
+from .variance_replay import (
+    Engine,
+    Execution,
+    Metrics,
+    Replay,
+    driver,
+    validate_contract_basis,
+    validate_reporting_pair,
+)
+from .variance_reporting import Basis
 
 
 def _refuse(detail: str) -> Problem:
@@ -42,8 +51,11 @@ def execute(
     book_code: str,
     period_key: str,
     engine: Engine,
-    currency_view: Literal["transaction", "functional"] = "transaction",
+    currency_view: Literal["transaction", "functional", "reporting"] = "transaction",
+    earlier_reporting_basis: Basis | None = None,
+    later_reporting_basis: Basis | None = None,
 ) -> tuple[dict[UUID, RetainedReplay], dict[str, UUID]]:
+    validate_reporting_pair(currency_view, earlier_reporting_basis, later_reporting_basis)
     old_owner = {
         name: key
         for key, source in old.items()
@@ -260,6 +272,7 @@ def execute(
                 book_code=book_code,
                 period_key=period_key,
                 currency_view=currency_view,
+                reporting_basis=earlier_reporting_basis if side is old else later_reporting_basis,
             )
     posted = tuple(line for source in old.values() for line in source.bundle.posted)
     if any(contract_key_from_subject(line.subject_key) not in old_owner for line in posted):
@@ -294,7 +307,14 @@ def execute(
                 or output.engine_version != bundle.engine_version
             ):
                 raise _refuse("a dry-run output does not identify its executed input.")
-            actual = Projection(bundle, entity_code, book_code, period_key, currency_view)(output)
+            actual = Projection(
+                bundle,
+                entity_code,
+                book_code,
+                period_key,
+                currency_view,
+                earlier_reporting_basis if side is old else later_reporting_basis,
+            )(output)
             expected = {k: v for k, v in metrics.items() if k.contract_external_id in members}
             if any(
                 actual.get(k, Fraction(0)) != expected.get(k, Fraction(0))
@@ -345,6 +365,7 @@ def execute(
                     phase_bundle: InputBundle,
                     phase_events: list[EventInput],
                     changed: tuple[str, ...] = (),
+                    rate_basis: Basis | None = earlier_reporting_basis,
                 ) -> tuple[Execution, Metrics]:
                     candidate = replace(
                         phase_bundle,
@@ -364,7 +385,7 @@ def execute(
                             "a membership/event phase does not identify its executed input."
                         )
                     state = Projection(
-                        candidate, entity_code, book_code, period_key, currency_view
+                        candidate, entity_code, book_code, period_key, currency_view, rate_basis
                     )(result)
                     return (
                         Execution(name, event_keys, candidate.sha256(), result.sha256(), changed),
@@ -403,6 +424,17 @@ def execute(
                     )
                 if earlier_fx != bundle.fx_rates:
                     states.append(evaluate("FX", (), bundle, accumulated, ("fx_rates",)))
+                if currency_view == "reporting":
+                    states.append(
+                        evaluate(
+                            "FX",
+                            (),
+                            bundle,
+                            accumulated,
+                            ("reporting_rates",),
+                            later_reporting_basis,
+                        )
+                    )
                 final = states[-1][1]
                 if any(
                     final.get(k, Fraction(0)) != expected.get(k, Fraction(0))
@@ -447,6 +479,9 @@ def execute(
                 new[new_key].bundle.engine_version,
                 (baselines[old_key], *(step for step, _ in states)),
                 MappingProxyType(measures),
+                (earlier_reporting_basis.evidence_sha256, later_reporting_basis.evidence_sha256)
+                if earlier_reporting_basis is not None and later_reporting_basis is not None
+                else None,
             ),
         )
     return runs, aliases

@@ -238,6 +238,11 @@ def dataset(pair: Pair, replay: variance_groups.GroupReplay) -> Presentation:
                 "replay_input_sha256": run.replay_input_sha256,
                 "engine_version": run.replay.engine_version,
                 "executions": [asdict(step) for step in run.replay.executions],
+                **(
+                    {"reporting_basis_sha256": list(run.replay.reporting_basis_sha256)}
+                    if run.replay.reporting_basis_sha256 is not None
+                    else {}
+                ),
             }
             for identity, run in sorted(replay.groups.items(), key=lambda item: str(item[0]))
         },
