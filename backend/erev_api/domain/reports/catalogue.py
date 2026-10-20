@@ -629,6 +629,10 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "row_dimension": _one_of("CONTRACT", "ENTITY", "PRODUCT_FAMILY", "CUSTOMER_SEGMENT")
         },
         sources=(
+            "tenant",
+            "fx_rate",
+            "fx_rate_set",
+            "fx_rate_set_version",
             "obligation_version",
             "schedule_line",
             "contract_version",

@@ -365,3 +365,157 @@ def test_waterfall_forecast_uses_as_of_closing_rate(world: ReportWorld) -> None:
     ]
     expected = (amount * Decimal(closing["rate"])).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
     assert keyed(output)[O2_ROW]["awaiting_trigger"] == {"amount": str(expected), "currency": "USD"}
+
+
+@pytest.mark.slow
+def test_rpo_currency_bands_exemption_and_retained_rates(
+    world: ReportWorld, clock: FrozenClock
+) -> None:
+    from datetime import timedelta
+    from decimal import ROUND_HALF_UP
+
+    from erev_api.db.session import DbContext, tenant_session
+    from erev_api.enums import RegistryCategory, RegistryScope
+    from support.reference import approve, post
+    from support.rows import publish_registry_version
+
+    params = {"entity_codes": [AVM_UK], "book": "ASC606", "period_key": MAY}
+    original, source_rows = report_run(world, "rpo", params)
+    source = keyed(source_rows)[f"contract:{K04}"]
+    functional, functional_rows = report_run(
+        world, "rpo", {**params, "currency_view": "functional"}
+    )
+    assert keyed(functional_rows)[f"contract:{K04}"]["total"] == source["total"]
+    params["currency_view"] = "reporting"
+    run, rows = report_run(world, "rpo", params)
+    row = keyed(rows)[f"contract:{K04}"]
+    (rate,) = run["control_totals"]["translation_rates"]
+    expected = (Decimal(source["total"]["amount"]) * Decimal(rate["rate"])).quantize(
+        Decimal("0.01"), rounding=ROUND_HALF_UP
+    )
+    assert row["total"] == {"currency": "USD", "amount": str(expected)}
+    assert (
+        sum(
+            Decimal(row[key]["amount"])
+            for key in ("within_12_months", "months_13_to_24", "after_24_months")
+        )
+        == expected
+    )
+    assert Decimal(row["current"]["amount"]) + Decimal(row["noncurrent"]["amount"]) == expected
+    assert run["tie_out_results"][0]["result"] == "PASS"
+    assert run["control_totals"]["tie_out_currency_basis"] == "transaction"
+    cell = get(
+        world.app,
+        CELL.format(run_id=run["id"]),
+        world.maya,
+        {"row_key": f"contract:{K04}", "column_key": "total"},
+    )
+    assert cell.status_code == 200, cell.text
+    assert (
+        sum(Decimal(item["value"]["amount"]) for item in cell.json()["contributors"]["items"])
+        == expected
+    )
+
+    # A foreign functional-currency projection must conserve gross/net/excluded
+    # even where independent rounding of net would lose a cent.
+    from dataclasses import replace
+
+    from erev_api.domain.reports import rpo_currency
+    from erev_api.domain.reports.builders import ReportParams, rpo
+
+    uk_id = world.place.scalar(select(legal_entity.c.id).where(legal_entity.c.code == AVM_UK))
+    with world.place.uow() as uow:
+        raw_params = ReportParams(
+            "rpo", 1, {"period_key": MAY}, (uk_id,), clock.now(), book_code="ASC606"
+        )
+        original_run = rpo._run(uow.session, raw_params, uow)
+        item = original_run.found[0]
+        (entity,) = original_run.entities
+        at = tie_outs.calendars(uow.session, (entity,))[uk_id].named(MAY, "period_key")
+        partial = replace(
+            item,
+            total=Decimal("0.02"),
+            excluded=Decimal("0.01"),
+            partial_exemption="POL-200",
+            placed=(Decimal("0.01"), Decimal("0.01"), Decimal(0)),
+            current=Decimal("0.01"),
+            contributors=(
+                ("obligation_version", item.ob.row_id, Decimal("0.01"), 0, True),
+                ("obligation_version", item.ob.row_id, Decimal("0.01"), 1, False),
+            ),
+        )
+        (projected,), _ = rpo_currency.translate(
+            uow.session,
+            replace(raw_params, parameters={"period_key": MAY, "currency_view": "functional"}),
+            (partial,),
+            (replace(entity, functional_currency="USD"),),
+            {uk_id: at},
+        )
+        assert projected.total == Decimal("0.03")
+        assert projected.excluded == Decimal("0.01")
+        assert (
+            sum(projected.placed)
+            == sum(value[2] for value in projected.contributors)
+            == projected.total
+        )
+        assert projected.ob.currency == "USD"
+        assert partial.ob.currency == "GBP"  # the source store is never mutated
+
+    listed = get(world.app, "/api/v1/fx-rate-sets", world.maya, {"limit": 50})
+    (closing,) = [item for item in listed.json()["items"] if item["code"] == "AVM-RATES-CLOSING"]
+    draft = post(
+        world.app,
+        f"/api/v1/fx-rate-sets/{closing['id']}/versions",
+        world.maya,
+        {
+            "coverage_from": "2026-05-01",
+            "coverage_to": "2026-05-31",
+            "rates": [
+                {"base_currency": "GBP", "quote_currency": "USD", "period_key": MAY, "rate": "1.4"}
+            ],
+        },
+    )
+    assert draft.status_code == 201, draft.text
+    sent = post(
+        world.app,
+        f"/api/v1/fx-rate-set-versions/{draft.json()['id']}/submit",
+        world.maya,
+        {"comment": "Updated RPO closing rate"},
+        if_match=f'"r{draft.json()["row_version"]}"',
+    )
+    assert sent.status_code == 200, sent.text
+    clock.advance(timedelta(minutes=1))
+    world = worlds.verified(world, clock, "marcus")
+    approved = approve(world.app, sent.json()["pending_approval_request_id"], world.marcus)
+    assert approved.status_code == 200, approved.text
+    _, fresh = report_run(world, "rpo", params)
+    fresh_total = keyed(fresh)[f"contract:{K04}"]["total"]
+    assert fresh_total != row["total"]
+    started = post(world.app, f"/api/v1/report-runs/{run['id']}/rerun", world.maya, {})
+    assert started.status_code == 202, started.text
+    finished = worlds.run_now(world, UUID(started.json()["id"]))
+    assert finished["state"] == "SUCCEEDED", finished
+    repeated = get(
+        world.app, f"/api/v1/report-runs/{started.headers['x-erev-report-run-id']}/data", world.maya
+    )
+    assert repeated.status_code == 200, repeated.text
+    assert repeated.json()["items"] == rows
+
+    uk_id = world.place.scalar(select(legal_entity.c.id).where(legal_entity.c.code == AVM_UK))
+    with tenant_session(
+        DbContext(tenant_id=world.tenant_id, user_id=None, entity_scope="*")
+    ) as session:
+        publish_registry_version(
+            session,
+            tenant_id=world.tenant_id,
+            category=RegistryCategory.PRACTICAL_EXPEDIENT,
+            scope=RegistryScope.ENTITY,
+            entity_id=uk_id,
+            values={"rpo.exemption_original_duration_one_year": "APPLY"},
+            at=clock.now(),
+        )
+    exempt, excluded = report_run(world, "rpo", params)
+    assert exempt["control_totals"]["excluded_total"] == {"USD": fresh_total["amount"]}
+    assert all(item["section"] == 2 for item in excluded)
+    assert all(item["excluded_amount"]["currency"] == "USD" for item in excluded)
+    assert exempt["tie_out_results"][0]["result"] == "PASS"

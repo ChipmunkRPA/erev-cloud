@@ -123,7 +123,14 @@ from erev_api.db.tables import (
     schedule_line,
 )
 from erev_api.domain.contracts import to_date
-from erev_api.domain.reports import cuts, elections, rpo_duration, rpo_quotas, tie_outs
+from erev_api.domain.reports import (
+    cuts,
+    elections,
+    rpo_currency,
+    rpo_duration,
+    rpo_quotas,
+    tie_outs,
+)
 from erev_api.domain.reports.builders import ReportParams, filter_problem
 from erev_api.domain.reports.outputs import Column, ReportData
 from erev_api.domain.reports.tie_outs import ZERO, EntityRef, add
@@ -1160,6 +1167,8 @@ class _Run:
     store: Store
     applied: Mapping[UUID, frozenset[str]]
     found: tuple[ObligationRpo, ...]
+    source_found: tuple[ObligationRpo, ...] = ()
+    translation_rates: tuple[Mapping[str, Any], ...] = ()
 
 
 def _run(session: Session, params: ReportParams, uow: UnitOfWork | None = None) -> _Run:
@@ -1168,8 +1177,10 @@ def _run(session: Session, params: ReportParams, uow: UnitOfWork | None = None) 
     found_calendars = tie_outs.calendars(session, found_entities, params=params)
     as_of: dict[UUID, date] = {}
     starts: dict[UUID, date] = {}
+    periods: dict[UUID, tie_outs.PeriodRef] = {}
     for entity in found_entities:
         at = tie_outs.period_of(params, found_calendars[entity.id], entity)
+        periods[entity.id] = at
         as_of[entity.id] = at.end
         starts[entity.id] = at.start
     given = params.parameters.get("time_bands")
@@ -1209,13 +1220,19 @@ def _run(session: Session, params: ReportParams, uow: UnitOfWork | None = None) 
         params=params,
     )
     found = rows_at(store, as_of=as_of, bands=bands, applied=applied)
-    functional = {entity.id: entity.functional_currency for entity in found_entities}
-    view = str(params.parameters.get("currency_view") or "transaction")
-    if view != "transaction" and any(
-        item.ob.currency != functional[item.ob.entity_id] for item in found
-    ):
-        raise tie_outs.invalid("currency_view", FUNCTIONAL_ONLY)
-    return _Run(book_code, found_entities, as_of, starts, bands, store, applied, found)
+    converted, rates = rpo_currency.translate(session, params, found, found_entities, periods)
+    return _Run(
+        book_code,
+        found_entities,
+        as_of,
+        starts,
+        bands,
+        store,
+        applied,
+        converted,
+        found,
+        rates,
+    )
 
 
 def _dimension_key(item: ObligationRpo, dimension: str) -> tuple[str, dict[str, Any]]:
@@ -1372,6 +1389,16 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     expected: dict[str, Decimal] = {}
     for contract_lines in rollforward_lines(run.store, ranges=ranges, applied=run.applied):
         add(expected, contract_lines.currency, contract_lines.lines["CLOSING"])
+    source_actual: dict[str, Decimal] = {}
+    for item in run.source_found:
+        if item.exemption is None:
+            add(source_actual, item.ob.currency, item.total)
+    check = tie_outs.compared(tie_outs.TO_RPO_ROLLFORWARD_EQ_RPO, expected, source_actual)
+    converted = params.parameters.get("currency_view", "transaction") != "transaction"
+    if converted:
+        check["details"] = [
+            {"currency_basis": "transaction", "translation_basis": "as_of_closing_rate"}
+        ]
     days = sorted({day.isoformat() for day in run.as_of.values()})
     columns = (
         Column("section", "Section", "integer"),
@@ -1379,7 +1406,7 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         Column("customer_name", "Customer", "text"),
         Column("entity_code", "Entity", "code"),
         Column("currency", "Currency", "code"),
-        Column(TOTAL, "Total", "money"),
+        Column(TOTAL, "Total (as-of FX)" if converted else "Total", "money"),
         *(Column(band.key, _band_label(band), "money") for band in bands),
         Column(CURRENT, "Current", "money"),
         Column(NONCURRENT, "Noncurrent", "money"),
@@ -1407,8 +1434,12 @@ def build(uow: UnitOfWork, params: ReportParams) -> ReportData:
             "total": tie_outs.by_currency(actual),
             "excluded_total": tie_outs.by_currency(excluded),
             "notes": notes,
+            "currency_view": str(params.parameters.get("currency_view") or "transaction"),
+            "translation_basis": "as_of_closing_rate" if converted else "transaction",
+            "tie_out_currency_basis": "transaction",
+            "translation_rates": list(run.translation_rates),
         },
-        tie_out_results=(tie_outs.compared(tie_outs.TO_RPO_ROLLFORWARD_EQ_RPO, expected, actual),),
+        tie_out_results=(check,),
     )
 
 
@@ -1468,4 +1499,10 @@ def cell(
                     "href": f"/api/v1/explain/{kind}/{object_id}/{measure}",
                 }
             )
+    if params.parameters.get("currency_view", "transaction") != "transaction":
+        for contributor in contributors:
+            contributor["details"] = [
+                "RPO translated at retained as-of closing rates; rounding is apportioned.",
+                "The linked source retains its original transaction-currency value.",
+            ]
     return tie_outs.money(value, currency), contributors

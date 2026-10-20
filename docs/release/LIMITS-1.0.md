@@ -1,5 +1,14 @@
 # eRev Cloud 1.0: stated limits of the release
 
+Current RPO disclosure update (October 20): the RPO report now supports functional/reporting
+currency using approved retained as-of closing rates. Gross/excluded translation and allocated
+net rounding conserve bands, current/noncurrent and cell sources. Source rollforward comparison
+is explicitly transaction currency. API witnesses cover rate revisions, retained reruns and
+full exemptions; the projection witness covers partial-exemption cent rounding without source
+mutation. RPO rollforward currency movement/FX attribution and alternate locked-dataset currency
+views remain unfinished, along with multi-layer FX and group-change attribution. No deployment.
+
+
 Current waterfall currency update (October 20): foreign-currency obligations now support
 functional actuals and reporting actuals at retained posting-period average rates. Scheduled
 and awaiting-trigger amounts use explicitly labelled as-of closing-rate forecasts; these are

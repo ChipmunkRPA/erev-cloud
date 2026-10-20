@@ -6,6 +6,24 @@
 
 
 
+## RPO disclosure currency views — October 20, 2026
+
+- RPO now translates foreign transaction consideration to functional currency and then to
+  reporting currency using retained approved as-of closing rates. The former foreign-currency
+  refusal and reporting-as-functional shortcut are removed for the RPO disclosure report.
+- Gross RPO and exclusion are translated first; net disclosure is their difference. Largest
+  remainder allocation distributes net rounding through bands and contributors, preserving
+  total = current + noncurrent = sum(bands) = sum(contributors), including partial exemptions.
+  The source store remains untouched and the independent rollforward tie explicitly stays in
+  transaction currency. Headers/control evidence/cell details state the as-of translation basis.
+- Necessary checks: GBP disclosures translated to USD, currency-band/current conservation,
+  converted cell contributors, published closing-rate revision versus retained rerun, POL-197
+  excluded totals, and a foreign-functional partial-exemption cent-rounding witness. Existing
+  approved targeted-VC journey and snapshot producer remain valid. Lint/types checked.
+- RPO rollforward multi-currency movement/FX attribution is still outstanding, as are the other
+  documented multi-layer FX and group-change attribution gaps. Existing locked datasets remain
+  transaction currency. No deployment or independent accounting sign-off claimed.
+
 ## Revenue waterfall currency views — October 20, 2026
 
 - Removed the foreign-contract refusal and the reporting-as-functional shortcut. Recognized
@@ -206,30 +224,6 @@
   four computation boundary checks, frontend rendering, Python lint/types and API generation pass.
   This is concrete FCS-6 case evidence, not independent accounting sign-off or full browser/release
   acceptance. No deployment.
-
-## Retained deal preview history — October 19, 2026
-
-- Added a lazy, paginated history panel on SF-18 using the existing entity-scoped summary API.
-  Displays creation time, proposed customer/reference, entity, start date, product codes and
-  saved state; opens retained calculations and saved draft contracts in new tabs so current
-  proposal input is preserved. The list does not fetch full engine traces for every row.
-- Supports manual refresh and retry of a failed later page without discarding loaded entries.
-  Preview completion and draft-save commands invalidate the shared history query.
-- Seven focused history/page/save checks pass, including lazy load, cursor pagination, new-tab
-  navigation and later-page retry. Types and lint pass. Broader business/browser acceptance and
-  independent accounting sign-off remain open. No deployment; direct main publication.
-
-## Forecast assumption effective-window editing — October 19, 2026
-
-- Added optional UTC start/end controls to draft creation and editing, and saved-window display
-  for every version. Blank edited boundaries send explicit null; untouched boundaries are omitted
-  from PATCH, preserving original offset/precision when changing other fields.
-- Invalid reversed/equal ranges block submission, and unsaved metadata changes block publication.
-  All edits retain If-Match/version protection. Published versions stay read-only. Copy makes clear
-  this is version metadata and does not rewrite captured event dates or filter replay events.
-- Five focused assumption-manager tests pass, covering lifecycle, UTC conversion, preserving
-  untouched timestamps, clearing boundaries and invalid-range refusal. TypeScript and lint pass.
-  Remaining report/accounting acceptance and independent sign-off are still open. No deployment.
 
 ## Outstanding release verification
 

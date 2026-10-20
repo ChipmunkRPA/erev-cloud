@@ -146,10 +146,6 @@ def test_rpo_k02_bands(
         {"row_key": f"contract:{K02}", "column_key": "within_12_months"},
     )
     assert explained.status_code == 200, explained.text
-    assert explained.json()["value"] == {"currency": "EUR", "amount": "10000.00"}
-    assert sum(
-        Decimal(item["value"]["amount"]) for item in explained.json()["contributors"]["items"]
-    ) == Decimal("10000.00")
     body = explained.json()
     assert body["value"] == usd("120000.00")
     items = body["contributors"]["items"]
@@ -725,10 +721,6 @@ def test_partial_vc_exemption_from_approved_element_to_report_and_snapshot(
         {"row_key": "contract:RPO-VC", "column_key": "total"},
     )
     assert explained.status_code == 200, explained.text
-    assert explained.json()["value"] == {"currency": "EUR", "amount": "10000.00"}
-    assert sum(
-        Decimal(item["value"]["amount"]) for item in explained.json()["contributors"]["items"]
-    ) == Decimal("10000.00")
     assert explained.json()["value"] == usd("132000.00")
     assert sum(
         Decimal(item["value"]["amount"]) for item in explained.json()["contributors"]["items"]
