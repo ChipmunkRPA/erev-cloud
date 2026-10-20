@@ -8477,3 +8477,18 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Six focused creation/list/archive checks pass plus frontend type/lint checks. Refresh needs
   a published-input selector from the source scenario, and event-editing UI remains open.
   Populated accounting acceptance and independent sign-off remain outstanding. No deployment.
+
+## Authorized scenario refresh choices — October 19, 2026
+
+- Added GET /scenarios/{id}/published-inputs for production USER callers with tenant-wide
+  scenario.use. Resolves an active source-owned scenario, checks its current active sandbox
+  belongs to that production tenant, then lists only that scenario's published input versions.
+  Tenant context is restored even on refusal; no arbitrary target workspace parameter exists.
+- Returns only ID/code/name/version/hash/publication metadata, not captured API commands or
+  uploaded payloads. Supports keyset paging/counts and no-store responses. OpenAPI and generated
+  frontend types are updated. This supplies the missing refresh selector read contract.
+- Real scenario/database journey passes current published choices, draft exclusion, paging,
+  counts, hidden command payloads and sandbox-call denial; existing forecast capture/refresh
+  checks also pass. Python lint/types pass. Disposable database stopped after verification.
+- Refresh UI still needs input selection and refresh-stage tracking; event editing and wider
+  accounting acceptance remain open. No deployment or independent-signoff claim.

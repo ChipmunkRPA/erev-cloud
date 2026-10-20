@@ -30,6 +30,12 @@ vi.mock("../../lib/api/queries/contracts", () => ({
   customersKey: () => ["customers"],
   fetchCustomers: async () => [{ id: "customer-id", name: "Existing customer" }],
 }));
+vi.mock("../../lib/api/queries/deal-previews", () => ({
+  fetchDealProducts: async () => [
+    { id: "platform", code: "PLATFORM", name: "Enterprise platform" },
+  ],
+  fetchDealPreview: vi.fn(),
+}));
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
@@ -54,7 +60,12 @@ it("submits exact decimal amounts in the authorized entity currency and retains 
   fireEvent.change(screen.getByLabelText("Customer"), { target: { value: "Buyer" } });
   fireEvent.change(screen.getByLabelText("Entity"), { target: { value: "US" } });
   fireEvent.change(screen.getByLabelText("Start date"), { target: { value: "2026-11-01" } });
-  fireEvent.change(screen.getByLabelText("Product code"), { target: { value: "PLATFORM" } });
+  fireEvent.change(screen.getByRole("combobox", { name: /Product code/ }), {
+    target: { value: "Enterprise" },
+  });
+  fireEvent.mouseDown(
+    await screen.findByRole("option", { name: "PLATFORM · Enterprise platform" }),
+  );
   fireEvent.change(screen.getByLabelText("Line price USD"), { target: { value: "90000.01" } });
   fireEvent.change(screen.getByLabelText("Term in months (optional)"), { target: { value: "12" } });
   fireEvent.click(screen.getByRole("button", { name: "Run preview" }));

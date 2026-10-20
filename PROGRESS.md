@@ -6,6 +6,18 @@
 
 
 
+## Deal product selection — October 19, 2026
+
+- Replaced manual product-code entry with the shared searchable combobox. Choices show code
+  and name, include only active products, and follow the complete catalogue pagination.
+  Every deal line must have an explicit valid selection before preview submission.
+- Added catalogue loading/empty/refusal retry states. Product lookup runs only for new proposal
+  entry; reopening retained evidence does not require current product catalogue availability.
+  Start over clears selections and network retry retains the selected products.
+- Four focused selector/submission/pagination checks pass; TypeScript and ESLint pass.
+  Real browser/Tamsin accounting acceptance and independent sign-off remain open. Report gaps
+  still require the broader implementation/evidence review. No deployment; main-only publication.
+
 ## Scenario draft save UI — October 19, 2026
 
 - Preview detail now advertises save_allowed only for an unsaved preview in an active registered
@@ -224,21 +236,6 @@
 - Reporting remains unfinished: assumption editing/publishing UI, deal preview, populated
   actual-versus-forecast and close-variance accounting acceptance remain outstanding. Catalogue
   coverage is not completion of all reporting workflows or independent accounting sign-off.
-
-## Authorized scenario refresh choices — October 19, 2026
-
-- Added GET /scenarios/{id}/published-inputs for production USER callers with tenant-wide
-  scenario.use. Resolves an active source-owned scenario, checks its current active sandbox
-  belongs to that production tenant, then lists only that scenario's published input versions.
-  Tenant context is restored even on refusal; no arbitrary target workspace parameter exists.
-- Returns only ID/code/name/version/hash/publication metadata, not captured API commands or
-  uploaded payloads. Supports keyset paging/counts and no-store responses. OpenAPI and generated
-  frontend types are updated. This supplies the missing refresh selector read contract.
-- Real scenario/database journey passes current published choices, draft exclusion, paging,
-  counts, hidden command payloads and sandbox-call denial; existing forecast capture/refresh
-  checks also pass. Python lint/types pass. Disposable database stopped after verification.
-- Refresh UI still needs input selection and refresh-stage tracking; event editing and wider
-  accounting acceptance remain open. No deployment or independent-signoff claim.
 
 ## Outstanding release verification
 

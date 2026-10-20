@@ -1,5 +1,11 @@
 # eRev Cloud 1.0: stated limits of the release
 
+Current deal product selector update (October 19): new proposal entry now offers searchable
+active products by code/name, loads subsequent catalogue pages, and requires a selected product
+on every line. Retained preview reads do not depend on loading the current catalogue. Product
+selection is implemented; real browser/Tamsin acceptance, independent accounting sign-off and
+remaining report gaps are still open. No deployment.
+
 Current scenario save UI update (October 19): SF-18 now exposes server-qualified save eligibility,
 external-ID entry, retry with retained input, and a link to the saved draft. Reopening a saved
 preview keeps the link and does not offer another save. Real scenario and production journeys

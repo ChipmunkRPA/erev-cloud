@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 import { useSearchParams } from "react-router";
+import { Combobox } from "../../components/form/Combobox";
+import { Field } from "../../components/form/Field";
 import { AccessLimited } from "../../components/feedback/AccessLimited";
 import { Banner } from "../../components/feedback/Banner";
 import { JobProgress } from "../../components/feedback/JobProgress";
@@ -11,7 +13,11 @@ import { useAccess } from "../../lib/access";
 import { useCommand } from "../../lib/api/commands";
 import { isTerminal, useJob } from "../../lib/api/jobs";
 import { customersKey, fetchCustomers } from "../../lib/api/queries/contracts";
-import { type DealInput, fetchDealPreview } from "../../lib/api/queries/deal-previews";
+import {
+  type DealInput,
+  fetchDealPreview,
+  fetchDealProducts,
+} from "../../lib/api/queries/deal-previews";
 import { entitiesKey, fetchActiveEntities } from "../../lib/api/queries/tenant";
 import { queryKey } from "../../lib/api/query-keys";
 import { t } from "../../lib/i18n/t";
@@ -57,6 +63,20 @@ function Preview() {
   const entity = choices.find((item) => item.code === entityCode);
   const [existing, setExisting] = useState(false);
   const [lines, setLines] = useState([0]);
+  const [selectedProducts, setProducts] = useState<Record<number, string | null>>({});
+  const products = useQuery({
+    queryKey: queryKey("products", "tenant", { purpose: "deal-preview", active: true }),
+    queryFn: fetchDealProducts,
+    enabled: jobParam === null && savedId === null,
+  });
+  const productOptions = (products.data ?? []).map((product) => ({
+    value: product.code,
+    label: `${product.code} · ${product.name}`,
+  }));
+  const validProducts =
+    !products.isError &&
+    lines.every((id) => productOptions.some((option) => option.value === selectedProducts[id]));
+
   const nextLine = useRef(1);
   const [confirm, setConfirm] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -67,7 +87,7 @@ function Preview() {
     command.pending || (jobParam !== null && (job.data === undefined || !isTerminal(job.data)));
   const locked = command.pending || jobParam !== null || savedId !== null;
   async function submit(form: HTMLFormElement) {
-    if (inFlight.current || locked || !entity) return;
+    if (inFlight.current || locked || !entity || !validProducts) return;
     const data = new FormData(form);
     const value = (key: string) => String(data.get(key) ?? "").trim();
     const input: DealInput = {
@@ -75,7 +95,7 @@ function Preview() {
       entity_code: entity.code,
       start_date: value("start"),
       lines: lines.map((id) => ({
-        product_code: value(`product-${id}`),
+        product_code: selectedProducts[id] ?? "",
         quantity: value(`quantity-${id}`),
         term_months: value(`term-${id}`) === "" ? null : Number(value(`term-${id}`)),
         price: { amount: value(`price-${id}`), currency: entity.functional_currency },
@@ -114,6 +134,24 @@ function Preview() {
           }
         />
       )}
+      {!locked && products.isPending && <p role="status">{text("productsLoading")}</p>}
+      {!locked && products.isError && (
+        <Banner
+          tone="negative"
+          title={text("productsError")}
+          actions={
+            <Button
+              variant="link"
+              onClick={() => {
+                void products.refetch();
+              }}
+            >
+              {text("retry")}
+            </Button>
+          }
+        />
+      )}
+      {!locked && products.data?.length === 0 && <p>{text("productsEmpty")}</p>}
       {jobParam === null && savedId === null && (
         <form
           onSubmit={(event) => {
@@ -167,10 +205,16 @@ function Preview() {
             {lines.map((id, index) => (
               <fieldset key={id} className="flex flex-wrap gap-3 rounded border p-3">
                 <legend>{t("deal.line", { number: index + 1 })}</legend>
-                <label>
-                  {text("product")}{" "}
-                  <input name={`product-${id}`} required maxLength={128} className="border p-2" />
-                </label>
+                <Field name={`product-${id}`} label={text("product")} required width="text">
+                  {(control) => (
+                    <Combobox
+                      control={control}
+                      options={productOptions}
+                      value={selectedProducts[id] ?? null}
+                      onChange={(value) => setProducts((current) => ({ ...current, [id]: value }))}
+                    />
+                  )}
+                </Field>
                 <label>
                   {text("quantity")}{" "}
                   <input
@@ -233,7 +277,9 @@ function Preview() {
             <Button
               type="submit"
               loading={command.pending}
-              disabledReason={!entity ? text("chooseEntity") : undefined}
+              disabledReason={
+                !entity ? text("chooseEntity") : !validProducts ? text("chooseProducts") : undefined
+              }
             >
               {text("run")}
             </Button>
@@ -301,6 +347,7 @@ function Preview() {
             setSearch({});
             command.reset();
             setLines([0]);
+            setProducts({});
             setConfirm(false);
             setNetworkError(false);
           },

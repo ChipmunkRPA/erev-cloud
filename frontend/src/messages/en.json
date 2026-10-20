@@ -7835,5 +7835,9 @@
   "deal.saveExplanation": "Create a draft in this scenario using current configuration. Its calculated amounts may differ from this retained preview. Saving does not activate the contract or post revenue.",
   "deal.externalId": "Contract external ID",
   "deal.externalIdRequired": "Enter a contract external ID.",
-  "deal.saveNetworkError": "Could not confirm the save. Retry with the same external ID to recover the result."
+  "deal.saveNetworkError": "Could not confirm the save. Retry with the same external ID to recover the result.",
+  "deal.productsLoading": "Loading active products\u2026",
+  "deal.productsError": "Could not load products. Retry before running the preview.",
+  "deal.productsEmpty": "No active products are available. Add or activate a product before running a preview.",
+  "deal.chooseProducts": "Select an active product for every line."
 }
