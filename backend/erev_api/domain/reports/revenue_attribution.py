@@ -171,6 +171,8 @@ def read(
                 "time",
                 "time_functional",
                 "input_classes",
+                "input_time_txn",
+                "input_time_functional",
                 "amount_functional",
                 "minor_unit",
             }
@@ -195,12 +197,14 @@ def read(
         signs = node.params["signs"].split("|") if node.inputs else []
         if len(signs) != len(node.inputs) or any(sign not in {"1", "-1"} for sign in signs):
             raise ValueError("Invalid revenue target signs.")
-        parts = []
+        parts: list[revenue_trace.RevenueMovement] = []
         identities: set[UUID] = set()
         transaction = Fraction(0)
         sourced_time_txn = Fraction(0)
         sourced_time_functional = Fraction(0)
-        for child, sign, is_time in zip(node.inputs, signs, classes, strict=True):
+        for index, (child, sign, is_time) in enumerate(
+            zip(node.inputs, signs, classes, strict=True)
+        ):
             if (
                 not isinstance(child, str)
                 or not child.startswith("revenue_cum:")
@@ -224,7 +228,39 @@ def read(
                 if Fraction(nodes[child].value) or prior_sources:
                     raise ValueError("Functional revenue target has missing original sources.")
                 continue
-            for part in revenue_trace.project(trace, functional, raw, currency=currency):
+            original_sources = revenue_trace.project(trace, functional, raw, currency=currency)
+            if is_time is None:
+                time_in_txn, time_in_functional = revenue_trace.input_time(
+                    node.params, len(node.inputs), index
+                )
+                retained_time_txn = Fraction(time_in_txn, 10**txn_scale)
+                retained_time_functional = Fraction(time_in_functional, 10**scale)
+                sourced_time_txn += retained_time_txn
+                sourced_time_functional += retained_time_functional
+                identities.update(part.movement_id for part in original_sources)
+                total_txn = int(sign) * sum(
+                    (
+                        part.coefficient * Fraction(raw_by_id[part.movement_id]["amount_txn"])
+                        for part in original_sources
+                    ),
+                    Fraction(0),
+                )
+                if total_txn != int(sign) * Fraction(nodes[child].value):
+                    raise ValueError("Mixed input transaction sources do not reconcile.")
+                total_functional = int(sign) * sum(
+                    (part.amount for part in original_sources), Fraction(0)
+                )
+                parts.extend(
+                    revenue_trace.split_single_origin(
+                        original_sources,
+                        total=total_txn if view == "transaction" else total_functional,
+                        time=retained_time_txn
+                        if view == "transaction"
+                        else retained_time_functional,
+                    )
+                )
+                continue
+            for part in original_sources:
                 identities.add(part.movement_id)
                 if is_time:
                     sourced_time_functional += int(sign) * part.amount

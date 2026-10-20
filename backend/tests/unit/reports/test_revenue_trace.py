@@ -221,3 +221,29 @@ def test_input_classes_require_original_unmixed_sources() -> None:
     assert input_classes(
         {"input_classes": "TIME", "time_functional": "10"}, 1, Fraction(0), Fraction(0)
     ) == (True,)
+
+
+@pytest.mark.parametrize("total,time", [(60, 100), (-80, -31), (0, 5)])
+def test_mixed_input_uses_exact_amounts_only_for_one_original_source(total, time) -> None:
+    from dataclasses import replace
+
+    from erev_api.domain.reports.revenue_trace import RevenueSource, split_single_origin
+
+    source = RevenueSource(
+        UUID(int=1), UUID(int=2), "layer", "LIABILITY_LAYER_CONSUMED", Fraction(total)
+    )
+    result = split_single_origin([source], total=Fraction(total), time=Fraction(time))
+    assert sum(item.amount for item in result) == total
+    assert sum(item.amount for item in result if item.time) == time
+    assert all(
+        item.contract_id == source.contract_id and item.layer_key == "layer" for item in result
+    )
+    for other in (
+        replace(source, contract_id=UUID(int=3)),
+        replace(source, layer_key="other"),
+        replace(source, source_key="other-origin"),
+    ):
+        with pytest.raises(InvalidRevenueTrace, match="unique original"):
+            split_single_origin([source, other], total=Fraction(total), time=Fraction(time))
+    with pytest.raises(InvalidRevenueTrace, match="unique original"):
+        split_single_origin([], total=Fraction(total), time=Fraction(time))

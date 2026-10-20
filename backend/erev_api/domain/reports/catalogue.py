@@ -579,6 +579,9 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "groups and return-month-only presentation, while earlier bindings retain their scope",
             "unexplained OTHER on any individual contract fails even when currency totals cancel",
             _as_locked("CONTRACT_BALANCE_ROLLFORWARD"),
+            "mixed revenue inputs use retained per-input TIME amounts in both currencies only "
+            "when original sources have one contract, layer, movement kind, date and source "
+            "identity; ambiguous ownership is not proportionally assigned",
         ),
         tie_outs=("TO_ROLLFORWARD_BALANCES", "TO_BALANCES_EQ_ROLLFORWARD", "TO_ROLLFORWARD_EQ_GL"),
     ),
@@ -661,6 +664,9 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "counterparts; asset settlement and new liabilities are not opening relief; earlier "
             "legacy bindings retain their original builder",
             _as_locked("CONTRACT_BALANCE_ROLLFORWARD"),
+            "mixed revenue inputs use retained per-input TIME amounts in both currencies only "
+            "when original sources have one contract, layer, movement kind, date and source "
+            "identity; ambiguous ownership is not proportionally assigned",
         ),
     ),
     _definition(

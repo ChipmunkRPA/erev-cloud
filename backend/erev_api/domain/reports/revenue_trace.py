@@ -23,8 +23,8 @@ class InvalidRevenueTrace(ValueError):
 
 def input_classes(
     params: Mapping[str, str], count: int, transaction: Fraction, time: Fraction
-) -> tuple[bool, ...]:
-    """Read original per-input classes; legacy evidence supports uniform targets only."""
+) -> tuple[bool | None, ...]:
+    """Read source classes; None requires exact mixed-input TIME and unique provenance."""
     if "input_classes" not in params:
         if time and time != transaction:
             raise InvalidRevenueTrace(
@@ -34,14 +34,29 @@ def input_classes(
     classes = params["input_classes"].split("|") if count else []
     if (
         len(classes) != count
-        or any(value not in {"TIME", "EVENT"} for value in classes)
+        or any(value not in {"TIME", "EVENT", "MIXED"} for value in classes)
         or "time_functional" not in params
         or (not count and params["input_classes"])
     ):
         raise InvalidRevenueTrace(
             "Revenue input classes lack unambiguous retained component sources."
         )
-    return tuple(value == "TIME" for value in classes)
+    for index, value in enumerate(classes):
+        if value == "MIXED":
+            input_time(params, count, index)
+    return tuple(None if value == "MIXED" else value == "TIME" for value in classes)
+
+
+def input_time(params: Mapping[str, str], count: int, index: int) -> tuple[int, int]:
+    """Exact signed input TIME amounts retained by S14, in each currency's minor units."""
+    try:
+        transaction = params["input_time_txn"].split("|")
+        functional = params["input_time_functional"].split("|")
+        if len(transaction) != count or len(functional) != count:
+            raise ValueError("Input count differs.")
+        return int(transaction[index]), int(functional[index])
+    except (KeyError, ValueError, IndexError) as error:
+        raise InvalidRevenueTrace("Mixed input lacks unambiguous retained TIME amounts.") from error
 
 
 @dataclass(frozen=True, slots=True)
@@ -175,6 +190,27 @@ class RevenueMovement:
     source_key: str | None
     time: bool
     amount: Fraction
+
+
+def split_single_origin(
+    sources: Sequence[RevenueSource],
+    *,
+    total: Fraction,
+    time: Fraction,
+) -> tuple[RevenueMovement, ...]:
+    """Split exact TIME/EVENT amounts only when every source has the same provenance."""
+    identities = {
+        (item.contract_id, item.layer_key, item.movement_kind, item.effective_date, item.source_key)
+        for item in sources
+    }
+    if len(identities) != 1:
+        raise InvalidRevenueTrace("Mixed input requires unique original source attribution.")
+    identity = next(iter(identities))
+    return tuple(
+        RevenueMovement(*identity, is_time, amount)
+        for is_time, amount in ((True, time), (False, total - time))
+        if amount
+    )
 
 
 @dataclass(frozen=True, slots=True)

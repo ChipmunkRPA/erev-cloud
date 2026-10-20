@@ -1713,6 +1713,18 @@ def _target_node(
         "signs": "|".join(str(sign) for share in shares for _, sign in share.inputs),
         "time": str(time_functional if fx else time_txn),
         "time_functional": str(time_functional),
+        # A single signed input has an exact TIME contribution. Multiple inputs
+        # still require component evidence; never distribute their TIME by ratio.
+        "input_time_txn": "|".join(
+            str(share.time_txn) if len(share.inputs) == 1 else "unresolved"
+            for share in shares
+            for _ in share.inputs
+        ),
+        "input_time_functional": "|".join(
+            str(share.time_functional) if len(share.inputs) == 1 else "unresolved"
+            for share in shares
+            for _ in share.inputs
+        ),
         # Preserve the class of each original signed input. A mixed part cannot
         # identify its owners by a ratio; consumers must require finer evidence.
         "input_classes": "|".join(

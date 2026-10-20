@@ -1138,3 +1138,35 @@ def test_role_trace_retains_distinct_time_event_sources() -> None:
     assert node.params["time_functional"] == "8000"
     assert input_classes(node.params, 2, Fraction(60), Fraction(100)) == (True, False)
     assert node.inputs == (time.node_id, event.node_id)
+
+
+def test_role_trace_retains_exact_mixed_input_amounts() -> None:
+    from erev_api.domain.reports.revenue_trace import input_classes, input_time
+    from erev_engine.stages.s14_posting.targets import _Share, _target_node
+
+    ctx = book_context()
+    tb = TraceBuilder(engine_version=ENGINE_VERSION)
+    target = _target("revenue_cum", "mixed-owner", _period(1), 10000)
+    _emit(tb, (target,))
+    share = _Share(
+        part_key=("ASC606", ENTITY, "mixed-owner", "REVENUE", ""),
+        txn=-10000,
+        functional=-8000,
+        time_txn=-4000,
+        time_functional=-3100,
+        inputs=((target.node_id, -1),),
+        split=None,
+        passes=frozenset(),
+        rates=(),
+        currencies=("USD", "GBP"),
+    )
+    key = RoleKey("ASC606", ENTITY, "combined", "REVENUE_RECOGNITION", REVENUE, None, None)
+    node_id, amounts = _target_node(
+        ctx, tb, key, _period(1), [share], key.node_subject, "USD", False, ()
+    )
+    trace = tb.build(root_measures={})
+    node = next(node for node in trace.nodes if node.id == node_id)
+    assert reevaluate(trace)[node_id] == "-100.00"
+    assert amounts == (-10000, -8000, -4000, -3100)
+    assert input_classes(node.params, 1, Fraction(-100), Fraction(-40)) == (None,)
+    assert input_time(node.params, 1, 0) == (-4000, -3100)

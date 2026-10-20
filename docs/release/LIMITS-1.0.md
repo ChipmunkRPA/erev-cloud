@@ -1,5 +1,19 @@
 # eRev Cloud 1.0: stated limits of the release
 
+### October 20 — internally mixed revenue with unique provenance
+
+Revenue attribution now accepts an internally mixed TIME/EVENT input when its original sources
+identify one contract, layer, movement kind, date and source key, and the role target retains
+exact signed per-input TIME amounts in both currencies. The report preserves the original S14
+functional allocation and reconciles the TIME totals; it introduces no ownership ratio.
+
+This does not solve inputs spanning multiple original provenances, split-role inputs,
+non-revenue component inputs or mixed legacy targets without the new amounts. Scoped engine
+and source tests plus the existing DB intercompany progress-reversal journey passed; they do
+not establish acceptance of every public mixed-source workflow. Independent accounting sign-off
+and the wider remaining reporting work are still open. No deployment.
+
+
 ### October 20 — manual adjustments in historical schedules
 
 Fixed-only time-based schedule projections now replay manual releases, deferrals and schedule

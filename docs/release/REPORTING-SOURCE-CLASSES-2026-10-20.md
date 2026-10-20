@@ -12,10 +12,23 @@ supports aggregations of separately classified sources, including negative event
 that reduce a positive TIME target, without assigning one class to the whole net amount.
 Prior targets and paid history continue through the existing signed delta reconciliation.
 
-Older traces without input classes retain their uniform-target behavior. A mixed legacy
-target, a malformed class list, or a new internally mixed input is refused. Split-role
-inputs and non-revenue component sources remain subject to existing attribution limits.
-This change does not complete all mixed TIME/EVENT public workflows or accounting acceptance.
+Older traces without input classes retain their uniform-target behavior. Mixed legacy targets
+and malformed class lists remain unsupported. New role targets additionally retain signed
+`input_time_txn` and `input_time_functional` minor-unit amounts per input when the original
+part has one signed input. Multi-input parts explicitly retain `unresolved`, not a ratio.
+
+An internally mixed input with those exact amounts can now split TIME and EVENT when all its
+original revenue sources have the same contract, layer, movement kind, effective date and
+source key. Both currency totals still reconcile to original target evidence; prior targets
+and paid history retain their existing reconciliation. This preserves S14's functional TIME
+amount rather than introducing a new report-side FX or allocation rule. Multiple original
+provenances remain unsupported. Split-role inputs and non-revenue component sources retain
+their existing limits. Full mixed-workflow/API acceptance and independent accounting sign-off
+remain open.
+
+Additional scoped checks cover the retained negative input amounts, signed and zero-net
+splits, and refusal of different contracts, layers or source keys. These checks do not prove
+that every mixed multi-layer scenario can be decomposed.
 
 Necessary verification:
 

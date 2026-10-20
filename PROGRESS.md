@@ -2,6 +2,22 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Mixed TIME/EVENT input with unique source — October 20, 2026
+
+- Stage 14 retains signed TIME amounts in both currencies for each single-input part. A
+  multi-input part explicitly remains unresolved; the report introduces no allocation ratio.
+- Revenue attribution can split an internally mixed input when every original source agrees
+  on contract, layer, movement kind, effective date and source key. Both currency TIME totals,
+  transaction sources, prior targets and paid history remain reconciled to original evidence.
+- 35 scoped posting/source tests pass, including negative input amounts, offsetting TIME/EVENT,
+  zero-net figures and ambiguous provenance rejection. Original S14 functional allocation is
+  preserved. The DB intercompany progress-reversal journey, lint/types and both migrated IPE
+  definitions pass. Migration 0218 describes the balance/opening-liability consumers.
+- Mixed multiple-provenance sources, legacy traces without exact input amounts, split-role
+  inputs and non-revenue components remain open. This is not acceptance of every public mixed
+  workflow; independent accounting sign-off remains outstanding. No deployment.
+
+
 ## Original-cut manual schedule projection — October 20, 2026
 
 - Fixed-only deterministic schedules now replay manual release, manual defer and schedule
