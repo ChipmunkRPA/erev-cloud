@@ -1135,3 +1135,122 @@ def test_multiple_liability_layers_flow_through_functional_report(world: World) 
     )
     assert repeated.status_code == 200, repeated.text
     assert repeated.json()["items"] == rows
+
+
+@pytest.mark.parametrize("multiple,billing_mode", [(False, "ERP"), (True, "ERP"), (True, "ENGINE")])
+def test_credit_memo_fx_reaches_functional_rollforward(
+    world: World, multiple: bool, billing_mode: str
+) -> None:
+    from erev_api.db.tables import contract, legal_entity
+    from erev_api.domain.close import pass_evidence
+    from erev_api.domain.reports import tie_outs
+    from erev_api.jobs.context import JobRuntime
+    from support import worlds
+
+    if billing_mode == "ENGINE":
+        from erev_api.enums import RegistryCategory, RegistryScope
+        from support.rows import publish_registry_version
+
+        with world.place.uow() as uow:
+            entity_id = uow.session.execute(
+                select(legal_entity.c.id).where(legal_entity.c.code == ENTITY)
+            ).scalar_one()
+            publish_registry_version(
+                uow.session,
+                tenant_id=world.place.tenant_id,
+                category=RegistryCategory.ACCOUNTING_POLICY,
+                scope=RegistryScope.ENTITY,
+                entity_id=entity_id,
+                values={"billing.posting": "ENGINE"},
+                at=world.place.clock.now(),
+            )
+            uow.commit()
+    contract_id, _ = _advance_received(world)
+    if multiple:
+        _recorded(world, contract_id, 3, _invoice("ADV-2", "2026-08-10", "10000.00"))
+    head = world.place.scalar(
+        select(contract.c.head_stream_version).where(contract.c.id == contract_id)
+    )
+    _recorded(
+        world,
+        contract_id,
+        int(head),
+        {
+            "event_type": "CREDIT_MEMO_RECORDED",
+            "effective_date": "2026-08-20",
+            "payload": {
+                "credit_memo_number": "CM-ADV-1",
+                "obligation_key": "O1",
+                "amount": {"amount": "100000.00" if multiple else "40000.00", "currency": "USD"},
+                "issue_date": "2026-08-20",
+            },
+        },
+    )
+    with world.place.uow() as uow:
+        line = (
+            uow.session.execute(
+                select(subledger_line).where(
+                    subledger_line.c.contract_id == contract_id,
+                    subledger_line.c.entry_kind == FX,
+                    subledger_line.c.account_role == "CONTRACT_LIABILITY",
+                )
+            )
+            .mappings()
+            .one()
+        )
+        attributed = pass_evidence.liability_attribution(
+            uow, line["id"], owners={CONTRACT: contract_id}
+        )
+        assert attributed is not None and attributed.amount == Decimal(
+            "-4000.00" if multiple else "-1600.00"
+        )
+        assert len(attributed.movements) == (2 if multiple else 1)
+        assert attributed.movements[0].event_type == "CREDIT_MEMO_RECORDED"
+    reporting = worlds.ReportWorld(
+        place=world.place,
+        priya=world.priya,
+        marcus=world.marcus,
+        runtime=JobRuntime(
+            clock=world.place.clock, keyring=world.place.keyring, files=world.place.files
+        ),
+        entity_id=world.place.scalar(
+            select(legal_entity.c.id).where(legal_entity.c.code == ENTITY)
+        ),
+        contracts={},
+    )
+    run, rows = worlds.report_run(
+        reporting,
+        "contract_balance_rollforward",
+        {
+            "entity_codes": [ENTITY],
+            "book": BOOK,
+            "currency_view": "functional",
+            "from_period_key": "FY2026-P08",
+            "to_period_key": "FY2026-P08",
+        },
+    )
+    found = {row["row_key"]: row for row in rows}
+    for key, expected in (
+        ("OPENING", "72000.00"),
+        ("CLOSING", "0.00" if multiple else "40000.00"),
+        ("FX_REMEASUREMENT", "4000.00" if multiple else "1600.00"),
+        ("BILLINGS", "-76000.00" if multiple else "-33600.00"),
+    ):
+        assert found[key]["contract_liability"] == {"amount": expected, "currency": "GBP"}
+    assert (
+        next(
+            check
+            for check in run["tie_out_results"]
+            if check["code"] == tie_outs.TO_ROLLFORWARD_BALANCES
+        )["result"]
+        == "PASS"
+    )
+    started = post(world.app, f"/api/v1/report-runs/{run['id']}/rerun", world.maya, {})
+    assert started.status_code == 202, started.text
+    finished = worlds.run_now(reporting, UUID(started.json()["id"]))
+    assert finished["state"] == "SUCCEEDED", finished
+    repeated = get(
+        world.app, f"/api/v1/report-runs/{started.headers['x-erev-report-run-id']}/data", world.maya
+    )
+    assert repeated.status_code == 200, repeated.text
+    assert repeated.json()["items"] == rows

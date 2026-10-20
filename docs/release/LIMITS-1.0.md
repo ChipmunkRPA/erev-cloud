@@ -1,5 +1,27 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## Credit-memo FX source attribution — October 20, 2026
+
+- JET-10c attribution now resolves the original credit-memo difference trace into its
+  retained liability reliefs, source owners, layer creation dates and event sequence.
+  Each relief matches its original output and trace; the pinned rate and full difference
+  formula are verified. Transaction portions are cumulatively converted in original trace
+  order, preserving the once-rounded memo total and offsetting owner differences without a
+  residual bucket or an allocation based on historical carrying value.
+- Functional rollforward billing now uses the same retained spot conversion for those memo
+  portions; actual posted EVENT FX adjusts each liability layer before its memo. Historical
+  report bindings without the EVENT source path retain their former behavior. Derived source
+  identities remain tied to immutable computation evidence and participate in paid-history
+  subtraction. The engine and sealed journal amounts are unchanged.
+- Necessary checks passed: actual single-layer and two-layer public memo/report workflows,
+  ERP-imported and ENGINE-posted billing, source attribution and identical bound reruns. A
+  USD 40,000 memo converts GBP 32,000 historical relief to GBP 33,600 at spot, with GBP 1,600
+  FX and a GBP 40,000 closing liability. The two-layer full credit closes to zero with
+  GBP 4,000 FX. Focused rounding/offsetting-owner and corruption checks, lint and types pass.
+- Still open: public combined-contract credit-memo acceptance, late-carried public acceptance
+  without reopening, recorded privacy/snapshot registry gaps and final accounting/release
+  acceptance. This closes the ordinary JET-10c source gap, not every FX scenario. No deployment.
+
 ## Foreign lock-to-lock business attribution — October 20, 2026
 
 - Difference replay now holds operational period states constant after verifying both original

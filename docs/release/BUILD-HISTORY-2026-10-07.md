@@ -9207,3 +9207,24 @@ cleanup in the shared database session kernel was also repaired and regression-t
   separate reporting FX change (including unchanged engine inputs) and population/membership
   handling. Public reporting-currency variance, populated foreign lock-to-lock acceptance and
   the other documented gaps remain. No deployment or independent accounting sign-off.
+
+## Reporting-currency close variance — October 20, 2026
+
+- The public variance report now offers reporting currency (migration 0191). Ordinary replay,
+  connected membership changes and independent population changes use authenticated lock rate
+  bases. Business effects use earlier reporting rates; a final FX phase applies later reporting
+  rates after any transaction/functional FX phase. Identical retained computations with changed
+  lock rates produce FX effects, never a fabricated business event or PROGRESS residual.
+- Replay evidence retains both reporting-basis hashes and marks the reporting_rates phase.
+  Entry effects are valued at earlier rates before FX; exits remove the earlier frozen value.
+  Currency/period basis changes and missing historical rates explicitly refuse. New reporting
+  waterfall snapshots retain the selected period's average even when there is no revenue, so
+  later population comparisons need not read current reference settings.
+- Necessary checks: real-engine business/FX and unchanged-computation cases, population entry,
+  combined-membership reporting replay against authored frozen datasets, and public empty-lock
+  jobs with bound reruns/revocation. Actual empty lock publication verifies retained averages;
+  68 focused registry/rate checks, 96 frontend checks and scoped lint/types pass.
+- Still outstanding: populated foreign-currency public lock-to-lock acceptance, combined and
+  late-carried liability FX, other documented reporting gaps and final release verification.
+  Older locks missing required currency/rate evidence cannot be silently reconstructed.
+  No deployment or independent accounting sign-off; production readiness remains unproven.

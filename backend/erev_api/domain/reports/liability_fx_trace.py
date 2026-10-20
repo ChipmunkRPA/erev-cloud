@@ -91,11 +91,12 @@ def project(
     movements: Sequence[Mapping[str, Any]],
     *,
     currency: str,
+    components: Mapping[str, tuple[LayerSource, ...]] | None = None,
 ) -> Target:
     """Expand a retained S14 role target through S12's signed cumulative sums.
 
-    Only retained contract-asset/liability remeasurements may terminate the graph. Each sum
-    reconciles independently, so an omitted/corrupt child cannot hide in a net
+    Retained remeasurements and verified credit-memo relief components terminate
+    the graph. Each sum reconciles independently, so an omitted/corrupt child cannot hide in a net
     zero root. Zero targets with no sources are valid; unknown formulas are not.
     The caller scopes movements to the same immutable version and entity.
     """
@@ -116,6 +117,7 @@ def project(
     root = nodes.get(node_id)
     if root is None or root.formula_id != "post.role_target.v1":
         raise InvalidLiabilityTrace("Liability posting target is unavailable.")
+    expanded: dict[str, LayerSource] = {}
     active: set[str] = set()
     cached: dict[str, dict[str, Decimal]] = {}
 
@@ -138,6 +140,16 @@ def project(
             ):
                 raise InvalidLiabilityTrace("Liability movement differs from its retained trace.")
             result = {key: amount}
+        elif components is not None and key in components:
+            if node.formula_id != "fx.credit_memo_difference.v1":
+                raise InvalidLiabilityTrace("Unknown compound FX source.")
+            result = {}
+            for part in components[key]:
+                identity = f"{key}:{part.movement_id}"
+                if identity in result:
+                    raise InvalidLiabilityTrace("Duplicate compound FX source.")
+                expanded[identity] = part
+                result[identity] = part.amount
         elif _zero_settlement(node):
             result = {}
         else:
@@ -174,7 +186,9 @@ def project(
         node_id,
         currency,
         tuple(
-            LayerSource(
+            replace(expanded[key], amount=amount)
+            if key in expanded
+            else LayerSource(
                 UUID(str(leaves[key]["id"])),
                 UUID(str(leaves[key]["contract_id"])),
                 str(leaves[key]["layer_key"]),
@@ -228,6 +242,7 @@ def posting_delta(
     currency: str,
     minor_unit: int,
     paid: Sequence[LayerDelta],
+    components: Mapping[str, tuple[LayerSource, ...]] | None = None,
 ) -> PostingDelta:
     """Apply S14's target/prior/paid equation to source-layer amounts.
 
@@ -286,7 +301,7 @@ def posting_delta(
 
     for index, target_id in enumerate(node.inputs[:-1]):
         assert isinstance(target_id, str)
-        target = project(trace, target_id, movements, currency=currency)
+        target = project(trace, target_id, movements, currency=currency, components=components)
         time = sum((item.amount for item in target.sources if item.closing), Decimal(0))
         held_time = Decimal(node.params.get("time" if index == 0 else "time_previous", "NaN"))
         if not held_time.is_finite() or time != held_time.scaleb(-minor_unit):
@@ -392,6 +407,43 @@ def from_pass(
                 ),
             }
         )
+    from .credit_memo_fx import parts as memo_parts
+
+    raw_movements = [
+        {**item["columns"], "trace_node_id": item["trace_nodes"]["amount_functional"]}
+        for item in document["book_output"]["fx_layer_movements"]
+        if item["columns"]["entity"] == entity_code
+    ]
+    components: dict[str, tuple[LayerSource, ...]] = {}
+    for part in memo_parts(trace, raw_movements):
+        values = part.movement
+        owner = owners.get(values["contract_key"])
+        creation = creations.get(
+            (values["contract_key"], values["layer_key"], "CONTRACT_LIABILITY")
+        )
+        event = events.get(values["source_key"])
+        if (
+            owner is None
+            or values["contract_key"] not in bundle.group.member_contract_keys
+            or creation is None
+            or event is None
+            or event.event_type != "CREDIT_MEMO_RECORDED"
+        ):
+            raise InvalidLiabilityTrace("Credit-memo FX lacks authorized dated source evidence.")
+        component = LayerSource(
+            uuid5(evidence_id, f"{part.node_id}:{part.relief_node_id}"),
+            owner,
+            str(values["layer_key"]),
+            date.fromisoformat(values["effective_date"]),
+            False,
+            minor_to_decimal(part.difference_minor, bundle.currencies[currency].minor_unit),
+            date.fromisoformat(creation["effective_date"]),
+            "CONTRACT_LIABILITY",
+            values["source_key"],
+            event.record_seq,
+            event.event_type,
+        )
+        components[part.node_id] = (*components.get(part.node_id, ()), component)
     result = posting_delta(
         trace,
         delta_node_id,
@@ -399,5 +451,6 @@ def from_pass(
         currency=currency,
         minor_unit=bundle.currencies[currency].minor_unit,
         paid=paid,
+        components=components,
     )
     return replace(result, evidence=((evidence_id, str(document["sha256"])),))

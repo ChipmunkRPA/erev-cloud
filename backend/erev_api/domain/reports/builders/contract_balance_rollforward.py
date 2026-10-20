@@ -47,7 +47,10 @@ retained target/prior/paid decomposition, with recursive historical line depende
 original layer creation dates bound into reruns. Asset sources bypass liability layers; mixed
 control targets retain each source role. Historical passes without source evidence retain the
 legacy path; command attribution without complete evidence refuses. Layer
-totals must match posted period FX.
+totals must match posted period FX. Credit-memo reliefs use their original ordered
+transaction portions and pinned spot rate, cumulatively rounded to the memo total.
+Their billed amounts include this same spot conversion; the historical-to-spot
+difference enters the specific liability layers immediately before the memo.
 
 The reporting view translates monthly functional paths using the engine's S12-R-18 helper:
 opening at the preceding closing rate, flows at each posting period's average rate, closing
@@ -1215,6 +1218,48 @@ def _functional_documents(
                         flow=Flow(settlement, False, FX, liability_fx=tuple(parts.items())),
                     )
                 )
+            memo_spot: dict[str, Decimal] = {}
+            if entry.flow.amount > 0 and (
+                params.binding is None or "event_posted_fx_v1" in params.binding.evidence
+            ):
+                from ..credit_memo_fx import parts as memo_parts
+
+                memo_nodes = [
+                    node
+                    for node in trace.nodes
+                    if node.formula_id == "fx.credit_memo_difference.v1"
+                ]
+                scales = {
+                    child: (int(node.params["minor_unit"]), int(node.params["txn_minor_unit"]))
+                    for node in memo_nodes
+                    for child in node.inputs
+                    if isinstance(child, str)
+                }
+                raw = []
+                for item in found:
+                    scale = scales.get(str(item["trace_node_id"]))
+                    if scale is None:
+                        continue
+                    raw.append(
+                        {
+                            **item,
+                            "contract_key": row.external_id,
+                            "source_key": str(event_id),
+                            "functional_currency": currency,
+                            "effective_date": item["effective_date"].isoformat(),
+                            "amount_functional": int(
+                                Decimal(item["amount_functional"]).scaleb(scale[0])
+                            ),
+                            "amount_txn": int(Decimal(item["amount_txn"]).scaleb(scale[1])),
+                        }
+                    )
+                try:
+                    for part in memo_parts(trace, raw):
+                        memo_spot[part.relief_node_id] = Decimal(part.spot_minor).scaleb(
+                            -scales[part.relief_node_id][0]
+                        )
+                except (ValueError, KeyError) as error:
+                    raise tie_outs.invalid("currency_view", str(error)) from error
             for index, item in enumerate(
                 sorted(
                     found,
@@ -1224,7 +1269,9 @@ def _functional_documents(
                     ),
                 )
             ):
-                amount = Decimal(item["amount_functional"])
+                amount = memo_spot.get(
+                    str(item["trace_node_id"]), Decimal(item["amount_functional"])
+                )
                 translated.append(
                     replace(
                         entry,
