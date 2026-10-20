@@ -6,6 +6,16 @@
 
 
 
+## Conditional reporting catalogue — October 19, 2026
+
+- Removed the obsolete unconditional hiding of forecast outputs, actual-versus-forecast,
+  migration reconciliation and parallel-run comparison. Forecast entries follow the existing
+  sandbox/scenario-use access gate. Migration entries require migration.run and an authorized
+  migration list with at least one record; unauthorized readers do not request that list.
+- Forty-eight focused report-page checks pass, including workspace/access/empty-migration
+  visibility, with TypeScript and ESLint. This completes catalogue access, not the remaining
+  populated reporting workflows, accounting acceptance or independent sign-off. No deployment.
+
 ## Saved report identity and entity scope — October 19, 2026
 
 - Forecast CSV/XLSX Open report view links now retain run=<id>, using the saved-format reader
@@ -233,19 +243,6 @@
 - Reinspection confirms disclosure_pack already has child orchestration and a worker execution
   path. Its remaining acceptance gaps need auditing; do not describe orchestration as absent.
   No deployment or readiness claim.
-
-## CHANGE/ACCESS evidence workflow — October 19, 2026
-
-- Added atomic API creation, retained child-report readiness, current-requester worker
-  authorization, encrypted final archives, scoped list/detail and verified ZIP/manifest downloads.
-- Reporting now offers change/access generation forms, kind filters and retained detail pages.
-  CHANGE uses inclusive dates; ACCESS requires tenant-wide evidence and access.approve grants.
-- Real API → report workers → parent worker → list/detail/download passes for both kinds;
-  retained repeat downloads keep original bytes. Targeted UI flows, types and lint pass.
-- Still open: populated review campaigns through the complete parent flow, cancellation/revocation
-  acceptance specific to these kinds, and wider RPS-16 accounting acceptance. Next reporting
-  development: catalogue PACK builders and disclosure orchestration; remaining forecast work.
-  No deployment or production-readiness claim.
 
 ## Outstanding release verification
 

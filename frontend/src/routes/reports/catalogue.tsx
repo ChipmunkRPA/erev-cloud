@@ -22,6 +22,13 @@ import { chipFor, OutlineChip, StatusChip } from "../../components/ui/StatusChip
 import { Tooltip } from "../../components/ui/Tooltip";
 import { useAccess } from "../../lib/access";
 import { EVIDENCE_PACKS_ROUTE, mayReadEvidence } from "../../lib/api/queries/evidence-packs";
+import { fetchListPage } from "../../lib/api/lists";
+import { queryKey } from "../../lib/api/query-keys";
+import {
+  MIGRATIONS_PATH,
+  MIGRATION_RUN_PERMISSION,
+  type Migration,
+} from "../../lib/api/queries/migrations";
 import { useMe } from "../../lib/api/queries/me";
 import {
   fetchRecentReportRuns,
@@ -39,7 +46,6 @@ import { ReportsHeader } from "./frame";
 import {
   groupLabel,
   groupTestId,
-  HIDDEN_CODES,
   kindLabel,
   PACK_CODES,
   REPORT_GROUPS,
@@ -93,6 +99,18 @@ export function ReportCatalogue() {
   const me = useMe();
   const access = useAccess();
   const built = useBuiltPaths();
+  const tenant = me.data?.memberships.find(
+    (membership) => membership.membership_id === me.data?.active_membership_id,
+  )?.tenant;
+  const showForecasts = tenant?.kind === "sandbox" && access.holdsForAll("scenario.use");
+  const mayReadMigrations = access.holdsForAll(MIGRATION_RUN_PERMISSION);
+  const migrations = useQuery({
+    queryKey: queryKey("migrations", "tenant", { view: "report-catalogue" }),
+    queryFn: () => fetchListPage<Migration>(MIGRATIONS_PATH, {}, null, { limit: 1, count: false }),
+    enabled: mayReadMigrations,
+    retry: false,
+  });
+  const showMigrations = mayReadMigrations && (migrations.data?.items.length ?? 0) > 0;
   const definitions = useQuery({
     queryKey: reportDefinitionsKey(),
     queryFn: fetchReportDefinitions,
@@ -135,7 +153,9 @@ export function ReportCatalogue() {
     items: group.codes.flatMap((code) => {
       const found = byCode.get(code);
       return found === undefined ||
-        HIDDEN_CODES.has(code) ||
+        (["forecast_outputs", "actual_vs_forecast"].includes(code) && !showForecasts) ||
+        (["migration_reconciliation", "parallel_run_comparison"].includes(code) &&
+          !showMigrations) ||
         !matches(found, group, parsed.query, groupFilter, kindFilter)
         ? []
         : [found];

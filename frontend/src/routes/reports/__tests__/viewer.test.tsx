@@ -4,7 +4,15 @@
 // locked default and banner, the export formats, the tie-out strip, an empty run, the currency view field
 // error, the `rpo` bands and sections, and the catalogue groups. API answers are contract fakes of 04
 // API-R-41 (V-C).
-import { cleanup, configure, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import {
+  cleanup,
+  configure,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -953,62 +961,98 @@ describe("SF-08 catalogue", () => {
     },
   );
 
-  it("groups the definitions and hides the forecast and migration codes", async () => {
-    const definition = (code: string, name: string, kind: string): ReportDefinition => ({
-      ...WATERFALL,
-      code,
-      name,
-      kind,
-      output_formats: ["XLSX", "CSV", "PDF", "JSON"],
-    });
-    server.use(
-      http.get(apiUrl("/api/v1/me/notifications"), () =>
-        HttpResponse.json({ items: [], next_cursor: null }),
-      ),
-      http.get(apiUrl("/api/v1/entities"), () =>
-        HttpResponse.json({ items: [], next_cursor: null }),
-      ),
-      http.get(apiUrl("/api/v1/books"), () => HttpResponse.json({ items: [], next_cursor: null })),
-      http.get(apiUrl("/api/v1/jobs"), () => HttpResponse.json({ items: [], next_cursor: null })),
-      http.get(apiUrl("/api/v1/report-definitions"), () =>
-        HttpResponse.json({
-          items: [
-            definition("revenue_waterfall", "Revenue waterfall", "STANDARD"),
-            definition("rpo", "Remaining performance obligations", "DISCLOSURE"),
-            definition("forecast_outputs", "Forecast outputs", "STANDARD"),
-            definition("migration_reconciliation", "Migration reconciliation", "STANDARD"),
-            definition(
-              "legacy_contract_history_export",
-              "Legacy contract history export",
-              "LEGACY_EXPORT",
-            ),
-          ],
-          next_cursor: null,
-        }),
-      ),
-      http.get(apiUrl("/api/v1/report-runs"), () =>
-        HttpResponse.json({
-          items: [
-            reportRun({ run_by: { id: MARCUS.user.id, display_name: "Maya Chen", kind: "USER" } }),
-          ],
-          next_cursor: null,
-        }),
-      ),
-    );
-    renderApp(`/reports?${CONTEXT}`, { me: MARCUS, screenRoutes: SCREEN_ROUTES });
+  it.each([
+    { sandbox: false, permitted: false, hasMigration: false },
+    { sandbox: true, permitted: false, hasMigration: true },
+    { sandbox: true, permitted: true, hasMigration: false },
+    { sandbox: true, permitted: true, hasMigration: true },
+  ])(
+    "shows conditional reports for workspace context %j",
+    async ({ sandbox, permitted, hasMigration }) => {
+      const definition = (code: string, name: string, kind: string): ReportDefinition => ({
+        ...WATERFALL,
+        code,
+        name,
+        kind,
+        output_formats: ["XLSX", "CSV", "PDF", "JSON"],
+      });
+      server.use(
+        http.get(apiUrl("/api/v1/migrations"), () =>
+          HttpResponse.json({
+            items: hasMigration ? [{ id: "migration" }] : [],
+            next_cursor: null,
+          }),
+        ),
+        http.get(apiUrl("/api/v1/me/notifications"), () =>
+          HttpResponse.json({ items: [], next_cursor: null }),
+        ),
+        http.get(apiUrl("/api/v1/entities"), () =>
+          HttpResponse.json({ items: [], next_cursor: null }),
+        ),
+        http.get(apiUrl("/api/v1/books"), () =>
+          HttpResponse.json({ items: [], next_cursor: null }),
+        ),
+        http.get(apiUrl("/api/v1/jobs"), () => HttpResponse.json({ items: [], next_cursor: null })),
+        http.get(apiUrl("/api/v1/report-definitions"), () =>
+          HttpResponse.json({
+            items: [
+              definition("revenue_waterfall", "Revenue waterfall", "STANDARD"),
+              definition("rpo", "Remaining performance obligations", "DISCLOSURE"),
+              definition("forecast_outputs", "Forecast outputs", "STANDARD"),
+              definition("migration_reconciliation", "Migration reconciliation", "STANDARD"),
+              definition(
+                "legacy_contract_history_export",
+                "Legacy contract history export",
+                "LEGACY_EXPORT",
+              ),
+            ],
+            next_cursor: null,
+          }),
+        ),
+        http.get(apiUrl("/api/v1/report-runs"), () =>
+          HttpResponse.json({
+            items: [
+              reportRun({
+                run_by: { id: MARCUS.user.id, display_name: "Maya Chen", kind: "USER" },
+              }),
+            ],
+            next_cursor: null,
+          }),
+        ),
+      );
+      const member = signedInMe({
+        permissions: [
+          ...MARCUS.permissions,
+          ...(permitted ? ["scenario.use", "migration.run"] : []),
+        ],
+        memberships: MARCUS.memberships.map((membership) => ({
+          ...membership,
+          tenant: { ...membership.tenant, kind: sandbox ? "sandbox" : "production" },
+        })),
+      });
+      renderApp(`/reports?${CONTEXT}`, { me: member, screenRoutes: SCREEN_ROUTES });
 
-    expect(await screen.findByRole("heading", { level: 1, name: "Reports" })).toBeTruthy();
-    const balances = await screen.findByTestId("SF-08-grid-balances-and-disclosures");
-    expect(within(balances).getByText("Balances and disclosures (1)")).toBeTruthy();
-    const link = within(balances).getByRole("link", { name: "Remaining performance obligations" });
-    expect(link.getAttribute("href")).toBe(`/reports/rpo?${CONTEXT}`);
-    expect(screen.getByTestId("SF-08-row-rpo").textContent).toContain("XLSX CSV PDF");
-    expect(screen.getByTestId("SF-08-grid-legacy-exports")).toBeTruthy();
-    expect(screen.queryByText("Forecast outputs")).toBeNull();
-    expect(screen.queryByText("Migration reconciliation")).toBeNull();
-    const recent = await screen.findByTestId("SF-08-grid-recent-runs");
-    expect(within(recent).getByRole("link", { name: "RPT-000412" })).toBeTruthy();
-  });
+      expect(await screen.findByRole("heading", { level: 1, name: "Reports" })).toBeTruthy();
+      const balances = await screen.findByTestId("SF-08-grid-balances-and-disclosures");
+      expect(within(balances).getByText("Balances and disclosures (1)")).toBeTruthy();
+      const link = within(balances).getByRole("link", {
+        name: "Remaining performance obligations",
+      });
+      expect(link.getAttribute("href")).toBe(`/reports/rpo?${CONTEXT}`);
+      expect(screen.getByTestId("SF-08-row-rpo").textContent).toContain("XLSX CSV PDF");
+      expect(screen.getByTestId("SF-08-grid-legacy-exports")).toBeTruthy();
+      await waitFor(() => {
+        expect(screen.queryByTestId("SF-08-row-forecast-outputs") !== null).toBe(
+          sandbox && permitted,
+        );
+        expect(screen.queryByTestId("SF-08-row-migration-reconciliation") !== null).toBe(
+          permitted && hasMigration,
+        );
+      });
+      const recent = await screen.findByTestId("SF-08-grid-recent-runs");
+      expect(within(recent).getByRole("link", { name: "RPT-000412" })).toBeTruthy();
+    },
+  );
 });
 
 const LEGACY_JE: ReportDefinition = {
@@ -2318,7 +2362,6 @@ describe("FWR-R1 refusal ownership across overlapping creation attempts (SF-08:r
     expect(held.posts()).toBe(1);
   });
 });
-
 
 it("identifies both frozen locks in the variance run stamp", () => {
   const later = "8b10c4d2-6e1f-4a3b-9c8d-7e6f5a4baa43";

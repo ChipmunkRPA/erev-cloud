@@ -130,18 +130,6 @@ export const REPORT_GROUPS: readonly ReportGroup[] = [
   { id: "evidencePacks", codes: ["period_evidence_pack", "contract_sample_pack"] },
 ];
 
-/**
- * §5.1 visibility: the forecast reports render only in a sandbox holding a scenario (REQ-FC-003, 005)
- * and the migration reports only when `GET /migrations?limit=1` returns an item. Neither read exists
- * in the rc (SF-17 and SF-19 are post-rc), so these codes stay hidden.
- */
-export const HIDDEN_CODES: ReadonlySet<string> = new Set([
-  "forecast_outputs",
-  "actual_vs_forecast",
-  "migration_reconciliation",
-  "parallel_run_comparison",
-]);
-
 /** §5.1: packs link to SF-09 rather than to SF-08:report. */
 export const PACK_CODES: ReadonlySet<string> = new Set([
   "period_evidence_pack",
