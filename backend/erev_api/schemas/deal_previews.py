@@ -6,7 +6,9 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from erev_api.enums import SspRangePosition
 from erev_api.events.payloads import NonNegativeMoney, PositiveDecimal
+from erev_api.money import MoneyOut
 from erev_api.schemas.common import JobOut
 
 
@@ -70,6 +72,42 @@ class DealPreviewSummaryOut(BaseModel):
     created_at: datetime
 
 
+class DealAllocationOut(BaseModel):
+    subject_key: str
+    obligation_key: str
+    product_code: str
+    stated_price: MoneyOut
+    ssp_low: str | None
+    ssp_mid: str | None
+    ssp_high: str | None
+    range_position: SspRangePosition | None
+    selected_ssp: str | None
+    allocation_weight: str | None
+    allocated_amount: MoneyOut
+    allocation_adjustment: MoneyOut
+
+
+class DealRevenueOut(BaseModel):
+    entity_code: str
+    period_key: str
+    subject_key: str
+    product_code: str | None
+    amount: MoneyOut
+
+
+class DealBookOut(BaseModel):
+    book_code: str
+    transaction_price: MoneyOut
+    total_allocated: MoneyOut
+    scheduled: MoneyOut
+    awaiting_trigger: MoneyOut
+    has_material_right: bool
+    has_variable_consideration: bool
+    allocations: list[DealAllocationOut]
+    revenue_by_period: list[DealRevenueOut]
+
+
 class DealPreviewOut(DealPreviewSummaryOut):
+    presentation: list[DealBookOut]
     result: dict[str, Any]
     pinned_refs: dict[str, Any]

@@ -22,7 +22,7 @@ from erev_api.auth.dependencies import require
 from erev_api.auth.principal import RequestContext
 from erev_api.db.session import tenant_session
 from erev_api.db.tables import deal_preview, legal_entity
-from erev_api.domain.forecast import deal_job
+from erev_api.domain.forecast import deal_job, deal_results
 from erev_api.problems import Problem
 from erev_api.schemas.common import ListOut
 from erev_api.schemas.deal_previews import (
@@ -146,4 +146,6 @@ def get(preview_id: UUID, response: Response, ctx: Reader) -> DealPreviewOut:
     ):
         raise Problem("precondition-failed", "The retained preview evidence failed verification.")
     response.headers["Cache-Control"] = "no-store"
-    return DealPreviewOut.model_validate(row)
+    return DealPreviewOut.model_validate(
+        {**row, "presentation": deal_results.project(row["input"], row["result"])}
+    )

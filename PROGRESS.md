@@ -6,6 +6,21 @@
 
 
 
+## Deal preview report presentation — October 19, 2026
+
+- Detail reads now expose typed allocation rows, SSP bounds/range position, selected SSP,
+  weights and adjustments, per-book transaction/allocation totals, material-right and variable
+  consideration indicators, and revenue grouped by entity/period/subject. Only REVENUE
+  schedules contribute; billing and costs are excluded. Currency precision comes from retained
+  input evidence and all displayed money remains decimal strings.
+- Scheduled and awaiting-trigger totals explain previews whose revenue schedule is empty.
+  Projection uses hash-verified saved evidence, without resolving current configuration again.
+  OpenAPI and frontend types are regenerated.
+- Reporting remains a development priority. This completes only the result data layer; SF-18
+  screen, scenario save, actual-versus-forecast populated K11 and multi-contract K03/close
+  variance remain open. Tamsin acceptance and independent sign-off are also outstanding.
+  No deployment; direct main workflow.
+
 ## Asynchronous deal preview API and worker — October 19, 2026
 
 - Added POST /deal-previews with idempotent command admission and a reserved preview identity;
@@ -228,20 +243,6 @@
   development work. Full populated accounting acceptance and independent sign-off remain open.
 - Two focused register tests, Python typing/lint, frontend TypeScript/ESLint and the real
   disclosure journey pass. No deployment; the disposable verification database was stopped.
-
-## Disclosure snapshot register — October 19, 2026
-
-- Added /reports/disclosures and a Reports tab for report.run readers. The register queries
-  retained snapshot metadata using entity/book/period context and disclosure-type selection,
-  pages older records, and links each record to its original report run.
-- Reuses the lazy verified snapshot detail panel. Draft versus locked source remains explicit;
-  metadata browsing does not fetch all payloads or imply lock-time capture is complete.
-  Source-status filtering was added in the subsequent source-filter update.
-- Four focused register/detail checks pass with TypeScript/ESLint. Actual-versus-forecast
-  populated-posting acceptance remains unproven; review found existing computation/cutoff UI,
-  so no speculative calculation rewrite was made. Disclosure lock-time orchestration was
-  already implemented (see archived publication/frozen-execution entries); the earlier status
-  here was stale. Populated accounting acceptance and independent sign-off remain open.
 
 ## Outstanding release verification
 

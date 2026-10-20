@@ -12530,6 +12530,46 @@ export interface components {
       /** Period Key */
       period_key: string;
     };
+    /** DealAllocationOut */
+    DealAllocationOut: {
+      allocated_amount: components["schemas"]["MoneyOut"];
+      allocation_adjustment: components["schemas"]["MoneyOut"];
+      /** Allocation Weight */
+      allocation_weight: string | null;
+      /** Obligation Key */
+      obligation_key: string;
+      /** Product Code */
+      product_code: string;
+      range_position: components["schemas"]["SspRangePosition"] | null;
+      /** Selected Ssp */
+      selected_ssp: string | null;
+      /** Ssp High */
+      ssp_high: string | null;
+      /** Ssp Low */
+      ssp_low: string | null;
+      /** Ssp Mid */
+      ssp_mid: string | null;
+      stated_price: components["schemas"]["MoneyOut"];
+      /** Subject Key */
+      subject_key: string;
+    };
+    /** DealBookOut */
+    DealBookOut: {
+      /** Allocations */
+      allocations: components["schemas"]["DealAllocationOut"][];
+      awaiting_trigger: components["schemas"]["MoneyOut"];
+      /** Book Code */
+      book_code: string;
+      /** Has Material Right */
+      has_material_right: boolean;
+      /** Has Variable Consideration */
+      has_variable_consideration: boolean;
+      /** Revenue By Period */
+      revenue_by_period: components["schemas"]["DealRevenueOut"][];
+      scheduled: components["schemas"]["MoneyOut"];
+      total_allocated: components["schemas"]["MoneyOut"];
+      transaction_price: components["schemas"]["MoneyOut"];
+    };
     /** DealInputIn */
     DealInputIn: {
       /** Customer Id */
@@ -12585,6 +12625,8 @@ export interface components {
       pinned_refs: {
         [key: string]: unknown;
       };
+      /** Presentation */
+      presentation: components["schemas"]["DealBookOut"][];
       proposal: components["schemas"]["DealInputIn"];
       /** Result */
       result: {
@@ -12649,6 +12691,18 @@ export interface components {
       result_sha256: string;
       /** Saved Contract Id */
       saved_contract_id: string | null;
+    };
+    /** DealRevenueOut */
+    DealRevenueOut: {
+      amount: components["schemas"]["MoneyOut"];
+      /** Entity Code */
+      entity_code: string;
+      /** Period Key */
+      period_key: string;
+      /** Product Code */
+      product_code: string | null;
+      /** Subject Key */
+      subject_key: string;
     };
     /**
      * DerivedBlockerCode

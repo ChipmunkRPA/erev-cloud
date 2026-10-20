@@ -6652,6 +6652,67 @@ def test_deal_preview_api_worker_retains_readable_result(world: World) -> None:
         detail.json()["result"]["books"][0]["obligation_versions"][0]["columns"]["allocated_amount"]
         == 12000000
     )
+    presentation = detail.json()["presentation"]
+    assert presentation
+    for book in presentation:
+        assert book["transaction_price"] == {"amount": "120000.00", "currency": "USD"}
+        assert book["total_allocated"] == book["transaction_price"]
+        assert book["allocations"][0]["allocated_amount"] == book["transaction_price"]
+        assert book["allocations"][0]["product_code"] == PLATFORM
+        assert not book["has_material_right"]
+        assert not book["has_variable_consideration"]
+        raw_book = next(
+            item
+            for item in detail.json()["result"]["books"]
+            if item["book_code"] == book["book_code"]
+        )
+        expected_revenue = sum(
+            line["amount"] for line in raw_book["schedules"] if line["schedule_kind"] == "REVENUE"
+        )
+        assert (
+            sum(Decimal(line["amount"]["amount"]) for line in book["revenue_by_period"])
+            == Decimal(expected_revenue) / 100
+        )
+        assert Decimal(book["scheduled"]["amount"]) + Decimal(
+            book["awaiting_trigger"]["amount"]
+        ) == Decimal("120000")
+    # Exercise display grouping independently of whether this template awaits a trigger.
+    from erev_api.domain.forecast.deal_results import project
+
+    with world.place.uow() as uow:
+        retained = (
+            uow.session.execute(select(deal_preview).where(deal_preview.c.id == identity))
+            .mappings()
+            .one()
+        )
+    sample = retained["result"]
+    sample["books"] = [
+        next(book for book in sample["books"] if book["contract_version"] is not None)
+    ]
+    book = sample["books"][0]
+    obligation = book["obligation_versions"][0]
+    obligation["columns"].update(original_ssp_low="130000", original_ssp_high="140000")
+    book["schedules"] = [
+        {
+            "schedule_kind": kind,
+            "entity": entity,
+            "period_key": "FY2026-P01",
+            "subject_key": obligation["subject_key"],
+            "amount": amount,
+        }
+        for kind, entity, amount in [
+            ("REVENUE", "AVM-US", 123),
+            ("REVENUE", "AVM-US", -23),
+            ("REVENUE", "OTHER", 50),
+            ("BILLING_PLAN", "AVM-US", 999),
+        ]
+    ]
+    projected = project(retained["input"], sample)[0]
+    assert projected.allocations[0].range_position == "BELOW"
+    assert [(line.entity_code, line.amount.amount) for line in projected.revenue_by_period] == [
+        ("AVM-US", "1.00"),
+        ("OTHER", "0.50"),
+    ]
     listing = call(world.app, "GET", "/api/v1/deal-previews?count=true", headers=headers)
     assert listing.status_code == 200, listing.text
     assert listing.headers["X-Erev-Total-Count"] == "1"

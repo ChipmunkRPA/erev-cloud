@@ -10866,6 +10866,167 @@
         "title": "DaysToCloseOut",
         "type": "object"
       },
+      "DealAllocationOut": {
+        "properties": {
+          "allocated_amount": {
+            "$ref": "#/components/schemas/MoneyOut"
+          },
+          "allocation_adjustment": {
+            "$ref": "#/components/schemas/MoneyOut"
+          },
+          "allocation_weight": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Allocation Weight"
+          },
+          "obligation_key": {
+            "title": "Obligation Key",
+            "type": "string"
+          },
+          "product_code": {
+            "title": "Product Code",
+            "type": "string"
+          },
+          "range_position": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SspRangePosition"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "selected_ssp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selected Ssp"
+          },
+          "ssp_high": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ssp High"
+          },
+          "ssp_low": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ssp Low"
+          },
+          "ssp_mid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ssp Mid"
+          },
+          "stated_price": {
+            "$ref": "#/components/schemas/MoneyOut"
+          },
+          "subject_key": {
+            "title": "Subject Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "subject_key",
+          "obligation_key",
+          "product_code",
+          "stated_price",
+          "ssp_low",
+          "ssp_mid",
+          "ssp_high",
+          "range_position",
+          "selected_ssp",
+          "allocation_weight",
+          "allocated_amount",
+          "allocation_adjustment"
+        ],
+        "title": "DealAllocationOut",
+        "type": "object"
+      },
+      "DealBookOut": {
+        "properties": {
+          "allocations": {
+            "items": {
+              "$ref": "#/components/schemas/DealAllocationOut"
+            },
+            "title": "Allocations",
+            "type": "array"
+          },
+          "awaiting_trigger": {
+            "$ref": "#/components/schemas/MoneyOut"
+          },
+          "book_code": {
+            "title": "Book Code",
+            "type": "string"
+          },
+          "has_material_right": {
+            "title": "Has Material Right",
+            "type": "boolean"
+          },
+          "has_variable_consideration": {
+            "title": "Has Variable Consideration",
+            "type": "boolean"
+          },
+          "revenue_by_period": {
+            "items": {
+              "$ref": "#/components/schemas/DealRevenueOut"
+            },
+            "title": "Revenue By Period",
+            "type": "array"
+          },
+          "scheduled": {
+            "$ref": "#/components/schemas/MoneyOut"
+          },
+          "total_allocated": {
+            "$ref": "#/components/schemas/MoneyOut"
+          },
+          "transaction_price": {
+            "$ref": "#/components/schemas/MoneyOut"
+          }
+        },
+        "required": [
+          "book_code",
+          "transaction_price",
+          "total_allocated",
+          "scheduled",
+          "awaiting_trigger",
+          "has_material_right",
+          "has_variable_consideration",
+          "allocations",
+          "revenue_by_period"
+        ],
+        "title": "DealBookOut",
+        "type": "object"
+      },
       "DealInputIn": {
         "additionalProperties": false,
         "properties": {
@@ -11013,6 +11174,13 @@
             "title": "Pinned Refs",
             "type": "object"
           },
+          "presentation": {
+            "items": {
+              "$ref": "#/components/schemas/DealBookOut"
+            },
+            "title": "Presentation",
+            "type": "array"
+          },
           "proposal": {
             "$ref": "#/components/schemas/DealInputIn"
           },
@@ -11046,6 +11214,7 @@
           "engine_release_id",
           "saved_contract_id",
           "created_at",
+          "presentation",
           "result",
           "pinned_refs"
         ],
@@ -11204,6 +11373,45 @@
           "created_at"
         ],
         "title": "DealPreviewSummaryOut",
+        "type": "object"
+      },
+      "DealRevenueOut": {
+        "properties": {
+          "amount": {
+            "$ref": "#/components/schemas/MoneyOut"
+          },
+          "entity_code": {
+            "title": "Entity Code",
+            "type": "string"
+          },
+          "period_key": {
+            "title": "Period Key",
+            "type": "string"
+          },
+          "product_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Code"
+          },
+          "subject_key": {
+            "title": "Subject Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "entity_code",
+          "period_key",
+          "subject_key",
+          "product_code",
+          "amount"
+        ],
+        "title": "DealRevenueOut",
         "type": "object"
       },
       "DerivedBlockerCode": {

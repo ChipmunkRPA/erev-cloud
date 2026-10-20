@@ -1,5 +1,12 @@
 # eRev Cloud 1.0: stated limits of the release
 
+Current deal presentation update (October 19): verified detail reads now include structured
+allocation/SSP range data, per-book totals and indicators, and revenue by entity/period/subject.
+Scheduled and awaiting-trigger totals distinguish an empty schedule from a zero-value deal.
+All values derive from retained engine evidence. The SF-18 screen and scenario save are still
+unfinished; this is not completion of the Reporting workstream or Tamsin accounting acceptance.
+Earlier notes describing absent result projection are historical.
+
 Current deal API update (October 19): asynchronous POST /deal-previews and the DEAL_PREVIEW
 worker now retain real engine results. Scoped list/detail reads and fingerprint checks are
 implemented, with job-subject migration 0189. Scenario save, user-facing result projection

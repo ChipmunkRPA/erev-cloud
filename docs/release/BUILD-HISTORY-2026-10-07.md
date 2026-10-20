@@ -8397,3 +8397,17 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Seven focused selector/toolbar checks pass with TypeScript/ESLint. Populated close-variance
   acceptance, remaining report workflows and independent accounting sign-off are still open.
   No deployment.
+
+## Disclosure snapshot register — October 19, 2026
+
+- Added /reports/disclosures and a Reports tab for report.run readers. The register queries
+  retained snapshot metadata using entity/book/period context and disclosure-type selection,
+  pages older records, and links each record to its original report run.
+- Reuses the lazy verified snapshot detail panel. Draft versus locked source remains explicit;
+  metadata browsing does not fetch all payloads or imply lock-time capture is complete.
+  Source-status filtering was added in the subsequent source-filter update.
+- Four focused register/detail checks pass with TypeScript/ESLint. Actual-versus-forecast
+  populated-posting acceptance remains unproven; review found existing computation/cutoff UI,
+  so no speculative calculation rewrite was made. Disclosure lock-time orchestration was
+  already implemented (see archived publication/frozen-execution entries); the earlier status
+  here was stale. Populated accounting acceptance and independent sign-off remain open.
