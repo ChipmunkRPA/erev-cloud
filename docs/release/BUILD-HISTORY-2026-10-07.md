@@ -8893,3 +8893,23 @@ cleanup in the shared database session kernel was also repaired and regression-t
 - Remaining: broader reporting-currency coverage (including revenue/RPO), multi-layer monetary
   liability FX and combined-contract attribution; the other priority workstream gaps remain as
   previously stated. No deployment; this does not close the entire four-workstream request.
+
+## RPO original-duration exemption — October 20, 2026
+
+- POL-197 now uses original inception segments from verified retained computation inputs,
+  matching the engine's inclusive service-date boundary (end before the first anniversary).
+  Contract extensions and shortening no longer change the original-duration qualification.
+- RPO, RPO rollforward, dashboard and close-variance projection share this basis. Reports show
+  the original inception/end dates in the exemption detail and retain terms per source version
+  for same-source reruns and cell explanations. Current templates/events never replace the input.
+- Report jobs resolve the actual requester's source permissions; dashboard uses contract.read.
+  Close snapshots use their explicit internal read-only SYSTEM path. Source integrity checks
+  remain the same. No engine output or posting behavior is changed.
+- Real-engine witnesses cover short-contract extension, long-contract shortening and the exact
+  anniversary boundary; the existing partial-VC cases still pass. The API journey checks original
+  dates, Home totals, cell explanation, retained rerun and read-only SYSTEM snapshot totals.
+  Existing RPO rollforward and Python lint/types pass. Remaining RPO work includes
+  broader positive partial-exemption lock/export acceptance and multi-currency reporting.
+- Retained reports predating original-term evidence cannot silently reconstruct it from current
+  data. Missing retained input/terms is refused; create a fresh report after source availability.
+  No deployment; the four priority workstreams are not yet all complete.

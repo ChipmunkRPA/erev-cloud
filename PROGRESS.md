@@ -6,6 +6,24 @@
 
 
 
+## Contract records and combined-template modifications — October 20, 2026
+
+- Both ordinary and membership variance replay now introduce retained contract-record changes
+  in the reference phase before business application events. Membership uses original member
+  records first. Unique contract identities, transaction currency, contracting entity and inception
+  must remain fixed; changing these requires an explicit basis migration instead of attribution.
+- The real-engine merge + delivery + approved legacy prospective amendment witness uncovered an
+  engine defect: the single-member template total was compared to whole-group TP. Templates now
+  include unchanged members in the group check and preserve those members' posted allocations,
+  assigning only the residual fixed-basis budget to the amended member. Final group checks remain.
+- Necessary verification covers real monetary amendment effects, ordinary replay, isolated merge
+  invariance, unapplied-record zero effect, late application provenance and unchanged other-member
+  allocations/revenue/RPO (group balance attribution may change). Existing prospective/retrospective/POB-VC cases and basis-migration refusal checks
+  pass; lint/types checked. This supersedes the blanket contract-record refusal below.
+- Still open: missing member sources, incompatible earlier bases, group-level posted redistribution,
+  combined/late-carried liability FX and alternate-currency frozen close integration. Broader release
+  acceptance remains outstanding; no deployment or independent accounting sign-off claimed.
+
 ## Estimate versions in membership replay — October 20, 2026
 
 - Group changes can now coexist with new approved estimate versions. The membership phase
@@ -196,26 +214,6 @@
 - This closes the populated partial-exemption report/snapshot-producer/export gap for this path;
   it does not assert a complete production lock workflow or all exemption combinations. Broader
   revenue/RPO currency views and the other documented reporting gaps remain. No deployment.
-
-## RPO original-duration exemption — October 20, 2026
-
-- POL-197 now uses original inception segments from verified retained computation inputs,
-  matching the engine's inclusive service-date boundary (end before the first anniversary).
-  Contract extensions and shortening no longer change the original-duration qualification.
-- RPO, RPO rollforward, dashboard and close-variance projection share this basis. Reports show
-  the original inception/end dates in the exemption detail and retain terms per source version
-  for same-source reruns and cell explanations. Current templates/events never replace the input.
-- Report jobs resolve the actual requester's source permissions; dashboard uses contract.read.
-  Close snapshots use their explicit internal read-only SYSTEM path. Source integrity checks
-  remain the same. No engine output or posting behavior is changed.
-- Real-engine witnesses cover short-contract extension, long-contract shortening and the exact
-  anniversary boundary; the existing partial-VC cases still pass. The API journey checks original
-  dates, Home totals, cell explanation, retained rerun and read-only SYSTEM snapshot totals.
-  Existing RPO rollforward and Python lint/types pass. Remaining RPO work includes
-  broader positive partial-exemption lock/export acceptance and multi-currency reporting.
-- Retained reports predating original-term evidence cannot silently reconstruct it from current
-  data. Missing retained input/terms is refused; create a fresh report after source availability.
-  No deployment; the four priority workstreams are not yet all complete.
 
 ## Outstanding release verification
 

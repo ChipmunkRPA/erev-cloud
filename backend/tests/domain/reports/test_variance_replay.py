@@ -980,6 +980,117 @@ def test_group_replay_reconciles_two_contracts_to_frozen_datasets() -> None:
         any(estimate_event.event_key in step.event_keys for step in run.replay.executions)
         for run in estimate_result.groups.values()
     )
+    # A newly approved contract modification is replayed separately from its application.
+    from support import cpc_worlds
+
+    booking_line = next(e for e in before.events if e.event_type == "CONTRACT_BOOKED").payload[
+        "lines"
+    ][0]
+    concession = cpc_worlds.concession(
+        "-100", date(2023, 5, 31), key=booking_line["obligation_key"]
+    )
+    concession = replace(
+        concession,
+        lines=tuple(
+            {**line, "product_code": booking_line["product_code"]} for line in concession.lines
+        ),
+    )
+    treatments = {
+        line["obligation_key"]: "LEGACY_PROSPECTIVE"
+        for line in next(e for e in before.events if e.event_type == "CONTRACT_BOOKED").payload[
+            "lines"
+        ]
+    }
+    concession = replace(
+        concession,
+        template_mode="prospective",
+        status="APPLIED",
+        price_change_amount=None,
+        questionnaire={},
+        chosen_treatments=treatments,
+        treatment_summary="LEGACY_PROSPECTIVE",
+    )
+    amendment = cpc_worlds.amended(list(after.events), concession, treatments)[-1]
+    amendment = replace(
+        amendment,
+        event_key="Contract 2/EV-000011",
+        record_seq=11,
+        stream_version=11,
+        recorded_at=mixed.known_at,
+    )
+    modified = replace(
+        mixed,
+        contracts=tuple(
+            replace(c, modifications=(*c.modifications, concession))
+            if c.external_id == "Contract 2"
+            else c
+            for c in mixed.contracts
+        ),
+        events=tuple(
+            sorted(
+                (*mixed.events, amendment),
+                key=lambda e: (e.effective_date, e.record_seq, e.event_key),
+            )
+        ),
+    )
+    modification_pair = replace(
+        membership_pair, later=side(modified, 2, prepared=((merged_id, modified),))
+    )
+    modification_result = variance_groups.execute(modification_pair)
+    modification_metrics = Projection(modified, "Mock Entity 2", "ASC606", "FY2023-P05")(
+        compute(modified)
+    )
+    assert any(
+        modification_metrics.get(k, Fraction(0)) != mixed_metrics.get(k, Fraction(0))
+        for k in modification_metrics.keys() | mixed_metrics.keys()
+    )
+    # Other-member allocations/revenue/RPO stay fixed. Contract-asset attribution
+    # can change because the balance reader apportions the combined group's position.
+    for key in modification_metrics.keys() | mixed_metrics.keys():
+        if key.contract_external_id == "Contract 3" and key.measure in {"REVENUE", "RPO"}:
+            assert modification_metrics.get(key, Fraction(0)) == mixed_metrics.get(key, Fraction(0))
+
+    def other_allocations(bundle: InputBundle) -> dict[str, object]:
+        return {
+            row.subject_key: row.columns["allocated_amount"]
+            for book in compute(bundle).books
+            for row in book.obligation_versions
+            if row.subject_key.startswith("Contract 3/")
+        }
+
+    assert other_allocations(mixed)
+    assert other_allocations(modified) == other_allocations(mixed)
+    for key, change in modification_result.measures.items():
+        assert change.sums_exactly
+        assert (
+            sum(e.amount for e in change.effects if e.driver == "MODIFICATION")
+            == membership.measures[key].total
+        )
+        assert sum(e.amount for e in change.effects if e.driver == "OTHER") == 0
+        assert sum(
+            e.amount for e in change.effects if e.driver == "LATE_EVENT"
+        ) == modification_metrics.get(key, Fraction(0)) - joined_metrics.get(key, Fraction(0))
+    standalone = replace(
+        after,
+        contracts=tuple(c for c in modified.contracts if c.external_id == "Contract 2"),
+        events=tuple(e for e in modified.events if e.contract_key == "Contract 2"),
+    )
+    standalone_metrics = Projection(standalone, "Mock Entity 2", "ASC606", "FY2023-P05")(
+        compute(standalone)
+    )
+    single = replay_period_money(
+        before,
+        standalone,
+        entity_code="Mock Entity 2",
+        book_code="ASC606",
+        period_key="FY2023-P05",
+        earlier_metrics=Projection(before, "Mock Entity 2", "ASC606", "FY2023-P05")(
+            compute(before)
+        ),
+        later_metrics=standalone_metrics,
+    )
+    assert any(step.changed_fields == ("contracts",) for step in single.executions)
+    assert all(change.sums_exactly for change in single.measures.values())
     # The exemption election changes in the same close as merge and delivery.
     elected = replace(
         joined,
@@ -1308,3 +1419,19 @@ def test_membership_replay_separates_real_functional_fx() -> None:
             assert sum(e.amount for e in change.effects if e.driver == "FX") == later.get(
                 key, Fraction(0)
             ) - intermediate.get(key, Fraction(0))
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("transaction_currency", "EUR"),
+        ("contracting_entity_code", "OTHER"),
+        ("inception_date", date(2023, 2, 1)),
+    ],
+)
+def test_contract_reference_replay_preserves_accounting_basis(field: str, value: object) -> None:
+    from erev_api.domain.reports.variance_replay import validate_contract_basis
+
+    before, _ = _active_pair()
+    with pytest.raises(Problem, match="basis migration"):
+        validate_contract_basis(before.contracts, (replace(before.contracts[0], **{field: value}),))

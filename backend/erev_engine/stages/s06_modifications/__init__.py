@@ -868,8 +868,8 @@ def _template(
     Every obligation of the contract carries the one template treatment (S06-R-28), and POL-107
     is ``LEGACY_BY_TEMPLATE`` (S06-R-30). The retrospective template may add obligations, which
     take their creation-time values (S06-R-31). Every obligation takes the S06-R-29 segment and a
-    ``catch_up@`` node, CU = C_after(d) − C_before(d) (S06-R-30). TP_c must round to the
-    allocation basis after the event, which Σ a_posted equals (S06-R-18; S06-INV-01), and Σ (x′ −
+    ``catch_up@`` node, CU = C_after(d) − C_before(d) (S06-R-30). TP_c plus unchanged
+    members must round to the group fixed basis after the event (S06-R-18; S06-INV-01), and Σ (x′ −
     x) = Σ ModBilling exactly (S06-INV-04). An ``ERROR`` finding returns the state with the
     finding and no segment (CV-15).
     """
@@ -944,8 +944,19 @@ def _template(
     price_after = price_at(ctx, st, ev.effective_date, _next_event(st, ev))
     mu = segments.minor_unit(ctx)
     total = sum((item.x_exact for item in outcomes), Fraction(0))
-    tp_minor = round_half_up(total, mu)
-    if tp_minor != price_after.allocation_basis.posted:
+    # A template changes one member, while price_after is the entire group. Keep
+    # the other members' fixed segments and their posted rounding allocations.
+    unaffected = tuple(
+        segment
+        for obligation in st.obligations
+        if obligation.contract_key != mod.contract_key
+        if (segment := segments.in_force(st, obligation, ev, inclusive=False)) is not None
+    )
+    unchanged_exact = sum((segment.x_exact for segment in unaffected), Fraction(0))
+    unchanged_posted = sum(segment.a_posted for segment in unaffected)
+    group_fixed = price_after.allocation_basis.posted - price_after.realised.posted
+    tp_minor = group_fixed - unchanged_posted
+    if round_half_up(total + unchanged_exact, mu) != group_fixed:
         raise EngineError(
             "ENGINE_INVARIANT_VIOLATED",
             "the template price differs from the allocation basis after the event",

@@ -4,7 +4,7 @@ This worker calculation runs after source loading has closed its transaction. It
 keeps currency/measure totals separate and retains each group's execution evidence.
 Independent groups entering/leaving the population have explicit source-backed
 contributions. Merges/splits replay membership, references, business events and FX
-on connected groups; contract-header changes still require a separate phase.
+on connected groups, including retained contract-record changes on a fixed accounting basis.
 No empty bundle is invented.
 """
 

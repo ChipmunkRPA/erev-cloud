@@ -1,7 +1,7 @@
 """Replay membership, references/policies, new business events and FX rates.
 
-Both frozen sides are reproduced on the earlier posted basis. Contract-header
-changes still require a separate counterfactual phase.
+Both frozen sides are reproduced on the earlier posted basis. Contract records
+are replayed as references while accounting identity/currency/inception stay fixed.
 """
 
 from __future__ import annotations
@@ -25,7 +25,7 @@ from erev_api.problems import Problem
 from .computation_sources import VerifiedComputation
 from .variance_execution import RetainedReplay, SourceExecution, verify_source
 from .variance_projection import Projection
-from .variance_replay import Engine, Execution, Metrics, Replay, driver
+from .variance_replay import Engine, Execution, Metrics, Replay, driver, validate_contract_basis
 
 
 def _refuse(detail: str) -> Problem:
@@ -113,19 +113,13 @@ def execute(
     if len({canonical_bytes(source.bundle.fx_rates) for source in old.values()}) != 1:
         raise _refuse("earlier groups have inconsistent FX bases.")
     earlier_fx = next(iter(old.values())).bundle.fx_rates
-    for field in ("contracts",):
-        before = {
-            canonical_bytes(item)
-            for source in old.values()
-            for item in getattr(source.bundle, field)
-        }
-        after = {
-            canonical_bytes(item)
-            for source in new.values()
-            for item in getattr(source.bundle, field)
-        }
-        if before != after:
-            raise _refuse(f"membership is mixed with a {field} change.")
+    earlier_contracts = tuple(
+        contract for source in old.values() for contract in source.bundle.contracts
+    )
+    later_contracts = tuple(
+        contract for source in new.values() for contract in source.bundle.contracts
+    )
+    validate_contract_basis(earlier_contracts, later_contracts)
     estimate_sides = []
     for side in (old, new):
         versions: dict[str, EstimateVersionInput] = {}
@@ -215,7 +209,16 @@ def execute(
             )
         )
         return replace(
-            target, books=tuple(prior_books), estimate_versions=estimates, **old_references
+            target,
+            contracts=tuple(
+                sorted(
+                    (c for c in earlier_contracts if c.external_id in members),
+                    key=lambda c: c.external_id,
+                )
+            ),
+            books=tuple(prior_books),
+            estimate_versions=estimates,
+            **old_references,
         )
 
     old_events = {
@@ -381,7 +384,7 @@ def execute(
                 )
                 changed_references = tuple(
                     field
-                    for field in ("books", "estimate_versions", *reference_fields)
+                    for field in ("contracts", "books", "estimate_versions", *reference_fields)
                     if getattr(membership_basis, field) != getattr(business_basis, field)
                 )
                 if changed_references:

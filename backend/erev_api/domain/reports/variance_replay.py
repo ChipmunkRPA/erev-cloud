@@ -9,7 +9,7 @@ posting-basis changes still require explicit normalization by the caller.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, fields, replace
 from datetime import date
 from fractions import Fraction
@@ -17,7 +17,7 @@ from itertools import groupby
 from typing import Final, Literal
 
 from erev_engine import ENGINE_VERSION, compute
-from erev_engine.bundle import EventInput, InputBundle, OutputBundle
+from erev_engine.bundle import ContractInput, EventInput, InputBundle, OutputBundle
 from erev_engine.stages.s15_disclosures.variance import Decomposition, Evaluation, decompose
 
 from erev_api.problems import Problem
@@ -30,6 +30,7 @@ type Project = Callable[[InputBundle, OutputBundle], Metrics]
 type Engine = Callable[[InputBundle], OutputBundle]
 
 REFERENCE_FIELDS: Final = (
+    "contracts",
     "books",
     "ssp_versions",
     "pob_template_versions",
@@ -86,6 +87,29 @@ def driver(event: EventInput, earlier_period_end: date) -> str:
     if ordinary is None:
         raise _refuse(f"{event.event_type} needs an explicit replay classification.")
     return "LATE_EVENT" if event.effective_date <= earlier_period_end else ordinary
+
+
+def validate_contract_basis(
+    before: Sequence[ContractInput], after: Sequence[ContractInput]
+) -> None:
+    """Permit retained record updates without changing the accounting population/basis."""
+    old = {contract.external_id: contract for contract in before}
+    new = {contract.external_id: contract for contract in after}
+    if len(old) != len(before) or len(new) != len(after) or old.keys() != new.keys():
+        raise _refuse("contract records require the same unique retained members.")
+    for name, previous in old.items():
+        current = new[name]
+        if any(
+            getattr(previous, field) != getattr(current, field)
+            for field in (
+                "transaction_currency",
+                "contracting_entity_code",
+                "inception_date",
+            )
+        ):
+            raise _refuse(
+                "contract currency, entity or inception changes require a basis migration."
+            )
 
 
 def _validate(before: InputBundle, after: InputBundle) -> tuple[EventInput, ...]:
@@ -150,6 +174,7 @@ def replay_events(
     it is server-owned, never supplied by report request JSON. No database or posting
     writer is called. Any endpoint mismatch aborts the entire decomposition.
     """
+    validate_contract_basis(before.contracts, after.contracts)
     added = _validate(before, after)
     # Validate every classification before executing any potentially expensive work.
     runs = [

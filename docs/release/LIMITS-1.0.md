@@ -1,5 +1,16 @@
 # eRev Cloud 1.0: stated limits of the release
 
+Current contract-record update (October 20): ordinary and membership replay now phase retained
+contract-record updates before application events, keeping identity, transaction currency,
+contracting entity and inception fixed. A combined-contract legacy template bug found in the
+monetary amendment witness is fixed: group reconciliation includes unchanged member allocations,
+and the amended member receives the residual fixed-basis budget. Targeted legacy-template and
+report replay checks cover ordinary/grouped paths and preservation of the other member's allocations/revenue/RPO; group balance attribution may change.
+This supersedes the contract-record refusal below; basis migrations, missing sources, incompatible
+prior bases, group-level posted redistribution, combined/late-carried liability FX and alternate
+currency frozen close integration remain open. No deployment or independent accounting sign-off.
+
+
 Current membership/estimate update (October 20): membership replay reconstructs the earlier
 member/portfolio estimate set and introduces later approved versions before application events.
 Historical versions cannot disappear or change contents. A real-engine merge + delivery + VC
