@@ -2,7 +2,7 @@
 §5.6.1 RPT-04; ENGINE_SPEC_B §15.2.2 S15-R-05, S15-INV-05; POLICIES POL-126; 03 REQ-RPT-007;
 BUILD_SPEC RPS-3).
 
-The legacy calculation, retained for existing bindings and negative transaction revenue:
+The legacy calculation, retained for existing bindings and intercompany transaction reversals:
 per member contract and contracting entity, the opening contract liability at the end of the period
 before the range (``tie_outs.balances_at``); revenue recognized = −Σ ``REVENUE`` subledger lines of
 the range, plus the relief another entity's performance makes of this entity's liability (the
@@ -31,6 +31,8 @@ outside the lock's opening contributes no relief.
 New positive transaction requests pool opening balances and ordered control flows by the
 retained computation version, entity and currency. Actual opening consumption after earlier
 non-revenue debits is assigned to the recognizing member. The group path must reconcile.
+Ordinary transaction reversals use original signed transaction sources, layer creation
+dates and recursively verified paid history rather than the legacy same-member cap.
 New functional/reporting requests use the retained rollforward sources, with reporting
 openings at preceding closing rates and flows at period averages. Combined-contract relief
 may be recognized by a different member from the opening holder; both are shown without

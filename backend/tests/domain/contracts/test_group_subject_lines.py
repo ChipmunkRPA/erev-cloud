@@ -970,7 +970,7 @@ def test_combined_revenue_relief_retains_the_consumed_members_owner(fx: FxWorld)
         assert {part.contract_id for part in reversed_sources.delta.movements} == {source_id}
         assert {later["id"], newest["id"]} <= set(reversed_sources.paid_line_ids)
 
-    for view in ("functional", "reporting"):
+    for view in ("transaction", "functional", "reporting"):
         returned_run, returned_rows = worlds.report_run(
             reporting,
             "revenue_from_opening_liability",
@@ -986,8 +986,10 @@ def test_combined_revenue_relief_retains_the_consumed_members_owner(fx: FxWorld)
             row for row in returned_rows if row.get("contract_external_id") == FIRST_UK
         )
         assert returned_income["revenue_recognized"] == returned_income["revenue_from_opening"]
-        if view == "functional":
-            assert returned_income["revenue_recognized"]["amount"] == "46800.00"
+        if view in {"transaction", "functional"}:
+            assert returned_income["revenue_recognized"]["amount"] == (
+                "58500.00" if view == "transaction" else "46800.00"
+            )
         restarted = post(fx.app, f"/api/v1/report-runs/{returned_run['id']}/rerun", fx.maya, {})
         assert restarted.status_code == 202, restarted.text
         complete = worlds.run_now(reporting, UUID(restarted.json()["id"]))

@@ -1,5 +1,29 @@
 # eRev Cloud 1.0: stated limits of the release
 
+## Transaction-currency revenue reversal disclosure — October 20, 2026
+
+- Ordinary transaction opening-liability disclosure now attributes negative revenue through
+  original signed transaction source quantities and recursively verified paid lines. Original
+  layer creation dates identify opening consumption; the recognizing member is not capped by
+  its own opening balance. Reversal groups still must reconcile their complete control path.
+- The shared source projection retains signed integer coefficients independently of rounded
+  functional amounts, so a zero functional source does not erase a nonzero transaction amount
+  or reverse its sign. No inverse FX conversion is used. Original layer dates are reconciled
+  across historical computations; attribution caches cannot mix currency views.
+- Reversal method, source identities, creation dates, paid lines and evidence hashes are bound
+  for rerun, with an explanatory footnote. Earlier bindings retain their original builder;
+  intercompany transaction reversals retain the earlier path pending counterpart attribution.
+  Migration 0201 updates the disclosure IPE description.
+- Necessary checks passed: the real combined-member delivery/return sequence reports
+  USD 58,500 transaction revenue and opening relief, alongside GBP 46,800 functional values;
+  transaction, functional and reporting reruns match. Existing single-contract results and
+  catalogue migration pass. Fifteen source/delta checks, including zero-rounded source signs,
+  and lint/types pass. No deployment.
+- Still open: intercompany reversal attribution, mixed TIME/EVENT source allocation,
+  close-pass-only revenue histories, asset/new-liability reversal presentation, per-obligation
+  opening consumption and complex membership/carry histories. Final release verification
+  and independent accounting acceptance remain open; Reporting is not yet complete.
+
 ## Cross-member revenue reversals through original posting history — October 20, 2026
 
 - Ordinary revenue attribution now reads original transaction targets and their separately

@@ -6,6 +6,30 @@
 
 
 
+## Transaction-currency revenue reversal disclosure — October 20, 2026
+
+- Ordinary transaction opening-liability disclosure now attributes negative revenue through
+  original signed transaction source quantities and recursively verified paid lines. Original
+  layer creation dates identify opening consumption; the recognizing member is not capped by
+  its own opening balance. Reversal groups still must reconcile their complete control path.
+- The shared source projection retains signed integer coefficients independently of rounded
+  functional amounts, so a zero functional source does not erase a nonzero transaction amount
+  or reverse its sign. No inverse FX conversion is used. Original layer dates are reconciled
+  across historical computations; attribution caches cannot mix currency views.
+- Reversal method, source identities, creation dates, paid lines and evidence hashes are bound
+  for rerun, with an explanatory footnote. Earlier bindings retain their original builder;
+  intercompany transaction reversals retain the earlier path pending counterpart attribution.
+  Migration 0201 updates the disclosure IPE description.
+- Necessary checks passed: the real combined-member delivery/return sequence reports
+  USD 58,500 transaction revenue and opening relief, alongside GBP 46,800 functional values;
+  transaction, functional and reporting reruns match. Existing single-contract results and
+  catalogue migration pass. Fifteen source/delta checks, including zero-rounded source signs,
+  and lint/types pass. No deployment.
+- Still open: intercompany reversal attribution, mixed TIME/EVENT source allocation,
+  close-pass-only revenue histories, asset/new-liability reversal presentation, per-obligation
+  opening consumption and complex membership/carry histories. Final release verification
+  and independent accounting acceptance remain open; Reporting is not yet complete.
+
 ## Cross-member revenue reversals through original posting history — October 20, 2026
 
 - Ordinary revenue attribution now reads original transaction targets and their separately
@@ -211,28 +235,6 @@
   scenarios, recorded privacy/snapshot registry gaps and final accounting/release acceptance.
   Necessary verification is this actual lock/invoice/close/report flow plus scoped lint.
   No deployment and no claim that all Reporting or production readiness is complete.
-
-## Credit-memo FX source attribution — October 20, 2026
-
-- JET-10c attribution now resolves the original credit-memo difference trace into its
-  retained liability reliefs, source owners, layer creation dates and event sequence.
-  Each relief matches its original output and trace; the pinned rate and full difference
-  formula are verified. Transaction portions are cumulatively converted in original trace
-  order, preserving the once-rounded memo total and offsetting owner differences without a
-  residual bucket or an allocation based on historical carrying value.
-- Functional rollforward billing now uses the same retained spot conversion for those memo
-  portions; actual posted EVENT FX adjusts each liability layer before its memo. Historical
-  report bindings without the EVENT source path retain their former behavior. Derived source
-  identities remain tied to immutable computation evidence and participate in paid-history
-  subtraction. The engine and sealed journal amounts are unchanged.
-- Necessary checks passed: actual single-layer and two-layer public memo/report workflows,
-  ERP-imported and ENGINE-posted billing, source attribution and identical bound reruns. A
-  USD 40,000 memo converts GBP 32,000 historical relief to GBP 33,600 at spot, with GBP 1,600
-  FX and a GBP 40,000 closing liability. The two-layer full credit closes to zero with
-  GBP 4,000 FX. Focused rounding/offsetting-owner and corruption checks, lint and types pass.
-- Still open: public combined-contract credit-memo acceptance, late-carried public acceptance
-  without reopening, recorded privacy/snapshot registry gaps and final accounting/release
-  acceptance. This closes the ordinary JET-10c source gap, not every FX scenario. No deployment.
 
 ## Outstanding release verification
 

@@ -27,12 +27,15 @@ class Attribution:
     delta: revenue_trace.RevenuePostingDelta
     paid_line_ids: tuple[UUID, ...]
     evidence: tuple[tuple[UUID, str], ...]
+    layer_dates: tuple[tuple[UUID, str, date], ...]
+    view: str
 
 
 def read(
     uow: UnitOfWork,
     line_id: UUID,
     *,
+    view: str = "functional",
     _active: frozenset[UUID] = frozenset(),
     _cache: dict[UUID, Attribution] | None = None,
 ) -> Attribution:
@@ -42,10 +45,14 @@ def read(
     allocation and close-pass-only histories require their own retained sources.
     Missing history never becomes a residual or a guessed owner.
     """
+    if view not in {"transaction", "functional"}:
+        raise ValueError("Revenue attribution currency view is invalid.")
     if line_id in _active:
         raise ValueError("Cycle in retained revenue history.")
     cache = {} if _cache is None else _cache
     if line_id in cache:
+        if cache[line_id].view != view:
+            raise ValueError("Revenue attribution cache mixes currency views.")
         return cache[line_id]
     row = (
         uow.session.execute(
@@ -69,6 +76,7 @@ def read(
     entity = next(item for item in bundle.entities if item.code == line["entity_code"])
     currency = entity.functional_currency
     scale = bundle.currencies[currency].minor_unit
+    txn_scale = bundle.currencies[str(line["txn_currency"]).strip()].minor_unit
     period_ends = {item.period_key: item.end_date for item in entity.periods}
     owner_rows = uow.session.execute(
         select(contract.c.external_id, contract.c.id).where(
@@ -117,6 +125,7 @@ def read(
     if original.ref_id != expected_ref:
         raise ValueError("Revenue history does not name the original role and posting basis.")
     raw = []
+    layer_dates: dict[tuple[UUID, str], date] = {}
     for item in document["book_output"]["fx_layer_movements"]:
         values = item["columns"]
         if values["entity"] != entity.code:
@@ -124,6 +133,12 @@ def read(
         owner = owners.get(values["contract_key"])
         if owner is None:
             raise ValueError("Revenue layer has no authorized original owner.")
+        if values["movement_kind"] in {"LIABILITY_LAYER_CREATED", "ASSET_LAYER_CREATED"}:
+            layer_identity = (owner, values["layer_key"])
+            created = date.fromisoformat(values["effective_date"])
+            if layer_identity in layer_dates and layer_dates[layer_identity] != created:
+                raise ValueError("Revenue layer has conflicting creation dates.")
+            layer_dates[layer_identity] = created
         node_id = item["trace_nodes"]["amount_functional"]
         raw.append(
             {
@@ -133,8 +148,11 @@ def read(
                 "trace_node_id": node_id,
                 "effective_date": date.fromisoformat(values["effective_date"]),
                 "amount_functional": minor_to_decimal(values["amount_functional"], scale),
+                "amount_txn": minor_to_decimal(values["amount_txn"], txn_scale),
             }
         )
+
+    raw_by_id = {item["id"]: item for item in raw}
 
     def target(key: Any) -> revenue_trace.RevenueTarget:
         if not isinstance(key, str) or key not in nodes:
@@ -150,6 +168,8 @@ def read(
             raise ValueError("Revenue requires an unsplit original role target.")
         amount = Fraction(node.params["amount_functional"]) / (10**scale)
         txn = Fraction(node.value)
+        if view == "transaction":
+            amount = txn
         time_txn = Fraction(node.params["time"]) / (
             10 ** bundle.currencies[str(line["txn_currency"]).strip()].minor_unit
         )
@@ -194,7 +214,13 @@ def read(
                         part.effective_date,
                         part.source_key,
                         is_time,
-                        int(sign) * part.amount,
+                        int(sign)
+                        * (
+                            part.amount
+                            if view == "functional"
+                            else part.coefficient
+                            * Fraction(raw_by_id[part.movement_id]["amount_txn"])
+                        ),
                     )
                 )
         if transaction != txn:
@@ -256,10 +282,14 @@ def read(
             {field: saved[field] for field in LINE_FIELDS}
         ):
             raise ValueError("Retained revenue history differs from the authorized ledger.")
-        found = read(uow, identity, _active=_active | {line_id}, _cache=cache)
+        found = read(uow, identity, view=view, _active=_active | {line_id}, _cache=cache)
         paid.extend(found.delta.movements)
         paid_ids.update((identity, *found.paid_line_ids))
         evidence.update(found.evidence)
+        for owner, layer, created in found.layer_dates:
+            if (owner, layer) in layer_dates and layer_dates[(owner, layer)] != created:
+                raise ValueError("Revenue history changes original layer creation date.")
+            layer_dates[(owner, layer)] = created
         paid_txn += Fraction(saved["amount_txn"])
         paid_functional += Fraction(saved["amount_functional"])
     if paid_txn != Fraction(original.detail["value"]):
@@ -269,16 +299,28 @@ def read(
         before,
         basis=basis,
         paid=paid,
-        expected_paid=paid_functional,
-        expected_delta=Fraction(line["amount_functional"]),
+        expected_paid=paid_functional if view == "functional" else paid_txn,
+        expected_delta=Fraction(
+            line["amount_functional" if view == "functional" else "amount_txn"]
+        ),
     )
-    answer = Attribution(result, tuple(sorted(paid_ids, key=str)), tuple(sorted(evidence, key=str)))
+    answer = Attribution(
+        result,
+        tuple(sorted(paid_ids, key=str)),
+        tuple(sorted(evidence, key=str)),
+        tuple((owner, layer, created) for (owner, layer), created in sorted(layer_dates.items())),
+        view,
+    )
     cache[line_id] = answer
     return answer
 
 
 def for_control(
-    uow: UnitOfWork, control_id: UUID, *, cache: dict[UUID, Attribution] | None = None
+    uow: UnitOfWork,
+    control_id: UUID,
+    *,
+    view: str = "functional",
+    cache: dict[UUID, Attribution] | None = None,
 ) -> tuple[UUID, Attribution]:
     """Resolve a revenue control debit to the revenue credit in its exact entry."""
     control = (
@@ -305,4 +347,4 @@ def for_control(
     revenue = lines[0]
     if any(revenue[name] != -control[name] for name in ("amount_txn", "amount_functional")):
         raise ValueError("Revenue and control amounts differ within the original entry.")
-    return revenue["id"], read(uow, revenue["id"], _cache=cache)
+    return revenue["id"], read(uow, revenue["id"], view=view, _cache=cache)

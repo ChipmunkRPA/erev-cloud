@@ -801,6 +801,7 @@ SOURCE_CONTRACTS: Final[Mapping[str, SourceContract]] = MappingProxyType(
                 _LINES,
                 "functional/reporting retained liability layers, member source transfers and rates",
                 "original revenue targets, recursive paid-line attribution and reversal owners",
+                "transaction reversal sources and original layer creation dates",
                 "positive transaction opening consumption by retained "
                 "version/entity/currency group",
             ),

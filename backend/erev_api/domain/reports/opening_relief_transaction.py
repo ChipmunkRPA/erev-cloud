@@ -17,6 +17,7 @@ from erev_api.domain.reports.builders import ReportParams
 from erev_api.domain.reports.builders import contract_balance_rollforward as rollforward
 from erev_api.domain.reports.opening_relief_currency import finish
 from erev_api.domain.reports.outputs import ReportData
+from erev_api.domain.reports.revenue_attribution import Attribution, for_control
 from erev_api.uow import UnitOfWork
 
 KEY = "opening_relief_transaction_v1"
@@ -40,7 +41,7 @@ def _build(uow: UnitOfWork, params: ReportParams) -> ReportData:
                 subledger_line.c.entity_id.in_(list(params.entity_ids)),
                 subledger_line.c.period_id.in_([p.id for items in periods.values() for p in items]),
                 subledger_line.c.account_role == rollforward.LIABILITY_ROLE,
-                subledger_line.c.entry_kind.in_(rollforward.REVENUE_KINDS),
+                subledger_line.c.entry_kind == "INTERCOMPANY",
                 subledger_line.c.amount_txn < 0,
                 tie_outs.line_recorded_by(params, params.known_at),
             )
@@ -49,8 +50,8 @@ def _build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         if negative is not None:
             from .builders.revenue_from_opening_liability import legacy_build
 
-            # Preserve the existing net-reversal calculation until original
-            # reversal attribution is available, rather than rejecting old use cases.
+            # Preserve the earlier intercompany reversal path pending an
+            # entity-qualified revenue counterpart adapter.
             tie_outs.record_evidence(params, "opening_relief_legacy_negative_v1", True)
             return legacy_build(uow, params)
     cutoff = tie_outs.cutoff_for(session, params)
@@ -109,6 +110,21 @@ def _build(uow: UnitOfWork, params: ReportParams) -> ReportData:
     contracts: list[dict[str, Any]] = []
     totals: dict[str, dict[str, Decimal]] = {}
     membership: dict[str, list[str]] = {}
+    signed_key = "transaction_opening_posted_v1"
+    signed_evidence: dict[str, Any] = {}
+    paid_members: set[UUID] = set()
+    source_cache: dict[UUID, Attribution] = {}
+    source_uow = (
+        uow
+        if params.requester is None
+        else UnitOfWork(
+            ctx=params.requester,
+            session=uow.session,
+            clock=uow.clock,
+            keyring=uow.keyring,
+            files=uow.files,
+        )
+    )
     for (version, entity, currency), members in groups.items():
         first = {
             name: sum((open_rows[key].value(name) for key in members if key in open_rows), ZERO)
@@ -126,12 +142,7 @@ def _build(uow: UnitOfWork, params: ReportParams) -> ReportData:
             ),
             key=lambda pair: (pair[1].order, selected[pair[0]].external_id),
         )
-        # A negative recognition needs reversal provenance; assigning a credit to
-        # a new billing layer would erase which opening release it reverses.
-        if any(entry.flow.is_revenue and entry.flow.amount < 0 for _, entry in entries):
-            raise tie_outs.invalid(
-                "currency_view", "Opening relief reversal requires original source replay."
-            )
+        has_reversal = any(entry.flow.is_revenue and entry.flow.amount < 0 for _, entry in entries)
         attribution: dict[int, Decimal] = {}
         path = rollforward.path(
             first, [entry.flow for _, entry in entries], last, opening_relief=attribution
@@ -140,6 +151,61 @@ def _build(uow: UnitOfWork, params: ReportParams) -> ReportData:
             raise tie_outs.invalid(
                 "currency_view", "Transaction opening relief requires a reconciled group path."
             )
+        if has_reversal:
+            # Reproduce all revenue in the group from original signed sources,
+            # including the paid history that the reversal removes.
+            attribution = {}
+            member_ids = {member[0] for member in members}
+            for index, (_, entry) in enumerate(entries):
+                if not entry.flow.is_revenue:
+                    continue
+                if entry.line_id is None or entry.entry_kind != "REVENUE_RECOGNITION":
+                    raise tie_outs.invalid(
+                        "currency_view", "Reversal requires ordinary posted revenue sources."
+                    )
+                try:
+                    revenue_id, result = for_control(
+                        source_uow, entry.line_id, view="transaction", cache=source_cache
+                    )
+                except ValueError as error:
+                    raise tie_outs.invalid("currency_view", str(error)) from error
+                if result.delta.amount != -entry.flow.amount:
+                    raise tie_outs.invalid(
+                        "currency_view", "Transaction revenue differs from its retained sources."
+                    )
+                dates = {(owner, layer): created for owner, layer, created in result.layer_dates}
+                released = ZERO
+                for part in result.delta.movements:
+                    if (
+                        part.movement_kind != "LIABILITY_LAYER_CONSUMED"
+                        or part.contract_id not in member_ids
+                    ):
+                        raise tie_outs.invalid(
+                            "currency_view",
+                            "Reversal needs separate asset or membership attribution.",
+                        )
+                    created = dates.get((part.contract_id, part.layer_key))
+                    if created is None:
+                        raise tie_outs.invalid(
+                            "currency_view", "Reversal lacks its original layer creation date."
+                        )
+                    if created < periods[entity][0].start:
+                        released -= Decimal(part.amount.numerator) / Decimal(
+                            part.amount.denominator
+                        )
+                attribution[index] = released
+                paid_members.update((revenue_id, *result.paid_line_ids))
+                signed_evidence[str(entry.line_id)] = {
+                    "revenue_line_id": str(revenue_id),
+                    "opening_relief": str(released),
+                    "paid_line_ids": list(map(str, result.paid_line_ids)),
+                    "source_ids": list(map(str, result.delta.source_ids)),
+                    "evidence": [[str(identity), digest] for identity, digest in result.evidence],
+                    "layer_dates": [
+                        [str(owner), layer, created.isoformat()]
+                        for owner, layer, created in result.layer_dates
+                    ],
+                }
         recognized: dict[tuple[UUID, UUID], Decimal] = defaultdict(Decimal)
         relief: dict[tuple[UUID, UUID], Decimal] = defaultdict(Decimal)
         for index, (member, entry) in enumerate(entries):
@@ -179,6 +245,14 @@ def _build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         raise tie_outs.invalid(
             "currency_view", "Opening-relief member population differs from retained evidence."
         )
+    if params.binding is None or signed_key in params.binding.evidence:
+        if params.binding is not None and params.binding.evidence[signed_key] != signed_evidence:
+            raise tie_outs.invalid(
+                "currency_view", "Transaction reversal sources differ from retained evidence."
+            )
+        tie_outs.require_members(params, "transaction_revenue_paid_line", paid_members)
+        tie_outs.record_members(params, "transaction_revenue_paid_line", paid_members)
+        tie_outs.record_evidence(params, signed_key, signed_evidence)
     tie_outs.record_evidence(params, "opening_relief_groups_v1", membership)
     contracts.sort(key=lambda row: row["row_key"])
     return finish(
@@ -192,5 +266,7 @@ def _build(uow: UnitOfWork, params: ReportParams) -> ReportData:
         view="transaction",
         rates=[],
         source_key=KEY,
-        legacy_contract_footnote=all(len(members) == 1 for members in groups.values()),
+        legacy_contract_footnote=not signed_evidence
+        and all(len(members) == 1 for members in groups.values()),
+        signed_reversals=bool(signed_evidence),
     )

@@ -133,6 +133,7 @@ def finish(
     rates: list[dict[str, Any]],
     source_key: str,
     legacy_contract_footnote: bool = False,
+    signed_reversals: bool = False,
 ) -> ReportData:
     from .builders import revenue_from_opening_liability as disclosure
 
@@ -175,6 +176,8 @@ def finish(
             else "retained_group_control_path_v1"
         ),
     }
+    if signed_reversals:
+        evidence["method"] = "retained_signed_revenue_sources_v1"
     if params.binding is not None and params.binding.evidence[source_key] != evidence:
         raise tie_outs.invalid(
             "currency_view", "Opening-relief method differs from retained evidence."
@@ -191,6 +194,13 @@ def finish(
             "Combined-contract relief is shown against the recognizing member, which may "
             "differ from the member holding the opening balance. Applied policy: "
             f"{disclosure.APPLIED}."
+        )
+    if signed_reversals:
+        footnote = (
+            "Opening relief follows original signed liability-consumption sources and creation "
+            "dates. Revenue reversals restore the original source attribution; the recognizing "
+            "member may differ from the opening-balance holder. "
+            f"Applied policy: {disclosure.APPLIED}."
         )
     if any(policy != disclosure.APPLIED for policy in policies):
         footnote += " Per-obligation consumption is not provided in this contract-level disclosure."

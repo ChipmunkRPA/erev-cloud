@@ -189,3 +189,17 @@ def test_posted_delta_refuses_unreconciled_components(corruption: str) -> None:
             expected_paid=expected_paid,
             expected_delta=expected_delta,
         )
+
+
+def test_zero_functional_rounding_keeps_the_transaction_source_sign() -> None:
+    from dataclasses import replace
+
+    trace, movements = sources()
+    leaf = replace(trace.nodes[0], value="0")
+    root = replace(trace.nodes[-1], value="0", inputs=(leaf.id,), params={"signs": "-1"})
+    movements = [{**movements[0], "amount_functional": Decimal(0), "amount_txn": Decimal("0.01")}]
+    result = project(replace(trace, nodes=(leaf, root)), root.id, movements, currency="GBP")
+    assert len(result) == 1
+    assert result[0].amount == 0
+    assert result[0].coefficient == -1
+    assert result[0].movement_id == movements[0]["id"]

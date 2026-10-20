@@ -624,8 +624,9 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "member after prior non-revenue debits; source groups and lines are bound",
             "functional/reporting cross-member liability relief includes source-proven revenue "
             "reversals using original functional targets and recursive paid-line attribution",
-            "negative transaction revenue preserves the existing net-reversal path pending "
-            "original reversal-source replay; earlier bindings retain their original builder",
+            "ordinary transaction revenue reversals use original signed transaction sources, "
+            "original layer creation dates and recursively verified paid lines; intercompany "
+            "reversals and earlier bindings retain their original builder",
             _as_locked("CONTRACT_BALANCE_ROLLFORWARD"),
         ),
     ),

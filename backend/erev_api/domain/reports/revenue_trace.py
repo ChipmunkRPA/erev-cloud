@@ -30,6 +30,7 @@ class RevenueSource:
     amount: Fraction
     effective_date: date | None = None
     source_key: str | None = None
+    coefficient: int = 1
 
 
 _ALLOWED = {
@@ -74,9 +75,9 @@ def project(
     if root is None or root.formula_id != "fx.revenue_functional.v1":
         raise InvalidRevenueTrace("Original revenue cumulative target is unavailable.")
     active: set[str] = set()
-    cache: dict[str, dict[str, Fraction]] = {}
+    cache: dict[str, dict[str, int]] = {}
 
-    def visit(key: str) -> dict[str, Fraction]:
+    def visit(key: str) -> dict[str, int]:
         if key in active:
             raise InvalidRevenueTrace("Cyclic revenue calculation source.")
         if key in cache:
@@ -94,7 +95,7 @@ def project(
                 or amount < 0
             ):
                 raise InvalidRevenueTrace("Revenue movement differs from its retained trace.")
-            values = {key: amount}
+            values = {key: 1}
         else:
             if (
                 node.formula_id != "fx.revenue_functional.v1"
@@ -111,9 +112,18 @@ def project(
                 if not isinstance(child, str):
                     raise InvalidRevenueTrace("Revenue source must name a retained node.")
                 for leaf, value in visit(child).items():
-                    values[leaf] = values.get(leaf, Fraction(0)) + int(sign) * value
+                    values[leaf] = values.get(leaf, 0) + int(sign) * value
             active.remove(key)
-        if sum(values.values(), Fraction(0)) != amount:
+        if (
+            sum(
+                (
+                    value * Fraction(leaves[leaf]["amount_functional"])
+                    for leaf, value in values.items()
+                ),
+                Fraction(0),
+            )
+            != amount
+        ):
             raise InvalidRevenueTrace("Signed revenue sources do not reproduce the target.")
         cache[key] = values
         return values
@@ -124,11 +134,12 @@ def project(
             contract_id=UUID(str(leaves[key]["contract_id"])),
             layer_key=str(leaves[key]["layer_key"]),
             movement_kind=str(leaves[key]["movement_kind"]),
-            amount=amount,
+            amount=coefficient * Fraction(leaves[key]["amount_functional"]),
             effective_date=leaves[key].get("effective_date"),
             source_key=leaves[key].get("source_key"),
+            coefficient=coefficient,
         )
-        for key, amount in sorted(visit(node_id).items())
+        for key, coefficient in sorted(visit(node_id).items())
     )
 
 
