@@ -5,6 +5,7 @@
 // per currency, computed when the run is serialised (04 API-S-ReportRun; D-88 L7-3-Q-3); the browser does
 // no money arithmetic (DG-FE-08).
 import { useId } from "react";
+import { Link } from "react-router";
 
 import { chipFor, StatusChip } from "../../../components/ui/StatusChip";
 import { currencyRegistered } from "../../../lib/api/queries/approvals";
@@ -85,7 +86,7 @@ export function TieOutStrip({ results, testIdPrefix = "SF-08" }: TieOutStripProp
               })}
               {(item.details?.length ?? 0) > 0 ? (
                 <details className="w-full text-body-sm text-fg-2">
-                  <summary className="cursor-pointer">Comparison details</summary>
+                  <summary className="cursor-pointer">{t("reports.tieOuts.details")}</summary>
                   <ul className="mt-2 flex flex-col gap-2">
                     {item.details?.map((detail, index) => (
                       <li key={index}>
@@ -102,6 +103,17 @@ export function TieOutStrip({ results, testIdPrefix = "SF-08" }: TieOutStripProp
                             {`Difference ${inline({ amount: detail.difference ?? "", currency: detail.currency ?? "" })}`}
                           </span>
                         )}
+                        {detail.reconciliation_id &&
+                        detail.entity &&
+                        detail.book_code &&
+                        detail.period_key ? (
+                          <Link
+                            className="ml-2 underline"
+                            to={`/close/${[detail.entity, detail.book_code, detail.period_key].map(encodeURIComponent).join("/")}/reconciliations/${encodeURIComponent(detail.reconciliation_id)}`}
+                          >
+                            {t("reports.tieOuts.source")}
+                          </Link>
+                        ) : null}
                       </li>
                     ))}
                   </ul>

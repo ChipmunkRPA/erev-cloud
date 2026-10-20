@@ -72,6 +72,11 @@ def compare(
                         "entity": entity.code,
                         "role": role,
                         "reconciliation_id": source["id"],
+                        **{
+                            key: source[key]
+                            for key in ("book_code", "period_key")
+                            if source.get(key)
+                        },
                         **({"source_status": source["status"]} if "status" in source else {}),
                         "currency": entity.functional_currency,
                         "gl": "0",
@@ -103,6 +108,7 @@ def compare(
                     "entity": entity.code,
                     "role": role,
                     "reconciliation_id": source["id"],
+                    **{key: source[key] for key in ("book_code", "period_key") if source.get(key)},
                     **({"source_status": source["status"]} if "status" in source else {}),
                     "currency": entity.functional_currency,
                     "gl": str(gl),
@@ -176,6 +182,7 @@ def build(
                     "id": str(row["id"]),
                     "status": str(getattr(row["status"], "value", row["status"])),
                     "period_id": str(row["period_id"]),
+                    "period_key": selected[-1].key,
                     "book_code": book_code,
                     "as_of_known_at": row["as_of_known_at"].isoformat(),
                     "source_file_id": str(row["source_file_id"]) if row["source_file_id"] else None,

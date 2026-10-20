@@ -2,6 +2,17 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## Reporting GL source navigation and inventory — October 20, 2026
+
+- New GL tie-out details retain the source book and period key and link to that exact
+  reconciliation in the viewer. Earlier retained evidence without the route metadata still
+  renders its amounts without guessing a destination. Re-runs use retained source evidence.
+- Corrected obsolete B4-3/4/6/8/12 and C-11 inventory claims: 59 of 59 definitions have
+  execution paths (55 builders plus four composed reports). Registration is not accounting
+  acceptance; the detailed scenario limitations and independent accounting review remain open.
+- Necessary verification: two focused GL backend tests and the offsetting-role viewer test
+  passed; backend lint/type checking and frontend TypeScript checking passed. No deployment.
+
 ## Contracting intercompany revenue counterparts and reversals — October 20, 2026
 
 - Revenue control attribution now resolves the contracting entity's INTERCOMPANY_DUE_TO leg

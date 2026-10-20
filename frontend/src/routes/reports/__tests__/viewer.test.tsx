@@ -641,6 +641,9 @@ describe("SF-08:report viewer", () => {
             entity: "AVM-US",
             role: "CONTRACT_LIABILITY",
             currency: "USD",
+            reconciliation_id: "retained-source",
+            book_code: "ASC606",
+            period_key: "FY2026-P08",
             gl: "110.00",
             rollforward: "100.00",
             difference: "-10.00",
@@ -666,6 +669,9 @@ describe("SF-08:report viewer", () => {
     expect(screen.getByText("AVM-US · CONTRACT_LIABILITY")).toBeTruthy();
     expect(screen.getByText("AVM-US · CONTRACT_ASSET")).toBeTruthy();
     expect(screen.getByText(/GL USD 110.00; Rollforward USD 100.00;/)).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Open GL reconciliation" }).getAttribute("href")).toBe(
+      "/close/AVM-US/ASC606/FY2026-P08/reconciliations/retained-source",
+    );
   });
 
   it("tie-out difference is the API figure", async () => {

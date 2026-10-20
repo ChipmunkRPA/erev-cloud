@@ -6238,6 +6238,8 @@
   "reports.tieOut.TO_WATERFALL_EQ_JE_REVENUE": "Waterfall revenue equals revenue journal total",
   "reports.tieOuts.actual": "Actual {amount}",
   "reports.tieOuts.difference": "Difference {amount}",
+  "reports.tieOuts.details": "Comparison details",
+  "reports.tieOuts.source": "Open GL reconciliation",
   "reports.tieOuts.expected": "Expected {amount}",
   "reports.tieOuts.heading": "Tie-outs ({passed} pass, {failed} fail)",
   "schedules.column.flags": "Flags",

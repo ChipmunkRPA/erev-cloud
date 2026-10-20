@@ -36,12 +36,21 @@ def test_gl_role_comparison_and_incomplete_sources() -> None:
             ("UNBILLED_RECEIVABLE", "0"),
         )
     ]
-    sources = {str(entity.id): {"id": str(uuid4()), "totals": rows}}
+    sources = {
+        str(entity.id): {
+            "id": str(uuid4()),
+            "totals": rows,
+            "book_code": "ASC606",
+            "period_key": "FY2026-P08",
+        }
+    }
     assert rollforward_gl.compare([entity], [item], sources)["result"] == "PASS"
     rows[0]["source_amount"] = "-110"
     rows[1]["source_amount"] = "10"
     failed = rollforward_gl.compare([entity], [item], sources)
     assert failed["result"] == "FAIL"
+    assert failed["details"][0]["period_key"] == "FY2026-P08"
+    assert failed["details"][0]["reconciliation_id"] == sources[str(entity.id)]["id"]
     assert failed["expected"] == failed["actual"]  # aggregate alone would falsely pass
     assert [row["difference"] for row in failed["details"]] == ["-10", "10", "0"]
     assert rollforward_gl.compare([entity], [item], {})["result"] == "NOT_APPLICABLE"
