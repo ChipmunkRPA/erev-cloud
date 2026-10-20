@@ -2,6 +2,19 @@
 
 **Owner workflow: prioritize finishing missing features. Use targeted checks during development; reserve full-suite verification for feature completion/release. Commit and push directly to main; no new PRs unless protection requires one. No deployment.**
 
+## RPO exemption eligibility transitions — October 20, 2026
+
+- Rollforward opening and closing now use their own retained versions for full exemption
+  eligibility. A newly exempt closing cannot erase a disclosed opening; leaving an exemption
+  is attributed to EXEMPTIONS. Obligations fully exempt throughout remain omitted.
+- Four targeted cases cover entering, leaving, unelected and continuing right-to-invoice
+  exemptions; endpoint balances agree with standalone RPO. Partial VC exclusions and original
+  term evidence remain unchanged. Ten focused exemption tests and seven catalogue tests pass;
+  backend lint/type checks pass. The database RPO rollforward tie-out test passes after migration
+  0207, which aligns the stored report calculation description.
+- This covers changes present in retained obligation versions, not historical policy-election
+  changes or every public amendment workflow. Independent accounting acceptance remains open.
+
 ## Retained TIME/EVENT input classes — October 20, 2026
 
 - Engine traces retain each input's class and functional TIME total; reporting verifies
@@ -207,28 +220,6 @@
   per-obligation opening consumption and complex membership transitions. This completes the
   tested ordinary liability-backed return path, not every negative-revenue scenario.
   Final release verification and independent accounting acceptance remain open.
-
-## Revenue posting-delta evidence and reconciliation — October 20, 2026
-
-- Added revenue-line evidence reading alongside the existing FX adapter. It verifies the
-  line against exactly one original retained posting intent in transaction and functional
-  currency, verifies the trace/output and sealed posting, and captures the original
-  pre-computation revenue population by ledger cutoff. Later/current lines are excluded.
-- Added exact source-level target minus prior target minus paid reconciliation, including
-  TIME, EVENT and ALL bases, negative amounts and owner-preserving cancellation across
-  computation versions. Target totals, TIME components, paid totals and final delta are
-  each checked. Source date and source key now accompany the signed layer projection.
-- Ordinary revenue posting trace nodes are transaction-currency nodes; their functional
-  amounts are separately retained. The reconciler therefore accepts verified explicit
-  target facts rather than treating the transaction trace as a functional FX delta.
-- Necessary checks passed: 14 focused source/delta checks and a real combined-contract
-  sequence proving the later revenue envelope includes the prior posting but excludes its
-  own posting; incorrect functional amounts are refused. Existing report reruns pass.
-- Still required: wire verified functional target/time projections and recursive paid
-  attribution into report presentation, including close-pass revenue histories. This
-  internal reconciliation/reader addition does not yet enable complete negative-revenue
-  reports. Per-obligation opening consumption, asset presentation transfers and final
-  accounting/release acceptance remain open. No deployment.
 
 ## Outstanding release verification
 

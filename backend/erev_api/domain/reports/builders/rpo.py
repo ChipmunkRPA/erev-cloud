@@ -1040,9 +1040,19 @@ def _obligation_lines(
             None,
         )
         if described is not None:
-            ends = store.durations(version)
             break
-    if described is None or _exemption(described, applied, ends) is not None:
+    if described is None:
+        return
+    relevant = [
+        (version, ob)
+        for version in (opening_version, *moved, closing_version)
+        if version is not None and (ob := _in_version(store, version, obligation_id)) is not None
+    ]
+    # A closing exemption cannot erase a previously disclosed opening balance.
+    # Preserve the old omission only when every retained version is fully exempt.
+    if relevant and all(
+        _exemption(ob, applied, store.durations(version)) is not None for version, ob in relevant
+    ):
         return
     lines = dict.fromkeys(ROLLFORWARD_LINES, ZERO)
     opening = _in_version(store, opening_version, obligation_id)
@@ -1123,16 +1133,16 @@ def _obligation_lines(
             # range and the opening did not state (module docstring)
             lines["LATE_EVENTS"] = -(restated - store.at(opening, before).revenue)
         lines["CLOSING"] = rpo_of(closing, end, DEFAULT_BANDS, at_end)[0]
-    opening_excluded = (
-        ZERO
-        if opening is None
-        else _partial_exclusion(store, opening, before, lines["OPENING"], applied)
-    )
-    closing_excluded = (
-        ZERO
-        if closing is None
-        else _partial_exclusion(store, closing, end, lines["CLOSING"], applied)
-    )
+
+    def excluded(ob: _Ob | None, version: _Version | None, day: date, total: Decimal) -> Decimal:
+        if ob is None or version is None:
+            return ZERO
+        if _exemption(ob, applied, store.durations(version)) is not None:
+            return total
+        return _partial_exclusion(store, ob, day, total, applied)
+
+    opening_excluded = excluded(opening, opening_version, before, lines["OPENING"])
+    closing_excluded = excluded(closing, closing_version, end, lines["CLOSING"])
     lines["OPENING"] -= opening_excluded
     lines["CLOSING"] -= closing_excluded
     lines["EXEMPTIONS"] = opening_excluded - closing_excluded

@@ -236,3 +236,66 @@ def test_original_duration_survives_contract_term_changes(
         functional=False,
     )
     assert sum(result.values()) == (0 if exempt else 100)
+
+
+@pytest.mark.parametrize(
+    "opening_method,closing_method,elected,expected",
+    [
+        ("POINT_IN_TIME", rpo.RIGHT_TO_INVOICE, True, (100, -100, 0)),
+        (rpo.RIGHT_TO_INVOICE, "POINT_IN_TIME", True, (0, 100, 100)),
+        ("POINT_IN_TIME", rpo.RIGHT_TO_INVOICE, False, (100, 0, 100)),
+        (rpo.RIGHT_TO_INVOICE, rpo.RIGHT_TO_INVOICE, True, None),
+    ],
+)
+def test_rollforward_exemption_changes_preserve_both_endpoints(
+    opening_method: str, closing_method: str, elected: bool, expected: tuple[int, int, int] | None
+) -> None:
+    from erev_api.domain.contracts.to_date import ObligationAt
+
+    vid, next_vid, oid, cid, eid, gid = (uuid4() for _ in range(6))
+    before, end = date(2026, 1, 31), date(2026, 2, 28)
+    first = rpo._Version(vid, gid, 1, True, date(2026, 1, 1), frozenset())
+    second = rpo._Version(next_vid, gid, 2, True, date(2026, 2, 1), frozenset({"CONTRACT_AMENDED"}))
+    old = rpo._Ob(
+        oid,
+        vid,
+        oid,
+        cid,
+        "C",
+        "O",
+        "Service",
+        None,
+        None,
+        None,
+        eid,
+        "E",
+        "USD",
+        opening_method,
+        date(2028, 12, 31),
+        date(2026, 1, 1),
+        Decimal(100),
+        False,
+    )
+    new = replace(old, version_id=next_vid, recognition_method=closing_method)
+    at = ObligationAt(*(Decimal(0) for _ in range(7)), Decimal(100), "UNSATISFIED", None, None)
+    store = rpo.Store(
+        {gid: (first, second)},
+        {vid: (old,), next_vid: (new,)},
+        {cid: (first, second)},
+        {
+            (version.id, day): {oid: at}
+            for version in (first, second)
+            for day in (before, second.effective, end)
+        },
+    )
+    applied = {eid: frozenset({"POL-198"}) if elected else frozenset()}
+    movements = rpo.rollforward_lines(store, ranges={eid: (before, end)}, applied=applied)
+    if expected is None:
+        assert movements == ()
+        return
+    (movement,) = movements
+    assert tuple(movement.lines[key] for key in ("OPENING", "EXEMPTIONS", "CLOSING")) == expected
+    assert movement.lines["UNEXPLAINED"] == 0
+    for day, key in ((before, "OPENING"), (end, "CLOSING")):
+        rows = rpo.rows_at(store, as_of={eid: day}, bands=(12, 24), applied=applied)
+        assert sum(row.total for row in rows if row.exemption is None) == movement.lines[key]

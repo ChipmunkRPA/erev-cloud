@@ -796,6 +796,8 @@ DEFINITIONS: Final[tuple[ReportDefinition, ...]] = (
             "of to_period_key",
             _CHAIN,
             "movements classified by the contract_event that caused each contract version",
+            "full RPO exemption eligibility is evaluated per retained version; "
+            "opening and closing exclusions are separate, with eligibility changes in EXEMPTIONS",
             _as_locked("RPO_ROLLFORWARD"),
         ),
         tie_outs=("TO_ROLLFORWARD_BALANCES", "TO_RPO_ROLLFORWARD_EQ_RPO"),
