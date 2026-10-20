@@ -8324,3 +8324,24 @@ cleanup in the shared database session kernel was also repaired and regression-t
   Backend authorization and supported-field validation remain authoritative. Richer record
   selectors, other reporting workflows and independent accounting acceptance remain open.
   No deployment or production-readiness claim.
+
+## Saved report identity and entity scope — October 19, 2026
+
+- Forecast CSV/XLSX Open report view links now retain run=<id>, using the saved-format reader
+  instead of implicitly creating a JSON report (which may not exist for that forecast).
+- Multi-entity links retain p.entity_codes alongside the all-entities context marker. Previously
+  reopening a file report could expand the selected subset to every entity in the reader's scope.
+  The toolbar displays the saved subset and provides an explicit Use all permitted entities action.
+  Selecting a single context entity takes precedence over the saved subset.
+- Thirty-three focused run-record/parameter checks pass. Other reporting business workflows,
+  populated accounting acceptance and independent sign-off remain open. No deployment.
+
+## Conditional reporting catalogue — October 19, 2026
+
+- Removed the obsolete unconditional hiding of forecast outputs, actual-versus-forecast,
+  migration reconciliation and parallel-run comparison. Forecast entries follow the existing
+  sandbox/scenario-use access gate. Migration entries require migration.run and an authorized
+  migration list with at least one record; unauthorized readers do not request that list.
+- Forty-eight focused report-page checks pass, including workspace/access/empty-migration
+  visibility, with TypeScript and ESLint. This completes catalogue access, not the remaining
+  populated reporting workflows, accounting acceptance or independent sign-off. No deployment.

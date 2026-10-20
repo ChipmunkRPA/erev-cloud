@@ -6,6 +6,22 @@
 
 
 
+## Deal preview input and engine boundary — October 19, 2026
+
+- Code inspection confirmed deal preview had only its persisted table, without an API,
+  worker, engine adapter or screen. Added proposed-deal/create/save request schemas: exactly
+  one customer identity/name, bounded nonempty lines, positive decimal-string quantities,
+  nonnegative API money, one currency, strict positive terms and calendar-date input.
+- Added pure deal_compute boundary using the complete revenue engine in DRY_RUN mode. It
+  rejects multiple contracts or posted ledger baselines, preserves engine refusals, returns
+  the full engine result/trace and verifies input/result fingerprints. No database writes.
+- Four targeted schema/refusal checks pass. A separate real ASC606 kit-world computation
+  confirms two USD 1000.00 allocations, DRY_RUN isolation and both fingerprints; lint/types pass.
+- This is the compute foundation, not a working deal-preview feature. Authorized product/SSP
+  resolution and bundle construction, retained audited jobs/API, result presentation, scenario
+  save and SF-18 UI remain to implement. Tamsin acceptance and accounting sign-off remain open.
+  No deployment or production-readiness claim.
+
 ## Direct forecast event capture from contract forms — October 19, 2026
 
 - Existing delivery/progress/milestone/cost/return drawers now offer a paginated draft selector
@@ -228,27 +244,6 @@
   in the report toolbar. Profile, promotion and other migration UI gaps remain separate work.
 - Twenty-three focused migration checks, TypeScript and ESLint pass. Full populated accounting
   acceptance and independent sign-off remain outstanding; no deployment or readiness claim.
-
-## Conditional reporting catalogue — October 19, 2026
-
-- Removed the obsolete unconditional hiding of forecast outputs, actual-versus-forecast,
-  migration reconciliation and parallel-run comparison. Forecast entries follow the existing
-  sandbox/scenario-use access gate. Migration entries require migration.run and an authorized
-  migration list with at least one record; unauthorized readers do not request that list.
-- Forty-eight focused report-page checks pass, including workspace/access/empty-migration
-  visibility, with TypeScript and ESLint. This completes catalogue access, not the remaining
-  populated reporting workflows, accounting acceptance or independent sign-off. No deployment.
-
-## Saved report identity and entity scope — October 19, 2026
-
-- Forecast CSV/XLSX Open report view links now retain run=<id>, using the saved-format reader
-  instead of implicitly creating a JSON report (which may not exist for that forecast).
-- Multi-entity links retain p.entity_codes alongside the all-entities context marker. Previously
-  reopening a file report could expand the selected subset to every entity in the reader's scope.
-  The toolbar displays the saved subset and provides an explicit Use all permitted entities action.
-  Selecting a single context entity takes precedence over the saved subset.
-- Thirty-three focused run-record/parameter checks pass. Other reporting business workflows,
-  populated accounting acceptance and independent sign-off remain open. No deployment.
 
 ## Outstanding release verification
 

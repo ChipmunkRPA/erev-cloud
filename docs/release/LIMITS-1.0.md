@@ -1,5 +1,12 @@
 # eRev Cloud 1.0: stated limits of the release
 
+Current deal-preview foundation (October 19): request schemas and a pure DRY_RUN engine
+boundary now exist. The boundary preserves full engine output and verifies fingerprints,
+rejecting posted baselines. This is not yet exposed as a product feature: authorized bundle
+construction, audited worker/API persistence, result presentation, scenario save and UI remain
+unimplemented. The required Tamsin example and independent accounting acceptance are outstanding.
+
+
 Current direct forecast capture update (October 19): delivery/progress/milestone/cost/return
 forms can explicitly target a draft assumption set in an authorized scenario workspace.
 They use the existing atomic event-capture API and preserve contract/evidence validation.
