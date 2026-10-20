@@ -164,3 +164,12 @@ describe("DS-FMT quantities, rates, counts and periods", () => {
     expect(() => formatNumber(1.5, { kind: "count" })).toThrow();
   });
 });
+
+it("formats API percentage-point values as signed percentages without double scaling", () => {
+  const options = { input: "points", delta: true, negativeStyle: "MINUS" } as const;
+  expect(formatPercent("12.50", options)).toBe("+12.5%");
+  expect(formatPercent("-12.50", options)).toBe("−12.5%");
+  expect(formatPercent("0.00", options)).toBe("0.0%");
+  expect(formatPercent(null, options)).toBe("—");
+  expect(formatPercent("100.00", options)).toBe("+100.0%");
+});

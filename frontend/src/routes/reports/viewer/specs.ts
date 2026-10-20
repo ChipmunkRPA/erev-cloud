@@ -620,6 +620,7 @@ export interface ReportColumn {
   readonly header: string;
   readonly kind: ReportColumnKind;
   readonly drillable: boolean;
+  readonly percentChange?: boolean;
 }
 
 /** Fields that carry structure, not figures. */
@@ -878,7 +879,8 @@ export function reportColumns(context: ColumnContext): ReportColumn[] {
   const drillable = DRILLABLE_REPORTS.has(definition.code) && section.number === 1;
   const ordered = definition.code === "parallel_run_comparison" ? keys : orderedKeys(definition, keys, context.bands, context.columns);
   return ordered.map((key) => {
-    const kind: ReportColumnKind =
+    const percentChange = definition.code === "actual_vs_forecast" && key === "variance_percent";
+    const kind: ReportColumnKind = percentChange ? "number" :
       key === "contract_external_id" && definition.kind !== "LEGACY_EXPORT"
         ? "identifier"
         : (kinds.get(key) ?? "text");
@@ -886,6 +888,7 @@ export function reportColumns(context: ColumnContext): ReportColumn[] {
     return {
       key,
       header: kind === "money" && single !== undefined ? `${header} (${single})` : header,
+      ...(percentChange ? { percentChange: true } : {}),
       kind,
       drillable:
         (drillable ||
@@ -906,6 +909,8 @@ export function totalsRows(section: ReportSection): GridTotalsRow[] {
       if (isMoney(value)) {
         values[key] = value.amount;
         currency = value.currency;
+      } else if (key === "variance_percent" && typeof value === "string") {
+        values[key] = value;
       }
     }
     return { key: row.row_key, currency, values,

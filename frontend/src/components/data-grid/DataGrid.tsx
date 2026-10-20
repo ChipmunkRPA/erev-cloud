@@ -40,6 +40,7 @@ import { Skeleton } from "../feedback/Skeleton";
 import { hasFilters } from "../filter-bar/filters";
 import { CaretDown, CaretUp, CircleHalf, DotsThree, WarningCircle } from "../icons/registry";
 import { Money } from "../money/Money";
+import { Num } from "../money/Num";
 import { Button } from "../ui/Button";
 import { cn } from "../ui/cn";
 import { Tooltip } from "../ui/Tooltip";
@@ -1203,6 +1204,8 @@ export function DataGrid<Row>({
                     totalRow.label ?? totalLabel(totalRow.currency)
                   ) : spec.currencyColumn === true ? (
                     <span className="truncate">{totalRow.currency}</span>
+                  ) : spec.numberKind === "percentChangePoints" ? (
+                    <Num value={value ?? null} kind="percentChangePoints" />
                   ) : value === undefined ? null : (
                     <Money value={value} currency={totalRow.currency} variant="cell" />
                   )}

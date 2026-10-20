@@ -153,7 +153,7 @@ export function ReportGrid({
       return {
         ...base,
         kind: "number",
-        numberKind: "count",
+        numberKind: column.percentChange ? "percentChangePoints" : "count",
         value: (row) => textOf(row[column.key]),
       } satisfies GridColumn<ReportRow>;
     }

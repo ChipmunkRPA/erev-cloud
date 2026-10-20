@@ -6,6 +6,19 @@
 
 
 
+## Actual-versus-forecast percentage display — October 19, 2026
+
+- Completed RPT-40's signed variance percentage presentation. API values are already scaled
+  percentages; the formatter shifts decimal strings exactly before percentage rendering,
+  avoiding double scaling and numeric precision loss. Positive values show a plus sign;
+  negatives follow tenant style and zero-base null values retain the no-value dash.
+- Report columns now classify the comparison percentage as a right-aligned numeric value.
+  Currency totals preserve the backend's saved variance percentage and render it as a
+  percentage instead of treating it as currency or omitting it.
+- Twenty-two focused format/report-grid/totals checks pass, along with TypeScript and ESLint.
+  Populated production-posting accounting acceptance and other reporting workflows remain
+  open; no full reporting or production-readiness claim. No deployment.
+
 ## Forecast file-format viewing — October 19, 2026
 
 - Fixed the report-centre mismatch where CSV/XLSX forecast detail requested section data but

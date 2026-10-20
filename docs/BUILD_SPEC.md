@@ -11662,6 +11662,8 @@ Author BS-3. Uses DIN, SNP and RPS (PHASES §1 row 18). Indicative size 12 items
     JSON/XLSX/CSV/PDF jobs and same-source rebuilding pass for the empty-actuals journey.
     The viewer shows actuals cutoff, retained refresh time, variance definitions and empty-actuals
     guidance, with saved column labels/order. Rebuilds preserve the displayed provenance.
+    RPT-40 detail and currency-total variance percentages now use signed percentage
+    formatting from the saved decimal values; null zero-base figures display a dash.
     Populated production-posting accounting acceptance remains open.
   - **Prerequisites:** FCS-3
   - **Scope:**

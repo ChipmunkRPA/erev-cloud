@@ -42,7 +42,16 @@ export function NoValue() {
   );
 }
 
-export type NumKind = "quantity" | "count" | "percent" | "share" | "pp" | "rate" | "fx" | "compact";
+export type NumKind =
+  | "quantity"
+  | "count"
+  | "percentChangePoints"
+  | "percent"
+  | "share"
+  | "pp"
+  | "rate"
+  | "fx"
+  | "compact";
 
 export interface NumProps {
   readonly value: string | number | null;
@@ -59,6 +68,8 @@ function partsOf(value: string | number, kind: NumKind, currency: string | undef
     throw new Error(`<Num kind="${kind}"> needs a decimal string`);
   }
   switch (kind) {
+    case "percentChangePoints":
+      return percentParts(value, { input: "points", delta: true });
     case "percent":
     case "share":
     case "pp":

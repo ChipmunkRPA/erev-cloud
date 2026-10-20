@@ -79,3 +79,48 @@ it("two-currency totals render the Currency cell per row", async () => {
   ]);
   expect(grid.textContent).not.toContain("552,003.52");
 });
+
+it("shows signed actual-versus-forecast percentages in details and saved totals", async () => {
+  const { reportColumns, totalsRows } = await import("./specs");
+  const definition = {
+    code: "actual_vs_forecast",
+    kind: "STANDARD",
+  } as import("../../../lib/api/queries/reports").ReportDefinition;
+  const section: ReportSection = {
+    number: 1,
+    heading: "Comparison",
+    rows: [
+      { row_key: "contract:A", contract_external_id: "A", variance_percent: "12.50" },
+      { row_key: "contract:B", contract_external_id: "B", variance_percent: "-10.00" },
+      { row_key: "contract:C", contract_external_id: "C", variance_percent: null },
+    ],
+    totals: [{ row_key: "TOTAL:USD", variance_percent: "5.00" }],
+  };
+  render(
+    <QueryClientProvider client={createQueryClient()}>
+      <MemoryRouter>
+        <ReportGrid
+          runId={RUN_ID}
+          section={section}
+          columns={reportColumns({
+            definition,
+            section,
+            periods: [],
+            bands: [],
+            columns: [
+              { key: "contract_external_id", header: "Contract", kind: "text" },
+              { key: "variance_percent", header: "Variance %", kind: "decimal" },
+            ],
+          })}
+          totals={totalsRows(section)}
+          onDrill={() => undefined}
+        />
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+  await screen.findByText("12.5%");
+  expect(screen.getByText("10.0%")).toBeTruthy();
+  expect(screen.getByText("5.0%")).toBeTruthy();
+  expect(screen.getAllByText("plus")).toHaveLength(2);
+  expect(screen.getByText("No value")).toBeTruthy();
+});

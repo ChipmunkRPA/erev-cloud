@@ -251,6 +251,8 @@ export function formatList(items: readonly string[], style: ListStyle): string {
 }
 
 export interface PercentOptions extends FormatOptions {
+  /** API percentages may already be scaled by 100; preserve decimal-string precision. */
+  readonly input?: "ratio" | "points";
   /**
    * `percent`: a ratio with one decimal; `share`: allocation shares and SSP ratios with two
    * (DS-FMT-09); `pp`: a percentage-point change given in points, with a sign (DS-FMT-10).
@@ -263,7 +265,10 @@ export interface PercentOptions extends FormatOptions {
 export function percentParts(value: string, options: PercentOptions = {}): SignedParts {
   const decimal = parseDecimal(value);
   const kind = options.kind ?? "percent";
-  const absolute = literal(decimal.integer, decimal.fraction);
+  const absolute =
+    options.input === "points" && kind !== "pp"
+      ? shiftLeft(decimal, 2)
+      : literal(decimal.integer, decimal.fraction);
   if (kind === "pp") {
     const body = numberFormat(localeOf(options), {
       minimumFractionDigits: 1,
