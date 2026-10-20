@@ -1200,6 +1200,12 @@ def estimate_version_input(
     obligation_id = element["obligation_id"]
     supersedes = version["supersedes_version_id"]
     targets = [UUID(str(value)) for value in element["target_obligation_ids"] or ()]
+    parameters = dict(version["parameters"] or {})
+    # Allocation criteria belong to the immutable element, not editable version parameters.
+    # Carry the approved source field into the engine's targeted-allocation evidence slot.
+    parameters.pop("allocation_criteria_evidence", None)
+    if element.get("allocation_criteria_evidence") is not None:
+        parameters["allocation_criteria_evidence"] = element["allocation_criteria_evidence"]
     return EstimateVersionInput(
         estimate_key=estimate_key,
         estimate_kind=_text_of(element["estimate_kind"]),
@@ -1229,7 +1235,7 @@ def estimate_version_input(
         )
         if weighted
         else (),
-        parameters=dict(sorted(dict(version["parameters"] or {}).items())),
+        parameters=dict(sorted(parameters.items())),
         unconstrained_amount=_optional_decimal(version["unconstrained_amount"]),
         most_conservative_amount=_optional_decimal(version["most_conservative_amount"]),
         constrained_amount=_optional_decimal(version["constrained_amount"]),

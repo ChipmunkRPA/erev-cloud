@@ -6,6 +6,23 @@
 
 
 
+## Targeted VC evidence through the platform — October 20, 2026
+
+- Fixed a missing production adapter path: the estimate element's allocation-criteria evidence
+  now enters the engine input during previews and computations. Editable version parameters
+  cannot replace or invent that evidence. The engine's existing POL-044 control is unchanged.
+- RPO later-share eligibility now reads the element's evidence alongside the named version,
+  rather than looking in version parameters where the product never saved that field.
+- Positive API journey approves two targeted bonus versions, computes each, then verifies fixed
+  consideration USD 132,000 remains disclosed while USD 20,000 is excluded. The witness uses the
+  explicitly published tenant POL-044 NOT_ENFORCED election, with reviewed constraint evidence.
+- Net time-band/cell contributors, snapshot producer rows and control totals, CSV export and
+  retained rerun agree. A partially exempt obligation freezes as one section-1 row carrying both
+  its net amount and exclusion metadata. Adapter checks also reject version-parameter overrides.
+- This closes the populated partial-exemption report/snapshot-producer/export gap for this path;
+  it does not assert a complete production lock workflow or all exemption combinations. Broader
+  revenue/RPO currency views and the other documented reporting gaps remain. No deployment.
+
 ## RPO original-duration exemption — October 20, 2026
 
 - POL-197 now uses original inception segments from verified retained computation inputs,
@@ -221,23 +238,6 @@
 - Product picker and real Tamsin/browser acceptance remain open; independent accounting sign-off
   is not obtained. Other report acceptance/implementation gaps remain under the broader goal.
   No deployment; changes go directly to main.
-
-## Scenario-only deal preview save API — October 19, 2026
-
-- Added POST /deal-previews/{id}/save. Requires an ACTIVE registered scenario whose current
-  sandbox is the caller's workspace; production, ordinary sandboxes and stale scenario targets
-  refuse with DEAL_PREVIEW_SAVE_NOT_ALLOWED. The scenario row stays share-locked through commit.
-- Locks the preview, verifies saved input/result fingerprints, rechecks scenario entity access,
-  and creates a normal DRAFT contract with contract.create validation, provisional computation,
-  combination suggestions and holds. Updates saved_contract_id once and records the save audit.
-  The original preview evidence is unchanged; the draft uses current reference validation.
-- Real scenario/API checks pass first save, same-key replay, new-key duplicate refusal and DRAFT
-  status; the production journey passes the explicit 409 refusal. Python types/lint and generated
-  API schema pass. The UI save action and independent accounting acceptance remain open.
-- Reporting correction from current code: Actual vs Forecast already has a registered builder,
-  retained-source capture/rebuild, comparison calculation and UI entry. Populated K11 remains an
-  acceptance gap, not an absent report implementation. K03/close-variance gaps still need specific
-  code/evidence review before classification. No deployment; direct main publication.
 
 ## Outstanding release verification
 

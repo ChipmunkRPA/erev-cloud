@@ -1,7 +1,7 @@
 """Dated targeted-VC quotas from retained allocation traces.
 
 Amounts come only from posted allocation/share nodes. Immutable estimate identities
-and approved version parameters determine whether a later share is targeted VC;
+and their allocation-criteria evidence determine whether a later version share is targeted VC;
 a generic transaction-price share is never enough to exclude fixed consideration.
 """
 
@@ -36,7 +36,7 @@ def targeted_versions(session: Session, contract_ids: Sequence[UUID]) -> dict[st
             contract.c.external_id,
             estimate.c.element_code,
             estimate_version.c.version_no,
-            estimate_version.c.parameters,
+            estimate.c.allocation_criteria_evidence,
             estimate.c.allocation_target,
         )
         .select_from(
@@ -55,9 +55,9 @@ def targeted_versions(session: Session, contract_ids: Sequence[UUID]) -> dict[st
     found = {}
     for row in rows:
         key = obligation_subject_key(str(row["external_id"]), str(row["element_code"]))
-        found[f"{key}@v{row['version_no']}"] = row["allocation_target"] == "OBLIGATIONS" and (
-            row["parameters"] or {}
-        ).get("allocation_criteria_evidence") not in (None, "")
+        found[f"{key}@v{row['version_no']}"] = row["allocation_target"] == "OBLIGATIONS" and row[
+            "allocation_criteria_evidence"
+        ] not in (None, "")
     return found
 
 

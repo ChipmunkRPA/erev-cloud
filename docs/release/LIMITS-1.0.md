@@ -1,5 +1,15 @@
 # eRev Cloud 1.0: stated limits of the release
 
+Current targeted-VC adapter update (October 20): the production bundle now carries allocation
+criteria from the estimate element, with no version-parameter substitution. Later RPO quota
+changes read the same authoritative element evidence. A positive approved two-version journey
+now covers net report amounts, cell contributions, the snapshot producer's single partially
+exempt row, CSV export and retained rerun. This supersedes the earlier missing positive
+partial-exemption report/snapshot/export witness for this supported path. It does not certify
+all period-lock workflows, exemption combinations or broader multi-currency reports. Existing
+stored computations are not rewritten; new computations receive the corrected source input.
+No deployment.
+
 Current original-duration exemption update (October 20): POL-197 in the report, rollforward,
 dashboard and close-variance projection now uses original inception segments from verified
 retained computation inputs. Extensions/shortening do not redefine the original term, and the

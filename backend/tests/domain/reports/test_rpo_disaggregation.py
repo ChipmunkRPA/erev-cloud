@@ -610,3 +610,157 @@ def test_interim_pack_flag(
             "note": "Omitted under the nonpublic RPO relief election.",
         }
     ]
+
+
+@pytest.mark.slow
+def test_partial_vc_exemption_from_approved_element_to_report_and_snapshot(
+    app: FastAPI,
+    keyring: KeyRing,
+    clock: FrozenClock,
+    files: LocalFileStore,
+) -> None:
+    from erev_api.db.tables import legal_entity, period
+    from erev_api.domain.close import freeze
+    from erev_api.domain.reports import snapshots
+    from support import worlds
+    from support.factories import booked_contract, computed, customer_id
+    from support.reference import assign
+
+    world = worlds.report_world(app, keyring, clock, files, contracts=())
+    assign(world.priya.member, "revenue_reviewer")
+    clock.advance(timedelta(minutes=1))
+    world = worlds.verified(world, clock, "priya")
+    with tenant_session(
+        DbContext(tenant_id=world.tenant_id, user_id=None, entity_scope="*")
+    ) as session:
+        publish_registry_version(
+            session,
+            tenant_id=world.tenant_id,
+            category=RegistryCategory.ACCOUNTING_POLICY,
+            scope=RegistryScope.TENANT,
+            values={"vc.targeted_allocation_tolerance": "NOT_ENFORCED"},
+            at=clock.now(),
+        )
+    customer = customer_id(app, world.maya, code="C-RPO", name="RPO demonstration")
+    booked = booked_contract(
+        world.place,
+        {
+            "external_id": "RPO-VC",
+            "customer_id": str(customer),
+            "contracting_entity_code": AVM_US,
+            "transaction_currency": "USD",
+            "inception_date": "2026-01-01",
+            "lines": [
+                {
+                    "obligation_key": "O1",
+                    "product_code": worlds.PLATFORM,
+                    "quantity": "1",
+                    "total_price": {"amount": "132000.00", "currency": "USD"},
+                    "start_date": "2027-01-01",
+                    "end_date": "2027-12-31",
+                }
+            ],
+        },
+        activate=True,
+    )
+    group = UUID(str(booked.combination_group["id"]))
+    computed(world.place, group)
+    created = post(
+        app,
+        f"/api/v1/contracts/{booked.contract['id']}/estimates",
+        world.maya,
+        {
+            "estimate_kind": "VARIABLE_CONSIDERATION",
+            "element_code": "BONUS",
+            "vc_element_type": "BONUS",
+            "method": "MOST_LIKELY_AMOUNT",
+            "allocation_target": "OBLIGATIONS",
+            "target_obligation_keys": ["O1"],
+            "allocation_criteria_evidence": (
+                "Bonus relates specifically to O1 and reflects its allocation objective."
+            ),
+        },
+    )
+    assert created.status_code == 201, created.text
+    for effective, amount in (("2026-01-01", "10000.00"), ("2026-08-01", "20000.00")):
+        worlds.estimate_version_approved(
+            app,
+            world.maya,
+            world.priya,
+            created.json()["id"],
+            {
+                "effective_date": effective,
+                "scenarios": [{"outcome": "Expected bonus", "amount": amount}],
+                "unconstrained_amount": amount,
+                "most_conservative_amount": amount,
+                "constrained_amount": amount,
+                "rationale": "Approved specific performance bonus.",
+            },
+            constraint_of="BONUS",
+        )
+        bundle, _, _ = computed(world.place, group)
+        assert all(
+            item.parameters["allocation_criteria_evidence"].startswith("Bonus relates specifically")
+            for item in bundle.estimate_versions
+        )
+    publish(
+        world,
+        RegistryCategory.PRACTICAL_EXPEDIENT,
+        {"rpo.exemption_vc_wholly_unsatisfied": "APPLY"},
+    )
+    run, rows = report_run(world, "rpo", AT_SEPTEMBER)
+    by_key = keyed(rows)
+    assert by_key["contract:RPO-VC"]["total"] == usd("132000.00")
+    assert by_key["exempt:RPO-VC:O1:POL-200"]["excluded_amount"] == usd("20000.00")
+    assert run["control_totals"]["excluded_total"] == {"USD": "20000.00"}
+    assert tie(run, tie_outs.TO_RPO_ROLLFORWARD_EQ_RPO)["result"] == "PASS"
+    explained = get(
+        app,
+        CELL.format(run_id=run["id"]),
+        world.maya,
+        {"row_key": "contract:RPO-VC", "column_key": "total"},
+    )
+    assert explained.status_code == 200, explained.text
+    assert explained.json()["value"] == usd("132000.00")
+    assert sum(
+        Decimal(item["value"]["amount"]) for item in explained.json()["contributors"]["items"]
+    ) == Decimal("132000.00")
+    with world.place.uow() as uow:
+        period_id = uow.session.execute(
+            select(period.c.id)
+            .join(legal_entity, legal_entity.c.calendar_id == period.c.calendar_id)
+            .where(legal_entity.c.id == world.entity_id, period.c.period_key == "FY2026-P09")
+        ).scalar_one()
+        scope = snapshots.SnapshotScope(
+            entity_id=world.entity_id,
+            book_code="ASC606",
+            period_id=period_id,
+            known_at=tie_outs.version_cutoff(uow.session, uow.now),
+        )
+        with freeze.system_unit(uow) as reader:
+            frozen = snapshots.freeze_rpo(reader, scope)
+        assert frozen.row_count == 1  # partial exclusion shares the obligation identity
+        assert frozen.control_totals["total"] == {"USD": "132000.00"}
+        assert frozen.control_totals["excluded_total"] == {"USD": "20000.00"}
+    import csv
+    import io
+
+    (frozen_row,) = list(csv.DictReader(io.StringIO(frozen.content.decode("utf-8"))))
+    assert frozen_row["section"] == "1"
+    assert frozen_row["total"] == "132000.00"
+    assert frozen_row["excluded_amount"] == "20000.00"
+    assert frozen_row["expedient"] == "POL-200"
+    exported, _ = report_run(world, "rpo", AT_SEPTEMBER, output_format="CSV")
+    downloaded = get(app, exported["output"]["href"], world.maya)
+    assert downloaded.status_code == 200, downloaded.text
+    text = downloaded.content.decode("utf-8")
+    assert "132000.00" in text and "20000.00" in text and "POL-200" in text
+    started = post(app, f"/api/v1/report-runs/{run['id']}/rerun", world.maya, {})
+    assert started.status_code == 202, started.text
+    finished = worlds.run_now(world, UUID(str(started.json()["id"])))
+    assert finished["state"] == "SUCCEEDED", finished
+    repeated = get(
+        app, f"/api/v1/report-runs/{started.headers['x-erev-report-run-id']}/data", world.maya
+    )
+    assert repeated.status_code == 200, repeated.text
+    assert repeated.json()["items"] == rows

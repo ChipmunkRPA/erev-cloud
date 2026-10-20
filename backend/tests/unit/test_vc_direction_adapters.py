@@ -117,3 +117,19 @@ def test_enc_vc_direction_adapter_transmits_the_member(
     version, _ = _measured(kind, direction, path)
     assert version.direction == direction
     assert version.constrained_amount == Decimal("100")
+
+
+@pytest.mark.parametrize("evidence", [None, "Approved element allocation evidence"])
+def test_allocation_evidence_comes_from_element_not_version_parameters(
+    evidence: str | None,
+) -> None:
+    element = {**_element("BONUS", "INCREASE"), "allocation_criteria_evidence": evidence}
+    stored = {
+        **_stored_version(),
+        "parameters": {"allocation_criteria_evidence": "Version-level override", "other": "kept"},
+    }
+    version = estimate_version_input(
+        stored, element, contract_key="C", obligation_keys={}, version_keys={}
+    )
+    assert version.parameters.get("allocation_criteria_evidence") == evidence
+    assert version.parameters["other"] == "kept"

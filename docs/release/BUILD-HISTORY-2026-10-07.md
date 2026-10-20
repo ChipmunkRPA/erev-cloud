@@ -8679,3 +8679,20 @@ cleanup in the shared database session kernel was also repaired and regression-t
   mixed decimal precision, separate entity/currency scopes and cross-page totals. TypeScript
   and ESLint pass. Scenario save, product picker and Tamsin/browser acceptance remain open;
   populated K11, multi-contract K03 and close variance remain Reporting priorities. No deployment.
+
+## Scenario-only deal preview save API — October 19, 2026
+
+- Added POST /deal-previews/{id}/save. Requires an ACTIVE registered scenario whose current
+  sandbox is the caller's workspace; production, ordinary sandboxes and stale scenario targets
+  refuse with DEAL_PREVIEW_SAVE_NOT_ALLOWED. The scenario row stays share-locked through commit.
+- Locks the preview, verifies saved input/result fingerprints, rechecks scenario entity access,
+  and creates a normal DRAFT contract with contract.create validation, provisional computation,
+  combination suggestions and holds. Updates saved_contract_id once and records the save audit.
+  The original preview evidence is unchanged; the draft uses current reference validation.
+- Real scenario/API checks pass first save, same-key replay, new-key duplicate refusal and DRAFT
+  status; the production journey passes the explicit 409 refusal. Python types/lint and generated
+  API schema pass. The UI save action and independent accounting acceptance remain open.
+- Reporting correction from current code: Actual vs Forecast already has a registered builder,
+  retained-source capture/rebuild, comparison calculation and UI entry. Populated K11 remains an
+  acceptance gap, not an absent report implementation. K03/close-variance gaps still need specific
+  code/evidence review before classification. No deployment; direct main publication.
